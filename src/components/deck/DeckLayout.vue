@@ -1,0 +1,282 @@
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import DeckTimelineColumn from './DeckTimelineColumn.vue'
+import { useDeckStore } from '@/stores/deck'
+import { useAccountsStore } from '@/stores/accounts'
+
+const deckStore = useDeckStore()
+const accountsStore = useAccountsStore()
+
+const showAddMenu = ref(false)
+
+function addTimelineColumn(accountId: string) {
+  deckStore.addColumn({
+    type: 'timeline',
+    name: null,
+    width: 330,
+    accountId,
+    tl: 'home',
+    active: true,
+  })
+  showAddMenu.value = false
+}
+
+function toggleAddMenu() {
+  showAddMenu.value = !showAddMenu.value
+}
+
+onMounted(() => {
+  deckStore.load()
+})
+</script>
+
+<template>
+  <div class="deck-root">
+    <!-- Column area -->
+    <div class="columns">
+      <template v-for="group in deckStore.layout" :key="group.join('-')">
+        <section v-for="colId in group" :key="colId" class="column-section">
+          <DeckTimelineColumn
+            v-if="deckStore.getColumn(colId)?.type === 'timeline'"
+            :column="deckStore.getColumn(colId)!"
+          />
+        </section>
+      </template>
+    </div>
+
+    <!-- Side menu (Misskey deck style - narrow) -->
+    <div class="side-menu">
+      <div class="side-menu-top">
+        <button
+          class="_button menu-item"
+          title="Add column"
+          @click="toggleAddMenu"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path
+              d="M12 4v16M4 12h16"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              fill="none"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div class="side-menu-middle" />
+
+      <div class="side-menu-bottom">
+        <router-link
+          to="/login"
+          class="_button menu-item"
+          title="Add account"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path
+              d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              fill="none"
+            />
+          </svg>
+        </router-link>
+
+        <router-link
+          to="/settings"
+          class="_button menu-item"
+          title="Settings"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path
+              d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+              stroke="currentColor"
+              stroke-width="1.5"
+              fill="none"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="3"
+              stroke="currentColor"
+              stroke-width="1.5"
+              fill="none"
+            />
+          </svg>
+        </router-link>
+      </div>
+    </div>
+
+    <!-- Add column popup -->
+    <Teleport to="body">
+      <div v-if="showAddMenu" class="add-overlay" @click="showAddMenu = false">
+        <div class="add-popup" @click.stop>
+          <div class="add-popup-header">Add column</div>
+
+          <div
+            v-if="accountsStore.accounts.length === 0"
+            class="add-popup-empty"
+          >
+            No accounts registered.
+            <router-link to="/login" @click="showAddMenu = false">
+              Add account
+            </router-link>
+          </div>
+
+          <button
+            v-for="account in accountsStore.accounts"
+            :key="account.id"
+            class="_button add-account-btn"
+            @click="addTimelineColumn(account.id)"
+          >
+            <img
+              v-if="account.avatarUrl"
+              :src="account.avatarUrl"
+              class="add-account-avatar"
+            />
+            <span>@{{ account.username }}@{{ account.host }}</span>
+          </button>
+        </div>
+      </div>
+    </Teleport>
+  </div>
+</template>
+
+<style scoped>
+.deck-root {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  background: var(--nd-deckBg);
+}
+
+.columns {
+  flex: 1;
+  display: flex;
+  gap: var(--nd-columnGap);
+  padding: var(--nd-columnGap);
+  overflow-x: auto;
+  overflow-y: clip;
+  overscroll-behavior: contain;
+  min-width: 0;
+}
+
+.column-section {
+  flex: 0 0 330px;
+  min-width: 280px;
+  max-width: 500px;
+  height: 100%;
+}
+
+/* Side menu (Misskey deck style - 32px narrow) */
+.side-menu {
+  flex: 0 0 32px;
+  display: flex;
+  flex-direction: column;
+  background: var(--nd-navBg);
+  border-left: 1px solid var(--nd-divider);
+}
+
+.side-menu-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.side-menu-middle {
+  flex: 1;
+}
+
+.side-menu-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  transition: opacity 0.15s, background 0.15s;
+  text-decoration: none;
+}
+
+.menu-item:hover {
+  opacity: 1;
+  background: var(--nd-buttonHoverBg);
+}
+
+/* Add column popup */
+.add-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--nd-modalBg);
+}
+
+.add-popup {
+  background: var(--nd-popup);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px var(--nd-shadow);
+  min-width: 320px;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.add-popup-header {
+  padding: 20px 24px 16px;
+  font-size: 1em;
+  font-weight: bold;
+  border-bottom: 1px solid var(--nd-divider);
+}
+
+.add-popup-empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  font-size: 0.9em;
+}
+
+.add-popup-empty a {
+  color: var(--nd-accent);
+}
+
+.add-account-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 24px;
+  font-size: 0.85em;
+  font-weight: bold;
+  color: var(--nd-fgHighlighted);
+  transition: background 0.15s;
+}
+
+.add-account-btn:hover {
+  background: var(--nd-buttonHoverBg);
+}
+
+.add-account-btn + .add-account-btn {
+  border-top: 1px solid var(--nd-divider);
+}
+
+.add-account-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+</style>

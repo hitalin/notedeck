@@ -1,0 +1,168 @@
+:root {
+  /* Misskey Dark Theme */
+  --nd-accent: #86b300;
+  --nd-accentedBg: rgba(134, 179, 0, 0.15);
+  --nd-bg: #000;
+  --nd-fg: #dadada;
+  --nd-fgHighlighted: #e8e8e8;
+  --nd-fgOnAccent: #fff;
+  --nd-panel: #1a1a1a;
+  --nd-panelHighlight: rgba(255, 255, 255, 0.03);
+  --nd-panelHeaderBg: #1a1a1a;
+  --nd-panelHeaderFg: #dadada;
+  --nd-popup: #2a2a2a;
+  --nd-deckBg: #000;
+  --nd-navBg: #111;
+  --nd-windowHeader: rgba(0, 0, 0, 0.85);
+  --nd-divider: rgba(255, 255, 255, 0.1);
+  --nd-buttonBg: rgba(255, 255, 255, 0.05);
+  --nd-buttonHoverBg: rgba(255, 255, 255, 0.08);
+  --nd-inputBorderHover: rgba(255, 255, 255, 0.2);
+  --nd-link: #44a4c1;
+  --nd-renote: #229e82;
+  --nd-love: #dd2e44;
+  --nd-focus: rgba(134, 179, 0, 0.3);
+  --nd-shadow: rgba(0, 0, 0, 0.3);
+  --nd-modalBg: rgba(0, 0, 0, 0.5);
+  --nd-scrollbarHandle: rgba(255, 255, 255, 0.2);
+  --nd-radius: 12px;
+  --nd-margin: 10px;
+  --nd-columnGap: 10px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: 'Hiragino Maru Gothic Pro', 'BIZ UDGothic', Roboto,
+    HelveticaNeue, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.35;
+  background-color: var(--nd-bg);
+  color: var(--nd-fg);
+  accent-color: var(--nd-accent);
+  overflow: hidden;
+  overflow-wrap: break-word;
+  tab-size: 2;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
+}
+
+body {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+a {
+  color: var(--nd-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+}
+
+textarea,
+input {
+  user-select: text;
+}
+
+/* ---- Utility classes (Misskey style) ---- */
+
+._panel {
+  background: var(--nd-panel);
+  border-radius: var(--nd-radius);
+  overflow: clip;
+}
+
+._button {
+  appearance: none;
+  display: inline-block;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  touch-action: manipulation;
+  font-size: 1em;
+  font-family: inherit;
+  line-height: inherit;
+  max-width: 100%;
+}
+
+._button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+._button:focus-visible {
+  outline: 2px solid var(--nd-focus);
+  outline-offset: -2px;
+}
+
+._buttonPrimary {
+  appearance: none;
+  display: inline-block;
+  padding: 7px 14px;
+  margin: 0;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background: var(--nd-accent);
+  color: var(--nd-fgOnAccent);
+  font-weight: bold;
+  font-size: 95%;
+  font-family: inherit;
+  line-height: inherit;
+  touch-action: manipulation;
+  transition: background 0.1s;
+}
+
+._buttonPrimary:hover:not(:disabled) {
+  background: hsl(from var(--nd-accent) h s calc(l + 5));
+}
+
+._buttonPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+._noSelect {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+._acrylic {
+  backdrop-filter: var(--MI-blur, blur(15px));
+}
+
+/* ---- Scrollbar (Webkit) ---- */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--nd-scrollbarHandle);
+  border-radius: 999px;
+}

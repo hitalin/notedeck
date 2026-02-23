@@ -1,0 +1,44 @@
+version: '3'
+
+tasks:
+  dev:
+    desc: PWA development server
+    cmd: pnpm vite dev
+
+  dev:tauri:
+    desc: Tauri + Vite development
+    cmd: pnpm tauri dev
+
+  build:
+    desc: PWA production build
+    cmd: pnpm vue-tsc -b && pnpm vite build
+
+  build:tauri:
+    desc: Tauri native build
+    cmd: pnpm tauri build
+
+  test:
+    desc: Run unit tests
+    cmd: pnpm vitest run
+
+  test:watch:
+    desc: Run unit tests in watch mode
+    cmd: pnpm vitest
+
+  lint:
+    desc: Lint and format check
+    cmd: pnpm biome check .
+
+  lint:fix:
+    desc: Lint and format fix
+    cmd: pnpm biome check --write .
+
+  typecheck:
+    desc: TypeScript type check
+    cmd: pnpm vue-tsc --noEmit
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf dist
+      - rm -rf src-tauri/target
