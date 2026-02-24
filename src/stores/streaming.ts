@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { type Ref, ref } from 'vue'
 import type {
   ChannelSubscription,
   ServerAdapter,
@@ -10,7 +10,7 @@ import type {
 interface ConnectionEntry {
   accountId: string
   adapter: ServerAdapter
-  state: StreamConnectionState
+  state: Ref<StreamConnectionState>
   subscriptions: ChannelSubscription[]
 }
 
@@ -23,18 +23,18 @@ export const useStreamingStore = defineStore('streaming', () => {
     const entry: ConnectionEntry = {
       accountId,
       adapter,
-      state: 'initializing',
+      state: ref<StreamConnectionState>('initializing'),
       subscriptions: [],
     }
 
     adapter.stream.on('connected', () => {
-      entry.state = 'connected'
+      entry.state.value = 'connected'
     })
     adapter.stream.on('disconnected', () => {
-      entry.state = 'disconnected'
+      entry.state.value = 'disconnected'
     })
     adapter.stream.on('reconnecting', () => {
-      entry.state = 'reconnecting'
+      entry.state.value = 'reconnecting'
     })
 
     adapter.stream.connect()
@@ -72,7 +72,7 @@ export const useStreamingStore = defineStore('streaming', () => {
   }
 
   function getState(accountId: string): StreamConnectionState | null {
-    return connections.value.get(accountId)?.state ?? null
+    return connections.value.get(accountId)?.state.value ?? null
   }
 
   return {

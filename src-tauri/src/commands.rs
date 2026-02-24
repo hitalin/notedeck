@@ -181,6 +181,62 @@ pub async fn api_get_notifications(
         .await
 }
 
+// --- Theme ---
+
+#[tauri::command]
+pub async fn api_fetch_account_theme(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+
+    let mut result = serde_json::json!({});
+
+    // 1. Try new preferences sync
+    let sync_scope = vec!["client".to_string(), "preferences".to_string(), "sync".to_string()];
+    if let Ok(Some(data)) = client.get_registry_all(&host, &token, &sync_scope).await {
+        if let Some(dark) = data.get("default:darkTheme") {
+            result["syncDark"] = dark.clone();
+        }
+        if let Some(light) = data.get("default:lightTheme") {
+            result["syncLight"] = light.clone();
+        }
+    }
+
+    // 2. Try legacy Pizzax/ColdDeviceStorage
+    if result.get("syncDark").is_none() && result.get("syncLight").is_none() {
+        let base_scope = vec!["client".to_string(), "base".to_string()];
+        if let Ok(Some(data)) = client.get_registry_all(&host, &token, &base_scope).await {
+            if let Some(dark) = data.get("darkTheme") {
+                result["baseDark"] = dark.clone();
+            }
+            if let Some(light) = data.get("lightTheme") {
+                result["baseLight"] = light.clone();
+            }
+        }
+    }
+
+    // 3. Fall back to server defaults from /api/meta
+    let has_any = result.get("syncDark").is_some()
+        || result.get("syncLight").is_some()
+        || result.get("baseDark").is_some()
+        || result.get("baseLight").is_some();
+
+    if !has_any {
+        if let Ok(meta) = client.get_meta(&host, &token).await {
+            if let Some(dark) = meta.get("defaultDarkTheme") {
+                result["metaDark"] = dark.clone();
+            }
+            if let Some(light) = meta.get("defaultLightTheme") {
+                result["metaLight"] = light.clone();
+            }
+        }
+    }
+
+    Ok(result)
+}
+
 // --- Auth ---
 
 #[tauri::command]

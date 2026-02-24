@@ -38,6 +38,7 @@ pub fn run() {
             commands::api_get_user_notes,
             commands::api_get_server_emojis,
             commands::api_get_notifications,
+            commands::api_fetch_account_theme,
             commands::auth_start,
             commands::auth_complete,
             commands::auth_verify_token,

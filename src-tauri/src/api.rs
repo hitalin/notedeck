@@ -304,4 +304,36 @@ impl MisskeyClient {
         let raw: RawUser = serde_json::from_value(data).map_err(|e| e.to_string())?;
         Ok(raw.into())
     }
+
+    /// Fetch all keys in a registry scope. Returns null if empty or error.
+    pub async fn get_registry_all(
+        &self,
+        host: &str,
+        token: &str,
+        scope: &[String],
+    ) -> Result<Option<Value>, String> {
+        let data = self
+            .request(host, token, "i/registry/get-all", json!({ "scope": scope }))
+            .await;
+        match data {
+            Ok(v) => {
+                if let Some(obj) = v.as_object() {
+                    if obj.is_empty() {
+                        return Ok(None);
+                    }
+                }
+                Ok(Some(v))
+            }
+            Err(_) => Ok(None),
+        }
+    }
+
+    /// Fetch server meta information.
+    pub async fn get_meta(
+        &self,
+        host: &str,
+        token: &str,
+    ) -> Result<Value, String> {
+        self.request(host, token, "meta", json!({})).await
+    }
 }

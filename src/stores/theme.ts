@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import type { CompiledProps, MisskeyTheme, ThemeSource } from '@/theme/types'
 import { compileMisskeyTheme } from '@/theme/compiler'
 import { applyTheme } from '@/theme/applier'
@@ -11,6 +12,15 @@ const STORAGE_COMPILED_KEY = 'nd-theme-compiled'
 // Keyed by "accountId:dark" / "accountId:light"
 const compiledCache = new Map<string, CompiledProps>()
 const fetchingAccounts = new Set<string>()
+
+interface ThemeResponse {
+  syncDark?: unknown
+  syncLight?: unknown
+  baseDark?: unknown
+  baseLight?: unknown
+  metaDark?: string
+  metaLight?: string
+}
 
 /** Parse a theme object from various response formats */
 function parseThemeFromData(data: unknown): MisskeyTheme | null {
@@ -38,6 +48,21 @@ function parseThemeFromData(data: unknown): MisskeyTheme | null {
   }
 
   return null
+}
+
+/** Parse a JSON string theme from /api/meta defaults */
+function parseMetaTheme(raw: string, id: string, base: 'dark' | 'light'): MisskeyTheme | null {
+  try {
+    const parsed = JSON.parse(raw)
+    return {
+      id,
+      name: parsed.name || `Server ${base === 'dark' ? 'Dark' : 'Light'}`,
+      base,
+      props: parsed.props || {},
+    }
+  } catch {
+    return null
+  }
 }
 
 export const useThemeStore = defineStore('theme', () => {
@@ -83,51 +108,41 @@ export const useThemeStore = defineStore('theme', () => {
     localStorage.setItem(STORAGE_COMPILED_KEY, JSON.stringify(compiled))
   }
 
-  async function fetchAccountTheme(accountId: string, host: string, token: string): Promise<void> {
+  async function fetchAccountTheme(accountId: string): Promise<void> {
     if (accountThemeCache.value.has(accountId)) return
     if (fetchingAccounts.has(accountId)) return
     fetchingAccounts.add(accountId)
 
     try {
+      const data = await invoke<ThemeResponse>('api_fetch_account_theme', { accountId })
       const entry: { dark?: MisskeyTheme; light?: MisskeyTheme } = {}
 
-      // 1. Try new preferences sync via get-all (avoids 400 errors from get)
-      const syncAll = await fetchRegistryAll(host, token, ['client', 'preferences', 'sync'])
-      if (syncAll) {
-        const darkData = syncAll['default:darkTheme']
-        const lightData = syncAll['default:lightTheme']
-        if (darkData) {
-          const parsed = parseThemeFromData(darkData)
-          if (parsed) entry.dark = { ...parsed, id: `account-dark-${accountId}`, base: 'dark' }
-        }
-        if (lightData) {
-          const parsed = parseThemeFromData(lightData)
-          if (parsed) entry.light = { ...parsed, id: `account-light-${accountId}`, base: 'light' }
-        }
+      // 1. sync preferences
+      if (data.syncDark) {
+        const parsed = parseThemeFromData(data.syncDark)
+        if (parsed) entry.dark = { ...parsed, id: `account-dark-${accountId}`, base: 'dark' }
+      }
+      if (data.syncLight) {
+        const parsed = parseThemeFromData(data.syncLight)
+        if (parsed) entry.light = { ...parsed, id: `account-light-${accountId}`, base: 'light' }
       }
 
-      // 2. Try legacy Pizzax/ColdDeviceStorage via get-all
-      if (!entry.dark && !entry.light) {
-        const baseAll = await fetchRegistryAll(host, token, ['client', 'base'])
-        if (baseAll) {
-          const darkData = baseAll['darkTheme']
-          const lightData = baseAll['lightTheme']
-          if (darkData) {
-            const parsed = parseThemeFromData(darkData)
-            if (parsed) entry.dark = { ...parsed, id: `account-dark-${accountId}`, base: 'dark' }
-          }
-          if (lightData) {
-            const parsed = parseThemeFromData(lightData)
-            if (parsed) entry.light = { ...parsed, id: `account-light-${accountId}`, base: 'light' }
-          }
-        }
+      // 2. legacy base
+      if (!entry.dark && data.baseDark) {
+        const parsed = parseThemeFromData(data.baseDark)
+        if (parsed) entry.dark = { ...parsed, id: `account-dark-${accountId}`, base: 'dark' }
+      }
+      if (!entry.light && data.baseLight) {
+        const parsed = parseThemeFromData(data.baseLight)
+        if (parsed) entry.light = { ...parsed, id: `account-light-${accountId}`, base: 'light' }
       }
 
-      // 3. Fall back to server defaults from /api/meta
-      if (!entry.dark && !entry.light) {
-        const defaults = await fetchServerDefaults(host, token)
-        if (defaults.dark) entry.dark = defaults.dark
-        if (defaults.light) entry.light = defaults.light
+      // 3. server meta defaults (JSON strings)
+      if (!entry.dark && data.metaDark) {
+        entry.dark = parseMetaTheme(data.metaDark, `server-dark-${accountId}`, 'dark') ?? undefined
+      }
+      if (!entry.light && data.metaLight) {
+        entry.light = parseMetaTheme(data.metaLight, `server-light-${accountId}`, 'light') ?? undefined
       }
 
       const next = new Map(accountThemeCache.value)
@@ -174,59 +189,3 @@ export const useThemeStore = defineStore('theme', () => {
     getCompiledForAccount,
   }
 })
-
-/** Fetch all keys in a registry scope (returns 200 with {} when empty, no 400 errors) */
-async function fetchRegistryAll(host: string, token: string, scope: string[]): Promise<Record<string, unknown> | null> {
-  try {
-    const res = await fetch(`https://${host}/api/i/registry/get-all`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ i: token, scope }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    if (typeof data !== 'object' || data === null) return null
-    // Return null if empty
-    if (Object.keys(data as Record<string, unknown>).length === 0) return null
-    return data as Record<string, unknown>
-  } catch {
-    return null
-  }
-}
-
-/** Fetch server default themes from /api/meta */
-async function fetchServerDefaults(host: string, token: string): Promise<{ dark?: MisskeyTheme; light?: MisskeyTheme }> {
-  const result: { dark?: MisskeyTheme; light?: MisskeyTheme } = {}
-  const res = await fetch(`https://${host}/api/meta`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ i: token }),
-  })
-  if (!res.ok) return result
-  const meta = await res.json()
-
-  if (meta.defaultDarkTheme) {
-    try {
-      const parsed = JSON.parse(meta.defaultDarkTheme)
-      result.dark = {
-        id: `server-dark-${host}`,
-        name: parsed.name || 'Server Dark',
-        base: 'dark',
-        props: parsed.props || {},
-      }
-    } catch { /* invalid theme JSON */ }
-  }
-  if (meta.defaultLightTheme) {
-    try {
-      const parsed = JSON.parse(meta.defaultLightTheme)
-      result.light = {
-        id: `server-light-${host}`,
-        name: parsed.name || 'Server Light',
-        base: 'light',
-        props: parsed.props || {},
-      }
-    } catch { /* invalid theme JSON */ }
-  }
-
-  return result
-}

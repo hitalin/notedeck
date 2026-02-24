@@ -13,6 +13,7 @@ import type {
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'
+import { toggleReaction } from '@/utils/toggleReaction'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -152,30 +153,8 @@ const postFormRenoteId = ref<string | undefined>()
 
 async function handleReaction(note: NormalizedNote, reaction: string) {
   if (!adapter) return
-
   try {
-    if (note.myReaction === reaction) {
-      await adapter.api.deleteReaction(note.id)
-      if ((note.reactions[reaction] ?? 0) > 1) {
-        note.reactions[reaction]!--
-      } else {
-        delete note.reactions[reaction]
-      }
-      note.myReaction = null
-    } else {
-      if (note.myReaction) {
-        await adapter.api.deleteReaction(note.id)
-        const prev = note.myReaction
-        if ((note.reactions[prev] ?? 0) > 1) {
-          note.reactions[prev]!--
-        } else {
-          delete note.reactions[prev]
-        }
-      }
-      await adapter.api.createReaction(note.id, reaction)
-      note.reactions[reaction] = (note.reactions[reaction] ?? 0) + 1
-      note.myReaction = reaction
-    }
+    await toggleReaction(adapter.api, note, reaction)
   } catch (e) {
     console.error('[reaction]', e)
   }

@@ -10,7 +10,7 @@ export function useTheme(): void {
     () => accountsStore.accounts,
     (accounts) => {
       for (const acc of accounts) {
-        themeStore.fetchAccountTheme(acc.id, acc.host, acc.token)
+        themeStore.fetchAccountTheme(acc.id)
       }
     },
     { immediate: true },

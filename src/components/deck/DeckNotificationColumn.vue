@@ -13,6 +13,7 @@ import type {
 } from '@/adapters/types'
 
 import { useAccountsStore } from '@/stores/accounts'
+import { toggleReaction } from '@/utils/toggleReaction'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
@@ -193,32 +194,12 @@ function onScroll(e: Event) {
 // Post form state (for reply from notification)
 const showPostForm = ref(false)
 const postFormReplyTo = ref<NormalizedNote | undefined>()
+const postFormRenoteId = ref<string | undefined>()
 
 async function handleReaction(note: NormalizedNote, reaction: string) {
   if (!adapter) return
   try {
-    if (note.myReaction === reaction) {
-      await adapter.api.deleteReaction(note.id)
-      if ((note.reactions[reaction] ?? 0) > 1) {
-        note.reactions[reaction]!--
-      } else {
-        delete note.reactions[reaction]
-      }
-      note.myReaction = null
-    } else {
-      if (note.myReaction) {
-        await adapter.api.deleteReaction(note.id)
-        const prev = note.myReaction
-        if ((note.reactions[prev] ?? 0) > 1) {
-          note.reactions[prev]!--
-        } else {
-          delete note.reactions[prev]
-        }
-      }
-      await adapter.api.createReaction(note.id, reaction)
-      note.reactions[reaction] = (note.reactions[reaction] ?? 0) + 1
-      note.myReaction = reaction
-    }
+    await toggleReaction(adapter.api, note, reaction)
   } catch (e) {
     console.error('[reaction]', e)
   }
@@ -235,17 +216,20 @@ async function handleRenote(note: NormalizedNote) {
 
 function handleReply(note: NormalizedNote) {
   postFormReplyTo.value = note
+  postFormRenoteId.value = undefined
   showPostForm.value = true
 }
 
-function handleQuote(_note: NormalizedNote) {
+function handleQuote(note: NormalizedNote) {
   postFormReplyTo.value = undefined
+  postFormRenoteId.value = note.id
   showPostForm.value = true
 }
 
 function closePostForm() {
   showPostForm.value = false
   postFormReplyTo.value = undefined
+  postFormRenoteId.value = undefined
 }
 
 onMounted(() => {
@@ -355,6 +339,7 @@ onUnmounted(() => {
       v-if="showPostForm && column.accountId"
       :account-id="column.accountId"
       :reply-to="postFormReplyTo"
+      :renote-id="postFormRenoteId"
       @close="closePostForm"
       @posted="closePostForm"
     />

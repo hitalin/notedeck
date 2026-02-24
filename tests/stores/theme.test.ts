@@ -3,21 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useThemeStore } from '@/stores/theme'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 
-/** Mock fetch to route by URL path */
-function mockFetch(routes: Record<string, unknown>) {
-  return vi.fn().mockImplementation((url: string) => {
-    for (const [pattern, data] of Object.entries(routes)) {
-      if (url.includes(pattern)) {
-        if (data instanceof Error) return Promise.reject(data)
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(data),
-        })
-      }
-    }
-    return Promise.resolve({ ok: false })
-  })
-}
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn(),
+}))
+
+import { invoke } from '@tauri-apps/api/core'
 
 describe('theme store', () => {
   beforeEach(() => {
@@ -59,9 +49,7 @@ describe('theme store', () => {
     const store = useThemeStore()
     store.init()
 
-    // Should reset to builtin-dark, not restore the server theme
     expect(store.currentSource?.kind).toBe('builtin-dark')
-    // The stale server-compiled CSS should NOT be applied
     expect(document.documentElement.style.getPropertyValue('--nd-bg')).not.toBe('#123456')
   })
 
@@ -112,17 +100,14 @@ describe('theme store', () => {
 
   // --- fetchAccountTheme ---
 
-  it('fetchAccountTheme() fetches from registry first', async () => {
+  it('fetchAccountTheme() fetches from sync registry first', async () => {
     const regTheme = { name: 'My Custom', props: { accent: '#ff6600', bg: '#1a1a2e' } }
-    vi.stubGlobal(
-      'fetch',
-      mockFetch({
-        'i/registry/get-all': { 'default:darkTheme': [[0, regTheme]] },
-      }),
-    )
+    vi.mocked(invoke).mockResolvedValue({
+      syncDark: [[0, regTheme]],
+    })
 
     const store = useThemeStore()
-    await store.fetchAccountTheme('acc-1', 'example.com', 'tok')
+    await store.fetchAccountTheme('acc-1')
 
     const cached = store.getAccountThemes('acc-1')
     expect(cached).not.toBeNull()
@@ -130,20 +115,13 @@ describe('theme store', () => {
     expect(cached!.dark!.props.accent).toBe('#ff6600')
   })
 
-  it('fetchAccountTheme() falls back to /api/meta when registry empty', async () => {
-    vi.stubGlobal(
-      'fetch',
-      mockFetch({
-        'i/registry/get-all': {},
-        'api/meta': {
-          defaultDarkTheme: JSON.stringify({ name: 'Server D', props: { bg: '#222' } }),
-          defaultLightTheme: null,
-        },
-      }),
-    )
+  it('fetchAccountTheme() falls back to meta when no registry data', async () => {
+    vi.mocked(invoke).mockResolvedValue({
+      metaDark: JSON.stringify({ name: 'Server D', props: { bg: '#222' } }),
+    })
 
     const store = useThemeStore()
-    await store.fetchAccountTheme('acc-2', 'fallback.host', 'tok')
+    await store.fetchAccountTheme('acc-2')
 
     const cached = store.getAccountThemes('acc-2')
     expect(cached).not.toBeNull()
@@ -153,19 +131,13 @@ describe('theme store', () => {
   })
 
   it('fetchAccountTheme() caches both dark and light from meta', async () => {
-    vi.stubGlobal(
-      'fetch',
-      mockFetch({
-        'i/registry/get-all': {},
-        'api/meta': {
-          defaultDarkTheme: JSON.stringify({ name: 'D', props: { bg: '#000' } }),
-          defaultLightTheme: JSON.stringify({ name: 'L', props: { bg: '#fff' } }),
-        },
-      }),
-    )
+    vi.mocked(invoke).mockResolvedValue({
+      metaDark: JSON.stringify({ name: 'D', props: { bg: '#000' } }),
+      metaLight: JSON.stringify({ name: 'L', props: { bg: '#fff' } }),
+    })
 
     const store = useThemeStore()
-    await store.fetchAccountTheme('acc-3', 'test.host', 'tok')
+    await store.fetchAccountTheme('acc-3')
 
     const cached = store.getAccountThemes('acc-3')
     expect(cached!.dark).toBeDefined()
@@ -173,43 +145,50 @@ describe('theme store', () => {
   })
 
   it('fetchAccountTheme() does not re-fetch for cached account', async () => {
-    const mock = mockFetch({
-      'i/registry/get-all': {},
-      'api/meta': {
-        defaultDarkTheme: JSON.stringify({ name: 'D', props: {} }),
-      },
+    vi.mocked(invoke).mockResolvedValue({
+      metaDark: JSON.stringify({ name: 'D', props: {} }),
     })
-    vi.stubGlobal('fetch', mock)
 
     const store = useThemeStore()
-    await store.fetchAccountTheme('acc-cache', 'cached.host', 'tok')
-    await store.fetchAccountTheme('acc-cache', 'cached.host', 'tok')
+    await store.fetchAccountTheme('acc-cache')
+    await store.fetchAccountTheme('acc-cache')
 
-    // sync get-all (1) + base get-all (1) + meta (1) = 3 for first call only
-    expect(mock).toHaveBeenCalledTimes(3)
+    expect(invoke).toHaveBeenCalledTimes(1)
   })
 
-  it('fetchAccountTheme() handles network errors gracefully', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')))
+  it('fetchAccountTheme() handles errors gracefully', async () => {
+    vi.mocked(invoke).mockRejectedValue(new Error('Network error'))
 
     const store = useThemeStore()
-    await store.fetchAccountTheme('acc-offline', 'offline.host', 'tok')
+    await store.fetchAccountTheme('acc-offline')
 
     expect(store.getAccountThemes('acc-offline')).toBeNull()
   })
 
   it('fetchAccountTheme() parses direct theme object from registry', async () => {
     const theme = { name: 'Direct', props: { accent: '#00ff00' } }
-    vi.stubGlobal(
-      'fetch',
-      mockFetch({ 'i/registry/get-all': { 'default:darkTheme': theme } }),
-    )
+    vi.mocked(invoke).mockResolvedValue({
+      syncDark: theme,
+    })
 
     const store = useThemeStore()
-    await store.fetchAccountTheme('acc-direct', 'direct.host', 'tok')
+    await store.fetchAccountTheme('acc-direct')
 
     const cached = store.getAccountThemes('acc-direct')
     expect(cached!.dark!.props.accent).toBe('#00ff00')
+  })
+
+  it('fetchAccountTheme() uses base registry as fallback', async () => {
+    const theme = { name: 'Base Dark', props: { accent: '#aabbcc' } }
+    vi.mocked(invoke).mockResolvedValue({
+      baseDark: theme,
+    })
+
+    const store = useThemeStore()
+    await store.fetchAccountTheme('acc-base')
+
+    const cached = store.getAccountThemes('acc-base')
+    expect(cached!.dark!.props.accent).toBe('#aabbcc')
   })
 
   // --- getCompiledForAccount ---
@@ -220,21 +199,15 @@ describe('theme store', () => {
   })
 
   it('getCompiledForAccount() compiles and caches theme', async () => {
-    vi.stubGlobal(
-      'fetch',
-      mockFetch({
-        'i/registry/get-all': {},
-        'api/meta': {
-          defaultDarkTheme: JSON.stringify({
-            name: 'Custom',
-            props: { accent: '#ff6600', bg: '#1a1a2e' },
-          }),
-        },
+    vi.mocked(invoke).mockResolvedValue({
+      metaDark: JSON.stringify({
+        name: 'Custom',
+        props: { accent: '#ff6600', bg: '#1a1a2e' },
       }),
-    )
+    })
 
     const store = useThemeStore()
-    await store.fetchAccountTheme('acc-compile', 'column.host', 'tok')
+    await store.fetchAccountTheme('acc-compile')
 
     const compiled = store.getCompiledForAccount('acc-compile')
     expect(compiled).not.toBeNull()
@@ -248,21 +221,15 @@ describe('theme store', () => {
   })
 
   it('getCompiledForAccount() uses light theme when base is light', async () => {
-    vi.stubGlobal(
-      'fetch',
-      mockFetch({
-        'i/registry/get-all': {},
-        'api/meta': {
-          defaultDarkTheme: JSON.stringify({ name: 'D', props: { bg: '#111' } }),
-          defaultLightTheme: JSON.stringify({ name: 'L', props: { bg: '#eee' } }),
-        },
-      }),
-    )
+    vi.mocked(invoke).mockResolvedValue({
+      metaDark: JSON.stringify({ name: 'D', props: { bg: '#111' } }),
+      metaLight: JSON.stringify({ name: 'L', props: { bg: '#eee' } }),
+    })
 
     const store = useThemeStore()
     store.init()
     store.applySource({ kind: 'builtin-light', theme: LIGHT_THEME })
-    await store.fetchAccountTheme('acc-light', 'variant.host', 'tok')
+    await store.fetchAccountTheme('acc-light')
 
     const compiled = store.getCompiledForAccount('acc-light')
     expect(compiled).not.toBeNull()
@@ -270,20 +237,14 @@ describe('theme store', () => {
   })
 
   it('getCompiledForAccount() falls back to dark when no light available', async () => {
-    vi.stubGlobal(
-      'fetch',
-      mockFetch({
-        'i/registry/get-all': {},
-        'api/meta': {
-          defaultDarkTheme: JSON.stringify({ name: 'D', props: { bg: '#222' } }),
-        },
-      }),
-    )
+    vi.mocked(invoke).mockResolvedValue({
+      metaDark: JSON.stringify({ name: 'D', props: { bg: '#222' } }),
+    })
 
     const store = useThemeStore()
     store.init()
     store.applySource({ kind: 'builtin-light', theme: LIGHT_THEME })
-    await store.fetchAccountTheme('acc-fb', 'fallback2.host', 'tok')
+    await store.fetchAccountTheme('acc-fb')
 
     const compiled = store.getCompiledForAccount('acc-fb')
     expect(compiled).not.toBeNull()
@@ -291,20 +252,14 @@ describe('theme store', () => {
   })
 
   it('applySource() clears compiled cache so columns recompile', async () => {
-    vi.stubGlobal(
-      'fetch',
-      mockFetch({
-        'i/registry/get-all': {},
-        'api/meta': {
-          defaultDarkTheme: JSON.stringify({ name: 'D', props: { bg: '#111' } }),
-          defaultLightTheme: JSON.stringify({ name: 'L', props: { bg: '#eee' } }),
-        },
-      }),
-    )
+    vi.mocked(invoke).mockResolvedValue({
+      metaDark: JSON.stringify({ name: 'D', props: { bg: '#111' } }),
+      metaLight: JSON.stringify({ name: 'L', props: { bg: '#eee' } }),
+    })
 
     const store = useThemeStore()
     store.init()
-    await store.fetchAccountTheme('acc-switch', 'switch.host', 'tok')
+    await store.fetchAccountTheme('acc-switch')
 
     const dark = store.getCompiledForAccount('acc-switch')
     expect(dark!.bg).toBe('#111')
@@ -317,40 +272,19 @@ describe('theme store', () => {
 
   // --- per-account isolation ---
 
-  it('different accounts on same host can have different themes', async () => {
+  it('different accounts can have different themes', async () => {
     let callCount = 0
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes('i/registry/get-all')) {
-          callCount++
-          // First account's sync scope get-all returns theme A
-          if (callCount === 1) {
-            return Promise.resolve({
-              ok: true,
-              json: () => Promise.resolve({
-                'default:darkTheme': { name: 'A-Dark', props: { accent: '#ff0000' } },
-              }),
-            })
-          }
-          // Second account's sync scope get-all returns theme B
-          if (callCount === 2) {
-            return Promise.resolve({
-              ok: true,
-              json: () => Promise.resolve({
-                'default:darkTheme': { name: 'B-Dark', props: { accent: '#0000ff' } },
-              }),
-            })
-          }
-          return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
-        }
-        return Promise.resolve({ ok: false })
-      }),
-    )
+    vi.mocked(invoke).mockImplementation(async () => {
+      callCount++
+      if (callCount === 1) {
+        return { syncDark: { name: 'A-Dark', props: { accent: '#ff0000' } } }
+      }
+      return { syncDark: { name: 'B-Dark', props: { accent: '#0000ff' } } }
+    })
 
     const store = useThemeStore()
-    await store.fetchAccountTheme('acc-a', 'same.host', 'tok-a')
-    await store.fetchAccountTheme('acc-b', 'same.host', 'tok-b')
+    await store.fetchAccountTheme('acc-a')
+    await store.fetchAccountTheme('acc-b')
 
     const a = store.getCompiledForAccount('acc-a')
     const b = store.getCompiledForAccount('acc-b')

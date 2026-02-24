@@ -7,6 +7,7 @@ import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
+import { toggleReaction } from '@/utils/toggleReaction'
 
 const props = defineProps<{
   accountId: string
@@ -49,30 +50,8 @@ onMounted(async () => {
 
 async function handleReaction(reaction: string) {
   if (!adapter || !note.value) return
-
   try {
-    if (note.value.myReaction === reaction) {
-      await adapter.api.deleteReaction(note.value.id)
-      if ((note.value.reactions[reaction] ?? 0) > 1) {
-        note.value.reactions[reaction]!--
-      } else {
-        delete note.value.reactions[reaction]
-      }
-      note.value.myReaction = null
-    } else {
-      if (note.value.myReaction) {
-        await adapter.api.deleteReaction(note.value.id)
-        const prev = note.value.myReaction
-        if ((note.value.reactions[prev] ?? 0) > 1) {
-          note.value.reactions[prev]!--
-        } else {
-          delete note.value.reactions[prev]
-        }
-      }
-      await adapter.api.createReaction(note.value.id, reaction)
-      note.value.reactions[reaction] = (note.value.reactions[reaction] ?? 0) + 1
-      note.value.myReaction = reaction
-    }
+    await toggleReaction(adapter.api, note.value, reaction)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Reaction failed'
   }
