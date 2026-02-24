@@ -22,10 +22,10 @@ jobs:
             tauri_args: --target universal-apple-darwin --bundles app
           - platform: ubuntu-22.04
             rust_targets: ''
-            tauri_args: --bundles none
+            tauri_args: --no-bundle
           - platform: windows-latest
             rust_targets: ''
-            tauri_args: --bundles none
+            tauri_args: --no-bundle
 
     runs-on: ${{ matrix.platform }}
 

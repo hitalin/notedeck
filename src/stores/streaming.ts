@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { type Ref, ref } from 'vue'
+import { type Ref, ref, shallowRef } from 'vue'
 import type {
   ChannelSubscription,
   ServerAdapter,
@@ -15,7 +15,7 @@ interface ConnectionEntry {
 }
 
 export const useStreamingStore = defineStore('streaming', () => {
-  const connections = ref(new Map<string, ConnectionEntry>())
+  const connections = shallowRef(new Map<string, ConnectionEntry>())
 
   function connect(accountId: string, adapter: ServerAdapter): void {
     if (connections.value.has(accountId)) return
