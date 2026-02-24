@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "vue-tsc --noEmit",
@@ -31,10 +30,8 @@
     "jsdom": "^28.1.0",
     "typescript": "~5.9.3",
     "vite": "^7.3.1",
-    "vite-plugin-pwa": "^1.2.0",
     "vitest": "^3.2.1",
-    "vue-tsc": "^3.1.5",
-    "workbox-window": "^7.4.0"
+    "vue-tsc": "^3.1.5"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

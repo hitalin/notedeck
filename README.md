@@ -1,13 +1,13 @@
 # notedeck
 
-Multi-server Misskey deck client for every platform.
+Multi-server Misskey deck client for desktop and mobile.
 
-Connect to multiple Misskey-compatible servers in one deck UI. Runs as a PWA, desktop app (Windows / macOS / Linux), and mobile app (Android / iOS) via Tauri v2.
+Connect to multiple Misskey-compatible servers in one deck UI. Runs as a native desktop app (Windows / macOS / Linux) and mobile app (Android / iOS) via Tauri v2.
 
 ## Features
 
 - **Multi-server** - Connect to multiple Misskey-compatible servers simultaneously
-- **Multi-platform** - PWA, desktop (Windows / macOS / Linux), mobile (Android / iOS)
+- **Multi-platform** - Desktop (Windows / macOS / Linux), mobile (Android / iOS)
 - **Deck UI** - TweetDeck-style multi-column layout with drag & drop reordering
 - **Real-time streaming** - WebSocket-based live timeline updates
 - **Custom emoji** - Full support for server-specific custom emoji
@@ -17,7 +17,6 @@ Connect to multiple Misskey-compatible servers in one deck UI. Runs as a PWA, de
 
 | Platform | Method | Status |
 |----------|--------|--------|
-| Web | PWA | Available |
 | Windows | Tauri v2 | Available |
 | macOS | Tauri v2 | Available |
 | Linux | Tauri v2 | Available |
@@ -42,19 +41,19 @@ Connect to multiple Misskey-compatible servers in one deck UI. Runs as a PWA, de
 # Install dependencies
 pnpm install
 
-# Start dev server (PWA)
-task dev
-
 # Start dev server (Tauri desktop)
 task dev:tauri
+
+# Start dev server (browser, for development only)
+task dev
 ```
 
 ## Available Tasks
 
 ```bash
-task dev          # PWA dev server
+task dev          # Vite dev server
 task dev:tauri    # Tauri dev
-task build        # PWA production build
+task build        # Production build
 task build:tauri  # Tauri native build
 task test         # Run unit tests
 task test:watch   # Run tests in watch mode

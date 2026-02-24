@@ -2,7 +2,7 @@ version: '3'
 
 tasks:
   dev:
-    desc: PWA development server
+    desc: Vite development server
     cmd: pnpm vite dev
 
   dev:tauri:
@@ -10,7 +10,7 @@ tasks:
     cmd: pnpm tauri dev
 
   build:
-    desc: PWA production build
+    desc: Production build (for Tauri embedding)
     cmd: pnpm vue-tsc -b && pnpm vite build
 
   build:tauri:
