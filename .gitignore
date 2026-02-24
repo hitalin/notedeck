@@ -25,6 +25,7 @@ dist-ssr
 
 # Tauri
 src-tauri/target/
+src-tauri/gen/
 
 # Claude Code
 CLAUDE.local.md

@@ -35,10 +35,6 @@
     ]
   },
   "plugins": {
-    "opener": {
-      "open": {
-        "enabled": true
-      }
-    }
+    "opener": {}
   }
 }
