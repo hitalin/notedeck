@@ -13,6 +13,7 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
+    "@tauri-apps/plugin-opener": "^2.5.3",
     "dexie": "^4.0.11",
     "misskey-js": "^2025.1.0",
     "pinia": "^3.0.3",

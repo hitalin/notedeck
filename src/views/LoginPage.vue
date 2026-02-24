@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { MisskeyAuth } from '@/adapters/misskey/auth'
 import type { AuthSession } from '@/adapters/types'
 import { detectServer } from '@/core/server'
@@ -25,7 +26,7 @@ async function startLogin() {
   try {
     step.value = 'waiting'
     currentSession = await auth.startAuth(trimmedHost)
-    window.open(currentSession.url, '_blank')
+    await openUrl(currentSession.url)
   } catch (e) {
     step.value = 'error'
     errorMessage.value =
