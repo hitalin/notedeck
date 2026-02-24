@@ -7,6 +7,7 @@ const props = defineProps<{
   title: string
   icon?: string
   color?: string
+  themeVars?: Record<string, string>
 }>()
 
 const deckStore = useDeckStore()
@@ -64,6 +65,7 @@ function onDrop(e: DragEvent) {
   <section
     class="deck-column"
     :class="{ dragging, dragHover }"
+    :style="themeVars"
     @dragover="onDragOver"
     @dragleave="onDragLeave"
     @drop="onDrop"

@@ -13,6 +13,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
+import { useThemeStore } from '@/stores/theme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 
 const props = defineProps<{
@@ -23,10 +24,22 @@ const accountsStore = useAccountsStore()
 const deckStore = useDeckStore()
 const emojisStore = useEmojisStore()
 const serversStore = useServersStore()
+const themeStore = useThemeStore()
 
 const account = computed(() =>
   accountsStore.accounts.find((a) => a.id === props.column.accountId),
 )
+
+const columnThemeVars = computed(() => {
+  if (!props.column.accountId) return undefined
+  const compiled = themeStore.getCompiledForAccount(props.column.accountId)
+  if (!compiled) return undefined
+  const style: Record<string, string> = {}
+  for (const [key, value] of Object.entries(compiled)) {
+    style[`--nd-${key}`] = value
+  }
+  return style
+})
 
 const notes = ref<NormalizedNote[]>([])
 const isLoading = ref(false)
@@ -140,6 +153,7 @@ onUnmounted(() => {
     :column-id="column.id"
     :title="columnTitle()"
     :icon="columnIcon()"
+    :theme-vars="columnThemeVars"
   >
     <template #header-extra>
       <div class="tl-tabs">

@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { usePwa } from '@/composables/usePwa'
+import { useTheme } from '@/composables/useTheme'
 
 const { needsRefresh, initPwa, applyUpdate, dismissUpdate } = usePwa()
+
+useTheme()
 
 onMounted(() => {
   initPwa()
