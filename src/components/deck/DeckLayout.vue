@@ -5,6 +5,8 @@ import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useDeckStore } from '@/stores/deck'
 import { useAccountsStore } from '@/stores/accounts'
+import { useGlobalShortcuts } from '@/composables/useGlobalShortcuts'
+import { initDesktopNotifications } from '@/utils/desktopNotification'
 
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
@@ -45,8 +47,14 @@ function toggleAddMenu() {
   showAddMenu.value = !showAddMenu.value
 }
 
+const { init: initShortcuts } = useGlobalShortcuts({
+  onCompose: () => openCompose(),
+})
+
 onMounted(() => {
   deckStore.load()
+  initDesktopNotifications()
+  initShortcuts()
 })
 </script>
 

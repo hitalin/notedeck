@@ -13,6 +13,9 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
+    "@tauri-apps/plugin-autostart": "^2.5.1",
+    "@tauri-apps/plugin-global-shortcut": "^2.3.1",
+    "@tauri-apps/plugin-notification": "^2.3.3",
     "@tauri-apps/plugin-opener": "^2.5.3",
     "dexie": "^4.0.11",
     "misskey-js": "^2025.1.0",

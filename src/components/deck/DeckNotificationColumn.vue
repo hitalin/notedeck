@@ -17,6 +17,7 @@ import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { char2twemojiUrl } from '@/utils/twemoji'
+import { sendDesktopNotification } from '@/utils/desktopNotification'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -166,6 +167,16 @@ async function connect() {
             avatarUrl: u.avatarUrl,
           }
         }
+        // Send desktop notification for important events
+        if (['reply', 'mention', 'quote', 'follow'].includes(raw.type)) {
+          const userName = normalized.user?.name || normalized.user?.username || 'Someone'
+          const label = NOTIFICATION_LABELS[raw.type] || raw.type
+          sendDesktopNotification(
+            `NoteDeck — ${userName}`,
+            label,
+          )
+        }
+
         if (raw.note) {
           // Re-fetch to get properly normalized note
           adapter?.api.getNote((raw.note as { id: string }).id).then((note) => {

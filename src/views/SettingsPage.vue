@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { compileMisskeyTheme } from '@/theme/compiler'
 import type { ThemeSource } from '@/theme/types'
 
 const themeStore = useThemeStore()
+
+// --- Theme ---
 
 interface ThemeOption {
   label: string
@@ -37,6 +39,43 @@ function isActive(option: ThemeOption): boolean {
 function selectTheme(option: ThemeOption): void {
   themeStore.applySource(option.source)
 }
+
+// --- Autostart ---
+
+const autostartEnabled = ref(false)
+const autostartLoading = ref(false)
+
+async function loadAutostartState() {
+  try {
+    const { isEnabled } = await import('@tauri-apps/plugin-autostart')
+    autostartEnabled.value = await isEnabled()
+  } catch {
+    // Not in Tauri
+  }
+}
+
+async function toggleAutostart() {
+  autostartLoading.value = true
+  try {
+    if (autostartEnabled.value) {
+      const { disable } = await import('@tauri-apps/plugin-autostart')
+      await disable()
+      autostartEnabled.value = false
+    } else {
+      const { enable } = await import('@tauri-apps/plugin-autostart')
+      await enable()
+      autostartEnabled.value = true
+    }
+  } catch {
+    // ignore
+  } finally {
+    autostartLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadAutostartState()
+})
 </script>
 
 <template>
@@ -74,6 +113,36 @@ function selectTheme(option: ThemeOption): void {
             </div>
             <span class="theme-label">{{ option.label }}</span>
           </button>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h2 class="section-title">Desktop</h2>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">Launch at startup</span>
+            <span class="setting-desc">Start NoteDeck when you log in</span>
+          </div>
+          <button
+            class="_button toggle-btn"
+            :class="{ active: autostartEnabled }"
+            :disabled="autostartLoading"
+            @click="toggleAutostart"
+          >
+            <span class="toggle-knob" />
+          </button>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h2 class="section-title">Keyboard Shortcuts</h2>
+
+        <div class="shortcut-list">
+          <div class="shortcut-row">
+            <span class="shortcut-label">New note</span>
+            <kbd class="shortcut-keys">Ctrl+Shift+N</kbd>
+          </div>
         </div>
       </section>
     </div>
@@ -202,5 +271,97 @@ function selectTheme(option: ThemeOption): void {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Setting rows */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--nd-panel);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.setting-label {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--nd-fgHighlighted);
+}
+
+.setting-desc {
+  font-size: 0.75em;
+  color: var(--nd-fg);
+  opacity: 0.6;
+}
+
+/* Toggle switch */
+.toggle-btn {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--nd-buttonBg);
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle-btn.active {
+  background: var(--nd-accent);
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+
+.toggle-btn.active .toggle-knob {
+  transform: translateX(20px);
+}
+
+/* Shortcuts */
+.shortcut-list {
+  background: var(--nd-panel);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+
+.shortcut-row + .shortcut-row {
+  border-top: 1px solid var(--nd-divider);
+}
+
+.shortcut-label {
+  font-size: 0.9em;
+  color: var(--nd-fg);
+}
+
+.shortcut-keys {
+  font-family: inherit;
+  font-size: 0.8em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  border: 1px solid var(--nd-divider);
 }
 </style>
