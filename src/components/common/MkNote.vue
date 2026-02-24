@@ -19,11 +19,15 @@ const isPureRenote = computed(() => props.note.renote && props.note.text === nul
 
 const emit = defineEmits<{
   react: [reaction: string]
+  reply: [note: NormalizedNote]
+  renote: [note: NormalizedNote]
+  quote: [note: NormalizedNote]
 }>()
 
 const router = useRouter()
 const emojisStore = useEmojisStore()
 const showReactionInput = ref(false)
+const showRenoteMenu = ref(false)
 
 function navigateToDetail() {
   if (!props.detailed) {
@@ -188,7 +192,7 @@ const textSegments = computed(() => {
 
         <!-- Footer -->
         <footer class="footer">
-          <button class="footer-button" @click.stop>
+          <button class="footer-button" @click.stop="emit('reply', effectiveNote)">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path
                 d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
@@ -199,7 +203,7 @@ const textSegments = computed(() => {
               {{ effectiveNote.repliesCount }}
             </span>
           </button>
-          <button class="footer-button renote-button" @click.stop>
+          <button class="footer-button renote-button" @click.stop="showRenoteMenu = !showRenoteMenu">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path
                 d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"
@@ -220,6 +224,24 @@ const textSegments = computed(() => {
           </button>
           <span class="server-badge">{{ note._serverHost }}</span>
         </footer>
+
+        <!-- Renote menu -->
+        <div v-if="showRenoteMenu" class="renote-menu">
+          <button class="_button renote-menu-item" @click.stop="emit('renote', effectiveNote); showRenoteMenu = false">
+            <svg viewBox="0 0 24 24" width="14" height="14">
+              <path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"
+                stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Renote
+          </button>
+          <button class="_button renote-menu-item" @click.stop="emit('quote', effectiveNote); showRenoteMenu = false">
+            <svg viewBox="0 0 24 24" width="14" height="14">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Quote
+          </button>
+        </div>
 
         <!-- Reaction picker -->
         <div v-if="showReactionInput" class="reaction-picker">
@@ -484,6 +506,31 @@ const textSegments = computed(() => {
   margin-left: auto;
   opacity: 0.4;
   font-size: 0.75em;
+}
+
+/* Renote menu */
+.renote-menu {
+  display: flex;
+  gap: 4px;
+  padding: 6px 0;
+}
+
+.renote-menu-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.85em;
+  font-weight: bold;
+  border-radius: 6px;
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  transition: background 0.15s;
+}
+
+.renote-menu-item:hover {
+  background: var(--nd-buttonHoverBg);
+  color: var(--nd-renote);
 }
 
 /* Reaction picker */

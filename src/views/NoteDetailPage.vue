@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
+import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
@@ -76,6 +77,38 @@ async function handleReaction(reaction: string) {
     error.value = e instanceof Error ? e.message : 'Reaction failed'
   }
 }
+
+// Post form state
+const showPostForm = ref(false)
+const postFormReplyTo = ref<NormalizedNote | undefined>()
+const postFormRenoteId = ref<string | undefined>()
+
+async function handleRenote(target: NormalizedNote) {
+  if (!adapter) return
+  try {
+    await adapter.api.createNote({ renoteId: target.id })
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Renote failed'
+  }
+}
+
+function handleReply(target: NormalizedNote) {
+  postFormReplyTo.value = target
+  postFormRenoteId.value = undefined
+  showPostForm.value = true
+}
+
+function handleQuote(target: NormalizedNote) {
+  postFormReplyTo.value = undefined
+  postFormRenoteId.value = target.id
+  showPostForm.value = true
+}
+
+function closePostForm() {
+  showPostForm.value = false
+  postFormReplyTo.value = undefined
+  postFormRenoteId.value = undefined
+}
 </script>
 
 <template>
@@ -103,8 +136,26 @@ async function handleReaction(reaction: string) {
     </div>
 
     <div v-else-if="note" class="note-detail">
-      <MkNote :note="note" detailed @react="handleReaction" />
+      <MkNote
+        :note="note"
+        detailed
+        @react="handleReaction"
+        @reply="handleReply"
+        @renote="handleRenote"
+        @quote="handleQuote"
+      />
     </div>
+
+    <Teleport to="body">
+      <MkPostForm
+        v-if="showPostForm"
+        :account-id="accountId"
+        :reply-to="postFormReplyTo"
+        :renote-id="postFormRenoteId"
+        @close="closePostForm"
+        @posted="closePostForm"
+      />
+    </Teleport>
   </div>
 </template>
 

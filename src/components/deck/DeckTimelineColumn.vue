@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import DeckColumn from './DeckColumn.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import MkPostForm from '@/components/common/MkPostForm.vue'
 import { createAdapter } from '@/adapters/registry'
 import type {
   ChannelSubscription,
@@ -144,6 +145,69 @@ function onScroll(e: Event) {
   }
 }
 
+// Post form state
+const showPostForm = ref(false)
+const postFormReplyTo = ref<NormalizedNote | undefined>()
+const postFormRenoteId = ref<string | undefined>()
+
+async function handleReaction(note: NormalizedNote, reaction: string) {
+  if (!adapter) return
+
+  try {
+    if (note.myReaction === reaction) {
+      await adapter.api.deleteReaction(note.id)
+      if (note.reactions[reaction] > 1) {
+        note.reactions[reaction]--
+      } else {
+        delete note.reactions[reaction]
+      }
+      note.myReaction = null
+    } else {
+      if (note.myReaction) {
+        await adapter.api.deleteReaction(note.id)
+        const prev = note.myReaction
+        if (note.reactions[prev] > 1) {
+          note.reactions[prev]--
+        } else {
+          delete note.reactions[prev]
+        }
+      }
+      await adapter.api.createReaction(note.id, reaction)
+      note.reactions[reaction] = (note.reactions[reaction] ?? 0) + 1
+      note.myReaction = reaction
+    }
+  } catch (e) {
+    console.error('[reaction]', e)
+  }
+}
+
+async function handleRenote(note: NormalizedNote) {
+  if (!adapter) return
+  try {
+    await adapter.api.createNote({ renoteId: note.id })
+  } catch (e) {
+    console.error('[renote]', e)
+  }
+}
+
+function handleReply(note: NormalizedNote) {
+  postFormReplyTo.value = note
+  postFormRenoteId.value = undefined
+  showPostForm.value = true
+}
+
+function handleQuote(note: NormalizedNote) {
+  postFormReplyTo.value = undefined
+  postFormRenoteId.value = note.id
+  showPostForm.value = true
+}
+
+function closePostForm() {
+  showPostForm.value = false
+  postFormReplyTo.value = undefined
+  postFormRenoteId.value = undefined
+}
+
 onMounted(() => {
   connect()
 })
@@ -202,13 +266,32 @@ onUnmounted(() => {
         Loading...
       </div>
 
-      <MkNote v-for="note in notes" :key="note.id" :note="note" />
+      <MkNote
+        v-for="note in notes"
+        :key="note.id"
+        :note="note"
+        @react="(reaction: string) => handleReaction(note, reaction)"
+        @reply="handleReply"
+        @renote="handleRenote"
+        @quote="handleQuote"
+      />
 
       <div v-if="isLoading && notes.length > 0" class="loading-more">
         Loading...
       </div>
     </div>
   </DeckColumn>
+
+  <Teleport to="body">
+    <MkPostForm
+      v-if="showPostForm && column.accountId"
+      :account-id="column.accountId"
+      :reply-to="postFormReplyTo"
+      :renote-id="postFormRenoteId"
+      @close="closePostForm"
+      @posted="closePostForm"
+    />
+  </Teleport>
 </template>
 
 <style scoped>

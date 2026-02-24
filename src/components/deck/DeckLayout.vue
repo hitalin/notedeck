@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
+import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useDeckStore } from '@/stores/deck'
 import { useAccountsStore } from '@/stores/accounts'
 
@@ -8,6 +9,16 @@ const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 
 const showAddMenu = ref(false)
+const showCompose = ref(false)
+
+function openCompose() {
+  if (accountsStore.accounts.length === 0) return
+  showCompose.value = true
+}
+
+function closeCompose() {
+  showCompose.value = false
+}
 
 function addTimelineColumn(accountId: string) {
   deckStore.addColumn({
@@ -47,6 +58,22 @@ onMounted(() => {
     <!-- Side menu (Misskey deck style - narrow) -->
     <div class="side-menu">
       <div class="side-menu-top">
+        <button
+          class="_button menu-item"
+          title="New Note"
+          @click="openCompose"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path
+              d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              fill="none"
+            />
+          </svg>
+        </button>
         <button
           class="_button menu-item"
           title="Add column"
@@ -140,6 +167,15 @@ onMounted(() => {
           </button>
         </div>
       </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <MkPostForm
+        v-if="showCompose && accountsStore.accounts.length > 0"
+        :account-id="accountsStore.accounts[0].id"
+        @close="closeCompose"
+        @posted="closeCompose"
+      />
     </Teleport>
   </div>
 </template>
