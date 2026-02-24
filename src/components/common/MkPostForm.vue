@@ -24,13 +24,17 @@ const cw = ref('')
 const showCw = ref(false)
 const visibility = ref<'public' | 'home' | 'followers' | 'specified'>('public')
 const showVisibilityMenu = ref(false)
+const showAccountMenu = ref(false)
 const isPosting = ref(false)
 const posted = ref(false)
 const error = ref<string | null>(null)
 
 let adapter: ServerAdapter | null = null
 
-const account = accountsStore.accounts.find((a) => a.id === props.accountId)
+const activeAccountId = ref(props.accountId)
+const account = computed(() =>
+  accountsStore.accounts.find((a) => a.id === activeAccountId.value),
+)
 
 const visibilityOptions: { value: typeof visibility.value; label: string; icon: string }[] = [
   { value: 'public', label: 'Public', icon: 'M22 12A10 10 0 112 12a10 10 0 0120 0zM2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z' },
@@ -49,15 +53,27 @@ const canPost = computed(() => {
   return text.value.trim().length > 0
 })
 
-onMounted(async () => {
-  if (!account) return
+async function initAdapter() {
+  const acc = account.value
+  if (!acc) return
+  adapter = null
   try {
-    const serverInfo = await serversStore.getServerInfo(account.host)
-    adapter = createAdapter(serverInfo, account.token, account.id)
+    const serverInfo = await serversStore.getServerInfo(acc.host)
+    adapter = createAdapter(serverInfo, acc.token, acc.id)
   } catch {
     error.value = 'Failed to connect'
   }
+}
 
+async function switchAccount(id: string) {
+  activeAccountId.value = id
+  showAccountMenu.value = false
+  error.value = null
+  await initAdapter()
+}
+
+onMounted(async () => {
+  await initAdapter()
   if (props.replyTo) {
     visibility.value = props.replyTo.visibility
   }
@@ -112,13 +128,38 @@ function onKeydown(e: KeyboardEvent) {
               <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
             </svg>
           </button>
-          <button v-if="account" class="_button account-btn" :title="`@${account.username}@${account.host}`">
-            <img
-              v-if="account.avatarUrl"
-              :src="account.avatarUrl"
-              class="account-avatar"
-            />
-          </button>
+          <div v-if="account" class="account-wrapper">
+            <button
+              class="_button account-btn"
+              :title="`@${account.username}@${account.host}`"
+              @click="showAccountMenu = !showAccountMenu"
+            >
+              <img
+                v-if="account.avatarUrl"
+                :src="account.avatarUrl"
+                class="account-avatar"
+              />
+            </button>
+            <div v-if="showAccountMenu && accountsStore.accounts.length > 1" class="account-menu">
+              <button
+                v-for="acc in accountsStore.accounts"
+                :key="acc.id"
+                class="_button account-option"
+                :class="{ active: acc.id === activeAccountId }"
+                @click="switchAccount(acc.id)"
+              >
+                <img
+                  v-if="acc.avatarUrl"
+                  :src="acc.avatarUrl"
+                  class="account-option-avatar"
+                />
+                <div class="account-option-info">
+                  <span class="account-option-name">{{ acc.username }}</span>
+                  <span class="account-option-host">@{{ acc.host }}</span>
+                </div>
+              </button>
+            </div>
+          </div>
         </div>
         <div class="header-right">
           <!-- Visibility -->
@@ -328,6 +369,10 @@ function onKeydown(e: KeyboardEvent) {
   white-space: nowrap;
 }
 
+.account-wrapper {
+  position: relative;
+}
+
 .account-btn {
   display: flex;
   align-items: center;
@@ -346,6 +391,69 @@ function onKeydown(e: KeyboardEvent) {
   height: 28px;
   border-radius: 100%;
   object-fit: cover;
+}
+
+/* Account menu */
+.account-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  min-width: 200px;
+  padding: 4px;
+  margin-top: 4px;
+  background: var(--nd-popup);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px var(--nd-shadow);
+}
+
+.account-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: var(--nd-fg);
+  transition: background 0.15s;
+}
+
+.account-option:hover {
+  background: color-mix(in srgb, var(--nd-fg) 8%, transparent);
+}
+
+.account-option.active {
+  color: var(--nd-accent);
+}
+
+.account-option-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 100%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.account-option-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.account-option-name {
+  font-size: 0.85em;
+  font-weight: bold;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-option-host {
+  font-size: 0.75em;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Submit button (Misskey gradient style) */
