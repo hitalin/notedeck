@@ -49,21 +49,26 @@ const tlType = ref<TimelineType>(props.column.tl || 'home')
 let adapter: ServerAdapter | null = null
 let subscription: ChannelSubscription | null = null
 
-const TL_TYPES: { value: TimelineType; label: string; icon: string }[] = [
-  { value: 'home', label: 'Home', icon: '🏠' },
-  { value: 'local', label: 'Local', icon: '👥' },
-  { value: 'social', label: 'Social', icon: '🌐' },
-  { value: 'global', label: 'Global', icon: '🌍' },
+const TL_TYPES: { value: TimelineType; label: string }[] = [
+  { value: 'home', label: 'Home' },
+  { value: 'local', label: 'Local' },
+  { value: 'social', label: 'Social' },
+  { value: 'global', label: 'Global' },
 ]
+
+/** SVG path data for each timeline type (stroke-based, viewBox 0 0 24 24) */
+const TL_ICONS: Record<TimelineType, string> = {
+  home: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2',
+  local: 'M12 21a9 9 0 100-18 9 9 0 000 18zm0-18c2.8 0 5 4 5 9s-2.2 9-5 9-5-4-5-9 2.2-9 5-9zM3 12h18',
+  social: 'M12 21a9 9 0 100-18 9 9 0 000 18zm0-18c2.8 0 5 4 5 9s-2.2 9-5 9-5-4-5-9 2.2-9 5-9zM3 12h18M3.5 7.5h17M3.5 16.5h17',
+  global: 'M22 12A10 10 0 112 12a10 10 0 0120 0zM2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z',
+}
+
+const currentTlIcon = computed(() => TL_ICONS[tlType.value])
 
 function columnTitle(): string {
   const opt = TL_TYPES.find((o) => o.value === tlType.value) || TL_TYPES[0]
-  return `${opt.label} - ${account.value?.host || '?'}`
-}
-
-function columnIcon(): string {
-  const opt = TL_TYPES.find((o) => o.value === tlType.value) || TL_TYPES[0]
-  return opt.icon
+  return opt.label
 }
 
 async function connect() {
@@ -152,9 +157,21 @@ onUnmounted(() => {
   <DeckColumn
     :column-id="column.id"
     :title="columnTitle()"
-    :icon="columnIcon()"
     :theme-vars="columnThemeVars"
   >
+    <template #header-icon>
+      <svg class="tl-header-icon" viewBox="0 0 24 24" width="14" height="14">
+        <path :d="currentTlIcon" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+      </svg>
+    </template>
+
+    <template #header-meta>
+      <div v-if="account" class="header-account">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
+        <span class="header-host">{{ account.host }}</span>
+      </div>
+    </template>
+
     <template #header-extra>
       <div class="tl-tabs">
         <button
@@ -165,7 +182,9 @@ onUnmounted(() => {
           :title="opt.label"
           @click="switchTl(opt.value)"
         >
-          {{ opt.icon }}
+          <svg class="tl-tab-icon" viewBox="0 0 24 24" width="16" height="16">
+            <path :d="TL_ICONS[opt.value]" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+          </svg>
         </button>
       </div>
     </template>
@@ -193,6 +212,36 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.tl-header-icon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.header-account {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.header-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.header-host {
+  font-size: 0.75em;
+  font-weight: normal;
+  opacity: 0.6;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tl-tabs {
   display: flex;
   border-bottom: 1px solid var(--nd-divider);
@@ -201,11 +250,13 @@ onUnmounted(() => {
 
 .tl-tab {
   flex: 1;
-  padding: 6px 0;
-  text-align: center;
-  font-size: 0.95em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
   opacity: 0.4;
   transition: opacity 0.15s, background 0.15s;
+  position: relative;
 }
 
 .tl-tab:hover {
@@ -215,7 +266,21 @@ onUnmounted(() => {
 
 .tl-tab.active {
   opacity: 1;
-  box-shadow: inset 0 -2px 0 var(--nd-accent);
+}
+
+.tl-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 3px;
+  background: var(--nd-accent);
+  border-radius: 999px 999px 0 0;
+}
+
+.tl-tab-icon {
+  color: currentColor;
 }
 
 .tl-body {

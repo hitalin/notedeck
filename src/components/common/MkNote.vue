@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { NormalizedNote } from '@/adapters/types'
 import { useEmojisStore } from '@/stores/emojis'
+import { splitTextWithEmoji, char2twemojiUrl } from '@/utils/twemoji'
+import MkEmoji from './MkEmoji.vue'
 
 const props = defineProps<{
   note: NormalizedNote
@@ -63,13 +65,13 @@ function reactionUrl(reaction: string): string | null {
   return null
 }
 
-/** Parse text into segments: plain text and custom emoji */
+/** Parse text into segments: plain text, custom emoji, and Unicode emoji (twemoji) */
 const textSegments = computed(() => {
   const text = effectiveNote.value.text
   if (!text) return []
 
-  const segments: { type: 'text' | 'emoji'; value: string; url?: string }[] = []
-  // Match :name: or :name@.: or :name@host:
+  // Pass 1: extract custom emoji :shortcode:
+  const customSegments: { type: 'text' | 'emoji'; value: string; url?: string }[] = []
   const re = /:([a-zA-Z0-9_]+(?:@[\w.-]+)?):/g
   let lastIndex = 0
   let match: RegExpExecArray | null
@@ -78,15 +80,27 @@ const textSegments = computed(() => {
     const url = resolveEmoji(name)
     if (!url) continue
     if (match.index > lastIndex) {
-      segments.push({ type: 'text', value: text.slice(lastIndex, match.index) })
+      customSegments.push({ type: 'text', value: text.slice(lastIndex, match.index) })
     }
-    segments.push({ type: 'emoji', value: match[0], url })
+    customSegments.push({ type: 'emoji', value: match[0], url })
     lastIndex = re.lastIndex
   }
   if (lastIndex < text.length) {
-    segments.push({ type: 'text', value: text.slice(lastIndex) })
+    customSegments.push({ type: 'text', value: text.slice(lastIndex) })
   }
-  return segments
+
+  // Pass 2: split remaining text segments for Unicode emoji → twemoji
+  const result: typeof customSegments = []
+  for (const seg of customSegments) {
+    if (seg.type !== 'text') {
+      result.push(seg)
+      continue
+    }
+    for (const sub of splitTextWithEmoji(seg.value)) {
+      result.push(sub)
+    }
+  }
+  return result
 })
 </script>
 
@@ -167,7 +181,7 @@ const textSegments = computed(() => {
             @click.stop="emit('react', String(reaction))"
           >
             <img v-if="reactionUrl(String(reaction))" :src="reactionUrl(String(reaction))!" :alt="String(reaction)" class="custom-emoji" />
-            <span v-else class="reaction-icon">{{ reaction }}</span>
+            <MkEmoji v-else :emoji="String(reaction)" class="reaction-emoji" />
             <span class="count">{{ count }}</span>
           </button>
         </div>
@@ -215,7 +229,7 @@ const textSegments = computed(() => {
             class="emoji-btn"
             @click.stop="emit('react', emoji); showReactionInput = false"
           >
-            {{ emoji }}
+            <MkEmoji :emoji="emoji" />
           </button>
         </div>
       </div>
@@ -413,6 +427,10 @@ const textSegments = computed(() => {
 }
 
 .reaction .custom-emoji {
+  height: 1.25em;
+}
+
+.reaction-emoji :deep(.twemoji) {
   height: 1.25em;
 }
 

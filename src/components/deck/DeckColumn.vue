@@ -5,7 +5,6 @@ import { useDeckStore } from '@/stores/deck'
 const props = defineProps<{
   columnId: string
   title: string
-  icon?: string
   color?: string
   themeVars?: Record<string, string>
 }>()
@@ -82,8 +81,9 @@ function onDrop(e: DragEvent) {
         :style="{ background: color || 'var(--nd-accent)' }"
       />
 
-      <span v-if="icon" class="header-icon">{{ icon }}</span>
+      <slot name="header-icon" />
       <span class="header-title">{{ title }}</span>
+      <slot name="header-meta" />
 
       <!-- Grabber (Misskey 6-dot pattern) -->
       <svg class="grabber" viewBox="0 0 24 24" width="14" height="14">
@@ -165,11 +165,6 @@ function onDrop(e: DragEvent) {
   width: 3px;
   height: calc(100% - 24px);
   border-radius: 999px;
-}
-
-.header-icon {
-  font-size: 1em;
-  flex-shrink: 0;
 }
 
 .header-title {
