@@ -42,12 +42,7 @@ onMounted(async () => {
       }).catch(() => {})
     }
     user.value = await adapter.api.getUserDetail(props.userId)
-    const { normalizeNote } = await import('@/adapters/misskey/normalize')
-    const rawNotes = await adapter.api.request<Array<{ id: string }>>('users/notes', {
-      userId: props.userId,
-      limit: 20,
-    })
-    notes.value = rawNotes.map((n) => normalizeNote(n as never, props.accountId, account.host))
+    notes.value = await adapter.api.getUserNotes(props.userId, { limit: 20 })
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load user'
   } finally {
@@ -60,15 +55,10 @@ async function loadMoreNotes() {
   const last = notes.value[notes.value.length - 1]!
   isLoadingNotes.value = true
   try {
-    const account = accountsStore.accounts.find((a) => a.id === props.accountId)
-    if (!account) return
-    const { normalizeNote } = await import('@/adapters/misskey/normalize')
-    const rawNotes = await adapter.api.request<Array<{ id: string }>>('users/notes', {
-      userId: props.userId,
+    const older = await adapter.api.getUserNotes(props.userId, {
       limit: 20,
       untilId: last.id,
     })
-    const older = rawNotes.map((n) => normalizeNote(n as never, props.accountId, account.host))
     notes.value = [...notes.value, ...older]
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load notes'

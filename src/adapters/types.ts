@@ -121,10 +121,6 @@ export interface AuthAdapter {
 }
 
 export interface ApiAdapter {
-  request<T = unknown>(
-    endpoint: string,
-    params?: Record<string, unknown>,
-  ): Promise<T>
   getTimeline(
     type: TimelineType,
     options?: TimelineOptions,
@@ -135,6 +131,10 @@ export interface ApiAdapter {
   getServerEmojis(): Promise<Record<string, string>>
   getUser(userId: string): Promise<NormalizedUser>
   getUserDetail(userId: string): Promise<NormalizedUserDetail>
+  getUserNotes(
+    userId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
   createNote(params: CreateNoteParams): Promise<NormalizedNote>
   getNotifications(
     options?: PaginationOptions,

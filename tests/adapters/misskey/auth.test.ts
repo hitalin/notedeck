@@ -1,16 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn(),
+}))
+
+import { invoke } from '@tauri-apps/api/core'
 import { MisskeyAuth } from '@/adapters/misskey/auth'
 
 describe('MisskeyAuth', () => {
   const auth = new MisskeyAuth()
 
   beforeEach(() => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn<
-        (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-      >(),
-    )
+    vi.mocked(invoke).mockReset()
   })
 
   afterEach(() => {
@@ -18,30 +19,45 @@ describe('MisskeyAuth', () => {
   })
 
   describe('startAuth', () => {
-    it('returns a session with MiAuth URL', async () => {
+    it('invokes auth_start and returns session', async () => {
+      const mockSession = {
+        sessionId: 'session-123',
+        url: 'https://example.com/miauth/session-123?name=notedeck&permission=read:account',
+        host: 'example.com',
+      }
+      vi.mocked(invoke).mockResolvedValue(mockSession)
+
       const session = await auth.startAuth('example.com')
 
       expect(session.host).toBe('example.com')
-      expect(session.sessionId).toBeTruthy()
+      expect(session.sessionId).toBe('session-123')
       expect(session.url).toContain('https://example.com/miauth/')
-      expect(session.url).toContain(session.sessionId)
-      expect(session.url).toContain('name=notedeck')
+
+      expect(invoke).toHaveBeenCalledWith('auth_start', {
+        host: 'example.com',
+        permissions: null,
+      })
     })
 
-    it('includes requested permissions in URL', async () => {
-      const session = await auth.startAuth('example.com', [
-        'read:account',
-        'write:notes',
-      ])
+    it('passes custom permissions', async () => {
+      vi.mocked(invoke).mockResolvedValue({
+        sessionId: 's1',
+        url: 'https://example.com/miauth/s1',
+        host: 'example.com',
+      })
 
-      expect(session.url).toContain('permission=read%3Aaccount%2Cwrite%3Anotes')
+      await auth.startAuth('example.com', ['read:account', 'write:notes'])
+
+      expect(invoke).toHaveBeenCalledWith('auth_start', {
+        host: 'example.com',
+        permissions: ['read:account', 'write:notes'],
+      })
     })
   })
 
   describe('completeAuth', () => {
-    it('returns token and normalized user on success', async () => {
-      const mockResponse = {
-        ok: true,
+    it('invokes auth_complete and returns token + user', async () => {
+      const mockResult = {
         token: 'abc123',
         user: {
           id: 'user-1',
@@ -51,34 +67,24 @@ describe('MisskeyAuth', () => {
           avatarUrl: 'https://example.com/avatar.png',
         },
       }
+      vi.mocked(invoke).mockResolvedValue(mockResult)
 
-      vi.mocked(fetch).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      } as Response)
-
-      const result = await auth.completeAuth({
+      const session = {
         sessionId: 'session-1',
         url: 'https://example.com/miauth/session-1',
         host: 'example.com',
-      })
+      }
+      const result = await auth.completeAuth(session)
 
       expect(result.token).toBe('abc123')
       expect(result.user.id).toBe('user-1')
       expect(result.user.username).toBe('testuser')
-      expect(result.user.avatarUrl).toBe('https://example.com/avatar.png')
 
-      expect(fetch).toHaveBeenCalledWith(
-        'https://example.com/api/miauth/session-1/check',
-        { method: 'POST' },
-      )
+      expect(invoke).toHaveBeenCalledWith('auth_complete', { session })
     })
 
-    it('throws on HTTP error', async () => {
-      vi.mocked(fetch).mockResolvedValue({
-        ok: false,
-        status: 500,
-      } as Response)
+    it('propagates errors', async () => {
+      vi.mocked(invoke).mockRejectedValue('MiAuth check failed: 500')
 
       await expect(
         auth.completeAuth({
@@ -86,27 +92,12 @@ describe('MisskeyAuth', () => {
           url: 'https://example.com/miauth/s1',
           host: 'example.com',
         }),
-      ).rejects.toThrow('MiAuth check failed: 500')
-    })
-
-    it('throws when auth not completed', async () => {
-      vi.mocked(fetch).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ ok: false }),
-      } as Response)
-
-      await expect(
-        auth.completeAuth({
-          sessionId: 's1',
-          url: 'https://example.com/miauth/s1',
-          host: 'example.com',
-        }),
-      ).rejects.toThrow('MiAuth authentication was not completed')
+      ).rejects.toBe('MiAuth check failed: 500')
     })
   })
 
   describe('verifyToken', () => {
-    it('returns normalized user', async () => {
+    it('invokes auth_verify_token and returns user', async () => {
       const mockUser = {
         id: 'user-1',
         username: 'testuser',
@@ -114,33 +105,25 @@ describe('MisskeyAuth', () => {
         name: 'Test User',
         avatarUrl: null,
       }
-
-      vi.mocked(fetch).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockUser),
-      } as Response)
+      vi.mocked(invoke).mockResolvedValue(mockUser)
 
       const user = await auth.verifyToken('example.com', 'token-123')
 
       expect(user.id).toBe('user-1')
       expect(user.username).toBe('testuser')
 
-      expect(fetch).toHaveBeenCalledWith('https://example.com/api/i', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ i: 'token-123' }),
+      expect(invoke).toHaveBeenCalledWith('auth_verify_token', {
+        host: 'example.com',
+        token: 'token-123',
       })
     })
 
-    it('throws on invalid token', async () => {
-      vi.mocked(fetch).mockResolvedValue({
-        ok: false,
-        status: 401,
-      } as Response)
+    it('propagates errors on invalid token', async () => {
+      vi.mocked(invoke).mockRejectedValue('Token verification failed')
 
       await expect(
         auth.verifyToken('example.com', 'bad-token'),
-      ).rejects.toThrow('Token verification failed: 401')
+      ).rejects.toBe('Token verification failed')
     })
   })
 })

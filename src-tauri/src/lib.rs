@@ -5,6 +5,7 @@ use tauri::{
 };
 use tauri_plugin_autostart::MacosLauncher;
 
+mod api;
 mod commands;
 mod db;
 mod models;
@@ -26,6 +27,19 @@ pub fn run() {
             commands::load_servers,
             commands::get_server,
             commands::upsert_server,
+            commands::api_get_timeline,
+            commands::api_get_note,
+            commands::api_create_note,
+            commands::api_create_reaction,
+            commands::api_delete_reaction,
+            commands::api_get_user,
+            commands::api_get_user_detail,
+            commands::api_get_user_notes,
+            commands::api_get_server_emojis,
+            commands::api_get_notifications,
+            commands::auth_start,
+            commands::auth_complete,
+            commands::auth_verify_token,
         ])
         .setup(|app| {
             // Initialize SQLite database
@@ -37,6 +51,9 @@ pub fn run() {
             let db_path = app_dir.join("notedeck.db");
             let database = db::Database::open(&db_path).expect("failed to open database");
             app.manage(database);
+
+            // Initialize Misskey HTTP client
+            app.manage(api::MisskeyClient::new());
 
             // System tray
             let show_i = MenuItem::with_id(app, "show", "Show NoteDeck", true, None::<&str>)?;

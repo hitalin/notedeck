@@ -11,7 +11,7 @@ export function createMisskeyAdapter(
   return {
     serverInfo,
     auth: new MisskeyAuth(),
-    api: new MisskeyApi(serverInfo.host, token, accountId),
+    api: new MisskeyApi(accountId),
     stream: new MisskeyStream(serverInfo.host, token, accountId),
   }
 }

@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn(),
+}))
+
+import { invoke } from '@tauri-apps/api/core'
 import { MisskeyApi } from '@/adapters/misskey/api'
 
 describe('MisskeyApi', () => {
   let api: MisskeyApi
 
   beforeEach(() => {
-    api = new MisskeyApi('example.com', 'test-token', 'acc-1')
-    vi.stubGlobal(
-      'fetch',
-      vi.fn<
-        (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-      >(),
-    )
+    api = new MisskeyApi('acc-1')
   })
 
   afterEach(() => {
@@ -19,9 +19,11 @@ describe('MisskeyApi', () => {
   })
 
   describe('getNote', () => {
-    it('fetches and normalizes a note', async () => {
-      const rawNote = {
+    it('invokes api_get_note and returns the result', async () => {
+      const mockNote = {
         id: 'note-1',
+        _accountId: 'acc-1',
+        _serverHost: 'example.com',
         createdAt: '2025-01-01T00:00:00Z',
         text: 'Hello world',
         cw: null,
@@ -33,6 +35,8 @@ describe('MisskeyApi', () => {
           avatarUrl: null,
         },
         visibility: 'public',
+        emojis: {},
+        reactionEmojis: {},
         reactions: { '👍': 3 },
         myReaction: '👍',
         renoteCount: 1,
@@ -40,10 +44,7 @@ describe('MisskeyApi', () => {
         files: [],
       }
 
-      vi.mocked(fetch).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(rawNote),
-      } as Response)
+      vi.mocked(invoke).mockResolvedValue(mockNote)
 
       const note = await api.getNote('note-1')
 
@@ -52,85 +53,73 @@ describe('MisskeyApi', () => {
       expect(note._accountId).toBe('acc-1')
       expect(note._serverHost).toBe('example.com')
 
-      expect(fetch).toHaveBeenCalledWith('https://example.com/api/notes/show', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ noteId: 'note-1', i: 'test-token' }),
+      expect(invoke).toHaveBeenCalledWith('api_get_note', {
+        accountId: 'acc-1',
+        noteId: 'note-1',
       })
     })
   })
 
   describe('createReaction', () => {
-    it('sends reaction to the API', async () => {
-      vi.mocked(fetch).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({}),
-      } as Response)
+    it('invokes api_create_reaction', async () => {
+      vi.mocked(invoke).mockResolvedValue(undefined)
 
       await api.createReaction('note-1', '👍')
 
-      expect(fetch).toHaveBeenCalledWith(
-        'https://example.com/api/notes/reactions/create',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            noteId: 'note-1',
-            reaction: '👍',
-            i: 'test-token',
-          }),
-        },
-      )
+      expect(invoke).toHaveBeenCalledWith('api_create_reaction', {
+        accountId: 'acc-1',
+        noteId: 'note-1',
+        reaction: '👍',
+      })
     })
   })
 
   describe('deleteReaction', () => {
-    it('removes reaction via the API', async () => {
-      vi.mocked(fetch).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({}),
-      } as Response)
+    it('invokes api_delete_reaction', async () => {
+      vi.mocked(invoke).mockResolvedValue(undefined)
 
       await api.deleteReaction('note-1')
 
-      expect(fetch).toHaveBeenCalledWith(
-        'https://example.com/api/notes/reactions/delete',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ noteId: 'note-1', i: 'test-token' }),
-        },
-      )
+      expect(invoke).toHaveBeenCalledWith('api_delete_reaction', {
+        accountId: 'acc-1',
+        noteId: 'note-1',
+      })
     })
   })
 
-  describe('request error handling', () => {
-    it('throws with status code when no error body', async () => {
-      vi.mocked(fetch).mockResolvedValue({
-        ok: false,
-        status: 404,
-        json: () => Promise.reject(new Error('no json')),
-      } as unknown as Response)
+  describe('getTimeline', () => {
+    it('invokes api_get_timeline with options', async () => {
+      vi.mocked(invoke).mockResolvedValue([])
 
-      await expect(api.getNote('bad-id')).rejects.toThrow('notes/show (404)')
+      await api.getTimeline('home', { limit: 10 })
+
+      expect(invoke).toHaveBeenCalledWith('api_get_timeline', {
+        accountId: 'acc-1',
+        timelineType: 'home',
+        options: { limit: 10, sinceId: null, untilId: null },
+      })
     })
+  })
 
-    it('throws with error message from response body', async () => {
-      vi.mocked(fetch).mockResolvedValue({
-        ok: false,
-        status: 400,
-        json: () =>
-          Promise.resolve({
-            error: {
-              message: 'TIMELINE_DISABLED',
-              code: 'TIMELINE_DISABLED',
-            },
-          }),
-      } as unknown as Response)
+  describe('getUserNotes', () => {
+    it('invokes api_get_user_notes with options', async () => {
+      vi.mocked(invoke).mockResolvedValue([])
 
-      await expect(api.getNote('bad-id')).rejects.toThrow(
-        'notes/show: TIMELINE_DISABLED',
-      )
+      await api.getUserNotes('user-1', { limit: 20, untilId: 'last-1' })
+
+      expect(invoke).toHaveBeenCalledWith('api_get_user_notes', {
+        accountId: 'acc-1',
+        userId: 'user-1',
+        options: { limit: 20, sinceId: null, untilId: 'last-1' },
+      })
+    })
+  })
+
+  describe('error handling', () => {
+    it('propagates invoke errors', async () => {
+      vi.mocked(invoke).mockRejectedValue('notes/show (404)')
+
+      await expect(api.getNote('bad-id')).rejects.toBe('notes/show (404)')
     })
   })
 })
