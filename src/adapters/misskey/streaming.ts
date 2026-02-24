@@ -1,42 +1,47 @@
-import type { Channels, IChannelConnection } from 'misskey-js'
-import { Stream } from 'misskey-js'
-import type { Note } from 'misskey-js/entities.js'
+import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import type {
   ChannelSubscription,
   MainChannelEvent,
   NormalizedNote,
+  NormalizedNotification,
   StreamAdapter,
   StreamConnectionState,
   TimelineType,
 } from '../types'
-import { normalizeNote } from './normalize'
 
-type TimelineChannel = {
-  [K in keyof Channels]: Channels[K]['events'] extends {
-    note: (payload: Note) => void
-  }
-    ? K
-    : never
-}[keyof Channels]
+interface StreamNoteEvent {
+  accountId: string
+  subscriptionId: string
+  note: NormalizedNote
+}
 
-const TIMELINE_CHANNELS: Record<TimelineType, TimelineChannel> = {
-  home: 'homeTimeline',
-  local: 'localTimeline',
-  social: 'hybridTimeline',
-  global: 'globalTimeline',
+interface StreamNotificationEvent {
+  accountId: string
+  subscriptionId: string
+  notification: NormalizedNotification
+}
+
+interface StreamMainEvent {
+  accountId: string
+  subscriptionId: string
+  eventType: string
+  body: unknown
+}
+
+interface StreamStatusEvent {
+  accountId: string
+  state: StreamConnectionState
 }
 
 export class MisskeyStream implements StreamAdapter {
-  private stream: Stream
+  private accountId: string
   private _state: StreamConnectionState = 'initializing'
   private handlers = new Map<string, Set<() => void>>()
-  private accountId: string
-  private serverHost: string
+  private statusUnlisten: (() => void) | null = null
 
-  constructor(host: string, token: string, accountId: string) {
+  constructor(accountId: string) {
     this.accountId = accountId
-    this.serverHost = host
-    this.stream = new Stream(`https://${host}`, { token })
   }
 
   get state(): StreamConnectionState {
@@ -44,19 +49,29 @@ export class MisskeyStream implements StreamAdapter {
   }
 
   connect(): void {
-    this._state = this.stream.state as StreamConnectionState
-    this.stream.on('_connected_', () => {
+    // Listen for connection status events
+    listen<StreamStatusEvent>('stream-status', (event) => {
+      if (event.payload.accountId !== this.accountId) return
+      this._state = event.payload.state
+      this.emit(event.payload.state)
+    }).then((unlisten) => {
+      this.statusUnlisten = unlisten
+    })
+
+    invoke('stream_connect', { accountId: this.accountId }).then(() => {
       this._state = 'connected'
       this.emit('connected')
-    })
-    this.stream.on('_disconnected_', () => {
+    }).catch((e) => {
+      console.error('[stream] connect failed:', e)
       this._state = 'disconnected'
       this.emit('disconnected')
     })
   }
 
   disconnect(): void {
-    this.stream.close()
+    this.statusUnlisten?.()
+    this.statusUnlisten = null
+    invoke('stream_disconnect', { accountId: this.accountId }).catch(() => {})
     this._state = 'disconnected'
     this.emit('disconnected')
   }
@@ -65,20 +80,36 @@ export class MisskeyStream implements StreamAdapter {
     type: TimelineType,
     handler: (note: NormalizedNote) => void,
   ): ChannelSubscription {
-    const channel = TIMELINE_CHANNELS[type]
-    const connection = this.stream.useChannel(channel) as IChannelConnection<
-      Channels[typeof channel]
-    >
+    let noteUnlisten: (() => void) | null = null
+    let subscriptionId: string | null = null
 
-    const onNote = (note: Note) => {
-      handler(normalizeNote(note, this.accountId, this.serverHost))
-    }
+    // Listen for note events first, then subscribe
+    listen<StreamNoteEvent>('stream-note', (event) => {
+      if (event.payload.accountId !== this.accountId) return
+      if (subscriptionId && event.payload.subscriptionId !== subscriptionId) return
+      handler(event.payload.note)
+    }).then((unlisten) => {
+      noteUnlisten = unlisten
+    })
 
-    connection.on('note', onNote as never)
+    invoke<string>('stream_subscribe_timeline', {
+      accountId: this.accountId,
+      timelineType: type,
+    }).then((id) => {
+      subscriptionId = id
+    }).catch((e) => {
+      console.error('[stream] subscribe timeline failed:', e)
+    })
 
     return {
       dispose: () => {
-        connection.dispose()
+        noteUnlisten?.()
+        if (subscriptionId) {
+          invoke('stream_unsubscribe', {
+            accountId: this.accountId,
+            subscriptionId,
+          }).catch(() => {})
+        }
       },
     }
   }
@@ -86,27 +117,52 @@ export class MisskeyStream implements StreamAdapter {
   subscribeMain(
     handler: (event: MainChannelEvent) => void,
   ): ChannelSubscription {
-    const connection = this.stream.useChannel('main')
+    let notifUnlisten: (() => void) | null = null
+    let mainUnlisten: (() => void) | null = null
+    let subscriptionId: string | null = null
 
-    const events = [
-      'notification',
-      'mention',
-      'reply',
-      'renote',
-      'follow',
-      'followed',
-      'unfollow',
-    ] as const
+    // Listen for notification events
+    listen<StreamNotificationEvent>('stream-notification', (event) => {
+      if (event.payload.accountId !== this.accountId) return
+      if (subscriptionId && event.payload.subscriptionId !== subscriptionId) return
+      handler({
+        type: 'notification',
+        body: event.payload.notification,
+      })
+    }).then((unlisten) => {
+      notifUnlisten = unlisten
+    })
 
-    for (const eventName of events) {
-      connection.on(eventName, ((body: unknown) => {
-        handler({ type: eventName, body })
-      }) as never)
-    }
+    // Listen for other main channel events
+    listen<StreamMainEvent>('stream-main-event', (event) => {
+      if (event.payload.accountId !== this.accountId) return
+      if (subscriptionId && event.payload.subscriptionId !== subscriptionId) return
+      handler({
+        type: event.payload.eventType,
+        body: event.payload.body,
+      })
+    }).then((unlisten) => {
+      mainUnlisten = unlisten
+    })
+
+    invoke<string>('stream_subscribe_main', {
+      accountId: this.accountId,
+    }).then((id) => {
+      subscriptionId = id
+    }).catch((e) => {
+      console.error('[stream] subscribe main failed:', e)
+    })
 
     return {
       dispose: () => {
-        connection.dispose()
+        notifUnlisten?.()
+        mainUnlisten?.()
+        if (subscriptionId) {
+          invoke('stream_unsubscribe', {
+            accountId: this.accountId,
+            subscriptionId,
+          }).catch(() => {})
+        }
       },
     }
   }

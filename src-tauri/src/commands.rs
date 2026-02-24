@@ -5,6 +5,7 @@ use tauri::State;
 use crate::api::MisskeyClient;
 use crate::db::Database;
 use crate::models::*;
+use crate::streaming::StreamingManager;
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -238,4 +239,55 @@ pub async fn auth_verify_token(
     token: String,
 ) -> Result<NormalizedUser> {
     client.verify_token(&host, &token).await
+}
+
+// --- Streaming ---
+
+#[tauri::command]
+pub async fn stream_connect(
+    app: tauri::AppHandle,
+    db: State<'_, Database>,
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    streaming.connect(app, &account_id, &host, &token).await
+}
+
+#[tauri::command]
+pub async fn stream_disconnect(
+    app: tauri::AppHandle,
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+) -> Result<()> {
+    streaming.disconnect(&app, &account_id).await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn stream_subscribe_timeline(
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    timeline_type: String,
+) -> Result<String> {
+    streaming
+        .subscribe_timeline(&account_id, &timeline_type)
+        .await
+}
+
+#[tauri::command]
+pub async fn stream_subscribe_main(
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+) -> Result<String> {
+    streaming.subscribe_main(&account_id).await
+}
+
+#[tauri::command]
+pub async fn stream_unsubscribe(
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    subscription_id: String,
+) -> Result<()> {
+    streaming.unsubscribe(&account_id, &subscription_id).await
 }

@@ -9,6 +9,7 @@ mod api;
 mod commands;
 mod db;
 mod models;
+mod streaming;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -40,6 +41,11 @@ pub fn run() {
             commands::auth_start,
             commands::auth_complete,
             commands::auth_verify_token,
+            commands::stream_connect,
+            commands::stream_disconnect,
+            commands::stream_subscribe_timeline,
+            commands::stream_subscribe_main,
+            commands::stream_unsubscribe,
         ])
         .setup(|app| {
             // Initialize SQLite database
@@ -54,6 +60,9 @@ pub fn run() {
 
             // Initialize Misskey HTTP client
             app.manage(api::MisskeyClient::new());
+
+            // Initialize streaming manager
+            app.manage(streaming::StreamingManager::new());
 
             // System tray
             let show_i = MenuItem::with_id(app, "show", "Show NoteDeck", true, None::<&str>)?;

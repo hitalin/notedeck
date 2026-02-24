@@ -11,6 +11,7 @@ import type {
   NormalizedNotification,
   ServerAdapter,
 } from '@/adapters/types'
+
 import { useAccountsStore } from '@/stores/accounts'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
@@ -139,56 +140,19 @@ async function connect() {
     adapter.stream.connect()
     subscription = adapter.stream.subscribeMain((event) => {
       if (event.type === 'notification') {
-        const raw = event.body as {
-          id: string
-          createdAt: string
-          type: string
-          user?: unknown
-          note?: unknown
-          reaction?: string
-        }
-        // Normalize inline (matches getNotifications pattern)
-        const normalized: NormalizedNotification = {
-          id: raw.id,
-          _accountId: acc.id,
-          _serverHost: acc.host,
-          createdAt: raw.createdAt,
-          type: raw.type,
-          reaction: raw.reaction,
-        }
-        // User and note need normalization - use raw for display
-        if (raw.user) {
-          const u = raw.user as { id: string; username: string; host: string | null; name: string | null; avatarUrl: string | null }
-          normalized.user = {
-            id: u.id,
-            username: u.username,
-            host: u.host,
-            name: u.name,
-            avatarUrl: u.avatarUrl,
-          }
-        }
+        const notification = event.body as NormalizedNotification
+
         // Send desktop notification for important events
-        if (['reply', 'mention', 'quote', 'follow'].includes(raw.type)) {
-          const userName = normalized.user?.name || normalized.user?.username || 'Someone'
-          const label = NOTIFICATION_LABELS[raw.type] || raw.type
+        if (['reply', 'mention', 'quote', 'follow'].includes(notification.type)) {
+          const userName = notification.user?.name || notification.user?.username || 'Someone'
+          const label = NOTIFICATION_LABELS[notification.type] || notification.type
           sendDesktopNotification(
             `NoteDeck — ${userName}`,
             label,
           )
         }
 
-        if (raw.note) {
-          // Re-fetch to get properly normalized note
-          adapter?.api.getNote((raw.note as { id: string }).id).then((note) => {
-            normalized.note = note
-            notifications.value = [normalized, ...notifications.value]
-          }).catch(() => {
-            // Fallback: add without note
-            notifications.value = [normalized, ...notifications.value]
-          })
-        } else {
-          notifications.value = [normalized, ...notifications.value]
-        }
+        notifications.value = [notification, ...notifications.value]
       }
     })
   } catch (e) {

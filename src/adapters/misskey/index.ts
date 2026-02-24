@@ -5,13 +5,13 @@ import { MisskeyStream } from './streaming'
 
 export function createMisskeyAdapter(
   serverInfo: ServerInfo,
-  token: string,
+  _token: string,
   accountId: string,
 ): ServerAdapter {
   return {
     serverInfo,
     auth: new MisskeyAuth(),
     api: new MisskeyApi(accountId),
-    stream: new MisskeyStream(serverInfo.host, token, accountId),
+    stream: new MisskeyStream(accountId),
   }
 }
