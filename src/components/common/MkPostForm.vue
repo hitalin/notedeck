@@ -4,6 +4,7 @@ import { createAdapter } from '@/adapters/registry'
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
+import { useThemeStore } from '@/stores/theme'
 
 const props = defineProps<{
   accountId: string
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
+const themeStore = useThemeStore()
 
 const text = ref('')
 const cw = ref('')
@@ -35,6 +37,16 @@ const activeAccountId = ref(props.accountId)
 const account = computed(() =>
   accountsStore.accounts.find((a) => a.id === activeAccountId.value),
 )
+
+const formThemeVars = computed(() => {
+  const compiled = themeStore.getCompiledForAccount(activeAccountId.value)
+  if (!compiled) return undefined
+  const style: Record<string, string> = {}
+  for (const [key, value] of Object.entries(compiled)) {
+    style[`--nd-${key}`] = value
+  }
+  return style
+})
 
 const visibilityOptions: { value: typeof visibility.value; label: string; icon: string }[] = [
   { value: 'public', label: 'Public', icon: 'M22 12A10 10 0 112 12a10 10 0 0120 0zM2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z' },
@@ -119,7 +131,7 @@ function onKeydown(e: KeyboardEvent) {
 
 <template>
   <div class="post-overlay" @click="emit('close')">
-    <div class="post-form" @click.stop>
+    <div class="post-form" :style="formThemeVars" @click.stop>
       <!-- Header -->
       <header class="header">
         <div class="header-left">
