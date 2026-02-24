@@ -53,7 +53,7 @@ export const useAccountsStore = defineStore('accounts', () => {
 
     accounts.value = [...seen.values()]
     if (accounts.value.length > 0 && !activeAccountId.value) {
-      activeAccountId.value = accounts.value[0].id
+      activeAccountId.value = accounts.value[0]!.id
     }
     isLoaded.value = true
   }

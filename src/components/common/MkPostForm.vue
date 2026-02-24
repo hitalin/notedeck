@@ -56,7 +56,7 @@ const visibilityOptions: { value: typeof visibility.value; label: string; icon: 
 ]
 
 const currentVisibility = computed(() =>
-  visibilityOptions.find((o) => o.value === visibility.value) || visibilityOptions[0],
+  visibilityOptions.find((o) => o.value === visibility.value) ?? visibilityOptions[0]!,
 )
 
 const canPost = computed(() => {

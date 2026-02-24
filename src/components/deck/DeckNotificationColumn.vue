@@ -196,7 +196,7 @@ function disconnect() {
 
 async function loadMore() {
   if (!adapter || isLoading.value || notifications.value.length === 0) return
-  const last = notifications.value[notifications.value.length - 1]
+  const last = notifications.value[notifications.value.length - 1]!
   isLoading.value = true
   try {
     const older = await adapter.api.getNotifications({ untilId: last.id })
@@ -224,8 +224,8 @@ async function handleReaction(note: NormalizedNote, reaction: string) {
   try {
     if (note.myReaction === reaction) {
       await adapter.api.deleteReaction(note.id)
-      if (note.reactions[reaction] > 1) {
-        note.reactions[reaction]--
+      if ((note.reactions[reaction] ?? 0) > 1) {
+        note.reactions[reaction]!--
       } else {
         delete note.reactions[reaction]
       }
@@ -234,8 +234,8 @@ async function handleReaction(note: NormalizedNote, reaction: string) {
       if (note.myReaction) {
         await adapter.api.deleteReaction(note.id)
         const prev = note.myReaction
-        if (note.reactions[prev] > 1) {
-          note.reactions[prev]--
+        if ((note.reactions[prev] ?? 0) > 1) {
+          note.reactions[prev]!--
         } else {
           delete note.reactions[prev]
         }
@@ -263,7 +263,7 @@ function handleReply(note: NormalizedNote) {
   showPostForm.value = true
 }
 
-function handleQuote(note: NormalizedNote) {
+function handleQuote(_note: NormalizedNote) {
   postFormReplyTo.value = undefined
   showPostForm.value = true
 }

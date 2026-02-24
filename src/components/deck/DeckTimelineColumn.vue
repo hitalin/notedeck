@@ -68,7 +68,7 @@ const TL_ICONS: Record<TimelineType, string> = {
 const currentTlIcon = computed(() => TL_ICONS[tlType.value])
 
 function columnTitle(): string {
-  const opt = TL_TYPES.find((o) => o.value === tlType.value) || TL_TYPES[0]
+  const opt = TL_TYPES.find((o) => o.value === tlType.value) ?? TL_TYPES[0]!
   return opt.label
 }
 
@@ -124,7 +124,7 @@ async function switchTl(type: TimelineType) {
 
 async function loadMore() {
   if (!adapter || isLoading.value || notes.value.length === 0) return
-  const lastNote = notes.value[notes.value.length - 1]
+  const lastNote = notes.value[notes.value.length - 1]!
   isLoading.value = true
   try {
     const older = await adapter.api.getTimeline(tlType.value, {
@@ -156,8 +156,8 @@ async function handleReaction(note: NormalizedNote, reaction: string) {
   try {
     if (note.myReaction === reaction) {
       await adapter.api.deleteReaction(note.id)
-      if (note.reactions[reaction] > 1) {
-        note.reactions[reaction]--
+      if ((note.reactions[reaction] ?? 0) > 1) {
+        note.reactions[reaction]!--
       } else {
         delete note.reactions[reaction]
       }
@@ -166,8 +166,8 @@ async function handleReaction(note: NormalizedNote, reaction: string) {
       if (note.myReaction) {
         await adapter.api.deleteReaction(note.id)
         const prev = note.myReaction
-        if (note.reactions[prev] > 1) {
-          note.reactions[prev]--
+        if ((note.reactions[prev] ?? 0) > 1) {
+          note.reactions[prev]!--
         } else {
           delete note.reactions[prev]
         }

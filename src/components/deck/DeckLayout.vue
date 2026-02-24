@@ -41,18 +41,6 @@ function addColumnForAccount(accountId: string) {
   addColumnType.value = null
 }
 
-function addTimelineColumn(accountId: string) {
-  deckStore.addColumn({
-    type: 'timeline',
-    name: null,
-    width: 330,
-    accountId,
-    tl: 'home',
-    active: true,
-  })
-  showAddMenu.value = false
-}
-
 function toggleAddMenu() {
   showAddMenu.value = !showAddMenu.value
 }
@@ -225,7 +213,7 @@ onMounted(() => {
     <Teleport to="body">
       <MkPostForm
         v-if="showCompose && accountsStore.accounts.length > 0"
-        :account-id="accountsStore.accounts[0].id"
+        :account-id="accountsStore.accounts[0]!.id"
         @close="closeCompose"
         @posted="closeCompose"
       />

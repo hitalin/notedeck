@@ -57,7 +57,7 @@ onMounted(async () => {
 
 async function loadMoreNotes() {
   if (!adapter || isLoadingNotes.value || notes.value.length === 0) return
-  const last = notes.value[notes.value.length - 1]
+  const last = notes.value[notes.value.length - 1]!
   isLoadingNotes.value = true
   try {
     const account = accountsStore.accounts.find((a) => a.id === props.accountId)
@@ -105,8 +105,8 @@ async function handleReaction(note: NormalizedNote, reaction: string) {
   try {
     if (note.myReaction === reaction) {
       await adapter.api.deleteReaction(note.id)
-      if (note.reactions[reaction] > 1) {
-        note.reactions[reaction]--
+      if ((note.reactions[reaction] ?? 0) > 1) {
+        note.reactions[reaction]!--
       } else {
         delete note.reactions[reaction]
       }
@@ -115,8 +115,8 @@ async function handleReaction(note: NormalizedNote, reaction: string) {
       if (note.myReaction) {
         await adapter.api.deleteReaction(note.id)
         const prev = note.myReaction
-        if (note.reactions[prev] > 1) {
-          note.reactions[prev]--
+        if ((note.reactions[prev] ?? 0) > 1) {
+          note.reactions[prev]!--
         } else {
           delete note.reactions[prev]
         }

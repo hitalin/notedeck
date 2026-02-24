@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { NormalizedNote } from '@/adapters/types'
 import { useEmojisStore } from '@/stores/emojis'
-import { splitTextWithEmoji, char2twemojiUrl } from '@/utils/twemoji'
+import { splitTextWithEmoji } from '@/utils/twemoji'
 import MkEmoji from './MkEmoji.vue'
 
 const props = defineProps<{

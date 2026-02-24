@@ -53,8 +53,8 @@ async function handleReaction(reaction: string) {
   try {
     if (note.value.myReaction === reaction) {
       await adapter.api.deleteReaction(note.value.id)
-      if (note.value.reactions[reaction] > 1) {
-        note.value.reactions[reaction]--
+      if ((note.value.reactions[reaction] ?? 0) > 1) {
+        note.value.reactions[reaction]!--
       } else {
         delete note.value.reactions[reaction]
       }
@@ -63,8 +63,8 @@ async function handleReaction(reaction: string) {
       if (note.value.myReaction) {
         await adapter.api.deleteReaction(note.value.id)
         const prev = note.value.myReaction
-        if (note.value.reactions[prev] > 1) {
-          note.value.reactions[prev]--
+        if ((note.value.reactions[prev] ?? 0) > 1) {
+          note.value.reactions[prev]!--
         } else {
           delete note.value.reactions[prev]
         }

@@ -48,7 +48,7 @@ export function useTimeline(account: Account) {
     const tl = timelinesStore.perServer.get(account.id)
     if (!tl || tl.isLoading || tl.notes.length === 0) return
 
-    const lastNote = tl.notes[tl.notes.length - 1]
+    const lastNote = tl.notes[tl.notes.length - 1]!
     timelinesStore.setLoading(account.id, true)
     const older = await adapter.api.getTimeline(tl.type, {
       untilId: lastNote.id,
