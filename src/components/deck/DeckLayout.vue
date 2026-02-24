@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
+import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useDeckStore } from '@/stores/deck'
 import { useAccountsStore } from '@/stores/accounts'
@@ -18,6 +19,26 @@ function openCompose() {
 
 function closeCompose() {
   showCompose.value = false
+}
+
+const addColumnType = ref<'timeline' | 'notifications' | null>(null)
+
+function selectColumnType(type: 'timeline' | 'notifications') {
+  addColumnType.value = type
+}
+
+function addColumnForAccount(accountId: string) {
+  const type = addColumnType.value || 'timeline'
+  deckStore.addColumn({
+    type,
+    name: null,
+    width: 330,
+    accountId,
+    tl: type === 'timeline' ? 'home' : undefined,
+    active: true,
+  })
+  showAddMenu.value = false
+  addColumnType.value = null
 }
 
 function addTimelineColumn(accountId: string) {
@@ -49,6 +70,10 @@ onMounted(() => {
         <section v-for="colId in group" :key="colId" class="column-section">
           <DeckTimelineColumn
             v-if="deckStore.getColumn(colId)?.type === 'timeline'"
+            :column="deckStore.getColumn(colId)!"
+          />
+          <DeckNotificationColumn
+            v-else-if="deckStore.getColumn(colId)?.type === 'notifications'"
             :column="deckStore.getColumn(colId)!"
           />
         </section>
@@ -138,33 +163,61 @@ onMounted(() => {
 
     <!-- Add column popup -->
     <Teleport to="body">
-      <div v-if="showAddMenu" class="add-overlay" @click="showAddMenu = false">
+      <div v-if="showAddMenu" class="add-overlay" @click="showAddMenu = false; addColumnType = null">
         <div class="add-popup" @click.stop>
-          <div class="add-popup-header">Add column</div>
-
-          <div
-            v-if="accountsStore.accounts.length === 0"
-            class="add-popup-empty"
-          >
-            No accounts registered.
-            <router-link to="/login" @click="showAddMenu = false">
-              Add account
-            </router-link>
+          <div class="add-popup-header">
+            <button v-if="addColumnType" class="_button add-back-btn" @click="addColumnType = null">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              </svg>
+            </button>
+            {{ addColumnType ? 'Select account' : 'Add column' }}
           </div>
 
-          <button
-            v-for="account in accountsStore.accounts"
-            :key="account.id"
-            class="_button add-account-btn"
-            @click="addTimelineColumn(account.id)"
-          >
-            <img
-              v-if="account.avatarUrl"
-              :src="account.avatarUrl"
-              class="add-account-avatar"
-            />
-            <span>@{{ account.username }}@{{ account.host }}</span>
-          </button>
+          <!-- Step 1: Column type selection -->
+          <template v-if="!addColumnType">
+            <button class="_button add-type-btn" @click="selectColumnType('timeline')">
+              <svg viewBox="0 0 24 24" width="18" height="18">
+                <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              </svg>
+              <span>Timeline</span>
+            </button>
+            <button class="_button add-type-btn" @click="selectColumnType('notifications')">
+              <svg viewBox="0 0 24 24" width="18" height="18">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              </svg>
+              <span>Notifications</span>
+            </button>
+          </template>
+
+          <!-- Step 2: Account selection -->
+          <template v-else>
+            <div
+              v-if="accountsStore.accounts.length === 0"
+              class="add-popup-empty"
+            >
+              No accounts registered.
+              <router-link to="/login" @click="showAddMenu = false; addColumnType = null">
+                Add account
+              </router-link>
+            </div>
+
+            <button
+              v-for="account in accountsStore.accounts"
+              :key="account.id"
+              class="_button add-account-btn"
+              @click="addColumnForAccount(account.id)"
+            >
+              <img
+                v-if="account.avatarUrl"
+                :src="account.avatarUrl"
+                class="add-account-avatar"
+              />
+              <span>@{{ account.username }}@{{ account.host }}</span>
+            </button>
+          </template>
         </div>
       </div>
     </Teleport>
@@ -314,5 +367,51 @@ onMounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
+}
+
+.add-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.add-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  opacity: 0.7;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.add-back-btn:hover {
+  background: var(--nd-buttonHoverBg);
+  opacity: 1;
+}
+
+.add-type-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 24px;
+  font-size: 0.9em;
+  font-weight: bold;
+  color: var(--nd-fgHighlighted);
+  transition: background 0.15s;
+}
+
+.add-type-btn:hover {
+  background: var(--nd-buttonHoverBg);
+}
+
+.add-type-btn + .add-type-btn {
+  border-top: 1px solid var(--nd-divider);
+}
+
+.add-type-btn svg {
+  opacity: 0.7;
 }
 </style>
