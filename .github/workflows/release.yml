@@ -18,11 +18,14 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
-            args: '--target universal-apple-darwin'
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            tauri_args: --target universal-apple-darwin --bundles app
           - platform: ubuntu-22.04
-            args: ''
+            rust_targets: ''
+            tauri_args: --bundles none
           - platform: windows-latest
-            args: ''
+            rust_targets: ''
+            tauri_args: --bundles none
 
     runs-on: ${{ matrix.platform }}
 
@@ -43,7 +46,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.rust_targets }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -59,14 +62,35 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
-      - name: Build and release
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build
+        run: pnpm tauri build ${{ matrix.tauri_args }}
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Package (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          cd src-tauri/target/release
+          tar czf "${GITHUB_WORKSPACE}/NoteDeck-${{ steps.version.outputs.version }}-linux-x64.tar.gz" notedeck
+
+      - name: Package (macOS)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          cd src-tauri/target/universal-apple-darwin/release/bundle/macos
+          zip -ry "${GITHUB_WORKSPACE}/NoteDeck-${{ steps.version.outputs.version }}-macos-universal.zip" NoteDeck.app
+
+      - name: Package (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          Compress-Archive -Path "src-tauri\target\release\notedeck.exe" -DestinationPath "NoteDeck-${version}-windows-x64.zip"
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
         with:
-          tagName: v__VERSION__
-          releaseName: 'notedeck v__VERSION__'
-          releaseBody: 'See the assets to download and install.'
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}
+          draft: true
+          files: NoteDeck-*
