@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import type { ServerSoftware } from '@/adapters/types'
-import { db } from '@/db'
 
 export interface Account {
   id: string
@@ -34,24 +34,9 @@ export const useAccountsStore = defineStore('accounts', () => {
   })
 
   async function loadAccounts(): Promise<void> {
-    const stored = await db.accounts.toArray()
-
-    // Deduplicate by host+userId (keep first, remove extras from DB)
-    const seen = new Map<string, Account>()
-    const dupeIds: string[] = []
-    for (const acc of stored) {
-      const key = `${acc.host}:${acc.userId}`
-      if (seen.has(key)) {
-        dupeIds.push(acc.id)
-      } else {
-        seen.set(key, acc)
-      }
-    }
-    if (dupeIds.length > 0) {
-      await db.accounts.bulkDelete(dupeIds)
-    }
-
-    accounts.value = [...seen.values()]
+    // Deduplication is handled by UNIQUE(host, user_id) constraint in SQLite
+    const stored = await invoke<Account[]>('load_accounts')
+    accounts.value = stored
     if (accounts.value.length > 0 && !activeAccountId.value) {
       activeAccountId.value = accounts.value[0]!.id
     }
@@ -59,31 +44,15 @@ export const useAccountsStore = defineStore('accounts', () => {
   }
 
   async function addAccount(account: Account): Promise<void> {
-    // Check in-memory first, then DB for dedup (handles case where loadAccounts hasn't run)
-    let existingId: string | undefined
-    const inMemory = accounts.value.find(
+    // UPSERT handled by Rust side (ON CONFLICT)
+    await invoke('upsert_account', { account })
+
+    const idx = accounts.value.findIndex(
       (a) => a.host === account.host && a.userId === account.userId,
     )
-    if (inMemory) {
-      existingId = inMemory.id
+    if (idx >= 0) {
+      accounts.value[idx] = account
     } else {
-      const inDb = await db.accounts
-        .filter((a) => a.host === account.host && a.userId === account.userId)
-        .first()
-      if (inDb) {
-        existingId = inDb.id
-      }
-    }
-
-    if (existingId) {
-      const updated = { ...account, id: existingId }
-      await db.accounts.put(updated)
-      const idx = accounts.value.findIndex((a) => a.id === existingId)
-      if (idx >= 0) {
-        accounts.value[idx] = updated
-      }
-    } else {
-      await db.accounts.put(account)
       accounts.value.push(account)
     }
     if (!activeAccountId.value) {
@@ -92,7 +61,7 @@ export const useAccountsStore = defineStore('accounts', () => {
   }
 
   async function removeAccount(id: string): Promise<void> {
-    await db.accounts.delete(id)
+    await invoke('delete_account', { id })
     accounts.value = accounts.value.filter((a) => a.id !== id)
     if (activeAccountId.value === id) {
       activeAccountId.value = accounts.value[0]?.id ?? null

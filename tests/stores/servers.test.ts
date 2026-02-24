@@ -1,7 +1,10 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { db } from '@/db'
 import { useServersStore } from '@/stores/servers'
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn().mockResolvedValue(null),
+}))
 
 vi.mock('@/core/server', () => ({
   detectServer: vi.fn(),
@@ -27,9 +30,8 @@ function createMockServerInfo(host = 'example.com') {
 }
 
 describe('servers store', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     setActivePinia(createPinia())
-    await db.servers.clear()
   })
 
   afterEach(() => {

@@ -1,7 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Account } from '@/stores/accounts'
 import { useAccountsStore } from '@/stores/accounts'
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn(),
+}))
 
 function createTestAccount(overrides: Partial<Account> = {}): Account {
   return {

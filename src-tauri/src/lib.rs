@@ -5,6 +5,10 @@ use tauri::{
 };
 use tauri_plugin_autostart::MacosLauncher;
 
+mod commands;
+mod db;
+mod models;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -15,7 +19,26 @@ pub fn run() {
             MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
         ))
+        .invoke_handler(tauri::generate_handler![
+            commands::load_accounts,
+            commands::upsert_account,
+            commands::delete_account,
+            commands::load_servers,
+            commands::get_server,
+            commands::upsert_server,
+        ])
         .setup(|app| {
+            // Initialize SQLite database
+            let app_dir = app
+                .path()
+                .app_data_dir()
+                .expect("failed to resolve app data dir");
+            std::fs::create_dir_all(&app_dir)?;
+            let db_path = app_dir.join("notedeck.db");
+            let database = db::Database::open(&db_path).expect("failed to open database");
+            app.manage(database);
+
+            // System tray
             let show_i = MenuItem::with_id(app, "show", "Show NoteDeck", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
@@ -60,7 +83,6 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                // Minimize to tray instead of quitting
                 api.prevent_close();
                 let _ = window.hide();
             }
