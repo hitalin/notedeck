@@ -29,8 +29,7 @@ async function startLogin() {
     await openUrl(currentSession.url)
   } catch (e) {
     step.value = 'error'
-    errorMessage.value =
-      e instanceof Error ? e.message : 'Failed to start authentication'
+    errorMessage.value = e instanceof Error ? e.message : String(e)
   }
 }
 
@@ -55,8 +54,7 @@ async function completeLogin() {
     router.push('/')
   } catch (e) {
     step.value = 'error'
-    errorMessage.value =
-      e instanceof Error ? e.message : 'Failed to complete authentication'
+    errorMessage.value = e instanceof Error ? e.message : String(e)
   }
 }
 

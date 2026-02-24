@@ -27,7 +27,10 @@ pub struct MisskeyClient {
 impl MisskeyClient {
     pub fn new() -> Self {
         Self {
-            client: Client::new(),
+            client: Client::builder()
+                .user_agent("NoteDeck/0.0.3")
+                .build()
+                .expect("Failed to build HTTP client"),
         }
     }
 
@@ -269,6 +272,7 @@ impl MisskeyClient {
         let res = self
             .client
             .post(format!("https://{host}/api/miauth/{session_id}/check"))
+            .json(&json!({}))
             .send()
             .await
             .map_err(|e| e.to_string())?;
@@ -282,9 +286,12 @@ impl MisskeyClient {
             return Err("MiAuth authentication was not completed".to_string());
         }
 
+        let token = data.token.ok_or("MiAuth response missing token")?;
+        let user = data.user.ok_or("MiAuth response missing user")?;
+
         Ok(AuthResult {
-            token: data.token,
-            user: data.user.into(),
+            token,
+            user: user.into(),
         })
     }
 

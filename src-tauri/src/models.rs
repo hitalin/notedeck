@@ -273,8 +273,8 @@ pub struct RawUserDetail {
 #[derive(Debug, Deserialize)]
 pub struct RawMiAuthResponse {
     pub ok: bool,
-    pub token: String,
-    pub user: RawUser,
+    pub token: Option<String>,
+    pub user: Option<RawUser>,
 }
 
 #[derive(Debug, Deserialize)]
