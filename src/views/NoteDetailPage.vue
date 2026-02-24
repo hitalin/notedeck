@@ -33,7 +33,7 @@ onMounted(async () => {
 
   try {
     const serverInfo = await serversStore.getServerInfo(account.host)
-    adapter = createAdapter(serverInfo, account.token, account.id)
+    adapter = createAdapter(serverInfo, account.id)
     if (!emojisStore.has(account.host)) {
       adapter.api.getServerEmojis().then((emojis) => {
         emojisStore.set(account.host, emojis)

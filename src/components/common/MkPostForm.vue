@@ -71,7 +71,7 @@ async function initAdapter() {
   adapter = null
   try {
     const serverInfo = await serversStore.getServerInfo(acc.host)
-    adapter = createAdapter(serverInfo, acc.token, acc.id)
+    adapter = createAdapter(serverInfo, acc.id)
   } catch {
     error.value = 'Failed to connect'
   }

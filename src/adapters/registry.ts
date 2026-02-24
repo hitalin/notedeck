@@ -3,7 +3,6 @@ import type { ServerAdapter, ServerInfo, ServerSoftware } from './types'
 
 type AdapterFactory = (
   info: ServerInfo,
-  token: string,
   accountId: string,
 ) => ServerAdapter
 
@@ -18,7 +17,6 @@ export function registerAdapter(
 
 export function createAdapter(
   info: ServerInfo,
-  token: string,
   accountId: string,
 ): ServerAdapter {
   const factory = registry.get(info.software) ?? registry.get('misskey')
@@ -27,7 +25,7 @@ export function createAdapter(
       `No adapter registered for "${info.software}" and no fallback "misskey" adapter found`,
     )
   }
-  return factory(info, token, accountId)
+  return factory(info, accountId)
 }
 
 export function getRegisteredSoftware(): ServerSoftware[] {

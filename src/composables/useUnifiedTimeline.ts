@@ -51,7 +51,7 @@ export function useUnifiedTimeline(accounts: Account[]) {
 
   async function connectAccount(account: Account, type: TimelineType) {
     const serverInfo = await serversStore.getServerInfo(account.host)
-    const adapter = createAdapter(serverInfo, account.token, account.id)
+    const adapter = createAdapter(serverInfo, account.id)
 
     timelinesStore.initTimeline(account.id, type)
     timelinesStore.setLoading(account.id, true)

@@ -80,7 +80,7 @@ async function connect() {
 
   try {
     const serverInfo = await serversStore.getServerInfo(acc.host)
-    adapter = createAdapter(serverInfo, acc.token, acc.id)
+    adapter = createAdapter(serverInfo, acc.id)
 
     // Fetch server emojis once per host
     if (!emojisStore.has(acc.host)) {

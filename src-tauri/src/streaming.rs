@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use serde::Serialize;
@@ -81,6 +82,8 @@ struct SubscriptionInfo {
     host: String,
     /// "timeline" or "main"
     kind: String,
+    /// The Misskey channel name (e.g. "homeTimeline", "main")
+    channel: String,
 }
 
 pub struct StreamingManager {
@@ -109,20 +112,29 @@ impl StreamingManager {
         }
 
         let url = format!("wss://{host}/streaming?i={token}");
+
+        // Verify initial connection
         let (ws_stream, _) = tokio_tungstenite::connect_async(&url)
             .await
             .map_err(|e| format!("WebSocket connect failed: {e}"))?;
 
-        let (write, read) = ws_stream.split();
-        let write = Arc::new(Mutex::new(write));
         let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
 
         let account_id_owned = account_id.to_string();
+        let url_owned = url.clone();
         let subscriptions = self.subscriptions.clone();
         let app_clone = app.clone();
 
         let task = tokio::spawn(async move {
-            ws_loop(app_clone, account_id_owned, read, write, cmd_rx, subscriptions).await;
+            connection_task(
+                app_clone,
+                account_id_owned,
+                url_owned,
+                ws_stream,
+                cmd_rx,
+                subscriptions,
+            )
+            .await;
         });
 
         conns.insert(
@@ -183,6 +195,7 @@ impl StreamingManager {
                 account_id: account_id.to_string(),
                 host,
                 kind: "timeline".to_string(),
+                channel: channel.clone(),
             },
         );
 
@@ -202,6 +215,7 @@ impl StreamingManager {
                 account_id: account_id.to_string(),
                 host,
                 kind: "main".to_string(),
+                channel: "main".to_string(),
             },
         );
 
@@ -258,54 +272,154 @@ impl StreamingManager {
     }
 }
 
-type WsRead = futures_util::stream::SplitStream<
-    tokio_tungstenite::WebSocketStream<
-        tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
-    >,
+type WsStream = tokio_tungstenite::WebSocketStream<
+    tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
 >;
+type WsRead = futures_util::stream::SplitStream<WsStream>;
 type WsWrite = Arc<
     Mutex<
-        futures_util::stream::SplitSink<
-            tokio_tungstenite::WebSocketStream<
-                tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
-            >,
-            Message,
-        >,
+        futures_util::stream::SplitSink<WsStream, Message>,
     >,
 >;
 
-async fn ws_loop(
+enum WsExitReason {
+    Disconnected,
+    Shutdown,
+}
+
+const MAX_BACKOFF_SECS: u64 = 30;
+
+/// Top-level task that handles reconnection with exponential backoff.
+async fn connection_task(
     app: AppHandle,
     account_id: String,
-    mut read: WsRead,
-    write: WsWrite,
+    url: String,
+    initial_ws: WsStream,
     mut cmd_rx: mpsc::UnboundedReceiver<WsCommand>,
     subscriptions: Arc<Mutex<HashMap<String, SubscriptionInfo>>>,
 ) {
+    let mut backoff_secs: u64 = 1;
+
+    // Run the first session with the already-connected WebSocket
+    let reason = run_ws_session(&app, &account_id, initial_ws, &mut cmd_rx, &subscriptions).await;
+    if matches!(reason, WsExitReason::Shutdown) {
+        return;
+    }
+
+    // Reconnection loop
+    loop {
+        let _ = app.emit(
+            "stream-status",
+            StreamStatusEvent {
+                account_id: account_id.clone(),
+                state: "reconnecting".to_string(),
+            },
+        );
+
+        // Wait with backoff, but listen for Shutdown during the wait
+        let sleep = tokio::time::sleep(Duration::from_secs(backoff_secs));
+        tokio::pin!(sleep);
+
+        let shutdown_during_wait = loop {
+            tokio::select! {
+                _ = &mut sleep => break false,
+                cmd = cmd_rx.recv() => {
+                    match cmd {
+                        Some(WsCommand::Shutdown) | None => break true,
+                        // Buffer subscribe/unsubscribe — they'll be replayed after reconnect
+                        _ => {}
+                    }
+                }
+            }
+        };
+
+        if shutdown_during_wait {
+            return;
+        }
+
+        // Attempt reconnection
+        match tokio_tungstenite::connect_async(&url).await {
+            Ok((ws_stream, _)) => {
+                backoff_secs = 1; // Reset backoff on success
+
+                let _ = app.emit(
+                    "stream-status",
+                    StreamStatusEvent {
+                        account_id: account_id.clone(),
+                        state: "connected".to_string(),
+                    },
+                );
+
+                let reason = run_ws_session(
+                    &app,
+                    &account_id,
+                    ws_stream,
+                    &mut cmd_rx,
+                    &subscriptions,
+                )
+                .await;
+
+                if matches!(reason, WsExitReason::Shutdown) {
+                    return;
+                }
+            }
+            Err(_) => {
+                backoff_secs = (backoff_secs * 2).min(MAX_BACKOFF_SECS);
+            }
+        }
+    }
+}
+
+/// Run a single WebSocket session. Re-subscribes existing channels, then enters the message loop.
+async fn run_ws_session(
+    app: &AppHandle,
+    account_id: &str,
+    ws_stream: WsStream,
+    cmd_rx: &mut mpsc::UnboundedReceiver<WsCommand>,
+    subscriptions: &Arc<Mutex<HashMap<String, SubscriptionInfo>>>,
+) -> WsExitReason {
+    let (write, read) = ws_stream.split();
+    let write = Arc::new(Mutex::new(write));
+
+    // Re-subscribe all existing subscriptions for this account
+    {
+        let subs = subscriptions.lock().await;
+        for (sub_id, info) in subs.iter() {
+            if info.account_id == account_id {
+                let msg = json!({
+                    "type": "connect",
+                    "body": { "channel": info.channel, "id": sub_id }
+                });
+                let mut w = write.lock().await;
+                let _ = w.send(Message::Text(msg.to_string().into())).await;
+            }
+        }
+    }
+
+    ws_loop(app, account_id, read, write, cmd_rx, subscriptions).await
+}
+
+async fn ws_loop(
+    app: &AppHandle,
+    account_id: &str,
+    mut read: WsRead,
+    write: WsWrite,
+    cmd_rx: &mut mpsc::UnboundedReceiver<WsCommand>,
+    subscriptions: &Arc<Mutex<HashMap<String, SubscriptionInfo>>>,
+) -> WsExitReason {
     loop {
         tokio::select! {
             msg = read.next() => {
                 match msg {
                     Some(Ok(Message::Text(text))) => {
-                        handle_ws_message(&app, &account_id, &text, &subscriptions).await;
+                        handle_ws_message(app, account_id, &text, subscriptions).await;
                     }
                     Some(Ok(Message::Ping(data))) => {
                         let mut w = write.lock().await;
                         let _ = w.send(Message::Pong(data)).await;
                     }
-                    Some(Ok(Message::Close(_))) | None => {
-                        let _ = app.emit("stream-status", StreamStatusEvent {
-                            account_id: account_id.clone(),
-                            state: "disconnected".to_string(),
-                        });
-                        break;
-                    }
-                    Some(Err(_)) => {
-                        let _ = app.emit("stream-status", StreamStatusEvent {
-                            account_id: account_id.clone(),
-                            state: "disconnected".to_string(),
-                        });
-                        break;
+                    Some(Ok(Message::Close(_))) | None | Some(Err(_)) => {
+                        return WsExitReason::Disconnected;
                     }
                     _ => {}
                 }
@@ -331,7 +445,7 @@ async fn ws_loop(
                     Some(WsCommand::Shutdown) | None => {
                         let mut w = write.lock().await;
                         let _ = w.close().await;
-                        break;
+                        return WsExitReason::Shutdown;
                     }
                 }
             }

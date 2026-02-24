@@ -5,7 +5,6 @@ import { MisskeyStream } from './streaming'
 
 export function createMisskeyAdapter(
   serverInfo: ServerInfo,
-  _token: string,
   accountId: string,
 ): ServerAdapter {
   return {

@@ -126,7 +126,7 @@ async function connect() {
 
   try {
     const serverInfo = await serversStore.getServerInfo(acc.host)
-    adapter = createAdapter(serverInfo, acc.token, acc.id)
+    adapter = createAdapter(serverInfo, acc.id)
 
     if (!emojisStore.has(acc.host)) {
       adapter.api.getServerEmojis().then((emojis) => {

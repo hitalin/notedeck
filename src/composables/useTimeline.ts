@@ -22,7 +22,7 @@ export function useTimeline(account: Account) {
 
   async function connect(type: TimelineType = 'home') {
     const serverInfo = await serversStore.getServerInfo(account.host)
-    adapter = createAdapter(serverInfo, account.token, account.id)
+    adapter = createAdapter(serverInfo, account.id)
 
     timelinesStore.initTimeline(account.id, type)
     timelinesStore.setLoading(account.id, true)
