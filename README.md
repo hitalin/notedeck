@@ -9,7 +9,9 @@ Connect to multiple Misskey-compatible servers in one deck UI. Runs as a native 
 - **Multi-server** - Connect to multiple Misskey-compatible servers simultaneously
 - **Multi-platform** - Desktop (Windows / macOS / Linux), mobile (Android / iOS)
 - **Deck UI** - TweetDeck-style multi-column layout with drag & drop reordering
-- **Real-time streaming** - WebSocket-based live timeline updates
+- **Real-time streaming** - WebSocket streaming with auto-reconnect (Rust backend)
+- **Notifications** - Dedicated notification column with real-time updates
+- **Per-account themes** - Fetches and applies each account's server theme
 - **Custom emoji** - Full support for server-specific custom emoji
 - **Fork support** - Extensible adapter pattern for Misskey forks (Sharkey, CherryPick, etc.)
 
@@ -28,10 +30,12 @@ Connect to multiple Misskey-compatible servers in one deck UI. Runs as a native 
 | | |
 |---|---|
 | Frontend | Vue 3 + TypeScript |
-| Build | Vite |
+| Backend | Rust (Tauri v2) |
+| Build | Vite + Cargo |
 | State | Pinia |
-| Local DB | Dexie (IndexedDB) |
-| Native | Tauri v2 |
+| Local DB | SQLite (rusqlite, WAL mode) |
+| HTTP | reqwest (Rust) |
+| WebSocket | tokio-tungstenite (Rust) |
 | Linter | Biome |
 | Test | Vitest |
 
@@ -66,19 +70,28 @@ task clean        # Remove build artifacts
 ## Architecture
 
 ```
-src/
-├── adapters/       # Server API adapters (Misskey, forks)
-│   ├── types.ts    # Shared interfaces (ServerAdapter, ApiAdapter, StreamAdapter)
-│   ├── registry.ts # Adapter factory
-│   └── misskey/    # Misskey implementation
-├── components/     # Vue components
-│   ├── common/     # MkNote, etc.
-│   └── deck/       # DeckLayout, DeckColumn, DeckTimelineColumn
-├── stores/         # Pinia stores (accounts, deck, servers, emojis, etc.)
-├── views/          # Page components
-├── core/           # Business logic (server detection)
-├── composables/    # Vue composables
-└── db/             # Dexie schema
+src/                        # Vue 3 frontend
+├── adapters/               # Server API adapters (Misskey, forks)
+│   ├── types.ts            # Shared interfaces (ServerAdapter, ApiAdapter, StreamAdapter)
+│   ├── registry.ts         # Adapter factory
+│   └── misskey/            # Misskey implementation (IPC via invoke/listen)
+├── components/             # Vue components
+│   ├── common/             # MkNote, MkPostForm, MkEmoji, etc.
+│   └── deck/               # DeckLayout, DeckColumn, DeckTimelineColumn
+├── stores/                 # Pinia stores (accounts, deck, servers, emojis, theme, etc.)
+├── views/                  # Page components (NoteDetail, UserProfile)
+├── core/                   # Business logic (server detection)
+├── composables/            # Vue composables (useTheme, etc.)
+├── theme/                  # Theme compiler & applier
+└── utils/                  # Shared utilities
+
+src-tauri/src/              # Rust backend
+├── api.rs                  # Misskey HTTP API client (reqwest)
+├── streaming.rs            # WebSocket streaming with auto-reconnect
+├── commands.rs             # Tauri IPC command handlers
+├── db.rs                   # SQLite database (rusqlite, WAL mode)
+├── models.rs               # Shared data models & normalization
+└── lib.rs                  # App setup (tray, plugins, state)
 ```
 
 ### Adding support for a new fork
