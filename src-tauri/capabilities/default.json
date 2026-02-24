@@ -1,10 +1,15 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nicegui/nicegui/main/nicegui/static/tauri/capability.schema.json",
   "identifier": "default",
   "description": "Default capabilities for notedeck",
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-is-maximized",
+    "core:window:allow-set-focus",
+    "core:window:allow-start-dragging",
     "opener:default"
   ]
 }

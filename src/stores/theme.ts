@@ -133,8 +133,8 @@ export const useThemeStore = defineStore('theme', () => {
       const next = new Map(accountThemeCache.value)
       next.set(accountId, entry)
       accountThemeCache.value = next
-    } catch {
-      /* silently ignore */
+    } catch (e) {
+      console.warn('[theme] Failed to fetch account theme:', accountId, e)
     } finally {
       fetchingAccounts.delete(accountId)
     }

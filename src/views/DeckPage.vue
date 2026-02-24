@@ -26,7 +26,7 @@ onMounted(async () => {
 
 <style scoped>
 .deck-page {
-  height: 100dvh;
+  height: 100%;
   background: var(--nd-deckBg);
   overflow: hidden;
 }
