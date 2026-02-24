@@ -60,6 +60,19 @@ export interface NormalizedUser {
   avatarUrl: string | null
 }
 
+export interface NormalizedUserDetail extends NormalizedUser {
+  bannerUrl: string | null
+  description: string | null
+  followersCount: number
+  followingCount: number
+  notesCount: number
+  isBot: boolean
+  isCat: boolean
+  isFollowing: boolean
+  isFollowed: boolean
+  createdAt: string
+}
+
 export interface NormalizedDriveFile {
   id: string
   name: string
@@ -121,6 +134,7 @@ export interface ApiAdapter {
   deleteReaction(noteId: string): Promise<void>
   getServerEmojis(): Promise<Record<string, string>>
   getUser(userId: string): Promise<NormalizedUser>
+  getUserDetail(userId: string): Promise<NormalizedUserDetail>
   createNote(params: CreateNoteParams): Promise<NormalizedNote>
   getNotifications(
     options?: PaginationOptions,

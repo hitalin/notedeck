@@ -20,6 +20,12 @@ export const router = createRouter({
       props: true,
     },
     {
+      path: '/user/:accountId/:userId',
+      name: 'user-profile',
+      component: () => import('@/views/UserProfilePage.vue'),
+      props: true,
+    },
+    {
       path: '/settings',
       name: 'settings',
       component: () => import('@/views/SettingsPage.vue'),

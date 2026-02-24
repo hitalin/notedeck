@@ -4,11 +4,12 @@ import type {
   NormalizedNote,
   NormalizedNotification,
   NormalizedUser,
+  NormalizedUserDetail,
   PaginationOptions,
   TimelineOptions,
   TimelineType,
 } from '../types'
-import { normalizeNote, normalizeUser } from './normalize'
+import { normalizeNote, normalizeUser, normalizeUserDetail } from './normalize'
 
 const TIMELINE_ENDPOINTS: Record<TimelineType, string> = {
   home: 'notes/timeline',
@@ -86,6 +87,11 @@ export class MisskeyApi implements ApiAdapter {
   async getUser(userId: string): Promise<NormalizedUser> {
     const user = await this.request('users/show', { userId })
     return normalizeUser(user as never)
+  }
+
+  async getUserDetail(userId: string): Promise<NormalizedUserDetail> {
+    const user = await this.request<Record<string, unknown>>('users/show', { userId })
+    return normalizeUserDetail(user)
   }
 
   async createNote(params: CreateNoteParams): Promise<NormalizedNote> {

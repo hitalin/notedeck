@@ -3,6 +3,7 @@ import type {
   NormalizedDriveFile,
   NormalizedNote,
   NormalizedUser,
+  NormalizedUserDetail,
 } from '../types'
 
 export function normalizeNote(
@@ -42,6 +43,26 @@ export function normalizeUser(user: UserLite): NormalizedUser {
     host: user.host ?? null,
     name: user.name ?? null,
     avatarUrl: user.avatarUrl ?? null,
+  }
+}
+
+export function normalizeUserDetail(user: Record<string, unknown>): NormalizedUserDetail {
+  return {
+    id: user.id as string,
+    username: user.username as string,
+    host: (user.host as string) ?? null,
+    name: (user.name as string) ?? null,
+    avatarUrl: (user.avatarUrl as string) ?? null,
+    bannerUrl: (user.bannerUrl as string) ?? null,
+    description: (user.description as string) ?? null,
+    followersCount: (user.followersCount as number) ?? 0,
+    followingCount: (user.followingCount as number) ?? 0,
+    notesCount: (user.notesCount as number) ?? 0,
+    isBot: (user.isBot as boolean) ?? false,
+    isCat: (user.isCat as boolean) ?? false,
+    isFollowing: (user.isFollowing as boolean) ?? false,
+    isFollowed: (user.isFollowed as boolean) ?? false,
+    createdAt: (user.createdAt as string) ?? '',
   }
 }
 

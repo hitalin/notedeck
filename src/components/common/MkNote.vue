@@ -35,6 +35,11 @@ function navigateToDetail() {
   }
 }
 
+function navigateToUser(userId: string, e: Event) {
+  e.stopPropagation()
+  router.push(`/user/${props.note._accountId}/${userId}`)
+}
+
 function formatTime(iso: string): string {
   const date = new Date(iso)
   const now = new Date()
@@ -128,8 +133,9 @@ const textSegments = computed(() => {
         :src="effectiveNote.user.avatarUrl!"
         :alt="effectiveNote.user.username ?? undefined"
         class="avatar"
+        @click="navigateToUser(effectiveNote.user.id, $event)"
       />
-      <div v-else class="avatar avatar-placeholder" />
+      <div v-else class="avatar avatar-placeholder" @click="navigateToUser(effectiveNote.user.id, $event)" />
 
       <div class="main">
         <!-- Header -->
@@ -317,6 +323,12 @@ const textSegments = computed(() => {
   object-fit: cover;
   flex-shrink: 0;
   margin: 0 14px 0 0;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.avatar:hover {
+  opacity: 0.8;
 }
 
 .avatar-placeholder {
