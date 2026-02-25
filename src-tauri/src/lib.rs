@@ -39,6 +39,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             commands::api_get_user_notes,
             commands::api_get_server_emojis,
             commands::api_get_notifications,
+            commands::api_search_notes,
             commands::api_fetch_account_theme,
             commands::auth_start,
             commands::auth_complete,

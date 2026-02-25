@@ -7,7 +7,7 @@ use crate::db::Database;
 use crate::error::NoteDeckError;
 use crate::models::{
     Account, AuthResult, AuthSession, CreateNoteParams, NormalizedNote, NormalizedNotification,
-    NormalizedUser, NormalizedUserDetail, StoredServer, TimelineOptions, TimelineType,
+    NormalizedUser, NormalizedUserDetail, SearchOptions, StoredServer, TimelineOptions, TimelineType,
 };
 use crate::streaming::StreamingManager;
 
@@ -176,6 +176,20 @@ pub async fn api_get_notifications(
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .get_notifications(&host, &token, &account_id, options.unwrap_or_default())
+        .await
+}
+
+#[tauri::command]
+pub async fn api_search_notes(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    query: String,
+    options: Option<SearchOptions>,
+) -> Result<Vec<NormalizedNote>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .search_notes(&host, &token, &account_id, &query, options.unwrap_or_default())
         .await
 }
 

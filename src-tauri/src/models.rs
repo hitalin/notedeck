@@ -220,6 +220,31 @@ fn default_limit() -> i64 {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SearchOptions {
+    #[serde(default = "default_limit")]
+    limit: i64,
+    pub since_id: Option<String>,
+    pub until_id: Option<String>,
+}
+
+impl SearchOptions {
+    pub fn limit(&self) -> i64 {
+        self.limit.clamp(1, 100)
+    }
+}
+
+impl Default for SearchOptions {
+    fn default() -> Self {
+        Self {
+            limit: 20,
+            since_id: None,
+            until_id: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AuthSession {
     pub session_id: String,
     pub url: String,

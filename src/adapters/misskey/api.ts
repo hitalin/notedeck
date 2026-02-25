@@ -7,6 +7,7 @@ import type {
   NormalizedUser,
   NormalizedUserDetail,
   PaginationOptions,
+  SearchOptions,
   TimelineOptions,
   TimelineType,
 } from '../types'
@@ -102,6 +103,21 @@ export class MisskeyApi implements ApiAdapter {
   ): Promise<NormalizedNotification[]> {
     return invoke('api_get_notifications', {
       accountId: this.accountId,
+      options: {
+        limit: options.limit ?? 20,
+        sinceId: options.sinceId ?? null,
+        untilId: options.untilId ?? null,
+      },
+    })
+  }
+
+  async searchNotes(
+    query: string,
+    options: SearchOptions = {},
+  ): Promise<NormalizedNote[]> {
+    return invoke('api_search_notes', {
+      accountId: this.accountId,
+      query,
       options: {
         limit: options.limit ?? 20,
         sinceId: options.sinceId ?? null,

@@ -32,6 +32,12 @@ export interface PaginationOptions {
   untilId?: string
 }
 
+export interface SearchOptions {
+  limit?: number
+  sinceId?: string
+  untilId?: string
+}
+
 export interface NormalizedNote {
   id: string
   _accountId: string
@@ -152,6 +158,10 @@ export interface ApiAdapter {
   getNotifications(
     options?: PaginationOptions,
   ): Promise<NormalizedNotification[]>
+  searchNotes(
+    query: string,
+    options?: SearchOptions,
+  ): Promise<NormalizedNote[]>
 }
 
 export type StreamConnectionState =

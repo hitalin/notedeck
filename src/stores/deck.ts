@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { TimelineType } from '@/adapters/types'
 
-export type ColumnType = 'timeline' | 'notifications'
+export type ColumnType = 'timeline' | 'notifications' | 'search'
 
 export interface DeckColumn {
   id: string
@@ -11,6 +11,7 @@ export interface DeckColumn {
   width: number
   accountId: string | null
   tl?: TimelineType
+  query?: string
   active?: boolean
 }
 

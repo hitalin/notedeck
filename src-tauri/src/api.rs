@@ -8,7 +8,7 @@ use crate::error::NoteDeckError;
 use crate::models::{
     AuthResult, CreateNoteParams, NormalizedNote, NormalizedNotification, NormalizedUser,
     NormalizedUserDetail, RawCreateNoteResponse, RawEmojisResponse, RawMiAuthResponse, RawNote,
-    RawNotification, RawUser, RawUserDetail, TimelineOptions, TimelineType,
+    RawNotification, RawUser, RawUserDetail, SearchOptions, TimelineOptions, TimelineType,
 };
 
 
@@ -228,6 +228,30 @@ impl MisskeyClient {
         }
 
         let data = self.request(host, token, "users/notes", params).await?;
+        let raw: Vec<RawNote> = serde_json::from_value(data)?;
+        Ok(raw
+            .into_iter()
+            .map(|n| n.normalize(account_id, host))
+            .collect())
+    }
+
+    pub async fn search_notes(
+        &self,
+        host: &str,
+        token: &str,
+        account_id: &str,
+        query: &str,
+        options: SearchOptions,
+    ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
+        let mut params = json!({ "query": query, "limit": options.limit() });
+        if let Some(ref id) = options.since_id {
+            params["sinceId"] = json!(id);
+        }
+        if let Some(ref id) = options.until_id {
+            params["untilId"] = json!(id);
+        }
+
+        let data = self.request(host, token, "notes/search", params).await?;
         let raw: Vec<RawNote> = serde_json::from_value(data)?;
         Ok(raw
             .into_iter()

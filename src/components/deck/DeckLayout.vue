@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
+import DeckSearchColumn from './DeckSearchColumn.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useDeckStore } from '@/stores/deck'
 import { useAccountsStore } from '@/stores/accounts'
@@ -23,9 +24,9 @@ function closeCompose() {
   showCompose.value = false
 }
 
-const addColumnType = ref<'timeline' | 'notifications' | null>(null)
+const addColumnType = ref<'timeline' | 'notifications' | 'search' | null>(null)
 
-function selectColumnType(type: 'timeline' | 'notifications') {
+function selectColumnType(type: 'timeline' | 'notifications' | 'search') {
   addColumnType.value = type
 }
 
@@ -70,6 +71,10 @@ onMounted(() => {
           />
           <DeckNotificationColumn
             v-else-if="deckStore.getColumn(colId)?.type === 'notifications'"
+            :column="deckStore.getColumn(colId)!"
+          />
+          <DeckSearchColumn
+            v-else-if="deckStore.getColumn(colId)?.type === 'search'"
             :column="deckStore.getColumn(colId)!"
           />
         </section>
@@ -202,6 +207,13 @@ onMounted(() => {
                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
               </svg>
               <span>Notifications</span>
+            </button>
+            <button class="_button add-type-btn" @click="selectColumnType('search')">
+              <svg viewBox="0 0 24 24" width="18" height="18">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              </svg>
+              <span>Search</span>
             </button>
           </template>
 
