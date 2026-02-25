@@ -8,6 +8,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { toggleReaction } from '@/utils/toggleReaction'
+import { AppError } from '@/utils/errors'
 
 const props = defineProps<{
   accountId: string
@@ -22,7 +23,7 @@ const user = ref<NormalizedUserDetail | null>(null)
 const notes = ref<NormalizedNote[]>([])
 const isLoading = ref(true)
 const isLoadingNotes = ref(false)
-const error = ref<string | null>(null)
+const error = ref<AppError | null>(null)
 
 let adapter: ServerAdapter | null = null
 
@@ -40,12 +41,12 @@ onMounted(async () => {
     if (!emojisStore.has(account.host)) {
       adapter.api.getServerEmojis().then((emojis) => {
         emojisStore.set(account.host, emojis)
-      }).catch(() => {})
+      }).catch((e) => { console.warn('[UserProfile] failed to fetch emojis:', e) })
     }
     user.value = await adapter.api.getUserDetail(props.userId)
     notes.value = await adapter.api.getUserNotes(props.userId, { limit: 20 })
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load user'
+    error.value = AppError.from(e)
   } finally {
     isLoading.value = false
   }
@@ -62,7 +63,7 @@ async function loadMoreNotes() {
     })
     notes.value = [...notes.value, ...older]
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load notes'
+    error.value = AppError.from(e)
   } finally {
     isLoadingNotes.value = false
   }
@@ -100,7 +101,7 @@ async function handleReaction(note: NormalizedNote, reaction: string) {
   try {
     await toggleReaction(adapter.api, note, reaction)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Reaction failed'
+    error.value = AppError.from(e)
   }
 }
 
@@ -109,7 +110,7 @@ async function handleRenote(target: NormalizedNote) {
   try {
     await adapter.api.createNote({ renoteId: target.id })
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Renote failed'
+    error.value = AppError.from(e)
   }
 }
 
@@ -154,7 +155,7 @@ function closePostForm() {
     <div v-if="isLoading" class="state-message">Loading...</div>
 
     <div v-else-if="error" class="state-message state-error">
-      <p>{{ error }}</p>
+      <p>{{ error.message }}</p>
     </div>
 
     <template v-else-if="user">

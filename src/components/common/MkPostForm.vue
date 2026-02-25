@@ -40,15 +40,9 @@ const account = computed(() =>
   accountsStore.accounts.find((a) => a.id === activeAccountId.value),
 )
 
-const formThemeVars = computed(() => {
-  const compiled = themeStore.getCompiledForAccount(activeAccountId.value)
-  if (!compiled) return undefined
-  const style: Record<string, string> = {}
-  for (const [key, value] of Object.entries(compiled)) {
-    style[`--nd-${key}`] = value
-  }
-  return style
-})
+const formThemeVars = computed(() =>
+  themeStore.getStyleVarsForAccount(activeAccountId.value),
+)
 
 const visibilityOptions: { value: typeof visibility.value; label: string; icon: string }[] = [
   { value: 'public', label: 'Public', icon: 'M22 12A10 10 0 112 12a10 10 0 0120 0zM2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z' },

@@ -13,16 +13,15 @@ pub struct MisskeyClient {
 }
 
 impl MisskeyClient {
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Result<Self, NoteDeckError> {
+        Ok(Self {
             client: Client::builder()
                 .user_agent("NoteDeck/0.0.3")
                 .timeout(Duration::from_secs(30))
                 .connect_timeout(Duration::from_secs(10))
                 .pool_max_idle_per_host(4)
-                .build()
-                .expect("Failed to build HTTP client"),
-        }
+                .build()?,
+        })
     }
 
     async fn request(

@@ -6,6 +6,7 @@ import { MisskeyAuth } from '@/adapters/misskey/auth'
 import type { AuthSession } from '@/adapters/types'
 import { detectServer } from '@/core/server'
 import { useAccountsStore } from '@/stores/accounts'
+import { AppError } from '@/utils/errors'
 
 const router = useRouter()
 const accountsStore = useAccountsStore()
@@ -29,7 +30,7 @@ async function startLogin() {
     await openUrl(currentSession.url)
   } catch (e) {
     step.value = 'error'
-    errorMessage.value = e instanceof Error ? e.message : String(e)
+    errorMessage.value = AppError.from(e).message
   }
 }
 
@@ -54,7 +55,7 @@ async function completeLogin() {
     router.push('/')
   } catch (e) {
     step.value = 'error'
-    errorMessage.value = e instanceof Error ? e.message : String(e)
+    errorMessage.value = AppError.from(e).message
   }
 }
 

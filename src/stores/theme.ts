@@ -159,6 +159,16 @@ export const useThemeStore = defineStore('theme', () => {
     return accountThemeCache.value.get(accountId) ?? null
   }
 
+  function getStyleVarsForAccount(accountId: string): Record<string, string> | undefined {
+    const compiled = getCompiledForAccount(accountId)
+    if (!compiled) return undefined
+    const style: Record<string, string> = {}
+    for (const [key, value] of Object.entries(compiled)) {
+      style[`--nd-${key}`] = value
+    }
+    return style
+  }
+
   function getCompiledForAccount(accountId: string): CompiledProps | null {
     const wantLight = currentSource.value?.kind.includes('light') ?? false
     const cacheKey = `${accountId}:${wantLight ? 'light' : 'dark'}`
@@ -187,5 +197,6 @@ export const useThemeStore = defineStore('theme', () => {
     fetchAccountTheme,
     getAccountThemes,
     getCompiledForAccount,
+    getStyleVarsForAccount,
   }
 })

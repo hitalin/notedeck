@@ -58,7 +58,7 @@ pub fn run() {
             app.manage(database);
 
             // Initialize Misskey HTTP client
-            app.manage(api::MisskeyClient::new());
+            app.manage(api::MisskeyClient::new()?);
 
             // Initialize streaming manager
             app.manage(streaming::StreamingManager::new());
@@ -68,8 +68,12 @@ pub fn run() {
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
+            let icon = app.default_window_icon()
+                .ok_or("Default window icon not found")?
+                .clone();
+
             TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(icon)
                 .tooltip("NoteDeck")
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id.as_ref() {

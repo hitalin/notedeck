@@ -133,13 +133,15 @@ impl StreamingManager {
             },
         );
 
-        let _ = app.emit(
+        if let Err(e) = app.emit(
             "stream-status",
             StreamStatusEvent {
                 account_id: account_id.to_string(),
                 state: "connected".to_string(),
             },
-        );
+        ) {
+            eprintln!("[stream] emit connected failed: {e}");
+        }
 
         Ok(())
     }
@@ -155,13 +157,15 @@ impl StreamingManager {
         let mut subs = self.subscriptions.lock().await;
         subs.retain(|_, info| info.account_id != account_id);
 
-        let _ = app.emit(
+        if let Err(e) = app.emit(
             "stream-status",
             StreamStatusEvent {
                 account_id: account_id.to_string(),
                 state: "disconnected".to_string(),
             },
-        );
+        ) {
+            eprintln!("[stream] emit disconnected failed: {e}");
+        }
     }
 
     pub async fn subscribe_timeline(
@@ -295,13 +299,15 @@ async fn connection_task(
 
     // Reconnection loop
     loop {
-        let _ = app.emit(
+        if let Err(e) = app.emit(
             "stream-status",
             StreamStatusEvent {
                 account_id: account_id.clone(),
                 state: "reconnecting".to_string(),
             },
-        );
+        ) {
+            eprintln!("[stream] emit reconnecting failed: {e}");
+        }
 
         // Wait with backoff, but listen for Shutdown during the wait
         let sleep = tokio::time::sleep(Duration::from_secs(backoff_secs));
@@ -331,13 +337,15 @@ async fn connection_task(
             Ok((ws_stream, _)) => {
                 backoff_secs = 1; // Reset backoff on success
 
-                let _ = app.emit(
+                if let Err(e) = app.emit(
                     "stream-status",
                     StreamStatusEvent {
                         account_id: account_id.clone(),
                         state: "connected".to_string(),
                     },
-                );
+                ) {
+                    eprintln!("[stream] emit connected failed: {e}");
+                }
 
                 let reason = run_ws_session(
                     &app,
@@ -385,7 +393,9 @@ async fn run_ws_session(
             "body": { "channel": channel, "id": sub_id }
         });
         let mut w = write.lock().await;
-        let _ = w.send(Message::Text(msg.to_string().into())).await;
+        if let Err(e) = w.send(Message::Text(msg.to_string().into())).await {
+            eprintln!("[stream] re-subscribe send failed: {e}");
+        }
     }
 
     ws_loop(app, account_id, read, write, cmd_rx, subscriptions).await
@@ -408,7 +418,9 @@ async fn ws_loop(
                     }
                     Some(Ok(Message::Ping(data))) => {
                         let mut w = write.lock().await;
-                        let _ = w.send(Message::Pong(data)).await;
+                        if let Err(e) = w.send(Message::Pong(data)).await {
+                            eprintln!("[stream] pong send failed: {e}");
+                        }
                     }
                     Some(Ok(Message::Close(_))) | None | Some(Err(_)) => {
                         return WsExitReason::Disconnected;
@@ -424,7 +436,9 @@ async fn ws_loop(
                             "body": { "channel": channel, "id": id }
                         });
                         let mut w = write.lock().await;
-                        let _ = w.send(Message::Text(msg.to_string().into())).await;
+                        if let Err(e) = w.send(Message::Text(msg.to_string().into())).await {
+                            eprintln!("[stream] subscribe send failed: {e}");
+                        }
                     }
                     Some(WsCommand::Unsubscribe { id }) => {
                         let msg = json!({
@@ -432,7 +446,9 @@ async fn ws_loop(
                             "body": { "id": id }
                         });
                         let mut w = write.lock().await;
-                        let _ = w.send(Message::Text(msg.to_string().into())).await;
+                        if let Err(e) = w.send(Message::Text(msg.to_string().into())).await {
+                            eprintln!("[stream] unsubscribe send failed: {e}");
+                        }
                     }
                     Some(WsCommand::Shutdown) | None => {
                         let mut w = write.lock().await;
@@ -491,30 +507,34 @@ async fn handle_ws_message(
     if info.kind == "timeline" && event_type == "note" {
         if let Ok(raw) = serde_json::from_value::<RawNote>(event_body) {
             let note = raw.normalize(account_id, &info.host);
-            let _ = app.emit(
+            if let Err(e) = app.emit(
                 "stream-note",
                 StreamNoteEvent {
                     account_id: account_id.to_string(),
                     subscription_id: sub_id.to_string(),
                     note,
                 },
-            );
+            ) {
+                eprintln!("[stream] emit note failed: {e}");
+            }
         }
     } else if info.kind == "main" {
         if event_type == "notification" {
             if let Ok(raw) = serde_json::from_value::<RawNotification>(event_body.clone()) {
                 let notification = raw.normalize(account_id, &info.host);
-                let _ = app.emit(
+                if let Err(e) = app.emit(
                     "stream-notification",
                     StreamNotificationEvent {
                         account_id: account_id.to_string(),
                         subscription_id: sub_id.to_string(),
                         notification,
                     },
-                );
+                ) {
+                    eprintln!("[stream] emit notification failed: {e}");
+                }
             }
         } else {
-            let _ = app.emit(
+            if let Err(e) = app.emit(
                 "stream-main-event",
                 StreamMainEvent {
                     account_id: account_id.to_string(),
@@ -522,7 +542,9 @@ async fn handle_ws_message(
                     event_type: event_type.to_string(),
                     body: event_body,
                 },
-            );
+            ) {
+                eprintln!("[stream] emit main-event failed: {e}");
+            }
         }
     }
 }

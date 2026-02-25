@@ -8,6 +8,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { toggleReaction } from '@/utils/toggleReaction'
+import { AppError } from '@/utils/errors'
 
 const props = defineProps<{
   accountId: string
@@ -20,7 +21,7 @@ const serversStore = useServersStore()
 
 const note = ref<NormalizedNote | null>(null)
 const isLoading = ref(true)
-const error = ref<string | null>(null)
+const error = ref<AppError | null>(null)
 
 let adapter: ServerAdapter | null = null
 
@@ -38,11 +39,11 @@ onMounted(async () => {
     if (!emojisStore.has(account.host)) {
       adapter.api.getServerEmojis().then((emojis) => {
         emojisStore.set(account.host, emojis)
-      }).catch(() => {})
+      }).catch((e) => { console.warn('[NoteDetail] failed to fetch emojis:', e) })
     }
     note.value = await adapter.api.getNote(props.noteId)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load note'
+    error.value = AppError.from(e)
   } finally {
     isLoading.value = false
   }
@@ -53,7 +54,7 @@ async function handleReaction(reaction: string) {
   try {
     await toggleReaction(adapter.api, note.value, reaction)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Reaction failed'
+    error.value = AppError.from(e)
   }
 }
 
@@ -67,7 +68,7 @@ async function handleRenote(target: NormalizedNote) {
   try {
     await adapter.api.createNote({ renoteId: target.id })
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Renote failed'
+    error.value = AppError.from(e)
   }
 }
 
@@ -111,7 +112,7 @@ function closePostForm() {
     <div v-if="isLoading" class="state-message">Loading...</div>
 
     <div v-else-if="error" class="state-message state-error">
-      <p>{{ error }}</p>
+      <p>{{ error.message }}</p>
     </div>
 
     <div v-else-if="note" class="note-detail">

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { shallowRef } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import type { ServerInfo } from '@/adapters/types'
 import { detectServer } from '@/core/server'
@@ -15,18 +15,21 @@ interface StoredServer {
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 
 export const useServersStore = defineStore('servers', () => {
-  const servers = ref<Map<string, ServerInfo>>(new Map())
+  // shallowRef + full Map replacement avoids deep reactivity on server info objects
+  const servers = shallowRef(new Map<string, ServerInfo>())
 
   async function loadCachedServers(): Promise<void> {
     const stored = await invoke<StoredServer[]>('load_servers')
+    const next = new Map(servers.value)
     for (const s of stored) {
-      servers.value.set(s.host, {
+      next.set(s.host, {
         host: s.host,
         software: s.software as ServerInfo['software'],
         version: s.version,
         features: JSON.parse(s.featuresJson),
       })
     }
+    servers.value = next
   }
 
   async function getServerInfo(host: string): Promise<ServerInfo> {
@@ -41,12 +44,16 @@ export const useServersStore = defineStore('servers', () => {
         version: stored.version,
         features: JSON.parse(stored.featuresJson),
       }
-      servers.value.set(host, info)
+      const next = new Map(servers.value)
+      next.set(host, info)
+      servers.value = next
       return info
     }
 
     const info = await detectServer(host)
-    servers.value.set(host, info)
+    const next = new Map(servers.value)
+    next.set(host, info)
+    servers.value = next
     await invoke('upsert_server', {
       server: {
         host: info.host,

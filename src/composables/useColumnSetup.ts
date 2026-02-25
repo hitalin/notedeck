@@ -23,13 +23,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   const columnThemeVars = computed(() => {
     const accountId = getColumn().accountId
     if (!accountId) return undefined
-    const compiled = themeStore.getCompiledForAccount(accountId)
-    if (!compiled) return undefined
-    const style: Record<string, string> = {}
-    for (const [key, value] of Object.entries(compiled)) {
-      style[`--nd-${key}`] = value
-    }
-    return style
+    return themeStore.getStyleVarsForAccount(accountId)
   })
 
   const isLoading = ref(false)
@@ -46,7 +40,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     if (!emojisStore.has(acc.host)) {
       adapter.api.getServerEmojis().then((emojis) => {
         emojisStore.set(acc.host, emojis)
-      }).catch(() => {})
+      }).catch((e) => { console.warn('[column] failed to fetch emojis:', e) })
     }
     return adapter
   }

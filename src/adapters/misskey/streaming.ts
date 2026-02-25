@@ -71,7 +71,9 @@ export class MisskeyStream implements StreamAdapter {
   disconnect(): void {
     this.statusUnlisten?.()
     this.statusUnlisten = null
-    invoke('stream_disconnect', { accountId: this.accountId }).catch(() => {})
+    invoke('stream_disconnect', { accountId: this.accountId }).catch((e) => {
+      console.warn('[stream] disconnect failed:', e)
+    })
     this._state = 'disconnected'
     this.emit('disconnected')
   }
@@ -114,7 +116,7 @@ export class MisskeyStream implements StreamAdapter {
             invoke('stream_unsubscribe', {
               accountId: this.accountId,
               subscriptionId: id,
-            }).catch(() => {})
+            }).catch((e) => { console.warn('[stream] unsubscribe failed:', e) })
           }
         })
       },
@@ -175,7 +177,7 @@ export class MisskeyStream implements StreamAdapter {
             invoke('stream_unsubscribe', {
               accountId: this.accountId,
               subscriptionId: id,
-            }).catch(() => {})
+            }).catch((e) => { console.warn('[stream] unsubscribe failed:', e) })
           }
         })
       },
