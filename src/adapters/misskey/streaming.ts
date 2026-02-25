@@ -82,34 +82,41 @@ export class MisskeyStream implements StreamAdapter {
   ): ChannelSubscription {
     let noteUnlisten: (() => void) | null = null
     let subscriptionId: string | null = null
+    let disposed = false
 
-    // Listen for note events first, then subscribe
-    listen<StreamNoteEvent>('stream-note', (event) => {
+    const unlistenPromise = listen<StreamNoteEvent>('stream-note', (event) => {
+      if (disposed) return
       if (event.payload.accountId !== this.accountId) return
       if (subscriptionId && event.payload.subscriptionId !== subscriptionId) return
       handler(event.payload.note)
     }).then((unlisten) => {
       noteUnlisten = unlisten
+      if (disposed) unlisten()
     })
 
-    invoke<string>('stream_subscribe_timeline', {
+    const subscribePromise = invoke<string>('stream_subscribe_timeline', {
       accountId: this.accountId,
       timelineType: type,
     }).then((id) => {
-      subscriptionId = id
+      if (!disposed) subscriptionId = id
+      return id
     }).catch((e) => {
       console.error('[stream] subscribe timeline failed:', e)
+      return null
     })
 
     return {
       dispose: () => {
-        noteUnlisten?.()
-        if (subscriptionId) {
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId,
-          }).catch(() => {})
-        }
+        disposed = true
+        unlistenPromise.then(() => noteUnlisten?.())
+        subscribePromise.then((id) => {
+          if (id) {
+            invoke('stream_unsubscribe', {
+              accountId: this.accountId,
+              subscriptionId: id,
+            }).catch(() => {})
+          }
+        })
       },
     }
   }
@@ -120,9 +127,10 @@ export class MisskeyStream implements StreamAdapter {
     let notifUnlisten: (() => void) | null = null
     let mainUnlisten: (() => void) | null = null
     let subscriptionId: string | null = null
+    let disposed = false
 
-    // Listen for notification events
-    listen<StreamNotificationEvent>('stream-notification', (event) => {
+    const notifPromise = listen<StreamNotificationEvent>('stream-notification', (event) => {
+      if (disposed) return
       if (event.payload.accountId !== this.accountId) return
       if (subscriptionId && event.payload.subscriptionId !== subscriptionId) return
       handler({
@@ -131,10 +139,11 @@ export class MisskeyStream implements StreamAdapter {
       })
     }).then((unlisten) => {
       notifUnlisten = unlisten
+      if (disposed) unlisten()
     })
 
-    // Listen for other main channel events
-    listen<StreamMainEvent>('stream-main-event', (event) => {
+    const mainPromise = listen<StreamMainEvent>('stream-main-event', (event) => {
+      if (disposed) return
       if (event.payload.accountId !== this.accountId) return
       if (subscriptionId && event.payload.subscriptionId !== subscriptionId) return
       handler({
@@ -143,26 +152,32 @@ export class MisskeyStream implements StreamAdapter {
       })
     }).then((unlisten) => {
       mainUnlisten = unlisten
+      if (disposed) unlisten()
     })
 
-    invoke<string>('stream_subscribe_main', {
+    const subscribePromise = invoke<string>('stream_subscribe_main', {
       accountId: this.accountId,
     }).then((id) => {
-      subscriptionId = id
+      if (!disposed) subscriptionId = id
+      return id
     }).catch((e) => {
       console.error('[stream] subscribe main failed:', e)
+      return null
     })
 
     return {
       dispose: () => {
-        notifUnlisten?.()
-        mainUnlisten?.()
-        if (subscriptionId) {
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId,
-          }).catch(() => {})
-        }
+        disposed = true
+        notifPromise.then(() => notifUnlisten?.())
+        mainPromise.then(() => mainUnlisten?.())
+        subscribePromise.then((id) => {
+          if (id) {
+            invoke('stream_unsubscribe', {
+              accountId: this.accountId,
+              subscriptionId: id,
+            }).catch(() => {})
+          }
+        })
       },
     }
   }

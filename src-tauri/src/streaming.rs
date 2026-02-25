@@ -381,19 +381,22 @@ async fn run_ws_session(
     let (write, read) = ws_stream.split();
     let write = Arc::new(Mutex::new(write));
 
-    // Re-subscribe all existing subscriptions for this account
-    {
+    // Collect subscriptions to replay, then drop the lock before doing I/O
+    let to_resub: Vec<(String, String)> = {
         let subs = subscriptions.lock().await;
-        for (sub_id, info) in subs.iter() {
-            if info.account_id == account_id {
-                let msg = json!({
-                    "type": "connect",
-                    "body": { "channel": info.channel, "id": sub_id }
-                });
-                let mut w = write.lock().await;
-                let _ = w.send(Message::Text(msg.to_string().into())).await;
-            }
-        }
+        subs.iter()
+            .filter(|(_, info)| info.account_id == account_id)
+            .map(|(sub_id, info)| (sub_id.clone(), info.channel.clone()))
+            .collect()
+    };
+
+    for (sub_id, channel) in &to_resub {
+        let msg = json!({
+            "type": "connect",
+            "body": { "channel": channel, "id": sub_id }
+        });
+        let mut w = write.lock().await;
+        let _ = w.send(Message::Text(msg.to_string().into())).await;
     }
 
     ws_loop(app, account_id, read, write, cmd_rx, subscriptions).await

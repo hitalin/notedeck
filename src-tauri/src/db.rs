@@ -92,6 +92,30 @@ impl Database {
         Ok(())
     }
 
+    pub fn get_account(&self, id: &str) -> rusqlite::Result<Option<Account>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, host, token, user_id, username, display_name, avatar_url, software
+             FROM accounts WHERE id = ?1",
+        )?;
+        let mut rows = stmt.query_map(params![id], |row| {
+            Ok(Account {
+                id: row.get(0)?,
+                host: row.get(1)?,
+                token: row.get(2)?,
+                user_id: row.get(3)?,
+                username: row.get(4)?,
+                display_name: row.get(5)?,
+                avatar_url: row.get(6)?,
+                software: row.get(7)?,
+            })
+        })?;
+        match rows.next() {
+            Some(row) => Ok(Some(row?)),
+            None => Ok(None),
+        }
+    }
+
     pub fn delete_account(&self, id: &str) -> rusqlite::Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute("DELETE FROM accounts WHERE id = ?1", params![id])?;

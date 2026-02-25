@@ -206,7 +206,10 @@ describe('MisskeyStream', () => {
 
       sub.dispose()
 
-      expect(mockUnlisten).toHaveBeenCalled()
+      // dispose is async (Promise-based), flush microtasks
+      await vi.waitFor(() => {
+        expect(mockUnlisten).toHaveBeenCalled()
+      })
       expect(invoke).toHaveBeenCalledWith('stream_unsubscribe', {
         accountId: 'acc-1',
         subscriptionId: 'sub-123',
@@ -278,8 +281,11 @@ describe('MisskeyStream', () => {
 
       sub.dispose()
 
-      // 2 listeners: notification + main-event
-      expect(mockUnlisten).toHaveBeenCalledTimes(2)
+      // dispose is async (Promise-based), flush microtasks
+      await vi.waitFor(() => {
+        // 2 listeners: notification + main-event
+        expect(mockUnlisten).toHaveBeenCalledTimes(2)
+      })
       expect(invoke).toHaveBeenCalledWith('stream_unsubscribe', {
         accountId: 'acc-1',
         subscriptionId: 'sub-456',

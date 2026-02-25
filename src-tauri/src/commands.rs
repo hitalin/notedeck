@@ -15,10 +15,9 @@ fn db_err(e: rusqlite::Error) -> String {
 
 /// Look up account credentials from DB
 fn get_credentials(db: &Database, account_id: &str) -> Result<(String, String)> {
-    let accounts = db.load_accounts().map_err(db_err)?;
-    let account = accounts
-        .into_iter()
-        .find(|a| a.id == account_id)
+    let account = db
+        .get_account(account_id)
+        .map_err(db_err)?
         .ok_or_else(|| format!("Account not found: {account_id}"))?;
     Ok((account.host, account.token))
 }

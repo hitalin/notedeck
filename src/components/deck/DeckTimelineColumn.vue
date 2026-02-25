@@ -43,6 +43,7 @@ const columnThemeVars = computed(() => {
   return style
 })
 
+const MAX_NOTES = 500
 const notes = ref<NormalizedNote[]>([])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
@@ -97,7 +98,8 @@ async function connect() {
     subscription = adapter.stream.subscribeTimeline(
       tlType.value,
       (note: NormalizedNote) => {
-        notes.value = [note, ...notes.value]
+        const updated = [note, ...notes.value]
+        notes.value = updated.length > MAX_NOTES ? updated.slice(0, MAX_NOTES) : updated
       },
     )
   } catch (e) {
@@ -139,7 +141,11 @@ async function loadMore() {
   }
 }
 
+let lastScrollCheck = 0
 function onScroll(e: Event) {
+  const now = Date.now()
+  if (now - lastScrollCheck < 200) return
+  lastScrollCheck = now
   const el = e.target as HTMLElement
   if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
     loadMore()

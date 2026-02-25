@@ -68,7 +68,11 @@ async function loadMoreNotes() {
   }
 }
 
+let lastScrollCheck = 0
 function onScroll(e: Event) {
+  const now = Date.now()
+  if (now - lastScrollCheck < 200) return
+  lastScrollCheck = now
   const el = e.target as HTMLElement
   if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
     loadMoreNotes()

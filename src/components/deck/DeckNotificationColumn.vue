@@ -45,6 +45,7 @@ const columnThemeVars = computed(() => {
   return style
 })
 
+const MAX_NOTIFICATIONS = 500
 const notifications = ref<NormalizedNotification[]>([])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
@@ -153,7 +154,8 @@ async function connect() {
           )
         }
 
-        notifications.value = [notification, ...notifications.value]
+        const updated = [notification, ...notifications.value]
+        notifications.value = updated.length > MAX_NOTIFICATIONS ? updated.slice(0, MAX_NOTIFICATIONS) : updated
       }
     })
   } catch (e) {
@@ -184,7 +186,11 @@ async function loadMore() {
   }
 }
 
+let lastScrollCheck = 0
 function onScroll(e: Event) {
+  const now = Date.now()
+  if (now - lastScrollCheck < 200) return
+  lastScrollCheck = now
   const el = e.target as HTMLElement
   if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
     loadMore()
