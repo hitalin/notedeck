@@ -405,6 +405,9 @@ async fn ws_loop(
     cmd_rx: &mut mpsc::UnboundedReceiver<WsCommand>,
     subscriptions: &Arc<Mutex<HashMap<String, SubscriptionInfo>>>,
 ) -> WsExitReason {
+    let mut ping_interval = tokio::time::interval(Duration::from_secs(30));
+    ping_interval.tick().await; // skip the first immediate tick
+
     loop {
         tokio::select! {
             msg = read.next() => {
@@ -452,6 +455,13 @@ async fn ws_loop(
                         let _ = w.close().await;
                         return WsExitReason::Shutdown;
                     }
+                }
+            }
+            _ = ping_interval.tick() => {
+                let mut w = write.lock().await;
+                if let Err(e) = w.send(Message::Ping(vec![].into())).await {
+                    eprintln!("[stream] keepalive ping failed for {account_id}: {e}");
+                    return WsExitReason::Disconnected;
                 }
             }
         }

@@ -17,6 +17,7 @@ impl Database {
             conn: Mutex::new(conn),
         };
         db.migrate()?;
+        db.cleanup_cache()?;
         Ok(db)
     }
 
@@ -62,10 +63,38 @@ impl Database {
             );
             CREATE INDEX IF NOT EXISTS idx_notes_cache_timeline
                 ON notes_cache (account_id, created_at DESC);
-            CREATE INDEX IF NOT EXISTS idx_notes_cache_text
-                ON notes_cache (account_id, text)
-                WHERE text IS NOT NULL;",
+
+            -- FTS5 trigram index for fast substring search (CJK-friendly)
+            CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
+                text,
+                content='notes_cache',
+                content_rowid=rowid,
+                tokenize='trigram'
+            );
+            CREATE TRIGGER IF NOT EXISTS notes_fts_ai
+                AFTER INSERT ON notes_cache WHEN new.text IS NOT NULL BEGIN
+                INSERT INTO notes_fts(rowid, text) VALUES (new.rowid, new.text);
+            END;
+            CREATE TRIGGER IF NOT EXISTS notes_fts_ad
+                AFTER DELETE ON notes_cache WHEN old.text IS NOT NULL BEGIN
+                INSERT INTO notes_fts(notes_fts, rowid, text) VALUES('delete', old.rowid, old.text);
+            END;",
         )?;
+
+        // Populate FTS from existing data (upgrade path: one-time rebuild)
+        let needs_rebuild: bool = conn.query_row(
+            "SELECT (SELECT COUNT(*) FROM notes_fts) = 0
+                AND (SELECT COUNT(*) FROM notes_cache WHERE text IS NOT NULL) > 0",
+            [],
+            |row| row.get(0),
+        )?;
+        if needs_rebuild {
+            conn.execute_batch("INSERT INTO notes_fts(notes_fts) VALUES('rebuild')")?;
+        }
+
+        // Drop legacy index superseded by FTS5
+        conn.execute_batch("DROP INDEX IF EXISTS idx_notes_cache_text")?;
+
         Ok(())
     }
 
@@ -226,25 +255,42 @@ impl Database {
         limit: i64,
     ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
         let conn = self.lock()?;
-        let pattern = format!("%{query}%");
-        let mut stmt = conn.prepare_cached(
-            "SELECT note_json FROM notes_cache
-             WHERE account_id = ?1 AND text LIKE ?2
-             ORDER BY created_at DESC
-             LIMIT ?3",
-        )?;
-        let rows = stmt.query_map(params![account_id, pattern, limit], |row| {
-            let json_str: String = row.get(0)?;
-            Ok(json_str)
-        })?;
-        let mut notes = Vec::new();
-        for row in rows {
-            let json_str = row?;
-            if let Ok(note) = serde_json::from_str::<NormalizedNote>(&json_str) {
-                notes.push(note);
-            }
-        }
-        Ok(notes)
+
+        // FTS5 trigram requires 3+ characters; fall back to LIKE for shorter queries
+        let rows: Vec<String> = if query.chars().count() >= 3 {
+            let escaped = query.replace('"', "\"\"");
+            let fts_query = format!("\"{escaped}\"");
+            let mut stmt = conn.prepare_cached(
+                "SELECT nc.note_json FROM notes_cache nc
+                 WHERE nc.account_id = ?1
+                   AND nc.rowid IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH ?2)
+                 ORDER BY nc.created_at DESC
+                 LIMIT ?3",
+            )?;
+            let result: Vec<String> = stmt
+                .query_map(params![account_id, fts_query, limit], |row| row.get(0))?
+                .filter_map(|r| r.ok())
+                .collect();
+            result
+        } else {
+            let pattern = format!("%{query}%");
+            let mut stmt = conn.prepare_cached(
+                "SELECT note_json FROM notes_cache
+                 WHERE account_id = ?1 AND text LIKE ?2
+                 ORDER BY created_at DESC
+                 LIMIT ?3",
+            )?;
+            let result: Vec<String> = stmt
+                .query_map(params![account_id, pattern, limit], |row| row.get(0))?
+                .filter_map(|r| r.ok())
+                .collect();
+            result
+        };
+
+        Ok(rows
+            .into_iter()
+            .filter_map(|json_str| serde_json::from_str::<NormalizedNote>(&json_str).ok())
+            .collect())
     }
 
     pub fn get_cached_timeline(
@@ -271,6 +317,24 @@ impl Database {
             }
         }
         Ok(notes)
+    }
+
+    /// Remove cached notes older than 30 days.
+    pub fn cleanup_cache(&self) -> Result<(), NoteDeckError> {
+        let conn = self.lock()?;
+        let cutoff = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64
+            - (30 * 24 * 60 * 60);
+        let deleted: usize = conn.execute(
+            "DELETE FROM notes_cache WHERE cached_at < ?1",
+            params![cutoff],
+        )?;
+        if deleted > 0 {
+            eprintln!("[cache] evicted {deleted} notes older than 30 days");
+        }
+        Ok(())
     }
 
     pub fn upsert_server(&self, server: &StoredServer) -> Result<(), NoteDeckError> {
