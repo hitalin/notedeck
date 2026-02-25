@@ -18,6 +18,12 @@
       "correctness": {
         "noUnusedVariables": "warn",
         "noUnusedImports": "error"
+      },
+      "style": {
+        "noNonNullAssertion": "warn"
+      },
+      "complexity": {
+        "useOptionalChain": "warn"
       }
     }
   },
