@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import type { NormalizedNote } from '@/adapters/types'
 import { useEmojisStore } from '@/stores/emojis'
 import { splitTextWithEmoji } from '@/utils/twemoji'
+import { formatTime } from '@/utils/formatTime'
 import MkEmoji from './MkEmoji.vue'
 
 const props = defineProps<{
@@ -38,20 +39,6 @@ function navigateToDetail() {
 function navigateToUser(userId: string, e: Event) {
   e.stopPropagation()
   router.push(`/user/${props.note._accountId}/${userId}`)
-}
-
-function formatTime(iso: string): string {
-  const date = new Date(iso)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const minutes = Math.floor(diff / 60000)
-
-  if (minutes < 1) return 'now'
-  if (minutes < 60) return `${minutes}m`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h`
-  const days = Math.floor(hours / 24)
-  return `${days}d`
 }
 
 /** Resolve emoji shortcode to URL using note data + server cache */

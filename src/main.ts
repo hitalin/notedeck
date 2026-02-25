@@ -4,6 +4,7 @@ import App from './App.vue'
 import { router } from './router'
 import { useThemeStore } from './stores/theme'
 import './styles/global.css'
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 
 const app = createApp(App)
 const pinia = createPinia()

@@ -1,7 +1,8 @@
 use rusqlite::{params, Connection};
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 
+use crate::error::NoteDeckError;
 use crate::models::{Account, StoredServer};
 
 pub struct Database {
@@ -9,7 +10,7 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn open(path: &Path) -> rusqlite::Result<Self> {
+    pub fn open(path: &Path) -> Result<Self, NoteDeckError> {
         let conn = Connection::open(path)?;
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
         let db = Self {
@@ -19,8 +20,17 @@ impl Database {
         Ok(db)
     }
 
-    fn migrate(&self) -> rusqlite::Result<()> {
-        let conn = self.conn.lock().unwrap();
+    fn lock(&self) -> Result<MutexGuard<'_, Connection>, NoteDeckError> {
+        self.conn.lock().map_err(|_| {
+            NoteDeckError::Database(rusqlite::Error::SqliteFailure(
+                rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_LOCKED),
+                Some("Database lock poisoned".to_string()),
+            ))
+        })
+    }
+
+    fn migrate(&self) -> Result<(), NoteDeckError> {
+        let conn = self.lock()?;
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS accounts (
                 id TEXT PRIMARY KEY,
@@ -46,8 +56,8 @@ impl Database {
 
     // --- Accounts ---
 
-    pub fn load_accounts(&self) -> rusqlite::Result<Vec<Account>> {
-        let conn = self.conn.lock().unwrap();
+    pub fn load_accounts(&self) -> Result<Vec<Account>, NoteDeckError> {
+        let conn = self.lock()?;
         let mut stmt = conn.prepare(
             "SELECT id, host, token, user_id, username, display_name, avatar_url, software
              FROM accounts ORDER BY rowid",
@@ -64,11 +74,11 @@ impl Database {
                 software: row.get(7)?,
             })
         })?;
-        rows.collect()
+        Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
     }
 
-    pub fn upsert_account(&self, account: &Account) -> rusqlite::Result<()> {
-        let conn = self.conn.lock().unwrap();
+    pub fn upsert_account(&self, account: &Account) -> Result<(), NoteDeckError> {
+        let conn = self.lock()?;
         conn.execute(
             "INSERT INTO accounts (id, host, token, user_id, username, display_name, avatar_url, software)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
@@ -92,8 +102,8 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_account(&self, id: &str) -> rusqlite::Result<Option<Account>> {
-        let conn = self.conn.lock().unwrap();
+    pub fn get_account(&self, id: &str) -> Result<Option<Account>, NoteDeckError> {
+        let conn = self.lock()?;
         let mut stmt = conn.prepare(
             "SELECT id, host, token, user_id, username, display_name, avatar_url, software
              FROM accounts WHERE id = ?1",
@@ -116,16 +126,16 @@ impl Database {
         }
     }
 
-    pub fn delete_account(&self, id: &str) -> rusqlite::Result<()> {
-        let conn = self.conn.lock().unwrap();
+    pub fn delete_account(&self, id: &str) -> Result<(), NoteDeckError> {
+        let conn = self.lock()?;
         conn.execute("DELETE FROM accounts WHERE id = ?1", params![id])?;
         Ok(())
     }
 
     // --- Servers ---
 
-    pub fn load_servers(&self) -> rusqlite::Result<Vec<StoredServer>> {
-        let conn = self.conn.lock().unwrap();
+    pub fn load_servers(&self) -> Result<Vec<StoredServer>, NoteDeckError> {
+        let conn = self.lock()?;
         let mut stmt =
             conn.prepare("SELECT host, software, version, features_json, updated_at FROM servers")?;
         let rows = stmt.query_map([], |row| {
@@ -137,11 +147,11 @@ impl Database {
                 updated_at: row.get(4)?,
             })
         })?;
-        rows.collect()
+        Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
     }
 
-    pub fn get_server(&self, host: &str) -> rusqlite::Result<Option<StoredServer>> {
-        let conn = self.conn.lock().unwrap();
+    pub fn get_server(&self, host: &str) -> Result<Option<StoredServer>, NoteDeckError> {
+        let conn = self.lock()?;
         let mut stmt = conn.prepare(
             "SELECT host, software, version, features_json, updated_at FROM servers WHERE host = ?1",
         )?;
@@ -160,8 +170,8 @@ impl Database {
         }
     }
 
-    pub fn upsert_server(&self, server: &StoredServer) -> rusqlite::Result<()> {
-        let conn = self.conn.lock().unwrap();
+    pub fn upsert_server(&self, server: &StoredServer) -> Result<(), NoteDeckError> {
+        let conn = self.lock()?;
         conn.execute(
             "INSERT INTO servers (host, software, version, features_json, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5)

@@ -17,10 +17,10 @@ const emojiRegex = /(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F)(?:\u200D(?:\p{Emo
 /** Split text into segments of plain text and Unicode emoji */
 export function splitTextWithEmoji(text: string): { type: 'text' | 'emoji'; value: string; url?: string }[] {
   const segments: { type: 'text' | 'emoji'; value: string; url?: string }[] = []
-  const re = new RegExp(emojiRegex.source, emojiRegex.flags)
+  emojiRegex.lastIndex = 0
   let lastIndex = 0
   let m: RegExpExecArray | null
-  while ((m = re.exec(text)) !== null) {
+  while ((m = emojiRegex.exec(text)) !== null) {
     if (m.index > lastIndex) {
       segments.push({ type: 'text', value: text.slice(lastIndex, m.index) })
     }

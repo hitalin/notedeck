@@ -313,7 +313,9 @@ async fn connection_task(
                 cmd = cmd_rx.recv() => {
                     match cmd {
                         Some(WsCommand::Shutdown) | None => break true,
-                        // Buffer subscribe/unsubscribe — they'll be replayed after reconnect
+                        // Subscribe/Unsubscribe: safe to drop here because the
+                        // subscriptions table is already updated by the caller.
+                        // run_ws_session will re-subscribe from that table.
                         _ => {}
                     }
                 }

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import DeckColumn from './DeckColumn.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'

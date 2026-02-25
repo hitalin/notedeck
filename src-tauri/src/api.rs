@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::Duration;
 
 use reqwest::Client;
 use serde_json::{json, Value};
@@ -16,6 +17,9 @@ impl MisskeyClient {
         Self {
             client: Client::builder()
                 .user_agent("NoteDeck/0.0.3")
+                .timeout(Duration::from_secs(30))
+                .connect_timeout(Duration::from_secs(10))
+                .pool_max_idle_per_host(4)
                 .build()
                 .expect("Failed to build HTTP client"),
         }

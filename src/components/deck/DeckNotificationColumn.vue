@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import DeckColumn from './DeckColumn.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
@@ -10,6 +9,7 @@ import type { NormalizedNotification } from '@/adapters/types'
 import { useEmojisStore } from '@/stores/emojis'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { char2twemojiUrl } from '@/utils/twemoji'
+import { formatTime } from '@/utils/formatTime'
 import { sendDesktopNotification } from '@/utils/desktopNotification'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 
@@ -58,20 +58,6 @@ function reactionUrl(reaction: string, notification: NormalizedNotification): st
 function reactionTwemojiUrl(reaction: string): string | null {
   if (reaction.startsWith(':') && reaction.endsWith(':')) return null
   return char2twemojiUrl(reaction)
-}
-
-function formatTime(iso: string): string {
-  const date = new Date(iso)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const minutes = Math.floor(diff / 60000)
-
-  if (minutes < 1) return 'now'
-  if (minutes < 60) return `${minutes}m`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h`
-  const days = Math.floor(hours / 24)
-  return `${days}d`
 }
 
 const NOTIFICATION_ICONS: Record<string, string> = {
