@@ -66,9 +66,13 @@ pub async fn api_get_timeline(
     options: Option<TimelineOptions>,
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
-    client
+    let notes = client
         .get_timeline(&host, &token, &account_id, timeline_type, options.unwrap_or_default())
-        .await
+        .await?;
+    if let Err(e) = db.cache_notes(&notes) {
+        eprintln!("[cache] failed to cache timeline notes: {e}");
+    }
+    Ok(notes)
 }
 
 #[tauri::command]

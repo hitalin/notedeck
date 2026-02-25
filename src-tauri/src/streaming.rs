@@ -5,10 +5,11 @@ use std::time::Duration;
 use futures_util::{SinkExt, StreamExt};
 use serde::Serialize;
 use serde_json::{json, Value};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{mpsc, Mutex};
 use tokio_tungstenite::tungstenite::Message;
 
+use crate::db::Database;
 use crate::error::NoteDeckError;
 use crate::models::{
     NormalizedNote, NormalizedNotification, RawNote, RawNotification, TimelineType,
@@ -503,6 +504,11 @@ async fn handle_ws_message(
     if info.kind == "timeline" && event_type == "note" {
         if let Ok(raw) = serde_json::from_value::<RawNote>(event_body) {
             let note = raw.normalize(account_id, &info.host);
+            if let Some(db) = app.try_state::<Database>() {
+                if let Err(e) = db.cache_note(&note) {
+                    eprintln!("[cache] failed to cache streamed note: {e}");
+                }
+            }
             emit_or_log!(app, "stream-note", StreamNoteEvent {
                 account_id: account_id.to_string(),
                 subscription_id: sub_id.to_string(),

@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 
 use crate::error::NoteDeckError;
-use crate::models::{Account, StoredServer};
+use crate::models::{Account, NormalizedNote, StoredServer};
 
 pub struct Database {
     conn: Mutex<Connection>,
@@ -49,7 +49,22 @@ impl Database {
                 version TEXT NOT NULL,
                 features_json TEXT NOT NULL,
                 updated_at INTEGER NOT NULL
-            );",
+            );
+            CREATE TABLE IF NOT EXISTS notes_cache (
+                note_id TEXT NOT NULL,
+                account_id TEXT NOT NULL,
+                server_host TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                text TEXT,
+                note_json TEXT NOT NULL,
+                cached_at INTEGER NOT NULL,
+                PRIMARY KEY (note_id, account_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_notes_cache_timeline
+                ON notes_cache (account_id, created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_notes_cache_text
+                ON notes_cache (account_id, text)
+                WHERE text IS NOT NULL;",
         )?;
         Ok(())
     }
@@ -168,6 +183,40 @@ impl Database {
             Some(row) => Ok(Some(row?)),
             None => Ok(None),
         }
+    }
+
+    // --- Notes cache ---
+
+    pub fn cache_notes(&self, notes: &[NormalizedNote]) -> Result<(), NoteDeckError> {
+        let conn = self.lock()?;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
+        let mut stmt = conn.prepare_cached(
+            "INSERT INTO notes_cache (note_id, account_id, server_host, created_at, text, note_json, cached_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT(note_id, account_id) DO UPDATE SET
+                 note_json = excluded.note_json,
+                 cached_at = excluded.cached_at",
+        )?;
+        for note in notes {
+            let json = serde_json::to_string(note).unwrap_or_default();
+            stmt.execute(params![
+                note.id,
+                note.account_id,
+                note.server_host,
+                note.created_at,
+                note.text,
+                json,
+                now,
+            ])?;
+        }
+        Ok(())
+    }
+
+    pub fn cache_note(&self, note: &NormalizedNote) -> Result<(), NoteDeckError> {
+        self.cache_notes(&[note.clone()])
     }
 
     pub fn upsert_server(&self, server: &StoredServer) -> Result<(), NoteDeckError> {
