@@ -4,6 +4,7 @@ import { computed, defineAsyncComponent, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
+import { useAccountsStore } from '@/stores/accounts'
 import { formatTime } from '@/utils/formatTime'
 import MkEmoji from './MkEmoji.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
@@ -35,14 +36,42 @@ const emit = defineEmits<{
   reply: [note: NormalizedNote]
   renote: [note: NormalizedNote]
   quote: [note: NormalizedNote]
+  delete: [note: NormalizedNote]
+  edit: [note: NormalizedNote]
+  bookmark: [note: NormalizedNote]
 }>()
 
 const router = useRouter()
+const accountsStore = useAccountsStore()
 const { resolveEmoji: resolveEmojiRaw, reactionUrl: reactionUrlRaw } =
   useEmojiResolver()
 const showReactionInput = ref(false)
 const showRenoteMenu = ref(false)
+const showMoreMenu = ref(false)
+const showDeleteConfirm = ref(false)
 const cwExpanded = ref(false)
+const moreMenuPos = ref({ x: 0, y: 0 })
+
+function openMoreMenu(e: MouseEvent) {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  moreMenuPos.value = {
+    x: rect.left,
+    y: rect.bottom + 4,
+  }
+  showMoreMenu.value = true
+}
+
+function closeMoreMenu() {
+  showMoreMenu.value = false
+  showDeleteConfirm.value = false
+}
+
+const isOwnNote = computed(() => {
+  const account = accountsStore.accounts.find(
+    (a) => a.id === props.note._accountId,
+  )
+  return account?.userId === effectiveNote.value.user.id
+})
 
 // User hover popup
 const showUserPopup = ref(false)
@@ -296,6 +325,17 @@ async function handleMentionClick(username: string, host: string | null) {
               <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </button>
+          <button
+            class="footer-button more-button"
+            :class="{ active: showMoreMenu }"
+            @click.stop="openMoreMenu($event)"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <circle cx="12" cy="5" r="1.5" fill="currentColor" />
+              <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+              <circle cx="12" cy="19" r="1.5" fill="currentColor" />
+            </svg>
+          </button>
           <span class="server-badge">{{ note._serverHost }}</span>
         </footer>
 
@@ -337,6 +377,70 @@ async function handleMentionClick(username: string, host: string | null) {
       :y="userPopupPos.y"
       @close="closeUserPopup"
     />
+  </Teleport>
+
+  <!-- More menu popup -->
+  <Teleport to="body">
+    <div v-if="showMoreMenu" class="popup-backdrop" @click="closeMoreMenu">
+      <div
+        class="popup-menu"
+        :style="{ top: moreMenuPos.y + 'px', left: moreMenuPos.x + 'px' }"
+        @click.stop
+      >
+        <!-- Delete confirmation mode -->
+        <template v-if="showDeleteConfirm">
+          <div class="popup-confirm-text">Delete this note?</div>
+          <button class="popup-item popup-item-danger" @click="emit('delete', effectiveNote); closeMoreMenu()">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Delete
+          </button>
+          <button class="popup-item" @click="showDeleteConfirm = false">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Cancel
+          </button>
+        </template>
+
+        <!-- Normal menu -->
+        <template v-else>
+          <button
+            class="popup-item"
+            :class="{ 'popup-item-active': effectiveNote.isFavorited }"
+            @click="emit('bookmark', effectiveNote); closeMoreMenu()"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                :fill="effectiveNote.isFavorited ? 'currentColor' : 'none'" />
+            </svg>
+            {{ effectiveNote.isFavorited ? 'Unbookmark' : 'Bookmark' }}
+          </button>
+          <template v-if="isOwnNote">
+            <div class="popup-divider" />
+            <button class="popup-item" @click="emit('edit', effectiveNote); closeMoreMenu()">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                  stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                  stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              Edit
+            </button>
+            <button class="popup-item popup-item-danger" @click="showDeleteConfirm = true">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                  stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              Delete
+            </button>
+          </template>
+        </template>
+      </div>
+    </div>
   </Teleport>
 </template>
 
@@ -652,6 +756,65 @@ async function handleMentionClick(username: string, host: string | null) {
 .renote-menu-item:hover {
   background: var(--nd-buttonHoverBg);
   color: var(--nd-renote);
+}
+
+/* Popup menu (Teleported to body) */
+.popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.popup-menu {
+  position: fixed;
+  min-width: 200px;
+  max-width: 300px;
+  padding: 8px 0;
+  background: var(--nd-popup, var(--nd-panel));
+  border-radius: 8px;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.3);
+  z-index: 10001;
+}
+
+.popup-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--nd-fg);
+  font-size: 0.9em;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.popup-item:hover {
+  background: var(--nd-buttonHoverBg);
+}
+
+.popup-item-active {
+  color: var(--nd-warn, #f0a020);
+}
+
+.popup-item-danger {
+  color: #ff2a2a;
+}
+
+.popup-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--nd-divider);
+}
+
+.popup-confirm-text {
+  padding: 10px 16px;
+  font-size: 0.9em;
+  font-weight: bold;
+  color: var(--nd-fg);
 }
 
 /* Reaction picker */

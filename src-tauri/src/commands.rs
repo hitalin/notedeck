@@ -6,8 +6,9 @@ use crate::api::MisskeyClient;
 use crate::db::Database;
 use crate::error::NoteDeckError;
 use crate::models::{
-    Account, AuthResult, AuthSession, CreateNoteParams, NormalizedNote, NormalizedNotification,
-    NormalizedUser, NormalizedUserDetail, SearchOptions, StoredServer, TimelineOptions, TimelineType,
+    Account, AuthResult, AuthSession, CreateNoteParams, NormalizedDriveFile, NormalizedNote,
+    NormalizedNotification, NormalizedUser, NormalizedUserDetail, SearchOptions, StoredServer,
+    TimelineOptions, TimelineType,
 };
 use crate::streaming::StreamingManager;
 
@@ -125,6 +126,69 @@ pub async fn api_delete_reaction(
 }
 
 #[tauri::command]
+pub async fn api_update_note(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    note_id: String,
+    params: CreateNoteParams,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .update_note(&host, &token, &note_id, params)
+        .await
+}
+
+#[tauri::command]
+pub async fn api_upload_file(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    file_name: String,
+    file_data: Vec<u8>,
+    content_type: String,
+    is_sensitive: bool,
+) -> Result<NormalizedDriveFile> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .upload_file(&host, &token, &file_name, file_data, &content_type, is_sensitive)
+        .await
+}
+
+#[tauri::command]
+pub async fn api_create_favorite(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    note_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.create_favorite(&host, &token, &note_id).await
+}
+
+#[tauri::command]
+pub async fn api_delete_favorite(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    note_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.delete_favorite(&host, &token, &note_id).await
+}
+
+#[tauri::command]
+pub async fn api_delete_note(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    note_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.delete_note(&host, &token, &note_id).await
+}
+
+#[tauri::command]
 pub async fn api_get_user(
     db: State<'_, Database>,
     client: State<'_, MisskeyClient>,
@@ -237,6 +301,28 @@ pub async fn api_lookup_user(
     client
         .lookup_user(&server_host, &token, &username, host.as_deref())
         .await
+}
+
+#[tauri::command]
+pub async fn api_follow_user(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.follow_user(&host, &token, &user_id).await
+}
+
+#[tauri::command]
+pub async fn api_unfollow_user(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.unfollow_user(&host, &token, &user_id).await
 }
 
 #[tauri::command]

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { createAdapter } from '@/adapters/registry'
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
@@ -15,6 +16,7 @@ const props = defineProps<{
   noteId: string
 }>()
 
+const router = useRouter()
 const accountsStore = useAccountsStore()
 const emojisStore = useEmojisStore()
 const serversStore = useServersStore()
@@ -84,6 +86,7 @@ async function handleReaction(reaction: string, target?: NormalizedNote) {
 const showPostForm = ref(false)
 const postFormReplyTo = ref<NormalizedNote | undefined>()
 const postFormRenoteId = ref<string | undefined>()
+const postFormEditNote = ref<NormalizedNote | undefined>()
 
 async function handleRenote(target: NormalizedNote) {
   if (!adapter) return
@@ -106,10 +109,33 @@ function handleQuote(target: NormalizedNote) {
   showPostForm.value = true
 }
 
+function handleEdit(target: NormalizedNote) {
+  postFormReplyTo.value = undefined
+  postFormRenoteId.value = undefined
+  postFormEditNote.value = target
+  showPostForm.value = true
+}
+
+async function handleDelete(target: NormalizedNote) {
+  if (!adapter) return
+  try {
+    await adapter.api.deleteNote(target.id)
+    if (target.id === note.value?.id) {
+      router.back()
+    } else {
+      children.value = children.value.filter((n) => n.id !== target.id)
+      ancestors.value = ancestors.value.filter((n) => n.id !== target.id)
+    }
+  } catch (e) {
+    error.value = AppError.from(e)
+  }
+}
+
 function closePostForm() {
   showPostForm.value = false
   postFormReplyTo.value = undefined
   postFormRenoteId.value = undefined
+  postFormEditNote.value = undefined
 }
 </script>
 
@@ -148,6 +174,8 @@ function closePostForm() {
           @reply="handleReply"
           @renote="handleRenote"
           @quote="handleQuote"
+          @delete="handleDelete"
+          @edit="handleEdit"
         />
       </div>
 
@@ -160,6 +188,8 @@ function closePostForm() {
           @reply="handleReply"
           @renote="handleRenote"
           @quote="handleQuote"
+          @delete="handleDelete"
+          @edit="handleEdit"
         />
       </div>
 
@@ -174,6 +204,8 @@ function closePostForm() {
           @reply="handleReply"
           @renote="handleRenote"
           @quote="handleQuote"
+          @delete="handleDelete"
+          @edit="handleEdit"
         />
       </div>
     </div>
@@ -184,6 +216,7 @@ function closePostForm() {
         :account-id="accountId"
         :reply-to="postFormReplyTo"
         :renote-id="postFormRenoteId"
+        :edit-note="postFormEditNote"
         @close="closePostForm"
         @posted="closePostForm"
       />

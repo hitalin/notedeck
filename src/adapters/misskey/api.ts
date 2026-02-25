@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import type {
   ApiAdapter,
   CreateNoteParams,
+  NormalizedDriveFile,
   NormalizedNote,
   NormalizedNotification,
   NormalizedUser,
@@ -51,6 +52,50 @@ export class MisskeyApi implements ApiAdapter {
 
   async deleteReaction(noteId: string): Promise<void> {
     return invoke('api_delete_reaction', {
+      accountId: this.accountId,
+      noteId,
+    })
+  }
+
+  async updateNote(noteId: string, params: CreateNoteParams): Promise<void> {
+    return invoke('api_update_note', {
+      accountId: this.accountId,
+      noteId,
+      params,
+    })
+  }
+
+  async deleteNote(noteId: string): Promise<void> {
+    return invoke('api_delete_note', {
+      accountId: this.accountId,
+      noteId,
+    })
+  }
+
+  async uploadFile(
+    fileName: string,
+    fileData: number[],
+    contentType: string,
+    isSensitive = false,
+  ): Promise<NormalizedDriveFile> {
+    return invoke('api_upload_file', {
+      accountId: this.accountId,
+      fileName,
+      fileData,
+      contentType,
+      isSensitive,
+    })
+  }
+
+  async createFavorite(noteId: string): Promise<void> {
+    return invoke('api_create_favorite', {
+      accountId: this.accountId,
+      noteId,
+    })
+  }
+
+  async deleteFavorite(noteId: string): Promise<void> {
+    return invoke('api_delete_favorite', {
       accountId: this.accountId,
       noteId,
     })
@@ -156,6 +201,20 @@ export class MisskeyApi implements ApiAdapter {
       accountId: this.accountId,
       username,
       host: host ?? null,
+    })
+  }
+
+  async followUser(userId: string): Promise<void> {
+    return invoke('api_follow_user', {
+      accountId: this.accountId,
+      userId,
+    })
+  }
+
+  async unfollowUser(userId: string): Promise<void> {
+    return invoke('api_unfollow_user', {
+      accountId: this.accountId,
+      userId,
     })
   }
 }

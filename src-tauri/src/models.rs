@@ -54,6 +54,8 @@ pub struct NormalizedNote {
     pub files: Vec<NormalizedDriveFile>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub poll: Option<NormalizedPoll>,
+    #[serde(default)]
+    pub is_favorited: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reply: Option<Box<NormalizedNote>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -284,6 +286,8 @@ pub struct RawNote {
     #[serde(default)]
     pub files: Vec<RawDriveFile>,
     pub poll: Option<RawPoll>,
+    #[serde(default)]
+    pub is_favorited: bool,
     pub reply: Option<Box<RawNote>>,
     pub renote: Option<Box<RawNote>>,
 }
@@ -416,6 +420,7 @@ impl RawNote {
             renote_count: self.renote_count,
             replies_count: self.replies_count,
             files: self.files.into_iter().map(Into::into).collect(),
+            is_favorited: self.is_favorited,
             poll: self.poll.map(|p| NormalizedPoll {
                 choices: p
                     .choices

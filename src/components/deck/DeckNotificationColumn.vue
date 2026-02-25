@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, shallowRef } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import type { NormalizedNotification } from '@/adapters/types'
+import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
 import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
@@ -297,6 +297,9 @@ onUnmounted(() => {
                   @reply="handlers.reply"
                   @renote="handlers.renote"
                   @quote="handlers.quote"
+                  @delete="async (n: NormalizedNote) => { if (await handlers.delete(n)) notifications = notifications.filter(x => x.note?.id !== n.id) }"
+                  @edit="handlers.edit"
+                  @bookmark="(n: NormalizedNote) => handlers.bookmark(n)"
                 />
               </div>
             </div>
@@ -318,6 +321,7 @@ onUnmounted(() => {
       :account-id="column.accountId"
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"
+      :edit-note="postForm.editNote.value"
       @close="postForm.close"
       @posted="postForm.close"
     />

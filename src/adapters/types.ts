@@ -55,6 +55,7 @@ export interface NormalizedNote {
   repliesCount: number
   files: NormalizedDriveFile[]
   poll?: NormalizedPoll
+  isFavorited?: boolean
   reply?: NormalizedNote
   renote?: NormalizedNote
 }
@@ -147,6 +148,16 @@ export interface ApiAdapter {
   getNote(noteId: string): Promise<NormalizedNote>
   createReaction(noteId: string, reaction: string): Promise<void>
   deleteReaction(noteId: string): Promise<void>
+  updateNote(noteId: string, params: CreateNoteParams): Promise<void>
+  deleteNote(noteId: string): Promise<void>
+  createFavorite(noteId: string): Promise<void>
+  deleteFavorite(noteId: string): Promise<void>
+  uploadFile(
+    fileName: string,
+    fileData: number[],
+    contentType: string,
+    isSensitive?: boolean,
+  ): Promise<NormalizedDriveFile>
   getServerEmojis(): Promise<Record<string, string>>
   getUser(userId: string): Promise<NormalizedUser>
   getUserDetail(userId: string): Promise<NormalizedUserDetail>
@@ -168,6 +179,8 @@ export interface ApiAdapter {
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>
   lookupUser(username: string, host?: string | null): Promise<NormalizedUser>
+  followUser(userId: string): Promise<void>
+  unfollowUser(userId: string): Promise<void>
 }
 
 export type StreamConnectionState =

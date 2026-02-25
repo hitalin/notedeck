@@ -12,6 +12,7 @@ import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
+import { toggleFavorite } from '@/utils/toggleFavorite'
 import { toggleReaction } from '@/utils/toggleReaction'
 
 export function useColumnSetup(getColumn: () => DeckColumn) {
@@ -72,6 +73,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   const showPostForm = ref(false)
   const postFormReplyTo = ref<NormalizedNote | undefined>()
   const postFormRenoteId = ref<string | undefined>()
+  const postFormEditNote = ref<NormalizedNote | undefined>()
 
   async function handleReaction(note: NormalizedNote, reaction: string) {
     if (!adapter) return
@@ -105,10 +107,40 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     showPostForm.value = true
   }
 
+  async function handleDelete(note: NormalizedNote): Promise<boolean> {
+    if (!adapter) return false
+    try {
+      await adapter.api.deleteNote(note.id)
+      return true
+    } catch (e) {
+      const err = AppError.from(e)
+      console.error('[delete]', err.code, err.message)
+      return false
+    }
+  }
+
+  function handleEdit(note: NormalizedNote) {
+    postFormReplyTo.value = undefined
+    postFormRenoteId.value = undefined
+    postFormEditNote.value = note
+    showPostForm.value = true
+  }
+
+  async function handleBookmark(note: NormalizedNote) {
+    if (!adapter) return
+    try {
+      await toggleFavorite(adapter.api, note)
+    } catch (e) {
+      const err = AppError.from(e)
+      console.error('[bookmark]', err.code, err.message)
+    }
+  }
+
   function closePostForm() {
     showPostForm.value = false
     postFormReplyTo.value = undefined
     postFormRenoteId.value = undefined
+    postFormEditNote.value = undefined
   }
 
   // Scroll
@@ -142,6 +174,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
       show: showPostForm,
       replyTo: postFormReplyTo,
       renoteId: postFormRenoteId,
+      editNote: postFormEditNote,
       close: closePostForm,
     },
     // Note action handlers
@@ -150,6 +183,9 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
       renote: handleRenote,
       reply: handleReply,
       quote: handleQuote,
+      delete: handleDelete,
+      edit: handleEdit,
+      bookmark: handleBookmark,
     },
     // Virtual scroller
     scroller,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { createAdapter } from '@/adapters/registry'
-import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
+import type { NormalizedDriveFile, NormalizedNote, ServerAdapter } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
@@ -11,6 +11,7 @@ const props = defineProps<{
   accountId: string
   replyTo?: NormalizedNote
   renoteId?: string
+  editNote?: NormalizedNote
 }>()
 
 const emit = defineEmits<{
@@ -32,6 +33,9 @@ const showAccountMenu = ref(false)
 const isPosting = ref(false)
 const posted = ref(false)
 const error = ref<string | null>(null)
+const attachedFiles = ref<NormalizedDriveFile[]>([])
+const isUploading = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
 
 let adapter: ServerAdapter | null = null
 
@@ -80,9 +84,10 @@ const currentVisibility = computed(
 const remainingChars = computed(() => MAX_TEXT_LENGTH - text.value.length)
 
 const canPost = computed(() => {
-  if (isPosting.value) return false
+  if (isPosting.value || isUploading.value) return false
   if (remainingChars.value < 0) return false
   if (props.renoteId) return true
+  if (attachedFiles.value.length > 0) return true
   return text.value.trim().length > 0
 })
 
@@ -107,7 +112,14 @@ async function switchAccount(id: string) {
 
 onMounted(async () => {
   await initAdapter()
-  if (props.replyTo) {
+  if (props.editNote) {
+    text.value = props.editNote.text ?? ''
+    if (props.editNote.cw) {
+      cw.value = props.editNote.cw
+      showCw.value = true
+    }
+    visibility.value = props.editNote.visibility
+  } else if (props.replyTo) {
     visibility.value = props.replyTo.visibility
   }
 })
@@ -119,13 +131,24 @@ async function post() {
   error.value = null
 
   try {
-    await adapter.api.createNote({
-      text: text.value || undefined,
-      cw: showCw.value && cw.value ? cw.value : undefined,
-      visibility: visibility.value,
-      replyId: props.replyTo?.id,
-      renoteId: props.renoteId,
-    })
+    if (props.editNote) {
+      await adapter.api.updateNote(props.editNote.id, {
+        text: text.value || undefined,
+        cw: showCw.value && cw.value ? cw.value : undefined,
+      })
+    } else {
+      const fileIds = attachedFiles.value.length > 0
+        ? attachedFiles.value.map((f) => f.id)
+        : undefined
+      await adapter.api.createNote({
+        text: text.value || undefined,
+        cw: showCw.value && cw.value ? cw.value : undefined,
+        visibility: visibility.value,
+        replyId: props.replyTo?.id,
+        renoteId: props.renoteId,
+        fileIds,
+      })
+    }
     posted.value = true
     setTimeout(() => emit('posted'), 500)
   } catch (e) {
@@ -133,6 +156,41 @@ async function post() {
   } finally {
     isPosting.value = false
   }
+}
+
+function openFilePicker() {
+  fileInput.value?.click()
+}
+
+async function onFileSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const files = input.files
+  if (!files || !adapter) return
+
+  isUploading.value = true
+  error.value = null
+
+  try {
+    for (const file of files) {
+      const buffer = await file.arrayBuffer()
+      const data = Array.from(new Uint8Array(buffer))
+      const uploaded = await adapter.api.uploadFile(
+        file.name,
+        data,
+        file.type || 'application/octet-stream',
+      )
+      attachedFiles.value = [...attachedFiles.value, uploaded]
+    }
+  } catch (e) {
+    error.value = AppError.from(e).message
+  } finally {
+    isUploading.value = false
+    input.value = ''
+  }
+}
+
+function removeFile(fileId: string) {
+  attachedFiles.value = attachedFiles.value.filter((f) => f.id !== fileId)
 }
 
 function selectVisibility(v: typeof visibility.value) {
@@ -254,7 +312,10 @@ function onKeydown(e: KeyboardEvent) {
             </template>
             <template v-else>
               <svg viewBox="0 0 24 24" width="16" height="16" class="submit-icon">
-                <template v-if="replyTo">
+                <template v-if="editNote">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                </template>
+                <template v-else-if="replyTo">
                   <path d="M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 010 11H11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
                 </template>
                 <template v-else-if="renoteId">
@@ -264,7 +325,7 @@ function onKeydown(e: KeyboardEvent) {
                   <path d="M22 2L11 13M22 2l-7 20-4-9-9-4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
                 </template>
               </svg>
-              {{ replyTo ? 'Reply' : renoteId ? 'Quote' : 'Note' }}
+              {{ editNote ? 'Edit' : replyTo ? 'Reply' : renoteId ? 'Quote' : 'Note' }}
             </template>
           </button>
         </div>
@@ -313,6 +374,39 @@ function onKeydown(e: KeyboardEvent) {
         />
       </div>
 
+      <!-- File previews -->
+      <div v-if="attachedFiles.length > 0 || isUploading" class="file-preview-area">
+        <div v-for="file in attachedFiles" :key="file.id" class="file-preview">
+          <img
+            v-if="file.thumbnailUrl || file.type.startsWith('image/')"
+            :src="file.thumbnailUrl || file.url"
+            class="file-thumb"
+          />
+          <div v-else class="file-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            </svg>
+          </div>
+          <button class="_button file-remove" title="Remove" @click="removeFile(file.id)">
+            <svg viewBox="0 0 24 24" width="14" height="14">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+        <div v-if="isUploading" class="file-uploading">Uploading...</div>
+      </div>
+
+      <!-- Hidden file input -->
+      <input
+        ref="fileInput"
+        type="file"
+        multiple
+        accept="image/*,video/*,audio/*"
+        style="display: none"
+        @change="onFileSelected"
+      />
+
       <!-- Error -->
       <div v-if="error" class="post-error">{{ error }}</div>
 
@@ -327,6 +421,16 @@ function onKeydown(e: KeyboardEvent) {
           >
             <svg viewBox="0 0 24 24" width="18" height="18">
               <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            </svg>
+          </button>
+          <button
+            class="_button footer-btn"
+            title="Attach file"
+            :disabled="isUploading"
+            @click="openFilePicker"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
             </svg>
           </button>
         </div>
@@ -744,6 +848,66 @@ function onKeydown(e: KeyboardEvent) {
   color: #ff2a2a;
   opacity: 1;
   font-weight: bold;
+}
+
+/* ── File preview ── */
+.file-preview-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 24px;
+}
+
+.file-preview {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--nd-buttonBg);
+}
+
+.file-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.file-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--nd-fg);
+  opacity: 0.5;
+}
+
+.file-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  cursor: pointer;
+}
+
+.file-uploading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  background: var(--nd-buttonBg);
+  font-size: 0.7em;
+  opacity: 0.6;
 }
 
 /* ── Responsive ── */

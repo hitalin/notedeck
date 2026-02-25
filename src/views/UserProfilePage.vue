@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type {
   NormalizedNote,
@@ -12,6 +12,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
+import { toggleFollow } from '@/utils/toggleFollow'
 import { toggleReaction } from '@/utils/toggleReaction'
 
 const props = defineProps<{
@@ -28,6 +29,11 @@ const notes = ref<NormalizedNote[]>([])
 const isLoading = ref(true)
 const isLoadingNotes = ref(false)
 const error = ref<AppError | null>(null)
+
+const account = computed(() =>
+  accountsStore.accounts.find((a) => a.id === props.accountId),
+)
+const isOwnProfile = computed(() => account.value?.userId === props.userId)
 
 let adapter: ServerAdapter | null = null
 
@@ -104,6 +110,21 @@ function formatCount(n: number): string {
 const showPostForm = ref(false)
 const postFormReplyTo = ref<NormalizedNote | undefined>()
 const postFormRenoteId = ref<string | undefined>()
+const postFormEditNote = ref<NormalizedNote | undefined>()
+
+const isFollowLoading = ref(false)
+
+async function handleToggleFollow() {
+  if (!adapter || !user.value || isOwnProfile.value) return
+  isFollowLoading.value = true
+  try {
+    await toggleFollow(adapter.api, user.value)
+  } catch (e) {
+    error.value = AppError.from(e)
+  } finally {
+    isFollowLoading.value = false
+  }
+}
 
 async function handleReaction(note: NormalizedNote, reaction: string) {
   if (!adapter) return
@@ -135,10 +156,28 @@ function handleQuote(target: NormalizedNote) {
   showPostForm.value = true
 }
 
+function handleEdit(target: NormalizedNote) {
+  postFormReplyTo.value = undefined
+  postFormRenoteId.value = undefined
+  postFormEditNote.value = target
+  showPostForm.value = true
+}
+
+async function handleDelete(target: NormalizedNote) {
+  if (!adapter) return
+  try {
+    await adapter.api.deleteNote(target.id)
+    notes.value = notes.value.filter((n) => n.id !== target.id)
+  } catch (e) {
+    error.value = AppError.from(e)
+  }
+}
+
 function closePostForm() {
   showPostForm.value = false
   postFormReplyTo.value = undefined
   postFormRenoteId.value = undefined
+  postFormEditNote.value = undefined
 }
 </script>
 
@@ -220,6 +259,18 @@ function closePostForm() {
           Joined {{ formatDate(user.createdAt) }}
         </div>
 
+        <!-- Follow button -->
+        <div v-if="!isOwnProfile" class="follow-area">
+          <button
+            class="follow-btn _button"
+            :class="{ following: user.isFollowing }"
+            :disabled="isFollowLoading"
+            @click="handleToggleFollow"
+          >
+            {{ user.isFollowing ? 'Following' : 'Follow' }}
+          </button>
+        </div>
+
         <!-- Stats -->
         <div class="stats">
           <div class="stat">
@@ -248,6 +299,8 @@ function closePostForm() {
             @reply="handleReply"
             @renote="handleRenote"
             @quote="handleQuote"
+            @delete="handleDelete"
+            @edit="handleEdit"
           />
 
           <div v-if="isLoadingNotes" class="state-message">
@@ -267,6 +320,7 @@ function closePostForm() {
         :account-id="accountId"
         :reply-to="postFormReplyTo"
         :renote-id="postFormRenoteId"
+        :edit-note="postFormEditNote"
         @close="closePostForm"
         @posted="closePostForm"
       />
@@ -452,6 +506,34 @@ function closePostForm() {
   opacity: 0.5;
 }
 
+/* Follow button */
+.follow-area {
+  padding: 16px 24px 0 154px;
+}
+
+.follow-btn {
+  padding: 8px 24px;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-weight: bold;
+  color: #fff;
+  background: var(--nd-accent);
+  transition: opacity 0.15s;
+}
+
+.follow-btn:hover {
+  opacity: 0.85;
+}
+
+.follow-btn:disabled {
+  opacity: 0.5;
+}
+
+.follow-btn.following {
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+}
+
 /* Stats */
 .stats {
   display: flex;
@@ -567,6 +649,11 @@ function closePostForm() {
     gap: 4px;
     justify-content: center;
     margin-top: 8px;
+  }
+
+  .follow-area {
+    padding: 16px;
+    text-align: center;
   }
 
   .description {

@@ -304,6 +304,9 @@ onUnmounted(() => {
               @reply="handlers.reply"
               @renote="handlers.renote"
               @quote="handlers.quote"
+              @delete="async (n: NormalizedNote) => { if (await handlers.delete(n)) notes = notes.filter(x => x.id !== n.id) }"
+              @edit="handlers.edit"
+              @bookmark="(n: NormalizedNote) => handlers.bookmark(n)"
             />
           </DynamicScrollerItem>
         </template>
@@ -324,6 +327,7 @@ onUnmounted(() => {
       :account-id="column.accountId"
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"
+      :edit-note="postForm.editNote.value"
       @close="postForm.close"
       @posted="postForm.close"
     />

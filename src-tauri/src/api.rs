@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use reqwest::multipart::{Form, Part};
 use reqwest::Client;
 use serde_json::{json, Value};
 
 use crate::error::NoteDeckError;
 use crate::models::{
-    AuthResult, CreateNoteParams, NormalizedNote, NormalizedNotification, NormalizedUser,
-    NormalizedUserDetail, RawCreateNoteResponse, RawEmojisResponse, RawMiAuthResponse, RawNote,
-    RawNotification, RawUser, RawUserDetail, SearchOptions, TimelineOptions, TimelineType,
+    AuthResult, CreateNoteParams, NormalizedDriveFile, NormalizedNote, NormalizedNotification,
+    NormalizedUser, NormalizedUserDetail, RawCreateNoteResponse, RawDriveFile, RawEmojisResponse,
+    RawMiAuthResponse, RawNote, RawNotification, RawUser, RawUserDetail, SearchOptions,
+    TimelineOptions, TimelineType,
 };
 
 
@@ -20,7 +22,7 @@ impl MisskeyClient {
     pub fn new() -> Result<Self, NoteDeckError> {
         Ok(Self {
             client: Client::builder()
-                .user_agent("NoteDeck/0.0.3")
+                .user_agent("NoteDeck/0.0.4")
                 .timeout(Duration::from_secs(30))
                 .connect_timeout(Duration::from_secs(10))
                 .pool_max_idle_per_host(4)
@@ -169,6 +171,115 @@ impl MisskeyClient {
             host,
             token,
             "notes/reactions/delete",
+            json!({ "noteId": note_id }),
+        )
+        .await?;
+        Ok(())
+    }
+
+    pub async fn update_note(
+        &self,
+        host: &str,
+        token: &str,
+        note_id: &str,
+        params: CreateNoteParams,
+    ) -> Result<(), NoteDeckError> {
+        let mut body = json!({ "noteId": note_id });
+        if let Some(ref text) = params.text {
+            body["text"] = json!(text);
+        }
+        if let Some(ref cw) = params.cw {
+            body["cw"] = json!(cw);
+        }
+        if let Some(ref ids) = params.file_ids {
+            body["fileIds"] = json!(ids);
+        }
+        self.request(host, token, "notes/update", body).await?;
+        Ok(())
+    }
+
+    pub async fn upload_file(
+        &self,
+        host: &str,
+        token: &str,
+        file_name: &str,
+        file_data: Vec<u8>,
+        content_type: &str,
+        is_sensitive: bool,
+    ) -> Result<NormalizedDriveFile, NoteDeckError> {
+        let file_part = Part::bytes(file_data)
+            .file_name(file_name.to_string())
+            .mime_str(content_type)
+            .map_err(|e| NoteDeckError::Api {
+                endpoint: "drive/files/create".to_string(),
+                status: 0,
+                message: e.to_string(),
+            })?;
+
+        let form = Form::new()
+            .text("i", token.to_string())
+            .text("isSensitive", is_sensitive.to_string())
+            .part("file", file_part);
+
+        let url = format!("https://{}/api/drive/files/create", host);
+        let resp = self.client.post(&url).multipart(form).send().await?;
+
+        if !resp.status().is_success() {
+            let status = resp.status().as_u16();
+            let message = resp.text().await.unwrap_or_default();
+            return Err(NoteDeckError::Api {
+                endpoint: "drive/files/create".to_string(),
+                status,
+                message,
+            });
+        }
+
+        let raw: RawDriveFile = resp.json().await?;
+        Ok(NormalizedDriveFile::from(raw))
+    }
+
+    pub async fn create_favorite(
+        &self,
+        host: &str,
+        token: &str,
+        note_id: &str,
+    ) -> Result<(), NoteDeckError> {
+        self.request(
+            host,
+            token,
+            "notes/favorites/create",
+            json!({ "noteId": note_id }),
+        )
+        .await?;
+        Ok(())
+    }
+
+    pub async fn delete_favorite(
+        &self,
+        host: &str,
+        token: &str,
+        note_id: &str,
+    ) -> Result<(), NoteDeckError> {
+        self.request(
+            host,
+            token,
+            "notes/favorites/delete",
+            json!({ "noteId": note_id }),
+        )
+        .await?;
+        Ok(())
+    }
+
+    pub async fn delete_note(
+        &self,
+        host: &str,
+        token: &str,
+        note_id: &str,
+    ) -> Result<(), NoteDeckError> {
+        self.request(
+            host,
+            token,
+            "notes/delete",
             json!({ "noteId": note_id }),
         )
         .await?;
@@ -421,6 +532,28 @@ impl MisskeyClient {
         let data = self.request(host, token, "users/show", params).await?;
         let raw: RawUser = serde_json::from_value(data)?;
         Ok(raw.into())
+    }
+
+    pub async fn follow_user(
+        &self,
+        host: &str,
+        token: &str,
+        user_id: &str,
+    ) -> Result<(), NoteDeckError> {
+        self.request(host, token, "following/create", json!({ "userId": user_id }))
+            .await?;
+        Ok(())
+    }
+
+    pub async fn unfollow_user(
+        &self,
+        host: &str,
+        token: &str,
+        user_id: &str,
+    ) -> Result<(), NoteDeckError> {
+        self.request(host, token, "following/delete", json!({ "userId": user_id }))
+            .await?;
+        Ok(())
     }
 
     /// Fetch server meta information.
