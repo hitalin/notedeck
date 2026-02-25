@@ -198,6 +198,15 @@ pub async fn api_search_notes(
 }
 
 #[tauri::command]
+pub fn api_get_cached_timeline(
+    db: State<'_, Database>,
+    account_id: String,
+    limit: Option<i64>,
+) -> Result<Vec<NormalizedNote>> {
+    db.get_cached_timeline(&account_id, limit.unwrap_or(40))
+}
+
+#[tauri::command]
 pub fn api_search_notes_local(
     db: State<'_, Database>,
     account_id: String,

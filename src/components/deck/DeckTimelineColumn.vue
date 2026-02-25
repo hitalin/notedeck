@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import DeckColumn from './DeckColumn.vue'
 import MkNote from '@/components/common/MkNote.vue'
@@ -55,15 +56,42 @@ function columnTitle(): string {
   return opt.label
 }
 
-async function connect() {
+async function connect(useCache = false) {
   error.value = null
   isLoading.value = true
+
+  // 1. Instant cache display (initial mount only)
+  if (useCache && props.column.accountId) {
+    try {
+      const cached = await invoke<NormalizedNote[]>('api_get_cached_timeline', {
+        accountId: props.column.accountId,
+        limit: 40,
+      })
+      if (cached.length > 0) {
+        notes.value = cached
+      }
+    } catch {
+      // non-critical
+    }
+  }
+
   try {
     const adapter = await initAdapter()
     if (!adapter) return
 
-    const fetched = await adapter.api.getTimeline(tlType.value)
-    notes.value = fetched
+    // 2. Differential fetch: use sinceId if we have cached notes
+    const sinceId = notes.value.length > 0 ? notes.value[0]!.id : undefined
+    const fetched = await adapter.api.getTimeline(tlType.value, sinceId ? { sinceId } : undefined)
+
+    if (sinceId && fetched.length > 0) {
+      // Merge new notes on top of cached
+      const existingIds = new Set(notes.value.map(n => n.id))
+      const newNotes = fetched.filter(n => !existingIds.has(n.id))
+      notes.value = [...newNotes, ...notes.value]
+    } else if (fetched.length > 0) {
+      notes.value = fetched
+    }
+    // If fetched is empty and we have cache, keep showing cache
 
     adapter.stream.connect()
     setSubscription(adapter.stream.subscribeTimeline(
@@ -74,7 +102,10 @@ async function connect() {
       },
     ))
   } catch (e) {
-    error.value = AppError.from(e)
+    // 3. Offline fallback: keep cached notes if available
+    if (notes.value.length === 0) {
+      error.value = AppError.from(e)
+    }
   } finally {
     isLoading.value = false
   }
@@ -111,7 +142,7 @@ function handleScroll() {
 }
 
 onMounted(() => {
-  connect()
+  connect(true)
 })
 
 onUnmounted(() => {

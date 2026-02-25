@@ -247,6 +247,32 @@ impl Database {
         Ok(notes)
     }
 
+    pub fn get_cached_timeline(
+        &self,
+        account_id: &str,
+        limit: i64,
+    ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
+        let conn = self.lock()?;
+        let mut stmt = conn.prepare_cached(
+            "SELECT note_json FROM notes_cache
+             WHERE account_id = ?1
+             ORDER BY created_at DESC
+             LIMIT ?2",
+        )?;
+        let rows = stmt.query_map(params![account_id, limit], |row| {
+            let json_str: String = row.get(0)?;
+            Ok(json_str)
+        })?;
+        let mut notes = Vec::new();
+        for row in rows {
+            let json_str = row?;
+            if let Ok(note) = serde_json::from_str::<NormalizedNote>(&json_str) {
+                notes.push(note);
+            }
+        }
+        Ok(notes)
+    }
+
     pub fn upsert_server(&self, server: &StoredServer) -> Result<(), NoteDeckError> {
         let conn = self.lock()?;
         conn.execute(
