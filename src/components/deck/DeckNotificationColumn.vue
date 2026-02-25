@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import DeckColumn from './DeckColumn.vue'
 import MkNote from '@/components/common/MkNote.vue'
@@ -35,7 +35,7 @@ const {
 } = useColumnSetup(() => props.column)
 
 const MAX_NOTIFICATIONS = 500
-const notifications = ref<NormalizedNotification[]>([])
+const notifications = shallowRef<NormalizedNotification[]>([])
 
 function reactionUrl(reaction: string, notification: NormalizedNotification): string | null {
   const note = notification.note
@@ -188,6 +188,7 @@ onUnmounted(() => {
         class="notif-scroller"
         :items="notifications"
         :min-item-size="60"
+        :buffer="400"
         key-field="id"
         @scroll.passive="handleScroll"
       >
@@ -317,6 +318,11 @@ onUnmounted(() => {
   overflow-x: clip;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
+  will-change: scroll-position;
+}
+
+.notif-scroller :deep(.vue-recycle-scroller__item-view) {
+  will-change: transform;
 }
 
 .notif-item {

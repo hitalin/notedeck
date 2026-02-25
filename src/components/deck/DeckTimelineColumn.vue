@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import DeckColumn from './DeckColumn.vue'
@@ -32,8 +32,8 @@ const {
 } = useColumnSetup(() => props.column)
 
 const MAX_NOTES = 500
-const notes = ref<NormalizedNote[]>([])
-const pendingNotes = ref<NormalizedNote[]>([])
+const notes = shallowRef<NormalizedNote[]>([])
+const pendingNotes = shallowRef<NormalizedNote[]>([])
 const isAtTop = ref(true)
 const tlType = ref<TimelineType>(props.column.tl || 'home')
 
@@ -373,6 +373,11 @@ onUnmounted(() => {
   overflow-x: clip;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
+  will-change: scroll-position;
+}
+
+.tl-scroller :deep(.vue-recycle-scroller__item-view) {
+  will-change: transform;
 }
 
 .column-empty {

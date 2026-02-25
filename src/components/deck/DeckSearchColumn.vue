@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import DeckColumn from './DeckColumn.vue'
@@ -30,7 +30,7 @@ const {
   onScroll,
 } = useColumnSetup(() => props.column)
 
-const notes = ref<NormalizedNote[]>([])
+const notes = shallowRef<NormalizedNote[]>([])
 const searchQuery = ref(props.column.query ?? '')
 const searchInput = ref<HTMLInputElement | null>(null)
 const hasLocalResults = ref(false)
@@ -242,6 +242,7 @@ onUnmounted(() => {
         class="search-scroller"
         :items="notes"
         :min-item-size="120"
+        :buffer="400"
         key-field="id"
         @scroll.passive="handleScroll"
       >

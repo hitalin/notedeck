@@ -72,8 +72,14 @@ const patterns: PatternDef[] = [
   },
 ]
 
+const parseCache = new Map<string, MfmToken[]>()
+const CACHE_MAX = 2048
+
 export function parseMfm(text: string): MfmToken[] {
   if (!text) return []
+
+  const cached = parseCache.get(text)
+  if (cached) return cached
 
   const tokens: MfmToken[] = []
   let remaining = text
@@ -105,6 +111,12 @@ export function parseMfm(text: string): MfmToken[] {
     tokens.push(earliest.token)
     remaining = remaining.slice(earliest.index + earliest.length)
   }
+
+  if (parseCache.size >= CACHE_MAX) {
+    const first = parseCache.keys().next().value!
+    parseCache.delete(first)
+  }
+  parseCache.set(text, tokens)
 
   return tokens
 }

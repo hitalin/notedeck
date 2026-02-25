@@ -81,10 +81,14 @@ function resolveEmoji(shortcode: string): string | null {
   return resolveEmojiRaw(shortcode, n.emojis, n.reactionEmojis, n._serverHost)
 }
 
-function reactionUrl(reaction: string): string | null {
+const reactionUrls = computed(() => {
   const n = effectiveNote.value
-  return reactionUrlRaw(reaction, n.emojis, n.reactionEmojis, n._serverHost)
-}
+  const urls: Record<string, string | null> = {}
+  for (const reaction of Object.keys(n.reactions)) {
+    urls[reaction] = reactionUrlRaw(reaction, n.emojis, n.reactionEmojis, n._serverHost)
+  }
+  return urls
+})
 
 </script>
 
@@ -102,6 +106,10 @@ function reactionUrl(reaction: string): string | null {
         v-if="note.user.avatarUrl"
         :src="note.user.avatarUrl"
         class="renote-avatar"
+        width="28"
+        height="28"
+        loading="lazy"
+        decoding="async"
       />
       <span class="renote-user">{{ note.user.name || note.user.username }}</span>
       <span class="renote-label">Renoted</span>
@@ -114,6 +122,10 @@ function reactionUrl(reaction: string): string | null {
         :src="effectiveNote.user.avatarUrl!"
         :alt="effectiveNote.user.username ?? undefined"
         class="avatar"
+        width="58"
+        height="58"
+        loading="lazy"
+        decoding="async"
         @click="navigateToUser(effectiveNote.user.id, $event)"
         @mouseenter="onAvatarMouseEnter"
         @mouseleave="onAvatarMouseLeave"
@@ -199,7 +211,7 @@ function reactionUrl(reaction: string): string | null {
             :class="{ reacted: effectiveNote.myReaction === reaction }"
             @click.stop="emit('react', String(reaction))"
           >
-            <img v-if="reactionUrl(String(reaction))" :src="reactionUrl(String(reaction))!" :alt="String(reaction)" class="custom-emoji" />
+            <img v-if="reactionUrls[String(reaction)]" :src="reactionUrls[String(reaction)]!" :alt="String(reaction)" class="custom-emoji" width="20" height="20" />
             <MkEmoji v-else :emoji="String(reaction)" class="reaction-emoji" />
             <span class="count">{{ count }}</span>
           </button>
