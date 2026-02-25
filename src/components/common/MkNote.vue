@@ -93,11 +93,6 @@ function navigateToUser(userId: string, e: Event) {
   router.push(`/user/${props.note._accountId}/${userId}`)
 }
 
-function resolveEmoji(shortcode: string): string | null {
-  const n = effectiveNote.value
-  return resolveEmojiRaw(shortcode, n.emojis, n.reactionEmojis, n._serverHost)
-}
-
 const reactionUrls = computed(() => {
   const n = effectiveNote.value
   const urls: Record<string, string | null> = {}
