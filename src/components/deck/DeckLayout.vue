@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useGlobalShortcuts } from '@/composables/useGlobalShortcuts'
 import { useAccountsStore } from '@/stores/accounts'
@@ -10,6 +11,7 @@ import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
 
+const router = useRouter()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 
@@ -136,6 +138,7 @@ onMounted(() => {
           :key="acc.id"
           class="_button menu-account-btn"
           :title="`@${acc.username}@${acc.host}`"
+          @click="router.push(`/user/${acc.id}/${acc.userId}`)"
         >
           <img
             v-if="acc.avatarUrl"
@@ -356,10 +359,15 @@ onMounted(() => {
   width: 100%;
   padding: 6px 0;
   transition: background 0.15s;
+  cursor: pointer;
 }
 
 .menu-account-btn:hover {
   background: var(--nd-buttonHoverBg);
+}
+
+.menu-account-btn:active {
+  opacity: 0.7;
 }
 
 .menu-account-avatar {
