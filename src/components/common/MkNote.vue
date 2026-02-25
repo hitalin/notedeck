@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { computed, defineAsyncComponent, onUnmounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
@@ -29,6 +29,15 @@ const effectiveNote = computed(() =>
 )
 const isPureRenote = computed(
   () => props.note.renote && props.note.text === null,
+)
+
+// Track isFavorited locally: shallowRef arrays don't propagate deep property changes
+const localIsFavorited = ref(effectiveNote.value.isFavorited ?? false)
+watch(
+  () => effectiveNote.value.isFavorited,
+  (v) => {
+    localIsFavorited.value = v ?? false
+  },
 )
 
 const emit = defineEmits<{
@@ -409,15 +418,15 @@ async function handleMentionClick(username: string, host: string | null) {
         <template v-else>
           <button
             class="popup-item"
-            :class="{ 'popup-item-active': effectiveNote.isFavorited }"
-            @click="emit('bookmark', effectiveNote); closeMoreMenu()"
+            :class="{ 'popup-item-active': localIsFavorited }"
+            @click="localIsFavorited = !localIsFavorited; emit('bookmark', effectiveNote); closeMoreMenu()"
           >
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                :fill="effectiveNote.isFavorited ? 'currentColor' : 'none'" />
+                :fill="localIsFavorited ? 'currentColor' : 'none'" />
             </svg>
-            {{ effectiveNote.isFavorited ? 'Unbookmark' : 'Bookmark' }}
+            {{ localIsFavorited ? 'Unbookmark' : 'Bookmark' }}
           </button>
           <template v-if="isOwnNote">
             <div class="popup-divider" />
