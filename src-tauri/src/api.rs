@@ -69,7 +69,12 @@ impl MisskeyClient {
             });
         }
 
-        Ok(res.json().await?)
+        let text = res.text().await?;
+        if text.is_empty() {
+            Ok(Value::Null)
+        } else {
+            serde_json::from_str(&text).map_err(NoteDeckError::from)
+        }
     }
 
     pub async fn get_timeline(

@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { createAdapter } from '@/adapters/registry'
-import type { NormalizedDriveFile, NormalizedNote, ServerAdapter } from '@/adapters/types'
+import type {
+  NormalizedDriveFile,
+  NormalizedNote,
+  ServerAdapter,
+} from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
@@ -16,7 +20,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  posted: []
+  posted: [editedNoteId?: string]
 }>()
 
 const accountsStore = useAccountsStore()
@@ -137,9 +141,10 @@ async function post() {
         cw: showCw.value && cw.value ? cw.value : undefined,
       })
     } else {
-      const fileIds = attachedFiles.value.length > 0
-        ? attachedFiles.value.map((f) => f.id)
-        : undefined
+      const fileIds =
+        attachedFiles.value.length > 0
+          ? attachedFiles.value.map((f) => f.id)
+          : undefined
       await adapter.api.createNote({
         text: text.value || undefined,
         cw: showCw.value && cw.value ? cw.value : undefined,
@@ -150,7 +155,7 @@ async function post() {
       })
     }
     posted.value = true
-    setTimeout(() => emit('posted'), 500)
+    setTimeout(() => emit('posted', props.editNote?.id), 500)
   } catch (e) {
     error.value = AppError.from(e).message
   } finally {

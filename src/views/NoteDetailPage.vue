@@ -120,11 +120,16 @@ async function handleDelete(target: NormalizedNote) {
   if (!adapter) return
   try {
     await adapter.api.deleteNote(target.id)
-    if (target.id === note.value?.id) {
+    const id = target.id
+    if (id === note.value?.id) {
       router.back()
     } else {
-      children.value = children.value.filter((n) => n.id !== target.id)
-      ancestors.value = ancestors.value.filter((n) => n.id !== target.id)
+      children.value = children.value.filter(
+        (n) => n.id !== id && n.renote?.id !== id,
+      )
+      ancestors.value = ancestors.value.filter(
+        (n) => n.id !== id && n.renote?.id !== id,
+      )
     }
   } catch (e) {
     error.value = AppError.from(e)
@@ -136,6 +141,34 @@ function closePostForm() {
   postFormReplyTo.value = undefined
   postFormRenoteId.value = undefined
   postFormEditNote.value = undefined
+}
+
+async function handlePosted(editedNoteId?: string) {
+  closePostForm()
+  if (editedNoteId && adapter) {
+    try {
+      const updated = await adapter.api.getNote(editedNoteId)
+      if (note.value?.id === editedNoteId) {
+        note.value = updated
+      }
+      children.value = children.value.map((n) =>
+        n.id === editedNoteId
+          ? updated
+          : n.renote?.id === editedNoteId
+            ? { ...n, renote: updated }
+            : n,
+      )
+      ancestors.value = ancestors.value.map((n) =>
+        n.id === editedNoteId
+          ? updated
+          : n.renote?.id === editedNoteId
+            ? { ...n, renote: updated }
+            : n,
+      )
+    } catch {
+      // note may have been deleted
+    }
+  }
 }
 </script>
 
@@ -218,7 +251,7 @@ function closePostForm() {
         :renote-id="postFormRenoteId"
         :edit-note="postFormEditNote"
         @close="closePostForm"
-        @posted="closePostForm"
+        @posted="handlePosted"
       />
     </Teleport>
   </div>

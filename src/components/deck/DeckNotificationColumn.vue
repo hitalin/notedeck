@@ -183,6 +183,35 @@ async function loadMore() {
   }
 }
 
+async function removeNote(note: NormalizedNote) {
+  if (await handlers.delete(note)) {
+    const id = note.id
+    notifications.value = notifications.value.filter(
+      (x) => x.note?.id !== id && x.note?.renote?.id !== id,
+    )
+  }
+}
+
+async function handlePosted(editedNoteId?: string) {
+  postForm.close()
+  if (editedNoteId) {
+    const adapter = getAdapter()
+    if (!adapter) return
+    try {
+      const updated = await adapter.api.getNote(editedNoteId)
+      notifications.value = notifications.value.map((x) => {
+        if (!x.note) return x
+        if (x.note.id === editedNoteId) return { ...x, note: updated }
+        if (x.note.renote?.id === editedNoteId)
+          return { ...x, note: { ...x.note, renote: updated } }
+        return x
+      })
+    } catch {
+      // note may have been deleted
+    }
+  }
+}
+
 function handleScroll() {
   onScroll(loadMore)
 }
@@ -297,7 +326,7 @@ onUnmounted(() => {
                   @reply="handlers.reply"
                   @renote="handlers.renote"
                   @quote="handlers.quote"
-                  @delete="async (n: NormalizedNote) => { if (await handlers.delete(n)) notifications = notifications.filter(x => x.note?.id !== n.id) }"
+                  @delete="removeNote"
                   @edit="handlers.edit"
                   @bookmark="(n: NormalizedNote) => handlers.bookmark(n)"
                 />
@@ -323,7 +352,7 @@ onUnmounted(() => {
       :renote-id="postForm.renoteId.value"
       :edit-note="postForm.editNote.value"
       @close="postForm.close"
-      @posted="postForm.close"
+      @posted="handlePosted"
     />
   </Teleport>
 </template>

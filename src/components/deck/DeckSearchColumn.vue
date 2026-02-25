@@ -151,6 +151,33 @@ async function loadMore() {
   }
 }
 
+async function removeNote(note: NormalizedNote) {
+  if (await handlers.delete(note)) {
+    const id = note.id
+    notes.value = notes.value.filter((n) => n.id !== id && n.renote?.id !== id)
+  }
+}
+
+async function handlePosted(editedNoteId?: string) {
+  postForm.close()
+  if (editedNoteId) {
+    const adapter = getAdapter()
+    if (!adapter) return
+    try {
+      const updated = await adapter.api.getNote(editedNoteId)
+      notes.value = notes.value.map((n) =>
+        n.id === editedNoteId
+          ? updated
+          : n.renote?.id === editedNoteId
+            ? { ...n, renote: updated }
+            : n,
+      )
+    } catch {
+      // note may have been deleted
+    }
+  }
+}
+
 function handleScroll() {
   onScroll(loadMore)
 }
@@ -263,7 +290,7 @@ onUnmounted(() => {
               @reply="handlers.reply"
               @renote="handlers.renote"
               @quote="handlers.quote"
-              @delete="async (n: NormalizedNote) => { if (await handlers.delete(n)) notes = notes.filter(x => x.id !== n.id) }"
+              @delete="removeNote"
               @edit="handlers.edit"
               @bookmark="(n: NormalizedNote) => handlers.bookmark(n)"
             />
@@ -290,7 +317,7 @@ onUnmounted(() => {
       :renote-id="postForm.renoteId.value"
       :edit-note="postForm.editNote.value"
       @close="postForm.close"
-      @posted="postForm.close"
+      @posted="handlePosted"
     />
   </Teleport>
 </template>
