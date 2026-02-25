@@ -125,4 +125,37 @@ export class MisskeyApi implements ApiAdapter {
       },
     })
   }
+
+  async getNoteChildren(
+    noteId: string,
+    options: PaginationOptions = {},
+  ): Promise<NormalizedNote[]> {
+    return invoke('api_get_note_children', {
+      accountId: this.accountId,
+      noteId,
+      limit: options.limit ?? 30,
+    })
+  }
+
+  async getNoteConversation(
+    noteId: string,
+    options: PaginationOptions = {},
+  ): Promise<NormalizedNote[]> {
+    return invoke('api_get_note_conversation', {
+      accountId: this.accountId,
+      noteId,
+      limit: options.limit ?? 30,
+    })
+  }
+
+  async lookupUser(
+    username: string,
+    host?: string | null,
+  ): Promise<NormalizedUser> {
+    return invoke('api_lookup_user', {
+      accountId: this.accountId,
+      username,
+      host: host ?? null,
+    })
+  }
 }

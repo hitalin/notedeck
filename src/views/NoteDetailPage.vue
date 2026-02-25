@@ -20,6 +20,8 @@ const emojisStore = useEmojisStore()
 const serversStore = useServersStore()
 
 const note = ref<NormalizedNote | null>(null)
+const ancestors = ref<NormalizedNote[]>([])
+const children = ref<NormalizedNote[]>([])
 const isLoading = ref(true)
 const error = ref<AppError | null>(null)
 
@@ -42,6 +44,15 @@ onMounted(async () => {
       }).catch((e) => { console.warn('[NoteDetail] failed to fetch emojis:', e) })
     }
     note.value = await adapter.api.getNote(props.noteId)
+
+    // Fetch conversation (ancestors) and children in parallel
+    const [conv, replies] = await Promise.all([
+      adapter.api.getNoteConversation(props.noteId).catch(() => [] as NormalizedNote[]),
+      adapter.api.getNoteChildren(props.noteId).catch(() => [] as NormalizedNote[]),
+    ])
+    // Conversation API returns newest-first, reverse to show oldest at top
+    ancestors.value = conv.reverse()
+    children.value = replies
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -49,10 +60,12 @@ onMounted(async () => {
   }
 })
 
-async function handleReaction(reaction: string) {
-  if (!adapter || !note.value) return
+async function handleReaction(reaction: string, target?: NormalizedNote) {
+  if (!adapter) return
+  const n = target ?? note.value
+  if (!n) return
   try {
-    await toggleReaction(adapter.api, note.value, reaction)
+    await toggleReaction(adapter.api, n, reaction)
   } catch (e) {
     error.value = AppError.from(e)
   }
@@ -116,14 +129,44 @@ function closePostForm() {
     </div>
 
     <div v-else-if="note" class="note-detail">
-      <MkNote
-        :note="note"
-        detailed
-        @react="handleReaction"
-        @reply="handleReply"
-        @renote="handleRenote"
-        @quote="handleQuote"
-      />
+      <!-- Ancestor chain (conversation) -->
+      <div v-if="ancestors.length > 0" class="ancestors">
+        <MkNote
+          v-for="ancestor in ancestors"
+          :key="ancestor.id"
+          :note="ancestor"
+          @react="(r: string) => handleReaction(r, ancestor)"
+          @reply="handleReply"
+          @renote="handleRenote"
+          @quote="handleQuote"
+        />
+      </div>
+
+      <!-- Focal note -->
+      <div class="focal-note">
+        <MkNote
+          :note="note"
+          detailed
+          @react="(r: string) => handleReaction(r)"
+          @reply="handleReply"
+          @renote="handleRenote"
+          @quote="handleQuote"
+        />
+      </div>
+
+      <!-- Child replies -->
+      <div v-if="children.length > 0" class="children">
+        <div class="children-header">Replies</div>
+        <MkNote
+          v-for="child in children"
+          :key="child.id"
+          :note="child"
+          @react="(r: string) => handleReaction(r, child)"
+          @reply="handleReply"
+          @renote="handleRenote"
+          @quote="handleQuote"
+        />
+      </div>
     </div>
 
     <Teleport to="body">
@@ -143,7 +186,8 @@ function closePostForm() {
 .note-detail-page {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
   background: var(--nd-bg);
 }
 
@@ -186,12 +230,36 @@ function closePostForm() {
 }
 
 .note-detail {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
   max-width: 600px;
   width: 100%;
   margin: 0 auto;
 }
 
+.ancestors {
+  opacity: 0.85;
+  border-left: 3px solid var(--nd-accent);
+}
+
+.focal-note {
+  border-top: 1px solid var(--nd-divider);
+  border-bottom: 1px solid var(--nd-divider);
+}
+
+.children-header {
+  padding: 12px 32px 4px;
+  font-size: 0.85em;
+  font-weight: bold;
+  color: var(--nd-fg);
+  opacity: 0.6;
+}
+
 .state-message {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;

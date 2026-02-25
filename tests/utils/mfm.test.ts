@@ -154,4 +154,112 @@ describe('parseMfm', () => {
     expect(tokens).toHaveLength(1)
     expect(tokens[0]!.type).toBe('url')
   })
+
+  // Markdown link
+  it('parses markdown link', () => {
+    const tokens = parseMfm('click [here](https://example.com) now')
+    expect(tokens).toHaveLength(3)
+    expect(tokens[1]).toEqual({ type: 'link', label: 'here', url: 'https://example.com' })
+  })
+
+  it('parses silent link ?[text](url)', () => {
+    const tokens = parseMfm('?[silent](https://example.com)')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]).toEqual({ type: 'link', label: 'silent', url: 'https://example.com' })
+  })
+
+  // MFM function blocks
+  it('parses $[fn content]', () => {
+    const tokens = parseMfm('$[spin hello]')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]!.type).toBe('fn')
+    const fn = tokens[0] as MfmToken & { type: 'fn' }
+    expect(fn.name).toBe('spin')
+    expect(fn.args).toEqual({})
+    expect(fn.children).toHaveLength(1)
+    expect(fn.children[0]).toEqual({ type: 'text', value: 'hello' })
+  })
+
+  it('parses $[fn.args content] with key=value args', () => {
+    const tokens = parseMfm('$[scale.x=1.2,y=1.2 text]')
+    expect(tokens).toHaveLength(1)
+    const fn = tokens[0] as MfmToken & { type: 'fn' }
+    expect(fn.name).toBe('scale')
+    expect(fn.args).toEqual({ x: '1.2', y: '1.2' })
+  })
+
+  it('parses $[fn.flag content] with boolean arg', () => {
+    const tokens = parseMfm('$[spin.left text]')
+    const fn = tokens[0] as MfmToken & { type: 'fn' }
+    expect(fn.name).toBe('spin')
+    expect(fn.args).toEqual({ left: true })
+  })
+
+  it('parses nested $[fn $[fn content]]', () => {
+    const tokens = parseMfm('$[spin $[bounce hello]]')
+    expect(tokens).toHaveLength(1)
+    const outer = tokens[0] as MfmToken & { type: 'fn' }
+    expect(outer.name).toBe('spin')
+    expect(outer.children).toHaveLength(1)
+    const inner = outer.children[0] as MfmToken & { type: 'fn' }
+    expect(inner.type).toBe('fn')
+    expect(inner.name).toBe('bounce')
+    expect(inner.children).toEqual([{ type: 'text', value: 'hello' }])
+  })
+
+  it('parses fg/bg color functions', () => {
+    const tokens = parseMfm('$[bg.color=51b3fc $[fg.color=000000 text]]')
+    const bg = tokens[0] as MfmToken & { type: 'fn' }
+    expect(bg.name).toBe('bg')
+    expect(bg.args).toEqual({ color: '51b3fc' })
+    const fg = bg.children[0] as MfmToken & { type: 'fn' }
+    expect(fg.name).toBe('fg')
+    expect(fg.args).toEqual({ color: '000000' })
+  })
+
+  it('parses custom emoji inside $[fn]', () => {
+    const tokens = parseMfm('$[spin :star:]')
+    const fn = tokens[0] as MfmToken & { type: 'fn' }
+    expect(fn.children).toHaveLength(1)
+    expect(fn.children[0]).toEqual({ type: 'customEmoji', shortcode: 'star' })
+  })
+
+  // HTML-style tags
+  it('parses <small> tag', () => {
+    const tokens = parseMfm('<small>small text</small>')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]!.type).toBe('small')
+    const small = tokens[0] as MfmToken & { type: 'small' }
+    expect(small.children).toEqual([{ type: 'text', value: 'small text' }])
+  })
+
+  it('parses <center> tag', () => {
+    const tokens = parseMfm('<center>centered</center>')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]!.type).toBe('center')
+    const center = tokens[0] as MfmToken & { type: 'center' }
+    expect(center.children).toEqual([{ type: 'text', value: 'centered' }])
+  })
+
+  it('parses <plain> tag (no inner parsing)', () => {
+    const tokens = parseMfm('<plain>**not bold** :emoji:</plain>')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]!.type).toBe('plain')
+    const plain = tokens[0] as MfmToken & { type: 'plain' }
+    expect(plain.value).toBe('**not bold** :emoji:')
+  })
+
+  it('parses inline content around MFM blocks', () => {
+    const tokens = parseMfm('before $[spin text] after')
+    expect(tokens).toHaveLength(3)
+    expect(tokens[0]).toEqual({ type: 'text', value: 'before ' })
+    expect(tokens[1]!.type).toBe('fn')
+    expect(tokens[2]).toEqual({ type: 'text', value: ' after' })
+  })
+
+  it('treats unclosed $[ as text', () => {
+    const tokens = parseMfm('$[invalid')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]!.type).toBe('text')
+  })
 })

@@ -198,6 +198,48 @@ pub async fn api_search_notes(
 }
 
 #[tauri::command]
+pub async fn api_get_note_children(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    note_id: String,
+    limit: Option<u32>,
+) -> Result<Vec<NormalizedNote>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_note_children(&host, &token, &account_id, &note_id, limit.unwrap_or(30))
+        .await
+}
+
+#[tauri::command]
+pub async fn api_get_note_conversation(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    note_id: String,
+    limit: Option<u32>,
+) -> Result<Vec<NormalizedNote>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_note_conversation(&host, &token, &account_id, &note_id, limit.unwrap_or(30))
+        .await
+}
+
+#[tauri::command]
+pub async fn api_lookup_user(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    username: String,
+    host: Option<String>,
+) -> Result<NormalizedUser> {
+    let (server_host, token) = get_credentials(&db, &account_id)?;
+    client
+        .lookup_user(&server_host, &token, &username, host.as_deref())
+        .await
+}
+
+#[tauri::command]
 pub fn api_get_cached_timeline(
     db: State<'_, Database>,
     account_id: String,

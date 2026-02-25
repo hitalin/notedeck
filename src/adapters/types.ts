@@ -162,6 +162,18 @@ export interface ApiAdapter {
     query: string,
     options?: SearchOptions,
   ): Promise<NormalizedNote[]>
+  getNoteChildren(
+    noteId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
+  getNoteConversation(
+    noteId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
+  lookupUser(
+    username: string,
+    host?: string | null,
+  ): Promise<NormalizedUser>
 }
 
 export type StreamConnectionState =

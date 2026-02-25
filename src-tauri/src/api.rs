@@ -361,6 +361,68 @@ impl MisskeyClient {
         }
     }
 
+    pub async fn get_note_children(
+        &self,
+        host: &str,
+        token: &str,
+        account_id: &str,
+        note_id: &str,
+        limit: u32,
+    ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
+        let data = self
+            .request(
+                host,
+                token,
+                "notes/children",
+                json!({ "noteId": note_id, "limit": limit }),
+            )
+            .await?;
+        let raw: Vec<RawNote> = serde_json::from_value(data)?;
+        Ok(raw
+            .into_iter()
+            .map(|n| n.normalize(account_id, host))
+            .collect())
+    }
+
+    pub async fn get_note_conversation(
+        &self,
+        host: &str,
+        token: &str,
+        account_id: &str,
+        note_id: &str,
+        limit: u32,
+    ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
+        let data = self
+            .request(
+                host,
+                token,
+                "notes/conversation",
+                json!({ "noteId": note_id, "limit": limit }),
+            )
+            .await?;
+        let raw: Vec<RawNote> = serde_json::from_value(data)?;
+        Ok(raw
+            .into_iter()
+            .map(|n| n.normalize(account_id, host))
+            .collect())
+    }
+
+    pub async fn lookup_user(
+        &self,
+        host: &str,
+        token: &str,
+        username: &str,
+        user_host: Option<&str>,
+    ) -> Result<NormalizedUser, NoteDeckError> {
+        let mut params = json!({ "username": username });
+        if let Some(h) = user_host {
+            params["host"] = json!(h);
+        }
+        let data = self.request(host, token, "users/show", params).await?;
+        let raw: RawUser = serde_json::from_value(data)?;
+        Ok(raw.into())
+    }
+
     /// Fetch server meta information.
     pub async fn get_meta(
         &self,

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import type { NormalizedNote } from '@/adapters/types'
+import { invoke } from '@tauri-apps/api/core'
+import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { formatTime } from '@/utils/formatTime'
 import MkEmoji from './MkEmoji.vue'
@@ -91,6 +92,21 @@ const reactionUrls = computed(() => {
   return urls
 })
 
+
+async function handleMentionClick(username: string, host: string | null) {
+  try {
+    const user = await invoke<NormalizedUser>('api_lookup_user', {
+      accountId: props.note._accountId,
+      username,
+      host: host ?? null,
+    })
+    router.push(`/user/${props.note._accountId}/${user.id}`)
+  } catch (e) {
+    console.warn('[MkNote] failed to lookup user:', username, host, e)
+  }
+}
+
+
 </script>
 
 <template>
@@ -112,7 +128,15 @@ const reactionUrls = computed(() => {
         loading="lazy"
         decoding="async"
       />
-      <span class="renote-user">{{ note.user.name || note.user.username }}</span>
+      <span class="renote-user">
+        <MkMfm
+          v-if="note.user.name"
+          :text="note.user.name"
+          :emojis="note.emojis"
+          :server-host="note._serverHost"
+        />
+        <template v-else>{{ note.user.username }}</template>
+      </span>
       <span class="renote-label">Renoted</span>
       <span class="renote-time">{{ formatTime(note.createdAt) }}</span>
     </div>
@@ -142,7 +166,16 @@ const reactionUrls = computed(() => {
       <div class="main">
         <!-- Header -->
         <header class="header">
-          <span class="name">{{ effectiveNote.user.name || effectiveNote.user.username }}</span>
+          <span class="name">
+            <MkMfm
+              v-if="effectiveNote.user.name"
+              :text="effectiveNote.user.name"
+              :emojis="effectiveNote.emojis"
+              :server-host="effectiveNote._serverHost"
+              @mention-click="handleMentionClick"
+            />
+            <template v-else>{{ effectiveNote.user.username }}</template>
+          </span>
           <span class="username">@{{ effectiveNote.user.username }}{{ effectiveNote.user.host ? `@${effectiveNote.user.host}` : '' }}</span>
           <span class="info">
             <svg
@@ -166,6 +199,7 @@ const reactionUrls = computed(() => {
               :text="effectiveNote.cw"
               :emojis="effectiveNote.emojis"
               :server-host="effectiveNote._serverHost"
+              @mention-click="handleMentionClick"
             />
           </p>
           <button class="cw-toggle _button" @click.stop="cwExpanded = !cwExpanded">
@@ -181,6 +215,7 @@ const reactionUrls = computed(() => {
               :emojis="effectiveNote.emojis"
               :reaction-emojis="effectiveNote.reactionEmojis"
               :server-host="effectiveNote._serverHost"
+              @mention-click="handleMentionClick"
             />
           </p>
 
@@ -334,6 +369,11 @@ const reactionUrls = computed(() => {
   font-weight: bold;
 }
 
+.renote-user :deep(.custom-emoji) {
+  height: 1.2em;
+  width: auto;
+}
+
 .renote-label {
   opacity: 0.7;
 }
@@ -389,6 +429,15 @@ const reactionUrls = computed(() => {
   text-overflow: ellipsis;
   overflow: hidden;
   color: var(--nd-fgHighlighted);
+}
+
+.name :deep(.mfm) {
+  white-space: nowrap;
+}
+
+.name :deep(.custom-emoji) {
+  height: 1.2em;
+  width: auto;
 }
 
 .username {
