@@ -62,9 +62,13 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     subscription = sub
   }
 
-  function disconnect() {
+  function disposeSubscription() {
     subscription?.dispose()
     subscription = null
+  }
+
+  function disconnect() {
+    disposeSubscription()
     adapter?.stream.disconnect()
     adapter = null
   }
@@ -168,6 +172,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     initAdapter,
     getAdapter,
     setSubscription,
+    disposeSubscription,
     disconnect,
     // Post form
     postForm: {
