@@ -15,14 +15,19 @@ const { resolveEmoji: resolveEmojiRaw } = useEmojiResolver()
 
 const tokens = computed(() => parseMfm(props.text))
 
-function emojiUrl(shortcode: string): string | null {
-  return resolveEmojiRaw(
-    shortcode,
-    props.emojis ?? {},
-    props.reactionEmojis ?? {},
-    props.serverHost ?? '',
-  )
-}
+// Pre-compute emoji URLs for all custom emoji tokens to avoid double-call in template
+const emojiUrls = computed(() => {
+  const urls: Record<string, string | null> = {}
+  const emojis = props.emojis ?? {}
+  const reactionEmojis = props.reactionEmojis ?? {}
+  const host = props.serverHost ?? ''
+  for (const token of tokens.value) {
+    if (token.type === 'customEmoji' && !(token.shortcode in urls)) {
+      urls[token.shortcode] = resolveEmojiRaw(token.shortcode, emojis, reactionEmojis, host)
+    }
+  }
+  return urls
+})
 
 function handleLinkClick(e: MouseEvent, url: string) {
   e.preventDefault()
@@ -31,7 +36,7 @@ function handleLinkClick(e: MouseEvent, url: string) {
 </script>
 
 <template>
-  <span class="mfm"><template v-for="(token, i) in tokens" :key="i"><a v-if="token.type === 'url'" :href="token.value" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><span v-else-if="token.type === 'mention'" class="mfm-mention" @click.stop>{{ token.acct }}</span><span v-else-if="token.type === 'hashtag'" class="mfm-hashtag" @click.stop>#{{ token.value }}</span><b v-else-if="token.type === 'bold'">{{ token.value }}</b><i v-else-if="token.type === 'italic'">{{ token.value }}</i><s v-else-if="token.type === 'strike'">{{ token.value }}</s><code v-else-if="token.type === 'inlineCode'" class="mfm-code">{{ token.value }}</code><img v-else-if="token.type === 'customEmoji' && emojiUrl(token.shortcode)" :src="emojiUrl(token.shortcode)!" :alt="`:${token.shortcode}:`" class="custom-emoji" width="32" height="32" decoding="async" loading="lazy" /><span v-else-if="token.type === 'customEmoji'">:{{ token.shortcode }}:</span><img v-else-if="token.type === 'unicodeEmoji'" :src="token.url" :alt="token.value" class="twemoji" width="20" height="20" decoding="async" loading="lazy" /><template v-else>{{ token.value }}</template></template></span>
+  <span class="mfm"><template v-for="(token, i) in tokens" :key="i"><a v-if="token.type === 'url'" :href="token.value" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><span v-else-if="token.type === 'mention'" class="mfm-mention" @click.stop>{{ token.acct }}</span><span v-else-if="token.type === 'hashtag'" class="mfm-hashtag" @click.stop>#{{ token.value }}</span><b v-else-if="token.type === 'bold'">{{ token.value }}</b><i v-else-if="token.type === 'italic'">{{ token.value }}</i><s v-else-if="token.type === 'strike'">{{ token.value }}</s><code v-else-if="token.type === 'inlineCode'" class="mfm-code">{{ token.value }}</code><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="emojiUrls[token.shortcode]!" :alt="`:${token.shortcode}:`" class="custom-emoji" width="32" height="32" decoding="async" loading="lazy" /><span v-else-if="token.type === 'customEmoji'">:{{ token.shortcode }}:</span><img v-else-if="token.type === 'unicodeEmoji'" :src="token.url" :alt="token.value" class="twemoji" width="20" height="20" decoding="async" loading="lazy" /><template v-else>{{ token.value }}</template></template></span>
 </template>
 
 <style scoped>

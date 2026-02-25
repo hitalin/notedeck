@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onUnmounted } from 'vue'
+import { computed, defineAsyncComponent, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import type { NormalizedNote } from '@/adapters/types'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
@@ -8,8 +8,9 @@ import MkEmoji from './MkEmoji.vue'
 import MkMfm from './MkMfm.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
 import MkPoll from './MkPoll.vue'
-import MkReactionPicker from './MkReactionPicker.vue'
-import MkUserPopup from './MkUserPopup.vue'
+
+const MkReactionPicker = defineAsyncComponent(() => import('./MkReactionPicker.vue'))
+const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
 
 const props = defineProps<{
   note: NormalizedNote

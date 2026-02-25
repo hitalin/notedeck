@@ -35,6 +35,24 @@ const MAX_NOTES = 500
 const notes = shallowRef<NormalizedNote[]>([])
 const pendingNotes = shallowRef<NormalizedNote[]>([])
 const isAtTop = ref(true)
+
+// rAF batching for streaming notes
+let rafBuffer: NormalizedNote[] = []
+let rafId: number | null = null
+
+function flushRafBuffer() {
+  rafId = null
+  if (rafBuffer.length === 0) return
+  const batch = rafBuffer
+  rafBuffer = []
+  if (isAtTop.value) {
+    const merged = [...batch, ...notes.value]
+    notes.value = merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+  } else {
+    const merged = [...batch, ...pendingNotes.value]
+    pendingNotes.value = merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+  }
+}
 const tlType = ref<TimelineType>(props.column.tl || 'home')
 
 const TL_TYPES: { value: TimelineType; label: string }[] = [
@@ -99,14 +117,9 @@ async function connect(useCache = false) {
     setSubscription(adapter.stream.subscribeTimeline(
       tlType.value,
       (note: NormalizedNote) => {
-        if (isAtTop.value) {
-          const updated = [note, ...notes.value]
-          notes.value = updated.length > MAX_NOTES ? updated.slice(0, MAX_NOTES) : updated
-        } else {
-          pendingNotes.value = [note, ...pendingNotes.value]
-          if (pendingNotes.value.length > MAX_NOTES) {
-            pendingNotes.value = pendingNotes.value.slice(0, MAX_NOTES)
-          }
+        rafBuffer.push(note)
+        if (rafId === null) {
+          rafId = requestAnimationFrame(flushRafBuffer)
         }
       },
     ))
@@ -139,6 +152,8 @@ function scrollToTop() {
 async function switchTl(type: TimelineType) {
   if (type === tlType.value) return
   disconnect()
+  if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null }
+  rafBuffer = []
   notes.value = []
   pendingNotes.value = []
   tlType.value = type
@@ -180,6 +195,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   disconnect()
+  if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null }
 })
 </script>
 

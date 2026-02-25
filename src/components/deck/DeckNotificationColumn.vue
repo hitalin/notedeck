@@ -37,6 +37,19 @@ const {
 const MAX_NOTIFICATIONS = 500
 const notifications = shallowRef<NormalizedNotification[]>([])
 
+// rAF batching for streaming notifications
+let rafBuffer: NormalizedNotification[] = []
+let rafId: number | null = null
+
+function flushRafBuffer() {
+  rafId = null
+  if (rafBuffer.length === 0) return
+  const batch = rafBuffer
+  rafBuffer = []
+  const updated = [...batch, ...notifications.value]
+  notifications.value = updated.length > MAX_NOTIFICATIONS ? updated.slice(0, MAX_NOTIFICATIONS) : updated
+}
+
 function reactionUrl(reaction: string, notification: NormalizedNotification): string | null {
   const note = notification.note
   return reactionUrlRaw(
@@ -111,8 +124,10 @@ async function connect() {
           )
         }
 
-        const updated = [notification, ...notifications.value]
-        notifications.value = updated.length > MAX_NOTIFICATIONS ? updated.slice(0, MAX_NOTIFICATIONS) : updated
+        rafBuffer.push(notification)
+        if (rafId === null) {
+          rafId = requestAnimationFrame(flushRafBuffer)
+        }
       }
     }))
   } catch (e) {
@@ -147,6 +162,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   disconnect()
+  if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null }
 })
 </script>
 

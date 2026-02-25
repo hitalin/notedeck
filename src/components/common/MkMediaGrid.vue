@@ -188,6 +188,7 @@ function isAudio(file: NormalizedDriveFile): boolean {
   background: rgba(0, 0, 0, 0.05);
   min-height: 100px;
   max-height: 300px;
+  aspect-ratio: 16 / 9;
 }
 
 .media-count-1 > .media-cell {
