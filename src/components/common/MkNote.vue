@@ -55,6 +55,31 @@ const accountsStore = useAccountsStore()
 const { resolveEmoji: resolveEmojiRaw, reactionUrl: reactionUrlRaw } =
   useEmojiResolver()
 const showReactionInput = ref(false)
+const reactionPickerPos = ref({ x: 0, y: 0 })
+const reactionPickerTheme = ref<Record<string, string>>({})
+
+function openReactionPicker(e: MouseEvent) {
+  const btn = e.currentTarget as HTMLElement
+  const rect = btn.getBoundingClientRect()
+  const column = btn.closest('.deck-column') as HTMLElement | null
+  const colRect = column?.getBoundingClientRect()
+  const rightEdge = colRect ? colRect.right - 8 : rect.right
+  reactionPickerPos.value = {
+    x: rightEdge,
+    y: rect.bottom + 4,
+  }
+  // Copy theme CSS vars from column for Teleport
+  if (column) {
+    const vars: Record<string, string> = {}
+    for (const attr of column.style) {
+      if (attr.startsWith('--nd-')) {
+        vars[attr] = column.style.getPropertyValue(attr)
+      }
+    }
+    reactionPickerTheme.value = vars
+  }
+  showReactionInput.value = !showReactionInput.value
+}
 const showRenoteMenu = ref(false)
 const showMoreMenu = ref(false)
 const showDeleteConfirm = ref(false)
@@ -328,7 +353,7 @@ async function handleMentionClick(username: string, host: string | null) {
           <button
             class="footer-button reaction-trigger"
             :class="{ active: showReactionInput }"
-            @click.stop="showReactionInput = !showReactionInput"
+            @click.stop="openReactionPicker($event)"
           >
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
@@ -366,13 +391,6 @@ async function handleMentionClick(username: string, host: string | null) {
           </button>
         </div>
 
-        <!-- Reaction picker -->
-        <div v-if="showReactionInput" class="reaction-picker-wrap">
-          <MkReactionPicker
-            :server-host="effectiveNote._serverHost"
-            @pick="(r: string) => { emit('react', r); showReactionInput = false }"
-          />
-        </div>
       </div>
     </article>
   </div>
@@ -448,6 +466,22 @@ async function handleMentionClick(username: string, host: string | null) {
             </button>
           </template>
         </template>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- Reaction picker popup -->
+  <Teleport to="body">
+    <div v-if="showReactionInput" class="popup-backdrop" @click="showReactionInput = false">
+      <div
+        class="reaction-picker-popup"
+        :style="{ ...reactionPickerTheme, top: reactionPickerPos.y + 'px', left: reactionPickerPos.x + 'px' }"
+        @click.stop
+      >
+        <MkReactionPicker
+          :server-host="effectiveNote._serverHost"
+          @pick="(r: string) => { emit('react', r); showReactionInput = false }"
+        />
       </div>
     </div>
   </Teleport>
@@ -826,9 +860,11 @@ async function handleMentionClick(username: string, host: string | null) {
   color: var(--nd-fg);
 }
 
-/* Reaction picker */
-.reaction-picker-wrap {
-  padding: 8px 0;
+/* Reaction picker popup */
+.reaction-picker-popup {
+  position: fixed;
+  transform: translateX(-100%);
+  z-index: 10001;
 }
 
 /* Divider between notes */
