@@ -197,6 +197,16 @@ pub async fn api_search_notes(
         .await
 }
 
+#[tauri::command]
+pub fn api_search_notes_local(
+    db: State<'_, Database>,
+    account_id: String,
+    query: String,
+    limit: Option<i64>,
+) -> Result<Vec<NormalizedNote>> {
+    db.search_cached_notes(&account_id, &query, limit.unwrap_or(30))
+}
+
 // --- Theme ---
 
 #[tauri::command]

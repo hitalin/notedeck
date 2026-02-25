@@ -219,6 +219,34 @@ impl Database {
         self.cache_notes(&[note.clone()])
     }
 
+    pub fn search_cached_notes(
+        &self,
+        account_id: &str,
+        query: &str,
+        limit: i64,
+    ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
+        let conn = self.lock()?;
+        let pattern = format!("%{query}%");
+        let mut stmt = conn.prepare_cached(
+            "SELECT note_json FROM notes_cache
+             WHERE account_id = ?1 AND text LIKE ?2
+             ORDER BY created_at DESC
+             LIMIT ?3",
+        )?;
+        let rows = stmt.query_map(params![account_id, pattern, limit], |row| {
+            let json_str: String = row.get(0)?;
+            Ok(json_str)
+        })?;
+        let mut notes = Vec::new();
+        for row in rows {
+            let json_str = row?;
+            if let Ok(note) = serde_json::from_str::<NormalizedNote>(&json_str) {
+                notes.push(note);
+            }
+        }
+        Ok(notes)
+    }
+
     pub fn upsert_server(&self, server: &StoredServer) -> Result<(), NoteDeckError> {
         let conn = self.lock()?;
         conn.execute(

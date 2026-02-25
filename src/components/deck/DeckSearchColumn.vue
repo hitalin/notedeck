@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import DeckColumn from './DeckColumn.vue'
 import MkNote from '@/components/common/MkNote.vue'
@@ -32,25 +33,97 @@ const {
 const notes = ref<NormalizedNote[]>([])
 const searchQuery = ref(props.column.query ?? '')
 const searchInput = ref<HTMLInputElement | null>(null)
+const hasLocalResults = ref(false)
+const isPreview = ref(false)
+const confirmedQuery = ref('')
+
+function mergeNotes(existing: NormalizedNote[], incoming: NormalizedNote[]): NormalizedNote[] {
+  const seen = new Set(existing.map(n => n.id))
+  const merged = [...existing]
+  for (const note of incoming) {
+    if (!seen.has(note.id)) {
+      merged.push(note)
+      seen.add(note.id)
+    }
+  }
+  return merged.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+// Incremental local search (typeahead)
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+async function searchLocal(q: string) {
+  if (!props.column.accountId || !q) return
+  try {
+    const local = await invoke<NormalizedNote[]>('api_search_notes_local', {
+      accountId: props.column.accountId,
+      query: q,
+      limit: 10,
+    })
+    // Only update if query hasn't changed since we started
+    if (searchQuery.value.trim() === q) {
+      notes.value = local
+      isPreview.value = true
+      hasLocalResults.value = local.length > 0
+    }
+  } catch {
+    // non-critical
+  }
+}
+
+watch(searchQuery, (val) => {
+  const q = val.trim()
+  if (debounceTimer) clearTimeout(debounceTimer)
+  if (!q) {
+    notes.value = []
+    isPreview.value = false
+    hasLocalResults.value = false
+    return
+  }
+  // Don't show preview if already showing confirmed results for this query
+  if (q === confirmedQuery.value) return
+  debounceTimer = setTimeout(() => searchLocal(q), 200)
+})
 
 async function performSearch() {
   const q = searchQuery.value.trim()
   if (!q) return
+  if (debounceTimer) clearTimeout(debounceTimer)
 
   error.value = null
   isLoading.value = true
-  notes.value = []
+  isPreview.value = false
+  confirmedQuery.value = q
 
   deckStore.updateColumn(props.column.id, { query: q })
 
+  // Local search first (instant) if not already showing preview
+  if (!hasLocalResults.value && props.column.accountId) {
+    try {
+      const local = await invoke<NormalizedNote[]>('api_search_notes_local', {
+        accountId: props.column.accountId,
+        query: q,
+      })
+      if (local.length > 0) {
+        notes.value = local
+        hasLocalResults.value = true
+      }
+    } catch {
+      // non-critical
+    }
+  }
+
+  // Server search
   try {
     const adapter = await initAdapter()
     if (!adapter) return
 
     const results = await adapter.api.searchNotes(q)
-    notes.value = results
+    notes.value = hasLocalResults.value ? mergeNotes(notes.value, results) : results
   } catch (e) {
-    error.value = AppError.from(e)
+    if (!hasLocalResults.value) {
+      error.value = AppError.from(e)
+    }
   } finally {
     isLoading.value = false
   }
@@ -93,6 +166,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
   disconnect()
 })
 </script>
@@ -158,7 +232,7 @@ onUnmounted(() => {
         Enter a search query
       </div>
 
-      <div v-else-if="searchQuery.trim() && !isLoading && notes.length === 0" class="column-empty">
+      <div v-else-if="searchQuery.trim() && !isLoading && !isPreview && notes.length === 0" class="column-empty">
         No results found
       </div>
 
@@ -188,8 +262,11 @@ onUnmounted(() => {
         </template>
 
         <template #after>
-          <div v-if="isLoading && notes.length > 0" class="loading-more">
-            Loading...
+          <div v-if="isPreview && notes.length > 0" class="search-preview-hint">
+            Press Enter to search server
+          </div>
+          <div v-else-if="isLoading && notes.length > 0" class="loading-more">
+            {{ hasLocalResults ? 'Searching server...' : 'Loading...' }}
           </div>
         </template>
       </DynamicScroller>
@@ -330,5 +407,13 @@ onUnmounted(() => {
   padding: 1rem;
   font-size: 0.8em;
   opacity: 0.4;
+}
+
+.search-preview-hint {
+  text-align: center;
+  padding: 0.75rem 1rem;
+  font-size: 0.75em;
+  opacity: 0.4;
+  border-top: 1px solid var(--nd-divider);
 }
 </style>
