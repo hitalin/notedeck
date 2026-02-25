@@ -245,7 +245,7 @@ impl Database {
     }
 
     pub fn cache_note(&self, note: &NormalizedNote) -> Result<(), NoteDeckError> {
-        self.cache_notes(&[note.clone()])
+        self.cache_notes(std::slice::from_ref(note))
     }
 
     pub fn search_cached_notes(
