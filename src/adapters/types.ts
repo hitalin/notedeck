@@ -48,6 +48,7 @@ export interface NormalizedNote {
   renoteCount: number
   repliesCount: number
   files: NormalizedDriveFile[]
+  poll?: NormalizedPoll
   reply?: NormalizedNote
   renote?: NormalizedNote
 }
@@ -71,6 +72,18 @@ export interface NormalizedUserDetail extends NormalizedUser {
   isFollowing: boolean
   isFollowed: boolean
   createdAt: string
+}
+
+export interface NormalizedPoll {
+  choices: NormalizedPollChoice[]
+  multiple: boolean
+  expiresAt: string | null
+}
+
+export interface NormalizedPollChoice {
+  text: string
+  votes: number
+  isVoted: boolean
 }
 
 export interface NormalizedDriveFile {

@@ -321,6 +321,26 @@ onUnmounted(() => {
 
 .notif-item {
   border-bottom: 1px solid var(--nd-divider);
+  border-left: 3px solid transparent;
+}
+
+.notif-type-reaction {
+  border-left-color: var(--nd-love);
+}
+
+.notif-type-reply,
+.notif-type-mention {
+  border-left-color: var(--nd-accent);
+}
+
+.notif-type-renote,
+.notif-type-quote {
+  border-left-color: var(--nd-renote);
+}
+
+.notif-type-follow,
+.notif-type-followRequestAccepted {
+  border-left-color: var(--nd-link);
 }
 
 .notif-header {
@@ -355,8 +375,8 @@ onUnmounted(() => {
 }
 
 .notif-user-avatar {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
@@ -395,13 +415,13 @@ onUnmounted(() => {
 }
 
 .notif-reaction-emoji {
-  height: 1.4em;
+  height: 1.8em;
   vertical-align: middle;
   object-fit: contain;
 }
 
 .notif-reaction-emoji :deep(.twemoji) {
-  height: 1.4em;
+  height: 1.8em;
 }
 
 .notif-time {

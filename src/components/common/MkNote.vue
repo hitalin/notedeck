@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import type { NormalizedNote } from '@/adapters/types'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
-import { splitTextWithEmoji } from '@/utils/twemoji'
 import { formatTime } from '@/utils/formatTime'
 import MkEmoji from './MkEmoji.vue'
+import MkMfm from './MkMfm.vue'
+import MkMediaGrid from './MkMediaGrid.vue'
+import MkPoll from './MkPoll.vue'
+import MkReactionPicker from './MkReactionPicker.vue'
+import MkUserPopup from './MkUserPopup.vue'
 
 const props = defineProps<{
   note: NormalizedNote
@@ -29,6 +33,37 @@ const router = useRouter()
 const { resolveEmoji: resolveEmojiRaw, reactionUrl: reactionUrlRaw } = useEmojiResolver()
 const showReactionInput = ref(false)
 const showRenoteMenu = ref(false)
+const cwExpanded = ref(false)
+
+// User hover popup
+const showUserPopup = ref(false)
+const userPopupPos = ref({ x: 0, y: 0 })
+let hoverTimer: ReturnType<typeof setTimeout> | null = null
+
+function onAvatarMouseEnter(e: MouseEvent) {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  userPopupPos.value = { x: rect.right + 8, y: rect.top }
+  hoverTimer = setTimeout(() => { showUserPopup.value = true }, 400)
+}
+
+function onAvatarMouseLeave() {
+  if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null }
+}
+
+function closeUserPopup() {
+  showUserPopup.value = false
+}
+
+onUnmounted(() => {
+  if (hoverTimer) clearTimeout(hoverTimer)
+})
+
+const VISIBILITY_ICONS: Record<string, string> = {
+  public: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',
+  home: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+  followers: 'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z',
+  specified: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z',
+}
 
 function navigateToDetail() {
   if (!props.detailed) {
@@ -51,49 +86,18 @@ function reactionUrl(reaction: string): string | null {
   return reactionUrlRaw(reaction, n.emojis, n.reactionEmojis, n._serverHost)
 }
 
-/** Parse text into segments: plain text, custom emoji, and Unicode emoji (twemoji) */
-const textSegments = computed(() => {
-  const text = effectiveNote.value.text
-  if (!text) return []
-
-  // Pass 1: extract custom emoji :shortcode:
-  const customSegments: { type: 'text' | 'emoji'; value: string; url?: string }[] = []
-  const re = /:([a-zA-Z0-9_]+(?:@[\w.-]+)?):/g
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-  while ((match = re.exec(text)) !== null) {
-    const name = match[1]!
-    const url = resolveEmoji(name)
-    if (!url) continue
-    if (match.index > lastIndex) {
-      customSegments.push({ type: 'text', value: text.slice(lastIndex, match.index) })
-    }
-    customSegments.push({ type: 'emoji', value: match[0], url })
-    lastIndex = re.lastIndex
-  }
-  if (lastIndex < text.length) {
-    customSegments.push({ type: 'text', value: text.slice(lastIndex) })
-  }
-
-  // Pass 2: split remaining text segments for Unicode emoji → twemoji
-  const result: typeof customSegments = []
-  for (const seg of customSegments) {
-    if (seg.type !== 'text') {
-      result.push(seg)
-      continue
-    }
-    for (const sub of splitTextWithEmoji(seg.value)) {
-      result.push(sub)
-    }
-  }
-  return result
-})
 </script>
 
 <template>
   <div class="note-root" :class="{ detailed }" tabindex="0">
     <!-- Renote info bar -->
     <div v-if="isPureRenote" class="renote-info">
+      <svg class="renote-icon" viewBox="0 0 24 24" width="14" height="14">
+        <path
+          d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"
+          stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+        />
+      </svg>
       <img
         v-if="note.user.avatarUrl"
         :src="note.user.avatarUrl"
@@ -111,8 +115,16 @@ const textSegments = computed(() => {
         :alt="effectiveNote.user.username ?? undefined"
         class="avatar"
         @click="navigateToUser(effectiveNote.user.id, $event)"
+        @mouseenter="onAvatarMouseEnter"
+        @mouseleave="onAvatarMouseLeave"
       />
-      <div v-else class="avatar avatar-placeholder" @click="navigateToUser(effectiveNote.user.id, $event)" />
+      <div
+        v-else
+        class="avatar avatar-placeholder"
+        @click="navigateToUser(effectiveNote.user.id, $event)"
+        @mouseenter="onAvatarMouseEnter"
+        @mouseleave="onAvatarMouseLeave"
+      />
 
       <div class="main">
         <!-- Header -->
@@ -120,34 +132,54 @@ const textSegments = computed(() => {
           <span class="name">{{ effectiveNote.user.name || effectiveNote.user.username }}</span>
           <span class="username">@{{ effectiveNote.user.username }}{{ effectiveNote.user.host ? `@${effectiveNote.user.host}` : '' }}</span>
           <span class="info">
+            <svg
+              v-if="effectiveNote.visibility !== 'public'"
+              class="visibility-icon"
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+            >
+              <path :d="VISIBILITY_ICONS[effectiveNote.visibility] || VISIBILITY_ICONS.public" fill="currentColor" />
+            </svg>
             <span class="time">{{ formatTime(effectiveNote.createdAt) }}</span>
           </span>
         </header>
 
         <!-- CW -->
         <div v-if="effectiveNote.cw !== null" class="cw">
-          <p class="cw-text">{{ effectiveNote.cw }}</p>
+          <p class="cw-text">
+            <MkMfm
+              v-if="effectiveNote.cw"
+              :text="effectiveNote.cw"
+              :emojis="effectiveNote.emojis"
+              :server-host="effectiveNote._serverHost"
+            />
+          </p>
+          <button class="cw-toggle _button" @click.stop="cwExpanded = !cwExpanded">
+            {{ cwExpanded ? 'Hide' : 'Show more' }}
+          </button>
         </div>
 
         <!-- Body -->
-        <div class="body">
-          <p v-if="effectiveNote.text" class="text"><template v-for="(seg, i) in textSegments" :key="i"><img v-if="seg.type === 'emoji'" :src="seg.url" :alt="seg.value" class="custom-emoji" /><template v-else>{{ seg.value }}</template></template></p>
+        <div v-if="effectiveNote.cw === null || cwExpanded" class="body">
+          <p v-if="effectiveNote.text" class="text">
+            <MkMfm
+              :text="effectiveNote.text"
+              :emojis="effectiveNote.emojis"
+              :reaction-emojis="effectiveNote.reactionEmojis"
+              :server-host="effectiveNote._serverHost"
+            />
+          </p>
 
-          <div v-if="effectiveNote.files.length > 0" class="files">
-            <div
-              v-for="file in effectiveNote.files"
-              :key="file.id"
-              class="file-preview"
-            >
-              <img
-                v-if="file.type.startsWith('image/')"
-                :src="file.thumbnailUrl || file.url"
-                :alt="file.name"
-                class="file-image"
-                loading="lazy"
-              />
-            </div>
-          </div>
+          <MkMediaGrid
+            v-if="effectiveNote.files.length > 0"
+            :files="effectiveNote.files"
+          />
+
+          <MkPoll
+            v-if="effectiveNote.poll"
+            :poll="effectiveNote.poll"
+          />
 
           <!-- Quote renote (when note has text + renote) -->
           <div v-if="note.renote && note.text !== null" class="quote">
@@ -177,10 +209,8 @@ const textSegments = computed(() => {
         <footer class="footer">
           <button class="footer-button" @click.stop="emit('reply', effectiveNote)">
             <svg viewBox="0 0 24 24" width="16" height="16">
-              <path
-                d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-                stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
-              />
+              <path d="M9 14L5 10l4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M5 10h11a4 4 0 0 1 0 8h-1" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             <span v-if="effectiveNote.repliesCount > 0" class="button-count">
               {{ effectiveNote.repliesCount }}
@@ -198,11 +228,12 @@ const textSegments = computed(() => {
             </span>
           </button>
           <button
-            class="footer-button"
+            class="footer-button reaction-trigger"
+            :class="{ active: showReactionInput }"
             @click.stop="showReactionInput = !showReactionInput"
           >
             <svg viewBox="0 0 24 24" width="16" height="16">
-              <path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+              <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </button>
           <span class="server-badge">{{ note._serverHost }}</span>
@@ -227,19 +258,26 @@ const textSegments = computed(() => {
         </div>
 
         <!-- Reaction picker -->
-        <div v-if="showReactionInput" class="reaction-picker">
-          <button
-            v-for="emoji in ['👍', '❤️', '😆', '🤔', '😮', '🎉', '💢', '😥', '🍮', '🤯']"
-            :key="emoji"
-            class="emoji-btn"
-            @click.stop="emit('react', emoji); showReactionInput = false"
-          >
-            <MkEmoji :emoji="emoji" />
-          </button>
+        <div v-if="showReactionInput" class="reaction-picker-wrap">
+          <MkReactionPicker
+            :server-host="effectiveNote._serverHost"
+            @pick="(r: string) => { emit('react', r); showReactionInput = false }"
+          />
         </div>
       </div>
     </article>
   </div>
+
+  <Teleport to="body">
+    <MkUserPopup
+      v-if="showUserPopup"
+      :user-id="effectiveNote.user.id"
+      :account-id="note._accountId"
+      :x="userPopupPos.x"
+      :y="userPopupPos.y"
+      @close="closeUserPopup"
+    />
+  </Teleport>
 </template>
 
 <style scoped>
@@ -266,6 +304,11 @@ const textSegments = computed(() => {
   gap: 8px;
   font-size: 0.85em;
   color: var(--nd-renote);
+}
+
+.renote-icon {
+  flex-shrink: 0;
+  opacity: 0.8;
 }
 
 .renote-avatar {
@@ -353,10 +396,38 @@ const textSegments = computed(() => {
   opacity: 0.7;
 }
 
+.visibility-icon {
+  margin-right: 4px;
+  opacity: 0.5;
+  vertical-align: middle;
+}
+
 /* CW */
+.cw {
+  margin-bottom: 4px;
+}
+
 .cw-text {
   font-weight: bold;
   margin: 0;
+}
+
+.cw-toggle {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 4px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--nd-accentedBg);
+  color: var(--nd-accent);
+  font-size: 0.8em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cw-toggle:hover {
+  background: var(--nd-buttonHoverBg);
 }
 
 /* Body */
@@ -366,23 +437,6 @@ const textSegments = computed(() => {
 
 .text {
   margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  line-height: 1.5;
-}
-
-.files {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.file-image {
-  width: 100%;
-  border-radius: 8px;
-  max-height: 250px;
-  object-fit: cover;
 }
 
 /* Quote renote */
@@ -487,6 +541,10 @@ const textSegments = computed(() => {
   color: var(--nd-renote);
 }
 
+.reaction-trigger.active {
+  color: var(--nd-accent);
+}
+
 .button-count {
   font-size: 0.85em;
 }
@@ -523,25 +581,8 @@ const textSegments = computed(() => {
 }
 
 /* Reaction picker */
-.reaction-picker {
-  display: flex;
-  gap: 4px;
+.reaction-picker-wrap {
   padding: 8px 0;
-  flex-wrap: wrap;
-}
-
-.emoji-btn {
-  padding: 6px;
-  border: none;
-  border-radius: 6px;
-  background: var(--nd-buttonBg);
-  cursor: pointer;
-  font-size: 1.25em;
-  line-height: 1;
-}
-
-.emoji-btn:hover {
-  background: var(--nd-buttonHoverBg);
 }
 
 /* Divider between notes */

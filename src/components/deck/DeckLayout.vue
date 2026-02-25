@@ -112,6 +112,23 @@ onMounted(() => {
         </button>
       </div>
 
+      <!-- Account avatars -->
+      <div v-if="accountsStore.accounts.length > 0" class="side-menu-accounts">
+        <button
+          v-for="acc in accountsStore.accounts"
+          :key="acc.id"
+          class="_button menu-account-btn"
+          :title="`@${acc.username}@${acc.host}`"
+        >
+          <img
+            v-if="acc.avatarUrl"
+            :src="acc.avatarUrl"
+            class="menu-account-avatar"
+          />
+          <div v-else class="menu-account-avatar menu-avatar-placeholder" />
+        </button>
+      </div>
+
       <div class="side-menu-middle" />
 
       <div class="side-menu-bottom">
@@ -255,9 +272,9 @@ onMounted(() => {
   height: 100%;
 }
 
-/* Side menu (Misskey deck style - 32px narrow) */
+/* Side menu (Misskey deck style) */
 .side-menu {
-  flex: 0 0 32px;
+  flex: 0 0 48px;
   display: flex;
   flex-direction: column;
   background: var(--nd-navBg);
@@ -297,6 +314,39 @@ onMounted(() => {
 .menu-item:hover {
   opacity: 1;
   background: var(--nd-buttonHoverBg);
+}
+
+/* Account avatars in side menu */
+.side-menu-accounts {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 0;
+  border-top: 1px solid var(--nd-divider);
+}
+
+.menu-account-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 6px 0;
+  transition: background 0.15s;
+}
+
+.menu-account-btn:hover {
+  background: var(--nd-buttonHoverBg);
+}
+
+.menu-account-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.menu-avatar-placeholder {
+  background: var(--nd-buttonBg);
 }
 
 /* Add column popup */

@@ -53,6 +53,8 @@ pub struct NormalizedNote {
     #[serde(default)]
     pub files: Vec<NormalizedDriveFile>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub poll: Option<NormalizedPoll>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reply: Option<Box<NormalizedNote>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub renote: Option<Box<NormalizedNote>>,
@@ -94,6 +96,25 @@ pub struct NormalizedUserDetail {
     pub is_followed: bool,
     #[serde(default)]
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NormalizedPoll {
+    pub choices: Vec<NormalizedPollChoice>,
+    #[serde(default)]
+    pub multiple: bool,
+    pub expires_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NormalizedPollChoice {
+    pub text: String,
+    #[serde(default)]
+    pub votes: i64,
+    #[serde(default)]
+    pub is_voted: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -237,6 +258,7 @@ pub struct RawNote {
     pub replies_count: i64,
     #[serde(default)]
     pub files: Vec<RawDriveFile>,
+    pub poll: Option<RawPoll>,
     pub reply: Option<Box<RawNote>>,
     pub renote: Option<Box<RawNote>>,
 }
@@ -249,6 +271,25 @@ pub struct RawUser {
     pub host: Option<String>,
     pub name: Option<String>,
     pub avatar_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RawPoll {
+    pub choices: Vec<RawPollChoice>,
+    #[serde(default)]
+    pub multiple: bool,
+    pub expires_at: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RawPollChoice {
+    pub text: String,
+    #[serde(default)]
+    pub votes: i64,
+    #[serde(default)]
+    pub is_voted: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -350,6 +391,19 @@ impl RawNote {
             renote_count: self.renote_count,
             replies_count: self.replies_count,
             files: self.files.into_iter().map(Into::into).collect(),
+            poll: self.poll.map(|p| NormalizedPoll {
+                choices: p
+                    .choices
+                    .into_iter()
+                    .map(|c| NormalizedPollChoice {
+                        text: c.text,
+                        votes: c.votes,
+                        is_voted: c.is_voted,
+                    })
+                    .collect(),
+                multiple: p.multiple,
+                expires_at: p.expires_at,
+            }),
             reply: self
                 .reply
                 .map(|r| Box::new(r.normalize(account_id, server_host))),
