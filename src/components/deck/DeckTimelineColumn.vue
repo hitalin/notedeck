@@ -46,6 +46,7 @@ function flushRafBuffer() {
   const batch = rafBuffer
   rafBuffer = []
   if (isAtTop.value) {
+    for (const n of batch) noteIds.add(n.id)
     const merged = [...batch, ...notes.value]
     notes.value = merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
   } else {
@@ -71,10 +72,10 @@ const TL_ICONS: Record<TimelineType, string> = {
 
 const currentTlIcon = computed(() => TL_ICONS[tlType.value])
 
-function columnTitle(): string {
+const columnTitle = computed(() => {
   const opt = TL_TYPES.find((o) => o.value === tlType.value) ?? TL_TYPES[0]!
   return opt.label
-}
+})
 
 async function connect(useCache = false) {
   error.value = null
@@ -88,7 +89,7 @@ async function connect(useCache = false) {
         limit: 40,
       })
       if (cached.length > 0) {
-        notes.value = cached
+        setNotes(cached)
       }
     } catch {
       // non-critical
@@ -105,11 +106,10 @@ async function connect(useCache = false) {
 
     if (sinceId && fetched.length > 0) {
       // Merge new notes on top of cached
-      const existingIds = new Set(notes.value.map(n => n.id))
-      const newNotes = fetched.filter(n => !existingIds.has(n.id))
-      notes.value = [...newNotes, ...notes.value]
+      const newNotes = fetched.filter(n => !noteIds.has(n.id))
+      setNotes([...newNotes, ...notes.value])
     } else if (fetched.length > 0) {
-      notes.value = fetched
+      setNotes(fetched)
     }
     // If fetched is empty and we have cache, keep showing cache
 
@@ -133,10 +133,20 @@ async function connect(useCache = false) {
   }
 }
 
+// Maintain ID set alongside notes array for O(1) dedup without allocation per flush
+const noteIds = new Set<string>()
+
+function setNotes(newNotes: NormalizedNote[]) {
+  notes.value = newNotes
+  noteIds.clear()
+  for (const n of newNotes) noteIds.add(n.id)
+}
+
 function flushPending() {
   if (pendingNotes.value.length === 0) return
-  const existingIds = new Set(notes.value.map(n => n.id))
-  const newNotes = pendingNotes.value.filter(n => !existingIds.has(n.id))
+  const newNotes = pendingNotes.value.filter(n => !noteIds.has(n.id))
+  if (newNotes.length === 0) { pendingNotes.value = []; return }
+  for (const n of newNotes) noteIds.add(n.id)
   const merged = [...newNotes, ...notes.value]
   notes.value = merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
   pendingNotes.value = []
@@ -154,7 +164,7 @@ async function switchTl(type: TimelineType) {
   disconnect()
   if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null }
   rafBuffer = []
-  notes.value = []
+  setNotes([])
   pendingNotes.value = []
   tlType.value = type
   deckStore.updateColumn(props.column.id, { tl: type })
@@ -170,7 +180,7 @@ async function loadMore() {
     const older = await adapter.api.getTimeline(tlType.value, {
       untilId: lastNote.id,
     })
-    notes.value = [...notes.value, ...older]
+    setNotes([...notes.value, ...older])
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -202,7 +212,7 @@ onUnmounted(() => {
 <template>
   <DeckColumn
     :column-id="column.id"
-    :title="columnTitle()"
+    :title="columnTitle"
     :theme-vars="columnThemeVars"
   >
     <template #header-icon>

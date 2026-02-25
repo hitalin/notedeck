@@ -50,19 +50,24 @@ function flushRafBuffer() {
   notifications.value = updated.length > MAX_NOTIFICATIONS ? updated.slice(0, MAX_NOTIFICATIONS) : updated
 }
 
-function reactionUrl(reaction: string, notification: NormalizedNotification): string | null {
+// Cache reaction URLs per notification to avoid double-call in template (v-if + :src)
+const reactionUrlLookup = new Map<string, string | null>()
+const twemojiUrlLookup = new Map<string, string | null>()
+
+function getCachedReactionUrl(reaction: string, notification: NormalizedNotification): string | null {
+  const key = `${notification.id}:${reaction}`
+  if (reactionUrlLookup.has(key)) return reactionUrlLookup.get(key)!
   const note = notification.note
-  return reactionUrlRaw(
-    reaction,
-    note?.emojis ?? {},
-    note?.reactionEmojis ?? {},
-    notification._serverHost,
-  )
+  const url = reactionUrlRaw(reaction, note?.emojis ?? {}, note?.reactionEmojis ?? {}, notification._serverHost)
+  reactionUrlLookup.set(key, url)
+  return url
 }
 
-function reactionTwemojiUrl(reaction: string): string | null {
-  if (reaction.startsWith(':') && reaction.endsWith(':')) return null
-  return char2twemojiUrl(reaction)
+function getCachedTwemojiUrl(reaction: string): string | null {
+  if (twemojiUrlLookup.has(reaction)) return twemojiUrlLookup.get(reaction)!
+  const url = reaction.startsWith(':') && reaction.endsWith(':') ? null : char2twemojiUrl(reaction)
+  twemojiUrlLookup.set(reaction, url)
+  return url
 }
 
 const NOTIFICATION_ICONS: Record<string, string> = {
@@ -246,8 +251,8 @@ onUnmounted(() => {
                   </span>
                   <span class="notif-label">{{ notificationLabel(notif.type) }}</span>
                   <span v-if="notif.type === 'reaction' && notif.reaction" class="notif-reaction">
-                    <img v-if="reactionUrl(notif.reaction, notif)" :src="reactionUrl(notif.reaction, notif)!" :alt="notif.reaction" class="notif-reaction-emoji" />
-                    <img v-else-if="reactionTwemojiUrl(notif.reaction)" :src="reactionTwemojiUrl(notif.reaction)!" :alt="notif.reaction" class="notif-reaction-emoji" />
+                    <img v-if="getCachedReactionUrl(notif.reaction, notif)" :src="getCachedReactionUrl(notif.reaction, notif)!" :alt="notif.reaction" class="notif-reaction-emoji" />
+                    <img v-else-if="getCachedTwemojiUrl(notif.reaction)" :src="getCachedTwemojiUrl(notif.reaction)!" :alt="notif.reaction" class="notif-reaction-emoji" />
                     <MkEmoji v-else :emoji="notif.reaction" class="notif-reaction-emoji" />
                   </span>
                 </div>

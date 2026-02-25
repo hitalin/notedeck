@@ -4,13 +4,24 @@ import DeckTimelineColumn from './DeckTimelineColumn.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
+import { computed } from 'vue'
 import { useDeckStore } from '@/stores/deck'
+import type { DeckColumn } from '@/stores/deck'
 import { useAccountsStore } from '@/stores/accounts'
 import { useGlobalShortcuts } from '@/composables/useGlobalShortcuts'
 import { initDesktopNotifications } from '@/utils/desktopNotification'
 
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
+
+// Pre-build column lookup map to avoid O(n) find per column per render
+const columnMap = computed(() => {
+  const map = new Map<string, DeckColumn>()
+  for (const col of deckStore.columns) {
+    map.set(col.id, col)
+  }
+  return map
+})
 
 const showAddMenu = ref(false)
 const showCompose = ref(false)
@@ -65,18 +76,20 @@ onMounted(() => {
     <div class="columns">
       <template v-for="group in deckStore.layout" :key="group.join('-')">
         <section v-for="colId in group" :key="colId" class="column-section">
-          <DeckTimelineColumn
-            v-if="deckStore.getColumn(colId)?.type === 'timeline'"
-            :column="deckStore.getColumn(colId)!"
-          />
-          <DeckNotificationColumn
-            v-else-if="deckStore.getColumn(colId)?.type === 'notifications'"
-            :column="deckStore.getColumn(colId)!"
-          />
-          <DeckSearchColumn
-            v-else-if="deckStore.getColumn(colId)?.type === 'search'"
-            :column="deckStore.getColumn(colId)!"
-          />
+          <template v-if="columnMap.get(colId)" :key="colId">
+            <DeckTimelineColumn
+              v-if="columnMap.get(colId)!.type === 'timeline'"
+              :column="columnMap.get(colId)!"
+            />
+            <DeckNotificationColumn
+              v-else-if="columnMap.get(colId)!.type === 'notifications'"
+              :column="columnMap.get(colId)!"
+            />
+            <DeckSearchColumn
+              v-else-if="columnMap.get(colId)!.type === 'search'"
+              :column="columnMap.get(colId)!"
+            />
+          </template>
         </section>
       </template>
     </div>

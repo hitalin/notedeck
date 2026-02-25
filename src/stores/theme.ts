@@ -103,6 +103,7 @@ export const useThemeStore = defineStore('theme', () => {
     const compiled = compileMisskeyTheme(source.theme, base)
     applyTheme(compiled)
     compiledCache.clear()
+    styleVarsCache.clear()
     currentSource.value = source
     localStorage.setItem(STORAGE_SOURCE_KEY, JSON.stringify(source))
     localStorage.setItem(STORAGE_COMPILED_KEY, JSON.stringify(compiled))
@@ -159,13 +160,22 @@ export const useThemeStore = defineStore('theme', () => {
     return accountThemeCache.value.get(accountId) ?? null
   }
 
+  const styleVarsCache = new Map<string, Record<string, string>>()
+
   function getStyleVarsForAccount(accountId: string): Record<string, string> | undefined {
+    const wantLight = currentSource.value?.kind.includes('light') ?? false
+    const cacheKey = `${accountId}:${wantLight ? 'light' : 'dark'}`
+
+    const cached = styleVarsCache.get(cacheKey)
+    if (cached) return cached
+
     const compiled = getCompiledForAccount(accountId)
     if (!compiled) return undefined
     const style: Record<string, string> = {}
     for (const [key, value] of Object.entries(compiled)) {
       style[`--nd-${key}`] = value
     }
+    styleVarsCache.set(cacheKey, style)
     return style
   }
 
