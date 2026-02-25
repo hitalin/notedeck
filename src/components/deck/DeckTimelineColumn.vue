@@ -33,6 +33,8 @@ const {
 
 const MAX_NOTES = 500
 const notes = ref<NormalizedNote[]>([])
+const pendingNotes = ref<NormalizedNote[]>([])
+const isAtTop = ref(true)
 const tlType = ref<TimelineType>(props.column.tl || 'home')
 
 const TL_TYPES: { value: TimelineType; label: string }[] = [
@@ -97,8 +99,15 @@ async function connect(useCache = false) {
     setSubscription(adapter.stream.subscribeTimeline(
       tlType.value,
       (note: NormalizedNote) => {
-        const updated = [note, ...notes.value]
-        notes.value = updated.length > MAX_NOTES ? updated.slice(0, MAX_NOTES) : updated
+        if (isAtTop.value) {
+          const updated = [note, ...notes.value]
+          notes.value = updated.length > MAX_NOTES ? updated.slice(0, MAX_NOTES) : updated
+        } else {
+          pendingNotes.value = [note, ...pendingNotes.value]
+          if (pendingNotes.value.length > MAX_NOTES) {
+            pendingNotes.value = pendingNotes.value.slice(0, MAX_NOTES)
+          }
+        }
       },
     ))
   } catch (e) {
@@ -111,10 +120,27 @@ async function connect(useCache = false) {
   }
 }
 
+function flushPending() {
+  if (pendingNotes.value.length === 0) return
+  const existingIds = new Set(notes.value.map(n => n.id))
+  const newNotes = pendingNotes.value.filter(n => !existingIds.has(n.id))
+  const merged = [...newNotes, ...notes.value]
+  notes.value = merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+  pendingNotes.value = []
+}
+
+function scrollToTop() {
+  const el = scroller.value?.$el as HTMLElement | undefined
+  if (el) el.scrollTop = 0
+  isAtTop.value = true
+  flushPending()
+}
+
 async function switchTl(type: TimelineType) {
   if (type === tlType.value) return
   disconnect()
   notes.value = []
+  pendingNotes.value = []
   tlType.value = type
   deckStore.updateColumn(props.column.id, { tl: type })
   await connect()
@@ -138,6 +164,13 @@ async function loadMore() {
 }
 
 function handleScroll() {
+  const el = scroller.value?.$el as HTMLElement | undefined
+  if (el) {
+    isAtTop.value = el.scrollTop <= 10
+    if (isAtTop.value && pendingNotes.value.length > 0) {
+      flushPending()
+    }
+  }
   onScroll(loadMore)
 }
 
@@ -199,15 +232,24 @@ onUnmounted(() => {
         Loading...
       </div>
 
-      <DynamicScroller
-        v-else
-        ref="scroller"
-        class="tl-scroller"
-        :items="notes"
-        :min-item-size="120"
-        key-field="id"
-        @scroll.passive="handleScroll"
-      >
+      <template v-else>
+        <button
+          v-if="pendingNotes.length > 0"
+          class="new-notes-banner _button"
+          @click="scrollToTop"
+        >
+          {{ pendingNotes.length }} new notes
+        </button>
+
+        <DynamicScroller
+          ref="scroller"
+          class="tl-scroller"
+          :items="notes"
+          :min-item-size="120"
+          :buffer="400"
+          key-field="id"
+          @scroll.passive="handleScroll"
+        >
         <template #default="{ item, active, index }">
           <DynamicScrollerItem
             :item="item"
@@ -230,6 +272,7 @@ onUnmounted(() => {
           </div>
         </template>
       </DynamicScroller>
+      </template>
     </div>
   </DeckColumn>
 
@@ -345,6 +388,25 @@ onUnmounted(() => {
 .column-error {
   color: var(--nd-love);
   opacity: 1;
+}
+
+.new-notes-banner {
+  display: block;
+  width: 100%;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 0.85em;
+  font-weight: bold;
+  color: var(--nd-accent);
+  background: var(--nd-accentedBg);
+  border-bottom: 1px solid var(--nd-divider);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.new-notes-banner:hover {
+  background: var(--nd-buttonHoverBg);
 }
 
 .loading-more {
