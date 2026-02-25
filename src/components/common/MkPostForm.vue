@@ -21,6 +21,7 @@ const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const themeStore = useThemeStore()
 
+const MAX_TEXT_LENGTH = 3000
 const text = ref('')
 const cw = ref('')
 const showCw = ref(false)
@@ -59,8 +60,11 @@ const currentVisibility = computed(() =>
   visibilityOptions.find((o) => o.value === visibility.value) ?? visibilityOptions[0]!,
 )
 
+const remainingChars = computed(() => MAX_TEXT_LENGTH - text.value.length)
+
 const canPost = computed(() => {
   if (isPosting.value) return false
+  if (remainingChars.value < 0) return false
   if (props.renoteId) return true
   return text.value.trim().length > 0
 })
@@ -285,6 +289,7 @@ function onKeydown(e: KeyboardEvent) {
         <textarea
           v-model="text"
           class="text-area"
+          :maxlength="MAX_TEXT_LENGTH"
           :placeholder="replyTo ? 'Reply...' : renoteId ? 'Quote...' : 'What\'s on your mind?'"
           autofocus
           @keydown="onKeydown"
@@ -308,6 +313,11 @@ function onKeydown(e: KeyboardEvent) {
             </svg>
           </button>
         </div>
+        <span
+          v-if="text.length > 0"
+          class="char-counter"
+          :class="{ over: remainingChars < 0, warn: remainingChars >= 0 && remainingChars <= 100 }"
+        >{{ remainingChars }}</span>
       </footer>
     </div>
   </div>
@@ -699,6 +709,24 @@ function onKeydown(e: KeyboardEvent) {
 .footer-btn.active {
   opacity: 1;
   color: var(--nd-accent);
+}
+
+.char-counter {
+  font-size: 0.8em;
+  opacity: 0.5;
+  padding-right: 8px;
+  align-self: center;
+}
+
+.char-counter.warn {
+  color: #f0a020;
+  opacity: 1;
+}
+
+.char-counter.over {
+  color: #ff2a2a;
+  opacity: 1;
+  font-weight: bold;
 }
 
 /* ── Responsive ── */

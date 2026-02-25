@@ -1,57 +1,46 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
+import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import DeckColumn from './DeckColumn.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
-import { createAdapter } from '@/adapters/registry'
-import type {
-  ChannelSubscription,
-  NormalizedNote,
-  NormalizedNotification,
-  ServerAdapter,
-} from '@/adapters/types'
-
-import { useAccountsStore } from '@/stores/accounts'
-import { toggleReaction } from '@/utils/toggleReaction'
+import type { NormalizedNotification } from '@/adapters/types'
 import { useEmojisStore } from '@/stores/emojis'
-import { useServersStore } from '@/stores/servers'
-import { useThemeStore } from '@/stores/theme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { char2twemojiUrl } from '@/utils/twemoji'
 import { sendDesktopNotification } from '@/utils/desktopNotification'
+import { useColumnSetup } from '@/composables/useColumnSetup'
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
 
-const accountsStore = useAccountsStore()
 const emojisStore = useEmojisStore()
-const serversStore = useServersStore()
-const themeStore = useThemeStore()
-
-const account = computed(() =>
-  accountsStore.accounts.find((a) => a.id === props.column.accountId),
-)
-
-const columnThemeVars = computed(() => {
-  if (!props.column.accountId) return undefined
-  const compiled = themeStore.getCompiledForAccount(props.column.accountId)
-  if (!compiled) return undefined
-  const style: Record<string, string> = {}
-  for (const [key, value] of Object.entries(compiled)) {
-    style[`--nd-${key}`] = value
-  }
-  return style
-})
+const {
+  account,
+  columnThemeVars,
+  isLoading,
+  error,
+  initAdapter,
+  getAdapter,
+  setSubscription,
+  disconnect,
+  showPostForm,
+  postFormReplyTo,
+  postFormRenoteId,
+  handleReaction,
+  handleRenote,
+  handleReply,
+  handleQuote,
+  closePostForm,
+  scroller,
+  onScroll,
+} = useColumnSetup(() => props.column)
 
 const MAX_NOTIFICATIONS = 500
 const notifications = ref<NormalizedNotification[]>([])
-const isLoading = ref(false)
-const error = ref<string | null>(null)
-
-let adapter: ServerAdapter | null = null
-let subscription: ChannelSubscription | null = null
 
 function reactionUrl(reaction: string, notification: NormalizedNotification): string | null {
   if (reaction.startsWith(':') && reaction.endsWith(':')) {
@@ -121,30 +110,20 @@ function notificationLabel(type: string): string {
 }
 
 async function connect() {
-  const acc = account.value
-  if (!acc) return
   error.value = null
   isLoading.value = true
-
   try {
-    const serverInfo = await serversStore.getServerInfo(acc.host)
-    adapter = createAdapter(serverInfo, acc.id)
-
-    if (!emojisStore.has(acc.host)) {
-      adapter.api.getServerEmojis().then((emojis) => {
-        emojisStore.set(acc.host, emojis)
-      }).catch(() => {})
-    }
+    const adapter = await initAdapter()
+    if (!adapter) return
 
     const fetched = await adapter.api.getNotifications()
     notifications.value = fetched
 
     adapter.stream.connect()
-    subscription = adapter.stream.subscribeMain((event) => {
+    setSubscription(adapter.stream.subscribeMain((event) => {
       if (event.type === 'notification') {
         const notification = event.body as NormalizedNotification
 
-        // Send desktop notification for important events
         if (['reply', 'mention', 'quote', 'follow'].includes(notification.type)) {
           const userName = notification.user?.name || notification.user?.username || 'Someone'
           const label = NOTIFICATION_LABELS[notification.type] || notification.type
@@ -157,7 +136,7 @@ async function connect() {
         const updated = [notification, ...notifications.value]
         notifications.value = updated.length > MAX_NOTIFICATIONS ? updated.slice(0, MAX_NOTIFICATIONS) : updated
       }
-    })
+    }))
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
@@ -165,14 +144,8 @@ async function connect() {
   }
 }
 
-function disconnect() {
-  subscription?.dispose()
-  subscription = null
-  adapter?.stream.disconnect()
-  adapter = null
-}
-
 async function loadMore() {
+  const adapter = getAdapter()
   if (!adapter || isLoading.value || notifications.value.length === 0) return
   const last = notifications.value[notifications.value.length - 1]!
   isLoading.value = true
@@ -186,56 +159,8 @@ async function loadMore() {
   }
 }
 
-let lastScrollCheck = 0
-function onScroll(e: Event) {
-  const now = Date.now()
-  if (now - lastScrollCheck < 200) return
-  lastScrollCheck = now
-  const el = e.target as HTMLElement
-  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
-    loadMore()
-  }
-}
-
-// Post form state (for reply from notification)
-const showPostForm = ref(false)
-const postFormReplyTo = ref<NormalizedNote | undefined>()
-const postFormRenoteId = ref<string | undefined>()
-
-async function handleReaction(note: NormalizedNote, reaction: string) {
-  if (!adapter) return
-  try {
-    await toggleReaction(adapter.api, note, reaction)
-  } catch (e) {
-    console.error('[reaction]', e)
-  }
-}
-
-async function handleRenote(note: NormalizedNote) {
-  if (!adapter) return
-  try {
-    await adapter.api.createNote({ renoteId: note.id })
-  } catch (e) {
-    console.error('[renote]', e)
-  }
-}
-
-function handleReply(note: NormalizedNote) {
-  postFormReplyTo.value = note
-  postFormRenoteId.value = undefined
-  showPostForm.value = true
-}
-
-function handleQuote(note: NormalizedNote) {
-  postFormReplyTo.value = undefined
-  postFormRenoteId.value = note.id
-  showPostForm.value = true
-}
-
-function closePostForm() {
-  showPostForm.value = false
-  postFormReplyTo.value = undefined
-  postFormRenoteId.value = undefined
+function handleScroll() {
+  onScroll(loadMore)
 }
 
 onMounted(() => {
@@ -274,69 +199,87 @@ onUnmounted(() => {
       {{ error }}
     </div>
 
-    <div v-else class="notif-body" @scroll="onScroll">
+    <div v-else class="notif-body">
       <div v-if="isLoading && notifications.length === 0" class="column-empty">
         Loading...
       </div>
 
-      <div
-        v-for="notif in notifications"
-        :key="notif.id"
-        class="notif-item"
-        :class="`notif-type-${notif.type}`"
+      <DynamicScroller
+        v-else
+        ref="scroller"
+        class="notif-scroller"
+        :items="notifications"
+        :min-item-size="60"
+        key-field="id"
+        @scroll.passive="handleScroll"
       >
-        <!-- Notification header -->
-        <div class="notif-header">
-          <svg class="notif-icon" viewBox="0 0 24 24" width="16" height="16">
-            <path
-              :d="notificationIcon(notif.type)"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              fill="none"
-            />
-          </svg>
+        <template #default="{ item: notif, active, index }">
+          <DynamicScrollerItem
+            :item="notif"
+            :active="active"
+            :data-index="index"
+          >
+            <div
+              class="notif-item"
+              :class="`notif-type-${notif.type}`"
+            >
+              <!-- Notification header -->
+              <div class="notif-header">
+                <svg class="notif-icon" viewBox="0 0 24 24" width="16" height="16">
+                  <path
+                    :d="notificationIcon(notif.type)"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    fill="none"
+                  />
+                </svg>
 
-          <template v-if="notif.user">
-            <img
-              v-if="notif.user.avatarUrl"
-              :src="notif.user.avatarUrl"
-              class="notif-user-avatar"
-            />
-            <div v-else class="notif-user-avatar notif-avatar-placeholder" />
-          </template>
+                <template v-if="notif.user">
+                  <img
+                    v-if="notif.user.avatarUrl"
+                    :src="notif.user.avatarUrl"
+                    class="notif-user-avatar"
+                  />
+                  <div v-else class="notif-user-avatar notif-avatar-placeholder" />
+                </template>
 
-          <div class="notif-meta">
-            <span v-if="notif.user" class="notif-user-name">
-              {{ notif.user.name || notif.user.username }}
-            </span>
-            <span class="notif-label">{{ notificationLabel(notif.type) }}</span>
-            <span v-if="notif.type === 'reaction' && notif.reaction" class="notif-reaction">
-              <img v-if="reactionUrl(notif.reaction, notif)" :src="reactionUrl(notif.reaction, notif)!" :alt="notif.reaction" class="notif-reaction-emoji" />
-              <img v-else-if="reactionTwemojiUrl(notif.reaction)" :src="reactionTwemojiUrl(notif.reaction)!" :alt="notif.reaction" class="notif-reaction-emoji" />
-              <MkEmoji v-else :emoji="notif.reaction" class="notif-reaction-emoji" />
-            </span>
+                <div class="notif-meta">
+                  <span v-if="notif.user" class="notif-user-name">
+                    {{ notif.user.name || notif.user.username }}
+                  </span>
+                  <span class="notif-label">{{ notificationLabel(notif.type) }}</span>
+                  <span v-if="notif.type === 'reaction' && notif.reaction" class="notif-reaction">
+                    <img v-if="reactionUrl(notif.reaction, notif)" :src="reactionUrl(notif.reaction, notif)!" :alt="notif.reaction" class="notif-reaction-emoji" />
+                    <img v-else-if="reactionTwemojiUrl(notif.reaction)" :src="reactionTwemojiUrl(notif.reaction)!" :alt="notif.reaction" class="notif-reaction-emoji" />
+                    <MkEmoji v-else :emoji="notif.reaction" class="notif-reaction-emoji" />
+                  </span>
+                </div>
+
+                <span class="notif-time">{{ formatTime(notif.createdAt) }}</span>
+              </div>
+
+              <!-- Attached note (for reaction, reply, renote, quote, mention) -->
+              <div v-if="notif.note" class="notif-note-wrap">
+                <MkNote
+                  :note="notif.note"
+                  @react="(reaction: string) => handleReaction(notif.note!, reaction)"
+                  @reply="handleReply"
+                  @renote="handleRenote"
+                  @quote="handleQuote"
+                />
+              </div>
+            </div>
+          </DynamicScrollerItem>
+        </template>
+
+        <template #after>
+          <div v-if="isLoading && notifications.length > 0" class="loading-more">
+            Loading...
           </div>
-
-          <span class="notif-time">{{ formatTime(notif.createdAt) }}</span>
-        </div>
-
-        <!-- Attached note (for reaction, reply, renote, quote, mention) -->
-        <div v-if="notif.note" class="notif-note-wrap">
-          <MkNote
-            :note="notif.note"
-            @react="(reaction: string) => handleReaction(notif.note!, reaction)"
-            @reply="handleReply"
-            @renote="handleRenote"
-            @quote="handleQuote"
-          />
-        </div>
-      </div>
-
-      <div v-if="isLoading && notifications.length > 0" class="loading-more">
-        Loading...
-      </div>
+        </template>
+      </DynamicScroller>
     </div>
   </DeckColumn>
 
@@ -385,7 +328,14 @@ onUnmounted(() => {
 
 .notif-body {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.notif-scroller {
+  flex: 1;
   overflow-x: clip;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;

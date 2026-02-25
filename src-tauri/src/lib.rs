@@ -8,6 +8,7 @@ use tauri_plugin_autostart::MacosLauncher;
 mod api;
 mod commands;
 mod db;
+mod error;
 mod models;
 mod streaming;
 

@@ -9,22 +9,9 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::{mpsc, Mutex};
 use tokio_tungstenite::tungstenite::Message;
 
+use crate::error::NoteDeckError;
 use crate::models::*;
 
-const TIMELINE_CHANNELS: &[(&str, &str)] = &[
-    ("home", "homeTimeline"),
-    ("local", "localTimeline"),
-    ("social", "hybridTimeline"),
-    ("global", "globalTimeline"),
-];
-
-fn timeline_channel(timeline_type: &str) -> &'static str {
-    TIMELINE_CHANNELS
-        .iter()
-        .find(|(t, _)| *t == timeline_type)
-        .map(|(_, c)| *c)
-        .unwrap_or("homeTimeline")
-}
 
 // --- Tauri event payloads ---
 
@@ -105,7 +92,7 @@ impl StreamingManager {
         account_id: &str,
         host: &str,
         token: &str,
-    ) -> Result<(), String> {
+    ) -> Result<(), NoteDeckError> {
         let mut conns = self.connections.lock().await;
         if conns.contains_key(account_id) {
             return Ok(());
@@ -116,7 +103,7 @@ impl StreamingManager {
         // Verify initial connection
         let (ws_stream, _) = tokio_tungstenite::connect_async(&url)
             .await
-            .map_err(|e| format!("WebSocket connect failed: {e}"))?;
+            .map_err(|e| NoteDeckError::WebSocket(e.to_string()))?;
 
         let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
 
@@ -180,10 +167,10 @@ impl StreamingManager {
     pub async fn subscribe_timeline(
         &self,
         account_id: &str,
-        timeline_type: &str,
-    ) -> Result<String, String> {
+        timeline_type: TimelineType,
+    ) -> Result<String, NoteDeckError> {
         let sub_id = uuid::Uuid::new_v4().to_string();
-        let channel = timeline_channel(timeline_type).to_string();
+        let channel = timeline_type.ws_channel().to_string();
 
         let host = self.get_host(account_id).await?;
         self.send_subscribe(account_id, &channel, &sub_id).await?;
@@ -202,7 +189,7 @@ impl StreamingManager {
         Ok(sub_id)
     }
 
-    pub async fn subscribe_main(&self, account_id: &str) -> Result<String, String> {
+    pub async fn subscribe_main(&self, account_id: &str) -> Result<String, NoteDeckError> {
         let sub_id = uuid::Uuid::new_v4().to_string();
 
         let host = self.get_host(account_id).await?;
@@ -222,18 +209,18 @@ impl StreamingManager {
         Ok(sub_id)
     }
 
-    pub async fn unsubscribe(&self, account_id: &str, subscription_id: &str) -> Result<(), String> {
+    pub async fn unsubscribe(&self, account_id: &str, subscription_id: &str) -> Result<(), NoteDeckError> {
         let conns = self.connections.lock().await;
         let handle = conns
             .get(account_id)
-            .ok_or_else(|| format!("No connection for account: {account_id}"))?;
+            .ok_or_else(|| NoteDeckError::NoConnection(account_id.to_string()))?;
 
         handle
             .cmd_tx
             .send(WsCommand::Unsubscribe {
                 id: subscription_id.to_string(),
             })
-            .map_err(|_| "Connection closed".to_string())?;
+            .map_err(|_| NoteDeckError::ConnectionClosed)?;
 
         drop(conns);
 
@@ -243,12 +230,12 @@ impl StreamingManager {
         Ok(())
     }
 
-    async fn get_host(&self, account_id: &str) -> Result<String, String> {
+    async fn get_host(&self, account_id: &str) -> Result<String, NoteDeckError> {
         let conns = self.connections.lock().await;
         conns
             .get(account_id)
             .map(|h| h.host.clone())
-            .ok_or_else(|| format!("No connection for account: {account_id}"))
+            .ok_or_else(|| NoteDeckError::NoConnection(account_id.to_string()))
     }
 
     async fn send_subscribe(
@@ -256,11 +243,11 @@ impl StreamingManager {
         account_id: &str,
         channel: &str,
         sub_id: &str,
-    ) -> Result<(), String> {
+    ) -> Result<(), NoteDeckError> {
         let conns = self.connections.lock().await;
         let handle = conns
             .get(account_id)
-            .ok_or_else(|| format!("No connection for account: {account_id}"))?;
+            .ok_or_else(|| NoteDeckError::NoConnection(account_id.to_string()))?;
 
         handle
             .cmd_tx
@@ -268,7 +255,7 @@ impl StreamingManager {
                 channel: channel.to_string(),
                 id: sub_id.to_string(),
             })
-            .map_err(|_| "Connection closed".to_string())
+            .map_err(|_| NoteDeckError::ConnectionClosed)
     }
 }
 

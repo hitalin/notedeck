@@ -3,22 +3,9 @@ use std::collections::HashMap;
 use reqwest::Client;
 use serde_json::{json, Value};
 
+use crate::error::NoteDeckError;
 use crate::models::*;
 
-const TIMELINE_ENDPOINTS: &[(&str, &str)] = &[
-    ("home", "notes/timeline"),
-    ("local", "notes/local-timeline"),
-    ("social", "notes/hybrid-timeline"),
-    ("global", "notes/global-timeline"),
-];
-
-fn timeline_endpoint(timeline_type: &str) -> &'static str {
-    TIMELINE_ENDPOINTS
-        .iter()
-        .find(|(t, _)| *t == timeline_type)
-        .map(|(_, e)| *e)
-        .unwrap_or("notes/timeline")
-}
 
 pub struct MisskeyClient {
     client: Client,
@@ -40,7 +27,7 @@ impl MisskeyClient {
         token: &str,
         endpoint: &str,
         mut params: Value,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, NoteDeckError> {
         if let Some(obj) = params.as_object_mut() {
             obj.insert("i".to_string(), json!(token));
         }
@@ -50,8 +37,7 @@ impl MisskeyClient {
             .post(format!("https://{host}/api/{endpoint}"))
             .json(&params)
             .send()
-            .await
-            .map_err(|e| e.to_string())?;
+            .await?;
 
         if !res.status().is_success() {
             let status = res.status().as_u16();
@@ -61,14 +47,19 @@ impl MisskeyClient {
                 .or_else(|| body.pointer("/error/code"))
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            return if detail.is_empty() {
-                Err(format!("{endpoint} ({status})"))
+            let message = if detail.is_empty() {
+                format!("{endpoint} ({status})")
             } else {
-                Err(format!("{endpoint}: {detail}"))
+                format!("{endpoint}: {detail}")
             };
+            return Err(NoteDeckError::Api {
+                endpoint: endpoint.to_string(),
+                status,
+                message,
+            });
         }
 
-        res.json().await.map_err(|e| e.to_string())
+        Ok(res.json().await?)
     }
 
     pub async fn get_timeline(
@@ -76,10 +67,10 @@ impl MisskeyClient {
         host: &str,
         token: &str,
         account_id: &str,
-        timeline_type: &str,
+        timeline_type: TimelineType,
         options: TimelineOptions,
-    ) -> Result<Vec<NormalizedNote>, String> {
-        let endpoint = timeline_endpoint(timeline_type);
+    ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
+        let endpoint = timeline_type.api_endpoint();
         let mut params = json!({ "limit": options.limit });
         if let Some(ref id) = options.since_id {
             params["sinceId"] = json!(id);
@@ -89,7 +80,7 @@ impl MisskeyClient {
         }
 
         let data = self.request(host, token, endpoint, params).await?;
-        let raw: Vec<RawNote> = serde_json::from_value(data).map_err(|e| e.to_string())?;
+        let raw: Vec<RawNote> = serde_json::from_value(data)?;
         Ok(raw
             .into_iter()
             .map(|n| n.normalize(account_id, host))
@@ -102,11 +93,11 @@ impl MisskeyClient {
         token: &str,
         account_id: &str,
         note_id: &str,
-    ) -> Result<NormalizedNote, String> {
+    ) -> Result<NormalizedNote, NoteDeckError> {
         let data = self
             .request(host, token, "notes/show", json!({ "noteId": note_id }))
             .await?;
-        let raw: RawNote = serde_json::from_value(data).map_err(|e| e.to_string())?;
+        let raw: RawNote = serde_json::from_value(data)?;
         Ok(raw.normalize(account_id, host))
     }
 
@@ -116,7 +107,7 @@ impl MisskeyClient {
         token: &str,
         account_id: &str,
         params: CreateNoteParams,
-    ) -> Result<NormalizedNote, String> {
+    ) -> Result<NormalizedNote, NoteDeckError> {
         let mut body = json!({});
         if let Some(ref text) = params.text {
             body["text"] = json!(text);
@@ -139,7 +130,7 @@ impl MisskeyClient {
 
         let data = self.request(host, token, "notes/create", body).await?;
         let raw: RawCreateNoteResponse =
-            serde_json::from_value(data).map_err(|e| e.to_string())?;
+            serde_json::from_value(data)?;
         Ok(raw.created_note.normalize(account_id, host))
     }
 
@@ -149,7 +140,7 @@ impl MisskeyClient {
         token: &str,
         note_id: &str,
         reaction: &str,
-    ) -> Result<(), String> {
+    ) -> Result<(), NoteDeckError> {
         self.request(
             host,
             token,
@@ -165,7 +156,7 @@ impl MisskeyClient {
         host: &str,
         token: &str,
         note_id: &str,
-    ) -> Result<(), String> {
+    ) -> Result<(), NoteDeckError> {
         self.request(
             host,
             token,
@@ -181,11 +172,11 @@ impl MisskeyClient {
         host: &str,
         token: &str,
         user_id: &str,
-    ) -> Result<NormalizedUser, String> {
+    ) -> Result<NormalizedUser, NoteDeckError> {
         let data = self
             .request(host, token, "users/show", json!({ "userId": user_id }))
             .await?;
-        let raw: RawUser = serde_json::from_value(data).map_err(|e| e.to_string())?;
+        let raw: RawUser = serde_json::from_value(data)?;
         Ok(raw.into())
     }
 
@@ -194,11 +185,11 @@ impl MisskeyClient {
         host: &str,
         token: &str,
         user_id: &str,
-    ) -> Result<NormalizedUserDetail, String> {
+    ) -> Result<NormalizedUserDetail, NoteDeckError> {
         let data = self
             .request(host, token, "users/show", json!({ "userId": user_id }))
             .await?;
-        let raw: RawUserDetail = serde_json::from_value(data).map_err(|e| e.to_string())?;
+        let raw: RawUserDetail = serde_json::from_value(data)?;
         Ok(raw.normalize())
     }
 
@@ -206,9 +197,9 @@ impl MisskeyClient {
         &self,
         host: &str,
         token: &str,
-    ) -> Result<HashMap<String, String>, String> {
+    ) -> Result<HashMap<String, String>, NoteDeckError> {
         let data = self.request(host, token, "emojis", json!({})).await?;
-        let raw: RawEmojisResponse = serde_json::from_value(data).map_err(|e| e.to_string())?;
+        let raw: RawEmojisResponse = serde_json::from_value(data)?;
         Ok(raw.emojis.into_iter().map(|e| (e.name, e.url)).collect())
     }
 
@@ -219,7 +210,7 @@ impl MisskeyClient {
         account_id: &str,
         user_id: &str,
         options: TimelineOptions,
-    ) -> Result<Vec<NormalizedNote>, String> {
+    ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
         let mut params = json!({ "userId": user_id, "limit": options.limit });
         if let Some(ref id) = options.since_id {
             params["sinceId"] = json!(id);
@@ -229,7 +220,7 @@ impl MisskeyClient {
         }
 
         let data = self.request(host, token, "users/notes", params).await?;
-        let raw: Vec<RawNote> = serde_json::from_value(data).map_err(|e| e.to_string())?;
+        let raw: Vec<RawNote> = serde_json::from_value(data)?;
         Ok(raw
             .into_iter()
             .map(|n| n.normalize(account_id, host))
@@ -242,7 +233,7 @@ impl MisskeyClient {
         token: &str,
         account_id: &str,
         options: TimelineOptions,
-    ) -> Result<Vec<NormalizedNotification>, String> {
+    ) -> Result<Vec<NormalizedNotification>, NoteDeckError> {
         let mut params = json!({ "limit": options.limit });
         if let Some(ref id) = options.since_id {
             params["sinceId"] = json!(id);
@@ -255,7 +246,7 @@ impl MisskeyClient {
             .request(host, token, "i/notifications", params)
             .await?;
         let raw: Vec<RawNotification> =
-            serde_json::from_value(data).map_err(|e| e.to_string())?;
+            serde_json::from_value(data)?;
         Ok(raw
             .into_iter()
             .map(|n| n.normalize(account_id, host))
@@ -268,26 +259,34 @@ impl MisskeyClient {
         &self,
         host: &str,
         session_id: &str,
-    ) -> Result<AuthResult, String> {
+    ) -> Result<AuthResult, NoteDeckError> {
         let res = self
             .client
             .post(format!("https://{host}/api/miauth/{session_id}/check"))
             .json(&json!({}))
             .send()
-            .await
-            .map_err(|e| e.to_string())?;
+            .await?;
 
         if !res.status().is_success() {
-            return Err(format!("MiAuth check failed: {}", res.status().as_u16()));
+            return Err(NoteDeckError::Auth(format!(
+                "MiAuth check failed: {}",
+                res.status().as_u16()
+            )));
         }
 
-        let data: RawMiAuthResponse = res.json().await.map_err(|e| e.to_string())?;
+        let data: RawMiAuthResponse = res.json().await?;
         if !data.ok {
-            return Err("MiAuth authentication was not completed".to_string());
+            return Err(NoteDeckError::Auth(
+                "MiAuth authentication was not completed".to_string(),
+            ));
         }
 
-        let token = data.token.ok_or("MiAuth response missing token")?;
-        let user = data.user.ok_or("MiAuth response missing user")?;
+        let token = data
+            .token
+            .ok_or_else(|| NoteDeckError::Auth("MiAuth response missing token".to_string()))?;
+        let user = data
+            .user
+            .ok_or_else(|| NoteDeckError::Auth("MiAuth response missing user".to_string()))?;
 
         Ok(AuthResult {
             token,
@@ -299,9 +298,9 @@ impl MisskeyClient {
         &self,
         host: &str,
         token: &str,
-    ) -> Result<NormalizedUser, String> {
+    ) -> Result<NormalizedUser, NoteDeckError> {
         let data = self.request(host, token, "i", json!({})).await?;
-        let raw: RawUser = serde_json::from_value(data).map_err(|e| e.to_string())?;
+        let raw: RawUser = serde_json::from_value(data)?;
         Ok(raw.into())
     }
 
@@ -311,7 +310,7 @@ impl MisskeyClient {
         host: &str,
         token: &str,
         scope: &[String],
-    ) -> Result<Option<Value>, String> {
+    ) -> Result<Option<Value>, NoteDeckError> {
         let data = self
             .request(host, token, "i/registry/get-all", json!({ "scope": scope }))
             .await;
@@ -333,7 +332,7 @@ impl MisskeyClient {
         &self,
         host: &str,
         token: &str,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, NoteDeckError> {
         self.request(host, token, "meta", json!({})).await
     }
 }

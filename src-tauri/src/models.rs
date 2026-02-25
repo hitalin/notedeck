@@ -138,6 +138,35 @@ pub struct CreateNoteParams {
     pub file_ids: Option<Vec<String>>,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TimelineType {
+    Home,
+    Local,
+    Social,
+    Global,
+}
+
+impl TimelineType {
+    pub fn api_endpoint(&self) -> &'static str {
+        match self {
+            Self::Home => "notes/timeline",
+            Self::Local => "notes/local-timeline",
+            Self::Social => "notes/hybrid-timeline",
+            Self::Global => "notes/global-timeline",
+        }
+    }
+
+    pub fn ws_channel(&self) -> &'static str {
+        match self {
+            Self::Home => "homeTimeline",
+            Self::Local => "localTimeline",
+            Self::Social => "hybridTimeline",
+            Self::Global => "globalTimeline",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TimelineOptions {

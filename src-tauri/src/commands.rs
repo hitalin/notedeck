@@ -4,21 +4,17 @@ use tauri::State;
 
 use crate::api::MisskeyClient;
 use crate::db::Database;
+use crate::error::NoteDeckError;
 use crate::models::*;
 use crate::streaming::StreamingManager;
 
-type Result<T> = std::result::Result<T, String>;
-
-fn db_err(e: rusqlite::Error) -> String {
-    e.to_string()
-}
+type Result<T> = std::result::Result<T, NoteDeckError>;
 
 /// Look up account credentials from DB
 fn get_credentials(db: &Database, account_id: &str) -> Result<(String, String)> {
     let account = db
-        .get_account(account_id)
-        .map_err(db_err)?
-        .ok_or_else(|| format!("Account not found: {account_id}"))?;
+        .get_account(account_id)?
+        .ok_or_else(|| NoteDeckError::AccountNotFound(account_id.to_string()))?;
     Ok((account.host, account.token))
 }
 
@@ -26,34 +22,34 @@ fn get_credentials(db: &Database, account_id: &str) -> Result<(String, String)> 
 
 #[tauri::command]
 pub fn load_accounts(db: State<'_, Database>) -> Result<Vec<Account>> {
-    db.load_accounts().map_err(db_err)
+    db.load_accounts().map_err(NoteDeckError::from)
 }
 
 #[tauri::command]
 pub fn upsert_account(db: State<'_, Database>, account: Account) -> Result<()> {
-    db.upsert_account(&account).map_err(db_err)
+    db.upsert_account(&account).map_err(NoteDeckError::from)
 }
 
 #[tauri::command]
 pub fn delete_account(db: State<'_, Database>, id: String) -> Result<()> {
-    db.delete_account(&id).map_err(db_err)
+    db.delete_account(&id).map_err(NoteDeckError::from)
 }
 
 // --- DB: Servers ---
 
 #[tauri::command]
 pub fn load_servers(db: State<'_, Database>) -> Result<Vec<StoredServer>> {
-    db.load_servers().map_err(db_err)
+    db.load_servers().map_err(NoteDeckError::from)
 }
 
 #[tauri::command]
 pub fn get_server(db: State<'_, Database>, host: String) -> Result<Option<StoredServer>> {
-    db.get_server(&host).map_err(db_err)
+    db.get_server(&host).map_err(NoteDeckError::from)
 }
 
 #[tauri::command]
 pub fn upsert_server(db: State<'_, Database>, server: StoredServer) -> Result<()> {
-    db.upsert_server(&server).map_err(db_err)
+    db.upsert_server(&server).map_err(NoteDeckError::from)
 }
 
 // --- API ---
@@ -63,12 +59,12 @@ pub async fn api_get_timeline(
     db: State<'_, Database>,
     client: State<'_, MisskeyClient>,
     account_id: String,
-    timeline_type: String,
+    timeline_type: TimelineType,
     options: Option<TimelineOptions>,
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
     client
-        .get_timeline(&host, &token, &account_id, &timeline_type, options.unwrap_or_default())
+        .get_timeline(&host, &token, &account_id, timeline_type, options.unwrap_or_default())
         .await
 }
 
@@ -238,8 +234,20 @@ pub async fn api_fetch_account_theme(
 
 // --- Auth ---
 
+fn validate_host(host: &str) -> Result<()> {
+    let trimmed = host.trim();
+    if trimmed.is_empty() {
+        return Err(NoteDeckError::InvalidInput("Host cannot be empty".to_string()));
+    }
+    if trimmed.contains(|c: char| matches!(c, '/' | '?' | '#' | '@' | ' ' | '\n' | '\r')) {
+        return Err(NoteDeckError::InvalidInput(format!("Invalid host: {trimmed}")));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn auth_start(host: String, permissions: Option<Vec<String>>) -> Result<AuthSession> {
+    validate_host(&host)?;
     let session_id = uuid::Uuid::new_v4().to_string();
     let perms = permissions.unwrap_or_else(|| {
         vec![
@@ -323,10 +331,10 @@ pub async fn stream_disconnect(
 pub async fn stream_subscribe_timeline(
     streaming: State<'_, StreamingManager>,
     account_id: String,
-    timeline_type: String,
+    timeline_type: TimelineType,
 ) -> Result<String> {
     streaming
-        .subscribe_timeline(&account_id, &timeline_type)
+        .subscribe_timeline(&account_id, timeline_type)
         .await
 }
 

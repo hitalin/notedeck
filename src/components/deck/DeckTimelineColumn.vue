@@ -1,56 +1,44 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import DeckColumn from './DeckColumn.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
-import { createAdapter } from '@/adapters/registry'
-import type {
-  ChannelSubscription,
-  NormalizedNote,
-  ServerAdapter,
-  TimelineType,
-} from '@/adapters/types'
-import { useAccountsStore } from '@/stores/accounts'
+import type { NormalizedNote, TimelineType } from '@/adapters/types'
 import { useDeckStore } from '@/stores/deck'
-import { useEmojisStore } from '@/stores/emojis'
-import { toggleReaction } from '@/utils/toggleReaction'
-import { useServersStore } from '@/stores/servers'
-import { useThemeStore } from '@/stores/theme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useColumnSetup } from '@/composables/useColumnSetup'
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
 
-const accountsStore = useAccountsStore()
 const deckStore = useDeckStore()
-const emojisStore = useEmojisStore()
-const serversStore = useServersStore()
-const themeStore = useThemeStore()
-
-const account = computed(() =>
-  accountsStore.accounts.find((a) => a.id === props.column.accountId),
-)
-
-const columnThemeVars = computed(() => {
-  if (!props.column.accountId) return undefined
-  const compiled = themeStore.getCompiledForAccount(props.column.accountId)
-  if (!compiled) return undefined
-  const style: Record<string, string> = {}
-  for (const [key, value] of Object.entries(compiled)) {
-    style[`--nd-${key}`] = value
-  }
-  return style
-})
+const {
+  account,
+  columnThemeVars,
+  isLoading,
+  error,
+  initAdapter,
+  getAdapter,
+  setSubscription,
+  disconnect,
+  showPostForm,
+  postFormReplyTo,
+  postFormRenoteId,
+  handleReaction,
+  handleRenote,
+  handleReply,
+  handleQuote,
+  closePostForm,
+  scroller,
+  onScroll,
+} = useColumnSetup(() => props.column)
 
 const MAX_NOTES = 500
 const notes = ref<NormalizedNote[]>([])
-const isLoading = ref(false)
-const error = ref<string | null>(null)
 const tlType = ref<TimelineType>(props.column.tl || 'home')
-
-let adapter: ServerAdapter | null = null
-let subscription: ChannelSubscription | null = null
 
 const TL_TYPES: { value: TimelineType; label: string }[] = [
   { value: 'home', label: 'Home' },
@@ -59,7 +47,6 @@ const TL_TYPES: { value: TimelineType; label: string }[] = [
   { value: 'global', label: 'Global' },
 ]
 
-/** SVG path data for each timeline type (stroke-based, viewBox 0 0 24 24) */
 const TL_ICONS: Record<TimelineType, string> = {
   home: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2',
   local: 'M12 21a9 9 0 100-18 9 9 0 000 18zm0-18c2.8 0 5 4 5 9s-2.2 9-5 9-5-4-5-9 2.2-9 5-9zM3 12h18',
@@ -75,45 +62,28 @@ function columnTitle(): string {
 }
 
 async function connect() {
-  const acc = account.value
-  if (!acc) return
   error.value = null
   isLoading.value = true
-
   try {
-    const serverInfo = await serversStore.getServerInfo(acc.host)
-    adapter = createAdapter(serverInfo, acc.id)
-
-    // Fetch server emojis once per host
-    if (!emojisStore.has(acc.host)) {
-      adapter.api.getServerEmojis().then((emojis) => {
-        emojisStore.set(acc.host, emojis)
-      }).catch(() => {})
-    }
+    const adapter = await initAdapter()
+    if (!adapter) return
 
     const fetched = await adapter.api.getTimeline(tlType.value)
     notes.value = fetched
 
     adapter.stream.connect()
-    subscription = adapter.stream.subscribeTimeline(
+    setSubscription(adapter.stream.subscribeTimeline(
       tlType.value,
       (note: NormalizedNote) => {
         const updated = [note, ...notes.value]
         notes.value = updated.length > MAX_NOTES ? updated.slice(0, MAX_NOTES) : updated
       },
-    )
+    ))
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
     isLoading.value = false
   }
-}
-
-function disconnect() {
-  subscription?.dispose()
-  subscription = null
-  adapter?.stream.disconnect()
-  adapter = null
 }
 
 async function switchTl(type: TimelineType) {
@@ -126,6 +96,7 @@ async function switchTl(type: TimelineType) {
 }
 
 async function loadMore() {
+  const adapter = getAdapter()
   if (!adapter || isLoading.value || notes.value.length === 0) return
   const lastNote = notes.value[notes.value.length - 1]!
   isLoading.value = true
@@ -141,56 +112,8 @@ async function loadMore() {
   }
 }
 
-let lastScrollCheck = 0
-function onScroll(e: Event) {
-  const now = Date.now()
-  if (now - lastScrollCheck < 200) return
-  lastScrollCheck = now
-  const el = e.target as HTMLElement
-  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
-    loadMore()
-  }
-}
-
-// Post form state
-const showPostForm = ref(false)
-const postFormReplyTo = ref<NormalizedNote | undefined>()
-const postFormRenoteId = ref<string | undefined>()
-
-async function handleReaction(note: NormalizedNote, reaction: string) {
-  if (!adapter) return
-  try {
-    await toggleReaction(adapter.api, note, reaction)
-  } catch (e) {
-    console.error('[reaction]', e)
-  }
-}
-
-async function handleRenote(note: NormalizedNote) {
-  if (!adapter) return
-  try {
-    await adapter.api.createNote({ renoteId: note.id })
-  } catch (e) {
-    console.error('[renote]', e)
-  }
-}
-
-function handleReply(note: NormalizedNote) {
-  postFormReplyTo.value = note
-  postFormRenoteId.value = undefined
-  showPostForm.value = true
-}
-
-function handleQuote(note: NormalizedNote) {
-  postFormReplyTo.value = undefined
-  postFormRenoteId.value = note.id
-  showPostForm.value = true
-}
-
-function closePostForm() {
-  showPostForm.value = false
-  postFormReplyTo.value = undefined
-  postFormRenoteId.value = undefined
+function handleScroll() {
+  onScroll(loadMore)
 }
 
 onMounted(() => {
@@ -246,24 +169,42 @@ onUnmounted(() => {
       {{ error }}
     </div>
 
-    <div v-else class="tl-body" @scroll="onScroll">
+    <div v-else class="tl-body">
       <div v-if="isLoading && notes.length === 0" class="column-empty">
         Loading...
       </div>
 
-      <MkNote
-        v-for="note in notes"
-        :key="note.id"
-        :note="note"
-        @react="(reaction: string) => handleReaction(note, reaction)"
-        @reply="handleReply"
-        @renote="handleRenote"
-        @quote="handleQuote"
-      />
+      <DynamicScroller
+        v-else
+        ref="scroller"
+        class="tl-scroller"
+        :items="notes"
+        :min-item-size="120"
+        key-field="id"
+        @scroll.passive="handleScroll"
+      >
+        <template #default="{ item, active, index }">
+          <DynamicScrollerItem
+            :item="item"
+            :active="active"
+            :data-index="index"
+          >
+            <MkNote
+              :note="item"
+              @react="(reaction: string) => handleReaction(item, reaction)"
+              @reply="handleReply"
+              @renote="handleRenote"
+              @quote="handleQuote"
+            />
+          </DynamicScrollerItem>
+        </template>
 
-      <div v-if="isLoading && notes.length > 0" class="loading-more">
-        Loading...
-      </div>
+        <template #after>
+          <div v-if="isLoading && notes.length > 0" class="loading-more">
+            Loading...
+          </div>
+        </template>
+      </DynamicScroller>
     </div>
   </DeckColumn>
 
@@ -353,7 +294,14 @@ onUnmounted(() => {
 
 .tl-body {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tl-scroller {
+  flex: 1;
   overflow-x: clip;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
