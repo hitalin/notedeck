@@ -53,7 +53,4 @@ router.beforeEach(async (to) => {
   if (!isPublic && !hasAccounts) {
     return { name: 'login' }
   }
-  if (to.name === 'login' && hasAccounts) {
-    return { name: 'deck' }
-  }
 })
