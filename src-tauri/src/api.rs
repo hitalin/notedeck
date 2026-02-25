@@ -44,16 +44,17 @@ impl MisskeyClient {
 
         if !res.status().is_success() {
             let status = res.status().as_u16();
-            let body: Value = res.json().await.unwrap_or_default();
-            let detail = body
-                .pointer("/error/message")
-                .or_else(|| body.pointer("/error/code"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            let message = if detail.is_empty() {
-                format!("{endpoint} ({status})")
-            } else {
-                format!("{endpoint}: {detail}")
+            let detail = match res.json::<Value>().await {
+                Ok(body) => body
+                    .pointer("/error/message")
+                    .or_else(|| body.pointer("/error/code"))
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                Err(_) => None,
+            };
+            let message = match detail {
+                Some(d) => format!("{endpoint}: {d}"),
+                None => format!("{endpoint} ({status})"),
             };
             return Err(NoteDeckError::Api {
                 endpoint: endpoint.to_string(),
@@ -74,7 +75,7 @@ impl MisskeyClient {
         options: TimelineOptions,
     ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
         let endpoint = timeline_type.api_endpoint();
-        let mut params = json!({ "limit": options.limit });
+        let mut params = json!({ "limit": options.limit() });
         if let Some(ref id) = options.since_id {
             params["sinceId"] = json!(id);
         }
@@ -214,7 +215,7 @@ impl MisskeyClient {
         user_id: &str,
         options: TimelineOptions,
     ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
-        let mut params = json!({ "userId": user_id, "limit": options.limit });
+        let mut params = json!({ "userId": user_id, "limit": options.limit() });
         if let Some(ref id) = options.since_id {
             params["sinceId"] = json!(id);
         }
@@ -237,7 +238,7 @@ impl MisskeyClient {
         account_id: &str,
         options: TimelineOptions,
     ) -> Result<Vec<NormalizedNotification>, NoteDeckError> {
-        let mut params = json!({ "limit": options.limit });
+        let mut params = json!({ "limit": options.limit() });
         if let Some(ref id) = options.since_id {
             params["sinceId"] = json!(id);
         }

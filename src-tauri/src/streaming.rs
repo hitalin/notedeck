@@ -12,6 +12,14 @@ use tokio_tungstenite::tungstenite::Message;
 use crate::error::NoteDeckError;
 use crate::models::*;
 
+macro_rules! emit_or_log {
+    ($app:expr, $event:expr, $payload:expr) => {
+        if let Err(e) = $app.emit($event, $payload) {
+            eprintln!("[stream] emit {} failed: {e}", $event);
+        }
+    };
+}
+
 
 // --- Tauri event payloads ---
 
@@ -133,15 +141,10 @@ impl StreamingManager {
             },
         );
 
-        if let Err(e) = app.emit(
-            "stream-status",
-            StreamStatusEvent {
-                account_id: account_id.to_string(),
-                state: "connected".to_string(),
-            },
-        ) {
-            eprintln!("[stream] emit connected failed: {e}");
-        }
+        emit_or_log!(app, "stream-status", StreamStatusEvent {
+            account_id: account_id.to_string(),
+            state: "connected".to_string(),
+        });
 
         Ok(())
     }
@@ -157,15 +160,10 @@ impl StreamingManager {
         let mut subs = self.subscriptions.lock().await;
         subs.retain(|_, info| info.account_id != account_id);
 
-        if let Err(e) = app.emit(
-            "stream-status",
-            StreamStatusEvent {
-                account_id: account_id.to_string(),
-                state: "disconnected".to_string(),
-            },
-        ) {
-            eprintln!("[stream] emit disconnected failed: {e}");
-        }
+        emit_or_log!(app, "stream-status", StreamStatusEvent {
+            account_id: account_id.to_string(),
+            state: "disconnected".to_string(),
+        });
     }
 
     pub async fn subscribe_timeline(
@@ -299,15 +297,10 @@ async fn connection_task(
 
     // Reconnection loop
     loop {
-        if let Err(e) = app.emit(
-            "stream-status",
-            StreamStatusEvent {
-                account_id: account_id.clone(),
-                state: "reconnecting".to_string(),
-            },
-        ) {
-            eprintln!("[stream] emit reconnecting failed: {e}");
-        }
+        emit_or_log!(app, "stream-status", StreamStatusEvent {
+            account_id: account_id.clone(),
+            state: "reconnecting".to_string(),
+        });
 
         // Wait with backoff, but listen for Shutdown during the wait
         let sleep = tokio::time::sleep(Duration::from_secs(backoff_secs));
@@ -337,15 +330,10 @@ async fn connection_task(
             Ok((ws_stream, _)) => {
                 backoff_secs = 1; // Reset backoff on success
 
-                if let Err(e) = app.emit(
-                    "stream-status",
-                    StreamStatusEvent {
-                        account_id: account_id.clone(),
-                        state: "connected".to_string(),
-                    },
-                ) {
-                    eprintln!("[stream] emit connected failed: {e}");
-                }
+                emit_or_log!(app, "stream-status", StreamStatusEvent {
+                    account_id: account_id.clone(),
+                    state: "connected".to_string(),
+                });
 
                 let reason = run_ws_session(
                     &app,
@@ -507,44 +495,29 @@ async fn handle_ws_message(
     if info.kind == "timeline" && event_type == "note" {
         if let Ok(raw) = serde_json::from_value::<RawNote>(event_body) {
             let note = raw.normalize(account_id, &info.host);
-            if let Err(e) = app.emit(
-                "stream-note",
-                StreamNoteEvent {
-                    account_id: account_id.to_string(),
-                    subscription_id: sub_id.to_string(),
-                    note,
-                },
-            ) {
-                eprintln!("[stream] emit note failed: {e}");
-            }
+            emit_or_log!(app, "stream-note", StreamNoteEvent {
+                account_id: account_id.to_string(),
+                subscription_id: sub_id.to_string(),
+                note,
+            });
         }
     } else if info.kind == "main" {
         if event_type == "notification" {
             if let Ok(raw) = serde_json::from_value::<RawNotification>(event_body.clone()) {
                 let notification = raw.normalize(account_id, &info.host);
-                if let Err(e) = app.emit(
-                    "stream-notification",
-                    StreamNotificationEvent {
-                        account_id: account_id.to_string(),
-                        subscription_id: sub_id.to_string(),
-                        notification,
-                    },
-                ) {
-                    eprintln!("[stream] emit notification failed: {e}");
-                }
-            }
-        } else {
-            if let Err(e) = app.emit(
-                "stream-main-event",
-                StreamMainEvent {
+                emit_or_log!(app, "stream-notification", StreamNotificationEvent {
                     account_id: account_id.to_string(),
                     subscription_id: sub_id.to_string(),
-                    event_type: event_type.to_string(),
-                    body: event_body,
-                },
-            ) {
-                eprintln!("[stream] emit main-event failed: {e}");
+                    notification,
+                });
             }
+        } else {
+            emit_or_log!(app, "stream-main-event", StreamMainEvent {
+                account_id: account_id.to_string(),
+                subscription_id: sub_id.to_string(),
+                event_type: event_type.to_string(),
+                body: event_body,
+            });
         }
     }
 }

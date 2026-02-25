@@ -171,9 +171,16 @@ impl TimelineType {
 #[serde(rename_all = "camelCase")]
 pub struct TimelineOptions {
     #[serde(default = "default_limit")]
-    pub limit: i64,
+    limit: i64,
     pub since_id: Option<String>,
     pub until_id: Option<String>,
+}
+
+impl TimelineOptions {
+    /// Returns limit clamped to 1..=100
+    pub fn limit(&self) -> i64 {
+        self.limit.clamp(1, 100)
+    }
 }
 
 impl Default for TimelineOptions {

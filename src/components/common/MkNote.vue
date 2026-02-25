@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { NormalizedNote } from '@/adapters/types'
-import { useEmojisStore } from '@/stores/emojis'
+import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { splitTextWithEmoji } from '@/utils/twemoji'
 import { formatTime } from '@/utils/formatTime'
 import MkEmoji from './MkEmoji.vue'
@@ -26,7 +26,7 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
-const emojisStore = useEmojisStore()
+const { resolveEmoji: resolveEmojiRaw, reactionUrl: reactionUrlRaw } = useEmojiResolver()
 const showReactionInput = ref(false)
 const showRenoteMenu = ref(false)
 
@@ -41,24 +41,14 @@ function navigateToUser(userId: string, e: Event) {
   router.push(`/user/${props.note._accountId}/${userId}`)
 }
 
-/** Resolve emoji shortcode to URL using note data + server cache */
 function resolveEmoji(shortcode: string): string | null {
   const n = effectiveNote.value
-  const base = shortcode.replace(/@\.$/, '')
-  // Note-level emojis (remote emojis)
-  return n.emojis[shortcode] || n.emojis[base]
-    // Reaction emojis
-    || n.reactionEmojis[shortcode] || n.reactionEmojis[base]
-    // Server-level emoji cache (local emojis)
-    || emojisStore.resolve(n._serverHost, base)
+  return resolveEmojiRaw(shortcode, n.emojis, n.reactionEmojis, n._serverHost)
 }
 
-/** Resolve reaction key to emoji URL or null (Unicode emoji) */
 function reactionUrl(reaction: string): string | null {
-  if (reaction.startsWith(':') && reaction.endsWith(':')) {
-    return resolveEmoji(reaction.slice(1, -1))
-  }
-  return null
+  const n = effectiveNote.value
+  return reactionUrlRaw(reaction, n.emojis, n.reactionEmojis, n._serverHost)
 }
 
 /** Parse text into segments: plain text, custom emoji, and Unicode emoji (twemoji) */

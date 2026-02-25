@@ -47,6 +47,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.rust_targets }}
+          components: clippy
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -61,6 +62,12 @@ jobs:
 
       - name: Install frontend dependencies
         run: pnpm install
+
+      - name: Lint (Biome)
+        run: pnpm biome check
+
+      - name: Lint (Clippy)
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 
       - name: Type check
         run: pnpm vue-tsc --noEmit

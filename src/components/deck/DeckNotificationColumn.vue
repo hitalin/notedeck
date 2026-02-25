@@ -6,7 +6,7 @@ import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
 import type { NormalizedNotification } from '@/adapters/types'
-import { useEmojisStore } from '@/stores/emojis'
+import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { char2twemojiUrl } from '@/utils/twemoji'
 import { formatTime } from '@/utils/formatTime'
@@ -18,7 +18,7 @@ const props = defineProps<{
   column: DeckColumnType
 }>()
 
-const emojisStore = useEmojisStore()
+const { reactionUrl: reactionUrlRaw } = useEmojiResolver()
 const {
   account,
   columnThemeVars,
@@ -38,16 +38,13 @@ const MAX_NOTIFICATIONS = 500
 const notifications = ref<NormalizedNotification[]>([])
 
 function reactionUrl(reaction: string, notification: NormalizedNotification): string | null {
-  if (reaction.startsWith(':') && reaction.endsWith(':')) {
-    const shortcode = reaction.slice(1, -1).replace(/@\.$/, '')
-    const note = notification.note
-    if (note) {
-      const url = note.reactionEmojis[shortcode] || note.emojis[shortcode]
-      if (url) return url
-    }
-    return emojisStore.resolve(notification._serverHost, shortcode)
-  }
-  return null
+  const note = notification.note
+  return reactionUrlRaw(
+    reaction,
+    note?.emojis ?? {},
+    note?.reactionEmojis ?? {},
+    notification._serverHost,
+  )
 }
 
 function reactionTwemojiUrl(reaction: string): string | null {

@@ -239,7 +239,7 @@ fn validate_host(host: &str) -> Result<()> {
     if trimmed.is_empty() {
         return Err(NoteDeckError::InvalidInput("Host cannot be empty".to_string()));
     }
-    if trimmed.contains(|c: char| matches!(c, '/' | '?' | '#' | '@' | ' ' | '\n' | '\r')) {
+    if trimmed.contains(['/', '?', '#', '@', ' ', '\n', '\r']) {
         return Err(NoteDeckError::InvalidInput(format!("Invalid host: {trimmed}")));
     }
     Ok(())

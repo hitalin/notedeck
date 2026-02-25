@@ -56,6 +56,8 @@ export class MisskeyStream implements StreamAdapter {
       this.emit(event.payload.state)
     }).then((unlisten) => {
       this.statusUnlisten = unlisten
+    }).catch((e) => {
+      console.error('[stream] failed to listen stream-status:', e)
     })
 
     invoke('stream_connect', { accountId: this.accountId }).then(() => {
@@ -94,6 +96,8 @@ export class MisskeyStream implements StreamAdapter {
     }).then((unlisten) => {
       noteUnlisten = unlisten
       if (disposed) unlisten()
+    }).catch((e) => {
+      console.error('[stream] failed to listen stream-note:', e)
     })
 
     const subscribePromise = invoke<string>('stream_subscribe_timeline', {
@@ -142,6 +146,8 @@ export class MisskeyStream implements StreamAdapter {
     }).then((unlisten) => {
       notifUnlisten = unlisten
       if (disposed) unlisten()
+    }).catch((e) => {
+      console.error('[stream] failed to listen stream-notification:', e)
     })
 
     const mainPromise = listen<StreamMainEvent>('stream-main-event', (event) => {
@@ -155,6 +161,8 @@ export class MisskeyStream implements StreamAdapter {
     }).then((unlisten) => {
       mainUnlisten = unlisten
       if (disposed) unlisten()
+    }).catch((e) => {
+      console.error('[stream] failed to listen stream-main-event:', e)
     })
 
     const subscribePromise = invoke<string>('stream_subscribe_main', {
