@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import DeckTimelineColumn from './DeckTimelineColumn.vue'
+import { computed, onMounted, ref } from 'vue'
+import MkPostForm from '@/components/common/MkPostForm.vue'
+import { useGlobalShortcuts } from '@/composables/useGlobalShortcuts'
+import { useAccountsStore } from '@/stores/accounts'
+import type { DeckColumn } from '@/stores/deck'
+import { useDeckStore } from '@/stores/deck'
+import { initDesktopNotifications } from '@/utils/desktopNotification'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
-import MkPostForm from '@/components/common/MkPostForm.vue'
-import { computed } from 'vue'
-import { useDeckStore } from '@/stores/deck'
-import type { DeckColumn } from '@/stores/deck'
-import { useAccountsStore } from '@/stores/accounts'
-import { useGlobalShortcuts } from '@/composables/useGlobalShortcuts'
-import { initDesktopNotifications } from '@/utils/desktopNotification'
+import DeckTimelineColumn from './DeckTimelineColumn.vue'
 
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()

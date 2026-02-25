@@ -1,5 +1,5 @@
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useEmojisStore } from '@/stores/emojis'
 
@@ -52,9 +52,9 @@ describe('useEmojiResolver', () => {
       const { resolveEmoji } = useEmojiResolver()
       const emojis = { test: 'https://emojis/test.png' }
       const reactionEmojis = { test: 'https://reaction/test.png' }
-      expect(
-        resolveEmoji('test', emojis, reactionEmojis, 'example.com'),
-      ).toBe('https://emojis/test.png')
+      expect(resolveEmoji('test', emojis, reactionEmojis, 'example.com')).toBe(
+        'https://emojis/test.png',
+      )
     })
   })
 

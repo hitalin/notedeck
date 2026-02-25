@@ -1,6 +1,6 @@
+import { invoke } from '@tauri-apps/api/core'
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
 import type { ServerInfo } from '@/adapters/types'
 import { detectServer } from '@/core/server'
 

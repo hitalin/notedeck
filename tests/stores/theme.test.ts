@@ -25,7 +25,9 @@ describe('theme store', () => {
     const store = useThemeStore()
     store.init()
     expect(store.currentSource?.kind).toBe('builtin-dark')
-    expect(document.documentElement.style.getPropertyValue('--nd-bg')).not.toBe('')
+    expect(document.documentElement.style.getPropertyValue('--nd-bg')).not.toBe(
+      '',
+    )
   })
 
   it('init() restores theme from localStorage', () => {
@@ -38,11 +40,17 @@ describe('theme store', () => {
     store.init()
 
     expect(store.currentSource?.kind).toBe('builtin-light')
-    expect(document.documentElement.style.getPropertyValue('--nd-bg')).toBe('#fafafa')
+    expect(document.documentElement.style.getPropertyValue('--nd-bg')).toBe(
+      '#fafafa',
+    )
   })
 
   it('init() resets to builtin dark when localStorage has server theme', () => {
-    const serverSource = { kind: 'server-dark' as const, host: 'yami.ski', theme: DARK_THEME }
+    const serverSource = {
+      kind: 'server-dark' as const,
+      host: 'yami.ski',
+      theme: DARK_THEME,
+    }
     localStorage.setItem('nd-theme-source', JSON.stringify(serverSource))
     localStorage.setItem('nd-theme-compiled', JSON.stringify({ bg: '#123456' }))
 
@@ -50,7 +58,9 @@ describe('theme store', () => {
     store.init()
 
     expect(store.currentSource?.kind).toBe('builtin-dark')
-    expect(document.documentElement.style.getPropertyValue('--nd-bg')).not.toBe('#123456')
+    expect(document.documentElement.style.getPropertyValue('--nd-bg')).not.toBe(
+      '#123456',
+    )
   })
 
   it('applySource() compiles and applies a theme', () => {
@@ -89,10 +99,15 @@ describe('theme store', () => {
       base: 'dark' as const,
       props: { accent: '#ff0000' },
     }
-    store.applySource({ kind: 'server-dark', host: 'test.host', theme: serverDark })
+    store.applySource({
+      kind: 'server-dark',
+      host: 'test.host',
+      theme: serverDark,
+    })
 
     expect(store.currentSource?.kind).toBe('server-dark')
-    const accent = document.documentElement.style.getPropertyValue('--nd-accent')
+    const accent =
+      document.documentElement.style.getPropertyValue('--nd-accent')
     expect(accent).toBe('#ff0000')
     const bg = document.documentElement.style.getPropertyValue('--nd-bg')
     expect(bg).not.toBe('')
@@ -101,7 +116,10 @@ describe('theme store', () => {
   // --- fetchAccountTheme ---
 
   it('fetchAccountTheme() fetches from sync registry first', async () => {
-    const regTheme = { name: 'My Custom', props: { accent: '#ff6600', bg: '#1a1a2e' } }
+    const regTheme = {
+      name: 'My Custom',
+      props: { accent: '#ff6600', bg: '#1a1a2e' },
+    }
     vi.mocked(invoke).mockResolvedValue({
       syncDark: [[0, regTheme]],
     })

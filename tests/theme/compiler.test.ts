@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { compileMisskeyTheme } from '@/theme/compiler'
-import { parseColor } from '@/theme/colorUtils'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
+import { parseColor } from '@/theme/colorUtils'
+import { compileMisskeyTheme } from '@/theme/compiler'
 import type { MisskeyTheme } from '@/theme/types'
 
 const EMPTY_BASE: MisskeyTheme = { id: 'base', name: 'Base', props: {} }
@@ -9,7 +9,8 @@ const EMPTY_BASE: MisskeyTheme = { id: 'base', name: 'Base', props: {} }
 describe('compileMisskeyTheme', () => {
   it('passes through literal color values', () => {
     const theme: MisskeyTheme = {
-      id: 't', name: 't',
+      id: 't',
+      name: 't',
       props: { bg: '#000', fg: '#dadada' },
     }
     const compiled = compileMisskeyTheme(theme, EMPTY_BASE)
@@ -19,7 +20,8 @@ describe('compileMisskeyTheme', () => {
 
   it('resolves @ref property references', () => {
     const theme: MisskeyTheme = {
-      id: 't', name: 't',
+      id: 't',
+      name: 't',
       props: { accent: '#86b300', indicator: '@accent' },
     }
     const compiled = compileMisskeyTheme(theme, EMPTY_BASE)
@@ -28,7 +30,8 @@ describe('compileMisskeyTheme', () => {
 
   it('resolves chained @ref references', () => {
     const theme: MisskeyTheme = {
-      id: 't', name: 't',
+      id: 't',
+      name: 't',
       props: { accent: '#86b300', mention: '@accent', mentionMe: '@mention' },
     }
     const compiled = compileMisskeyTheme(theme, EMPTY_BASE)
@@ -37,7 +40,8 @@ describe('compileMisskeyTheme', () => {
 
   it('applies :lighten color function', () => {
     const theme: MisskeyTheme = {
-      id: 't', name: 't',
+      id: 't',
+      name: 't',
       props: { bg: '#000', panel: ':lighten<3<@bg' },
     }
     const compiled = compileMisskeyTheme(theme, EMPTY_BASE)
@@ -49,7 +53,8 @@ describe('compileMisskeyTheme', () => {
 
   it('applies :alpha color function', () => {
     const theme: MisskeyTheme = {
-      id: 't', name: 't',
+      id: 't',
+      name: 't',
       props: { accent: '#86b300', accentedBg: ':alpha<0.15<@accent' },
     }
     const compiled = compileMisskeyTheme(theme, EMPTY_BASE)
@@ -60,7 +65,8 @@ describe('compileMisskeyTheme', () => {
 
   it('applies :hue color function', () => {
     const theme: MisskeyTheme = {
-      id: 't', name: 't',
+      id: 't',
+      name: 't',
       props: { accent: '#86b300', buttonGradateB: ':hue<20<@accent' },
     }
     const compiled = compileMisskeyTheme(theme, EMPTY_BASE)
@@ -70,7 +76,8 @@ describe('compileMisskeyTheme', () => {
 
   it('handles "raw CSS values and replaces --MI_THEME- with --nd-', () => {
     const theme: MisskeyTheme = {
-      id: 't', name: 't',
+      id: 't',
+      name: 't',
       props: { panelBorder: '" solid 1px var(--MI_THEME-divider)' },
     }
     const compiled = compileMisskeyTheme(theme, EMPTY_BASE)
@@ -79,7 +86,8 @@ describe('compileMisskeyTheme', () => {
 
   it('resolves nested expressions', () => {
     const theme: MisskeyTheme = {
-      id: 't', name: 't',
+      id: 't',
+      name: 't',
       props: {
         bg: '#000',
         panel: ':lighten<3<@bg',
@@ -97,7 +105,8 @@ describe('compileMisskeyTheme', () => {
 
   it('handles circular references gracefully', () => {
     const theme: MisskeyTheme = {
-      id: 't', name: 't',
+      id: 't',
+      name: 't',
       props: { a: '@b', b: '@a' },
     }
     // Should not throw, should return empty strings
@@ -108,11 +117,13 @@ describe('compileMisskeyTheme', () => {
 
   it('falls back to base theme props', () => {
     const base: MisskeyTheme = {
-      id: 'base', name: 'Base',
+      id: 'base',
+      name: 'Base',
       props: { bg: '#000', fg: '#dadada' },
     }
     const theme: MisskeyTheme = {
-      id: 't', name: 't',
+      id: 't',
+      name: 't',
       props: { bg: '#111' }, // override bg, keep fg from base
     }
     const compiled = compileMisskeyTheme(theme, base)
@@ -146,11 +157,12 @@ describe('compileMisskeyTheme', () => {
 
   it('compiles a server theme that overrides base', () => {
     const serverTheme: MisskeyTheme = {
-      id: 'server-custom', name: 'Custom',
+      id: 'server-custom',
+      name: 'Custom',
       base: 'dark',
       props: {
         accent: '#ff6600', // custom accent
-        bg: '#1a1a2e',     // custom background
+        bg: '#1a1a2e', // custom background
       },
     }
     const compiled = compileMisskeyTheme(serverTheme, DARK_THEME)
@@ -165,7 +177,8 @@ describe('compileMisskeyTheme', () => {
 
   it('passes through rgba values in props', () => {
     const theme: MisskeyTheme = {
-      id: 't', name: 't',
+      id: 't',
+      name: 't',
       props: { divider: 'rgba(255, 255, 255, 0.1)' },
     }
     const compiled = compileMisskeyTheme(theme, EMPTY_BASE)

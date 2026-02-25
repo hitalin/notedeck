@@ -7,8 +7,8 @@ import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
-import { toggleReaction } from '@/utils/toggleReaction'
 import { AppError } from '@/utils/errors'
+import { toggleReaction } from '@/utils/toggleReaction'
 
 const props = defineProps<{
   accountId: string
@@ -39,16 +39,25 @@ onMounted(async () => {
     const serverInfo = await serversStore.getServerInfo(account.host)
     adapter = createAdapter(serverInfo, account.id)
     if (!emojisStore.has(account.host)) {
-      adapter.api.getServerEmojis().then((emojis) => {
-        emojisStore.set(account.host, emojis)
-      }).catch((e) => { console.warn('[NoteDetail] failed to fetch emojis:', e) })
+      adapter.api
+        .getServerEmojis()
+        .then((emojis) => {
+          emojisStore.set(account.host, emojis)
+        })
+        .catch((e) => {
+          console.warn('[NoteDetail] failed to fetch emojis:', e)
+        })
     }
     note.value = await adapter.api.getNote(props.noteId)
 
     // Fetch conversation (ancestors) and children in parallel
     const [conv, replies] = await Promise.all([
-      adapter.api.getNoteConversation(props.noteId).catch(() => [] as NormalizedNote[]),
-      adapter.api.getNoteChildren(props.noteId).catch(() => [] as NormalizedNote[]),
+      adapter.api
+        .getNoteConversation(props.noteId)
+        .catch(() => [] as NormalizedNote[]),
+      adapter.api
+        .getNoteChildren(props.noteId)
+        .catch(() => [] as NormalizedNote[]),
     ])
     // Conversation API returns newest-first, reverse to show oldest at top
     ancestors.value = conv.reverse()

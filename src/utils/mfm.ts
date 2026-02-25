@@ -12,12 +12,18 @@ export type MfmToken =
   | { type: 'inlineCode'; value: string }
   | { type: 'customEmoji'; shortcode: string }
   | { type: 'unicodeEmoji'; value: string; url: string }
-  | { type: 'fn'; name: string; args: Record<string, string | true>; children: MfmToken[] }
+  | {
+      type: 'fn'
+      name: string
+      args: Record<string, string | true>
+      children: MfmToken[]
+    }
   | { type: 'small'; children: MfmToken[] }
   | { type: 'center'; children: MfmToken[] }
   | { type: 'plain'; value: string }
 
-const emojiRegex = /(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F)(?:\u200D(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F))*/gu
+const emojiRegex =
+  /(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F)(?:\u200D(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F))*/gu
 
 interface PatternDef {
   regex: RegExp
@@ -63,16 +69,24 @@ const inlinePatterns: PatternDef[] = [
     }),
   },
   {
-    regex: /(?<=^|[\s(])#([\w\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uffef\u4e00-\u9faf]+)/g,
+    regex:
+      /(?<=^|[\s(])#([\w\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uffef\u4e00-\u9faf]+)/g,
     parse: (m) => ({ type: 'hashtag', value: m[1]! }),
   },
   {
     regex: emojiRegex,
-    parse: (m) => ({ type: 'unicodeEmoji', value: m[0], url: char2twemojiUrl(m[0]) }),
+    parse: (m) => ({
+      type: 'unicodeEmoji',
+      value: m[0],
+      url: char2twemojiUrl(m[0]),
+    }),
   },
 ]
 
-function parseFnBlock(text: string, pos: number): { end: number; token: MfmToken } | null {
+function parseFnBlock(
+  text: string,
+  pos: number,
+): { end: number; token: MfmToken } | null {
   if (text[pos] !== '$' || text[pos + 1] !== '[') return null
   let i = pos + 2
 
@@ -125,7 +139,10 @@ function parseFnBlock(text: string, pos: number): { end: number; token: MfmToken
   }
 }
 
-function parseTagBlock(text: string, pos: number): { end: number; token: MfmToken } | null {
+function parseTagBlock(
+  text: string,
+  pos: number,
+): { end: number; token: MfmToken } | null {
   for (const tag of ['small', 'center', 'plain'] as const) {
     const open = `<${tag}>`
     if (!text.startsWith(open, pos)) continue
@@ -147,7 +164,10 @@ type BlockMatch = { index: number; consumeLength: number; token: MfmToken }
 function findFirstBlock(
   text: string,
   needle: string,
-  tryParse: (text: string, pos: number) => { end: number; token: MfmToken } | null,
+  tryParse: (
+    text: string,
+    pos: number,
+  ) => { end: number; token: MfmToken } | null,
 ): BlockMatch | null {
   let from = 0
   while (from < text.length) {
@@ -155,7 +175,11 @@ function findFirstBlock(
     if (idx < 0) return null
     const result = tryParse(text, idx)
     if (result) {
-      return { index: idx, consumeLength: result.end - idx, token: result.token }
+      return {
+        index: idx,
+        consumeLength: result.end - idx,
+        token: result.token,
+      }
     }
     from = idx + 1
   }

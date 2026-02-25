@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { parseMfm, type MfmToken } from '@/utils/mfm'
+import { computed } from 'vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
+import { type MfmToken, parseMfm } from '@/utils/mfm'
 
 const props = defineProps<{
   text?: string
@@ -30,7 +30,12 @@ const emojiUrls = computed(() => {
   const host = props.serverHost ?? ''
   for (const token of resolvedTokens.value) {
     if (token.type === 'customEmoji' && !(token.shortcode in urls)) {
-      urls[token.shortcode] = resolveEmojiRaw(token.shortcode, emojis, reactionEmojis, host)
+      urls[token.shortcode] = resolveEmojiRaw(
+        token.shortcode,
+        emojis,
+        reactionEmojis,
+        host,
+      )
     }
   }
   return urls
@@ -47,23 +52,39 @@ function fnClass(token: MfmToken & { type: 'fn' }): string | undefined {
   switch (token.name) {
     case 'spin': {
       const axis = token.args.x ? 'X' : token.args.y ? 'Y' : ''
-      const dir = token.args.left ? '-left' : token.args.alternate ? '-alternate' : ''
+      const dir = token.args.left
+        ? '-left'
+        : token.args.alternate
+          ? '-alternate'
+          : ''
       return `mfm-spin${axis}${dir}`
     }
-    case 'shake': return 'mfm-shake'
-    case 'bounce': return 'mfm-bounce'
-    case 'jelly': return 'mfm-jelly'
-    case 'tada': return 'mfm-tada'
-    case 'jump': return 'mfm-jump'
-    case 'twitch': return 'mfm-twitch'
-    case 'rainbow': return 'mfm-rainbow'
-    case 'sparkle': return 'mfm-sparkle'
-    case 'blur': return 'mfm-blur'
-    default: return undefined
+    case 'shake':
+      return 'mfm-shake'
+    case 'bounce':
+      return 'mfm-bounce'
+    case 'jelly':
+      return 'mfm-jelly'
+    case 'tada':
+      return 'mfm-tada'
+    case 'jump':
+      return 'mfm-jump'
+    case 'twitch':
+      return 'mfm-twitch'
+    case 'rainbow':
+      return 'mfm-rainbow'
+    case 'sparkle':
+      return 'mfm-sparkle'
+    case 'blur':
+      return 'mfm-blur'
+    default:
+      return undefined
   }
 }
 
-function fnStyle(token: MfmToken & { type: 'fn' }): Record<string, string> | undefined {
+function fnStyle(
+  token: MfmToken & { type: 'fn' },
+): Record<string, string> | undefined {
   const s: Record<string, string> = {}
   const { name, args } = token
 
@@ -100,9 +121,15 @@ function fnStyle(token: MfmToken & { type: 'fn' }): Record<string, string> | und
         s.backgroundColor = `#${args.color}`
       }
       break
-    case 'x2': s.fontSize = '200%'; break
-    case 'x3': s.fontSize = '300%'; break
-    case 'x4': s.fontSize = '400%'; break
+    case 'x2':
+      s.fontSize = '200%'
+      break
+    case 'x3':
+      s.fontSize = '300%'
+      break
+    case 'x4':
+      s.fontSize = '400%'
+      break
     case 'font':
       if (args.serif) s.fontFamily = 'serif'
       else if (args.monospace) s.fontFamily = 'monospace'
@@ -112,7 +139,10 @@ function fnStyle(token: MfmToken & { type: 'fn' }): Record<string, string> | und
     case 'border': {
       const w = typeof args.width === 'string' ? args.width : '1'
       const st = typeof args.style === 'string' ? args.style : 'solid'
-      const c = typeof args.color === 'string' && hexColorRe.test(args.color) ? `#${args.color}` : 'var(--nd-fg)'
+      const c =
+        typeof args.color === 'string' && hexColorRe.test(args.color)
+          ? `#${args.color}`
+          : 'var(--nd-fg)'
       const r = typeof args.radius === 'string' ? args.radius : '0'
       s.border = `${w}px ${st} ${c}`
       s.borderRadius = `${r}px`

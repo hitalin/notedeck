@@ -1,10 +1,10 @@
+import { invoke } from '@tauri-apps/api/core'
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import type { CompiledProps, MisskeyTheme, ThemeSource } from '@/theme/types'
-import { compileMisskeyTheme } from '@/theme/compiler'
 import { applyTheme } from '@/theme/applier'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
+import { compileMisskeyTheme } from '@/theme/compiler'
+import type { CompiledProps, MisskeyTheme, ThemeSource } from '@/theme/types'
 
 const STORAGE_SOURCE_KEY = 'nd-theme-source'
 const STORAGE_COMPILED_KEY = 'nd-theme-compiled'
@@ -27,7 +27,10 @@ function parseThemeFromData(data: unknown): MisskeyTheme | null {
   if (!data || typeof data !== 'object') return null
 
   // Direct theme object: { name, props, ... }
-  if ('props' in data && typeof (data as Record<string, unknown>).props === 'object') {
+  if (
+    'props' in data &&
+    typeof (data as Record<string, unknown>).props === 'object'
+  ) {
     const d = data as Record<string, unknown>
     return {
       id: String(d.id ?? ''),
@@ -51,7 +54,11 @@ function parseThemeFromData(data: unknown): MisskeyTheme | null {
 }
 
 /** Parse a JSON string theme from /api/meta defaults */
-function parseMetaTheme(raw: string, id: string, base: 'dark' | 'light'): MisskeyTheme | null {
+function parseMetaTheme(
+  raw: string,
+  id: string,
+  base: 'dark' | 'light',
+): MisskeyTheme | null {
   try {
     const parsed = JSON.parse(raw)
     return {
@@ -68,7 +75,9 @@ function parseMetaTheme(raw: string, id: string, base: 'dark' | 'light'): Misske
 export const useThemeStore = defineStore('theme', () => {
   const currentSource = ref<ThemeSource | null>(null)
   // shallowRef + full Map replacement ensures Vue always detects changes
-  const accountThemeCache = shallowRef(new Map<string, { dark?: MisskeyTheme; light?: MisskeyTheme }>())
+  const accountThemeCache = shallowRef(
+    new Map<string, { dark?: MisskeyTheme; light?: MisskeyTheme }>(),
+  )
 
   function init(): void {
     const storedSource = localStorage.getItem(STORAGE_SOURCE_KEY)
@@ -80,7 +89,9 @@ export const useThemeStore = defineStore('theme', () => {
         if (parsed.kind === 'builtin-dark' || parsed.kind === 'builtin-light') {
           source = parsed
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     if (source) {
@@ -89,7 +100,9 @@ export const useThemeStore = defineStore('theme', () => {
       if (storedCompiled) {
         try {
           applyTheme(JSON.parse(storedCompiled) as CompiledProps)
-        } catch { /* ignore corrupt data */ }
+        } catch {
+          /* ignore corrupt data */
+        }
       }
       currentSource.value = source
     } else {
@@ -115,35 +128,64 @@ export const useThemeStore = defineStore('theme', () => {
     fetchingAccounts.add(accountId)
 
     try {
-      const data = await invoke<ThemeResponse>('api_fetch_account_theme', { accountId })
+      const data = await invoke<ThemeResponse>('api_fetch_account_theme', {
+        accountId,
+      })
       const entry: { dark?: MisskeyTheme; light?: MisskeyTheme } = {}
 
       // 1. sync preferences
       if (data.syncDark) {
         const parsed = parseThemeFromData(data.syncDark)
-        if (parsed) entry.dark = { ...parsed, id: `account-dark-${accountId}`, base: 'dark' }
+        if (parsed)
+          entry.dark = {
+            ...parsed,
+            id: `account-dark-${accountId}`,
+            base: 'dark',
+          }
       }
       if (data.syncLight) {
         const parsed = parseThemeFromData(data.syncLight)
-        if (parsed) entry.light = { ...parsed, id: `account-light-${accountId}`, base: 'light' }
+        if (parsed)
+          entry.light = {
+            ...parsed,
+            id: `account-light-${accountId}`,
+            base: 'light',
+          }
       }
 
       // 2. legacy base
       if (!entry.dark && data.baseDark) {
         const parsed = parseThemeFromData(data.baseDark)
-        if (parsed) entry.dark = { ...parsed, id: `account-dark-${accountId}`, base: 'dark' }
+        if (parsed)
+          entry.dark = {
+            ...parsed,
+            id: `account-dark-${accountId}`,
+            base: 'dark',
+          }
       }
       if (!entry.light && data.baseLight) {
         const parsed = parseThemeFromData(data.baseLight)
-        if (parsed) entry.light = { ...parsed, id: `account-light-${accountId}`, base: 'light' }
+        if (parsed)
+          entry.light = {
+            ...parsed,
+            id: `account-light-${accountId}`,
+            base: 'light',
+          }
       }
 
       // 3. server meta defaults (JSON strings)
       if (!entry.dark && data.metaDark) {
-        entry.dark = parseMetaTheme(data.metaDark, `server-dark-${accountId}`, 'dark') ?? undefined
+        entry.dark =
+          parseMetaTheme(data.metaDark, `server-dark-${accountId}`, 'dark') ??
+          undefined
       }
       if (!entry.light && data.metaLight) {
-        entry.light = parseMetaTheme(data.metaLight, `server-light-${accountId}`, 'light') ?? undefined
+        entry.light =
+          parseMetaTheme(
+            data.metaLight,
+            `server-light-${accountId}`,
+            'light',
+          ) ?? undefined
       }
 
       const next = new Map(accountThemeCache.value)
@@ -162,7 +204,9 @@ export const useThemeStore = defineStore('theme', () => {
 
   const styleVarsCache = new Map<string, Record<string, string>>()
 
-  function getStyleVarsForAccount(accountId: string): Record<string, string> | undefined {
+  function getStyleVarsForAccount(
+    accountId: string,
+  ): Record<string, string> | undefined {
     const wantLight = currentSource.value?.kind.includes('light') ?? false
     const cacheKey = `${accountId}:${wantLight ? 'light' : 'dark'}`
 

@@ -54,20 +54,24 @@ export class MisskeyStream implements StreamAdapter {
       if (event.payload.accountId !== this.accountId) return
       this._state = event.payload.state
       this.emit(event.payload.state)
-    }).then((unlisten) => {
-      this.statusUnlisten = unlisten
-    }).catch((e) => {
-      console.error('[stream] failed to listen stream-status:', e)
     })
+      .then((unlisten) => {
+        this.statusUnlisten = unlisten
+      })
+      .catch((e) => {
+        console.error('[stream] failed to listen stream-status:', e)
+      })
 
-    invoke('stream_connect', { accountId: this.accountId }).then(() => {
-      this._state = 'connected'
-      this.emit('connected')
-    }).catch((e) => {
-      console.error('[stream] connect failed:', e)
-      this._state = 'disconnected'
-      this.emit('disconnected')
-    })
+    invoke('stream_connect', { accountId: this.accountId })
+      .then(() => {
+        this._state = 'connected'
+        this.emit('connected')
+      })
+      .catch((e) => {
+        console.error('[stream] connect failed:', e)
+        this._state = 'disconnected'
+        this.emit('disconnected')
+      })
   }
 
   disconnect(): void {
@@ -91,25 +95,30 @@ export class MisskeyStream implements StreamAdapter {
     const unlistenPromise = listen<StreamNoteEvent>('stream-note', (event) => {
       if (disposed) return
       if (event.payload.accountId !== this.accountId) return
-      if (subscriptionId && event.payload.subscriptionId !== subscriptionId) return
+      if (subscriptionId && event.payload.subscriptionId !== subscriptionId)
+        return
       handler(event.payload.note)
-    }).then((unlisten) => {
-      noteUnlisten = unlisten
-      if (disposed) unlisten()
-    }).catch((e) => {
-      console.error('[stream] failed to listen stream-note:', e)
     })
+      .then((unlisten) => {
+        noteUnlisten = unlisten
+        if (disposed) unlisten()
+      })
+      .catch((e) => {
+        console.error('[stream] failed to listen stream-note:', e)
+      })
 
     const subscribePromise = invoke<string>('stream_subscribe_timeline', {
       accountId: this.accountId,
       timelineType: type,
-    }).then((id) => {
-      if (!disposed) subscriptionId = id
-      return id
-    }).catch((e) => {
-      console.error('[stream] subscribe timeline failed:', e)
-      return null
     })
+      .then((id) => {
+        if (!disposed) subscriptionId = id
+        return id
+      })
+      .catch((e) => {
+        console.error('[stream] subscribe timeline failed:', e)
+        return null
+      })
 
     return {
       dispose: () => {
@@ -120,7 +129,9 @@ export class MisskeyStream implements StreamAdapter {
             invoke('stream_unsubscribe', {
               accountId: this.accountId,
               subscriptionId: id,
-            }).catch((e) => { console.warn('[stream] unsubscribe failed:', e) })
+            }).catch((e) => {
+              console.warn('[stream] unsubscribe failed:', e)
+            })
           }
         })
       },
@@ -135,45 +146,59 @@ export class MisskeyStream implements StreamAdapter {
     let subscriptionId: string | null = null
     let disposed = false
 
-    const notifPromise = listen<StreamNotificationEvent>('stream-notification', (event) => {
-      if (disposed) return
-      if (event.payload.accountId !== this.accountId) return
-      if (subscriptionId && event.payload.subscriptionId !== subscriptionId) return
-      handler({
-        type: 'notification',
-        body: event.payload.notification,
+    const notifPromise = listen<StreamNotificationEvent>(
+      'stream-notification',
+      (event) => {
+        if (disposed) return
+        if (event.payload.accountId !== this.accountId) return
+        if (subscriptionId && event.payload.subscriptionId !== subscriptionId)
+          return
+        handler({
+          type: 'notification',
+          body: event.payload.notification,
+        })
+      },
+    )
+      .then((unlisten) => {
+        notifUnlisten = unlisten
+        if (disposed) unlisten()
       })
-    }).then((unlisten) => {
-      notifUnlisten = unlisten
-      if (disposed) unlisten()
-    }).catch((e) => {
-      console.error('[stream] failed to listen stream-notification:', e)
-    })
+      .catch((e) => {
+        console.error('[stream] failed to listen stream-notification:', e)
+      })
 
-    const mainPromise = listen<StreamMainEvent>('stream-main-event', (event) => {
-      if (disposed) return
-      if (event.payload.accountId !== this.accountId) return
-      if (subscriptionId && event.payload.subscriptionId !== subscriptionId) return
-      handler({
-        type: event.payload.eventType,
-        body: event.payload.body,
+    const mainPromise = listen<StreamMainEvent>(
+      'stream-main-event',
+      (event) => {
+        if (disposed) return
+        if (event.payload.accountId !== this.accountId) return
+        if (subscriptionId && event.payload.subscriptionId !== subscriptionId)
+          return
+        handler({
+          type: event.payload.eventType,
+          body: event.payload.body,
+        })
+      },
+    )
+      .then((unlisten) => {
+        mainUnlisten = unlisten
+        if (disposed) unlisten()
       })
-    }).then((unlisten) => {
-      mainUnlisten = unlisten
-      if (disposed) unlisten()
-    }).catch((e) => {
-      console.error('[stream] failed to listen stream-main-event:', e)
-    })
+      .catch((e) => {
+        console.error('[stream] failed to listen stream-main-event:', e)
+      })
 
     const subscribePromise = invoke<string>('stream_subscribe_main', {
       accountId: this.accountId,
-    }).then((id) => {
-      if (!disposed) subscriptionId = id
-      return id
-    }).catch((e) => {
-      console.error('[stream] subscribe main failed:', e)
-      return null
     })
+      .then((id) => {
+        if (!disposed) subscriptionId = id
+        return id
+      })
+      .catch((e) => {
+        console.error('[stream] subscribe main failed:', e)
+        return null
+      })
 
     return {
       dispose: () => {
@@ -185,7 +210,9 @@ export class MisskeyStream implements StreamAdapter {
             invoke('stream_unsubscribe', {
               accountId: this.accountId,
               subscriptionId: id,
-            }).catch((e) => { console.warn('[stream] unsubscribe failed:', e) })
+            }).catch((e) => {
+              console.warn('[stream] unsubscribe failed:', e)
+            })
           }
         })
       },

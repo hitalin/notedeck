@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { toggleReaction } from '@/utils/toggleReaction'
 import type { NormalizedNote } from '@/adapters/types'
+import { toggleReaction } from '@/utils/toggleReaction'
 
 function makeNote(overrides: Partial<NormalizedNote> = {}): NormalizedNote {
   return {

@@ -121,9 +121,9 @@ describe('MisskeyAuth', () => {
     it('propagates errors on invalid token', async () => {
       vi.mocked(invoke).mockRejectedValue('Token verification failed')
 
-      await expect(
-        auth.verifyToken('example.com', 'bad-token'),
-      ).rejects.toBe('Token verification failed')
+      await expect(auth.verifyToken('example.com', 'bad-token')).rejects.toBe(
+        'Token verification failed',
+      )
     })
   })
 })

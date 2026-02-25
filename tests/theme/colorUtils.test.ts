@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { alpha, darken, hue, lighten, parseColor, saturate, toRgba } from '@/theme/colorUtils'
+import {
+  alpha,
+  darken,
+  hue,
+  lighten,
+  parseColor,
+  saturate,
+  toRgba,
+} from '@/theme/colorUtils'
 
 describe('parseColor', () => {
   it('parses #RRGGBB', () => {

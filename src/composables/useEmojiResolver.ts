@@ -28,7 +28,12 @@ export function useEmojiResolver() {
     serverHost: string,
   ): string | null {
     if (reaction.startsWith(':') && reaction.endsWith(':')) {
-      return resolveEmoji(reaction.slice(1, -1), emojis, reactionEmojis, serverHost)
+      return resolveEmoji(
+        reaction.slice(1, -1),
+        emojis,
+        reactionEmojis,
+        serverHost,
+      )
     }
     return null
   }

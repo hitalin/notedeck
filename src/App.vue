@@ -4,7 +4,9 @@ import { useTheme } from '@/composables/useTheme'
 
 const isTauri = '__TAURI_INTERNALS__' in window
 
-const TitleBar = defineAsyncComponent(() => import('@/components/common/TitleBar.vue'))
+const TitleBar = defineAsyncComponent(
+  () => import('@/components/common/TitleBar.vue'),
+)
 
 useTheme()
 </script>

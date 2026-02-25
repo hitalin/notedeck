@@ -157,7 +157,13 @@ describe('MisskeyStream', () => {
         createdAt: '2025-01-01T00:00:00Z',
         text: 'Hello',
         cw: null,
-        user: { id: 'u1', username: 'test', host: null, name: 'Test', avatarUrl: null },
+        user: {
+          id: 'u1',
+          username: 'test',
+          host: null,
+          name: 'Test',
+          avatarUrl: null,
+        },
         visibility: 'public',
         emojis: {},
         reactionEmojis: {},
@@ -201,7 +207,10 @@ describe('MisskeyStream', () => {
 
       const sub = stream.subscribeTimeline('home', () => {})
       await vi.waitFor(() => {
-        expect(invoke).toHaveBeenCalledWith('stream_subscribe_timeline', expect.any(Object))
+        expect(invoke).toHaveBeenCalledWith(
+          'stream_subscribe_timeline',
+          expect.any(Object),
+        )
       })
 
       sub.dispose()
@@ -236,7 +245,13 @@ describe('MisskeyStream', () => {
         _serverHost: 'example.com',
         createdAt: '2025-01-01T00:00:00Z',
         type: 'follow',
-        user: { id: 'u1', username: 'test', host: null, name: 'Test', avatarUrl: null },
+        user: {
+          id: 'u1',
+          username: 'test',
+          host: null,
+          name: 'Test',
+          avatarUrl: null,
+        },
       }
 
       emitTauriEvent('stream-notification', {
@@ -276,7 +291,10 @@ describe('MisskeyStream', () => {
 
       const sub = stream.subscribeMain(() => {})
       await vi.waitFor(() => {
-        expect(invoke).toHaveBeenCalledWith('stream_subscribe_main', expect.any(Object))
+        expect(invoke).toHaveBeenCalledWith(
+          'stream_subscribe_main',
+          expect.any(Object),
+        )
       })
 
       sub.dispose()

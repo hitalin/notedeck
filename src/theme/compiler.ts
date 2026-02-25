@@ -1,5 +1,5 @@
-import type { CompiledProps, MisskeyTheme } from './types'
 import * as color from './colorUtils'
+import type { CompiledProps, MisskeyTheme } from './types'
 
 const COLOR_FUNCS: Record<string, (c: string, a: number) => string> = {
   darken: color.darken,

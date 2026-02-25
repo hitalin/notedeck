@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import type { NormalizedUserDetail } from '@/adapters/types'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { createAdapter } from '@/adapters/registry'
-import { useServersStore } from '@/stores/servers'
+import type { NormalizedUserDetail } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
+import { useServersStore } from '@/stores/servers'
 
 const props = defineProps<{
   userId: string

@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import DeckColumn from './DeckColumn.vue'
+import type { NormalizedNotification } from '@/adapters/types'
+import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
-import MkEmoji from '@/components/common/MkEmoji.vue'
-import type { NormalizedNotification } from '@/adapters/types'
+import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { char2twemojiUrl } from '@/utils/twemoji'
-import { formatTime } from '@/utils/formatTime'
 import { sendDesktopNotification } from '@/utils/desktopNotification'
-import { useColumnSetup } from '@/composables/useColumnSetup'
 import { AppError } from '@/utils/errors'
+import { formatTime } from '@/utils/formatTime'
+import { char2twemojiUrl } from '@/utils/twemoji'
+import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -47,25 +47,39 @@ function flushRafBuffer() {
   const batch = rafBuffer
   rafBuffer = []
   const updated = [...batch, ...notifications.value]
-  notifications.value = updated.length > MAX_NOTIFICATIONS ? updated.slice(0, MAX_NOTIFICATIONS) : updated
+  notifications.value =
+    updated.length > MAX_NOTIFICATIONS
+      ? updated.slice(0, MAX_NOTIFICATIONS)
+      : updated
 }
 
 // Cache reaction URLs per notification to avoid double-call in template (v-if + :src)
 const reactionUrlLookup = new Map<string, string | null>()
 const twemojiUrlLookup = new Map<string, string | null>()
 
-function getCachedReactionUrl(reaction: string, notification: NormalizedNotification): string | null {
+function getCachedReactionUrl(
+  reaction: string,
+  notification: NormalizedNotification,
+): string | null {
   const key = `${notification.id}:${reaction}`
   if (reactionUrlLookup.has(key)) return reactionUrlLookup.get(key)!
   const note = notification.note
-  const url = reactionUrlRaw(reaction, note?.emojis ?? {}, note?.reactionEmojis ?? {}, notification._serverHost)
+  const url = reactionUrlRaw(
+    reaction,
+    note?.emojis ?? {},
+    note?.reactionEmojis ?? {},
+    notification._serverHost,
+  )
   reactionUrlLookup.set(key, url)
   return url
 }
 
 function getCachedTwemojiUrl(reaction: string): string | null {
   if (twemojiUrlLookup.has(reaction)) return twemojiUrlLookup.get(reaction)!
-  const url = reaction.startsWith(':') && reaction.endsWith(':') ? null : char2twemojiUrl(reaction)
+  const url =
+    reaction.startsWith(':') && reaction.endsWith(':')
+      ? null
+      : char2twemojiUrl(reaction)
   twemojiUrlLookup.set(reaction, url)
   return url
 }
@@ -73,12 +87,16 @@ function getCachedTwemojiUrl(reaction: string): string | null {
 const NOTIFICATION_ICONS: Record<string, string> = {
   reaction: 'M12 4v16M4 12h16',
   reply: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
-  renote: 'M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3',
+  renote:
+    'M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3',
   quote: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
   mention: 'M12 21a9 9 0 100-18 9 9 0 000 18zM12 8v4M12 16h.01',
-  follow: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6',
-  followRequestAccepted: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 6l-4 4 2 2',
-  pollEnded: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+  follow:
+    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6',
+  followRequestAccepted:
+    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 6l-4 4 2 2',
+  pollEnded:
+    'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
 }
 
 const NOTIFICATION_LABELS: Record<string, string> = {
@@ -98,7 +116,10 @@ const NOTIFICATION_LABELS: Record<string, string> = {
 }
 
 function notificationIcon(type: string): string {
-  return NOTIFICATION_ICONS[type] || 'M12 21a9 9 0 100-18 9 9 0 000 18zM12 8v4M12 16h.01'
+  return (
+    NOTIFICATION_ICONS[type] ||
+    'M12 21a9 9 0 100-18 9 9 0 000 18zM12 8v4M12 16h.01'
+  )
 }
 
 function notificationLabel(type: string): string {
@@ -116,25 +137,30 @@ async function connect() {
     notifications.value = fetched
 
     adapter.stream.connect()
-    setSubscription(adapter.stream.subscribeMain((event) => {
-      if (event.type === 'notification') {
-        const notification = event.body as NormalizedNotification
+    setSubscription(
+      adapter.stream.subscribeMain((event) => {
+        if (event.type === 'notification') {
+          const notification = event.body as NormalizedNotification
 
-        if (['reply', 'mention', 'quote', 'follow'].includes(notification.type)) {
-          const userName = notification.user?.name || notification.user?.username || 'Someone'
-          const label = NOTIFICATION_LABELS[notification.type] || notification.type
-          sendDesktopNotification(
-            `NoteDeck — ${userName}`,
-            label,
-          )
-        }
+          if (
+            ['reply', 'mention', 'quote', 'follow'].includes(notification.type)
+          ) {
+            const userName =
+              notification.user?.name ||
+              notification.user?.username ||
+              'Someone'
+            const label =
+              NOTIFICATION_LABELS[notification.type] || notification.type
+            sendDesktopNotification(`NoteDeck — ${userName}`, label)
+          }
 
-        rafBuffer.push(notification)
-        if (rafId === null) {
-          rafId = requestAnimationFrame(flushRafBuffer)
+          rafBuffer.push(notification)
+          if (rafId === null) {
+            rafId = requestAnimationFrame(flushRafBuffer)
+          }
         }
-      }
-    }))
+      }),
+    )
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -167,7 +193,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   disconnect()
-  if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null }
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
 })
 </script>
 

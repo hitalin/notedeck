@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import DeckColumn from './DeckColumn.vue'
+import type { NormalizedNote, TimelineType } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
-import type { NormalizedNote, TimelineType } from '@/adapters/types'
-import { useDeckStore } from '@/stores/deck'
-import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useDeckStore } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
+import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -48,10 +48,12 @@ function flushRafBuffer() {
   if (isAtTop.value) {
     for (const n of batch) noteIds.add(n.id)
     const merged = [...batch, ...notes.value]
-    notes.value = merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+    notes.value =
+      merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
   } else {
     const merged = [...batch, ...pendingNotes.value]
-    pendingNotes.value = merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+    pendingNotes.value =
+      merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
   }
 }
 const tlType = ref<TimelineType>(props.column.tl || 'home')
@@ -65,9 +67,12 @@ const TL_TYPES: { value: TimelineType; label: string }[] = [
 
 const TL_ICONS: Record<TimelineType, string> = {
   home: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2',
-  local: 'M12 21a9 9 0 100-18 9 9 0 000 18zm0-18c2.8 0 5 4 5 9s-2.2 9-5 9-5-4-5-9 2.2-9 5-9zM3 12h18',
-  social: 'M12 21a9 9 0 100-18 9 9 0 000 18zm0-18c2.8 0 5 4 5 9s-2.2 9-5 9-5-4-5-9 2.2-9 5-9zM3 12h18M3.5 7.5h17M3.5 16.5h17',
-  global: 'M22 12A10 10 0 112 12a10 10 0 0120 0zM2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z',
+  local:
+    'M12 21a9 9 0 100-18 9 9 0 000 18zm0-18c2.8 0 5 4 5 9s-2.2 9-5 9-5-4-5-9 2.2-9 5-9zM3 12h18',
+  social:
+    'M12 21a9 9 0 100-18 9 9 0 000 18zm0-18c2.8 0 5 4 5 9s-2.2 9-5 9-5-4-5-9 2.2-9 5-9zM3 12h18M3.5 7.5h17M3.5 16.5h17',
+  global:
+    'M22 12A10 10 0 112 12a10 10 0 0120 0zM2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z',
 }
 
 const currentTlIcon = computed(() => TL_ICONS[tlType.value])
@@ -102,11 +107,14 @@ async function connect(useCache = false) {
 
     // 2. Differential fetch: use sinceId if we have cached notes
     const sinceId = notes.value.length > 0 ? notes.value[0]!.id : undefined
-    const fetched = await adapter.api.getTimeline(tlType.value, sinceId ? { sinceId } : undefined)
+    const fetched = await adapter.api.getTimeline(
+      tlType.value,
+      sinceId ? { sinceId } : undefined,
+    )
 
     if (sinceId && fetched.length > 0) {
       // Merge new notes on top of cached
-      const newNotes = fetched.filter(n => !noteIds.has(n.id))
+      const newNotes = fetched.filter((n) => !noteIds.has(n.id))
       setNotes([...newNotes, ...notes.value])
     } else if (fetched.length > 0) {
       setNotes(fetched)
@@ -114,15 +122,14 @@ async function connect(useCache = false) {
     // If fetched is empty and we have cache, keep showing cache
 
     adapter.stream.connect()
-    setSubscription(adapter.stream.subscribeTimeline(
-      tlType.value,
-      (note: NormalizedNote) => {
+    setSubscription(
+      adapter.stream.subscribeTimeline(tlType.value, (note: NormalizedNote) => {
         rafBuffer.push(note)
         if (rafId === null) {
           rafId = requestAnimationFrame(flushRafBuffer)
         }
-      },
-    ))
+      }),
+    )
   } catch (e) {
     // 3. Offline fallback: keep cached notes if available
     if (notes.value.length === 0) {
@@ -144,8 +151,11 @@ function setNotes(newNotes: NormalizedNote[]) {
 
 function flushPending() {
   if (pendingNotes.value.length === 0) return
-  const newNotes = pendingNotes.value.filter(n => !noteIds.has(n.id))
-  if (newNotes.length === 0) { pendingNotes.value = []; return }
+  const newNotes = pendingNotes.value.filter((n) => !noteIds.has(n.id))
+  if (newNotes.length === 0) {
+    pendingNotes.value = []
+    return
+  }
   for (const n of newNotes) noteIds.add(n.id)
   const merged = [...newNotes, ...notes.value]
   notes.value = merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
@@ -162,7 +172,10 @@ function scrollToTop() {
 async function switchTl(type: TimelineType) {
   if (type === tlType.value) return
   disconnect()
-  if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null }
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
   rafBuffer = []
   setNotes([])
   pendingNotes.value = []
@@ -205,7 +218,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   disconnect()
-  if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null }
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
 })
 </script>
 

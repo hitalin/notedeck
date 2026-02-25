@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import DeckColumn from './DeckColumn.vue'
+import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
-import type { NormalizedNote } from '@/adapters/types'
-import { useDeckStore } from '@/stores/deck'
-import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useDeckStore } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
+import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -37,8 +37,11 @@ const hasLocalResults = ref(false)
 const isPreview = ref(false)
 const confirmedQuery = ref('')
 
-function mergeNotes(existing: NormalizedNote[], incoming: NormalizedNote[]): NormalizedNote[] {
-  const seen = new Set(existing.map(n => n.id))
+function mergeNotes(
+  existing: NormalizedNote[],
+  incoming: NormalizedNote[],
+): NormalizedNote[] {
+  const seen = new Set(existing.map((n) => n.id))
   const merged = [...existing]
   for (const note of incoming) {
     if (!seen.has(note.id)) {
@@ -119,7 +122,9 @@ async function performSearch() {
     if (!adapter) return
 
     const results = await adapter.api.searchNotes(q)
-    notes.value = hasLocalResults.value ? mergeNotes(notes.value, results) : results
+    notes.value = hasLocalResults.value
+      ? mergeNotes(notes.value, results)
+      : results
   } catch (e) {
     if (!hasLocalResults.value) {
       error.value = AppError.from(e)

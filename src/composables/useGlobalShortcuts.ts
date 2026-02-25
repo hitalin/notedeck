@@ -1,8 +1,5 @@
+import { register, unregisterAll } from '@tauri-apps/plugin-global-shortcut'
 import { onUnmounted } from 'vue'
-import {
-  register,
-  unregisterAll,
-} from '@tauri-apps/plugin-global-shortcut'
 
 export interface ShortcutHandlers {
   onCompose?: () => void

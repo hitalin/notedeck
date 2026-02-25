@@ -1,5 +1,5 @@
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
 import { useEmojisStore } from '@/stores/emojis'
 
 describe('emojis store', () => {

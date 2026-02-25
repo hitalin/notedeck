@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { MisskeyAuth } from '@/adapters/misskey/auth'
 import type { AuthSession } from '@/adapters/types'
 import { detectServer } from '@/core/server'

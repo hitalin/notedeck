@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
+import { computed, defineAsyncComponent, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { formatTime } from '@/utils/formatTime'
 import MkEmoji from './MkEmoji.vue'
-import MkMfm from './MkMfm.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
+import MkMfm from './MkMfm.vue'
 import MkPoll from './MkPoll.vue'
 
-const MkReactionPicker = defineAsyncComponent(() => import('./MkReactionPicker.vue'))
+const MkReactionPicker = defineAsyncComponent(
+  () => import('./MkReactionPicker.vue'),
+)
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
 
 const props = defineProps<{
@@ -20,9 +22,13 @@ const props = defineProps<{
 
 /** Pure renote → show inner note, otherwise show note itself */
 const effectiveNote = computed(() =>
-  props.note.renote && props.note.text === null ? props.note.renote : props.note,
+  props.note.renote && props.note.text === null
+    ? props.note.renote
+    : props.note,
 )
-const isPureRenote = computed(() => props.note.renote && props.note.text === null)
+const isPureRenote = computed(
+  () => props.note.renote && props.note.text === null,
+)
 
 const emit = defineEmits<{
   react: [reaction: string]
@@ -32,7 +38,8 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
-const { resolveEmoji: resolveEmojiRaw, reactionUrl: reactionUrlRaw } = useEmojiResolver()
+const { resolveEmoji: resolveEmojiRaw, reactionUrl: reactionUrlRaw } =
+  useEmojiResolver()
 const showReactionInput = ref(false)
 const showRenoteMenu = ref(false)
 const cwExpanded = ref(false)
@@ -45,11 +52,16 @@ let hoverTimer: ReturnType<typeof setTimeout> | null = null
 function onAvatarMouseEnter(e: MouseEvent) {
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
   userPopupPos.value = { x: rect.right + 8, y: rect.top }
-  hoverTimer = setTimeout(() => { showUserPopup.value = true }, 400)
+  hoverTimer = setTimeout(() => {
+    showUserPopup.value = true
+  }, 400)
 }
 
 function onAvatarMouseLeave() {
-  if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null }
+  if (hoverTimer) {
+    clearTimeout(hoverTimer)
+    hoverTimer = null
+  }
 }
 
 function closeUserPopup() {
@@ -61,10 +73,13 @@ onUnmounted(() => {
 })
 
 const VISIBILITY_ICONS: Record<string, string> = {
-  public: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',
+  public:
+    'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',
   home: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
-  followers: 'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z',
-  specified: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z',
+  followers:
+    'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z',
+  specified:
+    'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z',
 }
 
 function navigateToDetail() {
@@ -87,11 +102,15 @@ const reactionUrls = computed(() => {
   const n = effectiveNote.value
   const urls: Record<string, string | null> = {}
   for (const reaction of Object.keys(n.reactions)) {
-    urls[reaction] = reactionUrlRaw(reaction, n.emojis, n.reactionEmojis, n._serverHost)
+    urls[reaction] = reactionUrlRaw(
+      reaction,
+      n.emojis,
+      n.reactionEmojis,
+      n._serverHost,
+    )
   }
   return urls
 })
-
 
 async function handleMentionClick(username: string, host: string | null) {
   try {
@@ -105,8 +124,6 @@ async function handleMentionClick(username: string, host: string | null) {
     console.warn('[MkNote] failed to lookup user:', username, host, e)
   }
 }
-
-
 </script>
 
 <template>

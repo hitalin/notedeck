@@ -51,11 +51,16 @@ export function parseColor(value: string): RGBA | null {
 
 export function toRgba(rgba: RGBA): string {
   const [r, g, b, a] = rgba
-  if (a === 1) return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`
+  if (a === 1)
+    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`
   return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`
 }
 
-function rgbToHsl(r: number, g: number, b: number): [h: number, s: number, l: number] {
+function rgbToHsl(
+  r: number,
+  g: number,
+  b: number,
+): [h: number, s: number, l: number] {
   r /= 255
   g /= 255
   b /= 255
@@ -72,20 +77,39 @@ function rgbToHsl(r: number, g: number, b: number): [h: number, s: number, l: nu
   return [h * 360, s * 100, l * 100]
 }
 
-function hslToRgb(h: number, s: number, l: number): [r: number, g: number, b: number] {
+function hslToRgb(
+  h: number,
+  s: number,
+  l: number,
+): [r: number, g: number, b: number] {
   h = ((h % 360) + 360) % 360
   s = Math.max(0, Math.min(100, s)) / 100
   l = Math.max(0, Math.min(100, l)) / 100
   const c = (1 - Math.abs(2 * l - 1)) * s
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
   const m = l - c / 2
-  let r = 0, g = 0, b = 0
-  if (h < 60) { r = c; g = x }
-  else if (h < 120) { r = x; g = c }
-  else if (h < 180) { g = c; b = x }
-  else if (h < 240) { g = x; b = c }
-  else if (h < 300) { r = x; b = c }
-  else { r = c; b = x }
+  let r = 0,
+    g = 0,
+    b = 0
+  if (h < 60) {
+    r = c
+    g = x
+  } else if (h < 120) {
+    r = x
+    g = c
+  } else if (h < 180) {
+    g = c
+    b = x
+  } else if (h < 240) {
+    g = x
+    b = c
+  } else if (h < 300) {
+    r = x
+    b = c
+  } else {
+    r = c
+    b = x
+  }
   return [(r + m) * 255, (g + m) * 255, (b + m) * 255]
 }
 

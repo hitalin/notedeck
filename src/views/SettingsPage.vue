@@ -22,12 +22,20 @@ const themeOptions = computed<ThemeOption[]>(() => {
     {
       label: 'Dark (Default)',
       source: { kind: 'builtin-dark', theme: DARK_THEME },
-      previewColors: { bg: darkCompiled.bg ?? '', accent: darkCompiled.accent ?? '', fg: darkCompiled.fg ?? '' },
+      previewColors: {
+        bg: darkCompiled.bg ?? '',
+        accent: darkCompiled.accent ?? '',
+        fg: darkCompiled.fg ?? '',
+      },
     },
     {
       label: 'Light',
       source: { kind: 'builtin-light', theme: LIGHT_THEME },
-      previewColors: { bg: lightCompiled.bg ?? '', accent: lightCompiled.accent ?? '', fg: lightCompiled.fg ?? '' },
+      previewColors: {
+        bg: lightCompiled.bg ?? '',
+        accent: lightCompiled.accent ?? '',
+        fg: lightCompiled.fg ?? '',
+      },
     },
   ]
 })

@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { createAdapter } from '@/adapters/registry'
-import type { NormalizedNote, NormalizedUserDetail, ServerAdapter } from '@/adapters/types'
+import type {
+  NormalizedNote,
+  NormalizedUserDetail,
+  ServerAdapter,
+} from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
-import { toggleReaction } from '@/utils/toggleReaction'
 import { AppError } from '@/utils/errors'
+import { toggleReaction } from '@/utils/toggleReaction'
 
 const props = defineProps<{
   accountId: string
@@ -39,9 +43,14 @@ onMounted(async () => {
     const serverInfo = await serversStore.getServerInfo(account.host)
     adapter = createAdapter(serverInfo, account.id)
     if (!emojisStore.has(account.host)) {
-      adapter.api.getServerEmojis().then((emojis) => {
-        emojisStore.set(account.host, emojis)
-      }).catch((e) => { console.warn('[UserProfile] failed to fetch emojis:', e) })
+      adapter.api
+        .getServerEmojis()
+        .then((emojis) => {
+          emojisStore.set(account.host, emojis)
+        })
+        .catch((e) => {
+          console.warn('[UserProfile] failed to fetch emojis:', e)
+        })
     }
     user.value = await adapter.api.getUserDetail(props.userId)
     notes.value = await adapter.api.getUserNotes(props.userId, { limit: 20 })

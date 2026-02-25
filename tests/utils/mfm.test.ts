@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseMfm, type MfmToken } from '@/utils/mfm'
+import { type MfmToken, parseMfm } from '@/utils/mfm'
 
 describe('parseMfm', () => {
   it('returns empty array for empty string', () => {
@@ -88,8 +88,12 @@ describe('parseMfm', () => {
 
   it('does not confuse bold with italic', () => {
     const tokens = parseMfm('**bold** and *italic*')
-    const bold = tokens.find((t): t is MfmToken & { type: 'bold' } => t.type === 'bold')
-    const italic = tokens.find((t): t is MfmToken & { type: 'italic' } => t.type === 'italic')
+    const bold = tokens.find(
+      (t): t is MfmToken & { type: 'bold' } => t.type === 'bold',
+    )
+    const italic = tokens.find(
+      (t): t is MfmToken & { type: 'italic' } => t.type === 'italic',
+    )
     expect(bold?.value).toBe('bold')
     expect(italic?.value).toBe('italic')
   })
@@ -124,7 +128,10 @@ describe('parseMfm', () => {
   it('parses remote custom emoji', () => {
     const tokens = parseMfm(':emoji@remote.host:')
     expect(tokens).toHaveLength(1)
-    expect(tokens[0]).toEqual({ type: 'customEmoji', shortcode: 'emoji@remote.host' })
+    expect(tokens[0]).toEqual({
+      type: 'customEmoji',
+      shortcode: 'emoji@remote.host',
+    })
   })
 
   // Unicode emoji
@@ -133,7 +140,9 @@ describe('parseMfm', () => {
     expect(tokens).toHaveLength(3)
     expect(tokens[0]).toEqual({ type: 'text', value: 'hello ' })
     expect(tokens[1]!.type).toBe('unicodeEmoji')
-    expect((tokens[1] as { type: 'unicodeEmoji'; value: string }).value).toBe('😀')
+    expect((tokens[1] as { type: 'unicodeEmoji'; value: string }).value).toBe(
+      '😀',
+    )
     expect(tokens[2]).toEqual({ type: 'text', value: ' world' })
   })
 
@@ -159,13 +168,21 @@ describe('parseMfm', () => {
   it('parses markdown link', () => {
     const tokens = parseMfm('click [here](https://example.com) now')
     expect(tokens).toHaveLength(3)
-    expect(tokens[1]).toEqual({ type: 'link', label: 'here', url: 'https://example.com' })
+    expect(tokens[1]).toEqual({
+      type: 'link',
+      label: 'here',
+      url: 'https://example.com',
+    })
   })
 
   it('parses silent link ?[text](url)', () => {
     const tokens = parseMfm('?[silent](https://example.com)')
     expect(tokens).toHaveLength(1)
-    expect(tokens[0]).toEqual({ type: 'link', label: 'silent', url: 'https://example.com' })
+    expect(tokens[0]).toEqual({
+      type: 'link',
+      label: 'silent',
+      url: 'https://example.com',
+    })
   })
 
   // MFM function blocks

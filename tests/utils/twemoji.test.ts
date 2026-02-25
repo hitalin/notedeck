@@ -26,7 +26,9 @@ describe('char2twemojiUrl', () => {
 
   it('handles ZWJ family emoji', () => {
     // 👨‍👩‍👧 = U+1F468 U+200D U+1F469 U+200D U+1F467
-    expect(char2twemojiUrl('👨‍👩‍👧')).toBe(`${BASE}/1f468-200d-1f469-200d-1f467.svg`)
+    expect(char2twemojiUrl('👨‍👩‍👧')).toBe(
+      `${BASE}/1f468-200d-1f469-200d-1f467.svg`,
+    )
   })
 
   it('handles keycap emoji', () => {
@@ -46,7 +48,11 @@ describe('splitTextWithEmoji', () => {
     const result = splitTextWithEmoji('hello 😀 world')
     expect(result).toHaveLength(3)
     expect(result[0]).toEqual({ type: 'text', value: 'hello ' })
-    expect(result[1]).toEqual({ type: 'emoji', value: '😀', url: `${BASE}/1f600.svg` })
+    expect(result[1]).toEqual({
+      type: 'emoji',
+      value: '😀',
+      url: `${BASE}/1f600.svg`,
+    })
     expect(result[2]).toEqual({ type: 'text', value: ' world' })
   })
 

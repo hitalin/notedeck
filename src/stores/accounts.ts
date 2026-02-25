@@ -1,6 +1,6 @@
+import { invoke } from '@tauri-apps/api/core'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
 import type { ServerSoftware } from '@/adapters/types'
 
 export interface Account {

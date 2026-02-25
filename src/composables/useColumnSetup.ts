@@ -1,14 +1,18 @@
 import { computed, ref } from 'vue'
 import type { DynamicScroller } from 'vue-virtual-scroller'
 import { createAdapter } from '@/adapters/registry'
-import type { ChannelSubscription, NormalizedNote, ServerAdapter } from '@/adapters/types'
+import type {
+  ChannelSubscription,
+  NormalizedNote,
+  ServerAdapter,
+} from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
+import type { DeckColumn } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
-import { toggleReaction } from '@/utils/toggleReaction'
 import { AppError } from '@/utils/errors'
-import type { DeckColumn } from '@/stores/deck'
+import { toggleReaction } from '@/utils/toggleReaction'
 
 export function useColumnSetup(getColumn: () => DeckColumn) {
   const accountsStore = useAccountsStore()
@@ -38,15 +42,24 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     const serverInfo = await serversStore.getServerInfo(acc.host)
     adapter = createAdapter(serverInfo, acc.id)
     if (!emojisStore.has(acc.host)) {
-      adapter.api.getServerEmojis().then((emojis) => {
-        emojisStore.set(acc.host, emojis)
-      }).catch((e) => { console.warn('[column] failed to fetch emojis:', e) })
+      adapter.api
+        .getServerEmojis()
+        .then((emojis) => {
+          emojisStore.set(acc.host, emojis)
+        })
+        .catch((e) => {
+          console.warn('[column] failed to fetch emojis:', e)
+        })
     }
     return adapter
   }
 
-  function getAdapter() { return adapter }
-  function setSubscription(sub: ChannelSubscription) { subscription = sub }
+  function getAdapter() {
+    return adapter
+  }
+  function setSubscription(sub: ChannelSubscription) {
+    subscription = sub
+  }
 
   function disconnect() {
     subscription?.dispose()

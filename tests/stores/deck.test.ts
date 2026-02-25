@@ -1,5 +1,5 @@
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
 import { useDeckStore } from '@/stores/deck'
 
 // Mock localStorage
@@ -34,7 +34,12 @@ describe('deck store', () => {
 
   it('removeColumn removes column and layout entry', () => {
     const deck = useDeckStore()
-    const col = deck.addColumn({ type: 'timeline', name: null, width: 400, accountId: null })
+    const col = deck.addColumn({
+      type: 'timeline',
+      name: null,
+      width: 400,
+      accountId: null,
+    })
 
     deck.removeColumn(col.id)
 
@@ -44,7 +49,12 @@ describe('deck store', () => {
 
   it('updateColumn modifies column properties', () => {
     const deck = useDeckStore()
-    const col = deck.addColumn({ type: 'timeline', name: 'Old', width: 400, accountId: null })
+    const col = deck.addColumn({
+      type: 'timeline',
+      name: 'Old',
+      width: 400,
+      accountId: null,
+    })
 
     deck.updateColumn(col.id, { name: 'New', width: 500 })
 
@@ -54,8 +64,18 @@ describe('deck store', () => {
 
   it('swapColumns swaps layout positions', () => {
     const deck = useDeckStore()
-    const col1 = deck.addColumn({ type: 'timeline', name: 'A', width: 400, accountId: null })
-    const col2 = deck.addColumn({ type: 'timeline', name: 'B', width: 400, accountId: null })
+    const col1 = deck.addColumn({
+      type: 'timeline',
+      name: 'A',
+      width: 400,
+      accountId: null,
+    })
+    const col2 = deck.addColumn({
+      type: 'timeline',
+      name: 'B',
+      width: 400,
+      accountId: null,
+    })
 
     deck.swapColumns(0, 1)
 
@@ -65,8 +85,18 @@ describe('deck store', () => {
 
   it('moveLeft moves column one position left', () => {
     const deck = useDeckStore()
-    const col1 = deck.addColumn({ type: 'timeline', name: 'A', width: 400, accountId: null })
-    const col2 = deck.addColumn({ type: 'timeline', name: 'B', width: 400, accountId: null })
+    const col1 = deck.addColumn({
+      type: 'timeline',
+      name: 'A',
+      width: 400,
+      accountId: null,
+    })
+    const col2 = deck.addColumn({
+      type: 'timeline',
+      name: 'B',
+      width: 400,
+      accountId: null,
+    })
 
     deck.moveLeft(col2.id)
 
@@ -76,8 +106,18 @@ describe('deck store', () => {
 
   it('moveRight moves column one position right', () => {
     const deck = useDeckStore()
-    const col1 = deck.addColumn({ type: 'timeline', name: 'A', width: 400, accountId: null })
-    const col2 = deck.addColumn({ type: 'timeline', name: 'B', width: 400, accountId: null })
+    const col1 = deck.addColumn({
+      type: 'timeline',
+      name: 'A',
+      width: 400,
+      accountId: null,
+    })
+    const col2 = deck.addColumn({
+      type: 'timeline',
+      name: 'B',
+      width: 400,
+      accountId: null,
+    })
 
     deck.moveRight(col1.id)
 
@@ -87,10 +127,20 @@ describe('deck store', () => {
 
   it('does not move past boundaries', () => {
     const deck = useDeckStore()
-    const col1 = deck.addColumn({ type: 'timeline', name: 'A', width: 400, accountId: null })
-    const col2 = deck.addColumn({ type: 'timeline', name: 'B', width: 400, accountId: null })
+    const col1 = deck.addColumn({
+      type: 'timeline',
+      name: 'A',
+      width: 400,
+      accountId: null,
+    })
+    const col2 = deck.addColumn({
+      type: 'timeline',
+      name: 'B',
+      width: 400,
+      accountId: null,
+    })
 
-    deck.moveLeft(col1.id)  // already leftmost
+    deck.moveLeft(col1.id) // already leftmost
     deck.moveRight(col2.id) // already rightmost
 
     expect(deck.layout[0]).toEqual([col1.id])
@@ -99,7 +149,12 @@ describe('deck store', () => {
 
   it('save/load persists state to localStorage', () => {
     const deck = useDeckStore()
-    const col = deck.addColumn({ type: 'timeline', name: 'Test', width: 400, accountId: 'acc1' })
+    const col = deck.addColumn({
+      type: 'timeline',
+      name: 'Test',
+      width: 400,
+      accountId: 'acc1',
+    })
 
     // Create a new store instance and load
     setActivePinia(createPinia())
@@ -114,7 +169,12 @@ describe('deck store', () => {
   it('clear removes all columns and layout', () => {
     const deck = useDeckStore()
     deck.addColumn({ type: 'timeline', name: 'A', width: 400, accountId: null })
-    deck.addColumn({ type: 'notifications', name: 'B', width: 400, accountId: null })
+    deck.addColumn({
+      type: 'notifications',
+      name: 'B',
+      width: 400,
+      accountId: null,
+    })
 
     deck.clear()
 

@@ -1,10 +1,7 @@
 import { createMisskeyAdapter } from './misskey'
 import type { ServerAdapter, ServerInfo, ServerSoftware } from './types'
 
-type AdapterFactory = (
-  info: ServerInfo,
-  accountId: string,
-) => ServerAdapter
+type AdapterFactory = (info: ServerInfo, accountId: string) => ServerAdapter
 
 const registry = new Map<ServerSoftware, AdapterFactory>()
 
