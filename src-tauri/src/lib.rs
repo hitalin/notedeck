@@ -51,13 +51,10 @@ pub fn run() {
         ])
         .setup(|app| {
             // Initialize SQLite database
-            let app_dir = app
-                .path()
-                .app_data_dir()
-                .expect("failed to resolve app data dir");
+            let app_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&app_dir)?;
             let db_path = app_dir.join("notedeck.db");
-            let database = db::Database::open(&db_path).expect("failed to open database");
+            let database = db::Database::open(&db_path)?;
             app.manage(database);
 
             // Initialize Misskey HTTP client

@@ -5,6 +5,7 @@ import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
+import { AppError } from '@/utils/errors'
 
 const props = defineProps<{
   accountId: string
@@ -76,8 +77,8 @@ async function initAdapter() {
   try {
     const serverInfo = await serversStore.getServerInfo(acc.host)
     adapter = createAdapter(serverInfo, acc.id)
-  } catch {
-    error.value = 'Failed to connect'
+  } catch (e) {
+    error.value = AppError.from(e).message
   }
 }
 
@@ -112,7 +113,7 @@ async function post() {
     posted.value = true
     setTimeout(() => emit('posted'), 500)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Post failed'
+    error.value = AppError.from(e).message
   } finally {
     isPosting.value = false
   }

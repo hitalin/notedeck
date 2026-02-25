@@ -81,7 +81,9 @@ export const useDeckStore = defineStore('deck', () => {
         'nd-deck',
         JSON.stringify({ columns: columns.value, layout: layout.value }),
       )
-    } catch {}
+    } catch (e) {
+      console.warn('[deck] failed to save:', e)
+    }
   }
 
   function load() {
@@ -93,7 +95,9 @@ export const useDeckStore = defineStore('deck', () => {
         columns.value = data.columns
         layout.value = data.layout
       }
-    } catch {}
+    } catch (e) {
+      console.warn('[deck] failed to load:', e)
+    }
   }
 
   function clear() {

@@ -1,4 +1,4 @@
-const TWEMOJI_BASE = 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg'
+const TWEMOJI_BASE = 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@v15.1.0/assets/svg'
 
 /** Convert a Unicode emoji character to a Twemoji CDN SVG URL */
 export function char2twemojiUrl(char: string): string {

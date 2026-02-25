@@ -7,6 +7,7 @@ import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import { toggleReaction } from '@/utils/toggleReaction'
+import { AppError } from '@/utils/errors'
 import type { DeckColumn } from '@/stores/deck'
 
 export function useColumnSetup(getColumn: () => DeckColumn) {
@@ -32,7 +33,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   })
 
   const isLoading = ref(false)
-  const error = ref<string | null>(null)
+  const error = ref<AppError | null>(null)
 
   let adapter: ServerAdapter | null = null
   let subscription: ChannelSubscription | null = null
@@ -70,7 +71,8 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     try {
       await toggleReaction(adapter.api, note, reaction)
     } catch (e) {
-      console.error('[reaction]', e)
+      const err = AppError.from(e)
+      console.error('[reaction]', err.code, err.message)
     }
   }
 
@@ -79,7 +81,8 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     try {
       await adapter.api.createNote({ renoteId: note.id })
     } catch (e) {
-      console.error('[renote]', e)
+      const err = AppError.from(e)
+      console.error('[renote]', err.code, err.message)
     }
   }
 
@@ -117,22 +120,31 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   }
 
   return {
+    // State
     account,
     columnThemeVars,
     isLoading,
     error,
+    // Adapter lifecycle
     initAdapter,
     getAdapter,
     setSubscription,
     disconnect,
-    showPostForm,
-    postFormReplyTo,
-    postFormRenoteId,
-    handleReaction,
-    handleRenote,
-    handleReply,
-    handleQuote,
-    closePostForm,
+    // Post form
+    postForm: {
+      show: showPostForm,
+      replyTo: postFormReplyTo,
+      renoteId: postFormRenoteId,
+      close: closePostForm,
+    },
+    // Note action handlers
+    handlers: {
+      reaction: handleReaction,
+      renote: handleRenote,
+      reply: handleReply,
+      quote: handleQuote,
+    },
+    // Virtual scroller
     scroller,
     onScroll,
   }

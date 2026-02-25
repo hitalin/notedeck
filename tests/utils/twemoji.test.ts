@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { char2twemojiUrl, splitTextWithEmoji } from '@/utils/twemoji'
 
-const BASE = 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg'
+const BASE = 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@v15.1.0/assets/svg'
 
 describe('char2twemojiUrl', () => {
   it('converts simple emoji', () => {

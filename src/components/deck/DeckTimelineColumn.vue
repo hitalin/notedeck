@@ -8,6 +8,7 @@ import type { NormalizedNote, TimelineType } from '@/adapters/types'
 import { useDeckStore } from '@/stores/deck'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import { AppError } from '@/utils/errors'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -23,14 +24,8 @@ const {
   getAdapter,
   setSubscription,
   disconnect,
-  showPostForm,
-  postFormReplyTo,
-  postFormRenoteId,
-  handleReaction,
-  handleRenote,
-  handleReply,
-  handleQuote,
-  closePostForm,
+  postForm,
+  handlers,
   scroller,
   onScroll,
 } = useColumnSetup(() => props.column)
@@ -79,7 +74,7 @@ async function connect() {
       },
     ))
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = AppError.from(e)
   } finally {
     isLoading.value = false
   }
@@ -105,7 +100,7 @@ async function loadMore() {
     })
     notes.value = [...notes.value, ...older]
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = AppError.from(e)
   } finally {
     isLoading.value = false
   }
@@ -165,7 +160,7 @@ onUnmounted(() => {
     </div>
 
     <div v-else-if="error" class="column-empty column-error">
-      {{ error }}
+      {{ error.message }}
     </div>
 
     <div v-else class="tl-body">
@@ -190,10 +185,10 @@ onUnmounted(() => {
           >
             <MkNote
               :note="item"
-              @react="(reaction: string) => handleReaction(item, reaction)"
-              @reply="handleReply"
-              @renote="handleRenote"
-              @quote="handleQuote"
+              @react="(reaction: string) => handlers.reaction(item, reaction)"
+              @reply="handlers.reply"
+              @renote="handlers.renote"
+              @quote="handlers.quote"
             />
           </DynamicScrollerItem>
         </template>
@@ -209,12 +204,12 @@ onUnmounted(() => {
 
   <Teleport to="body">
     <MkPostForm
-      v-if="showPostForm && column.accountId"
+      v-if="postForm.show.value && column.accountId"
       :account-id="column.accountId"
-      :reply-to="postFormReplyTo"
-      :renote-id="postFormRenoteId"
-      @close="closePostForm"
-      @posted="closePostForm"
+      :reply-to="postForm.replyTo.value"
+      :renote-id="postForm.renoteId.value"
+      @close="postForm.close"
+      @posted="postForm.close"
     />
   </Teleport>
 </template>

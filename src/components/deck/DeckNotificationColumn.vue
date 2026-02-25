@@ -12,6 +12,7 @@ import { char2twemojiUrl } from '@/utils/twemoji'
 import { formatTime } from '@/utils/formatTime'
 import { sendDesktopNotification } from '@/utils/desktopNotification'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import { AppError } from '@/utils/errors'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -27,14 +28,8 @@ const {
   getAdapter,
   setSubscription,
   disconnect,
-  showPostForm,
-  postFormReplyTo,
-  postFormRenoteId,
-  handleReaction,
-  handleRenote,
-  handleReply,
-  handleQuote,
-  closePostForm,
+  postForm,
+  handlers,
   scroller,
   onScroll,
 } = useColumnSetup(() => props.column)
@@ -124,7 +119,7 @@ async function connect() {
       }
     }))
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = AppError.from(e)
   } finally {
     isLoading.value = false
   }
@@ -139,7 +134,7 @@ async function loadMore() {
     const older = await adapter.api.getNotifications({ untilId: last.id })
     notifications.value = [...notifications.value, ...older]
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = AppError.from(e)
   } finally {
     isLoading.value = false
   }
@@ -182,7 +177,7 @@ onUnmounted(() => {
     </div>
 
     <div v-else-if="error" class="column-empty column-error">
-      {{ error }}
+      {{ error.message }}
     </div>
 
     <div v-else class="notif-body">
@@ -250,10 +245,10 @@ onUnmounted(() => {
               <div v-if="notif.note" class="notif-note-wrap">
                 <MkNote
                   :note="notif.note"
-                  @react="(reaction: string) => handleReaction(notif.note!, reaction)"
-                  @reply="handleReply"
-                  @renote="handleRenote"
-                  @quote="handleQuote"
+                  @react="(reaction: string) => handlers.reaction(notif.note!, reaction)"
+                  @reply="handlers.reply"
+                  @renote="handlers.renote"
+                  @quote="handlers.quote"
                 />
               </div>
             </div>
@@ -271,12 +266,12 @@ onUnmounted(() => {
 
   <Teleport to="body">
     <MkPostForm
-      v-if="showPostForm && column.accountId"
+      v-if="postForm.show.value && column.accountId"
       :account-id="column.accountId"
-      :reply-to="postFormReplyTo"
-      :renote-id="postFormRenoteId"
-      @close="closePostForm"
-      @posted="closePostForm"
+      :reply-to="postForm.replyTo.value"
+      :renote-id="postForm.renoteId.value"
+      @close="postForm.close"
+      @posted="postForm.close"
     />
   </Teleport>
 </template>
