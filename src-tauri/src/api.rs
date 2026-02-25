@@ -5,7 +5,11 @@ use reqwest::Client;
 use serde_json::{json, Value};
 
 use crate::error::NoteDeckError;
-use crate::models::*;
+use crate::models::{
+    AuthResult, CreateNoteParams, NormalizedNote, NormalizedNotification, NormalizedUser,
+    NormalizedUserDetail, RawCreateNoteResponse, RawEmojisResponse, RawMiAuthResponse, RawNote,
+    RawNotification, RawUser, RawUserDetail, TimelineOptions, TimelineType,
+};
 
 
 pub struct MisskeyClient {
@@ -308,7 +312,8 @@ impl MisskeyClient {
         Ok(raw.into())
     }
 
-    /// Fetch all keys in a registry scope. Returns null if empty or error.
+    /// Fetch all keys in a registry scope. Returns None if empty or not found (API error).
+    /// Propagates network and other non-API errors.
     pub async fn get_registry_all(
         &self,
         host: &str,
@@ -327,7 +332,8 @@ impl MisskeyClient {
                 }
                 Ok(Some(v))
             }
-            Err(_) => Ok(None),
+            Err(NoteDeckError::Api { .. }) => Ok(None),
+            Err(e) => Err(e),
         }
     }
 

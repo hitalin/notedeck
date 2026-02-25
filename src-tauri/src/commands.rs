@@ -5,7 +5,10 @@ use tauri::State;
 use crate::api::MisskeyClient;
 use crate::db::Database;
 use crate::error::NoteDeckError;
-use crate::models::*;
+use crate::models::{
+    Account, AuthResult, AuthSession, CreateNoteParams, NormalizedNote, NormalizedNotification,
+    NormalizedUser, NormalizedUserDetail, StoredServer, TimelineOptions, TimelineType,
+};
 use crate::streaming::StreamingManager;
 
 type Result<T> = std::result::Result<T, NoteDeckError>;
@@ -234,20 +237,23 @@ pub async fn api_fetch_account_theme(
 
 // --- Auth ---
 
-fn validate_host(host: &str) -> Result<()> {
-    let trimmed = host.trim();
-    if trimmed.is_empty() {
+fn validate_host(host: &str) -> Result<String> {
+    let normalized = host.trim().to_ascii_lowercase();
+    if normalized.is_empty() {
         return Err(NoteDeckError::InvalidInput("Host cannot be empty".to_string()));
     }
-    if trimmed.contains(['/', '?', '#', '@', ' ', '\n', '\r']) {
-        return Err(NoteDeckError::InvalidInput(format!("Invalid host: {trimmed}")));
+    if normalized.len() > 253 {
+        return Err(NoteDeckError::InvalidInput("Host too long".to_string()));
     }
-    Ok(())
+    if normalized.contains(['/', '?', '#', '@', ' ', '\n', '\r']) {
+        return Err(NoteDeckError::InvalidInput(format!("Invalid host: {normalized}")));
+    }
+    Ok(normalized)
 }
 
 #[tauri::command]
 pub async fn auth_start(host: String, permissions: Option<Vec<String>>) -> Result<AuthSession> {
-    validate_host(&host)?;
+    let host = validate_host(&host)?;
     let session_id = uuid::Uuid::new_v4().to_string();
     let perms = permissions.unwrap_or_else(|| {
         vec![

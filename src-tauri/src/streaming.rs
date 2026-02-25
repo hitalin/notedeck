@@ -10,7 +10,9 @@ use tokio::sync::{mpsc, Mutex};
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::error::NoteDeckError;
-use crate::models::*;
+use crate::models::{
+    NormalizedNote, NormalizedNotification, RawNote, RawNotification, TimelineType,
+};
 
 macro_rules! emit_or_log {
     ($app:expr, $event:expr, $payload:expr) => {
@@ -152,8 +154,12 @@ impl StreamingManager {
     pub async fn disconnect(&self, app: &AppHandle, account_id: &str) {
         let mut conns = self.connections.lock().await;
         if let Some(handle) = conns.remove(account_id) {
-            let _ = handle.cmd_tx.send(WsCommand::Shutdown);
-            let _ = handle.task.await;
+            if let Err(e) = handle.cmd_tx.send(WsCommand::Shutdown) {
+                eprintln!("[stream] failed to send shutdown for {account_id}: {e}");
+            }
+            if let Err(e) = handle.task.await {
+                eprintln!("[stream] task join error for {account_id}: {e}");
+            }
         }
 
         // Remove all subscriptions for this account
@@ -348,7 +354,8 @@ async fn connection_task(
                     return;
                 }
             }
-            Err(_) => {
+            Err(e) => {
+                eprintln!("[stream] reconnect failed for {account_id}: {e}");
                 backoff_secs = (backoff_secs * 2).min(MAX_BACKOFF_SECS);
             }
         }
@@ -408,6 +415,7 @@ async fn ws_loop(
                         let mut w = write.lock().await;
                         if let Err(e) = w.send(Message::Pong(data)).await {
                             eprintln!("[stream] pong send failed: {e}");
+                            return WsExitReason::Disconnected;
                         }
                     }
                     Some(Ok(Message::Close(_))) | None | Some(Err(_)) => {
@@ -503,7 +511,7 @@ async fn handle_ws_message(
         }
     } else if info.kind == "main" {
         if event_type == "notification" {
-            if let Ok(raw) = serde_json::from_value::<RawNotification>(event_body.clone()) {
+            if let Ok(raw) = serde_json::from_value::<RawNotification>(event_body) {
                 let notification = raw.normalize(account_id, &info.host);
                 emit_or_log!(app, "stream-notification", StreamNotificationEvent {
                     account_id: account_id.to_string(),

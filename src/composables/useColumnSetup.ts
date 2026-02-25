@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { DynamicScroller } from 'vue-virtual-scroller'
+import type { DynamicScroller } from 'vue-virtual-scroller'
 import { createAdapter } from '@/adapters/registry'
 import type { ChannelSubscription, NormalizedNote, ServerAdapter } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
@@ -106,7 +106,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     const now = Date.now()
     if (now - lastScrollCheck < 200) return
     lastScrollCheck = now
-    const el = (scroller.value as unknown as { $el: HTMLElement })?.$el
+    const el = scroller.value?.$el as HTMLElement | undefined
     if (!el) return
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
       loadMore()
