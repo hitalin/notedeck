@@ -15,6 +15,9 @@ const MkReactionPicker = defineAsyncComponent(
   () => import('./MkReactionPicker.vue'),
 )
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
+const MkReactionUsersPopup = defineAsyncComponent(
+  () => import('./MkReactionUsersPopup.vue'),
+)
 
 const props = defineProps<{
   note: NormalizedNote
@@ -131,8 +134,85 @@ function closeUserPopup() {
   showUserPopup.value = false
 }
 
+// Reaction users hover popup
+const showReactionUsers = ref(false)
+const reactionUsersPos = ref({ x: 0, y: 0 })
+const reactionUsersReaction = ref('')
+const reactionUsersReactionUrl = ref<string | null>(null)
+const reactionUsersTotalCount = ref(0)
+const reactionUsersTheme = ref<Record<string, string>>({})
+const reactionUsersKey = ref(0)
+let reactionHoverTimer: ReturnType<typeof setTimeout> | null = null
+let reactionCloseTimer: ReturnType<typeof setTimeout> | null = null
+
+function cancelReactionClose() {
+  if (reactionCloseTimer) {
+    clearTimeout(reactionCloseTimer)
+    reactionCloseTimer = null
+  }
+}
+
+function onReactionMouseEnter(e: MouseEvent, reaction: string) {
+  if (reactionHoverTimer) {
+    clearTimeout(reactionHoverTimer)
+    reactionHoverTimer = null
+  }
+  cancelReactionClose()
+
+  const el = e.currentTarget as HTMLElement
+  const rect = el.getBoundingClientRect()
+  reactionUsersPos.value = { x: rect.left, y: rect.bottom + 4 }
+  reactionUsersReaction.value = reaction
+  reactionUsersReactionUrl.value = reactionUrls.value[reaction] ?? null
+  reactionUsersTotalCount.value = effectiveNote.value.reactions[reaction] ?? 0
+
+  const column = el.closest('.deck-column') as HTMLElement | null
+  if (column) {
+    const vars: Record<string, string> = {}
+    for (const attr of column.style) {
+      if (attr.startsWith('--nd-')) {
+        vars[attr] = column.style.getPropertyValue(attr)
+      }
+    }
+    reactionUsersTheme.value = vars
+  }
+
+  // Already showing for a different reaction → update immediately
+  if (showReactionUsers.value) {
+    reactionUsersKey.value++
+    return
+  }
+
+  reactionHoverTimer = setTimeout(() => {
+    showReactionUsers.value = true
+  }, 400)
+}
+
+function onReactionMouseLeave() {
+  if (reactionHoverTimer) {
+    clearTimeout(reactionHoverTimer)
+    reactionHoverTimer = null
+  }
+  if (showReactionUsers.value) {
+    cancelReactionClose()
+    reactionCloseTimer = setTimeout(() => {
+      // Don't close if mouse is currently over the popup
+      const popup = document.querySelector('.reaction-users-popup')
+      if (popup?.matches(':hover')) return
+      showReactionUsers.value = false
+    }, 300)
+  }
+}
+
+function closeReactionUsers() {
+  cancelReactionClose()
+  showReactionUsers.value = false
+}
+
 onUnmounted(() => {
   if (hoverTimer) clearTimeout(hoverTimer)
+  if (reactionHoverTimer) clearTimeout(reactionHoverTimer)
+  if (reactionCloseTimer) clearTimeout(reactionCloseTimer)
 })
 
 const VISIBILITY_ICONS: Record<string, string> = {
@@ -321,6 +401,8 @@ async function handleMentionClick(username: string, host: string | null) {
             class="reaction"
             :class="{ reacted: effectiveNote.myReaction === reaction }"
             @click.stop="emit('react', String(reaction))"
+            @mouseenter="onReactionMouseEnter($event, String(reaction))"
+            @mouseleave="onReactionMouseLeave"
           >
             <img v-if="reactionUrls[String(reaction)]" :src="reactionUrls[String(reaction)]!" :alt="String(reaction)" class="custom-emoji" width="20" height="20" />
             <MkEmoji v-else :emoji="String(reaction)" class="reaction-emoji" />
@@ -406,6 +488,26 @@ async function handleMentionClick(username: string, host: string | null) {
     />
   </Teleport>
 
+  <Teleport to="body">
+    <div
+      v-if="showReactionUsers"
+      :style="reactionUsersTheme"
+    >
+      <MkReactionUsersPopup
+        :key="reactionUsersKey"
+        :note-id="effectiveNote.id"
+        :account-id="note._accountId"
+        :server-host="effectiveNote._serverHost"
+        :reaction="reactionUsersReaction"
+        :reaction-url="reactionUsersReactionUrl"
+        :total-count="reactionUsersTotalCount"
+        :x="reactionUsersPos.x"
+        :y="reactionUsersPos.y"
+        @close="closeReactionUsers"
+      />
+    </div>
+  </Teleport>
+
   <!-- More menu popup -->
   <Teleport to="body">
     <div v-if="showMoreMenu" class="popup-backdrop" @click="closeMoreMenu">
@@ -440,11 +542,11 @@ async function handleMentionClick(username: string, host: string | null) {
             @click="localIsFavorited = !localIsFavorited; emit('bookmark', effectiveNote); closeMoreMenu()"
           >
             <svg viewBox="0 0 24 24" width="16" height="16">
-              <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                 :fill="localIsFavorited ? 'currentColor' : 'none'" />
             </svg>
-            {{ localIsFavorited ? 'Unbookmark' : 'Bookmark' }}
+            {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
           </button>
           <template v-if="isOwnNote">
             <div class="popup-divider" />

@@ -7,10 +7,10 @@ use serde_json::{json, Value};
 
 use crate::error::NoteDeckError;
 use crate::models::{
-    AuthResult, CreateNoteParams, NormalizedDriveFile, NormalizedNote, NormalizedNotification,
-    NormalizedUser, NormalizedUserDetail, RawCreateNoteResponse, RawDriveFile, RawEmojisResponse,
-    RawMiAuthResponse, RawNote, RawNotification, RawUser, RawUserDetail, SearchOptions,
-    TimelineOptions, TimelineType,
+    AuthResult, CreateNoteParams, NormalizedDriveFile, NormalizedNote, NormalizedNoteReaction,
+    NormalizedNotification, NormalizedUser, NormalizedUserDetail, RawCreateNoteResponse,
+    RawDriveFile, RawEmojisResponse, RawMiAuthResponse, RawNote, RawNoteReaction, RawNotification,
+    RawUser, RawUserDetail, SearchOptions, TimelineOptions, TimelineType,
 };
 
 
@@ -180,6 +180,23 @@ impl MisskeyClient {
         )
         .await?;
         Ok(())
+    }
+
+    pub async fn get_note_reactions(
+        &self,
+        host: &str,
+        token: &str,
+        note_id: &str,
+        reaction_type: Option<&str>,
+        limit: u32,
+    ) -> Result<Vec<NormalizedNoteReaction>, NoteDeckError> {
+        let mut params = json!({ "noteId": note_id, "limit": limit });
+        if let Some(rt) = reaction_type {
+            params["type"] = json!(rt);
+        }
+        let data = self.request(host, token, "notes/reactions", params).await?;
+        let raw: Vec<RawNoteReaction> = serde_json::from_value(data)?;
+        Ok(raw.into_iter().map(Into::into).collect())
     }
 
     pub async fn update_note(

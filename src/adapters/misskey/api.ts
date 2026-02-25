@@ -7,6 +7,7 @@ import type {
   NormalizedNotification,
   NormalizedUser,
   NormalizedUserDetail,
+  NoteReaction,
   PaginationOptions,
   SearchOptions,
   TimelineOptions,
@@ -54,6 +55,19 @@ export class MisskeyApi implements ApiAdapter {
     return invoke('api_delete_reaction', {
       accountId: this.accountId,
       noteId,
+    })
+  }
+
+  async getNoteReactions(
+    noteId: string,
+    reactionType?: string,
+    limit?: number,
+  ): Promise<NoteReaction[]> {
+    return invoke('api_get_note_reactions', {
+      accountId: this.accountId,
+      noteId,
+      reactionType: reactionType ?? null,
+      limit: limit ?? null,
     })
   }
 

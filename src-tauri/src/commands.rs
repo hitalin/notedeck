@@ -7,8 +7,8 @@ use crate::db::Database;
 use crate::error::NoteDeckError;
 use crate::models::{
     Account, AuthResult, AuthSession, CreateNoteParams, NormalizedDriveFile, NormalizedNote,
-    NormalizedNotification, NormalizedUser, NormalizedUserDetail, SearchOptions, StoredServer,
-    TimelineOptions, TimelineType,
+    NormalizedNoteReaction, NormalizedNotification, NormalizedUser, NormalizedUserDetail,
+    SearchOptions, StoredServer, TimelineOptions, TimelineType,
 };
 use crate::streaming::StreamingManager;
 
@@ -123,6 +123,27 @@ pub async fn api_delete_reaction(
 ) -> Result<()> {
     let (host, token) = get_credentials(&db, &account_id)?;
     client.delete_reaction(&host, &token, &note_id).await
+}
+
+#[tauri::command]
+pub async fn api_get_note_reactions(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    note_id: String,
+    reaction_type: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<NormalizedNoteReaction>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_note_reactions(
+            &host,
+            &token,
+            &note_id,
+            reaction_type.as_deref(),
+            limit.unwrap_or(11),
+        )
+        .await
 }
 
 #[tauri::command]

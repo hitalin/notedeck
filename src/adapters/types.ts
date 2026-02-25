@@ -103,6 +103,13 @@ export interface NormalizedDriveFile {
   isSensitive: boolean
 }
 
+export interface NoteReaction {
+  id: string
+  createdAt: string
+  user: NormalizedUser
+  type: string
+}
+
 export interface NormalizedNotification {
   id: string
   _accountId: string
@@ -148,6 +155,11 @@ export interface ApiAdapter {
   getNote(noteId: string): Promise<NormalizedNote>
   createReaction(noteId: string, reaction: string): Promise<void>
   deleteReaction(noteId: string): Promise<void>
+  getNoteReactions(
+    noteId: string,
+    reactionType?: string,
+    limit?: number,
+  ): Promise<NoteReaction[]>
   updateNote(noteId: string, params: CreateNoteParams): Promise<void>
   deleteNote(noteId: string): Promise<void>
   createFavorite(noteId: string): Promise<void>

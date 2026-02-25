@@ -444,6 +444,39 @@ impl RawNote {
     }
 }
 
+// --- Note reaction (who reacted) ---
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RawNoteReaction {
+    pub id: String,
+    pub created_at: String,
+    pub user: RawUser,
+    #[serde(rename = "type")]
+    pub reaction_type: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NormalizedNoteReaction {
+    pub id: String,
+    pub created_at: String,
+    pub user: NormalizedUser,
+    #[serde(rename = "type")]
+    pub reaction_type: String,
+}
+
+impl From<RawNoteReaction> for NormalizedNoteReaction {
+    fn from(r: RawNoteReaction) -> Self {
+        Self {
+            id: r.id,
+            created_at: r.created_at,
+            user: r.user.into(),
+            reaction_type: r.reaction_type,
+        }
+    }
+}
+
 impl From<RawUser> for NormalizedUser {
     fn from(user: RawUser) -> Self {
         Self {

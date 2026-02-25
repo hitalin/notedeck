@@ -34,6 +34,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             commands::api_create_note,
             commands::api_create_reaction,
             commands::api_delete_reaction,
+            commands::api_get_note_reactions,
             commands::api_update_note,
             commands::api_upload_file,
             commands::api_create_favorite,
