@@ -138,8 +138,13 @@ describe('MisskeyStream', () => {
 
   describe('subscribeTimeline', () => {
     it('invokes stream_subscribe_timeline and listens for notes', async () => {
-      vi.mocked(invoke).mockResolvedValue('sub-123')
+      vi.mocked(invoke).mockResolvedValue(undefined)
+      stream.connect()
+      await vi.waitFor(() => {
+        expect(listenCallbacks.has('stream-note')).toBe(true)
+      })
 
+      vi.mocked(invoke).mockResolvedValue('sub-123')
       const notes: NormalizedNote[] = []
       stream.subscribeTimeline('home', (note) => notes.push(note))
 
@@ -184,13 +189,21 @@ describe('MisskeyStream', () => {
     })
 
     it('filters notes from other accounts', async () => {
-      vi.mocked(invoke).mockResolvedValue('sub-123')
+      vi.mocked(invoke).mockResolvedValue(undefined)
+      stream.connect()
+      await vi.waitFor(() => {
+        expect(listenCallbacks.has('stream-note')).toBe(true)
+      })
 
+      vi.mocked(invoke).mockResolvedValue('sub-123')
       const notes: NormalizedNote[] = []
       stream.subscribeTimeline('home', (note) => notes.push(note))
 
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-note')).toBe(true)
+        expect(invoke).toHaveBeenCalledWith(
+          'stream_subscribe_timeline',
+          expect.any(Object),
+        )
       })
 
       emitTauriEvent('stream-note', {
@@ -202,9 +215,14 @@ describe('MisskeyStream', () => {
       expect(notes).toHaveLength(0)
     })
 
-    it('dispose unlistens and invokes unsubscribe', async () => {
-      vi.mocked(invoke).mockResolvedValue('sub-123')
+    it('dispose invokes unsubscribe', async () => {
+      vi.mocked(invoke).mockResolvedValue(undefined)
+      stream.connect()
+      await vi.waitFor(() => {
+        expect(listenCallbacks.has('stream-note')).toBe(true)
+      })
 
+      vi.mocked(invoke).mockResolvedValue('sub-123')
       const sub = stream.subscribeTimeline('home', () => {})
       await vi.waitFor(() => {
         expect(invoke).toHaveBeenCalledWith(
@@ -215,21 +233,24 @@ describe('MisskeyStream', () => {
 
       sub.dispose()
 
-      // dispose is async (Promise-based), flush microtasks
       await vi.waitFor(() => {
-        expect(mockUnlisten).toHaveBeenCalled()
-      })
-      expect(invoke).toHaveBeenCalledWith('stream_unsubscribe', {
-        accountId: 'acc-1',
-        subscriptionId: 'sub-123',
+        expect(invoke).toHaveBeenCalledWith('stream_unsubscribe', {
+          accountId: 'acc-1',
+          subscriptionId: 'sub-123',
+        })
       })
     })
   })
 
   describe('subscribeMain', () => {
     it('invokes stream_subscribe_main and dispatches notifications', async () => {
-      vi.mocked(invoke).mockResolvedValue('sub-456')
+      vi.mocked(invoke).mockResolvedValue(undefined)
+      stream.connect()
+      await vi.waitFor(() => {
+        expect(listenCallbacks.has('stream-notification')).toBe(true)
+      })
 
+      vi.mocked(invoke).mockResolvedValue('sub-456')
       const events: { type: string; body: unknown }[] = []
       stream.subscribeMain((event) => events.push(event))
 
@@ -265,13 +286,21 @@ describe('MisskeyStream', () => {
     })
 
     it('dispatches main channel events', async () => {
-      vi.mocked(invoke).mockResolvedValue('sub-456')
+      vi.mocked(invoke).mockResolvedValue(undefined)
+      stream.connect()
+      await vi.waitFor(() => {
+        expect(listenCallbacks.has('stream-main-event')).toBe(true)
+      })
 
+      vi.mocked(invoke).mockResolvedValue('sub-456')
       const events: { type: string; body: unknown }[] = []
       stream.subscribeMain((event) => events.push(event))
 
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-main-event')).toBe(true)
+        expect(invoke).toHaveBeenCalledWith(
+          'stream_subscribe_main',
+          expect.any(Object),
+        )
       })
 
       emitTauriEvent('stream-main-event', {
@@ -286,9 +315,14 @@ describe('MisskeyStream', () => {
       expect(events[0]!.body).toEqual({ userId: 'u2' })
     })
 
-    it('dispose unlistens all and invokes unsubscribe', async () => {
-      vi.mocked(invoke).mockResolvedValue('sub-456')
+    it('dispose invokes unsubscribe', async () => {
+      vi.mocked(invoke).mockResolvedValue(undefined)
+      stream.connect()
+      await vi.waitFor(() => {
+        expect(listenCallbacks.has('stream-notification')).toBe(true)
+      })
 
+      vi.mocked(invoke).mockResolvedValue('sub-456')
       const sub = stream.subscribeMain(() => {})
       await vi.waitFor(() => {
         expect(invoke).toHaveBeenCalledWith(
@@ -299,14 +333,11 @@ describe('MisskeyStream', () => {
 
       sub.dispose()
 
-      // dispose is async (Promise-based), flush microtasks
       await vi.waitFor(() => {
-        // 2 listeners: notification + main-event
-        expect(mockUnlisten).toHaveBeenCalledTimes(2)
-      })
-      expect(invoke).toHaveBeenCalledWith('stream_unsubscribe', {
-        accountId: 'acc-1',
-        subscriptionId: 'sub-456',
+        expect(invoke).toHaveBeenCalledWith('stream_unsubscribe', {
+          accountId: 'acc-1',
+          subscriptionId: 'sub-456',
+        })
       })
     })
   })
