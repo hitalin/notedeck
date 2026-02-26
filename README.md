@@ -1,107 +1,90 @@
-# notedeck
+<p align="center">
+  <img src="src-tauri/icons/128x128@2x.png" alt="NoteDeck" width="96" />
+</p>
 
-Multi-server Misskey deck client for desktop and mobile.
+<h1 align="center">NoteDeck</h1>
 
-Connect to multiple Misskey-compatible servers in one deck UI. Runs as a native desktop app (Windows / macOS / Linux) and mobile app (Android / iOS) via Tauri v2.
+<p align="center">
+  複数の Misskey サーバーをひとつのデッキで。<br />
+  <strong>マルチサーバー対応 Misskey デッキクライアント</strong>
+</p>
 
-## Features
+<p align="center">
+  <a href="https://github.com/hitalin/notedeck/releases/latest">Download</a> ·
+  <a href="DEVELOPMENT.md">Development Guide</a> ·
+  <a href="https://github.com/hitalin/notedeck/issues">Issues</a>
+</p>
 
-- **Multi-server** - Connect to multiple Misskey-compatible servers simultaneously
-- **Multi-platform** - Desktop (Windows / macOS / Linux), mobile (Android / iOS)
-- **Deck UI** - TweetDeck-style multi-column layout with drag & drop reordering
-- **Real-time streaming** - WebSocket streaming with auto-reconnect (Rust backend)
-- **Notifications** - Dedicated notification column with real-time updates
-- **Per-account themes** - Fetches and applies each account's server theme
-- **Custom emoji** - Full support for server-specific custom emoji
-- **Fork support** - Extensible adapter pattern for Misskey forks (Sharkey, CherryPick, etc.)
+---
 
-## Platforms
+## NoteDeck とは
 
-| Platform | Method | Status |
-|----------|--------|--------|
-| Windows | Tauri v2 | Available |
-| macOS | Tauri v2 | Available |
-| Linux | Tauri v2 | Available |
-| Android | Tauri v2 | Planned |
-| iOS | Tauri v2 | Planned |
+NoteDeck は、複数の Misskey 互換サーバーに同時接続できるデスクトップクライアントです。TweetDeck のようなマルチカラムレイアウトで、複数のアカウント・サーバーのタイムラインを一画面で確認できます。
 
-## Tech Stack
+<!-- スクリーンショットを後で追加:
+![NoteDeck Screenshot](docs/screenshot.png)
+-->
 
-| | |
+## 特徴
+
+### マルチサーバー
+
+複数の Misskey 互換サーバーにアカウントを追加し、ひとつのアプリで一括管理。Sharkey、CherryPick などのフォークにも対応しています。
+
+### デッキ UI
+
+ドラッグ＆ドロップで自由にカラムを並べ替え。タイムライン、通知、検索などのカラムを好みのレイアウトに配置できます。
+
+### リアルタイム
+
+Rust 製バックエンドによる WebSocket ストリーミングで、タイムラインと通知がリアルタイムに更新されます。自動再接続にも対応。
+
+### サーバーテーマ自動適用
+
+各サーバーが設定しているテーマカラーを自動でフェッチして適用。サーバーごとにカラムの見た目が変わるので、どのアカウントの情報かが一目でわかります。
+
+### カスタム絵文字 & リアクション
+
+サーバー固有のカスタム絵文字を完全サポート。リアクションピッカーからの絵文字選択や、リアクションしたユーザーの一覧表示にも対応しています。
+
+## 対応プラットフォーム
+
+| プラットフォーム | 状況 |
+|:---:|:---:|
+| Windows | 利用可能 |
+| macOS | 利用可能 |
+| Linux | 利用可能 |
+| Android | 予定 |
+| iOS | 予定 |
+
+## インストール
+
+[Releases ページ](https://github.com/hitalin/notedeck/releases/latest) から最新版をダウンロードしてください。
+
+| OS | ファイル |
 |---|---|
-| Frontend | Vue 3 + TypeScript |
-| Backend | Rust (Tauri v2) |
-| Build | Vite + Cargo |
-| State | Pinia |
-| Local DB | SQLite (rusqlite, WAL mode) |
-| HTTP | reqwest (Rust) |
-| WebSocket | tokio-tungstenite (Rust) |
-| Linter | Biome |
-| Test | Vitest |
+| Windows | `NoteDeck_x.x.x_x64-setup.exe` |
+| macOS | `NoteDeck_x.x.x_aarch64.dmg` |
+| Linux | `notedeck_x.x.x_amd64.deb` / `.AppImage` |
 
-## Getting Started
+## 技術スタック
+
+|  |  |
+|---|---|
+| フロントエンド | Vue 3 + TypeScript |
+| バックエンド | Rust（Tauri v2） |
+| ローカル DB | SQLite（WAL mode） |
+| WebSocket | tokio-tungstenite |
+
+## 開発
+
+開発環境のセットアップや詳細なアーキテクチャについては [DEVELOPMENT.md](DEVELOPMENT.md) を参照してください。
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Start dev server (Tauri desktop)
 task dev:tauri
-
-# Start dev server (browser, for development only)
-task dev
 ```
 
-## Available Tasks
-
-```bash
-task dev          # Vite dev server
-task dev:tauri    # Tauri dev
-task build        # Production build
-task build:tauri  # Tauri native build
-task test         # Run unit tests
-task test:watch   # Run tests in watch mode
-task lint         # Lint & format check
-task lint:fix     # Lint & format fix
-task typecheck    # TypeScript type check
-task clean        # Remove build artifacts
-```
-
-## Architecture
-
-```
-src/                        # Vue 3 frontend
-├── adapters/               # Server API adapters (Misskey, forks)
-│   ├── types.ts            # Shared interfaces (ServerAdapter, ApiAdapter, StreamAdapter)
-│   ├── registry.ts         # Adapter factory
-│   └── misskey/            # Misskey implementation (IPC via invoke/listen)
-├── components/             # Vue components
-│   ├── common/             # MkNote, MkPostForm, MkEmoji, etc.
-│   └── deck/               # DeckLayout, DeckColumn, DeckTimelineColumn
-├── stores/                 # Pinia stores (accounts, deck, servers, emojis, theme, etc.)
-├── views/                  # Page components (NoteDetail, UserProfile)
-├── core/                   # Business logic (server detection)
-├── composables/            # Vue composables (useTheme, etc.)
-├── theme/                  # Theme compiler & applier
-└── utils/                  # Shared utilities
-
-src-tauri/src/              # Rust backend
-├── api.rs                  # Misskey HTTP API client (reqwest)
-├── streaming.rs            # WebSocket streaming with auto-reconnect
-├── commands.rs             # Tauri IPC command handlers
-├── db.rs                   # SQLite database (rusqlite, WAL mode)
-├── models.rs               # Shared data models & normalization
-└── lib.rs                  # App setup (tray, plugins, state)
-```
-
-### Adding support for a new fork
-
-1. Create `src/adapters/<fork>/` directory
-2. Extend `MisskeyAdapter` and override only what differs
-3. Register in `src/adapters/registry.ts`
-
-Most Misskey forks work with the base adapter as-is.
-
-## License
+## ライセンス
 
 [AGPL-3.0](LICENSE)
