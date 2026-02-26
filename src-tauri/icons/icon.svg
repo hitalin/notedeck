@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#252e29"/>
+      <stop offset="100%" stop-color="#181f1b"/>
+    </linearGradient>
+    <linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#aad635"/>
+      <stop offset="100%" stop-color="#7ab800"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Three deck columns connected by V-notches (Misskey M extended) -->
+  <g fill="url(#fg)">
+    <!-- Columns -->
+    <rect x="72" y="136" width="100" height="280" rx="22"/>
+    <rect x="206" y="136" width="100" height="280" rx="22"/>
+    <rect x="340" y="136" width="100" height="280" rx="22"/>
+
+    <!-- V-notch bridges between columns -->
+    <polygon points="148,136 189,224 230,136"/>
+    <polygon points="282,136 323,224 364,136"/>
+  </g>
+</svg>
