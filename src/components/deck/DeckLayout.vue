@@ -13,7 +13,10 @@ import {
   clearAvailableTlCache,
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
-import { initDesktopNotifications } from '@/utils/desktopNotification'
+import {
+  initDesktopNotifications,
+  onNotificationAction,
+} from '@/utils/desktopNotification'
 import { AppError } from '@/utils/errors'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
@@ -315,6 +318,13 @@ function stopResize() {
 onMounted(() => {
   deckStore.load()
   initDesktopNotifications()
+  onNotificationAction((ctx) => {
+    if (ctx.noteId) {
+      router.push(`/note/${ctx.accountId}/${ctx.noteId}`)
+    } else if (ctx.userId) {
+      router.push(`/user/${ctx.accountId}/${ctx.userId}`)
+    }
+  })
   initShortcuts()
   window.addEventListener('resize', handleResize)
 })

@@ -142,16 +142,23 @@ async function connect() {
         if (event.type === 'notification') {
           const notification = event.body as NormalizedNotification
 
-          if (
-            ['reply', 'mention', 'quote', 'follow'].includes(notification.type)
-          ) {
-            const userName =
-              notification.user?.name ||
-              notification.user?.username ||
-              'Someone'
-            const label =
-              NOTIFICATION_LABELS[notification.type] || notification.type
-            sendDesktopNotification(`NoteDeck — ${userName}`, label)
+          {
+            const label = NOTIFICATION_LABELS[notification.type]
+            if (label) {
+              const userName =
+                notification.user?.name ||
+                notification.user?.username ||
+                'Someone'
+              const body =
+                notification.type === 'reaction' && notification.reaction
+                  ? `${label} ${notification.reaction}`
+                  : label
+              sendDesktopNotification(`NoteDeck — ${userName}`, body, {
+                noteId: notification.note?.id,
+                userId: notification.user?.id,
+                accountId: notification._accountId,
+              })
+            }
           }
 
           rafBuffer.push(notification)
