@@ -205,7 +205,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
 
 function columnIcon(colId: string): string {
   const col = columnMap.value.get(colId)
-  return MOBILE_TAB_ICONS[col?.type ?? ''] ?? MOBILE_TAB_ICONS.timeline
+  return MOBILE_TAB_ICONS[col?.type ?? ''] ?? MOBILE_TAB_ICONS.timeline ?? ''
 }
 
 function onColumnsScroll() {
