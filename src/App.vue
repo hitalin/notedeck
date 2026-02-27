@@ -3,10 +3,12 @@ import { defineAsyncComponent } from 'vue'
 import { useTheme } from '@/composables/useTheme'
 
 const isTauri = '__TAURI_INTERNALS__' in window
+const isDesktop =
+  isTauri && matchMedia('(hover: hover) and (pointer: fine)').matches
 
-const TitleBar = defineAsyncComponent(
-  () => import('@/components/common/TitleBar.vue'),
-)
+const TitleBar = isDesktop
+  ? defineAsyncComponent(() => import('@/components/common/TitleBar.vue'))
+  : null
 
 useTheme()
 </script>
@@ -14,7 +16,7 @@ useTheme()
 <template>
   <div class="app-root">
     <template v-if="isTauri">
-      <TitleBar />
+      <TitleBar v-if="isDesktop" />
       <div class="app-content">
         <router-view />
       </div>
@@ -32,6 +34,7 @@ useTheme()
   flex-direction: column;
   height: 100dvh;
   overflow: hidden;
+  padding-top: env(safe-area-inset-top);
 }
 
 .app-content {

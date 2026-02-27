@@ -188,6 +188,27 @@ function modeLabel(key: string): string {
   return `${match[1]} mode`
 }
 
+// Mobile: track active column for dot indicator
+const activeColumnIndex = ref(0)
+const visibleColumns = computed(() =>
+  deckStore.layout.flat().filter((id) => columnMap.value.has(id)),
+)
+
+function onColumnsScroll() {
+  if (!columnsRef.value) return
+  const w = columnsRef.value.clientWidth
+  if (w === 0) return
+  activeColumnIndex.value = Math.round(columnsRef.value.scrollLeft / w)
+}
+
+function scrollToColumn(index: number) {
+  if (!columnsRef.value) return
+  columnsRef.value.scrollTo({
+    left: index * columnsRef.value.clientWidth,
+    behavior: 'smooth',
+  })
+}
+
 // Wheel deltaY → scrollLeft conversion for horizontal column scrolling
 // Only when the cursor is NOT over a column body (let columns scroll vertically)
 const columnsRef = ref<HTMLElement | null>(null)
@@ -453,6 +474,7 @@ onUnmounted(() => {
         ref="columnsRef"
         class="columns"
         @wheel="onColumnsWheel"
+        @scroll="onColumnsScroll"
       >
         <template v-for="group in deckStore.layout" :key="group.join('-')">
           <template v-for="colId in group" :key="colId">
@@ -495,6 +517,32 @@ onUnmounted(() => {
         <div class="bottom-bar-right" />
       </div>
     </div>
+
+    <!-- Mobile bottom nav (visible only on small screens via CSS) -->
+    <nav class="mobile-nav">
+      <div class="mobile-nav-dots">
+        <button
+          v-for="(colId, i) in visibleColumns"
+          :key="colId"
+          class="_button mobile-nav-dot"
+          :class="{ active: activeColumnIndex === i }"
+          @click="scrollToColumn(i)"
+        />
+      </div>
+      <div class="mobile-nav-actions">
+        <button class="_button mobile-nav-btn" title="Add column" @click="toggleAddMenu">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+          </svg>
+        </button>
+        <button class="_button mobile-nav-btn mobile-nav-compose" title="New Note" @click="openCompose">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+          </svg>
+        </button>
+      </div>
+    </nav>
 
     <!-- Add column popup -->
     <Teleport to="body">
@@ -1073,5 +1121,112 @@ onUnmounted(() => {
 .nav-account-menu.menu-right.nav-account-menu-enter-from,
 .nav-account-menu.menu-right.nav-account-menu-leave-to {
   transform: translateX(-4px);
+}
+
+/* ============================================================
+   Mobile nav (hidden on desktop)
+   ============================================================ */
+.mobile-nav {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .navbar,
+  .nav-resize-handle,
+  .nav-toggle,
+  .col-resize-handle,
+  .bottom-bar {
+    display: none !important;
+  }
+
+  .deck-root {
+    flex-direction: column;
+  }
+
+  .columns {
+    scroll-snap-type: x mandatory;
+    gap: 0;
+    padding: 0;
+  }
+
+  .column-section {
+    flex: 0 0 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    scroll-snap-align: start;
+  }
+
+  .mobile-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 0 0 auto;
+    padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+    background: var(--nd-navBg);
+    border-top: 1px solid var(--nd-divider);
+  }
+
+  .mobile-nav-dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .mobile-nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--nd-fg);
+    opacity: 0.25;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+
+  .mobile-nav-dot.active {
+    opacity: 0.8;
+    transform: scale(1.3);
+  }
+
+  .mobile-nav-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .mobile-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: var(--nd-fg);
+    opacity: 0.6;
+    transition: opacity 0.15s, background 0.15s;
+  }
+
+  .mobile-nav-btn:active {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
+
+  .mobile-nav-compose {
+    background: linear-gradient(
+      90deg,
+      var(--nd-buttonGradateA, var(--nd-accent)),
+      var(--nd-buttonGradateB, var(--nd-accentDarken))
+    );
+    color: var(--nd-fgOnAccent, #fff);
+    opacity: 1;
+  }
+
+  .mobile-nav-compose:active {
+    opacity: 0.85;
+  }
+
+  .add-popup {
+    min-width: auto;
+    width: calc(100% - 32px);
+    max-width: 480px;
+  }
 }
 </style>

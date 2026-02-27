@@ -4,20 +4,24 @@ version = "0.0.6"
 edition = "2021"
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
-tauri-plugin-global-shortcut = "2"
-tauri-plugin-autostart = "2"
+tauri-plugin-global-shortcut = { version = "2", optional = true }
+tauri-plugin-autostart = { version = "2", optional = true }
 futures-util = "0.3"
-reqwest = { version = "0.12", features = ["json", "multipart"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
 rusqlite = { version = "0.35", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"] }
 uuid = { version = "1", features = ["v4"] }
 thiserror = "2.0.18"
+
+[features]
+default = ["desktop"]
+desktop = ["tauri/tray-icon", "dep:tauri-plugin-global-shortcut", "dep:tauri-plugin-autostart"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

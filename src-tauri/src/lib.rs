@@ -1,8 +1,10 @@
+#[cfg(not(mobile))]
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager,
 };
+use tauri::Manager;
+#[cfg(not(mobile))]
 use tauri_plugin_autostart::MacosLauncher;
 
 mod api;
@@ -13,80 +15,97 @@ mod models;
 mod streaming;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() -> Result<(), Box<dyn std::error::Error>> {
-    tauri::Builder::default()
+pub fn run() {
+    if let Err(e) = run_inner() {
+        eprintln!("Application error: {e}");
+        std::process::exit(1);
+    }
+}
+
+fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_autostart::init(
-            MacosLauncher::LaunchAgent,
-            Some(vec!["--minimized"]),
-        ))
-        .invoke_handler(tauri::generate_handler![
-            commands::load_accounts,
-            commands::upsert_account,
-            commands::delete_account,
-            commands::load_servers,
-            commands::get_server,
-            commands::upsert_server,
-            commands::api_get_endpoints,
-            commands::api_get_endpoint_params,
-            commands::api_get_user_policies,
-            commands::api_update_user_setting,
-            commands::api_get_timeline,
-            commands::api_get_note,
-            commands::api_create_note,
-            commands::api_create_reaction,
-            commands::api_delete_reaction,
-            commands::api_get_note_reactions,
-            commands::api_update_note,
-            commands::api_upload_file,
-            commands::api_create_favorite,
-            commands::api_delete_favorite,
-            commands::api_delete_note,
-            commands::api_follow_user,
-            commands::api_unfollow_user,
-            commands::api_get_user,
-            commands::api_get_user_detail,
-            commands::api_get_user_notes,
-            commands::api_get_server_emojis,
-            commands::api_get_notifications,
-            commands::api_search_notes,
-            commands::api_get_note_children,
-            commands::api_get_note_conversation,
-            commands::api_lookup_user,
-            commands::api_get_cached_timeline,
-            commands::api_search_notes_local,
-            commands::api_fetch_account_theme,
-            commands::auth_start,
-            commands::auth_complete,
-            commands::auth_verify_token,
-            commands::stream_connect,
-            commands::stream_disconnect,
-            commands::stream_subscribe_timeline,
-            commands::stream_subscribe_main,
-            commands::stream_unsubscribe,
-        ])
-        .setup(|app| {
-            // Initialize SQLite database
-            let app_dir = app.path().app_data_dir()?;
-            std::fs::create_dir_all(&app_dir)?;
-            let db_path = app_dir.join("notedeck.db");
-            let database = db::Database::open(&db_path)?;
-            app.manage(database);
+        .plugin(tauri_plugin_notification::init());
 
-            // Initialize Misskey HTTP client
-            app.manage(api::MisskeyClient::new()?);
+    #[cfg(not(mobile))]
+    {
+        builder = builder
+            .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+            .plugin(tauri_plugin_autostart::init(
+                MacosLauncher::LaunchAgent,
+                Some(vec!["--minimized"]),
+            ));
+    }
 
-            // Initialize streaming manager
-            app.manage(streaming::StreamingManager::new());
+    builder = builder.invoke_handler(tauri::generate_handler![
+        commands::load_accounts,
+        commands::upsert_account,
+        commands::delete_account,
+        commands::load_servers,
+        commands::get_server,
+        commands::upsert_server,
+        commands::api_get_endpoints,
+        commands::api_get_endpoint_params,
+        commands::api_get_user_policies,
+        commands::api_update_user_setting,
+        commands::api_get_timeline,
+        commands::api_get_note,
+        commands::api_create_note,
+        commands::api_create_reaction,
+        commands::api_delete_reaction,
+        commands::api_get_note_reactions,
+        commands::api_update_note,
+        commands::api_upload_file,
+        commands::api_create_favorite,
+        commands::api_delete_favorite,
+        commands::api_delete_note,
+        commands::api_follow_user,
+        commands::api_unfollow_user,
+        commands::api_get_user,
+        commands::api_get_user_detail,
+        commands::api_get_user_notes,
+        commands::api_get_server_emojis,
+        commands::api_get_notifications,
+        commands::api_search_notes,
+        commands::api_get_note_children,
+        commands::api_get_note_conversation,
+        commands::api_lookup_user,
+        commands::api_get_cached_timeline,
+        commands::api_search_notes_local,
+        commands::api_fetch_account_theme,
+        commands::auth_start,
+        commands::auth_complete,
+        commands::auth_verify_token,
+        commands::stream_connect,
+        commands::stream_disconnect,
+        commands::stream_subscribe_timeline,
+        commands::stream_subscribe_main,
+        commands::stream_unsubscribe,
+    ]);
 
-            // System tray
+    builder = builder.setup(|app| {
+        // Initialize SQLite database
+        let app_dir = app.path().app_data_dir()?;
+        std::fs::create_dir_all(&app_dir)?;
+        let db_path = app_dir.join("notedeck.db");
+        let database = db::Database::open(&db_path)?;
+        app.manage(database);
+
+        // Initialize Misskey HTTP client
+        app.manage(api::MisskeyClient::new()?);
+
+        // Initialize streaming manager
+        app.manage(streaming::StreamingManager::new());
+
+        // System tray (desktop only)
+        #[cfg(not(mobile))]
+        {
             let show_i = MenuItem::with_id(app, "show", "Show NoteDeck", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
-            let icon = app.default_window_icon()
+            let icon = app
+                .default_window_icon()
                 .ok_or("Default window icon not found")?
                 .clone();
 
@@ -125,16 +144,23 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 })
                 .build(app)?;
+        }
 
-            Ok(())
-        })
-        .on_window_event(|window, event| {
+        Ok(())
+    });
+
+    // Hide to tray on close (desktop only)
+    #[cfg(not(mobile))]
+    {
+        builder = builder.on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();
             }
-        })
-        .run(tauri::generate_context!())?;
+        });
+    }
+
+    builder.run(tauri::generate_context!())?;
 
     Ok(())
 }

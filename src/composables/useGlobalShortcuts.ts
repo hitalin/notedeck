@@ -1,4 +1,3 @@
-import { register, unregisterAll } from '@tauri-apps/plugin-global-shortcut'
 import { onUnmounted } from 'vue'
 
 export interface ShortcutHandlers {
@@ -10,6 +9,7 @@ export function useGlobalShortcuts(handlers: ShortcutHandlers) {
 
   async function init() {
     try {
+      const { register } = await import('@tauri-apps/plugin-global-shortcut')
       if (handlers.onCompose) {
         const cb = handlers.onCompose
         await register('CmdOrCtrl+Shift+N', (event) => {
@@ -18,13 +18,16 @@ export function useGlobalShortcuts(handlers: ShortcutHandlers) {
       }
       registered = true
     } catch {
-      // Not running in Tauri
+      // Not running in Tauri or plugin not available
     }
   }
 
   async function cleanup() {
     if (!registered) return
     try {
+      const { unregisterAll } = await import(
+        '@tauri-apps/plugin-global-shortcut'
+      )
       await unregisterAll()
     } catch {
       // ignore
