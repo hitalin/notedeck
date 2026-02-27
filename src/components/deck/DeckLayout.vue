@@ -107,10 +107,13 @@ function toggleNav() {
 }
 
 // Wheel deltaY → scrollLeft conversion for horizontal column scrolling
+// Only when the cursor is NOT over a column body (let columns scroll vertically)
 const columnsRef = ref<HTMLElement | null>(null)
 function onColumnsWheel(e: WheelEvent) {
   if (!columnsRef.value) return
   if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+  const target = e.target as HTMLElement | null
+  if (target?.closest('.deck-column')) return
   e.preventDefault()
   columnsRef.value.scrollLeft += e.deltaY
 }
