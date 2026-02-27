@@ -232,7 +232,7 @@ const DEFAULT_MODE_ICON = 'M12 2a10 10 0 100 20 10 10 0 000-20z'
 
 function noteModeLabel(noteKey: string): string {
   const match = noteKey.match(/^isNoteIn(.+)Mode$/)
-  return match ? match[1] : noteKey
+  return match?.[1] ?? noteKey
 }
 
 function noteModeIcon(noteKey: string): string {
@@ -1054,6 +1054,21 @@ function onKeydown(e: KeyboardEvent) {
 
   .header-right {
     gap: 0;
+  }
+}
+
+/* Mobile fullscreen */
+@media (max-width: 600px) {
+  .post-overlay {
+    background: none;
+  }
+
+  .post-form {
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
+    height: 100%;
+    max-height: none;
   }
 }
 </style>

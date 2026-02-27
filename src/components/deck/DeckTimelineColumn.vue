@@ -130,7 +130,7 @@ const allTlTypes = computed(() => {
 function getTlIcon(type: string): string {
   if (TL_ICONS[type]) return TL_ICONS[type]
   const ct = customTimelines.value.find((t) => t.type === type)
-  return ct?.icon ?? TL_ICONS.home
+  return ct?.icon ?? TL_ICONS.home ?? ''
 }
 
 // --- Filter ---

@@ -386,7 +386,7 @@ onUnmounted(() => {
                 :class="{ 'menu-right': navCollapsed }"
                 @click.stop
               >
-                <template v-if="accountModes[acc.id] && Object.keys(accountModes[acc.id]).length > 0">
+                <template v-if="accountModes[acc.id] && Object.keys(accountModes[acc.id] ?? {}).length > 0">
                   <div
                     v-for="(val, key) in accountModes[acc.id]"
                     :key="key"
