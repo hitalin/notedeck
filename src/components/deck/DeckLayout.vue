@@ -45,6 +45,7 @@ const columnMap = computed(() => {
 
 const showAddMenu = ref(false)
 const showCompose = ref(false)
+const mobileDrawerOpen = ref(false)
 
 // Navbar resize
 const MIN_WIDTH = 68
@@ -326,7 +327,7 @@ onUnmounted(() => {
 <template>
   <div class="deck-root">
     <!-- Left navbar (Misskey style) -->
-    <nav class="navbar" :class="{ collapsed: navCollapsed }" :style="{ flexBasis: navWidth + 'px' }">
+    <nav class="navbar" :class="{ collapsed: navCollapsed, 'drawer-open': mobileDrawerOpen }" :style="{ flexBasis: navWidth + 'px' }">
       <div class="nav-body">
         <!-- Top section: nav links -->
         <div class="nav-top">
@@ -539,8 +540,18 @@ onUnmounted(() => {
       </svg>
     </button>
 
+    <!-- Mobile drawer overlay -->
+    <Transition name="fade">
+      <div v-if="mobileDrawerOpen" class="mobile-drawer-overlay" @click="mobileDrawerOpen = false" />
+    </Transition>
+
     <!-- Mobile bottom nav (visible only on small screens via CSS) -->
     <nav class="mobile-nav">
+      <button class="_button mobile-tab mobile-menu-btn" @click="mobileDrawerOpen = !mobileDrawerOpen">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+        </svg>
+      </button>
       <button
         v-for="(colId, i) in visibleColumns"
         :key="colId"
@@ -1147,12 +1158,82 @@ onUnmounted(() => {
 }
 
 @media (max-width: 767px) {
-  .navbar,
   .nav-resize-handle,
   .nav-toggle,
   .col-resize-handle,
   .bottom-bar {
     display: none !important;
+  }
+
+  .navbar {
+    display: flex !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 2000;
+    width: 250px !important;
+    flex-basis: 250px !important;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: none;
+  }
+
+  .navbar.drawer-open {
+    transform: translateX(0);
+    box-shadow: 4px 0 16px rgb(0 0 0 / 0.3);
+  }
+
+  /* Override collapsed styles when drawer is open */
+  .navbar.drawer-open .nav-label {
+    display: inline !important;
+  }
+
+  .navbar.drawer-open .nav-body {
+    overflow-y: auto;
+    direction: rtl;
+  }
+
+  .navbar.drawer-open .nav-item {
+    justify-content: flex-start;
+    padding: 12px 14px;
+    width: auto;
+  }
+
+  .navbar.drawer-open .nav-top,
+  .navbar.drawer-open .nav-bottom {
+    padding: 8px;
+    align-items: stretch;
+  }
+
+  .navbar.drawer-open .nav-post-btn {
+    width: 100%;
+    height: auto;
+    padding: 10px 14px;
+    margin: 0;
+    border-radius: 999px;
+  }
+
+  .mobile-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1999;
+    background: rgb(0 0 0 / 0.5);
+  }
+
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: opacity 0.25s ease;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    opacity: 0;
+  }
+
+  .mobile-menu-btn {
+    flex: 0 0 auto !important;
+    width: 50px;
   }
 
   .deck-root {
