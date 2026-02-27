@@ -188,11 +188,24 @@ function modeLabel(key: string): string {
   return `${match[1]} mode`
 }
 
-// Mobile: track active column for dot indicator
+// Mobile: track active column for tab bar
 const activeColumnIndex = ref(0)
 const visibleColumns = computed(() =>
   deckStore.layout.flat().filter((id) => columnMap.value.has(id)),
 )
+
+const MOBILE_TAB_ICONS: Record<string, string> = {
+  timeline:
+    'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2',
+  notifications:
+    'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
+  search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+}
+
+function columnIcon(colId: string): string {
+  const col = columnMap.value.get(colId)
+  return MOBILE_TAB_ICONS[col?.type ?? ''] ?? MOBILE_TAB_ICONS.timeline
+}
 
 function onColumnsScroll() {
   if (!columnsRef.value) return
@@ -520,22 +533,26 @@ onUnmounted(() => {
 
     <!-- Mobile bottom nav (visible only on small screens via CSS) -->
     <nav class="mobile-nav">
-      <div class="mobile-nav-dots">
+      <div class="mobile-nav-tabs">
         <button
           v-for="(colId, i) in visibleColumns"
           :key="colId"
-          class="_button mobile-nav-dot"
+          class="_button mobile-tab"
           :class="{ active: activeColumnIndex === i }"
           @click="scrollToColumn(i)"
-        />
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path :d="columnIcon(colId)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+          </svg>
+        </button>
       </div>
       <div class="mobile-nav-actions">
-        <button class="_button mobile-nav-btn" title="Add column" @click="toggleAddMenu">
+        <button class="_button mobile-tab" title="Add column" @click="toggleAddMenu">
           <svg viewBox="0 0 24 24" width="20" height="20">
             <path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
           </svg>
         </button>
-        <button class="_button mobile-nav-btn mobile-nav-compose" title="New Note" @click="openCompose">
+        <button class="_button mobile-nav-compose" title="New Note" @click="openCompose">
           <svg viewBox="0 0 24 24" width="20" height="20">
             <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
@@ -1143,6 +1160,10 @@ onUnmounted(() => {
     flex-direction: column;
   }
 
+  .main-area {
+    min-height: 0;
+  }
+
   .columns {
     scroll-snap-type: x mandatory;
     gap: 0;
@@ -1161,29 +1182,39 @@ onUnmounted(() => {
     align-items: center;
     justify-content: space-between;
     flex: 0 0 auto;
-    padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+    height: 50px;
+    padding: 0 8px;
+    padding-bottom: env(safe-area-inset-bottom);
     background: var(--nd-navBg);
     border-top: 1px solid var(--nd-divider);
   }
 
-  .mobile-nav-dots {
+  .mobile-nav-tabs {
     display: flex;
-    gap: 6px;
     align-items: center;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
   }
 
-  .mobile-nav-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--nd-fg);
-    opacity: 0.25;
-    transition: opacity 0.2s, transform 0.2s;
+  .mobile-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 50px;
+    height: 50px;
+    color: var(--nd-fg);
+    opacity: 0.4;
+    transition: opacity 0.15s, color 0.15s;
   }
 
-  .mobile-nav-dot.active {
+  .mobile-tab.active {
+    opacity: 1;
+    color: var(--nd-accent);
+  }
+
+  .mobile-tab:active {
     opacity: 0.8;
-    transform: scale(1.3);
   }
 
   .mobile-nav-actions {
@@ -1192,31 +1223,19 @@ onUnmounted(() => {
     align-items: center;
   }
 
-  .mobile-nav-btn {
+  .mobile-nav-compose {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    color: var(--nd-fg);
-    opacity: 0.6;
-    transition: opacity 0.15s, background 0.15s;
-  }
-
-  .mobile-nav-btn:active {
-    opacity: 1;
-    background: var(--nd-buttonHoverBg);
-  }
-
-  .mobile-nav-compose {
     background: linear-gradient(
       90deg,
       var(--nd-buttonGradateA, var(--nd-accent)),
       var(--nd-buttonGradateB, var(--nd-accentDarken))
     );
     color: var(--nd-fgOnAccent, #fff);
-    opacity: 1;
   }
 
   .mobile-nav-compose:active {
