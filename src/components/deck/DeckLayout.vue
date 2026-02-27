@@ -26,7 +26,15 @@ const columnMap = computed(() => {
 
 const showAddMenu = ref(false)
 const showCompose = ref(false)
-const navCollapsed = ref(window.innerWidth <= 1279)
+
+// Navbar resize
+const MIN_WIDTH = 68
+const COLLAPSE_THRESHOLD = 120
+const DEFAULT_WIDTH = 250
+const MAX_WIDTH = 400
+const navWidth = ref(window.innerWidth <= 1279 ? MIN_WIDTH : DEFAULT_WIDTH)
+const isResizing = ref(false)
+const navCollapsed = computed(() => navWidth.value <= MIN_WIDTH)
 
 function openCompose() {
   if (accountsStore.accounts.length === 0) return
@@ -82,7 +90,7 @@ function toggleAddMenu() {
 }
 
 function toggleNav() {
-  navCollapsed.value = !navCollapsed.value
+  navWidth.value = navCollapsed.value ? DEFAULT_WIDTH : MIN_WIDTH
 }
 
 // Wheel deltaY → scrollLeft conversion for horizontal column scrolling
@@ -99,7 +107,38 @@ const { init: initShortcuts } = useGlobalShortcuts({
 })
 
 function handleResize() {
-  navCollapsed.value = window.innerWidth <= 1279
+  if (window.innerWidth <= 1279) {
+    navWidth.value = MIN_WIDTH
+  } else if (navWidth.value <= MIN_WIDTH) {
+    navWidth.value = DEFAULT_WIDTH
+  }
+}
+
+// Navbar drag resize
+function startResize(e: MouseEvent) {
+  e.preventDefault()
+  isResizing.value = true
+  document.body.style.userSelect = 'none'
+  document.body.style.cursor = 'col-resize'
+  document.addEventListener('mousemove', onResize)
+  document.addEventListener('mouseup', stopResize)
+}
+
+function onResize(e: MouseEvent) {
+  const w = e.clientX
+  if (w <= COLLAPSE_THRESHOLD) {
+    navWidth.value = MIN_WIDTH
+  } else {
+    navWidth.value = Math.min(w, MAX_WIDTH)
+  }
+}
+
+function stopResize() {
+  isResizing.value = false
+  document.body.style.userSelect = ''
+  document.body.style.cursor = ''
+  document.removeEventListener('mousemove', onResize)
+  document.removeEventListener('mouseup', stopResize)
 }
 
 onMounted(() => {
@@ -117,7 +156,7 @@ onUnmounted(() => {
 <template>
   <div class="deck-root">
     <!-- Left navbar (Misskey style) -->
-    <nav class="navbar" :class="{ collapsed: navCollapsed }">
+    <nav class="navbar" :class="{ collapsed: navCollapsed }" :style="{ flexBasis: navWidth + 'px' }">
       <div class="nav-body">
         <!-- Top section: nav links -->
         <div class="nav-top">
@@ -215,6 +254,13 @@ onUnmounted(() => {
         </svg>
       </button>
     </nav>
+
+    <!-- Resize handle -->
+    <div
+      class="nav-resize-handle"
+      :class="{ active: isResizing }"
+      @mousedown="startResize"
+    />
 
     <!-- Main content area -->
     <div class="main-area">
@@ -348,17 +394,12 @@ onUnmounted(() => {
    Left Navbar
    ============================================================ */
 .navbar {
-  flex: 0 0 250px;
+  flex: 0 0 auto;
   display: flex;
   background: var(--nd-navBg);
   border-right: 1px solid var(--nd-divider);
-  transition: flex-basis 0.15s;
   overflow: hidden;
   position: relative;
-}
-
-.navbar.collapsed {
-  flex-basis: 68px;
 }
 
 .nav-body {
@@ -492,6 +533,25 @@ onUnmounted(() => {
   padding: 0;
   margin: 0 auto;
   border-radius: 50%;
+}
+
+/* Nav resize handle */
+.nav-resize-handle {
+  flex: 0 0 6px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
+  z-index: 10;
+}
+
+.nav-resize-handle:hover,
+.nav-resize-handle.active {
+  background: var(--nd-accent);
+  opacity: 0.4;
+}
+
+.nav-resize-handle.active {
+  opacity: 0.6;
 }
 
 /* Nav toggle button */
