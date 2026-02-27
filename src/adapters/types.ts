@@ -161,6 +161,8 @@ export interface CreateNoteParams {
   text?: string
   cw?: string | null
   visibility?: 'public' | 'home' | 'followers' | 'specified'
+  localOnly?: boolean
+  modeFlags?: Record<string, boolean>
   replyId?: string
   renoteId?: string
   fileIds?: string[]

@@ -158,6 +158,8 @@ pub struct CreateNoteParams {
     pub text: Option<String>,
     pub cw: Option<String>,
     pub visibility: Option<String>,
+    pub local_only: Option<bool>,
+    pub mode_flags: Option<HashMap<String, bool>>,
     pub reply_id: Option<String>,
     pub renote_id: Option<String>,
     pub file_ids: Option<Vec<String>>,

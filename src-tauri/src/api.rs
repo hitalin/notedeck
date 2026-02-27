@@ -153,6 +153,14 @@ impl MisskeyClient {
         if let Some(ref vis) = params.visibility {
             body["visibility"] = json!(vis);
         }
+        if let Some(local_only) = params.local_only {
+            body["localOnly"] = json!(local_only);
+        }
+        if let Some(ref flags) = params.mode_flags {
+            for (key, value) in flags {
+                body[key] = json!(value);
+            }
+        }
         if let Some(ref id) = params.reply_id {
             body["replyId"] = json!(id);
         }

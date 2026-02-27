@@ -9,6 +9,10 @@ import type {
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
+import {
+  CUSTOM_TL_ICONS,
+  detectAvailableTimelines,
+} from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
 
 const props = defineProps<{
@@ -32,6 +36,7 @@ const text = ref('')
 const cw = ref('')
 const showCw = ref(false)
 const visibility = ref<'public' | 'home' | 'followers' | 'specified'>('public')
+const localOnly = ref(false)
 const showVisibilityMenu = ref(false)
 const showAccountMenu = ref(false)
 const isPosting = ref(false)
@@ -40,6 +45,7 @@ const error = ref<string | null>(null)
 const attachedFiles = ref<NormalizedDriveFile[]>([])
 const isUploading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+const noteModeFlags = ref<Record<string, boolean>>({})
 
 let adapter: ServerAdapter | null = null
 
@@ -105,6 +111,19 @@ async function initAdapter() {
   } catch (e) {
     error.value = AppError.from(e).message
   }
+  // Detect active modes for note-level flags
+  try {
+    const availability = await detectAvailableTimelines(acc.id)
+    const flags: Record<string, boolean> = {}
+    for (const [key, value] of Object.entries(availability.modes)) {
+      if (value) {
+        flags[key.replace(/^isIn/, 'isNoteIn')] = true
+      }
+    }
+    noteModeFlags.value = flags
+  } catch {
+    noteModeFlags.value = {}
+  }
 }
 
 async function switchAccount(id: string) {
@@ -145,10 +164,15 @@ async function post() {
         attachedFiles.value.length > 0
           ? attachedFiles.value.map((f) => f.id)
           : undefined
+      const modeFlags = Object.keys(noteModeFlags.value).length > 0
+        ? noteModeFlags.value
+        : undefined
       await adapter.api.createNote({
         text: text.value || undefined,
         cw: showCw.value && cw.value ? cw.value : undefined,
         visibility: visibility.value,
+        localOnly: localOnly.value || undefined,
+        modeFlags,
         replyId: props.replyTo?.id,
         renoteId: props.renoteId,
         fileIds,
@@ -201,6 +225,18 @@ function removeFile(fileId: string) {
 function selectVisibility(v: typeof visibility.value) {
   visibility.value = v
   showVisibilityMenu.value = false
+}
+
+const DEFAULT_MODE_ICON = 'M12 2a10 10 0 100 20 10 10 0 000-20z'
+
+function noteModeLabel(noteKey: string): string {
+  const match = noteKey.match(/^isNoteIn(.+)Mode$/)
+  return match ? match[1] : noteKey
+}
+
+function noteModeIcon(noteKey: string): string {
+  const label = noteModeLabel(noteKey).toLowerCase()
+  return CUSTOM_TL_ICONS[label] ?? DEFAULT_MODE_ICON
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -258,6 +294,27 @@ function onKeydown(e: KeyboardEvent) {
           </div>
         </div>
         <div class="header-right">
+          <!-- Note mode flags -->
+          <button
+            v-for="(val, key) in noteModeFlags"
+            :key="key"
+            class="_button header-btn note-mode-btn"
+            :class="{ active: val }"
+            :title="noteModeLabel(key as string)"
+            @click="noteModeFlags[key as string] = !noteModeFlags[key as string]"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <path
+                :d="noteModeIcon(key as string)"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                fill="none"
+              />
+            </svg>
+          </button>
+
           <!-- Visibility -->
           <div class="visibility-wrapper">
             <button
@@ -299,6 +356,22 @@ function onKeydown(e: KeyboardEvent) {
               </button>
             </div>
           </div>
+
+          <!-- Local only -->
+          <button
+            class="_button header-btn local-only-btn"
+            :class="{ active: localOnly }"
+            :title="localOnly ? 'Local only' : 'Federated'"
+            @click="localOnly = !localOnly"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <path
+                d="M15 3l6 6-9 9-6-6 9-9zM9 12L3 18l3 3 6-6"
+                stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round" fill="none"
+              />
+            </svg>
+          </button>
 
           <!-- Submit -->
           <button
@@ -682,6 +755,16 @@ function onKeydown(e: KeyboardEvent) {
 .visibility-option.active {
   color: var(--nd-accent);
   font-weight: bold;
+}
+
+/* ── Local only button ── */
+.local-only-btn.active {
+  color: var(--nd-accent);
+}
+
+/* ── Note mode button ── */
+.note-mode-btn.active {
+  color: var(--nd-accent);
 }
 
 /* ── Reply preview ── */

@@ -17,7 +17,7 @@ const STANDARD_TL_ENDPOINTS = new Set([
 ])
 
 // Known icons for specific custom timeline types (optional overrides)
-const CUSTOM_TL_ICONS: Record<string, string> = {
+export const CUSTOM_TL_ICONS: Record<string, string> = {
   bubble:
     'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12c0 2.1.644 4.052 1.745 5.665L2 22l4.335-1.745A9.956 9.956 0 0012 22z',
   recommended:
