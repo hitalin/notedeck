@@ -19,7 +19,7 @@
 
 ## NoteDeck とは
 
-NoteDeck は、複数の Misskey 互換サーバーに同時接続できるデスクトップクライアントです。TweetDeck のようなマルチカラムレイアウトで、複数のアカウント・サーバーのタイムラインを一画面で確認できます。
+NoteDeck は、複数の Misskey 互換サーバーに同時接続できるクロスプラットフォームクライアントです。TweetDeck のようなマルチカラムレイアウトで、複数のアカウント・サーバーのタイムラインを一画面で確認できます。
 
 <img width="1198" height="800" alt="image" src="https://github.com/user-attachments/assets/e7fa0f9e-7c6c-4194-93b6-199fc90e44c2" />
 
@@ -52,7 +52,7 @@ Rust 製バックエンドによる WebSocket ストリーミングで、タイ�
 | Windows | 利用可能 |
 | macOS | 利用可能 |
 | Linux | 利用可能 |
-| Android | 予定 |
+| Android | 利用可能 |
 | iOS | 予定 |
 
 ## インストール
@@ -61,9 +61,10 @@ Rust 製バックエンドによる WebSocket ストリーミングで、タイ�
 
 | OS | ファイル |
 |---|---|
-| Windows | `NoteDeck_x.x.x_x64-setup.exe` |
-| macOS | `NoteDeck_x.x.x_aarch64.dmg` |
-| Linux | `notedeck_x.x.x_amd64.deb` / `.AppImage` |
+| Windows | `NoteDeck-x.x.x-windows-x64.zip` |
+| macOS | `NoteDeck-x.x.x-macos-universal.zip` |
+| Linux | `NoteDeck-x.x.x-linux-x64.tar.gz` |
+| Android | `NoteDeck-x.x.x-android.apk` |
 
 ## 技術スタック
 

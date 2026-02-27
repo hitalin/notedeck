@@ -22,7 +22,7 @@ Connect to multiple Misskey-compatible servers in one deck UI. Runs as a native 
 | Windows | Tauri v2 | Available |
 | macOS | Tauri v2 | Available |
 | Linux | Tauri v2 | Available |
-| Android | Tauri v2 | Planned |
+| Android | Tauri v2 | Available |
 | iOS | Tauri v2 | Planned |
 
 ## Tech Stack
