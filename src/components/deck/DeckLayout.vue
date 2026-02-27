@@ -531,34 +531,32 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <!-- Mobile FAB (visible only on small screens via CSS) -->
+    <button class="_button mobile-fab" title="New Note" @click="openCompose">
+      <svg viewBox="0 0 24 24" width="24" height="24">
+        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+      </svg>
+    </button>
+
     <!-- Mobile bottom nav (visible only on small screens via CSS) -->
     <nav class="mobile-nav">
-      <div class="mobile-nav-tabs">
-        <button
-          v-for="(colId, i) in visibleColumns"
-          :key="colId"
-          class="_button mobile-tab"
-          :class="{ active: activeColumnIndex === i }"
-          @click="scrollToColumn(i)"
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20">
-            <path :d="columnIcon(colId)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
-        </button>
-      </div>
-      <div class="mobile-nav-actions">
-        <button class="_button mobile-tab" title="Add column" @click="toggleAddMenu">
-          <svg viewBox="0 0 24 24" width="20" height="20">
-            <path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
-          </svg>
-        </button>
-        <button class="_button mobile-nav-compose" title="New Note" @click="openCompose">
-          <svg viewBox="0 0 24 24" width="20" height="20">
-            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
-        </button>
-      </div>
+      <button
+        v-for="(colId, i) in visibleColumns"
+        :key="colId"
+        class="_button mobile-tab"
+        :class="{ active: activeColumnIndex === i }"
+        @click="scrollToColumn(i)"
+      >
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <path :d="columnIcon(colId)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+        </svg>
+      </button>
+      <button class="_button mobile-tab" title="Add column" @click="toggleAddMenu">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+        </svg>
+      </button>
     </nav>
 
     <!-- Add column popup -->
@@ -1143,7 +1141,8 @@ onUnmounted(() => {
 /* ============================================================
    Mobile nav (hidden on desktop)
    ============================================================ */
-.mobile-nav {
+.mobile-nav,
+.mobile-fab {
   display: none;
 }
 
@@ -1177,58 +1176,16 @@ onUnmounted(() => {
     scroll-snap-align: start;
   }
 
-  .mobile-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex: 0 0 auto;
-    height: 50px;
-    padding: 0 8px;
-    padding-bottom: env(safe-area-inset-bottom);
-    background: var(--nd-navBg);
-    border-top: 1px solid var(--nd-divider);
-  }
-
-  .mobile-nav-tabs {
-    display: flex;
-    align-items: center;
-    flex: 1;
-    min-width: 0;
-    overflow-x: auto;
-  }
-
-  .mobile-tab {
+  .mobile-fab {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 50px;
-    height: 50px;
-    color: var(--nd-fg);
-    opacity: 0.4;
-    transition: opacity 0.15s, color 0.15s;
-  }
-
-  .mobile-tab.active {
-    opacity: 1;
-    color: var(--nd-accent);
-  }
-
-  .mobile-tab:active {
-    opacity: 0.8;
-  }
-
-  .mobile-nav-actions {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-  }
-
-  .mobile-nav-compose {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
+    position: fixed;
+    right: 16px;
+    bottom: calc(66px + env(safe-area-inset-bottom));
+    z-index: 1000;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     background: linear-gradient(
       90deg,
@@ -1236,10 +1193,54 @@ onUnmounted(() => {
       var(--nd-buttonGradateB, var(--nd-accentDarken))
     );
     color: var(--nd-fgOnAccent, #fff);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
   }
 
-  .mobile-nav-compose:active {
-    opacity: 0.85;
+  .mobile-fab:active {
+    transform: scale(0.92);
+  }
+
+  .mobile-nav {
+    display: flex;
+    align-items: stretch;
+    flex: 0 0 auto;
+    height: 56px;
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--nd-navBg);
+    border-top: 1px solid var(--nd-divider);
+  }
+
+  .mobile-tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    height: 56px;
+    color: var(--nd-fg);
+    opacity: 0.45;
+    transition: opacity 0.2s, color 0.2s;
+  }
+
+  .mobile-tab.active {
+    opacity: 1;
+    color: var(--nd-accent);
+  }
+
+  .mobile-tab.active::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+    background: var(--nd-accent);
+  }
+
+  .mobile-tab:active {
+    opacity: 0.7;
   }
 
   .add-popup {
