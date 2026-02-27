@@ -49,7 +49,7 @@ const showCompose = ref(false)
 // Navbar resize
 const MIN_WIDTH = 68
 const COLLAPSE_THRESHOLD = 120
-const DEFAULT_WIDTH = 250
+const DEFAULT_WIDTH = 200
 const MAX_WIDTH = 400
 const navWidth = ref(window.innerWidth <= 1279 ? MIN_WIDTH : DEFAULT_WIDTH)
 const isResizing = ref(false)
@@ -584,7 +584,6 @@ onUnmounted(() => {
   display: flex;
   background: var(--nd-navBg);
   border-right: 1px solid var(--nd-divider);
-  overflow: hidden;
   position: relative;
 }
 
@@ -596,6 +595,11 @@ onUnmounted(() => {
   overflow-y: auto;
   overflow-x: hidden;
   direction: rtl;
+}
+
+.collapsed .nav-body {
+  overflow: visible;
+  direction: ltr;
 }
 
 .nav-body > * {
@@ -658,6 +662,13 @@ onUnmounted(() => {
 .collapsed .nav-item {
   justify-content: center;
   padding: 14px 0;
+  width: 100%;
+}
+
+.collapsed .nav-top,
+.collapsed .nav-bottom {
+  padding: 8px 0;
+  align-items: center;
 }
 
 /* Account in nav */
@@ -671,6 +682,11 @@ onUnmounted(() => {
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+}
+
+.collapsed .nav-avatar {
+  width: 34px;
+  height: 34px;
 }
 
 .nav-avatar-placeholder {

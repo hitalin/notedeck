@@ -164,9 +164,10 @@ async function post() {
         attachedFiles.value.length > 0
           ? attachedFiles.value.map((f) => f.id)
           : undefined
-      const modeFlags = Object.keys(noteModeFlags.value).length > 0
-        ? noteModeFlags.value
-        : undefined
+      const modeFlags =
+        Object.keys(noteModeFlags.value).length > 0
+          ? noteModeFlags.value
+          : undefined
       await adapter.api.createNote({
         text: text.value || undefined,
         cw: showCw.value && cw.value ? cw.value : undefined,
@@ -357,19 +358,21 @@ function onKeydown(e: KeyboardEvent) {
             </div>
           </div>
 
-          <!-- Local only -->
+          <!-- Local only (Tabler Icons: ti-rocket / ti-rocket-off) -->
           <button
             class="_button header-btn local-only-btn"
             :class="{ active: localOnly }"
-            :title="localOnly ? 'Local only' : 'Federated'"
+            :title="localOnly ? 'Local only (連合なし)' : 'Federated (連合あり)'"
             @click="localOnly = !localOnly"
           >
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <path
-                d="M15 3l6 6-9 9-6-6 9-9zM9 12L3 18l3 3 6-6"
-                stroke="currentColor" stroke-width="1.5"
-                stroke-linecap="round" stroke-linejoin="round" fill="none"
-              />
+            <svg viewBox="0 0 24 24" width="18" height="18"
+              stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" fill="none"
+            >
+              <path d="M4 13a8 8 0 0 1 7-7 4 4 0 0 0 6.243 6.243 8 8 0 0 1-7 7" />
+              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+              <path d="M15 9h.01" />
+              <path v-if="localOnly" d="M3 3l18 18" />
             </svg>
           </button>
 
@@ -450,6 +453,11 @@ function onKeydown(e: KeyboardEvent) {
           autofocus
           @keydown="onKeydown"
         />
+        <span
+          v-if="remainingChars <= 100"
+          class="text-count _acrylic"
+          :class="{ over: remainingChars < 0 }"
+        >{{ remainingChars }}</span>
       </div>
 
       <!-- File previews -->
@@ -493,16 +501,6 @@ function onKeydown(e: KeyboardEvent) {
         <div class="footer-left">
           <button
             class="_button footer-btn"
-            :class="{ active: showCw }"
-            title="Content Warning"
-            @click="showCw = !showCw"
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-            </svg>
-          </button>
-          <button
-            class="_button footer-btn"
             title="Attach file"
             :disabled="isUploading"
             @click="openFilePicker"
@@ -511,12 +509,17 @@ function onKeydown(e: KeyboardEvent) {
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
             </svg>
           </button>
+          <button
+            class="_button footer-btn"
+            :class="{ active: showCw }"
+            title="Content Warning"
+            @click="showCw = !showCw"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            </svg>
+          </button>
         </div>
-        <span
-          v-if="text.length > 0"
-          class="char-counter"
-          :class="{ over: remainingChars < 0, warn: remainingChars >= 0 && remainingChars <= 100 }"
-        >{{ remainingChars }}</span>
       </footer>
     </div>
   </div>
@@ -549,22 +552,31 @@ function onKeydown(e: KeyboardEvent) {
 /* ── Header ── */
 .header {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   min-height: 50px;
-  border-bottom: 0.5px solid var(--nd-divider);
+  gap: 4px;
 }
 
 .header-left {
   display: flex;
+  flex: 1;
+  flex-wrap: nowrap;
   align-items: center;
+  gap: 6px;
+  padding-left: 12px;
 }
 
 .header-right {
   display: flex;
+  min-height: 48px;
+  font-size: 0.9em;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 4px;
   margin-left: auto;
-  padding-right: 12px;
+  gap: 4px;
+  overflow: clip;
+  padding-left: 4px;
 }
 
 .header-btn {
@@ -579,15 +591,15 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .header-btn:hover {
-  background: color-mix(in srgb, var(--nd-fg) 8%, transparent);
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
 }
 
 .header-btn-text {
-  font-size: 0.85em;
-  max-width: 120px;
-  overflow: hidden;
+  padding-left: 6px;
+  overflow: clip;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 210px;
 }
 
 .account-wrapper {
@@ -604,7 +616,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .account-btn:hover {
-  background: color-mix(in srgb, var(--nd-fg) 8%, transparent);
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
 }
 
 .account-avatar {
@@ -640,7 +652,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .account-option:hover {
-  background: color-mix(in srgb, var(--nd-fg) 8%, transparent);
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
 }
 
 .account-option.active {
@@ -683,9 +695,9 @@ function onKeydown(e: KeyboardEvent) {
   align-items: center;
   justify-content: center;
   gap: 6px;
+  margin: 12px 12px 12px 6px;
   padding: 0 12px;
   line-height: 34px;
-  font-size: 0.9em;
   font-weight: bold;
   font-family: inherit;
   border: none;
@@ -702,7 +714,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .submit-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.7;
   cursor: not-allowed;
 }
 
@@ -749,7 +761,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .visibility-option:hover {
-  background: color-mix(in srgb, var(--nd-fg) 8%, transparent);
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
 }
 
 .visibility-option.active {
@@ -759,7 +771,7 @@ function onKeydown(e: KeyboardEvent) {
 
 /* ── Local only button ── */
 .local-only-btn.active {
-  color: var(--nd-accent);
+  color: #ff2a2a;
 }
 
 /* ── Note mode button ── */
@@ -865,7 +877,7 @@ function onKeydown(e: KeyboardEvent) {
   border: none;
   border-radius: 0;
   outline: none;
-  resize: none;
+  resize: vertical;
   line-height: 1.5;
   field-sizing: content;
 }
@@ -883,6 +895,29 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 0.85em;
 }
 
+/* ── Text count (overlaid on textarea) ── */
+.text-count {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  padding: 4px 6px;
+  font-size: 0.9em;
+  color: var(--nd-warn, #ecb637);
+  border-radius: 6px;
+  min-width: 1.6em;
+  text-align: center;
+}
+
+.text-count.over {
+  color: #ff2a2a;
+}
+
+._acrylic {
+  background: color-mix(in srgb, var(--nd-panelBg, var(--nd-popup)) 50%, transparent);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+}
+
 /* ── Footer ── */
 .footer {
   display: flex;
@@ -892,18 +927,21 @@ function onKeydown(e: KeyboardEvent) {
 
 .footer-left {
   flex: 1;
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-auto-flow: row;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  grid-auto-rows: 40px;
 }
 
 .footer-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
   padding: 0;
   margin: 0;
+  font-size: 1em;
+  width: auto;
+  height: 100%;
   border-radius: 6px;
   color: var(--nd-fg);
   opacity: 0.6;
@@ -912,30 +950,12 @@ function onKeydown(e: KeyboardEvent) {
 
 .footer-btn:hover {
   opacity: 1;
-  background: color-mix(in srgb, var(--nd-fg) 8%, transparent);
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
 }
 
 .footer-btn.active {
   opacity: 1;
   color: var(--nd-accent);
-}
-
-.char-counter {
-  font-size: 0.8em;
-  opacity: 0.5;
-  padding-right: 8px;
-  align-self: center;
-}
-
-.char-counter.warn {
-  color: #f0a020;
-  opacity: 1;
-}
-
-.char-counter.over {
-  color: #ff2a2a;
-  opacity: 1;
-  font-weight: bold;
 }
 
 /* ── File preview ── */
@@ -1016,6 +1036,24 @@ function onKeydown(e: KeyboardEvent) {
 
   .text-area {
     min-height: 80px;
+  }
+
+  .footer {
+    padding: 0 8px 8px;
+  }
+}
+
+@container (max-width: 350px) {
+  .footer {
+    font-size: 0.9em;
+  }
+
+  .footer-left {
+    grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  }
+
+  .header-right {
+    gap: 0;
   }
 }
 </style>

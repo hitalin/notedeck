@@ -65,7 +65,7 @@
   /* Non-theme layout constants */
   --nd-radius: 12px;
   --nd-margin: 10px;
-  --nd-columnGap: 10px;
+  --nd-columnGap: 2px;
 }
 
 *,
