@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onUnmounted, ref } from 'vue'
 import { useDeckStore } from '@/stores/deck'
 
 const props = defineProps<{
@@ -12,9 +12,28 @@ const props = defineProps<{
 const deckStore = useDeckStore()
 const dragging = ref(false)
 const dragHover = ref(false)
+const showMenu = ref(false)
 
 function close() {
   deckStore.removeColumn(props.columnId)
+}
+
+function toggleMenu() {
+  showMenu.value = !showMenu.value
+  if (showMenu.value) {
+    requestAnimationFrame(() => {
+      document.addEventListener('click', closeMenu, { once: true })
+    })
+  }
+}
+
+function closeMenu() {
+  showMenu.value = false
+}
+
+function handleRemove() {
+  showMenu.value = false
+  close()
 }
 
 function hasColumnData(dt: DataTransfer): boolean {
@@ -58,6 +77,10 @@ function onDrop(e: DragEvent) {
     deckStore.swapColumns(fromIdx, toIdx)
   }
 }
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeMenu)
+})
 </script>
 
 <template>
@@ -90,18 +113,29 @@ function onDrop(e: DragEvent) {
         <path d="M10 13a1 1 0 1 0-2 0 1 1 0 0 0 2 0Zm0-4a1 1 0 1 0-2 0 1 1 0 0 0 2 0Zm0-4a1 1 0 1 0-2 0 1 1 0 0 0 2 0Zm6 8a1 1 0 1 0-2 0 1 1 0 0 0 2 0Zm0-4a1 1 0 1 0-2 0 1 1 0 0 0 2 0Zm0-4a1 1 0 1 0-2 0 1 1 0 0 0 2 0Z" fill="currentColor" />
       </svg>
 
-      <!-- Close button -->
-      <button class="_button header-btn" title="Close" @click.stop="close">
-        <svg viewBox="0 0 24 24" width="14" height="14">
-          <path
-            d="M18 6 6 18M6 6l12 12"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            fill="none"
-          />
-        </svg>
-      </button>
+      <!-- Menu button (…) -->
+      <div class="header-menu-wrap" @click.stop>
+        <button class="_button header-btn" title="Menu" @click="toggleMenu">
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <circle cx="12" cy="5" r="1.5" fill="currentColor" />
+            <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+            <circle cx="12" cy="19" r="1.5" fill="currentColor" />
+          </svg>
+        </button>
+        <Transition name="menu-fade">
+          <div v-if="showMenu" class="column-menu">
+            <button class="_button column-menu-item danger" @click="handleRemove">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"
+                />
+              </svg>
+              <span>Remove column</span>
+            </button>
+          </div>
+        </Transition>
+      </div>
     </header>
 
     <div class="column-sub-header">
@@ -151,7 +185,7 @@ function onDrop(e: DragEvent) {
   cursor: grab;
   user-select: none;
   z-index: 2;
-  overflow: clip;
+  overflow: visible;
 }
 
 .column-header:active {
@@ -186,6 +220,11 @@ function onDrop(e: DragEvent) {
   opacity: 0.6;
 }
 
+.header-menu-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .header-btn {
   display: flex;
   align-items: center;
@@ -200,6 +239,56 @@ function onDrop(e: DragEvent) {
 .header-btn:hover {
   background: var(--nd-buttonHoverBg);
   opacity: 1;
+}
+
+/* Column dropdown menu */
+.column-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 180px;
+  background: var(--nd-popup, var(--nd-panel));
+  border-radius: 8px;
+  box-shadow: 0 4px 16px var(--nd-shadow);
+  overflow: hidden;
+  z-index: 100;
+}
+
+.column-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.column-menu-item:hover {
+  background: var(--nd-buttonHoverBg);
+}
+
+.column-menu-item.danger {
+  color: var(--nd-error, #ff4444);
+}
+
+.column-menu-item.danger:hover {
+  background: color-mix(in srgb, var(--nd-error, #ff4444) 10%, transparent);
+}
+
+/* Menu transition */
+.menu-fade-enter-active,
+.menu-fade-leave-active {
+  transition: opacity 0.12s, transform 0.12s;
+}
+
+.menu-fade-enter-from,
+.menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 .column-sub-header {
