@@ -57,7 +57,6 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
-          prefix-key: v1-android
 
       - name: Install frontend dependencies
         run: pnpm install
