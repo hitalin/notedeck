@@ -21,7 +21,7 @@
 
 NoteDeck は、複数の Misskey 互換サーバーに同時接続できるデスクトップクライアントです。TweetDeck のようなマルチカラムレイアウトで、複数のアカウント・サーバーのタイムラインを一画面で確認できます。
 
-<img width="1196" height="798" alt="スクリーンショット 2026-02-26 112132" src="https://github.com/user-attachments/assets/a9854fc1-0902-4e0e-865f-d9b59f5d040d" />
+<img width="1198" height="800" alt="image" src="https://github.com/user-attachments/assets/e7fa0f9e-7c6c-4194-93b6-199fc90e44c2" />
 
 ## 特徴
 
