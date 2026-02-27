@@ -28,11 +28,6 @@ export const router = createRouter({
       props: true,
     },
     {
-      path: '/settings',
-      name: 'settings',
-      component: () => import('@/views/SettingsPage.vue'),
-    },
-    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('@/views/NotFoundPage.vue'),

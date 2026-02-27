@@ -6,6 +6,8 @@ import { useGlobalShortcuts } from '@/composables/useGlobalShortcuts'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { useThemeStore } from '@/stores/theme'
+import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { initDesktopNotifications } from '@/utils/desktopNotification'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
@@ -14,6 +16,17 @@ import DeckTimelineColumn from './DeckTimelineColumn.vue'
 const router = useRouter()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
+const themeStore = useThemeStore()
+
+const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
+
+function toggleTheme() {
+  if (isDark.value) {
+    themeStore.applySource({ kind: 'builtin-light', theme: LIGHT_THEME })
+  } else {
+    themeStore.applySource({ kind: 'builtin-dark', theme: DARK_THEME })
+  }
+}
 
 // Pre-build column lookup map to avoid O(n) find per column per render
 const columnMap = computed(() => {
@@ -222,14 +235,20 @@ onUnmounted(() => {
             <span class="nav-label">Notifications</span>
           </button>
 
-          <router-link to="/settings" class="_button nav-item" title="Settings">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-                stroke="currentColor" stroke-width="1.5" fill="none" />
-              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5" fill="none" />
+          <button class="_button nav-item" :title="isDark ? 'Light theme' : 'Dark theme'" @click="toggleTheme">
+            <!-- Sun icon (shown in dark mode → click to go light) -->
+            <svg v-if="isDark" viewBox="0 0 24 24" width="20" height="20">
+              <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none" />
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
             </svg>
-            <span class="nav-label">Settings</span>
-          </router-link>
+            <!-- Moon icon (shown in light mode → click to go dark) -->
+            <svg v-else viewBox="0 0 24 24" width="20" height="20">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            </svg>
+            <span class="nav-label">{{ isDark ? 'Light theme' : 'Dark theme' }}</span>
+          </button>
         </div>
 
         <!-- Middle spacer -->
@@ -346,15 +365,7 @@ onUnmounted(() => {
             <path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
           </svg>
         </button>
-        <div class="bottom-bar-right">
-          <button class="_button bottom-bar-btn" title="Deck settings" @click="router.push('/settings')">
-            <svg viewBox="0 0 24 24" width="14" height="14">
-              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-                stroke="currentColor" stroke-width="1.5" fill="none" />
-              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5" fill="none" />
-            </svg>
-          </button>
-        </div>
+        <div class="bottom-bar-right" />
       </div>
     </div>
 
