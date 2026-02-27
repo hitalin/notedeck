@@ -1,4 +1,9 @@
-export type ServerSoftware = 'misskey' | 'unknown'
+export type ServerSoftware =
+  | 'misskey'
+  | 'firefish'
+  | 'sharkey'
+  | 'iceshrimp'
+  | 'unknown'
 
 export interface ServerInfo {
   host: string
@@ -18,12 +23,42 @@ export interface ServerFeatures {
   [key: string]: boolean
 }
 
-export type TimelineType = 'home' | 'local' | 'social' | 'global'
+/** Standard timeline types. Custom forks may add more (e.g., 'bubble', 'recommended'). */
+export type TimelineType = string
+
+export interface TimelineFilter {
+  withRenotes?: boolean
+  withReplies?: boolean
+  withFiles?: boolean
+  withBots?: boolean
+  withSensitive?: boolean
+}
+
+/** Standard Misskey filter keys per timeline type */
+export const TIMELINE_FILTER_KEYS: Record<
+  TimelineType,
+  (keyof TimelineFilter)[]
+> = {
+  home: ['withRenotes', 'withFiles'],
+  local: ['withRenotes', 'withReplies', 'withFiles'],
+  social: ['withRenotes', 'withReplies', 'withFiles'],
+  global: ['withRenotes', 'withFiles'],
+}
+
+/** Fork-specific extra filter keys (merged with standard keys) */
+export const FORK_EXTRA_FILTERS: Partial<
+  Record<ServerSoftware, (keyof TimelineFilter)[]>
+> = {
+  firefish: ['withBots'],
+  sharkey: ['withBots', 'withSensitive'],
+  iceshrimp: ['withBots'],
+}
 
 export interface TimelineOptions {
   limit?: number
   sinceId?: string
   untilId?: string
+  filters?: TimelineFilter
 }
 
 export interface PaginationOptions {
@@ -66,6 +101,7 @@ export interface NormalizedUser {
   host: string | null
   name: string | null
   avatarUrl: string | null
+  isBot?: boolean
 }
 
 export interface NormalizedUserDetail extends NormalizedUser {

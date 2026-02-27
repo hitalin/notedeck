@@ -59,6 +59,45 @@ pub fn upsert_server(db: State<'_, Database>, server: StoredServer) -> Result<()
 // --- API ---
 
 #[tauri::command]
+pub async fn api_get_endpoints(
+    client: State<'_, MisskeyClient>,
+    host: String,
+) -> Result<Vec<String>> {
+    client.get_endpoints(&host).await
+}
+
+#[tauri::command]
+pub async fn api_get_user_policies(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+) -> Result<HashMap<String, bool>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_user_policies(&host, &token).await
+}
+
+#[tauri::command]
+pub async fn api_update_user_setting(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    key: String,
+    value: bool,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.update_user_setting(&host, &token, &key, value).await
+}
+
+#[tauri::command]
+pub async fn api_get_endpoint_params(
+    client: State<'_, MisskeyClient>,
+    host: String,
+    endpoint: String,
+) -> Result<Vec<String>> {
+    client.get_endpoint_params(&host, &endpoint).await
+}
+
+#[tauri::command]
 pub async fn api_get_timeline(
     db: State<'_, Database>,
     client: State<'_, MisskeyClient>,
@@ -444,6 +483,7 @@ pub async fn auth_start(host: String, permissions: Option<Vec<String>>) -> Resul
     let perms = permissions.unwrap_or_else(|| {
         vec![
             "read:account",
+            "write:account",
             "read:blocks",
             "read:drive",
             "read:favorites",

@@ -70,6 +70,8 @@ pub struct NormalizedUser {
     pub host: Option<String>,
     pub name: Option<String>,
     pub avatar_url: Option<String>,
+    #[serde(default)]
+    pub is_bot: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -161,33 +163,40 @@ pub struct CreateNoteParams {
     pub file_ids: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum TimelineType {
-    Home,
-    Local,
-    Social,
-    Global,
-}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct TimelineType(String);
 
 impl TimelineType {
-    pub fn api_endpoint(&self) -> &'static str {
-        match self {
-            Self::Home => "notes/timeline",
-            Self::Local => "notes/local-timeline",
-            Self::Social => "notes/hybrid-timeline",
-            Self::Global => "notes/global-timeline",
+    pub fn api_endpoint(&self) -> String {
+        match self.0.as_str() {
+            "home" => "notes/timeline".to_string(),
+            "local" => "notes/local-timeline".to_string(),
+            "social" => "notes/hybrid-timeline".to_string(),
+            "global" => "notes/global-timeline".to_string(),
+            other => format!("notes/{other}-timeline"),
         }
     }
 
-    pub fn ws_channel(&self) -> &'static str {
-        match self {
-            Self::Home => "homeTimeline",
-            Self::Local => "localTimeline",
-            Self::Social => "hybridTimeline",
-            Self::Global => "globalTimeline",
+    pub fn ws_channel(&self) -> String {
+        match self.0.as_str() {
+            "home" => "homeTimeline".to_string(),
+            "local" => "localTimeline".to_string(),
+            "social" => "hybridTimeline".to_string(),
+            "global" => "globalTimeline".to_string(),
+            other => format!("{other}Timeline"),
         }
     }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TimelineFilter {
+    pub with_renotes: Option<bool>,
+    pub with_replies: Option<bool>,
+    pub with_files: Option<bool>,
+    pub with_bots: Option<bool>,
+    pub with_sensitive: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -197,6 +206,8 @@ pub struct TimelineOptions {
     limit: i64,
     pub since_id: Option<String>,
     pub until_id: Option<String>,
+    #[serde(default)]
+    pub filters: Option<TimelineFilter>,
 }
 
 impl TimelineOptions {
@@ -212,6 +223,7 @@ impl Default for TimelineOptions {
             limit: 20,
             since_id: None,
             until_id: None,
+            filters: None,
         }
     }
 }
@@ -300,6 +312,8 @@ pub struct RawUser {
     pub host: Option<String>,
     pub name: Option<String>,
     pub avatar_url: Option<String>,
+    #[serde(default)]
+    pub is_bot: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -485,6 +499,7 @@ impl From<RawUser> for NormalizedUser {
             host: user.host,
             name: user.name,
             avatar_url: user.avatar_url,
+            is_bot: user.is_bot,
         }
     }
 }

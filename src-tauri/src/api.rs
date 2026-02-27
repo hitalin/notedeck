@@ -93,8 +93,28 @@ impl MisskeyClient {
         if let Some(ref id) = options.until_id {
             params["untilId"] = json!(id);
         }
+        if let Some(ref f) = options.filters {
+            if let Some(v) = f.with_renotes {
+                params["withRenotes"] = json!(v);
+            }
+            if let Some(v) = f.with_replies {
+                params["withReplies"] = json!(v);
+            }
+            if let Some(v) = f.with_files {
+                params["withFiles"] = json!(v);
+            }
+            if let Some(v) = f.with_bots {
+                params["withBots"] = json!(v);
+                // Some forks use excludeBots (inverse semantics)
+                params["excludeBots"] = json!(!v);
+            }
+            if let Some(v) = f.with_sensitive {
+                params["withSensitive"] = json!(v);
+                params["excludeNsfw"] = json!(!v);
+            }
+        }
 
-        let data = self.request(host, token, endpoint, params).await?;
+        let data = self.request(host, token, &endpoint, params).await?;
         let raw: Vec<RawNote> = serde_json::from_value(data)?;
         Ok(raw
             .into_iter()
@@ -585,5 +605,117 @@ impl MisskeyClient {
         token: &str,
     ) -> Result<Value, NoteDeckError> {
         self.request(host, token, "meta", json!({})).await
+    }
+
+    /// Fetch boolean policy flags and mode flags from /api/i.
+    /// Returns policies (e.g. ltlAvailable, yamiTlAvailable) and
+    /// top-level mode flags matching isIn*Mode (e.g. isInYamiMode).
+    pub async fn get_user_policies(
+        &self,
+        host: &str,
+        token: &str,
+    ) -> Result<HashMap<String, bool>, NoteDeckError> {
+        let data = self.request(host, token, "i", json!({})).await?;
+        let mut result = HashMap::new();
+        if let Some(policies) = data.get("policies").and_then(|v| v.as_object()) {
+            for (key, value) in policies {
+                if let Some(b) = value.as_bool() {
+                    result.insert(key.clone(), b);
+                }
+            }
+        }
+        // Extract top-level mode flags (fork features like yami/hanami mode)
+        if let Some(obj) = data.as_object() {
+            for (key, value) in obj {
+                if key.starts_with("isIn") && key.ends_with("Mode") {
+                    if let Some(b) = value.as_bool() {
+                        result.insert(key.clone(), b);
+                    }
+                }
+            }
+        }
+        Ok(result)
+    }
+
+    /// Update a user setting via /api/i/update.
+    pub async fn update_user_setting(
+        &self,
+        host: &str,
+        token: &str,
+        key: &str,
+        value: bool,
+    ) -> Result<(), NoteDeckError> {
+        let mut params = json!({});
+        params[key] = json!(value);
+        self.request(host, token, "i/update", params).await?;
+        Ok(())
+    }
+
+    /// Fetch parameter names for a specific API endpoint (public, no auth required).
+    pub async fn get_endpoint_params(
+        &self,
+        host: &str,
+        endpoint: &str,
+    ) -> Result<Vec<String>, NoteDeckError> {
+        let res = self
+            .client
+            .post(format!("https://{host}/api/endpoint"))
+            .json(&json!({ "endpoint": endpoint }))
+            .send()
+            .await?;
+
+        if !res.status().is_success() {
+            return Err(NoteDeckError::Api {
+                endpoint: "endpoint".to_string(),
+                status: res.status().as_u16(),
+                message: "Failed to fetch endpoint info".to_string(),
+            });
+        }
+
+        let data: Value = res.json().await?;
+        let mut params = Vec::new();
+
+        // Misskey 2024+: params.properties is an object keyed by param name
+        if let Some(props) = data
+            .pointer("/params/properties")
+            .and_then(|v| v.as_object())
+        {
+            for key in props.keys() {
+                params.push(key.clone());
+            }
+        }
+        // Older Misskey: params is a flat array with { name, ... } items
+        if params.is_empty() {
+            if let Some(arr) = data.get("params").and_then(|v| v.as_array()) {
+                for item in arr {
+                    if let Some(name) = item.get("name").and_then(|v| v.as_str()) {
+                        params.push(name.to_string());
+                    }
+                }
+            }
+        }
+
+        Ok(params)
+    }
+
+    /// Fetch available API endpoints (public, no auth required).
+    pub async fn get_endpoints(&self, host: &str) -> Result<Vec<String>, NoteDeckError> {
+        let res = self
+            .client
+            .post(format!("https://{host}/api/endpoints"))
+            .json(&json!({}))
+            .send()
+            .await?;
+
+        if !res.status().is_success() {
+            return Err(NoteDeckError::Api {
+                endpoint: "endpoints".to_string(),
+                status: res.status().as_u16(),
+                message: "Failed to fetch endpoints".to_string(),
+            });
+        }
+
+        let endpoints: Vec<String> = res.json().await?;
+        Ok(endpoints)
     }
 }

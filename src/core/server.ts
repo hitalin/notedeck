@@ -49,10 +49,11 @@ async function fetchNodeInfo(host: string): Promise<NodeInfo> {
 }
 
 function detectSoftware(name: string): ServerSoftware {
-  const normalized = name.toLowerCase()
-  if (normalized === 'misskey' || normalized.includes('misskey')) {
-    return 'misskey'
-  }
+  const n = name.toLowerCase()
+  if (n === 'firefish' || n === 'calckey') return 'firefish'
+  if (n === 'sharkey') return 'sharkey'
+  if (n === 'iceshrimp' || n === 'iceshrimp.net') return 'iceshrimp'
+  if (n === 'misskey' || n.includes('misskey')) return 'misskey'
   return 'unknown'
 }
 
