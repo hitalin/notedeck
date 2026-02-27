@@ -1157,7 +1157,7 @@ onUnmounted(() => {
   display: none;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 500px) {
   .nav-resize-handle,
   .nav-toggle,
   .col-resize-handle,
