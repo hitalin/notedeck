@@ -114,6 +114,44 @@ function handleResize() {
   }
 }
 
+// Column drag resize
+const COL_MIN_WIDTH = 280
+const COL_MAX_WIDTH = 600
+const resizingColId = ref<string | null>(null)
+const resizingColStartX = ref(0)
+const resizingColStartW = ref(0)
+
+function startColumnResize(colId: string, e: MouseEvent) {
+  e.preventDefault()
+  const col = columnMap.value.get(colId)
+  if (!col) return
+  resizingColId.value = colId
+  resizingColStartX.value = e.clientX
+  resizingColStartW.value = col.width
+  document.body.style.userSelect = 'none'
+  document.body.style.cursor = 'col-resize'
+  document.addEventListener('mousemove', onColumnResize)
+  document.addEventListener('mouseup', stopColumnResize)
+}
+
+function onColumnResize(e: MouseEvent) {
+  if (!resizingColId.value) return
+  const delta = e.clientX - resizingColStartX.value
+  const newW = Math.max(
+    COL_MIN_WIDTH,
+    Math.min(resizingColStartW.value + delta, COL_MAX_WIDTH),
+  )
+  deckStore.updateColumn(resizingColId.value, { width: newW })
+}
+
+function stopColumnResize() {
+  resizingColId.value = null
+  document.body.style.userSelect = ''
+  document.body.style.cursor = ''
+  document.removeEventListener('mousemove', onColumnResize)
+  document.removeEventListener('mouseup', stopColumnResize)
+}
+
 // Navbar drag resize
 function startResize(e: MouseEvent) {
   e.preventDefault()
@@ -271,8 +309,12 @@ onUnmounted(() => {
         @wheel="onColumnsWheel"
       >
         <template v-for="group in deckStore.layout" :key="group.join('-')">
-          <section v-for="colId in group" :key="colId" class="column-section">
-            <template v-if="columnMap.get(colId)" :key="colId">
+          <template v-for="colId in group" :key="colId">
+            <section
+              v-if="columnMap.get(colId)"
+              class="column-section"
+              :style="{ flexBasis: columnMap.get(colId)!.width + 'px' }"
+            >
               <DeckTimelineColumn
                 v-if="columnMap.get(colId)!.type === 'timeline'"
                 :column="columnMap.get(colId)!"
@@ -285,8 +327,14 @@ onUnmounted(() => {
                 v-else-if="columnMap.get(colId)!.type === 'search'"
                 :column="columnMap.get(colId)!"
               />
-            </template>
-          </section>
+            </section>
+            <div
+              v-if="columnMap.get(colId)"
+              class="col-resize-handle"
+              :class="{ active: resizingColId === colId }"
+              @mousedown="startColumnResize(colId, $event)"
+            />
+          </template>
         </template>
       </div>
 
@@ -607,10 +655,27 @@ onUnmounted(() => {
 }
 
 .column-section {
-  flex: 0 0 330px;
+  flex: 0 0 auto;
   min-width: 280px;
-  max-width: 500px;
+  max-width: 600px;
   height: 100%;
+}
+
+.col-resize-handle {
+  flex: 0 0 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.col-resize-handle:hover,
+.col-resize-handle.active {
+  background: var(--nd-accent);
+  opacity: 0.4;
+}
+
+.col-resize-handle.active {
+  opacity: 0.6;
 }
 
 /* ============================================================
