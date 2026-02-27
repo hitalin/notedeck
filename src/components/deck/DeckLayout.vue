@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MkPostForm from '@/components/common/MkPostForm.vue'
@@ -8,7 +9,12 @@ import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
+import {
+  clearAvailableTlCache,
+  detectAvailableTimelines,
+} from '@/utils/customTimelines'
 import { initDesktopNotifications } from '@/utils/desktopNotification'
+import { AppError } from '@/utils/errors'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
@@ -104,6 +110,82 @@ function toggleAddMenu() {
 
 function toggleNav() {
   navWidth.value = navCollapsed.value ? DEFAULT_WIDTH : MIN_WIDTH
+}
+
+// Account menu
+const accountMenuId = ref<string | null>(null)
+const accountModes = ref<Record<string, Record<string, boolean>>>({})
+const togglingMode = ref(false)
+const modeError = ref<string | null>(null)
+
+function toggleAccountMenu(id: string) {
+  if (accountMenuId.value === id) {
+    accountMenuId.value = null
+    return
+  }
+  accountMenuId.value = id
+  modeError.value = null
+  loadAccountModes(id)
+  requestAnimationFrame(() => {
+    document.addEventListener('click', closeAccountMenu, { once: true })
+  })
+}
+
+function closeAccountMenu() {
+  accountMenuId.value = null
+}
+
+async function loadAccountModes(id: string) {
+  try {
+    const result = await detectAvailableTimelines(id)
+    accountModes.value = { ...accountModes.value, [id]: result.modes }
+  } catch {
+    // non-critical
+  }
+}
+
+async function toggleAccountMode(accountId: string, key: string) {
+  togglingMode.value = true
+  modeError.value = null
+  try {
+    const modes = accountModes.value[accountId] ?? {}
+    const newValue = !modes[key]
+    await invoke('api_update_user_setting', { accountId, key, value: newValue })
+    accountModes.value = {
+      ...accountModes.value,
+      [accountId]: { ...modes, [key]: newValue },
+    }
+    clearAvailableTlCache(accountId)
+    accountsStore.bumpModeVersion()
+  } catch (e) {
+    const err = AppError.from(e)
+    if (err.isAuth || String(err.message).includes('permission')) {
+      modeError.value =
+        'Permission denied. Try re-logging in to grant write:account.'
+    } else {
+      modeError.value = err.message
+    }
+  } finally {
+    togglingMode.value = false
+  }
+}
+
+function logout(id: string) {
+  // Remove all columns for this account
+  for (const col of deckStore.columns) {
+    if (col.accountId === id) {
+      deckStore.removeColumn(col.id)
+    }
+  }
+  accountsStore.removeAccount(id)
+  accountMenuId.value = null
+}
+
+function modeLabel(key: string): string {
+  // isInYamiMode → Yami mode, isInHanamiMode → Hanami mode
+  const match = key.match(/^isIn(.+)Mode$/)
+  if (!match) return key
+  return `${match[1]} mode`
 }
 
 // Wheel deltaY → scrollLeft conversion for horizontal column scrolling
@@ -277,22 +359,64 @@ onUnmounted(() => {
 
           <div class="nav-divider" />
 
-          <!-- Account avatars -->
-          <button
+          <!-- Account avatars with dropdown menu -->
+          <div
             v-for="acc in accountsStore.accounts"
             :key="acc.id"
-            class="_button nav-item nav-account"
-            :title="`@${acc.username}@${acc.host}`"
-            @click="router.push(`/user/${acc.id}/${acc.userId}`)"
+            class="nav-account-wrap"
           >
-            <img
-              v-if="acc.avatarUrl"
-              :src="acc.avatarUrl"
-              class="nav-avatar"
-            />
-            <div v-else class="nav-avatar nav-avatar-placeholder" />
-            <span class="nav-label">@{{ acc.username }}@{{ acc.host }}</span>
-          </button>
+            <button
+              class="_button nav-item nav-account"
+              :title="`@${acc.username}@${acc.host}`"
+              @click.stop="toggleAccountMenu(acc.id)"
+            >
+              <img
+                v-if="acc.avatarUrl"
+                :src="acc.avatarUrl"
+                class="nav-avatar"
+              />
+              <div v-else class="nav-avatar nav-avatar-placeholder" />
+              <span class="nav-label">@{{ acc.username }}@{{ acc.host }}</span>
+            </button>
+
+            <Transition name="nav-account-menu">
+              <div
+                v-if="accountMenuId === acc.id"
+                class="nav-account-menu"
+                :class="{ 'menu-right': navCollapsed }"
+                @click.stop
+              >
+                <template v-if="accountModes[acc.id] && Object.keys(accountModes[acc.id]).length > 0">
+                  <div
+                    v-for="(val, key) in accountModes[acc.id]"
+                    :key="key"
+                    class="nav-account-menu-item"
+                    @click="toggleAccountMode(acc.id, key as string)"
+                  >
+                    <span class="nav-account-menu-label">{{ modeLabel(key as string) }}</span>
+                    <button
+                      class="nd-filter-toggle"
+                      :class="{ on: val }"
+                      :disabled="togglingMode"
+                      role="switch"
+                      :aria-checked="val"
+                    >
+                      <span class="nd-filter-toggle-knob" />
+                    </button>
+                  </div>
+                </template>
+                <div v-if="modeError" class="nav-account-menu-error">{{ modeError }}</div>
+                <div class="nav-account-menu-divider" />
+                <button class="_button nav-account-menu-item nav-account-logout" @click="logout(acc.id)">
+                  <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                  </svg>
+                  <span>Logout</span>
+                </button>
+              </div>
+            </Transition>
+          </div>
 
           <!-- Add account -->
           <router-link to="/login" class="_button nav-item nav-add-account" title="Add account">
@@ -839,5 +963,99 @@ onUnmounted(() => {
 
 .add-type-btn svg {
   opacity: 0.7;
+}
+
+/* ============================================================
+   Account dropdown menu
+   ============================================================ */
+.nav-account-wrap {
+  position: relative;
+}
+
+.nav-account-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 4px;
+  background: var(--nd-popup, var(--nd-panelBg));
+  border: 1px solid var(--nd-divider);
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  padding: 6px 0;
+  z-index: 100;
+  min-width: 180px;
+}
+
+.nav-account-menu.menu-right {
+  bottom: auto;
+  top: 0;
+  left: 100%;
+  right: auto;
+  margin-bottom: 0;
+  margin-left: 4px;
+}
+
+.nav-account-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  width: 100%;
+  text-align: left;
+}
+
+.nav-account-menu-item:hover {
+  background: var(--nd-buttonHoverBg);
+}
+
+.nav-account-menu-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-account-menu-divider {
+  height: 1px;
+  background: var(--nd-divider);
+  margin: 4px 10px;
+}
+
+.nav-account-menu-error {
+  padding: 6px 14px;
+  font-size: 0.75em;
+  color: var(--nd-love);
+  word-break: break-word;
+}
+
+.nav-account-logout {
+  color: var(--nd-love, #ff6b6b);
+  gap: 8px;
+}
+
+.nav-account-logout svg {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.nav-account-menu-enter-active,
+.nav-account-menu-leave-active {
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.nav-account-menu-enter-from,
+.nav-account-menu-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.nav-account-menu.menu-right.nav-account-menu-enter-from,
+.nav-account-menu.menu-right.nav-account-menu-leave-to {
+  transform: translateX(-4px);
 }
 </style>

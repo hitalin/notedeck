@@ -18,6 +18,7 @@ export const useAccountsStore = defineStore('accounts', () => {
   const accounts = ref<Account[]>([])
   const activeAccountId = ref<string | null>(null)
   const isLoaded = ref(false)
+  const modeVersion = ref(0)
 
   const activeAccount = computed(
     () => accounts.value.find((a) => a.id === activeAccountId.value) ?? null,
@@ -74,6 +75,10 @@ export const useAccountsStore = defineStore('accounts', () => {
     }
   }
 
+  function bumpModeVersion(): void {
+    modeVersion.value++
+  }
+
   return {
     accounts,
     activeAccountId,
@@ -84,5 +89,7 @@ export const useAccountsStore = defineStore('accounts', () => {
     addAccount,
     removeAccount,
     switchAccount,
+    modeVersion,
+    bumpModeVersion,
   }
 })

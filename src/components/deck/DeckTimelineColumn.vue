@@ -7,6 +7,7 @@ import {
   onUnmounted,
   ref,
   shallowRef,
+  watch,
 } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type {
@@ -17,6 +18,7 @@ import type {
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import type { CustomTimelineInfo } from '@/utils/customTimelines'
@@ -36,6 +38,7 @@ const props = defineProps<{
 }>()
 
 const deckStore = useDeckStore()
+const accountsStore = useAccountsStore()
 const {
   account,
   columnThemeVars,
@@ -107,50 +110,8 @@ const customTlIcon = computed(() => {
   return ct?.icon
 })
 
-// --- Mode toggle (per-account, per-TL) ---
+// --- Mode state (per-account, per-TL) ---
 const tlModes = ref<Record<string, boolean>>({})
-const togglingMode = ref(false)
-const modeError = ref<string | null>(null)
-
-const currentModeKey = computed(() =>
-  findModeKeyForTimeline(tlType.value, tlModes.value),
-)
-
-const isCurrentModeOn = computed(
-  () =>
-    currentModeKey.value != null &&
-    tlModes.value[currentModeKey.value] === true,
-)
-
-async function toggleMode() {
-  const key = currentModeKey.value
-  const accountId = props.column.accountId
-  if (!key || !accountId) return
-  togglingMode.value = true
-  modeError.value = null
-  try {
-    const newValue = !tlModes.value[key]
-    await invoke('api_update_user_setting', {
-      accountId,
-      key,
-      value: newValue,
-    })
-    tlModes.value = { ...tlModes.value, [key]: newValue }
-    // Refresh policies — mode change may affect other TL availability
-    await refreshPolicies()
-    await reconnectWithFilter()
-  } catch (e) {
-    const err = AppError.from(e)
-    if (err.isAuth || String(err.message).includes('permission')) {
-      modeError.value =
-        'Permission denied. Try re-logging in to grant write:account.'
-    } else {
-      modeError.value = err.message
-    }
-  } finally {
-    togglingMode.value = false
-  }
-}
 
 const allTlTypes = computed(() => {
   const allowed = availableStandardTl.value
@@ -274,12 +235,6 @@ const columnTitle = computed(() => {
 async function connect(useCache = false) {
   error.value = null
 
-  // Skip if current TL requires a mode that is off
-  if (currentModeKey.value && !isCurrentModeOn.value) {
-    isLoading.value = false
-    return
-  }
-
   isLoading.value = true
 
   // 1. Instant cache display (initial mount only)
@@ -355,11 +310,11 @@ async function refreshPolicies() {
   const availability = await detectAvailableTimelines(accountId)
   if (host) {
     const ct = await detectCustomTimelines(host)
-    customTimelines.value = ct.filter(
-      (c) =>
-        !availability.denied.has(c.type) ||
-        findModeKeyForTimeline(c.type, availability.modes) != null,
-    )
+    customTimelines.value = ct.filter((c) => {
+      if (!availability.denied.has(c.type)) return true
+      const modeKey = findModeKeyForTimeline(c.type, availability.modes)
+      return modeKey != null && availability.modes[modeKey] === true
+    })
   }
   availableStandardTl.value = [
     ...availability.available,
@@ -472,6 +427,18 @@ function handleScroll() {
   onScroll(loadMore)
 }
 
+watch(
+  () => accountsStore.modeVersion,
+  async () => {
+    await refreshPolicies()
+    if (!availableStandardTl.value.includes(tlType.value)) {
+      switchTl('home')
+    } else {
+      await reconnectWithFilter()
+    }
+  },
+)
+
 onMounted(async () => {
   const host = account.value?.host
   const accountId = props.column.accountId
@@ -484,12 +451,12 @@ onMounted(async () => {
       refreshFilterKeys(),
       detectAvailableTimelines(accountId),
     ])
-    // Keep mode-gated custom TLs even if denied (user can toggle mode on)
-    customTimelines.value = ct.filter(
-      (c) =>
-        !availability.denied.has(c.type) ||
-        findModeKeyForTimeline(c.type, availability.modes) != null,
-    )
+    // Only show mode-gated custom TLs when their mode is ON
+    customTimelines.value = ct.filter((c) => {
+      if (!availability.denied.has(c.type)) return true
+      const modeKey = findModeKeyForTimeline(c.type, availability.modes)
+      return modeKey != null && availability.modes[modeKey] === true
+    })
     availableStandardTl.value = [
       ...availability.available,
       ...customTimelines.value.map((c) => c.type),
@@ -561,20 +528,6 @@ onUnmounted(() => {
 
     <div v-if="!account" class="column-empty">
       Account not found
-    </div>
-
-    <div v-else-if="currentModeKey && !isCurrentModeOn" class="tl-mode-prompt">
-      <button
-        class="_button tl-mode-enable-btn"
-        :disabled="togglingMode"
-        @click="toggleMode"
-      >
-        <svg viewBox="0 0 24 24" width="20" height="20">
-          <path d="M12 3v9M18.36 6.64a9 9 0 1 1-12.73 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-        </svg>
-        <span>Enable {{ columnTitle }} mode</span>
-      </button>
-      <div v-if="modeError" class="tl-mode-error">{{ modeError }}</div>
     </div>
 
     <div v-else-if="error" class="column-empty column-error">
@@ -784,45 +737,6 @@ onUnmounted(() => {
 .column-error {
   color: var(--nd-love);
   opacity: 1;
-}
-
-.tl-mode-prompt {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  padding: 2rem 1rem;
-}
-
-.tl-mode-enable-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border-radius: 999px;
-  background: var(--nd-accentedBg);
-  color: var(--nd-accent);
-  font-size: 0.85em;
-  font-weight: 600;
-  transition: background 0.15s, opacity 0.15s;
-}
-
-.tl-mode-enable-btn:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.tl-mode-enable-btn:disabled {
-  opacity: 0.4;
-  cursor: wait;
-}
-
-.tl-mode-error {
-  margin-top: 12px;
-  font-size: 0.8em;
-  color: var(--nd-love);
-  text-align: center;
-  max-width: 280px;
-  word-break: break-word;
 }
 
 .new-notes-banner {
