@@ -1178,9 +1178,9 @@ onUnmounted(() => {
   .navbar {
     display: flex !important;
     position: fixed;
-    top: 0;
+    top: env(safe-area-inset-top);
     left: 0;
-    bottom: 0;
+    bottom: env(safe-area-inset-bottom);
     z-index: 2000;
     width: 250px !important;
     flex-basis: 250px !important;

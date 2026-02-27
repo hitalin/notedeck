@@ -1061,6 +1061,8 @@ function onKeydown(e: KeyboardEvent) {
 @media (max-width: 600px) {
   .post-overlay {
     background: none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   .post-form {
