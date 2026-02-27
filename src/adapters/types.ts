@@ -95,6 +95,15 @@ export interface NormalizedNote {
   renote?: NormalizedNote
 }
 
+export interface AvatarDecoration {
+  id: string
+  url: string
+  angle?: number
+  flipH?: boolean
+  offsetX?: number
+  offsetY?: number
+}
+
 export interface NormalizedUser {
   id: string
   username: string
@@ -102,6 +111,7 @@ export interface NormalizedUser {
   name: string | null
   avatarUrl: string | null
   isBot?: boolean
+  avatarDecorations?: AvatarDecoration[]
 }
 
 export interface NormalizedUserDetail extends NormalizedUser {

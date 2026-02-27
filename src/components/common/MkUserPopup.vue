@@ -4,6 +4,7 @@ import { createAdapter } from '@/adapters/registry'
 import type { NormalizedUserDetail } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
+import MkAvatar from './MkAvatar.vue'
 
 const props = defineProps<{
   userId: string
@@ -71,12 +72,12 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         <div v-else class="popup-banner-img popup-banner-empty" />
       </div>
       <div class="popup-body">
-        <img
-          v-if="user.avatarUrl"
-          :src="user.avatarUrl"
+        <MkAvatar
+          :avatar-url="user.avatarUrl"
+          :decorations="user.avatarDecorations"
+          :size="56"
           class="popup-avatar"
         />
-        <div v-else class="popup-avatar popup-avatar-placeholder" />
 
         <div class="popup-name-area">
           <div class="popup-name">{{ user.name || user.username }}</div>
@@ -135,16 +136,8 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 }
 
 .popup-avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  object-fit: cover;
   border: 3px solid var(--nd-popup);
   margin-top: -28px;
-}
-
-.popup-avatar-placeholder {
-  background: var(--nd-buttonBg);
 }
 
 .popup-name-area {

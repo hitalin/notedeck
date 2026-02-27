@@ -6,6 +6,7 @@ import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useAccountsStore } from '@/stores/accounts'
 import { formatTime } from '@/utils/formatTime'
+import MkAvatar from './MkAvatar.vue'
 import MkEmoji from './MkEmoji.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
 import MkMfm from './MkMfm.vue'
@@ -297,22 +298,12 @@ async function handleMentionClick(username: string, host: string | null) {
     </div>
 
     <article class="article" @click="navigateToDetail">
-      <img
-        v-if="effectiveNote.user.avatarUrl"
-        :src="effectiveNote.user.avatarUrl!"
+      <MkAvatar
+        :avatar-url="effectiveNote.user.avatarUrl"
+        :decorations="effectiveNote.user.avatarDecorations"
+        :size="46"
         :alt="effectiveNote.user.username ?? undefined"
         class="avatar"
-        width="58"
-        height="58"
-        loading="lazy"
-        decoding="async"
-        @click="navigateToUser(effectiveNote.user.id, $event)"
-        @mouseenter="onAvatarMouseEnter"
-        @mouseleave="onAvatarMouseLeave"
-      />
-      <div
-        v-else
-        class="avatar avatar-placeholder"
         @click="navigateToUser(effectiveNote.user.id, $event)"
         @mouseenter="onAvatarMouseEnter"
         @mouseleave="onAvatarMouseLeave"
@@ -651,11 +642,6 @@ async function handleMentionClick(username: string, host: string | null) {
 }
 
 .avatar {
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
   margin: 0 14px 0 0;
   cursor: pointer;
   transition: opacity 0.15s;
@@ -665,9 +651,6 @@ async function handleMentionClick(username: string, host: string | null) {
   opacity: 0.8;
 }
 
-.avatar-placeholder {
-  background: var(--nd-buttonBg);
-}
 
 .main {
   flex: 1;
@@ -978,7 +961,6 @@ async function handleMentionClick(username: string, host: string | null) {
 @container (max-width: 580px) {
   .note-root { font-size: 0.95em; }
   .article { padding: 24px 26px; }
-  .avatar { width: 50px; height: 50px; }
   .renote-info { padding: 12px 26px 6px 26px; }
 }
 
@@ -994,7 +976,7 @@ async function handleMentionClick(username: string, host: string | null) {
 }
 
 @container (max-width: 450px) {
-  .avatar { width: 46px; height: 46px; margin: 0 10px 0 0; }
+  .avatar { margin: 0 10px 0 0; }
 }
 
 @container (max-width: 400px) {

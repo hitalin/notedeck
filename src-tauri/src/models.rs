@@ -64,6 +64,21 @@ pub struct NormalizedNote {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct AvatarDecoration {
+    pub id: String,
+    pub url: String,
+    #[serde(default)]
+    pub angle: Option<f64>,
+    #[serde(default)]
+    pub flip_h: Option<bool>,
+    #[serde(default)]
+    pub offset_x: Option<f64>,
+    #[serde(default)]
+    pub offset_y: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NormalizedUser {
     pub id: String,
     pub username: String,
@@ -72,6 +87,8 @@ pub struct NormalizedUser {
     pub avatar_url: Option<String>,
     #[serde(default)]
     pub is_bot: bool,
+    #[serde(default)]
+    pub avatar_decorations: Vec<AvatarDecoration>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,6 +117,8 @@ pub struct NormalizedUserDetail {
     pub is_followed: bool,
     #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
+    pub avatar_decorations: Vec<AvatarDecoration>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -316,6 +335,8 @@ pub struct RawUser {
     pub avatar_url: Option<String>,
     #[serde(default)]
     pub is_bot: bool,
+    #[serde(default)]
+    pub avatar_decorations: Vec<AvatarDecoration>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -390,6 +411,8 @@ pub struct RawUserDetail {
     pub is_followed: bool,
     #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
+    pub avatar_decorations: Vec<AvatarDecoration>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -502,6 +525,7 @@ impl From<RawUser> for NormalizedUser {
             name: user.name,
             avatar_url: user.avatar_url,
             is_bot: user.is_bot,
+            avatar_decorations: user.avatar_decorations,
         }
     }
 }
@@ -538,6 +562,7 @@ impl RawUserDetail {
             is_following: self.is_following,
             is_followed: self.is_followed,
             created_at: self.created_at,
+            avatar_decorations: self.avatar_decorations,
         }
     }
 }
