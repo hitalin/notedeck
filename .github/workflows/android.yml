@@ -73,6 +73,9 @@ jobs:
       - name: Init Android project
         run: npx tauri android init
 
+      - name: Generate app icons
+        run: npx tauri icon src-tauri/icons/icon.png
+
       - name: Build APK
         run: npx tauri android build --apk
         env:
