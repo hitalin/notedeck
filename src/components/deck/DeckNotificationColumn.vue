@@ -41,6 +41,11 @@ const notifications = shallowRef<NormalizedNotification[]>([])
 let rafBuffer: NormalizedNotification[] = []
 let rafId: number | null = null
 
+function scrollToTop() {
+  const el = scroller.value?.$el as HTMLElement | undefined
+  if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 function flushRafBuffer() {
   rafId = null
   if (rafBuffer.length === 0) return
@@ -241,6 +246,7 @@ onUnmounted(() => {
     :column-id="column.id"
     title="Notifications"
     :theme-vars="columnThemeVars"
+    @header-click="scrollToTop"
   >
     <template #header-icon>
       <svg class="notif-header-icon" viewBox="0 0 24 24" width="14" height="14">

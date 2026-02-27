@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type {
   NormalizedDriveFile,
@@ -42,6 +42,7 @@ const showAccountMenu = ref(false)
 const isPosting = ref(false)
 const posted = ref(false)
 const error = ref<string | null>(null)
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const attachedFiles = ref<NormalizedDriveFile[]>([])
 const isUploading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -145,6 +146,8 @@ onMounted(async () => {
   } else if (props.replyTo) {
     visibility.value = props.replyTo.visibility
   }
+  await nextTick()
+  textareaRef.value?.focus()
 })
 
 async function post() {
@@ -446,11 +449,11 @@ function onKeydown(e: KeyboardEvent) {
       <!-- Textarea -->
       <div class="text-outer" :class="{ withCw: showCw }">
         <textarea
+          ref="textareaRef"
           v-model="text"
           class="text-area"
           :maxlength="MAX_TEXT_LENGTH"
           :placeholder="replyTo ? 'Reply...' : renoteId ? 'Quote...' : 'What\'s on your mind?'"
-          autofocus
           @keydown="onKeydown"
         />
         <span

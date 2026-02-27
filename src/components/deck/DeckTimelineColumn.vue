@@ -373,9 +373,9 @@ async function handlePosted(editedNoteId?: string) {
   }
 }
 
-function scrollToTop() {
+function scrollToTop(smooth = false) {
   const el = scroller.value?.$el as HTMLElement | undefined
-  if (el) el.scrollTop = 0
+  if (el) el.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'instant' })
   isAtTop.value = true
   flushPending()
 }
@@ -483,6 +483,7 @@ onUnmounted(() => {
     :column-id="column.id"
     :title="columnTitle"
     :theme-vars="columnThemeVars"
+    @header-click="scrollToTop(true)"
   >
     <template #header-icon>
       <svg class="tl-header-icon" viewBox="0 0 24 24" width="14" height="14">

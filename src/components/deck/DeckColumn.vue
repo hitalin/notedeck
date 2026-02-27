@@ -9,6 +9,8 @@ const props = defineProps<{
   themeVars?: Record<string, string>
 }>()
 
+const emit = defineEmits<{ 'header-click': [] }>()
+
 const deckStore = useDeckStore()
 const dragging = ref(false)
 const dragHover = ref(false)
@@ -97,6 +99,7 @@ onUnmounted(() => {
       draggable="true"
       @dragstart="onDragStart"
       @dragend="onDragEnd"
+      @click="emit('header-click')"
     >
       <!-- Color indicator bar (Misskey style) -->
       <div
