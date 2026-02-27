@@ -1,6 +1,7 @@
 :root {
   /* Fallback: Misskey Dark Theme (overridden by JS theme engine) */
   --nd-accent: #86b300;
+  --nd-accentDarken: #6e9400;
   --nd-accentedBg: rgba(134, 179, 0, 0.15);
   --nd-love: #dd2e44;
   --nd-focus: rgba(134, 179, 0, 0.3);
