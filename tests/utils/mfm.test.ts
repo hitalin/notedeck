@@ -23,7 +23,7 @@ describe('parseMfm', () => {
   it('parses URL with path and query', () => {
     const tokens = parseMfm('https://example.com/path?q=1&b=2#hash')
     expect(tokens).toHaveLength(1)
-    expect(tokens[0]!.type).toBe('url')
+    expect(tokens[0]?.type).toBe('url')
   })
 
   // Mentions
@@ -54,7 +54,7 @@ describe('parseMfm', () => {
   it('does not parse mention inside word', () => {
     const tokens = parseMfm('email@example.com')
     expect(tokens).toHaveLength(1)
-    expect(tokens[0]!.type).toBe('text')
+    expect(tokens[0]?.type).toBe('text')
   })
 
   // Hashtags
@@ -139,7 +139,7 @@ describe('parseMfm', () => {
     const tokens = parseMfm('hello 😀 world')
     expect(tokens).toHaveLength(3)
     expect(tokens[0]).toEqual({ type: 'text', value: 'hello ' })
-    expect(tokens[1]!.type).toBe('unicodeEmoji')
+    expect(tokens[1]?.type).toBe('unicodeEmoji')
     expect((tokens[1] as { type: 'unicodeEmoji'; value: string }).value).toBe(
       '😀',
     )
@@ -161,7 +161,7 @@ describe('parseMfm', () => {
   it('URL is not broken by custom emoji-like patterns', () => {
     const tokens = parseMfm('https://example.com/path')
     expect(tokens).toHaveLength(1)
-    expect(tokens[0]!.type).toBe('url')
+    expect(tokens[0]?.type).toBe('url')
   })
 
   // Markdown link
@@ -189,7 +189,7 @@ describe('parseMfm', () => {
   it('parses $[fn content]', () => {
     const tokens = parseMfm('$[spin hello]')
     expect(tokens).toHaveLength(1)
-    expect(tokens[0]!.type).toBe('fn')
+    expect(tokens[0]?.type).toBe('fn')
     const fn = tokens[0] as MfmToken & { type: 'fn' }
     expect(fn.name).toBe('spin')
     expect(fn.args).toEqual({})
@@ -245,7 +245,7 @@ describe('parseMfm', () => {
   it('parses <small> tag', () => {
     const tokens = parseMfm('<small>small text</small>')
     expect(tokens).toHaveLength(1)
-    expect(tokens[0]!.type).toBe('small')
+    expect(tokens[0]?.type).toBe('small')
     const small = tokens[0] as MfmToken & { type: 'small' }
     expect(small.children).toEqual([{ type: 'text', value: 'small text' }])
   })
@@ -253,7 +253,7 @@ describe('parseMfm', () => {
   it('parses <center> tag', () => {
     const tokens = parseMfm('<center>centered</center>')
     expect(tokens).toHaveLength(1)
-    expect(tokens[0]!.type).toBe('center')
+    expect(tokens[0]?.type).toBe('center')
     const center = tokens[0] as MfmToken & { type: 'center' }
     expect(center.children).toEqual([{ type: 'text', value: 'centered' }])
   })
@@ -261,7 +261,7 @@ describe('parseMfm', () => {
   it('parses <plain> tag (no inner parsing)', () => {
     const tokens = parseMfm('<plain>**not bold** :emoji:</plain>')
     expect(tokens).toHaveLength(1)
-    expect(tokens[0]!.type).toBe('plain')
+    expect(tokens[0]?.type).toBe('plain')
     const plain = tokens[0] as MfmToken & { type: 'plain' }
     expect(plain.value).toBe('**not bold** :emoji:')
   })
@@ -270,13 +270,13 @@ describe('parseMfm', () => {
     const tokens = parseMfm('before $[spin text] after')
     expect(tokens).toHaveLength(3)
     expect(tokens[0]).toEqual({ type: 'text', value: 'before ' })
-    expect(tokens[1]!.type).toBe('fn')
+    expect(tokens[1]?.type).toBe('fn')
     expect(tokens[2]).toEqual({ type: 'text', value: ' after' })
   })
 
   it('treats unclosed $[ as text', () => {
     const tokens = parseMfm('$[invalid')
     expect(tokens).toHaveLength(1)
-    expect(tokens[0]!.type).toBe('text')
+    expect(tokens[0]?.type).toBe('text')
   })
 })

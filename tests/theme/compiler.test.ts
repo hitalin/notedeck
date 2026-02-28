@@ -48,7 +48,7 @@ describe('compileMisskeyTheme', () => {
     const panelColor = parseColor(compiled.panel)
     expect(panelColor).not.toBeNull()
     // Black lightened by 3% should have some brightness
-    expect(panelColor![0]).toBeGreaterThan(0)
+    expect(panelColor?.[0]).toBeGreaterThan(0)
   })
 
   it('applies :alpha color function', () => {
@@ -60,7 +60,7 @@ describe('compileMisskeyTheme', () => {
     const compiled = compileMisskeyTheme(theme, EMPTY_BASE)
     const accentedBg = parseColor(compiled.accentedBg)
     expect(accentedBg).not.toBeNull()
-    expect(accentedBg![3]).toBe(0.15)
+    expect(accentedBg?.[3]).toBe(0.15)
   })
 
   it('applies :hue color function', () => {
@@ -96,11 +96,14 @@ describe('compileMisskeyTheme', () => {
     }
     const compiled = compileMisskeyTheme(theme, EMPTY_BASE)
     // panel should be brighter than bg, panelHighlight brighter than panel
-    const bg = parseColor(compiled.bg)!
-    const panel = parseColor(compiled.panel)!
-    const highlight = parseColor(compiled.panelHighlight)!
-    expect(panel[0]).toBeGreaterThanOrEqual(bg[0])
-    expect(highlight[0]).toBeGreaterThanOrEqual(panel[0])
+    const bg = parseColor(compiled.bg)
+    const panel = parseColor(compiled.panel)
+    const highlight = parseColor(compiled.panelHighlight)
+    expect(bg).not.toBeNull()
+    expect(panel).not.toBeNull()
+    expect(highlight).not.toBeNull()
+    expect(panel?.[0]).toBeGreaterThanOrEqual(bg?.[0] ?? 0)
+    expect(highlight?.[0]).toBeGreaterThanOrEqual(panel?.[0] ?? 0)
   })
 
   it('handles circular references gracefully', () => {
@@ -151,8 +154,9 @@ describe('compileMisskeyTheme', () => {
     expect(parseColor(compiled.fg)).not.toBeNull()
     expect(parseColor(compiled.accent)).not.toBeNull()
     // Light theme bg should be brighter than dark theme bg
-    const lightBg = parseColor(compiled.bg)!
-    expect(lightBg[0]).toBeGreaterThan(200)
+    const lightBg = parseColor(compiled.bg)
+    expect(lightBg).not.toBeNull()
+    expect(lightBg?.[0]).toBeGreaterThan(200)
   })
 
   it('compiles a server theme that overrides base', () => {

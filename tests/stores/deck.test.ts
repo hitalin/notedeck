@@ -28,7 +28,7 @@ describe('deck store', () => {
     })
 
     expect(deck.columns).toHaveLength(1)
-    expect(deck.columns[0]!.id).toBe(col.id)
+    expect(deck.columns[0]?.id).toBe(col.id)
     expect(deck.layout).toEqual([[col.id]])
   })
 
@@ -162,7 +162,7 @@ describe('deck store', () => {
     deck2.load()
 
     expect(deck2.columns).toHaveLength(1)
-    expect(deck2.columns[0]!.id).toBe(col.id)
+    expect(deck2.columns[0]?.id).toBe(col.id)
     expect(deck2.layout).toEqual([[col.id]])
   })
 

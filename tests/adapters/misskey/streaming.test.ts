@@ -185,7 +185,7 @@ describe('MisskeyStream', () => {
       })
 
       expect(notes).toHaveLength(1)
-      expect(notes[0]!.id).toBe('note-1')
+      expect(notes[0]?.id).toBe('note-1')
     })
 
     it('filters notes from other accounts', async () => {
@@ -282,7 +282,7 @@ describe('MisskeyStream', () => {
       })
 
       expect(events).toHaveLength(1)
-      expect(events[0]!.type).toBe('notification')
+      expect(events[0]?.type).toBe('notification')
     })
 
     it('dispatches main channel events', async () => {
@@ -311,8 +311,8 @@ describe('MisskeyStream', () => {
       })
 
       expect(events).toHaveLength(1)
-      expect(events[0]!.type).toBe('followed')
-      expect(events[0]!.body).toEqual({ userId: 'u2' })
+      expect(events[0]?.type).toBe('followed')
+      expect(events[0]?.body).toEqual({ userId: 'u2' })
     })
 
     it('dispose invokes unsubscribe', async () => {

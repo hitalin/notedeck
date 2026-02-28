@@ -21,7 +21,7 @@ describe('parseColor', () => {
   it('parses #RRGGBBAA', () => {
     const result = parseColor('#86b30080')
     expect(result).not.toBeNull()
-    expect(result![3]).toBeCloseTo(0.502, 1)
+    expect(result?.[3]).toBeCloseTo(0.502, 1)
   })
 
   it('parses rgb()', () => {
@@ -52,17 +52,17 @@ describe('darken', () => {
     const result = parseColor(darken('#ffffff', 3))
     expect(result).not.toBeNull()
     // White (L=100) darkened by 3 → L=97
-    expect(result![0]).toBeLessThan(255)
-    expect(result![1]).toBeLessThan(255)
-    expect(result![2]).toBeLessThan(255)
+    expect(result?.[0]).toBeLessThan(255)
+    expect(result?.[1]).toBeLessThan(255)
+    expect(result?.[2]).toBeLessThan(255)
   })
 
   it('returns black when darkening black', () => {
     const result = parseColor(darken('#000000', 3))
     expect(result).not.toBeNull()
-    expect(result![0]).toBe(0)
-    expect(result![1]).toBe(0)
-    expect(result![2]).toBe(0)
+    expect(result?.[0]).toBe(0)
+    expect(result?.[1]).toBe(0)
+    expect(result?.[2]).toBe(0)
   })
 })
 
@@ -71,15 +71,15 @@ describe('lighten', () => {
     const result = parseColor(lighten('#000000', 3))
     expect(result).not.toBeNull()
     // Black (L=0) lightened by 3 → L=3
-    expect(result![0]).toBeGreaterThan(0)
+    expect(result?.[0]).toBeGreaterThan(0)
   })
 
   it('caps at white', () => {
     const result = parseColor(lighten('#ffffff', 10))
     expect(result).not.toBeNull()
-    expect(result![0]).toBe(255)
-    expect(result![1]).toBe(255)
-    expect(result![2]).toBe(255)
+    expect(result?.[0]).toBe(255)
+    expect(result?.[1]).toBe(255)
+    expect(result?.[2]).toBe(255)
   })
 })
 
@@ -89,7 +89,7 @@ describe('alpha', () => {
     expect(result).toContain('0.15')
     const parsed = parseColor(result)
     expect(parsed).not.toBeNull()
-    expect(parsed![3]).toBe(0.15)
+    expect(parsed?.[3]).toBe(0.15)
   })
 })
 
@@ -99,7 +99,7 @@ describe('hue', () => {
     const rotated = parseColor(hue('#86b300', 20))
     expect(rotated).not.toBeNull()
     // Should be a different color
-    expect(rotated![0]).not.toBe(original![0])
+    expect(rotated?.[0]).not.toBe(original?.[0])
   })
 })
 

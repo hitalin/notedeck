@@ -3,9 +3,9 @@ import { invoke } from '@tauri-apps/api/core'
 import { computed, defineAsyncComponent, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
-import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useAccountsStore } from '@/stores/accounts'
+import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
 import MkAvatar from './MkAvatar.vue'
 import MkEmoji from './MkEmoji.vue'
@@ -241,7 +241,9 @@ const activeModeFlags = computed(() => {
     })
 })
 
-const originalUrl = computed(() => effectiveNote.value.url ?? effectiveNote.value.uri)
+const originalUrl = computed(
+  () => effectiveNote.value.url ?? effectiveNote.value.uri,
+)
 
 function openOriginal() {
   const url = originalUrl.value

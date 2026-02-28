@@ -129,8 +129,8 @@ describe('theme store', () => {
 
     const cached = store.getAccountThemes('acc-1')
     expect(cached).not.toBeNull()
-    expect(cached!.dark).toBeDefined()
-    expect(cached!.dark!.props.accent).toBe('#ff6600')
+    expect(cached?.dark).toBeDefined()
+    expect(cached?.dark?.props.accent).toBe('#ff6600')
   })
 
   it('fetchAccountTheme() falls back to meta when no registry data', async () => {
@@ -143,9 +143,9 @@ describe('theme store', () => {
 
     const cached = store.getAccountThemes('acc-2')
     expect(cached).not.toBeNull()
-    expect(cached!.dark).toBeDefined()
-    expect(cached!.dark!.props.bg).toBe('#222')
-    expect(cached!.light).toBeUndefined()
+    expect(cached?.dark).toBeDefined()
+    expect(cached?.dark?.props.bg).toBe('#222')
+    expect(cached?.light).toBeUndefined()
   })
 
   it('fetchAccountTheme() caches both dark and light from meta', async () => {
@@ -158,8 +158,8 @@ describe('theme store', () => {
     await store.fetchAccountTheme('acc-3')
 
     const cached = store.getAccountThemes('acc-3')
-    expect(cached!.dark).toBeDefined()
-    expect(cached!.light).toBeDefined()
+    expect(cached?.dark).toBeDefined()
+    expect(cached?.light).toBeDefined()
   })
 
   it('fetchAccountTheme() does not re-fetch for cached account', async () => {
@@ -193,7 +193,7 @@ describe('theme store', () => {
     await store.fetchAccountTheme('acc-direct')
 
     const cached = store.getAccountThemes('acc-direct')
-    expect(cached!.dark!.props.accent).toBe('#00ff00')
+    expect(cached?.dark?.props.accent).toBe('#00ff00')
   })
 
   it('fetchAccountTheme() uses base registry as fallback', async () => {
@@ -206,7 +206,7 @@ describe('theme store', () => {
     await store.fetchAccountTheme('acc-base')
 
     const cached = store.getAccountThemes('acc-base')
-    expect(cached!.dark!.props.accent).toBe('#aabbcc')
+    expect(cached?.dark?.props.accent).toBe('#aabbcc')
   })
 
   // --- getCompiledForAccount ---
@@ -229,9 +229,9 @@ describe('theme store', () => {
 
     const compiled = store.getCompiledForAccount('acc-compile')
     expect(compiled).not.toBeNull()
-    expect(compiled!.accent).toBe('#ff6600')
-    expect(compiled!.bg).toBe('#1a1a2e')
-    expect(compiled!.fg).toBeDefined()
+    expect(compiled?.accent).toBe('#ff6600')
+    expect(compiled?.bg).toBe('#1a1a2e')
+    expect(compiled?.fg).toBeDefined()
 
     // Second call should return cached result (same reference)
     const compiled2 = store.getCompiledForAccount('acc-compile')
@@ -251,7 +251,7 @@ describe('theme store', () => {
 
     const compiled = store.getCompiledForAccount('acc-light')
     expect(compiled).not.toBeNull()
-    expect(compiled!.bg).toBe('#eee')
+    expect(compiled?.bg).toBe('#eee')
   })
 
   it('getCompiledForAccount() falls back to dark when no light available', async () => {
@@ -266,7 +266,7 @@ describe('theme store', () => {
 
     const compiled = store.getCompiledForAccount('acc-fb')
     expect(compiled).not.toBeNull()
-    expect(compiled!.bg).toBe('#222')
+    expect(compiled?.bg).toBe('#222')
   })
 
   it('applySource() clears compiled cache so columns recompile', async () => {
@@ -280,11 +280,11 @@ describe('theme store', () => {
     await store.fetchAccountTheme('acc-switch')
 
     const dark = store.getCompiledForAccount('acc-switch')
-    expect(dark!.bg).toBe('#111')
+    expect(dark?.bg).toBe('#111')
 
     store.applySource({ kind: 'builtin-light', theme: LIGHT_THEME })
     const light = store.getCompiledForAccount('acc-switch')
-    expect(light!.bg).toBe('#eee')
+    expect(light?.bg).toBe('#eee')
     expect(light).not.toBe(dark)
   })
 
@@ -308,7 +308,7 @@ describe('theme store', () => {
     const b = store.getCompiledForAccount('acc-b')
     expect(a).not.toBeNull()
     expect(b).not.toBeNull()
-    expect(a!.accent).toBe('#ff0000')
-    expect(b!.accent).toBe('#0000ff')
+    expect(a?.accent).toBe('#ff0000')
+    expect(b?.accent).toBe('#0000ff')
   })
 })

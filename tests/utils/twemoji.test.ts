@@ -59,16 +59,16 @@ describe('splitTextWithEmoji', () => {
   it('handles consecutive emoji', () => {
     const result = splitTextWithEmoji('👍👎')
     expect(result).toHaveLength(2)
-    expect(result[0]!.type).toBe('emoji')
-    expect(result[1]!.type).toBe('emoji')
+    expect(result[0]?.type).toBe('emoji')
+    expect(result[1]?.type).toBe('emoji')
   })
 
   it('handles emoji at start and end', () => {
     const result = splitTextWithEmoji('🎉hello🎉')
     expect(result).toHaveLength(3)
-    expect(result[0]!.type).toBe('emoji')
+    expect(result[0]?.type).toBe('emoji')
     expect(result[1]).toEqual({ type: 'text', value: 'hello' })
-    expect(result[2]!.type).toBe('emoji')
+    expect(result[2]?.type).toBe('emoji')
   })
 
   it('returns empty array for empty string', () => {
