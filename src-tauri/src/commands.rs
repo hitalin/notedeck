@@ -793,6 +793,8 @@ pub async fn auth_start(
             "write:notes",
             "write:reactions",
             "write:votes",
+            "read:channels",
+            "write:channels",
         ]
         .into_iter()
         .map(String::from)
