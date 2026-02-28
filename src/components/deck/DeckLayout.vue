@@ -674,6 +674,7 @@ onUnmounted(() => {
           <section
             class="column-section"
             :style="{ flexBasis: col.width + 'px' }"
+            @mousedown="deckStore.setActiveColumn(col.id)"
           >
             <DeckTimelineColumn
               v-if="col.type === 'timeline'"

@@ -44,7 +44,7 @@ async function close() {
     </div>
     <button class="titlebar-search-bar" @click="commandStore.toggle()">
       <i class="ti ti-search titlebar-search-icon" />
-      <span class="titlebar-search-text">Search commands...</span>
+      <span class="titlebar-search-text">{{ deckStore.activeColumnUri ?? 'Search commands...' }}</span>
       <kbd class="titlebar-search-kbd">Ctrl+K</kbd>
     </button>
     <div class="titlebar-controls">

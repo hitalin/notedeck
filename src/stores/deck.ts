@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
+import { useAccountsStore } from '@/stores/accounts'
 
 export type ColumnType = 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified'
 
@@ -30,6 +31,51 @@ export const useDeckStore = defineStore('deck', () => {
   const columns = ref<DeckColumn[]>([])
   const layout = ref<string[][]>([])
   const navCollapsed = ref(false)
+  const activeColumnId = ref<string | null>(null)
+
+  function setActiveColumn(id: string) {
+    activeColumnId.value = id
+  }
+
+  const activeColumnUri = computed(() => {
+    if (!activeColumnId.value) return null
+    const col = columns.value.find((c) => c.id === activeColumnId.value)
+    if (!col || !col.accountId) return null
+
+    const accountsStore = useAccountsStore()
+    const account = accountsStore.accounts.find(
+      (a) => a.id === col.accountId,
+    )
+    if (!account) return null
+
+    const host = account.host
+    switch (col.type) {
+      case 'timeline':
+        return `notedeck://${host}/timeline/${col.tl ?? 'home'}`
+      case 'notifications':
+        return `notedeck://${host}/notifications`
+      case 'search':
+        return `notedeck://${host}/search${col.query ? `?q=${col.query}` : ''}`
+      case 'list':
+        return `notedeck://${host}/list/${col.listId}`
+      case 'antenna':
+        return `notedeck://${host}/antenna/${col.antennaId}`
+      case 'favorites':
+        return `notedeck://${host}/favorites`
+      case 'clip':
+        return `notedeck://${host}/clip/${col.clipId}`
+      case 'channel':
+        return `notedeck://${host}/channel/${col.channelId}`
+      case 'user':
+        return `notedeck://${host}/user/${col.userId}`
+      case 'mentions':
+        return `notedeck://${host}/mentions`
+      case 'specified':
+        return `notedeck://${host}/direct`
+      default:
+        return null
+    }
+  })
 
   function addColumn(partial: Omit<DeckColumn, 'id'>) {
     const col: DeckColumn = { ...partial, id: genColumnId() }
@@ -127,6 +173,9 @@ export const useDeckStore = defineStore('deck', () => {
     columns,
     layout,
     navCollapsed,
+    activeColumnId,
+    activeColumnUri,
+    setActiveColumn,
     addColumn,
     removeColumn,
     updateColumn,
