@@ -14,6 +14,7 @@ import {
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
+import MkMfm from './MkMfm.vue'
 
 const props = defineProps<{
   accountId: string
@@ -423,7 +424,10 @@ function onKeydown(e: KeyboardEvent) {
           class="reply-avatar"
         />
         <div class="reply-content">
-          <span class="reply-user">{{ replyTo.user.name || replyTo.user.username }}</span>
+          <span class="reply-user">
+            <MkMfm v-if="replyTo.user.name" :text="replyTo.user.name" :server-host="replyTo._serverHost" />
+            <template v-else>{{ replyTo.user.username }}</template>
+          </span>
           <span class="reply-handle">@{{ replyTo.user.username }}</span>
           <p class="reply-text">{{ replyTo.text }}</p>
         </div>

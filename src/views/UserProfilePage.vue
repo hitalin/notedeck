@@ -6,6 +6,7 @@ import type {
   NormalizedUserDetail,
   ServerAdapter,
 } from '@/adapters/types'
+import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useAccountsStore } from '@/stores/accounts'
@@ -208,7 +209,10 @@ async function handlePosted(editedNoteId?: string) {
           />
         </svg>
       </router-link>
-      <h1 v-if="user" class="profile-title">{{ user.name || user.username }}</h1>
+      <h1 v-if="user" class="profile-title">
+        <MkMfm v-if="user.name" :text="user.name" :server-host="account?.host" />
+        <template v-else>{{ user.username }}</template>
+      </h1>
       <h1 v-else class="profile-title">Profile</h1>
     </header>
 
@@ -237,7 +241,10 @@ async function handlePosted(editedNoteId?: string) {
 
           <!-- Name overlay on banner (desktop) -->
           <div class="banner-title">
-            <div class="banner-name">{{ user.name || user.username }}</div>
+            <div class="banner-name">
+              <MkMfm v-if="user.name" :text="user.name" :server-host="account?.host" />
+              <template v-else>{{ user.username }}</template>
+            </div>
             <div class="banner-bottom">
               <span class="banner-username">@{{ user.username }}{{ user.host ? `@${user.host}` : '' }}</span>
               <span v-if="user.isBot" class="banner-badge">Bot</span>
@@ -256,7 +263,10 @@ async function handlePosted(editedNoteId?: string) {
 
         <!-- Mobile title (shown below avatar on narrow screens) -->
         <div class="mobile-title">
-          <div class="mobile-name">{{ user.name || user.username }}</div>
+          <div class="mobile-name">
+            <MkMfm v-if="user.name" :text="user.name" :server-host="account?.host" />
+            <template v-else>{{ user.username }}</template>
+          </div>
           <div class="mobile-username">@{{ user.username }}{{ user.host ? `@${user.host}` : '' }}</div>
           <div v-if="user.isBot || user.isCat" class="mobile-badges">
             <span v-if="user.isBot" class="badge">Bot</span>
@@ -265,7 +275,9 @@ async function handlePosted(editedNoteId?: string) {
         </div>
 
         <!-- Description -->
-        <p v-if="user.description" class="description">{{ user.description }}</p>
+        <div v-if="user.description" class="description">
+          <MkMfm :text="user.description" :server-host="account?.host" />
+        </div>
 
         <div v-if="user.createdAt" class="joined">
           Joined {{ formatDate(user.createdAt) }}

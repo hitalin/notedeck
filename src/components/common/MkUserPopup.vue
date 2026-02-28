@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type { NormalizedUserDetail } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import MkAvatar from './MkAvatar.vue'
+import MkMfm from './MkMfm.vue'
 
 const props = defineProps<{
   userId: string
@@ -20,6 +21,9 @@ const emit = defineEmits<{
 const serversStore = useServersStore()
 const accountsStore = useAccountsStore()
 
+const account = computed(() =>
+  accountsStore.accounts.find((a) => a.id === props.accountId),
+)
 const user = ref<NormalizedUserDetail | null>(null)
 const isLoading = ref(true)
 
@@ -80,11 +84,16 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         />
 
         <div class="popup-name-area">
-          <div class="popup-name">{{ user.name || user.username }}</div>
+          <div class="popup-name">
+            <MkMfm v-if="user.name" :text="user.name" :server-host="account?.host" />
+            <template v-else>{{ user.username }}</template>
+          </div>
           <div class="popup-username">@{{ user.username }}{{ user.host ? `@${user.host}` : '' }}</div>
         </div>
 
-        <p v-if="user.description" class="popup-desc">{{ user.description }}</p>
+        <div v-if="user.description" class="popup-desc">
+          <MkMfm :text="user.description" :server-host="account?.host" />
+        </div>
 
         <div class="popup-stats">
           <span><b>{{ formatCount(user.notesCount) }}</b> Notes</span>

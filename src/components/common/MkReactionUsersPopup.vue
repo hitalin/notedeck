@@ -5,6 +5,7 @@ import { createAdapter } from '@/adapters/registry'
 import type { NoteReaction } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
+import MkMfm from './MkMfm.vue'
 
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
 
@@ -143,7 +144,10 @@ onUnmounted(() => {
           />
           <div v-else class="reaction-user-avatar reaction-user-avatar-placeholder" />
           <div class="reaction-user-info">
-            <span class="reaction-user-name">{{ r.user.name || r.user.username }}</span>
+            <span class="reaction-user-name">
+              <MkMfm v-if="r.user.name" :text="r.user.name" :server-host="serverHost" />
+              <template v-else>{{ r.user.username }}</template>
+            </span>
             <span class="reaction-user-username">@{{ r.user.username }}</span>
           </div>
         </button>

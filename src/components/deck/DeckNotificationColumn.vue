@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, shallowRef } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
 import MkEmoji from '@/components/common/MkEmoji.vue'
+import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
@@ -319,7 +320,8 @@ onUnmounted(() => {
 
                 <div class="notif-meta">
                   <span v-if="notif.user" class="notif-user-name">
-                    {{ notif.user.name || notif.user.username }}
+                    <MkMfm v-if="notif.user.name" :text="notif.user.name" :server-host="account?.host" />
+                    <template v-else>{{ notif.user.username }}</template>
                   </span>
                   <span class="notif-label">{{ notificationLabel(notif.type) }}</span>
                   <span v-if="notif.type === 'reaction' && notif.reaction" class="notif-reaction">
