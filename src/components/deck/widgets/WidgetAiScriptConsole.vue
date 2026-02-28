@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { executeAiScript } from '@/aiscript/execute'
 import { useDeckStore } from '@/stores/deck'
 import type { WidgetConfig } from '@/stores/deck'
+import AiScriptEditor from './AiScriptEditor.vue'
 
 const props = defineProps<{
   widget: WidgetConfig
@@ -55,12 +56,7 @@ async function run() {
 
 <template>
   <div class="widget-console">
-    <textarea
-      v-model="code"
-      class="console-editor"
-      spellcheck="false"
-      placeholder="AiScript..."
-    />
+    <AiScriptEditor v-model="code" placeholder="AiScript..." />
     <div class="console-toolbar">
       <button class="run-btn" :disabled="running" @click="run">
         <i class="ti ti-player-play" />
@@ -83,28 +79,6 @@ async function run() {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.console-editor {
-  width: 100%;
-  min-height: 80px;
-  max-height: 200px;
-  padding: 8px 10px;
-  border: none;
-  border-radius: 6px;
-  background: var(--nd-bg);
-  color: var(--nd-fg);
-  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 0.8em;
-  line-height: 1.6;
-  resize: vertical;
-  tab-size: 2;
-  outline: none;
-  transition: box-shadow 0.15s;
-}
-
-.console-editor:focus {
-  box-shadow: 0 0 0 2px var(--nd-accent);
 }
 
 .console-toolbar {

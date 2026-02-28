@@ -7,6 +7,7 @@ import type { UiComponent } from '@/aiscript/ui-types'
 import { useDeckStore } from '@/stores/deck'
 import type { WidgetConfig } from '@/stores/deck'
 import AiScriptUiRenderer from './AiScriptUiRenderer.vue'
+import AiScriptEditor from './AiScriptEditor.vue'
 import { Parser } from '@syuilo/aiscript'
 
 const props = defineProps<{
@@ -94,11 +95,9 @@ async function run() {
       </button>
     </div>
 
-    <textarea
+    <AiScriptEditor
       v-if="showEditor"
       v-model="code"
-      class="app-editor"
-      spellcheck="false"
       placeholder="AiScript App code..."
     />
 
@@ -159,28 +158,6 @@ async function run() {
 .tool-btn.run:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-}
-
-.app-editor {
-  width: 100%;
-  min-height: 80px;
-  max-height: 200px;
-  padding: 8px 10px;
-  border: none;
-  border-radius: 6px;
-  background: var(--nd-bg);
-  color: var(--nd-fg);
-  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 0.8em;
-  line-height: 1.6;
-  resize: vertical;
-  tab-size: 2;
-  outline: none;
-  transition: box-shadow 0.15s;
-}
-
-.app-editor:focus {
-  box-shadow: 0 0 0 2px var(--nd-accent);
 }
 
 .app-error {

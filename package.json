@@ -18,6 +18,13 @@
     "tauri:ios:build": "tauri ios build"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.20.0",
+    "@codemirror/commands": "^6.10.2",
+    "@codemirror/language": "^6.12.2",
+    "@codemirror/lint": "^6.9.4",
+    "@codemirror/state": "^6.5.4",
+    "@codemirror/view": "^6.39.15",
+    "@lezer/highlight": "^1.2.3",
     "@syuilo/aiscript": "^1.2.1",
     "@tabler/icons-webfont": "^3.37.1",
     "@tauri-apps/plugin-autostart": "^2.5.1",
