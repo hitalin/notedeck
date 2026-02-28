@@ -153,6 +153,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 .popup-avatar {
   border: 3px solid var(--nd-popup);
+  border-radius: 50%;
   margin-top: -28px;
 }
 
