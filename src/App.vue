@@ -3,18 +3,15 @@ import { defineAsyncComponent } from 'vue'
 import { useCommandStore } from '@/commands/registry'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { useTheme } from '@/composables/useTheme'
+import TitleBarComponent from '@/components/common/TitleBar.vue'
+import UpdateBannerComponent from '@/components/common/UpdateBanner.vue'
 
 const isTauri = '__TAURI_INTERNALS__' in window
 const isDesktop =
   isTauri && matchMedia('(hover: hover) and (pointer: fine)').matches
 
-const TitleBar = isDesktop
-  ? defineAsyncComponent(() => import('@/components/common/TitleBar.vue'))
-  : null
-
-const UpdateBanner = isDesktop
-  ? defineAsyncComponent(() => import('@/components/common/UpdateBanner.vue'))
-  : null
+const TitleBar = isDesktop ? TitleBarComponent : null
+const UpdateBanner = isDesktop ? UpdateBannerComponent : null
 
 const CommandPalette = defineAsyncComponent(
   () => import('@/components/common/CommandPalette.vue'),
