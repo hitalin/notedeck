@@ -91,37 +91,51 @@ jobs:
         if: matrix.platform == 'ubuntu-24.04'
         run: |
           VERSION=${{ steps.version.outputs.version }}
+          echo "=== Bundle contents ==="
+          ls -la src-tauri/target/release/bundle/appimage/ || true
+          ls -la src-tauri/target/release/bundle/deb/ || true
           cd src-tauri/target/release
           tar czf "${GITHUB_WORKSPACE}/NoteDeck-${VERSION}-linux-x64.tar.gz" notedeck
           cd "${GITHUB_WORKSPACE}"
           cp src-tauri/target/release/bundle/appimage/*.AppImage "NoteDeck-${VERSION}-linux-x64.AppImage"
           cp src-tauri/target/release/bundle/deb/*.deb "NoteDeck-${VERSION}-linux-x64.deb"
-          # Updater artifacts
-          cp src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz "NoteDeck-${VERSION}-linux-x64.AppImage.tar.gz"
-          cp src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz.sig "NoteDeck-${VERSION}-linux-x64.AppImage.tar.gz.sig"
+          # Updater artifacts (generated when TAURI_SIGNING_PRIVATE_KEY is set)
+          cp src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz "NoteDeck-${VERSION}-linux-x64.AppImage.tar.gz" 2>/dev/null || echo "WARN: AppImage updater bundle not found"
+          cp src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz.sig "NoteDeck-${VERSION}-linux-x64.AppImage.tar.gz.sig" 2>/dev/null || echo "WARN: AppImage updater signature not found"
 
       - name: Package (macOS)
         if: matrix.platform == 'macos-latest'
         run: |
           VERSION=${{ steps.version.outputs.version }}
+          echo "=== Bundle contents ==="
+          ls -la src-tauri/target/universal-apple-darwin/release/bundle/macos/ || true
+          ls -la src-tauri/target/universal-apple-darwin/release/bundle/dmg/ || true
           cd src-tauri/target/universal-apple-darwin/release/bundle/macos
           zip -ry "${GITHUB_WORKSPACE}/NoteDeck-${VERSION}-macos-universal.zip" NoteDeck.app
           cd "${GITHUB_WORKSPACE}"
           cp src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg "NoteDeck-${VERSION}-macos-universal.dmg"
-          # Updater artifacts
-          cp src-tauri/target/universal-apple-darwin/release/bundle/macos/*.tar.gz "NoteDeck-${VERSION}-macos-universal.app.tar.gz"
-          cp src-tauri/target/universal-apple-darwin/release/bundle/macos/*.tar.gz.sig "NoteDeck-${VERSION}-macos-universal.app.tar.gz.sig"
+          # Updater artifacts (generated when TAURI_SIGNING_PRIVATE_KEY is set)
+          cp src-tauri/target/universal-apple-darwin/release/bundle/macos/*.tar.gz "NoteDeck-${VERSION}-macos-universal.app.tar.gz" 2>/dev/null || echo "WARN: macOS updater bundle not found"
+          cp src-tauri/target/universal-apple-darwin/release/bundle/macos/*.tar.gz.sig "NoteDeck-${VERSION}-macos-universal.app.tar.gz.sig" 2>/dev/null || echo "WARN: macOS updater signature not found"
 
       - name: Package (Windows)
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
           $version = '${{ steps.version.outputs.version }}'
+          Write-Host "=== Bundle contents ==="
+          Get-ChildItem "src-tauri\target\release\bundle\nsis\" -ErrorAction SilentlyContinue
           Compress-Archive -Path "src-tauri\target\release\notedeck.exe" -DestinationPath "NoteDeck-${version}-windows-x64.zip"
           Copy-Item "src-tauri\target\release\bundle\nsis\*.exe" "NoteDeck-${version}-windows-x64-setup.exe"
-          # Updater artifacts
-          Copy-Item "src-tauri\target\release\bundle\nsis\*.nsis.zip" "NoteDeck-${version}-windows-x64-setup.nsis.zip"
-          Copy-Item "src-tauri\target\release\bundle\nsis\*.nsis.zip.sig" "NoteDeck-${version}-windows-x64-setup.nsis.zip.sig"
+          # Updater artifacts (generated when TAURI_SIGNING_PRIVATE_KEY is set)
+          $nsisZip = Get-ChildItem "src-tauri\target\release\bundle\nsis\*.nsis.zip" -ErrorAction SilentlyContinue
+          if ($nsisZip) {
+            Copy-Item $nsisZip.FullName "NoteDeck-${version}-windows-x64-setup.nsis.zip"
+          } else { Write-Host "WARN: Windows updater bundle not found" }
+          $nsisZipSig = Get-ChildItem "src-tauri\target\release\bundle\nsis\*.nsis.zip.sig" -ErrorAction SilentlyContinue
+          if ($nsisZipSig) {
+            Copy-Item $nsisZipSig.FullName "NoteDeck-${version}-windows-x64-setup.nsis.zip.sig"
+          } else { Write-Host "WARN: Windows updater signature not found" }
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
@@ -144,13 +158,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=${{ steps.version.outputs.version }}
+          mkdir -p assets
+          # Download updater artifacts (may not exist if signing key was not set)
           gh release download "v${VERSION}" \
             --repo "${{ github.repository }}" \
             --pattern "*.sig" \
             --pattern "*.nsis.zip" \
             --pattern "*.AppImage.tar.gz" \
             --pattern "*.app.tar.gz" \
-            --dir assets
+            --dir assets || echo "WARN: Some updater artifacts not found"
+          echo "=== Downloaded assets ==="
+          ls -la assets/ || true
 
       - name: Generate latest.json
         run: |
