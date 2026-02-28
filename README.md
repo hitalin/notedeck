@@ -39,6 +39,10 @@
 
 > スマートフォンで Misskey を使いたい場合は [Aria](https://github.com/poppingmoon/aria) がおすすめです。
 
+## アーキテクチャ
+
+Misskey API クライアント・DB・ストリーミングなどの共通ロジックは [notecli](https://github.com/hitalin/notecli) に分離されており、NoteDeck はその上に Tauri + Vue の GUI を載せた構成です。notecli は単体でも CLI デーモンとして動作します。
+
 ## 開発
 
 [DEVELOPMENT.md](DEVELOPMENT.md) を参照してください。

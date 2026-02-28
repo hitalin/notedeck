@@ -38,12 +38,12 @@ Connect to multiple Misskey-compatible servers in one deck UI. Runs as a native 
 | | |
 |---|---|
 | Frontend | Vue 3 + TypeScript |
-| Backend | Rust (Tauri v2) |
+| Backend | Rust (Tauri v2) + [notecli](https://github.com/hitalin/notecli) |
 | Build | Vite + Cargo |
 | State | Pinia |
 | Local DB | SQLite (rusqlite, WAL mode) |
-| HTTP | reqwest (Rust) |
-| WebSocket | tokio-tungstenite (Rust) |
+| HTTP | reqwest (Rust, via notecli) |
+| WebSocket | tokio-tungstenite (Rust, via notecli) |
 | Linter | Biome |
 | Test | Vitest |
 
@@ -77,6 +77,20 @@ task clean        # Remove build artifacts
 
 ## Architecture
 
+NoteDeck は **notecli** と **notedeck** の 2 リポジトリで構成されています。
+
+### notecli ([github.com/hitalin/notecli](https://github.com/hitalin/notecli))
+
+Tauri に依存しない Misskey ヘッドレスクライアント。Rust ライブラリ兼 CLI デーモン。
+
+- Misskey HTTP API クライアント、WebSocket ストリーミング、SQLite DB、REST API サーバー
+- 単体で `localhost:19820` の HTTP API デーモンとして動作（GUI 不要）
+- NoteDeck の Rust バックエンドとして `Cargo.toml` の git 依存で利用される
+
+### notedeck (このリポジトリ)
+
+notecli の上に Tauri v2 + Vue 3 の GUI を載せたデスクトップクライアント。
+
 ```
 src/                        # Vue 3 frontend
 ├── adapters/               # Server API adapters (Misskey, forks)
@@ -93,14 +107,15 @@ src/                        # Vue 3 frontend
 ├── theme/                  # Theme compiler & applier
 └── utils/                  # Shared utilities
 
-src-tauri/src/              # Rust backend
-├── api.rs                  # Misskey HTTP API client (reqwest)
-├── streaming.rs            # WebSocket streaming with auto-reconnect
+src-tauri/src/              # Rust backend (Tauri 固有部分)
 ├── commands.rs             # Tauri IPC command handlers
-├── db.rs                   # SQLite database (rusqlite, WAL mode)
-├── models.rs               # Shared data models & normalization
+├── streaming.rs            # StreamingManager (Tauri AppHandle → FrontendEmitter)
+├── http_server.rs          # HTTP API server (notecli API + query_bridge)
+├── query_bridge.rs         # Frontend → HTTP API ブリッジ
 └── lib.rs                  # App setup (tray, plugins, state)
 ```
+
+Misskey API クライアント・DB・モデル・ストリーミングコアなどの共通ロジックは全て `notecli` クレートにあり、`src-tauri/` には Tauri 固有の薄いラッパーのみ残っています。
 
 ### Adding support for a new fork
 
