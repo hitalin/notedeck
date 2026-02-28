@@ -46,6 +46,19 @@ const columnMap = computed(() => {
   return map
 })
 
+// Flatten layout into resolved column objects (avoids repeated Map.get in template)
+const resolvedColumns = computed(() => {
+  const map = columnMap.value
+  const result: DeckColumn[] = []
+  for (const group of deckStore.layout) {
+    for (const colId of group) {
+      const col = map.get(colId)
+      if (col) result.push(col)
+    }
+  }
+  return result
+})
+
 const showAddMenu = ref(false)
 const showCompose = ref(false)
 const mobileDrawerOpen = ref(false)
@@ -500,33 +513,29 @@ onUnmounted(() => {
         @wheel="onColumnsWheel"
         @scroll="onColumnsScroll"
       >
-        <template v-for="group in deckStore.layout" :key="group.join('-')">
-          <template v-for="colId in group" :key="colId">
-            <section
-              v-if="columnMap.get(colId)"
-              class="column-section"
-              :style="{ flexBasis: columnMap.get(colId)!.width + 'px' }"
-            >
-              <DeckTimelineColumn
-                v-if="columnMap.get(colId)!.type === 'timeline'"
-                :column="columnMap.get(colId)!"
-              />
-              <DeckNotificationColumn
-                v-else-if="columnMap.get(colId)!.type === 'notifications'"
-                :column="columnMap.get(colId)!"
-              />
-              <DeckSearchColumn
-                v-else-if="columnMap.get(colId)!.type === 'search'"
-                :column="columnMap.get(colId)!"
-              />
-            </section>
-            <div
-              v-if="columnMap.get(colId)"
-              class="col-resize-handle"
-              :class="{ active: resizingColId === colId }"
-              @mousedown="startColumnResize(colId, $event)"
+        <template v-for="col in resolvedColumns" :key="col.id">
+          <section
+            class="column-section"
+            :style="{ flexBasis: col.width + 'px' }"
+          >
+            <DeckTimelineColumn
+              v-if="col.type === 'timeline'"
+              :column="col"
             />
-          </template>
+            <DeckNotificationColumn
+              v-else-if="col.type === 'notifications'"
+              :column="col"
+            />
+            <DeckSearchColumn
+              v-else-if="col.type === 'search'"
+              :column="col"
+            />
+          </section>
+          <div
+            class="col-resize-handle"
+            :class="{ active: resizingColId === col.id }"
+            @mousedown="startColumnResize(col.id, $event)"
+          />
         </template>
       </div>
 

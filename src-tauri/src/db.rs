@@ -222,25 +222,29 @@ impl Database {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs() as i64;
-        let mut stmt = conn.prepare_cached(
-            "INSERT INTO notes_cache (note_id, account_id, server_host, created_at, text, note_json, cached_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-             ON CONFLICT(note_id, account_id) DO UPDATE SET
-                 note_json = excluded.note_json,
-                 cached_at = excluded.cached_at",
-        )?;
-        for note in notes {
-            let json = serde_json::to_string(note).unwrap_or_default();
-            stmt.execute(params![
-                note.id,
-                note.account_id,
-                note.server_host,
-                note.created_at,
-                note.text,
-                json,
-                now,
-            ])?;
+        let tx = conn.unchecked_transaction()?;
+        {
+            let mut stmt = tx.prepare_cached(
+                "INSERT INTO notes_cache (note_id, account_id, server_host, created_at, text, note_json, cached_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                 ON CONFLICT(note_id, account_id) DO UPDATE SET
+                     note_json = excluded.note_json,
+                     cached_at = excluded.cached_at",
+            )?;
+            for note in notes {
+                let json = serde_json::to_string(note).unwrap_or_default();
+                stmt.execute(params![
+                    note.id,
+                    note.account_id,
+                    note.server_host,
+                    note.created_at,
+                    note.text,
+                    json,
+                    now,
+                ])?;
+            }
         }
+        tx.commit()?;
         Ok(())
     }
 

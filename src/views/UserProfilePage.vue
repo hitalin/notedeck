@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, shallowRef } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type {
   NormalizedNote,
@@ -25,7 +25,8 @@ const emojisStore = useEmojisStore()
 const serversStore = useServersStore()
 
 const user = ref<NormalizedUserDetail | null>(null)
-const notes = ref<NormalizedNote[]>([])
+const MAX_PROFILE_NOTES = 500
+const notes = shallowRef<NormalizedNote[]>([])
 const isLoading = ref(true)
 const isLoadingNotes = ref(false)
 const error = ref<AppError | null>(null)
@@ -48,16 +49,7 @@ onMounted(async () => {
   try {
     const serverInfo = await serversStore.getServerInfo(account.host)
     adapter = createAdapter(serverInfo, account.id)
-    if (!emojisStore.has(account.host)) {
-      adapter.api
-        .getServerEmojis()
-        .then((emojis) => {
-          emojisStore.set(account.host, emojis)
-        })
-        .catch((e) => {
-          console.warn('[UserProfile] failed to fetch emojis:', e)
-        })
-    }
+    emojisStore.ensureLoaded(account.host, () => adapter!.api.getServerEmojis())
     user.value = await adapter.api.getUserDetail(props.userId)
     notes.value = await adapter.api.getUserNotes(props.userId, { limit: 20 })
   } catch (e) {
@@ -69,6 +61,7 @@ onMounted(async () => {
 
 async function loadMoreNotes() {
   if (!adapter || isLoadingNotes.value || notes.value.length === 0) return
+  if (notes.value.length >= MAX_PROFILE_NOTES) return
   const last = notes.value[notes.value.length - 1]!
   isLoadingNotes.value = true
   try {

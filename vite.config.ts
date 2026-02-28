@@ -9,6 +9,9 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
+  build: {
+    target: 'esnext',
+  },
   clearScreen: false,
   server: {
     strictPort: true,

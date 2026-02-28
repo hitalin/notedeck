@@ -40,16 +40,7 @@ onMounted(async () => {
   try {
     const serverInfo = await serversStore.getServerInfo(account.host)
     adapter = createAdapter(serverInfo, account.id)
-    if (!emojisStore.has(account.host)) {
-      adapter.api
-        .getServerEmojis()
-        .then((emojis) => {
-          emojisStore.set(account.host, emojis)
-        })
-        .catch((e) => {
-          console.warn('[NoteDetail] failed to fetch emojis:', e)
-        })
-    }
+    emojisStore.ensureLoaded(account.host, () => adapter!.api.getServerEmojis())
     note.value = await adapter.api.getNote(props.noteId)
 
     // Fetch conversation (ancestors) and children in parallel

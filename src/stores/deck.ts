@@ -77,15 +77,20 @@ export const useDeckStore = defineStore('deck', () => {
     return columns.value.find((c) => c.id === id)
   }
 
+  let saveTimer: ReturnType<typeof setTimeout> | null = null
   function save() {
-    try {
-      localStorage.setItem(
-        'nd-deck',
-        JSON.stringify({ columns: columns.value, layout: layout.value }),
-      )
-    } catch (e) {
-      console.warn('[deck] failed to save:', e)
-    }
+    if (saveTimer) return
+    saveTimer = setTimeout(() => {
+      saveTimer = null
+      try {
+        localStorage.setItem(
+          'nd-deck',
+          JSON.stringify({ columns: columns.value, layout: layout.value }),
+        )
+      } catch (e) {
+        console.warn('[deck] failed to save:', e)
+      }
+    }, 100)
   }
 
   function load() {

@@ -42,16 +42,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     if (!acc) return null
     const serverInfo = await serversStore.getServerInfo(acc.host)
     adapter = createAdapter(serverInfo, acc.id)
-    if (!emojisStore.has(acc.host)) {
-      adapter.api
-        .getServerEmojis()
-        .then((emojis) => {
-          emojisStore.set(acc.host, emojis)
-        })
-        .catch((e) => {
-          console.warn('[column] failed to fetch emojis:', e)
-        })
-    }
+    emojisStore.ensureLoaded(acc.host, () => adapter!.api.getServerEmojis())
     return adapter
   }
 
