@@ -1,27 +1,82 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#252e29"/>
-      <stop offset="100%" stop-color="#181f1b"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#2a3530"/>
+      <stop offset="100%" stop-color="#1a2420"/>
     </linearGradient>
     <linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#b8e040"/>
+      <stop offset="100%" stop-color="#86b300"/>
+    </linearGradient>
+    <linearGradient id="highlight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.15)"/>
+      <stop offset="50%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+    <linearGradient id="col1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c8f050"/>
+      <stop offset="100%" stop-color="#86b300"/>
+    </linearGradient>
+    <linearGradient id="col2" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#aad635"/>
-      <stop offset="100%" stop-color="#7ab800"/>
+      <stop offset="100%" stop-color="#6e9400"/>
+    </linearGradient>
+    <linearGradient id="col3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9cc82a"/>
+      <stop offset="100%" stop-color="#5a7a00"/>
     </linearGradient>
   </defs>
 
-  <!-- Background -->
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- Background with soft corners -->
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
 
-  <!-- Three deck columns connected by V-notches (Misskey M extended) -->
-  <g fill="url(#fg)">
-    <!-- Columns -->
-    <rect x="72" y="136" width="100" height="280" rx="22"/>
-    <rect x="206" y="136" width="100" height="280" rx="22"/>
-    <rect x="340" y="136" width="100" height="280" rx="22"/>
+  <!-- Subtle inner glow -->
+  <rect width="512" height="512" rx="108" fill="url(#highlight)"/>
 
-    <!-- V-notch bridges between columns -->
-    <polygon points="148,136 189,224 230,136"/>
-    <polygon points="282,136 323,224 364,136"/>
+  <!-- Three deck columns with rounded cards -->
+  <g>
+    <!-- Column 1 -->
+    <rect x="66" y="120" width="108" height="300" rx="20" fill="url(#col1)"/>
+    <!-- Column 1 content lines -->
+    <rect x="82" y="148" width="40" height="6" rx="3" fill="rgba(26,36,32,0.3)"/>
+    <rect x="82" y="164" width="76" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="82" y="178" width="60" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <circle cx="94" cy="210" r="10" fill="rgba(26,36,32,0.2)"/>
+    <rect x="112" y="204" width="46" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="112" y="216" width="34" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="82" y="248" width="56" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="82" y="262" width="72" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+
+    <!-- Column 2 (taller, emphasized) -->
+    <rect x="194" y="96" width="124" height="340" rx="22" fill="url(#col2)"/>
+    <!-- Column 2 content -->
+    <rect x="212" y="126" width="50" height="6" rx="3" fill="rgba(26,36,32,0.3)"/>
+    <rect x="212" y="144" width="88" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="212" y="158" width="68" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <circle cx="226" cy="194" r="12" fill="rgba(26,36,32,0.2)"/>
+    <rect x="248" y="186" width="56" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="248" y="200" width="42" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="212" y="232" width="80" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="212" y="248" width="60" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="212" y="280" width="44" height="6" rx="3" fill="rgba(26,36,32,0.3)"/>
+    <rect x="212" y="298" width="72" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="212" y="312" width="88" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+
+    <!-- Column 3 -->
+    <rect x="338" y="136" width="108" height="284" rx="20" fill="url(#col3)"/>
+    <!-- Column 3 content -->
+    <rect x="354" y="164" width="44" height="6" rx="3" fill="rgba(26,36,32,0.3)"/>
+    <rect x="354" y="182" width="76" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="354" y="196" width="52" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <circle cx="366" cy="230" r="10" fill="rgba(26,36,32,0.2)"/>
+    <rect x="384" y="224" width="46" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="384" y="238" width="30" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="354" y="268" width="64" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+    <rect x="354" y="282" width="76" height="5" rx="2.5" fill="rgba(26,36,32,0.15)"/>
+  </g>
+
+  <!-- V-notch bridges between columns -->
+  <g fill="url(#fg)" opacity="0.6">
+    <polygon points="152,130 182,200 212,130"/>
+    <polygon points="296,140 326,210 356,140"/>
   </g>
 </svg>

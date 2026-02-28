@@ -156,7 +156,7 @@ function onDrop(e: DragEvent) {
   position: absolute;
   top: 12px;
   left: 12px;
-  width: 3px;
+  width: 4px;
   height: calc(100% - 24px);
   border-radius: 999px;
 }

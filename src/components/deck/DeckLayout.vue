@@ -583,7 +583,9 @@ onUnmounted(() => {
 .navbar {
   flex: 0 0 auto;
   display: flex;
-  background: var(--nd-navBg);
+  background: color-mix(in srgb, var(--nd-navBg) 80%, transparent);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
   border-right: 1px solid var(--nd-divider);
   position: relative;
 }
@@ -721,11 +723,16 @@ onUnmounted(() => {
   font-weight: bold;
   font-size: 0.9em;
   white-space: nowrap;
-  transition: opacity 0.15s;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .nav-post-btn:hover {
-  opacity: 0.85;
+  transform: scale(1.03);
+  box-shadow: 0 4px 12px rgba(134, 179, 0, 0.3);
+}
+
+.nav-post-btn:active {
+  transform: scale(0.97);
 }
 
 .nav-post-btn.collapsed {
@@ -1202,6 +1209,10 @@ onUnmounted(() => {
     );
     color: var(--nd-fgOnAccent, #fff);
     box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
+  }
+
+  .mobile-fab:hover {
+    transform: scale(1.05);
   }
 
   .mobile-fab:active {

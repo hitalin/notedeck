@@ -622,6 +622,10 @@ async function handleMentionClick(username: string, host: string | null) {
   cursor: pointer;
 }
 
+.note-root:not(.detailed) > .article {
+  transition: background 0.2s ease;
+}
+
 .note-root:not(.detailed):hover > .article {
   background: var(--nd-panelHighlight);
 }
@@ -823,6 +827,16 @@ async function handleMentionClick(username: string, host: string | null) {
   background: rgba(0, 0, 0, 0.1);
 }
 
+.reaction:active {
+  animation: reaction-bounce 0.3s ease;
+}
+
+@keyframes reaction-bounce {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
 .reaction.reacted,
 .reaction.reacted:hover {
   background: var(--nd-accentedBg);
@@ -874,7 +888,11 @@ async function handleMentionClick(username: string, host: string | null) {
   color: color-mix(in srgb, var(--nd-panel) 30%, var(--nd-fg) 70%);
   font-size: 0.9em;
   border-radius: 6px;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.15s, background 0.15s, transform 0.1s;
+}
+
+.footer-button:active {
+  transform: scale(0.9);
 }
 
 .footer-button:hover {
@@ -999,7 +1017,7 @@ async function handleMentionClick(username: string, host: string | null) {
 .nd-popup-leave-active .popup-menu,
 .nd-popup-enter-active .reaction-picker-popup,
 .nd-popup-leave-active .reaction-picker-popup {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1);
 }
 
 .nd-popup-enter-from,

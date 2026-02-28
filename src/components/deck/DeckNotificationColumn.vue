@@ -6,6 +6,7 @@ import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
+import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -265,8 +266,8 @@ onUnmounted(() => {
     </div>
 
     <div v-else class="notif-body">
-      <div v-if="isLoading && notifications.length === 0" class="column-empty">
-        Loading...
+      <div v-if="isLoading && notifications.length === 0">
+        <MkSkeleton v-for="i in 5" :key="i" />
       </div>
 
       <DynamicScroller

@@ -70,6 +70,11 @@ const decorationStyles = computed(() =>
   position: relative;
   display: inline-block;
   flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.mk-avatar:hover {
+  transform: scale(1.05);
 }
 
 .avatar-img {

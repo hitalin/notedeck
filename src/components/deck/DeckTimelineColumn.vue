@@ -18,6 +18,7 @@ import type {
 } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
+import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -82,6 +83,29 @@ function flushRafBuffer() {
   }
 }
 const tlType = ref<TimelineType>(props.column.tl || 'home')
+
+// Tab slide indicator
+const tabsRef = ref<HTMLElement | null>(null)
+const tabIndicatorStyle = ref({ left: '0px', width: '0px', opacity: '0' })
+
+function updateTabIndicator() {
+  if (!tabsRef.value) return
+  const activeTab = tabsRef.value.querySelector(
+    '.tl-tab.active',
+  ) as HTMLElement | null
+  if (!activeTab) {
+    tabIndicatorStyle.value = { left: '0px', width: '0px', opacity: '0' }
+    return
+  }
+  tabIndicatorStyle.value = {
+    left: `${activeTab.offsetLeft}px`,
+    width: `${activeTab.offsetWidth}px`,
+    opacity: '1',
+  }
+}
+
+watch(tlType, () => nextTick(updateTabIndicator))
+onMounted(() => nextTick(updateTabIndicator))
 
 const TL_TYPES: { value: TimelineType; label: string }[] = [
   { value: 'home', label: 'Home' },
@@ -585,7 +609,7 @@ onUnmounted(() => {
     </template>
 
     <template #header-extra>
-      <div class="tl-tabs">
+      <div ref="tabsRef" class="tl-tabs">
         <button
           v-for="opt in allTlTypes"
           :key="opt.value"
@@ -610,6 +634,7 @@ onUnmounted(() => {
         >
           <i class="ti ti-filter" />
         </button>
+        <div class="tl-tab-indicator" :style="tabIndicatorStyle" />
       </div>
     </template>
 
@@ -622,8 +647,8 @@ onUnmounted(() => {
     </div>
 
     <div v-else class="tl-body">
-      <div v-if="isLoading && notes.length === 0" class="column-empty">
-        Loading...
+      <div v-if="isLoading && notes.length === 0">
+        <MkSkeleton v-for="i in 5" :key="i" />
       </div>
 
       <template v-else>
@@ -744,6 +769,7 @@ onUnmounted(() => {
 
 .tl-tabs {
   display: flex;
+  position: relative;
   border-bottom: 1px solid var(--nd-divider);
   background: var(--nd-bg);
 }
@@ -768,15 +794,14 @@ onUnmounted(() => {
   opacity: 1;
 }
 
-.tl-tab.active::after {
-  content: '';
+.tl-tab-indicator {
   position: absolute;
   bottom: 0;
-  left: 20%;
-  right: 20%;
   height: 3px;
   background: var(--nd-accent);
   border-radius: 999px 999px 0 0;
+  transition: left 0.3s cubic-bezier(0, 0, 0.2, 1), width 0.3s cubic-bezier(0, 0, 0.2, 1);
+  pointer-events: none;
 }
 
 .tl-tab-icon {
@@ -845,6 +870,12 @@ onUnmounted(() => {
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.15s;
+  animation: slide-down 0.3s ease;
+}
+
+@keyframes slide-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .new-notes-banner:hover {
@@ -936,7 +967,7 @@ onUnmounted(() => {
 
 .nd-filter-popup-enter-active,
 .nd-filter-popup-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1);
 }
 
 .nd-filter-popup-enter-from,
