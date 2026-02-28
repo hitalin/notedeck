@@ -2,6 +2,7 @@
 import type { Interpreter } from '@syuilo/aiscript'
 import type { VFn, Value } from '@syuilo/aiscript/built/dts/interpreter/value.js'
 import type { UiComponent } from '@/aiscript/ui-types'
+import MkMfm from '@/components/common/MkMfm.vue'
 
 defineProps<{
   components: UiComponent[]
@@ -30,7 +31,7 @@ async function callHandler(handler: unknown, interpreter: Interpreter | null, ar
 
       <!-- mfm -->
       <div v-else-if="comp.type === 'mfm'" class="ais-mfm">
-        {{ comp.props.text ?? '' }}
+        <MkMfm :text="(comp.props.text as string) ?? ''" />
       </div>
 
       <!-- button -->
