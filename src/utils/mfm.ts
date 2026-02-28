@@ -27,7 +27,7 @@ const emojiRegex =
 
 interface PatternDef {
   regex: RegExp
-  parse: (m: RegExpExecArray) => MfmToken
+  parse: (m: RegExpExecArray & Record<number, string>) => MfmToken
 }
 
 const inlinePatterns: PatternDef[] = [

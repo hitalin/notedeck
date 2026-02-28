@@ -123,7 +123,7 @@ export async function detectAvailableTimelines(
       if (handledKeys.has(key)) continue
       const match = key.match(/^(.+)TlAvailable$/)
       if (!match) continue
-      const type = match[1]
+      const type = match[1] as string
       if (value !== false) {
         available.push(type)
       } else {
