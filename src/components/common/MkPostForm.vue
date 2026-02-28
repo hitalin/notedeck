@@ -225,7 +225,9 @@ async function post() {
         cw: showCw.value && cw.value ? cw.value : undefined,
         visibility: visibility.value,
         localOnly:
-          visibility.value === 'specified' ? false : localOnly.value || undefined,
+          visibility.value === 'specified'
+            ? false
+            : localOnly.value || undefined,
         modeFlags,
         replyId: props.replyTo?.id,
         renoteId: props.renoteId,

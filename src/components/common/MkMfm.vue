@@ -50,7 +50,18 @@ function handleLinkClick(e: MouseEvent, url: string) {
 const hexColorRe = /^[0-9a-fA-F]{3,8}$/
 const cssTimeRe = /^\d+(\.\d+)?(s|ms)$/
 const cssNumRe = /^-?\d+(\.\d+)?$/
-const borderStyles = new Set(['solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'inset', 'outset', 'none', 'hidden'])
+const borderStyles = new Set([
+  'solid',
+  'dashed',
+  'dotted',
+  'double',
+  'groove',
+  'ridge',
+  'inset',
+  'outset',
+  'none',
+  'hidden',
+])
 
 function fnClass(token: MfmToken & { type: 'fn' }): string | undefined {
   switch (token.name) {
@@ -104,21 +115,28 @@ function fnStyle(
       s.display = 'inline-block'
       break
     case 'rotate': {
-      const deg = typeof args.deg === 'string' && cssNumRe.test(args.deg) ? args.deg : '90'
+      const deg =
+        typeof args.deg === 'string' && cssNumRe.test(args.deg)
+          ? args.deg
+          : '90'
       s.transform = `rotate(${deg}deg)`
       s.display = 'inline-block'
       break
     }
     case 'scale': {
-      const sx = typeof args.x === 'string' && cssNumRe.test(args.x) ? args.x : '1'
-      const sy = typeof args.y === 'string' && cssNumRe.test(args.y) ? args.y : '1'
+      const sx =
+        typeof args.x === 'string' && cssNumRe.test(args.x) ? args.x : '1'
+      const sy =
+        typeof args.y === 'string' && cssNumRe.test(args.y) ? args.y : '1'
       s.transform = `scale(${sx},${sy})`
       s.display = 'inline-block'
       break
     }
     case 'position': {
-      const px = typeof args.x === 'string' && cssNumRe.test(args.x) ? args.x : '0'
-      const py = typeof args.y === 'string' && cssNumRe.test(args.y) ? args.y : '0'
+      const px =
+        typeof args.x === 'string' && cssNumRe.test(args.x) ? args.x : '0'
+      const py =
+        typeof args.y === 'string' && cssNumRe.test(args.y) ? args.y : '0'
       s.transform = `translate(${px}em,${py}em)`
       s.display = 'inline-block'
       break
@@ -149,13 +167,22 @@ function fnStyle(
       else if (args.fantasy) s.fontFamily = 'fantasy'
       break
     case 'border': {
-      const w = typeof args.width === 'string' && cssNumRe.test(args.width) ? args.width : '1'
-      const st = typeof args.style === 'string' && borderStyles.has(args.style) ? args.style : 'solid'
+      const w =
+        typeof args.width === 'string' && cssNumRe.test(args.width)
+          ? args.width
+          : '1'
+      const st =
+        typeof args.style === 'string' && borderStyles.has(args.style)
+          ? args.style
+          : 'solid'
       const c =
         typeof args.color === 'string' && hexColorRe.test(args.color)
           ? `#${args.color}`
           : 'var(--nd-fg)'
-      const r = typeof args.radius === 'string' && cssNumRe.test(args.radius) ? args.radius : '0'
+      const r =
+        typeof args.radius === 'string' && cssNumRe.test(args.radius)
+          ? args.radius
+          : '0'
       s.border = `${w}px ${st} ${c}`
       s.borderRadius = `${r}px`
       if (!args.noclip) s.overflow = 'clip'

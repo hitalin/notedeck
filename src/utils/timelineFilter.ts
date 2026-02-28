@@ -1,7 +1,14 @@
-import type { NormalizedNote, TimelineFilter, TimelineType } from '@/adapters/types'
+import type {
+  NormalizedNote,
+  TimelineFilter,
+  TimelineType,
+} from '@/adapters/types'
 
 /** Local / Global TL では public 以外のノートを除外する */
-function matchesVisibility(note: NormalizedNote, timelineType?: TimelineType): boolean {
+function matchesVisibility(
+  note: NormalizedNote,
+  timelineType?: TimelineType,
+): boolean {
   if (!timelineType) return true
   if (timelineType === 'local' || timelineType === 'global') {
     return note.visibility === 'public'
