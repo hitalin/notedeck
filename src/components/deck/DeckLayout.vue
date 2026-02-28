@@ -11,26 +11,26 @@ import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
   clearAvailableTlCache,
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
-import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
   initDesktopNotifications,
   onNotificationAction,
 } from '@/utils/desktopNotification'
 import { AppError } from '@/utils/errors'
 import DeckAntennaColumn from './DeckAntennaColumn.vue'
-import DeckChatColumn from './DeckChatColumn.vue'
 import DeckChannelColumn from './DeckChannelColumn.vue'
+import DeckChatColumn from './DeckChatColumn.vue'
 import DeckClipColumn from './DeckClipColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
-import DeckSpecifiedColumn from './DeckSpecifiedColumn.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
+import DeckSpecifiedColumn from './DeckSpecifiedColumn.vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
 import DeckUserColumn from './DeckUserColumn.vue'
 import DeckWidgetColumn from './DeckWidgetColumn.vue'
@@ -72,9 +72,13 @@ const MAX_WIDTH = 400
 const navWidth = ref(window.innerWidth <= 1279 ? MIN_WIDTH : DEFAULT_WIDTH)
 const isResizing = ref(false)
 const navCollapsed = computed(() => navWidth.value <= MIN_WIDTH)
-watch(navCollapsed, (v) => {
-  deckStore.navCollapsed = v
-}, { immediate: true })
+watch(
+  navCollapsed,
+  (v) => {
+    deckStore.navCollapsed = v
+  },
+  { immediate: true },
+)
 
 function openCompose() {
   if (accountsStore.accounts.length === 0) return
@@ -85,9 +89,39 @@ function closeCompose() {
   showCompose.value = false
 }
 
-const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | 'chat' | 'widget' | null>(null)
+const addColumnType = ref<
+  | 'timeline'
+  | 'notifications'
+  | 'search'
+  | 'list'
+  | 'antenna'
+  | 'favorites'
+  | 'clip'
+  | 'user'
+  | 'mentions'
+  | 'channel'
+  | 'specified'
+  | 'chat'
+  | 'widget'
+  | null
+>(null)
 
-function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | 'chat' | 'widget') {
+function selectColumnType(
+  type:
+    | 'timeline'
+    | 'notifications'
+    | 'search'
+    | 'list'
+    | 'antenna'
+    | 'favorites'
+    | 'clip'
+    | 'user'
+    | 'mentions'
+    | 'channel'
+    | 'specified'
+    | 'chat'
+    | 'widget',
+) {
   addColumnType.value = type
 }
 
@@ -126,8 +160,18 @@ function addColumnForAccount(accountId: string) {
     addColumnType.value = null
     return
   }
-  if (type === 'favorites' || type === 'mentions' || type === 'specified' || type === 'chat') {
-    const nameMap: Record<string, string> = { favorites: 'Favorites', mentions: 'Mentions', specified: 'Direct', chat: 'Chat' }
+  if (
+    type === 'favorites' ||
+    type === 'mentions' ||
+    type === 'specified' ||
+    type === 'chat'
+  ) {
+    const nameMap: Record<string, string> = {
+      favorites: 'Favorites',
+      mentions: 'Mentions',
+      specified: 'Direct',
+      chat: 'Chat',
+    }
     deckStore.addColumn({
       type,
       name: nameMap[type] ?? type,
@@ -152,7 +196,10 @@ function addColumnForAccount(accountId: string) {
 }
 
 // List column creation
-interface UserListItem { id: string; name: string }
+interface UserListItem {
+  id: string
+  name: string
+}
 const addListAccountId = ref<string | null>(null)
 const userLists = ref<UserListItem[]>([])
 const loadingLists = ref(false)
@@ -161,7 +208,9 @@ async function fetchUserLists(accountId: string) {
   addListAccountId.value = accountId
   loadingLists.value = true
   try {
-    userLists.value = await invoke<UserListItem[]>('api_get_user_lists', { accountId })
+    userLists.value = await invoke<UserListItem[]>('api_get_user_lists', {
+      accountId,
+    })
   } catch (e) {
     console.error('[deck] failed to fetch user lists:', e)
     userLists.value = []
@@ -184,7 +233,10 @@ function addListColumn(listId: string, listName: string) {
 }
 
 // Antenna column creation
-interface AntennaItem { id: string; name: string }
+interface AntennaItem {
+  id: string
+  name: string
+}
 const addAntennaAccountId = ref<string | null>(null)
 const antennas = ref<AntennaItem[]>([])
 const loadingAntennas = ref(false)
@@ -193,7 +245,9 @@ async function fetchAntennas(accountId: string) {
   addAntennaAccountId.value = accountId
   loadingAntennas.value = true
   try {
-    antennas.value = await invoke<AntennaItem[]>('api_get_antennas', { accountId })
+    antennas.value = await invoke<AntennaItem[]>('api_get_antennas', {
+      accountId,
+    })
   } catch (e) {
     console.error('[deck] failed to fetch antennas:', e)
     antennas.value = []
@@ -216,7 +270,10 @@ function addAntennaColumn(antennaId: string, antennaName: string) {
 }
 
 // Channel column creation
-interface ChannelItem { id: string; name: string }
+interface ChannelItem {
+  id: string
+  name: string
+}
 const addChannelAccountId = ref<string | null>(null)
 const channels = ref<ChannelItem[]>([])
 const loadingChannels = ref(false)
@@ -225,7 +282,9 @@ async function fetchChannels(accountId: string) {
   addChannelAccountId.value = accountId
   loadingChannels.value = true
   try {
-    channels.value = await invoke<ChannelItem[]>('api_get_channels', { accountId })
+    channels.value = await invoke<ChannelItem[]>('api_get_channels', {
+      accountId,
+    })
   } catch (e) {
     console.error('[deck] failed to fetch channels:', e)
     channels.value = []
@@ -248,7 +307,10 @@ function addChannelColumn(channelId: string, channelName: string) {
 }
 
 // Clip column creation
-interface ClipItem { id: string; name: string }
+interface ClipItem {
+  id: string
+  name: string
+}
 const addClipAccountId = ref<string | null>(null)
 const clips = ref<ClipItem[]>([])
 const loadingClips = ref(false)
@@ -296,12 +358,18 @@ async function searchAndAddUserColumn() {
   searchingUser.value = true
   userSearchError.value = null
   try {
-    const user = await invoke<{ id: string; username: string; host: string | null }>('api_lookup_user', {
+    const user = await invoke<{
+      id: string
+      username: string
+      host: string | null
+    }>('api_lookup_user', {
       accountId: addUserAccountId.value,
       username,
       host,
     })
-    const displayName = user.host ? `@${user.username}@${user.host}` : `@${user.username}`
+    const displayName = user.host
+      ? `@${user.username}@${user.host}`
+      : `@${user.username}`
     deckStore.addColumn({
       type: 'user',
       name: displayName,

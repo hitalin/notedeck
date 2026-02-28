@@ -1,7 +1,7 @@
 import type {
+  Completion,
   CompletionContext,
   CompletionResult,
-  Completion,
 } from '@codemirror/autocomplete'
 
 const keywordCompletions: Completion[] = [
@@ -174,7 +174,10 @@ for (const [ns, members] of Object.entries(builtins)) {
     ns,
     members.map((m) => ({
       label: `${ns}:${m}`,
-      type: m[0] === m[0].toUpperCase() && m !== m.toLowerCase() ? 'constant' : 'function',
+      type:
+        m[0] === m[0].toUpperCase() && m !== m.toLowerCase()
+          ? 'constant'
+          : 'function',
       detail: ns,
     })),
   )
@@ -185,7 +188,9 @@ const namespaceCompletions: Completion[] = Object.keys(builtins).map((ns) => ({
   type: 'namespace',
 }))
 
-export function aiscriptCompletions(context: CompletionContext): CompletionResult | null {
+export function aiscriptCompletions(
+  context: CompletionContext,
+): CompletionResult | null {
   // Check for namespace:member pattern (e.g., "Mk:" or "Mk:di")
   const nsMatch = context.matchBefore(/[A-Z][a-z]*:[\w]*/)
   if (nsMatch) {

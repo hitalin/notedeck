@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
 import { useCommandStore } from '@/commands/registry'
-import { useKeyboard } from '@/composables/useKeyboard'
-import { useTheme } from '@/composables/useTheme'
 import TitleBarComponent from '@/components/common/TitleBar.vue'
 import UpdateBannerComponent from '@/components/common/UpdateBanner.vue'
+import { useKeyboard } from '@/composables/useKeyboard'
+import { useTheme } from '@/composables/useTheme'
 
 const isTauri = '__TAURI_INTERNALS__' in window
 const isDesktop =

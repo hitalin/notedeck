@@ -1,6 +1,6 @@
-import { Parser } from '@syuilo/aiscript'
-import { createInterpreter } from './runtime'
+import { type Ast, Parser } from '@syuilo/aiscript'
 import type { AiScriptOptions } from './runtime'
+import { createInterpreter } from './runtime'
 import { sanitizeCode } from './sanitize'
 
 export async function executeAiScript(
@@ -8,7 +8,7 @@ export async function executeAiScript(
   options: AiScriptOptions,
 ): Promise<void> {
   const parser = new Parser()
-  let ast
+  let ast: Ast.Node[]
   try {
     ast = parser.parse(sanitizeCode(code))
   } catch (e) {
@@ -24,6 +24,6 @@ export async function executeAiScript(
   }
 }
 
-export { createInterpreter } from './runtime'
 export type { AiScriptOptions } from './runtime'
+export { createInterpreter } from './runtime'
 export type { UiComponent, UiComponentType } from './ui-types'

@@ -1,7 +1,10 @@
 import { invoke } from '@tauri-apps/api/core'
 import type {
+  Antenna,
   ApiAdapter,
+  Channel,
   ChatMessage,
+  Clip,
   CreateNoteParams,
   NormalizedDriveFile,
   NormalizedNote,
@@ -13,9 +16,6 @@ import type {
   SearchOptions,
   TimelineOptions,
   TimelineType,
-  Antenna,
-  Channel,
-  Clip,
   UserList,
 } from '../types'
 

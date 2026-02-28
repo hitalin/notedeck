@@ -195,7 +195,10 @@ export class MisskeyStream implements StreamAdapter {
   subscribeTimeline(
     type: TimelineType,
     handler: (note: NormalizedNote) => void,
-    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void; listId?: string },
+    options?: {
+      onNoteUpdated?: (event: NoteUpdateEvent) => void
+      listId?: string
+    },
   ): ChannelSubscription {
     let subscriptionId: string | null = null
     let disposed = false

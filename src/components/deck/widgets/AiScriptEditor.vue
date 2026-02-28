@@ -1,15 +1,23 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
-import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view'
-import { EditorState } from '@codemirror/state'
+import {
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+} from '@codemirror/autocomplete'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { bracketMatching } from '@codemirror/language'
-import { closeBrackets, closeBracketsKeymap, autocompletion } from '@codemirror/autocomplete'
 import { lintGutter } from '@codemirror/lint'
-import { aiscriptLanguage } from '@/aiscript/codemirror/language'
-import { aiscriptTheme } from '@/aiscript/codemirror/theme'
+import { EditorState } from '@codemirror/state'
+import {
+  placeholder as cmPlaceholder,
+  EditorView,
+  keymap,
+} from '@codemirror/view'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { aiscriptCompletions } from '@/aiscript/codemirror/completions'
+import { aiscriptLanguage } from '@/aiscript/codemirror/language'
 import { aiscriptLinter } from '@/aiscript/codemirror/linter'
+import { aiscriptTheme } from '@/aiscript/codemirror/theme'
 
 const props = withDefaults(
   defineProps<{

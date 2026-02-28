@@ -1,7 +1,7 @@
-import type { WidgetDefinition } from './types'
 import type { WidgetType } from '@/stores/deck'
-import WidgetAiScriptConsole from './WidgetAiScriptConsole.vue'
+import type { WidgetDefinition } from './types'
 import WidgetAiScriptApp from './WidgetAiScriptApp.vue'
+import WidgetAiScriptConsole from './WidgetAiScriptConsole.vue'
 
 const widgets: WidgetDefinition[] = [
   {
@@ -22,6 +22,8 @@ export function getWidgetDefinitions(): WidgetDefinition[] {
   return widgets
 }
 
-export function getWidgetComponent(type: WidgetType): WidgetDefinition | undefined {
+export function getWidgetComponent(
+  type: WidgetType,
+): WidgetDefinition | undefined {
   return widgets.find((w) => w.type === type)
 }

@@ -1,6 +1,6 @@
 import { emit, listen } from '@tauri-apps/api/event'
-import { useDeckStore } from '@/stores/deck'
 import { useCommandStore } from '@/commands/registry'
+import { useDeckStore } from '@/stores/deck'
 
 interface QueryRequest {
   id: string
@@ -77,7 +77,9 @@ export async function initApiBridge() {
     async (event) => {
       const { id, type, params } = event.payload
       const handler = handlers[type]
-      const result = handler ? handler(params) : { error: `Unknown query type: ${type}` }
+      const result = handler
+        ? handler(params)
+        : { error: `Unknown query type: ${type}` }
 
       await emit(`nd:query-response-${id}`, result)
     },

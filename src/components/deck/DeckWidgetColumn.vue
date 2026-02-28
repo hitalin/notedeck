@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import DeckColumn from './DeckColumn.vue'
-import { useDeckStore } from '@/stores/deck'
+import { computed, ref } from 'vue'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { getWidgetDefinitions, getWidgetComponent } from './widgets/registry'
+import { useDeckStore } from '@/stores/deck'
+import DeckColumn from './DeckColumn.vue'
+import { getWidgetComponent, getWidgetDefinitions } from './widgets/registry'
 
 const props = defineProps<{
   column: DeckColumnType

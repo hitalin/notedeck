@@ -94,7 +94,7 @@ const visibilityOptions: VisibilityOption[] = [
 const currentVisibility = computed(
   () =>
     visibilityOptions.find((o) => o.value === visibility.value) ??
-    visibilityOptions[0]!,
+    visibilityOptions[0],
 )
 
 const remainingChars = computed(() => MAX_TEXT_LENGTH - text.value.length)
@@ -145,7 +145,8 @@ async function initAdapter() {
       if (value !== false) continue
       const match = key.match(/^can(.+)Note$/)
       if (!match || key === 'canPublicNote') continue
-      const name = match[1]!.charAt(0).toLowerCase() + match[1]!.slice(1)
+      const name =
+        (match[1]?.charAt(0).toLowerCase() ?? '') + (match[1]?.slice(1) ?? '')
       disabled.add(name)
     }
     // Filter mode flags by can*Note policies (e.g., canYamiNote=false → remove isNoteInYamiMode)

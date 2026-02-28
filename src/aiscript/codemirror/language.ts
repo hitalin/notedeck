@@ -170,7 +170,7 @@ const aiscriptParser: StreamParser<AiScriptState> = {
     }
 
     // Brackets, punctuation
-    if (stream.match(/^[{}()\[\]]/)) {
+    if (stream.match(/^[{}()[\]]/)) {
       return 'bracket'
     }
 

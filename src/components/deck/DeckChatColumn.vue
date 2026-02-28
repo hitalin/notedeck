@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, shallowRef, computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import type { ChannelSubscription, ChatMessage } from '@/adapters/types'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
@@ -95,7 +95,9 @@ function getHistoryEntries() {
   return entries
 }
 
-async function openConversation(entry: ReturnType<typeof getHistoryEntries>[0]) {
+async function openConversation(
+  entry: ReturnType<typeof getHistoryEntries>[0],
+) {
   const adapter = getAdapter()
   if (!adapter) return
 
@@ -108,7 +110,7 @@ async function openConversation(entry: ReturnType<typeof getHistoryEntries>[0]) 
 
   try {
     if (entry.isRoom) {
-      currentRoomId.value = entry.message.toRoomId!
+      currentRoomId.value = entry.message.toRoomId ?? ''
       currentOtherId.value = null
       const msgs = await adapter.api.getChatRoomMessages(currentRoomId.value)
       messages.value = msgs.slice().reverse()
@@ -119,7 +121,7 @@ async function openConversation(entry: ReturnType<typeof getHistoryEntries>[0]) 
     } else {
       const otherId =
         entry.message.fromUserId === myUserId.value
-          ? entry.message.toUserId!
+          ? (entry.message.toUserId ?? '')
           : entry.message.fromUserId
       currentOtherId.value = otherId
       currentRoomId.value = null

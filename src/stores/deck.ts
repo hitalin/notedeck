@@ -3,7 +3,20 @@ import { computed, ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 
-export type ColumnType = 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | 'chat' | 'widget'
+export type ColumnType =
+  | 'timeline'
+  | 'notifications'
+  | 'search'
+  | 'list'
+  | 'antenna'
+  | 'favorites'
+  | 'clip'
+  | 'user'
+  | 'mentions'
+  | 'channel'
+  | 'specified'
+  | 'chat'
+  | 'widget'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
@@ -66,11 +79,14 @@ export const useDeckStore = defineStore('deck', () => {
     }
 
     const accountsStore = useAccountsStore()
-    const account = accountsStore.accounts.find(
-      (a) => a.id === col.accountId,
-    )
+    const account = accountsStore.accounts.find((a) => a.id === col.accountId)
     if (!account) {
-      console.log('[deck] uri: account not found for accountId:', col.accountId, 'available:', accountsStore.accounts.map(a => a.id))
+      console.log(
+        '[deck] uri: account not found for accountId:',
+        col.accountId,
+        'available:',
+        accountsStore.accounts.map((a) => a.id),
+      )
       return null
     }
 
@@ -212,7 +228,11 @@ export const useDeckStore = defineStore('deck', () => {
     save()
   }
 
-  function updateWidgetData(columnId: string, widgetId: string, data: Record<string, unknown>) {
+  function updateWidgetData(
+    columnId: string,
+    widgetId: string,
+    data: Record<string, unknown>,
+  ) {
     const col = columns.value.find((c) => c.id === columnId)
     const widget = col?.widgets?.find((w) => w.id === widgetId)
     if (!widget) return

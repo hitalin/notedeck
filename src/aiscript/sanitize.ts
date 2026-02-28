@@ -8,7 +8,7 @@ export function sanitizeCode(code: string): string {
       // BOM
       .replace(/\uFEFF/g, '')
       // Zero-width chars
-      .replace(/[\u200B\u200C\u200D\u200E\u200F\u2060]/g, '')
+      .replace(/\u200B|\u200C|\u200D|\u200E|\u200F|\u2060/g, '')
       // Non-breaking space → regular space
       .replace(/\u00A0/g, ' ')
       // Normalize line endings

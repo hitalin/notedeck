@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import {
-  onMounted,
-  onBeforeUnmount,
-  ref,
-  shallowRef,
-} from 'vue'
+import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import type { ChannelSubscription, NormalizedNote, NoteUpdateEvent } from '@/adapters/types'
+import type {
+  ChannelSubscription,
+  NormalizedNote,
+  NoteUpdateEvent,
+} from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'

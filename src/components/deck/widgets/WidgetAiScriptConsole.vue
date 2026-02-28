@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { ref, watch } from 'vue'
 import { executeAiScript } from '@/aiscript/execute'
-import { useDeckStore } from '@/stores/deck'
 import type { WidgetConfig } from '@/stores/deck'
+import { useDeckStore } from '@/stores/deck'
 import AiScriptEditor from './AiScriptEditor.vue'
 
 const props = defineProps<{

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { Interpreter } from '@syuilo/aiscript'
-import type { VFn, Value } from '@syuilo/aiscript/built/dts/interpreter/value.js'
+import type {
+  Value,
+  VFn,
+} from '@syuilo/aiscript/built/dts/interpreter/value.js'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import type { UiComponent } from '@/aiscript/ui-types'
 import MkMfm from '@/components/common/MkMfm.vue'
-import { openUrl } from '@tauri-apps/plugin-opener'
 
 const props = defineProps<{
   components: UiComponent[]
@@ -11,7 +14,11 @@ const props = defineProps<{
   serverUrl?: string
 }>()
 
-async function callHandler(handler: unknown, interpreter: Interpreter | null, arg?: Value) {
+async function callHandler(
+  handler: unknown,
+  interpreter: Interpreter | null,
+  arg?: Value,
+) {
   if (!interpreter || !handler || typeof handler !== 'object') return
   const fn = handler as VFn
   if (fn.type !== 'fn') return

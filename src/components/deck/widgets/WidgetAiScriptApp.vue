@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
 import type { Interpreter } from '@syuilo/aiscript'
-import { executeAiScript, createInterpreter } from '@/aiscript/execute'
-import type { UiComponent } from '@/aiscript/ui-types'
-import { useDeckStore } from '@/stores/deck'
-import type { WidgetConfig } from '@/stores/deck'
-import { useAccountsStore } from '@/stores/accounts'
-import AiScriptUiRenderer from './AiScriptUiRenderer.vue'
-import AiScriptEditor from './AiScriptEditor.vue'
-import { Parser } from '@syuilo/aiscript'
+import { type Ast, Parser } from '@syuilo/aiscript'
+import { invoke } from '@tauri-apps/api/core'
+import { computed, ref, watch } from 'vue'
+import { createInterpreter, executeAiScript } from '@/aiscript/execute'
 import { sanitizeCode } from '@/aiscript/sanitize'
+import type { UiComponent } from '@/aiscript/ui-types'
+import { useAccountsStore } from '@/stores/accounts'
+import type { WidgetConfig } from '@/stores/deck'
+import { useDeckStore } from '@/stores/deck'
+import AiScriptEditor from './AiScriptEditor.vue'
+import AiScriptUiRenderer from './AiScriptUiRenderer.vue'
 
 const props = defineProps<{
   widget: WidgetConfig
@@ -80,7 +80,7 @@ async function run() {
 
   // Create interpreter and keep reference for event handlers
   const parser = new Parser()
-  let ast
+  let ast: Ast.Node[]
   try {
     ast = parser.parse(sanitizeCode(code.value))
   } catch (e) {

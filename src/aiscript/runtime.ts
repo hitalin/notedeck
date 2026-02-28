@@ -1,5 +1,5 @@
-import { Interpreter, values, utils } from '@syuilo/aiscript'
-import type { Value, VFn } from '@syuilo/aiscript/built/dts/interpreter/value.js'
+import { Interpreter, utils, values } from '@syuilo/aiscript'
+import type { Value } from '@syuilo/aiscript/built/dts/interpreter/value.js'
 import type { UiComponent } from './ui-types'
 
 export interface AiScriptOptions {
@@ -92,11 +92,13 @@ export function createInterpreter(options: AiScriptOptions): Interpreter {
   const consts: Record<string, Value> = {}
 
   // --- Mk:dialog ---
-  consts['Mk:dialog'] = values.FN_NATIVE(async ([titleVal, textVal, _typeVal]) => {
-    const title = titleVal?.type === 'str' ? titleVal.value : ''
-    const text = textVal?.type === 'str' ? textVal.value : ''
-    window.alert(`${title}\n${text}`)
-  })
+  consts['Mk:dialog'] = values.FN_NATIVE(
+    async ([titleVal, textVal, _typeVal]) => {
+      const title = titleVal?.type === 'str' ? titleVal.value : ''
+      const text = textVal?.type === 'str' ? textVal.value : ''
+      window.alert(`${title}\n${text}`)
+    },
+  )
 
   // --- Mk:confirm ---
   consts['Mk:confirm'] = values.FN_NATIVE(async ([titleVal, textVal]) => {
@@ -127,7 +129,10 @@ export function createInterpreter(options: AiScriptOptions): Interpreter {
   consts['Mk:save'] = values.FN_NATIVE(([keyVal, valueVal]) => {
     if (keyVal?.type !== 'str' || !valueVal) return
     try {
-      localStorage.setItem(storageKey(keyVal.value), JSON.stringify(utils.valToJs(valueVal)))
+      localStorage.setItem(
+        storageKey(keyVal.value),
+        JSON.stringify(utils.valToJs(valueVal)),
+      )
     } catch {
       // ignore storage errors
     }
@@ -192,14 +197,17 @@ export function createInterpreter(options: AiScriptOptions): Interpreter {
   // --- Play-specific variables ---
   if (options.playVariables) {
     const pv = options.playVariables
-    if (pv.THIS_ID !== undefined) consts['THIS_ID'] = values.STR(pv.THIS_ID)
-    if (pv.THIS_URL !== undefined) consts['THIS_URL'] = values.STR(pv.THIS_URL)
-    if (pv.USER_ID !== undefined) consts['USER_ID'] = values.STR(pv.USER_ID)
-    if (pv.USER_NAME !== undefined) consts['USER_NAME'] = values.STR(pv.USER_NAME)
-    if (pv.USER_USERNAME !== undefined) consts['USER_USERNAME'] = values.STR(pv.USER_USERNAME)
-    if (pv.LOCALE !== undefined) consts['LOCALE'] = values.STR(pv.LOCALE)
-    if (pv.SERVER_URL !== undefined) consts['SERVER_URL'] = values.STR(pv.SERVER_URL)
-    if (pv.CUSTOM_EMOJIS !== undefined) consts['CUSTOM_EMOJIS'] = utils.jsToVal(pv.CUSTOM_EMOJIS)
+    if (pv.THIS_ID !== undefined) consts.THIS_ID = values.STR(pv.THIS_ID)
+    if (pv.THIS_URL !== undefined) consts.THIS_URL = values.STR(pv.THIS_URL)
+    if (pv.USER_ID !== undefined) consts.USER_ID = values.STR(pv.USER_ID)
+    if (pv.USER_NAME !== undefined) consts.USER_NAME = values.STR(pv.USER_NAME)
+    if (pv.USER_USERNAME !== undefined)
+      consts.USER_USERNAME = values.STR(pv.USER_USERNAME)
+    if (pv.LOCALE !== undefined) consts.LOCALE = values.STR(pv.LOCALE)
+    if (pv.SERVER_URL !== undefined)
+      consts.SERVER_URL = values.STR(pv.SERVER_URL)
+    if (pv.CUSTOM_EMOJIS !== undefined)
+      consts.CUSTOM_EMOJIS = utils.jsToVal(pv.CUSTOM_EMOJIS)
   }
 
   const interpreter = new Interpreter(consts, {

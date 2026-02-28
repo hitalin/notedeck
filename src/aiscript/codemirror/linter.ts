@@ -1,4 +1,4 @@
-import { linter, type Diagnostic } from '@codemirror/lint'
+import { type Diagnostic, linter } from '@codemirror/lint'
 import { Parser } from '@syuilo/aiscript'
 import { sanitizeCode } from '@/aiscript/sanitize'
 
@@ -20,7 +20,9 @@ export const aiscriptLinter = linter(
 
         if (lineMatch) {
           const lineNum = parseInt(lineMatch[1], 10)
-          const line = view.state.doc.line(Math.min(lineNum, view.state.doc.lines))
+          const line = view.state.doc.line(
+            Math.min(lineNum, view.state.doc.lines),
+          )
           from = line.from
           to = line.to
         }

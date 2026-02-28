@@ -315,7 +315,9 @@ export interface ApiAdapter {
     antennaId: string,
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>
-  getMentions(options?: PaginationOptions & { visibility?: string }): Promise<NormalizedNote[]>
+  getMentions(
+    options?: PaginationOptions & { visibility?: string },
+  ): Promise<NormalizedNote[]>
   getFavorites(options?: PaginationOptions): Promise<NormalizedNote[]>
   getClips(): Promise<Clip[]>
   getClipNotes(
@@ -366,7 +368,10 @@ export interface StreamAdapter {
   subscribeTimeline(
     type: TimelineType,
     handler: (note: NormalizedNote) => void,
-    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void; listId?: string },
+    options?: {
+      onNoteUpdated?: (event: NoteUpdateEvent) => void
+      listId?: string
+    },
   ): ChannelSubscription
   subscribeAntenna(
     antennaId: string,
@@ -379,7 +384,9 @@ export interface StreamAdapter {
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription
   subscribeMain(handler: (event: MainChannelEvent) => void): ChannelSubscription
-  subscribeMentions(handler: (note: NormalizedNote) => void): ChannelSubscription
+  subscribeMentions(
+    handler: (note: NormalizedNote) => void,
+  ): ChannelSubscription
   subscribeChatUser(
     otherId: string,
     handler: (msg: ChatMessage) => void,
