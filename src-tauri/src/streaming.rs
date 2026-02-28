@@ -25,6 +25,8 @@ macro_rules! emit_or_log {
 }
 
 
+const WS_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
 fn ws_config() -> WebSocketConfig {
     let mut config = WebSocketConfig::default();
     config.max_message_size = Some(10 * 1024 * 1024); // 10 MB
@@ -129,11 +131,14 @@ impl StreamingManager {
 
         let url = format!("wss://{host}/streaming?i={token}");
 
-        // Verify initial connection
-        let (ws_stream, _) =
-            tokio_tungstenite::connect_async_with_config(&url, Some(ws_config()), false)
-                .await
-                .map_err(|e| NoteDeckError::WebSocket(e.to_string()))?;
+        // Verify initial connection (with timeout to prevent hang DoS)
+        let (ws_stream, _) = tokio::time::timeout(
+            WS_CONNECT_TIMEOUT,
+            tokio_tungstenite::connect_async_with_config(&url, Some(ws_config()), false),
+        )
+        .await
+        .map_err(|_| NoteDeckError::WebSocket("Connection timeout".to_string()))?
+        .map_err(|e| NoteDeckError::WebSocket(e.to_string()))?;
 
         let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
 
@@ -351,9 +356,14 @@ async fn connection_task(
             return;
         }
 
-        // Attempt reconnection
-        match tokio_tungstenite::connect_async_with_config(&url, Some(ws_config()), false).await {
-            Ok((ws_stream, _)) => {
+        // Attempt reconnection (with timeout)
+        let ws_result = tokio::time::timeout(
+            WS_CONNECT_TIMEOUT,
+            tokio_tungstenite::connect_async_with_config(&url, Some(ws_config()), false),
+        )
+        .await;
+        match ws_result {
+            Ok(Ok((ws_stream, _))) => {
                 backoff_secs = 1; // Reset backoff on success
 
                 emit_or_log!(app, "stream-status", StreamStatusEvent {
@@ -374,8 +384,12 @@ async fn connection_task(
                     return;
                 }
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 eprintln!("[stream] reconnect failed for {account_id}: {e}");
+                backoff_secs = (backoff_secs * 2).min(MAX_BACKOFF_SECS);
+            }
+            Err(_) => {
+                eprintln!("[stream] reconnect timeout for {account_id}");
                 backoff_secs = (backoff_secs * 2).min(MAX_BACKOFF_SECS);
             }
         }

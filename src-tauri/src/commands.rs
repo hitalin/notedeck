@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::sync::Mutex;
+use std::time::Instant;
 
 use tauri::State;
 
@@ -15,6 +17,47 @@ use crate::streaming::StreamingManager;
 use zeroize::Zeroize;
 
 type Result<T> = std::result::Result<T, NoteDeckError>;
+
+/// Tracks MiAuth sessions to prevent replay attacks.
+/// Sessions expire after 15 minutes and are consumed on completion.
+pub struct AuthSessionTracker {
+    sessions: Mutex<HashMap<String, (String, Instant)>>, // session_id -> (host, created_at)
+}
+
+const AUTH_SESSION_TTL_SECS: u64 = 900; // 15 minutes
+
+impl AuthSessionTracker {
+    pub fn new() -> Self {
+        Self {
+            sessions: Mutex::new(HashMap::new()),
+        }
+    }
+
+    fn register(&self, session_id: &str, host: &str) {
+        let mut sessions = self.sessions.lock().unwrap();
+        // Purge expired entries while we have the lock
+        sessions.retain(|_, (_, created)| created.elapsed().as_secs() < AUTH_SESSION_TTL_SECS);
+        sessions.insert(session_id.to_string(), (host.to_string(), Instant::now()));
+    }
+
+    fn consume(&self, session_id: &str, host: &str) -> std::result::Result<(), NoteDeckError> {
+        let mut sessions = self.sessions.lock().unwrap();
+        match sessions.remove(session_id) {
+            Some((stored_host, created)) => {
+                if created.elapsed().as_secs() >= AUTH_SESSION_TTL_SECS {
+                    return Err(NoteDeckError::Auth("Auth session expired".to_string()));
+                }
+                if stored_host != host {
+                    return Err(NoteDeckError::Auth("Host mismatch".to_string()));
+                }
+                Ok(())
+            }
+            None => Err(NoteDeckError::Auth(
+                "Invalid or already consumed auth session".to_string(),
+            )),
+        }
+    }
+}
 
 /// Look up account credentials: tries keychain first, falls back to DB (lazy migration)
 fn get_credentials(db: &Database, account_id: &str) -> Result<(String, String)> {
@@ -344,6 +387,9 @@ pub async fn api_search_notes(
     query: String,
     options: Option<SearchOptions>,
 ) -> Result<Vec<NormalizedNote>> {
+    if query.len() > 1000 {
+        return Err(NoteDeckError::InvalidInput("Search query too long".to_string()));
+    }
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .search_notes(&host, &token, &account_id, &query, options.unwrap_or_default())
@@ -386,9 +432,13 @@ pub async fn api_lookup_user(
     username: String,
     host: Option<String>,
 ) -> Result<NormalizedUser> {
+    if username.is_empty() || username.len() > 255 {
+        return Err(NoteDeckError::InvalidInput("Invalid username".to_string()));
+    }
+    let validated_host = host.map(|h| validate_host(&h)).transpose()?;
     let (server_host, token) = get_credentials(&db, &account_id)?;
     client
-        .lookup_user(&server_host, &token, &username, host.as_deref())
+        .lookup_user(&server_host, &token, &username, validated_host.as_deref())
         .await
 }
 
@@ -430,6 +480,9 @@ pub fn api_search_notes_local(
     query: String,
     limit: Option<i64>,
 ) -> Result<Vec<NormalizedNote>> {
+    if query.len() > 1000 {
+        return Err(NoteDeckError::InvalidInput("Search query too long".to_string()));
+    }
     db.search_cached_notes(&account_id, &query, limit.unwrap_or(30).clamp(1, 200))
 }
 
@@ -513,6 +566,10 @@ fn validate_host(host: &str) -> Result<String> {
         "10.",
         "192.168.",
         "169.254.",
+        "[fc",       // IPv6 ULA (fc00::/7)
+        "[fd",       // IPv6 ULA (fd00::/8)
+        "[fe80:",    // IPv6 link-local
+        "[::ffff:",  // IPv4-mapped IPv6
     ];
     if ssrf_blocked.iter().any(|p| normalized.starts_with(p)) {
         return Err(NoteDeckError::InvalidInput(
@@ -545,7 +602,11 @@ fn validate_host(host: &str) -> Result<String> {
 }
 
 #[tauri::command]
-pub async fn auth_start(host: String, permissions: Option<Vec<String>>) -> Result<AuthSession> {
+pub async fn auth_start(
+    tracker: State<'_, AuthSessionTracker>,
+    host: String,
+    permissions: Option<Vec<String>>,
+) -> Result<AuthSession> {
     let host = validate_host(&host)?;
     let session_id = uuid::Uuid::new_v4().to_string();
     let perms = permissions.unwrap_or_else(|| {
@@ -569,6 +630,7 @@ pub async fn auth_start(host: String, permissions: Option<Vec<String>>) -> Resul
     let url = format!(
         "https://{host}/miauth/{session_id}?name=notedeck&permission={permission_str}"
     );
+    tracker.register(&session_id, &host);
     Ok(AuthSession {
         session_id,
         url,
@@ -578,11 +640,15 @@ pub async fn auth_start(host: String, permissions: Option<Vec<String>>) -> Resul
 
 #[tauri::command]
 pub async fn auth_complete_and_save(
+    tracker: State<'_, AuthSessionTracker>,
     client: State<'_, MisskeyClient>,
     db: State<'_, Database>,
     session: AuthSession,
     software: String,
 ) -> Result<AccountPublic> {
+    // Validate this session was created by auth_start and hasn't been replayed
+    tracker.consume(&session.session_id, &session.host)?;
+
     let auth_result = client
         .complete_auth(&session.host, &session.session_id)
         .await?;

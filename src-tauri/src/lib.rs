@@ -98,6 +98,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize streaming manager
         app.manage(streaming::StreamingManager::new());
 
+        // Initialize auth session tracker (replay prevention)
+        app.manage(commands::AuthSessionTracker::new());
+
         // System tray (desktop only)
         #[cfg(not(mobile))]
         {
