@@ -35,7 +35,7 @@ async function close() {
 
 <template>
   <div class="titlebar" data-tauri-drag-region>
-    <div class="titlebar-title" data-tauri-drag-region>notedeck</div>
+    <img src="/favicon.svg" alt="" class="titlebar-icon" draggable="false" />
     <div class="titlebar-controls">
       <button class="titlebar-btn" title="Minimize" @click="minimize">
         <svg width="10" height="10" viewBox="0 0 10 10">
@@ -71,12 +71,11 @@ async function close() {
   flex-shrink: 0;
 }
 
-.titlebar-title {
-  padding-left: 12px;
-  font-size: 0.75em;
-  font-weight: bold;
-  color: var(--nd-fg);
-  opacity: 0.6;
+.titlebar-icon {
+  width: 18px;
+  height: 18px;
+  margin-left: 10px;
+  border-radius: 4px;
 }
 
 .titlebar-controls {
