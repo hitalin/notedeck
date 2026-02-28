@@ -12,6 +12,7 @@ use tokio_tungstenite::tungstenite::Message;
 
 use crate::db::Database;
 use crate::error::NoteDeckError;
+use crate::event_bus::{EventBus, SseEvent};
 use crate::models::{
     ChatMessage, NormalizedNote, NormalizedNotification, RawNote, RawNotification, TimelineType,
 };
@@ -682,6 +683,8 @@ async fn handle_ws_message(
     };
     drop(subs);
 
+    let event_bus = app.try_state::<EventBus>();
+
     if info.kind == "timeline" && event_type == "note" {
         if let Ok(raw) = serde_json::from_value::<RawNote>(event_body) {
             let note = raw.normalize(account_id, &info.host);
@@ -690,41 +693,69 @@ async fn handle_ws_message(
                     eprintln!("[cache] failed to cache streamed note: {e}");
                 }
             }
-            emit_or_log!(app, "stream-note", StreamNoteEvent {
+            let payload = StreamNoteEvent {
                 account_id: account_id.to_string(),
                 subscription_id: sub_id.to_string(),
                 note,
-            });
+            };
+            if let Some(ref bus) = event_bus {
+                bus.send(SseEvent {
+                    event_type: "note".to_string(),
+                    data: serde_json::to_value(&payload).unwrap_or_default(),
+                });
+            }
+            emit_or_log!(app, "stream-note", payload);
         }
     } else if info.kind == "timeline" && event_type == "noteUpdated" {
         let note_id = event_body.get("id").and_then(|v| v.as_str()).unwrap_or_default();
         let update_type = event_body.get("type").and_then(|v| v.as_str()).unwrap_or_default();
         let update_body = event_body.get("body").cloned().unwrap_or(Value::Null);
-        emit_or_log!(app, "stream-note-updated", StreamNoteUpdatedEvent {
+        let payload = StreamNoteUpdatedEvent {
             account_id: account_id.to_string(),
             subscription_id: sub_id.to_string(),
             note_id: note_id.to_string(),
             update_type: update_type.to_string(),
             body: update_body,
-        });
+        };
+        if let Some(ref bus) = event_bus {
+            bus.send(SseEvent {
+                event_type: "note-updated".to_string(),
+                data: serde_json::to_value(&payload).unwrap_or_default(),
+            });
+        }
+        emit_or_log!(app, "stream-note-updated", payload);
     } else if info.kind == "main" {
         if event_type == "notification" {
             if let Ok(raw) = serde_json::from_value::<RawNotification>(event_body) {
                 let notification = raw.normalize(account_id, &info.host);
-                emit_or_log!(app, "stream-notification", StreamNotificationEvent {
+                let payload = StreamNotificationEvent {
                     account_id: account_id.to_string(),
                     subscription_id: sub_id.to_string(),
                     notification,
-                });
+                };
+                if let Some(ref bus) = event_bus {
+                    bus.send(SseEvent {
+                        event_type: "notification".to_string(),
+                        data: serde_json::to_value(&payload).unwrap_or_default(),
+                    });
+                }
+                emit_or_log!(app, "stream-notification", payload);
             }
         } else if event_type == "mention" || event_type == "reply" {
             if let Ok(raw) = serde_json::from_value::<RawNote>(event_body.clone()) {
                 let note = raw.normalize(account_id, &info.host);
-                emit_or_log!(app, "stream-mention", StreamMentionEvent {
+                let payload = StreamMentionEvent {
                     account_id: account_id.to_string(),
                     subscription_id: sub_id.to_string(),
                     note,
-                });
+                };
+                if let Some(ref bus) = event_bus {
+                    bus.send(SseEvent {
+                        event_type: "mention".to_string(),
+                        data: serde_json::to_value(&payload).unwrap_or_default(),
+                    });
+                }
+                emit_or_log!(app, "stream-mention", payload);
             }
             emit_or_log!(app, "stream-main-event", StreamMainEvent {
                 account_id: account_id.to_string(),
@@ -733,20 +764,34 @@ async fn handle_ws_message(
                 body: event_body,
             });
         } else {
-            emit_or_log!(app, "stream-main-event", StreamMainEvent {
+            let payload = StreamMainEvent {
                 account_id: account_id.to_string(),
                 subscription_id: sub_id.to_string(),
                 event_type: event_type.to_string(),
                 body: event_body,
-            });
+            };
+            if let Some(ref bus) = event_bus {
+                bus.send(SseEvent {
+                    event_type: format!("main-{}", payload.event_type),
+                    data: serde_json::to_value(&payload).unwrap_or_default(),
+                });
+            }
+            emit_or_log!(app, "stream-main-event", payload);
         }
     } else if info.kind == "chat" && event_type == "message" {
         if let Ok(msg) = serde_json::from_value::<ChatMessage>(event_body) {
-            emit_or_log!(app, "stream-chat-message", StreamChatMessageEvent {
+            let payload = StreamChatMessageEvent {
                 account_id: account_id.to_string(),
                 subscription_id: sub_id.to_string(),
                 message: msg,
-            });
+            };
+            if let Some(ref bus) = event_bus {
+                bus.send(SseEvent {
+                    event_type: "chat".to_string(),
+                    data: serde_json::to_value(&payload).unwrap_or_default(),
+                });
+            }
+            emit_or_log!(app, "stream-chat-message", payload);
         }
     }
 }

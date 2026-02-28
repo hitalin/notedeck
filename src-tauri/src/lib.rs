@@ -11,9 +11,11 @@ mod api;
 mod commands;
 mod db;
 mod error;
+mod event_bus;
 mod http_server;
 mod keychain;
 mod models;
+mod query_bridge;
 mod streaming;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -84,6 +86,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::api_lookup_user,
         commands::api_get_cached_timeline,
         commands::api_search_notes_local,
+        commands::api_request,
         commands::api_fetch_account_theme,
         commands::api_get_chat_history,
         commands::api_get_chat_user_messages,
@@ -115,6 +118,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
         // Initialize streaming manager
         app.manage(streaming::StreamingManager::new());
+
+        // Initialize event bus (SSE broadcasting)
+        app.manage(event_bus::EventBus::new());
 
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
