@@ -286,16 +286,19 @@ impl MisskeyClient {
         host: &str,
         token: &str,
     ) -> Result<Vec<Channel>, NoteDeckError> {
-        let (followed, favorites, owned) = tokio::join!(
-            self.request(host, token, "channels/followed", json!({})),
-            self.request(host, token, "channels/my-favorites", json!({})),
-            self.request(host, token, "channels/owned", json!({})),
+        let limit = json!({"limit": 100});
+        let (followed, favorites, owned, featured) = tokio::join!(
+            self.request(host, token, "channels/followed", limit.clone()),
+            self.request(host, token, "channels/my-favorites", limit.clone()),
+            self.request(host, token, "channels/owned", limit.clone()),
+            self.request(host, token, "channels/featured", json!({})),
         );
 
         let mut seen = std::collections::HashSet::new();
         let mut channels = Vec::new();
 
-        for data in [followed, favorites, owned] {
+        // User's own channels first, then featured as fallback
+        for data in [followed, favorites, owned, featured] {
             if let Ok(data) = data {
                 if let Ok(list) = serde_json::from_value::<Vec<Channel>>(data) {
                     for ch in list {
