@@ -1,4 +1,13 @@
-import type { NormalizedNote, TimelineFilter } from '@/adapters/types'
+import type { NormalizedNote, TimelineFilter, TimelineType } from '@/adapters/types'
+
+/** Local / Global TL では public 以外のノートを除外する */
+function matchesVisibility(note: NormalizedNote, timelineType?: TimelineType): boolean {
+  if (!timelineType) return true
+  if (timelineType === 'local' || timelineType === 'global') {
+    return note.visibility === 'public'
+  }
+  return true
+}
 
 /**
  * ストリーミングで受信したノートがフィルター条件にマッチするか判定する。
@@ -7,7 +16,11 @@ import type { NormalizedNote, TimelineFilter } from '@/adapters/types'
 export function matchesFilter(
   note: NormalizedNote,
   filter?: TimelineFilter,
+  timelineType?: TimelineType,
 ): boolean {
+  // visibility チェック（TL種別に基づく防御層）
+  if (!matchesVisibility(note, timelineType)) return false
+
   if (!filter) return true
 
   // Renote のみ（引用なし）を除外

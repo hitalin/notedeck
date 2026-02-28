@@ -241,6 +241,7 @@ async function connect(useCache = false) {
     try {
       const cached = await invoke<NormalizedNote[]>('api_get_cached_timeline', {
         accountId: props.column.accountId,
+        timelineType: tlType.value,
         limit: 40,
       })
       if (cached.length > 0) {
@@ -278,7 +279,7 @@ async function connect(useCache = false) {
       adapter.stream.subscribeTimeline(
         tlType.value,
         (note: NormalizedNote) => {
-          if (!matchesFilter(note, columnFilters.value)) return
+          if (!matchesFilter(note, columnFilters.value, tlType.value)) return
           rafBuffer.push(note)
           if (rafId === null) {
             rafId = requestAnimationFrame(flushRafBuffer)

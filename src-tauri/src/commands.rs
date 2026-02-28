@@ -188,9 +188,9 @@ pub async fn api_get_timeline(
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
     let notes = client
-        .get_timeline(&host, &token, &account_id, timeline_type, options.unwrap_or_default())
+        .get_timeline(&host, &token, &account_id, timeline_type.clone(), options.unwrap_or_default())
         .await?;
-    if let Err(e) = db.cache_notes(&notes) {
+    if let Err(e) = db.cache_notes(&notes, timeline_type.as_str()) {
         eprintln!("[cache] failed to cache timeline notes: {e}");
     }
     Ok(notes)
@@ -482,9 +482,10 @@ pub async fn api_unfollow_user(
 pub fn api_get_cached_timeline(
     db: State<'_, Database>,
     account_id: String,
+    timeline_type: String,
     limit: Option<i64>,
 ) -> Result<Vec<NormalizedNote>> {
-    db.get_cached_timeline(&account_id, limit.unwrap_or(40).clamp(1, 200))
+    db.get_cached_timeline(&account_id, &timeline_type, limit.unwrap_or(40).clamp(1, 200))
 }
 
 #[tauri::command]

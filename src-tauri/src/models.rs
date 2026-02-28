@@ -243,6 +243,10 @@ pub struct CreateNoteParams {
 pub struct TimelineType(String);
 
 impl TimelineType {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
     pub fn api_endpoint(&self) -> Result<String, crate::error::NoteDeckError> {
         match self.0.as_str() {
             "home" => Ok("notes/timeline".to_string()),

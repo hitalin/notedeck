@@ -95,6 +95,20 @@ impl Database {
         // Drop legacy index superseded by FTS5
         conn.execute_batch("DROP INDEX IF EXISTS idx_notes_cache_text")?;
 
+        // Add timeline_type column for per-timeline cache isolation
+        let has_tl_col: bool = conn
+            .prepare(
+                "SELECT COUNT(*) FROM pragma_table_info('notes_cache') WHERE name='timeline_type'",
+            )?
+            .query_row([], |row| row.get(0))?;
+        if !has_tl_col {
+            conn.execute_batch(
+                "ALTER TABLE notes_cache ADD COLUMN timeline_type TEXT NOT NULL DEFAULT '';
+                 CREATE INDEX IF NOT EXISTS idx_notes_cache_tl
+                     ON notes_cache (account_id, timeline_type, created_at DESC);",
+            )?;
+        }
+
         Ok(())
     }
 
@@ -251,7 +265,11 @@ impl Database {
 
     // --- Notes cache ---
 
-    pub fn cache_notes(&self, notes: &[NormalizedNote]) -> Result<(), NoteDeckError> {
+    pub fn cache_notes(
+        &self,
+        notes: &[NormalizedNote],
+        timeline_type: &str,
+    ) -> Result<(), NoteDeckError> {
         let conn = self.lock()?;
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -260,11 +278,12 @@ impl Database {
         let tx = conn.unchecked_transaction()?;
         {
             let mut stmt = tx.prepare_cached(
-                "INSERT INTO notes_cache (note_id, account_id, server_host, created_at, text, note_json, cached_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                "INSERT INTO notes_cache (note_id, account_id, server_host, created_at, text, note_json, cached_at, timeline_type)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
                  ON CONFLICT(note_id, account_id) DO UPDATE SET
                      note_json = excluded.note_json,
-                     cached_at = excluded.cached_at",
+                     cached_at = excluded.cached_at,
+                     timeline_type = excluded.timeline_type",
             )?;
             for note in notes {
                 let json = serde_json::to_string(note).unwrap_or_default();
@@ -276,6 +295,7 @@ impl Database {
                     note.text,
                     json,
                     now,
+                    timeline_type,
                 ])?;
             }
         }
@@ -283,8 +303,12 @@ impl Database {
         Ok(())
     }
 
-    pub fn cache_note(&self, note: &NormalizedNote) -> Result<(), NoteDeckError> {
-        self.cache_notes(std::slice::from_ref(note))
+    pub fn cache_note(
+        &self,
+        note: &NormalizedNote,
+        timeline_type: &str,
+    ) -> Result<(), NoteDeckError> {
+        self.cache_notes(std::slice::from_ref(note), timeline_type)
     }
 
     pub fn search_cached_notes(
@@ -335,16 +359,17 @@ impl Database {
     pub fn get_cached_timeline(
         &self,
         account_id: &str,
+        timeline_type: &str,
         limit: i64,
     ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
         let conn = self.lock()?;
         let mut stmt = conn.prepare_cached(
             "SELECT note_json FROM notes_cache
-             WHERE account_id = ?1
+             WHERE account_id = ?1 AND timeline_type = ?2
              ORDER BY created_at DESC
-             LIMIT ?2",
+             LIMIT ?3",
         )?;
-        let rows = stmt.query_map(params![account_id, limit], |row| {
+        let rows = stmt.query_map(params![account_id, timeline_type, limit], |row| {
             let json_str: String = row.get(0)?;
             Ok(json_str)
         })?;

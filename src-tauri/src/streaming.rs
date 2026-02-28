@@ -102,6 +102,8 @@ struct SubscriptionInfo {
     kind: String,
     /// The Misskey channel name (e.g. "homeTimeline", "main")
     channel: String,
+    /// Original timeline type (e.g. "home", "local") for cache isolation
+    timeline_type: String,
 }
 
 pub struct StreamingManager {
@@ -216,6 +218,7 @@ impl StreamingManager {
                 host,
                 kind: "timeline".to_string(),
                 channel: channel.clone(),
+                timeline_type: timeline_type.as_str().to_string(),
             },
         );
 
@@ -236,6 +239,7 @@ impl StreamingManager {
                 host,
                 kind: "main".to_string(),
                 channel: "main".to_string(),
+                timeline_type: String::new(),
             },
         );
 
@@ -548,7 +552,7 @@ async fn handle_ws_message(
         if let Ok(raw) = serde_json::from_value::<RawNote>(event_body) {
             let note = raw.normalize(account_id, &info.host);
             if let Some(db) = app.try_state::<Database>() {
-                if let Err(e) = db.cache_note(&note) {
+                if let Err(e) = db.cache_note(&note, &info.timeline_type) {
                     eprintln!("[cache] failed to cache streamed note: {e}");
                 }
             }
