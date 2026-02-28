@@ -284,6 +284,8 @@ export type MainChannelEvent = {
 export interface StreamAdapter {
   connect(): void
   disconnect(): void
+  /** Clean up local listeners/handlers without killing the shared WebSocket connection. */
+  cleanup(): void
   subscribeTimeline(
     type: TimelineType,
     handler: (note: NormalizedNote) => void,

@@ -136,18 +136,21 @@ export class MisskeyStream implements StreamAdapter {
       })
   }
 
-  disconnect(): void {
+  cleanup(): void {
     for (const fn of this.unlistenFns) fn()
     this.unlistenFns = []
     this.noteHandlers.clear()
     this.noteUpdateHandlers.clear()
     this.notifHandlers.clear()
     this.mainHandlers.clear()
+    this._state = 'disconnected'
+  }
 
+  disconnect(): void {
+    this.cleanup()
     invoke('stream_disconnect', { accountId: this.accountId }).catch((e) => {
       console.warn('[stream] disconnect failed:', e)
     })
-    this._state = 'disconnected'
     this.emit('disconnected')
   }
 

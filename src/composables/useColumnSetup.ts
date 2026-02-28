@@ -64,7 +64,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
 
   function disconnect() {
     disposeSubscription()
-    adapter?.stream.disconnect()
+    adapter?.stream.cleanup()
     adapter = null
   }
 
