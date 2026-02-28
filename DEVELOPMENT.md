@@ -1,13 +1,13 @@
 # notedeck
 
-Multi-server Misskey deck client for desktop and mobile.
+Multi-server Misskey deck client for desktop.
 
-Connect to multiple Misskey-compatible servers in one deck UI. Runs as a native desktop app (Windows / macOS / Linux) and mobile app (Android / iOS) via Tauri v2.
+Connect to multiple Misskey-compatible servers in one deck UI. Runs as a native desktop app (Windows / macOS / Linux) via Tauri v2. An Android APK is also available for custom ROMs (GrapheneOS).
 
 ## Features
 
 - **Multi-server** - Connect to multiple Misskey-compatible servers simultaneously
-- **Multi-platform** - Desktop (Windows / macOS / Linux), mobile (Android / iOS)
+- **Multi-platform** - Desktop (Windows / macOS / Linux), Android APK (GrapheneOS)
 - **Deck UI** - TweetDeck-style multi-column layout with drag & drop reordering
 - **Real-time streaming** - WebSocket streaming with auto-reconnect (Rust backend)
 - **Notifications** - Dedicated notification column with real-time updates
@@ -22,8 +22,9 @@ Connect to multiple Misskey-compatible servers in one deck UI. Runs as a native 
 | Windows | Tauri v2 | Available |
 | macOS | Tauri v2 | Available |
 | Linux | Tauri v2 | Available |
-| Android | Tauri v2 | Available |
-| iOS | Tauri v2 | Planned |
+| Android (GrapheneOS) | Tauri v2 | Available |
+
+> **Note:** NoteDeck is a desktop-focused application. The Android APK is provided for custom ROMs such as GrapheneOS. Official Android (Google Play) and iOS are not supported.
 
 ## Tech Stack
 
