@@ -11,7 +11,7 @@ use crate::keychain;
 use crate::models::{
     Account, AccountPublic, AuthSession, CreateNoteParams, NormalizedDriveFile, NormalizedNote,
     NormalizedNoteReaction, NormalizedNotification, NormalizedUser, NormalizedUserDetail,
-    Antenna, SearchOptions, StoredServer, TimelineOptions, TimelineType, UserList,
+    Antenna, Clip, SearchOptions, StoredServer, TimelineOptions, TimelineType, UserList,
 };
 use crate::streaming::StreamingManager;
 use zeroize::Zeroize;
@@ -233,6 +233,62 @@ pub async fn api_get_antenna_notes(
             &token,
             &account_id,
             &antenna_id,
+            limit.unwrap_or(20),
+            since_id.as_deref(),
+            until_id.as_deref(),
+        )
+        .await
+}
+
+#[tauri::command]
+pub async fn api_get_favorites(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    limit: Option<i64>,
+    since_id: Option<String>,
+    until_id: Option<String>,
+) -> Result<Vec<NormalizedNote>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_favorites(
+            &host,
+            &token,
+            &account_id,
+            limit.unwrap_or(20),
+            since_id.as_deref(),
+            until_id.as_deref(),
+        )
+        .await
+}
+
+#[tauri::command]
+pub async fn api_get_clips(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+) -> Result<Vec<Clip>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_clips(&host, &token).await
+}
+
+#[tauri::command]
+pub async fn api_get_clip_notes(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    clip_id: String,
+    limit: Option<i64>,
+    since_id: Option<String>,
+    until_id: Option<String>,
+) -> Result<Vec<NormalizedNote>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_clip_notes(
+            &host,
+            &token,
+            &account_id,
+            &clip_id,
             limit.unwrap_or(20),
             since_id.as_deref(),
             until_id.as_deref(),
@@ -674,6 +730,7 @@ pub async fn auth_start(
             "write:account",
             "read:notifications",
             "read:reactions",
+            "read:favorites",
             "write:drive",
             "write:favorites",
             "write:following",

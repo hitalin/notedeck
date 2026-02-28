@@ -11,7 +11,7 @@ use crate::models::{
     AuthResult, CreateNoteParams, NormalizedDriveFile, NormalizedNote, NormalizedNoteReaction,
     NormalizedNotification, NormalizedUser, NormalizedUserDetail, RawCreateNoteResponse,
     RawDriveFile, RawEmojisResponse, RawMiAuthResponse, RawNote, RawNoteReaction, RawNotification,
-    Antenna, RawUser, RawUserDetail, SearchOptions, TimelineOptions, TimelineType, UserList,
+    Antenna, Clip, RawUser, RawUserDetail, SearchOptions, TimelineOptions, TimelineType, UserList,
 };
 
 
@@ -205,6 +205,75 @@ impl MisskeyClient {
             params["untilId"] = json!(id);
         }
         let data = self.request(host, token, "antennas/notes", params).await?;
+        let raw: Vec<RawNote> = serde_json::from_value(data)?;
+        Ok(raw
+            .into_iter()
+            .map(|n| n.normalize(account_id, host))
+            .collect())
+    }
+
+    pub async fn get_favorites(
+        &self,
+        host: &str,
+        token: &str,
+        account_id: &str,
+        limit: i64,
+        since_id: Option<&str>,
+        until_id: Option<&str>,
+    ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
+        let mut params = json!({
+            "limit": limit,
+        });
+        if let Some(id) = since_id {
+            params["sinceId"] = json!(id);
+        }
+        if let Some(id) = until_id {
+            params["untilId"] = json!(id);
+        }
+        let data = self.request(host, token, "i/favorites", params).await?;
+        // i/favorites returns [{ id, note: {...}, ... }]
+        let items: Vec<Value> = serde_json::from_value(data)?;
+        let mut notes = Vec::with_capacity(items.len());
+        for item in items {
+            if let Some(note_val) = item.get("note") {
+                let raw: RawNote = serde_json::from_value(note_val.clone())?;
+                notes.push(raw.normalize(account_id, host));
+            }
+        }
+        Ok(notes)
+    }
+
+    pub async fn get_clips(
+        &self,
+        host: &str,
+        token: &str,
+    ) -> Result<Vec<Clip>, NoteDeckError> {
+        let data = self.request(host, token, "clips/list", json!({})).await?;
+        let clips: Vec<Clip> = serde_json::from_value(data)?;
+        Ok(clips)
+    }
+
+    pub async fn get_clip_notes(
+        &self,
+        host: &str,
+        token: &str,
+        account_id: &str,
+        clip_id: &str,
+        limit: i64,
+        since_id: Option<&str>,
+        until_id: Option<&str>,
+    ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
+        let mut params = json!({
+            "clipId": clip_id,
+            "limit": limit,
+        });
+        if let Some(id) = since_id {
+            params["sinceId"] = json!(id);
+        }
+        if let Some(id) = until_id {
+            params["untilId"] = json!(id);
+        }
+        let data = self.request(host, token, "clips/notes", params).await?;
         let raw: Vec<RawNote> = serde_json::from_value(data)?;
         Ok(raw
             .into_iter()

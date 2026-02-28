@@ -18,6 +18,8 @@ import {
 } from '@/utils/desktopNotification'
 import { AppError } from '@/utils/errors'
 import DeckAntennaColumn from './DeckAntennaColumn.vue'
+import DeckClipColumn from './DeckClipColumn.vue'
+import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
@@ -70,9 +72,9 @@ function closeCompose() {
   showCompose.value = false
 }
 
-const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | null>(null)
+const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | null>(null)
 
-function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna') {
+function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip') {
   addColumnType.value = type
 }
 
@@ -84,6 +86,22 @@ function addColumnForAccount(accountId: string) {
   }
   if (type === 'antenna') {
     fetchAntennas(accountId)
+    return
+  }
+  if (type === 'clip') {
+    fetchClips(accountId)
+    return
+  }
+  if (type === 'favorites') {
+    deckStore.addColumn({
+      type: 'favorites',
+      name: 'Favorites',
+      width: 330,
+      accountId,
+      active: true,
+    })
+    showAddMenu.value = false
+    addColumnType.value = null
     return
   }
   deckStore.addColumn({
@@ -162,6 +180,38 @@ function addAntennaColumn(antennaId: string, antennaName: string) {
   resetAddMenu()
 }
 
+// Clip column creation
+interface ClipItem { id: string; name: string }
+const addClipAccountId = ref<string | null>(null)
+const clips = ref<ClipItem[]>([])
+const loadingClips = ref(false)
+
+async function fetchClips(accountId: string) {
+  addClipAccountId.value = accountId
+  loadingClips.value = true
+  try {
+    clips.value = await invoke<ClipItem[]>('api_get_clips', { accountId })
+  } catch (e) {
+    console.error('[deck] failed to fetch clips:', e)
+    clips.value = []
+  } finally {
+    loadingClips.value = false
+  }
+}
+
+function addClipColumn(clipId: string, clipName: string) {
+  if (!addClipAccountId.value) return
+  deckStore.addColumn({
+    type: 'clip',
+    name: clipName,
+    width: 330,
+    accountId: addClipAccountId.value,
+    clipId,
+    active: true,
+  })
+  resetAddMenu()
+}
+
 function resetAddMenu() {
   showAddMenu.value = false
   addColumnType.value = null
@@ -169,6 +219,8 @@ function resetAddMenu() {
   userLists.value = []
   addAntennaAccountId.value = null
   antennas.value = []
+  addClipAccountId.value = null
+  clips.value = []
 }
 
 function toggleAddMenu() {
@@ -267,6 +319,8 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   search: 'search',
   list: 'list',
   antenna: 'antenna-bars-5',
+  favorites: 'star',
+  clip: 'paperclip',
 }
 
 function columnIcon(colId: string): string {
@@ -535,6 +589,14 @@ onUnmounted(() => {
               v-else-if="col.type === 'search'"
               :column="col"
             />
+            <DeckFavoritesColumn
+              v-else-if="col.type === 'favorites'"
+              :column="col"
+            />
+            <DeckClipColumn
+              v-else-if="col.type === 'clip'"
+              :column="col"
+            />
           </section>
           <div
             class="col-resize-handle"
@@ -588,7 +650,7 @@ onUnmounted(() => {
       <div v-if="showAddMenu" class="add-overlay" @click="resetAddMenu()">
         <div class="add-popup" @click.stop>
           <div class="add-popup-header">
-            <button v-if="addColumnType && !addListAccountId && !addAntennaAccountId" class="_button add-back-btn" @click="addColumnType = null">
+            <button v-if="addColumnType && !addListAccountId && !addAntennaAccountId && !addClipAccountId" class="_button add-back-btn" @click="addColumnType = null">
               <i class="ti ti-chevron-left" />
             </button>
             <button v-else-if="addListAccountId" class="_button add-back-btn" @click="addListAccountId = null; userLists = []">
@@ -597,7 +659,10 @@ onUnmounted(() => {
             <button v-else-if="addAntennaAccountId" class="_button add-back-btn" @click="addAntennaAccountId = null; antennas = []">
               <i class="ti ti-chevron-left" />
             </button>
-            {{ addListAccountId ? 'Select list' : addAntennaAccountId ? 'Select antenna' : addColumnType ? 'Select account' : 'Add column' }}
+            <button v-else-if="addClipAccountId" class="_button add-back-btn" @click="addClipAccountId = null; clips = []">
+              <i class="ti ti-chevron-left" />
+            </button>
+            {{ addListAccountId ? 'Select list' : addAntennaAccountId ? 'Select antenna' : addClipAccountId ? 'Select clip' : addColumnType ? 'Select account' : 'Add column' }}
           </div>
 
           <!-- Step 1: Column type selection -->
@@ -621,6 +686,14 @@ onUnmounted(() => {
             <button class="_button add-type-btn" @click="selectColumnType('search')">
               <i class="ti ti-search" />
               <span>Search</span>
+            </button>
+            <button class="_button add-type-btn" @click="selectColumnType('favorites')">
+              <i class="ti ti-star" />
+              <span>Favorites</span>
+            </button>
+            <button class="_button add-type-btn" @click="selectColumnType('clip')">
+              <i class="ti ti-paperclip" />
+              <span>Clip</span>
             </button>
           </template>
 
@@ -651,6 +724,21 @@ onUnmounted(() => {
             >
               <i class="ti ti-antenna-bars-5" />
               <span>{{ ant.name }}</span>
+            </button>
+          </template>
+
+          <!-- Step 3c: Clip selection (for clip columns) -->
+          <template v-else-if="addClipAccountId">
+            <div v-if="loadingClips" class="add-popup-empty">Loading...</div>
+            <div v-else-if="clips.length === 0" class="add-popup-empty">No clips found.</div>
+            <button
+              v-for="clip in clips"
+              :key="clip.id"
+              class="_button add-type-btn"
+              @click="addClipColumn(clip.id, clip.name)"
+            >
+              <i class="ti ti-paperclip" />
+              <span>{{ clip.name }}</span>
             </button>
           </template>
 

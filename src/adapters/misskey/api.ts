@@ -13,6 +13,7 @@ import type {
   TimelineOptions,
   TimelineType,
   Antenna,
+  Clip,
   UserList,
 } from '../types'
 
@@ -255,6 +256,36 @@ export class MisskeyApi implements ApiAdapter {
     return invoke('api_get_antenna_notes', {
       accountId: this.accountId,
       antennaId,
+      limit: options.limit ?? 20,
+      sinceId: options.sinceId ?? null,
+      untilId: options.untilId ?? null,
+    })
+  }
+
+  async getFavorites(
+    options: PaginationOptions = {},
+  ): Promise<NormalizedNote[]> {
+    return invoke('api_get_favorites', {
+      accountId: this.accountId,
+      limit: options.limit ?? 20,
+      sinceId: options.sinceId ?? null,
+      untilId: options.untilId ?? null,
+    })
+  }
+
+  async getClips(): Promise<Clip[]> {
+    return invoke('api_get_clips', {
+      accountId: this.accountId,
+    })
+  }
+
+  async getClipNotes(
+    clipId: string,
+    options: PaginationOptions = {},
+  ): Promise<NormalizedNote[]> {
+    return invoke('api_get_clip_notes', {
+      accountId: this.accountId,
+      clipId,
       limit: options.limit ?? 20,
       sinceId: options.sinceId ?? null,
       untilId: options.untilId ?? null,

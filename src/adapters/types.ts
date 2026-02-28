@@ -85,6 +85,11 @@ export interface Antenna {
   name: string
 }
 
+export interface Clip {
+  id: string
+  name: string
+}
+
 export interface NormalizedNote {
   id: string
   _accountId: string
@@ -273,6 +278,12 @@ export interface ApiAdapter {
   getAntennas(): Promise<Antenna[]>
   getAntennaNotes(
     antennaId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
+  getFavorites(options?: PaginationOptions): Promise<NormalizedNote[]>
+  getClips(): Promise<Clip[]>
+  getClipNotes(
+    clipId: string,
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>
 }
