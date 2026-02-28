@@ -123,7 +123,7 @@ async function run() {
     <AiScriptUiRenderer
       v-if="uiComponents.length"
       :components="uiComponents"
-      :interpreter="interpreter"
+      :interpreter="(interpreter as Interpreter | null)"
       :server-url="serverUrl"
     />
   </div>

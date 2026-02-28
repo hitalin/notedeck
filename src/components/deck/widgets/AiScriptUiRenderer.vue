@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import type { Interpreter } from '@syuilo/aiscript'
-import type {
-  Value,
-  VFn,
-} from '@syuilo/aiscript/built/dts/interpreter/value.js'
+import type { Value, VFn } from '@syuilo/aiscript/interpreter/value.js'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import type { CSSProperties } from 'vue'
 import type { UiComponent } from '@/aiscript/ui-types'
 import MkMfm from '@/components/common/MkMfm.vue'
 
@@ -137,12 +135,12 @@ async function handlePostFormButton(comp: UiComponent) {
       <div
         v-else-if="comp.type === 'container'"
         class="ais-container"
-        :style="{
+        :style="({
           textAlign: (comp.props.align as string) ?? undefined,
           backgroundColor: (comp.props.bgColor as string) ?? undefined,
           color: (comp.props.fgColor as string) ?? undefined,
           padding: (comp.props.padding as string) ? `${comp.props.padding}px` : undefined,
-        }"
+        } as CSSProperties)"
       >
         <AiScriptUiRenderer
           v-if="comp.children?.length"

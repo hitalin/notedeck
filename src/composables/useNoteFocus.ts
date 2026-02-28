@@ -23,6 +23,14 @@ export interface NoteActionHandlers {
   bookmark: (note: NormalizedNote) => void
 }
 
+function scrollTo(
+  scroller: ShallowRef<InstanceType<typeof DynamicScroller> | null>,
+  index: number,
+) {
+  const s = scroller.value as { scrollToItem?: (i: number) => void } | null
+  s?.scrollToItem?.(index)
+}
+
 export function useNoteFocus(
   columnId: string,
   notes: ShallowRef<NormalizedNote[]>,
@@ -51,18 +59,18 @@ export function useNoteFocus(
     if (notes.value.length === 0) return
     const next = Math.min(focusedIndex.value + 1, notes.value.length - 1)
     focusedIndex.value = next
-    scroller.value?.scrollToItem(next)
+    scrollTo(scroller, next)
   }
 
   function focusPrev() {
     if (notes.value.length === 0) return
     if (focusedIndex.value <= 0) {
       focusedIndex.value = -1
-      scroller.value?.scrollToItem(0)
+      scrollTo(scroller, 0)
       return
     }
     focusedIndex.value -= 1
-    scroller.value?.scrollToItem(focusedIndex.value)
+    scrollTo(scroller, focusedIndex.value)
   }
 
   function clearFocus() {

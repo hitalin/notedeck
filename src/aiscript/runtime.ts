@@ -97,6 +97,7 @@ export function createInterpreter(options: AiScriptOptions): Interpreter {
       const title = titleVal?.type === 'str' ? titleVal.value : ''
       const text = textVal?.type === 'str' ? textVal.value : ''
       window.alert(`${title}\n${text}`)
+      return values.NULL
     },
   )
 
