@@ -4,12 +4,14 @@ import {
   ref,
   shallowRef,
 } from 'vue'
+import { useRouter } from 'vue-router'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote, NoteUpdateEvent } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import { useNoteFocus } from '@/composables/useNoteFocus'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
@@ -32,7 +34,15 @@ const {
   onScroll,
 } = useColumnSetup(() => props.column)
 
+const router = useRouter()
 const notes = shallowRef<NormalizedNote[]>([])
+const { focusedNoteId } = useNoteFocus(
+  props.column.id,
+  notes,
+  scroller,
+  handlers,
+  (note) => router.push(`/note/${note._accountId}/${note.id}`),
+)
 const noteIds = new Set<string>()
 
 function setNotes(newNotes: NormalizedNote[]) {
@@ -271,6 +281,7 @@ onMounted(() => {
             >
               <MkNote
                 :note="item"
+                :focused="item.id === focusedNoteId"
                 @react="handlers.reaction"
                 @reply="handlers.reply"
                 @renote="handlers.renote"

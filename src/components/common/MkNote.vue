@@ -26,6 +26,7 @@ const MkReactionUsersPopup = defineAsyncComponent(
 const props = defineProps<{
   note: NormalizedNote
   detailed?: boolean
+  focused?: boolean
 }>()
 
 /** Pure renote → show inner note, otherwise show note itself */
@@ -300,7 +301,7 @@ async function handleMentionClick(username: string, host: string | null) {
 </script>
 
 <template>
-  <div class="note-root" :class="{ detailed }" tabindex="0">
+  <div class="note-root" :class="{ detailed, focused }" tabindex="0">
     <!-- Renote info bar -->
     <div v-if="isPureRenote" class="renote-info">
       <i class="ti ti-repeat renote-icon" />
@@ -629,6 +630,14 @@ async function handleMentionClick(username: string, host: string | null) {
 }
 
 .note-root:not(.detailed):hover > .article {
+  background: var(--nd-panelHighlight);
+}
+
+.note-root.focused {
+  box-shadow: inset 3px 0 0 var(--nd-accent);
+}
+
+.note-root.focused > .article {
   background: var(--nd-panelHighlight);
 }
 

@@ -9,6 +9,7 @@ import {
   shallowRef,
   watch,
 } from 'vue'
+import { useRouter } from 'vue-router'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type {
   NormalizedNote,
@@ -20,6 +21,7 @@ import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -57,10 +59,20 @@ const {
   onScroll,
 } = useColumnSetup(() => props.column)
 
+const router = useRouter()
+
 const MAX_NOTES = 500
 const notes = shallowRef<NormalizedNote[]>([])
 const pendingNotes = shallowRef<NormalizedNote[]>([])
 const isAtTop = ref(true)
+
+const { focusedNoteId } = useNoteFocus(
+  props.column.id,
+  notes,
+  scroller,
+  handlers,
+  (note) => router.push(`/note/${note._accountId}/${note.id}`),
+)
 
 // rAF batching for streaming notes
 let rafBuffer: NormalizedNote[] = []
@@ -677,6 +689,7 @@ onUnmounted(() => {
           >
             <MkNote
               :note="item"
+              :focused="item.id === focusedNoteId"
               @react="handlers.reaction"
               @reply="handlers.reply"
               @renote="handlers.renote"

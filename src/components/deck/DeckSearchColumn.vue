@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import { useNoteFocus } from '@/composables/useNoteFocus'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
@@ -31,7 +33,15 @@ const {
   onScroll,
 } = useColumnSetup(() => props.column)
 
+const router = useRouter()
 const notes = shallowRef<NormalizedNote[]>([])
+const { focusedNoteId } = useNoteFocus(
+  props.column.id,
+  notes,
+  scroller,
+  handlers,
+  (note) => router.push(`/note/${note._accountId}/${note.id}`),
+)
 const searchQuery = ref(props.column.query ?? '')
 const searchInput = ref<HTMLInputElement | null>(null)
 const hasLocalResults = ref(false)
@@ -282,6 +292,7 @@ onUnmounted(() => {
           >
             <MkNote
               :note="item"
+              :focused="item.id === focusedNoteId"
               @react="handlers.reaction"
               @reply="handlers.reply"
               @renote="handlers.renote"
