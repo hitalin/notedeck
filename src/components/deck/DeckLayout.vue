@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MkPostForm from '@/components/common/MkPostForm.vue'
@@ -382,6 +383,10 @@ onUnmounted(() => {
                 </template>
                 <div v-if="modeError" class="nav-account-menu-error">{{ modeError }}</div>
                 <div class="nav-account-menu-divider" />
+                <button class="_button nav-account-menu-item" @click="openUrl(`https://${acc.host}/settings`)">
+                  <span>Settings</span>
+                  <i class="ti ti-external-link" />
+                </button>
                 <button class="_button nav-account-menu-item nav-account-logout" @click="logout(acc.id)">
                   <span>Logout</span>
                   <i class="ti ti-logout" />
