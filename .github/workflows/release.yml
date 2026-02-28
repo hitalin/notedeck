@@ -82,6 +82,96 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+      - name: Patch AppImage - bundle mesa for portable EGL
+        if: matrix.platform == 'ubuntu-24.04'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          BUNDLE_DIR="${GITHUB_WORKSPACE}/src-tauri/target/release/bundle/appimage"
+          APPIMAGE=$(find "$BUNDLE_DIR" -maxdepth 1 -name "*.AppImage" | head -1)
+          APPIMAGE_NAME=$(basename "$APPIMAGE")
+
+          if [ -z "$APPIMAGE" ]; then
+            echo "ERROR: AppImage not found in $BUNDLE_DIR"
+            exit 1
+          fi
+
+          echo "::group::Extract AppImage"
+          WORK_DIR=$(mktemp -d)
+          cd "$WORK_DIR"
+          chmod +x "$APPIMAGE"
+          "$APPIMAGE" --appimage-extract
+          echo "::endgroup::"
+
+          # linuxdeploy excludes mesa/EGL libs by default (they should come from host).
+          # But the bundled WebKitGTK was built against THIS mesa version, so loading
+          # the host's newer mesa causes an EGL ABI mismatch crash.
+          # Fix: bundle mesa libs from the build env so WebKitGTK gets a matching EGL.
+          echo "::group::Bundle mesa/EGL libraries"
+          LIB_DIR="squashfs-root/usr/lib"
+          MESA_LIBS=(
+            libEGL.so.1
+            libEGL_mesa.so.0
+            libGLESv2.so.2
+            libgbm.so.1
+            libGL.so.1
+            libGLdispatch.so.0
+            libGLX.so.0
+            libGLX_mesa.so.0
+            libglapi.so.0
+            libdrm.so.2
+          )
+          for lib in "${MESA_LIBS[@]}"; do
+            SRC=$(find /usr/lib/x86_64-linux-gnu -maxdepth 1 \
+              \( -name "$lib" -type f -o -name "$lib" -type l \) 2>/dev/null | head -1)
+            if [ -n "$SRC" ]; then
+              cp -Lv "$SRC" "$LIB_DIR/"
+            else
+              echo "WARN: $lib not found on build system"
+            fi
+          done
+          echo "::endgroup::"
+
+          # Force software rendering (llvmpipe) to avoid loading host DRI drivers
+          # which would also have an ABI mismatch with the bundled mesa.
+          echo "::group::Inject LIBGL_ALWAYS_SOFTWARE into AppRun"
+          if head -1 squashfs-root/AppRun | grep -q "^#!"; then
+            sed -i '/^exec /i export LIBGL_ALWAYS_SOFTWARE=1' squashfs-root/AppRun
+          else
+            mv squashfs-root/AppRun squashfs-root/AppRun.bin
+            cat > squashfs-root/AppRun << 'WRAPPER'
+          #!/bin/bash
+          HERE="$(dirname "$(readlink -f "${0}")")"
+          export LIBGL_ALWAYS_SOFTWARE=1
+          exec "${HERE}/AppRun.bin" "$@"
+          WRAPPER
+            chmod +x squashfs-root/AppRun
+          fi
+          cat squashfs-root/AppRun
+          echo "::endgroup::"
+
+          echo "::group::Repackage AppImage"
+          wget -q "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool-x86_64.AppImage
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage --appimage-extract-and-run \
+            squashfs-root "$APPIMAGE"
+          echo "::endgroup::"
+
+          echo "::group::Regenerate updater artifacts"
+          cd "$BUNDLE_DIR"
+          rm -f "${APPIMAGE_NAME}.tar.gz" "${APPIMAGE_NAME}.tar.gz.sig"
+          tar czf "${APPIMAGE_NAME}.tar.gz" "$APPIMAGE_NAME"
+          cd "${GITHUB_WORKSPACE}"
+          pnpm tauri signer sign "${BUNDLE_DIR}/${APPIMAGE_NAME}.tar.gz"
+          echo "::endgroup::"
+
+          rm -rf "$WORK_DIR"
+          echo "=== Patched AppImage bundle ==="
+          ls -lh "$BUNDLE_DIR/"
+
       - name: Get version
         id: version
         shell: bash
