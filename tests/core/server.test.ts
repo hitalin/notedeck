@@ -20,6 +20,8 @@ describe('server detection', () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
       if (url.includes('.well-known/nodeinfo')) {
+        // Extract host from the request URL so the nodeinfo href matches (SSRF validation)
+        const host = new URL(url).hostname
         return Promise.resolve({
           ok: true,
           json: () =>
@@ -27,7 +29,7 @@ describe('server detection', () => {
               links: [
                 {
                   rel: 'http://nodeinfo.diaspora.software/ns/schema/2.0',
-                  href: 'https://example.com/nodeinfo/2.0',
+                  href: `https://${host}/nodeinfo/2.0`,
                 },
               ],
             }),

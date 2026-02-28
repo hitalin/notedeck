@@ -242,9 +242,15 @@ function parseTokens(text: string): MfmToken[] {
 
 const parseCache = new Map<string, MfmToken[]>()
 const CACHE_MAX = 2048
+const MAX_MFM_LENGTH = 10000
 
 export function parseMfm(text: string): MfmToken[] {
   if (!text) return []
+
+  // Prevent excessive CPU/memory from extremely long MFM input
+  if (text.length > MAX_MFM_LENGTH) {
+    return [{ type: 'text', value: text }]
+  }
 
   const cached = parseCache.get(text)
   if (cached) {

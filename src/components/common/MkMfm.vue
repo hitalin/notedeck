@@ -170,8 +170,8 @@ function fnStyle(
 
 <template>
   <span class="mfm"><template v-for="(token, i) in resolvedTokens" :key="i"><!--
-    --><!-- URL --><a v-if="token.type === 'url'" :href="token.value" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><!--
-    --><!-- Link --><a v-else-if="token.type === 'link'" :href="token.url" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.url)">{{ token.label }}</a><!--
+    --><!-- URL --><a v-if="token.type === 'url'" :href="isSafeUrl(token.value) ? token.value : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><!--
+    --><!-- Link --><a v-else-if="token.type === 'link'" :href="isSafeUrl(token.url) ? token.url : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.url)">{{ token.label }}</a><!--
     --><!-- Mention --><span v-else-if="token.type === 'mention'" class="mfm-mention" @click.stop="emit('mentionClick', token.username, token.host)">{{ token.acct }}</span><!--
     --><!-- Hashtag --><span v-else-if="token.type === 'hashtag'" class="mfm-hashtag" @click.stop>#{{ token.value }}</span><!--
     --><!-- Bold --><b v-else-if="token.type === 'bold'">{{ token.value }}</b><!--

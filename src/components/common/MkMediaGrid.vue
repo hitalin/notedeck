@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
+import { isSafeUrl } from '@/utils/url'
+
+function safeMediaSrc(url: string | null | undefined): string | undefined {
+  if (!url) return undefined
+  return isSafeUrl(url) ? url : undefined
+}
 
 defineProps<{
   files: NormalizedDriveFile[]
@@ -54,7 +60,7 @@ function isAudio(file: NormalizedDriveFile): boolean {
     >
       <template v-if="isImage(file)">
         <img
-          :src="file.thumbnailUrl || file.url"
+          :src="safeMediaSrc(file.thumbnailUrl) || safeMediaSrc(file.url)"
           :alt="file.name"
           class="media-image"
           loading="lazy"
@@ -63,7 +69,7 @@ function isAudio(file: NormalizedDriveFile): boolean {
       </template>
       <template v-else-if="isVideo(file)">
         <video
-          :src="file.url"
+          :src="safeMediaSrc(file.url)"
           class="media-video"
           preload="metadata"
           @click.stop
@@ -133,14 +139,14 @@ function isAudio(file: NormalizedDriveFile): boolean {
       </button>
       <img
         v-if="isImage(lightboxFile)"
-        :src="lightboxFile.url"
+        :src="safeMediaSrc(lightboxFile.url)"
         :alt="lightboxFile.name"
         class="lightbox-image"
         @click.stop
       />
       <video
         v-else-if="isVideo(lightboxFile)"
-        :src="lightboxFile.url"
+        :src="safeMediaSrc(lightboxFile.url)"
         class="lightbox-video"
         controls
         autoplay

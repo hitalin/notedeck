@@ -1,8 +1,11 @@
 import type { CompiledProps } from './types'
 
+const UNSAFE_CSS_RE = /[;{}]|url\s*\(/i
+
 export function applyTheme(compiled: CompiledProps): void {
   const root = document.documentElement
   for (const [key, value] of Object.entries(compiled)) {
+    if (UNSAFE_CSS_RE.test(value)) continue
     root.style.setProperty(`--nd-${key}`, value)
   }
 

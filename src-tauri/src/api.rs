@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use futures_util::StreamExt;
 use reqwest::multipart::{Form, Part};
 use reqwest::Client;
 use serde_json::{json, Value};
@@ -33,7 +34,8 @@ impl MisskeyClient {
         })
     }
 
-    /// Read the response body with a size limit to prevent DoS.
+    /// Read the response body with a streaming size limit to prevent DoS.
+    /// Enforces the limit incrementally so chunked responses cannot bypass it.
     async fn read_body_limited(
         res: reqwest::Response,
         endpoint: &str,
@@ -47,18 +49,20 @@ impl MisskeyClient {
                 });
             }
         }
-        let bytes = res
-            .bytes()
-            .await
-            .map_err(NoteDeckError::from)?;
-        if bytes.len() > MAX_RESPONSE_BYTES {
-            return Err(NoteDeckError::Api {
-                endpoint: endpoint.to_string(),
-                status: 0,
-                message: "Response too large".to_string(),
-            });
+        let mut buf = Vec::new();
+        let mut stream = res.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(NoteDeckError::from)?;
+            buf.extend_from_slice(&chunk);
+            if buf.len() > MAX_RESPONSE_BYTES {
+                return Err(NoteDeckError::Api {
+                    endpoint: endpoint.to_string(),
+                    status: 0,
+                    message: "Response too large".to_string(),
+                });
+            }
         }
-        String::from_utf8(bytes.to_vec()).map_err(|_| NoteDeckError::Api {
+        String::from_utf8(buf).map_err(|_| NoteDeckError::Api {
             endpoint: endpoint.to_string(),
             status: 0,
             message: "Invalid UTF-8 in response".to_string(),

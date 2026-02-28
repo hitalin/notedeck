@@ -15,6 +15,7 @@ import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
 import { toggleFollow } from '@/utils/toggleFollow'
 import { toggleReaction } from '@/utils/toggleReaction'
+import { safeCssUrl } from '@/utils/url'
 
 const props = defineProps<{
   accountId: string
@@ -231,7 +232,7 @@ async function handlePosted(editedNoteId?: string) {
           <div
             v-if="user.bannerUrl"
             class="banner"
-            :style="{ backgroundImage: `url(${user.bannerUrl})` }"
+            :style="{ backgroundImage: safeCssUrl(user.bannerUrl) }"
           />
           <div v-else class="banner banner-empty" />
 

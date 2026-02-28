@@ -135,6 +135,7 @@ pub async fn api_get_endpoints(
     client: State<'_, MisskeyClient>,
     host: String,
 ) -> Result<Vec<String>> {
+    let host = validate_host(&host)?;
     client.get_endpoints(&host).await
 }
 
@@ -170,6 +171,10 @@ pub async fn api_get_endpoint_params(
     host: String,
     endpoint: String,
 ) -> Result<Vec<String>> {
+    let host = validate_host(&host)?;
+    if endpoint.len() > 100 || !endpoint.chars().all(|c| c.is_alphanumeric() || c == '/' || c == '-') {
+        return Err(NoteDeckError::InvalidInput("Invalid endpoint name".to_string()));
+    }
     client.get_endpoint_params(&host, &endpoint).await
 }
 
@@ -275,6 +280,8 @@ pub async fn api_update_note(
         .await
 }
 
+const MAX_UPLOAD_BYTES: usize = 50 * 1024 * 1024; // 50 MB
+
 #[tauri::command]
 pub async fn api_upload_file(
     db: State<'_, Database>,
@@ -285,6 +292,9 @@ pub async fn api_upload_file(
     content_type: String,
     is_sensitive: bool,
 ) -> Result<NormalizedDriveFile> {
+    if file_data.len() > MAX_UPLOAD_BYTES {
+        return Err(NoteDeckError::InvalidInput("File too large".to_string()));
+    }
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .upload_file(&host, &token, &file_name, file_data, &content_type, is_sensitive)
@@ -630,6 +640,11 @@ pub async fn auth_start(
         .map(String::from)
         .collect()
     });
+    for perm in &perms {
+        if !perm.chars().all(|c| c.is_alphanumeric() || c == ':' || c == '-') || perm.len() > 50 {
+            return Err(NoteDeckError::InvalidInput(format!("Invalid permission: {perm}")));
+        }
+    }
     let permission_str = perms.join(",");
     let url = format!(
         "https://{host}/miauth/{session_id}?name=notedeck&permission={permission_str}"

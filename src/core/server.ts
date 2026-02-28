@@ -48,6 +48,19 @@ async function fetchNodeInfo(host: string): Promise<NodeInfo> {
     throw new Error(`No nodeinfo URL found for ${host}`)
   }
 
+  // Validate the URL to prevent SSRF via malicious .well-known response
+  try {
+    const u = new URL(nodeinfoUrl)
+    if (u.protocol !== 'https:') {
+      throw new Error(`Unsafe nodeinfo protocol: ${u.protocol}`)
+    }
+    if (u.hostname !== host) {
+      throw new Error(`Nodeinfo URL host mismatch: ${u.hostname} !== ${host}`)
+    }
+  } catch (e) {
+    throw new Error(`Invalid nodeinfo URL for ${host}: ${e}`)
+  }
+
   const res = await fetch(nodeinfoUrl)
   return res.json()
 }
