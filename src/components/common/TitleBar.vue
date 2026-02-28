@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { onMounted, onUnmounted, ref } from 'vue'
+import { useCommandStore } from '@/commands/registry'
 
 const appWindow = getCurrentWindow()
+const commandStore = useCommandStore()
 const isMaximized = ref(false)
 
 async function syncMaximized() {
@@ -35,7 +37,12 @@ async function close() {
 
 <template>
   <div class="titlebar" data-tauri-drag-region>
-    <img src="/favicon.svg" alt="" class="titlebar-icon" draggable="false" />
+    <div class="titlebar-left">
+      <img src="/favicon.svg" alt="" class="titlebar-icon" draggable="false" />
+      <button class="titlebar-search" title="Command Palette (Ctrl+K)" @click="commandStore.toggle()">
+        <i class="ti ti-search" />
+      </button>
+    </div>
     <div class="titlebar-controls">
       <button class="titlebar-btn" title="Minimize" @click="minimize">
         <svg width="10" height="10" viewBox="0 0 10 10">
@@ -71,11 +78,36 @@ async function close() {
   flex-shrink: 0;
 }
 
+.titlebar-left {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
 .titlebar-icon {
   width: 18px;
   height: 18px;
   margin-left: 10px;
   border-radius: 4px;
+}
+
+.titlebar-search {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--nd-fg);
+  opacity: 0.35;
+  cursor: pointer;
+  font-size: 13px;
+  transition: opacity 0.15s;
+}
+
+.titlebar-search:hover {
+  opacity: 0.8;
 }
 
 .titlebar-controls {

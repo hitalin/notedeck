@@ -4,7 +4,10 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MkPostForm from '@/components/common/MkPostForm.vue'
-import { useGlobalShortcuts } from '@/composables/useGlobalShortcuts'
+import {
+  registerDefaultCommands,
+  unregisterDefaultCommands,
+} from '@/commands/definitions'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -445,9 +448,10 @@ function onColumnsWheel(e: WheelEvent) {
   columnsRef.value.scrollLeft += e.deltaY
 }
 
-const { init: initShortcuts } = useGlobalShortcuts({
-  onCompose: () => openCompose(),
-})
+function toggleFirstAccountMenu() {
+  const first = accountsStore.accounts[0]
+  if (first) toggleAccountMenu(first.id)
+}
 
 function handleResize() {
   if (window.innerWidth <= 1279) {
@@ -532,11 +536,17 @@ onMounted(() => {
       router.push(`/user/${ctx.accountId}/${ctx.userId}`)
     }
   })
-  initShortcuts()
+  registerDefaultCommands({
+    openCompose,
+    toggleAddMenu,
+    toggleNav,
+    toggleAccountMenu: toggleFirstAccountMenu,
+  })
   window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
+  unregisterDefaultCommands()
   window.removeEventListener('resize', handleResize)
 })
 </script>

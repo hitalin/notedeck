@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
+import { useCommandStore } from '@/commands/registry'
+import { useKeyboard } from '@/composables/useKeyboard'
 import { useTheme } from '@/composables/useTheme'
 
 const isTauri = '__TAURI_INTERNALS__' in window
@@ -14,7 +16,15 @@ const UpdateBanner = isDesktop
   ? defineAsyncComponent(() => import('@/components/common/UpdateBanner.vue'))
   : null
 
+const CommandPalette = defineAsyncComponent(
+  () => import('@/components/common/CommandPalette.vue'),
+)
+
+const commandStore = useCommandStore()
+
 useTheme()
+const { init: initKeyboard } = useKeyboard()
+initKeyboard()
 </script>
 
 <template>
@@ -30,6 +40,10 @@ useTheme()
       <p>NoteDeck requires the Tauri runtime.</p>
       <p>Run <code>pnpm tauri:dev</code> instead of <code>pnpm dev</code>.</p>
     </div>
+
+    <Teleport to="body">
+      <CommandPalette v-if="commandStore.isOpen" />
+    </Teleport>
   </div>
 </template>
 
