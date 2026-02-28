@@ -97,10 +97,12 @@ VSCode の Extension API + Language Server に相当。
 Claude Code や AI エージェントが NoteDeck を操作できる外部 API。
 
 - [x] HTTP サーバー基盤（localhost で起動）
-- [ ] **コマンド実行 API** — 登録済みコマンドを HTTP 経由で実行。
+- [x] **Bearer トークン認証** — 起動時にランダムトークンを生成しファイルに書き出し。
+  Jupyter Notebook 方式で同一マシンの認可済みプロセスのみアクセス可能
+- [x] **コマンド実行 API** — 登録済みコマンドを HTTP 経由で実行。
   コマンドパレットで人間ができることは全て API からもできる
-- [ ] **状態取得 API** — カラム一覧、アクティブカラム、ノート取得等の読み取り操作
-- [ ] **イベントストリーム** — SSE / WebSocket で状態変化を購読。
+- [x] **状態取得 API** — カラム一覧、アクティブカラム、ノート取得等の読み取り操作
+- [x] **イベントストリーム** — SSE で状態変化を購読。
   AI が「新着通知があったら要約して」等のリアクティブ処理を実現
 
 ### 柱 3: AiScript プラグイン（Misskey ネイティブの拡張言語）
@@ -124,6 +126,41 @@ Misskey ユーザーが既に馴染んでいるサンドボックス言語で、
 - **既存文化** — Misskey ユーザーは Plugin / Play で AiScript に馴染んでいる
 - **互換性** — Misskey 本家のプラグインを（API 互換の範囲で）そのまま動かせる可能性
 - **配布が容易** — テキストベースでコピペ共有可能。Misskey 本家と同じインストール体験
+
+---
+
+## Phase 4: notecli — ヘッドレス Misskey クライアントの分離
+
+NoteDeck の Rust バックエンドから Tauri 非依存のコードを **notecli** として別プロジェクトに切り出す。
+CLI / デーモンモードで動作し、GUI 環境なしで AI エージェント（Claude Code, OpenClaw 等）から
+Misskey を操作できるようにする。
+
+**notecli は NoteDeck 固有ではなく、汎用 Misskey CLI ツール。**
+NoteDeck は notecli をライブラリとして利用する形になる。
+
+### 抽出対象（Tauri 非依存・そのまま移動）
+
+| ファイル | 役割 |
+|---------|------|
+| api.rs | Misskey HTTP クライアント |
+| db.rs | SQLite データ保存 |
+| models.rs | Misskey データモデル |
+| error.rs | エラー型 |
+| keychain.rs | OS 資格情報ストレージ |
+| event_bus.rs | イベントバス（tokio broadcast） |
+
+### リファクタリング必要（Tauri 依存の抽象化）
+
+| ファイル | 現状の Tauri 依存 | 対応方針 |
+|---------|------------------|---------|
+| streaming.rs | `AppHandle.emit()` でフロントエンドにイベント発火 | trait ベースのイベントエミッター |
+| http_server.rs | `AppHandle.state::<T>()` で状態取得 | `Arc<T>` を直接保持 |
+
+### NoteDeck に残るもの（Tauri 固有）
+
+- `lib.rs` — Tauri 初期化・プラグイン・システムトレイ
+- `commands.rs` — `#[tauri::command]` IPC ハンドラ
+- `query_bridge.rs` — Tauri イベントブリッジ
 
 ---
 
