@@ -25,63 +25,63 @@ export type MfmToken =
 const emojiRegex =
   /(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F)(?:\u200D(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F))*/gu
 
-/** Regex match with guaranteed capture group access (groups are always present after exec) */
-type Match = string[] & { index: number; input: string }
-
 interface PatternDef {
   regex: RegExp
-  parse: (m: Match) => MfmToken
+  parse: (m: RegExpExecArray) => MfmToken
 }
+
+/* Helper to safely extract capture group (guaranteed present after regex.exec match) */
+const g = (m: RegExpExecArray, i: number): string => m[i] as string
 
 const inlinePatterns: PatternDef[] = [
   {
     regex: /`([^`\n]+)`/g,
-    parse: (m) => ({ type: 'inlineCode', value: m[1] }),
+    parse: (m) => ({ type: 'inlineCode', value: g(m, 1) }),
   },
   {
     regex: /\??\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-    parse: (m) => ({ type: 'link', label: m[1], url: m[2] }),
+    parse: (m) => ({ type: 'link', label: g(m, 1), url: g(m, 2) }),
   },
   {
     regex: /https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+/g,
-    parse: (m) => ({ type: 'url', value: m[0] }),
+    parse: (m) => ({ type: 'url', value: g(m, 0) }),
   },
   {
     regex: /:([a-zA-Z0-9_]+(?:@[\w.-]+)?):/g,
-    parse: (m) => ({ type: 'customEmoji', shortcode: m[1] }),
+    parse: (m) => ({ type: 'customEmoji', shortcode: g(m, 1) }),
   },
   {
     regex: /\*\*(.+?)\*\*/g,
-    parse: (m) => ({ type: 'bold', value: m[1] }),
+    parse: (m) => ({ type: 'bold', value: g(m, 1) }),
   },
   {
     regex: /(?<!\*)\*([^*\n]+?)\*(?!\*)/g,
-    parse: (m) => ({ type: 'italic', value: m[1] }),
+    parse: (m) => ({ type: 'italic', value: g(m, 1) }),
   },
   {
     regex: /~~(.+?)~~/g,
-    parse: (m) => ({ type: 'strike', value: m[1] }),
+    parse: (m) => ({ type: 'strike', value: g(m, 1) }),
   },
   {
     regex: /(?<=^|[\s(])@(\w+)(?:@([\w.-]+))?/g,
     parse: (m) => ({
       type: 'mention',
-      username: m[1],
+      username: g(m, 1),
       host: m[2] ?? null,
-      acct: m[0].trimStart(),
+      acct: g(m, 0).trimStart(),
     }),
   },
   {
     regex:
       /(?<=^|[\s(])#([\w\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uffef\u4e00-\u9faf]+)/g,
-    parse: (m) => ({ type: 'hashtag', value: m[1] }),
+    parse: (m) => ({ type: 'hashtag', value: g(m, 1) }),
   },
   {
     regex: emojiRegex,
     parse: (m) => ({
       type: 'unicodeEmoji',
-      value: m[0],
-      url: char2twemojiUrl(m[0]),
+      value: g(m, 0),
+      url: char2twemojiUrl(g(m, 0)),
     }),
   },
 ]
@@ -218,8 +218,8 @@ function parseTokens(text: string): MfmToken[] {
       if (m && (!earliest || m.index < earliest.index)) {
         earliest = {
           index: m.index,
-          consumeLength: m[0].length,
-          token: pattern.parse(m as Match),
+          consumeLength: g(m, 0).length,
+          token: pattern.parse(m),
         }
       }
     }
