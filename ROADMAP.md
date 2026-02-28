@@ -72,52 +72,58 @@ SQLite に蓄積される基盤が完成。横断検索の対象データが十�
 
 ---
 
-## Phase 3: Hackable — 「知っている人だけが使える」拡張性
+## Phase 3: Hackable — VSCode の世界観を Misskey に
 
-mikutter が Ruby プラグインで熱狂的コミュニティを形成したように、
-NoteDeck をヘビーユーザーが「自分の道具」として育てられるアプリにする。
+NoteDeck を拡張可能にする 3 本柱。VSCode がエディタの世界で実現したモデルを、
+Misskey エコシステムの言語（AiScript）とプロトコルで再構築する。
 
-**設計方針**: Apple 式の直感 UI と矛盾しないよう、拡張機能は通常の UI に露出させない。
-設定の奥、またはファイル配置でのみ有効化される。**知っている人だけが使える。**
+**3 つの柱が同じコマンドシステムに収斂する:**
+- **人間** → コマンドパレットから実行
+- **AI** → HTTP API から実行
+- **AiScript プラグイン** → コマンドを登録・実行
 
-### 3a. 見た目のカスタマイズ（低コスト・即効性）
+### 柱 1: コマンドパレット（人間のインターフェース）
 
-- [ ] **カスタム CSS 注入** — 設定画面から自由な CSS を入力し、アプリ全体に適用。
-  Misskey 本家の「カスタム CSS」と同じ体験。既存の Misskey カスタム CSS をそのまま流用可能にする
-- [ ] **テーマシステム** — Misskey のテーマ JSON 形式と互換のあるテーマ切替。
-  CSS カスタムプロパティベースで、インポート / エクスポートに対応
-- [ ] **カラム個別スタイル** — カラムごとに背景色やフォントサイズを変更可能。
-  多カラム運用時の視覚的な区別に有効
+VSCode の Ctrl+Shift+P に相当。全操作がコマンドとして登録され、検索・実行できる。
 
-### 3b. 操作のカスタマイズ（中コスト・高い訴求力）
+- [x] コマンドパレット基盤（Ctrl+K で起動、fuzzy 検索）
+- [x] ショートカットキー連携（コマンドにキーバインドを紐づけ）
+- [ ] **キーバインドカスタマイズ** — 設定ファイルでショートカットの自由なリマップ。
+  VSCode の `keybindings.json` と同じ思想
 
-- [ ] **キーバインドカスタマイズ** — ショートカットキーの自由なリマップ。
-  設定ファイル (`keybindings.json`) で定義し、Vim 風バインドも自作可能
-- [ ] **ユーザースクリプト** — `~/.config/notedeck/scripts/` に JS ファイルを配置するだけでロード。
-  mikutter の「`.rb` を置くだけ」と同じ思想。`window.notedeck` 名前空間に API を公開
-- [ ] **ノートアクション拡張** — ノートメニューにカスタムアクションを追加するフック。
-  Misskey の `Plugin:register_note_action` 相当。「外部サービスに送る」「翻訳する」等
-- [ ] **投稿フォーム拡張** — 投稿前にテキストを変換するフック。
-  Misskey の `Plugin:register_note_post_interruptor` 相当。定型文挿入・自動ハッシュタグ等
-- [ ] **外部コマンド連携** — ノート内容を外部コマンドにパイプし結果を受け取る Unix 哲学的な連携。
-  Tauri の Rust バックエンドを活かし、OS のコマンドラインツール全てを利用可能
+### 柱 2: HTTP API（AI・外部ツールのインターフェース）
 
-### 3c. プラグインエコシステム（高コスト・長期ビジョン）
+VSCode の Extension API + Language Server に相当。
+Claude Code や AI エージェントが NoteDeck を操作できる外部 API。
 
-- [ ] **プラグイン API + マニフェスト** — `manifest.json` でメタデータ（名前・バージョン・権限）を宣言し、
-  JS + CSS のバンドルとして配布。3a〜3b の拡張ポイントを正式仕様に収斂させる
-- [ ] **AiScript ランタイム統合** — @syuilo/aiscript の JS 実装を WebView 内で実行し、
-  Misskey Plugin API (`Plugin:*`, `Mk:*`) の互換レイヤーを提供。既存プラグインがそのまま動く世界
-- [ ] **カスタムカラムタイプ** — ユーザーがデータソース + 表示テンプレートを定義して独自カラムを作成。
-  デッキクライアントの到達点。mikutter の「なんでもタブ化」に相当
-- [ ] **プラグインリポジトリ** — アプリ内からプラグインを検索・インストールできる UI。
-  mikutter の miqhub に相当。エコシステムの発見可能性が成長の鍵
+- [x] HTTP サーバー基盤（localhost で起動）
+- [ ] **コマンド実行 API** — 登録済みコマンドを HTTP 経由で実行。
+  コマンドパレットで人間ができることは全て API からもできる
+- [ ] **状態取得 API** — カラム一覧、アクティブカラム、ノート取得等の読み取り操作
+- [ ] **イベントストリーム** — SSE / WebSocket で状態変化を購読。
+  AI が「新着通知があったら要約して」等のリアクティブ処理を実現
 
-**先行事例と技術基盤**:
-- mikutter: 全機能がプラグイン。Pluggaloid (Ruby) によるイベント駆動。ファイル配置でロード
-- Misskey 本家: AiScript + Plugin API + カスタム CSS + テーマ JSON。ユーザーは既にこの文化に馴染んでいる
-- Zed エディタ: WASM サンドボックスでプラグインを安全に実行するモデル
-- Tauri v2: `initialization_script` / `webview.eval()` で JS 注入可能。FS プラグインでディレクトリ走査
+### 柱 3: AiScript プラグイン（Misskey ネイティブの拡張言語）
+
+VSCode の TypeScript Extensions に相当するが、言語は **AiScript**。
+Misskey ユーザーが既に馴染んでいるサンドボックス言語で、安全に拡張機能を書ける。
+
+- [ ] **AiScript ランタイム** — @syuilo/aiscript の JS 実装を WebView 内で実行。
+  Misskey Plugin API (`Plugin:*`, `Mk:*`) の互換レイヤーを提供
+- [ ] **NoteDeck 拡張 API** — Misskey 本家にない NoteDeck 固有の拡張ポイント:
+  - `Nd:registerCommand` — コマンドパレットにカスタムコマンドを登録
+  - `Nd:registerNoteAction` — ノートメニューにカスタムアクションを追加
+  - `Nd:registerPostInterruptor` — 投稿前にノート内容を変換
+  - `Nd:registerColumnType` — カスタムカラムタイプの定義
+  - `Nd:columns` — カラムの追加・削除・並べ替え操作
+- [ ] **プラグイン管理 UI** — インストール済みプラグインの有効/無効切替。
+  Misskey 本家と同じくテキストベースでコピペ共有・インストール可能
+
+**なぜ AiScript か:**
+- **安全** — サンドボックス実行。ファイルシステム・ネットワークへの直接アクセスなし
+- **既存文化** — Misskey ユーザーは Plugin / Play で AiScript に馴染んでいる
+- **互換性** — Misskey 本家のプラグインを（API 互換の範囲で）そのまま動かせる可能性
+- **配布が容易** — テキストベースでコピペ共有可能。Misskey 本家と同じインストール体験
 
 ---
 
@@ -127,5 +133,5 @@ NoteDeck をヘビーユーザーが「自分の道具」として育てられ�
 
 | 項目 | メモ |
 |---|---|
-| AiScript エディタ / Play 実行 | @syuilo/aiscript をそのまま利用。webview 内で完結するためRust実装(aiscript-rs)は不要。Monaco/CodeMirror + 本家パーサーで構文チェック・補完・実行プレビューを提供 |
+| AiScript エディタ / Play 実行 | Phase 3 の AiScript ランタイム上に構築。Monaco/CodeMirror + 本家パーサーで構文チェック・補完・実行プレビューを提供 |
 | iOS 対応 | Apple Developer Program ($99/年) + Mac ビルド環境が障壁 |
