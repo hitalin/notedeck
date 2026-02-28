@@ -152,6 +152,7 @@ describe('MisskeyStream', () => {
         expect(invoke).toHaveBeenCalledWith('stream_subscribe_timeline', {
           accountId: 'acc-1',
           timelineType: 'home',
+          listId: null,
         })
       })
 

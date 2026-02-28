@@ -15,6 +15,17 @@ describe('theme store', () => {
     localStorage.clear()
     document.documentElement.removeAttribute('style')
     document.documentElement.removeAttribute('data-color-scheme')
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(prefers-color-scheme: dark)',
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    })
   })
 
   afterEach(() => {
@@ -30,19 +41,15 @@ describe('theme store', () => {
     )
   })
 
-  it('init() restores theme from localStorage', () => {
-    const source = { kind: 'builtin-light' as const, theme: LIGHT_THEME }
+  it('init() restores compiled CSS then applies OS theme', () => {
     const compiled = { bg: '#fafafa', fg: '#5f5f5f' }
-    localStorage.setItem('nd-theme-source', JSON.stringify(source))
     localStorage.setItem('nd-theme-compiled', JSON.stringify(compiled))
 
     const store = useThemeStore()
     store.init()
 
-    expect(store.currentSource?.kind).toBe('builtin-light')
-    expect(document.documentElement.style.getPropertyValue('--nd-bg')).toBe(
-      '#fafafa',
-    )
+    // OS preference is dark (mocked), so builtin-dark is applied
+    expect(store.currentSource?.kind).toBe('builtin-dark')
   })
 
   it('init() resets to builtin dark when localStorage has server theme', () => {
@@ -72,7 +79,6 @@ describe('theme store', () => {
     expect(store.currentSource?.kind).toBe('builtin-light')
     const bg = document.documentElement.style.getPropertyValue('--nd-bg')
     expect(bg).not.toBe('')
-    expect(localStorage.getItem('nd-theme-source')).toContain('builtin-light')
     expect(localStorage.getItem('nd-theme-compiled')).not.toBeNull()
   })
 

@@ -96,7 +96,13 @@ describe('MisskeyApi', () => {
       expect(invoke).toHaveBeenCalledWith('api_get_timeline', {
         accountId: 'acc-1',
         timelineType: 'home',
-        options: { limit: 10, sinceId: null, untilId: null, filters: null },
+        options: {
+          limit: 10,
+          sinceId: null,
+          untilId: null,
+          filters: null,
+          listId: null,
+        },
       })
     })
   })
