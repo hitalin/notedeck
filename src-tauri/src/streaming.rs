@@ -7,6 +7,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{mpsc, Mutex};
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::db::Database;
@@ -23,6 +24,13 @@ macro_rules! emit_or_log {
     };
 }
 
+
+fn ws_config() -> WebSocketConfig {
+    let mut config = WebSocketConfig::default();
+    config.max_message_size = Some(10 * 1024 * 1024); // 10 MB
+    config.max_frame_size = Some(2 * 1024 * 1024); // 2 MB
+    config
+}
 
 // --- Tauri event payloads ---
 
@@ -122,9 +130,10 @@ impl StreamingManager {
         let url = format!("wss://{host}/streaming?i={token}");
 
         // Verify initial connection
-        let (ws_stream, _) = tokio_tungstenite::connect_async(&url)
-            .await
-            .map_err(|e| NoteDeckError::WebSocket(e.to_string()))?;
+        let (ws_stream, _) =
+            tokio_tungstenite::connect_async_with_config(&url, Some(ws_config()), false)
+                .await
+                .map_err(|e| NoteDeckError::WebSocket(e.to_string()))?;
 
         let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
 
@@ -343,7 +352,7 @@ async fn connection_task(
         }
 
         // Attempt reconnection
-        match tokio_tungstenite::connect_async(&url).await {
+        match tokio_tungstenite::connect_async_with_config(&url, Some(ws_config()), false).await {
             Ok((ws_stream, _)) => {
                 backoff_secs = 1; // Reset backoff on success
 

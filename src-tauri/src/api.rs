@@ -14,6 +14,9 @@ use crate::models::{
 };
 
 
+/// Maximum response body size (50 MB) to prevent memory exhaustion from malicious servers.
+const MAX_RESPONSE_BYTES: usize = 50 * 1024 * 1024;
+
 pub struct MisskeyClient {
     client: Client,
 }
@@ -27,6 +30,38 @@ impl MisskeyClient {
                 .connect_timeout(Duration::from_secs(10))
                 .pool_max_idle_per_host(4)
                 .build()?,
+        })
+    }
+
+    /// Read the response body with a size limit to prevent DoS.
+    async fn read_body_limited(
+        res: reqwest::Response,
+        endpoint: &str,
+    ) -> Result<String, NoteDeckError> {
+        if let Some(len) = res.content_length() {
+            if len > MAX_RESPONSE_BYTES as u64 {
+                return Err(NoteDeckError::Api {
+                    endpoint: endpoint.to_string(),
+                    status: 0,
+                    message: "Response too large".to_string(),
+                });
+            }
+        }
+        let bytes = res
+            .bytes()
+            .await
+            .map_err(NoteDeckError::from)?;
+        if bytes.len() > MAX_RESPONSE_BYTES {
+            return Err(NoteDeckError::Api {
+                endpoint: endpoint.to_string(),
+                status: 0,
+                message: "Response too large".to_string(),
+            });
+        }
+        String::from_utf8(bytes.to_vec()).map_err(|_| NoteDeckError::Api {
+            endpoint: endpoint.to_string(),
+            status: 0,
+            message: "Invalid UTF-8 in response".to_string(),
         })
     }
 
@@ -69,7 +104,7 @@ impl MisskeyClient {
             });
         }
 
-        let text = res.text().await?;
+        let text = Self::read_body_limited(res, endpoint).await?;
         if text.is_empty() {
             Ok(Value::Null)
         } else {

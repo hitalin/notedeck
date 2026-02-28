@@ -7,6 +7,7 @@ import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useAccountsStore } from '@/stores/accounts'
 import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
+import { isSafeUrl } from '@/utils/url'
 import MkAvatar from './MkAvatar.vue'
 import MkEmoji from './MkEmoji.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
@@ -247,7 +248,7 @@ const originalUrl = computed(
 
 function openOriginal() {
   const url = originalUrl.value
-  if (url) window.open(url, '_blank')
+  if (url && isSafeUrl(url)) window.open(url, '_blank')
 }
 
 function navigateToDetail() {

@@ -3,6 +3,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed } from 'vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { type MfmToken, parseMfm } from '@/utils/mfm'
+import { isSafeUrl } from '@/utils/url'
 
 const props = defineProps<{
   text?: string
@@ -43,7 +44,7 @@ const emojiUrls = computed(() => {
 
 function handleLinkClick(e: MouseEvent, url: string) {
   e.preventDefault()
-  openUrl(url)
+  if (isSafeUrl(url)) openUrl(url)
 }
 
 const hexColorRe = /^[0-9a-fA-F]{3,8}$/

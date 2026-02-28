@@ -209,7 +209,7 @@ pub async fn api_get_note_reactions(
             &token,
             &note_id,
             reaction_type.as_deref(),
-            limit.unwrap_or(11),
+            limit.unwrap_or(11).clamp(1, 100),
         )
         .await
 }
@@ -360,7 +360,7 @@ pub async fn api_get_note_children(
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
     client
-        .get_note_children(&host, &token, &account_id, &note_id, limit.unwrap_or(30))
+        .get_note_children(&host, &token, &account_id, &note_id, limit.unwrap_or(30).clamp(1, 100))
         .await
 }
 
@@ -374,7 +374,7 @@ pub async fn api_get_note_conversation(
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
     client
-        .get_note_conversation(&host, &token, &account_id, &note_id, limit.unwrap_or(30))
+        .get_note_conversation(&host, &token, &account_id, &note_id, limit.unwrap_or(30).clamp(1, 100))
         .await
 }
 
@@ -420,7 +420,7 @@ pub fn api_get_cached_timeline(
     account_id: String,
     limit: Option<i64>,
 ) -> Result<Vec<NormalizedNote>> {
-    db.get_cached_timeline(&account_id, limit.unwrap_or(40))
+    db.get_cached_timeline(&account_id, limit.unwrap_or(40).clamp(1, 200))
 }
 
 #[tauri::command]
@@ -430,7 +430,7 @@ pub fn api_search_notes_local(
     query: String,
     limit: Option<i64>,
 ) -> Result<Vec<NormalizedNote>> {
-    db.search_cached_notes(&account_id, &query, limit.unwrap_or(30))
+    db.search_cached_notes(&account_id, &query, limit.unwrap_or(30).clamp(1, 200))
 }
 
 // --- Theme ---
@@ -502,6 +502,45 @@ fn validate_host(host: &str) -> Result<String> {
     if normalized.contains(['/', '?', '#', '@', ' ', '\n', '\r']) {
         return Err(NoteDeckError::InvalidInput(format!("Invalid host: {normalized}")));
     }
+
+    // SSRF prevention: block loopback, private, and link-local addresses
+    let ssrf_blocked = [
+        "localhost",
+        "127.",
+        "0.0.0.0",
+        "[::1]",
+        "::1",
+        "10.",
+        "192.168.",
+        "169.254.",
+    ];
+    if ssrf_blocked.iter().any(|p| normalized.starts_with(p)) {
+        return Err(NoteDeckError::InvalidInput(
+            "Loopback and private addresses are not allowed".to_string(),
+        ));
+    }
+    // 172.16.0.0/12
+    if normalized.starts_with("172.") {
+        if let Some(second) = normalized.strip_prefix("172.").and_then(|s| s.split('.').next()) {
+            if let Ok(n) = second.parse::<u8>() {
+                if (16..=31).contains(&n) {
+                    return Err(NoteDeckError::InvalidInput(
+                        "Loopback and private addresses are not allowed".to_string(),
+                    ));
+                }
+            }
+        }
+    }
+    // Block reserved TLDs
+    if normalized.ends_with(".local")
+        || normalized.ends_with(".internal")
+        || normalized.ends_with(".localhost")
+    {
+        return Err(NoteDeckError::InvalidInput(
+            "Reserved domain names are not allowed".to_string(),
+        ));
+    }
+
     Ok(normalized)
 }
 
