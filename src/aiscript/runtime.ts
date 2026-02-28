@@ -38,10 +38,18 @@ function valueToUiComponent(val: Value): UiComponent | null {
   const id = idVal?.type === 'str' ? idVal.value : genComponentId()
   const props: Record<string, unknown> = {}
 
+  let children: UiComponent[] | undefined
+
   if (propsVal?.type === 'obj') {
-    for (const [k, v] of propsVal.value as Map<string, Value>) {
-      // Keep VFn as-is for event handlers, convert everything else to JS
-      if (v.type === 'fn') {
+    const propsMap = propsVal.value as Map<string, Value>
+    for (const [k, v] of propsMap) {
+      if (k === 'children' && v.type === 'arr') {
+        // Extract children from props for nested components
+        children = (v.value as Value[])
+          .map(valueToUiComponent)
+          .filter((c): c is UiComponent => c !== null)
+      } else if (v.type === 'fn') {
+        // Keep VFn as-is for event handlers
         props[k] = v
       } else {
         props[k] = utils.valToJs(v)
@@ -49,12 +57,14 @@ function valueToUiComponent(val: Value): UiComponent | null {
     }
   }
 
-  const childrenVal = obj.get('children')
-  let children: UiComponent[] | undefined
-  if (childrenVal?.type === 'arr') {
-    children = (childrenVal.value as Value[])
-      .map(valueToUiComponent)
-      .filter((c): c is UiComponent => c !== null)
+  // Also check top-level children (fallback)
+  if (!children) {
+    const childrenVal = obj.get('children')
+    if (childrenVal?.type === 'arr') {
+      children = (childrenVal.value as Value[])
+        .map(valueToUiComponent)
+        .filter((c): c is UiComponent => c !== null)
+    }
   }
 
   return { id, type: typeVal.value as UiComponent['type'], props, children }
