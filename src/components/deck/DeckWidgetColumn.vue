@@ -90,6 +90,7 @@ function removeWidget(widgetId: string) {
   padding: 10px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 .widget-item {

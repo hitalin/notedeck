@@ -22,15 +22,19 @@ async function callHandler(handler: unknown, interpreter: Interpreter | null, ar
   }
 }
 
-function handlePostFormButton(comp: UiComponent) {
-  if (!props.serverUrl) return
+async function handlePostFormButton(comp: UiComponent) {
   const form = comp.props.form as Record<string, unknown> | undefined
   const params = new URLSearchParams()
   if (form?.text) params.set('text', String(form.text))
   if (form?.cw) params.set('cw', String(form.cw))
   if (form?.visibility) params.set('visibility', String(form.visibility))
   if (form?.localOnly) params.set('localOnly', '1')
-  openUrl(`${props.serverUrl}/share?${params.toString()}`)
+  const base = props.serverUrl || 'https://misskey.io'
+  try {
+    await openUrl(`${base}/share?${params.toString()}`)
+  } catch (e) {
+    console.error('Failed to open share URL:', e)
+  }
 }
 </script>
 
