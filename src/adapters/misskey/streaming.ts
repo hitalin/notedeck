@@ -5,6 +5,7 @@ import type {
   MainChannelEvent,
   NormalizedNote,
   NormalizedNotification,
+  NoteUpdateEvent,
   StreamAdapter,
   StreamConnectionState,
   TimelineType,
@@ -29,6 +30,14 @@ interface StreamMainEvent {
   body: unknown
 }
 
+interface StreamNoteUpdatedEvent {
+  accountId: string
+  subscriptionId: string
+  noteId: string
+  updateType: string
+  body: unknown
+}
+
 interface StreamStatusEvent {
   accountId: string
   state: StreamConnectionState
@@ -44,6 +53,10 @@ export class MisskeyStream implements StreamAdapter {
 
   // Handler maps for O(1) dispatch by subscriptionId
   private noteHandlers = new Map<string, (note: NormalizedNote) => void>()
+  private noteUpdateHandlers = new Map<
+    string,
+    (event: NoteUpdateEvent) => void
+  >()
   private notifHandlers = new Map<string, (event: MainChannelEvent) => void>()
   private mainHandlers = new Map<string, (event: MainChannelEvent) => void>()
 
@@ -73,6 +86,19 @@ export class MisskeyStream implements StreamAdapter {
     })
       .then((fn) => this.unlistenFns.push(fn))
       .catch((e) => console.error('[stream] failed to listen stream-note:', e))
+
+    listen<StreamNoteUpdatedEvent>('stream-note-updated', (event) => {
+      if (event.payload.accountId !== this.accountId) return
+      this.noteUpdateHandlers.get(event.payload.subscriptionId)?.({
+        noteId: event.payload.noteId,
+        type: event.payload.updateType as NoteUpdateEvent['type'],
+        body: event.payload.body as NoteUpdateEvent['body'],
+      })
+    })
+      .then((fn) => this.unlistenFns.push(fn))
+      .catch((e) =>
+        console.error('[stream] failed to listen stream-note-updated:', e),
+      )
 
     listen<StreamNotificationEvent>('stream-notification', (event) => {
       if (event.payload.accountId !== this.accountId) return
@@ -114,6 +140,7 @@ export class MisskeyStream implements StreamAdapter {
     for (const fn of this.unlistenFns) fn()
     this.unlistenFns = []
     this.noteHandlers.clear()
+    this.noteUpdateHandlers.clear()
     this.notifHandlers.clear()
     this.mainHandlers.clear()
 
@@ -127,6 +154,7 @@ export class MisskeyStream implements StreamAdapter {
   subscribeTimeline(
     type: TimelineType,
     handler: (note: NormalizedNote) => void,
+    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription {
     let subscriptionId: string | null = null
     let disposed = false
@@ -145,6 +173,9 @@ export class MisskeyStream implements StreamAdapter {
         }
         subscriptionId = id
         this.noteHandlers.set(id, handler)
+        if (options?.onNoteUpdated) {
+          this.noteUpdateHandlers.set(id, options.onNoteUpdated)
+        }
         return id
       })
       .catch((e) => {
@@ -157,6 +188,7 @@ export class MisskeyStream implements StreamAdapter {
         disposed = true
         if (subscriptionId) {
           this.noteHandlers.delete(subscriptionId)
+          this.noteUpdateHandlers.delete(subscriptionId)
           invoke('stream_unsubscribe', {
             accountId: this.accountId,
             subscriptionId,
@@ -167,6 +199,7 @@ export class MisskeyStream implements StreamAdapter {
           subscribePromise.then((id) => {
             if (id) {
               this.noteHandlers.delete(id)
+              this.noteUpdateHandlers.delete(id)
               invoke('stream_unsubscribe', {
                 accountId: this.accountId,
                 subscriptionId: id,

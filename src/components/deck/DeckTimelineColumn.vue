@@ -12,6 +12,7 @@ import {
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type {
   NormalizedNote,
+  NoteUpdateEvent,
   TimelineFilter,
   TimelineType,
 } from '@/adapters/types'
@@ -273,13 +274,17 @@ async function connect(useCache = false) {
 
     adapter.stream.connect()
     setSubscription(
-      adapter.stream.subscribeTimeline(tlType.value, (note: NormalizedNote) => {
-        if (!matchesFilter(note, columnFilters.value)) return
-        rafBuffer.push(note)
-        if (rafId === null) {
-          rafId = requestAnimationFrame(flushRafBuffer)
-        }
-      }),
+      adapter.stream.subscribeTimeline(
+        tlType.value,
+        (note: NormalizedNote) => {
+          if (!matchesFilter(note, columnFilters.value)) return
+          rafBuffer.push(note)
+          if (rafId === null) {
+            rafId = requestAnimationFrame(flushRafBuffer)
+          }
+        },
+        { onNoteUpdated: applyNoteUpdate },
+      ),
     )
   } catch (e) {
     const err = AppError.from(e)
@@ -347,6 +352,86 @@ async function removeNote(note: NormalizedNote) {
     const id = note.id
     notes.value = notes.value.filter((n) => n.id !== id && n.renote?.id !== id)
     noteIds.delete(id)
+  }
+}
+
+function applyNoteUpdate(event: NoteUpdateEvent) {
+  switch (event.type) {
+    case 'reacted': {
+      const reaction = event.body.reaction
+      if (!reaction) break
+      notes.value = notes.value.map((n) => {
+        const target =
+          n.id === event.noteId
+            ? n
+            : n.renote?.id === event.noteId
+              ? n.renote
+              : null
+        if (!target) return n
+        const newReactions = {
+          ...target.reactions,
+          [reaction]: (target.reactions[reaction] ?? 0) + 1,
+        }
+        const newEmojis = event.body.emoji
+          ? { ...target.reactionEmojis, [reaction]: event.body.emoji }
+          : target.reactionEmojis
+        const updated = {
+          ...target,
+          reactions: newReactions,
+          reactionEmojis: newEmojis,
+        }
+        return n.id === event.noteId ? updated : { ...n, renote: updated }
+      })
+      break
+    }
+    case 'unreacted': {
+      const reaction = event.body.reaction
+      if (!reaction) break
+      notes.value = notes.value.map((n) => {
+        const target =
+          n.id === event.noteId
+            ? n
+            : n.renote?.id === event.noteId
+              ? n.renote
+              : null
+        if (!target) return n
+        const newReactions = { ...target.reactions }
+        const count = (newReactions[reaction] ?? 0) - 1
+        if (count <= 0) delete newReactions[reaction]
+        else newReactions[reaction] = count
+        const updated = { ...target, reactions: newReactions }
+        return n.id === event.noteId ? updated : { ...n, renote: updated }
+      })
+      break
+    }
+    case 'deleted':
+      notes.value = notes.value.filter(
+        (n) => n.id !== event.noteId && n.renote?.id !== event.noteId,
+      )
+      noteIds.delete(event.noteId)
+      break
+    case 'pollVoted': {
+      const choice = event.body.choice
+      if (choice == null) break
+      notes.value = notes.value.map((n) => {
+        const target =
+          n.id === event.noteId
+            ? n
+            : n.renote?.id === event.noteId
+              ? n.renote
+              : null
+        if (!target?.poll) return n
+        const newChoices = target.poll.choices.map((c, i) =>
+          i === choice ? { ...c, votes: c.votes + 1 } : c,
+        )
+        const updated = {
+          ...target,
+          poll: { ...target.poll, choices: newChoices },
+        }
+        return n.id === event.noteId ? updated : { ...n, renote: updated }
+      })
+      break
+    }
   }
 }
 

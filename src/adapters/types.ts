@@ -91,6 +91,7 @@ export interface NormalizedNote {
   repliesCount: number
   files: NormalizedDriveFile[]
   poll?: NormalizedPoll
+  localOnly?: boolean
   isFavorited?: boolean
   reply?: NormalizedNote
   renote?: NormalizedNote
@@ -155,6 +156,18 @@ export interface NoteReaction {
   createdAt: string
   user: NormalizedUser
   type: string
+}
+
+export interface NoteUpdateEvent {
+  noteId: string
+  type: 'reacted' | 'unreacted' | 'deleted' | 'pollVoted'
+  body: {
+    reaction?: string
+    emoji?: string | null
+    userId?: string
+    deletedAt?: string
+    choice?: number
+  }
 }
 
 export interface NormalizedNotification {
@@ -265,6 +278,7 @@ export interface StreamAdapter {
   subscribeTimeline(
     type: TimelineType,
     handler: (note: NormalizedNote) => void,
+    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription
   subscribeMain(handler: (event: MainChannelEvent) => void): ChannelSubscription
   readonly state: StreamConnectionState

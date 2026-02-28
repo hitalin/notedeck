@@ -53,6 +53,16 @@ pub struct StreamMainEvent {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct StreamNoteUpdatedEvent {
+    pub account_id: String,
+    pub subscription_id: String,
+    pub note_id: String,
+    pub update_type: String,
+    pub body: Value,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StreamStatusEvent {
     pub account_id: String,
     pub state: String,
@@ -525,6 +535,17 @@ async fn handle_ws_message(
                 note,
             });
         }
+    } else if info.kind == "timeline" && event_type == "noteUpdated" {
+        let note_id = event_body.get("id").and_then(|v| v.as_str()).unwrap_or_default();
+        let update_type = event_body.get("type").and_then(|v| v.as_str()).unwrap_or_default();
+        let update_body = event_body.get("body").cloned().unwrap_or(Value::Null);
+        emit_or_log!(app, "stream-note-updated", StreamNoteUpdatedEvent {
+            account_id: account_id.to_string(),
+            subscription_id: sub_id.to_string(),
+            note_id: note_id.to_string(),
+            update_type: update_type.to_string(),
+            body: update_body,
+        });
     } else if info.kind == "main" {
         if event_type == "notification" {
             if let Ok(raw) = serde_json::from_value::<RawNotification>(event_body) {
