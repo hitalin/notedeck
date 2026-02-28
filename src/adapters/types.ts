@@ -90,6 +90,11 @@ export interface Clip {
   name: string
 }
 
+export interface Channel {
+  id: string
+  name: string
+}
+
 export interface NormalizedNote {
   id: string
   _accountId: string
@@ -287,6 +292,11 @@ export interface ApiAdapter {
     clipId: string,
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>
+  getChannels(): Promise<Channel[]>
+  getChannelNotes(
+    channelId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
 }
 
 export type StreamConnectionState =
@@ -316,6 +326,11 @@ export interface StreamAdapter {
   ): ChannelSubscription
   subscribeAntenna(
     antennaId: string,
+    handler: (note: NormalizedNote) => void,
+    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
+  ): ChannelSubscription
+  subscribeChannel(
+    channelId: string,
     handler: (note: NormalizedNote) => void,
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription

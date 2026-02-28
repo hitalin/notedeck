@@ -11,7 +11,7 @@ use crate::models::{
     AuthResult, CreateNoteParams, NormalizedDriveFile, NormalizedNote, NormalizedNoteReaction,
     NormalizedNotification, NormalizedUser, NormalizedUserDetail, RawCreateNoteResponse,
     RawDriveFile, RawEmojisResponse, RawMiAuthResponse, RawNote, RawNoteReaction, RawNotification,
-    Antenna, Clip, RawUser, RawUserDetail, SearchOptions, TimelineOptions, TimelineType, UserList,
+    Antenna, Channel, Clip, RawUser, RawUserDetail, SearchOptions, TimelineOptions, TimelineType, UserList,
 };
 
 
@@ -274,6 +274,48 @@ impl MisskeyClient {
             params["untilId"] = json!(id);
         }
         let data = self.request(host, token, "clips/notes", params).await?;
+        let raw: Vec<RawNote> = serde_json::from_value(data)?;
+        Ok(raw
+            .into_iter()
+            .map(|n| n.normalize(account_id, host))
+            .collect())
+    }
+
+    pub async fn get_channels(
+        &self,
+        host: &str,
+        token: &str,
+    ) -> Result<Vec<Channel>, NoteDeckError> {
+        let data = self
+            .request(host, token, "channels/followed", json!({}))
+            .await?;
+        let channels: Vec<Channel> = serde_json::from_value(data)?;
+        Ok(channels)
+    }
+
+    pub async fn get_channel_notes(
+        &self,
+        host: &str,
+        token: &str,
+        account_id: &str,
+        channel_id: &str,
+        limit: i64,
+        since_id: Option<&str>,
+        until_id: Option<&str>,
+    ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
+        let mut params = json!({
+            "channelId": channel_id,
+            "limit": limit,
+        });
+        if let Some(id) = since_id {
+            params["sinceId"] = json!(id);
+        }
+        if let Some(id) = until_id {
+            params["untilId"] = json!(id);
+        }
+        let data = self
+            .request(host, token, "channels/timeline", params)
+            .await?;
         let raw: Vec<RawNote> = serde_json::from_value(data)?;
         Ok(raw
             .into_iter()

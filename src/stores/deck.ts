@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 
-export type ColumnType = 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions'
+export type ColumnType = 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel'
 
 export interface DeckColumn {
   id: string
@@ -17,6 +17,7 @@ export interface DeckColumn {
   listId?: string
   antennaId?: string
   clipId?: string
+  channelId?: string
   userId?: string
 }
 

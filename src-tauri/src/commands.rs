@@ -11,7 +11,7 @@ use crate::keychain;
 use crate::models::{
     Account, AccountPublic, AuthSession, CreateNoteParams, NormalizedDriveFile, NormalizedNote,
     NormalizedNoteReaction, NormalizedNotification, NormalizedUser, NormalizedUserDetail,
-    Antenna, Clip, SearchOptions, StoredServer, TimelineOptions, TimelineType, UserList,
+    Antenna, Channel, Clip, SearchOptions, StoredServer, TimelineOptions, TimelineType, UserList,
 };
 use crate::streaming::StreamingManager;
 use zeroize::Zeroize;
@@ -311,6 +311,40 @@ pub async fn api_get_clip_notes(
             &token,
             &account_id,
             &clip_id,
+            limit.unwrap_or(20),
+            since_id.as_deref(),
+            until_id.as_deref(),
+        )
+        .await
+}
+
+#[tauri::command]
+pub async fn api_get_channels(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+) -> Result<Vec<Channel>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_channels(&host, &token).await
+}
+
+#[tauri::command]
+pub async fn api_get_channel_notes(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    channel_id: String,
+    limit: Option<i64>,
+    since_id: Option<String>,
+    until_id: Option<String>,
+) -> Result<Vec<NormalizedNote>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_channel_notes(
+            &host,
+            &token,
+            &account_id,
+            &channel_id,
             limit.unwrap_or(20),
             since_id.as_deref(),
             until_id.as_deref(),
@@ -875,6 +909,17 @@ pub async fn stream_subscribe_antenna(
 ) -> Result<String> {
     streaming
         .subscribe_antenna(&account_id, &antenna_id)
+        .await
+}
+
+#[tauri::command]
+pub async fn stream_subscribe_channel(
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    channel_id: String,
+) -> Result<String> {
+    streaming
+        .subscribe_channel(&account_id, &channel_id)
         .await
 }
 

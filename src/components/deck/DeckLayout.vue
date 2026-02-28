@@ -18,6 +18,7 @@ import {
 } from '@/utils/desktopNotification'
 import { AppError } from '@/utils/errors'
 import DeckAntennaColumn from './DeckAntennaColumn.vue'
+import DeckChannelColumn from './DeckChannelColumn.vue'
 import DeckClipColumn from './DeckClipColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
@@ -74,9 +75,9 @@ function closeCompose() {
   showCompose.value = false
 }
 
-const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | null>(null)
+const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | null>(null)
 
-function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions') {
+function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel') {
   addColumnType.value = type
 }
 
@@ -92,6 +93,10 @@ function addColumnForAccount(accountId: string) {
   }
   if (type === 'clip') {
     fetchClips(accountId)
+    return
+  }
+  if (type === 'channel') {
+    fetchChannels(accountId)
     return
   }
   if (type === 'user') {
@@ -186,6 +191,38 @@ function addAntennaColumn(antennaId: string, antennaName: string) {
   resetAddMenu()
 }
 
+// Channel column creation
+interface ChannelItem { id: string; name: string }
+const addChannelAccountId = ref<string | null>(null)
+const channels = ref<ChannelItem[]>([])
+const loadingChannels = ref(false)
+
+async function fetchChannels(accountId: string) {
+  addChannelAccountId.value = accountId
+  loadingChannels.value = true
+  try {
+    channels.value = await invoke<ChannelItem[]>('api_get_channels', { accountId })
+  } catch (e) {
+    console.error('[deck] failed to fetch channels:', e)
+    channels.value = []
+  } finally {
+    loadingChannels.value = false
+  }
+}
+
+function addChannelColumn(channelId: string, channelName: string) {
+  if (!addChannelAccountId.value) return
+  deckStore.addColumn({
+    type: 'channel',
+    name: channelName,
+    width: 330,
+    accountId: addChannelAccountId.value,
+    channelId,
+    active: true,
+  })
+  resetAddMenu()
+}
+
 // Clip column creation
 interface ClipItem { id: string; name: string }
 const addClipAccountId = ref<string | null>(null)
@@ -264,6 +301,8 @@ function resetAddMenu() {
   userLists.value = []
   addAntennaAccountId.value = null
   antennas.value = []
+  addChannelAccountId.value = null
+  channels.value = []
   addClipAccountId.value = null
   clips.value = []
   addUserAccountId.value = null
@@ -369,6 +408,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   antenna: 'antenna-bars-5',
   favorites: 'star',
   clip: 'paperclip',
+  channel: 'device-tv',
   user: 'user',
   mentions: 'at',
 }
@@ -647,6 +687,10 @@ onUnmounted(() => {
               v-else-if="col.type === 'clip'"
               :column="col"
             />
+            <DeckChannelColumn
+              v-else-if="col.type === 'channel'"
+              :column="col"
+            />
             <DeckUserColumn
               v-else-if="col.type === 'user'"
               :column="col"
@@ -708,7 +752,7 @@ onUnmounted(() => {
       <div v-if="showAddMenu" class="add-overlay" @click="resetAddMenu()">
         <div class="add-popup" @click.stop>
           <div class="add-popup-header">
-            <button v-if="addColumnType && !addListAccountId && !addAntennaAccountId && !addClipAccountId && !addUserAccountId" class="_button add-back-btn" @click="addColumnType = null">
+            <button v-if="addColumnType && !addListAccountId && !addAntennaAccountId && !addChannelAccountId && !addClipAccountId && !addUserAccountId" class="_button add-back-btn" @click="addColumnType = null">
               <i class="ti ti-chevron-left" />
             </button>
             <button v-else-if="addListAccountId" class="_button add-back-btn" @click="addListAccountId = null; userLists = []">
@@ -717,13 +761,16 @@ onUnmounted(() => {
             <button v-else-if="addAntennaAccountId" class="_button add-back-btn" @click="addAntennaAccountId = null; antennas = []">
               <i class="ti ti-chevron-left" />
             </button>
+            <button v-else-if="addChannelAccountId" class="_button add-back-btn" @click="addChannelAccountId = null; channels = []">
+              <i class="ti ti-chevron-left" />
+            </button>
             <button v-else-if="addClipAccountId" class="_button add-back-btn" @click="addClipAccountId = null; clips = []">
               <i class="ti ti-chevron-left" />
             </button>
             <button v-else-if="addUserAccountId" class="_button add-back-btn" @click="addUserAccountId = null; userSearchInput = ''; userSearchError = null">
               <i class="ti ti-chevron-left" />
             </button>
-            {{ addListAccountId ? 'Select list' : addAntennaAccountId ? 'Select antenna' : addClipAccountId ? 'Select clip' : addUserAccountId ? 'Find user' : addColumnType ? 'Select account' : 'Add column' }}
+            {{ addListAccountId ? 'Select list' : addAntennaAccountId ? 'Select antenna' : addChannelAccountId ? 'Select channel' : addClipAccountId ? 'Select clip' : addUserAccountId ? 'Find user' : addColumnType ? 'Select account' : 'Add column' }}
           </div>
 
           <!-- Step 1: Column type selection -->
@@ -739,6 +786,10 @@ onUnmounted(() => {
             <button class="_button add-type-btn" @click="selectColumnType('antenna')">
               <i class="ti ti-antenna-bars-5" />
               <span>Antenna</span>
+            </button>
+            <button class="_button add-type-btn" @click="selectColumnType('channel')">
+              <i class="ti ti-device-tv" />
+              <span>Channel</span>
             </button>
             <button class="_button add-type-btn" @click="selectColumnType('notifications')">
               <i class="ti ti-bell" />
@@ -793,6 +844,21 @@ onUnmounted(() => {
             >
               <i class="ti ti-antenna-bars-5" />
               <span>{{ ant.name }}</span>
+            </button>
+          </template>
+
+          <!-- Step 3b2: Channel selection (for channel columns) -->
+          <template v-else-if="addChannelAccountId">
+            <div v-if="loadingChannels" class="add-popup-empty">Loading...</div>
+            <div v-else-if="channels.length === 0" class="add-popup-empty">No channels found.</div>
+            <button
+              v-for="ch in channels"
+              :key="ch.id"
+              class="_button add-type-btn"
+              @click="addChannelColumn(ch.id, ch.name)"
+            >
+              <i class="ti ti-device-tv" />
+              <span>{{ ch.name }}</span>
             </button>
           </template>
 
