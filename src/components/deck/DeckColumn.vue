@@ -88,17 +88,13 @@ function onDrop(e: DragEvent) {
       <span class="header-title">{{ title }}</span>
 
       <!-- Grabber (Misskey 6-dot pattern) -->
-      <svg class="grabber" viewBox="0 0 24 24" width="14" height="14">
-        <path d="M10 13a1 1 0 1 0-2 0 1 1 0 0 0 2 0Zm0-4a1 1 0 1 0-2 0 1 1 0 0 0 2 0Zm0-4a1 1 0 1 0-2 0 1 1 0 0 0 2 0Zm6 8a1 1 0 1 0-2 0 1 1 0 0 0 2 0Zm0-4a1 1 0 1 0-2 0 1 1 0 0 0 2 0Zm0-4a1 1 0 1 0-2 0 1 1 0 0 0 2 0Z" fill="currentColor" />
-      </svg>
+      <i class="ti ti-grip-vertical grabber" />
 
       <slot name="header-meta" />
 
       <!-- Remove column button -->
       <button class="_button header-btn" title="Remove column" @click.stop="close">
-        <svg viewBox="0 0 24 24" width="16" height="16">
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-        </svg>
+        <i class="ti ti-x" />
       </button>
     </header>
 

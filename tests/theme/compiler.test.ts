@@ -172,8 +172,8 @@ describe('compileMisskeyTheme', () => {
     const compiled = compileMisskeyTheme(serverTheme, DARK_THEME)
     expect(compiled.accent).toBe('#ff6600')
     expect(compiled.bg).toBe('#1a1a2e')
-    // Should still have all dark theme props
-    expect(compiled.fg).toBe('#dadada')
+    // Should still have all dark theme props (fg from DARK_THEME base)
+    expect(compiled.fg).toBe('rgb(199, 209, 216)')
     // accentedBg should use the custom accent
     const accentedBg = parseColor(compiled.accentedBg)
     expect(accentedBg).not.toBeNull()

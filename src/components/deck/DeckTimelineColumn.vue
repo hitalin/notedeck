@@ -91,13 +91,14 @@ const TL_TYPES: { value: TimelineType; label: string }[] = [
 ]
 
 const TL_ICONS: Record<TimelineType, string> = {
-  home: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2',
-  local:
-    'M12 21a9 9 0 100-18 9 9 0 000 18zm0-18c2.8 0 5 4 5 9s-2.2 9-5 9-5-4-5-9 2.2-9 5-9zM3 12h18',
-  social:
-    'M12 21a9 9 0 100-18 9 9 0 000 18zm0-18c2.8 0 5 4 5 9s-2.2 9-5 9-5-4-5-9 2.2-9 5-9zM3 12h18M3.5 7.5h17M3.5 16.5h17',
-  global:
-    'M22 12A10 10 0 112 12a10 10 0 0120 0zM2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z',
+  home: 'home',
+  local: 'planet',
+  social: 'rocket',
+  global: 'whirl',
+}
+
+function isTablerIcon(icon: string): boolean {
+  return !icon.includes(' ')
 }
 
 const currentTlIcon = computed(
@@ -569,7 +570,8 @@ onUnmounted(() => {
     @header-click="scrollToTop(true)"
   >
     <template #header-icon>
-      <svg class="tl-header-icon" viewBox="0 0 24 24" width="14" height="14">
+      <i v-if="isTablerIcon(currentTlIcon)" :class="'ti ti-' + currentTlIcon" class="tl-header-icon" />
+      <svg v-else class="tl-header-icon" viewBox="0 0 24 24" width="14" height="14">
         <path :d="currentTlIcon" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
       </svg>
     </template>
@@ -591,7 +593,8 @@ onUnmounted(() => {
           :title="opt.label"
           @click="switchTl(opt.value)"
         >
-          <svg class="tl-tab-icon" viewBox="0 0 24 24" width="16" height="16">
+          <i v-if="isTablerIcon(getTlIcon(opt.value))" :class="'ti ti-' + getTlIcon(opt.value)" class="tl-tab-icon" />
+          <svg v-else class="tl-tab-icon" viewBox="0 0 24 24" width="16" height="16">
             <path :d="getTlIcon(opt.value)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
           </svg>
           <span v-if="tlType === opt.value" class="tl-tab-label">{{ opt.label }}</span>
@@ -604,9 +607,7 @@ onUnmounted(() => {
           title="Filter"
           @click.stop="toggleFilterMenu"
         >
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path d="M3 4h18l-7 8v5l-4 2v-7L3 4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
+          <i class="ti ti-filter" />
         </button>
       </div>
     </template>

@@ -36,9 +36,7 @@ onMounted(() => {
         title="閉じる"
         @click="dismiss"
       >
-        <svg width="10" height="10" viewBox="0 0 10 10">
-          <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-        </svg>
+        <i class="ti ti-x" />
       </button>
     </div>
   </Transition>

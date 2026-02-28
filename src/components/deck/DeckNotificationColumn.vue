@@ -93,18 +93,14 @@ function getCachedTwemojiUrl(reaction: string): string | null {
 }
 
 const NOTIFICATION_ICONS: Record<string, string> = {
-  reaction: 'M12 4v16M4 12h16',
-  reply: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
-  renote:
-    'M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3',
-  quote: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
-  mention: 'M12 21a9 9 0 100-18 9 9 0 000 18zM12 8v4M12 16h.01',
-  follow:
-    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6',
-  followRequestAccepted:
-    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 6l-4 4 2 2',
-  pollEnded:
-    'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+  reaction: 'mood-plus',
+  reply: 'arrow-back-up',
+  renote: 'repeat',
+  quote: 'quote',
+  mention: 'at',
+  follow: 'user-plus',
+  followRequestAccepted: 'user-check',
+  pollEnded: 'chart-bar',
 }
 
 const NOTIFICATION_LABELS: Record<string, string> = {
@@ -124,10 +120,7 @@ const NOTIFICATION_LABELS: Record<string, string> = {
 }
 
 function notificationIcon(type: string): string {
-  return (
-    NOTIFICATION_ICONS[type] ||
-    'M12 21a9 9 0 100-18 9 9 0 000 18zM12 8v4M12 16h.01'
-  )
+  return NOTIFICATION_ICONS[type] || 'bell'
 }
 
 function notificationLabel(type: string): string {
@@ -253,9 +246,7 @@ onUnmounted(() => {
     @header-click="scrollToTop"
   >
     <template #header-icon>
-      <svg class="notif-header-icon" viewBox="0 0 24 24" width="14" height="14">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-      </svg>
+      <i class="ti ti-bell notif-header-icon" />
     </template>
 
     <template #header-meta>
@@ -300,16 +291,7 @@ onUnmounted(() => {
             >
               <!-- Notification header -->
               <div class="notif-header">
-                <svg class="notif-icon" viewBox="0 0 24 24" width="16" height="16">
-                  <path
-                    :d="notificationIcon(notif.type)"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    fill="none"
-                  />
-                </svg>
+                <i :class="`ti ti-${notificationIcon(notif.type)}`" class="notif-icon" />
 
                 <template v-if="notif.user">
                   <img

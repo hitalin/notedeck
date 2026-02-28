@@ -212,9 +212,7 @@ onUnmounted(() => {
     :theme-vars="columnThemeVars"
   >
     <template #header-icon>
-      <svg class="search-header-icon" viewBox="0 0 24 24" width="14" height="14">
-        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-      </svg>
+      <i class="ti ti-search search-header-icon" />
     </template>
 
     <template #header-meta>
@@ -226,9 +224,7 @@ onUnmounted(() => {
 
     <template #header-extra>
       <div class="search-bar">
-        <svg class="search-icon" viewBox="0 0 24 24" width="14" height="14">
-          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-        </svg>
+        <i class="ti ti-search search-icon" />
         <input
           ref="searchInput"
           v-model="searchQuery"
@@ -242,9 +238,7 @@ onUnmounted(() => {
           :disabled="!searchQuery.trim() || isLoading"
           @click="performSearch"
         >
-          <svg viewBox="0 0 24 24" width="14" height="14">
-            <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
+          <i class="ti ti-arrow-right" />
         </button>
       </div>
     </template>

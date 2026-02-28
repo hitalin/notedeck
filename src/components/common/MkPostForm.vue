@@ -263,9 +263,7 @@ function onKeydown(e: KeyboardEvent) {
       <header class="header">
         <div class="header-left">
           <button class="_button header-btn" title="Close" @click="emit('close')">
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-            </svg>
+            <i class="ti ti-x" />
           </button>
           <div v-if="account" class="account-wrapper">
             <button
@@ -478,15 +476,10 @@ function onKeydown(e: KeyboardEvent) {
             class="file-thumb"
           />
           <div v-else class="file-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-              <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-            </svg>
+            <i class="ti ti-file-text" />
           </div>
           <button class="_button file-remove" title="Remove" @click="removeFile(file.id)">
-            <svg viewBox="0 0 24 24" width="14" height="14">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
-            </svg>
+            <i class="ti ti-x" />
           </button>
         </div>
         <div v-if="isUploading" class="file-uploading">Uploading...</div>
@@ -514,9 +507,7 @@ function onKeydown(e: KeyboardEvent) {
             :disabled="isUploading"
             @click="openFilePicker"
           >
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-            </svg>
+            <i class="ti ti-paperclip" />
           </button>
           <button
             class="_button footer-btn"
@@ -524,9 +515,7 @@ function onKeydown(e: KeyboardEvent) {
             title="Content Warning"
             @click="showCw = !showCw"
           >
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-            </svg>
+            <i class="ti ti-eye-off" />
           </button>
         </div>
       </footer>

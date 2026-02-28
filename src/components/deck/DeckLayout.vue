@@ -192,11 +192,9 @@ const visibleColumns = computed(() =>
 )
 
 const MOBILE_TAB_ICONS: Record<string, string> = {
-  timeline:
-    'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2',
-  notifications:
-    'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
-  search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+  timeline: 'home',
+  notifications: 'bell',
+  search: 'search',
 }
 
 function columnIcon(colId: string): string {
@@ -335,17 +333,8 @@ onUnmounted(() => {
         <!-- Top section: nav links -->
         <div class="nav-top">
           <button class="_button nav-item" :title="isDark ? 'Light theme' : 'Dark theme'" @click="toggleTheme">
-            <!-- Sun icon (shown in dark mode → click to go light) -->
-            <svg v-if="isDark" viewBox="0 0 24 24" width="20" height="20">
-              <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none" />
-              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
-            </svg>
-            <!-- Moon icon (shown in light mode → click to go dark) -->
-            <svg v-else viewBox="0 0 24 24" width="20" height="20">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-            </svg>
+            <i v-if="isDark" class="ti ti-sun" />
+            <i v-else class="ti ti-moon" />
             <span class="nav-label">{{ isDark ? 'Light theme' : 'Dark theme' }}</span>
           </button>
         </div>
@@ -362,12 +351,7 @@ onUnmounted(() => {
             title="New Note"
             @click="openCompose"
           >
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path
-                d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"
-              />
-            </svg>
+            <i class="ti ti-pencil" />
             <span class="nav-label">Note</span>
           </button>
 
@@ -423,10 +407,7 @@ onUnmounted(() => {
                 <div class="nav-account-menu-divider" />
                 <button class="_button nav-account-menu-item nav-account-logout" @click="logout(acc.id)">
                   <span>Logout</span>
-                  <svg viewBox="0 0 24 24" width="16" height="16">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
-                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                  </svg>
+                  <i class="ti ti-logout" />
                 </button>
               </div>
             </Transition>
@@ -434,9 +415,7 @@ onUnmounted(() => {
 
           <!-- Add account -->
           <router-link to="/login" class="_button nav-item nav-add-account" title="Add account">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
-            </svg>
+            <i class="ti ti-plus" />
             <span class="nav-label">Add account</span>
           </router-link>
         </div>
@@ -444,12 +423,7 @@ onUnmounted(() => {
 
       <!-- Collapse toggle -->
       <button class="nav-toggle" title="Toggle sidebar" @click="toggleNav">
-        <svg viewBox="0 0 24 24" width="14" height="14">
-          <path
-            :d="navCollapsed ? 'M9 18l6-6-6-6' : 'M15 18l-6-6 6-6'"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"
-          />
-        </svg>
+        <i :class="navCollapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left'" />
       </button>
     </nav>
 
@@ -499,9 +473,7 @@ onUnmounted(() => {
       <div class="bottom-bar">
         <div class="bottom-bar-left" />
         <button class="_button bottom-bar-btn" title="Add column" @click="toggleAddMenu">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
-          </svg>
+          <i class="ti ti-plus" />
         </button>
         <div class="bottom-bar-right" />
       </div>
@@ -509,10 +481,7 @@ onUnmounted(() => {
 
     <!-- Mobile FAB (visible only on small screens via CSS) -->
     <button class="_button mobile-fab" title="New Note" @click="openCompose">
-      <svg viewBox="0 0 24 24" width="24" height="24">
-        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-      </svg>
+      <i class="ti ti-pencil" />
     </button>
 
     <!-- Mobile drawer overlay -->
@@ -523,9 +492,7 @@ onUnmounted(() => {
     <!-- Mobile bottom nav (visible only on small screens via CSS) -->
     <nav class="mobile-nav">
       <button class="_button mobile-tab mobile-menu-btn" @click="mobileDrawerOpen = !mobileDrawerOpen">
-        <svg viewBox="0 0 24 24" width="24" height="24">
-          <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
-        </svg>
+        <i class="ti ti-menu-2" />
       </button>
       <button
         v-for="(colId, i) in visibleColumns"
@@ -534,14 +501,10 @@ onUnmounted(() => {
         :class="{ active: activeColumnIndex === i }"
         @click="scrollToColumn(i)"
       >
-        <svg viewBox="0 0 24 24" width="24" height="24">
-          <path :d="columnIcon(colId)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-        </svg>
+        <i :class="'ti ti-' + columnIcon(colId)" />
       </button>
       <button class="_button mobile-tab" title="Add column" @click="toggleAddMenu">
-        <svg viewBox="0 0 24 24" width="24" height="24">
-          <path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
-        </svg>
+        <i class="ti ti-plus" />
       </button>
     </nav>
 
@@ -551,9 +514,7 @@ onUnmounted(() => {
         <div class="add-popup" @click.stop>
           <div class="add-popup-header">
             <button v-if="addColumnType" class="_button add-back-btn" @click="addColumnType = null">
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-              </svg>
+              <i class="ti ti-chevron-left" />
             </button>
             {{ addColumnType ? 'Select account' : 'Add column' }}
           </div>
@@ -561,24 +522,15 @@ onUnmounted(() => {
           <!-- Step 1: Column type selection -->
           <template v-if="!addColumnType">
             <button class="_button add-type-btn" @click="selectColumnType('timeline')">
-              <svg viewBox="0 0 24 24" width="18" height="18">
-                <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-              </svg>
+              <i class="ti ti-home" />
               <span>Timeline</span>
             </button>
             <button class="_button add-type-btn" @click="selectColumnType('notifications')">
-              <svg viewBox="0 0 24 24" width="18" height="18">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-              </svg>
+              <i class="ti ti-bell" />
               <span>Notifications</span>
             </button>
             <button class="_button add-type-btn" @click="selectColumnType('search')">
-              <svg viewBox="0 0 24 24" width="18" height="18">
-                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-              </svg>
+              <i class="ti ti-search" />
               <span>Search</span>
             </button>
           </template>
@@ -690,12 +642,12 @@ onUnmounted(() => {
   color: var(--nd-fgHighlighted);
 }
 
-.nav-item svg {
+.nav-item .ti {
   flex-shrink: 0;
   opacity: 0.8;
 }
 
-.nav-item:hover svg {
+.nav-item:hover .ti {
   opacity: 1;
 }
 
@@ -752,9 +704,8 @@ onUnmounted(() => {
   opacity: 0.8;
 }
 
-.nav-add-account svg {
-  width: 16px;
-  height: 16px;
+.nav-add-account .ti {
+  font-size: 16px;
 }
 
 /* Post button (prominent) */
@@ -1026,8 +977,9 @@ onUnmounted(() => {
   border-top: 1px solid var(--nd-divider);
 }
 
-.add-type-btn svg {
+.add-type-btn .ti {
   opacity: 0.7;
+  font-size: 18px;
 }
 
 /* ============================================================
@@ -1103,7 +1055,7 @@ onUnmounted(() => {
   gap: 8px;
 }
 
-.nav-account-logout svg {
+.nav-account-logout .ti {
   flex-shrink: 0;
   opacity: 0.8;
 }

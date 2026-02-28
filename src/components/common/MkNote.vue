@@ -301,12 +301,7 @@ async function handleMentionClick(username: string, host: string | null) {
   <div class="note-root" :class="{ detailed }" tabindex="0">
     <!-- Renote info bar -->
     <div v-if="isPureRenote" class="renote-info">
-      <svg class="renote-icon" viewBox="0 0 24 24" width="14" height="14">
-        <path
-          d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"
-          stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
-        />
-      </svg>
+      <i class="ti ti-repeat renote-icon" />
       <img
         v-if="note.user.avatarUrl"
         :src="note.user.avatarUrl"
@@ -470,21 +465,13 @@ async function handleMentionClick(username: string, host: string | null) {
         <!-- Footer -->
         <footer class="footer">
           <button class="footer-button" @click.stop="emit('reply', effectiveNote)">
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path d="M9 14L5 10l4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-              <path d="M5 10h11a4 4 0 0 1 0 8h-1" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <i class="ti ti-arrow-back-up" />
             <span v-if="effectiveNote.repliesCount > 0" class="button-count">
               {{ effectiveNote.repliesCount }}
             </span>
           </button>
           <button class="footer-button renote-button" @click.stop="showRenoteMenu = !showRenoteMenu">
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path
-                d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"
-                stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
-              />
-            </svg>
+            <i class="ti ti-repeat" />
             <span v-if="effectiveNote.renoteCount > 0" class="button-count">
               {{ effectiveNote.renoteCount }}
             </span>
@@ -494,37 +481,25 @@ async function handleMentionClick(username: string, host: string | null) {
             :class="{ active: showReactionInput }"
             @click.stop="openReactionPicker($event)"
           >
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <i class="ti ti-mood-plus" />
           </button>
           <button
             class="footer-button more-button"
             :class="{ active: showMoreMenu }"
             @click.stop="openMoreMenu($event)"
           >
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <circle cx="12" cy="5" r="1.5" fill="currentColor" />
-              <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-              <circle cx="12" cy="19" r="1.5" fill="currentColor" />
-            </svg>
+            <i class="ti ti-dots" />
           </button>
         </footer>
 
         <!-- Renote menu -->
         <div v-if="showRenoteMenu" class="renote-menu">
           <button class="_button renote-menu-item" @click.stop="emit('renote', effectiveNote); showRenoteMenu = false">
-            <svg viewBox="0 0 24 24" width="14" height="14">
-              <path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"
-                stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <i class="ti ti-repeat" />
             Renote
           </button>
           <button class="_button renote-menu-item" @click.stop="emit('quote', effectiveNote); showRenoteMenu = false">
-            <svg viewBox="0 0 24 24" width="14" height="14">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-                stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <i class="ti ti-quote" />
             Quote
           </button>
         </div>
@@ -576,16 +551,11 @@ async function handleMentionClick(username: string, host: string | null) {
           <template v-if="showDeleteConfirm">
             <div class="popup-confirm-text">Delete this note?</div>
             <button class="popup-item popup-item-danger" @click="emit('delete', effectiveNote); closeMoreMenu()">
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-                  stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <i class="ti ti-trash" />
               Delete
             </button>
             <button class="popup-item" @click="showDeleteConfirm = false">
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <i class="ti ti-x" />
               Cancel
             </button>
           </template>
@@ -597,36 +567,21 @@ async function handleMentionClick(username: string, host: string | null) {
               :class="{ 'popup-item-active': localIsFavorited }"
               @click="localIsFavorited = !localIsFavorited; emit('bookmark', effectiveNote); closeMoreMenu()"
             >
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                  :fill="localIsFavorited ? 'currentColor' : 'none'" />
-              </svg>
+              <i :class="localIsFavorited ? 'ti ti-star-filled' : 'ti ti-star'" />
               {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
             </button>
             <button v-if="originalUrl" class="popup-item" @click="openOriginal(); closeMoreMenu()">
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"
-                  stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <i class="ti ti-external-link" />
               元のノートを開く
             </button>
             <template v-if="isOwnNote">
               <div class="popup-divider" />
               <button class="popup-item" @click="emit('edit', effectiveNote); closeMoreMenu()">
-                <svg viewBox="0 0 24 24" width="16" height="16">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-                    stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
-                    stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
+                <i class="ti ti-edit" />
                 Edit
               </button>
               <button class="popup-item popup-item-danger" @click="showDeleteConfirm = true">
-                <svg viewBox="0 0 24 24" width="16" height="16">
-                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-                    stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
+                <i class="ti ti-trash" />
                 Delete
               </button>
             </template>
@@ -858,7 +813,10 @@ async function handleMentionClick(username: string, host: string | null) {
   border: none;
   cursor: pointer;
   color: var(--nd-fg);
-  transition: background 0.15s;
+  transition:
+    background 0.15s,
+    opacity 0.2s cubic-bezier(0, 0.5, 0.5, 1),
+    transform 0.2s cubic-bezier(0, 0.5, 0.5, 1);
 }
 
 .reaction:hover {
@@ -1001,7 +959,7 @@ async function handleMentionClick(username: string, host: string | null) {
   background: var(--nd-buttonHoverBg);
 }
 
-.popup-item svg {
+.popup-item .ti {
   opacity: 0.7;
   flex-shrink: 0;
 }
@@ -1010,7 +968,7 @@ async function handleMentionClick(username: string, host: string | null) {
   color: var(--nd-warn, #f0a020);
 }
 
-.popup-item-active svg {
+.popup-item-active .ti {
   opacity: 1;
 }
 
