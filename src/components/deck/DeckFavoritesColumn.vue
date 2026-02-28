@@ -177,19 +177,9 @@ async function refresh() {
   isLoading.value = true
   error.value = null
   try {
-    const firstNote = notes.value[0]
-    if (firstNote) {
-      const newer = await adapter.api.getFavorites({
-        sinceId: firstNote.id,
-      })
-      if (newer.length > 0) {
-        setNotes([...newer.reverse(), ...notes.value])
-        scrollToTop()
-      }
-    } else {
-      const fetched = await adapter.api.getFavorites()
-      if (fetched.length > 0) setNotes(fetched)
-    }
+    const fetched = await adapter.api.getFavorites()
+    setNotes(fetched)
+    scrollToTop()
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
