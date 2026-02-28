@@ -21,6 +21,7 @@ import DeckAntennaColumn from './DeckAntennaColumn.vue'
 import DeckClipColumn from './DeckClipColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
+import DeckMentionsColumn from './DeckMentionsColumn.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckUserColumn from './DeckUserColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
@@ -73,9 +74,9 @@ function closeCompose() {
   showCompose.value = false
 }
 
-const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | null>(null)
+const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | null>(null)
 
-function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user') {
+function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions') {
   addColumnType.value = type
 }
 
@@ -97,10 +98,10 @@ function addColumnForAccount(accountId: string) {
     addUserAccountId.value = accountId
     return
   }
-  if (type === 'favorites') {
+  if (type === 'favorites' || type === 'mentions') {
     deckStore.addColumn({
-      type: 'favorites',
-      name: 'Favorites',
+      type,
+      name: type === 'favorites' ? 'Favorites' : 'Mentions',
       width: 330,
       accountId,
       active: true,
@@ -369,6 +370,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   favorites: 'star',
   clip: 'paperclip',
   user: 'user',
+  mentions: 'at',
 }
 
 function columnIcon(colId: string): string {
@@ -649,6 +651,10 @@ onUnmounted(() => {
               v-else-if="col.type === 'user'"
               :column="col"
             />
+            <DeckMentionsColumn
+              v-else-if="col.type === 'mentions'"
+              :column="col"
+            />
           </section>
           <div
             class="col-resize-handle"
@@ -753,6 +759,10 @@ onUnmounted(() => {
             <button class="_button add-type-btn" @click="selectColumnType('user')">
               <i class="ti ti-user" />
               <span>User</span>
+            </button>
+            <button class="_button add-type-btn" @click="selectColumnType('mentions')">
+              <i class="ti ti-at" />
+              <span>Mentions</span>
             </button>
           </template>
 

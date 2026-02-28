@@ -263,6 +263,28 @@ pub async fn api_get_favorites(
 }
 
 #[tauri::command]
+pub async fn api_get_mentions(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    limit: Option<i64>,
+    since_id: Option<String>,
+    until_id: Option<String>,
+) -> Result<Vec<NormalizedNote>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_mentions(
+            &host,
+            &token,
+            &account_id,
+            limit.unwrap_or(20),
+            since_id.as_deref(),
+            until_id.as_deref(),
+        )
+        .await
+}
+
+#[tauri::command]
 pub async fn api_get_clips(
     db: State<'_, Database>,
     client: State<'_, MisskeyClient>,

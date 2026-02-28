@@ -281,6 +281,30 @@ impl MisskeyClient {
             .collect())
     }
 
+    pub async fn get_mentions(
+        &self,
+        host: &str,
+        token: &str,
+        account_id: &str,
+        limit: i64,
+        since_id: Option<&str>,
+        until_id: Option<&str>,
+    ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
+        let mut params = json!({ "limit": limit });
+        if let Some(id) = since_id {
+            params["sinceId"] = json!(id);
+        }
+        if let Some(id) = until_id {
+            params["untilId"] = json!(id);
+        }
+        let data = self.request(host, token, "notes/mentions", params).await?;
+        let raw: Vec<RawNote> = serde_json::from_value(data)?;
+        Ok(raw
+            .into_iter()
+            .map(|n| n.normalize(account_id, host))
+            .collect())
+    }
+
     pub async fn get_note(
         &self,
         host: &str,

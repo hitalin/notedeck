@@ -54,6 +54,14 @@ pub struct StreamNotificationEvent {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct StreamMentionEvent {
+    pub account_id: String,
+    pub subscription_id: String,
+    pub note: NormalizedNote,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StreamMainEvent {
     pub account_id: String,
     pub subscription_id: String,
@@ -620,6 +628,21 @@ async fn handle_ws_message(
                     notification,
                 });
             }
+        } else if event_type == "mention" || event_type == "reply" {
+            if let Ok(raw) = serde_json::from_value::<RawNote>(event_body.clone()) {
+                let note = raw.normalize(account_id, &info.host);
+                emit_or_log!(app, "stream-mention", StreamMentionEvent {
+                    account_id: account_id.to_string(),
+                    subscription_id: sub_id.to_string(),
+                    note,
+                });
+            }
+            emit_or_log!(app, "stream-main-event", StreamMainEvent {
+                account_id: account_id.to_string(),
+                subscription_id: sub_id.to_string(),
+                event_type: event_type.to_string(),
+                body: event_body,
+            });
         } else {
             emit_or_log!(app, "stream-main-event", StreamMainEvent {
                 account_id: account_id.to_string(),

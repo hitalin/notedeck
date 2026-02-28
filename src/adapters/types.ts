@@ -280,6 +280,7 @@ export interface ApiAdapter {
     antennaId: string,
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>
+  getMentions(options?: PaginationOptions): Promise<NormalizedNote[]>
   getFavorites(options?: PaginationOptions): Promise<NormalizedNote[]>
   getClips(): Promise<Clip[]>
   getClipNotes(
@@ -319,6 +320,7 @@ export interface StreamAdapter {
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription
   subscribeMain(handler: (event: MainChannelEvent) => void): ChannelSubscription
+  subscribeMentions(handler: (note: NormalizedNote) => void): ChannelSubscription
   readonly state: StreamConnectionState
   on(
     event: 'connected' | 'disconnected' | 'reconnecting',

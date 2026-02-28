@@ -262,6 +262,17 @@ export class MisskeyApi implements ApiAdapter {
     })
   }
 
+  async getMentions(
+    options: PaginationOptions = {},
+  ): Promise<NormalizedNote[]> {
+    return invoke('api_get_mentions', {
+      accountId: this.accountId,
+      limit: options.limit ?? 20,
+      sinceId: options.sinceId ?? null,
+      untilId: options.untilId ?? null,
+    })
+  }
+
   async getFavorites(
     options: PaginationOptions = {},
   ): Promise<NormalizedNote[]> {

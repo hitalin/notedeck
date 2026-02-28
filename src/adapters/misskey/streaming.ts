@@ -23,6 +23,12 @@ interface StreamNotificationEvent {
   notification: NormalizedNotification
 }
 
+interface StreamMentionEvent {
+  accountId: string
+  subscriptionId: string
+  note: NormalizedNote
+}
+
 interface StreamMainEvent {
   accountId: string
   subscriptionId: string
@@ -59,6 +65,7 @@ export class MisskeyStream implements StreamAdapter {
   >()
   private notifHandlers = new Map<string, (event: MainChannelEvent) => void>()
   private mainHandlers = new Map<string, (event: MainChannelEvent) => void>()
+  private mentionHandlers = new Map<string, (note: NormalizedNote) => void>()
 
   constructor(accountId: string) {
     this.accountId = accountId
@@ -110,6 +117,17 @@ export class MisskeyStream implements StreamAdapter {
       .then((fn) => this.unlistenFns.push(fn))
       .catch((e) =>
         console.error('[stream] failed to listen stream-notification:', e),
+      )
+
+    listen<StreamMentionEvent>('stream-mention', (event) => {
+      if (event.payload.accountId !== this.accountId) return
+      this.mentionHandlers.get(event.payload.subscriptionId)?.(
+        event.payload.note,
+      )
+    })
+      .then((fn) => this.unlistenFns.push(fn))
+      .catch((e) =>
+        console.error('[stream] failed to listen stream-mention:', e),
       )
 
     listen<StreamMainEvent>('stream-main-event', (event) => {
@@ -323,6 +341,60 @@ export class MisskeyStream implements StreamAdapter {
             if (id) {
               this.notifHandlers.delete(id)
               this.mainHandlers.delete(id)
+              invoke('stream_unsubscribe', {
+                accountId: this.accountId,
+                subscriptionId: id,
+              }).catch((e) => {
+                console.warn('[stream] unsubscribe failed:', e)
+              })
+            }
+          })
+        }
+      },
+    }
+  }
+
+  subscribeMentions(
+    handler: (note: NormalizedNote) => void,
+  ): ChannelSubscription {
+    let subscriptionId: string | null = null
+    let disposed = false
+
+    const subscribePromise = invoke<string>('stream_subscribe_main', {
+      accountId: this.accountId,
+    })
+      .then((id) => {
+        if (disposed) {
+          invoke('stream_unsubscribe', {
+            accountId: this.accountId,
+            subscriptionId: id,
+          }).catch(() => {})
+          return null
+        }
+        subscriptionId = id
+        this.mentionHandlers.set(id, handler)
+        return id
+      })
+      .catch((e) => {
+        console.error('[stream] subscribe mentions failed:', e)
+        return null
+      })
+
+    return {
+      dispose: () => {
+        disposed = true
+        if (subscriptionId) {
+          this.mentionHandlers.delete(subscriptionId)
+          invoke('stream_unsubscribe', {
+            accountId: this.accountId,
+            subscriptionId,
+          }).catch((e) => {
+            console.warn('[stream] unsubscribe failed:', e)
+          })
+        } else {
+          subscribePromise.then((id) => {
+            if (id) {
+              this.mentionHandlers.delete(id)
               invoke('stream_unsubscribe', {
                 accountId: this.accountId,
                 subscriptionId: id,
