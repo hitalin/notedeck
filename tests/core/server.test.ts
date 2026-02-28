@@ -16,26 +16,40 @@ describe('server detection', () => {
   })
 
   function mockNodeInfoFlow(softwareName: string, version = '2025.1.0') {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            links: [
-              {
-                rel: 'http://nodeinfo.diaspora.software/ns/schema/2.0',
-                href: 'https://example.com/nodeinfo/2.0',
-              },
-            ],
-          }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            software: { name: softwareName, version },
-          }),
-      } as Response)
+    // Use URL-based matching since fetchNodeInfo and fetchIconUrl run in parallel
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('.well-known/nodeinfo')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              links: [
+                {
+                  rel: 'http://nodeinfo.diaspora.software/ns/schema/2.0',
+                  href: 'https://example.com/nodeinfo/2.0',
+                },
+              ],
+            }),
+        } as Response)
+      }
+      if (url.includes('/nodeinfo/')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              software: { name: softwareName, version },
+            }),
+        } as Response)
+      }
+      if (url.includes('/api/meta')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ iconUrl: null }),
+        } as Response)
+      }
+      return Promise.reject(new Error(`Unexpected fetch: ${url}`))
+    })
   }
 
   it('detects misskey server', async () => {
@@ -63,10 +77,22 @@ describe('server detection', () => {
   })
 
   it('throws when nodeinfo link is missing', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ links: [] }),
-    } as Response)
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('.well-known/nodeinfo')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ links: [] }),
+        } as Response)
+      }
+      if (url.includes('/api/meta')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ iconUrl: null }),
+        } as Response)
+      }
+      return Promise.reject(new Error(`Unexpected fetch: ${url}`))
+    })
 
     await expect(detectServer('bad.example.com')).rejects.toThrow(
       'No nodeinfo URL found',

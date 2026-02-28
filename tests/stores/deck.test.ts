@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDeckStore } from '@/stores/deck'
 
 // Mock localStorage
@@ -12,8 +12,13 @@ vi.stubGlobal('localStorage', {
 
 describe('deck store', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     setActivePinia(createPinia())
     storage.clear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('addColumn creates a column and updates layout', () => {
@@ -155,6 +160,9 @@ describe('deck store', () => {
       width: 400,
       accountId: 'acc1',
     })
+
+    // Flush the debounced save timer
+    vi.advanceTimersByTime(100)
 
     // Create a new store instance and load
     setActivePinia(createPinia())
