@@ -45,7 +45,7 @@ export async function detectCustomTimelines(
     for (const ep of endpoints) {
       const match = ep.match(/^notes\/(.+)-timeline$/)
       if (!match || STANDARD_TL_ENDPOINTS.has(ep)) continue
-      const type = match[1]
+      const type = match[1] as string
       customs.push({
         type,
         label: type.charAt(0).toUpperCase() + type.slice(1),

@@ -628,7 +628,7 @@ onUnmounted(() => {
         <button
           v-if="pendingNotes.length > 0"
           class="new-notes-banner _button"
-          @click="scrollToTop"
+          @click="scrollToTop()"
         >
           {{ pendingNotes.length }} new notes
         </button>
