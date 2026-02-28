@@ -783,6 +783,7 @@ onUnmounted(() => {
   padding: 0;
   margin: 0 auto;
   border-radius: 50%;
+  justify-content: center;
 }
 
 /* Nav resize handle */
