@@ -9,6 +9,7 @@ import type { WidgetConfig } from '@/stores/deck'
 import AiScriptUiRenderer from './AiScriptUiRenderer.vue'
 import AiScriptEditor from './AiScriptEditor.vue'
 import { Parser } from '@syuilo/aiscript'
+import { sanitizeCode } from '@/aiscript/sanitize'
 
 const props = defineProps<{
   widget: WidgetConfig
@@ -59,13 +60,22 @@ async function run() {
     },
     api: apiOption,
     storagePrefix: `app-${props.widget.id}`,
+    playVariables: {
+      THIS_ID: props.widget.id,
+      THIS_URL: '',
+      USER_ID: props.accountId ?? '',
+      USER_NAME: '',
+      USER_USERNAME: '',
+      LOCALE: navigator.language,
+      SERVER_URL: '',
+    },
   }
 
   // Create interpreter and keep reference for event handlers
   const parser = new Parser()
   let ast
   try {
-    ast = parser.parse(code.value)
+    ast = parser.parse(sanitizeCode(code.value))
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
     running.value = false

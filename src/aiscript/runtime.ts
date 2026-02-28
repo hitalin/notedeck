@@ -9,6 +9,17 @@ export interface AiScriptOptions {
   onUiUpdate?: (id: string, props: Record<string, unknown>) => void
   api?: (endpoint: string, params: Record<string, unknown>) => Promise<unknown>
   storagePrefix?: string
+  /** Play-specific variables injected as constants */
+  playVariables?: {
+    THIS_ID?: string
+    THIS_URL?: string
+    USER_ID?: string
+    USER_NAME?: string
+    USER_USERNAME?: string
+    CUSTOM_EMOJIS?: unknown[]
+    LOCALE?: string
+    SERVER_URL?: string
+  }
 }
 
 let componentIdCounter = 0
@@ -161,9 +172,24 @@ export function createInterpreter(options: AiScriptOptions): Interpreter {
     'select',
     'container',
     'folder',
+    // Play-specific components
+    'postFormButton',
   ]
   for (const type of uiTypes) {
     consts[`Ui:C:${type}`] = createUiConstructor(type)
+  }
+
+  // --- Play-specific variables ---
+  if (options.playVariables) {
+    const pv = options.playVariables
+    if (pv.THIS_ID) consts['THIS_ID'] = values.STR(pv.THIS_ID)
+    if (pv.THIS_URL) consts['THIS_URL'] = values.STR(pv.THIS_URL)
+    if (pv.USER_ID) consts['USER_ID'] = values.STR(pv.USER_ID)
+    if (pv.USER_NAME) consts['USER_NAME'] = values.STR(pv.USER_NAME)
+    if (pv.USER_USERNAME) consts['USER_USERNAME'] = values.STR(pv.USER_USERNAME)
+    if (pv.LOCALE) consts['LOCALE'] = values.STR(pv.LOCALE)
+    if (pv.SERVER_URL) consts['SERVER_URL'] = values.STR(pv.SERVER_URL)
+    if (pv.CUSTOM_EMOJIS) consts['CUSTOM_EMOJIS'] = utils.jsToVal(pv.CUSTOM_EMOJIS)
   }
 
   const interpreter = new Interpreter(consts, {

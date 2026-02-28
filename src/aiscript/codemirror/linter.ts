@@ -1,10 +1,11 @@
 import { linter, type Diagnostic } from '@codemirror/lint'
 import { Parser } from '@syuilo/aiscript'
+import { sanitizeCode } from '@/aiscript/sanitize'
 
 export const aiscriptLinter = linter(
   (view) => {
     const diagnostics: Diagnostic[] = []
-    const code = view.state.doc.toString()
+    const code = sanitizeCode(view.state.doc.toString())
     if (!code.trim()) return diagnostics
 
     try {

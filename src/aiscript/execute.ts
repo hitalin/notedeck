@@ -1,6 +1,7 @@
 import { Parser } from '@syuilo/aiscript'
 import { createInterpreter } from './runtime'
 import type { AiScriptOptions } from './runtime'
+import { sanitizeCode } from './sanitize'
 
 export async function executeAiScript(
   code: string,
@@ -9,7 +10,7 @@ export async function executeAiScript(
   const parser = new Parser()
   let ast
   try {
-    ast = parser.parse(code)
+    ast = parser.parse(sanitizeCode(code))
   } catch (e) {
     options.onError(e instanceof Error ? e : new Error(String(e)))
     return

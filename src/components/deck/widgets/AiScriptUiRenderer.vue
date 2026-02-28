@@ -135,6 +135,16 @@ async function callHandler(handler: unknown, interpreter: Interpreter | null, ar
           :interpreter="interpreter"
         />
       </details>
+
+      <!-- postFormButton (Play-specific: renders as a styled button) -->
+      <button
+        v-else-if="comp.type === 'postFormButton'"
+        class="ais-button ais-post-form-button"
+        :class="{ primary: !!comp.props.primary, rounded: !!comp.props.rounded }"
+        @click="callHandler(comp.props.onClick, interpreter)"
+      >
+        {{ comp.props.text ?? 'Post' }}
+      </button>
     </template>
   </div>
 </template>
@@ -234,5 +244,18 @@ async function callHandler(handler: unknown, interpreter: Interpreter | null, ar
 
 .ais-folder > :deep(.ais-ui-renderer) {
   padding: 8px 10px;
+}
+
+.ais-post-form-button.primary {
+  background: var(--nd-accent);
+  color: var(--nd-fgOnAccent);
+}
+
+.ais-post-form-button.primary:hover:not(:disabled) {
+  background: var(--nd-accentDarken);
+}
+
+.ais-post-form-button.rounded {
+  border-radius: 999px;
 }
 </style>

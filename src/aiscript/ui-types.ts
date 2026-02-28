@@ -8,6 +8,7 @@ export type UiComponentType =
   | 'select'
   | 'container'
   | 'folder'
+  | 'postFormButton'
 
 export interface UiComponent {
   id: string
