@@ -116,10 +116,10 @@ async function handleDelete(target: NormalizedNote) {
       router.back()
     } else {
       children.value = children.value.filter(
-        (n) => n.id !== id && n.renote?.id !== id,
+        (n) => n.id !== id && n.renoteId !== id,
       )
       ancestors.value = ancestors.value.filter(
-        (n) => n.id !== id && n.renote?.id !== id,
+        (n) => n.id !== id && n.renoteId !== id,
       )
     }
   } catch (e) {
@@ -145,14 +145,14 @@ async function handlePosted(editedNoteId?: string) {
       children.value = children.value.map((n) =>
         n.id === editedNoteId
           ? updated
-          : n.renote?.id === editedNoteId
+          : n.renoteId === editedNoteId
             ? { ...n, renote: updated }
             : n,
       )
       ancestors.value = ancestors.value.map((n) =>
         n.id === editedNoteId
           ? updated
-          : n.renote?.id === editedNoteId
+          : n.renoteId === editedNoteId
             ? { ...n, renote: updated }
             : n,
       )

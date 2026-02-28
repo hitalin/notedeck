@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { computed, defineAsyncComponent, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
+import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useAccountsStore } from '@/stores/accounts'
 import { formatTime } from '@/utils/formatTime'
@@ -222,6 +223,31 @@ const VISIBILITY_ICONS: Record<string, string> = {
     'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z',
 }
 
+const DEFAULT_MODE_ICON = 'M12 2a10 10 0 100 20 10 10 0 000-20z'
+
+const activeModeFlags = computed(() => {
+  const flags = effectiveNote.value.modeFlags
+  if (!flags) return []
+  return Object.entries(flags)
+    .filter(([, v]) => v)
+    .map(([key]) => {
+      const match = key.match(/^isNoteIn(.+)Mode$/)
+      const label = match?.[1] ?? key
+      return {
+        key,
+        label,
+        icon: CUSTOM_TL_ICONS[label.toLowerCase()] ?? DEFAULT_MODE_ICON,
+      }
+    })
+})
+
+const originalUrl = computed(() => effectiveNote.value.url ?? effectiveNote.value.uri)
+
+function openOriginal() {
+  const url = originalUrl.value
+  if (url) window.open(url, '_blank')
+}
+
 function navigateToDetail() {
   if (!props.detailed) {
     router.push(`/note/${props.note._accountId}/${props.note.id}`)
@@ -328,6 +354,22 @@ async function handleMentionClick(username: string, host: string | null) {
           <span class="username">@{{ effectiveNote.user.username }}@{{ effectiveNote.user.host || note._serverHost }}</span>
           <span class="info">
             <span class="time">{{ formatTime(effectiveNote.createdAt) }}</span>
+            <span
+              v-if="effectiveNote.updatedAt"
+              class="edited"
+              :title="formatTime(effectiveNote.updatedAt)"
+            >(edited)</span>
+            <svg
+              v-for="mode in activeModeFlags"
+              :key="mode.key"
+              class="visibility-icon"
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+              :title="mode.label + ' Mode'"
+            >
+              <path :d="mode.icon" fill="currentColor" />
+            </svg>
             <svg
               v-if="effectiveNote.localOnly"
               class="visibility-icon"
@@ -559,6 +601,13 @@ async function handleMentionClick(username: string, host: string | null) {
               </svg>
               {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
             </button>
+            <button v-if="originalUrl" class="popup-item" @click="openOriginal(); closeMoreMenu()">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"
+                  stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              元のノートを開く
+            </button>
             <template v-if="isOwnNote">
               <div class="popup-divider" />
               <button class="popup-item" @click="emit('edit', effectiveNote); closeMoreMenu()">
@@ -722,6 +771,11 @@ async function handleMentionClick(username: string, host: string | null) {
   flex-shrink: 0;
   margin-left: auto;
   font-size: 0.9em;
+}
+
+.edited {
+  opacity: 0.5;
+  font-size: 0.85em;
 }
 
 .time {

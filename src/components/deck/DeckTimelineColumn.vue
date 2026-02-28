@@ -350,7 +350,7 @@ function flushPending() {
 async function removeNote(note: NormalizedNote) {
   if (await handlers.delete(note)) {
     const id = note.id
-    notes.value = notes.value.filter((n) => n.id !== id && n.renote?.id !== id)
+    notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
     noteIds.delete(id)
   }
 }
@@ -364,7 +364,7 @@ function applyNoteUpdate(event: NoteUpdateEvent) {
         const target =
           n.id === event.noteId
             ? n
-            : n.renote?.id === event.noteId
+            : n.renoteId === event.noteId
               ? n.renote
               : null
         if (!target) return n
@@ -391,7 +391,7 @@ function applyNoteUpdate(event: NoteUpdateEvent) {
         const target =
           n.id === event.noteId
             ? n
-            : n.renote?.id === event.noteId
+            : n.renoteId === event.noteId
               ? n.renote
               : null
         if (!target) return n
@@ -406,7 +406,7 @@ function applyNoteUpdate(event: NoteUpdateEvent) {
     }
     case 'deleted':
       notes.value = notes.value.filter(
-        (n) => n.id !== event.noteId && n.renote?.id !== event.noteId,
+        (n) => n.id !== event.noteId && n.renoteId !== event.noteId,
       )
       noteIds.delete(event.noteId)
       break
@@ -417,7 +417,7 @@ function applyNoteUpdate(event: NoteUpdateEvent) {
         const target =
           n.id === event.noteId
             ? n
-            : n.renote?.id === event.noteId
+            : n.renoteId === event.noteId
               ? n.renote
               : null
         if (!target?.poll) return n
@@ -445,7 +445,7 @@ async function handlePosted(editedNoteId?: string) {
       notes.value = notes.value.map((n) =>
         n.id === editedNoteId
           ? updated
-          : n.renote?.id === editedNoteId
+          : n.renoteId === editedNoteId
             ? { ...n, renote: updated }
             : n,
       )

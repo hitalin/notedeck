@@ -156,7 +156,7 @@ async function loadMore() {
 async function removeNote(note: NormalizedNote) {
   if (await handlers.delete(note)) {
     const id = note.id
-    notes.value = notes.value.filter((n) => n.id !== id && n.renote?.id !== id)
+    notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
   }
 }
 
@@ -170,7 +170,7 @@ async function handlePosted(editedNoteId?: string) {
       notes.value = notes.value.map((n) =>
         n.id === editedNoteId
           ? updated
-          : n.renote?.id === editedNoteId
+          : n.renoteId === editedNoteId
             ? { ...n, renote: updated }
             : n,
       )

@@ -164,7 +164,7 @@ async function handleDelete(target: NormalizedNote) {
   try {
     await adapter.api.deleteNote(target.id)
     const id = target.id
-    notes.value = notes.value.filter((n) => n.id !== id && n.renote?.id !== id)
+    notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
   } catch (e) {
     error.value = AppError.from(e)
   }
@@ -185,7 +185,7 @@ async function handlePosted(editedNoteId?: string) {
       notes.value = notes.value.map((n) =>
         n.id === editedNoteId
           ? updated
-          : n.renote?.id === editedNoteId
+          : n.renoteId === editedNoteId
             ? { ...n, renote: updated }
             : n,
       )

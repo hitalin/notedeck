@@ -203,7 +203,7 @@ async function removeNote(note: NormalizedNote) {
   if (await handlers.delete(note)) {
     const id = note.id
     notifications.value = notifications.value.filter(
-      (x) => x.note?.id !== id && x.note?.renote?.id !== id,
+      (x) => x.note?.id !== id && x.note?.renoteId !== id,
     )
   }
 }
@@ -218,7 +218,7 @@ async function handlePosted(editedNoteId?: string) {
       notifications.value = notifications.value.map((x) => {
         if (!x.note) return x
         if (x.note.id === editedNoteId) return { ...x, note: updated }
-        if (x.note.renote?.id === editedNoteId)
+        if (x.note.renoteId === editedNoteId)
           return { ...x, note: { ...x.note, renote: updated } }
         return x
       })
