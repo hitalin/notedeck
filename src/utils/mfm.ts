@@ -25,9 +25,12 @@ export type MfmToken =
 const emojiRegex =
   /(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F)(?:\u200D(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F))*/gu
 
+/** Regex match with guaranteed capture group access (groups are always present after exec) */
+type Match = string[] & { index: number; input: string }
+
 interface PatternDef {
   regex: RegExp
-  parse: (m: RegExpExecArray & Record<number, string>) => MfmToken
+  parse: (m: Match) => MfmToken
 }
 
 const inlinePatterns: PatternDef[] = [
@@ -216,7 +219,7 @@ function parseTokens(text: string): MfmToken[] {
         earliest = {
           index: m.index,
           consumeLength: m[0].length,
-          token: pattern.parse(m),
+          token: pattern.parse(m as Match),
         }
       }
     }
