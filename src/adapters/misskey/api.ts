@@ -264,13 +264,14 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async getMentions(
-    options: PaginationOptions = {},
+    options: PaginationOptions & { visibility?: string } = {},
   ): Promise<NormalizedNote[]> {
     return invoke('api_get_mentions', {
       accountId: this.accountId,
       limit: options.limit ?? 20,
       sinceId: options.sinceId ?? null,
       untilId: options.untilId ?? null,
+      visibility: options.visibility ?? null,
     })
   }
 

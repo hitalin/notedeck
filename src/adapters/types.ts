@@ -285,7 +285,7 @@ export interface ApiAdapter {
     antennaId: string,
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>
-  getMentions(options?: PaginationOptions): Promise<NormalizedNote[]>
+  getMentions(options?: PaginationOptions & { visibility?: string }): Promise<NormalizedNote[]>
   getFavorites(options?: PaginationOptions): Promise<NormalizedNote[]>
   getClips(): Promise<Clip[]>
   getClipNotes(

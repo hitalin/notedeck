@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 
-export type ColumnType = 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel'
+export type ColumnType = 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified'
 
 export interface DeckColumn {
   id: string
@@ -29,6 +29,7 @@ function genColumnId(): string {
 export const useDeckStore = defineStore('deck', () => {
   const columns = ref<DeckColumn[]>([])
   const layout = ref<string[][]>([])
+  const navCollapsed = ref(false)
 
   function addColumn(partial: Omit<DeckColumn, 'id'>) {
     const col: DeckColumn = { ...partial, id: genColumnId() }
@@ -125,6 +126,7 @@ export const useDeckStore = defineStore('deck', () => {
   return {
     columns,
     layout,
+    navCollapsed,
     addColumn,
     removeColumn,
     updateColumn,

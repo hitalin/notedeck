@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   registerDefaultCommands,
@@ -26,6 +26,7 @@ import DeckClipColumn from './DeckClipColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
+import DeckSpecifiedColumn from './DeckSpecifiedColumn.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
@@ -78,9 +79,9 @@ function closeCompose() {
   showCompose.value = false
 }
 
-const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | null>(null)
+const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | null>(null)
 
-function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel') {
+function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified') {
   addColumnType.value = type
 }
 
@@ -106,10 +107,11 @@ function addColumnForAccount(accountId: string) {
     addUserAccountId.value = accountId
     return
   }
-  if (type === 'favorites' || type === 'mentions') {
+  if (type === 'favorites' || type === 'mentions' || type === 'specified') {
+    const nameMap: Record<string, string> = { favorites: 'Favorites', mentions: 'Mentions', specified: 'Direct' }
     deckStore.addColumn({
       type,
-      name: type === 'favorites' ? 'Favorites' : 'Mentions',
+      name: nameMap[type] ?? type,
       width: 330,
       accountId,
       active: true,
@@ -414,6 +416,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   channel: 'device-tv',
   user: 'user',
   mentions: 'at',
+  specified: 'mail',
 }
 
 function columnIcon(colId: string): string {
@@ -709,6 +712,10 @@ onUnmounted(() => {
               v-else-if="col.type === 'mentions'"
               :column="col"
             />
+            <DeckSpecifiedColumn
+              v-else-if="col.type === 'specified'"
+              :column="col"
+            />
           </section>
           <div
             class="col-resize-handle"
@@ -824,6 +831,10 @@ onUnmounted(() => {
             <button class="_button add-type-btn" @click="selectColumnType('mentions')">
               <i class="ti ti-at" />
               <span>Mentions</span>
+            </button>
+            <button class="_button add-type-btn" @click="selectColumnType('specified')">
+              <i class="ti ti-mail" />
+              <span>Direct</span>
             </button>
           </template>
 

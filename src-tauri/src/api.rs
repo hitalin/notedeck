@@ -351,6 +351,7 @@ impl MisskeyClient {
         limit: i64,
         since_id: Option<&str>,
         until_id: Option<&str>,
+        visibility: Option<&str>,
     ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
         let mut params = json!({ "limit": limit });
         if let Some(id) = since_id {
@@ -358,6 +359,9 @@ impl MisskeyClient {
         }
         if let Some(id) = until_id {
             params["untilId"] = json!(id);
+        }
+        if let Some(v) = visibility {
+            params["visibility"] = json!(v);
         }
         let data = self.request(host, token, "notes/mentions", params).await?;
         let raw: Vec<RawNote> = serde_json::from_value(data)?;

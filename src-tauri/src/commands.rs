@@ -270,6 +270,7 @@ pub async fn api_get_mentions(
     limit: Option<i64>,
     since_id: Option<String>,
     until_id: Option<String>,
+    visibility: Option<String>,
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
     client
@@ -280,6 +281,7 @@ pub async fn api_get_mentions(
             limit.unwrap_or(20),
             since_id.as_deref(),
             until_id.as_deref(),
+            visibility.as_deref(),
         )
         .await
 }
