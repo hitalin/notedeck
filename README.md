@@ -55,6 +55,11 @@ Rust 製バックエンドによる WebSocket ストリーミングで、タイ�
 | Android (GrapheneOS) | 利用可能 |
 
 > **Note:** NoteDeck はデスクトップ特化のアプリケーションです。Android ビルドは GrapheneOS 等のカスタム ROM 向けに APK を提供していますが、公式 Android（Google Play）および iOS のサポート予定はありません。
+>
+> **理由:**
+> - **iOS** — App Store 審査の通過が必須で、TestFlight 等の配布にも Apple Developer Program（年額 $99）への加入と Mac でのビルドが必要です。個人開発で維持し続けるにはコストと手間が見合いません。
+> - **公式 Android** — Google が 2026 年 9 月に導入予定の [Android Developer Verification](https://keepandroidopen.org/) により、Google 未登録の開発者が作成したアプリはインストールがブロックされる見込みです。Google Play 非経由の APK 直配布という従来のメリットが失われるため、公式 Android のサポートは行いません。
+> - **GrapheneOS** — Google Play サービス（GMS）に依存しないカスタム ROM のため、上記の制約を受けずに APK を直接インストールできます。
 
 ## インストール
 

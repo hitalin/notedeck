@@ -25,6 +25,11 @@ Connect to multiple Misskey-compatible servers in one deck UI. Runs as a native 
 | Android (GrapheneOS) | Tauri v2 | Available |
 
 > **Note:** NoteDeck is a desktop-focused application. The Android APK is provided for custom ROMs such as GrapheneOS. Official Android (Google Play) and iOS are not supported.
+>
+> **Why no official Android / iOS?**
+> - **iOS** — Requires App Store review, Apple Developer Program ($99/year), and a Mac for building. The ongoing cost and effort are not sustainable for an individual developer.
+> - **Official Android** — Google's upcoming [Android Developer Verification](https://keepandroidopen.org/) (September 2026) will block installation of apps from unregistered developers, eliminating the advantage of direct APK distribution.
+> - **GrapheneOS** — As a custom ROM independent of Google Play Services (GMS), it is unaffected by the above restrictions and can freely sideload APKs.
 
 ## Tech Stack
 
