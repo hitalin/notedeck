@@ -126,7 +126,7 @@ function isTablerIcon(icon: string): boolean {
 }
 
 const currentTlIcon = computed(
-  () => TL_ICONS[tlType.value] ?? customTlIcon.value ?? TL_ICONS.home,
+  () => TL_ICONS[tlType.value] ?? customTlIcon.value ?? 'home',
 )
 
 // --- Custom timelines ---
