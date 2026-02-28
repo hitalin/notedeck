@@ -1,9 +1,10 @@
 use axum::{
-    extract::{Path, Query, State},
-    http::StatusCode,
+    extract::{Path, Query, Request, State},
+    http::{header::AUTHORIZATION, StatusCode},
+    middleware::{self, Next},
     response::{
         sse::{Event, KeepAlive, Sse},
-        IntoResponse,
+        IntoResponse, Response,
     },
     routing::{delete, get, post},
     Json, Router,
@@ -29,6 +30,8 @@ const PORT: u16 = 19820;
 #[derive(Clone)]
 struct AppState {
     app_handle: AppHandle,
+    api_token: String,
+    token_path: String,
 }
 
 impl AppState {
@@ -68,6 +71,13 @@ impl ApiError {
         }
     }
 
+    fn unauthorized() -> Self {
+        Self {
+            status: StatusCode::UNAUTHORIZED,
+            code: "UNAUTHORIZED".to_string(),
+            message: "Missing or invalid Bearer token".to_string(),
+        }
+    }
 }
 
 impl From<crate::error::NoteDeckError> for ApiError {
@@ -90,8 +100,12 @@ impl IntoResponse for ApiError {
 
 // --- Routes ---
 
-pub async fn start(app_handle: AppHandle) {
-    let state = AppState { app_handle };
+pub async fn start(app_handle: AppHandle, api_token: String, token_path: String) {
+    let state = AppState {
+        app_handle,
+        api_token,
+        token_path,
+    };
 
     let app = Router::new()
         .route("/api", get(index))
@@ -116,6 +130,7 @@ pub async fn start(app_handle: AppHandle) {
         .route("/api/deck/active", get(get_deck_active))
         .route("/api/commands", get(list_commands))
         .route("/api/commands/{command_id}/execute", post(execute_command))
+        .layer(middleware::from_fn_with_state(state.clone(), auth_middleware))
         .layer(CorsLayer::permissive())
         .with_state(state);
 
@@ -135,12 +150,38 @@ pub async fn start(app_handle: AppHandle) {
     }
 }
 
+// --- Auth middleware ---
+
+async fn auth_middleware(
+    State(state): State<AppState>,
+    req: Request,
+    next: Next,
+) -> Result<Response, Response> {
+    // GET /api is public (endpoint list + token path info)
+    if req.uri().path() == "/api" {
+        return Ok(next.run(req).await);
+    }
+
+    let token = req
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "));
+
+    match token {
+        Some(t) if t == state.api_token => Ok(next.run(req).await),
+        _ => Err(ApiError::unauthorized().into_response()),
+    }
+}
+
 // --- Handlers ---
 
-async fn index() -> Json<Value> {
+async fn index(State(state): State<AppState>) -> Json<Value> {
     Json(json!({
         "name": "notedeck",
         "version": env!("CARGO_PKG_VERSION"),
+        "auth": "Bearer token required. Read token from the file at tokenPath.",
+        "tokenPath": state.token_path,
         "endpoints": [
             { "method": "GET",    "path": "/api",                                  "description": "This endpoint list" },
             { "method": "GET",    "path": "/api/accounts",                         "description": "List accounts (no tokens)" },

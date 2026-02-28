@@ -125,10 +125,21 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
 
+        // Generate API token and write to file
+        let api_token = uuid::Uuid::new_v4().to_string();
+        let token_path = app_dir.join("api-token");
+        std::fs::write(&token_path, &api_token)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&token_path, std::fs::Permissions::from_mode(0o600))?;
+        }
+        let token_path_str = token_path.to_string_lossy().to_string();
+
         // Start HTTP API server
         let app_handle = app.app_handle().clone();
         tauri::async_runtime::spawn(async move {
-            http_server::start(app_handle).await;
+            http_server::start(app_handle, api_token, token_path_str).await;
         });
 
         // System tray (desktop only)
