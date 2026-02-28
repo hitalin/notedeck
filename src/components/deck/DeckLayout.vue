@@ -22,6 +22,7 @@ import DeckClipColumn from './DeckClipColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
+import DeckUserColumn from './DeckUserColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
 
@@ -72,9 +73,9 @@ function closeCompose() {
   showCompose.value = false
 }
 
-const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | null>(null)
+const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | null>(null)
 
-function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip') {
+function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user') {
   addColumnType.value = type
 }
 
@@ -90,6 +91,10 @@ function addColumnForAccount(accountId: string) {
   }
   if (type === 'clip') {
     fetchClips(accountId)
+    return
+  }
+  if (type === 'user') {
+    addUserAccountId.value = accountId
     return
   }
   if (type === 'favorites') {
@@ -212,6 +217,45 @@ function addClipColumn(clipId: string, clipName: string) {
   resetAddMenu()
 }
 
+// User column creation
+const addUserAccountId = ref<string | null>(null)
+const userSearchInput = ref('')
+const userSearchError = ref<string | null>(null)
+const searchingUser = ref(false)
+
+async function searchAndAddUserColumn() {
+  if (!addUserAccountId.value || !userSearchInput.value.trim()) return
+  const raw = userSearchInput.value.trim().replace(/^@/, '')
+  const parts = raw.split('@')
+  const username = parts[0] || ''
+  const host = parts[1] || null
+  if (!username) return
+
+  searchingUser.value = true
+  userSearchError.value = null
+  try {
+    const user = await invoke<{ id: string; username: string; host: string | null }>('api_lookup_user', {
+      accountId: addUserAccountId.value,
+      username,
+      host,
+    })
+    const displayName = user.host ? `@${user.username}@${user.host}` : `@${user.username}`
+    deckStore.addColumn({
+      type: 'user',
+      name: displayName,
+      width: 330,
+      accountId: addUserAccountId.value,
+      userId: user.id,
+      active: true,
+    })
+    resetAddMenu()
+  } catch {
+    userSearchError.value = 'User not found'
+  } finally {
+    searchingUser.value = false
+  }
+}
+
 function resetAddMenu() {
   showAddMenu.value = false
   addColumnType.value = null
@@ -221,6 +265,9 @@ function resetAddMenu() {
   antennas.value = []
   addClipAccountId.value = null
   clips.value = []
+  addUserAccountId.value = null
+  userSearchInput.value = ''
+  userSearchError.value = null
 }
 
 function toggleAddMenu() {
@@ -321,6 +368,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   antenna: 'antenna-bars-5',
   favorites: 'star',
   clip: 'paperclip',
+  user: 'user',
 }
 
 function columnIcon(colId: string): string {
@@ -597,6 +645,10 @@ onUnmounted(() => {
               v-else-if="col.type === 'clip'"
               :column="col"
             />
+            <DeckUserColumn
+              v-else-if="col.type === 'user'"
+              :column="col"
+            />
           </section>
           <div
             class="col-resize-handle"
@@ -650,7 +702,7 @@ onUnmounted(() => {
       <div v-if="showAddMenu" class="add-overlay" @click="resetAddMenu()">
         <div class="add-popup" @click.stop>
           <div class="add-popup-header">
-            <button v-if="addColumnType && !addListAccountId && !addAntennaAccountId && !addClipAccountId" class="_button add-back-btn" @click="addColumnType = null">
+            <button v-if="addColumnType && !addListAccountId && !addAntennaAccountId && !addClipAccountId && !addUserAccountId" class="_button add-back-btn" @click="addColumnType = null">
               <i class="ti ti-chevron-left" />
             </button>
             <button v-else-if="addListAccountId" class="_button add-back-btn" @click="addListAccountId = null; userLists = []">
@@ -662,7 +714,10 @@ onUnmounted(() => {
             <button v-else-if="addClipAccountId" class="_button add-back-btn" @click="addClipAccountId = null; clips = []">
               <i class="ti ti-chevron-left" />
             </button>
-            {{ addListAccountId ? 'Select list' : addAntennaAccountId ? 'Select antenna' : addClipAccountId ? 'Select clip' : addColumnType ? 'Select account' : 'Add column' }}
+            <button v-else-if="addUserAccountId" class="_button add-back-btn" @click="addUserAccountId = null; userSearchInput = ''; userSearchError = null">
+              <i class="ti ti-chevron-left" />
+            </button>
+            {{ addListAccountId ? 'Select list' : addAntennaAccountId ? 'Select antenna' : addClipAccountId ? 'Select clip' : addUserAccountId ? 'Find user' : addColumnType ? 'Select account' : 'Add column' }}
           </div>
 
           <!-- Step 1: Column type selection -->
@@ -694,6 +749,10 @@ onUnmounted(() => {
             <button class="_button add-type-btn" @click="selectColumnType('clip')">
               <i class="ti ti-paperclip" />
               <span>Clip</span>
+            </button>
+            <button class="_button add-type-btn" @click="selectColumnType('user')">
+              <i class="ti ti-user" />
+              <span>User</span>
             </button>
           </template>
 
@@ -740,6 +799,29 @@ onUnmounted(() => {
               <i class="ti ti-paperclip" />
               <span>{{ clip.name }}</span>
             </button>
+          </template>
+
+          <!-- Step 3d: User search (for user columns) -->
+          <template v-else-if="addUserAccountId">
+            <div class="add-user-search">
+              <input
+                v-model="userSearchInput"
+                class="add-user-input"
+                type="text"
+                placeholder="@username or @username@host"
+                @keydown.enter="searchAndAddUserColumn"
+              />
+              <button
+                class="_button add-user-submit"
+                :disabled="searchingUser || !userSearchInput.trim()"
+                @click="searchAndAddUserColumn"
+              >
+                {{ searchingUser ? '...' : 'Add' }}
+              </button>
+            </div>
+            <div v-if="userSearchError" class="add-popup-empty" style="color: var(--nd-love);">
+              {{ userSearchError }}
+            </div>
           </template>
 
           <!-- Step 2: Account selection -->
@@ -1127,6 +1209,42 @@ onUnmounted(() => {
 
 .add-popup-empty a {
   color: var(--nd-accent);
+}
+
+.add-user-search {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.add-user-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--nd-divider);
+  border-radius: 6px;
+  background: var(--nd-bg);
+  color: var(--nd-fg);
+  font-size: 0.85em;
+  outline: none;
+}
+
+.add-user-input:focus {
+  border-color: var(--nd-accent);
+}
+
+.add-user-submit {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: var(--nd-accent);
+  color: #fff;
+  font-size: 0.85em;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.add-user-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .add-account-btn {
