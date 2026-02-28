@@ -2,9 +2,11 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useCommandStore } from '@/commands/registry'
+import { useDeckStore } from '@/stores/deck'
 
 const appWindow = getCurrentWindow()
 const commandStore = useCommandStore()
+const deckStore = useDeckStore()
 const isMaximized = ref(false)
 
 async function syncMaximized() {
@@ -46,6 +48,14 @@ async function close() {
       <kbd class="titlebar-search-kbd">Ctrl+K</kbd>
     </button>
     <div class="titlebar-controls">
+      <button
+        class="titlebar-btn"
+        :class="{ 'titlebar-btn-active': !deckStore.navCollapsed }"
+        title="Toggle Sidebar"
+        @click="commandStore.execute('toggle-sidebar')"
+      >
+        <i class="ti ti-layout-sidebar" />
+      </button>
       <button class="titlebar-btn" title="Minimize" @click="minimize">
         <svg width="10" height="10" viewBox="0 0 10 10">
           <rect x="0" y="4.5" width="10" height="1" fill="currentColor" />
@@ -168,6 +178,10 @@ async function close() {
 .titlebar-btn:hover {
   opacity: 1;
   background: var(--nd-buttonHoverBg);
+}
+
+.titlebar-btn-active {
+  opacity: 0.85;
 }
 
 .titlebar-btn-close:hover {

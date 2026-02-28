@@ -69,6 +69,9 @@ const MAX_WIDTH = 400
 const navWidth = ref(window.innerWidth <= 1279 ? MIN_WIDTH : DEFAULT_WIDTH)
 const isResizing = ref(false)
 const navCollapsed = computed(() => navWidth.value <= MIN_WIDTH)
+watch(navCollapsed, (v) => {
+  deckStore.navCollapsed = v
+}, { immediate: true })
 
 function openCompose() {
   if (accountsStore.accounts.length === 0) return
