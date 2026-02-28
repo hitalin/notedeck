@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type {
@@ -36,7 +37,7 @@ const MAX_TEXT_LENGTH = 3000
 const text = ref('')
 const cw = ref('')
 const showCw = ref(false)
-const visibility = ref<'public' | 'home' | 'followers' | 'specified'>('public')
+const visibility = ref('public')
 const localOnly = ref(false)
 const showVisibilityMenu = ref(false)
 const showAccountMenu = ref(false)
@@ -48,6 +49,7 @@ const attachedFiles = ref<NormalizedDriveFile[]>([])
 const isUploading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const noteModeFlags = ref<Record<string, boolean>>({})
+const disabledVisibilities = ref(new Set<string>())
 
 let adapter: ServerAdapter | null = null
 
@@ -60,11 +62,13 @@ const formThemeVars = computed(() =>
   themeStore.getStyleVarsForAccount(activeAccountId.value),
 )
 
-const visibilityOptions: {
-  value: typeof visibility.value
+interface VisibilityOption {
+  value: string
   label: string
   icon: string
-}[] = [
+}
+
+const visibilityOptions: VisibilityOption[] = [
   {
     value: 'public',
     label: 'Public',
@@ -87,12 +91,10 @@ const visibilityOptions: {
   },
 ]
 
-const defaultVisibility =
-  visibilityOptions[0] as (typeof visibilityOptions)[number]
 const currentVisibility = computed(
   () =>
     visibilityOptions.find((o) => o.value === visibility.value) ??
-    defaultVisibility,
+    visibilityOptions[0],
 )
 
 const remainingChars = computed(() => MAX_TEXT_LENGTH - text.value.length)
@@ -127,6 +129,50 @@ async function initAdapter() {
     noteModeFlags.value = flags
   } catch {
     noteModeFlags.value = {}
+  }
+
+  // Detect visibility restrictions from role policies
+  const disabled = new Set<string>()
+  try {
+    const policies = await invoke<Record<string, boolean>>(
+      'api_get_user_policies',
+      { accountId: acc.id },
+    )
+    // Standard: canPublicNote
+    if (policies.canPublicNote === false) disabled.add('public')
+    // Fork extensions: can*Note pattern (e.g., canHomeNote, canPublicNonLtlNote)
+    for (const [key, value] of Object.entries(policies)) {
+      if (value !== false) continue
+      const match = key.match(/^can(.+)Note$/)
+      if (!match || key === 'canPublicNote') continue
+      const name = match[1].charAt(0).toLowerCase() + match[1].slice(1)
+      disabled.add(name)
+    }
+    // Filter mode flags by can*Note policies (e.g., canYamiNote=false → remove isNoteInYamiMode)
+    const filtered: Record<string, boolean> = {}
+    for (const [flagKey, flagValue] of Object.entries(noteModeFlags.value)) {
+      const m = flagKey.match(/^isNoteIn(.+)Mode$/)
+      if (m) {
+        const policyKey = `can${m[1]}Note`
+        if (policies[policyKey] === false) continue
+      }
+      filtered[flagKey] = flagValue
+    }
+    noteModeFlags.value = filtered
+  } catch {
+    // Policies unavailable — allow all
+  }
+  // Reply to specified → restrict to followers/specified
+  if (props.replyTo?.visibility === 'specified') {
+    disabled.add('public')
+    disabled.add('home')
+  }
+  disabledVisibilities.value = disabled
+
+  // Auto-correct if current visibility is disabled
+  if (disabled.has(visibility.value)) {
+    const first = visibilityOptions.find((o) => !disabled.has(o.value))
+    if (first) visibility.value = first.value
   }
 }
 
@@ -178,7 +224,8 @@ async function post() {
         text: text.value || undefined,
         cw: showCw.value && cw.value ? cw.value : undefined,
         visibility: visibility.value,
-        localOnly: localOnly.value || undefined,
+        localOnly:
+          visibility.value === 'specified' ? false : localOnly.value || undefined,
         modeFlags,
         replyId: props.replyTo?.id,
         renoteId: props.renoteId,
@@ -229,7 +276,7 @@ function removeFile(fileId: string) {
   attachedFiles.value = attachedFiles.value.filter((f) => f.id !== fileId)
 }
 
-function selectVisibility(v: typeof visibility.value) {
+function selectVisibility(v: string) {
   visibility.value = v
   showVisibilityMenu.value = false
 }
@@ -345,6 +392,7 @@ function onKeydown(e: KeyboardEvent) {
                 :key="opt.value"
                 class="_button visibility-option"
                 :class="{ active: visibility === opt.value }"
+                :disabled="disabledVisibilities.has(opt.value)"
                 @click="selectVisibility(opt.value)"
               >
                 <svg viewBox="0 0 24 24" width="16" height="16">
@@ -364,6 +412,7 @@ function onKeydown(e: KeyboardEvent) {
 
           <!-- Local only (Tabler Icons: ti-rocket / ti-rocket-off) -->
           <button
+            v-if="visibility !== 'specified'"
             class="_button header-btn local-only-btn"
             :class="{ active: localOnly }"
             :title="localOnly ? 'Local only (連合なし)' : 'Federated (連合あり)'"
@@ -425,7 +474,7 @@ function onKeydown(e: KeyboardEvent) {
         />
         <div class="reply-content">
           <span class="reply-user">
-            <MkMfm v-if="replyTo.user.name" :text="replyTo.user.name" :server-host="replyTo._serverHost" />
+            <MkMfm v-if="replyTo.user.name" :text="replyTo.user.name" :emojis="replyTo.user.emojis" :server-host="replyTo._serverHost" />
             <template v-else>{{ replyTo.user.username }}</template>
           </span>
           <span class="reply-handle">@{{ replyTo.user.username }}</span>
@@ -766,6 +815,11 @@ function onKeydown(e: KeyboardEvent) {
 .visibility-option.active {
   color: var(--nd-accent);
   font-weight: bold;
+}
+
+.visibility-option:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* ── Local only button ── */

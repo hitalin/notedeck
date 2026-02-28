@@ -743,6 +743,7 @@ impl MisskeyClient {
         Ok(params)
     }
 
+    /// Fetch enum values for a specific parameter of an endpoint.
     /// Fetch available API endpoints (public, no auth required).
     pub async fn get_endpoints(&self, host: &str) -> Result<Vec<String>, NoteDeckError> {
         let res = self

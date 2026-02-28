@@ -143,6 +143,8 @@ pub struct NormalizedUser {
     pub is_bot: bool,
     #[serde(default)]
     pub avatar_decorations: Vec<AvatarDecoration>,
+    #[serde(default)]
+    pub emojis: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -173,6 +175,8 @@ pub struct NormalizedUserDetail {
     pub created_at: String,
     #[serde(default)]
     pub avatar_decorations: Vec<AvatarDecoration>,
+    #[serde(default)]
+    pub emojis: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -411,6 +415,8 @@ pub struct RawUser {
     pub is_bot: bool,
     #[serde(default)]
     pub avatar_decorations: Vec<AvatarDecoration>,
+    #[serde(default)]
+    pub emojis: HashMap<String, String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -487,6 +493,8 @@ pub struct RawUserDetail {
     pub created_at: String,
     #[serde(default)]
     pub avatar_decorations: Vec<AvatarDecoration>,
+    #[serde(default)]
+    pub emojis: HashMap<String, String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -614,6 +622,7 @@ impl From<RawUser> for NormalizedUser {
             avatar_url: user.avatar_url,
             is_bot: user.is_bot,
             avatar_decorations: user.avatar_decorations,
+            emojis: user.emojis,
         }
     }
 }
@@ -651,6 +660,7 @@ impl RawUserDetail {
             is_followed: self.is_followed,
             created_at: self.created_at,
             avatar_decorations: self.avatar_decorations,
+            emojis: self.emojis,
         }
     }
 }

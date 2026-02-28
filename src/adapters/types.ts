@@ -82,7 +82,7 @@ export interface NormalizedNote {
   text: string | null
   cw: string | null
   user: NormalizedUser
-  visibility: 'public' | 'home' | 'followers' | 'specified'
+  visibility: string
   emojis: Record<string, string>
   reactionEmojis: Record<string, string>
   reactions: Record<string, number>
@@ -123,6 +123,7 @@ export interface NormalizedUser {
   avatarUrl: string | null
   isBot?: boolean
   avatarDecorations?: AvatarDecoration[]
+  emojis?: Record<string, string>
 }
 
 export interface NormalizedUserDetail extends NormalizedUser {
@@ -193,7 +194,7 @@ export interface NormalizedNotification {
 export interface CreateNoteParams {
   text?: string
   cw?: string | null
-  visibility?: 'public' | 'home' | 'followers' | 'specified'
+  visibility?: string
   localOnly?: boolean
   modeFlags?: Record<string, boolean>
   replyId?: string
