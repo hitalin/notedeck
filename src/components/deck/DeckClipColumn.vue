@@ -174,6 +174,34 @@ async function removeNote(note: NormalizedNote) {
   }
 }
 
+async function refresh() {
+  const adapter = getAdapter()
+  if (!adapter || isLoading.value) return
+  const clipId = props.column.clipId
+  if (!clipId) return
+  isLoading.value = true
+  error.value = null
+  try {
+    const firstNote = notes.value[0]
+    if (firstNote) {
+      const newer = await adapter.api.getClipNotes(clipId, {
+        sinceId: firstNote.id,
+      })
+      if (newer.length > 0) {
+        setNotes([...newer.reverse(), ...notes.value])
+        scrollToTop()
+      }
+    } else {
+      const fetched = await adapter.api.getClipNotes(clipId)
+      if (fetched.length > 0) setNotes(fetched)
+    }
+  } catch (e) {
+    error.value = AppError.from(e)
+  } finally {
+    isLoading.value = false
+  }
+}
+
 function scrollToTop(smooth = false) {
   const el = scroller.value?.$el as HTMLElement | undefined
   if (el) el.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'instant' })
@@ -220,6 +248,9 @@ onMounted(() => {
     </template>
 
     <template #header-meta>
+      <button class="_button header-refresh" title="Refresh" :disabled="isLoading" @click.stop="refresh">
+        <i class="ti ti-refresh" :class="{ 'spin': isLoading }" />
+      </button>
       <div v-if="account" class="header-account">
         <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
         <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
@@ -295,6 +326,31 @@ onMounted(() => {
 .tl-header-icon {
   flex-shrink: 0;
   opacity: 0.7;
+}
+
+.header-refresh {
+  flex-shrink: 0;
+  opacity: 0.6;
+  font-size: 14px;
+  padding: 2px;
+  transition: opacity 0.2s;
+}
+
+.header-refresh:hover {
+  opacity: 1;
+}
+
+.header-refresh:disabled {
+  opacity: 0.3;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .header-account {
