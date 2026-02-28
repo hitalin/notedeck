@@ -1,5 +1,5 @@
 import { Interpreter, utils, values } from '@syuilo/aiscript'
-import type { Value } from '@syuilo/aiscript/built/dts/interpreter/value.js'
+import type { Value } from '@syuilo/aiscript/interpreter/value.js'
 import type { UiComponent } from './ui-types'
 
 export interface AiScriptOptions {

@@ -19,7 +19,7 @@ export interface Command {
   label: string
   /** Tabler icon 名 ('pencil', 'search' 等) */
   icon: string
-  category: 'general' | 'navigation' | 'column' | 'account'
+  category: 'general' | 'navigation' | 'column' | 'account' | 'note'
   shortcuts: Shortcut[]
   execute: () => void
   /** false を返すとパレットでグレー表示＋実行不可 */

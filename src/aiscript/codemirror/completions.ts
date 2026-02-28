@@ -175,7 +175,9 @@ for (const [ns, members] of Object.entries(builtins)) {
     members.map((m) => ({
       label: `${ns}:${m}`,
       type:
-        m[0] === m[0].toUpperCase() && m !== m.toLowerCase()
+        m[0] !== undefined &&
+        m[0] === m[0].toUpperCase() &&
+        m !== m.toLowerCase()
           ? 'constant'
           : 'function',
       detail: ns,

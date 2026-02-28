@@ -19,7 +19,7 @@ export const aiscriptLinter = linter(
         let to = code.length
 
         if (lineMatch) {
-          const lineNum = parseInt(lineMatch[1], 10)
+          const lineNum = parseInt(lineMatch[1] ?? '0', 10)
           const line = view.state.doc.line(
             Math.min(lineNum, view.state.doc.lines),
           )
