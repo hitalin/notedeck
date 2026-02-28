@@ -286,10 +286,27 @@ impl MisskeyClient {
         host: &str,
         token: &str,
     ) -> Result<Vec<Channel>, NoteDeckError> {
-        let data = self
-            .request(host, token, "channels/followed", json!({}))
-            .await?;
-        let channels: Vec<Channel> = serde_json::from_value(data)?;
+        let (followed, favorites, owned) = tokio::join!(
+            self.request(host, token, "channels/followed", json!({})),
+            self.request(host, token, "channels/my-favorites", json!({})),
+            self.request(host, token, "channels/owned", json!({})),
+        );
+
+        let mut seen = std::collections::HashSet::new();
+        let mut channels = Vec::new();
+
+        for data in [followed, favorites, owned] {
+            if let Ok(data) = data {
+                if let Ok(list) = serde_json::from_value::<Vec<Channel>>(data) {
+                    for ch in list {
+                        if seen.insert(ch.id.clone()) {
+                            channels.push(ch);
+                        }
+                    }
+                }
+            }
+        }
+
         Ok(channels)
     }
 
