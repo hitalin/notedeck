@@ -279,7 +279,7 @@ async function handlePosted(editedNoteId?: string) {
 
         <!-- Description -->
         <div v-if="user.description" class="description">
-          <MkMfm :text="user.description" :server-host="account?.host" />
+          <MkMfm :text="user.description" :emojis="user.emojis" :server-host="account?.host" />
         </div>
 
         <div v-if="user.createdAt" class="joined">

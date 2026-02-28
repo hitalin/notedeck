@@ -315,7 +315,7 @@ async function handleMentionClick(username: string, host: string | null) {
         <MkMfm
           v-if="note.user.name"
           :text="note.user.name"
-          :emojis="note.emojis"
+          :emojis="{ ...note.emojis, ...note.user.emojis }"
           :server-host="note._serverHost"
         />
         <template v-else>{{ note.user.username }}</template>
@@ -343,7 +343,7 @@ async function handleMentionClick(username: string, host: string | null) {
             <MkMfm
               v-if="effectiveNote.user.name"
               :text="effectiveNote.user.name"
-              :emojis="effectiveNote.emojis"
+              :emojis="{ ...effectiveNote.emojis, ...effectiveNote.user.emojis }"
               :server-host="effectiveNote._serverHost"
               @mention-click="handleMentionClick"
             />
