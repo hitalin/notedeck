@@ -182,14 +182,14 @@ export function createInterpreter(options: AiScriptOptions): Interpreter {
   // --- Play-specific variables ---
   if (options.playVariables) {
     const pv = options.playVariables
-    if (pv.THIS_ID) consts['THIS_ID'] = values.STR(pv.THIS_ID)
-    if (pv.THIS_URL) consts['THIS_URL'] = values.STR(pv.THIS_URL)
-    if (pv.USER_ID) consts['USER_ID'] = values.STR(pv.USER_ID)
-    if (pv.USER_NAME) consts['USER_NAME'] = values.STR(pv.USER_NAME)
-    if (pv.USER_USERNAME) consts['USER_USERNAME'] = values.STR(pv.USER_USERNAME)
-    if (pv.LOCALE) consts['LOCALE'] = values.STR(pv.LOCALE)
-    if (pv.SERVER_URL) consts['SERVER_URL'] = values.STR(pv.SERVER_URL)
-    if (pv.CUSTOM_EMOJIS) consts['CUSTOM_EMOJIS'] = utils.jsToVal(pv.CUSTOM_EMOJIS)
+    if (pv.THIS_ID !== undefined) consts['THIS_ID'] = values.STR(pv.THIS_ID)
+    if (pv.THIS_URL !== undefined) consts['THIS_URL'] = values.STR(pv.THIS_URL)
+    if (pv.USER_ID !== undefined) consts['USER_ID'] = values.STR(pv.USER_ID)
+    if (pv.USER_NAME !== undefined) consts['USER_NAME'] = values.STR(pv.USER_NAME)
+    if (pv.USER_USERNAME !== undefined) consts['USER_USERNAME'] = values.STR(pv.USER_USERNAME)
+    if (pv.LOCALE !== undefined) consts['LOCALE'] = values.STR(pv.LOCALE)
+    if (pv.SERVER_URL !== undefined) consts['SERVER_URL'] = values.STR(pv.SERVER_URL)
+    if (pv.CUSTOM_EMOJIS !== undefined) consts['CUSTOM_EMOJIS'] = utils.jsToVal(pv.CUSTOM_EMOJIS)
   }
 
   const interpreter = new Interpreter(consts, {
