@@ -78,6 +78,9 @@ jobs:
 
       - name: Build
         run: pnpm tauri build ${{ matrix.tauri_args }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: Get version
         id: version
@@ -93,6 +96,9 @@ jobs:
           cd "${GITHUB_WORKSPACE}"
           cp src-tauri/target/release/bundle/appimage/*.AppImage "NoteDeck-${VERSION}-linux-x64.AppImage"
           cp src-tauri/target/release/bundle/deb/*.deb "NoteDeck-${VERSION}-linux-x64.deb"
+          # Updater artifacts
+          cp src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz "NoteDeck-${VERSION}-linux-x64.AppImage.tar.gz"
+          cp src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz.sig "NoteDeck-${VERSION}-linux-x64.AppImage.tar.gz.sig"
 
       - name: Package (macOS)
         if: matrix.platform == 'macos-latest'
@@ -102,6 +108,9 @@ jobs:
           zip -ry "${GITHUB_WORKSPACE}/NoteDeck-${VERSION}-macos-universal.zip" NoteDeck.app
           cd "${GITHUB_WORKSPACE}"
           cp src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg "NoteDeck-${VERSION}-macos-universal.dmg"
+          # Updater artifacts
+          cp src-tauri/target/universal-apple-darwin/release/bundle/macos/*.tar.gz "NoteDeck-${VERSION}-macos-universal.app.tar.gz"
+          cp src-tauri/target/universal-apple-darwin/release/bundle/macos/*.tar.gz.sig "NoteDeck-${VERSION}-macos-universal.app.tar.gz.sig"
 
       - name: Package (Windows)
         if: matrix.platform == 'windows-latest'
@@ -110,9 +119,81 @@ jobs:
           $version = '${{ steps.version.outputs.version }}'
           Compress-Archive -Path "src-tauri\target\release\notedeck.exe" -DestinationPath "NoteDeck-${version}-windows-x64.zip"
           Copy-Item "src-tauri\target\release\bundle\nsis\*.exe" "NoteDeck-${version}-windows-x64-setup.exe"
+          # Updater artifacts
+          Copy-Item "src-tauri\target\release\bundle\nsis\*.nsis.zip" "NoteDeck-${version}-windows-x64-setup.nsis.zip"
+          Copy-Item "src-tauri\target\release\bundle\nsis\*.nsis.zip.sig" "NoteDeck-${version}-windows-x64-setup.nsis.zip.sig"
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           files: NoteDeck-*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          gh release download "v${VERSION}" \
+            --repo "${{ github.repository }}" \
+            --pattern "*.sig" \
+            --pattern "*.nsis.zip" \
+            --pattern "*.AppImage.tar.gz" \
+            --pattern "*.app.tar.gz" \
+            --dir assets
+
+      - name: Generate latest.json
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          REPO="${{ github.repository }}"
+          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          BASE_URL="https://github.com/${REPO}/releases/download/v${VERSION}"
+
+          # Read signatures
+          WIN_SIG=$(cat assets/*-windows-x64-setup.nsis.zip.sig 2>/dev/null || echo "")
+          LINUX_SIG=$(cat assets/*-linux-x64.AppImage.tar.gz.sig 2>/dev/null || echo "")
+          MACOS_SIG=$(cat assets/*-macos-universal.app.tar.gz.sig 2>/dev/null || echo "")
+
+          cat > latest.json << MANIFEST
+          {
+            "version": "${VERSION}",
+            "notes": "NoteDeck v${VERSION}",
+            "pub_date": "${DATE}",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "${WIN_SIG}",
+                "url": "${BASE_URL}/NoteDeck-${VERSION}-windows-x64-setup.nsis.zip"
+              },
+              "linux-x86_64": {
+                "signature": "${LINUX_SIG}",
+                "url": "${BASE_URL}/NoteDeck-${VERSION}-linux-x64.AppImage.tar.gz"
+              },
+              "darwin-universal": {
+                "signature": "${MACOS_SIG}",
+                "url": "${BASE_URL}/NoteDeck-${VERSION}-macos-universal.app.tar.gz"
+              }
+            }
+          }
+          MANIFEST
+
+      - name: Upload latest.json and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          gh release upload "v${VERSION}" latest.json \
+            --repo "${{ github.repository }}" \
+            --clobber
+          gh release edit "v${VERSION}" \
+            --repo "${{ github.repository }}" \
+            --draft=false

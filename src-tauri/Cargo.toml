@@ -9,6 +9,8 @@ tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-global-shortcut = { version = "2", optional = true }
 tauri-plugin-autostart = { version = "2", optional = true }
+tauri-plugin-updater = { version = "2", optional = true }
+tauri-plugin-process = { version = "2", optional = true }
 futures-util = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
 rusqlite = { version = "0.35", features = ["bundled"] }
@@ -21,7 +23,7 @@ thiserror = "2.0.18"
 
 [features]
 default = ["desktop"]
-desktop = ["tauri/tray-icon", "dep:tauri-plugin-global-shortcut", "dep:tauri-plugin-autostart"]
+desktop = ["tauri/tray-icon", "dep:tauri-plugin-global-shortcut", "dep:tauri-plugin-autostart", "dep:tauri-plugin-updater", "dep:tauri-plugin-process"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

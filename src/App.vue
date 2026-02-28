@@ -10,6 +10,10 @@ const TitleBar = isDesktop
   ? defineAsyncComponent(() => import('@/components/common/TitleBar.vue'))
   : null
 
+const UpdateBanner = isDesktop
+  ? defineAsyncComponent(() => import('@/components/common/UpdateBanner.vue'))
+  : null
+
 useTheme()
 </script>
 
@@ -17,6 +21,7 @@ useTheme()
   <div class="app-root">
     <template v-if="isTauri">
       <TitleBar v-if="isDesktop" />
+      <UpdateBanner v-if="isDesktop" />
       <div class="app-content">
         <router-view />
       </div>
