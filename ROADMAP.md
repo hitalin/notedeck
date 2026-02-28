@@ -78,5 +78,5 @@ SQLite に蓄積される基盤が完成。横断検索の対象データが十�
 
 | 項目 | メモ |
 |---|---|
-| aiscript-rs | Rust 製 AiScript 実装。Misskey Play のネイティブ実行が可能になる |
+| AiScript エディタ / Play 実行 | @syuilo/aiscript をそのまま利用。webview 内で完結するためRust実装(aiscript-rs)は不要。Monaco/CodeMirror + 本家パーサーで構文チェック・補完・実行プレビューを提供 |
 | iOS 対応 | Apple Developer Program ($99/年) + Mac ビルド環境が障壁 |
