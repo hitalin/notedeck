@@ -1,5 +1,5 @@
-import { computed, onUnmounted, ref, watch } from 'vue'
 import type { ShallowRef } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import type { DynamicScroller } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 import { useDeckStore } from '@/stores/deck'
