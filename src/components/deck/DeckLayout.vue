@@ -15,6 +15,7 @@ import {
   clearAvailableTlCache,
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
+import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
   initDesktopNotifications,
   onNotificationAction,
@@ -32,6 +33,7 @@ import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
 import DeckUserColumn from './DeckUserColumn.vue'
+import DeckWidgetColumn from './DeckWidgetColumn.vue'
 
 const router = useRouter()
 const deckStore = useDeckStore()
@@ -83,9 +85,9 @@ function closeCompose() {
   showCompose.value = false
 }
 
-const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | 'chat' | null>(null)
+const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | 'chat' | 'widget' | null>(null)
 
-function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | 'chat') {
+function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | 'chat' | 'widget') {
   addColumnType.value = type
 }
 
@@ -109,6 +111,19 @@ function addColumnForAccount(accountId: string) {
   }
   if (type === 'user') {
     addUserAccountId.value = accountId
+    return
+  }
+  if (type === 'widget') {
+    deckStore.addColumn({
+      type: 'widget',
+      name: 'Widgets',
+      width: 330,
+      accountId,
+      active: true,
+      widgets: [],
+    })
+    showAddMenu.value = false
+    addColumnType.value = null
     return
   }
   if (type === 'favorites' || type === 'mentions' || type === 'specified' || type === 'chat') {
@@ -422,6 +437,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   mentions: 'at',
   specified: 'mail',
   chat: 'messages',
+  widget: 'app-window',
 }
 
 function columnIcon(colId: string): string {
@@ -537,6 +553,7 @@ function stopResize() {
 onMounted(() => {
   deckStore.load()
   initDesktopNotifications()
+  initApiBridge()
   onNotificationAction((ctx) => {
     if (ctx.noteId) {
       router.push(`/note/${ctx.accountId}/${ctx.noteId}`)
@@ -554,6 +571,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  destroyApiBridge()
   unregisterDefaultCommands()
   window.removeEventListener('resize', handleResize)
 })
@@ -742,6 +760,10 @@ onUnmounted(() => {
               v-else-if="col.type === 'chat'"
               :column="col"
             />
+            <DeckWidgetColumn
+              v-else-if="col.type === 'widget'"
+              :column="col"
+            />
           </section>
           <div
             class="col-resize-handle"
@@ -865,6 +887,10 @@ onUnmounted(() => {
             <button class="_button add-type-btn" @click="selectColumnType('chat')">
               <i class="ti ti-messages" />
               <span>Chat</span>
+            </button>
+            <button class="_button add-type-btn" @click="selectColumnType('widget')">
+              <i class="ti ti-app-window" />
+              <span>Widgets</span>
             </button>
           </template>
 

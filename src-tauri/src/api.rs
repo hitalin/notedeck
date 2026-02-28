@@ -70,7 +70,7 @@ impl MisskeyClient {
         })
     }
 
-    async fn request(
+    pub async fn request(
         &self,
         host: &str,
         token: &str,

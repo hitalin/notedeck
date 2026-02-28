@@ -660,6 +660,28 @@ pub fn api_search_notes_local(
     db.search_cached_notes(&account_id, &query, limit.unwrap_or(30).clamp(1, 200))
 }
 
+// --- Generic API proxy ---
+
+#[tauri::command]
+pub async fn api_request(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    endpoint: String,
+    params: Option<serde_json::Value>,
+) -> Result<serde_json::Value> {
+    if endpoint.is_empty() || endpoint.len() > 100 {
+        return Err(NoteDeckError::InvalidInput("Invalid endpoint name".to_string()));
+    }
+    if !endpoint.chars().all(|c| c.is_alphanumeric() || c == '/' || c == '-' || c == '_') {
+        return Err(NoteDeckError::InvalidInput("Invalid endpoint name".to_string()));
+    }
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .request(&host, &token, &endpoint, params.unwrap_or(serde_json::json!({})))
+        .await
+}
+
 // --- Theme ---
 
 #[tauri::command]

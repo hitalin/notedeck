@@ -3,7 +3,15 @@ import { computed, ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 
-export type ColumnType = 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | 'chat'
+export type ColumnType = 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | 'chat' | 'widget'
+
+export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
+
+export interface WidgetConfig {
+  id: string
+  type: WidgetType
+  data: Record<string, unknown>
+}
 
 export interface DeckColumn {
   id: string
@@ -20,6 +28,7 @@ export interface DeckColumn {
   clipId?: string
   channelId?: string
   userId?: string
+  widgets?: WidgetConfig[]
 }
 
 let columnCounter = 0
@@ -47,6 +56,9 @@ export const useDeckStore = defineStore('deck', () => {
     if (!col) {
       console.log('[deck] uri: column not found for id:', activeColumnId.value)
       return null
+    }
+    if (col.type === 'widget') {
+      return `notedeck://widget/${col.id}`
     }
     if (!col.accountId) {
       console.log('[deck] uri: column has no accountId:', col)
@@ -179,6 +191,35 @@ export const useDeckStore = defineStore('deck', () => {
     }
   }
 
+  // Widget helpers
+  let widgetCounter = 0
+  function genWidgetId(): string {
+    return `wgt-${Date.now()}-${++widgetCounter}`
+  }
+
+  function addWidget(columnId: string, type: WidgetType) {
+    const col = columns.value.find((c) => c.id === columnId)
+    if (!col || col.type !== 'widget') return
+    if (!col.widgets) col.widgets = []
+    col.widgets.push({ id: genWidgetId(), type, data: {} })
+    save()
+  }
+
+  function removeWidget(columnId: string, widgetId: string) {
+    const col = columns.value.find((c) => c.id === columnId)
+    if (!col?.widgets) return
+    col.widgets = col.widgets.filter((w) => w.id !== widgetId)
+    save()
+  }
+
+  function updateWidgetData(columnId: string, widgetId: string, data: Record<string, unknown>) {
+    const col = columns.value.find((c) => c.id === columnId)
+    const widget = col?.widgets?.find((w) => w.id === widgetId)
+    if (!widget) return
+    widget.data = { ...widget.data, ...data }
+    save()
+  }
+
   function clear() {
     columns.value = []
     layout.value = []
@@ -202,5 +243,8 @@ export const useDeckStore = defineStore('deck', () => {
     save,
     load,
     clear,
+    addWidget,
+    removeWidget,
+    updateWidgetData,
   }
 })
