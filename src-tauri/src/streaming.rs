@@ -13,7 +13,7 @@ use tokio_tungstenite::tungstenite::Message;
 use crate::db::Database;
 use crate::error::NoteDeckError;
 use crate::models::{
-    NormalizedNote, NormalizedNotification, RawNote, RawNotification, TimelineType,
+    ChatMessage, NormalizedNote, NormalizedNotification, RawNote, RawNotification, TimelineType,
 };
 
 macro_rules! emit_or_log {
@@ -58,6 +58,14 @@ pub struct StreamMentionEvent {
     pub account_id: String,
     pub subscription_id: String,
     pub note: NormalizedNote,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StreamChatMessageEvent {
+    pub account_id: String,
+    pub subscription_id: String,
+    pub message: ChatMessage,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -284,6 +292,60 @@ impl StreamingManager {
                 host,
                 kind: "channel".to_string(),
                 channel: "channel".to_string(),
+                timeline_type: String::new(),
+                params,
+            },
+        );
+
+        Ok(sub_id)
+    }
+
+    pub async fn subscribe_chat_user(
+        &self,
+        account_id: &str,
+        other_id: &str,
+    ) -> Result<String, NoteDeckError> {
+        let sub_id = uuid::Uuid::new_v4().to_string();
+        let params = Some(json!({ "otherId": other_id }));
+
+        let host = self.get_host(account_id).await?;
+        self.send_subscribe(account_id, "chatUser", &sub_id, params.clone()).await?;
+
+        let mut subs = self.subscriptions.lock().await;
+        subs.insert(
+            sub_id.clone(),
+            SubscriptionInfo {
+                account_id: account_id.to_string(),
+                host,
+                kind: "chat".to_string(),
+                channel: "chatUser".to_string(),
+                timeline_type: String::new(),
+                params,
+            },
+        );
+
+        Ok(sub_id)
+    }
+
+    pub async fn subscribe_chat_room(
+        &self,
+        account_id: &str,
+        room_id: &str,
+    ) -> Result<String, NoteDeckError> {
+        let sub_id = uuid::Uuid::new_v4().to_string();
+        let params = Some(json!({ "roomId": room_id }));
+
+        let host = self.get_host(account_id).await?;
+        self.send_subscribe(account_id, "chatRoom", &sub_id, params.clone()).await?;
+
+        let mut subs = self.subscriptions.lock().await;
+        subs.insert(
+            sub_id.clone(),
+            SubscriptionInfo {
+                account_id: account_id.to_string(),
+                host,
+                kind: "chat".to_string(),
+                channel: "chatRoom".to_string(),
                 timeline_type: String::new(),
                 params,
             },
@@ -676,6 +738,14 @@ async fn handle_ws_message(
                 subscription_id: sub_id.to_string(),
                 event_type: event_type.to_string(),
                 body: event_body,
+            });
+        }
+    } else if info.kind == "chat" && event_type == "message" {
+        if let Ok(msg) = serde_json::from_value::<ChatMessage>(event_body) {
+            emit_or_log!(app, "stream-chat-message", StreamChatMessageEvent {
+                account_id: account_id.to_string(),
+                subscription_id: sub_id.to_string(),
+                message: msg,
             });
         }
     }

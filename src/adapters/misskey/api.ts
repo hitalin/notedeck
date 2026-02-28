@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import type {
   ApiAdapter,
+  ChatMessage,
   CreateNoteParams,
   NormalizedDriveFile,
   NormalizedNote,
@@ -321,6 +322,52 @@ export class MisskeyApi implements ApiAdapter {
       limit: options.limit ?? 20,
       sinceId: options.sinceId ?? null,
       untilId: options.untilId ?? null,
+    })
+  }
+
+  async getChatHistory(limit?: number): Promise<ChatMessage[]> {
+    return invoke('api_get_chat_history', {
+      accountId: this.accountId,
+      limit: limit ?? 100,
+    })
+  }
+
+  async getChatUserMessages(
+    userId: string,
+    options: PaginationOptions = {},
+  ): Promise<ChatMessage[]> {
+    return invoke('api_get_chat_user_messages', {
+      accountId: this.accountId,
+      userId,
+      limit: options.limit ?? 30,
+      sinceId: options.sinceId ?? null,
+      untilId: options.untilId ?? null,
+    })
+  }
+
+  async getChatRoomMessages(
+    roomId: string,
+    options: PaginationOptions = {},
+  ): Promise<ChatMessage[]> {
+    return invoke('api_get_chat_room_messages', {
+      accountId: this.accountId,
+      roomId,
+      limit: options.limit ?? 30,
+      sinceId: options.sinceId ?? null,
+      untilId: options.untilId ?? null,
+    })
+  }
+
+  async createChatMessage(params: {
+    userId?: string
+    roomId?: string
+    text: string
+  }): Promise<ChatMessage> {
+    return invoke('api_create_chat_message', {
+      accountId: this.accountId,
+      userId: params.userId ?? null,
+      roomId: params.roomId ?? null,
+      text: params.text,
     })
   }
 }

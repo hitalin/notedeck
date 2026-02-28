@@ -95,6 +95,36 @@ export interface Channel {
   name: string
 }
 
+export interface ChatMessage {
+  id: string
+  createdAt: string
+  fromUserId: string
+  fromUser?: ChatUser
+  toUserId?: string
+  toUser?: ChatUser
+  toRoomId?: string
+  toRoom?: ChatRoom
+  text?: string
+  fileId?: string
+  file?: NormalizedDriveFile
+  isRead?: boolean
+}
+
+export interface ChatUser {
+  id: string
+  name?: string
+  username: string
+  host?: string
+  avatarUrl?: string
+  emojis?: Record<string, string>
+}
+
+export interface ChatRoom {
+  id: string
+  name?: string
+  description?: string
+}
+
 export interface NormalizedNote {
   id: string
   _accountId: string
@@ -297,6 +327,20 @@ export interface ApiAdapter {
     channelId: string,
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>
+  getChatHistory(limit?: number): Promise<ChatMessage[]>
+  getChatUserMessages(
+    userId: string,
+    options?: PaginationOptions,
+  ): Promise<ChatMessage[]>
+  getChatRoomMessages(
+    roomId: string,
+    options?: PaginationOptions,
+  ): Promise<ChatMessage[]>
+  createChatMessage(params: {
+    userId?: string
+    roomId?: string
+    text: string
+  }): Promise<ChatMessage>
 }
 
 export type StreamConnectionState =
@@ -336,6 +380,14 @@ export interface StreamAdapter {
   ): ChannelSubscription
   subscribeMain(handler: (event: MainChannelEvent) => void): ChannelSubscription
   subscribeMentions(handler: (note: NormalizedNote) => void): ChannelSubscription
+  subscribeChatUser(
+    otherId: string,
+    handler: (msg: ChatMessage) => void,
+  ): ChannelSubscription
+  subscribeChatRoom(
+    roomId: string,
+    handler: (msg: ChatMessage) => void,
+  ): ChannelSubscription
   readonly state: StreamConnectionState
   on(
     event: 'connected' | 'disconnected' | 'reconnecting',

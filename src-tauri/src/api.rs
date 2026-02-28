@@ -8,10 +8,11 @@ use serde_json::{json, Value};
 
 use crate::error::NoteDeckError;
 use crate::models::{
-    AuthResult, CreateNoteParams, NormalizedDriveFile, NormalizedNote, NormalizedNoteReaction,
-    NormalizedNotification, NormalizedUser, NormalizedUserDetail, RawCreateNoteResponse,
-    RawDriveFile, RawEmojisResponse, RawMiAuthResponse, RawNote, RawNoteReaction, RawNotification,
-    Antenna, Channel, Clip, RawUser, RawUserDetail, SearchOptions, TimelineOptions, TimelineType, UserList,
+    AuthResult, ChatMessage, CreateNoteParams, NormalizedDriveFile, NormalizedNote,
+    NormalizedNoteReaction, NormalizedNotification, NormalizedUser, NormalizedUserDetail,
+    RawCreateNoteResponse, RawDriveFile, RawEmojisResponse, RawMiAuthResponse, RawNote,
+    RawNoteReaction, RawNotification, Antenna, Channel, Clip, RawUser, RawUserDetail,
+    SearchOptions, TimelineOptions, TimelineType, UserList,
 };
 
 
@@ -974,5 +975,110 @@ impl MisskeyClient {
         let text = Self::read_body_limited(res, "endpoints").await?;
         let endpoints: Vec<String> = serde_json::from_str(&text)?;
         Ok(endpoints)
+    }
+
+    // --- Chat API ---
+
+    pub async fn get_chat_history(
+        &self,
+        host: &str,
+        token: &str,
+        limit: i64,
+    ) -> Result<Vec<ChatMessage>, NoteDeckError> {
+        let data = self
+            .request(host, token, "chat/history", json!({ "limit": limit }))
+            .await?;
+        let messages: Vec<ChatMessage> = serde_json::from_value(data)?;
+        Ok(messages)
+    }
+
+    pub async fn get_chat_user_messages(
+        &self,
+        host: &str,
+        token: &str,
+        user_id: &str,
+        limit: i64,
+        since_id: Option<&str>,
+        until_id: Option<&str>,
+    ) -> Result<Vec<ChatMessage>, NoteDeckError> {
+        let mut params = json!({
+            "userId": user_id,
+            "limit": limit,
+        });
+        if let Some(id) = since_id {
+            params["sinceId"] = json!(id);
+        }
+        if let Some(id) = until_id {
+            params["untilId"] = json!(id);
+        }
+        let data = self
+            .request(host, token, "chat/messages/user-timeline", params)
+            .await?;
+        let messages: Vec<ChatMessage> = serde_json::from_value(data)?;
+        Ok(messages)
+    }
+
+    pub async fn get_chat_room_messages(
+        &self,
+        host: &str,
+        token: &str,
+        room_id: &str,
+        limit: i64,
+        since_id: Option<&str>,
+        until_id: Option<&str>,
+    ) -> Result<Vec<ChatMessage>, NoteDeckError> {
+        let mut params = json!({
+            "roomId": room_id,
+            "limit": limit,
+        });
+        if let Some(id) = since_id {
+            params["sinceId"] = json!(id);
+        }
+        if let Some(id) = until_id {
+            params["untilId"] = json!(id);
+        }
+        let data = self
+            .request(host, token, "chat/messages/room-timeline", params)
+            .await?;
+        let messages: Vec<ChatMessage> = serde_json::from_value(data)?;
+        Ok(messages)
+    }
+
+    pub async fn create_chat_message_to_user(
+        &self,
+        host: &str,
+        token: &str,
+        user_id: &str,
+        text: &str,
+    ) -> Result<ChatMessage, NoteDeckError> {
+        let data = self
+            .request(
+                host,
+                token,
+                "chat/messages/create-to-user",
+                json!({ "userId": user_id, "text": text }),
+            )
+            .await?;
+        let message: ChatMessage = serde_json::from_value(data)?;
+        Ok(message)
+    }
+
+    pub async fn create_chat_message_to_room(
+        &self,
+        host: &str,
+        token: &str,
+        room_id: &str,
+        text: &str,
+    ) -> Result<ChatMessage, NoteDeckError> {
+        let data = self
+            .request(
+                host,
+                token,
+                "chat/messages/create-to-room",
+                json!({ "roomId": room_id, "text": text }),
+            )
+            .await?;
+        let message: ChatMessage = serde_json::from_value(data)?;
+        Ok(message)
     }
 }

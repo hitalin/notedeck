@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import type {
   ChannelSubscription,
+  ChatMessage,
   MainChannelEvent,
   NormalizedNote,
   NormalizedNotification,
@@ -27,6 +28,12 @@ interface StreamMentionEvent {
   accountId: string
   subscriptionId: string
   note: NormalizedNote
+}
+
+interface StreamChatMessageEvent {
+  accountId: string
+  subscriptionId: string
+  message: ChatMessage
 }
 
 interface StreamMainEvent {
@@ -66,6 +73,7 @@ export class MisskeyStream implements StreamAdapter {
   private notifHandlers = new Map<string, (event: MainChannelEvent) => void>()
   private mainHandlers = new Map<string, (event: MainChannelEvent) => void>()
   private mentionHandlers = new Map<string, (note: NormalizedNote) => void>()
+  private chatMessageHandlers = new Map<string, (msg: ChatMessage) => void>()
 
   constructor(accountId: string) {
     this.accountId = accountId
@@ -142,6 +150,17 @@ export class MisskeyStream implements StreamAdapter {
         console.error('[stream] failed to listen stream-main-event:', e),
       )
 
+    listen<StreamChatMessageEvent>('stream-chat-message', (event) => {
+      if (event.payload.accountId !== this.accountId) return
+      this.chatMessageHandlers.get(event.payload.subscriptionId)?.(
+        event.payload.message,
+      )
+    })
+      .then((fn) => this.unlistenFns.push(fn))
+      .catch((e) =>
+        console.error('[stream] failed to listen stream-chat-message:', e),
+      )
+
     invoke('stream_connect', { accountId: this.accountId })
       .then(() => {
         this._state = 'connected'
@@ -161,6 +180,7 @@ export class MisskeyStream implements StreamAdapter {
     this.noteUpdateHandlers.clear()
     this.notifHandlers.clear()
     this.mainHandlers.clear()
+    this.chatMessageHandlers.clear()
     this._state = 'disconnected'
   }
 
@@ -457,6 +477,118 @@ export class MisskeyStream implements StreamAdapter {
           subscribePromise.then((id) => {
             if (id) {
               this.mentionHandlers.delete(id)
+              invoke('stream_unsubscribe', {
+                accountId: this.accountId,
+                subscriptionId: id,
+              }).catch((e) => {
+                console.warn('[stream] unsubscribe failed:', e)
+              })
+            }
+          })
+        }
+      },
+    }
+  }
+
+  subscribeChatUser(
+    otherId: string,
+    handler: (msg: ChatMessage) => void,
+  ): ChannelSubscription {
+    let subscriptionId: string | null = null
+    let disposed = false
+
+    const subscribePromise = invoke<string>('stream_subscribe_chat_user', {
+      accountId: this.accountId,
+      otherId,
+    })
+      .then((id) => {
+        if (disposed) {
+          invoke('stream_unsubscribe', {
+            accountId: this.accountId,
+            subscriptionId: id,
+          }).catch(() => {})
+          return null
+        }
+        subscriptionId = id
+        this.chatMessageHandlers.set(id, handler)
+        return id
+      })
+      .catch((e) => {
+        console.error('[stream] subscribe chat user failed:', e)
+        return null
+      })
+
+    return {
+      dispose: () => {
+        disposed = true
+        if (subscriptionId) {
+          this.chatMessageHandlers.delete(subscriptionId)
+          invoke('stream_unsubscribe', {
+            accountId: this.accountId,
+            subscriptionId,
+          }).catch((e) => {
+            console.warn('[stream] unsubscribe failed:', e)
+          })
+        } else {
+          subscribePromise.then((id) => {
+            if (id) {
+              this.chatMessageHandlers.delete(id)
+              invoke('stream_unsubscribe', {
+                accountId: this.accountId,
+                subscriptionId: id,
+              }).catch((e) => {
+                console.warn('[stream] unsubscribe failed:', e)
+              })
+            }
+          })
+        }
+      },
+    }
+  }
+
+  subscribeChatRoom(
+    roomId: string,
+    handler: (msg: ChatMessage) => void,
+  ): ChannelSubscription {
+    let subscriptionId: string | null = null
+    let disposed = false
+
+    const subscribePromise = invoke<string>('stream_subscribe_chat_room', {
+      accountId: this.accountId,
+      roomId,
+    })
+      .then((id) => {
+        if (disposed) {
+          invoke('stream_unsubscribe', {
+            accountId: this.accountId,
+            subscriptionId: id,
+          }).catch(() => {})
+          return null
+        }
+        subscriptionId = id
+        this.chatMessageHandlers.set(id, handler)
+        return id
+      })
+      .catch((e) => {
+        console.error('[stream] subscribe chat room failed:', e)
+        return null
+      })
+
+    return {
+      dispose: () => {
+        disposed = true
+        if (subscriptionId) {
+          this.chatMessageHandlers.delete(subscriptionId)
+          invoke('stream_unsubscribe', {
+            accountId: this.accountId,
+            subscriptionId,
+          }).catch((e) => {
+            console.warn('[stream] unsubscribe failed:', e)
+          })
+        } else {
+          subscribePromise.then((id) => {
+            if (id) {
+              this.chatMessageHandlers.delete(id)
               invoke('stream_unsubscribe', {
                 accountId: this.accountId,
                 subscriptionId: id,

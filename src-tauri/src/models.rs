@@ -247,6 +247,10 @@ pub struct CreateNoteParams {
 pub struct TimelineType(String);
 
 impl TimelineType {
+    pub fn new(s: impl Into<String>) -> Self {
+        Self(s.into())
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -295,6 +299,16 @@ pub struct TimelineOptions {
 }
 
 impl TimelineOptions {
+    pub fn new(limit: i64, since_id: Option<String>, until_id: Option<String>) -> Self {
+        Self {
+            limit,
+            since_id,
+            until_id,
+            filters: None,
+            list_id: None,
+        }
+    }
+
     /// Returns limit clamped to 1..=100
     pub fn limit(&self) -> i64 {
         self.limit.clamp(1, 100)
@@ -343,6 +357,43 @@ pub struct Clip {
 pub struct Channel {
     pub id: String,
     pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatMessage {
+    pub id: String,
+    pub created_at: String,
+    pub from_user_id: String,
+    pub from_user: Option<ChatUser>,
+    pub to_user_id: Option<String>,
+    pub to_user: Option<ChatUser>,
+    pub to_room_id: Option<String>,
+    pub to_room: Option<ChatRoom>,
+    pub text: Option<String>,
+    pub file_id: Option<String>,
+    pub file: Option<NormalizedDriveFile>,
+    pub is_read: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatUser {
+    pub id: String,
+    pub name: Option<String>,
+    pub username: String,
+    pub host: Option<String>,
+    pub avatar_url: Option<String>,
+    #[serde(default)]
+    pub emojis: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatRoom {
+    pub id: String,
+    pub name: Option<String>,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

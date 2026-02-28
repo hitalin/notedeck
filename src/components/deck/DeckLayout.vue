@@ -21,6 +21,7 @@ import {
 } from '@/utils/desktopNotification'
 import { AppError } from '@/utils/errors'
 import DeckAntennaColumn from './DeckAntennaColumn.vue'
+import DeckChatColumn from './DeckChatColumn.vue'
 import DeckChannelColumn from './DeckChannelColumn.vue'
 import DeckClipColumn from './DeckClipColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
@@ -82,9 +83,9 @@ function closeCompose() {
   showCompose.value = false
 }
 
-const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | null>(null)
+const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | 'chat' | null>(null)
 
-function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified') {
+function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | 'chat') {
   addColumnType.value = type
 }
 
@@ -110,8 +111,8 @@ function addColumnForAccount(accountId: string) {
     addUserAccountId.value = accountId
     return
   }
-  if (type === 'favorites' || type === 'mentions' || type === 'specified') {
-    const nameMap: Record<string, string> = { favorites: 'Favorites', mentions: 'Mentions', specified: 'Direct' }
+  if (type === 'favorites' || type === 'mentions' || type === 'specified' || type === 'chat') {
+    const nameMap: Record<string, string> = { favorites: 'Favorites', mentions: 'Mentions', specified: 'Direct', chat: 'Chat' }
     deckStore.addColumn({
       type,
       name: nameMap[type] ?? type,
@@ -420,6 +421,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   user: 'user',
   mentions: 'at',
   specified: 'mail',
+  chat: 'messages',
 }
 
 function columnIcon(colId: string): string {
@@ -720,6 +722,10 @@ onUnmounted(() => {
               v-else-if="col.type === 'specified'"
               :column="col"
             />
+            <DeckChatColumn
+              v-else-if="col.type === 'chat'"
+              :column="col"
+            />
           </section>
           <div
             class="col-resize-handle"
@@ -839,6 +845,10 @@ onUnmounted(() => {
             <button class="_button add-type-btn" @click="selectColumnType('specified')">
               <i class="ti ti-mail" />
               <span>Direct</span>
+            </button>
+            <button class="_button add-type-btn" @click="selectColumnType('chat')">
+              <i class="ti ti-messages" />
+              <span>Chat</span>
             </button>
           </template>
 

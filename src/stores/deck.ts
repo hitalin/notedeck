@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 
-export type ColumnType = 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified'
+export type ColumnType = 'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | 'favorites' | 'clip' | 'user' | 'mentions' | 'channel' | 'specified' | 'chat'
 
 export interface DeckColumn {
   id: string
@@ -35,18 +35,32 @@ export const useDeckStore = defineStore('deck', () => {
 
   function setActiveColumn(id: string) {
     activeColumnId.value = id
+    console.log('[deck] setActiveColumn:', id, 'uri:', activeColumnUri.value)
   }
 
   const activeColumnUri = computed(() => {
-    if (!activeColumnId.value) return null
+    if (!activeColumnId.value) {
+      console.log('[deck] uri: no activeColumnId')
+      return null
+    }
     const col = columns.value.find((c) => c.id === activeColumnId.value)
-    if (!col || !col.accountId) return null
+    if (!col) {
+      console.log('[deck] uri: column not found for id:', activeColumnId.value)
+      return null
+    }
+    if (!col.accountId) {
+      console.log('[deck] uri: column has no accountId:', col)
+      return null
+    }
 
     const accountsStore = useAccountsStore()
     const account = accountsStore.accounts.find(
       (a) => a.id === col.accountId,
     )
-    if (!account) return null
+    if (!account) {
+      console.log('[deck] uri: account not found for accountId:', col.accountId, 'available:', accountsStore.accounts.map(a => a.id))
+      return null
+    }
 
     const host = account.host
     switch (col.type) {
@@ -72,6 +86,8 @@ export const useDeckStore = defineStore('deck', () => {
         return `notedeck://${host}/mentions`
       case 'specified':
         return `notedeck://${host}/direct`
+      case 'chat':
+        return `notedeck://${host}/chat`
       default:
         return null
     }

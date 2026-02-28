@@ -9,9 +9,10 @@ use crate::db::Database;
 use crate::error::NoteDeckError;
 use crate::keychain;
 use crate::models::{
-    Account, AccountPublic, AuthSession, CreateNoteParams, NormalizedDriveFile, NormalizedNote,
-    NormalizedNoteReaction, NormalizedNotification, NormalizedUser, NormalizedUserDetail,
-    Antenna, Channel, Clip, SearchOptions, StoredServer, TimelineOptions, TimelineType, UserList,
+    Account, AccountPublic, AuthSession, ChatMessage, CreateNoteParams, NormalizedDriveFile,
+    NormalizedNote, NormalizedNoteReaction, NormalizedNotification, NormalizedUser,
+    NormalizedUserDetail, Antenna, Channel, Clip, SearchOptions, StoredServer, TimelineOptions,
+    TimelineType, UserList,
 };
 use crate::streaming::StreamingManager;
 use zeroize::Zeroize;
@@ -60,7 +61,7 @@ impl AuthSessionTracker {
 }
 
 /// Look up account credentials: tries keychain first, falls back to DB (lazy migration)
-fn get_credentials(db: &Database, account_id: &str) -> Result<(String, String)> {
+pub fn get_credentials(db: &Database, account_id: &str) -> Result<(String, String)> {
     let account = db
         .get_account(account_id)?
         .ok_or_else(|| NoteDeckError::AccountNotFound(account_id.to_string()))?;
@@ -797,6 +798,8 @@ pub async fn auth_start(
             "write:votes",
             "read:channels",
             "write:channels",
+            "read:chat",
+            "write:chat",
         ]
         .into_iter()
         .map(String::from)
@@ -870,6 +873,94 @@ pub async fn auth_complete_and_save(
     // account, saved が drop → token が zeroize される
 }
 
+// --- Chat ---
+
+#[tauri::command]
+pub async fn api_get_chat_history(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    limit: Option<i64>,
+) -> Result<Vec<ChatMessage>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_chat_history(&host, &token, limit.unwrap_or(100))
+        .await
+}
+
+#[tauri::command]
+pub async fn api_get_chat_user_messages(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    user_id: String,
+    limit: Option<i64>,
+    since_id: Option<String>,
+    until_id: Option<String>,
+) -> Result<Vec<ChatMessage>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_chat_user_messages(
+            &host,
+            &token,
+            &user_id,
+            limit.unwrap_or(30),
+            since_id.as_deref(),
+            until_id.as_deref(),
+        )
+        .await
+}
+
+#[tauri::command]
+pub async fn api_get_chat_room_messages(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    room_id: String,
+    limit: Option<i64>,
+    since_id: Option<String>,
+    until_id: Option<String>,
+) -> Result<Vec<ChatMessage>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_chat_room_messages(
+            &host,
+            &token,
+            &room_id,
+            limit.unwrap_or(30),
+            since_id.as_deref(),
+            until_id.as_deref(),
+        )
+        .await
+}
+
+#[tauri::command]
+pub async fn api_create_chat_message(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    user_id: Option<String>,
+    room_id: Option<String>,
+    text: String,
+) -> Result<ChatMessage> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    match (user_id, room_id) {
+        (Some(uid), _) => {
+            client
+                .create_chat_message_to_user(&host, &token, &uid, &text)
+                .await
+        }
+        (_, Some(rid)) => {
+            client
+                .create_chat_message_to_room(&host, &token, &rid, &text)
+                .await
+        }
+        _ => Err(crate::error::NoteDeckError::InvalidInput(
+            "Either userId or roomId is required".to_string(),
+        )),
+    }
+}
+
 // --- Streaming ---
 
 #[tauri::command]
@@ -924,6 +1015,28 @@ pub async fn stream_subscribe_channel(
 ) -> Result<String> {
     streaming
         .subscribe_channel(&account_id, &channel_id)
+        .await
+}
+
+#[tauri::command]
+pub async fn stream_subscribe_chat_user(
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    other_id: String,
+) -> Result<String> {
+    streaming
+        .subscribe_chat_user(&account_id, &other_id)
+        .await
+}
+
+#[tauri::command]
+pub async fn stream_subscribe_chat_room(
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    room_id: String,
+) -> Result<String> {
+    streaming
+        .subscribe_chat_room(&account_id, &room_id)
         .await
 }
 

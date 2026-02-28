@@ -11,6 +11,7 @@ mod api;
 mod commands;
 mod db;
 mod error;
+mod http_server;
 mod keychain;
 mod models;
 mod streaming;
@@ -84,6 +85,10 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::api_get_cached_timeline,
         commands::api_search_notes_local,
         commands::api_fetch_account_theme,
+        commands::api_get_chat_history,
+        commands::api_get_chat_user_messages,
+        commands::api_get_chat_room_messages,
+        commands::api_create_chat_message,
         commands::auth_start,
         commands::auth_complete_and_save,
         commands::stream_connect,
@@ -91,6 +96,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::stream_subscribe_timeline,
         commands::stream_subscribe_antenna,
         commands::stream_subscribe_channel,
+        commands::stream_subscribe_chat_user,
+        commands::stream_subscribe_chat_room,
         commands::stream_subscribe_main,
         commands::stream_unsubscribe,
     ]);
@@ -111,6 +118,12 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
+
+        // Start HTTP API server
+        let app_handle = app.app_handle().clone();
+        tauri::async_runtime::spawn(async move {
+            http_server::start(app_handle).await;
+        });
 
         // System tray (desktop only)
         #[cfg(not(mobile))]
