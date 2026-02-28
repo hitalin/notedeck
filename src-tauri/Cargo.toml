@@ -4,7 +4,7 @@ version = "0.0.10"
 edition = "2021"
 
 [dependencies]
-notecli = { path = "../../notecli" }
+notecli = { git = "https://github.com/hitalin/notecli.git" }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
