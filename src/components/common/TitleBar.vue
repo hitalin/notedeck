@@ -39,10 +39,12 @@ async function close() {
   <div class="titlebar" data-tauri-drag-region>
     <div class="titlebar-left">
       <img src="/favicon.svg" alt="" class="titlebar-icon" draggable="false" />
-      <button class="titlebar-search" title="Command Palette (Ctrl+K)" @click="commandStore.toggle()">
-        <i class="ti ti-search" />
-      </button>
     </div>
+    <button class="titlebar-search-bar" @click="commandStore.toggle()">
+      <i class="ti ti-search titlebar-search-icon" />
+      <span class="titlebar-search-text">Search commands...</span>
+      <kbd class="titlebar-search-kbd">Ctrl+K</kbd>
+    </button>
     <div class="titlebar-controls">
       <button class="titlebar-btn" title="Minimize" @click="minimize">
         <svg width="10" height="10" viewBox="0 0 10 10">
@@ -82,6 +84,7 @@ async function close() {
   display: flex;
   align-items: center;
   height: 100%;
+  flex-shrink: 0;
 }
 
 .titlebar-icon {
@@ -91,23 +94,56 @@ async function close() {
   border-radius: 4px;
 }
 
-.titlebar-search {
-  display: inline-flex;
+.titlebar-search-bar {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 100%;
-  border: none;
-  background: transparent;
+  gap: 6px;
+  flex: 1;
+  max-width: 360px;
+  height: 22px;
+  margin: 0 12px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
   color: var(--nd-fg);
-  opacity: 0.35;
   cursor: pointer;
-  font-size: 13px;
-  transition: opacity 0.15s;
+  font-family: inherit;
+  font-size: 12px;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
-.titlebar-search:hover {
-  opacity: 0.8;
+.titlebar-search-bar:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.titlebar-search-icon {
+  font-size: 12px;
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.titlebar-search-text {
+  flex: 1;
+  opacity: 0.35;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.titlebar-search-kbd {
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 0.4;
+  font-family: inherit;
+  border: none;
+  flex-shrink: 0;
 }
 
 .titlebar-controls {
