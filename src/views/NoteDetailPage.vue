@@ -39,8 +39,9 @@ onMounted(async () => {
 
   try {
     const serverInfo = await serversStore.getServerInfo(account.host)
-    adapter = createAdapter(serverInfo, account.id)
-    emojisStore.ensureLoaded(account.host, () => adapter!.api.getServerEmojis())
+    const a = createAdapter(serverInfo, account.id)
+    adapter = a
+    emojisStore.ensureLoaded(account.host, () => a.api.getServerEmojis())
     note.value = await adapter.api.getNote(props.noteId)
 
     // Fetch conversation (ancestors) and children in parallel

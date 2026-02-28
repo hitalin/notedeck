@@ -90,7 +90,7 @@ const visibilityOptions: {
 const currentVisibility = computed(
   () =>
     visibilityOptions.find((o) => o.value === visibility.value) ??
-    visibilityOptions[0]!,
+    visibilityOptions[0],
 )
 
 const remainingChars = computed(() => MAX_TEXT_LENGTH - text.value.length)

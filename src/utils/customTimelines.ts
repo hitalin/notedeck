@@ -45,7 +45,7 @@ export async function detectCustomTimelines(
     for (const ep of endpoints) {
       const match = ep.match(/^notes\/(.+)-timeline$/)
       if (!match || STANDARD_TL_ENDPOINTS.has(ep)) continue
-      const type = match[1]!
+      const type = match[1]
       customs.push({
         type,
         label: type.charAt(0).toUpperCase() + type.slice(1),
@@ -123,7 +123,7 @@ export async function detectAvailableTimelines(
       if (handledKeys.has(key)) continue
       const match = key.match(/^(.+)TlAvailable$/)
       if (!match) continue
-      const type = match[1]!
+      const type = match[1]
       if (value !== false) {
         available.push(type)
       } else {
@@ -158,7 +158,7 @@ export function findModeKeyForTimeline(
   for (const key of Object.keys(modes)) {
     const match = key.match(/^isIn(.+)Mode$/)
     if (!match) continue
-    if (tlType.startsWith(match[1]!.toLowerCase())) return key
+    if (match[1] && tlType.startsWith(match[1].toLowerCase())) return key
   }
   return undefined
 }

@@ -58,7 +58,11 @@ export const useDeckStore = defineStore('deck', () => {
     )
       return
     const newLayout = [...layout.value]
-    ;[newLayout[aIdx], newLayout[bIdx]] = [newLayout[bIdx]!, newLayout[aIdx]!]
+    const a = newLayout[aIdx]
+    const b = newLayout[bIdx]
+    if (!a || !b) return
+    newLayout[aIdx] = b
+    newLayout[bIdx] = a
     layout.value = newLayout
     save()
   }

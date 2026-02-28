@@ -60,7 +60,6 @@ function onDrop(e: DragEvent) {
     deckStore.swapColumns(fromIdx, toIdx)
   }
 }
-
 </script>
 
 <template>

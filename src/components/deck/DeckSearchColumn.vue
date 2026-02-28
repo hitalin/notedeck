@@ -138,7 +138,8 @@ async function performSearch() {
 async function loadMore() {
   const adapter = getAdapter()
   if (!adapter || isLoading.value || notes.value.length === 0) return
-  const lastNote = notes.value[notes.value.length - 1]!
+  const lastNote = notes.value.at(-1)
+  if (!lastNote) return
   isLoading.value = true
   try {
     const older = await adapter.api.searchNotes(searchQuery.value.trim(), {

@@ -50,9 +50,9 @@ export function compileMisskeyTheme(
       const funcMatch = expr.match(/^:(\w+)<([^<]+)<(.+)$/)
       if (funcMatch) {
         const [, funcName, arg, rest] = funcMatch
-        const fn = COLOR_FUNCS[funcName!]
-        if (fn) {
-          const resolvedColor = evaluate(rest!, visited)
+        const fn = funcName ? COLOR_FUNCS[funcName] : undefined
+        if (fn && rest) {
+          const resolvedColor = evaluate(rest, visited)
           return fn(resolvedColor, Number(arg))
         }
       }

@@ -44,8 +44,9 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     if (!acc) return null
     const serverInfo = await serversStore.getServerInfo(acc.host)
     serverIconUrl.value = serverInfo.iconUrl
-    adapter = createAdapter(serverInfo, acc.id)
-    emojisStore.ensureLoaded(acc.host, () => adapter!.api.getServerEmojis())
+    const a = createAdapter(serverInfo, acc.id)
+    adapter = a
+    emojisStore.ensureLoaded(acc.host, () => a.api.getServerEmojis())
     return adapter
   }
 

@@ -33,11 +33,11 @@ interface PatternDef {
 const inlinePatterns: PatternDef[] = [
   {
     regex: /`([^`\n]+)`/g,
-    parse: (m) => ({ type: 'inlineCode', value: m[1]! }),
+    parse: (m) => ({ type: 'inlineCode', value: m[1] }),
   },
   {
     regex: /\??\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-    parse: (m) => ({ type: 'link', label: m[1]!, url: m[2]! }),
+    parse: (m) => ({ type: 'link', label: m[1], url: m[2] }),
   },
   {
     regex: /https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+/g,
@@ -45,25 +45,25 @@ const inlinePatterns: PatternDef[] = [
   },
   {
     regex: /:([a-zA-Z0-9_]+(?:@[\w.-]+)?):/g,
-    parse: (m) => ({ type: 'customEmoji', shortcode: m[1]! }),
+    parse: (m) => ({ type: 'customEmoji', shortcode: m[1] }),
   },
   {
     regex: /\*\*(.+?)\*\*/g,
-    parse: (m) => ({ type: 'bold', value: m[1]! }),
+    parse: (m) => ({ type: 'bold', value: m[1] }),
   },
   {
     regex: /(?<!\*)\*([^*\n]+?)\*(?!\*)/g,
-    parse: (m) => ({ type: 'italic', value: m[1]! }),
+    parse: (m) => ({ type: 'italic', value: m[1] }),
   },
   {
     regex: /~~(.+?)~~/g,
-    parse: (m) => ({ type: 'strike', value: m[1]! }),
+    parse: (m) => ({ type: 'strike', value: m[1] }),
   },
   {
     regex: /(?<=^|[\s(])@(\w+)(?:@([\w.-]+))?/g,
     parse: (m) => ({
       type: 'mention',
-      username: m[1]!,
+      username: m[1],
       host: m[2] ?? null,
       acct: m[0].trimStart(),
     }),
@@ -71,7 +71,7 @@ const inlinePatterns: PatternDef[] = [
   {
     regex:
       /(?<=^|[\s(])#([\w\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uffef\u4e00-\u9faf]+)/g,
-    parse: (m) => ({ type: 'hashtag', value: m[1]! }),
+    parse: (m) => ({ type: 'hashtag', value: m[1] }),
   },
   {
     regex: emojiRegex,
@@ -254,8 +254,8 @@ export function parseMfm(text: string): MfmToken[] {
   const tokens = parseTokens(text)
 
   if (parseCache.size >= CACHE_MAX) {
-    const first = parseCache.keys().next().value!
-    parseCache.delete(first)
+    const first = parseCache.keys().next().value
+    if (first !== undefined) parseCache.delete(first)
   }
   parseCache.set(text, tokens)
 

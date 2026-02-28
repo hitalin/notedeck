@@ -227,7 +227,7 @@ export const useThemeStore = defineStore('theme', () => {
     const wantLight = currentSource.value?.kind.includes('light') ?? false
     const cacheKey = `${accountId}:${wantLight ? 'light' : 'dark'}`
 
-    if (compiledCache.has(cacheKey)) return compiledCache.get(cacheKey)!
+    if (compiledCache.has(cacheKey)) return compiledCache.get(cacheKey) ?? null
 
     const cached = accountThemeCache.value.get(accountId)
     if (!cached) return null

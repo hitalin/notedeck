@@ -69,7 +69,7 @@ function getCachedReactionUrl(
   notification: NormalizedNotification,
 ): string | null {
   const key = `${notification.id}:${reaction}`
-  if (reactionUrlLookup.has(key)) return reactionUrlLookup.get(key)!
+  if (reactionUrlLookup.has(key)) return reactionUrlLookup.get(key) ?? null
   const note = notification.note
   const url = reactionUrlRaw(
     reaction,
@@ -82,7 +82,8 @@ function getCachedReactionUrl(
 }
 
 function getCachedTwemojiUrl(reaction: string): string | null {
-  if (twemojiUrlLookup.has(reaction)) return twemojiUrlLookup.get(reaction)!
+  if (twemojiUrlLookup.has(reaction))
+    return twemojiUrlLookup.get(reaction) ?? null
   const url =
     reaction.startsWith(':') && reaction.endsWith(':')
       ? null
@@ -185,7 +186,8 @@ async function connect() {
 async function loadMore() {
   const adapter = getAdapter()
   if (!adapter || isLoading.value || notifications.value.length === 0) return
-  const last = notifications.value[notifications.value.length - 1]!
+  const last = notifications.value.at(-1)
+  if (!last) return
   isLoading.value = true
   try {
     const older = await adapter.api.getNotifications({ untilId: last.id })

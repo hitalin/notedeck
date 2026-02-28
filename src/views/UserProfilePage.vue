@@ -49,8 +49,9 @@ onMounted(async () => {
 
   try {
     const serverInfo = await serversStore.getServerInfo(account.host)
-    adapter = createAdapter(serverInfo, account.id)
-    emojisStore.ensureLoaded(account.host, () => adapter!.api.getServerEmojis())
+    const a = createAdapter(serverInfo, account.id)
+    adapter = a
+    emojisStore.ensureLoaded(account.host, () => a.api.getServerEmojis())
     user.value = await adapter.api.getUserDetail(props.userId)
     notes.value = await adapter.api.getUserNotes(props.userId, { limit: 20 })
   } catch (e) {
@@ -63,7 +64,8 @@ onMounted(async () => {
 async function loadMoreNotes() {
   if (!adapter || isLoadingNotes.value || notes.value.length === 0) return
   if (notes.value.length >= MAX_PROFILE_NOTES) return
-  const last = notes.value[notes.value.length - 1]!
+  const last = notes.value.at(-1)
+  if (!last) return
   isLoadingNotes.value = true
   try {
     const older = await adapter.api.getUserNotes(props.userId, {

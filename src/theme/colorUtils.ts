@@ -8,9 +8,9 @@ export function parseColor(value: string): RGBA | null {
     const hex = value.slice(1)
     if (hex.length === 3) {
       return [
-        parseInt(hex[0]! + hex[0]!, 16),
-        parseInt(hex[1]! + hex[1]!, 16),
-        parseInt(hex[2]! + hex[2]!, 16),
+        parseInt(hex.charAt(0) + hex.charAt(0), 16),
+        parseInt(hex.charAt(1) + hex.charAt(1), 16),
+        parseInt(hex.charAt(2) + hex.charAt(2), 16),
         1,
       ]
     }

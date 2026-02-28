@@ -5,7 +5,7 @@ const TWEMOJI_BASE =
 export function char2twemojiUrl(char: string): string {
   let codes = Array.from(char, (x) => x.codePointAt(0)?.toString(16))
   if (!codes.includes('200d')) codes = codes.filter((x) => x !== 'fe0f')
-  codes = codes.filter((x) => x && x.length)
+  codes = codes.filter((x) => x?.length)
   return `${TWEMOJI_BASE}/${codes.join('-')}.svg`
 }
 

@@ -17,7 +17,7 @@ export async function toggleReaction(
     if (prevReaction === reaction) {
       // Optimistic: remove reaction
       if ((note.reactions[reaction] ?? 0) > 1) {
-        note.reactions[reaction]!--
+        note.reactions[reaction] = (note.reactions[reaction] ?? 0) - 1
       } else {
         delete note.reactions[reaction]
       }
@@ -28,7 +28,7 @@ export async function toggleReaction(
       // Optimistic: switch or add reaction
       if (prevReaction) {
         if ((note.reactions[prevReaction] ?? 0) > 1) {
-          note.reactions[prevReaction]!--
+          note.reactions[prevReaction] = (note.reactions[prevReaction] ?? 0) - 1
         } else {
           delete note.reactions[prevReaction]
         }

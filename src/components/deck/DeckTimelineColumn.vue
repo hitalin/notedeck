@@ -254,7 +254,7 @@ async function connect(useCache = false) {
     if (!adapter) return
 
     // 2. Differential fetch: use sinceId if we have cached notes
-    const sinceId = notes.value.length > 0 ? notes.value[0]!.id : undefined
+    const sinceId = notes.value.length > 0 ? notes.value[0]?.id : undefined
     const filters = columnFilters.value
     const hasFilters = Object.keys(filters).length > 0
     const fetched = await adapter.api.getTimeline(tlType.value, {
@@ -396,7 +396,8 @@ async function switchTl(type: TimelineType) {
 async function loadMore() {
   const adapter = getAdapter()
   if (!adapter || isLoading.value || notes.value.length === 0) return
-  const lastNote = notes.value[notes.value.length - 1]!
+  const lastNote = notes.value.at(-1)
+  if (!lastNote) return
   isLoading.value = true
   try {
     const filters = columnFilters.value
