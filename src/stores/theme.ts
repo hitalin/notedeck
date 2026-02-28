@@ -6,7 +6,6 @@ import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { compileMisskeyTheme } from '@/theme/compiler'
 import type { CompiledProps, MisskeyTheme, ThemeSource } from '@/theme/types'
 
-const STORAGE_SOURCE_KEY = 'nd-theme-source'
 const STORAGE_COMPILED_KEY = 'nd-theme-compiled'
 
 // Keyed by "accountId:dark" / "accountId:light"
@@ -80,34 +79,33 @@ export const useThemeStore = defineStore('theme', () => {
   )
 
   function init(): void {
-    const storedSource = localStorage.getItem(STORAGE_SOURCE_KEY)
-    let source: ThemeSource | null = null
-    if (storedSource) {
+    // Restore compiled CSS from localStorage first (sync, FOUC prevention)
+    const storedCompiled = localStorage.getItem(STORAGE_COMPILED_KEY)
+    if (storedCompiled) {
       try {
-        const parsed = JSON.parse(storedSource) as ThemeSource
-        // Only restore builtin themes; server themes should not be the global base
-        if (parsed.kind === 'builtin-dark' || parsed.kind === 'builtin-light') {
-          source = parsed
-        }
+        applyTheme(JSON.parse(storedCompiled) as CompiledProps)
       } catch {
-        /* ignore */
+        /* ignore corrupt data */
       }
     }
 
-    if (source) {
-      // Restore compiled CSS from localStorage (sync, FOUC prevention)
-      const storedCompiled = localStorage.getItem(STORAGE_COMPILED_KEY)
-      if (storedCompiled) {
-        try {
-          applyTheme(JSON.parse(storedCompiled) as CompiledProps)
-        } catch {
-          /* ignore corrupt data */
-        }
-      }
-      currentSource.value = source
-    } else {
-      // Default or reset from invalid server theme
+    // Apply theme based on OS preference
+    applyOsTheme()
+
+    // Listen for OS dark/light mode changes
+    window
+      .matchMedia('(prefers-color-scheme: dark)')
+      .addEventListener('change', () => applyOsTheme())
+  }
+
+  function applyOsTheme(): void {
+    const prefersDark = window.matchMedia(
+      '(prefers-color-scheme: dark)',
+    ).matches
+    if (prefersDark) {
       applySource({ kind: 'builtin-dark', theme: DARK_THEME })
+    } else {
+      applySource({ kind: 'builtin-light', theme: LIGHT_THEME })
     }
   }
 
@@ -118,7 +116,6 @@ export const useThemeStore = defineStore('theme', () => {
     compiledCache.clear()
     styleVarsCache.clear()
     currentSource.value = source
-    localStorage.setItem(STORAGE_SOURCE_KEY, JSON.stringify(source))
     localStorage.setItem(STORAGE_COMPILED_KEY, JSON.stringify(compiled))
   }
 

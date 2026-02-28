@@ -7,8 +7,6 @@ import { useGlobalShortcuts } from '@/composables/useGlobalShortcuts'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
-import { useThemeStore } from '@/stores/theme'
-import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import {
   clearAvailableTlCache,
   detectAvailableTimelines,
@@ -25,18 +23,6 @@ import DeckTimelineColumn from './DeckTimelineColumn.vue'
 const router = useRouter()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
-const themeStore = useThemeStore()
-
-const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
-
-function toggleTheme() {
-  if (isDark.value) {
-    themeStore.applySource({ kind: 'builtin-light', theme: LIGHT_THEME })
-  } else {
-    themeStore.applySource({ kind: 'builtin-dark', theme: DARK_THEME })
-  }
-}
-
 // Pre-build column lookup map to avoid O(n) find per column per render
 const columnMap = computed(() => {
   const map = new Map<string, DeckColumn>()
@@ -330,16 +316,7 @@ onUnmounted(() => {
     <!-- Left navbar (Misskey style) -->
     <nav class="navbar" :class="{ collapsed: navCollapsed, 'drawer-open': mobileDrawerOpen }" :style="{ flexBasis: navWidth + 'px' }">
       <div class="nav-body">
-        <!-- Top section: nav links -->
-        <div class="nav-top">
-          <button class="_button nav-item" :title="isDark ? 'Light theme' : 'Dark theme'" @click="toggleTheme">
-            <i v-if="isDark" class="ti ti-sun" />
-            <i v-else class="ti ti-moon" />
-            <span class="nav-label">{{ isDark ? 'Light theme' : 'Dark theme' }}</span>
-          </button>
-        </div>
-
-        <!-- Middle spacer -->
+        <!-- Spacer -->
         <div class="nav-spacer" />
 
         <!-- Bottom section: post button → accounts -->
