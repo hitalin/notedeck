@@ -573,7 +573,6 @@ function onKeydown(e: KeyboardEvent) {
   align-items: center;
   margin-left: auto;
   gap: 4px;
-  overflow: clip;
   padding-left: 4px;
 }
 
