@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 
 // --- DB models ---
@@ -54,8 +55,27 @@ pub struct NormalizedNote {
     pub files: Vec<NormalizedDriveFile>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub poll: Option<NormalizedPoll>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reply_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub renote_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub channel_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reaction_acceptance: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uri: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+    #[serde(default)]
+    pub local_only: bool,
     #[serde(default)]
     pub is_favorited: bool,
+    /// Fork-specific mode flags (e.g., isNoteInYamiMode)
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub mode_flags: HashMap<String, bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reply: Option<Box<NormalizedNote>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -319,10 +339,22 @@ pub struct RawNote {
     #[serde(default)]
     pub files: Vec<RawDriveFile>,
     pub poll: Option<RawPoll>,
+    pub reply_id: Option<String>,
+    pub renote_id: Option<String>,
+    pub channel_id: Option<String>,
+    pub reaction_acceptance: Option<String>,
+    pub uri: Option<String>,
+    pub url: Option<String>,
+    pub updated_at: Option<String>,
+    #[serde(default)]
+    pub local_only: bool,
     #[serde(default)]
     pub is_favorited: bool,
     pub reply: Option<Box<RawNote>>,
     pub renote: Option<Box<RawNote>>,
+    /// Catch-all for fork-specific fields (e.g., isNoteInYamiMode)
+    #[serde(flatten)]
+    pub extra: HashMap<String, Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -459,7 +491,6 @@ impl RawNote {
             renote_count: self.renote_count,
             replies_count: self.replies_count,
             files: self.files.into_iter().map(Into::into).collect(),
-            is_favorited: self.is_favorited,
             poll: self.poll.map(|p| NormalizedPoll {
                 choices: p
                     .choices
@@ -473,6 +504,21 @@ impl RawNote {
                 multiple: p.multiple,
                 expires_at: p.expires_at,
             }),
+            reply_id: self.reply_id,
+            renote_id: self.renote_id,
+            channel_id: self.channel_id,
+            reaction_acceptance: self.reaction_acceptance,
+            uri: self.uri,
+            url: self.url,
+            updated_at: self.updated_at,
+            local_only: self.local_only,
+            is_favorited: self.is_favorited,
+            mode_flags: self
+                .extra
+                .into_iter()
+                .filter(|(k, _)| k.starts_with("isNoteIn") && k.ends_with("Mode"))
+                .filter_map(|(k, v)| v.as_bool().map(|b| (k, b)))
+                .collect(),
             reply: self
                 .reply
                 .map(|r| Box::new(r.normalize(account_id, server_host))),

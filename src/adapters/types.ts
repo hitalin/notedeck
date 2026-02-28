@@ -91,8 +91,17 @@ export interface NormalizedNote {
   repliesCount: number
   files: NormalizedDriveFile[]
   poll?: NormalizedPoll
+  replyId?: string | null
+  renoteId?: string | null
+  channelId?: string | null
+  reactionAcceptance?: string | null
+  uri?: string
+  url?: string
+  updatedAt?: string
   localOnly?: boolean
   isFavorited?: boolean
+  /** Fork-specific mode flags (e.g., isNoteInYamiMode) */
+  modeFlags?: Record<string, boolean>
   reply?: NormalizedNote
   renote?: NormalizedNote
 }
