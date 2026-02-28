@@ -244,7 +244,12 @@ export function parseMfm(text: string): MfmToken[] {
   if (!text) return []
 
   const cached = parseCache.get(text)
-  if (cached) return cached
+  if (cached) {
+    // LRU: move to end so it's evicted last
+    parseCache.delete(text)
+    parseCache.set(text, cached)
+    return cached
+  }
 
   const tokens = parseTokens(text)
 

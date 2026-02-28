@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
+import { defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { createAdapter } from '@/adapters/registry'
 import type { NoteReaction } from '@/adapters/types'
@@ -37,7 +37,9 @@ const userPopupPos = ref({ x: 0, y: 0 })
 const userPopupTheme = ref<Record<string, string>>({})
 let hoverTimer: ReturnType<typeof setTimeout> | null = null
 
-onMounted(async () => {
+async function fetchReactions() {
+  isLoading.value = true
+  reactions.value = []
   try {
     const account = accountsStore.accounts.find((a) => a.id === props.accountId)
     if (!account) return
@@ -53,7 +55,9 @@ onMounted(async () => {
   } finally {
     isLoading.value = false
   }
-})
+}
+
+watch(() => props.reaction, fetchReactions, { immediate: true })
 
 function handleMouseLeave() {
   if (showUserPopup.value) return

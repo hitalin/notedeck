@@ -62,10 +62,9 @@ onMounted(async () => {
   }
 })
 
-async function handleReaction(reaction: string, target?: NormalizedNote) {
+async function handleReaction(reaction: string, target: NormalizedNote) {
   if (!adapter) return
-  const n = target ?? note.value
-  if (!n) return
+  const n = target
   try {
     await toggleReaction(adapter.api, n, reaction)
   } catch (e) {
@@ -194,7 +193,7 @@ async function handlePosted(editedNoteId?: string) {
           v-for="ancestor in ancestors"
           :key="ancestor.id"
           :note="ancestor"
-          @react="(r: string) => handleReaction(r, ancestor)"
+          @react="handleReaction"
           @reply="handleReply"
           @renote="handleRenote"
           @quote="handleQuote"
@@ -208,7 +207,7 @@ async function handlePosted(editedNoteId?: string) {
         <MkNote
           :note="note"
           detailed
-          @react="(r: string) => handleReaction(r)"
+          @react="handleReaction"
           @reply="handleReply"
           @renote="handleRenote"
           @quote="handleQuote"
@@ -224,7 +223,7 @@ async function handlePosted(editedNoteId?: string) {
           v-for="child in children"
           :key="child.id"
           :note="child"
-          @react="(r: string) => handleReaction(r, child)"
+          @react="handleReaction"
           @reply="handleReply"
           @renote="handleRenote"
           @quote="handleQuote"

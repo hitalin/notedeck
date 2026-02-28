@@ -119,7 +119,7 @@ async function handleToggleFollow() {
   }
 }
 
-async function handleReaction(note: NormalizedNote, reaction: string) {
+async function handleReaction(reaction: string, note: NormalizedNote) {
   if (!adapter) return
   try {
     await toggleReaction(adapter.api, note, reaction)
@@ -307,7 +307,7 @@ async function handlePosted(editedNoteId?: string) {
             v-for="note in notes"
             :key="note.id"
             :note="note"
-            @react="(reaction: string) => handleReaction(note, reaction)"
+            @react="handleReaction"
             @reply="handleReply"
             @renote="handleRenote"
             @quote="handleQuote"

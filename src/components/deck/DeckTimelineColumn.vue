@@ -115,12 +115,13 @@ const tlModes = ref<Record<string, boolean>>({})
 
 const allTlTypes = computed(() => {
   const allowed = availableStandardTl.value
+  const allowedSet = new Set(allowed)
   const standard =
-    allowed.length > 0
-      ? TL_TYPES.filter((t) => allowed.includes(t.value))
+    allowedSet.size > 0
+      ? TL_TYPES.filter((t) => allowedSet.has(t.value))
       : TL_TYPES.map((t) => t)
   for (const ct of customTimelines.value) {
-    if (allowed.length === 0 || allowed.includes(ct.type)) {
+    if (allowedSet.size === 0 || allowedSet.has(ct.type)) {
       standard.push({ value: ct.type, label: ct.label })
     }
   }
@@ -566,13 +567,13 @@ onUnmounted(() => {
           >
             <MkNote
               :note="item"
-              @react="(reaction: string) => handlers.reaction(item, reaction)"
+              @react="handlers.reaction"
               @reply="handlers.reply"
               @renote="handlers.renote"
               @quote="handlers.quote"
               @delete="removeNote"
               @edit="handlers.edit"
-              @bookmark="(n: NormalizedNote) => handlers.bookmark(n)"
+              @bookmark="handlers.bookmark"
             />
           </DynamicScrollerItem>
         </template>

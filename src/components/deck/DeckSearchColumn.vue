@@ -286,13 +286,13 @@ onUnmounted(() => {
           >
             <MkNote
               :note="item"
-              @react="(reaction: string) => handlers.reaction(item, reaction)"
+              @react="handlers.reaction"
               @reply="handlers.reply"
               @renote="handlers.renote"
               @quote="handlers.quote"
               @delete="removeNote"
               @edit="handlers.edit"
-              @bookmark="(n: NormalizedNote) => handlers.bookmark(n)"
+              @bookmark="handlers.bookmark"
             />
           </DynamicScrollerItem>
         </template>

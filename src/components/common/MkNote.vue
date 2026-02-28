@@ -45,7 +45,7 @@ watch(
 )
 
 const emit = defineEmits<{
-  react: [reaction: string]
+  react: [reaction: string, note: NormalizedNote]
   reply: [note: NormalizedNote]
   renote: [note: NormalizedNote]
   quote: [note: NormalizedNote]
@@ -142,7 +142,6 @@ const reactionUsersReaction = ref('')
 const reactionUsersReactionUrl = ref<string | null>(null)
 const reactionUsersTotalCount = ref(0)
 const reactionUsersTheme = ref<Record<string, string>>({})
-const reactionUsersKey = ref(0)
 let reactionHoverTimer: ReturnType<typeof setTimeout> | null = null
 let reactionCloseTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -178,11 +177,8 @@ function onReactionMouseEnter(e: MouseEvent, reaction: string) {
     reactionUsersTheme.value = vars
   }
 
-  // Already showing for a different reaction → update immediately
-  if (showReactionUsers.value) {
-    reactionUsersKey.value++
-    return
-  }
+  // Already showing for a different reaction → props update triggers re-fetch
+  if (showReactionUsers.value) return
 
   reactionHoverTimer = setTimeout(() => {
     showReactionUsers.value = true
@@ -237,10 +233,17 @@ function navigateToUser(userId: string, e: Event) {
   router.push(`/user/${props.note._accountId}/${userId}`)
 }
 
+const sortedReactions = computed(() => {
+  const n = effectiveNote.value
+  return Object.entries(n.reactions)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([reaction, count]) => ({ reaction, count: count as number }))
+})
+
 const reactionUrls = computed(() => {
   const n = effectiveNote.value
   const urls: Record<string, string | null> = {}
-  for (const reaction of Object.keys(n.reactions)) {
+  for (const { reaction } of sortedReactions.value) {
     urls[reaction] = reactionUrlRaw(
       reaction,
       n.emojis,
@@ -354,7 +357,7 @@ async function handleMentionClick(username: string, host: string | null) {
         </div>
 
         <!-- Body -->
-        <div v-if="effectiveNote.cw === null || cwExpanded" class="body">
+        <div v-show="effectiveNote.cw === null || cwExpanded" class="body">
           <p v-if="effectiveNote.text" class="text">
             <MkMfm
               :text="effectiveNote.text"
@@ -383,21 +386,21 @@ async function handleMentionClick(username: string, host: string | null) {
 
         <!-- Reactions -->
         <div
-          v-if="Object.keys(effectiveNote.reactions).length > 0"
+          v-if="sortedReactions.length > 0"
           class="reactions"
         >
           <button
-            v-for="(count, reaction) in effectiveNote.reactions"
-            :key="reaction"
+            v-for="r in sortedReactions"
+            :key="r.reaction"
             class="reaction"
-            :class="{ reacted: effectiveNote.myReaction === reaction }"
-            @click.stop="emit('react', String(reaction))"
-            @mouseenter="onReactionMouseEnter($event, String(reaction))"
+            :class="{ reacted: effectiveNote.myReaction === r.reaction }"
+            @click.stop="emit('react', r.reaction, effectiveNote)"
+            @mouseenter="onReactionMouseEnter($event, r.reaction)"
             @mouseleave="onReactionMouseLeave"
           >
-            <img v-if="reactionUrls[String(reaction)]" :src="reactionUrls[String(reaction)]!" :alt="String(reaction)" class="custom-emoji" width="20" height="20" />
-            <MkEmoji v-else :emoji="String(reaction)" class="reaction-emoji" />
-            <span class="count">{{ count }}</span>
+            <img v-if="reactionUrls[r.reaction]" :src="reactionUrls[r.reaction]!" :alt="r.reaction" class="custom-emoji" width="20" height="20" />
+            <MkEmoji v-else :emoji="r.reaction" class="reaction-emoji" />
+            <span class="count">{{ r.count }}</span>
           </button>
         </div>
 
@@ -485,7 +488,6 @@ async function handleMentionClick(username: string, host: string | null) {
       :style="reactionUsersTheme"
     >
       <MkReactionUsersPopup
-        :key="reactionUsersKey"
         :note-id="effectiveNote.id"
         :account-id="note._accountId"
         :server-host="effectiveNote._serverHost"
@@ -573,7 +575,7 @@ async function handleMentionClick(username: string, host: string | null) {
       >
         <MkReactionPicker
           :server-host="effectiveNote._serverHost"
-          @pick="(r: string) => { emit('react', r); showReactionInput = false }"
+          @pick="(r: string) => { emit('react', r, effectiveNote); showReactionInput = false }"
         />
       </div>
     </div>

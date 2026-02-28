@@ -70,7 +70,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   const postFormRenoteId = ref<string | undefined>()
   const postFormEditNote = ref<NormalizedNote | undefined>()
 
-  async function handleReaction(note: NormalizedNote, reaction: string) {
+  async function handleReaction(reaction: string, note: NormalizedNote) {
     if (!adapter) return
     try {
       await toggleReaction(adapter.api, note, reaction)

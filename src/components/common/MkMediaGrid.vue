@@ -157,6 +157,7 @@ function isAudio(file: NormalizedDriveFile): boolean {
   margin-top: 8px;
   border-radius: 8px;
   overflow: hidden;
+  contain: content;
 }
 
 .media-count-1 {
@@ -189,6 +190,7 @@ function isAudio(file: NormalizedDriveFile): boolean {
   min-height: 100px;
   max-height: 300px;
   aspect-ratio: 16 / 9;
+  contain: layout;
 }
 
 .media-count-1 > .media-cell {
@@ -200,6 +202,7 @@ function isAudio(file: NormalizedDriveFile): boolean {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  content-visibility: auto;
 }
 
 .media-video {

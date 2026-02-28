@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CSSProperties } from 'vue'
+import { computed, type CSSProperties } from 'vue'
 import type { AvatarDecoration } from '@/adapters/types'
 
 const props = withDefaults(
@@ -22,7 +22,7 @@ defineEmits<{
   mouseleave: [event: MouseEvent]
 }>()
 
-function decorationStyle(d: AvatarDecoration): CSSProperties {
+function computeDecorationStyle(d: AvatarDecoration): CSSProperties {
   const style: CSSProperties = {}
   const angle = d.angle ?? 0
   if (angle !== 0) style.rotate = `${angle * 360}deg`
@@ -32,6 +32,10 @@ function decorationStyle(d: AvatarDecoration): CSSProperties {
   if (ox !== 0 || oy !== 0) style.translate = `${ox * 100}% ${oy * 100}%`
   return style
 }
+
+const decorationStyles = computed(() =>
+  props.decorations.map((d) => computeDecorationStyle(d)),
+)
 </script>
 
 <template>
@@ -52,11 +56,11 @@ function decorationStyle(d: AvatarDecoration): CSSProperties {
     />
     <div v-else class="avatar-img avatar-placeholder" />
     <img
-      v-for="d in props.decorations"
+      v-for="(d, i) in props.decorations"
       :key="d.id"
       :src="d.url"
       class="avatar-decoration"
-      :style="decorationStyle(d)"
+      :style="decorationStyles[i]"
     />
   </div>
 </template>

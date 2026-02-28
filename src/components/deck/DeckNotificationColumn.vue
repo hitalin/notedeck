@@ -335,13 +335,13 @@ onUnmounted(() => {
               <div v-if="notif.note" class="notif-note-wrap">
                 <MkNote
                   :note="notif.note"
-                  @react="(reaction: string) => handlers.reaction(notif.note!, reaction)"
+                  @react="handlers.reaction"
                   @reply="handlers.reply"
                   @renote="handlers.renote"
                   @quote="handlers.quote"
                   @delete="removeNote"
                   @edit="handlers.edit"
-                  @bookmark="(n: NormalizedNote) => handlers.bookmark(n)"
+                  @bookmark="handlers.bookmark"
                 />
               </div>
             </div>
