@@ -19,6 +19,7 @@ const deckStore = useDeckStore()
 const {
   account,
   columnThemeVars,
+  serverIconUrl,
   isLoading,
   error,
   initAdapter,
@@ -218,7 +219,7 @@ onUnmounted(() => {
     <template #header-meta>
       <div v-if="account" class="header-account">
         <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
-        <span class="header-host">{{ account.host }}</span>
+        <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
@@ -343,14 +344,11 @@ onUnmounted(() => {
   object-fit: cover;
 }
 
-.header-host {
-  font-size: 0.75em;
-  font-weight: normal;
-  opacity: 0.6;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.header-favicon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  opacity: 0.7;
 }
 
 .search-bar {
@@ -359,7 +357,7 @@ onUnmounted(() => {
   gap: 6px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--nd-divider);
-  background: var(--nd-panelHeaderBg);
+  background: var(--nd-bg);
 }
 
 .search-icon {

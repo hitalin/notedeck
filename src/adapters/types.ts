@@ -10,6 +10,7 @@ export interface ServerInfo {
   software: ServerSoftware
   version: string
   features: ServerFeatures
+  iconUrl?: string
 }
 
 export interface ServerFeatures {

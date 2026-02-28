@@ -325,8 +325,27 @@ async function handleMentionClick(username: string, host: string | null) {
             />
             <template v-else>{{ effectiveNote.user.username }}</template>
           </span>
-          <span class="username">@{{ effectiveNote.user.username }}{{ effectiveNote.user.host ? `@${effectiveNote.user.host}` : '' }}</span>
+          <span class="username">@{{ effectiveNote.user.username }}@{{ effectiveNote.user.host || note._serverHost }}</span>
           <span class="info">
+            <span class="time">{{ formatTime(effectiveNote.createdAt) }}</span>
+            <svg
+              v-if="effectiveNote.localOnly"
+              class="visibility-icon"
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              fill="none"
+              title="Local only"
+            >
+              <path d="M4 13a8 8 0 0 1 7-7 4 4 0 0 0 6.243 6.243 8 8 0 0 1-7 7" />
+              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+              <path d="M15 9h.01" />
+              <path d="M3 3l18 18" />
+            </svg>
             <svg
               v-if="effectiveNote.visibility !== 'public'"
               class="visibility-icon"
@@ -336,7 +355,6 @@ async function handleMentionClick(username: string, host: string | null) {
             >
               <path :d="VISIBILITY_ICONS[effectiveNote.visibility] || VISIBILITY_ICONS.public" fill="currentColor" />
             </svg>
-            <span class="time">{{ formatTime(effectiveNote.createdAt) }}</span>
           </span>
         </header>
 
@@ -446,7 +464,6 @@ async function handleMentionClick(username: string, host: string | null) {
               <circle cx="12" cy="19" r="1.5" fill="currentColor" />
             </svg>
           </button>
-          <span class="server-badge">{{ note._serverHost }}</span>
         </footer>
 
         <!-- Renote menu -->
@@ -695,6 +712,9 @@ async function handleMentionClick(username: string, host: string | null) {
 }
 
 .info {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
   margin-left: auto;
   font-size: 0.9em;
@@ -705,9 +725,7 @@ async function handleMentionClick(username: string, host: string | null) {
 }
 
 .visibility-icon {
-  margin-right: 4px;
   opacity: 0.5;
-  vertical-align: middle;
 }
 
 /* CW */
@@ -855,12 +873,6 @@ async function handleMentionClick(username: string, host: string | null) {
 
 .button-count {
   font-size: 0.85em;
-}
-
-.server-badge {
-  margin-left: auto;
-  opacity: 0.4;
-  font-size: 0.75em;
 }
 
 /* Renote menu */

@@ -22,7 +22,10 @@ interface WellKnownNodeInfo {
 }
 
 export async function detectServer(host: string): Promise<ServerInfo> {
-  const nodeinfo = await fetchNodeInfo(host)
+  const [nodeinfo, iconUrl] = await Promise.all([
+    fetchNodeInfo(host),
+    fetchIconUrl(host),
+  ])
   const software = detectSoftware(nodeinfo.software.name)
 
   return {
@@ -30,6 +33,7 @@ export async function detectServer(host: string): Promise<ServerInfo> {
     software,
     version: nodeinfo.software.version,
     features: defaultFeatures(),
+    iconUrl,
   }
 }
 
@@ -46,6 +50,24 @@ async function fetchNodeInfo(host: string): Promise<NodeInfo> {
 
   const res = await fetch(nodeinfoUrl)
   return res.json()
+}
+
+async function fetchIconUrl(host: string): Promise<string> {
+  try {
+    const res = await fetch(`https://${host}/api/meta`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    })
+    const data = await res.json()
+    const url = data.iconUrl ?? data.faviconUrl
+    if (url) {
+      return url.startsWith('http') ? url : `https://${host}${url}`
+    }
+  } catch {
+    // fall through to favicon fallback
+  }
+  return `https://${host}/favicon.ico`
 }
 
 function detectSoftware(name: string): ServerSoftware {

@@ -101,26 +101,6 @@ function addColumnForAccount(accountId: string) {
   addColumnType.value = null
 }
 
-function addColumnViaNav(type: 'timeline' | 'notifications' | 'search') {
-  const accounts = accountsStore.accounts
-  if (accounts.length === 0) return
-  const single = accounts.length === 1 ? accounts[0] : undefined
-  if (single) {
-    addColumnType.value = null
-    deckStore.addColumn({
-      type,
-      name: null,
-      width: 330,
-      accountId: single.id,
-      tl: type === 'timeline' ? 'home' : undefined,
-      active: true,
-    })
-    return
-  }
-  selectColumnType(type)
-  showAddMenu.value = true
-}
-
 function toggleAddMenu() {
   showAddMenu.value = !showAddMenu.value
 }
@@ -354,30 +334,6 @@ onUnmounted(() => {
       <div class="nav-body">
         <!-- Top section: nav links -->
         <div class="nav-top">
-          <button class="_button nav-item" title="Home" @click="router.push('/')">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-            </svg>
-            <span class="nav-label">Timeline</span>
-          </button>
-
-          <button class="_button nav-item" title="Search" @click="addColumnViaNav('search')">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
-            </svg>
-            <span class="nav-label">Search</span>
-          </button>
-
-          <button class="_button nav-item" title="Notifications" @click="addColumnViaNav('notifications')">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-            </svg>
-            <span class="nav-label">Notifications</span>
-          </button>
-
           <button class="_button nav-item" :title="isDark ? 'Light theme' : 'Dark theme'" @click="toggleTheme">
             <!-- Sun icon (shown in dark mode → click to go light) -->
             <svg v-if="isDark" viewBox="0 0 24 24" width="20" height="20">
@@ -720,7 +676,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 12px 14px;
+  padding: 8px 14px;
   border-radius: 8px;
   color: var(--nd-navFg, var(--nd-fg));
   font-size: 0.9em;
@@ -754,7 +710,7 @@ onUnmounted(() => {
 
 .collapsed .nav-item {
   justify-content: center;
-  padding: 14px 0;
+  padding: 10px 0;
   width: 100%;
 }
 
@@ -805,7 +761,6 @@ onUnmounted(() => {
 .nav-post-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 10px;
   width: 100%;
   padding: 10px 14px;

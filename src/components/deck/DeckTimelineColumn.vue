@@ -42,6 +42,7 @@ const accountsStore = useAccountsStore()
 const {
   account,
   columnThemeVars,
+  serverIconUrl,
   isLoading,
   error,
   initAdapter,
@@ -227,11 +228,6 @@ async function reconnectWithFilter() {
   pendingNotes.value = []
   await connect()
 }
-
-const columnTitle = computed(() => {
-  const opt = allTlTypes.value.find((o) => o.value === tlType.value)
-  return opt?.label ?? 'Timeline'
-})
 
 async function connect(useCache = false) {
   error.value = null
@@ -482,7 +478,7 @@ onUnmounted(() => {
 <template>
   <DeckColumn
     :column-id="column.id"
-    :title="columnTitle"
+    title="Timeline"
     :theme-vars="columnThemeVars"
     @header-click="scrollToTop(true)"
   >
@@ -495,7 +491,7 @@ onUnmounted(() => {
     <template #header-meta>
       <div v-if="account" class="header-account">
         <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
-        <span class="header-host">{{ account.host }}</span>
+        <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
@@ -512,6 +508,7 @@ onUnmounted(() => {
           <svg class="tl-tab-icon" viewBox="0 0 24 24" width="16" height="16">
             <path :d="getTlIcon(opt.value)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
           </svg>
+          <span v-if="tlType === opt.value" class="tl-tab-label">{{ opt.label }}</span>
         </button>
         <button
           v-if="availableFilterKeys.length > 0"
@@ -640,7 +637,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-left: 4px;
   flex-shrink: 0;
 }
 
@@ -651,28 +647,25 @@ onUnmounted(() => {
   object-fit: cover;
 }
 
-.header-host {
-  font-size: 0.75em;
-  font-weight: normal;
-  opacity: 0.6;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.header-favicon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  opacity: 0.7;
 }
 
 .tl-tabs {
   display: flex;
   border-bottom: 1px solid var(--nd-divider);
-  background: var(--nd-panelHeaderBg);
+  background: var(--nd-bg);
 }
 
 .tl-tab {
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 0;
+  gap: 4px;
+  padding: 8px 12px;
   opacity: 0.4;
   transition: opacity 0.15s, background 0.15s;
   position: relative;
@@ -700,6 +693,16 @@ onUnmounted(() => {
 
 .tl-tab-icon {
   color: currentColor;
+}
+
+.tl-tab-label {
+  font-size: 0.85em;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.tl-filter-btn {
+  margin-left: auto;
 }
 
 .tl-filter-btn.active {

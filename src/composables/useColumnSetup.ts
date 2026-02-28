@@ -31,6 +31,8 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     return themeStore.getStyleVarsForAccount(accountId)
   })
 
+  const serverIconUrl = ref<string | undefined>()
+
   const isLoading = ref(false)
   const error = ref<AppError | null>(null)
 
@@ -41,6 +43,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     const acc = account.value
     if (!acc) return null
     const serverInfo = await serversStore.getServerInfo(acc.host)
+    serverIconUrl.value = serverInfo.iconUrl
     adapter = createAdapter(serverInfo, acc.id)
     emojisStore.ensureLoaded(acc.host, () => adapter!.api.getServerEmojis())
     return adapter
@@ -157,6 +160,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     // State
     account,
     columnThemeVars,
+    serverIconUrl,
     isLoading,
     error,
     // Adapter lifecycle

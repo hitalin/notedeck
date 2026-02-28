@@ -22,32 +22,41 @@ export const useServersStore = defineStore('servers', () => {
     const stored = await invoke<StoredServer[]>('load_servers')
     const next = new Map(servers.value)
     for (const s of stored) {
-      next.set(s.host, {
+      const parsed = JSON.parse(s.featuresJson)
+      const { _iconUrl, ...features } = parsed
+      const info: ServerInfo = {
         host: s.host,
         software: s.software as ServerInfo['software'],
         version: s.version,
-        features: JSON.parse(s.featuresJson),
-      })
+        features,
+      }
+      if ('_iconUrl' in parsed) info.iconUrl = _iconUrl
+      next.set(s.host, info)
     }
     servers.value = next
   }
 
   async function getServerInfo(host: string): Promise<ServerInfo> {
     const cached = servers.value.get(host)
-    if (cached) return cached
+    if (cached?.iconUrl) return cached
 
     const stored = await invoke<StoredServer | null>('get_server', { host })
     if (stored && Date.now() - stored.updatedAt < CACHE_TTL_MS) {
-      const info: ServerInfo = {
-        host: stored.host,
-        software: stored.software as ServerInfo['software'],
-        version: stored.version,
-        features: JSON.parse(stored.featuresJson),
+      const parsed = JSON.parse(stored.featuresJson)
+      if (parsed._iconUrl) {
+        const { _iconUrl, ...features } = parsed
+        const info: ServerInfo = {
+          host: stored.host,
+          software: stored.software as ServerInfo['software'],
+          version: stored.version,
+          features,
+          iconUrl: _iconUrl,
+        }
+        const next = new Map(servers.value)
+        next.set(host, info)
+        servers.value = next
+        return info
       }
-      const next = new Map(servers.value)
-      next.set(host, info)
-      servers.value = next
-      return info
     }
 
     const info = await detectServer(host)
@@ -59,7 +68,10 @@ export const useServersStore = defineStore('servers', () => {
         host: info.host,
         software: info.software,
         version: info.version,
-        featuresJson: JSON.stringify(info.features),
+        featuresJson: JSON.stringify({
+          ...info.features,
+          _iconUrl: info.iconUrl,
+        }),
         updatedAt: Date.now(),
       },
     })
