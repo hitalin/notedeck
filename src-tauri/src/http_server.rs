@@ -18,11 +18,11 @@ use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::StreamExt;
 use tower_http::cors::CorsLayer;
 
-use crate::api::MisskeyClient;
+use notecli::api::MisskeyClient;
 use crate::commands;
-use crate::db::Database;
-use crate::event_bus::EventBus;
-use crate::models::{AccountPublic, CreateNoteParams, TimelineType};
+use notecli::db::Database;
+use notecli::event_bus::EventBus;
+use notecli::models::{AccountPublic, CreateNoteParams, TimelineType};
 use crate::query_bridge;
 
 const PORT: u16 = 19820;
@@ -80,8 +80,8 @@ impl ApiError {
     }
 }
 
-impl From<crate::error::NoteDeckError> for ApiError {
-    fn from(e: crate::error::NoteDeckError) -> Self {
+impl From<notecli::error::NoteDeckError> for ApiError {
+    fn from(e: notecli::error::NoteDeckError) -> Self {
         let code = e.code().to_string();
         Self {
             status: StatusCode::INTERNAL_SERVER_ERROR,
@@ -549,8 +549,8 @@ struct TimelineQueryParams {
 }
 
 impl TimelineQueryParams {
-    fn into_timeline_options(self) -> crate::models::TimelineOptions {
-        crate::models::TimelineOptions::new(
+    fn into_timeline_options(self) -> notecli::models::TimelineOptions {
+        notecli::models::TimelineOptions::new(
             self.limit.unwrap_or(20),
             self.since_id,
             self.until_id,

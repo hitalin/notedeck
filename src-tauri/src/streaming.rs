@@ -10,10 +10,10 @@ use tokio::sync::{mpsc, Mutex};
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::db::Database;
-use crate::error::NoteDeckError;
-use crate::event_bus::{EventBus, SseEvent};
-use crate::models::{
+use notecli::db::Database;
+use notecli::error::NoteDeckError;
+use notecli::event_bus::{EventBus, SseEvent};
+use notecli::models::{
     ChatMessage, NormalizedNote, NormalizedNotification, RawNote, RawNotification, TimelineType,
 };
 

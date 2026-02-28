@@ -2320,14 +2320,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72ef4a56884ca558e5ddb05a1d1e7e1bfd9a68d9ed024c21704cc98872dae1bb"
 
 [[package]]
+name = "notecli"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "dirs 6.0.0",
+ "futures-util",
+ "keyring",
+ "reqwest 0.12.28",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-stream",
+ "tokio-tungstenite",
+ "tower-http",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
 name = "notedeck"
 version = "0.0.10"
 dependencies = [
  "axum",
  "futures-util",
- "keyring",
- "reqwest 0.12.28",
- "rusqlite",
+ "notecli",
  "serde",
  "serde_json",
  "tauri",
@@ -2338,7 +2357,6 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-process",
  "tauri-plugin-updater",
- "thiserror 2.0.18",
  "tokio",
  "tokio-stream",
  "tokio-tungstenite",

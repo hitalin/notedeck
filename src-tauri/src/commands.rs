@@ -4,11 +4,11 @@ use std::time::Instant;
 
 use tauri::State;
 
-use crate::api::MisskeyClient;
-use crate::db::Database;
-use crate::error::NoteDeckError;
-use crate::keychain;
-use crate::models::{
+use notecli::api::MisskeyClient;
+use notecli::db::Database;
+use notecli::error::NoteDeckError;
+use notecli::keychain;
+use notecli::models::{
     Account, AccountPublic, AuthSession, ChatMessage, CreateNoteParams, NormalizedDriveFile,
     NormalizedNote, NormalizedNoteReaction, NormalizedNotification, NormalizedUser,
     NormalizedUserDetail, Antenna, Channel, Clip, SearchOptions, StoredServer, TimelineOptions,
@@ -977,7 +977,7 @@ pub async fn api_create_chat_message(
                 .create_chat_message_to_room(&host, &token, &rid, &text)
                 .await
         }
-        _ => Err(crate::error::NoteDeckError::InvalidInput(
+        _ => Err(notecli::error::NoteDeckError::InvalidInput(
             "Either userId or roomId is required".to_string(),
         )),
     }

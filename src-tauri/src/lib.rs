@@ -7,14 +7,8 @@ use tauri::Manager;
 #[cfg(not(mobile))]
 use tauri_plugin_autostart::MacosLauncher;
 
-mod api;
 mod commands;
-mod db;
-mod error;
-mod event_bus;
 mod http_server;
-mod keychain;
-mod models;
 mod query_bridge;
 mod streaming;
 
@@ -110,17 +104,17 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         let app_dir = app.path().app_data_dir()?;
         std::fs::create_dir_all(&app_dir)?;
         let db_path = app_dir.join("notedeck.db");
-        let database = db::Database::open(&db_path)?;
+        let database = notecli::db::Database::open(&db_path)?;
         app.manage(database);
 
         // Initialize Misskey HTTP client
-        app.manage(api::MisskeyClient::new()?);
+        app.manage(notecli::api::MisskeyClient::new()?);
 
         // Initialize streaming manager
         app.manage(streaming::StreamingManager::new());
 
         // Initialize event bus (SSE broadcasting)
-        app.manage(event_bus::EventBus::new());
+        app.manage(notecli::event_bus::EventBus::new());
 
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
