@@ -60,9 +60,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Account Menu',
     icon: 'user',
     category: 'account',
-    shortcuts: [
-      { key: 'a', scope: 'body' },
-    ],
+    shortcuts: [{ key: 'a', scope: 'body' }],
     execute: handlers.toggleAccountMenu,
   })
 }

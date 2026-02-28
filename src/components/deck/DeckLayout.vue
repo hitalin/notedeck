@@ -3,11 +3,11 @@ import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import MkPostForm from '@/components/common/MkPostForm.vue'
 import {
   registerDefaultCommands,
   unregisterDefaultCommands,
 } from '@/commands/definitions'
+import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -27,9 +27,9 @@ import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
-import DeckUserColumn from './DeckUserColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
+import DeckUserColumn from './DeckUserColumn.vue'
 
 const router = useRouter()
 const deckStore = useDeckStore()

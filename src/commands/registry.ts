@@ -65,5 +65,15 @@ export const useCommandStore = defineStore('commands', () => {
     isOpen.value = !isOpen.value
   }
 
-  return { commands, isOpen, register, unregister, getEnabled, execute, open, close, toggle }
+  return {
+    commands,
+    isOpen,
+    register,
+    unregister,
+    getEnabled,
+    execute,
+    open,
+    close,
+    toggle,
+  }
 })

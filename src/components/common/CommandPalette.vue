@@ -26,9 +26,7 @@ const categoryLabels: Record<string, string> = {
 const categoryOrder = ['general', 'navigation', 'column', 'account']
 
 const filteredGroups = computed<CommandGroup[]>(() => {
-  const enabled = commandStore
-    .getEnabled()
-    .filter((c) => c.visible !== false)
+  const enabled = commandStore.getEnabled().filter((c) => c.visible !== false)
 
   const matched = query.value
     ? enabled.filter((c) => fuzzyMatch(query.value, c.label))
@@ -45,7 +43,11 @@ const filteredGroups = computed<CommandGroup[]>(() => {
   for (const cat of categoryOrder) {
     const cmds = map.get(cat)
     if (cmds?.length) {
-      groups.push({ category: cat, label: categoryLabels[cat] ?? cat, commands: cmds })
+      groups.push({
+        category: cat,
+        label: categoryLabels[cat] ?? cat,
+        commands: cmds,
+      })
     }
   }
   return groups
@@ -56,7 +58,10 @@ const flatList = computed(() => filteredGroups.value.flatMap((g) => g.commands))
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'ArrowDown') {
     e.preventDefault()
-    selectedIndex.value = Math.min(selectedIndex.value + 1, flatList.value.length - 1)
+    selectedIndex.value = Math.min(
+      selectedIndex.value + 1,
+      flatList.value.length - 1,
+    )
   } else if (e.key === 'ArrowUp') {
     e.preventDefault()
     selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
@@ -94,8 +99,8 @@ watch(
 )
 
 function primaryShortcut(cmd: Command): string | null {
-  const s = cmd.shortcuts.find((s) => s.ctrl || s.shift || s.alt)
-    ?? cmd.shortcuts[0]
+  const s =
+    cmd.shortcuts.find((s) => s.ctrl || s.shift || s.alt) ?? cmd.shortcuts[0]
   return s ? shortcutLabel(s) : null
 }
 </script>

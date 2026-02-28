@@ -1,7 +1,8 @@
 import type { Shortcut } from '@/commands/registry'
 
 const isMac =
-  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent)
+  typeof navigator !== 'undefined' &&
+  /Mac|iPhone|iPad/.test(navigator.userAgent)
 
 export function shortcutLabel(s: Shortcut): string {
   const parts: string[] = []
