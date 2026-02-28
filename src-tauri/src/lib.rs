@@ -51,6 +51,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::api_get_user_policies,
         commands::api_update_user_setting,
         commands::api_get_timeline,
+        commands::api_get_user_lists,
         commands::api_get_note,
         commands::api_create_note,
         commands::api_create_reaction,

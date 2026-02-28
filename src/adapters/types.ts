@@ -60,6 +60,7 @@ export interface TimelineOptions {
   sinceId?: string
   untilId?: string
   filters?: TimelineFilter
+  listId?: string
 }
 
 export interface PaginationOptions {
@@ -72,6 +73,11 @@ export interface SearchOptions {
   limit?: number
   sinceId?: string
   untilId?: string
+}
+
+export interface UserList {
+  id: string
+  name: string
 }
 
 export interface NormalizedNote {
@@ -258,6 +264,7 @@ export interface ApiAdapter {
   lookupUser(username: string, host?: string | null): Promise<NormalizedUser>
   followUser(userId: string): Promise<void>
   unfollowUser(userId: string): Promise<void>
+  getUserLists(): Promise<UserList[]>
 }
 
 export type StreamConnectionState =
@@ -283,7 +290,7 @@ export interface StreamAdapter {
   subscribeTimeline(
     type: TimelineType,
     handler: (note: NormalizedNote) => void,
-    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
+    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void; listId?: string },
   ): ChannelSubscription
   subscribeMain(handler: (event: MainChannelEvent) => void): ChannelSubscription
   readonly state: StreamConnectionState

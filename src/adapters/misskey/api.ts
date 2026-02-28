@@ -12,6 +12,7 @@ import type {
   SearchOptions,
   TimelineOptions,
   TimelineType,
+  UserList,
 } from '../types'
 
 export class MisskeyApi implements ApiAdapter {
@@ -33,6 +34,7 @@ export class MisskeyApi implements ApiAdapter {
         sinceId: options.sinceId ?? null,
         untilId: options.untilId ?? null,
         filters: options.filters ?? null,
+        listId: options.listId ?? null,
       },
     })
   }
@@ -230,6 +232,12 @@ export class MisskeyApi implements ApiAdapter {
     return invoke('api_unfollow_user', {
       accountId: this.accountId,
       userId,
+    })
+  }
+
+  async getUserLists(): Promise<UserList[]> {
+    return invoke('api_get_user_lists', {
+      accountId: this.accountId,
     })
   }
 }

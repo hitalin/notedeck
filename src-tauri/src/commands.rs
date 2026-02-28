@@ -11,7 +11,7 @@ use crate::keychain;
 use crate::models::{
     Account, AccountPublic, AuthSession, CreateNoteParams, NormalizedDriveFile, NormalizedNote,
     NormalizedNoteReaction, NormalizedNotification, NormalizedUser, NormalizedUserDetail,
-    SearchOptions, StoredServer, TimelineOptions, TimelineType,
+    SearchOptions, StoredServer, TimelineOptions, TimelineType, UserList,
 };
 use crate::streaming::StreamingManager;
 use zeroize::Zeroize;
@@ -194,6 +194,16 @@ pub async fn api_get_timeline(
         eprintln!("[cache] failed to cache timeline notes: {e}");
     }
     Ok(notes)
+}
+
+#[tauri::command]
+pub async fn api_get_user_lists(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+) -> Result<Vec<UserList>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_user_lists(&host, &token).await
 }
 
 #[tauri::command]
@@ -737,9 +747,10 @@ pub async fn stream_subscribe_timeline(
     streaming: State<'_, StreamingManager>,
     account_id: String,
     timeline_type: TimelineType,
+    list_id: Option<String>,
 ) -> Result<String> {
     streaming
-        .subscribe_timeline(&account_id, timeline_type)
+        .subscribe_timeline(&account_id, timeline_type, list_id)
         .await
 }
 

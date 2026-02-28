@@ -291,6 +291,7 @@ pub struct TimelineOptions {
     pub until_id: Option<String>,
     #[serde(default)]
     pub filters: Option<TimelineFilter>,
+    pub list_id: Option<String>,
 }
 
 impl TimelineOptions {
@@ -307,12 +308,20 @@ impl Default for TimelineOptions {
             since_id: None,
             until_id: None,
             filters: None,
+            list_id: None,
         }
     }
 }
 
 fn default_limit() -> i64 {
     20
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserList {
+    pub id: String,
+    pub name: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

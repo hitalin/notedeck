@@ -17,6 +17,7 @@ import {
   onNotificationAction,
 } from '@/utils/desktopNotification'
 import { AppError } from '@/utils/errors'
+import DeckListColumn from './DeckListColumn.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
@@ -68,14 +69,18 @@ function closeCompose() {
   showCompose.value = false
 }
 
-const addColumnType = ref<'timeline' | 'notifications' | 'search' | null>(null)
+const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | null>(null)
 
-function selectColumnType(type: 'timeline' | 'notifications' | 'search') {
+function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list') {
   addColumnType.value = type
 }
 
 function addColumnForAccount(accountId: string) {
   const type = addColumnType.value || 'timeline'
+  if (type === 'list') {
+    fetchUserLists(accountId)
+    return
+  }
   deckStore.addColumn({
     type,
     name: null,
@@ -86,6 +91,45 @@ function addColumnForAccount(accountId: string) {
   })
   showAddMenu.value = false
   addColumnType.value = null
+}
+
+// List column creation
+interface UserListItem { id: string; name: string }
+const addListAccountId = ref<string | null>(null)
+const userLists = ref<UserListItem[]>([])
+const loadingLists = ref(false)
+
+async function fetchUserLists(accountId: string) {
+  addListAccountId.value = accountId
+  loadingLists.value = true
+  try {
+    userLists.value = await invoke<UserListItem[]>('api_get_user_lists', { accountId })
+  } catch (e) {
+    console.error('[deck] failed to fetch user lists:', e)
+    userLists.value = []
+  } finally {
+    loadingLists.value = false
+  }
+}
+
+function addListColumn(listId: string, listName: string) {
+  if (!addListAccountId.value) return
+  deckStore.addColumn({
+    type: 'list',
+    name: listName,
+    width: 330,
+    accountId: addListAccountId.value,
+    listId,
+    active: true,
+  })
+  resetAddMenu()
+}
+
+function resetAddMenu() {
+  showAddMenu.value = false
+  addColumnType.value = null
+  addListAccountId.value = null
+  userLists.value = []
 }
 
 function toggleAddMenu() {
@@ -434,6 +478,10 @@ onUnmounted(() => {
               v-if="col.type === 'timeline'"
               :column="col"
             />
+            <DeckListColumn
+              v-else-if="col.type === 'list'"
+              :column="col"
+            />
             <DeckNotificationColumn
               v-else-if="col.type === 'notifications'"
               :column="col"
@@ -492,13 +540,16 @@ onUnmounted(() => {
 
     <!-- Add column popup -->
     <Teleport to="body">
-      <div v-if="showAddMenu" class="add-overlay" @click="showAddMenu = false; addColumnType = null">
+      <div v-if="showAddMenu" class="add-overlay" @click="resetAddMenu()">
         <div class="add-popup" @click.stop>
           <div class="add-popup-header">
-            <button v-if="addColumnType" class="_button add-back-btn" @click="addColumnType = null">
+            <button v-if="addColumnType && !addListAccountId" class="_button add-back-btn" @click="addColumnType = null">
               <i class="ti ti-chevron-left" />
             </button>
-            {{ addColumnType ? 'Select account' : 'Add column' }}
+            <button v-else-if="addListAccountId" class="_button add-back-btn" @click="addListAccountId = null; userLists = []">
+              <i class="ti ti-chevron-left" />
+            </button>
+            {{ addListAccountId ? 'Select list' : addColumnType ? 'Select account' : 'Add column' }}
           </div>
 
           <!-- Step 1: Column type selection -->
@@ -506,6 +557,10 @@ onUnmounted(() => {
             <button class="_button add-type-btn" @click="selectColumnType('timeline')">
               <i class="ti ti-home" />
               <span>Timeline</span>
+            </button>
+            <button class="_button add-type-btn" @click="selectColumnType('list')">
+              <i class="ti ti-list" />
+              <span>List</span>
             </button>
             <button class="_button add-type-btn" @click="selectColumnType('notifications')">
               <i class="ti ti-bell" />
@@ -517,11 +572,26 @@ onUnmounted(() => {
             </button>
           </template>
 
+          <!-- Step 3: List selection (for list columns) -->
+          <template v-else-if="addListAccountId">
+            <div v-if="loadingLists" class="add-popup-empty">Loading...</div>
+            <div v-else-if="userLists.length === 0" class="add-popup-empty">No lists found.</div>
+            <button
+              v-for="list in userLists"
+              :key="list.id"
+              class="_button add-type-btn"
+              @click="addListColumn(list.id, list.name)"
+            >
+              <i class="ti ti-list" />
+              <span>{{ list.name }}</span>
+            </button>
+          </template>
+
           <!-- Step 2: Account selection -->
           <template v-else>
             <div v-if="accountsStore.accounts.length === 0" class="add-popup-empty">
               No accounts registered.
-              <router-link to="/login" @click="showAddMenu = false; addColumnType = null">
+              <router-link to="/login" @click="resetAddMenu()">
                 Add account
               </router-link>
             </div>

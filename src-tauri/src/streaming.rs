@@ -81,7 +81,7 @@ pub struct StreamStatusEvent {
 // --- Internal commands sent to the WebSocket task ---
 
 enum WsCommand {
-    Subscribe { channel: String, id: String },
+    Subscribe { channel: String, id: String, params: Option<Value> },
     Unsubscribe { id: String },
     Shutdown,
 }
@@ -104,6 +104,8 @@ struct SubscriptionInfo {
     channel: String,
     /// Original timeline type (e.g. "home", "local") for cache isolation
     timeline_type: String,
+    /// Extra params for channel subscription (e.g. listId for userListTimeline)
+    params: Option<Value>,
 }
 
 pub struct StreamingManager {
@@ -203,12 +205,14 @@ impl StreamingManager {
         &self,
         account_id: &str,
         timeline_type: TimelineType,
+        list_id: Option<String>,
     ) -> Result<String, NoteDeckError> {
         let sub_id = uuid::Uuid::new_v4().to_string();
         let channel = timeline_type.ws_channel();
+        let params = list_id.as_ref().map(|id| json!({ "listId": id }));
 
         let host = self.get_host(account_id).await?;
-        self.send_subscribe(account_id, &channel, &sub_id).await?;
+        self.send_subscribe(account_id, &channel, &sub_id, params.clone()).await?;
 
         let mut subs = self.subscriptions.lock().await;
         subs.insert(
@@ -219,6 +223,7 @@ impl StreamingManager {
                 kind: "timeline".to_string(),
                 channel: channel.clone(),
                 timeline_type: timeline_type.as_str().to_string(),
+                params,
             },
         );
 
@@ -229,7 +234,7 @@ impl StreamingManager {
         let sub_id = uuid::Uuid::new_v4().to_string();
 
         let host = self.get_host(account_id).await?;
-        self.send_subscribe(account_id, "main", &sub_id).await?;
+        self.send_subscribe(account_id, "main", &sub_id, None).await?;
 
         let mut subs = self.subscriptions.lock().await;
         subs.insert(
@@ -240,6 +245,7 @@ impl StreamingManager {
                 kind: "main".to_string(),
                 channel: "main".to_string(),
                 timeline_type: String::new(),
+                params: None,
             },
         );
 
@@ -280,6 +286,7 @@ impl StreamingManager {
         account_id: &str,
         channel: &str,
         sub_id: &str,
+        params: Option<Value>,
     ) -> Result<(), NoteDeckError> {
         let conns = self.connections.lock().await;
         let handle = conns
@@ -291,6 +298,7 @@ impl StreamingManager {
             .send(WsCommand::Subscribe {
                 channel: channel.to_string(),
                 id: sub_id.to_string(),
+                params,
             })
             .map_err(|_| NoteDeckError::ConnectionClosed)
     }
@@ -412,19 +420,20 @@ async fn run_ws_session(
     let write = Arc::new(Mutex::new(write));
 
     // Collect subscriptions to replay, then drop the lock before doing I/O
-    let to_resub: Vec<(String, String)> = {
+    let to_resub: Vec<(String, String, Option<Value>)> = {
         let subs = subscriptions.lock().await;
         subs.iter()
             .filter(|(_, info)| info.account_id == account_id)
-            .map(|(sub_id, info)| (sub_id.clone(), info.channel.clone()))
+            .map(|(sub_id, info)| (sub_id.clone(), info.channel.clone(), info.params.clone()))
             .collect()
     };
 
-    for (sub_id, channel) in &to_resub {
-        let msg = json!({
-            "type": "connect",
-            "body": { "channel": channel, "id": sub_id }
-        });
+    for (sub_id, channel, params) in &to_resub {
+        let mut body = json!({ "channel": channel, "id": sub_id });
+        if let Some(p) = params {
+            body["params"] = p.clone();
+        }
+        let msg = json!({ "type": "connect", "body": body });
         let mut w = write.lock().await;
         if let Err(e) = w.send(Message::Text(msg.to_string().into())).await {
             eprintln!("[stream] re-subscribe send failed: {e}");
@@ -467,11 +476,12 @@ async fn ws_loop(
             }
             cmd = cmd_rx.recv() => {
                 match cmd {
-                    Some(WsCommand::Subscribe { channel, id }) => {
-                        let msg = json!({
-                            "type": "connect",
-                            "body": { "channel": channel, "id": id }
-                        });
+                    Some(WsCommand::Subscribe { channel, id, params }) => {
+                        let mut body = json!({ "channel": channel, "id": id });
+                        if let Some(p) = params {
+                            body["params"] = p;
+                        }
+                        let msg = json!({ "type": "connect", "body": body });
                         let mut w = write.lock().await;
                         if let Err(e) = w.send(Message::Text(msg.to_string().into())).await {
                             eprintln!("[stream] subscribe send failed: {e}");
