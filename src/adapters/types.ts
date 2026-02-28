@@ -80,6 +80,11 @@ export interface UserList {
   name: string
 }
 
+export interface Antenna {
+  id: string
+  name: string
+}
+
 export interface NormalizedNote {
   id: string
   _accountId: string
@@ -265,6 +270,11 @@ export interface ApiAdapter {
   followUser(userId: string): Promise<void>
   unfollowUser(userId: string): Promise<void>
   getUserLists(): Promise<UserList[]>
+  getAntennas(): Promise<Antenna[]>
+  getAntennaNotes(
+    antennaId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
 }
 
 export type StreamConnectionState =
@@ -291,6 +301,11 @@ export interface StreamAdapter {
     type: TimelineType,
     handler: (note: NormalizedNote) => void,
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void; listId?: string },
+  ): ChannelSubscription
+  subscribeAntenna(
+    antennaId: string,
+    handler: (note: NormalizedNote) => void,
+    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription
   subscribeMain(handler: (event: MainChannelEvent) => void): ChannelSubscription
   readonly state: StreamConnectionState

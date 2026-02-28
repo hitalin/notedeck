@@ -17,6 +17,7 @@ import {
   onNotificationAction,
 } from '@/utils/desktopNotification'
 import { AppError } from '@/utils/errors'
+import DeckAntennaColumn from './DeckAntennaColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
@@ -69,9 +70,9 @@ function closeCompose() {
   showCompose.value = false
 }
 
-const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | null>(null)
+const addColumnType = ref<'timeline' | 'notifications' | 'search' | 'list' | 'antenna' | null>(null)
 
-function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list') {
+function selectColumnType(type: 'timeline' | 'notifications' | 'search' | 'list' | 'antenna') {
   addColumnType.value = type
 }
 
@@ -79,6 +80,10 @@ function addColumnForAccount(accountId: string) {
   const type = addColumnType.value || 'timeline'
   if (type === 'list') {
     fetchUserLists(accountId)
+    return
+  }
+  if (type === 'antenna') {
+    fetchAntennas(accountId)
     return
   }
   deckStore.addColumn({
@@ -125,11 +130,45 @@ function addListColumn(listId: string, listName: string) {
   resetAddMenu()
 }
 
+// Antenna column creation
+interface AntennaItem { id: string; name: string }
+const addAntennaAccountId = ref<string | null>(null)
+const antennas = ref<AntennaItem[]>([])
+const loadingAntennas = ref(false)
+
+async function fetchAntennas(accountId: string) {
+  addAntennaAccountId.value = accountId
+  loadingAntennas.value = true
+  try {
+    antennas.value = await invoke<AntennaItem[]>('api_get_antennas', { accountId })
+  } catch (e) {
+    console.error('[deck] failed to fetch antennas:', e)
+    antennas.value = []
+  } finally {
+    loadingAntennas.value = false
+  }
+}
+
+function addAntennaColumn(antennaId: string, antennaName: string) {
+  if (!addAntennaAccountId.value) return
+  deckStore.addColumn({
+    type: 'antenna',
+    name: antennaName,
+    width: 330,
+    accountId: addAntennaAccountId.value,
+    antennaId,
+    active: true,
+  })
+  resetAddMenu()
+}
+
 function resetAddMenu() {
   showAddMenu.value = false
   addColumnType.value = null
   addListAccountId.value = null
   userLists.value = []
+  addAntennaAccountId.value = null
+  antennas.value = []
 }
 
 function toggleAddMenu() {
@@ -226,6 +265,8 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   timeline: 'home',
   notifications: 'bell',
   search: 'search',
+  list: 'list',
+  antenna: 'antenna-bars-5',
 }
 
 function columnIcon(colId: string): string {
@@ -482,6 +523,10 @@ onUnmounted(() => {
               v-else-if="col.type === 'list'"
               :column="col"
             />
+            <DeckAntennaColumn
+              v-else-if="col.type === 'antenna'"
+              :column="col"
+            />
             <DeckNotificationColumn
               v-else-if="col.type === 'notifications'"
               :column="col"
@@ -543,13 +588,16 @@ onUnmounted(() => {
       <div v-if="showAddMenu" class="add-overlay" @click="resetAddMenu()">
         <div class="add-popup" @click.stop>
           <div class="add-popup-header">
-            <button v-if="addColumnType && !addListAccountId" class="_button add-back-btn" @click="addColumnType = null">
+            <button v-if="addColumnType && !addListAccountId && !addAntennaAccountId" class="_button add-back-btn" @click="addColumnType = null">
               <i class="ti ti-chevron-left" />
             </button>
             <button v-else-if="addListAccountId" class="_button add-back-btn" @click="addListAccountId = null; userLists = []">
               <i class="ti ti-chevron-left" />
             </button>
-            {{ addListAccountId ? 'Select list' : addColumnType ? 'Select account' : 'Add column' }}
+            <button v-else-if="addAntennaAccountId" class="_button add-back-btn" @click="addAntennaAccountId = null; antennas = []">
+              <i class="ti ti-chevron-left" />
+            </button>
+            {{ addListAccountId ? 'Select list' : addAntennaAccountId ? 'Select antenna' : addColumnType ? 'Select account' : 'Add column' }}
           </div>
 
           <!-- Step 1: Column type selection -->
@@ -562,6 +610,10 @@ onUnmounted(() => {
               <i class="ti ti-list" />
               <span>List</span>
             </button>
+            <button class="_button add-type-btn" @click="selectColumnType('antenna')">
+              <i class="ti ti-antenna-bars-5" />
+              <span>Antenna</span>
+            </button>
             <button class="_button add-type-btn" @click="selectColumnType('notifications')">
               <i class="ti ti-bell" />
               <span>Notifications</span>
@@ -572,7 +624,7 @@ onUnmounted(() => {
             </button>
           </template>
 
-          <!-- Step 3: List selection (for list columns) -->
+          <!-- Step 3a: List selection (for list columns) -->
           <template v-else-if="addListAccountId">
             <div v-if="loadingLists" class="add-popup-empty">Loading...</div>
             <div v-else-if="userLists.length === 0" class="add-popup-empty">No lists found.</div>
@@ -584,6 +636,21 @@ onUnmounted(() => {
             >
               <i class="ti ti-list" />
               <span>{{ list.name }}</span>
+            </button>
+          </template>
+
+          <!-- Step 3b: Antenna selection (for antenna columns) -->
+          <template v-else-if="addAntennaAccountId">
+            <div v-if="loadingAntennas" class="add-popup-empty">Loading...</div>
+            <div v-else-if="antennas.length === 0" class="add-popup-empty">No antennas found.</div>
+            <button
+              v-for="ant in antennas"
+              :key="ant.id"
+              class="_button add-type-btn"
+              @click="addAntennaColumn(ant.id, ant.name)"
+            >
+              <i class="ti ti-antenna-bars-5" />
+              <span>{{ ant.name }}</span>
             </button>
           </template>
 

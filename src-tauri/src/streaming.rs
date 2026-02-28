@@ -230,6 +230,33 @@ impl StreamingManager {
         Ok(sub_id)
     }
 
+    pub async fn subscribe_antenna(
+        &self,
+        account_id: &str,
+        antenna_id: &str,
+    ) -> Result<String, NoteDeckError> {
+        let sub_id = uuid::Uuid::new_v4().to_string();
+        let params = Some(json!({ "antennaId": antenna_id }));
+
+        let host = self.get_host(account_id).await?;
+        self.send_subscribe(account_id, "antenna", &sub_id, params.clone()).await?;
+
+        let mut subs = self.subscriptions.lock().await;
+        subs.insert(
+            sub_id.clone(),
+            SubscriptionInfo {
+                account_id: account_id.to_string(),
+                host,
+                kind: "antenna".to_string(),
+                channel: "antenna".to_string(),
+                timeline_type: String::new(),
+                params,
+            },
+        );
+
+        Ok(sub_id)
+    }
+
     pub async fn subscribe_main(&self, account_id: &str) -> Result<String, NoteDeckError> {
         let sub_id = uuid::Uuid::new_v4().to_string();
 

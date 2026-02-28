@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 
-export type ColumnType = 'timeline' | 'notifications' | 'search' | 'list'
+export type ColumnType = 'timeline' | 'notifications' | 'search' | 'list' | 'antenna'
 
 export interface DeckColumn {
   id: string
@@ -15,6 +15,7 @@ export interface DeckColumn {
   active?: boolean
   filters?: TimelineFilter
   listId?: string
+  antennaId?: string
 }
 
 let columnCounter = 0

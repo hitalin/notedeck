@@ -11,7 +11,7 @@ use crate::models::{
     AuthResult, CreateNoteParams, NormalizedDriveFile, NormalizedNote, NormalizedNoteReaction,
     NormalizedNotification, NormalizedUser, NormalizedUserDetail, RawCreateNoteResponse,
     RawDriveFile, RawEmojisResponse, RawMiAuthResponse, RawNote, RawNoteReaction, RawNotification,
-    RawUser, RawUserDetail, SearchOptions, TimelineOptions, TimelineType, UserList,
+    Antenna, RawUser, RawUserDetail, SearchOptions, TimelineOptions, TimelineType, UserList,
 };
 
 
@@ -172,6 +172,44 @@ impl MisskeyClient {
         let data = self.request(host, token, "users/lists/list", json!({})).await?;
         let lists: Vec<UserList> = serde_json::from_value(data)?;
         Ok(lists)
+    }
+
+    pub async fn get_antennas(
+        &self,
+        host: &str,
+        token: &str,
+    ) -> Result<Vec<Antenna>, NoteDeckError> {
+        let data = self.request(host, token, "antennas/list", json!({})).await?;
+        let antennas: Vec<Antenna> = serde_json::from_value(data)?;
+        Ok(antennas)
+    }
+
+    pub async fn get_antenna_notes(
+        &self,
+        host: &str,
+        token: &str,
+        account_id: &str,
+        antenna_id: &str,
+        limit: i64,
+        since_id: Option<&str>,
+        until_id: Option<&str>,
+    ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
+        let mut params = json!({
+            "antennaId": antenna_id,
+            "limit": limit,
+        });
+        if let Some(id) = since_id {
+            params["sinceId"] = json!(id);
+        }
+        if let Some(id) = until_id {
+            params["untilId"] = json!(id);
+        }
+        let data = self.request(host, token, "antennas/notes", params).await?;
+        let raw: Vec<RawNote> = serde_json::from_value(data)?;
+        Ok(raw
+            .into_iter()
+            .map(|n| n.normalize(account_id, host))
+            .collect())
     }
 
     pub async fn get_note(

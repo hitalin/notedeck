@@ -217,6 +217,68 @@ export class MisskeyStream implements StreamAdapter {
     }
   }
 
+  subscribeAntenna(
+    antennaId: string,
+    handler: (note: NormalizedNote) => void,
+    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
+  ): ChannelSubscription {
+    let subscriptionId: string | null = null
+    let disposed = false
+
+    const subscribePromise = invoke<string>('stream_subscribe_antenna', {
+      accountId: this.accountId,
+      antennaId,
+    })
+      .then((id) => {
+        if (disposed) {
+          invoke('stream_unsubscribe', {
+            accountId: this.accountId,
+            subscriptionId: id,
+          }).catch(() => {})
+          return null
+        }
+        subscriptionId = id
+        this.noteHandlers.set(id, handler)
+        if (options?.onNoteUpdated) {
+          this.noteUpdateHandlers.set(id, options.onNoteUpdated)
+        }
+        return id
+      })
+      .catch((e) => {
+        console.error('[stream] subscribe antenna failed:', e)
+        return null
+      })
+
+    return {
+      dispose: () => {
+        disposed = true
+        if (subscriptionId) {
+          this.noteHandlers.delete(subscriptionId)
+          this.noteUpdateHandlers.delete(subscriptionId)
+          invoke('stream_unsubscribe', {
+            accountId: this.accountId,
+            subscriptionId,
+          }).catch((e) => {
+            console.warn('[stream] unsubscribe failed:', e)
+          })
+        } else {
+          subscribePromise.then((id) => {
+            if (id) {
+              this.noteHandlers.delete(id)
+              this.noteUpdateHandlers.delete(id)
+              invoke('stream_unsubscribe', {
+                accountId: this.accountId,
+                subscriptionId: id,
+              }).catch((e) => {
+                console.warn('[stream] unsubscribe failed:', e)
+              })
+            }
+          })
+        }
+      },
+    }
+  }
+
   subscribeMain(
     handler: (event: MainChannelEvent) => void,
   ): ChannelSubscription {

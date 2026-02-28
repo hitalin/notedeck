@@ -11,7 +11,7 @@ use crate::keychain;
 use crate::models::{
     Account, AccountPublic, AuthSession, CreateNoteParams, NormalizedDriveFile, NormalizedNote,
     NormalizedNoteReaction, NormalizedNotification, NormalizedUser, NormalizedUserDetail,
-    SearchOptions, StoredServer, TimelineOptions, TimelineType, UserList,
+    Antenna, SearchOptions, StoredServer, TimelineOptions, TimelineType, UserList,
 };
 use crate::streaming::StreamingManager;
 use zeroize::Zeroize;
@@ -204,6 +204,40 @@ pub async fn api_get_user_lists(
 ) -> Result<Vec<UserList>> {
     let (host, token) = get_credentials(&db, &account_id)?;
     client.get_user_lists(&host, &token).await
+}
+
+#[tauri::command]
+pub async fn api_get_antennas(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+) -> Result<Vec<Antenna>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_antennas(&host, &token).await
+}
+
+#[tauri::command]
+pub async fn api_get_antenna_notes(
+    db: State<'_, Database>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    antenna_id: String,
+    limit: Option<i64>,
+    since_id: Option<String>,
+    until_id: Option<String>,
+) -> Result<Vec<NormalizedNote>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_antenna_notes(
+            &host,
+            &token,
+            &account_id,
+            &antenna_id,
+            limit.unwrap_or(20),
+            since_id.as_deref(),
+            until_id.as_deref(),
+        )
+        .await
 }
 
 #[tauri::command]
@@ -751,6 +785,17 @@ pub async fn stream_subscribe_timeline(
 ) -> Result<String> {
     streaming
         .subscribe_timeline(&account_id, timeline_type, list_id)
+        .await
+}
+
+#[tauri::command]
+pub async fn stream_subscribe_antenna(
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    antenna_id: String,
+) -> Result<String> {
+    streaming
+        .subscribe_antenna(&account_id, &antenna_id)
         .await
 }
 

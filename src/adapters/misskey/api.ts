@@ -12,6 +12,7 @@ import type {
   SearchOptions,
   TimelineOptions,
   TimelineType,
+  Antenna,
   UserList,
 } from '../types'
 
@@ -238,6 +239,25 @@ export class MisskeyApi implements ApiAdapter {
   async getUserLists(): Promise<UserList[]> {
     return invoke('api_get_user_lists', {
       accountId: this.accountId,
+    })
+  }
+
+  async getAntennas(): Promise<Antenna[]> {
+    return invoke('api_get_antennas', {
+      accountId: this.accountId,
+    })
+  }
+
+  async getAntennaNotes(
+    antennaId: string,
+    options: PaginationOptions = {},
+  ): Promise<NormalizedNote[]> {
+    return invoke('api_get_antenna_notes', {
+      accountId: this.accountId,
+      antennaId,
+      limit: options.limit ?? 20,
+      sinceId: options.sinceId ?? null,
+      untilId: options.untilId ?? null,
     })
   }
 }

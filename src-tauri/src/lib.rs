@@ -52,6 +52,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::api_update_user_setting,
         commands::api_get_timeline,
         commands::api_get_user_lists,
+        commands::api_get_antennas,
+        commands::api_get_antenna_notes,
         commands::api_get_note,
         commands::api_create_note,
         commands::api_create_reaction,
@@ -81,6 +83,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::stream_connect,
         commands::stream_disconnect,
         commands::stream_subscribe_timeline,
+        commands::stream_subscribe_antenna,
         commands::stream_subscribe_main,
         commands::stream_unsubscribe,
     ]);
