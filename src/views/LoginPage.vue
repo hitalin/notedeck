@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { MisskeyAuth } from '@/adapters/misskey/auth'
 import type { AuthSession } from '@/adapters/types'
 import { detectServer } from '@/core/server'
+import type { Account } from '@/stores/accounts'
 import { useAccountsStore } from '@/stores/accounts'
 import { AppError } from '@/utils/errors'
 
@@ -38,20 +40,13 @@ async function completeLogin() {
   if (!currentSession) return
 
   try {
-    const result = await auth.completeAuth(currentSession)
     const serverInfo = await detectServer(currentSession.host)
-
-    await accountsStore.addAccount({
-      id: crypto.randomUUID(),
-      host: currentSession.host,
-      token: result.token,
-      userId: result.user.id,
-      username: result.user.username,
-      displayName: result.user.name,
-      avatarUrl: result.user.avatarUrl,
+    const account = await invoke<Account>('auth_complete_and_save', {
+      session: currentSession,
       software: serverInfo.software,
     })
 
+    accountsStore.addAccount(account)
     router.push('/')
   } catch (e) {
     step.value = 'error'

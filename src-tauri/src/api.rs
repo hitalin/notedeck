@@ -487,16 +487,6 @@ impl MisskeyClient {
         })
     }
 
-    pub async fn verify_token(
-        &self,
-        host: &str,
-        token: &str,
-    ) -> Result<NormalizedUser, NoteDeckError> {
-        let data = self.request(host, token, "i", json!({})).await?;
-        let raw: RawUser = serde_json::from_value(data)?;
-        Ok(raw.into())
-    }
-
     /// Fetch all keys in a registry scope. Returns None if empty or not found (API error).
     /// Propagates network and other non-API errors.
     pub async fn get_registry_all(

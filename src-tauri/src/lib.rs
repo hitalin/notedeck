@@ -11,6 +11,7 @@ mod api;
 mod commands;
 mod db;
 mod error;
+mod keychain;
 mod models;
 mod streaming;
 
@@ -41,7 +42,6 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
     builder = builder.invoke_handler(tauri::generate_handler![
         commands::load_accounts,
-        commands::upsert_account,
         commands::delete_account,
         commands::load_servers,
         commands::get_server,
@@ -76,8 +76,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::api_search_notes_local,
         commands::api_fetch_account_theme,
         commands::auth_start,
-        commands::auth_complete,
-        commands::auth_verify_token,
+        commands::auth_complete_and_save,
         commands::stream_connect,
         commands::stream_disconnect,
         commands::stream_subscribe_timeline,

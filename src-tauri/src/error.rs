@@ -35,6 +35,9 @@ pub enum NoteDeckError {
 
     #[error("Invalid input: {0}")]
     InvalidInput(String),
+
+    #[error("Keychain error: {0}")]
+    Keychain(String),
 }
 
 impl NoteDeckError {
@@ -50,6 +53,7 @@ impl NoteDeckError {
             Self::NoConnection(_) => "NO_CONNECTION",
             Self::ConnectionClosed => "CONNECTION_CLOSED",
             Self::InvalidInput(_) => "INVALID_INPUT",
+            Self::Keychain(_) => "KEYCHAIN",
         }
     }
 }

@@ -170,6 +170,41 @@ impl Database {
         }
     }
 
+    pub fn get_account_by_host_user(
+        &self,
+        host: &str,
+        user_id: &str,
+    ) -> Result<Option<Account>, NoteDeckError> {
+        let conn = self.lock()?;
+        let mut stmt = conn.prepare(
+            "SELECT id, host, token, user_id, username, display_name, avatar_url, software
+             FROM accounts WHERE host = ?1 AND user_id = ?2",
+        )?;
+        let mut rows = stmt.query_map(params![host, user_id], |row| {
+            Ok(Account {
+                id: row.get(0)?,
+                host: row.get(1)?,
+                token: row.get(2)?,
+                user_id: row.get(3)?,
+                username: row.get(4)?,
+                display_name: row.get(5)?,
+                avatar_url: row.get(6)?,
+                software: row.get(7)?,
+            })
+        })?;
+        match rows.next() {
+            Some(row) => Ok(Some(row?)),
+            None => Ok(None),
+        }
+    }
+
+    /// Clear the token column in DB (after migration to keychain)
+    pub fn clear_token(&self, id: &str) -> Result<(), NoteDeckError> {
+        let conn = self.lock()?;
+        conn.execute("UPDATE accounts SET token = '' WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
     pub fn delete_account(&self, id: &str) -> Result<(), NoteDeckError> {
         let conn = self.lock()?;
         conn.execute("DELETE FROM accounts WHERE id = ?1", params![id])?;

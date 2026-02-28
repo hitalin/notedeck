@@ -11,7 +11,6 @@ function createTestAccount(overrides: Partial<Account> = {}): Account {
   return {
     id: 'test-1',
     host: 'example.com',
-    token: 'test-token',
     userId: 'user-1',
     username: 'testuser',
     displayName: 'Test User',
@@ -36,7 +35,7 @@ describe('accounts store', () => {
     const store = useAccountsStore()
     const account = createTestAccount()
 
-    await store.addAccount(account)
+    store.addAccount(account)
 
     expect(store.accounts).toHaveLength(1)
     expect(store.activeAccountId).toBe('test-1')
@@ -45,10 +44,10 @@ describe('accounts store', () => {
 
   it('switches active account', async () => {
     const store = useAccountsStore()
-    await store.addAccount(
+    store.addAccount(
       createTestAccount({ id: 'a1', host: 'server-a.com', userId: 'u1' }),
     )
-    await store.addAccount(
+    store.addAccount(
       createTestAccount({ id: 'a2', host: 'server-b.com', userId: 'u2' }),
     )
 
@@ -59,8 +58,8 @@ describe('accounts store', () => {
 
   it('removes an account and falls back to first', async () => {
     const store = useAccountsStore()
-    await store.addAccount(createTestAccount({ id: 'a1', userId: 'u1' }))
-    await store.addAccount(createTestAccount({ id: 'a2', userId: 'u2' }))
+    store.addAccount(createTestAccount({ id: 'a1', userId: 'u1' }))
+    store.addAccount(createTestAccount({ id: 'a2', userId: 'u2' }))
     store.switchAccount('a2')
 
     await store.removeAccount('a2')
@@ -71,13 +70,13 @@ describe('accounts store', () => {
 
   it('groups accounts by server', async () => {
     const store = useAccountsStore()
-    await store.addAccount(
+    store.addAccount(
       createTestAccount({ id: 'a1', host: 'server-a.com', userId: 'u1' }),
     )
-    await store.addAccount(
+    store.addAccount(
       createTestAccount({ id: 'a2', host: 'server-a.com', userId: 'u2' }),
     )
-    await store.addAccount(
+    store.addAccount(
       createTestAccount({ id: 'a3', host: 'server-b.com', userId: 'u3' }),
     )
 

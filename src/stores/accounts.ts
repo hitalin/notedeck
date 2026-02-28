@@ -6,7 +6,6 @@ import type { ServerSoftware } from '@/adapters/types'
 export interface Account {
   id: string
   host: string
-  token: string
   userId: string
   username: string
   displayName: string | null
@@ -44,10 +43,7 @@ export const useAccountsStore = defineStore('accounts', () => {
     isLoaded.value = true
   }
 
-  async function addAccount(account: Account): Promise<void> {
-    // UPSERT handled by Rust side (ON CONFLICT)
-    await invoke('upsert_account', { account })
-
+  function addAccount(account: Account): void {
     const idx = accounts.value.findIndex(
       (a) => a.host === account.host && a.userId === account.userId,
     )

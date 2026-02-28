@@ -207,15 +207,8 @@ export interface AuthSession {
   host: string
 }
 
-export interface AuthResult {
-  token: string
-  user: NormalizedUser
-}
-
 export interface AuthAdapter {
   startAuth(host: string, permissions: string[]): Promise<AuthSession>
-  completeAuth(session: AuthSession): Promise<AuthResult>
-  verifyToken(host: string, token: string): Promise<NormalizedUser>
 }
 
 export interface ApiAdapter {

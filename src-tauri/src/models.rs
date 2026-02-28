@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use zeroize::Zeroize;
 
 // --- DB models ---
 
@@ -15,6 +16,39 @@ pub struct Account {
     pub display_name: Option<String>,
     pub avatar_url: Option<String>,
     pub software: String,
+}
+
+impl Drop for Account {
+    fn drop(&mut self) {
+        self.token.zeroize();
+    }
+}
+
+/// Token を含まない、フロントエンド向け Account 構造体
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountPublic {
+    pub id: String,
+    pub host: String,
+    pub user_id: String,
+    pub username: String,
+    pub display_name: Option<String>,
+    pub avatar_url: Option<String>,
+    pub software: String,
+}
+
+impl From<&Account> for AccountPublic {
+    fn from(a: &Account) -> Self {
+        Self {
+            id: a.id.clone(),
+            host: a.host.clone(),
+            user_id: a.user_id.clone(),
+            username: a.username.clone(),
+            display_name: a.display_name.clone(),
+            avatar_url: a.avatar_url.clone(),
+            software: a.software.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

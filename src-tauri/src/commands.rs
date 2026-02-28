@@ -5,37 +5,66 @@ use tauri::State;
 use crate::api::MisskeyClient;
 use crate::db::Database;
 use crate::error::NoteDeckError;
+use crate::keychain;
 use crate::models::{
-    Account, AuthResult, AuthSession, CreateNoteParams, NormalizedDriveFile, NormalizedNote,
+    Account, AccountPublic, AuthSession, CreateNoteParams, NormalizedDriveFile, NormalizedNote,
     NormalizedNoteReaction, NormalizedNotification, NormalizedUser, NormalizedUserDetail,
     SearchOptions, StoredServer, TimelineOptions, TimelineType,
 };
 use crate::streaming::StreamingManager;
+use zeroize::Zeroize;
 
 type Result<T> = std::result::Result<T, NoteDeckError>;
 
-/// Look up account credentials from DB
+/// Look up account credentials: tries keychain first, falls back to DB (lazy migration)
 fn get_credentials(db: &Database, account_id: &str) -> Result<(String, String)> {
     let account = db
         .get_account(account_id)?
         .ok_or_else(|| NoteDeckError::AccountNotFound(account_id.to_string()))?;
-    Ok((account.host, account.token))
+    let host = account.host.clone();
+
+    // Try keychain first (ignore errors — keychain may be unavailable)
+    if let Some(token) = keychain::get_token(account_id).ok().flatten() {
+        // Keychain has the token; clear DB copy if still present
+        if !account.token.is_empty() {
+            let _ = db.clear_token(account_id);
+        }
+        return Ok((host, token));
+    }
+
+    // Fallback: use DB token
+    let mut db_token = account.token.clone();
+    if !db_token.is_empty() {
+        // Try lazy migration to keychain; verify before clearing DB
+        if keychain::store_token(account_id, &db_token).is_ok()
+            && keychain::get_token(account_id)
+                .ok()
+                .flatten()
+                .is_some()
+        {
+            let _ = db.clear_token(account_id);
+        }
+        let token = db_token.clone();
+        db_token.zeroize();
+        return Ok((host, token));
+    }
+
+    Err(NoteDeckError::Auth(format!(
+        "No token found for account {account_id}"
+    )))
 }
 
 // --- DB: Accounts ---
 
 #[tauri::command]
-pub fn load_accounts(db: State<'_, Database>) -> Result<Vec<Account>> {
-    db.load_accounts()
-}
-
-#[tauri::command]
-pub fn upsert_account(db: State<'_, Database>, account: Account) -> Result<()> {
-    db.upsert_account(&account)
+pub fn load_accounts(db: State<'_, Database>) -> Result<Vec<AccountPublic>> {
+    let accounts = db.load_accounts()?;
+    Ok(accounts.iter().map(AccountPublic::from).collect())
 }
 
 #[tauri::command]
 pub fn delete_account(db: State<'_, Database>, id: String) -> Result<()> {
+    let _ = keychain::delete_token(&id);
     db.delete_account(&id)
 }
 
@@ -484,21 +513,12 @@ pub async fn auth_start(host: String, permissions: Option<Vec<String>>) -> Resul
         vec![
             "read:account",
             "write:account",
-            "read:blocks",
-            "read:drive",
-            "read:favorites",
-            "read:following",
-            "read:messaging",
-            "read:mutes",
             "read:notifications",
             "read:reactions",
             "write:drive",
             "write:favorites",
             "write:following",
-            "write:messaging",
-            "write:mutes",
             "write:notes",
-            "write:notifications",
             "write:reactions",
             "write:votes",
         ]
@@ -518,22 +538,50 @@ pub async fn auth_start(host: String, permissions: Option<Vec<String>>) -> Resul
 }
 
 #[tauri::command]
-pub async fn auth_complete(
+pub async fn auth_complete_and_save(
     client: State<'_, MisskeyClient>,
+    db: State<'_, Database>,
     session: AuthSession,
-) -> Result<AuthResult> {
-    client
+    software: String,
+) -> Result<AccountPublic> {
+    let auth_result = client
         .complete_auth(&session.host, &session.session_id)
-        .await
-}
+        .await?;
 
-#[tauri::command]
-pub async fn auth_verify_token(
-    client: State<'_, MisskeyClient>,
-    host: String,
-    token: String,
-) -> Result<NormalizedUser> {
-    client.verify_token(&host, &token).await
+    let mut token = auth_result.token;
+
+    // DB にはトークン込みで保存（キーチェーンのフォールバック）
+    let account = Account {
+        id: uuid::Uuid::new_v4().to_string(),
+        host: session.host.clone(),
+        token: token.clone(),
+        user_id: auth_result.user.id.clone(),
+        username: auth_result.user.username.clone(),
+        display_name: auth_result.user.name.clone(),
+        avatar_url: auth_result.user.avatar_url.clone(),
+        software,
+    };
+
+    db.upsert_account(&account)?;
+
+    // Re-auth の場合、DB 上の id は既存のものが維持されるので正しい id を返す
+    let saved = db
+        .get_account_by_host_user(&session.host, &auth_result.user.id)?
+        .ok_or_else(|| NoteDeckError::Auth("Failed to save account".to_string()))?;
+
+    // キーチェーンに保存し、読み戻せたら DB のトークンをクリア
+    if keychain::store_token(&saved.id, &token).is_ok()
+        && keychain::get_token(&saved.id)
+            .ok()
+            .flatten()
+            .is_some()
+    {
+        let _ = db.clear_token(&saved.id);
+    }
+    token.zeroize();
+
+    Ok(AccountPublic::from(&saved))
+    // account, saved が drop → token が zeroize される
 }
 
 // --- Streaming ---
