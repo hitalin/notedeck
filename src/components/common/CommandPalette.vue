@@ -18,12 +18,13 @@ interface CommandGroup {
 
 const categoryLabels: Record<string, string> = {
   general: 'General',
+  note: 'Note',
   navigation: 'Navigation',
   column: 'Column',
   account: 'Account',
 }
 
-const categoryOrder = ['general', 'navigation', 'column', 'account']
+const categoryOrder = ['general', 'note', 'navigation', 'column', 'account']
 
 const filteredGroups = computed<CommandGroup[]>(() => {
   const enabled = commandStore.getEnabled().filter((c) => c.visible !== false)

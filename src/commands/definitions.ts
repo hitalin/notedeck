@@ -87,83 +87,75 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     id: 'note-next',
     label: 'Next Note',
     icon: 'arrow-down',
-    category: 'general',
+    category: 'note',
     shortcuts: [{ key: 'j', scope: 'body' }],
     execute: () => dispatchNoteAction('next'),
-    visible: false,
   })
 
   commandStore.register({
     id: 'note-prev',
     label: 'Previous Note',
     icon: 'arrow-up',
-    category: 'general',
+    category: 'note',
     shortcuts: [{ key: 'k', scope: 'body' }],
     execute: () => dispatchNoteAction('prev'),
-    visible: false,
   })
 
   commandStore.register({
     id: 'note-reply',
     label: 'Reply',
     icon: 'arrow-back-up',
-    category: 'general',
+    category: 'note',
     shortcuts: [{ key: 'r', scope: 'body' }],
     execute: () => dispatchNoteAction('reply'),
-    visible: false,
   })
 
   commandStore.register({
     id: 'note-react',
     label: 'React',
     icon: 'mood-plus',
-    category: 'general',
+    category: 'note',
     shortcuts: [
       { key: 'e', scope: 'body' },
       { key: '+', scope: 'body' },
     ],
     execute: () => dispatchNoteAction('react'),
-    visible: false,
   })
 
   commandStore.register({
     id: 'note-renote',
     label: 'Renote / Quote',
     icon: 'repeat',
-    category: 'general',
+    category: 'note',
     shortcuts: [{ key: 'q', scope: 'body' }],
     execute: () => dispatchNoteAction('renote'),
-    visible: false,
   })
 
   commandStore.register({
     id: 'note-bookmark',
     label: 'Bookmark',
     icon: 'star',
-    category: 'general',
+    category: 'note',
     shortcuts: [{ key: 'b', scope: 'body' }],
     execute: () => dispatchNoteAction('bookmark'),
-    visible: false,
   })
 
   commandStore.register({
     id: 'note-open',
     label: 'Open Note',
     icon: 'external-link',
-    category: 'general',
+    category: 'note',
     shortcuts: [{ key: 'Enter', scope: 'body' }],
     execute: () => dispatchNoteAction('open'),
-    visible: false,
   })
 
   commandStore.register({
     id: 'note-cw',
     label: 'Toggle CW',
     icon: 'eye',
-    category: 'general',
+    category: 'note',
     shortcuts: [{ key: 'v', scope: 'body' }],
     execute: () => dispatchNoteAction('toggle-cw'),
-    visible: false,
   })
 }
 
