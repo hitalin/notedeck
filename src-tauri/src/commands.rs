@@ -156,6 +156,10 @@ pub async fn api_update_user_setting(
     key: String,
     value: bool,
 ) -> Result<()> {
+    // Only allow mode-flag toggles (e.g., isInYamiMode, isInHanamiMode)
+    if !(key.starts_with("isIn") && key.ends_with("Mode") && key.len() <= 30) {
+        return Err(NoteDeckError::InvalidInput(format!("Disallowed setting key: {key}")));
+    }
     let (host, token) = get_credentials(&db, &account_id)?;
     client.update_user_setting(&host, &token, &key, value).await
 }

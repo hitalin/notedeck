@@ -120,7 +120,7 @@ impl MisskeyClient {
         timeline_type: TimelineType,
         options: TimelineOptions,
     ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
-        let endpoint = timeline_type.api_endpoint();
+        let endpoint = timeline_type.api_endpoint()?;
         let mut params = json!({ "limit": options.limit() });
         if let Some(ref id) = options.since_id {
             params["sinceId"] = json!(id);
@@ -193,7 +193,10 @@ impl MisskeyClient {
         }
         if let Some(ref flags) = params.mode_flags {
             for (key, value) in flags {
-                body[key] = json!(value);
+                // Only allow isNoteIn*Mode flags (e.g., isNoteInYamiMode)
+                if key.starts_with("isNoteIn") && key.ends_with("Mode") && key.len() <= 30 {
+                    body[key] = json!(value);
+                }
             }
         }
         if let Some(ref id) = params.reply_id {
@@ -311,7 +314,9 @@ impl MisskeyClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let message = resp.text().await.unwrap_or_default();
+            let message = Self::read_body_limited(resp, "drive/files/create")
+                .await
+                .unwrap_or_default();
             return Err(NoteDeckError::Api {
                 endpoint: "drive/files/create".to_string(),
                 status,
@@ -319,7 +324,8 @@ impl MisskeyClient {
             });
         }
 
-        let raw: RawDriveFile = resp.json().await?;
+        let text = Self::read_body_limited(resp, "drive/files/create").await?;
+        let raw: RawDriveFile = serde_json::from_str(&text)?;
         Ok(NormalizedDriveFile::from(raw))
     }
 
@@ -502,7 +508,8 @@ impl MisskeyClient {
             )));
         }
 
-        let data: RawMiAuthResponse = res.json().await?;
+        let text = Self::read_body_limited(res, "miauth/check").await?;
+        let data: RawMiAuthResponse = serde_json::from_str(&text)?;
         if !data.ok {
             return Err(NoteDeckError::Auth(
                 "MiAuth authentication was not completed".to_string(),
@@ -705,7 +712,8 @@ impl MisskeyClient {
             });
         }
 
-        let data: Value = res.json().await?;
+        let text = Self::read_body_limited(res, "endpoint").await?;
+        let data: Value = serde_json::from_str(&text)?;
         let mut params = Vec::new();
 
         // Misskey 2024+: params.properties is an object keyed by param name
@@ -748,7 +756,8 @@ impl MisskeyClient {
             });
         }
 
-        let endpoints: Vec<String> = res.json().await?;
+        let text = Self::read_body_limited(res, "endpoints").await?;
+        let endpoints: Vec<String> = serde_json::from_str(&text)?;
         Ok(endpoints)
     }
 }
