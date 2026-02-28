@@ -251,27 +251,23 @@ impl TimelineType {
         &self.0
     }
 
-    pub fn api_endpoint(&self) -> Result<String, crate::error::NoteDeckError> {
+    pub fn api_endpoint(&self) -> String {
         match self.0.as_str() {
-            "home" => Ok("notes/timeline".to_string()),
-            "local" => Ok("notes/local-timeline".to_string()),
-            "social" => Ok("notes/hybrid-timeline".to_string()),
-            "global" => Ok("notes/global-timeline".to_string()),
-            other => Err(crate::error::NoteDeckError::InvalidInput(format!(
-                "Unknown timeline type: {other}"
-            ))),
+            "home" => "notes/timeline".to_string(),
+            "local" => "notes/local-timeline".to_string(),
+            "social" => "notes/hybrid-timeline".to_string(),
+            "global" => "notes/global-timeline".to_string(),
+            other => format!("notes/{other}-timeline"),
         }
     }
 
-    pub fn ws_channel(&self) -> Result<String, crate::error::NoteDeckError> {
+    pub fn ws_channel(&self) -> String {
         match self.0.as_str() {
-            "home" => Ok("homeTimeline".to_string()),
-            "local" => Ok("localTimeline".to_string()),
-            "social" => Ok("hybridTimeline".to_string()),
-            "global" => Ok("globalTimeline".to_string()),
-            other => Err(crate::error::NoteDeckError::InvalidInput(format!(
-                "Unknown timeline type: {other}"
-            ))),
+            "home" => "homeTimeline".to_string(),
+            "local" => "localTimeline".to_string(),
+            "social" => "hybridTimeline".to_string(),
+            "global" => "globalTimeline".to_string(),
+            other => format!("{other}Timeline"),
         }
     }
 }

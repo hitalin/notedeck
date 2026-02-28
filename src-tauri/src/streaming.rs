@@ -205,7 +205,7 @@ impl StreamingManager {
         timeline_type: TimelineType,
     ) -> Result<String, NoteDeckError> {
         let sub_id = uuid::Uuid::new_v4().to_string();
-        let channel = timeline_type.ws_channel()?;
+        let channel = timeline_type.ws_channel();
 
         let host = self.get_host(account_id).await?;
         self.send_subscribe(account_id, &channel, &sub_id).await?;

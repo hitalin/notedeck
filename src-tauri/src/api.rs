@@ -124,7 +124,7 @@ impl MisskeyClient {
         timeline_type: TimelineType,
         options: TimelineOptions,
     ) -> Result<Vec<NormalizedNote>, NoteDeckError> {
-        let endpoint = timeline_type.api_endpoint()?;
+        let endpoint = timeline_type.api_endpoint();
         let mut params = json!({ "limit": options.limit() });
         if let Some(ref id) = options.since_id {
             params["sinceId"] = json!(id);
