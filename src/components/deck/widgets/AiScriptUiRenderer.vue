@@ -3,10 +3,12 @@ import type { Interpreter } from '@syuilo/aiscript'
 import type { VFn, Value } from '@syuilo/aiscript/built/dts/interpreter/value.js'
 import type { UiComponent } from '@/aiscript/ui-types'
 import MkMfm from '@/components/common/MkMfm.vue'
+import { openUrl } from '@tauri-apps/plugin-opener'
 
-defineProps<{
+const props = defineProps<{
   components: UiComponent[]
   interpreter: Interpreter | null
+  serverUrl?: string
 }>()
 
 async function callHandler(handler: unknown, interpreter: Interpreter | null, arg?: Value) {
@@ -18,6 +20,17 @@ async function callHandler(handler: unknown, interpreter: Interpreter | null, ar
   } catch {
     // handler errors are silently ignored
   }
+}
+
+function handlePostFormButton(comp: UiComponent) {
+  if (!props.serverUrl) return
+  const form = comp.props.form as Record<string, unknown> | undefined
+  const params = new URLSearchParams()
+  if (form?.text) params.set('text', String(form.text))
+  if (form?.cw) params.set('cw', String(form.cw))
+  if (form?.visibility) params.set('visibility', String(form.visibility))
+  if (form?.localOnly) params.set('localOnly', '1')
+  openUrl(`${props.serverUrl}/share?${params.toString()}`)
 }
 </script>
 
@@ -124,6 +137,7 @@ async function callHandler(handler: unknown, interpreter: Interpreter | null, ar
           v-if="comp.children?.length"
           :components="comp.children"
           :interpreter="interpreter"
+          :server-url="serverUrl"
         />
       </div>
 
@@ -134,15 +148,16 @@ async function callHandler(handler: unknown, interpreter: Interpreter | null, ar
           v-if="comp.children?.length"
           :components="comp.children"
           :interpreter="interpreter"
+          :server-url="serverUrl"
         />
       </details>
 
-      <!-- postFormButton (Play-specific: renders as a styled button) -->
+      <!-- postFormButton (Play-specific: opens share page in browser) -->
       <button
         v-else-if="comp.type === 'postFormButton'"
         class="ais-button ais-post-form-button"
         :class="{ primary: !!comp.props.primary, rounded: !!comp.props.rounded }"
-        @click="callHandler(comp.props.onClick, interpreter)"
+        @click="handlePostFormButton(comp)"
       >
         {{ comp.props.text ?? 'Post' }}
       </button>

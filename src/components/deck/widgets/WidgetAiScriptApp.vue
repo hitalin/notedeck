@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import type { Interpreter } from '@syuilo/aiscript'
 import { executeAiScript, createInterpreter } from '@/aiscript/execute'
 import type { UiComponent } from '@/aiscript/ui-types'
 import { useDeckStore } from '@/stores/deck'
 import type { WidgetConfig } from '@/stores/deck'
+import { useAccountsStore } from '@/stores/accounts'
 import AiScriptUiRenderer from './AiScriptUiRenderer.vue'
 import AiScriptEditor from './AiScriptEditor.vue'
 import { Parser } from '@syuilo/aiscript'
@@ -18,6 +19,12 @@ const props = defineProps<{
 }>()
 
 const deckStore = useDeckStore()
+const accountsStore = useAccountsStore()
+const serverUrl = computed(() => {
+  if (!props.accountId) return ''
+  const account = accountsStore.accounts.find((a) => a.id === props.accountId)
+  return account ? `https://${account.host}` : ''
+})
 const code = ref((props.widget.data.code as string) ?? '')
 const uiComponents = ref<UiComponent[]>([])
 const error = ref<string | null>(null)
@@ -67,7 +74,7 @@ async function run() {
       USER_NAME: '',
       USER_USERNAME: '',
       LOCALE: navigator.language,
-      SERVER_URL: '',
+      SERVER_URL: serverUrl.value,
     },
   }
 
@@ -117,6 +124,7 @@ async function run() {
       v-if="uiComponents.length"
       :components="uiComponents"
       :interpreter="interpreter"
+      :server-url="serverUrl"
     />
   </div>
 </template>
