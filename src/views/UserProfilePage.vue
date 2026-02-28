@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type {
@@ -286,15 +287,23 @@ async function handlePosted(editedNoteId?: string) {
           Joined {{ formatDate(user.createdAt) }}
         </div>
 
-        <!-- Follow button -->
-        <div v-if="!isOwnProfile" class="follow-area">
+        <!-- Follow button + Web UI link -->
+        <div class="follow-area">
           <button
+            v-if="!isOwnProfile"
             class="follow-btn _button"
             :class="{ following: user.isFollowing }"
             :disabled="isFollowLoading"
             @click="handleToggleFollow"
           >
             {{ user.isFollowing ? 'Following' : 'Follow' }}
+          </button>
+          <button
+            class="webui-btn _button"
+            @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}`}`)"
+          >
+            <i class="ti ti-external-link" />
+            {{ isOwnProfile ? 'プロフィール編集' : 'Web UIで開く' }}
           </button>
         </div>
 
@@ -533,9 +542,28 @@ async function handlePosted(editedNoteId?: string) {
   opacity: 0.5;
 }
 
-/* Follow button */
+/* Follow button + Web UI link */
 .follow-area {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   padding: 16px 24px 0 154px;
+}
+
+.webui-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  background: var(--nd-buttonBg);
+  transition: opacity 0.15s;
+}
+
+.webui-btn:hover {
+  opacity: 0.85;
 }
 
 .follow-btn {

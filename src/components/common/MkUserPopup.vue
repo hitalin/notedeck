@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type { NormalizedUserDetail } from '@/adapters/types'
@@ -102,6 +103,11 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         </div>
 
         <div v-if="user.isFollowed" class="popup-badge">Follows you</div>
+
+        <button class="popup-webui-link" @click.stop="openUrl(`https://${account?.host}/@${user.username}`)">
+          <i class="ti ti-external-link" />
+          Web UIで開く
+        </button>
       </div>
     </template>
   </div>
@@ -199,5 +205,23 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   font-weight: bold;
   background: var(--nd-accentedBg);
   color: var(--nd-accent);
+}
+
+.popup-webui-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.8em;
+  color: var(--nd-accent);
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.popup-webui-link:hover {
+  opacity: 1;
 }
 </style>

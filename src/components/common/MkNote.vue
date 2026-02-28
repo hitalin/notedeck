@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, defineAsyncComponent, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
@@ -242,13 +243,14 @@ const activeModeFlags = computed(() => {
     })
 })
 
-const originalUrl = computed(
-  () => effectiveNote.value.url ?? effectiveNote.value.uri,
-)
+const noteWebUrl = computed(() => {
+  const n = effectiveNote.value
+  return n.url ?? n.uri ?? `https://${n._serverHost}/notes/${n.id}`
+})
 
-function openOriginal() {
-  const url = originalUrl.value
-  if (url && isSafeUrl(url)) window.open(url, '_blank')
+function openInWebUI() {
+  const url = noteWebUrl.value
+  if (url && isSafeUrl(url)) openUrl(url)
 }
 
 function navigateToDetail() {
@@ -570,9 +572,9 @@ async function handleMentionClick(username: string, host: string | null) {
               <i :class="localIsFavorited ? 'ti ti-star-filled' : 'ti ti-star'" />
               {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
             </button>
-            <button v-if="originalUrl" class="popup-item" @click="openOriginal(); closeMoreMenu()">
+            <button class="popup-item" @click="openInWebUI(); closeMoreMenu()">
               <i class="ti ti-external-link" />
-              元のノートを開く
+              Web UIで開く
             </button>
             <template v-if="isOwnNote">
               <div class="popup-divider" />
