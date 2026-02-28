@@ -630,6 +630,22 @@ onUnmounted(() => {
                 </template>
                 <div v-if="modeError" class="nav-account-menu-error">{{ modeError }}</div>
                 <div class="nav-account-menu-divider" />
+                <button class="_button nav-account-menu-item" @click="router.push(`/user/${acc.id}/${acc.userId}`)">
+                  <span>Profile</span>
+                  <i class="ti ti-user" />
+                </button>
+                <button class="_button nav-account-menu-item" @click="openUrl(`https://${acc.host}/admin`)">
+                  <span>Admin</span>
+                  <i class="ti ti-external-link" />
+                </button>
+                <button class="_button nav-account-menu-item" @click="openUrl(`https://${acc.host}/my/drive`)">
+                  <span>Drive</span>
+                  <i class="ti ti-external-link" />
+                </button>
+                <button class="_button nav-account-menu-item" @click="openUrl(`https://${acc.host}/pages`)">
+                  <span>Pages</span>
+                  <i class="ti ti-external-link" />
+                </button>
                 <button class="_button nav-account-menu-item" @click="openUrl(`https://${acc.host}/settings`)">
                   <span>Settings</span>
                   <i class="ti ti-external-link" />

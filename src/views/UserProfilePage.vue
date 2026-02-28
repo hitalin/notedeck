@@ -313,14 +313,14 @@ async function handlePosted(editedNoteId?: string) {
             <b>{{ formatCount(user.notesCount) }}</b>
             <span>Notes</span>
           </div>
-          <div class="stat">
+          <button class="stat stat-link _button" @click="openUrl(`https://${account?.host}/@${user.username}/following`)">
             <b>{{ formatCount(user.followingCount) }}</b>
             <span>Following</span>
-          </div>
-          <div class="stat">
+          </button>
+          <button class="stat stat-link _button" @click="openUrl(`https://${account?.host}/@${user.username}/followers`)">
             <b>{{ formatCount(user.followersCount) }}</b>
             <span>Followers</span>
-          </div>
+          </button>
         </div>
 
         <!-- User's notes -->
@@ -612,6 +612,16 @@ async function handlePosted(editedNoteId?: string) {
 .stat > span {
   font-size: 70%;
   opacity: 0.6;
+}
+
+.stat-link {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.stat-link:hover {
+  background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.03));
 }
 
 /* Notes section */
