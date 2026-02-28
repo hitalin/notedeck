@@ -778,17 +778,17 @@ onUnmounted(() => {
   position: fixed;
   z-index: 10000;
   width: 220px;
-  padding: 8px 0;
-  background: var(--nd-panelBg, #313543);
-  border: 1px solid var(--nd-divider, rgba(255, 255, 255, 0.1));
-  border-radius: 10px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  padding: 6px;
+  background: color-mix(in srgb, var(--nd-panelBg, #313543) 85%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(16px);
   color: var(--nd-fg, #fff);
   font-size: 0.9em;
 }
 
 .nd-filter-popup-header {
-  padding: 6px 16px 8px;
+  padding: 6px 10px 4px;
   font-size: 0.75em;
   font-weight: 700;
   text-transform: uppercase;
@@ -800,9 +800,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 9px 10px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background 0.15s;
 }
 
 .nd-filter-item:hover {
@@ -848,12 +849,12 @@ onUnmounted(() => {
 
 .nd-filter-popup-enter-active,
 .nd-filter-popup-leave-active {
-  transition: opacity 0.15s, transform 0.15s;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .nd-filter-popup-enter-from,
 .nd-filter-popup-leave-to {
   opacity: 0;
-  transform: translateY(-6px);
+  transform: scale(0.95) translateY(-4px);
 }
 </style>

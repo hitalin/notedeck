@@ -1043,11 +1043,11 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   margin-bottom: 4px;
-  background: var(--nd-popup, var(--nd-panelBg));
-  border: 1px solid var(--nd-divider);
-  border-radius: 10px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
-  padding: 6px 0;
+  background: color-mix(in srgb, var(--nd-popup, var(--nd-panelBg)) 85%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(16px);
+  padding: 8px 0;
   z-index: 100;
   min-width: 180px;
 }

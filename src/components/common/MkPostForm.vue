@@ -642,9 +642,10 @@ function onKeydown(e: KeyboardEvent) {
   min-width: 200px;
   padding: 4px;
   margin-top: 4px;
-  background: var(--nd-popup);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px var(--nd-shadow);
+  background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(16px);
 }
 
 .account-option {
@@ -750,9 +751,10 @@ function onKeydown(e: KeyboardEvent) {
   min-width: 160px;
   padding: 4px;
   margin-top: 4px;
-  background: var(--nd-popup);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px var(--nd-shadow);
+  background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(16px);
 }
 
 .visibility-option {

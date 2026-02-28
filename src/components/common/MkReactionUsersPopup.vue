@@ -176,9 +176,10 @@ onUnmounted(() => {
   position: fixed;
   z-index: 10001;
   width: 240px;
-  background: var(--nd-popup);
-  border-radius: 10px;
-  box-shadow: 0 4px 24px var(--nd-shadow);
+  background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(16px);
   padding: 8px 0;
   pointer-events: auto;
 }

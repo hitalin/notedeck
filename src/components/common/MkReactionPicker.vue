@@ -290,9 +290,10 @@ defineExpose({ onMounted })
   flex-direction: column;
   width: 320px;
   max-height: 360px;
-  background: var(--nd-popup);
+  background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: 12px;
-  box-shadow: 0 4px 24px var(--nd-shadow);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(16px);
   overflow: hidden;
 }
 

@@ -520,82 +520,86 @@ async function handleMentionClick(username: string, host: string | null) {
 
   <!-- More menu popup -->
   <Teleport to="body">
-    <div v-if="showMoreMenu" class="popup-backdrop" @click="closeMoreMenu">
-      <div
-        class="popup-menu"
-        :style="{ top: moreMenuPos.y + 'px', left: moreMenuPos.x + 'px' }"
-        @click.stop
-      >
-        <!-- Delete confirmation mode -->
-        <template v-if="showDeleteConfirm">
-          <div class="popup-confirm-text">Delete this note?</div>
-          <button class="popup-item popup-item-danger" @click="emit('delete', effectiveNote); closeMoreMenu()">
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-                stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            Delete
-          </button>
-          <button class="popup-item" @click="showDeleteConfirm = false">
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            Cancel
-          </button>
-        </template>
-
-        <!-- Normal menu -->
-        <template v-else>
-          <button
-            class="popup-item"
-            :class="{ 'popup-item-active': localIsFavorited }"
-            @click="localIsFavorited = !localIsFavorited; emit('bookmark', effectiveNote); closeMoreMenu()"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                :fill="localIsFavorited ? 'currentColor' : 'none'" />
-            </svg>
-            {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
-          </button>
-          <template v-if="isOwnNote">
-            <div class="popup-divider" />
-            <button class="popup-item" @click="emit('edit', effectiveNote); closeMoreMenu()">
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-                  stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
-                  stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              Edit
-            </button>
-            <button class="popup-item popup-item-danger" @click="showDeleteConfirm = true">
+    <Transition name="nd-popup">
+      <div v-if="showMoreMenu" class="popup-backdrop" @click="closeMoreMenu">
+        <div
+          class="popup-menu"
+          :style="{ top: moreMenuPos.y + 'px', left: moreMenuPos.x + 'px' }"
+          @click.stop
+        >
+          <!-- Delete confirmation mode -->
+          <template v-if="showDeleteConfirm">
+            <div class="popup-confirm-text">Delete this note?</div>
+            <button class="popup-item popup-item-danger" @click="emit('delete', effectiveNote); closeMoreMenu()">
               <svg viewBox="0 0 24 24" width="16" height="16">
                 <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
                   stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
               Delete
             </button>
+            <button class="popup-item" @click="showDeleteConfirm = false">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              Cancel
+            </button>
           </template>
-        </template>
+
+          <!-- Normal menu -->
+          <template v-else>
+            <button
+              class="popup-item"
+              :class="{ 'popup-item-active': localIsFavorited }"
+              @click="localIsFavorited = !localIsFavorited; emit('bookmark', effectiveNote); closeMoreMenu()"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                  :fill="localIsFavorited ? 'currentColor' : 'none'" />
+              </svg>
+              {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
+            </button>
+            <template v-if="isOwnNote">
+              <div class="popup-divider" />
+              <button class="popup-item" @click="emit('edit', effectiveNote); closeMoreMenu()">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                    stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                    stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Edit
+              </button>
+              <button class="popup-item popup-item-danger" @click="showDeleteConfirm = true">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                    stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Delete
+              </button>
+            </template>
+          </template>
+        </div>
       </div>
-    </div>
+    </Transition>
   </Teleport>
 
   <!-- Reaction picker popup -->
   <Teleport to="body">
-    <div v-if="showReactionInput" class="popup-backdrop" @click="showReactionInput = false">
-      <div
-        class="reaction-picker-popup"
-        :style="{ ...reactionPickerTheme, top: reactionPickerPos.y + 'px', left: reactionPickerPos.x + 'px' }"
-        @click.stop
-      >
-        <MkReactionPicker
-          :server-host="effectiveNote._serverHost"
-          @pick="(r: string) => { emit('react', r, effectiveNote); showReactionInput = false }"
-        />
+    <Transition name="nd-popup">
+      <div v-if="showReactionInput" class="popup-backdrop" @click="showReactionInput = false">
+        <div
+          class="reaction-picker-popup"
+          :style="{ ...reactionPickerTheme, top: reactionPickerPos.y + 'px', left: reactionPickerPos.x + 'px' }"
+          @click.stop
+        >
+          <MkReactionPicker
+            :server-host="effectiveNote._serverHost"
+            @pick="(r: string) => { emit('react', r, effectiveNote); showReactionInput = false }"
+          />
+        </div>
       </div>
-    </div>
+    </Transition>
   </Teleport>
 </template>
 
@@ -905,17 +909,18 @@ async function handleMentionClick(username: string, host: string | null) {
   position: fixed;
   inset: 0;
   z-index: 10000;
-  background: rgba(0, 0, 0, 0.15);
+  background: transparent;
 }
 
 .popup-menu {
   position: fixed;
   min-width: 200px;
   max-width: 300px;
-  padding: 8px 0;
-  background: var(--nd-popup, var(--nd-panel));
-  border-radius: 8px;
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.3);
+  padding: 6px;
+  background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 85%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(16px);
   z-index: 10001;
 }
 
@@ -924,8 +929,9 @@ async function handleMentionClick(username: string, host: string | null) {
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 10px 16px;
+  padding: 9px 12px;
   border: none;
+  border-radius: 8px;
   background: none;
   cursor: pointer;
   color: var(--nd-fg);
@@ -938,8 +944,17 @@ async function handleMentionClick(username: string, host: string | null) {
   background: var(--nd-buttonHoverBg);
 }
 
+.popup-item svg {
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
 .popup-item-active {
   color: var(--nd-warn, #f0a020);
+}
+
+.popup-item-active svg {
+  opacity: 1;
 }
 
 .popup-item-danger {
@@ -953,10 +968,38 @@ async function handleMentionClick(username: string, host: string | null) {
 }
 
 .popup-confirm-text {
-  padding: 10px 16px;
+  padding: 9px 12px;
   font-size: 0.9em;
   font-weight: bold;
   color: var(--nd-fg);
+}
+
+/* Popup transition */
+.nd-popup-enter-active,
+.nd-popup-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.nd-popup-enter-active .popup-menu,
+.nd-popup-leave-active .popup-menu,
+.nd-popup-enter-active .reaction-picker-popup,
+.nd-popup-leave-active .reaction-picker-popup {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.nd-popup-enter-from,
+.nd-popup-leave-to {
+  opacity: 0;
+}
+
+.nd-popup-enter-from .popup-menu,
+.nd-popup-leave-to .popup-menu {
+  transform: scale(0.95) translateY(-4px);
+}
+
+.nd-popup-enter-from .reaction-picker-popup,
+.nd-popup-leave-to .reaction-picker-popup {
+  transform: translateX(-100%) scale(0.95);
 }
 
 /* Reaction picker popup */
