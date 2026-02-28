@@ -213,7 +213,7 @@ async function handlePosted(editedNoteId?: string) {
         </svg>
       </router-link>
       <h1 v-if="user" class="profile-title">
-        <MkMfm v-if="user.name" :text="user.name" :server-host="account?.host" />
+        <MkMfm v-if="user.name" :text="user.name" :emojis="user.emojis" :server-host="account?.host" />
         <template v-else>{{ user.username }}</template>
       </h1>
       <h1 v-else class="profile-title">Profile</h1>
@@ -245,7 +245,7 @@ async function handlePosted(editedNoteId?: string) {
           <!-- Name overlay on banner (desktop) -->
           <div class="banner-title">
             <div class="banner-name">
-              <MkMfm v-if="user.name" :text="user.name" :server-host="account?.host" />
+              <MkMfm v-if="user.name" :text="user.name" :emojis="user.emojis" :server-host="account?.host" />
               <template v-else>{{ user.username }}</template>
             </div>
             <div class="banner-bottom">
@@ -267,7 +267,7 @@ async function handlePosted(editedNoteId?: string) {
         <!-- Mobile title (shown below avatar on narrow screens) -->
         <div class="mobile-title">
           <div class="mobile-name">
-            <MkMfm v-if="user.name" :text="user.name" :server-host="account?.host" />
+            <MkMfm v-if="user.name" :text="user.name" :emojis="user.emojis" :server-host="account?.host" />
             <template v-else>{{ user.username }}</template>
           </div>
           <div class="mobile-username">@{{ user.username }}{{ user.host ? `@${user.host}` : '' }}</div>

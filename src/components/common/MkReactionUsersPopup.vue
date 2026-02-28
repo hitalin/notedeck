@@ -145,7 +145,7 @@ onUnmounted(() => {
           <div v-else class="reaction-user-avatar reaction-user-avatar-placeholder" />
           <div class="reaction-user-info">
             <span class="reaction-user-name">
-              <MkMfm v-if="r.user.name" :text="r.user.name" :server-host="serverHost" />
+              <MkMfm v-if="r.user.name" :text="r.user.name" :emojis="r.user.emojis" :server-host="serverHost" />
               <template v-else>{{ r.user.username }}</template>
             </span>
             <span class="reaction-user-username">@{{ r.user.username }}</span>

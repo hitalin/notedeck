@@ -305,7 +305,7 @@ onUnmounted(() => {
 
                 <div class="notif-meta">
                   <span v-if="notif.user" class="notif-user-name">
-                    <MkMfm v-if="notif.user.name" :text="notif.user.name" :server-host="account?.host" />
+                    <MkMfm v-if="notif.user.name" :text="notif.user.name" :emojis="notif.user.emojis" :server-host="account?.host" />
                     <template v-else>{{ notif.user.username }}</template>
                   </span>
                   <span class="notif-label">{{ notificationLabel(notif.type) }}</span>
