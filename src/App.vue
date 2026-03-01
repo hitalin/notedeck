@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, onMounted } from 'vue'
 import { useCommandStore } from '@/commands/registry'
 import TitleBarComponent from '@/components/common/TitleBar.vue'
 import UpdateBannerComponent from '@/components/common/UpdateBanner.vue'
@@ -22,6 +22,14 @@ const commandStore = useCommandStore()
 useTheme()
 const { init: initKeyboard } = useKeyboard()
 initKeyboard()
+
+onMounted(() => {
+  if (isTauri) {
+    import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+      getCurrentWindow().show()
+    })
+  }
+})
 </script>
 
 <template>
