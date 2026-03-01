@@ -10,7 +10,6 @@ use tauri_plugin_autostart::MacosLauncher;
 mod commands;
 mod http_server;
 mod image_cache;
-mod mfm;
 mod query_bridge;
 mod streaming;
 
@@ -101,7 +100,6 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::stream_unsubscribe,
         commands::stream_sub_note,
         commands::stream_unsub_note,
-        mfm::parse_mfm_batch,
     ]);
 
     builder = builder.setup(|app| {

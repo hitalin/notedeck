@@ -1,11 +1,9 @@
 import { computed, shallowRef } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
 import type {
   NormalizedNote,
   NoteUpdateEvent,
   ServerAdapter,
 } from '@/adapters/types'
-import type { MfmToken } from '@/utils/mfm'
 import { noteStore } from '@/stores/notes'
 
 export interface UseNoteListOptions {
@@ -38,38 +36,6 @@ export function useNoteList(options: UseNoteListOptions) {
   function setNotes(newNotes: NormalizedNote[]) {
     notes.value = newNotes
     onNotesChangedFn?.(newNotes)
-    batchParseMfm(newNotes)
-  }
-
-  function batchParseMfm(noteList: NormalizedNote[]) {
-    const texts: string[] = []
-    const mapping: { id: string; field: '_parsedText' | '_parsedCw' }[] = []
-    for (const note of noteList) {
-      const effective = note.renote && !note.text ? note.renote : note
-      if (effective.text && !effective._parsedText) {
-        texts.push(effective.text)
-        mapping.push({ id: effective.id, field: '_parsedText' })
-      }
-      if (effective.cw && !effective._parsedCw) {
-        texts.push(effective.cw)
-        mapping.push({ id: effective.id, field: '_parsedCw' })
-      }
-    }
-    if (texts.length === 0) return
-
-    const schedule = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 0))
-    schedule(async () => {
-      try {
-        const results = await invoke<MfmToken[][]>('parse_mfm_batch', { texts })
-        for (let i = 0; i < results.length; i++) {
-          const entry = mapping[i]!
-          const note = noteStore.get(entry.id)
-          if (note && !note[entry.field]) {
-            noteStore.update(entry.id, { ...note, [entry.field]: results[i] })
-          }
-        }
-      } catch { /* TS parser fallback handles this */ }
-    })
   }
 
   function onNoteUpdate(event: NoteUpdateEvent) {

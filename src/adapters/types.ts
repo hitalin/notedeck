@@ -155,8 +155,6 @@ export interface NormalizedNote {
   modeFlags?: Record<string, boolean>
   reply?: NormalizedNote
   renote?: NormalizedNote
-  _parsedText?: import('@/utils/mfm').MfmToken[]
-  _parsedCw?: import('@/utils/mfm').MfmToken[]
 }
 
 export interface AvatarDecoration {

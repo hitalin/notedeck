@@ -408,7 +408,6 @@ async function handleMentionClick(username: string, host: string | null) {
             <MkMfm
               v-if="effectiveNote.cw"
               :text="effectiveNote.cw"
-              :tokens="effectiveNote._parsedCw"
               :emojis="effectiveNote.emojis"
               :server-host="effectiveNote._serverHost"
               @mention-click="handleMentionClick"
@@ -424,7 +423,6 @@ async function handleMentionClick(username: string, host: string | null) {
           <p v-if="effectiveNote.text" class="text">
             <MkMfm
               :text="effectiveNote.text"
-              :tokens="effectiveNote._parsedText"
               :emojis="effectiveNote.emojis"
               :reaction-emojis="effectiveNote.reactionEmojis"
               :server-host="effectiveNote._serverHost"
