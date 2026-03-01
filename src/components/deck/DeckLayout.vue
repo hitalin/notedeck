@@ -636,13 +636,21 @@ onMounted(() => {
     toggleAccountMenu: toggleFirstAccountMenu,
   })
   window.addEventListener('resize', handleResize)
+  document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
 onUnmounted(() => {
   destroyApiBridge()
   unregisterDefaultCommands()
   window.removeEventListener('resize', handleResize)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
+
+function onVisibilityChange() {
+  if (!document.hidden) {
+    window.dispatchEvent(new CustomEvent('deck-resume'))
+  }
+}
 </script>
 
 <template>

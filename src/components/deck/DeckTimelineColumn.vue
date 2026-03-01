@@ -569,7 +569,48 @@ watch(
   },
 )
 
+let lastResumeAt = 0
+
+async function onResume() {
+  const now = Date.now()
+  if (now - lastResumeAt < 3000) return
+  lastResumeAt = now
+
+  const adapter = getAdapter()
+  if (!adapter || !account.value) return
+
+  try {
+    const cached = await invoke<NormalizedNote[]>('api_get_cached_timeline', {
+      accountId: props.column.accountId,
+      timelineType: tlType.value,
+      limit: 40,
+    })
+    if (cached.length > 0) {
+      const newFromCache = cached.filter((n) => !noteIds.has(n.id))
+      if (newFromCache.length > 0) {
+        setNotes([...newFromCache, ...notes.value])
+      }
+    }
+  } catch { /* non-critical */ }
+
+  const sinceId = notes.value[0]?.id
+  if (!sinceId) return
+  try {
+    const filters = columnFilters.value
+    const hasFilters = Object.keys(filters).length > 0
+    const fetched = await adapter.api.getTimeline(tlType.value, {
+      sinceId,
+      ...(hasFilters ? { filters } : {}),
+    })
+    const newFromApi = fetched.filter((n) => !noteIds.has(n.id))
+    if (newFromApi.length > 0) {
+      setNotes([...newFromApi, ...notes.value])
+    }
+  } catch { /* non-critical */ }
+}
+
 onMounted(async () => {
+  window.addEventListener('deck-resume', onResume)
   const host = account.value?.host
   const accountId = props.column.accountId
   // Clear stale policy cache so external mode changes are reflected
@@ -600,6 +641,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('deck-resume', onResume)
   disconnect()
   if (rafId !== null) {
     cancelAnimationFrame(rafId)

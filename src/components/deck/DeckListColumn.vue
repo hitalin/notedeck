@@ -300,11 +300,49 @@ function handleScroll() {
   onScroll(loadMore)
 }
 
+let lastResumeAt = 0
+
+async function onResume() {
+  const now = Date.now()
+  if (now - lastResumeAt < 3000) return
+  lastResumeAt = now
+
+  const adapter = getAdapter()
+  const listId = props.column.listId
+  if (!adapter || !account.value || !listId) return
+
+  try {
+    const cached = await invoke<NormalizedNote[]>('api_get_cached_timeline', {
+      accountId: props.column.accountId,
+      timelineType: `user-list:${listId}`,
+      limit: 40,
+    })
+    if (cached.length > 0) {
+      const newFromCache = cached.filter((n) => !noteIds.has(n.id))
+      if (newFromCache.length > 0) {
+        setNotes([...newFromCache, ...notes.value])
+      }
+    }
+  } catch { /* non-critical */ }
+
+  const sinceId = notes.value[0]?.id
+  if (!sinceId) return
+  try {
+    const fetched = await adapter.api.getTimeline('user-list', { sinceId, listId })
+    const newFromApi = fetched.filter((n) => !noteIds.has(n.id))
+    if (newFromApi.length > 0) {
+      setNotes([...newFromApi, ...notes.value])
+    }
+  } catch { /* non-critical */ }
+}
+
 onMounted(() => {
+  window.addEventListener('deck-resume', onResume)
   connect(true)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('deck-resume', onResume)
   disconnect()
   if (rafId !== null) {
     cancelAnimationFrame(rafId)

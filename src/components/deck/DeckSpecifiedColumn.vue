@@ -215,11 +215,34 @@ function handleScroll() {
   onScroll(loadMore)
 }
 
+let lastResumeAt = 0
+
+async function onResume() {
+  const now = Date.now()
+  if (now - lastResumeAt < 3000) return
+  lastResumeAt = now
+
+  const adapter = getAdapter()
+  if (!adapter || !account.value) return
+
+  const sinceId = notes.value[0]?.id
+  if (!sinceId) return
+  try {
+    const fetched = await adapter.api.getMentions({ sinceId, visibility: 'specified' })
+    const newFromApi = fetched.filter((n) => !noteIds.has(n.id))
+    if (newFromApi.length > 0) {
+      setNotes([...newFromApi, ...notes.value])
+    }
+  } catch { /* non-critical */ }
+}
+
 onMounted(() => {
+  window.addEventListener('deck-resume', onResume)
   connect()
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('deck-resume', onResume)
   mentionSub?.dispose()
   mentionSub = null
 })

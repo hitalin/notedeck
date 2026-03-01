@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, shallowRef } from 'vue'
+import { onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
@@ -259,8 +259,35 @@ function handleScroll() {
   onScroll(loadMore)
 }
 
+let lastResumeAt = 0
+
+async function onResume() {
+  const now = Date.now()
+  if (now - lastResumeAt < 3000) return
+  lastResumeAt = now
+
+  const adapter = getAdapter()
+  const clipId = props.column.clipId
+  if (!adapter || !account.value || !clipId) return
+
+  const sinceId = notes.value[0]?.id
+  if (!sinceId) return
+  try {
+    const fetched = await adapter.api.getClipNotes(clipId, { sinceId })
+    const newFromApi = fetched.filter((n) => !noteIds.has(n.id))
+    if (newFromApi.length > 0) {
+      setNotes([...newFromApi, ...notes.value])
+    }
+  } catch { /* non-critical */ }
+}
+
 onMounted(() => {
+  window.addEventListener('deck-resume', onResume)
   connect(true)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('deck-resume', onResume)
 })
 </script>
 
