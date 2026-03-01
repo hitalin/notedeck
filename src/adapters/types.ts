@@ -155,6 +155,8 @@ export interface NormalizedNote {
   modeFlags?: Record<string, boolean>
   reply?: NormalizedNote
   renote?: NormalizedNote
+  _parsedText?: import('@/utils/mfm').MfmToken[]
+  _parsedCw?: import('@/utils/mfm').MfmToken[]
 }
 
 export interface AvatarDecoration {
@@ -224,7 +226,7 @@ export interface NoteUpdateEvent {
   type: 'reacted' | 'unreacted' | 'deleted' | 'pollVoted'
   body: {
     reaction?: string
-    emoji?: string | null
+    emoji?: { name: string; url: string } | string | null
     userId?: string
     deletedAt?: string
     choice?: number

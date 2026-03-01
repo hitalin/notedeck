@@ -57,7 +57,6 @@ const {
   handlers,
   scroller,
   onScroll,
-  setOnNotesMutated,
 } = useColumnSetup(() => props.column)
 
 const router = useRouter()
@@ -67,7 +66,6 @@ const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } = use
   deleteHandler: handlers.delete,
   closePostForm: postForm.close,
 })
-setOnNotesMutated(() => { notes.value = [...notes.value] })
 
 const { pendingNotes, enqueueNote, handleScroll: batchHandleScroll, scrollToTop, resetBatch } = useStreamingBatch({
   notes,

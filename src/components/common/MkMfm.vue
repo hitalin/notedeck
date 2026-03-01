@@ -2,6 +2,7 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed } from 'vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
+import { proxyUrl } from '@/composables/useImageProxy'
 import { type MfmToken, parseMfm } from '@/utils/mfm'
 import { isSafeUrl } from '@/utils/url'
 
@@ -205,7 +206,7 @@ function fnStyle(
     --><!-- Italic --><i v-else-if="token.type === 'italic'">{{ token.value }}</i><!--
     --><!-- Strike --><s v-else-if="token.type === 'strike'">{{ token.value }}</s><!--
     --><!-- Inline Code --><code v-else-if="token.type === 'inlineCode'" class="mfm-code">{{ token.value }}</code><!--
-    --><!-- Custom Emoji (resolved) --><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="emojiUrls[token.shortcode]!" :alt="`:${token.shortcode}:`" class="custom-emoji" width="32" height="32" decoding="async" loading="lazy" /><!--
+    --><!-- Custom Emoji (resolved) --><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="proxyUrl(emojiUrls[token.shortcode]!)" :alt="`:${token.shortcode}:`" class="custom-emoji" width="32" height="32" decoding="async" loading="lazy" /><!--
     --><!-- Custom Emoji (unresolved) --><span v-else-if="token.type === 'customEmoji'">:{{ token.shortcode }}:</span><!--
     --><!-- Unicode Emoji --><img v-else-if="token.type === 'unicodeEmoji'" :src="token.url" :alt="token.value" class="twemoji" width="20" height="20" decoding="async" loading="lazy" /><!--
     --><!-- MFM Function --><span v-else-if="token.type === 'fn'" :class="fnClass(token)" :style="fnStyle(token)"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" @mention-click="(u, h) => emit('mentionClick', u, h)" /></span><!--

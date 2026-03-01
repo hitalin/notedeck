@@ -9,6 +9,7 @@ import type {
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'
+import { noteStore } from '@/stores/notes'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
@@ -16,10 +17,15 @@ import { toggleFavorite } from '@/utils/toggleFavorite'
 import { toggleReaction } from '@/utils/toggleReaction'
 
 export function useColumnSetup(getColumn: () => DeckColumn) {
-  let onNotesMutated: (() => void) | undefined
+  let customMutatedFn: (() => void) | undefined
 
   function setOnNotesMutated(fn: () => void) {
-    onNotesMutated = fn
+    customMutatedFn = fn
+  }
+
+  function notifyMutation() {
+    noteStore.notifyMutation()
+    customMutatedFn?.()
   }
   const accountsStore = useAccountsStore()
   const emojisStore = useEmojisStore()
@@ -82,7 +88,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   async function handleReaction(reaction: string, note: NormalizedNote) {
     if (!adapter) return
     try {
-      await toggleReaction(adapter.api, note, reaction, onNotesMutated)
+      await toggleReaction(adapter.api, note, reaction, notifyMutation)
     } catch (e) {
       const err = AppError.from(e)
       console.error('[reaction]', err.code, err.message)
@@ -92,12 +98,12 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   async function handleRenote(note: NormalizedNote) {
     if (!adapter) return
     note.renoteCount = (note.renoteCount ?? 0) + 1
-    onNotesMutated?.()
+    notifyMutation()
     try {
       await adapter.api.createNote({ renoteId: note.id })
     } catch (e) {
       note.renoteCount = Math.max(0, (note.renoteCount ?? 1) - 1)
-      onNotesMutated?.()
+      notifyMutation()
       const err = AppError.from(e)
       console.error('[renote]', err.code, err.message)
     }
@@ -137,7 +143,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   async function handleBookmark(note: NormalizedNote) {
     if (!adapter) return
     try {
-      await toggleFavorite(adapter.api, note, onNotesMutated)
+      await toggleFavorite(adapter.api, note, notifyMutation)
     } catch (e) {
       const err = AppError.from(e)
       console.error('[bookmark]', err.code, err.message)

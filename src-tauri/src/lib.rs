@@ -9,6 +9,8 @@ use tauri_plugin_autostart::MacosLauncher;
 
 mod commands;
 mod http_server;
+mod image_cache;
+mod mfm;
 mod query_bridge;
 mod streaming;
 
@@ -99,6 +101,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::stream_unsubscribe,
         commands::stream_sub_note,
         commands::stream_unsub_note,
+        mfm::parse_mfm_batch,
     ]);
 
     builder = builder.setup(|app| {
@@ -132,10 +135,13 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         }
         let token_path_str = token_path.to_string_lossy().to_string();
 
+        // Initialize image cache
+        let image_cache = std::sync::Arc::new(image_cache::ImageCache::new(&app_dir));
+
         // Start HTTP API server
         let app_handle = app.app_handle().clone();
         tauri::async_runtime::spawn(async move {
-            http_server::start(app_handle, api_token, token_path_str).await;
+            http_server::start(app_handle, api_token, token_path_str, image_cache).await;
         });
 
         // System tray (desktop only)

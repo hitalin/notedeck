@@ -31,7 +31,6 @@ const {
   handlers,
   scroller,
   onScroll,
-  setOnNotesMutated,
 } = useColumnSetup(() => props.column)
 
 const { notes, noteIds, setNotes, setOnNotesChanged, onNoteUpdate, handlePosted, removeNote } = useNoteList({
@@ -40,7 +39,6 @@ const { notes, noteIds, setNotes, setOnNotesChanged, onNoteUpdate, handlePosted,
   deleteHandler: handlers.delete,
   closePostForm: postForm.close,
 })
-setOnNotesMutated(() => { notes.value = [...notes.value] })
 const { sync: syncCapture } = useNoteCapture(() => getAdapter()?.stream, onNoteUpdate)
 setOnNotesChanged(syncCapture)
 let mentionSub: ChannelSubscription | null = null

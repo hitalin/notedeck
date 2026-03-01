@@ -1,4 +1,5 @@
 use axum::{
+    body::Body,
     extract::{Path, Query, Request, State},
     http::{header::AUTHORIZATION, StatusCode},
     middleware::{self, Next},
@@ -13,6 +14,7 @@ use futures_util::stream::Stream;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::StreamExt;
@@ -20,6 +22,7 @@ use tower_http::cors::CorsLayer;
 
 use notecli::api::MisskeyClient;
 use crate::commands;
+use crate::image_cache::ImageCache;
 use notecli::db::Database;
 use notecli::event_bus::EventBus;
 use notecli::models::{AccountPublic, CreateNoteParams, TimelineType};
@@ -32,6 +35,7 @@ struct AppState {
     app_handle: AppHandle,
     api_token: String,
     token_path: String,
+    image_cache: Arc<ImageCache>,
 }
 
 impl AppState {
@@ -100,14 +104,16 @@ impl IntoResponse for ApiError {
 
 // --- Routes ---
 
-pub async fn start(app_handle: AppHandle, api_token: String, token_path: String) {
+pub async fn start(app_handle: AppHandle, api_token: String, token_path: String, image_cache: Arc<ImageCache>) {
     let state = AppState {
         app_handle,
         api_token,
         token_path,
+        image_cache,
     };
 
-    let app = Router::new()
+    // Authenticated API routes
+    let api_routes = Router::new()
         .route("/api", get(index))
         .route("/api/accounts", get(list_accounts))
         .route("/api/{host}/timeline/{tl_type}", get(get_timeline))
@@ -130,7 +136,15 @@ pub async fn start(app_handle: AppHandle, api_token: String, token_path: String)
         .route("/api/deck/active", get(get_deck_active))
         .route("/api/commands", get(list_commands))
         .route("/api/commands/{command_id}/execute", post(execute_command))
-        .layer(middleware::from_fn_with_state(state.clone(), auth_middleware))
+        .layer(middleware::from_fn_with_state(state.clone(), auth_middleware));
+
+    // Public routes (localhost-only, no auth needed)
+    let public_routes = Router::new()
+        .route("/proxy/image", get(proxy_image));
+
+    let app = Router::new()
+        .merge(api_routes)
+        .merge(public_routes)
         .layer(CorsLayer::permissive())
         .with_state(state);
 
@@ -593,4 +607,35 @@ struct CreateNoteBody {
     reply_id: Option<String>,
     renote_id: Option<String>,
     file_ids: Option<Vec<String>>,
+}
+
+// --- Image proxy ---
+
+#[derive(Debug, Deserialize)]
+struct ProxyImageParams {
+    url: String,
+}
+
+async fn proxy_image(
+    State(state): State<AppState>,
+    Query(params): Query<ProxyImageParams>,
+) -> Response {
+    match state.image_cache.get_or_fetch(&params.url).await {
+        Ok(entry) => {
+            match tokio::fs::read(&entry.path).await {
+                Ok(bytes) => {
+                    Response::builder()
+                        .status(StatusCode::OK)
+                        .header("Content-Type", &entry.content_type)
+                        .header("Cache-Control", "public, max-age=86400, immutable")
+                        .body(Body::from(bytes))
+                        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+                }
+                Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            }
+        }
+        Err(msg) => {
+            (StatusCode::BAD_GATEWAY, msg).into_response()
+        }
+    }
 }

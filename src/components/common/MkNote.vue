@@ -5,6 +5,7 @@ import { computed, defineAsyncComponent, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
+import { proxyUrl } from '@/composables/useImageProxy'
 import { useAccountsStore } from '@/stores/accounts'
 import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
@@ -307,7 +308,7 @@ async function handleMentionClick(username: string, host: string | null) {
       <i class="ti ti-repeat renote-icon" />
       <img
         v-if="note.user.avatarUrl"
-        :src="note.user.avatarUrl"
+        :src="proxyUrl(note.user.avatarUrl)"
         class="renote-avatar"
         width="28"
         height="28"
@@ -407,6 +408,7 @@ async function handleMentionClick(username: string, host: string | null) {
             <MkMfm
               v-if="effectiveNote.cw"
               :text="effectiveNote.cw"
+              :tokens="effectiveNote._parsedCw"
               :emojis="effectiveNote.emojis"
               :server-host="effectiveNote._serverHost"
               @mention-click="handleMentionClick"
@@ -422,6 +424,7 @@ async function handleMentionClick(username: string, host: string | null) {
           <p v-if="effectiveNote.text" class="text">
             <MkMfm
               :text="effectiveNote.text"
+              :tokens="effectiveNote._parsedText"
               :emojis="effectiveNote.emojis"
               :reaction-emojis="effectiveNote.reactionEmojis"
               :server-host="effectiveNote._serverHost"
@@ -459,7 +462,8 @@ async function handleMentionClick(username: string, host: string | null) {
             @mouseenter="onReactionMouseEnter($event, r.reaction)"
             @mouseleave="onReactionMouseLeave"
           >
-            <img v-if="reactionUrls[r.reaction]" :src="reactionUrls[r.reaction]!" :alt="r.reaction" class="custom-emoji" width="20" height="20" />
+            <img v-if="reactionUrls[r.reaction]" :src="proxyUrl(reactionUrls[r.reaction]!)" :alt="r.reaction" class="custom-emoji" width="20" height="20" />
+            <span v-else-if="r.reaction.startsWith(':')" class="reaction-emoji-fallback">{{ r.reaction }}</span>
             <MkEmoji v-else :emoji="r.reaction" class="reaction-emoji" />
             <span class="count">{{ r.count }}</span>
           </button>
@@ -863,6 +867,14 @@ async function handleMentionClick(username: string, host: string | null) {
 
 .reaction .custom-emoji {
   height: 1.25em;
+}
+
+.reaction-emoji-fallback {
+  font-size: 0.85em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 5em;
+  white-space: nowrap;
 }
 
 .reaction-emoji :deep(.twemoji) {

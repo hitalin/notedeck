@@ -34,7 +34,6 @@ const {
   handlers,
   scroller,
   onScroll,
-  setOnNotesMutated,
 } = useColumnSetup(() => props.column)
 
 const router = useRouter()
@@ -44,7 +43,6 @@ const { notes, noteIds, setNotes, setOnNotesChanged, onNoteUpdate, handlePosted,
   deleteHandler: handlers.delete,
   closePostForm: postForm.close,
 })
-setOnNotesMutated(() => { notes.value = [...notes.value] })
 const { focusedNoteId } = useNoteFocus(
   props.column.id,
   notes,

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { type CSSProperties, computed } from 'vue'
+import { type CSSProperties, computed, ref } from 'vue'
 import type { AvatarDecoration } from '@/adapters/types'
+import { proxyUrl } from '@/composables/useImageProxy'
 
 const props = withDefaults(
   defineProps<{
@@ -21,6 +22,21 @@ defineEmits<{
   mouseenter: [event: MouseEvent]
   mouseleave: [event: MouseEvent]
 }>()
+
+const proxyFailed = ref(false)
+
+const avatarSrc = computed(() => {
+  if (!props.avatarUrl) return undefined
+  if (proxyFailed.value) return props.avatarUrl
+  return proxyUrl(props.avatarUrl)
+})
+
+function onAvatarError(e: Event) {
+  const img = e.target as HTMLImageElement
+  if (!proxyFailed.value && img.src !== props.avatarUrl) {
+    proxyFailed.value = true
+  }
+}
 
 function computeDecorationStyle(d: AvatarDecoration): CSSProperties {
   const style: CSSProperties = {}
@@ -48,17 +64,18 @@ const decorationStyles = computed(() =>
   >
     <img
       v-if="props.avatarUrl"
-      :src="props.avatarUrl"
+      :src="avatarSrc"
       :alt="props.alt"
       class="avatar-img"
       loading="lazy"
       decoding="async"
+      @error="onAvatarError"
     />
     <div v-else class="avatar-img avatar-placeholder" />
     <img
       v-for="(d, i) in props.decorations"
       :key="d.id"
-      :src="d.url"
+      :src="proxyUrl(d.url)"
       class="avatar-decoration"
       :style="decorationStyles[i]"
     />

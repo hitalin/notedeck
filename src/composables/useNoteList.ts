@@ -1,10 +1,12 @@
-import { shallowRef } from 'vue'
+import { computed, shallowRef } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import type {
   NormalizedNote,
   NoteUpdateEvent,
   ServerAdapter,
 } from '@/adapters/types'
-import { applyNoteUpdate } from '@/utils/noteUpdate'
+import type { MfmToken } from '@/utils/mfm'
+import { noteStore } from '@/stores/notes'
 
 export interface UseNoteListOptions {
   getMyUserId: () => string | undefined
@@ -15,9 +17,19 @@ export interface UseNoteListOptions {
 }
 
 export function useNoteList(options: UseNoteListOptions) {
-  const notes = shallowRef<NormalizedNote[]>([])
+  const orderedIds = shallowRef<string[]>([])
   const noteIds = new Set<string>()
   let onNotesChangedFn = options.onNotesChanged
+
+  const notes = computed({
+    get: () => noteStore.resolve(orderedIds.value),
+    set: (newNotes: NormalizedNote[]) => {
+      noteStore.put(newNotes)
+      orderedIds.value = newNotes.map((n) => n.id)
+      noteIds.clear()
+      for (const n of newNotes) noteIds.add(n.id)
+    },
+  })
 
   function setOnNotesChanged(fn: (notes: NormalizedNote[]) => void) {
     onNotesChangedFn = fn
@@ -25,23 +37,52 @@ export function useNoteList(options: UseNoteListOptions) {
 
   function setNotes(newNotes: NormalizedNote[]) {
     notes.value = newNotes
-    noteIds.clear()
-    for (const n of newNotes) noteIds.add(n.id)
     onNotesChangedFn?.(newNotes)
+    batchParseMfm(newNotes)
+  }
+
+  function batchParseMfm(noteList: NormalizedNote[]) {
+    const texts: string[] = []
+    const mapping: { id: string; field: '_parsedText' | '_parsedCw' }[] = []
+    for (const note of noteList) {
+      const effective = note.renote && !note.text ? note.renote : note
+      if (effective.text && !effective._parsedText) {
+        texts.push(effective.text)
+        mapping.push({ id: effective.id, field: '_parsedText' })
+      }
+      if (effective.cw && !effective._parsedCw) {
+        texts.push(effective.cw)
+        mapping.push({ id: effective.id, field: '_parsedCw' })
+      }
+    }
+    if (texts.length === 0) return
+
+    const schedule = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 0))
+    schedule(async () => {
+      try {
+        const results = await invoke<MfmToken[][]>('parse_mfm_batch', { texts })
+        for (let i = 0; i < results.length; i++) {
+          const entry = mapping[i]!
+          const note = noteStore.get(entry.id)
+          if (note && !note[entry.field]) {
+            noteStore.update(entry.id, { ...note, [entry.field]: results[i] })
+          }
+        }
+      } catch { /* TS parser fallback handles this */ }
+    })
   }
 
   function onNoteUpdate(event: NoteUpdateEvent) {
-    const updated = applyNoteUpdate(
-      notes.value,
-      event,
-      options.getMyUserId(),
-    )
-    if (updated !== notes.value) {
-      notes.value = updated
-      if (event.type === 'deleted') {
+    if (event.type === 'deleted') {
+      if (noteIds.has(event.noteId)) {
+        orderedIds.value = orderedIds.value.filter(
+          (id) => id !== event.noteId,
+        )
         noteIds.delete(event.noteId)
       }
+      return
     }
+    noteStore.applyUpdate(event, options.getMyUserId())
   }
 
   async function handlePosted(editedNoteId?: string) {
@@ -51,13 +92,7 @@ export function useNoteList(options: UseNoteListOptions) {
       if (!adapter) return
       try {
         const updated = await adapter.api.getNote(editedNoteId)
-        notes.value = notes.value.map((n) =>
-          n.id === editedNoteId
-            ? updated
-            : n.renoteId === editedNoteId
-              ? { ...n, renote: updated }
-              : n,
-        )
+        noteStore.put([updated])
       } catch {
         // note may have been deleted
       }
@@ -66,13 +101,15 @@ export function useNoteList(options: UseNoteListOptions) {
 
   async function removeNote(note: NormalizedNote) {
     const id = note.id
-    const prevNotes = notes.value
-    notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
-    noteIds.delete(id)
+    const prevIds = orderedIds.value
+    notes.value = notes.value.filter(
+      (n) => n.id !== id && n.renoteId !== id,
+    )
 
     if (!(await options.deleteHandler(note))) {
-      notes.value = prevNotes
-      noteIds.add(id)
+      orderedIds.value = prevIds
+      noteIds.clear()
+      for (const nid of prevIds) noteIds.add(nid)
     }
   }
 
