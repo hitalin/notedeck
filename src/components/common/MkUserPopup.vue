@@ -104,7 +104,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
         <div v-if="user.isFollowed" class="popup-badge">Follows you</div>
 
-        <button class="popup-webui-link" @click.stop="openUrl(`https://${account?.host}/@${user.username}`)">
+        <button class="popup-webui-link" @click.stop="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}`)">
           <i class="ti ti-external-link" />
           Web UIで開く
         </button>

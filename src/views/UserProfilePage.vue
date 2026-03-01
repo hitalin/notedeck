@@ -300,7 +300,7 @@ async function handlePosted(editedNoteId?: string) {
           </button>
           <button
             class="webui-btn _button"
-            @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}`}`)"
+            @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}${user.host ? `@${user.host}` : ''}`}`)"
           >
             <i class="ti ti-external-link" />
             {{ isOwnProfile ? 'プロフィール編集' : 'Web UIで開く' }}
@@ -313,11 +313,11 @@ async function handlePosted(editedNoteId?: string) {
             <b>{{ formatCount(user.notesCount) }}</b>
             <span>Notes</span>
           </div>
-          <button class="stat stat-link _button" @click="openUrl(`https://${account?.host}/@${user.username}/following`)">
+          <button class="stat stat-link _button" @click="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}/following`)">
             <b>{{ formatCount(user.followingCount) }}</b>
             <span>Following</span>
           </button>
-          <button class="stat stat-link _button" @click="openUrl(`https://${account?.host}/@${user.username}/followers`)">
+          <button class="stat stat-link _button" @click="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}/followers`)">
             <b>{{ formatCount(user.followersCount) }}</b>
             <span>Followers</span>
           </button>
