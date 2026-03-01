@@ -9,6 +9,7 @@ export async function toggleReaction(
   api: ReactionApi,
   note: NormalizedNote,
   reaction: string,
+  onMutated?: () => void,
 ): Promise<void> {
   const prevReaction = note.myReaction
   const prevCounts = { ...note.reactions }
@@ -22,6 +23,7 @@ export async function toggleReaction(
         delete note.reactions[reaction]
       }
       note.myReaction = null
+      onMutated?.()
 
       await api.deleteReaction(note.id)
     } else {
@@ -35,6 +37,7 @@ export async function toggleReaction(
       }
       note.reactions[reaction] = (note.reactions[reaction] ?? 0) + 1
       note.myReaction = reaction
+      onMutated?.()
 
       if (prevReaction) {
         await api.deleteReaction(note.id)
@@ -45,6 +48,7 @@ export async function toggleReaction(
     // Rollback to previous state on failure
     note.reactions = prevCounts
     note.myReaction = prevReaction
+    onMutated?.()
     throw e
   }
 }

@@ -31,7 +31,10 @@ const {
   handlers,
   scroller,
   onScroll,
-} = useColumnSetup(() => props.column)
+} = useColumnSetup(
+  () => props.column,
+  () => { notes.value = [...notes.value] },
+)
 
 const router = useRouter()
 const notes = shallowRef<NormalizedNote[]>([])
@@ -164,9 +167,12 @@ async function loadMore() {
 }
 
 async function removeNote(note: NormalizedNote) {
-  if (await handlers.delete(note)) {
-    const id = note.id
-    notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
+  const id = note.id
+  const prevNotes = notes.value
+  notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
+
+  if (!(await handlers.delete(note))) {
+    notes.value = prevNotes
   }
 }
 

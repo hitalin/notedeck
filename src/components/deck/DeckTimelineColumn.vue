@@ -57,7 +57,10 @@ const {
   handlers,
   scroller,
   onScroll,
-} = useColumnSetup(() => props.column)
+} = useColumnSetup(
+  () => props.column,
+  () => { notes.value = [...notes.value] },
+)
 
 const router = useRouter()
 
@@ -386,10 +389,14 @@ function flushPending() {
 }
 
 async function removeNote(note: NormalizedNote) {
-  if (await handlers.delete(note)) {
-    const id = note.id
-    notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
-    noteIds.delete(id)
+  const id = note.id
+  const prevNotes = notes.value
+  notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
+  noteIds.delete(id)
+
+  if (!(await handlers.delete(note))) {
+    notes.value = prevNotes
+    noteIds.add(id)
   }
 }
 
@@ -398,6 +405,7 @@ function applyNoteUpdate(event: NoteUpdateEvent) {
     case 'reacted': {
       const reaction = event.body.reaction
       if (!reaction) break
+      if (event.body.userId === account.value?.userId) break
       notes.value = notes.value.map((n) => {
         const target =
           n.id === event.noteId
@@ -425,6 +433,7 @@ function applyNoteUpdate(event: NoteUpdateEvent) {
     case 'unreacted': {
       const reaction = event.body.reaction
       if (!reaction) break
+      if (event.body.userId === account.value?.userId) break
       notes.value = notes.value.map((n) => {
         const target =
           n.id === event.noteId

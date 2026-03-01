@@ -8,11 +8,13 @@ interface FavoriteApi {
 export async function toggleFavorite(
   api: FavoriteApi,
   note: NormalizedNote,
+  onMutated?: () => void,
 ): Promise<void> {
   const prev = note.isFavorited
 
   try {
     note.isFavorited = !prev
+    onMutated?.()
     if (prev) {
       await api.deleteFavorite(note.id)
     } else {
@@ -20,6 +22,7 @@ export async function toggleFavorite(
     }
   } catch (e) {
     note.isFavorited = prev
+    onMutated?.()
     throw e
   }
 }
