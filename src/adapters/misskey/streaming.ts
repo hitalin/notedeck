@@ -441,6 +441,7 @@ export class MisskeyStream implements StreamAdapter {
 
   subscribeMentions(
     handler: (note: NormalizedNote) => void,
+    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription {
     let subscriptionId: string | null = null
     let disposed = false
@@ -458,6 +459,9 @@ export class MisskeyStream implements StreamAdapter {
         }
         subscriptionId = id
         this.mentionHandlers.set(id, handler)
+        if (options?.onNoteUpdated) {
+          this.noteUpdateHandlers.set(id, options.onNoteUpdated)
+        }
         return id
       })
       .catch((e) => {
@@ -470,6 +474,7 @@ export class MisskeyStream implements StreamAdapter {
         disposed = true
         if (subscriptionId) {
           this.mentionHandlers.delete(subscriptionId)
+          this.noteUpdateHandlers.delete(subscriptionId)
           invoke('stream_unsubscribe', {
             accountId: this.accountId,
             subscriptionId,
@@ -480,6 +485,7 @@ export class MisskeyStream implements StreamAdapter {
           subscribePromise.then((id) => {
             if (id) {
               this.mentionHandlers.delete(id)
+              this.noteUpdateHandlers.delete(id)
               invoke('stream_unsubscribe', {
                 accountId: this.accountId,
                 subscriptionId: id,

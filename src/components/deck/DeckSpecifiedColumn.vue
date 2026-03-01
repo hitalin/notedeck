@@ -63,7 +63,7 @@ async function connect() {
       if (noteIds.has(note.id)) return
       noteIds.add(note.id)
       notes.value = [note, ...notes.value]
-    })
+    }, { onNoteUpdated: applyNoteUpdate })
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -152,8 +152,6 @@ function applyNoteUpdate(event: NoteUpdateEvent) {
     }
   }
 }
-
-void applyNoteUpdate
 
 async function handlePosted(editedNoteId?: string) {
   postForm.close()

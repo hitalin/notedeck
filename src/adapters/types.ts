@@ -386,6 +386,7 @@ export interface StreamAdapter {
   subscribeMain(handler: (event: MainChannelEvent) => void): ChannelSubscription
   subscribeMentions(
     handler: (note: NormalizedNote) => void,
+    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription
   subscribeChatUser(
     otherId: string,
