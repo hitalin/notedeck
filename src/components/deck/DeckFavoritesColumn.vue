@@ -8,6 +8,7 @@ import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import { useNoteCapture } from '@/composables/useNoteCapture'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
@@ -171,8 +172,7 @@ function applyNoteUpdate(event: NoteUpdateEvent) {
   }
 }
 
-// applyNoteUpdate is available for future streaming support
-void applyNoteUpdate
+useNoteCapture(notes, () => getAdapter()?.stream, applyNoteUpdate)
 
 async function handlePosted(editedNoteId?: string) {
   postForm.close()

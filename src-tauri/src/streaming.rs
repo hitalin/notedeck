@@ -90,6 +90,15 @@ pub struct StreamNoteUpdatedEvent {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct StreamNoteCaptureEvent {
+    pub account_id: String,
+    pub note_id: String,
+    pub update_type: String,
+    pub body: Value,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StreamStatusEvent {
     pub account_id: String,
     pub state: String,
@@ -100,6 +109,8 @@ pub struct StreamStatusEvent {
 enum WsCommand {
     Subscribe { channel: String, id: String, params: Option<Value> },
     Unsubscribe { id: String },
+    SubNote { id: String },
+    UnsubNote { id: String },
     Shutdown,
 }
 
@@ -398,6 +409,28 @@ impl StreamingManager {
         Ok(())
     }
 
+    pub async fn sub_note(&self, account_id: &str, note_id: &str) -> Result<(), NoteDeckError> {
+        let conns = self.connections.lock().await;
+        let handle = conns
+            .get(account_id)
+            .ok_or_else(|| NoteDeckError::NoConnection(account_id.to_string()))?;
+        handle
+            .cmd_tx
+            .send(WsCommand::SubNote { id: note_id.to_string() })
+            .map_err(|_| NoteDeckError::ConnectionClosed)
+    }
+
+    pub async fn unsub_note(&self, account_id: &str, note_id: &str) -> Result<(), NoteDeckError> {
+        let conns = self.connections.lock().await;
+        let handle = conns
+            .get(account_id)
+            .ok_or_else(|| NoteDeckError::NoConnection(account_id.to_string()))?;
+        handle
+            .cmd_tx
+            .send(WsCommand::UnsubNote { id: note_id.to_string() })
+            .map_err(|_| NoteDeckError::ConnectionClosed)
+    }
+
     async fn get_host(&self, account_id: &str) -> Result<String, NoteDeckError> {
         let conns = self.connections.lock().await;
         conns
@@ -622,6 +655,20 @@ async fn ws_loop(
                             eprintln!("[stream] unsubscribe send failed: {e}");
                         }
                     }
+                    Some(WsCommand::SubNote { id }) => {
+                        let msg = json!({ "type": "subNote", "body": { "id": id } });
+                        let mut w = write.lock().await;
+                        if let Err(e) = w.send(Message::Text(msg.to_string().into())).await {
+                            eprintln!("[stream] subNote send failed: {e}");
+                        }
+                    }
+                    Some(WsCommand::UnsubNote { id }) => {
+                        let msg = json!({ "type": "unsubNote", "body": { "id": id } });
+                        let mut w = write.lock().await;
+                        if let Err(e) = w.send(Message::Text(msg.to_string().into())).await {
+                            eprintln!("[stream] unsubNote send failed: {e}");
+                        }
+                    }
                     Some(WsCommand::Shutdown) | None => {
                         let mut w = write.lock().await;
                         let _ = w.close().await;
@@ -651,8 +698,34 @@ async fn handle_ws_message(
         Err(_) => return,
     };
 
+    let msg_type = msg.get("type").and_then(|v| v.as_str()).unwrap_or_default();
+
+    // Note Capture: { "type": "noteUpdated", "body": { "id": "...", "type": "...", "body": ... } }
+    if msg_type == "noteUpdated" {
+        if let Some(body) = msg.get("body") {
+            let note_id = body.get("id").and_then(|v| v.as_str()).unwrap_or_default();
+            let update_type = body.get("type").and_then(|v| v.as_str()).unwrap_or_default();
+            let update_body = body.get("body").cloned().unwrap_or(Value::Null);
+            let payload = StreamNoteCaptureEvent {
+                account_id: account_id.to_string(),
+                note_id: note_id.to_string(),
+                update_type: update_type.to_string(),
+                body: update_body,
+            };
+            let event_bus = app.try_state::<EventBus>();
+            if let Some(ref bus) = event_bus {
+                bus.send(SseEvent {
+                    event_type: "note-capture-updated".to_string(),
+                    data: serde_json::to_value(&payload).unwrap_or_default(),
+                });
+            }
+            emit_or_log!(app, "stream-note-capture-updated", payload);
+        }
+        return;
+    }
+
     // Misskey streaming: { "type": "channel", "body": { "id": "...", "type": "...", "body": ... } }
-    if msg.get("type").and_then(|v| v.as_str()) != Some("channel") {
+    if msg_type != "channel" {
         return;
     }
 
@@ -685,7 +758,9 @@ async fn handle_ws_message(
 
     let event_bus = app.try_state::<EventBus>();
 
-    if info.kind == "timeline" && event_type == "note" {
+    let is_note_channel = matches!(info.kind.as_str(), "timeline" | "antenna" | "channel");
+
+    if is_note_channel && event_type == "note" {
         if let Ok(raw) = serde_json::from_value::<RawNote>(event_body) {
             let note = raw.normalize(account_id, &info.host);
             if let Some(db) = app.try_state::<Database>() {
@@ -706,7 +781,7 @@ async fn handle_ws_message(
             }
             emit_or_log!(app, "stream-note", payload);
         }
-    } else if info.kind == "timeline" && event_type == "noteUpdated" {
+    } else if is_note_channel && event_type == "noteUpdated" {
         let note_id = event_body.get("id").and_then(|v| v.as_str()).unwrap_or_default();
         let update_type = event_body.get("type").and_then(|v| v.as_str()).unwrap_or_default();
         let update_body = event_body.get("body").cloned().unwrap_or(Value::Null);

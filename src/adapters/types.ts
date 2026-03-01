@@ -396,6 +396,8 @@ export interface StreamAdapter {
     roomId: string,
     handler: (msg: ChatMessage) => void,
   ): ChannelSubscription
+  subNote(noteId: string, handler: (event: NoteUpdateEvent) => void): void
+  unsubNote(noteId: string): void
   readonly state: StreamConnectionState
   on(
     event: 'connected' | 'disconnected' | 'reconnecting',

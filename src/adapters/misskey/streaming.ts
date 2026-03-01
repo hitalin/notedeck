@@ -51,6 +51,13 @@ interface StreamNoteUpdatedEvent {
   body: unknown
 }
 
+interface StreamNoteCaptureEvent {
+  accountId: string
+  noteId: string
+  updateType: string
+  body: unknown
+}
+
 interface StreamStatusEvent {
   accountId: string
   state: StreamConnectionState
@@ -74,6 +81,7 @@ export class MisskeyStream implements StreamAdapter {
   private mainHandlers = new Map<string, (event: MainChannelEvent) => void>()
   private mentionHandlers = new Map<string, (note: NormalizedNote) => void>()
   private chatMessageHandlers = new Map<string, (msg: ChatMessage) => void>()
+  private noteCaptureHandlers = new Map<string, (event: NoteUpdateEvent) => void>()
 
   constructor(accountId: string) {
     this.accountId = accountId
@@ -150,6 +158,22 @@ export class MisskeyStream implements StreamAdapter {
         console.error('[stream] failed to listen stream-main-event:', e),
       )
 
+    listen<StreamNoteCaptureEvent>('stream-note-capture-updated', (event) => {
+      if (event.payload.accountId !== this.accountId) return
+      this.noteCaptureHandlers.get(event.payload.noteId)?.({
+        noteId: event.payload.noteId,
+        type: event.payload.updateType as NoteUpdateEvent['type'],
+        body: event.payload.body as NoteUpdateEvent['body'],
+      })
+    })
+      .then((fn) => this.unlistenFns.push(fn))
+      .catch((e) =>
+        console.error(
+          '[stream] failed to listen stream-note-capture-updated:',
+          e,
+        ),
+      )
+
     listen<StreamChatMessageEvent>('stream-chat-message', (event) => {
       if (event.payload.accountId !== this.accountId) return
       this.chatMessageHandlers.get(event.payload.subscriptionId)?.(
@@ -181,6 +205,7 @@ export class MisskeyStream implements StreamAdapter {
     this.notifHandlers.clear()
     this.mainHandlers.clear()
     this.chatMessageHandlers.clear()
+    this.noteCaptureHandlers.clear()
     this._state = 'disconnected'
   }
 
@@ -609,6 +634,26 @@ export class MisskeyStream implements StreamAdapter {
         }
       },
     }
+  }
+
+  subNote(noteId: string, handler: (event: NoteUpdateEvent) => void): void {
+    this.noteCaptureHandlers.set(noteId, handler)
+    invoke('stream_sub_note', {
+      accountId: this.accountId,
+      noteId,
+    }).catch((e) => {
+      console.warn('[stream] subNote failed:', e)
+    })
+  }
+
+  unsubNote(noteId: string): void {
+    this.noteCaptureHandlers.delete(noteId)
+    invoke('stream_unsub_note', {
+      accountId: this.accountId,
+      noteId,
+    }).catch((e) => {
+      console.warn('[stream] unsubNote failed:', e)
+    })
   }
 
   on(

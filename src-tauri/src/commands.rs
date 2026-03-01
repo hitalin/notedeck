@@ -1112,3 +1112,21 @@ pub async fn stream_unsubscribe(
 ) -> Result<()> {
     streaming.unsubscribe(&account_id, &subscription_id).await
 }
+
+#[tauri::command]
+pub async fn stream_sub_note(
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    note_id: String,
+) -> Result<()> {
+    streaming.sub_note(&account_id, &note_id).await
+}
+
+#[tauri::command]
+pub async fn stream_unsub_note(
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    note_id: String,
+) -> Result<()> {
+    streaming.unsub_note(&account_id, &note_id).await
+}
