@@ -625,33 +625,9 @@ onUnmounted(() => {
   </Teleport>
 </template>
 
+<style src="./column-common.css" scoped></style>
+
 <style scoped>
-.tl-header-icon {
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-
-.header-account {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.header-avatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.header-favicon {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  opacity: 0.7;
-}
-
 .tl-tabs {
   display: flex;
   position: relative;
@@ -705,73 +681,6 @@ onUnmounted(() => {
 
 .tl-filter-btn.active {
   color: var(--nd-accent);
-}
-
-.tl-body {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.tl-scroller {
-  flex: 1;
-  overflow-x: clip;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
-  will-change: scroll-position;
-}
-
-.tl-scroller :deep(.vue-recycle-scroller__item-view) {
-  will-change: transform;
-}
-
-.column-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  font-size: 0.85em;
-}
-
-.column-error {
-  color: var(--nd-love);
-  opacity: 1;
-}
-
-.new-notes-banner {
-  display: block;
-  width: 100%;
-  padding: 8px 0;
-  text-align: center;
-  font-size: 0.85em;
-  font-weight: bold;
-  color: var(--nd-accent);
-  background: var(--nd-accentedBg);
-  border-bottom: 1px solid var(--nd-divider);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s;
-  animation: slide-down 0.3s ease;
-}
-
-@keyframes slide-down {
-  from { transform: translateY(-100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.new-notes-banner:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.loading-more {
-  text-align: center;
-  padding: 1rem;
-  font-size: 0.8em;
-  opacity: 0.4;
 }
 </style>
 
