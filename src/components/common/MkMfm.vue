@@ -237,7 +237,7 @@ function fnStyle(
 }
 
 .mfm-mention {
-  color: var(--nd-accent);
+  color: var(--nd-mention);
   cursor: pointer;
 }
 

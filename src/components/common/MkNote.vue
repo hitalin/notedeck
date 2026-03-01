@@ -63,6 +63,19 @@ const router = useRouter()
 const accountsStore = useAccountsStore()
 const { resolveEmoji: resolveEmojiRaw, reactionUrl: reactionUrlRaw } =
   useEmojiResolver()
+const instanceIconUrl = computed(() => {
+  const inst = effectiveNote.value.user.instance
+  if (!inst) return null
+  return inst.faviconUrl || inst.iconUrl || null
+})
+
+const instanceTickerStyle = computed(() => {
+  const color = effectiveNote.value.user.instance?.themeColor || '#777'
+  return {
+    background: `linear-gradient(90deg, ${color}, transparent)`,
+  }
+})
+
 const showReactionInput = ref(false)
 const reactionPickerPos = ref({ x: 0, y: 0 })
 const reactionPickerTheme = ref<Record<string, string>>({})
@@ -402,6 +415,24 @@ async function handleMentionClick(username: string, host: string | null) {
           </span>
         </header>
 
+        <!-- Server badge (remote users) -->
+        <div
+          v-if="effectiveNote.user.instance"
+          class="instance-ticker"
+          :style="instanceTickerStyle"
+        >
+          <img
+            v-if="instanceIconUrl"
+            :src="proxyUrl(instanceIconUrl)"
+            class="instance-icon"
+            width="14"
+            height="14"
+            loading="lazy"
+            decoding="async"
+          />
+          <span class="instance-name">{{ effectiveNote.user.instance.name || effectiveNote.user.host }}</span>
+        </div>
+
         <!-- CW -->
         <div v-if="effectiveNote.cw !== null" class="cw">
           <p class="cw-text">
@@ -737,6 +768,37 @@ async function handleMentionClick(username: string, host: string | null) {
   text-overflow: ellipsis;
   overflow: hidden;
   opacity: 0.7;
+}
+
+/* Server badge (instance ticker) */
+.instance-ticker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+  padding: 1px 8px;
+  border-radius: 3px;
+  font-size: 0.75em;
+  line-height: 1.4;
+  width: fit-content;
+  overflow: hidden;
+}
+
+.instance-icon {
+  flex-shrink: 0;
+  border-radius: 2px;
+  object-fit: contain;
+}
+
+.instance-name {
+  color: #fff;
+  font-weight: bold;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.7);
+  paint-order: stroke fill;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
 }
 
 .info {

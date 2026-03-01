@@ -166,6 +166,13 @@ export interface AvatarDecoration {
   offsetY?: number
 }
 
+export interface UserInstance {
+  name: string | null
+  faviconUrl: string | null
+  iconUrl: string | null
+  themeColor: string | null
+}
+
 export interface NormalizedUser {
   id: string
   username: string
@@ -175,6 +182,7 @@ export interface NormalizedUser {
   isBot?: boolean
   avatarDecorations?: AvatarDecoration[]
   emojis?: Record<string, string>
+  instance?: UserInstance
 }
 
 export interface NormalizedUserDetail extends NormalizedUser {
