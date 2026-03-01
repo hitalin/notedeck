@@ -188,10 +188,20 @@ pub async fn api_get_timeline(
     options: Option<TimelineOptions>,
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
+    let opts = options.unwrap_or_default();
+    let cache_key = if timeline_type.as_str() == "user-list" {
+        if let Some(ref list_id) = opts.list_id {
+            format!("user-list:{list_id}")
+        } else {
+            timeline_type.as_str().to_string()
+        }
+    } else {
+        timeline_type.as_str().to_string()
+    };
     let notes = client
-        .get_timeline(&host, &token, &account_id, timeline_type.clone(), options.unwrap_or_default())
+        .get_timeline(&host, &token, &account_id, timeline_type, opts)
         .await?;
-    if let Err(e) = db.cache_notes(&notes, timeline_type.as_str()) {
+    if let Err(e) = db.cache_notes(&notes, &cache_key) {
         eprintln!("[cache] failed to cache timeline notes: {e}");
     }
     Ok(notes)
@@ -228,7 +238,7 @@ pub async fn api_get_antenna_notes(
     until_id: Option<String>,
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
-    client
+    let notes = client
         .get_antenna_notes(
             &host,
             &token,
@@ -238,7 +248,11 @@ pub async fn api_get_antenna_notes(
             since_id.as_deref(),
             until_id.as_deref(),
         )
-        .await
+        .await?;
+    if let Err(e) = db.cache_notes(&notes, &format!("antenna:{antenna_id}")) {
+        eprintln!("[cache] failed to cache antenna notes: {e}");
+    }
+    Ok(notes)
 }
 
 #[tauri::command]
@@ -251,7 +265,7 @@ pub async fn api_get_favorites(
     until_id: Option<String>,
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
-    client
+    let notes = client
         .get_favorites(
             &host,
             &token,
@@ -260,7 +274,11 @@ pub async fn api_get_favorites(
             since_id.as_deref(),
             until_id.as_deref(),
         )
-        .await
+        .await?;
+    if let Err(e) = db.cache_notes(&notes, "favorites") {
+        eprintln!("[cache] failed to cache favorites: {e}");
+    }
+    Ok(notes)
 }
 
 #[tauri::command]
@@ -274,7 +292,7 @@ pub async fn api_get_mentions(
     visibility: Option<String>,
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
-    client
+    let notes = client
         .get_mentions(
             &host,
             &token,
@@ -284,7 +302,11 @@ pub async fn api_get_mentions(
             until_id.as_deref(),
             visibility.as_deref(),
         )
-        .await
+        .await?;
+    if let Err(e) = db.cache_notes(&notes, "mentions") {
+        eprintln!("[cache] failed to cache mentions: {e}");
+    }
+    Ok(notes)
 }
 
 #[tauri::command]
@@ -308,7 +330,7 @@ pub async fn api_get_clip_notes(
     until_id: Option<String>,
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
-    client
+    let notes = client
         .get_clip_notes(
             &host,
             &token,
@@ -318,7 +340,11 @@ pub async fn api_get_clip_notes(
             since_id.as_deref(),
             until_id.as_deref(),
         )
-        .await
+        .await?;
+    if let Err(e) = db.cache_notes(&notes, &format!("clip:{clip_id}")) {
+        eprintln!("[cache] failed to cache clip notes: {e}");
+    }
+    Ok(notes)
 }
 
 #[tauri::command]
@@ -342,7 +368,7 @@ pub async fn api_get_channel_notes(
     until_id: Option<String>,
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
-    client
+    let notes = client
         .get_channel_notes(
             &host,
             &token,
@@ -352,7 +378,11 @@ pub async fn api_get_channel_notes(
             since_id.as_deref(),
             until_id.as_deref(),
         )
-        .await
+        .await?;
+    if let Err(e) = db.cache_notes(&notes, &format!("channel:{channel_id}")) {
+        eprintln!("[cache] failed to cache channel notes: {e}");
+    }
+    Ok(notes)
 }
 
 #[tauri::command]
@@ -524,9 +554,13 @@ pub async fn api_get_user_notes(
     options: Option<TimelineOptions>,
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
-    client
+    let notes = client
         .get_user_notes(&host, &token, &account_id, &user_id, options.unwrap_or_default())
-        .await
+        .await?;
+    if let Err(e) = db.cache_notes(&notes, &format!("user:{user_id}")) {
+        eprintln!("[cache] failed to cache user notes: {e}");
+    }
+    Ok(notes)
 }
 
 #[tauri::command]

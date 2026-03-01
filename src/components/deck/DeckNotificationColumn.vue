@@ -128,15 +128,34 @@ function notificationLabel(type: string): string {
   return NOTIFICATION_LABELS[type] || type
 }
 
-async function connect() {
+function getCacheKey() {
+  return `nd-cache-notifications-${props.column.accountId}`
+}
+
+async function connect(useCache = false) {
   error.value = null
   isLoading.value = true
+
+  if (useCache && props.column.accountId) {
+    try {
+      const raw = localStorage.getItem(getCacheKey())
+      if (raw) {
+        const cached = JSON.parse(raw) as NormalizedNotification[]
+        if (cached.length > 0) notifications.value = cached
+      }
+    } catch { /* non-critical */ }
+  }
+
   try {
     const adapter = await initAdapter()
     if (!adapter) return
 
     const fetched = await adapter.api.getNotifications()
     notifications.value = fetched
+
+    try {
+      localStorage.setItem(getCacheKey(), JSON.stringify(fetched))
+    } catch { /* storage full */ }
 
     adapter.stream.connect()
     setSubscription(
@@ -171,7 +190,9 @@ async function connect() {
       }),
     )
   } catch (e) {
-    error.value = AppError.from(e)
+    if (notifications.value.length === 0) {
+      error.value = AppError.from(e)
+    }
   } finally {
     isLoading.value = false
   }
@@ -227,7 +248,7 @@ function handleScroll() {
 }
 
 onMounted(() => {
-  connect()
+  connect(true)
 })
 
 onUnmounted(() => {

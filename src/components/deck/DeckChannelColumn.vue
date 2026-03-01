@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
+import { invoke } from '@tauri-apps/api/core'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote, NoteUpdateEvent } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
@@ -90,19 +91,39 @@ function flushPending() {
   pendingNotes.value = []
 }
 
-async function connect() {
+async function connect(useCache = false) {
   error.value = null
   isLoading.value = true
+
+  const channelId = props.column.channelId
+  if (!channelId) {
+    isLoading.value = false
+    return
+  }
+
+  if (useCache && props.column.accountId) {
+    try {
+      const cached = await invoke<NormalizedNote[]>('api_get_cached_timeline', {
+        accountId: props.column.accountId,
+        timelineType: `channel:${channelId}`,
+        limit: 40,
+      })
+      if (cached.length > 0) setNotes(cached)
+    } catch { /* non-critical */ }
+  }
 
   try {
     const adapter = await initAdapter()
     if (!adapter) return
 
-    const channelId = props.column.channelId
-    if (!channelId) return
-
-    const fetched = await adapter.api.getChannelNotes(channelId)
-    if (fetched.length > 0) {
+    const sinceId = notes.value.length > 0 ? notes.value[0]?.id : undefined
+    const fetched = await adapter.api.getChannelNotes(channelId, {
+      ...(sinceId ? { sinceId } : {}),
+    })
+    if (sinceId && fetched.length > 0) {
+      const newNotes = fetched.filter((n) => !noteIds.has(n.id))
+      if (newNotes.length > 0) setNotes([...newNotes, ...notes.value])
+    } else if (fetched.length > 0) {
       setNotes(fetched)
     }
 
@@ -120,7 +141,9 @@ async function connect() {
       ),
     )
   } catch (e) {
-    error.value = AppError.from(e)
+    if (notes.value.length === 0) {
+      error.value = AppError.from(e)
+    }
   } finally {
     isLoading.value = false
   }
@@ -273,7 +296,7 @@ function handleScroll() {
 }
 
 onMounted(() => {
-  connect()
+  connect(true)
 })
 
 onUnmounted(() => {
