@@ -41,9 +41,7 @@ export function useNoteList(options: UseNoteListOptions) {
   function onNoteUpdate(event: NoteUpdateEvent) {
     if (event.type === 'deleted') {
       if (noteIds.has(event.noteId)) {
-        orderedIds.value = orderedIds.value.filter(
-          (id) => id !== event.noteId,
-        )
+        orderedIds.value = orderedIds.value.filter((id) => id !== event.noteId)
         noteIds.delete(event.noteId)
       }
       return
@@ -68,9 +66,7 @@ export function useNoteList(options: UseNoteListOptions) {
   async function removeNote(note: NormalizedNote) {
     const id = note.id
     const prevIds = orderedIds.value
-    notes.value = notes.value.filter(
-      (n) => n.id !== id && n.renoteId !== id,
-    )
+    notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
 
     if (!(await options.deleteHandler(note))) {
       orderedIds.value = prevIds

@@ -1,5 +1,9 @@
 import { onUnmounted } from 'vue'
-import type { NormalizedNote, NoteUpdateEvent, StreamAdapter } from '@/adapters/types'
+import type {
+  NormalizedNote,
+  NoteUpdateEvent,
+  StreamAdapter,
+} from '@/adapters/types'
 
 const MAX_CAPTURE = 100
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
 import { onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { invoke } from '@tauri-apps/api/core'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
@@ -36,14 +36,21 @@ const {
 } = useColumnSetup(() => props.column)
 
 const router = useRouter()
-const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } = useNoteList({
-  getMyUserId: () => account.value?.userId,
-  getAdapter,
-  deleteHandler: handlers.delete,
-  closePostForm: postForm.close,
-})
+const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } =
+  useNoteList({
+    getMyUserId: () => account.value?.userId,
+    getAdapter,
+    deleteHandler: handlers.delete,
+    closePostForm: postForm.close,
+  })
 
-const { pendingNotes, enqueueNote, handleScroll: batchHandleScroll, scrollToTop, resetBatch } = useStreamingBatch({
+const {
+  pendingNotes,
+  enqueueNote,
+  handleScroll: batchHandleScroll,
+  scrollToTop,
+  resetBatch,
+} = useStreamingBatch({
   notes,
   noteIds,
   scroller,
@@ -71,7 +78,9 @@ async function connect(useCache = false) {
         limit: 40,
       })
       if (cached.length > 0) setNotes(cached)
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
   }
 
   try {
@@ -92,11 +101,10 @@ async function connect(useCache = false) {
 
     adapter.stream.connect()
     setSubscription(
-      adapter.stream.subscribeTimeline(
-        'user-list',
-        enqueueNote,
-        { onNoteUpdated: onNoteUpdate, listId },
-      ),
+      adapter.stream.subscribeTimeline('user-list', enqueueNote, {
+        onNoteUpdated: onNoteUpdate,
+        listId,
+      }),
     )
   } catch (e) {
     if (notes.value.length === 0) {
@@ -154,17 +162,24 @@ async function onResume() {
         setNotes([...newFromCache, ...notes.value])
       }
     }
-  } catch { /* non-critical */ }
+  } catch {
+    /* non-critical */
+  }
 
   const sinceId = notes.value[0]?.id
   if (!sinceId) return
   try {
-    const fetched = await adapter.api.getTimeline('user-list', { sinceId, listId })
+    const fetched = await adapter.api.getTimeline('user-list', {
+      sinceId,
+      listId,
+    })
     const newFromApi = fetched.filter((n) => !noteIds.has(n.id))
     if (newFromApi.length > 0) {
       setNotes([...newFromApi, ...notes.value])
     }
-  } catch { /* non-critical */ }
+  } catch {
+    /* non-critical */
+  }
 }
 
 onMounted(() => {

@@ -143,7 +143,9 @@ async function connect(useCache = false) {
         const cached = JSON.parse(raw) as NormalizedNotification[]
         if (cached.length > 0) notifications.value = cached
       }
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
   }
 
   try {
@@ -155,7 +157,9 @@ async function connect(useCache = false) {
 
     try {
       localStorage.setItem(getCacheKey(), JSON.stringify(fetched))
-    } catch { /* storage full */ }
+    } catch {
+      /* storage full */
+    }
 
     adapter.stream.connect()
     setSubscription(

@@ -81,7 +81,10 @@ export class MisskeyStream implements StreamAdapter {
   private mainHandlers = new Map<string, (event: MainChannelEvent) => void>()
   private mentionHandlers = new Map<string, (note: NormalizedNote) => void>()
   private chatMessageHandlers = new Map<string, (msg: ChatMessage) => void>()
-  private noteCaptureHandlers = new Map<string, (event: NoteUpdateEvent) => void>()
+  private noteCaptureHandlers = new Map<
+    string,
+    (event: NoteUpdateEvent) => void
+  >()
 
   constructor(accountId: string) {
     this.accountId = accountId

@@ -1,8 +1,4 @@
-import {
-  createHighlighterCoreSync,
-  createJavaScriptRegexEngine,
-} from 'shiki'
-import darkPlus from 'shiki/dist/themes/dark-plus.mjs'
+import { createHighlighterCoreSync, createJavaScriptRegexEngine } from 'shiki'
 import bash from 'shiki/dist/langs/bash.mjs'
 import c from 'shiki/dist/langs/c.mjs'
 import cpp from 'shiki/dist/langs/cpp.mjs'
@@ -20,6 +16,7 @@ import rust from 'shiki/dist/langs/rust.mjs'
 import sql from 'shiki/dist/langs/sql.mjs'
 import typescript from 'shiki/dist/langs/typescript.mjs'
 import yaml from 'shiki/dist/langs/yaml.mjs'
+import darkPlus from 'shiki/dist/themes/dark-plus.mjs'
 
 const highlighter = createHighlighterCoreSync({
   themes: [darkPlus],
@@ -46,10 +43,7 @@ const highlighter = createHighlighterCoreSync({
 })
 
 function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 export function highlightCode(code: string, lang: string | null): string {

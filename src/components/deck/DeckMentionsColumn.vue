@@ -1,12 +1,9 @@
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { invoke } from '@tauri-apps/api/core'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import type {
-  ChannelSubscription,
-  NormalizedNote,
-} from '@/adapters/types'
+import type { ChannelSubscription, NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
@@ -37,7 +34,15 @@ const {
 } = useColumnSetup(() => props.column)
 
 const router = useRouter()
-const { notes, noteIds, setNotes, setOnNotesChanged, onNoteUpdate, handlePosted, removeNote } = useNoteList({
+const {
+  notes,
+  noteIds,
+  setNotes,
+  setOnNotesChanged,
+  onNoteUpdate,
+  handlePosted,
+  removeNote,
+} = useNoteList({
   getMyUserId: () => account.value?.userId,
   getAdapter,
   deleteHandler: handlers.delete,
@@ -50,7 +55,10 @@ const { focusedNoteId } = useNoteFocus(
   handlers,
   (note) => router.push(`/note/${note._accountId}/${note.id}`),
 )
-const { sync: syncCapture } = useNoteCapture(() => getAdapter()?.stream, onNoteUpdate)
+const { sync: syncCapture } = useNoteCapture(
+  () => getAdapter()?.stream,
+  onNoteUpdate,
+)
 setOnNotesChanged(syncCapture)
 let mentionSub: ChannelSubscription | null = null
 
@@ -66,7 +74,9 @@ async function connect(useCache = false) {
         limit: 40,
       })
       if (cached.length > 0) setNotes(cached)
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
   }
 
   try {
@@ -84,12 +94,15 @@ async function connect(useCache = false) {
       setNotes(fetched)
     }
 
-    mentionSub = adapter.stream.subscribeMentions((note) => {
-      if (noteIds.has(note.id)) return
-      noteIds.add(note.id)
-      notes.value = [note, ...notes.value]
-      syncCapture(notes.value)
-    }, { onNoteUpdated: onNoteUpdate })
+    mentionSub = adapter.stream.subscribeMentions(
+      (note) => {
+        if (noteIds.has(note.id)) return
+        noteIds.add(note.id)
+        notes.value = [note, ...notes.value]
+        syncCapture(notes.value)
+      },
+      { onNoteUpdated: onNoteUpdate },
+    )
   } catch (e) {
     if (notes.value.length === 0) {
       error.value = AppError.from(e)
@@ -148,7 +161,9 @@ async function onResume() {
         setNotes([...newFromCache, ...notes.value])
       }
     }
-  } catch { /* non-critical */ }
+  } catch {
+    /* non-critical */
+  }
 
   const sinceId = notes.value[0]?.id
   if (!sinceId) return
@@ -158,7 +173,9 @@ async function onResume() {
     if (newFromApi.length > 0) {
       setNotes([...newFromApi, ...notes.value])
     }
-  } catch { /* non-critical */ }
+  } catch {
+    /* non-critical */
+  }
 }
 
 onMounted(() => {

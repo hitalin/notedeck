@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { invoke } from '@tauri-apps/api/core'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
@@ -34,7 +34,15 @@ const {
 } = useColumnSetup(() => props.column)
 
 const router = useRouter()
-const { notes, noteIds, setNotes, setOnNotesChanged, onNoteUpdate, handlePosted, removeNote } = useNoteList({
+const {
+  notes,
+  noteIds,
+  setNotes,
+  setOnNotesChanged,
+  onNoteUpdate,
+  handlePosted,
+  removeNote,
+} = useNoteList({
   getMyUserId: () => account.value?.userId,
   getAdapter,
   deleteHandler: handlers.delete,
@@ -47,7 +55,10 @@ const { focusedNoteId } = useNoteFocus(
   handlers,
   (note) => router.push(`/note/${note._accountId}/${note.id}`),
 )
-const { sync: syncCapture } = useNoteCapture(() => getAdapter()?.stream, onNoteUpdate)
+const { sync: syncCapture } = useNoteCapture(
+  () => getAdapter()?.stream,
+  onNoteUpdate,
+)
 setOnNotesChanged(syncCapture)
 
 async function connect(useCache = false) {
@@ -68,7 +79,9 @@ async function connect(useCache = false) {
         limit: 40,
       })
       if (cached.length > 0) setNotes(cached)
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
   }
 
   try {
@@ -160,7 +173,9 @@ async function onResume() {
     if (newFromApi.length > 0) {
       setNotes([...newFromApi, ...notes.value])
     }
-  } catch { /* non-critical */ }
+  } catch {
+    /* non-critical */
+  }
 }
 
 onMounted(() => {

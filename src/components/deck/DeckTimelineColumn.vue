@@ -1,13 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import {
-  computed,
-  nextTick,
-  onMounted,
-  onUnmounted,
-  ref,
-  watch,
-} from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type {
@@ -60,14 +53,21 @@ const {
 } = useColumnSetup(() => props.column)
 
 const router = useRouter()
-const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } = useNoteList({
-  getMyUserId: () => account.value?.userId,
-  getAdapter,
-  deleteHandler: handlers.delete,
-  closePostForm: postForm.close,
-})
+const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } =
+  useNoteList({
+    getMyUserId: () => account.value?.userId,
+    getAdapter,
+    deleteHandler: handlers.delete,
+    closePostForm: postForm.close,
+  })
 
-const { pendingNotes, enqueueNote, handleScroll: batchHandleScroll, scrollToTop, resetBatch } = useStreamingBatch({
+const {
+  pendingNotes,
+  enqueueNote,
+  handleScroll: batchHandleScroll,
+  scrollToTop,
+  resetBatch,
+} = useStreamingBatch({
   notes,
   noteIds,
   scroller,
@@ -413,7 +413,9 @@ async function onResume() {
         setNotes([...newFromCache, ...notes.value])
       }
     }
-  } catch { /* non-critical */ }
+  } catch {
+    /* non-critical */
+  }
 
   const sinceId = notes.value[0]?.id
   if (!sinceId) return
@@ -428,7 +430,9 @@ async function onResume() {
     if (newFromApi.length > 0) {
       setNotes([...newFromApi, ...notes.value])
     }
-  } catch { /* non-critical */ }
+  } catch {
+    /* non-critical */
+  }
 }
 
 onMounted(async () => {

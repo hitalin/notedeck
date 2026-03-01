@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import type {
-  ChannelSubscription,
-  NormalizedNote,
-} from '@/adapters/types'
+import type { ChannelSubscription, NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
@@ -33,13 +30,24 @@ const {
   onScroll,
 } = useColumnSetup(() => props.column)
 
-const { notes, noteIds, setNotes, setOnNotesChanged, onNoteUpdate, handlePosted, removeNote } = useNoteList({
+const {
+  notes,
+  noteIds,
+  setNotes,
+  setOnNotesChanged,
+  onNoteUpdate,
+  handlePosted,
+  removeNote,
+} = useNoteList({
   getMyUserId: () => account.value?.userId,
   getAdapter,
   deleteHandler: handlers.delete,
   closePostForm: postForm.close,
 })
-const { sync: syncCapture } = useNoteCapture(() => getAdapter()?.stream, onNoteUpdate)
+const { sync: syncCapture } = useNoteCapture(
+  () => getAdapter()?.stream,
+  onNoteUpdate,
+)
 setOnNotesChanged(syncCapture)
 let mentionSub: ChannelSubscription | null = null
 
@@ -56,13 +64,16 @@ async function connect() {
       setNotes(fetched)
     }
 
-    mentionSub = adapter.stream.subscribeMentions((note) => {
-      if (note.visibility !== 'specified') return
-      if (noteIds.has(note.id)) return
-      noteIds.add(note.id)
-      notes.value = [note, ...notes.value]
-      syncCapture(notes.value)
-    }, { onNoteUpdated: onNoteUpdate })
+    mentionSub = adapter.stream.subscribeMentions(
+      (note) => {
+        if (note.visibility !== 'specified') return
+        if (noteIds.has(note.id)) return
+        noteIds.add(note.id)
+        notes.value = [note, ...notes.value]
+        syncCapture(notes.value)
+      },
+      { onNoteUpdated: onNoteUpdate },
+    )
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -111,12 +122,17 @@ async function onResume() {
   const sinceId = notes.value[0]?.id
   if (!sinceId) return
   try {
-    const fetched = await adapter.api.getMentions({ sinceId, visibility: 'specified' })
+    const fetched = await adapter.api.getMentions({
+      sinceId,
+      visibility: 'specified',
+    })
     const newFromApi = fetched.filter((n) => !noteIds.has(n.id))
     if (newFromApi.length > 0) {
       setNotes([...newFromApi, ...notes.value])
     }
-  } catch { /* non-critical */ }
+  } catch {
+    /* non-critical */
+  }
 }
 
 onMounted(() => {

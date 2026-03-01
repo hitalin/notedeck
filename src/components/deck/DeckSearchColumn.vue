@@ -36,7 +36,9 @@ const {
 
 const router = useRouter()
 const notes = shallowRef<NormalizedNote[]>([])
-setOnNotesMutated(() => { notes.value = [...notes.value] })
+setOnNotesMutated(() => {
+  notes.value = [...notes.value]
+})
 const { focusedNoteId } = useNoteFocus(
   props.column.id,
   notes,
