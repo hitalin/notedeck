@@ -6,14 +6,12 @@ import {
   onMounted,
   onUnmounted,
   ref,
-  shallowRef,
   watch,
 } from 'vue'
 import { useRouter } from 'vue-router'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type {
   NormalizedNote,
-  NoteUpdateEvent,
   TimelineFilter,
   TimelineType,
 } from '@/adapters/types'
@@ -22,6 +20,8 @@ import MkPostForm from '@/components/common/MkPostForm.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useNoteFocus } from '@/composables/useNoteFocus'
+import { useNoteList } from '@/composables/useNoteList'
+import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -57,17 +57,23 @@ const {
   handlers,
   scroller,
   onScroll,
-} = useColumnSetup(
-  () => props.column,
-  () => { notes.value = [...notes.value] },
-)
+  setOnNotesMutated,
+} = useColumnSetup(() => props.column)
 
 const router = useRouter()
+const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } = useNoteList({
+  getMyUserId: () => account.value?.userId,
+  getAdapter,
+  deleteHandler: handlers.delete,
+  closePostForm: postForm.close,
+})
+setOnNotesMutated(() => { notes.value = [...notes.value] })
 
-const MAX_NOTES = 500
-const notes = shallowRef<NormalizedNote[]>([])
-const pendingNotes = shallowRef<NormalizedNote[]>([])
-const isAtTop = ref(true)
+const { pendingNotes, enqueueNote, handleScroll: batchHandleScroll, scrollToTop, resetBatch } = useStreamingBatch({
+  notes,
+  noteIds,
+  scroller,
+})
 
 const { focusedNoteId } = useNoteFocus(
   props.column.id,
@@ -77,26 +83,6 @@ const { focusedNoteId } = useNoteFocus(
   (note) => router.push(`/note/${note._accountId}/${note.id}`),
 )
 
-// rAF batching for streaming notes
-let rafBuffer: NormalizedNote[] = []
-let rafId: number | null = null
-
-function flushRafBuffer() {
-  rafId = null
-  if (rafBuffer.length === 0) return
-  const batch = rafBuffer
-  rafBuffer = []
-  if (isAtTop.value) {
-    for (const n of batch) noteIds.add(n.id)
-    const merged = [...batch, ...notes.value]
-    notes.value =
-      merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
-  } else {
-    const merged = [...batch, ...pendingNotes.value]
-    pendingNotes.value =
-      merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
-  }
-}
 const tlType = ref<TimelineType>(props.column.tl || 'home')
 
 // Tab slide indicator
@@ -260,13 +246,8 @@ function isFilterActive(key: keyof TimelineFilter): boolean {
 
 async function reconnectWithFilter() {
   disconnect()
-  if (rafId !== null) {
-    cancelAnimationFrame(rafId)
-    rafId = null
-  }
-  rafBuffer = []
+  resetBatch()
   setNotes([])
-  pendingNotes.value = []
   await connect()
 }
 
@@ -319,12 +300,9 @@ async function connect(useCache = false) {
         tlType.value,
         (note: NormalizedNote) => {
           if (!matchesFilter(note, columnFilters.value, tlType.value)) return
-          rafBuffer.push(note)
-          if (rafId === null) {
-            rafId = requestAnimationFrame(flushRafBuffer)
-          }
+          enqueueNote(note)
         },
-        { onNoteUpdated: applyNoteUpdate },
+        { onNoteUpdated: onNoteUpdate },
       ),
     )
   } catch (e) {
@@ -366,159 +344,11 @@ async function refreshPolicies() {
   tlModes.value = availability.modes
 }
 
-// Maintain ID set alongside notes array for O(1) dedup without allocation per flush
-const noteIds = new Set<string>()
-
-function setNotes(newNotes: NormalizedNote[]) {
-  notes.value = newNotes
-  noteIds.clear()
-  for (const n of newNotes) noteIds.add(n.id)
-}
-
-function flushPending() {
-  if (pendingNotes.value.length === 0) return
-  const newNotes = pendingNotes.value.filter((n) => !noteIds.has(n.id))
-  if (newNotes.length === 0) {
-    pendingNotes.value = []
-    return
-  }
-  for (const n of newNotes) noteIds.add(n.id)
-  const merged = [...newNotes, ...notes.value]
-  notes.value = merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
-  pendingNotes.value = []
-}
-
-async function removeNote(note: NormalizedNote) {
-  const id = note.id
-  const prevNotes = notes.value
-  notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
-  noteIds.delete(id)
-
-  if (!(await handlers.delete(note))) {
-    notes.value = prevNotes
-    noteIds.add(id)
-  }
-}
-
-function applyNoteUpdate(event: NoteUpdateEvent) {
-  switch (event.type) {
-    case 'reacted': {
-      const reaction = event.body.reaction
-      if (!reaction) break
-      if (event.body.userId === account.value?.userId) break
-      notes.value = notes.value.map((n) => {
-        const target =
-          n.id === event.noteId
-            ? n
-            : n.renoteId === event.noteId
-              ? n.renote
-              : null
-        if (!target) return n
-        const newReactions = {
-          ...target.reactions,
-          [reaction]: (target.reactions[reaction] ?? 0) + 1,
-        }
-        const newEmojis = event.body.emoji
-          ? { ...target.reactionEmojis, [reaction]: event.body.emoji }
-          : target.reactionEmojis
-        const updated = {
-          ...target,
-          reactions: newReactions,
-          reactionEmojis: newEmojis,
-        }
-        return n.id === event.noteId ? updated : { ...n, renote: updated }
-      })
-      break
-    }
-    case 'unreacted': {
-      const reaction = event.body.reaction
-      if (!reaction) break
-      if (event.body.userId === account.value?.userId) break
-      notes.value = notes.value.map((n) => {
-        const target =
-          n.id === event.noteId
-            ? n
-            : n.renoteId === event.noteId
-              ? n.renote
-              : null
-        if (!target) return n
-        const newReactions = { ...target.reactions }
-        const count = (newReactions[reaction] ?? 0) - 1
-        if (count <= 0) delete newReactions[reaction]
-        else newReactions[reaction] = count
-        const updated = { ...target, reactions: newReactions }
-        return n.id === event.noteId ? updated : { ...n, renote: updated }
-      })
-      break
-    }
-    case 'deleted':
-      notes.value = notes.value.filter(
-        (n) => n.id !== event.noteId && n.renoteId !== event.noteId,
-      )
-      noteIds.delete(event.noteId)
-      break
-    case 'pollVoted': {
-      const choice = event.body.choice
-      if (choice == null) break
-      notes.value = notes.value.map((n) => {
-        const target =
-          n.id === event.noteId
-            ? n
-            : n.renoteId === event.noteId
-              ? n.renote
-              : null
-        if (!target?.poll) return n
-        const newChoices = target.poll.choices.map((c, i) =>
-          i === choice ? { ...c, votes: c.votes + 1 } : c,
-        )
-        const updated = {
-          ...target,
-          poll: { ...target.poll, choices: newChoices },
-        }
-        return n.id === event.noteId ? updated : { ...n, renote: updated }
-      })
-      break
-    }
-  }
-}
-
-async function handlePosted(editedNoteId?: string) {
-  postForm.close()
-  if (editedNoteId) {
-    const adapter = getAdapter()
-    if (!adapter) return
-    try {
-      const updated = await adapter.api.getNote(editedNoteId)
-      notes.value = notes.value.map((n) =>
-        n.id === editedNoteId
-          ? updated
-          : n.renoteId === editedNoteId
-            ? { ...n, renote: updated }
-            : n,
-      )
-    } catch {
-      // note may have been deleted
-    }
-  }
-}
-
-function scrollToTop(smooth = false) {
-  const el = scroller.value?.$el as HTMLElement | undefined
-  if (el) el.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'instant' })
-  isAtTop.value = true
-  flushPending()
-}
-
 async function switchTl(type: TimelineType) {
   if (type === tlType.value) return
   disconnect()
-  if (rafId !== null) {
-    cancelAnimationFrame(rafId)
-    rafId = null
-  }
-  rafBuffer = []
+  resetBatch()
   setNotes([])
-  pendingNotes.value = []
   tlType.value = type
   deckStore.updateColumn(props.column.id, { tl: type })
   refreshFilterKeys()
@@ -547,13 +377,7 @@ async function loadMore() {
 }
 
 function handleScroll() {
-  const el = scroller.value?.$el as HTMLElement | undefined
-  if (el) {
-    isAtTop.value = el.scrollTop <= 10
-    if (isAtTop.value && pendingNotes.value.length > 0) {
-      flushPending()
-    }
-  }
+  batchHandleScroll()
   onScroll(loadMore)
 }
 
@@ -643,10 +467,7 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('deck-resume', onResume)
   disconnect()
-  if (rafId !== null) {
-    cancelAnimationFrame(rafId)
-    rafId = null
-  }
+  resetBatch()
 })
 </script>
 

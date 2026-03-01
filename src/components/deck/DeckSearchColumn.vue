@@ -31,13 +31,12 @@ const {
   handlers,
   scroller,
   onScroll,
-} = useColumnSetup(
-  () => props.column,
-  () => { notes.value = [...notes.value] },
-)
+  setOnNotesMutated,
+} = useColumnSetup(() => props.column)
 
 const router = useRouter()
 const notes = shallowRef<NormalizedNote[]>([])
+setOnNotesMutated(() => { notes.value = [...notes.value] })
 const { focusedNoteId } = useNoteFocus(
   props.column.id,
   notes,

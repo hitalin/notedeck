@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type {
   ChannelSubscription,
   NormalizedNote,
-  NoteUpdateEvent,
 } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useNoteCapture } from '@/composables/useNoteCapture'
+import { useNoteList } from '@/composables/useNoteList'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
@@ -31,22 +31,19 @@ const {
   handlers,
   scroller,
   onScroll,
-} = useColumnSetup(
-  () => props.column,
-  () => { notes.value = [...notes.value] },
-)
+  setOnNotesMutated,
+} = useColumnSetup(() => props.column)
 
-const notes = shallowRef<NormalizedNote[]>([])
-const noteIds = new Set<string>()
-const { sync: syncCapture } = useNoteCapture(() => getAdapter()?.stream, applyNoteUpdate)
+const { notes, noteIds, setNotes, setOnNotesChanged, onNoteUpdate, handlePosted, removeNote } = useNoteList({
+  getMyUserId: () => account.value?.userId,
+  getAdapter,
+  deleteHandler: handlers.delete,
+  closePostForm: postForm.close,
+})
+setOnNotesMutated(() => { notes.value = [...notes.value] })
+const { sync: syncCapture } = useNoteCapture(() => getAdapter()?.stream, onNoteUpdate)
+setOnNotesChanged(syncCapture)
 let mentionSub: ChannelSubscription | null = null
-
-function setNotes(newNotes: NormalizedNote[]) {
-  notes.value = newNotes
-  noteIds.clear()
-  for (const n of newNotes) noteIds.add(n.id)
-  syncCapture(newNotes)
-}
 
 async function connect() {
   error.value = null
@@ -67,125 +64,11 @@ async function connect() {
       noteIds.add(note.id)
       notes.value = [note, ...notes.value]
       syncCapture(notes.value)
-    }, { onNoteUpdated: applyNoteUpdate })
+    }, { onNoteUpdated: onNoteUpdate })
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
     isLoading.value = false
-  }
-}
-
-function applyNoteUpdate(event: NoteUpdateEvent) {
-  switch (event.type) {
-    case 'reacted': {
-      const reaction = event.body.reaction
-      if (!reaction) break
-      if (event.body.userId === account.value?.userId) break
-      notes.value = notes.value.map((n) => {
-        const target =
-          n.id === event.noteId
-            ? n
-            : n.renoteId === event.noteId
-              ? n.renote
-              : null
-        if (!target) return n
-        const newReactions = {
-          ...target.reactions,
-          [reaction]: (target.reactions[reaction] ?? 0) + 1,
-        }
-        const newEmojis = event.body.emoji
-          ? { ...target.reactionEmojis, [reaction]: event.body.emoji }
-          : target.reactionEmojis
-        const updated = {
-          ...target,
-          reactions: newReactions,
-          reactionEmojis: newEmojis,
-        }
-        return n.id === event.noteId ? updated : { ...n, renote: updated }
-      })
-      break
-    }
-    case 'unreacted': {
-      const reaction = event.body.reaction
-      if (!reaction) break
-      if (event.body.userId === account.value?.userId) break
-      notes.value = notes.value.map((n) => {
-        const target =
-          n.id === event.noteId
-            ? n
-            : n.renoteId === event.noteId
-              ? n.renote
-              : null
-        if (!target) return n
-        const newReactions = { ...target.reactions }
-        const count = (newReactions[reaction] ?? 0) - 1
-        if (count <= 0) delete newReactions[reaction]
-        else newReactions[reaction] = count
-        const updated = { ...target, reactions: newReactions }
-        return n.id === event.noteId ? updated : { ...n, renote: updated }
-      })
-      break
-    }
-    case 'deleted':
-      notes.value = notes.value.filter(
-        (n) => n.id !== event.noteId && n.renoteId !== event.noteId,
-      )
-      noteIds.delete(event.noteId)
-      break
-    case 'pollVoted': {
-      const choice = event.body.choice
-      if (choice == null) break
-      notes.value = notes.value.map((n) => {
-        const target =
-          n.id === event.noteId
-            ? n
-            : n.renoteId === event.noteId
-              ? n.renote
-              : null
-        if (!target?.poll) return n
-        const newChoices = target.poll.choices.map((c, i) =>
-          i === choice ? { ...c, votes: c.votes + 1 } : c,
-        )
-        const updated = {
-          ...target,
-          poll: { ...target.poll, choices: newChoices },
-        }
-        return n.id === event.noteId ? updated : { ...n, renote: updated }
-      })
-      break
-    }
-  }
-}
-
-async function handlePosted(editedNoteId?: string) {
-  postForm.close()
-  if (editedNoteId) {
-    const adapter = getAdapter()
-    if (!adapter) return
-    try {
-      const updated = await adapter.api.getNote(editedNoteId)
-      notes.value = notes.value.map((n) =>
-        n.id === editedNoteId
-          ? updated
-          : n.renoteId === editedNoteId
-            ? { ...n, renote: updated }
-            : n,
-      )
-    } catch {
-      // note may have been deleted
-    }
-  }
-}
-
-async function removeNote(note: NormalizedNote) {
-  const id = note.id
-  const prevNotes = notes.value
-  notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
-  noteIds.delete(id)
-
-  if (!(await handlers.delete(note))) {
-    notes.value = prevNotes
-    noteIds.add(id)
   }
 }
 

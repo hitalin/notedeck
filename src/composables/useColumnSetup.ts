@@ -15,10 +15,12 @@ import { AppError } from '@/utils/errors'
 import { toggleFavorite } from '@/utils/toggleFavorite'
 import { toggleReaction } from '@/utils/toggleReaction'
 
-export function useColumnSetup(
-  getColumn: () => DeckColumn,
-  onNotesMutated?: () => void,
-) {
+export function useColumnSetup(getColumn: () => DeckColumn) {
+  let onNotesMutated: (() => void) | undefined
+
+  function setOnNotesMutated(fn: () => void) {
+    onNotesMutated = fn
+  }
   const accountsStore = useAccountsStore()
   const emojisStore = useEmojisStore()
   const serversStore = useServersStore()
@@ -177,6 +179,7 @@ export function useColumnSetup(
     setSubscription,
     disposeSubscription,
     disconnect,
+    setOnNotesMutated,
     // Post form
     postForm: {
       show: showPostForm,
