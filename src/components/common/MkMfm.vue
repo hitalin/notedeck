@@ -3,6 +3,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed } from 'vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { proxyUrl } from '@/composables/useImageProxy'
+import { highlightCode } from '@/utils/highlight'
 import { type MfmToken, parseMfm } from '@/utils/mfm'
 import { isSafeUrl } from '@/utils/url'
 
@@ -205,6 +206,7 @@ function fnStyle(
     --><!-- Bold --><b v-else-if="token.type === 'bold'">{{ token.value }}</b><!--
     --><!-- Italic --><i v-else-if="token.type === 'italic'">{{ token.value }}</i><!--
     --><!-- Strike --><s v-else-if="token.type === 'strike'">{{ token.value }}</s><!--
+    --><!-- Code Block --><div v-else-if="token.type === 'codeBlock'" class="mfm-code-block" v-html="highlightCode(token.value, token.lang)"></div><!--
     --><!-- Inline Code --><code v-else-if="token.type === 'inlineCode'" class="mfm-code">{{ token.value }}</code><!--
     --><!-- Custom Emoji (resolved) --><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="proxyUrl(emojiUrls[token.shortcode]!)" :alt="`:${token.shortcode}:`" class="custom-emoji" width="32" height="32" decoding="async" loading="lazy" /><!--
     --><!-- Custom Emoji (unresolved) --><span v-else-if="token.type === 'customEmoji'">:{{ token.shortcode }}:</span><!--
@@ -259,6 +261,25 @@ function fnStyle(
   border-radius: 4px;
   background: var(--nd-inlineCodeBg, rgba(0, 0, 0, 0.15));
   color: var(--nd-inlineCodeFg, var(--nd-fg));
+}
+
+.mfm-code-block {
+  margin: 8px 0;
+}
+
+.mfm-code-block :deep(pre) {
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.85em;
+  padding: 12px 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  white-space: pre;
+  word-break: normal;
+  margin: 0;
+}
+
+.mfm-code-block :deep(pre code) {
+  font-family: inherit;
 }
 
 .custom-emoji {

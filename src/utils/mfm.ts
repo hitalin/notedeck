@@ -20,6 +20,7 @@ export type MfmToken =
     }
   | { type: 'small'; children: MfmToken[] }
   | { type: 'center'; children: MfmToken[] }
+  | { type: 'codeBlock'; lang: string | null; value: string }
   | { type: 'plain'; value: string }
 
 const emojiRegex =
@@ -85,6 +86,29 @@ const inlinePatterns: PatternDef[] = [
     }),
   },
 ]
+
+function parseCodeBlock(
+  text: string,
+  pos: number,
+): { end: number; token: MfmToken } | null {
+  if (!text.startsWith('```', pos)) return null
+  // Must be at start of text or preceded by newline
+  if (pos > 0 && text[pos - 1] !== '\n') return null
+  let i = pos + 3
+  // Optional language identifier (until newline)
+  const nlIdx = text.indexOf('\n', i)
+  if (nlIdx < 0) return null
+  const lang = text.slice(i, nlIdx).trim() || null
+  i = nlIdx + 1
+  // Find closing ```
+  const closeIdx = text.indexOf('\n```', i)
+  if (closeIdx < 0) return null
+  const value = text.slice(i, closeIdx)
+  return {
+    end: closeIdx + 4,
+    token: { type: 'codeBlock', lang, value },
+  }
+}
 
 function parseFnBlock(
   text: string,
@@ -200,6 +224,7 @@ function parseTokens(text: string): MfmToken[] {
 
     // Block-level patterns
     const blockCandidates = [
+      findFirstBlock(remaining, '```', parseCodeBlock),
       findFirstBlock(remaining, '$[', parseFnBlock),
       findFirstBlock(remaining, '<small>', parseTagBlock),
       findFirstBlock(remaining, '<center>', parseTagBlock),
