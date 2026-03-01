@@ -38,12 +38,14 @@ const {
 
 const notes = shallowRef<NormalizedNote[]>([])
 const noteIds = new Set<string>()
+const { sync: syncCapture } = useNoteCapture(() => getAdapter()?.stream, applyNoteUpdate)
 let mentionSub: ChannelSubscription | null = null
 
 function setNotes(newNotes: NormalizedNote[]) {
   notes.value = newNotes
   noteIds.clear()
   for (const n of newNotes) noteIds.add(n.id)
+  syncCapture(newNotes)
 }
 
 async function connect() {
@@ -64,6 +66,7 @@ async function connect() {
       if (noteIds.has(note.id)) return
       noteIds.add(note.id)
       notes.value = [note, ...notes.value]
+      syncCapture(notes.value)
     }, { onNoteUpdated: applyNoteUpdate })
   } catch (e) {
     error.value = AppError.from(e)
@@ -153,8 +156,6 @@ function applyNoteUpdate(event: NoteUpdateEvent) {
     }
   }
 }
-
-useNoteCapture(notes, () => getAdapter()?.stream, applyNoteUpdate)
 
 async function handlePosted(editedNoteId?: string) {
   postForm.close()

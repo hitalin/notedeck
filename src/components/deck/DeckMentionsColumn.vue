@@ -49,12 +49,14 @@ const { focusedNoteId } = useNoteFocus(
   (note) => router.push(`/note/${note._accountId}/${note.id}`),
 )
 const noteIds = new Set<string>()
+const { sync: syncCapture } = useNoteCapture(() => getAdapter()?.stream, applyNoteUpdate)
 let mentionSub: ChannelSubscription | null = null
 
 function setNotes(newNotes: NormalizedNote[]) {
   notes.value = newNotes
   noteIds.clear()
   for (const n of newNotes) noteIds.add(n.id)
+  syncCapture(newNotes)
 }
 
 async function connect(useCache = false) {
@@ -91,6 +93,7 @@ async function connect(useCache = false) {
       if (noteIds.has(note.id)) return
       noteIds.add(note.id)
       notes.value = [note, ...notes.value]
+      syncCapture(notes.value)
     }, { onNoteUpdated: applyNoteUpdate })
   } catch (e) {
     if (notes.value.length === 0) {
@@ -182,8 +185,6 @@ function applyNoteUpdate(event: NoteUpdateEvent) {
     }
   }
 }
-
-useNoteCapture(notes, () => getAdapter()?.stream, applyNoteUpdate)
 
 async function handlePosted(editedNoteId?: string) {
   postForm.close()

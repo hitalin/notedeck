@@ -1,4 +1,4 @@
-import { onUnmounted, watch, type Ref } from 'vue'
+import { onUnmounted } from 'vue'
 import type { NormalizedNote, NoteUpdateEvent, StreamAdapter } from '@/adapters/types'
 
 const MAX_CAPTURE = 100
@@ -10,31 +10,27 @@ const MAX_CAPTURE = 100
  * Only use this for columns WITHOUT channel auto-capture (Mentions, Specified,
  * Favorites, Clip, User). Streaming columns (Timeline, Antenna, Channel, List)
  * already receive noteUpdated via channel auto-capture.
+ *
+ * Call `sync(notes)` explicitly when notes are added/removed (connect, loadMore,
+ * onResume, streaming). Do NOT call on reaction/poll updates — those don't change
+ * the set of captured note IDs.
  */
 export function useNoteCapture(
-  notes: Ref<NormalizedNote[]>,
   getStream: () => StreamAdapter | undefined,
   onUpdate: (event: NoteUpdateEvent) => void,
 ) {
   const capturedIds = new Set<string>()
-  let prevIdKey = ''
 
-  function syncCapture() {
+  function sync(notes: NormalizedNote[]) {
     const stream = getStream()
     if (!stream) return
 
-    // Collect current IDs (capped to most recent MAX_CAPTURE notes)
-    const capped = notes.value.slice(0, MAX_CAPTURE)
+    const capped = notes.slice(0, MAX_CAPTURE)
     const currentIds = new Set<string>()
     for (const note of capped) {
       currentIds.add(note.id)
       if (note.renoteId) currentIds.add(note.renoteId)
     }
-
-    // Skip if IDs haven't changed (e.g. reaction update only mutated values)
-    const idKey = [...currentIds].join(',')
-    if (idKey === prevIdKey) return
-    prevIdKey = idKey
 
     // Subscribe new notes
     for (const id of currentIds) {
@@ -44,7 +40,7 @@ export function useNoteCapture(
       }
     }
 
-    // Unsubscribe removed notes
+    // Unsubscribe removed notes (scrolled past MAX_CAPTURE or deleted)
     for (const id of capturedIds) {
       if (!currentIds.has(id)) {
         capturedIds.delete(id)
@@ -53,10 +49,7 @@ export function useNoteCapture(
     }
   }
 
-  const stopWatch = watch(notes, syncCapture, { immediate: true })
-
   function cleanup() {
-    stopWatch()
     const stream = getStream()
     if (stream) {
       for (const id of capturedIds) {
@@ -64,10 +57,9 @@ export function useNoteCapture(
       }
     }
     capturedIds.clear()
-    prevIdKey = ''
   }
 
   onUnmounted(cleanup)
 
-  return { cleanup }
+  return { sync, cleanup }
 }
