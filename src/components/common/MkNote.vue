@@ -1128,20 +1128,8 @@ async function handleMentionClick(username: string, host: string | null) {
   .reaction .count { font-size: 0.9em; line-height: 32px; }
 }
 
-/* Note arrival animation */
+/* Note arrival highlight */
 .note-slide-in {
-  animation: note-slide-in 0.3s ease-out both;
-  will-change: opacity, transform;
-}
-
-@keyframes note-slide-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  border-left: 3px solid var(--nd-accent, #86b300);
 }
 </style>
