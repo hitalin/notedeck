@@ -81,7 +81,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
         notes,
         noteIds,
         scroller,
-        onNewNotes: () => noteSound?.play(),
+        onNewNotes: () => {
+          if (!config.getColumn().soundMuted) noteSound?.play()
+        },
       })
     : null
 

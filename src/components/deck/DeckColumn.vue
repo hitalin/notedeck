@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useDeckStore } from '@/stores/deck'
 
 const props = defineProps<{
@@ -7,6 +7,7 @@ const props = defineProps<{
   title: string
   color?: string
   themeVars?: Record<string, string>
+  soundEnabled?: boolean
 }>()
 
 const emit = defineEmits<{ 'header-click': [] }>()
@@ -17,6 +18,14 @@ const dragHover = ref(false)
 
 function close() {
   deckStore.removeColumn(props.columnId)
+}
+
+const isMuted = computed(
+  () => deckStore.getColumn(props.columnId)?.soundMuted ?? false,
+)
+
+function toggleMute() {
+  deckStore.updateColumn(props.columnId, { soundMuted: !isMuted.value })
 }
 
 function hasColumnData(dt: DataTransfer): boolean {
@@ -91,6 +100,11 @@ function onDrop(e: DragEvent) {
       <i class="ti ti-grip-vertical grabber" />
 
       <slot name="header-meta" />
+
+      <!-- Sound mute toggle -->
+      <button v-if="soundEnabled" class="_button header-btn" :title="isMuted ? 'Unmute' : 'Mute'" @click.stop="toggleMute">
+        <i :class="isMuted ? 'ti ti-volume-off' : 'ti ti-volume'" />
+      </button>
 
       <!-- Remove column button -->
       <button class="_button header-btn" title="Remove column" @click.stop="close">

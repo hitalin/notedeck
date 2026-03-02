@@ -57,6 +57,7 @@ const {
     :column-id="column.id"
     :title="column.name || 'Channel'"
     :theme-vars="columnThemeVars"
+    sound-enabled
     @header-click="scrollToTop()"
   >
     <template #header-icon>

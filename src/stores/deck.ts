@@ -42,6 +42,7 @@ export interface DeckColumn {
   channelId?: string
   userId?: string
   widgets?: WidgetConfig[]
+  soundMuted?: boolean
 }
 
 let columnCounter = 0

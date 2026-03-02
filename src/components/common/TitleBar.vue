@@ -49,19 +49,19 @@ async function close() {
     </button>
     <div class="titlebar-controls">
       <button
-        class="titlebar-btn"
+        class="titlebar-btn titlebar-sidebar-btn"
         :class="{ 'titlebar-btn-active': !deckStore.navCollapsed }"
         title="Toggle Sidebar"
         @click="commandStore.execute('toggle-sidebar')"
       >
         <i class="ti ti-layout-sidebar" />
       </button>
-      <button class="titlebar-btn" title="Minimize" @click="minimize">
+      <button class="titlebar-btn titlebar-window-btn" title="Minimize" @click="minimize">
         <svg width="10" height="10" viewBox="0 0 10 10">
           <rect x="0" y="4.5" width="10" height="1" fill="currentColor" />
         </svg>
       </button>
-      <button class="titlebar-btn" title="Maximize" @click="toggleMaximize">
+      <button class="titlebar-btn titlebar-window-btn" title="Maximize" @click="toggleMaximize">
         <svg v-if="!isMaximized" width="10" height="10" viewBox="0 0 10 10">
           <rect x="0.5" y="0.5" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1" fill="none" />
         </svg>
@@ -192,5 +192,12 @@ async function close() {
   background: #e81123;
   color: #fff;
   opacity: 1;
+}
+
+@media (max-width: 500px) {
+  .titlebar-sidebar-btn,
+  .titlebar-window-btn {
+    display: none;
+  }
 }
 </style>

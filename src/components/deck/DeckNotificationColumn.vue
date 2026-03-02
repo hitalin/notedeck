@@ -194,7 +194,7 @@ async function connect(useCache = false) {
             }
           }
 
-          noteSound.play()
+          if (!props.column.soundMuted) noteSound.play()
           rafBuffer.push(notification)
           if (rafId === null) {
             rafId = requestAnimationFrame(flushRafBuffer)
@@ -280,6 +280,7 @@ onUnmounted(() => {
     :column-id="column.id"
     title="Notifications"
     :theme-vars="columnThemeVars"
+    sound-enabled
     @header-click="scrollToTop"
   >
     <template #header-icon>

@@ -85,7 +85,9 @@ const {
   notes,
   noteIds,
   scroller,
-  onNewNotes: () => noteSound.play(),
+  onNewNotes: () => {
+    if (!props.column.soundMuted) noteSound.play()
+  },
 })
 
 const { focusedNoteId } = useNoteFocus(
@@ -496,6 +498,7 @@ onUnmounted(() => {
     :column-id="column.id"
     title="Timeline"
     :theme-vars="columnThemeVars"
+    sound-enabled
     @header-click="scrollToTop()"
   >
     <template #header-icon>
