@@ -24,6 +24,8 @@ const {
   error,
   notes,
   focusedNoteId,
+  animatingIds,
+  markAnimated,
   postForm,
   handlers,
   scroller,
@@ -108,6 +110,7 @@ const {
               <MkNote
                 :note="item"
                 :focused="item.id === focusedNoteId"
+                :animate-in="animatingIds.has(item.id)"
                 @react="handlers.reaction"
                 @reply="handlers.reply"
                 @renote="handlers.renote"
@@ -115,6 +118,7 @@ const {
                 @delete="removeNote"
                 @edit="handlers.edit"
                 @bookmark="handlers.bookmark"
+                @animated="markAnimated(item.id)"
               />
             </DynamicScrollerItem>
           </template>

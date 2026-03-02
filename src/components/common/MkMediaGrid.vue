@@ -13,7 +13,14 @@ defineProps<{
 }>()
 
 const revealedIds = ref(new Set<string>())
+const loadedIds = ref(new Set<string>())
 const lightboxFile = ref<NormalizedDriveFile | null>(null)
+
+function onImageLoaded(fileId: string) {
+  const next = new Set(loadedIds.value)
+  next.add(fileId)
+  loadedIds.value = next
+}
 
 function toggleSensitive(file: NormalizedDriveFile, e: Event) {
   e.stopPropagation()
@@ -63,8 +70,10 @@ function isAudio(file: NormalizedDriveFile): boolean {
           :src="safeMediaSrc(file.thumbnailUrl) || safeMediaSrc(file.url)"
           :alt="file.name"
           class="media-image"
+          :class="{ 'is-loaded': loadedIds.has(file.id) }"
           loading="lazy"
           decoding="async"
+          @load="onImageLoaded(file.id)"
         />
       </template>
       <template v-else-if="isVideo(file)">
@@ -192,11 +201,21 @@ function isAudio(file: NormalizedDriveFile): boolean {
   position: relative;
   overflow: hidden;
   cursor: pointer;
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--nd-bg, rgba(0, 0, 0, 0.05));
   min-height: 100px;
   max-height: 300px;
   aspect-ratio: 16 / 9;
   contain: layout;
+}
+
+.media-cell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 25%, rgba(255, 255, 255, 0.08) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  z-index: 0;
 }
 
 .media-count-1 > .media-cell {
@@ -209,6 +228,14 @@ function isAudio(file: NormalizedDriveFile): boolean {
   height: 100%;
   object-fit: cover;
   content-visibility: auto;
+  opacity: 0;
+  transition: opacity 0.3s;
+  position: relative;
+  z-index: 1;
+}
+
+.media-image.is-loaded {
+  opacity: 1;
 }
 
 .media-video {
@@ -349,5 +376,10 @@ function isAudio(file: NormalizedDriveFile): boolean {
   max-height: 90vh;
   cursor: default;
   border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 </style>

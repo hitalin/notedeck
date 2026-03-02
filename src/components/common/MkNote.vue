@@ -29,6 +29,7 @@ const props = defineProps<{
   note: NormalizedNote
   detailed?: boolean
   focused?: boolean
+  animateIn?: boolean
 }>()
 
 /** Pure renote → show inner note, otherwise show note itself */
@@ -58,6 +59,7 @@ const emit = defineEmits<{
   delete: [note: NormalizedNote]
   edit: [note: NormalizedNote]
   bookmark: [note: NormalizedNote]
+  animated: []
 }>()
 
 const router = useRouter()
@@ -272,7 +274,12 @@ async function handleMentionClick(username: string, host: string | null) {
 </script>
 
 <template>
-  <div class="note-root" :class="{ detailed, focused }" tabindex="0">
+  <div
+    class="note-root"
+    :class="{ detailed, focused, 'note-slide-in': animateIn }"
+    tabindex="0"
+    @animationend="animateIn && emit('animated')"
+  >
     <!-- Renote info bar -->
     <div v-if="isPureRenote" class="renote-info">
       <i class="ti ti-repeat renote-icon" />
@@ -1121,5 +1128,21 @@ async function handleMentionClick(username: string, host: string | null) {
   .footer-button { margin-right: 8px; }
   .reaction { height: 32px; font-size: 1em; border-radius: 4px; }
   .reaction .count { font-size: 0.9em; line-height: 32px; }
+}
+
+/* Note arrival animation */
+.note-slide-in {
+  animation: note-slide-in 0.3s ease-out;
+}
+
+@keyframes note-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

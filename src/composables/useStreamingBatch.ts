@@ -7,12 +7,27 @@ export interface UseStreamingBatchOptions {
   noteIds: Set<string>
   scroller: { value: InstanceType<typeof DynamicScroller> | null }
   maxNotes?: number
+  onNewNotes?: (count: number) => void
 }
 
 export function useStreamingBatch(options: UseStreamingBatchOptions) {
   const MAX_NOTES = options.maxNotes ?? 500
   const pendingNotes = shallowRef<NormalizedNote[]>([])
   const isAtTop = ref(true)
+  const animatingIds = shallowRef<Set<string>>(new Set())
+
+  function markAnimated(noteId: string) {
+    const next = new Set(animatingIds.value)
+    next.delete(noteId)
+    animatingIds.value = next
+  }
+
+  function addAnimatingIds(ids: string[]) {
+    if (ids.length === 0) return
+    const next = new Set(animatingIds.value)
+    for (const id of ids) next.add(id)
+    animatingIds.value = next
+  }
 
   let rafBuffer: NormalizedNote[] = []
   let rafId: number | null = null
@@ -37,9 +52,11 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     rafBuffer = []
     if (isAtTop.value) {
       for (const n of batch) options.noteIds.add(n.id)
+      addAnimatingIds(batch.map((n) => n.id))
       const merged = [...batch, ...options.notes.value]
       options.notes.value =
         merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+      options.onNewNotes?.(batch.length)
       scheduleForceUpdate()
     } else {
       const merged = [...batch, ...pendingNotes.value]
@@ -65,6 +82,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       return
     }
     for (const n of newNotes) options.noteIds.add(n.id)
+    addAnimatingIds(newNotes.slice(0, 5).map((n) => n.id))
     const merged = [...newNotes, ...options.notes.value]
     options.notes.value =
       merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
@@ -102,12 +120,15 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       forceUpdateTimer = null
     }
     pendingNotes.value = []
+    animatingIds.value = new Set()
     isAtTop.value = true
   }
 
   return {
     pendingNotes,
     isAtTop,
+    animatingIds,
+    markAnimated,
     enqueueNote,
     flushPending,
     handleScroll,

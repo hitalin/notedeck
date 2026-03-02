@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue'
+import {
+  defineAsyncComponent,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+} from 'vue'
 import { useRouter } from 'vue-router'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { ChannelSubscription, NormalizedNote } from '@/adapters/types'
@@ -64,6 +70,12 @@ const { sync: syncCapture } = useNoteCapture(
   onNoteUpdate,
 )
 setOnNotesChanged(syncCapture)
+const animatingIds = shallowRef<Set<string>>(new Set())
+function markAnimated(noteId: string) {
+  const next = new Set(animatingIds.value)
+  next.delete(noteId)
+  animatingIds.value = next
+}
 let mentionSub: ChannelSubscription | null = null
 
 async function connect(useCache = false) {
@@ -102,6 +114,7 @@ async function connect(useCache = false) {
       (note) => {
         if (noteIds.has(note.id)) return
         noteIds.add(note.id)
+        animatingIds.value = new Set([...animatingIds.value, note.id])
         notes.value = [note, ...notes.value]
         syncCapture(notes.value)
       },
@@ -244,6 +257,7 @@ onBeforeUnmount(() => {
               <MkNote
                 :note="item"
                 :focused="item.id === focusedNoteId"
+                :animate-in="animatingIds.has(item.id)"
                 @react="handlers.reaction"
                 @reply="handlers.reply"
                 @renote="handlers.renote"
@@ -251,6 +265,7 @@ onBeforeUnmount(() => {
                 @delete="removeNote"
                 @edit="handlers.edit"
                 @bookmark="handlers.bookmark"
+                @animated="markAnimated(item.id)"
               />
             </DynamicScrollerItem>
           </template>

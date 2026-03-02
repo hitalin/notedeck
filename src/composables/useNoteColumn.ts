@@ -11,6 +11,7 @@ import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useNoteCapture } from '@/composables/useNoteCapture'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useNoteList } from '@/composables/useNoteList'
+import { useNoteSound } from '@/composables/useNoteSound'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
@@ -74,8 +75,14 @@ export function useNoteColumn(config: NoteColumnConfig) {
   })
 
   // Streaming (Group A) or NoteCapture (Group B)
+  const noteSound = isStreaming ? useNoteSound(() => account.value?.host) : null
   const streamingBatch = isStreaming
-    ? useStreamingBatch({ notes, noteIds, scroller })
+    ? useStreamingBatch({
+        notes,
+        noteIds,
+        scroller,
+        onNewNotes: () => noteSound?.play(),
+      })
     : null
 
   if (!isStreaming) {
@@ -93,6 +100,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   const pendingNotes =
     streamingBatch?.pendingNotes ?? shallowRef<NormalizedNote[]>([])
+  const animatingIds =
+    streamingBatch?.animatingIds ?? shallowRef<Set<string>>(new Set())
+  const markAnimated = streamingBatch?.markAnimated ?? (() => {})
 
   async function connect(useCache = false) {
     error.value = null
@@ -285,6 +295,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
     notes,
     focusedNoteId,
     pendingNotes,
+    animatingIds,
+    markAnimated,
     postForm,
     handlers,
     scroller,

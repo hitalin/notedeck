@@ -26,6 +26,7 @@ import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useNoteList } from '@/composables/useNoteList'
+import { useNoteSound } from '@/composables/useNoteSound'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -73,8 +74,11 @@ const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } =
     closePostForm: postForm.close,
   })
 
+const noteSound = useNoteSound(() => account.value?.host)
 const {
   pendingNotes,
+  animatingIds,
+  markAnimated,
   enqueueNote,
   handleScroll: batchHandleScroll,
   scrollToTop,
@@ -83,6 +87,7 @@ const {
   notes,
   noteIds,
   scroller,
+  onNewNotes: () => noteSound.play(),
 })
 
 const { focusedNoteId } = useNoteFocus(
@@ -578,6 +583,7 @@ onUnmounted(() => {
             <MkNote
               :note="item"
               :focused="item.id === focusedNoteId"
+              :animate-in="animatingIds.has(item.id)"
               @react="handlers.reaction"
               @reply="handlers.reply"
               @renote="handlers.renote"
@@ -585,6 +591,7 @@ onUnmounted(() => {
               @delete="removeNote"
               @edit="handlers.edit"
               @bookmark="handlers.bookmark"
+              @animated="markAnimated(item.id)"
             />
           </DynamicScrollerItem>
         </template>
