@@ -245,8 +245,9 @@ function isFilterActive(key: keyof TimelineFilter): boolean {
 async function reconnectWithFilter() {
   disconnect()
   resetBatch()
+  isLoading.value = true
   setNotes([])
-  await connect()
+  await connect(true)
 }
 
 async function connect(useCache = false) {
@@ -346,11 +347,12 @@ async function switchTl(type: TimelineType) {
   if (type === tlType.value) return
   disconnect()
   resetBatch()
+  isLoading.value = true
   setNotes([])
   tlType.value = type
   deckStore.updateColumn(props.column.id, { tl: type })
   refreshFilterKeys()
-  await connect()
+  await connect(true)
 }
 
 async function loadMore() {

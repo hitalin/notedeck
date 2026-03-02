@@ -3,12 +3,33 @@ import type { NormalizedNote, NoteUpdateEvent } from '@/adapters/types'
 
 const noteMap = shallowRef(new Map<string, NormalizedNote>())
 
+/** Batch triggerRef calls into one per animation frame (streaming events fire rapidly) */
+let triggerRafId: number | null = null
+
+function scheduleTrigger() {
+  if (triggerRafId !== null) return
+  triggerRafId = requestAnimationFrame(() => {
+    triggerRafId = null
+    triggerRef(noteMap)
+  })
+}
+
 function put(notes: NormalizedNote[]) {
   const map = noteMap.value
+  // First pass: insert all notes and renotes
   for (const note of notes) {
     map.set(note.id, note)
     if (note.renote) {
       map.set(note.renote.id, note.renote)
+    }
+  }
+  // Second pass: eagerly sync renote references so resolve() avoids spread
+  for (const note of notes) {
+    if (note.renoteId) {
+      const latest = map.get(note.renoteId)
+      if (latest && note.renote !== latest) {
+        note.renote = latest
+      }
     }
   }
   triggerRef(noteMap)
@@ -68,7 +89,7 @@ function applyUpdate(event: NoteUpdateEvent, myUserId: string | undefined) {
         },
         reactionEmojis: newReactionEmojis,
       })
-      triggerRef(noteMap)
+      scheduleTrigger()
       break
     }
     case 'unreacted': {
@@ -79,7 +100,7 @@ function applyUpdate(event: NoteUpdateEvent, myUserId: string | undefined) {
       if (count <= 0) delete newReactions[reaction]
       else newReactions[reaction] = count
       noteMap.value.set(event.noteId, { ...note, reactions: newReactions })
-      triggerRef(noteMap)
+      scheduleTrigger()
       break
     }
     case 'pollVoted': {
@@ -92,21 +113,21 @@ function applyUpdate(event: NoteUpdateEvent, myUserId: string | undefined) {
         ...note,
         poll: { ...note.poll, choices: newChoices },
       })
-      triggerRef(noteMap)
+      scheduleTrigger()
       break
     }
   }
 }
 
-/** Update a single note in the store */
+/** Update a single note in the store (batched trigger for streaming perf) */
 function update(id: string, note: NormalizedNote) {
   noteMap.value.set(id, note)
-  triggerRef(noteMap)
+  scheduleTrigger()
 }
 
 /** Trigger reactivity after direct note mutation (e.g. toggleReaction) */
 function notifyMutation() {
-  triggerRef(noteMap)
+  scheduleTrigger()
 }
 
 export const noteStore = {
