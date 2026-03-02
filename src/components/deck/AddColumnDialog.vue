@@ -2,6 +2,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { ref } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
+import type { ColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 
 const emit = defineEmits<{
@@ -49,20 +50,9 @@ function selectColumnType(
 
 function addColumnForAccount(accountId: string) {
   const type = addColumnType.value || 'timeline'
-  if (type === 'list') {
-    fetchUserLists(accountId)
-    return
-  }
-  if (type === 'antenna') {
-    fetchAntennas(accountId)
-    return
-  }
-  if (type === 'clip') {
-    fetchClips(accountId)
-    return
-  }
-  if (type === 'channel') {
-    fetchChannels(accountId)
+  const config = SELECTABLE_CONFIGS.find((c) => c.type === type)
+  if (config) {
+    fetchSelectItems(config, accountId)
     return
   }
   if (type === 'user') {
@@ -114,147 +104,80 @@ function addColumnForAccount(accountId: string) {
   close()
 }
 
-// List column creation
-interface UserListItem {
+// Selectable column types (list, antenna, channel, clip)
+interface SelectableItem {
   id: string
   name: string
 }
-const addListAccountId = ref<string | null>(null)
-const userLists = ref<UserListItem[]>([])
-const loadingLists = ref(false)
 
-async function fetchUserLists(accountId: string) {
-  addListAccountId.value = accountId
-  loadingLists.value = true
-  try {
-    userLists.value = await invoke<UserListItem[]>('api_get_user_lists', {
-      accountId,
-    })
-  } catch (e) {
-    console.error('[deck] failed to fetch user lists:', e)
-    userLists.value = []
-  } finally {
-    loadingLists.value = false
-  }
+interface SelectableConfig {
+  type: ColumnType
+  label: string
+  icon: string
+  apiCommand: string
+  idKey: string
 }
 
-function addListColumn(listId: string, listName: string) {
-  if (!addListAccountId.value) return
-  deckStore.addColumn({
+const SELECTABLE_CONFIGS: SelectableConfig[] = [
+  {
     type: 'list',
-    name: listName,
-    width: 330,
-    accountId: addListAccountId.value,
-    listId,
-    active: true,
-  })
-  close()
-}
-
-// Antenna column creation
-interface AntennaItem {
-  id: string
-  name: string
-}
-const addAntennaAccountId = ref<string | null>(null)
-const antennas = ref<AntennaItem[]>([])
-const loadingAntennas = ref(false)
-
-async function fetchAntennas(accountId: string) {
-  addAntennaAccountId.value = accountId
-  loadingAntennas.value = true
-  try {
-    antennas.value = await invoke<AntennaItem[]>('api_get_antennas', {
-      accountId,
-    })
-  } catch (e) {
-    console.error('[deck] failed to fetch antennas:', e)
-    antennas.value = []
-  } finally {
-    loadingAntennas.value = false
-  }
-}
-
-function addAntennaColumn(antennaId: string, antennaName: string) {
-  if (!addAntennaAccountId.value) return
-  deckStore.addColumn({
+    label: 'List',
+    icon: 'ti-list',
+    apiCommand: 'api_get_user_lists',
+    idKey: 'listId',
+  },
+  {
     type: 'antenna',
-    name: antennaName,
-    width: 330,
-    accountId: addAntennaAccountId.value,
-    antennaId,
-    active: true,
-  })
-  close()
-}
+    label: 'Antenna',
+    icon: 'ti-antenna-bars-5',
+    apiCommand: 'api_get_antennas',
+    idKey: 'antennaId',
+  },
+  {
+    type: 'channel',
+    label: 'Channel',
+    icon: 'ti-device-tv',
+    apiCommand: 'api_get_channels',
+    idKey: 'channelId',
+  },
+  {
+    type: 'clip',
+    label: 'Clip',
+    icon: 'ti-paperclip',
+    apiCommand: 'api_get_clips',
+    idKey: 'clipId',
+  },
+]
 
-// Channel column creation
-interface ChannelItem {
-  id: string
-  name: string
-}
-const addChannelAccountId = ref<string | null>(null)
-const channels = ref<ChannelItem[]>([])
-const loadingChannels = ref(false)
+const selectAccountId = ref<string | null>(null)
+const selectItems = ref<SelectableItem[]>([])
+const selectLoading = ref(false)
+const selectConfig = ref<SelectableConfig | null>(null)
 
-async function fetchChannels(accountId: string) {
-  addChannelAccountId.value = accountId
-  loadingChannels.value = true
+async function fetchSelectItems(config: SelectableConfig, accountId: string) {
+  selectConfig.value = config
+  selectAccountId.value = accountId
+  selectLoading.value = true
   try {
-    channels.value = await invoke<ChannelItem[]>('api_get_channels', {
+    selectItems.value = await invoke<SelectableItem[]>(config.apiCommand, {
       accountId,
     })
   } catch (e) {
-    console.error('[deck] failed to fetch channels:', e)
-    channels.value = []
+    console.error(`[deck] failed to fetch ${config.type}s:`, e)
+    selectItems.value = []
   } finally {
-    loadingChannels.value = false
+    selectLoading.value = false
   }
 }
 
-function addChannelColumn(channelId: string, channelName: string) {
-  if (!addChannelAccountId.value) return
+function addSelectableColumn(itemId: string, itemName: string) {
+  if (!selectAccountId.value || !selectConfig.value) return
   deckStore.addColumn({
-    type: 'channel',
-    name: channelName,
+    type: selectConfig.value.type,
+    name: itemName,
     width: 330,
-    accountId: addChannelAccountId.value,
-    channelId,
-    active: true,
-  })
-  close()
-}
-
-// Clip column creation
-interface ClipItem {
-  id: string
-  name: string
-}
-const addClipAccountId = ref<string | null>(null)
-const clips = ref<ClipItem[]>([])
-const loadingClips = ref(false)
-
-async function fetchClips(accountId: string) {
-  addClipAccountId.value = accountId
-  loadingClips.value = true
-  try {
-    clips.value = await invoke<ClipItem[]>('api_get_clips', { accountId })
-  } catch (e) {
-    console.error('[deck] failed to fetch clips:', e)
-    clips.value = []
-  } finally {
-    loadingClips.value = false
-  }
-}
-
-function addClipColumn(clipId: string, clipName: string) {
-  if (!addClipAccountId.value) return
-  deckStore.addColumn({
-    type: 'clip',
-    name: clipName,
-    width: 330,
-    accountId: addClipAccountId.value,
-    clipId,
+    accountId: selectAccountId.value,
+    [selectConfig.value.idKey]: itemId,
     active: true,
   })
   close()
@@ -314,25 +237,16 @@ function close() {
   <div class="add-overlay" @click="close()">
     <div class="add-popup" @click.stop>
       <div class="add-popup-header">
-        <button v-if="addColumnType && !addListAccountId && !addAntennaAccountId && !addChannelAccountId && !addClipAccountId && !addUserAccountId" class="_button add-back-btn" @click="addColumnType = null">
+        <button v-if="addColumnType && !selectConfig && !addUserAccountId" class="_button add-back-btn" @click="addColumnType = null">
           <i class="ti ti-chevron-left" />
         </button>
-        <button v-else-if="addListAccountId" class="_button add-back-btn" @click="addListAccountId = null; userLists = []">
-          <i class="ti ti-chevron-left" />
-        </button>
-        <button v-else-if="addAntennaAccountId" class="_button add-back-btn" @click="addAntennaAccountId = null; antennas = []">
-          <i class="ti ti-chevron-left" />
-        </button>
-        <button v-else-if="addChannelAccountId" class="_button add-back-btn" @click="addChannelAccountId = null; channels = []">
-          <i class="ti ti-chevron-left" />
-        </button>
-        <button v-else-if="addClipAccountId" class="_button add-back-btn" @click="addClipAccountId = null; clips = []">
+        <button v-else-if="selectConfig" class="_button add-back-btn" @click="selectConfig = null; selectItems = []; selectAccountId = null">
           <i class="ti ti-chevron-left" />
         </button>
         <button v-else-if="addUserAccountId" class="_button add-back-btn" @click="addUserAccountId = null; userSearchInput = ''; userSearchError = null">
           <i class="ti ti-chevron-left" />
         </button>
-        {{ addListAccountId ? 'Select list' : addAntennaAccountId ? 'Select antenna' : addChannelAccountId ? 'Select channel' : addClipAccountId ? 'Select clip' : addUserAccountId ? 'Find user' : addColumnType ? 'Select account' : 'Add column' }}
+        {{ selectConfig ? `Select ${selectConfig.label.toLowerCase()}` : addUserAccountId ? 'Find user' : addColumnType ? 'Select account' : 'Add column' }}
       </div>
 
       <!-- Step 1: Column type selection -->
@@ -391,63 +305,18 @@ function close() {
         </button>
       </template>
 
-      <!-- Step 3a: List selection (for list columns) -->
-      <template v-else-if="addListAccountId">
-        <div v-if="loadingLists" class="add-popup-empty">Loading...</div>
-        <div v-else-if="userLists.length === 0" class="add-popup-empty">No lists found.</div>
+      <!-- Step 3a: Item selection (list/antenna/channel/clip) -->
+      <template v-else-if="selectConfig">
+        <div v-if="selectLoading" class="add-popup-empty">Loading...</div>
+        <div v-else-if="selectItems.length === 0" class="add-popup-empty">No {{ selectConfig.label.toLowerCase() }}s found.</div>
         <button
-          v-for="list in userLists"
-          :key="list.id"
+          v-for="item in selectItems"
+          :key="item.id"
           class="_button add-type-btn"
-          @click="addListColumn(list.id, list.name)"
+          @click="addSelectableColumn(item.id, item.name)"
         >
-          <i class="ti ti-list" />
-          <span>{{ list.name }}</span>
-        </button>
-      </template>
-
-      <!-- Step 3b: Antenna selection (for antenna columns) -->
-      <template v-else-if="addAntennaAccountId">
-        <div v-if="loadingAntennas" class="add-popup-empty">Loading...</div>
-        <div v-else-if="antennas.length === 0" class="add-popup-empty">No antennas found.</div>
-        <button
-          v-for="ant in antennas"
-          :key="ant.id"
-          class="_button add-type-btn"
-          @click="addAntennaColumn(ant.id, ant.name)"
-        >
-          <i class="ti ti-antenna-bars-5" />
-          <span>{{ ant.name }}</span>
-        </button>
-      </template>
-
-      <!-- Step 3b2: Channel selection (for channel columns) -->
-      <template v-else-if="addChannelAccountId">
-        <div v-if="loadingChannels" class="add-popup-empty">Loading...</div>
-        <div v-else-if="channels.length === 0" class="add-popup-empty">No channels found.</div>
-        <button
-          v-for="ch in channels"
-          :key="ch.id"
-          class="_button add-type-btn"
-          @click="addChannelColumn(ch.id, ch.name)"
-        >
-          <i class="ti ti-device-tv" />
-          <span>{{ ch.name }}</span>
-        </button>
-      </template>
-
-      <!-- Step 3c: Clip selection (for clip columns) -->
-      <template v-else-if="addClipAccountId">
-        <div v-if="loadingClips" class="add-popup-empty">Loading...</div>
-        <div v-else-if="clips.length === 0" class="add-popup-empty">No clips found.</div>
-        <button
-          v-for="clip in clips"
-          :key="clip.id"
-          class="_button add-type-btn"
-          @click="addClipColumn(clip.id, clip.name)"
-        >
-          <i class="ti ti-paperclip" />
-          <span>{{ clip.name }}</span>
+          <i :class="'ti ' + selectConfig.icon" />
+          <span>{{ item.name }}</span>
         </button>
       </template>
 

@@ -1,11 +1,22 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import {
+  defineAsyncComponent,
+  onMounted,
+  onUnmounted,
+  ref,
+  shallowRef,
+  watch,
+} from 'vue'
 import { useRouter } from 'vue-router'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
-import MkPostForm from '@/components/common/MkPostForm.vue'
+
+const MkPostForm = defineAsyncComponent(
+  () => import('@/components/common/MkPostForm.vue'),
+)
+
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'

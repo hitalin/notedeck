@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  onUnmounted,
+  ref,
+} from 'vue'
 import { useRouter } from 'vue-router'
 import {
   registerDefaultCommands,
   unregisterDefaultCommands,
 } from '@/commands/definitions'
-import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -14,7 +19,14 @@ import {
   initDesktopNotifications,
   onNotificationAction,
 } from '@/utils/desktopNotification'
-import AddColumnDialog from './AddColumnDialog.vue'
+
+const MkPostForm = defineAsyncComponent(
+  () => import('@/components/common/MkPostForm.vue'),
+)
+const AddColumnDialog = defineAsyncComponent(
+  () => import('./AddColumnDialog.vue'),
+)
+
 import DeckAntennaColumn from './DeckAntennaColumn.vue'
 import DeckChannelColumn from './DeckChannelColumn.vue'
 import DeckChatColumn from './DeckChatColumn.vue'
@@ -22,7 +34,7 @@ import DeckClipColumn from './DeckClipColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
-import DeckNavbar from './DeckNavbar.vue'
+import type DeckNavbar from './DeckNavbar.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
 import DeckSpecifiedColumn from './DeckSpecifiedColumn.vue'

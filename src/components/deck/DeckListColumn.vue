@@ -1,18 +1,15 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
-import { onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { defineAsyncComponent } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
-import MkPostForm from '@/components/common/MkPostForm.vue'
+
+const MkPostForm = defineAsyncComponent(
+  () => import('@/components/common/MkPostForm.vue'),
+)
+
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
-import { useColumnSetup } from '@/composables/useColumnSetup'
-import { useNoteFocus } from '@/composables/useNoteFocus'
-import { useNoteList } from '@/composables/useNoteList'
-import { useStreamingBatch } from '@/composables/useStreamingBatch'
+import { useNoteColumn } from '@/composables/useNoteColumn'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -25,172 +22,34 @@ const {
   serverIconUrl,
   isLoading,
   error,
-  initAdapter,
-  getAdapter,
-  setSubscription,
-  disconnect,
+  notes,
+  focusedNoteId,
+  pendingNotes,
   postForm,
   handlers,
   scroller,
-  onScroll,
-} = useColumnSetup(() => props.column)
-
-const router = useRouter()
-const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } =
-  useNoteList({
-    getMyUserId: () => account.value?.userId,
-    getAdapter,
-    deleteHandler: handlers.delete,
-    closePostForm: postForm.close,
-  })
-
-const {
-  pendingNotes,
-  enqueueNote,
-  handleScroll: batchHandleScroll,
   scrollToTop,
-  resetBatch,
-} = useStreamingBatch({
-  notes,
-  noteIds,
-  scroller,
-})
-
-const { focusedNoteId } = useNoteFocus(
-  props.column.id,
-  notes,
-  scroller,
-  handlers,
-  (note) => router.push(`/note/${note._accountId}/${note.id}`),
-)
-
-async function connect(useCache = false) {
-  error.value = null
-  isLoading.value = true
-
-  const listId = props.column.listId
-
-  if (useCache && props.column.accountId && listId) {
-    try {
-      const cached = await invoke<NormalizedNote[]>('api_get_cached_timeline', {
-        accountId: props.column.accountId,
-        timelineType: `user-list:${listId}`,
-        limit: 40,
-      })
-      if (cached.length > 0) setNotes(cached)
-    } catch {
-      /* non-critical */
-    }
-  }
-
-  try {
-    const adapter = await initAdapter()
-    if (!adapter) return
-
-    const sinceId = notes.value.length > 0 ? notes.value[0]?.id : undefined
-    const fetched = await adapter.api.getTimeline('user-list', {
-      ...(listId ? { listId } : {}),
-      ...(sinceId ? { sinceId } : {}),
-    })
-    if (sinceId && fetched.length > 0) {
-      const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-      if (newNotes.length > 0) setNotes([...newNotes, ...notes.value])
-    } else if (fetched.length > 0) {
-      setNotes(fetched)
-    }
-
-    adapter.stream.connect()
-    setSubscription(
-      adapter.stream.subscribeTimeline('user-list', enqueueNote, {
-        onNoteUpdated: onNoteUpdate,
-        listId,
-      }),
-    )
-  } catch (e) {
-    if (notes.value.length === 0) {
-      error.value = AppError.from(e)
-    }
-  } finally {
-    isLoading.value = false
-  }
-}
-
-async function loadMore() {
-  const adapter = getAdapter()
-  if (!adapter || isLoading.value || notes.value.length === 0) return
-  const lastNote = notes.value.at(-1)
-  if (!lastNote) return
-  isLoading.value = true
-  try {
-    const older = await adapter.api.getTimeline('user-list', {
-      untilId: lastNote.id,
+  handleScroll,
+  handlePosted,
+  removeNote,
+} = useNoteColumn({
+  getColumn: () => props.column,
+  fetch: (adapter, opts) =>
+    adapter.api.getTimeline('user-list', {
+      ...opts,
       ...(props.column.listId ? { listId: props.column.listId } : {}),
-    })
-    setNotes([...notes.value, ...older])
-  } catch (e) {
-    error.value = AppError.from(e)
-  } finally {
-    isLoading.value = false
-  }
-}
-
-function handleScroll() {
-  batchHandleScroll()
-  onScroll(loadMore)
-}
-
-let lastResumeAt = 0
-
-async function onResume() {
-  const now = Date.now()
-  if (now - lastResumeAt < 3000) return
-  lastResumeAt = now
-
-  const adapter = getAdapter()
-  const listId = props.column.listId
-  if (!adapter || !account.value || !listId) return
-
-  try {
-    const cached = await invoke<NormalizedNote[]>('api_get_cached_timeline', {
-      accountId: props.column.accountId,
-      timelineType: `user-list:${listId}`,
-      limit: 40,
-    })
-    if (cached.length > 0) {
-      const newFromCache = cached.filter((n) => !noteIds.has(n.id))
-      if (newFromCache.length > 0) {
-        setNotes([...newFromCache, ...notes.value])
-      }
-    }
-  } catch {
-    /* non-critical */
-  }
-
-  const sinceId = notes.value[0]?.id
-  if (!sinceId) return
-  try {
-    const fetched = await adapter.api.getTimeline('user-list', {
-      sinceId,
-      listId,
-    })
-    const newFromApi = fetched.filter((n) => !noteIds.has(n.id))
-    if (newFromApi.length > 0) {
-      setNotes([...newFromApi, ...notes.value])
-    }
-  } catch {
-    /* non-critical */
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('deck-resume', onResume)
-  connect(true)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('deck-resume', onResume)
-  disconnect()
-  resetBatch()
+    }),
+  cache: {
+    getKey: () =>
+      props.column.listId ? `user-list:${props.column.listId}` : null,
+  },
+  streaming: {
+    subscribe: (adapter, enqueue, callbacks) =>
+      adapter.stream.subscribeTimeline('user-list', enqueue, {
+        ...callbacks,
+        listId: props.column.listId,
+      }),
+  },
 })
 </script>
 
