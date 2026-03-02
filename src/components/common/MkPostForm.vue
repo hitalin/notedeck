@@ -1,20 +1,7 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
-import { computed, nextTick, onMounted, ref } from 'vue'
-import { createAdapter } from '@/adapters/registry'
-import type {
-  NormalizedDriveFile,
-  NormalizedNote,
-  ServerAdapter,
-} from '@/adapters/types'
-import { useAccountsStore } from '@/stores/accounts'
-import { useServersStore } from '@/stores/servers'
-import { useThemeStore } from '@/stores/theme'
-import {
-  CUSTOM_TL_ICONS,
-  detectAvailableTimelines,
-} from '@/utils/customTimelines'
-import { AppError } from '@/utils/errors'
+import { nextTick, onMounted, ref } from 'vue'
+import type { NormalizedNote } from '@/adapters/types'
+import { usePostFormState } from '@/composables/usePostFormState'
 import MkMfm from './MkMfm.vue'
 
 const props = defineProps<{
@@ -29,162 +16,43 @@ const emit = defineEmits<{
   posted: [editedNoteId?: string]
 }>()
 
-const accountsStore = useAccountsStore()
-const serversStore = useServersStore()
-const themeStore = useThemeStore()
-
-const MAX_TEXT_LENGTH = 3000
-const text = ref('')
-const cw = ref('')
-const showCw = ref(false)
-const visibility = ref('public')
-const localOnly = ref(false)
-const showVisibilityMenu = ref(false)
-const showAccountMenu = ref(false)
-const isPosting = ref(false)
-const posted = ref(false)
-const error = ref<string | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const attachedFiles = ref<NormalizedDriveFile[]>([])
-const isUploading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
-const noteModeFlags = ref<Record<string, boolean>>({})
-const disabledVisibilities = ref(new Set<string>())
 
-let adapter: ServerAdapter | null = null
-
-const activeAccountId = ref(props.accountId)
-const account = computed(() =>
-  accountsStore.accounts.find((a) => a.id === activeAccountId.value),
-)
-
-const formThemeVars = computed(() =>
-  themeStore.getStyleVarsForAccount(activeAccountId.value),
-)
-
-interface VisibilityOption {
-  value: string
-  label: string
-  icon: string
-}
-
-const visibilityOptions: VisibilityOption[] = [
-  {
-    value: 'public',
-    label: 'Public',
-    icon: 'M22 12A10 10 0 112 12a10 10 0 0120 0zM2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z',
-  },
-  {
-    value: 'home',
-    label: 'Home',
-    icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2',
-  },
-  {
-    value: 'followers',
-    label: 'Followers',
-    icon: 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
-  },
-  {
-    value: 'specified',
-    label: 'Direct',
-    icon: 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0l-8.25 5.25a1.5 1.5 0 01-1.5 0L2.25 6.75',
-  },
-]
-
-const defaultVisibility = visibilityOptions[0] as VisibilityOption
-
-const currentVisibility = computed(
-  (): VisibilityOption =>
-    visibilityOptions.find((o) => o.value === visibility.value) ??
-    defaultVisibility,
-)
-
-const remainingChars = computed(() => MAX_TEXT_LENGTH - text.value.length)
-
-const canPost = computed(() => {
-  if (isPosting.value || isUploading.value) return false
-  if (remainingChars.value < 0) return false
-  if (props.renoteId) return true
-  if (attachedFiles.value.length > 0) return true
-  return text.value.trim().length > 0
-})
-
-async function initAdapter() {
-  const acc = account.value
-  if (!acc) return
-  adapter = null
-  try {
-    const serverInfo = await serversStore.getServerInfo(acc.host)
-    adapter = createAdapter(serverInfo, acc.id)
-  } catch (e) {
-    error.value = AppError.from(e).message
-  }
-  // Detect active modes for note-level flags
-  try {
-    const availability = await detectAvailableTimelines(acc.id)
-    const flags: Record<string, boolean> = {}
-    for (const [key, value] of Object.entries(availability.modes)) {
-      if (value) {
-        flags[key.replace(/^isIn/, 'isNoteIn')] = true
-      }
-    }
-    noteModeFlags.value = flags
-  } catch {
-    noteModeFlags.value = {}
-  }
-
-  // Detect visibility restrictions from role policies
-  const disabled = new Set<string>()
-  try {
-    const policies = await invoke<Record<string, boolean>>(
-      'api_get_user_policies',
-      { accountId: acc.id },
-    )
-    // Standard: canPublicNote
-    if (policies.canPublicNote === false) disabled.add('public')
-    // Fork extensions: can*Note pattern (e.g., canHomeNote, canPublicNonLtlNote)
-    for (const [key, value] of Object.entries(policies)) {
-      if (value !== false) continue
-      const match = key.match(/^can(.+)Note$/)
-      if (!match || key === 'canPublicNote') continue
-      const name =
-        (match[1]?.charAt(0).toLowerCase() ?? '') + (match[1]?.slice(1) ?? '')
-      disabled.add(name)
-    }
-    // Filter mode flags by can*Note policies (e.g., canYamiNote=false → remove isNoteInYamiMode)
-    const filtered: Record<string, boolean> = {}
-    for (const [flagKey, flagValue] of Object.entries(noteModeFlags.value)) {
-      const m = flagKey.match(/^isNoteIn(.+)Mode$/)
-      if (m) {
-        const policyKey = `can${m[1]}Note`
-        if (policies[policyKey] === false) continue
-      }
-      filtered[flagKey] = flagValue
-    }
-    noteModeFlags.value = filtered
-  } catch {
-    // Policies unavailable — allow all
-  }
-  // Reply to specified → restrict to followers/specified
-  if (props.replyTo?.visibility === 'specified') {
-    disabled.add('public')
-    disabled.add('home')
-  }
-  disabledVisibilities.value = disabled
-
-  // Auto-correct if current visibility is disabled
-  if (disabled.has(visibility.value)) {
-    const first = visibilityOptions.find((o) => !disabled.has(o.value))
-    if (first) visibility.value = first.value
-  }
-}
-
-async function switchAccount(id: string) {
-  activeAccountId.value = id
-  showAccountMenu.value = false
-  error.value = null
-  await initAdapter()
-}
+const {
+  text,
+  cw,
+  showCw,
+  visibility,
+  localOnly,
+  showVisibilityMenu,
+  showAccountMenu,
+  isPosting,
+  posted,
+  error,
+  attachedFiles,
+  isUploading,
+  noteModeFlags,
+  disabledVisibilities,
+  activeAccountId,
+  accounts,
+  account,
+  formThemeVars,
+  currentVisibility,
+  remainingChars,
+  canPost,
+  MAX_TEXT_LENGTH,
+  visibilityOptions,
+  initAdapter,
+  switchAccount,
+  post,
+  openFilePicker,
+  onFileSelected,
+  removeFile,
+  selectVisibility,
+  noteModeLabel,
+  noteModeIcon,
+} = usePostFormState(props, { onPosted: (id) => emit('posted', id) }, fileInput)
 
 onMounted(async () => {
   await initAdapter()
@@ -201,102 +69,6 @@ onMounted(async () => {
   await nextTick()
   textareaRef.value?.focus()
 })
-
-async function post() {
-  if (!adapter || !canPost.value) return
-
-  isPosting.value = true
-  error.value = null
-
-  try {
-    if (props.editNote) {
-      await adapter.api.updateNote(props.editNote.id, {
-        text: text.value || undefined,
-        cw: showCw.value && cw.value ? cw.value : undefined,
-      })
-    } else {
-      const fileIds =
-        attachedFiles.value.length > 0
-          ? attachedFiles.value.map((f) => f.id)
-          : undefined
-      const modeFlags =
-        Object.keys(noteModeFlags.value).length > 0
-          ? noteModeFlags.value
-          : undefined
-      await adapter.api.createNote({
-        text: text.value || undefined,
-        cw: showCw.value && cw.value ? cw.value : undefined,
-        visibility: visibility.value,
-        localOnly:
-          visibility.value === 'specified'
-            ? false
-            : localOnly.value || undefined,
-        modeFlags,
-        replyId: props.replyTo?.id,
-        renoteId: props.renoteId,
-        fileIds,
-      })
-    }
-    posted.value = true
-    setTimeout(() => emit('posted', props.editNote?.id), 500)
-  } catch (e) {
-    error.value = AppError.from(e).message
-  } finally {
-    isPosting.value = false
-  }
-}
-
-function openFilePicker() {
-  fileInput.value?.click()
-}
-
-async function onFileSelected(e: Event) {
-  const input = e.target as HTMLInputElement
-  const files = input.files
-  if (!files || !adapter) return
-
-  isUploading.value = true
-  error.value = null
-
-  try {
-    for (const file of files) {
-      const buffer = await file.arrayBuffer()
-      const data = Array.from(new Uint8Array(buffer))
-      const uploaded = await adapter.api.uploadFile(
-        file.name,
-        data,
-        file.type || 'application/octet-stream',
-      )
-      attachedFiles.value = [...attachedFiles.value, uploaded]
-    }
-  } catch (e) {
-    error.value = AppError.from(e).message
-  } finally {
-    isUploading.value = false
-    input.value = ''
-  }
-}
-
-function removeFile(fileId: string) {
-  attachedFiles.value = attachedFiles.value.filter((f) => f.id !== fileId)
-}
-
-function selectVisibility(v: string) {
-  visibility.value = v
-  showVisibilityMenu.value = false
-}
-
-const DEFAULT_MODE_ICON = 'M12 2a10 10 0 100 20 10 10 0 000-20z'
-
-function noteModeLabel(noteKey: string): string {
-  const match = noteKey.match(/^isNoteIn(.+)Mode$/)
-  return match?.[1] ?? noteKey
-}
-
-function noteModeIcon(noteKey: string): string {
-  const label = noteModeLabel(noteKey).toLowerCase()
-  return CUSTOM_TL_ICONS[label] ?? DEFAULT_MODE_ICON
-}
 
 function onKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -329,9 +101,9 @@ function onKeydown(e: KeyboardEvent) {
                 class="account-avatar"
               />
             </button>
-            <div v-if="showAccountMenu && accountsStore.accounts.length > 1" class="account-menu">
+            <div v-if="showAccountMenu && accounts.length > 1" class="account-menu">
               <button
-                v-for="acc in accountsStore.accounts"
+                v-for="acc in accounts"
                 :key="acc.id"
                 class="_button account-option"
                 :class="{ active: acc.id === activeAccountId }"

@@ -1,7 +1,13 @@
+import { defineAsyncComponent } from 'vue'
 import type { WidgetType } from '@/stores/deck'
 import type { WidgetDefinition } from './types'
-import WidgetAiScriptApp from './WidgetAiScriptApp.vue'
-import WidgetAiScriptConsole from './WidgetAiScriptConsole.vue'
+
+const WidgetAiScriptApp = defineAsyncComponent(
+  () => import('./WidgetAiScriptApp.vue'),
+)
+const WidgetAiScriptConsole = defineAsyncComponent(
+  () => import('./WidgetAiScriptConsole.vue'),
+)
 
 const widgets: WidgetDefinition[] = [
   {

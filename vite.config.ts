@@ -12,6 +12,24 @@ export default defineConfig({
   build: {
     target: 'esnext',
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-vue': ['vue', 'vue-router', 'pinia'],
+          'vendor-aiscript': ['@syuilo/aiscript'],
+          'vendor-codemirror': [
+            '@codemirror/autocomplete',
+            '@codemirror/commands',
+            '@codemirror/language',
+            '@codemirror/lint',
+            '@codemirror/state',
+            '@codemirror/view',
+            '@lezer/highlight',
+          ],
+          'vendor-shiki': ['shiki'],
+        },
+      },
+    },
   },
   esbuild: {
     drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],

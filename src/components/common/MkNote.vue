@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, defineAsyncComponent, onUnmounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
+import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useAccountsStore } from '@/stores/accounts'
 import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
@@ -130,56 +131,36 @@ const isOwnNote = computed(() => {
 })
 
 // User hover popup
-const showUserPopup = ref(false)
-const userPopupPos = ref({ x: 0, y: 0 })
-let hoverTimer: ReturnType<typeof setTimeout> | null = null
+const userPopup = useHoverPopup()
 
 function onAvatarMouseEnter(e: MouseEvent) {
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  userPopupPos.value = { x: rect.right + 8, y: rect.top }
-  hoverTimer = setTimeout(() => {
-    showUserPopup.value = true
-  }, 400)
+  userPopup.show({ x: rect.right + 8, y: rect.top })
 }
 
 function onAvatarMouseLeave() {
-  if (hoverTimer) {
-    clearTimeout(hoverTimer)
-    hoverTimer = null
-  }
+  userPopup.hide()
 }
 
 function closeUserPopup() {
-  showUserPopup.value = false
+  userPopup.forceClose()
 }
 
 // Reaction users hover popup
-const showReactionUsers = ref(false)
-const reactionUsersPos = ref({ x: 0, y: 0 })
+const reactionUsersPopup = useHoverPopup({
+  hideDelay: 300,
+  hideGuardSelector: '.reaction-users-popup',
+})
 const reactionUsersReaction = ref('')
 const reactionUsersReactionUrl = ref<string | null>(null)
 const reactionUsersTotalCount = ref(0)
 const reactionUsersTheme = ref<Record<string, string>>({})
-let reactionHoverTimer: ReturnType<typeof setTimeout> | null = null
-let reactionCloseTimer: ReturnType<typeof setTimeout> | null = null
-
-function cancelReactionClose() {
-  if (reactionCloseTimer) {
-    clearTimeout(reactionCloseTimer)
-    reactionCloseTimer = null
-  }
-}
 
 function onReactionMouseEnter(e: MouseEvent, reaction: string) {
-  if (reactionHoverTimer) {
-    clearTimeout(reactionHoverTimer)
-    reactionHoverTimer = null
-  }
-  cancelReactionClose()
+  reactionUsersPopup.cancelHide()
 
   const el = e.currentTarget as HTMLElement
   const rect = el.getBoundingClientRect()
-  reactionUsersPos.value = { x: rect.left, y: rect.bottom + 4 }
   reactionUsersReaction.value = reaction
   reactionUsersReactionUrl.value = reactionUrls.value[reaction] ?? null
   reactionUsersTotalCount.value = effectiveNote.value.reactions[reaction] ?? 0
@@ -195,40 +176,16 @@ function onReactionMouseEnter(e: MouseEvent, reaction: string) {
     reactionUsersTheme.value = vars
   }
 
-  // Already showing for a different reaction → props update triggers re-fetch
-  if (showReactionUsers.value) return
-
-  reactionHoverTimer = setTimeout(() => {
-    showReactionUsers.value = true
-  }, 400)
+  reactionUsersPopup.show({ x: rect.left, y: rect.bottom + 4 })
 }
 
 function onReactionMouseLeave() {
-  if (reactionHoverTimer) {
-    clearTimeout(reactionHoverTimer)
-    reactionHoverTimer = null
-  }
-  if (showReactionUsers.value) {
-    cancelReactionClose()
-    reactionCloseTimer = setTimeout(() => {
-      // Don't close if mouse is currently over the popup
-      const popup = document.querySelector('.reaction-users-popup')
-      if (popup?.matches(':hover')) return
-      showReactionUsers.value = false
-    }, 300)
-  }
+  reactionUsersPopup.hide()
 }
 
 function closeReactionUsers() {
-  cancelReactionClose()
-  showReactionUsers.value = false
+  reactionUsersPopup.forceClose()
 }
-
-onUnmounted(() => {
-  if (hoverTimer) clearTimeout(hoverTimer)
-  if (reactionHoverTimer) clearTimeout(reactionHoverTimer)
-  if (reactionCloseTimer) clearTimeout(reactionCloseTimer)
-})
 
 const VISIBILITY_ICONS: Record<string, string> = {
   public:
@@ -546,18 +503,18 @@ async function handleMentionClick(username: string, host: string | null) {
 
   <Teleport to="body">
     <MkUserPopup
-      v-if="showUserPopup"
+      v-if="userPopup.isVisible.value"
       :user-id="effectiveNote.user.id"
       :account-id="note._accountId"
-      :x="userPopupPos.x"
-      :y="userPopupPos.y"
+      :x="userPopup.position.value.x"
+      :y="userPopup.position.value.y"
       @close="closeUserPopup"
     />
   </Teleport>
 
   <Teleport to="body">
     <div
-      v-if="showReactionUsers"
+      v-if="reactionUsersPopup.isVisible.value"
       :style="reactionUsersTheme"
     >
       <MkReactionUsersPopup
@@ -567,8 +524,8 @@ async function handleMentionClick(username: string, host: string | null) {
         :reaction="reactionUsersReaction"
         :reaction-url="reactionUsersReactionUrl"
         :total-count="reactionUsersTotalCount"
-        :x="reactionUsersPos.x"
-        :y="reactionUsersPos.y"
+        :x="reactionUsersPopup.position.value.x"
+        :y="reactionUsersPopup.position.value.y"
         @close="closeReactionUsers"
       />
     </div>
