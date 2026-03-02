@@ -1,4 +1,4 @@
-import { ref, shallowRef } from 'vue'
+import { nextTick, ref, shallowRef } from 'vue'
 import type { DynamicScroller } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 
@@ -17,6 +17,19 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   let rafBuffer: NormalizedNote[] = []
   let rafId: number | null = null
 
+  let forceUpdateTimer: ReturnType<typeof setTimeout> | null = null
+
+  function scheduleForceUpdate() {
+    if (forceUpdateTimer) return
+    forceUpdateTimer = setTimeout(() => {
+      forceUpdateTimer = null
+      nextTick(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(options.scroller.value as any)?.forceUpdate()
+      })
+    }, 500)
+  }
+
   function flushRafBuffer() {
     rafId = null
     if (rafBuffer.length === 0) return
@@ -27,6 +40,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       const merged = [...batch, ...options.notes.value]
       options.notes.value =
         merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+      scheduleForceUpdate()
     } else {
       const merged = [...batch, ...pendingNotes.value]
       pendingNotes.value =
@@ -55,6 +69,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     options.notes.value =
       merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
     pendingNotes.value = []
+    scheduleForceUpdate()
   }
 
   function handleScroll() {
@@ -79,6 +94,10 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     if (rafId !== null) {
       cancelAnimationFrame(rafId)
       rafId = null
+    }
+    if (forceUpdateTimer) {
+      clearTimeout(forceUpdateTimer)
+      forceUpdateTimer = null
     }
     pendingNotes.value = []
     isAtTop.value = true
