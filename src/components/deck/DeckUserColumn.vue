@@ -60,7 +60,7 @@ const {
     :column-id="column.id"
     :title="column.name || 'User'"
     :theme-vars="columnThemeVars"
-    @header-click="scrollToTop(true)"
+    @header-click="scrollToTop()"
   >
     <template #header-icon>
       <i class="ti ti-user tl-header-icon" />

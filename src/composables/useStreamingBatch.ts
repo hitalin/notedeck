@@ -82,11 +82,13 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     }
   }
 
-  function scrollToTop(smooth = false) {
-    const el = options.scroller.value?.$el as HTMLElement | undefined
-    if (el) el.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'instant' })
+  function scrollToTop() {
     isAtTop.value = true
     flushPending()
+    nextTick(() => {
+      const el = options.scroller.value?.$el as HTMLElement | undefined
+      if (el) el.scrollTop = 0
+    })
   }
 
   function resetBatch() {

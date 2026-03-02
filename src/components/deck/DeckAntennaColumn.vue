@@ -57,7 +57,7 @@ const {
     :column-id="column.id"
     :title="column.name || 'Antenna'"
     :theme-vars="columnThemeVars"
-    @header-click="scrollToTop(true)"
+    @header-click="scrollToTop()"
   >
     <template #header-icon>
       <i class="ti ti-antenna-bars-5 tl-header-icon" />

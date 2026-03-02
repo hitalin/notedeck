@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { onMounted, onUnmounted, shallowRef } from 'vue'
+import { nextTick, onMounted, onUnmounted, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import type {
   ChannelSubscription,
@@ -175,12 +175,14 @@ export function useNoteColumn(config: NoteColumnConfig) {
     onScroll(loadMore)
   }
 
-  function scrollToTop(smooth = false) {
+  function scrollToTop() {
     if (streamingBatch) {
-      streamingBatch.scrollToTop(smooth)
+      streamingBatch.scrollToTop()
     } else {
-      const el = scroller.value?.$el as HTMLElement | undefined
-      if (el) el.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'instant' })
+      nextTick(() => {
+        const el = scroller.value?.$el as HTMLElement | undefined
+        if (el) el.scrollTop = 0
+      })
     }
   }
 

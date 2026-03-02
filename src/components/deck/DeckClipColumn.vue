@@ -48,7 +48,7 @@ const {
     :column-id="column.id"
     :title="column.name || 'Clip'"
     :theme-vars="columnThemeVars"
-    @header-click="scrollToTop(true)"
+    @header-click="scrollToTop()"
   >
     <template #header-icon>
       <i class="ti ti-paperclip tl-header-icon" />

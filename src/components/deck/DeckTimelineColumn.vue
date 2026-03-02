@@ -492,7 +492,7 @@ onUnmounted(() => {
     :column-id="column.id"
     title="Timeline"
     :theme-vars="columnThemeVars"
-    @header-click="scrollToTop(true)"
+    @header-click="scrollToTop()"
   >
     <template #header-icon>
       <i v-if="isTablerIcon(currentTlIcon)" :class="'ti ti-' + currentTlIcon" class="tl-header-icon" />

@@ -116,9 +116,9 @@ async function connect(useCache = false) {
   }
 }
 
-function scrollToTop(smooth = false) {
+function scrollToTop() {
   const el = scroller.value?.$el as HTMLElement | undefined
-  if (el) el.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'instant' })
+  if (el) el.scrollTop = 0
 }
 
 async function loadMore() {
@@ -199,7 +199,7 @@ onBeforeUnmount(() => {
     :column-id="column.id"
     :title="column.name || 'Mentions'"
     :theme-vars="columnThemeVars"
-    @header-click="scrollToTop(true)"
+    @header-click="scrollToTop()"
   >
     <template #header-icon>
       <i class="ti ti-at tl-header-icon" />

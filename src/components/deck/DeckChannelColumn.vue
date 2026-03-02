@@ -57,7 +57,7 @@ const {
     :column-id="column.id"
     :title="column.name || 'Channel'"
     :theme-vars="columnThemeVars"
-    @header-click="scrollToTop(true)"
+    @header-click="scrollToTop()"
   >
     <template #header-icon>
       <i class="ti ti-device-tv tl-header-icon" />

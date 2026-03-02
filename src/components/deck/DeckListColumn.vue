@@ -58,7 +58,7 @@ const {
     :column-id="column.id"
     :title="column.name || 'List'"
     :theme-vars="columnThemeVars"
-    @header-click="scrollToTop(true)"
+    @header-click="scrollToTop()"
   >
     <template #header-icon>
       <i class="ti ti-list tl-header-icon" />

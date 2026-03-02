@@ -46,7 +46,7 @@ const {
     :column-id="column.id"
     :title="column.name || 'Favorites'"
     :theme-vars="columnThemeVars"
-    @header-click="scrollToTop(true)"
+    @header-click="scrollToTop()"
   >
     <template #header-icon>
       <i class="ti ti-star tl-header-icon" />
