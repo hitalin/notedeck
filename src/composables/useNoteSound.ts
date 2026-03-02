@@ -1,5 +1,4 @@
 const PROXY_BASE = 'http://127.0.0.1:19820/proxy/image'
-const SOUND_PATH = '/client-assets/sounds/syuilo/pope1.mp3'
 const RETRY_AFTER_MS = 5 * 60 * 1000
 const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
@@ -24,36 +23,43 @@ if (IS_MOBILE) {
   document.addEventListener('click', activate, { once: true })
 }
 
-async function ensureBuffer(host: string): Promise<AudioBuffer | null> {
-  const cached = bufferCache.get(host)
+async function ensureBuffer(
+  host: string,
+  soundType: string,
+): Promise<AudioBuffer | null> {
+  const cacheKey = `${host}:${soundType}`
+  const cached = bufferCache.get(cacheKey)
   if (cached) return cached
 
-  const failedAt = failedHosts.get(host)
+  const failedAt = failedHosts.get(cacheKey)
   if (failedAt && Date.now() - failedAt < RETRY_AFTER_MS) return null
 
   try {
-    const remoteUrl = `https://${host}${SOUND_PATH}`
+    const remoteUrl = `https://${host}/client-assets/sounds/${soundType}.mp3`
     const url = IS_MOBILE
       ? remoteUrl
       : `${PROXY_BASE}?url=${encodeURIComponent(remoteUrl)}`
     const resp = await fetch(url)
     if (!resp.ok) {
-      failedHosts.set(host, Date.now())
+      failedHosts.set(cacheKey, Date.now())
       return null
     }
     const arrayBuf = await resp.arrayBuffer()
     const ctx = getAudioContext()
     const audioBuf = await ctx.decodeAudioData(arrayBuf)
-    bufferCache.set(host, audioBuf)
-    failedHosts.delete(host)
+    bufferCache.set(cacheKey, audioBuf)
+    failedHosts.delete(cacheKey)
     return audioBuf
   } catch {
-    failedHosts.set(host, Date.now())
+    failedHosts.set(cacheKey, Date.now())
     return null
   }
 }
 
-export function useNoteSound(getHost: () => string | undefined) {
+export function useNoteSound(
+  getHost: () => string | undefined,
+  soundType = 'syuilo/n-aec',
+) {
   let lastPlayedAt = 0
 
   function play() {
@@ -69,7 +75,7 @@ export function useNoteSound(getHost: () => string | undefined) {
     const ctx = getAudioContext()
     if (ctx.state === 'suspended') ctx.resume()
 
-    ensureBuffer(host).then((buffer) => {
+    ensureBuffer(host, soundType).then((buffer) => {
       if (!buffer) return
       const source = ctx.createBufferSource()
       source.buffer = buffer
@@ -85,7 +91,7 @@ export function useNoteSound(getHost: () => string | undefined) {
 
   function warmup() {
     const host = getHost()
-    if (host) ensureBuffer(host)
+    if (host) ensureBuffer(host, soundType)
   }
 
   return { play, warmup }

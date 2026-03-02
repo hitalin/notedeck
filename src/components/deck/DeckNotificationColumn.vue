@@ -13,6 +13,7 @@ const MkPostForm = defineAsyncComponent(
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
+import { useNoteSound } from '@/composables/useNoteSound'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { sendDesktopNotification } from '@/utils/desktopNotification'
 import { AppError } from '@/utils/errors'
@@ -40,6 +41,8 @@ const {
   scroller,
   onScroll,
 } = useColumnSetup(() => props.column)
+
+const noteSound = useNoteSound(() => account.value?.host, 'syuilo/n-ea')
 
 const MAX_NOTIFICATIONS = 500
 const notifications = shallowRef<NormalizedNotification[]>([])
@@ -166,6 +169,7 @@ async function connect(useCache = false) {
     }
 
     adapter.stream.connect()
+    noteSound.warmup()
     setSubscription(
       adapter.stream.subscribeMain((event) => {
         if (event.type === 'notification') {
@@ -190,6 +194,7 @@ async function connect(useCache = false) {
             }
           }
 
+          noteSound.play()
           rafBuffer.push(notification)
           if (rafId === null) {
             rafId = requestAnimationFrame(flushRafBuffer)
