@@ -77,7 +77,6 @@ const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } =
 const noteSound = useNoteSound(() => account.value?.host)
 const {
   pendingNotes,
-  animatingIds,
   enqueueNote,
   handleScroll: batchHandleScroll,
   scrollToTop,
@@ -582,7 +581,6 @@ onUnmounted(() => {
             <MkNote
               :note="item"
               :focused="item.id === focusedNoteId"
-              :animate-in="animatingIds.has(item.id)"
               @react="handlers.reaction"
               @reply="handlers.reply"
               @renote="handlers.renote"

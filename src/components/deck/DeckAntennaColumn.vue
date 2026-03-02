@@ -25,7 +25,6 @@ const {
   notes,
   focusedNoteId,
   pendingNotes,
-  animatingIds,
   postForm,
   handlers,
   scroller,
@@ -111,7 +110,6 @@ const {
               <MkNote
                 :note="item"
                 :focused="item.id === focusedNoteId"
-                :animate-in="animatingIds.has(item.id)"
                 @react="handlers.reaction"
                 @reply="handlers.reply"
                 @renote="handlers.renote"

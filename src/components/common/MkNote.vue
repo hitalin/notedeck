@@ -29,7 +29,6 @@ const props = defineProps<{
   note: NormalizedNote
   detailed?: boolean
   focused?: boolean
-  animateIn?: boolean
 }>()
 
 /** Pure renote → show inner note, otherwise show note itself */
@@ -275,7 +274,7 @@ async function handleMentionClick(username: string, host: string | null) {
 <template>
   <div
     class="note-root"
-    :class="{ detailed, focused, 'note-slide-in': animateIn }"
+    :class="{ detailed, focused }"
     tabindex="0"
   >
     <!-- Renote info bar -->

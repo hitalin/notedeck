@@ -1,11 +1,5 @@
 <script setup lang="ts">
-import {
-  defineAsyncComponent,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  shallowRef,
-} from 'vue'
+import { defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { ChannelSubscription, NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
@@ -59,8 +53,6 @@ const { sync: syncCapture } = useNoteCapture(
   onNoteUpdate,
 )
 setOnNotesChanged(syncCapture)
-const animatingIds = shallowRef<Set<string>>(new Set())
-let animCleanupTimer: ReturnType<typeof setTimeout> | null = null
 let mentionSub: ChannelSubscription | null = null
 
 async function connect() {
@@ -81,14 +73,6 @@ async function connect() {
         if (note.visibility !== 'specified') return
         if (noteIds.has(note.id)) return
         noteIds.add(note.id)
-        const noteId = note.id
-        animatingIds.value = new Set([...animatingIds.value, noteId])
-        if (animCleanupTimer) clearTimeout(animCleanupTimer)
-        animCleanupTimer = setTimeout(() => {
-          const next = new Set(animatingIds.value)
-          next.delete(noteId)
-          animatingIds.value = next
-        }, 350)
         notes.value = [note, ...notes.value]
         syncCapture(notes.value)
       },
@@ -216,7 +200,6 @@ onBeforeUnmount(() => {
             >
               <MkNote
                 :note="item"
-                :animate-in="animatingIds.has(item.id)"
                 @react="handlers.reaction"
                 @reply="handlers.reply"
                 @renote="handlers.renote"

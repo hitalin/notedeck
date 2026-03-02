@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import {
-  defineAsyncComponent,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  shallowRef,
-} from 'vue'
+import { defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { ChannelSubscription, NormalizedNote } from '@/adapters/types'
@@ -70,8 +64,6 @@ const { sync: syncCapture } = useNoteCapture(
   onNoteUpdate,
 )
 setOnNotesChanged(syncCapture)
-const animatingIds = shallowRef<Set<string>>(new Set())
-let animCleanupTimer: ReturnType<typeof setTimeout> | null = null
 let mentionSub: ChannelSubscription | null = null
 
 async function connect(useCache = false) {
@@ -110,14 +102,6 @@ async function connect(useCache = false) {
       (note) => {
         if (noteIds.has(note.id)) return
         noteIds.add(note.id)
-        const noteId = note.id
-        animatingIds.value = new Set([...animatingIds.value, noteId])
-        if (animCleanupTimer) clearTimeout(animCleanupTimer)
-        animCleanupTimer = setTimeout(() => {
-          const next = new Set(animatingIds.value)
-          next.delete(noteId)
-          animatingIds.value = next
-        }, 350)
         notes.value = [note, ...notes.value]
         syncCapture(notes.value)
       },
@@ -260,7 +244,6 @@ onBeforeUnmount(() => {
               <MkNote
                 :note="item"
                 :focused="item.id === focusedNoteId"
-                :animate-in="animatingIds.has(item.id)"
                 @react="handlers.reaction"
                 @reply="handlers.reply"
                 @renote="handlers.renote"
