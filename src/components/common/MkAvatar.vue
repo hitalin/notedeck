@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type CSSProperties, computed, ref } from 'vue'
+import { type CSSProperties, computed, ref, watch } from 'vue'
 import type { AvatarDecoration } from '@/adapters/types'
 import { proxyUrl } from '@/utils/imageProxy'
 
@@ -24,6 +24,13 @@ defineEmits<{
 }>()
 
 const proxyFailed = ref(false)
+
+watch(
+  () => props.avatarUrl,
+  () => {
+    proxyFailed.value = false
+  },
+)
 
 const avatarSrc = computed(() => {
   if (!props.avatarUrl) return undefined
@@ -64,10 +71,10 @@ const decorationStyles = computed(() =>
   >
     <img
       v-if="props.avatarUrl"
+      :key="props.avatarUrl"
       :src="avatarSrc"
       :alt="props.alt"
       class="avatar-img"
-      loading="lazy"
       decoding="async"
       @error="onAvatarError"
     />
@@ -87,6 +94,8 @@ const decorationStyles = computed(() =>
   position: relative;
   display: inline-block;
   flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--nd-buttonBg);
   transition: transform 0.2s ease;
 }
 

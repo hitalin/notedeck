@@ -278,11 +278,11 @@ async function handleMentionClick(username: string, host: string | null) {
       <i class="ti ti-repeat renote-icon" />
       <img
         v-if="note.user.avatarUrl"
+        :key="note.user.avatarUrl"
         :src="proxyUrl(note.user.avatarUrl)"
         class="renote-avatar"
         width="28"
         height="28"
-        loading="lazy"
         decoding="async"
       />
       <span class="renote-user">
