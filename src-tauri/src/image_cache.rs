@@ -9,6 +9,8 @@ const CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 const MAX_FILE_SIZE: u64 = 20 * 1024 * 1024; // 20MB
 const MAX_CACHE_SIZE: u64 = 500 * 1024 * 1024; // 500MB
 
+type InflightMap = HashMap<String, watch::Receiver<Option<Result<CacheEntry, String>>>>;
+
 pub struct CacheEntry {
     pub path: PathBuf,
     pub content_type: String,
@@ -16,7 +18,7 @@ pub struct CacheEntry {
 
 pub struct ImageCache {
     cache_dir: PathBuf,
-    inflight: Arc<Mutex<HashMap<String, watch::Receiver<Option<Result<CacheEntry, String>>>>>>,
+    inflight: Arc<Mutex<InflightMap>>,
     http_client: reqwest::Client,
 }
 
