@@ -63,8 +63,6 @@ export function useNoteSound(
   let lastPlayedAt = 0
 
   function play() {
-    if (document.hidden) return
-
     const now = Date.now()
     if (now - lastPlayedAt < 300) return
     lastPlayedAt = now
