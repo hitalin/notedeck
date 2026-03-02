@@ -10,6 +10,7 @@ use tauri_plugin_autostart::MacosLauncher;
 mod commands;
 mod http_server;
 mod image_cache;
+mod ogp;
 mod query_bridge;
 mod streaming;
 
@@ -100,6 +101,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::stream_unsubscribe,
         commands::stream_sub_note,
         commands::stream_unsub_note,
+        commands::fetch_ogp,
     ]);
 
     builder = builder.setup(|app| {
@@ -121,6 +123,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
+
+        // Initialize OGP cache
+        app.manage(ogp::OgpCache::new());
 
         // Generate API token and write to file
         let api_token = uuid::Uuid::new_v4().to_string();

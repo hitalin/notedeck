@@ -929,6 +929,22 @@ pub async fn auth_complete_and_save(
     // account, saved が drop → token が zeroize される
 }
 
+// --- OGP Preview ---
+
+#[tauri::command]
+pub async fn fetch_ogp(
+    ogp_cache: State<'_, crate::ogp::OgpCache>,
+    url: String,
+) -> Result<crate::ogp::OgpData> {
+    if url.len() > 2048 {
+        return Err(NoteDeckError::InvalidInput("URL too long".to_string()));
+    }
+    ogp_cache
+        .get_ogp(&url)
+        .await
+        .map_err(|e| NoteDeckError::InvalidInput(format!("OGP: {e}")))
+}
+
 // --- Chat ---
 
 #[tauri::command]

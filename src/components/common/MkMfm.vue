@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { highlightCode } from '@/utils/highlight'
 import { proxyUrl } from '@/utils/imageProxy'
 import { type MfmToken, parseMfm } from '@/utils/mfm'
 import { isSafeUrl } from '@/utils/url'
+
+const MkUrlPreview = defineAsyncComponent(() => import('./MkUrlPreview.vue'))
 
 const props = defineProps<{
   text?: string
@@ -199,7 +201,7 @@ function fnStyle(
 
 <template>
   <span class="mfm"><template v-for="(token, i) in resolvedTokens" :key="i"><!--
-    --><!-- URL --><a v-if="token.type === 'url'" :href="isSafeUrl(token.value) ? token.value : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><!--
+    --><!-- URL --><span v-if="token.type === 'url'" class="mfm-url-block"><a :href="isSafeUrl(token.value) ? token.value : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><MkUrlPreview :url="token.value" /></span><!--
     --><!-- Link --><a v-else-if="token.type === 'link'" :href="isSafeUrl(token.url) ? token.url : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.url)"><MkMfm :tokens="token.label" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" @mention-click="(u, h) => emit('mentionClick', u, h)" /></a><!--
     --><!-- Mention --><span v-else-if="token.type === 'mention'" class="mfm-mention" @click.stop="emit('mentionClick', token.username, token.host)">{{ token.acct }}</span><!--
     --><!-- Hashtag --><span v-else-if="token.type === 'hashtag'" class="mfm-hashtag" @click.stop>#{{ token.value }}</span><!--
@@ -224,6 +226,10 @@ function fnStyle(
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.5;
+}
+
+.mfm-url-block {
+  display: inline;
 }
 
 .mfm-url {
