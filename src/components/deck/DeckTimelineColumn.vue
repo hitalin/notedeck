@@ -711,10 +711,10 @@ onUnmounted(() => {
 /* Teleported filter popup — unscoped */
 .nd-filter-popup {
   position: fixed;
-  z-index: 10000;
+  z-index: 10001;
   width: 220px;
-  padding: 6px;
-  background: color-mix(in srgb, var(--nd-panelBg, #313543) 85%, transparent);
+  padding: 8px 0;
+  background: color-mix(in srgb, var(--nd-popup, var(--nd-panelBg)) 85%, transparent);
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   backdrop-filter: blur(16px);
@@ -723,7 +723,7 @@ onUnmounted(() => {
 }
 
 .nd-filter-popup-header {
-  padding: 6px 10px 4px;
+  padding: 8px 14px 4px;
   font-size: 0.75em;
   font-weight: 700;
   text-transform: uppercase;
@@ -735,8 +735,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 10px;
-  border-radius: 8px;
+  padding: 8px 14px;
   cursor: pointer;
   transition: background 0.15s;
 }
