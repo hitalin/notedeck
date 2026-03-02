@@ -448,7 +448,7 @@ async function handleMentionClick(username: string, host: string | null) {
             @mouseenter="onReactionMouseEnter($event, r.reaction)"
             @mouseleave="onReactionMouseLeave"
           >
-            <img v-if="reactionUrls[r.reaction]" :src="proxyUrl(reactionUrls[r.reaction]!)" :alt="r.reaction" class="custom-emoji" width="20" height="20" />
+            <img v-if="reactionUrls[r.reaction]" :src="proxyUrl(reactionUrls[r.reaction]!)" :alt="r.reaction" class="custom-emoji" decoding="async" />
             <span v-else-if="r.reaction.startsWith(':')" class="reaction-emoji-fallback">{{ r.reaction }}</span>
             <MkEmoji v-else :emoji="r.reaction" class="reaction-emoji" />
             <span class="count">{{ r.count }}</span>
@@ -878,8 +878,8 @@ async function handleMentionClick(username: string, host: string | null) {
 
 .custom-emoji {
   height: 2em;
+  width: auto;
   vertical-align: middle;
-  object-fit: contain;
 }
 
 .reaction .custom-emoji {
