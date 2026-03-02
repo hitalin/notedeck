@@ -294,6 +294,7 @@ function isAudio(file: NormalizedDriveFile): boolean {
   font-weight: bold;
   cursor: pointer;
   backdrop-filter: blur(4px);
+  z-index: 2;
 }
 
 .sensitive-hide-btn {
@@ -310,6 +311,7 @@ function isAudio(file: NormalizedDriveFile): boolean {
   background: rgba(0, 0, 0, 0.5);
   color: #fff;
   cursor: pointer;
+  z-index: 2;
   transition: background 0.15s;
 }
 
@@ -327,6 +329,7 @@ function isAudio(file: NormalizedDriveFile): boolean {
   color: #fff;
   font-size: 1.4em;
   font-weight: bold;
+  z-index: 2;
 }
 
 /* Lightbox */
