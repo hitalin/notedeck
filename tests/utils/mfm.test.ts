@@ -170,7 +170,7 @@ describe('parseMfm', () => {
     expect(tokens).toHaveLength(3)
     expect(tokens[1]).toEqual({
       type: 'link',
-      label: 'here',
+      label: [{ type: 'text', value: 'here' }],
       url: 'https://example.com',
     })
   })
@@ -180,8 +180,23 @@ describe('parseMfm', () => {
     expect(tokens).toHaveLength(1)
     expect(tokens[0]).toEqual({
       type: 'link',
-      label: 'silent',
+      label: [{ type: 'text', value: 'silent' }],
       url: 'https://example.com',
+    })
+  })
+
+  it('parses <plain> inside link label', () => {
+    const tokens = parseMfm(
+      '?[<plain>ふじさんすきー【misskey.day】</plain> (misskey.day)](https://misskey.day)',
+    )
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]).toEqual({
+      type: 'link',
+      label: [
+        { type: 'plain', value: 'ふじさんすきー【misskey.day】' },
+        { type: 'text', value: ' (misskey.day)' },
+      ],
+      url: 'https://misskey.day',
     })
   })
 
