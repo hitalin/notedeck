@@ -59,7 +59,6 @@ const emit = defineEmits<{
   delete: [note: NormalizedNote]
   edit: [note: NormalizedNote]
   bookmark: [note: NormalizedNote]
-  animated: []
 }>()
 
 const router = useRouter()
@@ -278,7 +277,6 @@ async function handleMentionClick(username: string, host: string | null) {
     class="note-root"
     :class="{ detailed, focused, 'note-slide-in': animateIn }"
     tabindex="0"
-    @animationend="animateIn && emit('animated')"
   >
     <!-- Renote info bar -->
     <div v-if="isPureRenote" class="renote-info">
@@ -1132,13 +1130,14 @@ async function handleMentionClick(username: string, host: string | null) {
 
 /* Note arrival animation */
 .note-slide-in {
-  animation: note-slide-in 0.3s ease-out;
+  animation: note-slide-in 0.3s ease-out both;
+  will-change: opacity, transform;
 }
 
 @keyframes note-slide-in {
   from {
     opacity: 0;
-    transform: translateY(-12px);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;

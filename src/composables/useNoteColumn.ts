@@ -102,7 +102,6 @@ export function useNoteColumn(config: NoteColumnConfig) {
     streamingBatch?.pendingNotes ?? shallowRef<NormalizedNote[]>([])
   const animatingIds =
     streamingBatch?.animatingIds ?? shallowRef<Set<string>>(new Set())
-  const markAnimated = streamingBatch?.markAnimated ?? (() => {})
 
   async function connect(useCache = false) {
     error.value = null
@@ -296,7 +295,6 @@ export function useNoteColumn(config: NoteColumnConfig) {
     focusedNoteId,
     pendingNotes,
     animatingIds,
-    markAnimated,
     postForm,
     handlers,
     scroller,

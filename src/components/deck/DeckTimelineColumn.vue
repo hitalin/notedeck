@@ -78,7 +78,6 @@ const noteSound = useNoteSound(() => account.value?.host)
 const {
   pendingNotes,
   animatingIds,
-  markAnimated,
   enqueueNote,
   handleScroll: batchHandleScroll,
   scrollToTop,
@@ -591,7 +590,6 @@ onUnmounted(() => {
               @delete="removeNote"
               @edit="handlers.edit"
               @bookmark="handlers.bookmark"
-              @animated="markAnimated(item.id)"
             />
           </DynamicScrollerItem>
         </template>

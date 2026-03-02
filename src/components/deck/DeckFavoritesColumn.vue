@@ -25,7 +25,6 @@ const {
   notes,
   focusedNoteId,
   animatingIds,
-  markAnimated,
   postForm,
   handlers,
   scroller,
@@ -104,7 +103,6 @@ const {
                 @delete="removeNote"
                 @edit="handlers.edit"
                 @bookmark="handlers.bookmark"
-                @animated="markAnimated(item.id)"
               />
             </DynamicScrollerItem>
           </template>

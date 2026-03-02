@@ -60,11 +60,7 @@ const { sync: syncCapture } = useNoteCapture(
 )
 setOnNotesChanged(syncCapture)
 const animatingIds = shallowRef<Set<string>>(new Set())
-function markAnimated(noteId: string) {
-  const next = new Set(animatingIds.value)
-  next.delete(noteId)
-  animatingIds.value = next
-}
+let animCleanupTimer: ReturnType<typeof setTimeout> | null = null
 let mentionSub: ChannelSubscription | null = null
 
 async function connect() {
@@ -85,7 +81,14 @@ async function connect() {
         if (note.visibility !== 'specified') return
         if (noteIds.has(note.id)) return
         noteIds.add(note.id)
-        animatingIds.value = new Set([...animatingIds.value, note.id])
+        const noteId = note.id
+        animatingIds.value = new Set([...animatingIds.value, noteId])
+        if (animCleanupTimer) clearTimeout(animCleanupTimer)
+        animCleanupTimer = setTimeout(() => {
+          const next = new Set(animatingIds.value)
+          next.delete(noteId)
+          animatingIds.value = next
+        }, 350)
         notes.value = [note, ...notes.value]
         syncCapture(notes.value)
       },
@@ -221,7 +224,6 @@ onBeforeUnmount(() => {
                 @delete="removeNote"
                 @edit="handlers.edit"
                 @bookmark="handlers.bookmark"
-                @animated="markAnimated(item.id)"
               />
             </DynamicScrollerItem>
           </template>

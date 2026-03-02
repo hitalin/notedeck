@@ -15,18 +15,18 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   const pendingNotes = shallowRef<NormalizedNote[]>([])
   const isAtTop = ref(true)
   const animatingIds = shallowRef<Set<string>>(new Set())
+  const ANIMATION_DURATION = 350
 
-  function markAnimated(noteId: string) {
-    const next = new Set(animatingIds.value)
-    next.delete(noteId)
-    animatingIds.value = next
-  }
-
-  function addAnimatingIds(ids: string[]) {
+  function scheduleAnimationCleanup(ids: string[]) {
     if (ids.length === 0) return
     const next = new Set(animatingIds.value)
     for (const id of ids) next.add(id)
     animatingIds.value = next
+    setTimeout(() => {
+      const current = new Set(animatingIds.value)
+      for (const id of ids) current.delete(id)
+      animatingIds.value = current
+    }, ANIMATION_DURATION)
   }
 
   let rafBuffer: NormalizedNote[] = []
@@ -42,7 +42,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(options.scroller.value as any)?.forceUpdate()
       })
-    }, 500)
+    }, 150)
   }
 
   function flushRafBuffer() {
@@ -52,7 +52,9 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     rafBuffer = []
     if (isAtTop.value) {
       for (const n of batch) options.noteIds.add(n.id)
-      addAnimatingIds(batch.map((n) => n.id))
+      scheduleAnimationCleanup(
+        batch.length <= 3 ? batch.map((n) => n.id) : [batch[0]!.id],
+      )
       const merged = [...batch, ...options.notes.value]
       options.notes.value =
         merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
@@ -82,7 +84,9 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       return
     }
     for (const n of newNotes) options.noteIds.add(n.id)
-    addAnimatingIds(newNotes.slice(0, 5).map((n) => n.id))
+    scheduleAnimationCleanup(
+      newNotes.length <= 3 ? newNotes.map((n) => n.id) : [newNotes[0]!.id],
+    )
     const merged = [...newNotes, ...options.notes.value]
     options.notes.value =
       merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
@@ -128,7 +132,6 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     pendingNotes,
     isAtTop,
     animatingIds,
-    markAnimated,
     enqueueNote,
     flushPending,
     handleScroll,
