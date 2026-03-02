@@ -1127,9 +1127,4 @@ async function handleMentionClick(username: string, host: string | null) {
   .reaction { height: 32px; font-size: 1em; border-radius: 4px; }
   .reaction .count { font-size: 0.9em; line-height: 32px; }
 }
-
-/* Note arrival highlight */
-.note-slide-in {
-  border-left: 3px solid var(--nd-accent, #86b300);
-}
 </style>
