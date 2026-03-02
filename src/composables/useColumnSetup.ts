@@ -23,9 +23,12 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     customMutatedFn = fn
   }
 
-  function notifyMutation() {
-    noteStore.notifyMutation()
-    customMutatedFn?.()
+  /** Create a callback that replaces the note reference in the store (triggers Vue reactivity) */
+  function notifyMutationFor(note: NormalizedNote) {
+    return () => {
+      noteStore.update(note.id, { ...note })
+      customMutatedFn?.()
+    }
   }
   const accountsStore = useAccountsStore()
   const emojisStore = useEmojisStore()
@@ -88,7 +91,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   async function handleReaction(reaction: string, note: NormalizedNote) {
     if (!adapter) return
     try {
-      await toggleReaction(adapter.api, note, reaction, notifyMutation)
+      await toggleReaction(adapter.api, note, reaction, notifyMutationFor(note))
     } catch (e) {
       const err = AppError.from(e)
       console.error('[reaction]', err.code, err.message)
@@ -97,13 +100,14 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
 
   async function handleRenote(note: NormalizedNote) {
     if (!adapter) return
+    const notify = notifyMutationFor(note)
     note.renoteCount = (note.renoteCount ?? 0) + 1
-    notifyMutation()
+    notify()
     try {
       await adapter.api.createNote({ renoteId: note.id })
     } catch (e) {
       note.renoteCount = Math.max(0, (note.renoteCount ?? 1) - 1)
-      notifyMutation()
+      notify()
       const err = AppError.from(e)
       console.error('[renote]', err.code, err.message)
     }
@@ -143,7 +147,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   async function handleBookmark(note: NormalizedNote) {
     if (!adapter) return
     try {
-      await toggleFavorite(adapter.api, note, notifyMutation)
+      await toggleFavorite(adapter.api, note, notifyMutationFor(note))
     } catch (e) {
       const err = AppError.from(e)
       console.error('[bookmark]', err.code, err.message)
