@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { type CSSProperties, computed, ref } from 'vue'
 import type { AvatarDecoration } from '@/adapters/types'
-import { proxyUrl } from '@/composables/useImageProxy'
+import { proxyUrl } from '@/utils/imageProxy'
 
 const props = withDefaults(
   defineProps<{

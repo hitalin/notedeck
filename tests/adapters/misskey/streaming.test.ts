@@ -343,6 +343,139 @@ describe('MisskeyStream', () => {
     })
   })
 
+  describe('subscribeAntenna', () => {
+    it('invokes stream_subscribe_antenna and dispatches notes', async () => {
+      vi.mocked(invoke).mockResolvedValue(undefined)
+      stream.connect()
+      await vi.waitFor(() => {
+        expect(listenCallbacks.has('stream-note')).toBe(true)
+      })
+
+      vi.mocked(invoke).mockResolvedValue('sub-ant-1')
+      const notes: NormalizedNote[] = []
+      stream.subscribeAntenna('antenna-1', (note) => notes.push(note))
+
+      await vi.waitFor(() => {
+        expect(invoke).toHaveBeenCalledWith('stream_subscribe_antenna', {
+          accountId: 'acc-1',
+          antennaId: 'antenna-1',
+        })
+      })
+
+      emitTauriEvent('stream-note', {
+        accountId: 'acc-1',
+        subscriptionId: 'sub-ant-1',
+        note: {
+          id: 'note-ant-1',
+          _accountId: 'acc-1',
+          _serverHost: 'example.com',
+          createdAt: '2025-01-01T00:00:00Z',
+          text: 'Antenna note',
+          cw: null,
+          user: {
+            id: 'u1',
+            username: 'test',
+            host: null,
+            name: 'Test',
+            avatarUrl: null,
+          },
+          visibility: 'public',
+          emojis: {},
+          reactionEmojis: {},
+          reactions: {},
+          renoteCount: 0,
+          repliesCount: 0,
+          files: [],
+        },
+      })
+
+      expect(notes).toHaveLength(1)
+      expect(notes[0]?.id).toBe('note-ant-1')
+    })
+
+    it('dispose invokes unsubscribe', async () => {
+      vi.mocked(invoke).mockResolvedValue(undefined)
+      stream.connect()
+      await vi.waitFor(() => {
+        expect(listenCallbacks.has('stream-note')).toBe(true)
+      })
+
+      vi.mocked(invoke).mockResolvedValue('sub-ant-1')
+      const sub = stream.subscribeAntenna('antenna-1', () => {})
+      await vi.waitFor(() => {
+        expect(invoke).toHaveBeenCalledWith(
+          'stream_subscribe_antenna',
+          expect.any(Object),
+        )
+      })
+
+      sub.dispose()
+
+      await vi.waitFor(() => {
+        expect(invoke).toHaveBeenCalledWith('stream_unsubscribe', {
+          accountId: 'acc-1',
+          subscriptionId: 'sub-ant-1',
+        })
+      })
+    })
+  })
+
+  describe('subscribeChatUser', () => {
+    it('invokes stream_subscribe_chat_user and dispatches messages', async () => {
+      vi.mocked(invoke).mockResolvedValue(undefined)
+      stream.connect()
+      await vi.waitFor(() => {
+        expect(listenCallbacks.has('stream-chat-message')).toBe(true)
+      })
+
+      vi.mocked(invoke).mockResolvedValue('sub-chat-1')
+      const messages: unknown[] = []
+      stream.subscribeChatUser('other-user-1', (msg) => messages.push(msg))
+
+      await vi.waitFor(() => {
+        expect(invoke).toHaveBeenCalledWith('stream_subscribe_chat_user', {
+          accountId: 'acc-1',
+          otherId: 'other-user-1',
+        })
+      })
+
+      emitTauriEvent('stream-chat-message', {
+        accountId: 'acc-1',
+        subscriptionId: 'sub-chat-1',
+        message: { id: 'msg-1', text: 'Hello' },
+      })
+
+      expect(messages).toHaveLength(1)
+      expect(messages[0]).toEqual({ id: 'msg-1', text: 'Hello' })
+    })
+
+    it('dispose invokes unsubscribe', async () => {
+      vi.mocked(invoke).mockResolvedValue(undefined)
+      stream.connect()
+      await vi.waitFor(() => {
+        expect(listenCallbacks.has('stream-chat-message')).toBe(true)
+      })
+
+      vi.mocked(invoke).mockResolvedValue('sub-chat-1')
+      const sub = stream.subscribeChatUser('other-user-1', () => {})
+      await vi.waitFor(() => {
+        expect(invoke).toHaveBeenCalledWith(
+          'stream_subscribe_chat_user',
+          expect.any(Object),
+        )
+      })
+
+      sub.dispose()
+
+      await vi.waitFor(() => {
+        expect(invoke).toHaveBeenCalledWith('stream_unsubscribe', {
+          accountId: 'acc-1',
+          subscriptionId: 'sub-chat-1',
+        })
+      })
+    })
+  })
+
   describe('on / off', () => {
     it('registers and removes event handlers', () => {
       const handler = vi.fn()

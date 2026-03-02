@@ -2,8 +2,8 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed } from 'vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
-import { proxyUrl } from '@/composables/useImageProxy'
 import { highlightCode } from '@/utils/highlight'
+import { proxyUrl } from '@/utils/imageProxy'
 import { type MfmToken, parseMfm } from '@/utils/mfm'
 import { isSafeUrl } from '@/utils/url'
 

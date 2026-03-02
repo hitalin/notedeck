@@ -220,6 +220,64 @@ export class MisskeyStream implements StreamAdapter {
     this.emit('disconnected')
   }
 
+  private createSubscription(
+    command: string,
+    args: Record<string, unknown>,
+    register: (id: string) => void,
+    unregister: (id: string) => void,
+  ): ChannelSubscription {
+    let subscriptionId: string | null = null
+    let disposed = false
+
+    const subscribePromise = invoke<string>(command, {
+      accountId: this.accountId,
+      ...args,
+    })
+      .then((id) => {
+        if (disposed) {
+          invoke('stream_unsubscribe', {
+            accountId: this.accountId,
+            subscriptionId: id,
+          }).catch(() => {})
+          return null
+        }
+        subscriptionId = id
+        register(id)
+        return id
+      })
+      .catch((e) => {
+        console.error(`[stream] ${command} failed:`, e)
+        return null
+      })
+
+    return {
+      dispose: () => {
+        disposed = true
+        if (subscriptionId) {
+          unregister(subscriptionId)
+          invoke('stream_unsubscribe', {
+            accountId: this.accountId,
+            subscriptionId,
+          }).catch((e) => {
+            console.warn('[stream] unsubscribe failed:', e)
+          })
+        } else {
+          subscribePromise.then((id) => {
+            if (id) {
+              unregister(id)
+              invoke('stream_unsubscribe', {
+                accountId: this.accountId,
+                subscriptionId: id,
+              }).catch((e) => {
+                console.warn('[stream] unsubscribe failed:', e)
+              })
+            }
+          })
+        }
+      },
+    }
+  }
+
   subscribeTimeline(
     type: TimelineType,
     handler: (note: NormalizedNote) => void,
@@ -228,62 +286,19 @@ export class MisskeyStream implements StreamAdapter {
       listId?: string
     },
   ): ChannelSubscription {
-    let subscriptionId: string | null = null
-    let disposed = false
-
-    const subscribePromise = invoke<string>('stream_subscribe_timeline', {
-      accountId: this.accountId,
-      timelineType: type,
-      listId: options?.listId ?? null,
-    })
-      .then((id) => {
-        if (disposed) {
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId: id,
-          }).catch(() => {})
-          return null
-        }
-        subscriptionId = id
+    return this.createSubscription(
+      'stream_subscribe_timeline',
+      { timelineType: type, listId: options?.listId ?? null },
+      (id) => {
         this.noteHandlers.set(id, handler)
-        if (options?.onNoteUpdated) {
+        if (options?.onNoteUpdated)
           this.noteUpdateHandlers.set(id, options.onNoteUpdated)
-        }
-        return id
-      })
-      .catch((e) => {
-        console.error('[stream] subscribe timeline failed:', e)
-        return null
-      })
-
-    return {
-      dispose: () => {
-        disposed = true
-        if (subscriptionId) {
-          this.noteHandlers.delete(subscriptionId)
-          this.noteUpdateHandlers.delete(subscriptionId)
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId,
-          }).catch((e) => {
-            console.warn('[stream] unsubscribe failed:', e)
-          })
-        } else {
-          subscribePromise.then((id) => {
-            if (id) {
-              this.noteHandlers.delete(id)
-              this.noteUpdateHandlers.delete(id)
-              invoke('stream_unsubscribe', {
-                accountId: this.accountId,
-                subscriptionId: id,
-              }).catch((e) => {
-                console.warn('[stream] unsubscribe failed:', e)
-              })
-            }
-          })
-        }
       },
-    }
+      (id) => {
+        this.noteHandlers.delete(id)
+        this.noteUpdateHandlers.delete(id)
+      },
+    )
   }
 
   subscribeAntenna(
@@ -291,61 +306,19 @@ export class MisskeyStream implements StreamAdapter {
     handler: (note: NormalizedNote) => void,
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription {
-    let subscriptionId: string | null = null
-    let disposed = false
-
-    const subscribePromise = invoke<string>('stream_subscribe_antenna', {
-      accountId: this.accountId,
-      antennaId,
-    })
-      .then((id) => {
-        if (disposed) {
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId: id,
-          }).catch(() => {})
-          return null
-        }
-        subscriptionId = id
+    return this.createSubscription(
+      'stream_subscribe_antenna',
+      { antennaId },
+      (id) => {
         this.noteHandlers.set(id, handler)
-        if (options?.onNoteUpdated) {
+        if (options?.onNoteUpdated)
           this.noteUpdateHandlers.set(id, options.onNoteUpdated)
-        }
-        return id
-      })
-      .catch((e) => {
-        console.error('[stream] subscribe antenna failed:', e)
-        return null
-      })
-
-    return {
-      dispose: () => {
-        disposed = true
-        if (subscriptionId) {
-          this.noteHandlers.delete(subscriptionId)
-          this.noteUpdateHandlers.delete(subscriptionId)
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId,
-          }).catch((e) => {
-            console.warn('[stream] unsubscribe failed:', e)
-          })
-        } else {
-          subscribePromise.then((id) => {
-            if (id) {
-              this.noteHandlers.delete(id)
-              this.noteUpdateHandlers.delete(id)
-              invoke('stream_unsubscribe', {
-                accountId: this.accountId,
-                subscriptionId: id,
-              }).catch((e) => {
-                console.warn('[stream] unsubscribe failed:', e)
-              })
-            }
-          })
-        }
       },
-    }
+      (id) => {
+        this.noteHandlers.delete(id)
+        this.noteUpdateHandlers.delete(id)
+      },
+    )
   }
 
   subscribeChannel(
@@ -353,290 +326,79 @@ export class MisskeyStream implements StreamAdapter {
     handler: (note: NormalizedNote) => void,
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription {
-    let subscriptionId: string | null = null
-    let disposed = false
-
-    const subscribePromise = invoke<string>('stream_subscribe_channel', {
-      accountId: this.accountId,
-      channelId,
-    })
-      .then((id) => {
-        if (disposed) {
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId: id,
-          }).catch(() => {})
-          return null
-        }
-        subscriptionId = id
+    return this.createSubscription(
+      'stream_subscribe_channel',
+      { channelId },
+      (id) => {
         this.noteHandlers.set(id, handler)
-        if (options?.onNoteUpdated) {
+        if (options?.onNoteUpdated)
           this.noteUpdateHandlers.set(id, options.onNoteUpdated)
-        }
-        return id
-      })
-      .catch((e) => {
-        console.error('[stream] subscribe channel failed:', e)
-        return null
-      })
-
-    return {
-      dispose: () => {
-        disposed = true
-        if (subscriptionId) {
-          this.noteHandlers.delete(subscriptionId)
-          this.noteUpdateHandlers.delete(subscriptionId)
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId,
-          }).catch((e) => {
-            console.warn('[stream] unsubscribe failed:', e)
-          })
-        } else {
-          subscribePromise.then((id) => {
-            if (id) {
-              this.noteHandlers.delete(id)
-              this.noteUpdateHandlers.delete(id)
-              invoke('stream_unsubscribe', {
-                accountId: this.accountId,
-                subscriptionId: id,
-              }).catch((e) => {
-                console.warn('[stream] unsubscribe failed:', e)
-              })
-            }
-          })
-        }
       },
-    }
+      (id) => {
+        this.noteHandlers.delete(id)
+        this.noteUpdateHandlers.delete(id)
+      },
+    )
   }
 
   subscribeMain(
     handler: (event: MainChannelEvent) => void,
   ): ChannelSubscription {
-    let subscriptionId: string | null = null
-    let disposed = false
-
-    const subscribePromise = invoke<string>('stream_subscribe_main', {
-      accountId: this.accountId,
-    })
-      .then((id) => {
-        if (disposed) {
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId: id,
-          }).catch(() => {})
-          return null
-        }
-        subscriptionId = id
+    return this.createSubscription(
+      'stream_subscribe_main',
+      {},
+      (id) => {
         this.notifHandlers.set(id, handler)
         this.mainHandlers.set(id, handler)
-        return id
-      })
-      .catch((e) => {
-        console.error('[stream] subscribe main failed:', e)
-        return null
-      })
-
-    return {
-      dispose: () => {
-        disposed = true
-        if (subscriptionId) {
-          this.notifHandlers.delete(subscriptionId)
-          this.mainHandlers.delete(subscriptionId)
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId,
-          }).catch((e) => {
-            console.warn('[stream] unsubscribe failed:', e)
-          })
-        } else {
-          subscribePromise.then((id) => {
-            if (id) {
-              this.notifHandlers.delete(id)
-              this.mainHandlers.delete(id)
-              invoke('stream_unsubscribe', {
-                accountId: this.accountId,
-                subscriptionId: id,
-              }).catch((e) => {
-                console.warn('[stream] unsubscribe failed:', e)
-              })
-            }
-          })
-        }
       },
-    }
+      (id) => {
+        this.notifHandlers.delete(id)
+        this.mainHandlers.delete(id)
+      },
+    )
   }
 
   subscribeMentions(
     handler: (note: NormalizedNote) => void,
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription {
-    let subscriptionId: string | null = null
-    let disposed = false
-
-    const subscribePromise = invoke<string>('stream_subscribe_main', {
-      accountId: this.accountId,
-    })
-      .then((id) => {
-        if (disposed) {
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId: id,
-          }).catch(() => {})
-          return null
-        }
-        subscriptionId = id
+    return this.createSubscription(
+      'stream_subscribe_main',
+      {},
+      (id) => {
         this.mentionHandlers.set(id, handler)
-        if (options?.onNoteUpdated) {
+        if (options?.onNoteUpdated)
           this.noteUpdateHandlers.set(id, options.onNoteUpdated)
-        }
-        return id
-      })
-      .catch((e) => {
-        console.error('[stream] subscribe mentions failed:', e)
-        return null
-      })
-
-    return {
-      dispose: () => {
-        disposed = true
-        if (subscriptionId) {
-          this.mentionHandlers.delete(subscriptionId)
-          this.noteUpdateHandlers.delete(subscriptionId)
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId,
-          }).catch((e) => {
-            console.warn('[stream] unsubscribe failed:', e)
-          })
-        } else {
-          subscribePromise.then((id) => {
-            if (id) {
-              this.mentionHandlers.delete(id)
-              this.noteUpdateHandlers.delete(id)
-              invoke('stream_unsubscribe', {
-                accountId: this.accountId,
-                subscriptionId: id,
-              }).catch((e) => {
-                console.warn('[stream] unsubscribe failed:', e)
-              })
-            }
-          })
-        }
       },
-    }
+      (id) => {
+        this.mentionHandlers.delete(id)
+        this.noteUpdateHandlers.delete(id)
+      },
+    )
   }
 
   subscribeChatUser(
     otherId: string,
     handler: (msg: ChatMessage) => void,
   ): ChannelSubscription {
-    let subscriptionId: string | null = null
-    let disposed = false
-
-    const subscribePromise = invoke<string>('stream_subscribe_chat_user', {
-      accountId: this.accountId,
-      otherId,
-    })
-      .then((id) => {
-        if (disposed) {
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId: id,
-          }).catch(() => {})
-          return null
-        }
-        subscriptionId = id
-        this.chatMessageHandlers.set(id, handler)
-        return id
-      })
-      .catch((e) => {
-        console.error('[stream] subscribe chat user failed:', e)
-        return null
-      })
-
-    return {
-      dispose: () => {
-        disposed = true
-        if (subscriptionId) {
-          this.chatMessageHandlers.delete(subscriptionId)
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId,
-          }).catch((e) => {
-            console.warn('[stream] unsubscribe failed:', e)
-          })
-        } else {
-          subscribePromise.then((id) => {
-            if (id) {
-              this.chatMessageHandlers.delete(id)
-              invoke('stream_unsubscribe', {
-                accountId: this.accountId,
-                subscriptionId: id,
-              }).catch((e) => {
-                console.warn('[stream] unsubscribe failed:', e)
-              })
-            }
-          })
-        }
-      },
-    }
+    return this.createSubscription(
+      'stream_subscribe_chat_user',
+      { otherId },
+      (id) => this.chatMessageHandlers.set(id, handler),
+      (id) => this.chatMessageHandlers.delete(id),
+    )
   }
 
   subscribeChatRoom(
     roomId: string,
     handler: (msg: ChatMessage) => void,
   ): ChannelSubscription {
-    let subscriptionId: string | null = null
-    let disposed = false
-
-    const subscribePromise = invoke<string>('stream_subscribe_chat_room', {
-      accountId: this.accountId,
-      roomId,
-    })
-      .then((id) => {
-        if (disposed) {
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId: id,
-          }).catch(() => {})
-          return null
-        }
-        subscriptionId = id
-        this.chatMessageHandlers.set(id, handler)
-        return id
-      })
-      .catch((e) => {
-        console.error('[stream] subscribe chat room failed:', e)
-        return null
-      })
-
-    return {
-      dispose: () => {
-        disposed = true
-        if (subscriptionId) {
-          this.chatMessageHandlers.delete(subscriptionId)
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId,
-          }).catch((e) => {
-            console.warn('[stream] unsubscribe failed:', e)
-          })
-        } else {
-          subscribePromise.then((id) => {
-            if (id) {
-              this.chatMessageHandlers.delete(id)
-              invoke('stream_unsubscribe', {
-                accountId: this.accountId,
-                subscriptionId: id,
-              }).catch((e) => {
-                console.warn('[stream] unsubscribe failed:', e)
-              })
-            }
-          })
-        }
-      },
-    }
+    return this.createSubscription(
+      'stream_subscribe_chat_room',
+      { roomId },
+      (id) => this.chatMessageHandlers.set(id, handler),
+      (id) => this.chatMessageHandlers.delete(id),
+    )
   }
 
   subNote(noteId: string, handler: (event: NoteUpdateEvent) => void): void {
