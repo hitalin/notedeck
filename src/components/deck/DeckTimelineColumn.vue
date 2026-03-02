@@ -319,6 +319,7 @@ async function connect(useCache = false) {
         { onNoteUpdated: onNoteUpdate },
       ),
     )
+    noteSound.warmup()
   } catch (e) {
     const err = AppError.from(e)
     // 3. Handle "disabled" errors — always refresh policies regardless of cache

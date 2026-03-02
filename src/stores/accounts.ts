@@ -23,6 +23,12 @@ export const useAccountsStore = defineStore('accounts', () => {
     () => accounts.value.find((a) => a.id === activeAccountId.value) ?? null,
   )
 
+  const accountMap = computed(() => {
+    const map = new Map<string, Account>()
+    for (const acc of accounts.value) map.set(acc.id, acc)
+    return map
+  })
+
   const accountsByServer = computed(() => {
     const map = new Map<string, Account[]>()
     for (const acc of accounts.value) {
@@ -79,6 +85,7 @@ export const useAccountsStore = defineStore('accounts', () => {
     accounts,
     activeAccountId,
     activeAccount,
+    accountMap,
     accountsByServer,
     isLoaded,
     loadAccounts,

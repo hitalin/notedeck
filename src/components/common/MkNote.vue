@@ -124,9 +124,7 @@ function closeMoreMenu() {
 }
 
 const isOwnNote = computed(() => {
-  const account = accountsStore.accounts.find(
-    (a) => a.id === props.note._accountId,
-  )
+  const account = accountsStore.accountMap.get(props.note._accountId)
   return account?.userId === effectiveNote.value.user.id
 })
 
@@ -239,7 +237,7 @@ function navigateToUser(userId: string, e: Event) {
 const sortedReactions = computed(() => {
   const n = effectiveNote.value
   return Object.entries(n.reactions)
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([reaction, count]) => ({ reaction, count: count as number }))
 })
 

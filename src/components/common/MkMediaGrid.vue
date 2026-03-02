@@ -62,7 +62,7 @@ function isAudio(file: NormalizedDriveFile): boolean {
       v-for="(file, idx) in files.slice(0, 4)"
       :key="file.id"
       class="media-cell"
-      :class="{ 'is-sensitive': file.isSensitive && !revealedIds.has(file.id) }"
+      :class="{ 'is-sensitive': file.isSensitive && !revealedIds.has(file.id), 'is-loaded': loadedIds.has(file.id) }"
       @click="openLightbox(file, $event)"
     >
       <template v-if="isImage(file)">
@@ -216,6 +216,10 @@ function isAudio(file: NormalizedDriveFile): boolean {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   z-index: 0;
+}
+
+.media-cell.is-loaded::before {
+  display: none;
 }
 
 .media-count-1 > .media-cell {

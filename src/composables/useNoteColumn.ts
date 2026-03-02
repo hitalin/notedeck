@@ -150,6 +150,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
             onNoteUpdated: onNoteUpdate,
           }),
         )
+        noteSound?.warmup()
       }
     } catch (e) {
       if (notes.value.length === 0) {

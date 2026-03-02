@@ -27,7 +27,12 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(options.scroller.value as any)?.forceUpdate()
       })
-    }, 150)
+    }, 80)
+  }
+
+  function syncNoteIds() {
+    options.noteIds.clear()
+    for (const n of options.notes.value) options.noteIds.add(n.id)
   }
 
   function flushRafBuffer() {
@@ -40,6 +45,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       const merged = [...batch, ...options.notes.value]
       options.notes.value =
         merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+      if (merged.length > MAX_NOTES) syncNoteIds()
       options.onNewNotes?.(batch.length)
       scheduleForceUpdate()
     } else {
@@ -69,6 +75,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     const merged = [...newNotes, ...options.notes.value]
     options.notes.value =
       merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+    if (merged.length > MAX_NOTES) syncNoteIds()
     pendingNotes.value = []
     scheduleForceUpdate()
   }

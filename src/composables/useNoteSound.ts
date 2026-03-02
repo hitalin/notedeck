@@ -68,5 +68,10 @@ export function useNoteSound(getHost: () => string | undefined) {
     })
   }
 
-  return { play }
+  function warmup() {
+    const host = getHost()
+    if (host) ensureBuffer(host)
+  }
+
+  return { play, warmup }
 }

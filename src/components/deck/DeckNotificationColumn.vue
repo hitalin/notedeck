@@ -265,6 +265,8 @@ onUnmounted(() => {
     cancelAnimationFrame(rafId)
     rafId = null
   }
+  reactionUrlLookup.clear()
+  twemojiUrlLookup.clear()
 })
 </script>
 
