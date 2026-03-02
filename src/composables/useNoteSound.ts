@@ -1,6 +1,7 @@
 const PROXY_BASE = 'http://127.0.0.1:19820/proxy/image'
 const SOUND_PATH = '/client-assets/sounds/syuilo/pope1.mp3'
 const RETRY_AFTER_MS = 5 * 60 * 1000
+const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
 const bufferCache = new Map<string, AudioBuffer>()
 const failedHosts = new Map<string, number>()
@@ -13,6 +14,16 @@ function getAudioContext(): AudioContext {
   return audioCtx
 }
 
+// Mobile browsers require user interaction to activate AudioContext
+if (IS_MOBILE) {
+  const activate = () => {
+    const ctx = getAudioContext()
+    if (ctx.state === 'suspended') ctx.resume()
+  }
+  document.addEventListener('touchstart', activate, { once: true })
+  document.addEventListener('click', activate, { once: true })
+}
+
 async function ensureBuffer(host: string): Promise<AudioBuffer | null> {
   const cached = bufferCache.get(host)
   if (cached) return cached
@@ -22,7 +33,9 @@ async function ensureBuffer(host: string): Promise<AudioBuffer | null> {
 
   try {
     const remoteUrl = `https://${host}${SOUND_PATH}`
-    const url = `${PROXY_BASE}?url=${encodeURIComponent(remoteUrl)}`
+    const url = IS_MOBILE
+      ? remoteUrl
+      : `${PROXY_BASE}?url=${encodeURIComponent(remoteUrl)}`
     const resp = await fetch(url)
     if (!resp.ok) {
       failedHosts.set(host, Date.now())
@@ -44,6 +57,8 @@ export function useNoteSound(getHost: () => string | undefined) {
   let lastPlayedAt = 0
 
   function play() {
+    if (document.hidden) return
+
     const now = Date.now()
     if (now - lastPlayedAt < 300) return
     lastPlayedAt = now
@@ -52,16 +67,16 @@ export function useNoteSound(getHost: () => string | undefined) {
     if (!host) return
 
     const ctx = getAudioContext()
-    if (ctx.state === 'suspended') {
-      ctx.resume()
-    }
+    if (ctx.state === 'suspended') ctx.resume()
 
     ensureBuffer(host).then((buffer) => {
       if (!buffer) return
       const source = ctx.createBufferSource()
       source.buffer = buffer
       const gain = ctx.createGain()
-      gain.gain.value = 0.3
+      // Fade-in to prevent crackling/popping
+      gain.gain.setValueAtTime(0, ctx.currentTime)
+      gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.005)
       source.connect(gain)
       gain.connect(ctx.destination)
       source.start()
