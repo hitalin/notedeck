@@ -44,6 +44,7 @@ import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
 import { matchesFilter } from '@/utils/timelineFilter'
 import DeckColumn from './DeckColumn.vue'
+import TimelineFilterPopup from './TimelineFilterPopup.vue'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -251,14 +252,6 @@ const showFilterMenu = ref(false)
 const filterBtnRef = ref<HTMLButtonElement | null>(null)
 const filterPopupPos = ref({ top: 0, left: 0 })
 
-const FILTER_LABELS: Record<keyof TimelineFilter, string> = {
-  withRenotes: 'Renotes',
-  withReplies: 'Replies',
-  withFiles: 'Files only',
-  withBots: 'Bots',
-  withSensitive: 'Sensitive',
-}
-
 const availableFilterKeys = ref<(keyof TimelineFilter)[]>([])
 
 async function refreshFilterKeys() {
@@ -289,15 +282,8 @@ function toggleFilterMenu() {
           left: Math.max(8, rect.right - 220),
         }
       }
-      setTimeout(() => {
-        document.addEventListener('click', closeFilterMenu, { once: true })
-      }, 0)
     })
   }
-}
-
-function closeFilterMenu() {
-  showFilterMenu.value = false
 }
 
 function toggleFilter(key: keyof TimelineFilter) {
@@ -320,12 +306,6 @@ function toggleFilter(key: keyof TimelineFilter) {
   })
   // Reconnect to apply filter
   reconnectWithFilter()
-}
-
-function isFilterActive(key: keyof TimelineFilter): boolean {
-  const v = columnFilters.value[key]
-  if (key === 'withFiles') return v === true
-  return v === false
 }
 
 async function reconnectWithFilter() {
@@ -733,34 +713,15 @@ onUnmounted(() => {
     />
   </Teleport>
 
-  <Teleport to="body">
-    <Transition name="nd-filter-popup">
-      <div
-        v-if="showFilterMenu"
-        class="nd-filter-popup"
-        :style="{ ...columnThemeVars, top: filterPopupPos.top + 'px', left: filterPopupPos.left + 'px' }"
-        @click.stop
-      >
-        <div class="nd-filter-popup-header">Filter</div>
-        <div
-          v-for="key in availableFilterKeys"
-          :key="key"
-          class="nd-filter-item"
-          @click="toggleFilter(key)"
-        >
-          <span class="nd-filter-label">{{ FILTER_LABELS[key] }}</span>
-          <button
-            class="nd-filter-toggle"
-            :class="{ on: key === 'withFiles' ? isFilterActive(key) : !isFilterActive(key) }"
-            :aria-checked="key === 'withFiles' ? isFilterActive(key) : !isFilterActive(key)"
-            role="switch"
-          >
-            <span class="nd-filter-toggle-knob" />
-          </button>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
+  <TimelineFilterPopup
+    :show="showFilterMenu"
+    :filter-keys="availableFilterKeys"
+    :filters="columnFilters"
+    :position="filterPopupPos"
+    :theme-vars="columnThemeVars"
+    @close="showFilterMenu = false"
+    @toggle="toggleFilter"
+  />
 </template>
 
 <style src="./column-common.css" scoped></style>
@@ -839,91 +800,5 @@ onUnmounted(() => {
 .tl-tm-live {
   margin-left: auto;
   color: var(--nd-accent);
-}
-</style>
-
-<style>
-/* Teleported filter popup — unscoped */
-.nd-filter-popup {
-  position: fixed;
-  z-index: 10001;
-  width: 220px;
-  padding: 8px 0;
-  background: color-mix(in srgb, var(--nd-popup, var(--nd-panelBg)) 85%, transparent);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(16px);
-  color: var(--nd-fg, #fff);
-  font-size: 0.9em;
-}
-
-.nd-filter-popup-header {
-  padding: 8px 14px 4px;
-  font-size: 0.75em;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  opacity: 0.5;
-}
-
-.nd-filter-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 14px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.nd-filter-item:hover {
-  background: var(--nd-buttonHoverBg, rgba(255, 255, 255, 0.05));
-}
-
-.nd-filter-label {
-  font-size: 0.9em;
-}
-
-.nd-filter-toggle {
-  position: relative;
-  width: 40px;
-  height: 22px;
-  border-radius: 11px;
-  background: var(--nd-buttonBg, rgba(255, 255, 255, 0.1));
-  border: none;
-  cursor: pointer;
-  transition: background 0.2s;
-  padding: 0;
-  flex-shrink: 0;
-}
-
-.nd-filter-toggle.on {
-  background: var(--nd-accent, #86b300);
-}
-
-.nd-filter-toggle-knob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #fff;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.nd-filter-toggle.on .nd-filter-toggle-knob {
-  transform: translateX(18px);
-}
-
-.nd-filter-popup-enter-active,
-.nd-filter-popup-leave-active {
-  transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1);
-}
-
-.nd-filter-popup-enter-from,
-.nd-filter-popup-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-4px);
 }
 </style>

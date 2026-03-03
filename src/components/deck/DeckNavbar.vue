@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
@@ -11,6 +9,7 @@ import {
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
+import NavAccountMenu from './NavAccountMenu.vue'
 
 const props = defineProps<{
   mobileDrawerOpen: boolean
@@ -21,7 +20,6 @@ const emit = defineEmits<{
   'update:mobileDrawerOpen': [value: boolean]
 }>()
 
-const router = useRouter()
 const { navigateToLogin } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
@@ -118,12 +116,6 @@ function logout(id: string) {
   accountMenuId.value = null
 }
 
-function modeLabel(key: string): string {
-  const match = key.match(/^isIn(.+)Mode$/)
-  if (!match) return key
-  return `${match[1]} mode`
-}
-
 function toggleFirstAccountMenu() {
   const first = accountsStore.accounts[0]
   if (first) toggleAccountMenu(first.id)
@@ -214,60 +206,16 @@ defineExpose({
               <span class="nav-label">@{{ acc.username }}@{{ acc.host }}</span>
             </button>
 
-            <Transition name="nav-account-menu">
-              <div
-                v-if="accountMenuId === acc.id"
-                class="nav-account-menu"
-                :class="{ 'menu-right': navCollapsed }"
-                @click.stop
-              >
-                <template v-if="accountModes[acc.id] && Object.keys(accountModes[acc.id] ?? {}).length > 0">
-                  <div
-                    v-for="(val, key) in accountModes[acc.id]"
-                    :key="key"
-                    class="nav-account-menu-item"
-                    @click="toggleAccountMode(acc.id, key as string)"
-                  >
-                    <span class="nav-account-menu-label">{{ modeLabel(key as string) }}</span>
-                    <button
-                      class="nd-filter-toggle"
-                      :class="{ on: val }"
-                      :disabled="togglingMode"
-                      role="switch"
-                      :aria-checked="val"
-                    >
-                      <span class="nd-filter-toggle-knob" />
-                    </button>
-                  </div>
-                </template>
-                <div v-if="modeError" class="nav-account-menu-error">{{ modeError }}</div>
-                <div class="nav-account-menu-divider" />
-                <button class="_button nav-account-menu-item" @click="router.push(`/user/${acc.id}/${acc.userId}`)">
-                  <span>Profile</span>
-                  <i class="ti ti-user" />
-                </button>
-                <button class="_button nav-account-menu-item" @click="openUrl(`https://${acc.host}/admin`)">
-                  <span>Admin</span>
-                  <i class="ti ti-external-link" />
-                </button>
-                <button class="_button nav-account-menu-item" @click="openUrl(`https://${acc.host}/my/drive`)">
-                  <span>Drive</span>
-                  <i class="ti ti-external-link" />
-                </button>
-                <button class="_button nav-account-menu-item" @click="openUrl(`https://${acc.host}/pages`)">
-                  <span>Pages</span>
-                  <i class="ti ti-external-link" />
-                </button>
-                <button class="_button nav-account-menu-item" @click="openUrl(`https://${acc.host}/settings`)">
-                  <span>Settings</span>
-                  <i class="ti ti-external-link" />
-                </button>
-                <button class="_button nav-account-menu-item nav-account-logout" @click="logout(acc.id)">
-                  <span>Logout</span>
-                  <i class="ti ti-logout" />
-                </button>
-              </div>
-            </Transition>
+            <NavAccountMenu
+              :show="accountMenuId === acc.id"
+              :account="acc"
+              :nav-collapsed="navCollapsed"
+              :modes="accountModes[acc.id] ?? {}"
+              :toggling-mode="togglingMode"
+              :mode-error="modeError"
+              @toggle-mode="toggleAccountMode(acc.id, $event)"
+              @logout="logout(acc.id)"
+            />
           </div>
 
           <!-- Add account -->
@@ -514,98 +462,8 @@ defineExpose({
   opacity: 1 !important;
 }
 
-/* ============================================================
-   Account dropdown menu
-   ============================================================ */
 .nav-account-wrap {
   position: relative;
-}
-
-.nav-account-menu {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  margin-bottom: 4px;
-  background: color-mix(in srgb, var(--nd-popup, var(--nd-panelBg)) 85%, transparent);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(16px);
-  padding: 8px 0;
-  z-index: 100;
-  min-width: 180px;
-}
-
-.nav-account-menu.menu-right {
-  bottom: auto;
-  top: 0;
-  left: 100%;
-  right: auto;
-  margin-bottom: 0;
-  margin-left: 4px;
-}
-
-.nav-account-menu-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 14px;
-  cursor: pointer;
-  transition: background 0.1s;
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  width: 100%;
-  text-align: left;
-}
-
-.nav-account-menu-item:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.nav-account-menu-label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.nav-account-menu-divider {
-  height: 1px;
-  background: var(--nd-divider);
-  margin: 4px 10px;
-}
-
-.nav-account-menu-error {
-  padding: 6px 14px;
-  font-size: 0.75em;
-  color: var(--nd-love);
-  word-break: break-word;
-}
-
-.nav-account-logout {
-  color: var(--nd-love, #ff6b6b);
-  gap: 8px;
-}
-
-.nav-account-logout .ti {
-  flex-shrink: 0;
-  opacity: 0.8;
-}
-
-.nav-account-menu-enter-active,
-.nav-account-menu-leave-active {
-  transition: opacity 0.15s, transform 0.15s;
-}
-
-.nav-account-menu-enter-from,
-.nav-account-menu-leave-to {
-  opacity: 0;
-  transform: translateY(4px);
-}
-
-.nav-account-menu.menu-right.nav-account-menu-enter-from,
-.nav-account-menu.menu-right.nav-account-menu-leave-to {
-  transform: translateX(-4px);
 }
 
 @media (max-width: 500px) {
@@ -644,7 +502,7 @@ defineExpose({
   }
 
   /* On mobile drawer, show menu above the button (not to the right) */
-  .navbar.drawer-open .nav-account-menu.menu-right {
+  .navbar.drawer-open :deep(.nav-account-menu.menu-right) {
     bottom: 100%;
     top: auto;
     left: 0;
