@@ -110,14 +110,6 @@ if (props.column.lastReadNoteId) {
   setLastReadNoteId(props.column.lastReadNoteId)
 }
 
-// Whether lastReadNoteId exists but is not in the current notes list
-// (i.e. all visible notes are unread — e.g. >40 new notes since last read)
-const lastReadNotInList = computed(() => {
-  if (!props.column.lastReadNoteId || timeMachine.isActive.value) return false
-  if (notes.value.length === 0) return false
-  return !notes.value.some((n) => n.id === props.column.lastReadNoteId)
-})
-
 // Auto-update lastReadNoteId when user is at top
 watch(
   () => isAtTop.value && notes.value[0]?.id,
@@ -690,12 +682,6 @@ onUnmounted(() => {
             :active="active"
             :data-index="index"
           >
-            <div
-              v-if="!timeMachine.isActive.value && column.lastReadNoteId && item.id === column.lastReadNoteId && index > 0"
-              class="unread-line"
-            >
-              <span class="unread-line-label">New</span>
-            </div>
             <MkNote
               :note="item"
               :focused="item.id === focusedNoteId"
@@ -711,9 +697,6 @@ onUnmounted(() => {
         </template>
 
         <template #after>
-          <div v-if="lastReadNotInList" class="unread-line">
-            <span class="unread-line-label">New</span>
-          </div>
           <div v-if="isLoading && notes.length > 0" class="loading-more">
             Loading...
           </div>
@@ -832,24 +815,6 @@ onUnmounted(() => {
   align-items: center;
 }
 
-
-.unread-line {
-  height: 2px;
-  background: var(--nd-accent);
-  margin: 0 12px;
-  position: relative;
-}
-
-.unread-line-label {
-  position: absolute;
-  right: 0;
-  top: -10px;
-  font-size: 0.65em;
-  color: var(--nd-accent);
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
 
 .time-machine-bar {
   display: flex;
