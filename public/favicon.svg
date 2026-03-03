@@ -9,12 +9,12 @@
   <!-- Three deck columns connected by V-notches (Misskey M extended) -->
   <g fill="url(#fg)">
     <!-- Columns -->
-    <rect x="72" y="136" width="100" height="280" rx="22"/>
-    <rect x="206" y="136" width="100" height="280" rx="22"/>
-    <rect x="340" y="136" width="100" height="280" rx="22"/>
+    <rect x="72" y="136" width="100" height="280" rx="36"/>
+    <rect x="206" y="136" width="100" height="280" rx="36"/>
+    <rect x="340" y="136" width="100" height="280" rx="36"/>
 
-    <!-- V-notch bridges between columns -->
-    <polygon points="148,136 189,224 230,136"/>
-    <polygon points="282,136 323,224 364,136"/>
+    <!-- V-notch bridges: edges align with flat top boundaries -->
+    <polygon points="136,136 189,224 242,136"/>
+    <polygon points="270,136 323,224 376,136"/>
   </g>
 </svg>
