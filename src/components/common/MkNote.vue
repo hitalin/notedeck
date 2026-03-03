@@ -19,9 +19,9 @@ import MkEmoji from './MkEmoji.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
 import MkMfm from './MkMfm.vue'
 import MkPoll from './MkPoll.vue'
-import type NoteMoreMenu from './NoteMoreMenu.vue'
-import type NoteReactionPickerPopup from './NoteReactionPickerPopup.vue'
-import type NoteReactionUsersPopup from './NoteReactionUsersPopup.vue'
+import NoteMoreMenu from './NoteMoreMenu.vue'
+import NoteReactionPickerPopup from './NoteReactionPickerPopup.vue'
+import NoteReactionUsersPopup from './NoteReactionUsersPopup.vue'
 
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
 
