@@ -35,6 +35,7 @@ const {
 } = useNoteColumn({
   getColumn: () => props.column,
   fetch: (adapter, opts) =>
+    // biome-ignore lint/style/noNonNullAssertion: guarded by validate
     adapter.api.getAntennaNotes(props.column.antennaId!, opts),
   validate: () => !!props.column.antennaId,
   cache: {
@@ -44,6 +45,7 @@ const {
   streaming: {
     subscribe: (adapter, enqueue, callbacks) =>
       adapter.stream.subscribeAntenna(
+        // biome-ignore lint/style/noNonNullAssertion: guarded by validate
         props.column.antennaId!,
         enqueue,
         callbacks,

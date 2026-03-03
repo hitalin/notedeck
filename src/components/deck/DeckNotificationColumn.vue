@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, onUnmounted, ref, shallowRef } from 'vue'
+import {
+  defineAsyncComponent,
+  onMounted,
+  onUnmounted,
+  ref,
+  shallowRef,
+} from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
@@ -58,10 +64,12 @@ const hoveredAccountId = ref('')
 
 function onNotifAvatarClick(notif: NormalizedNotification, e: MouseEvent) {
   e.stopPropagation()
+  // biome-ignore lint/style/noNonNullAssertion: user exists for interactive notifications
   navToUser(notif._accountId, notif.user!.id)
 }
 
 function onNotifAvatarMouseEnter(notif: NormalizedNotification, e: MouseEvent) {
+  // biome-ignore lint/style/noNonNullAssertion: user exists for interactive notifications
   hoveredUserId.value = notif.user!.id
   hoveredAccountId.value = notif._accountId
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()

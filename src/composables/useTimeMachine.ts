@@ -44,9 +44,7 @@ export function useTimeMachine(
     })
   }
 
-  async function loadMoreBefore(
-    beforeDate: string,
-  ): Promise<NormalizedNote[]> {
+  async function loadMoreBefore(beforeDate: string): Promise<NormalizedNote[]> {
     const accountId = getAccountId()
     const tlType = getTimelineType()
     if (!accountId) return []

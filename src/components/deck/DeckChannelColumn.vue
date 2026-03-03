@@ -35,6 +35,7 @@ const {
 } = useNoteColumn({
   getColumn: () => props.column,
   fetch: (adapter, opts) =>
+    // biome-ignore lint/style/noNonNullAssertion: guarded by validate
     adapter.api.getChannelNotes(props.column.channelId!, opts),
   validate: () => !!props.column.channelId,
   cache: {
@@ -44,6 +45,7 @@ const {
   streaming: {
     subscribe: (adapter, enqueue, callbacks) =>
       adapter.stream.subscribeChannel(
+        // biome-ignore lint/style/noNonNullAssertion: guarded by validate
         props.column.channelId!,
         enqueue,
         callbacks,

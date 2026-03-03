@@ -247,6 +247,7 @@ export function usePostFormState(
       const uploadPromises = Array.from(files).map(async (file) => {
         const buffer = await file.arrayBuffer()
         const data = Array.from(new Uint8Array(buffer))
+        // biome-ignore lint/style/noNonNullAssertion: adapter is initialized before upload
         return adapter!.api.uploadFile(
           file.name,
           data,

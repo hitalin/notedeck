@@ -65,7 +65,8 @@ function toggleAccountMenu(id: string) {
 function onDocumentClick(e: MouseEvent) {
   if (!accountMenuId.value) return
   const target = e.target as HTMLElement
-  if (target.closest('.nav-account-menu') || target.closest('.nav-account')) return
+  if (target.closest('.nav-account-menu') || target.closest('.nav-account'))
+    return
   accountMenuId.value = null
 }
 

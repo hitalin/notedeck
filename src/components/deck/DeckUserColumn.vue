@@ -35,12 +35,14 @@ const {
 } = useNoteColumn({
   getColumn: () => props.column,
   fetch: (adapter, opts) =>
+    // biome-ignore lint/style/noNonNullAssertion: guarded by validate
     adapter.api.getUserNotes(props.column.userId!, opts),
   validate: () => !!props.column.userId,
   cache: {
     getKey: () => (props.column.userId ? `user:${props.column.userId}` : null),
   },
   refreshFetch: async (adapter, currentNotes) => {
+    // biome-ignore lint/style/noNonNullAssertion: guarded by validate
     const userId = props.column.userId!
     const firstNote = currentNotes[0]
     if (firstNote) {

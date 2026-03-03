@@ -372,7 +372,10 @@ async function connect(useCache = false) {
     if (!adapter) return
 
     const sinceId = notes.value.length > 0 ? notes.value[0]?.id : undefined
-    const fetched = await adapter.api.getTimeline(tlType.value, buildTimelineOptions(sinceId))
+    const fetched = await adapter.api.getTimeline(
+      tlType.value,
+      buildTimelineOptions(sinceId),
+    )
 
     if (sinceId && fetched.length > 0) {
       // Merge new notes on top of cached
@@ -525,7 +528,10 @@ async function onResume() {
   const sinceId = notes.value[0]?.id
   if (!sinceId) return
   try {
-    const fetched = await adapter.api.getTimeline(tlType.value, buildTimelineOptions(sinceId))
+    const fetched = await adapter.api.getTimeline(
+      tlType.value,
+      buildTimelineOptions(sinceId),
+    )
     const newFromApi = fetched.filter((n) => !noteIds.has(n.id))
     if (newFromApi.length > 0) {
       setNotes([...newFromApi, ...notes.value])

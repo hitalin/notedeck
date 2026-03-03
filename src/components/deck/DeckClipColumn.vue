@@ -35,6 +35,7 @@ const {
 } = useNoteColumn({
   getColumn: () => props.column,
   fetch: (adapter, opts) =>
+    // biome-ignore lint/style/noNonNullAssertion: guarded by validate
     adapter.api.getClipNotes(props.column.clipId!, opts),
   validate: () => !!props.column.clipId,
   cache: {

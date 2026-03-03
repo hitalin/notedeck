@@ -26,7 +26,9 @@ initKeyboard()
 onMounted(() => {
   if (isTauri) {
     import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
-      getCurrentWindow().show().catch(() => {})
+      getCurrentWindow()
+        .show()
+        .catch(() => {})
     })
   }
 })

@@ -243,6 +243,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
       isStreaming && config.cache
         ? (async () => {
             const column = config.getColumn()
+            // biome-ignore lint/style/noNonNullAssertion: guarded by config.cache check above
             const cacheKey = config.cache!.getKey()
             if (!column.accountId || !cacheKey) return []
             try {

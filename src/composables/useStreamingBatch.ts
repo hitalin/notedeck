@@ -25,7 +25,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     forceUpdateTimer = setTimeout(() => {
       forceUpdateTimer = null
       nextTick(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: vue-virtual-scroller lacks forceUpdate typing
         ;(options.scroller.value as any)?.forceUpdate()
       })
     }, 25)
