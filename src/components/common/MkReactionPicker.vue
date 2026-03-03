@@ -1,18 +1,31 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import type { ServerEmoji } from '@/adapters/types'
+import { emojiCharByCategory, unicodeEmojiCategories } from '@/data/emojilist'
 import { useEmojisStore } from '@/stores/emojis'
 import { useRecentEmojisStore } from '@/stores/recentEmojis'
 import { char2twemojiUrl } from '@/utils/twemoji'
-import { unicodeEmojiCategories, emojiCharByCategory } from '@/data/emojilist'
 import MkReactionPickerSection from './MkReactionPickerSection.vue'
-import type { ServerEmoji } from '@/adapters/types'
 
 const props = withDefaults(
   defineProps<{
     serverHost: string
     pinnedEmojis?: string[]
   }>(),
-  { pinnedEmojis: () => ['👍', '❤️', '😆', '🤔', '😮', '🎉', '💢', '😥', '😇', '🍮'] },
+  {
+    pinnedEmojis: () => [
+      '👍',
+      '❤️',
+      '😆',
+      '🤔',
+      '😮',
+      '🎉',
+      '💢',
+      '😥',
+      '😇',
+      '🍮',
+    ],
+  },
 )
 
 const emit = defineEmits<{
@@ -31,8 +44,9 @@ const customEmojisByCategory = computed(() => {
   const groups = new Map<string, ServerEmoji[]>()
   for (const emoji of customEmojis.value) {
     const cat = emoji.category || 'その他'
-    if (!groups.has(cat)) groups.set(cat, [])
-    groups.get(cat)!.push(emoji)
+    const list = groups.get(cat)
+    if (list) list.push(emoji)
+    else groups.set(cat, [emoji])
   }
   return groups
 })

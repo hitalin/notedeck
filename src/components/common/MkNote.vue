@@ -19,9 +19,9 @@ import MkEmoji from './MkEmoji.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
 import MkMfm from './MkMfm.vue'
 import MkPoll from './MkPoll.vue'
-import NoteMoreMenu from './NoteMoreMenu.vue'
-import NoteReactionPickerPopup from './NoteReactionPickerPopup.vue'
-import NoteReactionUsersPopup from './NoteReactionUsersPopup.vue'
+import type NoteMoreMenu from './NoteMoreMenu.vue'
+import type NoteReactionPickerPopup from './NoteReactionPickerPopup.vue'
+import type NoteReactionUsersPopup from './NoteReactionUsersPopup.vue'
 
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
 
@@ -46,8 +46,12 @@ const isPureRenote = computed(
 )
 
 const moreMenuRef = ref<InstanceType<typeof NoteMoreMenu> | null>(null)
-const reactionPickerRef = ref<InstanceType<typeof NoteReactionPickerPopup> | null>(null)
-const reactionUsersRef = ref<InstanceType<typeof NoteReactionUsersPopup> | null>(null)
+const reactionPickerRef = ref<InstanceType<
+  typeof NoteReactionPickerPopup
+> | null>(null)
+const reactionUsersRef = ref<InstanceType<
+  typeof NoteReactionUsersPopup
+> | null>(null)
 
 const emit = defineEmits<{
   react: [reaction: string, note: NormalizedNote]
@@ -62,7 +66,9 @@ const emit = defineEmits<{
 const { navigateToNote: navToNote, navigateToUser: navToUser } = useNavigation()
 const accountsStore = useAccountsStore()
 const pinnedReactionsStore = usePinnedReactionsStore()
-const pinnedReactions = computed(() => pinnedReactionsStore.get(props.note._accountId))
+const pinnedReactions = computed(() =>
+  pinnedReactionsStore.get(props.note._accountId),
+)
 const { resolveEmoji: resolveEmojiRaw, reactionUrl: reactionUrlRaw } =
   useEmojiResolver()
 const instanceIconUrl = computed(() => {
@@ -101,7 +107,6 @@ function onAvatarMouseLeave() {
 function closeUserPopup() {
   userPopup.forceClose()
 }
-
 
 const VISIBILITY_ICONS: Record<NoteVisibility, string> = {
   public:

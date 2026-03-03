@@ -1,7 +1,18 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
 
-const DEFAULT_REACTIONS = ['👍', '❤️', '😆', '🤔', '😮', '🎉', '💢', '😥', '😇', '🍮']
+const DEFAULT_REACTIONS = [
+  '👍',
+  '❤️',
+  '😆',
+  '🤔',
+  '😮',
+  '🎉',
+  '💢',
+  '😥',
+  '😇',
+  '🍮',
+]
 
 export const usePinnedReactionsStore = defineStore('pinnedReactions', () => {
   // accountId → pinned reaction list

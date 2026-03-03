@@ -1,5 +1,5 @@
-import { type Ref, computed, ref } from 'vue'
 import { useIntersectionObserver } from '@vueuse/core'
+import { computed, type Ref, ref } from 'vue'
 
 /**
  * ビューポート近傍に入るまで画像読み込みを遅延させる composable。

@@ -11,7 +11,9 @@ export const useRecentEmojisStore = defineStore('recentEmojis', () => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) return JSON.parse(raw)
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return []
   }
 
