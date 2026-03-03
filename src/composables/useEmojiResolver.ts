@@ -11,11 +11,14 @@ export function useEmojiResolver() {
     serverHost: string,
   ): string | null {
     const base = shortcode.replace(/@\.$/, '')
+    const withDot = `${base}@.`
     return (
       emojis[shortcode] ||
       emojis[base] ||
+      emojis[withDot] ||
       reactionEmojis[shortcode] ||
       reactionEmojis[base] ||
+      reactionEmojis[withDot] ||
       emojisStore.resolve(serverHost, base)
     )
   }

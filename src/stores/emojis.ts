@@ -33,8 +33,8 @@ export const useEmojisStore = defineStore('emojis', () => {
   function resolve(host: string, shortcode: string): string | null {
     const map = cache.value.get(host)
     if (!map) return null
-    // Try exact match first, then without @. suffix
-    return map[shortcode] || map[shortcode.replace(/@\.$/, '')] || null
+    const base = shortcode.replace(/@\.$/, '')
+    return map[shortcode] || map[base] || map[`${base}@.`] || null
   }
 
   function has(host: string): boolean {

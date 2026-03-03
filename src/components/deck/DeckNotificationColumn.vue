@@ -117,7 +117,8 @@ function getCachedReactionUrl(
   notification: NormalizedNotification,
 ): string | null {
   const key = `${notification.id}:${reaction}`
-  if (reactionUrlLookup.has(key)) return reactionUrlLookup.get(key) ?? null
+  const cached = reactionUrlLookup.get(key)
+  if (cached) return cached
   const note = notification.note
   const url = reactionUrlRaw(
     reaction,
@@ -125,7 +126,7 @@ function getCachedReactionUrl(
     note?.reactionEmojis ?? {},
     notification._serverHost,
   )
-  reactionUrlLookup.set(key, url)
+  if (url) reactionUrlLookup.set(key, url)
   return url
 }
 
