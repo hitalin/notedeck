@@ -20,6 +20,7 @@ const shouldPreview = computed(() => {
 
 const { data, loading, fetch } = useOgpPreview(props.url)
 const el = ref<HTMLElement | null>(null)
+const imageError = ref(false)
 let observer: IntersectionObserver | null = null
 
 onMounted(() => {
@@ -67,11 +68,12 @@ function hostname(url: string): string {
 
     <template v-else-if="data?.title">
       <img
-        v-if="data.image"
+        v-if="data.image && !imageError"
         :src="proxyUrl(data.image) ?? data.image"
         class="url-preview-image"
         loading="lazy"
         decoding="async"
+        @error="imageError = true"
       />
       <div class="url-preview-body">
         <div class="url-preview-title">{{ data.title }}</div>
