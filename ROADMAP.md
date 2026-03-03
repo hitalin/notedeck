@@ -230,7 +230,7 @@ NoteDeck は `Cargo.toml` で git 依存として参照している。
 |---------|------|------|
 | `lib.rs` | Tauri 初期化・プラグイン・システムトレイ | 216 |
 | `commands.rs` | `#[tauri::command]` IPC ハンドラ（notecli を呼び出し） | 1209 |
-| `streaming.rs` | WebSocket ストリーミング（`AppHandle.emit()` で Vue に配信） | 884 |
+| `streaming.rs` | TauriEmitter アダプタ（notecli の FrontendEmitter trait 実装） | 22 |
 | `http_server.rs` | Axum HTTP API サーバー（localhost:19820） | 643 |
 | `image_cache.rs` | 3 層イメージキャッシュ（メモリ→ディスク→ネットワーク） | 358 |
 | `ogp.rs` | OGP メタデータ抽出＆キャッシュ | 188 |
@@ -238,10 +238,11 @@ NoteDeck は `Cargo.toml` で git 依存として参照している。
 
 ### 残タスク
 
-- [ ] **streaming.rs の notecli 移行** — `AppHandle.emit()` を trait ベースのイベントエミッターに抽象化し、
-  WebSocket 接続管理を notecli 側に移動
+- [x] **streaming.rs の notecli 移行** — `AppHandle.emit()` を `FrontendEmitter` trait に抽象化。
+  WebSocket 接続管理を notecli 側に移動し、notedeck 側は薄い TauriEmitter アダプタ（22行）のみ
 - [ ] **CLI モード** — notecli 単体での CLI 実行（投稿・検索・TL 取得等）
-- [ ] **デーモンモード** — バックグラウンドでストリーミング接続を維持し、HTTP API を提供
+- [x] **デーモンモード** — バックグラウンドでストリーミング接続を維持し、HTTP API + SSE で配信。
+  `EventBusEmitter` により WebSocket → EventBus → SSE のパイプラインが完結
 
 ---
 
