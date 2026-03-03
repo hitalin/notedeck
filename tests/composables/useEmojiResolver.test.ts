@@ -27,7 +27,9 @@ describe('useEmojiResolver', () => {
 
     it('falls back to server cache via emojisStore', () => {
       const store = useEmojisStore()
-      store.set('example.com', { star: 'https://server/star.png' })
+      store.set('example.com', [
+        { name: 'star', url: 'https://server/star.png', category: null, aliases: [] },
+      ])
 
       const { resolveEmoji } = useEmojiResolver()
       expect(resolveEmoji('star', {}, {}, 'example.com')).toBe(
