@@ -14,6 +14,7 @@ import type {
   NoteReaction,
   PaginationOptions,
   SearchOptions,
+  ServerEmoji,
   TimelineOptions,
   TimelineType,
   UserList,
@@ -158,8 +159,14 @@ export class MisskeyApi implements ApiAdapter {
     })
   }
 
-  async getServerEmojis(): Promise<Record<string, string>> {
+  async getServerEmojis(): Promise<ServerEmoji[]> {
     return invoke('api_get_server_emojis', {
+      accountId: this.accountId,
+    })
+  }
+
+  async getPinnedReactions(): Promise<string[]> {
+    return invoke('api_get_pinned_reactions', {
       accountId: this.accountId,
     })
   }

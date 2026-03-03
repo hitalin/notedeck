@@ -10,6 +10,7 @@ import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
+import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
 import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
 import { proxyUrl } from '@/utils/imageProxy'
@@ -60,6 +61,8 @@ const emit = defineEmits<{
 
 const { navigateToNote: navToNote, navigateToUser: navToUser } = useNavigation()
 const accountsStore = useAccountsStore()
+const pinnedReactionsStore = usePinnedReactionsStore()
+const pinnedReactions = computed(() => pinnedReactionsStore.get(props.note._accountId))
 const { resolveEmoji: resolveEmojiRaw, reactionUrl: reactionUrlRaw } =
   useEmojiResolver()
 const instanceIconUrl = computed(() => {
@@ -442,6 +445,7 @@ async function handleMentionClick(username: string, host: string | null) {
   <NoteReactionPickerPopup
     ref="reactionPickerRef"
     :server-host="effectiveNote._serverHost"
+    :pinned-emojis="pinnedReactions"
     @pick="(r: string) => emit('react', r, effectiveNote)"
   />
 </template>

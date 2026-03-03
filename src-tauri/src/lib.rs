@@ -77,6 +77,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::api_get_user_detail,
         commands::api_get_user_notes,
         commands::api_get_server_emojis,
+        commands::api_get_pinned_reactions,
         commands::api_get_notifications,
         commands::api_search_notes,
         commands::api_get_note_children,

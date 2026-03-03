@@ -10,6 +10,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'
 import { noteStore } from '@/stores/notes'
+import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
@@ -32,6 +33,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   }
   const accountsStore = useAccountsStore()
   const emojisStore = useEmojisStore()
+  const pinnedReactionsStore = usePinnedReactionsStore()
   const serversStore = useServersStore()
   const themeStore = useThemeStore()
 
@@ -61,6 +63,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     const a = createAdapter(serverInfo, acc.id)
     adapter = a
     emojisStore.ensureLoaded(acc.host, () => a.api.getServerEmojis())
+    pinnedReactionsStore.ensureLoaded(acc.id, () => a.api.getPinnedReactions())
     return adapter
   }
 

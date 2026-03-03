@@ -11,8 +11,8 @@ use notecli::keychain;
 use notecli::models::{
     Account, AccountPublic, AuthSession, ChatMessage, CreateNoteParams, NormalizedDriveFile,
     NormalizedNote, NormalizedNoteReaction, NormalizedNotification, NormalizedUser,
-    NormalizedUserDetail, Antenna, Channel, Clip, SearchOptions, StoredServer, TimelineOptions,
-    TimelineType, UserList,
+    NormalizedUserDetail, Antenna, Channel, Clip, SearchOptions, ServerEmoji, StoredServer,
+    TimelineOptions, TimelineType, UserList,
 };
 use notecli::streaming::StreamingManager;
 use zeroize::Zeroize;
@@ -622,9 +622,19 @@ pub async fn api_get_server_emojis(
     db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
-) -> Result<HashMap<String, String>> {
+) -> Result<Vec<ServerEmoji>> {
     let (host, token) = get_credentials(&db, &account_id)?;
     client.get_server_emojis(&host, &token).await
+}
+
+#[tauri::command]
+pub async fn api_get_pinned_reactions(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+) -> Result<Vec<String>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_pinned_reactions(&host, &token).await
 }
 
 #[tauri::command]

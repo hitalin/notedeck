@@ -6,8 +6,9 @@ const MkReactionPicker = defineAsyncComponent(
   () => import('./MkReactionPicker.vue'),
 )
 
-defineProps<{
+const props = defineProps<{
   serverHost: string
+  pinnedEmojis?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -47,6 +48,7 @@ defineExpose({ open })
         >
           <MkReactionPicker
             :server-host="serverHost"
+            :pinned-emojis="pinnedEmojis"
             @pick="(r: string) => { emit('pick', r); close() }"
           />
         </div>

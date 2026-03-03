@@ -278,6 +278,13 @@ export interface AuthAdapter {
   startAuth(host: string, permissions: string[]): Promise<AuthSession>
 }
 
+export interface ServerEmoji {
+  name: string
+  url: string
+  category: string | null
+  aliases: string[]
+}
+
 export interface ApiAdapter {
   getTimeline(
     type: TimelineType,
@@ -301,7 +308,8 @@ export interface ApiAdapter {
     contentType: string,
     isSensitive?: boolean,
   ): Promise<NormalizedDriveFile>
-  getServerEmojis(): Promise<Record<string, string>>
+  getServerEmojis(): Promise<ServerEmoji[]>
+  getPinnedReactions(): Promise<string[]>
   getUser(userId: string): Promise<NormalizedUser>
   getUserDetail(userId: string): Promise<NormalizedUserDetail>
   getUserNotes(

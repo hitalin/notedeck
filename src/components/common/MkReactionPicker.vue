@@ -1,210 +1,125 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useEmojisStore } from '@/stores/emojis'
+import { useRecentEmojisStore } from '@/stores/recentEmojis'
 import { char2twemojiUrl } from '@/utils/twemoji'
+import { unicodeEmojiCategories, emojiCharByCategory } from '@/data/emojilist'
+import MkReactionPickerSection from './MkReactionPickerSection.vue'
+import type { ServerEmoji } from '@/adapters/types'
 
-const props = defineProps<{
-  serverHost: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    serverHost: string
+    pinnedEmojis?: string[]
+  }>(),
+  { pinnedEmojis: () => ['👍', '❤️', '😆', '🤔', '😮', '🎉', '💢', '😥', '😇', '🍮'] },
+)
 
 const emit = defineEmits<{
   pick: [reaction: string]
 }>()
 
 const emojisStore = useEmojisStore()
+const recentEmojisStore = useRecentEmojisStore()
 const searchQuery = ref('')
 const searchInput = ref<HTMLInputElement | null>(null)
-const activeTab = ref<'emoji' | 'custom'>('emoji')
 
-const EMOJI_CATEGORIES = [
-  {
-    label: 'Smileys',
-    emojis: [
-      '😀',
-      '😃',
-      '😄',
-      '😁',
-      '😆',
-      '😅',
-      '🤣',
-      '😂',
-      '🙂',
-      '😉',
-      '😊',
-      '😇',
-      '🥰',
-      '😍',
-      '🤩',
-      '😘',
-      '😗',
-      '😚',
-      '😙',
-      '🥲',
-      '😋',
-      '😛',
-      '😜',
-      '🤪',
-      '😝',
-      '🤑',
-      '🤗',
-      '🤭',
-      '🤫',
-      '🤔',
-      '😐',
-      '😑',
-      '😶',
-      '😏',
-      '😒',
-      '🙄',
-      '😬',
-      '🤥',
-      '😌',
-      '😔',
-      '😪',
-      '🤤',
-      '😴',
-      '😷',
-      '🤒',
-      '🤕',
-      '🤢',
-      '🤮',
-      '🥴',
-      '😵',
-      '🤯',
-      '🥳',
-      '🥺',
-      '😢',
-      '😭',
-      '😤',
-      '😡',
-      '🤬',
-      '👿',
-      '💀',
-    ],
-  },
-  {
-    label: 'Gestures',
-    emojis: [
-      '👍',
-      '👎',
-      '👏',
-      '🙌',
-      '🤝',
-      '✌️',
-      '🤞',
-      '🤟',
-      '🤘',
-      '👌',
-      '🤌',
-      '👈',
-      '👉',
-      '👆',
-      '👇',
-      '☝️',
-      '✋',
-      '🤚',
-      '🖐️',
-      '🖖',
-      '👋',
-      '🤙',
-      '💪',
-      '🙏',
-    ],
-  },
-  {
-    label: 'Hearts',
-    emojis: [
-      '❤️',
-      '🧡',
-      '💛',
-      '💚',
-      '💙',
-      '💜',
-      '🖤',
-      '🤍',
-      '🤎',
-      '💔',
-      '❣️',
-      '💕',
-      '💞',
-      '💓',
-      '💗',
-      '💖',
-      '💘',
-      '💝',
-      '💟',
-    ],
-  },
-  {
-    label: 'Objects',
-    emojis: [
-      '🎉',
-      '🎊',
-      '🎈',
-      '🎁',
-      '🏆',
-      '🎵',
-      '🎶',
-      '🔥',
-      '✨',
-      '🌟',
-      '⭐',
-      '💫',
-      '🌈',
-      '☀️',
-      '🌙',
-      '⚡',
-      '💡',
-      '🍮',
-      '🍰',
-      '🍩',
-      '🍪',
-      '🍫',
-      '☕',
-      '🍵',
-      '🍺',
-      '🍻',
-    ],
-  },
-  {
-    label: 'Symbols',
-    emojis: [
-      '✅',
-      '❌',
-      '⭕',
-      '❗',
-      '❓',
-      '💯',
-      '💢',
-      '💤',
-      '💨',
-      '🔔',
-      '🏳️',
-      '🏴',
-    ],
-  },
-]
+// Custom emojis organized by category
+const customEmojis = computed(() => emojisStore.getEmojiList(props.serverHost))
 
-const customEmojis = computed(() => {
-  const map = emojisStore.cache.get(props.serverHost)
-  if (!map) return []
-  return Object.entries(map).map(([name, url]) => ({ name, url }))
+const customEmojisByCategory = computed(() => {
+  const groups = new Map<string, ServerEmoji[]>()
+  for (const emoji of customEmojis.value) {
+    const cat = emoji.category || 'その他'
+    if (!groups.has(cat)) groups.set(cat, [])
+    groups.get(cat)!.push(emoji)
+  }
+  return groups
 })
 
-const filteredCustomEmojis = computed(() => {
-  const q = searchQuery.value.toLowerCase()
-  if (!q) return customEmojis.value.slice(0, 100)
-  return customEmojis.value
-    .filter((e) => e.name.toLowerCase().includes(q))
-    .slice(0, 100)
+// Search results
+const searchResults = computed(() => {
+  const q = searchQuery.value.toLowerCase().trim()
+  if (!q) return null
+
+  const customResults: ServerEmoji[] = []
+  const unicodeResults: string[] = []
+
+  // Custom emoji search (multi-stage: exact → startsWith → includes)
+  const seen = new Set<string>()
+  const allCustom = customEmojis.value
+
+  // Exact match
+  for (const e of allCustom) {
+    if (e.name === q) {
+      seen.add(e.name)
+      customResults.push(e)
+    }
+  }
+  // startsWith
+  if (customResults.length < 100) {
+    for (const e of allCustom) {
+      if (seen.has(e.name)) continue
+      if (e.name.startsWith(q) || e.aliases.some((a) => a.startsWith(q))) {
+        seen.add(e.name)
+        customResults.push(e)
+        if (customResults.length >= 100) break
+      }
+    }
+  }
+  // includes
+  if (customResults.length < 100) {
+    for (const e of allCustom) {
+      if (seen.has(e.name)) continue
+      if (e.name.includes(q) || e.aliases.some((a) => a.includes(q))) {
+        seen.add(e.name)
+        customResults.push(e)
+        if (customResults.length >= 100) break
+      }
+    }
+  }
+
+  // Unicode emoji search by name (we don't have name data, search by char matching)
+  // For now, limit unicode search results
+  for (const [, emojis] of emojiCharByCategory) {
+    for (const char of emojis) {
+      if (unicodeResults.length >= 100) break
+    }
+    if (unicodeResults.length >= 100) break
+  }
+
+  return { custom: customResults, unicode: unicodeResults }
 })
+
+// Recently used emojis with resolved URLs for custom ones
+const recentEmojis = computed(() => recentEmojisStore.list)
+
+function resolveEmojiUrl(reaction: string): string | null {
+  if (reaction.startsWith(':') && reaction.endsWith(':')) {
+    const shortcode = reaction.slice(1, -1)
+    return emojisStore.resolve(props.serverHost, shortcode)
+  }
+  return null
+}
+
+function isCustomEmoji(reaction: string): boolean {
+  return reaction.startsWith(':') && reaction.endsWith(':')
+}
 
 function pickEmoji(emoji: string) {
+  recentEmojisStore.add(emoji, props.pinnedEmojis)
   emit('pick', emoji)
 }
 
 function pickCustom(name: string) {
-  emit('pick', `:${name}:`)
+  const key = `:${name}:`
+  recentEmojisStore.add(key, props.pinnedEmojis)
+  emit('pick', key)
+}
+
+function pickPinnedOrRecent(reaction: string) {
+  recentEmojisStore.add(reaction, props.pinnedEmojis)
+  emit('pick', reaction)
 }
 
 function onMounted() {
@@ -216,27 +131,8 @@ defineExpose({ onMounted })
 
 <template>
   <div class="reaction-picker-panel" @click.stop>
-    <!-- Tabs -->
-    <div class="picker-tabs">
-      <button
-        class="picker-tab"
-        :class="{ active: activeTab === 'emoji' }"
-        @click="activeTab = 'emoji'"
-      >
-        Unicode
-      </button>
-      <button
-        v-if="customEmojis.length > 0"
-        class="picker-tab"
-        :class="{ active: activeTab === 'custom' }"
-        @click="activeTab = 'custom'"
-      >
-        Custom ({{ customEmojis.length }})
-      </button>
-    </div>
-
-    <!-- Search (custom tab) -->
-    <div v-if="activeTab === 'custom'" class="picker-search">
+    <!-- Search (top when has query, bottom otherwise via CSS order) -->
+    <div class="picker-search" :class="{ 'has-query': searchQuery.length > 0 }">
       <input
         ref="searchInput"
         v-model="searchQuery"
@@ -247,39 +143,135 @@ defineExpose({ onMounted })
       />
     </div>
 
-    <!-- Unicode emoji grid -->
-    <div v-if="activeTab === 'emoji'" class="picker-scroll">
-      <div v-for="cat in EMOJI_CATEGORIES" :key="cat.label" class="picker-category">
-        <div class="picker-category-label">{{ cat.label }}</div>
-        <div class="picker-grid">
-          <button
-            v-for="emoji in cat.emojis"
-            :key="emoji"
-            class="picker-emoji-btn"
-            @click="pickEmoji(emoji)"
-          >
-            <img :src="char2twemojiUrl(emoji)" :alt="emoji" class="picker-twemoji" decoding="async" loading="lazy" />
-          </button>
+    <!-- Scrollable area -->
+    <div class="picker-scroll">
+      <!-- Search results -->
+      <template v-if="searchResults">
+        <div v-if="searchResults.custom.length === 0 && searchResults.unicode.length === 0" class="picker-empty">
+          No emoji found
         </div>
-      </div>
-    </div>
+        <template v-else>
+          <div v-if="searchResults.custom.length > 0" class="picker-grid">
+            <button
+              v-for="emoji in searchResults.custom"
+              :key="emoji.name"
+              class="picker-emoji-btn"
+              :title="`:${emoji.name}:`"
+              @click="pickCustom(emoji.name)"
+            >
+              <img :src="emoji.url" :alt="emoji.name" class="picker-custom-img" loading="lazy" />
+            </button>
+          </div>
+        </template>
+      </template>
 
-    <!-- Custom emoji grid -->
-    <div v-if="activeTab === 'custom'" class="picker-scroll">
-      <div v-if="filteredCustomEmojis.length === 0" class="picker-empty">
-        No emoji found
-      </div>
-      <div v-else class="picker-grid">
-        <button
-          v-for="emoji in filteredCustomEmojis"
-          :key="emoji.name"
-          class="picker-emoji-btn"
-          :title="`:${emoji.name}:`"
-          @click="pickCustom(emoji.name)"
+      <!-- Normal view (no search) -->
+      <template v-else>
+        <!-- Pinned reactions -->
+        <div v-if="pinnedEmojis.length > 0" class="picker-pinned">
+          <div class="picker-grid">
+            <button
+              v-for="reaction in pinnedEmojis"
+              :key="reaction"
+              class="picker-emoji-btn"
+              :title="reaction"
+              @click="pickPinnedOrRecent(reaction)"
+            >
+              <img
+                v-if="isCustomEmoji(reaction)"
+                :src="resolveEmojiUrl(reaction) ?? ''"
+                :alt="reaction"
+                class="picker-custom-img"
+                loading="lazy"
+              />
+              <img
+                v-else
+                :src="char2twemojiUrl(reaction)"
+                :alt="reaction"
+                class="picker-twemoji"
+                decoding="async"
+                loading="lazy"
+              />
+            </button>
+          </div>
+        </div>
+
+        <!-- Recently used -->
+        <MkReactionPickerSection
+          v-if="recentEmojis.length > 0"
+          label="Recent"
+          :count="recentEmojis.length"
         >
-          <img :src="emoji.url" :alt="emoji.name" class="picker-custom-img" loading="lazy" />
-        </button>
-      </div>
+          <div class="picker-grid">
+            <button
+              v-for="reaction in recentEmojis"
+              :key="reaction"
+              class="picker-emoji-btn"
+              :title="reaction"
+              @click="pickPinnedOrRecent(reaction)"
+            >
+              <img
+                v-if="isCustomEmoji(reaction)"
+                :src="resolveEmojiUrl(reaction) ?? ''"
+                :alt="reaction"
+                class="picker-custom-img"
+                loading="lazy"
+              />
+              <img
+                v-else
+                :src="char2twemojiUrl(reaction)"
+                :alt="reaction"
+                class="picker-twemoji"
+                decoding="async"
+                loading="lazy"
+              />
+            </button>
+          </div>
+        </MkReactionPickerSection>
+
+        <!-- Custom emojis by category -->
+        <template v-if="customEmojisByCategory.size > 0">
+          <MkReactionPickerSection
+            v-for="[category, emojis] in customEmojisByCategory"
+            :key="category"
+            :label="category"
+            :count="emojis.length"
+            :initial-open="false"
+          >
+            <div class="picker-grid">
+              <button
+                v-for="emoji in emojis"
+                :key="emoji.name"
+                class="picker-emoji-btn"
+                :title="`:${emoji.name}:`"
+                @click="pickCustom(emoji.name)"
+              >
+                <img :src="emoji.url" :alt="emoji.name" class="picker-custom-img" loading="lazy" />
+              </button>
+            </div>
+          </MkReactionPickerSection>
+        </template>
+
+        <!-- Unicode emojis by category -->
+        <MkReactionPickerSection
+          v-for="category in unicodeEmojiCategories"
+          :key="category"
+          :label="category"
+          :count="emojiCharByCategory.get(category)?.length"
+          :initial-open="false"
+        >
+          <div class="picker-grid">
+            <button
+              v-for="emoji in emojiCharByCategory.get(category)"
+              :key="emoji"
+              class="picker-emoji-btn"
+              @click="pickEmoji(emoji)"
+            >
+              <img :src="char2twemojiUrl(emoji)" :alt="emoji" class="picker-twemoji" decoding="async" loading="lazy" />
+            </button>
+          </div>
+        </MkReactionPickerSection>
+      </template>
     </div>
   </div>
 </template>
@@ -297,39 +289,17 @@ defineExpose({ onMounted })
   overflow: hidden;
 }
 
-.picker-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.picker-tab {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  background: none;
-  font-size: 0.8em;
-  font-weight: bold;
-  color: var(--nd-fg);
-  opacity: 0.6;
-  cursor: pointer;
-  transition: opacity 0.15s, color 0.15s;
-}
-
-.picker-tab.active {
-  opacity: 1;
-  color: var(--nd-accent);
-  box-shadow: 0 -2px 0 0 var(--nd-accent) inset;
-}
-
-.picker-tab:hover {
-  opacity: 1;
-}
-
 .picker-search {
   padding: 8px;
-  border-bottom: 1px solid var(--nd-divider);
   flex-shrink: 0;
+  order: 1;
+  border-top: 1px solid var(--nd-divider);
+}
+
+.picker-search.has-query {
+  order: -1;
+  border-top: none;
+  border-bottom: 1px solid var(--nd-divider);
 }
 
 .picker-search-input {
@@ -352,16 +322,13 @@ defineExpose({ onMounted })
   flex: 1;
   overflow-y: auto;
   padding: 8px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: none;
 }
 
-.picker-category-label {
-  font-size: 0.7em;
-  font-weight: bold;
-  text-transform: uppercase;
-  opacity: 0.5;
-  padding: 4px 2px 2px;
+.picker-pinned {
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--nd-divider);
 }
 
 .picker-grid {
@@ -385,6 +352,10 @@ defineExpose({ onMounted })
 
 .picker-emoji-btn:hover {
   background: var(--nd-buttonHoverBg);
+}
+
+.picker-emoji-btn:active {
+  background: var(--nd-accent);
 }
 
 .picker-twemoji {
