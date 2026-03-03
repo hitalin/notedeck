@@ -390,8 +390,8 @@ onUnmounted(() => {
                   </span>
                   <span class="notif-label">{{ notificationLabel(notif.type) }}</span>
                   <span v-if="notif.type === 'reaction' && notif.reaction" class="notif-reaction">
-                    <img v-if="getCachedReactionUrl(notif.reaction, notif)" :src="getCachedReactionUrl(notif.reaction, notif)!" :alt="notif.reaction" class="notif-reaction-emoji" />
-                    <img v-else-if="getCachedTwemojiUrl(notif.reaction)" :src="getCachedTwemojiUrl(notif.reaction)!" :alt="notif.reaction" class="notif-reaction-emoji" />
+                    <img v-if="getCachedReactionUrl(notif.reaction, notif)" :src="getCachedReactionUrl(notif.reaction, notif)!" :alt="notif.reaction" class="notif-reaction-emoji" loading="lazy" />
+                    <img v-else-if="getCachedTwemojiUrl(notif.reaction)" :src="getCachedTwemojiUrl(notif.reaction)!" :alt="notif.reaction" class="notif-reaction-emoji" loading="lazy" />
                     <span v-else-if="notif.reaction.startsWith(':')" class="notif-reaction-fallback">{{ notif.reaction }}</span>
                     <MkEmoji v-else :emoji="notif.reaction" class="notif-reaction-emoji" />
                   </span>

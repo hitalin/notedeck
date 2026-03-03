@@ -14,6 +14,7 @@ import { useNoteList } from '@/composables/useNoteList'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
 
 export interface NoteColumnConfig {
@@ -137,7 +138,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
       if (!adapter) return
 
       const sinceId = notes.value.length > 0 ? notes.value[0]?.id : undefined
-      const fetched = await config.fetch(adapter, sinceId ? { sinceId } : {})
+      const dedupKey = `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
+      const fetched = await dedup(dedupKey, () =>
+        config.fetch(adapter, sinceId ? { sinceId } : {}),
+      )
       if (sinceId && fetched.length > 0) {
         const newNotes = fetched.filter((n) => !noteIds.has(n.id))
         if (newNotes.length > 0) setNotes([...newNotes, ...notes.value])

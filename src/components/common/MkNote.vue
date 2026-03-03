@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import type {
   NormalizedNote,
   NormalizedUser,
@@ -14,21 +13,16 @@ import { useAccountsStore } from '@/stores/accounts'
 import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
 import { proxyUrl } from '@/utils/imageProxy'
-import { extractThemeVars } from '@/utils/themeVars'
-import { isSafeUrl } from '@/utils/url'
 import MkAvatar from './MkAvatar.vue'
 import MkEmoji from './MkEmoji.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
 import MkMfm from './MkMfm.vue'
 import MkPoll from './MkPoll.vue'
+import NoteMoreMenu from './NoteMoreMenu.vue'
+import NoteReactionPickerPopup from './NoteReactionPickerPopup.vue'
+import NoteReactionUsersPopup from './NoteReactionUsersPopup.vue'
 
-const MkReactionPicker = defineAsyncComponent(
-  () => import('./MkReactionPicker.vue'),
-)
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
-const MkReactionUsersPopup = defineAsyncComponent(
-  () => import('./MkReactionUsersPopup.vue'),
-)
 
 const props = defineProps<{
   note: NormalizedNote
@@ -50,14 +44,9 @@ const isPureRenote = computed(
   () => props.note.renote && props.note.text === null,
 )
 
-// Track isFavorited locally: shallowRef arrays don't propagate deep property changes
-const localIsFavorited = ref(effectiveNote.value.isFavorited ?? false)
-watch(
-  () => effectiveNote.value.isFavorited,
-  (v) => {
-    localIsFavorited.value = v ?? false
-  },
-)
+const moreMenuRef = ref<InstanceType<typeof NoteMoreMenu> | null>(null)
+const reactionPickerRef = ref<InstanceType<typeof NoteReactionPickerPopup> | null>(null)
+const reactionUsersRef = ref<InstanceType<typeof NoteReactionUsersPopup> | null>(null)
 
 const emit = defineEmits<{
   react: [reaction: string, note: NormalizedNote]
@@ -86,42 +75,8 @@ const instanceTickerStyle = computed(() => {
   }
 })
 
-const showReactionInput = ref(false)
-const reactionPickerPos = ref({ x: 0, y: 0 })
-const reactionPickerTheme = ref<Record<string, string>>({})
-
-function openReactionPicker(e: MouseEvent) {
-  const btn = e.currentTarget as HTMLElement
-  const rect = btn.getBoundingClientRect()
-  const column = btn.closest('.deck-column') as HTMLElement | null
-  const colRect = column?.getBoundingClientRect()
-  const rightEdge = colRect ? colRect.right - 8 : rect.right
-  reactionPickerPos.value = {
-    x: rightEdge,
-    y: rect.bottom + 4,
-  }
-  if (column) reactionPickerTheme.value = extractThemeVars(column)
-  showReactionInput.value = !showReactionInput.value
-}
 const showRenoteMenu = ref(false)
-const showMoreMenu = ref(false)
-const showDeleteConfirm = ref(false)
 const cwExpanded = ref(false)
-const moreMenuPos = ref({ x: 0, y: 0 })
-
-function openMoreMenu(e: MouseEvent) {
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  moreMenuPos.value = {
-    x: rect.left,
-    y: rect.bottom + 4,
-  }
-  showMoreMenu.value = true
-}
-
-function closeMoreMenu() {
-  showMoreMenu.value = false
-  showDeleteConfirm.value = false
-}
 
 const isOwnNote = computed(() => {
   const account = accountsStore.accountMap.get(props.note._accountId)
@@ -144,38 +99,6 @@ function closeUserPopup() {
   userPopup.forceClose()
 }
 
-// Reaction users hover popup
-const reactionUsersPopup = useHoverPopup({
-  hideDelay: 300,
-  hideGuardSelector: '.reaction-users-popup',
-})
-const reactionUsersReaction = ref('')
-const reactionUsersReactionUrl = ref<string | null>(null)
-const reactionUsersTotalCount = ref(0)
-const reactionUsersTheme = ref<Record<string, string>>({})
-
-function onReactionMouseEnter(e: MouseEvent, reaction: string) {
-  reactionUsersPopup.cancelHide()
-
-  const el = e.currentTarget as HTMLElement
-  const rect = el.getBoundingClientRect()
-  reactionUsersReaction.value = reaction
-  reactionUsersReactionUrl.value = reactionUrls.value[reaction] ?? null
-  reactionUsersTotalCount.value = effectiveNote.value.reactions[reaction] ?? 0
-
-  const column = el.closest('.deck-column') as HTMLElement | null
-  if (column) reactionUsersTheme.value = extractThemeVars(column)
-
-  reactionUsersPopup.show({ x: rect.left, y: rect.bottom + 4 })
-}
-
-function onReactionMouseLeave() {
-  reactionUsersPopup.hide()
-}
-
-function closeReactionUsers() {
-  reactionUsersPopup.forceClose()
-}
 
 const VISIBILITY_ICONS: Record<NoteVisibility, string> = {
   public:
@@ -204,16 +127,6 @@ const activeModeFlags = computed(() => {
       }
     })
 })
-
-const noteWebUrl = computed(() => {
-  const n = effectiveNote.value
-  return n.url ?? n.uri ?? `https://${n._serverHost}/notes/${n.id}`
-})
-
-function openInWebUI() {
-  const url = noteWebUrl.value
-  if (url && isSafeUrl(url)) openUrl(url)
-}
 
 function navigateToDetail() {
   if (!props.detailed) {
@@ -444,10 +357,10 @@ async function handleMentionClick(username: string, host: string | null) {
             class="reaction"
             :class="{ reacted: effectiveNote.myReaction === r.reaction }"
             @click.stop="emit('react', r.reaction, effectiveNote)"
-            @mouseenter="onReactionMouseEnter($event, r.reaction)"
-            @mouseleave="onReactionMouseLeave"
+            @mouseenter="reactionUsersRef?.show($event, r.reaction, reactionUrls[r.reaction] ?? null, effectiveNote.reactions[r.reaction] ?? 0)"
+            @mouseleave="reactionUsersRef?.hide()"
           >
-            <img v-if="reactionUrls[r.reaction]" :src="proxyUrl(reactionUrls[r.reaction]!)" :alt="r.reaction" class="custom-emoji" decoding="async" />
+            <img v-if="reactionUrls[r.reaction]" :src="proxyUrl(reactionUrls[r.reaction]!)" :alt="r.reaction" class="custom-emoji" decoding="async" loading="lazy" />
             <span v-else-if="r.reaction.startsWith(':')" class="reaction-emoji-fallback">{{ r.reaction }}</span>
             <MkEmoji v-else :emoji="r.reaction" class="reaction-emoji" />
             <span class="count">{{ r.count }}</span>
@@ -470,15 +383,13 @@ async function handleMentionClick(username: string, host: string | null) {
           </button>
           <button
             class="footer-button reaction-trigger"
-            :class="{ active: showReactionInput }"
-            @click.stop="openReactionPicker($event)"
+            @click.stop="reactionPickerRef?.open($event)"
           >
             <i class="ti ti-mood-plus" />
           </button>
           <button
             class="footer-button more-button"
-            :class="{ active: showMoreMenu }"
-            @click.stop="openMoreMenu($event)"
+            @click.stop="moreMenuRef?.open($event)"
           >
             <i class="ti ti-dots" />
           </button>
@@ -511,95 +422,28 @@ async function handleMentionClick(username: string, host: string | null) {
     />
   </Teleport>
 
-  <Teleport to="body">
-    <div
-      v-if="reactionUsersPopup.isVisible.value"
-      :style="reactionUsersTheme"
-    >
-      <MkReactionUsersPopup
-        :note-id="effectiveNote.id"
-        :account-id="note._accountId"
-        :server-host="effectiveNote._serverHost"
-        :reaction="reactionUsersReaction"
-        :reaction-url="reactionUsersReactionUrl"
-        :total-count="reactionUsersTotalCount"
-        :x="reactionUsersPopup.position.value.x"
-        :y="reactionUsersPopup.position.value.y"
-        @close="closeReactionUsers"
-      />
-    </div>
-  </Teleport>
+  <NoteReactionUsersPopup
+    ref="reactionUsersRef"
+    :note-id="effectiveNote.id"
+    :account-id="note._accountId"
+    :server-host="effectiveNote._serverHost"
+  />
 
-  <!-- More menu popup -->
-  <Teleport to="body">
-    <Transition name="nd-popup">
-      <div v-if="showMoreMenu" class="popup-backdrop" @click="closeMoreMenu">
-        <div
-          class="popup-menu"
-          :style="{ top: moreMenuPos.y + 'px', left: moreMenuPos.x + 'px' }"
-          @click.stop
-        >
-          <!-- Delete confirmation mode -->
-          <template v-if="showDeleteConfirm">
-            <div class="popup-confirm-text">Delete this note?</div>
-            <button class="popup-item popup-item-danger" @click="emit('delete', effectiveNote); closeMoreMenu()">
-              <i class="ti ti-trash" />
-              Delete
-            </button>
-            <button class="popup-item" @click="showDeleteConfirm = false">
-              <i class="ti ti-x" />
-              Cancel
-            </button>
-          </template>
+  <NoteMoreMenu
+    ref="moreMenuRef"
+    :note="effectiveNote"
+    :is-own-note="isOwnNote"
+    :is-favorited="effectiveNote.isFavorited ?? false"
+    @delete="emit('delete', $event)"
+    @edit="emit('edit', $event)"
+    @bookmark="emit('bookmark', $event)"
+  />
 
-          <!-- Normal menu -->
-          <template v-else>
-            <button
-              class="popup-item"
-              :class="{ 'popup-item-active': localIsFavorited }"
-              @click="localIsFavorited = !localIsFavorited; emit('bookmark', effectiveNote); closeMoreMenu()"
-            >
-              <i :class="localIsFavorited ? 'ti ti-star-filled' : 'ti ti-star'" />
-              {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
-            </button>
-            <button class="popup-item" @click="openInWebUI(); closeMoreMenu()">
-              <i class="ti ti-external-link" />
-              Web UIで開く
-            </button>
-            <template v-if="isOwnNote">
-              <div class="popup-divider" />
-              <button class="popup-item" @click="emit('edit', effectiveNote); closeMoreMenu()">
-                <i class="ti ti-edit" />
-                Edit
-              </button>
-              <button class="popup-item popup-item-danger" @click="showDeleteConfirm = true">
-                <i class="ti ti-trash" />
-                Delete
-              </button>
-            </template>
-          </template>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
-
-  <!-- Reaction picker popup -->
-  <Teleport to="body">
-    <Transition name="nd-popup">
-      <div v-if="showReactionInput" class="popup-backdrop" @click="showReactionInput = false">
-        <div
-          class="reaction-picker-popup"
-          :style="{ ...reactionPickerTheme, top: reactionPickerPos.y + 'px', left: reactionPickerPos.x + 'px' }"
-          @click.stop
-        >
-          <MkReactionPicker
-            :server-host="effectiveNote._serverHost"
-            @pick="(r: string) => { emit('react', r, effectiveNote); showReactionInput = false }"
-          />
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
+  <NoteReactionPickerPopup
+    ref="reactionPickerRef"
+    :server-host="effectiveNote._serverHost"
+    @pick="(r: string) => emit('react', r, effectiveNote)"
+  />
 </template>
 
 <style scoped>
@@ -943,10 +787,6 @@ async function handleMentionClick(username: string, host: string | null) {
   color: var(--nd-renote);
 }
 
-.reaction-trigger.active {
-  color: var(--nd-accent);
-}
-
 .button-count {
   font-size: 0.85em;
 }
@@ -974,111 +814,6 @@ async function handleMentionClick(username: string, host: string | null) {
 .renote-menu-item:hover {
   background: var(--nd-buttonHoverBg);
   color: var(--nd-renote);
-}
-
-/* Popup menu (Teleported to body) */
-.popup-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  background: transparent;
-}
-
-.popup-menu {
-  position: fixed;
-  min-width: 200px;
-  max-width: 300px;
-  padding: 6px;
-  background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 85%, transparent);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(16px);
-  z-index: 10001;
-}
-
-.popup-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 9px 12px;
-  border: none;
-  border-radius: 8px;
-  background: none;
-  cursor: pointer;
-  color: var(--nd-fg);
-  font-size: 0.9em;
-  text-align: left;
-  transition: background 0.15s;
-}
-
-.popup-item:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.popup-item .ti {
-  opacity: 0.7;
-  flex-shrink: 0;
-}
-
-.popup-item-active {
-  color: var(--nd-warn, #f0a020);
-}
-
-.popup-item-active .ti {
-  opacity: 1;
-}
-
-.popup-item-danger {
-  color: #ff2a2a;
-}
-
-.popup-divider {
-  height: 1px;
-  margin: 4px 0;
-  background: var(--nd-divider);
-}
-
-.popup-confirm-text {
-  padding: 9px 12px;
-  font-size: 0.9em;
-  font-weight: bold;
-  color: var(--nd-fg);
-}
-
-/* Popup transition */
-.nd-popup-enter-active,
-.nd-popup-leave-active {
-  transition: opacity 0.15s ease;
-}
-
-.nd-popup-enter-active .popup-menu,
-.nd-popup-leave-active .popup-menu,
-.nd-popup-enter-active .reaction-picker-popup,
-.nd-popup-leave-active .reaction-picker-popup {
-  transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1);
-}
-
-.nd-popup-enter-from,
-.nd-popup-leave-to {
-  opacity: 0;
-}
-
-.nd-popup-enter-from .popup-menu,
-.nd-popup-leave-to .popup-menu {
-  transform: scale(0.95) translateY(-4px);
-}
-
-.nd-popup-enter-from .reaction-picker-popup,
-.nd-popup-leave-to .reaction-picker-popup {
-  transform: translateX(-100%) scale(0.95);
-}
-
-/* Reaction picker popup */
-.reaction-picker-popup {
-  position: fixed;
-  transform: translateX(-100%);
-  z-index: 10001;
 }
 
 /* Divider between notes */

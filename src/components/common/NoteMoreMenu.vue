@@ -1,0 +1,195 @@
+<script setup lang="ts">
+import { openUrl } from '@tauri-apps/plugin-opener'
+import { computed, ref, watch } from 'vue'
+import type { NormalizedNote } from '@/adapters/types'
+import { isSafeUrl } from '@/utils/url'
+
+const props = defineProps<{
+  note: NormalizedNote
+  isOwnNote: boolean
+  isFavorited: boolean
+}>()
+
+const emit = defineEmits<{
+  delete: [note: NormalizedNote]
+  edit: [note: NormalizedNote]
+  bookmark: [note: NormalizedNote]
+}>()
+
+const showMenu = ref(false)
+const showDeleteConfirm = ref(false)
+const menuPos = ref({ x: 0, y: 0 })
+const localIsFavorited = ref(props.isFavorited)
+
+watch(
+  () => props.isFavorited,
+  (v) => {
+    localIsFavorited.value = v
+  },
+)
+
+const noteWebUrl = computed(() => {
+  const n = props.note
+  return n.url ?? n.uri ?? `https://${n._serverHost}/notes/${n.id}`
+})
+
+function open(e: MouseEvent) {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  menuPos.value = { x: rect.left, y: rect.bottom + 4 }
+  showMenu.value = true
+}
+
+function close() {
+  showMenu.value = false
+  showDeleteConfirm.value = false
+}
+
+function openInWebUI() {
+  const url = noteWebUrl.value
+  if (url && isSafeUrl(url)) openUrl(url)
+}
+
+defineExpose({ open })
+</script>
+
+<template>
+  <Teleport to="body">
+    <Transition name="nd-popup">
+      <div v-if="showMenu" class="popup-backdrop" @click="close">
+        <div
+          class="popup-menu"
+          :style="{ top: menuPos.y + 'px', left: menuPos.x + 'px' }"
+          @click.stop
+        >
+          <template v-if="showDeleteConfirm">
+            <div class="popup-confirm-text">Delete this note?</div>
+            <button class="popup-item popup-item-danger" @click="emit('delete', note); close()">
+              <i class="ti ti-trash" />
+              Delete
+            </button>
+            <button class="popup-item" @click="showDeleteConfirm = false">
+              <i class="ti ti-x" />
+              Cancel
+            </button>
+          </template>
+          <template v-else>
+            <button
+              class="popup-item"
+              :class="{ 'popup-item-active': localIsFavorited }"
+              @click="localIsFavorited = !localIsFavorited; emit('bookmark', note); close()"
+            >
+              <i :class="localIsFavorited ? 'ti ti-star-filled' : 'ti ti-star'" />
+              {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
+            </button>
+            <button class="popup-item" @click="openInWebUI(); close()">
+              <i class="ti ti-external-link" />
+              Web UIで開く
+            </button>
+            <template v-if="isOwnNote">
+              <div class="popup-divider" />
+              <button class="popup-item" @click="emit('edit', note); close()">
+                <i class="ti ti-edit" />
+                Edit
+              </button>
+              <button class="popup-item popup-item-danger" @click="showDeleteConfirm = true">
+                <i class="ti ti-trash" />
+                Delete
+              </button>
+            </template>
+          </template>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+</template>
+
+<style scoped>
+.popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: transparent;
+}
+
+.popup-menu {
+  position: fixed;
+  min-width: 200px;
+  max-width: 300px;
+  padding: 6px;
+  background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 85%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(16px);
+  z-index: 10001;
+}
+
+.popup-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  color: var(--nd-fg);
+  font-size: 0.9em;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.popup-item:hover {
+  background: var(--nd-buttonHoverBg);
+}
+
+.popup-item .ti {
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.popup-item-active {
+  color: var(--nd-warn, #f0a020);
+}
+
+.popup-item-active .ti {
+  opacity: 1;
+}
+
+.popup-item-danger {
+  color: #ff2a2a;
+}
+
+.popup-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--nd-divider);
+}
+
+.popup-confirm-text {
+  padding: 9px 12px;
+  font-size: 0.9em;
+  font-weight: bold;
+  color: var(--nd-fg);
+}
+
+.nd-popup-enter-active,
+.nd-popup-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.nd-popup-enter-active .popup-menu,
+.nd-popup-leave-active .popup-menu {
+  transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.nd-popup-enter-from,
+.nd-popup-leave-to {
+  opacity: 0;
+}
+
+.nd-popup-enter-from .popup-menu,
+.nd-popup-leave-to .popup-menu {
+  transform: scale(0.95) translateY(-4px);
+}
+</style>

@@ -40,6 +40,7 @@ import {
   detectFilterKeys,
   findModeKeyForTimeline,
 } from '@/utils/customTimelines'
+import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
 import { matchesFilter } from '@/utils/timelineFilter'
 import DeckColumn from './DeckColumn.vue'
@@ -372,9 +373,9 @@ async function connect(useCache = false) {
     if (!adapter) return
 
     const sinceId = notes.value.length > 0 ? notes.value[0]?.id : undefined
-    const fetched = await adapter.api.getTimeline(
-      tlType.value,
-      buildTimelineOptions(sinceId),
+    const dedupKey = `${props.column.accountId}:timeline:${tlType.value}`
+    const fetched = await dedup(dedupKey, () =>
+      adapter.api.getTimeline(tlType.value, buildTimelineOptions(sinceId)),
     )
 
     if (sinceId && fetched.length > 0) {
