@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { useEmojisStore } from '@/stores/emojis'
 import type { ServerEmoji } from '@/adapters/types'
+import { useEmojisStore } from '@/stores/emojis'
 
 function toServerEmojis(map: Record<string, string>): ServerEmoji[] {
   return Object.entries(map).map(([name, url]) => ({
