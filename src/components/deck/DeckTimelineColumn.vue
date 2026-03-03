@@ -110,6 +110,14 @@ if (props.column.lastReadNoteId) {
   setLastReadNoteId(props.column.lastReadNoteId)
 }
 
+// Whether lastReadNoteId exists but is not in the current notes list
+// (i.e. all visible notes are unread — e.g. >40 new notes since last read)
+const lastReadNotInList = computed(() => {
+  if (!props.column.lastReadNoteId || timeMachine.isActive.value) return false
+  if (notes.value.length === 0) return false
+  return !notes.value.some((n) => n.id === props.column.lastReadNoteId)
+})
+
 // Auto-update lastReadNoteId when user is at top
 watch(
   () => isAtTop.value && notes.value[0]?.id,
@@ -703,6 +711,9 @@ onUnmounted(() => {
         </template>
 
         <template #after>
+          <div v-if="lastReadNotInList" class="unread-line">
+            <span class="unread-line-label">New</span>
+          </div>
           <div v-if="isLoading && notes.length > 0" class="loading-more">
             Loading...
           </div>
