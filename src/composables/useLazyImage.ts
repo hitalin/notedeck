@@ -20,7 +20,7 @@ export function useLazyImage(
         stop()
       }
     },
-    { rootMargin: options?.rootMargin ?? '200px' },
+    { rootMargin: options?.rootMargin ?? '600px' },
   )
 
   const lazySrc = computed(() => (isVisible.value ? src.value : undefined))

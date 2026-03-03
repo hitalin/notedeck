@@ -15,6 +15,7 @@ const props = defineProps<{
   emojis?: Record<string, string>
   reactionEmojis?: Record<string, string>
   serverHost?: string
+  accountId?: string
 }>()
 
 const emit = defineEmits<{
@@ -201,8 +202,8 @@ function fnStyle(
 
 <template>
   <span class="mfm"><template v-for="(token, i) in resolvedTokens" :key="i"><!--
-    --><!-- URL --><span v-if="token.type === 'url'" class="mfm-url-block"><a :href="isSafeUrl(token.value) ? token.value : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><MkUrlPreview :url="token.value" /></span><!--
-    --><!-- Link --><a v-else-if="token.type === 'link'" :href="isSafeUrl(token.url) ? token.url : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.url)"><MkMfm :tokens="token.label" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" @mention-click="(u, h) => emit('mentionClick', u, h)" /></a><!--
+    --><!-- URL --><span v-if="token.type === 'url'" class="mfm-url-block"><a :href="isSafeUrl(token.value) ? token.value : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><MkUrlPreview :url="token.value" :account-id="accountId" /></span><!--
+    --><!-- Link --><a v-else-if="token.type === 'link'" :href="isSafeUrl(token.url) ? token.url : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.url)"><MkMfm :tokens="token.label" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" /></a><!--
     --><!-- Mention --><span v-else-if="token.type === 'mention'" class="mfm-mention" @click.stop="emit('mentionClick', token.username, token.host)">{{ token.acct }}</span><!--
     --><!-- Hashtag --><span v-else-if="token.type === 'hashtag'" class="mfm-hashtag" @click.stop>#{{ token.value }}</span><!--
     --><!-- Bold --><b v-else-if="token.type === 'bold'">{{ token.value }}</b><!--
@@ -213,9 +214,9 @@ function fnStyle(
     --><!-- Custom Emoji (resolved) --><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="proxyUrl(emojiUrls[token.shortcode]!)" :alt="`:${token.shortcode}:`" class="custom-emoji" decoding="async" loading="lazy" /><!--
     --><!-- Custom Emoji (unresolved) --><span v-else-if="token.type === 'customEmoji'">:{{ token.shortcode }}:</span><!--
     --><!-- Unicode Emoji --><img v-else-if="token.type === 'unicodeEmoji'" :src="token.url" :alt="token.value" class="twemoji" width="20" height="20" decoding="async" loading="lazy" /><!--
-    --><!-- MFM Function --><span v-else-if="token.type === 'fn'" :class="fnClass(token)" :style="fnStyle(token)"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" @mention-click="(u, h) => emit('mentionClick', u, h)" /></span><!--
-    --><!-- Small --><small v-else-if="token.type === 'small'" class="mfm-small"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" @mention-click="(u, h) => emit('mentionClick', u, h)" /></small><!--
-    --><!-- Center --><span v-else-if="token.type === 'center'" class="mfm-center"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" @mention-click="(u, h) => emit('mentionClick', u, h)" /></span><!--
+    --><!-- MFM Function --><span v-else-if="token.type === 'fn'" :class="fnClass(token)" :style="fnStyle(token)"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" /></span><!--
+    --><!-- Small --><small v-else-if="token.type === 'small'" class="mfm-small"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" /></small><!--
+    --><!-- Center --><span v-else-if="token.type === 'center'" class="mfm-center"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" /></span><!--
     --><!-- Plain --><span v-else-if="token.type === 'plain'">{{ token.value }}</span><!--
     --><!-- Text --><template v-else>{{ token.value }}</template><!--
   --></template></span>

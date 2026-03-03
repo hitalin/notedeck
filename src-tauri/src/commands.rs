@@ -1035,11 +1035,24 @@ pub async fn auth_complete_and_save(
 #[tauri::command]
 pub async fn fetch_ogp(
     ogp_cache: State<'_, crate::ogp::OgpCache>,
+    db: State<'_, Arc<Database>>,
     url: String,
+    account_id: Option<String>,
 ) -> Result<crate::ogp::OgpData> {
     if url.len() > 2048 {
         return Err(NoteDeckError::InvalidInput("URL too long".to_string()));
     }
+
+    // Try server's summary proxy if account context is available
+    if let Some(ref aid) = account_id {
+        if let Ok((host, token)) = get_credentials(&db, aid) {
+            if let Ok(data) = ogp_cache.get_ogp_via_server(&url, &host, &token).await {
+                return Ok(data);
+            }
+        }
+    }
+
+    // Fallback to self-fetch
     ogp_cache
         .get_ogp(&url)
         .await

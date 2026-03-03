@@ -2477,6 +2477,7 @@ name = "notedeck"
 version = "0.0.18"
 dependencies = [
  "axum",
+ "bytes",
  "futures-util",
  "notecli",
  "reqwest 0.12.28",

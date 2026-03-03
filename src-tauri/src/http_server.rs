@@ -620,9 +620,30 @@ async fn proxy_image(
     State(state): State<AppState>,
     Query(params): Query<ProxyImageParams>,
 ) -> Response {
-    match state.image_cache.get_or_fetch(&params.url).await {
-        Ok(entry) => {
-            // Use memory cache if available, otherwise fall back to disk
+    use crate::image_cache::StreamingFetchResult;
+
+    // Phase 1: Check cache (instant response)
+    if let Some(entry) = state.image_cache.check_cache_only(&params.url).await {
+        let body_bytes = if let Some(ref mem) = entry.mem_bytes {
+            (**mem).clone()
+        } else {
+            match tokio::fs::read(&entry.path).await {
+                Ok(b) => b,
+                Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            }
+        };
+        return Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", &entry.content_type)
+            .header("Cache-Control", "public, max-age=86400, immutable")
+            .body(Body::from(body_bytes))
+            .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
+    }
+
+    // Phase 2: Stream from upstream (low TTFB)
+    match state.image_cache.fetch_streaming(&params.url).await {
+        Ok(StreamingFetchResult::Cached(entry)) => {
+            // Inflight dedup resolved to a cached entry
             let body_bytes = if let Some(ref mem) = entry.mem_bytes {
                 (**mem).clone()
             } else {
@@ -636,6 +657,18 @@ async fn proxy_image(
                 .header("Content-Type", &entry.content_type)
                 .header("Cache-Control", "public, max-age=86400, immutable")
                 .body(Body::from(body_bytes))
+                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+        }
+        Ok(StreamingFetchResult::Streaming {
+            byte_stream,
+            content_type,
+        }) => {
+            let body = Body::from_stream(byte_stream);
+            Response::builder()
+                .status(StatusCode::OK)
+                .header("Content-Type", &content_type)
+                .header("Cache-Control", "public, max-age=86400, immutable")
+                .body(body)
                 .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
         }
         Err(msg) => (StatusCode::BAD_GATEWAY, msg).into_response(),

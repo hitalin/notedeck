@@ -211,6 +211,7 @@ async function handleMentionClick(username: string, host: string | null) {
           :text="note.user.name"
           :emojis="{ ...note.emojis, ...note.user.emojis }"
           :server-host="note._serverHost"
+          :account-id="note._accountId"
         />
         <template v-else>{{ note.user.username }}</template>
       </span>
@@ -239,6 +240,7 @@ async function handleMentionClick(username: string, host: string | null) {
               :text="effectiveNote.user.name"
               :emojis="allEmojis"
               :server-host="effectiveNote._serverHost"
+              :account-id="effectiveNote._accountId"
               @mention-click="handleMentionClick"
             />
             <template v-else>{{ effectiveNote.user.username }}</template>
@@ -318,6 +320,7 @@ async function handleMentionClick(username: string, host: string | null) {
               :text="effectiveNote.cw"
               :emojis="effectiveNote.emojis"
               :server-host="effectiveNote._serverHost"
+              :account-id="effectiveNote._accountId"
               @mention-click="handleMentionClick"
             />
           </p>
@@ -334,6 +337,7 @@ async function handleMentionClick(username: string, host: string | null) {
               :emojis="effectiveNote.emojis"
               :reaction-emojis="effectiveNote.reactionEmojis"
               :server-host="effectiveNote._serverHost"
+              :account-id="effectiveNote._accountId"
               @mention-click="handleMentionClick"
             />
           </p>

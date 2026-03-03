@@ -7,6 +7,7 @@ import { isSafeUrl } from '@/utils/url'
 
 const props = defineProps<{
   url: string
+  accountId?: string
 }>()
 
 const mediaExtRe =
@@ -18,7 +19,7 @@ const shouldPreview = computed(() => {
   return true
 })
 
-const { data, loading, fetch } = useOgpPreview(props.url)
+const { data, loading, fetch } = useOgpPreview(props.url, props.accountId)
 const el = ref<HTMLElement | null>(null)
 const imageError = ref(false)
 let observer: IntersectionObserver | null = null
@@ -33,7 +34,7 @@ onMounted(() => {
         fetch()
       }
     },
-    { rootMargin: '200px' },
+    { rootMargin: '600px' },
   )
   observer.observe(el.value)
 })

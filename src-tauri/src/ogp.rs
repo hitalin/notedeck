@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -81,29 +81,100 @@ impl OgpCache {
         let result = self.fetch_and_parse(url).await;
 
         if let Ok(ref data) = result {
-            let mut cache = self.cache.lock().await;
-            if cache.len() >= MAX_ENTRIES {
-                if let Some(oldest) = cache
-                    .iter()
-                    .min_by_key(|(_, v)| v.fetched_at)
-                    .map(|(k, _)| k.clone())
-                {
-                    cache.remove(&oldest);
-                }
-            }
-            cache.insert(
-                url.to_string(),
-                CacheEntry {
-                    data: data.clone(),
-                    fetched_at: Instant::now(),
-                },
-            );
+            self.store_cache(url, data).await;
         }
 
         tx.send(Some(result.clone())).ok();
         self.inflight.lock().await.remove(url);
 
         result
+    }
+
+    /// Try fetching OGP via Misskey server's /api/url endpoint first,
+    /// falling back to direct self-fetch on failure.
+    pub async fn get_ogp_via_server(
+        &self,
+        url: &str,
+        host: &str,
+        token: &str,
+    ) -> Result<OgpData, String> {
+        if !url.starts_with("https://") {
+            return Err("Only HTTPS URLs are allowed".to_string());
+        }
+
+        // Check local cache first (shared with self-fetch)
+        {
+            let cache = self.cache.lock().await;
+            if let Some(entry) = cache.get(url) {
+                if entry.fetched_at.elapsed() < CACHE_TTL {
+                    return Ok(entry.data.clone());
+                }
+            }
+        }
+
+        // Try server's summary proxy
+        match self.fetch_from_server(url, host, token).await {
+            Ok(data) => {
+                self.store_cache(url, &data).await;
+                Ok(data)
+            }
+            Err(_) => {
+                // Fallback to self-fetch
+                self.get_ogp(url).await
+            }
+        }
+    }
+
+    async fn fetch_from_server(
+        &self,
+        url: &str,
+        host: &str,
+        token: &str,
+    ) -> Result<OgpData, String> {
+        let body = serde_json::json!({ "i": token, "url": url });
+        let resp = self
+            .http_client
+            .post(format!("https://{host}/api/url"))
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| format!("Server OGP fetch failed: {e}"))?;
+
+        if !resp.status().is_success() {
+            return Err(format!("Server OGP HTTP {}", resp.status()));
+        }
+
+        let server_data: ServerUrlResponse = resp
+            .json()
+            .await
+            .map_err(|e| format!("Server OGP parse failed: {e}"))?;
+
+        Ok(OgpData {
+            title: server_data.title,
+            description: server_data.description,
+            image: server_data.thumbnail.filter(|u| u.starts_with("https://")),
+            site_name: server_data.sitename,
+        })
+    }
+
+    async fn store_cache(&self, url: &str, data: &OgpData) {
+        let mut cache = self.cache.lock().await;
+        if cache.len() >= MAX_ENTRIES {
+            if let Some(oldest) = cache
+                .iter()
+                .min_by_key(|(_, v)| v.fetched_at)
+                .map(|(k, _)| k.clone())
+            {
+                cache.remove(&oldest);
+            }
+        }
+        cache.insert(
+            url.to_string(),
+            CacheEntry {
+                data: data.clone(),
+                fetched_at: Instant::now(),
+            },
+        );
     }
 
     async fn fetch_and_parse(&self, url: &str) -> Result<OgpData, String> {
@@ -142,6 +213,15 @@ impl OgpCache {
         let html = String::from_utf8_lossy(&bytes);
         Ok(parse_ogp(&html))
     }
+}
+
+/// Response from Misskey's POST /api/url endpoint
+#[derive(Debug, Deserialize)]
+struct ServerUrlResponse {
+    title: Option<String>,
+    description: Option<String>,
+    thumbnail: Option<String>,
+    sitename: Option<String>,
 }
 
 fn parse_ogp(html: &str) -> OgpData {
