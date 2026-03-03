@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { DynamicScroller } from 'vue-virtual-scroller'
 import { createAdapter } from '@/adapters/registry'
 import type {
@@ -81,6 +81,13 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     adapter?.stream.cleanup()
     adapter = null
   }
+
+  // Re-register stream event listeners on resume (handles Android background suspension)
+  function handleDeckResume() {
+    adapter?.stream.reconnect()
+  }
+  onMounted(() => window.addEventListener('deck-resume', handleDeckResume))
+  onUnmounted(() => window.removeEventListener('deck-resume', handleDeckResume))
 
   // Post form
   const showPostForm = ref(false)

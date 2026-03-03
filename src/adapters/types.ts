@@ -370,6 +370,8 @@ export type MainChannelEvent = {
 
 export interface StreamAdapter {
   connect(): void
+  /** Re-register event listeners and ensure the connection is alive (idempotent). */
+  reconnect(): void
   disconnect(): void
   /** Clean up local listeners/handlers without killing the shared WebSocket connection. */
   cleanup(): void

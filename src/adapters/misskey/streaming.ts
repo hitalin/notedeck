@@ -95,7 +95,40 @@ export class MisskeyStream implements StreamAdapter {
   }
 
   connect(): void {
-    // Register centralized listeners (one per event type)
+    this.registerListeners()
+
+    invoke('stream_connect', { accountId: this.accountId })
+      .then(() => {
+        this._state = 'connected'
+        this.emit('connected')
+      })
+      .catch((e) => {
+        console.error('[stream] connect failed:', e)
+        this._state = 'disconnected'
+        this.emit('disconnected')
+      })
+  }
+
+  reconnect(): void {
+    // Remove potentially stale listeners (may have been lost during background suspension)
+    for (const fn of this.unlistenFns) fn()
+    this.unlistenFns = []
+
+    // Re-register fresh listeners (handler maps are preserved)
+    this.registerListeners()
+
+    // Ensure Rust-side connection is alive (idempotent — returns Ok if already connected)
+    invoke('stream_connect', { accountId: this.accountId })
+      .then(() => {
+        this._state = 'connected'
+        this.emit('connected')
+      })
+      .catch(() => {
+        // Connection might be reconnecting on Rust side — that's fine
+      })
+  }
+
+  private registerListeners(): void {
     listen<StreamStatusEvent>('stream-status', (event) => {
       if (event.payload.accountId !== this.accountId) return
       this._state = event.payload.state
@@ -187,17 +220,6 @@ export class MisskeyStream implements StreamAdapter {
       .catch((e) =>
         console.error('[stream] failed to listen stream-chat-message:', e),
       )
-
-    invoke('stream_connect', { accountId: this.accountId })
-      .then(() => {
-        this._state = 'connected'
-        this.emit('connected')
-      })
-      .catch((e) => {
-        console.error('[stream] connect failed:', e)
-        this._state = 'disconnected'
-        this.emit('disconnected')
-      })
   }
 
   cleanup(): void {
