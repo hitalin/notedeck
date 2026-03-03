@@ -158,11 +158,12 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Global shortcuts (desktop only)
         #[cfg(not(mobile))]
         {
-            use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut as GShortcut};
+            use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut as GShortcut, ShortcutState};
 
             // Boss Key: Ctrl+Shift+B — toggle window visibility
             let boss_key = GShortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyB);
-            app.global_shortcut().on_shortcut(boss_key, |app: &tauri::AppHandle, _, _| {
+            app.global_shortcut().on_shortcut(boss_key, |app: &tauri::AppHandle, _, event| {
+                if event.state != ShortcutState::Pressed { return; }
                 if let Some(w) = app.get_webview_window("main") {
                     if w.is_visible().unwrap_or(false) {
                         let _ = w.hide();
@@ -175,7 +176,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
             // Quick Note: Ctrl+Alt+N — show window + emit event for post mode
             let quick_note = GShortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyN);
-            app.global_shortcut().on_shortcut(quick_note, |app: &tauri::AppHandle, _, _| {
+            app.global_shortcut().on_shortcut(quick_note, |app: &tauri::AppHandle, _, event| {
+                if event.state != ShortcutState::Pressed { return; }
                 if let Some(w) = app.get_webview_window("main") {
                     let _ = w.show();
                     let _ = w.set_focus();
