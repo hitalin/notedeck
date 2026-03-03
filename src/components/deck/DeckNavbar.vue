@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import {
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const { navigateToLogin } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 
@@ -265,10 +267,10 @@ defineExpose({
           </div>
 
           <!-- Add account -->
-          <router-link to="/login" class="_button nav-item nav-add-account" title="Add account">
+          <button class="_button nav-item nav-add-account" title="Add account" @click="navigateToLogin()">
             <i class="ti ti-plus" />
             <span class="nav-label">Add account</span>
-          </router-link>
+          </button>
         </div>
       </div>
 

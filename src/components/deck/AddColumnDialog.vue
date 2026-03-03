@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { ref } from 'vue'
+import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import type { ColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -9,6 +10,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const { navigateToLogin } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 
@@ -347,9 +349,9 @@ function close() {
       <template v-else>
         <div v-if="accountsStore.accounts.length === 0" class="add-popup-empty">
           No accounts registered.
-          <router-link to="/login" @click="close()">
+          <button class="_button" style="color: var(--nd-accent); text-decoration: underline;" @click="close(); navigateToLogin()">
             Add account
-          </router-link>
+          </button>
         </div>
 
         <button

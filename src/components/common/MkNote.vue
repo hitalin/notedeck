@@ -2,10 +2,10 @@
 import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
+import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
@@ -60,7 +60,7 @@ const emit = defineEmits<{
   bookmark: [note: NormalizedNote]
 }>()
 
-const router = useRouter()
+const { navigateToNote: navToNote, navigateToUser: navToUser } = useNavigation()
 const accountsStore = useAccountsStore()
 const { resolveEmoji: resolveEmojiRaw, reactionUrl: reactionUrlRaw } =
   useEmojiResolver()
@@ -225,13 +225,13 @@ function openInWebUI() {
 
 function navigateToDetail() {
   if (!props.detailed) {
-    router.push(`/note/${props.note._accountId}/${props.note.id}`)
+    navToNote(props.note._accountId, props.note.id)
   }
 }
 
 function navigateToUser(userId: string, e: Event) {
   e.stopPropagation()
-  router.push(`/user/${props.note._accountId}/${userId}`)
+  navToUser(props.note._accountId, userId)
 }
 
 const reactionsData = computed(() => {
@@ -267,7 +267,7 @@ async function handleMentionClick(username: string, host: string | null) {
       username,
       host: host ?? null,
     })
-    router.push(`/user/${props.note._accountId}/${user.id}`)
+    navToUser(props.note._accountId, user.id)
   } catch (e) {
     console.warn('[MkNote] failed to lookup user:', username, host, e)
   }

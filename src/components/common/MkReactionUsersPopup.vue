@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { createAdapter } from '@/adapters/registry'
 import type { NoteReaction } from '@/adapters/types'
+import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import MkMfm from './MkMfm.vue'
@@ -24,7 +24,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const router = useRouter()
+const { navigateToUser } = useNavigation()
 const serversStore = useServersStore()
 const accountsStore = useAccountsStore()
 
@@ -66,9 +66,8 @@ function handleMouseLeave() {
 }
 
 function onUserClick(userId: string) {
-  const path = `/user/${props.accountId}/${userId}`
   emit('close')
-  router.push(path)
+  navigateToUser(props.accountId, userId)
 }
 
 function onUserMouseEnter(e: MouseEvent, userId: string) {

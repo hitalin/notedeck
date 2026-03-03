@@ -11,6 +11,7 @@ import {
   registerDefaultCommands,
   unregisterDefaultCommands,
 } from '@/commands/definitions'
+import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -25,6 +26,9 @@ const MkPostForm = defineAsyncComponent(
 )
 const AddColumnDialog = defineAsyncComponent(
   () => import('./AddColumnDialog.vue'),
+)
+const DeckWindowLayer = defineAsyncComponent(
+  () => import('./DeckWindowLayer.vue'),
 )
 
 import DeckAntennaColumn from './DeckAntennaColumn.vue'
@@ -44,6 +48,7 @@ import DeckUserColumn from './DeckUserColumn.vue'
 import DeckWidgetColumn from './DeckWidgetColumn.vue'
 
 const router = useRouter()
+const { navigateToNote, navigateToUser } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 // Pre-build column lookup map to avoid O(n) find per column per render
@@ -186,9 +191,9 @@ onMounted(() => {
   initApiBridge()
   onNotificationAction((ctx) => {
     if (ctx.noteId) {
-      router.push(`/note/${ctx.accountId}/${ctx.noteId}`)
+      navigateToNote(ctx.accountId, ctx.noteId)
     } else if (ctx.userId) {
-      router.push(`/user/${ctx.accountId}/${ctx.userId}`)
+      navigateToUser(ctx.accountId, ctx.userId)
     }
   })
   registerDefaultCommands({
@@ -352,6 +357,10 @@ function onVisibilityChange() {
         @close="closeCompose"
         @posted="closeCompose"
       />
+    </Teleport>
+
+    <Teleport to="body">
+      <DeckWindowLayer />
     </Teleport>
   </div>
 </template>
