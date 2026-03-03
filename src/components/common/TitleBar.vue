@@ -20,8 +20,10 @@ async function syncMaximized() {
 }
 
 async function syncMobileState() {
+  const factor = await appWindow.scaleFactor()
   const size = await appWindow.innerSize()
-  isMobileSize.value = size.width <= MOBILE_WIDTH + 20
+  const logicalWidth = size.width / factor
+  isMobileSize.value = logicalWidth <= MOBILE_WIDTH + 20
 }
 
 let unlisten: (() => void) | null = null
@@ -52,8 +54,9 @@ async function close() {
 }
 
 async function toggleMobileSize() {
+  const factor = await appWindow.scaleFactor()
   if (isMobileSize.value) {
-    // Restore desktop size
+    // Restore desktop size (saved as logical pixels)
     if (savedDesktopSize) {
       await appWindow.setSize(
         new LogicalSize(savedDesktopSize.width, savedDesktopSize.height),
@@ -63,9 +66,12 @@ async function toggleMobileSize() {
     }
     savedDesktopSize = null
   } else {
-    // Save current size, then switch to mobile
+    // Save current size as logical pixels, then switch to mobile
     const current = await appWindow.innerSize()
-    savedDesktopSize = { width: current.width, height: current.height }
+    savedDesktopSize = {
+      width: current.width / factor,
+      height: current.height / factor,
+    }
     await appWindow.setSize(new LogicalSize(MOBILE_WIDTH, MOBILE_HEIGHT))
   }
   await appWindow.center()
