@@ -633,8 +633,18 @@ defineExpose({
   }
 
   .navbar.drawer-open .nav-body {
-    overflow-y: auto;
+    overflow: visible;
     direction: rtl;
+  }
+
+  /* On mobile drawer, show menu above the button (not to the right) */
+  .navbar.drawer-open .nav-account-menu.menu-right {
+    bottom: 100%;
+    top: auto;
+    left: 0;
+    right: 0;
+    margin-bottom: 4px;
+    margin-left: 0;
   }
 
   .navbar.drawer-open .nav-item {
