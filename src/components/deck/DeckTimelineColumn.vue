@@ -600,13 +600,13 @@ onUnmounted(() => {
           title="Time Machine"
           @click.stop="toggleTimeMachine"
         >
-          <i class="ti ti-clock-rewind" />
+          <i class="ti ti-history" />
         </button>
         <div class="tl-tab-indicator" :style="tabIndicatorStyle" />
       </div>
 
       <div v-if="timeMachine.isActive.value" class="time-machine-bar">
-        <i class="ti ti-clock-rewind" />
+        <i class="ti ti-history" />
         <input
           type="date"
           class="time-machine-date"
