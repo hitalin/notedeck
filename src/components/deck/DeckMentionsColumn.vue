@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { ChannelSubscription, NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
+import { sortByCreatedAtDesc } from '@/utils/sortNotes'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -93,7 +94,8 @@ async function connect(useCache = false) {
     })
     if (sinceId && fetched.length > 0) {
       const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-      if (newNotes.length > 0) setNotes([...newNotes, ...notes.value])
+      if (newNotes.length > 0)
+        setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
     } else if (fetched.length > 0) {
       setNotes(fetched)
     }
@@ -131,7 +133,7 @@ async function loadMore() {
     const older = await adapter.api.getMentions({
       untilId: lastNote.id,
     })
-    setNotes([...notes.value, ...older])
+    setNotes(sortByCreatedAtDesc([...notes.value, ...older]))
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -153,32 +155,33 @@ async function onResume() {
   const adapter = getAdapter()
   if (!adapter || !account.value) return
 
-  try {
-    const cached = await invoke<NormalizedNote[]>('api_get_cached_timeline', {
-      accountId: props.column.accountId,
-      timelineType: 'mentions',
-      limit: 40,
-    })
-    if (cached.length > 0) {
-      const newFromCache = cached.filter((n) => !noteIds.has(n.id))
-      if (newFromCache.length > 0) {
-        setNotes([...newFromCache, ...notes.value])
-      }
-    }
-  } catch {
-    /* non-critical */
-  }
-
   const sinceId = notes.value[0]?.id
-  if (!sinceId) return
-  try {
-    const fetched = await adapter.api.getMentions({ sinceId })
-    const newFromApi = fetched.filter((n) => !noteIds.has(n.id))
-    if (newFromApi.length > 0) {
-      setNotes([...newFromApi, ...notes.value])
-    }
-  } catch {
-    /* non-critical */
+
+  // Run cache fetch and API fetch in parallel
+  const cachePromise = props.column.accountId
+    ? invoke<NormalizedNote[]>('api_get_cached_timeline', {
+        accountId: props.column.accountId,
+        timelineType: 'mentions',
+        limit: 40,
+      }).catch(() => [] as NormalizedNote[])
+    : Promise.resolve([] as NormalizedNote[])
+
+  const apiPromise = sinceId
+    ? adapter.api.getMentions({ sinceId }).catch(() => [] as NormalizedNote[])
+    : Promise.resolve([] as NormalizedNote[])
+
+  const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
+
+  // Merge results: API results take priority, then cache
+  const allNew = [...fetched, ...cached].filter((n) => !noteIds.has(n.id))
+  if (allNew.length > 0) {
+    const seen = new Set<string>()
+    const deduped = allNew.filter((n) => {
+      if (seen.has(n.id)) return false
+      seen.add(n.id)
+      return true
+    })
+    setNotes(sortByCreatedAtDesc([...deduped, ...notes.value]))
   }
 }
 

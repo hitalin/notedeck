@@ -16,6 +16,7 @@ import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
+import { sortByCreatedAtDesc } from '@/utils/sortNotes'
 
 export interface NoteColumnConfig {
   getColumn: () => DeckColumnType
@@ -144,7 +145,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
       )
       if (sinceId && fetched.length > 0) {
         const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-        if (newNotes.length > 0) setNotes([...newNotes, ...notes.value])
+        if (newNotes.length > 0)
+          setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
       } else if (fetched.length > 0) {
         setNotes(fetched)
       }
@@ -176,7 +178,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     isLoading.value = true
     try {
       const older = await config.fetch(adapter, { untilId: lastNote.id })
-      setNotes([...notes.value, ...older])
+      setNotes(sortByCreatedAtDesc([...notes.value, ...older]))
     } catch (e) {
       error.value = AppError.from(e)
     } finally {
@@ -214,7 +216,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
           setNotes(result.notes)
           scrollToTop()
         } else if (result.notes.length > 0) {
-          setNotes([...result.notes, ...notes.value])
+          setNotes(sortByCreatedAtDesc([...result.notes, ...notes.value]))
           scrollToTop()
         }
       } else {
@@ -278,7 +280,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
         seen.add(n.id)
         return true
       })
-      setNotes([...deduped, ...notes.value])
+      setNotes(sortByCreatedAtDesc([...deduped, ...notes.value]))
     }
   }
 

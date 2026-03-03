@@ -1,6 +1,7 @@
 import { nextTick, onScopeDispose, ref, shallowRef } from 'vue'
 import type { DynamicScroller } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
+import { sortByCreatedAtDesc } from '@/utils/sortNotes'
 
 export interface UseStreamingBatchOptions {
   notes: { value: NormalizedNote[] }
@@ -47,14 +48,14 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     rafBuffer = []
     if (isAtTop.value) {
       for (const n of batch) options.noteIds.add(n.id)
-      const merged = [...batch, ...options.notes.value]
+      const merged = sortByCreatedAtDesc([...batch, ...options.notes.value])
       options.notes.value =
         merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
       if (merged.length > MAX_NOTES) syncNoteIds()
       options.onNewNotes?.(batch.length)
       scheduleForceUpdate()
     } else {
-      const merged = [...batch, ...pendingNotes.value]
+      const merged = sortByCreatedAtDesc([...batch, ...pendingNotes.value])
       pendingNotes.value =
         merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
     }
@@ -78,7 +79,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       return
     }
     for (const n of newNotes) options.noteIds.add(n.id)
-    const merged = [...newNotes, ...options.notes.value]
+    const merged = sortByCreatedAtDesc([...newNotes, ...options.notes.value])
     options.notes.value =
       merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
     if (merged.length > MAX_NOTES) syncNoteIds()

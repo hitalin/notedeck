@@ -42,6 +42,7 @@ import {
 } from '@/utils/customTimelines'
 import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
+import { sortByCreatedAtDesc } from '@/utils/sortNotes'
 import { matchesFilter } from '@/utils/timelineFilter'
 import DeckColumn from './DeckColumn.vue'
 import TimelineFilterPopup from './TimelineFilterPopup.vue'
@@ -361,7 +362,7 @@ async function connect(useCache = false) {
     if (sinceId && fetched.length > 0) {
       // Merge new notes on top of cached
       const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-      setNotes([...newNotes, ...notes.value])
+      setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
     } else if (fetched.length > 0) {
       setNotes(fetched)
     }
@@ -443,7 +444,8 @@ async function loadMore() {
     try {
       const older = await timeMachine.loadMoreBefore(lastNote.createdAt)
       const filtered = older.filter((n) => n.id !== lastNote.id)
-      if (filtered.length > 0) setNotes([...notes.value, ...filtered])
+      if (filtered.length > 0)
+        setNotes(sortByCreatedAtDesc([...notes.value, ...filtered]))
     } catch (e) {
       error.value = AppError.from(e)
     } finally {
@@ -463,7 +465,7 @@ async function loadMore() {
       untilId: lastNote.id,
       ...(hasFilters ? { filters } : {}),
     })
-    setNotes([...notes.value, ...older])
+    setNotes(sortByCreatedAtDesc([...notes.value, ...older]))
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -500,25 +502,29 @@ async function onResume() {
   const adapter = getAdapter()
   if (!adapter || !account.value) return
 
-  const cached = await fetchCachedNotes()
-  const newFromCache = cached.filter((n) => !noteIds.has(n.id))
-  if (newFromCache.length > 0) {
-    setNotes([...newFromCache, ...notes.value])
-  }
-
   const sinceId = notes.value[0]?.id
-  if (!sinceId) return
-  try {
-    const fetched = await adapter.api.getTimeline(
-      tlType.value,
-      buildTimelineOptions(sinceId),
-    )
-    const newFromApi = fetched.filter((n) => !noteIds.has(n.id))
-    if (newFromApi.length > 0) {
-      setNotes([...newFromApi, ...notes.value])
-    }
-  } catch {
-    /* non-critical */
+
+  // Run cache fetch and API fetch in parallel
+  const cachePromise = fetchCachedNotes()
+  const apiPromise = sinceId
+    ? adapter.api
+        .getTimeline(tlType.value, buildTimelineOptions(sinceId))
+        .catch(() => [] as NormalizedNote[])
+    : Promise.resolve([] as NormalizedNote[])
+
+  const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
+
+  // Merge results: API results take priority, then cache
+  const allNew = [...fetched, ...cached].filter((n) => !noteIds.has(n.id))
+  if (allNew.length > 0) {
+    // Deduplicate by id (API results first)
+    const seen = new Set<string>()
+    const deduped = allNew.filter((n) => {
+      if (seen.has(n.id)) return false
+      seen.add(n.id)
+      return true
+    })
+    setNotes(sortByCreatedAtDesc([...deduped, ...notes.value]))
   }
 }
 
