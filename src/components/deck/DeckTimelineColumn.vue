@@ -145,11 +145,6 @@ async function onTimeMachineDateChange(date: string) {
   }
 }
 
-function onTimeMachineDateInput(e: Event) {
-  const target = e.target as HTMLInputElement
-  if (target.value) onTimeMachineDateChange(target.value)
-}
-
 function tmShiftDay(delta: number) {
   const current = timeMachine.targetDate.value
   if (!current) return
@@ -643,14 +638,7 @@ onUnmounted(() => {
         <button class="_button time-machine-nav" @click="tmShiftDay(-1)">
           <i class="ti ti-chevron-left" />
         </button>
-        <input
-          type="date"
-          class="time-machine-date"
-          :value="timeMachine.targetDate.value"
-          :min="timeMachine.dateRange.value?.min?.slice(0, 10)"
-          :max="timeMachine.dateRange.value?.max?.slice(0, 10)"
-          @change="onTimeMachineDateInput"
-        />
+        <span class="time-machine-date">{{ timeMachine.targetDate.value }}</span>
         <button class="_button time-machine-nav" @click="tmShiftDay(1)">
           <i class="ti ti-chevron-right" />
         </button>
@@ -847,14 +835,9 @@ onUnmounted(() => {
 }
 
 .time-machine-date {
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  border: 1px solid var(--nd-divider);
-  border-radius: 6px;
-  padding: 3px 8px;
   font-size: 0.9em;
-  flex: 1;
-  min-width: 0;
+  font-weight: bold;
+  white-space: nowrap;
 }
 
 .time-machine-nav {
