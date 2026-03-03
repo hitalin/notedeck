@@ -234,17 +234,19 @@ function navigateToUser(userId: string, e: Event) {
   router.push(`/user/${props.note._accountId}/${userId}`)
 }
 
-const sortedReactions = computed(() => {
+const reactionsData = computed(() => {
   const n = effectiveNote.value
-  return Object.entries(n.reactions)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([reaction, count]) => ({ reaction, count: count as number }))
-})
-
-const reactionUrls = computed(() => {
-  const n = effectiveNote.value
+  const entries = Object.entries(n.reactions)
+  if (entries.length === 0)
+    return {
+      sorted: [] as { reaction: string; count: number }[],
+      urls: {} as Record<string, string | null>,
+    }
+  entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  const sorted: { reaction: string; count: number }[] = []
   const urls: Record<string, string | null> = {}
-  for (const { reaction } of sortedReactions.value) {
+  for (const [reaction, count] of entries) {
+    sorted.push({ reaction, count: count as number })
     urls[reaction] = reactionUrlRaw(
       reaction,
       n.emojis,
@@ -252,8 +254,11 @@ const reactionUrls = computed(() => {
       n._serverHost,
     )
   }
-  return urls
+  return { sorted, urls }
 })
+
+const sortedReactions = computed(() => reactionsData.value.sorted)
+const reactionUrls = computed(() => reactionsData.value.urls)
 
 async function handleMentionClick(username: string, host: string | null) {
   try {

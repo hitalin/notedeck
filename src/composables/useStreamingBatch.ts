@@ -27,7 +27,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(options.scroller.value as any)?.forceUpdate()
       })
-    }, 80)
+    }, 25)
   }
 
   function syncNoteIds() {
