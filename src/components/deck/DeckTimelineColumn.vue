@@ -83,7 +83,6 @@ const {
   handleScroll: batchHandleScroll,
   scrollToTop,
   resetBatch,
-  setLastReadNoteId,
   setPaused,
 } = useStreamingBatch({
   notes,
@@ -103,25 +102,6 @@ const { focusedNoteId } = useNoteFocus(
 )
 
 const tlType = ref<TimelineType>(props.column.tl || 'home')
-
-// --- Unread management ---
-// Restore lastReadNoteId from saved column state
-if (props.column.lastReadNoteId) {
-  setLastReadNoteId(props.column.lastReadNoteId)
-}
-
-// Auto-update lastReadNoteId when user is at top
-watch(
-  () => isAtTop.value && notes.value[0]?.id,
-  (topId) => {
-    if (topId && isAtTop.value && !timeMachine.isActive.value) {
-      setLastReadNoteId(topId as string)
-      deckStore.updateColumn(props.column.id, {
-        lastReadNoteId: topId as string,
-      })
-    }
-  },
-)
 
 // --- Time Machine ---
 const timeMachine = useTimeMachine(
