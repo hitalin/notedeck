@@ -7,6 +7,7 @@ import { compileMisskeyTheme } from '@/theme/compiler'
 import type { CompiledProps, MisskeyTheme, ThemeSource } from '@/theme/types'
 
 const STORAGE_COMPILED_KEY = 'nd-theme-compiled'
+const STORAGE_ACCOUNT_THEMES_KEY = 'nd-account-themes'
 
 // Keyed by "accountId:dark" / "accountId:light"
 const compiledCache = new Map<string, CompiledProps>()
@@ -84,6 +85,20 @@ export const useThemeStore = defineStore('theme', () => {
     if (storedCompiled) {
       try {
         applyTheme(JSON.parse(storedCompiled) as CompiledProps)
+      } catch {
+        /* ignore corrupt data */
+      }
+    }
+
+    // Restore account theme cache from localStorage (avoids re-fetch on restart)
+    const storedAccountThemes = localStorage.getItem(STORAGE_ACCOUNT_THEMES_KEY)
+    if (storedAccountThemes) {
+      try {
+        const entries = JSON.parse(storedAccountThemes) as [
+          string,
+          { dark?: MisskeyTheme; light?: MisskeyTheme },
+        ][]
+        accountThemeCache.value = new Map(entries)
       } catch {
         /* ignore corrupt data */
       }
@@ -188,11 +203,23 @@ export const useThemeStore = defineStore('theme', () => {
       const next = new Map(accountThemeCache.value)
       next.set(accountId, entry)
       accountThemeCache.value = next
+
+      // Invalidate compiled caches so new theme data takes effect
+      compiledCache.clear()
+      styleVarsCache.clear()
+
+      // Persist to localStorage for instant restore on next launch
+      persistAccountThemes()
     } catch (e) {
       console.warn('[theme] Failed to fetch account theme:', accountId, e)
     } finally {
       fetchingAccounts.delete(accountId)
     }
+  }
+
+  function persistAccountThemes(): void {
+    const entries = Array.from(accountThemeCache.value.entries())
+    localStorage.setItem(STORAGE_ACCOUNT_THEMES_KEY, JSON.stringify(entries))
   }
 
   function getAccountThemes(accountId: string) {

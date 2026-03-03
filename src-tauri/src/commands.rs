@@ -728,9 +728,16 @@ pub async fn api_fetch_account_theme(
 
     let mut result = serde_json::json!({});
 
-    // 1. Try new preferences sync
+    // 1+2. Fetch sync preferences and legacy base in parallel
     let sync_scope = vec!["client".to_string(), "preferences".to_string(), "sync".to_string()];
-    if let Ok(Some(data)) = client.get_registry_all(&host, &token, &sync_scope).await {
+    let base_scope = vec!["client".to_string(), "base".to_string()];
+    let (sync_res, base_res) = tokio::join!(
+        client.get_registry_all(&host, &token, &sync_scope),
+        client.get_registry_all(&host, &token, &base_scope),
+    );
+
+    // Apply sync results (higher priority)
+    if let Ok(Some(data)) = sync_res {
         if let Some(dark) = data.get("default:darkTheme") {
             result["syncDark"] = dark.clone();
         }
@@ -739,10 +746,9 @@ pub async fn api_fetch_account_theme(
         }
     }
 
-    // 2. Try legacy Pizzax/ColdDeviceStorage
+    // Fall back to legacy base if sync had nothing
     if result.get("syncDark").is_none() && result.get("syncLight").is_none() {
-        let base_scope = vec!["client".to_string(), "base".to_string()];
-        if let Ok(Some(data)) = client.get_registry_all(&host, &token, &base_scope).await {
+        if let Ok(Some(data)) = base_res {
             if let Some(dark) = data.get("darkTheme") {
                 result["baseDark"] = dark.clone();
             }
