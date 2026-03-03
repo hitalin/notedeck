@@ -240,7 +240,9 @@ NoteDeck は `Cargo.toml` で git 依存として参照している。
 
 - [x] **streaming.rs の notecli 移行** — `AppHandle.emit()` を `FrontendEmitter` trait に抽象化。
   WebSocket 接続管理を notecli 側に移動し、notedeck 側は薄い TauriEmitter アダプタ（22行）のみ
-- [ ] **CLI モード** — notecli 単体での CLI 実行（投稿・検索・TL 取得等）
+- [x] **CLI モード** — notecli 単体での CLI 実行（投稿・検索・TL 取得等）。
+  clap ベースのサブコマンド: `accounts`, `post`, `tl`, `search`, `notifications`, `note`, `delete`。
+  `--json` フラグで AI エージェント向けマシンリーダブル出力
 - [x] **デーモンモード** — バックグラウンドでストリーミング接続を維持し、HTTP API + SSE で配信。
   `EventBusEmitter` により WebSocket → EventBus → SSE のパイプラインが完結
 
