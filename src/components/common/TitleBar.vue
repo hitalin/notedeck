@@ -1,23 +1,38 @@
 <script setup lang="ts">
-import { getCurrentWindow } from '@tauri-apps/api/window'
+import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useCommandStore } from '@/commands/registry'
 import { useDeckStore } from '@/stores/deck'
+
+const MOBILE_WIDTH = 420
+const MOBILE_HEIGHT = 780
 
 const appWindow = getCurrentWindow()
 const commandStore = useCommandStore()
 const deckStore = useDeckStore()
 const isMaximized = ref(false)
+const isMobileSize = ref(false)
+
+let savedDesktopSize: { width: number; height: number } | null = null
 
 async function syncMaximized() {
   isMaximized.value = await appWindow.isMaximized()
+}
+
+async function syncMobileState() {
+  const size = await appWindow.innerSize()
+  isMobileSize.value = size.width <= MOBILE_WIDTH + 20
 }
 
 let unlisten: (() => void) | null = null
 
 onMounted(async () => {
   await syncMaximized()
-  unlisten = await appWindow.onResized(syncMaximized)
+  await syncMobileState()
+  unlisten = await appWindow.onResized(async () => {
+    await syncMaximized()
+    await syncMobileState()
+  })
 })
 
 onUnmounted(() => {
@@ -35,12 +50,32 @@ async function toggleMaximize() {
 async function close() {
   await appWindow.close()
 }
+
+async function toggleMobileSize() {
+  if (isMobileSize.value) {
+    // Restore desktop size
+    if (savedDesktopSize) {
+      await appWindow.setSize(
+        new LogicalSize(savedDesktopSize.width, savedDesktopSize.height),
+      )
+    } else {
+      await appWindow.setSize(new LogicalSize(1200, 800))
+    }
+    savedDesktopSize = null
+  } else {
+    // Save current size, then switch to mobile
+    const current = await appWindow.innerSize()
+    savedDesktopSize = { width: current.width, height: current.height }
+    await appWindow.setSize(new LogicalSize(MOBILE_WIDTH, MOBILE_HEIGHT))
+  }
+  await appWindow.center()
+}
 </script>
 
 <template>
   <div class="titlebar" data-tauri-drag-region>
-    <div class="titlebar-left">
-      <img src="/favicon.svg" alt="" class="titlebar-icon" draggable="false" />
+    <div class="titlebar-left" data-tauri-drag-region>
+      <img src="/favicon.svg" alt="" class="titlebar-icon" draggable="false" data-tauri-drag-region />
     </div>
     <button class="titlebar-search-bar" @click="commandStore.toggle()">
       <i class="ti ti-search titlebar-search-icon" />
@@ -55,6 +90,13 @@ async function close() {
         @click="commandStore.execute('toggle-sidebar')"
       >
         <i class="ti ti-layout-sidebar" />
+      </button>
+      <button
+        class="titlebar-btn titlebar-window-btn"
+        :title="isMobileSize ? 'Desktop size' : 'Mobile size'"
+        @click="toggleMobileSize"
+      >
+        <i :class="isMobileSize ? 'ti ti-device-desktop' : 'ti ti-device-mobile'" />
       </button>
       <button class="titlebar-btn titlebar-window-btn" title="Minimize" @click="minimize">
         <svg width="10" height="10" viewBox="0 0 10 10">

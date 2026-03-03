@@ -160,6 +160,7 @@ function onDrop(e: DragEvent) {
   user-select: none;
   z-index: 2;
   overflow: visible;
+  box-shadow: 0 0.5px 0 0 rgba(255, 255, 255, 0.07);
 }
 
 .column-header:active {
@@ -170,7 +171,7 @@ function onDrop(e: DragEvent) {
   position: absolute;
   top: 12px;
   left: 12px;
-  width: 4px;
+  width: 3px;
   height: calc(100% - 24px);
   border-radius: 999px;
 }
