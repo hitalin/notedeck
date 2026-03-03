@@ -72,7 +72,7 @@ onMounted(async () => {
 
 function onKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-    post()
+    if (!isPosting.value) post()
   }
   if (e.key === 'Escape') {
     emit('close')

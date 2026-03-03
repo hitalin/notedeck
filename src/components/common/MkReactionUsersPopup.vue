@@ -5,6 +5,7 @@ import type { NoteReaction } from '@/adapters/types'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
+import { extractThemeVars } from '@/utils/themeVars'
 import MkMfm from './MkMfm.vue'
 
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
@@ -76,17 +77,8 @@ function onUserMouseEnter(e: MouseEvent, userId: string) {
   userPopupPos.value = { x: rect.right + 8, y: rect.top }
   userPopupUserId.value = userId
 
-  // Copy theme CSS vars from nearest column for the Teleported popup
   const column = document.querySelector('.deck-column') as HTMLElement | null
-  if (column) {
-    const vars: Record<string, string> = {}
-    for (const attr of column.style) {
-      if (attr.startsWith('--nd-')) {
-        vars[attr] = column.style.getPropertyValue(attr)
-      }
-    }
-    userPopupTheme.value = vars
-  }
+  if (column) userPopupTheme.value = extractThemeVars(column)
 
   hoverTimer = setTimeout(() => {
     showUserPopup.value = true

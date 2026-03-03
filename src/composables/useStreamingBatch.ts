@@ -1,4 +1,4 @@
-import { nextTick, ref, shallowRef } from 'vue'
+import { nextTick, onScopeDispose, ref, shallowRef } from 'vue'
 import type { DynamicScroller } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 
@@ -112,6 +112,8 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     pendingNotes.value = []
     isAtTop.value = true
   }
+
+  onScopeDispose(resetBatch)
 
   return {
     pendingNotes,

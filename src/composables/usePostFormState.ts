@@ -4,6 +4,7 @@ import { createAdapter } from '@/adapters/registry'
 import type {
   NormalizedDriveFile,
   NormalizedNote,
+  NoteVisibility,
   ServerAdapter,
 } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
@@ -18,7 +19,7 @@ import { AppError } from '@/utils/errors'
 const MAX_TEXT_LENGTH = 3000
 
 interface VisibilityOption {
-  value: string
+  value: NoteVisibility
   label: string
   icon: string
 }
@@ -69,7 +70,7 @@ export function usePostFormState(
   const text = ref('')
   const cw = ref('')
   const showCw = ref(false)
-  const visibility = ref('public')
+  const visibility = ref<NoteVisibility>('public')
   const localOnly = ref(false)
   const showVisibilityMenu = ref(false)
   const showAccountMenu = ref(false)
@@ -266,7 +267,7 @@ export function usePostFormState(
     attachedFiles.value = attachedFiles.value.filter((f) => f.id !== fileId)
   }
 
-  function selectVisibility(v: string) {
+  function selectVisibility(v: NoteVisibility) {
     visibility.value = v
     showVisibilityMenu.value = false
   }

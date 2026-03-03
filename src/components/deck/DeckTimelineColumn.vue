@@ -267,39 +267,44 @@ async function reconnectWithFilter() {
   await connect(true)
 }
 
+async function fetchCachedNotes(): Promise<NormalizedNote[]> {
+  if (!props.column.accountId) return []
+  try {
+    return await invoke<NormalizedNote[]>('api_get_cached_timeline', {
+      accountId: props.column.accountId,
+      timelineType: tlType.value,
+      limit: 40,
+    })
+  } catch {
+    return []
+  }
+}
+
+function buildTimelineOptions(sinceId?: string) {
+  const filters = columnFilters.value
+  const hasFilters = Object.keys(filters).length > 0
+  return {
+    ...(sinceId ? { sinceId } : {}),
+    ...(hasFilters ? { filters } : {}),
+  }
+}
+
 async function connect(useCache = false) {
   error.value = null
 
   isLoading.value = true
 
-  // 1. Instant cache display (initial mount only)
-  if (useCache && props.column.accountId) {
-    try {
-      const cached = await invoke<NormalizedNote[]>('api_get_cached_timeline', {
-        accountId: props.column.accountId,
-        timelineType: tlType.value,
-        limit: 40,
-      })
-      if (cached.length > 0) {
-        setNotes(cached)
-      }
-    } catch {
-      // non-critical
-    }
+  if (useCache) {
+    const cached = await fetchCachedNotes()
+    if (cached.length > 0) setNotes(cached)
   }
 
   try {
     const adapter = await initAdapter()
     if (!adapter) return
 
-    // 2. Differential fetch: use sinceId if we have cached notes
     const sinceId = notes.value.length > 0 ? notes.value[0]?.id : undefined
-    const filters = columnFilters.value
-    const hasFilters = Object.keys(filters).length > 0
-    const fetched = await adapter.api.getTimeline(tlType.value, {
-      ...(sinceId ? { sinceId } : {}),
-      ...(hasFilters ? { filters } : {}),
-    })
+    const fetched = await adapter.api.getTimeline(tlType.value, buildTimelineOptions(sinceId))
 
     if (sinceId && fetched.length > 0) {
       // Merge new notes on top of cached
@@ -421,31 +426,16 @@ async function onResume() {
   const adapter = getAdapter()
   if (!adapter || !account.value) return
 
-  try {
-    const cached = await invoke<NormalizedNote[]>('api_get_cached_timeline', {
-      accountId: props.column.accountId,
-      timelineType: tlType.value,
-      limit: 40,
-    })
-    if (cached.length > 0) {
-      const newFromCache = cached.filter((n) => !noteIds.has(n.id))
-      if (newFromCache.length > 0) {
-        setNotes([...newFromCache, ...notes.value])
-      }
-    }
-  } catch {
-    /* non-critical */
+  const cached = await fetchCachedNotes()
+  const newFromCache = cached.filter((n) => !noteIds.has(n.id))
+  if (newFromCache.length > 0) {
+    setNotes([...newFromCache, ...notes.value])
   }
 
   const sinceId = notes.value[0]?.id
   if (!sinceId) return
   try {
-    const filters = columnFilters.value
-    const hasFilters = Object.keys(filters).length > 0
-    const fetched = await adapter.api.getTimeline(tlType.value, {
-      sinceId,
-      ...(hasFilters ? { filters } : {}),
-    })
+    const fetched = await adapter.api.getTimeline(tlType.value, buildTimelineOptions(sinceId))
     const newFromApi = fetched.filter((n) => !noteIds.has(n.id))
     if (newFromApi.length > 0) {
       setNotes([...newFromApi, ...notes.value])

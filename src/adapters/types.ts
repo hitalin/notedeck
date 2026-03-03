@@ -24,8 +24,15 @@ export interface ServerFeatures {
   [key: string]: boolean
 }
 
+export type NoteVisibility = 'public' | 'home' | 'followers' | 'specified'
+
 /** Standard timeline types. Custom forks may add more (e.g., 'bubble', 'recommended'). */
-export type TimelineType = string
+export type TimelineType =
+  | 'home'
+  | 'local'
+  | 'social'
+  | 'global'
+  | (string & {})
 
 export interface TimelineFilter {
   withRenotes?: boolean
@@ -133,7 +140,7 @@ export interface NormalizedNote {
   text: string | null
   cw: string | null
   user: NormalizedUser
-  visibility: string
+  visibility: NoteVisibility
   emojis: Record<string, string>
   reactionEmojis: Record<string, string>
   reactions: Record<string, number>
@@ -253,7 +260,7 @@ export interface NormalizedNotification {
 export interface CreateNoteParams {
   text?: string
   cw?: string | null
-  visibility?: string
+  visibility?: NoteVisibility
   localOnly?: boolean
   modeFlags?: Record<string, boolean>
   replyId?: string
@@ -324,7 +331,7 @@ export interface ApiAdapter {
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>
   getMentions(
-    options?: PaginationOptions & { visibility?: string },
+    options?: PaginationOptions & { visibility?: NoteVisibility },
   ): Promise<NormalizedNote[]>
   getFavorites(options?: PaginationOptions): Promise<NormalizedNote[]>
   getClips(): Promise<Clip[]>

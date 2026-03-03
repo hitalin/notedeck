@@ -32,6 +32,8 @@ const isMinimized = computed(() => props.window.minimized)
 const isMaximized = computed(() => props.window.maximized)
 
 const isDragging = ref(false)
+const dragX = ref(0)
+const dragY = ref(0)
 let dragStartX = 0
 let dragStartY = 0
 let dragStartWinX = 0
@@ -45,6 +47,8 @@ function onHeaderMouseDown(e: MouseEvent) {
   dragStartY = e.clientY
   dragStartWinX = props.window.x
   dragStartWinY = props.window.y
+  dragX.value = props.window.x
+  dragY.value = props.window.y
   document.body.style.userSelect = 'none'
   document.addEventListener('mousemove', onMouseMove)
   document.addEventListener('mouseup', onMouseUp)
@@ -54,18 +58,18 @@ function onHeaderMouseDown(e: MouseEvent) {
 function onMouseMove(e: MouseEvent) {
   const dx = e.clientX - dragStartX
   const dy = e.clientY - dragStartY
-  const newX = Math.max(
+  dragX.value = Math.max(
     -size.value.width + 100,
     Math.min(dragStartWinX + dx, window.innerWidth - 100),
   )
-  const newY = Math.max(
+  dragY.value = Math.max(
     0,
     Math.min(dragStartWinY + dy, window.innerHeight - 50),
   )
-  windowsStore.updatePosition(props.window.id, newX, newY)
 }
 
 function onMouseUp() {
+  windowsStore.updatePosition(props.window.id, dragX.value, dragY.value)
   isDragging.value = false
   document.body.style.userSelect = ''
   document.removeEventListener('mousemove', onMouseMove)
@@ -83,8 +87,8 @@ function onWindowMouseDown() {
     :class="{ dragging: isDragging, minimized: isMinimized, maximized: isMaximized }"
     :style="isMaximized ? { ...themeVars, zIndex: window.zIndex } : {
       ...themeVars,
-      left: window.x + 'px',
-      top: window.y + 'px',
+      left: (isDragging ? dragX : window.x) + 'px',
+      top: (isDragging ? dragY : window.y) + 'px',
       width: size.width + 'px',
       maxHeight: size.maxHeight + 'px',
       zIndex: window.zIndex,

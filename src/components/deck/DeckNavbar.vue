@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
@@ -60,14 +60,17 @@ function toggleAccountMenu(id: string) {
   accountMenuId.value = id
   modeError.value = null
   loadAccountModes(id)
-  requestAnimationFrame(() => {
-    document.addEventListener('click', closeAccountMenu, { once: true })
-  })
 }
 
-function closeAccountMenu() {
+function onDocumentClick(e: MouseEvent) {
+  if (!accountMenuId.value) return
+  const target = e.target as HTMLElement
+  if (target.closest('.nav-account-menu') || target.closest('.nav-account')) return
   accountMenuId.value = null
 }
+
+document.addEventListener('click', onDocumentClick)
+onUnmounted(() => document.removeEventListener('click', onDocumentClick))
 
 async function loadAccountModes(id: string) {
   try {

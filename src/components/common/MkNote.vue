@@ -2,7 +2,11 @@
 import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
-import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
+import type {
+  NormalizedNote,
+  NormalizedUser,
+  NoteVisibility,
+} from '@/adapters/types'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
@@ -10,6 +14,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
 import { proxyUrl } from '@/utils/imageProxy'
+import { extractThemeVars } from '@/utils/themeVars'
 import { isSafeUrl } from '@/utils/url'
 import MkAvatar from './MkAvatar.vue'
 import MkEmoji from './MkEmoji.vue'
@@ -37,6 +42,10 @@ const effectiveNote = computed(() =>
     ? props.note.renote
     : props.note,
 )
+const allEmojis = computed(() => ({
+  ...effectiveNote.value.emojis,
+  ...effectiveNote.value.user.emojis,
+}))
 const isPureRenote = computed(
   () => props.note.renote && props.note.text === null,
 )
@@ -91,16 +100,7 @@ function openReactionPicker(e: MouseEvent) {
     x: rightEdge,
     y: rect.bottom + 4,
   }
-  // Copy theme CSS vars from column for Teleport
-  if (column) {
-    const vars: Record<string, string> = {}
-    for (const attr of column.style) {
-      if (attr.startsWith('--nd-')) {
-        vars[attr] = column.style.getPropertyValue(attr)
-      }
-    }
-    reactionPickerTheme.value = vars
-  }
+  if (column) reactionPickerTheme.value = extractThemeVars(column)
   showReactionInput.value = !showReactionInput.value
 }
 const showRenoteMenu = ref(false)
@@ -164,15 +164,7 @@ function onReactionMouseEnter(e: MouseEvent, reaction: string) {
   reactionUsersTotalCount.value = effectiveNote.value.reactions[reaction] ?? 0
 
   const column = el.closest('.deck-column') as HTMLElement | null
-  if (column) {
-    const vars: Record<string, string> = {}
-    for (const attr of column.style) {
-      if (attr.startsWith('--nd-')) {
-        vars[attr] = column.style.getPropertyValue(attr)
-      }
-    }
-    reactionUsersTheme.value = vars
-  }
+  if (column) reactionUsersTheme.value = extractThemeVars(column)
 
   reactionUsersPopup.show({ x: rect.left, y: rect.bottom + 4 })
 }
@@ -185,7 +177,7 @@ function closeReactionUsers() {
   reactionUsersPopup.forceClose()
 }
 
-const VISIBILITY_ICONS: Record<string, string> = {
+const VISIBILITY_ICONS: Record<NoteVisibility, string> = {
   public:
     'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',
   home: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
@@ -324,7 +316,7 @@ async function handleMentionClick(username: string, host: string | null) {
             <MkMfm
               v-if="effectiveNote.user.name"
               :text="effectiveNote.user.name"
-              :emojis="{ ...effectiveNote.emojis, ...effectiveNote.user.emojis }"
+              :emojis="allEmojis"
               :server-host="effectiveNote._serverHost"
               @mention-click="handleMentionClick"
             />
