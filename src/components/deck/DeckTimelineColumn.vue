@@ -112,23 +112,57 @@ const timeMachine = useTimeMachine(
 async function toggleTimeMachine() {
   if (timeMachine.isActive.value) {
     exitTimeMachine()
-  } else {
+    return
+  }
+  setPaused(true)
+  disconnect()
+  try {
     await timeMachine.loadDateRange()
     if (timeMachine.dateRange.value) {
-      setPaused(true)
       const cached = await timeMachine.jumpToDate(
         timeMachine.dateRange.value.max.slice(0, 10),
       )
       setNotes(cached)
+    } else {
+      // No cache available — revert
+      setPaused(false)
+      connect(true)
     }
+  } catch (e) {
+    console.error('[time-machine] failed to activate:', e)
+    setPaused(false)
+    connect(true)
   }
 }
 
-async function onTimeMachineDateChange(e: Event) {
+async function onTimeMachineDateChange(date: string) {
+  try {
+    const cached = await timeMachine.jumpToDate(date)
+    setNotes(cached)
+    scrollToTop()
+  } catch (e) {
+    console.error('[time-machine] jumpToDate failed:', e)
+  }
+}
+
+function onTimeMachineDateInput(e: Event) {
   const target = e.target as HTMLInputElement
-  const cached = await timeMachine.jumpToDate(target.value)
-  setNotes(cached)
-  scrollToTop()
+  if (target.value) onTimeMachineDateChange(target.value)
+}
+
+function tmShiftDay(delta: number) {
+  const current = timeMachine.targetDate.value
+  if (!current) return
+  const d = new Date(current)
+  d.setDate(d.getDate() + delta)
+  const range = timeMachine.dateRange.value
+  if (range) {
+    const min = range.min.slice(0, 10)
+    const max = range.max.slice(0, 10)
+    const iso = d.toISOString().slice(0, 10)
+    if (iso < min || iso > max) return
+  }
+  onTimeMachineDateChange(d.toISOString().slice(0, 10))
 }
 
 function exitTimeMachine() {
@@ -606,17 +640,22 @@ onUnmounted(() => {
       </div>
 
       <div v-if="timeMachine.isActive.value" class="time-machine-bar">
-        <i class="ti ti-history" />
+        <button class="_button time-machine-nav" @click="tmShiftDay(-1)">
+          <i class="ti ti-chevron-left" />
+        </button>
         <input
           type="date"
           class="time-machine-date"
           :value="timeMachine.targetDate.value"
           :min="timeMachine.dateRange.value?.min?.slice(0, 10)"
           :max="timeMachine.dateRange.value?.max?.slice(0, 10)"
-          @change="onTimeMachineDateChange"
+          @change="onTimeMachineDateInput"
         />
+        <button class="_button time-machine-nav" @click="tmShiftDay(1)">
+          <i class="ti ti-chevron-right" />
+        </button>
         <button class="_button time-machine-live" @click="exitTimeMachine">
-          <i class="ti ti-live-photo" /> Live
+          Live
         </button>
       </div>
     </template>
@@ -816,6 +855,19 @@ onUnmounted(() => {
   font-size: 0.9em;
   flex: 1;
   min-width: 0;
+}
+
+.time-machine-nav {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 4px;
+  color: var(--nd-accent);
+  flex-shrink: 0;
+}
+
+.time-machine-nav:hover {
+  background: var(--nd-buttonHoverBg);
 }
 
 .time-machine-live {
