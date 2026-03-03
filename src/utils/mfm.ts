@@ -49,7 +49,10 @@ const inlinePatterns: PatternDef[] = [
   },
   {
     regex: /:([a-zA-Z0-9_]+(?:@[\w.-]+)?):/g,
-    parse: (m) => ({ type: 'customEmoji', shortcode: g(m, 1) }),
+    parse: (m) => ({
+      type: 'customEmoji',
+      shortcode: g(m, 1).replace(/@\.$/, ''),
+    }),
   },
   {
     regex: /\*\*(.+?)\*\*/g,

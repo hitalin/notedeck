@@ -134,6 +134,12 @@ describe('parseMfm', () => {
     })
   })
 
+  it('strips @. suffix from local custom emoji', () => {
+    const tokens = parseMfm(':hoge@.:')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]).toEqual({ type: 'customEmoji', shortcode: 'hoge' })
+  })
+
   // Unicode emoji
   it('parses unicode emoji', () => {
     const tokens = parseMfm('hello 😀 world')
