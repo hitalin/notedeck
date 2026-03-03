@@ -147,4 +147,6 @@ const {
   </Teleport>
 </template>
 
-<style src="./column-common.css" scoped></style>
+<style scoped>
+@import "./column-common.css";
+</style>

@@ -724,9 +724,8 @@ onUnmounted(() => {
   />
 </template>
 
-<style src="./column-common.css" scoped></style>
-
 <style scoped>
+@import './column-common.css';
 .tl-tabs {
   display: flex;
   position: relative;
