@@ -34,7 +34,7 @@ impl OgpCache {
     pub fn new() -> Self {
         let http_client = reqwest::Client::builder()
             .timeout(FETCH_TIMEOUT)
-            .user_agent("Mozilla/5.0 (compatible; NoteDeck/0.0.14)")
+            .user_agent(format!("Mozilla/5.0 (compatible; NoteDeck/{})", env!("CARGO_PKG_VERSION")))
             .redirect(reqwest::redirect::Policy::limited(5))
             .build()
             .unwrap_or_default();

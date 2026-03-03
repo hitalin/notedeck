@@ -622,20 +622,22 @@ async fn proxy_image(
 ) -> Response {
     match state.image_cache.get_or_fetch(&params.url).await {
         Ok(entry) => {
-            match tokio::fs::read(&entry.path).await {
-                Ok(bytes) => {
-                    Response::builder()
-                        .status(StatusCode::OK)
-                        .header("Content-Type", &entry.content_type)
-                        .header("Cache-Control", "public, max-age=86400, immutable")
-                        .body(Body::from(bytes))
-                        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+            // Use memory cache if available, otherwise fall back to disk
+            let body_bytes = if let Some(ref mem) = entry.mem_bytes {
+                (**mem).clone()
+            } else {
+                match tokio::fs::read(&entry.path).await {
+                    Ok(b) => b,
+                    Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
                 }
-                Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-            }
+            };
+            Response::builder()
+                .status(StatusCode::OK)
+                .header("Content-Type", &entry.content_type)
+                .header("Cache-Control", "public, max-age=86400, immutable")
+                .body(Body::from(body_bytes))
+                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
         }
-        Err(msg) => {
-            (StatusCode::BAD_GATEWAY, msg).into_response()
-        }
+        Err(msg) => (StatusCode::BAD_GATEWAY, msg).into_response(),
     }
 }
