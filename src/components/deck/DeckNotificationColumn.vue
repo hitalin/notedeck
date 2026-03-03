@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, onUnmounted, shallowRef } from 'vue'
+import { defineAsyncComponent, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
+import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
@@ -9,10 +10,15 @@ import MkNote from '@/components/common/MkNote.vue'
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
+const MkUserPopup = defineAsyncComponent(
+  () => import('@/components/common/MkUserPopup.vue'),
+)
 
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
+import { useHoverPopup } from '@/composables/useHoverPopup'
+import { useNavigation } from '@/composables/useNavigation'
 import { useNoteSound } from '@/composables/useNoteSound'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { sendDesktopNotification } from '@/utils/desktopNotification'
@@ -42,7 +48,33 @@ const {
   onScroll,
 } = useColumnSetup(() => props.column)
 
+const { navigateToUser: navToUser } = useNavigation()
 const noteSound = useNoteSound(() => account.value?.host, 'syuilo/n-ea')
+
+// User hover popup for notification avatars
+const userPopup = useHoverPopup()
+const hoveredUserId = ref('')
+const hoveredAccountId = ref('')
+
+function onNotifAvatarClick(notif: NormalizedNotification, e: MouseEvent) {
+  e.stopPropagation()
+  navToUser(notif._accountId, notif.user!.id)
+}
+
+function onNotifAvatarMouseEnter(notif: NormalizedNotification, e: MouseEvent) {
+  hoveredUserId.value = notif.user!.id
+  hoveredAccountId.value = notif._accountId
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  userPopup.show({ x: rect.right + 8, y: rect.top })
+}
+
+function onNotifAvatarMouseLeave() {
+  userPopup.hide()
+}
+
+function closeUserPopup() {
+  userPopup.forceClose()
+}
 
 const MAX_NOTIFICATIONS = 500
 const notifications = shallowRef<NormalizedNotification[]>([])
@@ -331,14 +363,17 @@ onUnmounted(() => {
               <div class="notif-header">
                 <i :class="`ti ti-${notificationIcon(notif.type)}`" class="notif-icon" />
 
-                <template v-if="notif.user">
-                  <img
-                    v-if="notif.user.avatarUrl"
-                    :src="notif.user.avatarUrl"
-                    class="notif-user-avatar"
-                  />
-                  <div v-else class="notif-user-avatar notif-avatar-placeholder" />
-                </template>
+                <MkAvatar
+                  v-if="notif.user"
+                  :avatar-url="notif.user.avatarUrl"
+                  :decorations="notif.user.avatarDecorations"
+                  :size="36"
+                  :alt="notif.user.username ?? undefined"
+                  class="notif-user-avatar"
+                  @click="onNotifAvatarClick(notif, $event)"
+                  @mouseenter="onNotifAvatarMouseEnter(notif, $event)"
+                  @mouseleave="onNotifAvatarMouseLeave"
+                />
 
                 <div class="notif-meta">
                   <span v-if="notif.user" class="notif-user-name">
@@ -382,6 +417,17 @@ onUnmounted(() => {
       </DynamicScroller>
     </div>
   </DeckColumn>
+
+  <Teleport to="body">
+    <MkUserPopup
+      v-if="userPopup.isVisible.value"
+      :user-id="hoveredUserId"
+      :account-id="hoveredAccountId"
+      :x="userPopup.position.value.x"
+      :y="userPopup.position.value.y"
+      @close="closeUserPopup"
+    />
+  </Teleport>
 
   <Teleport to="body">
     <MkPostForm
@@ -500,15 +546,7 @@ onUnmounted(() => {
 }
 
 .notif-user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.notif-avatar-placeholder {
-  background: var(--nd-buttonBg);
+  cursor: pointer;
 }
 
 .notif-meta {
