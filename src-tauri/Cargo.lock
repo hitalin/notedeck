@@ -2350,7 +2350,7 @@ checksum = "72ef4a56884ca558e5ddb05a1d1e7e1bfd9a68d9ed024c21704cc98872dae1bb"
 [[package]]
 name = "notecli"
 version = "0.1.0"
-source = "git+https://github.com/hitalin/notecli.git?rev=d80c137#d80c1377bfb6c7631c459697b47429132ba33dda"
+source = "git+https://github.com/hitalin/notecli.git?rev=38365a1#38365a1928b8593d29e08aea1ccc9975b67774dc"
 dependencies = [
  "axum",
  "dirs 6.0.0",
