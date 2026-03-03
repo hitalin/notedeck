@@ -226,7 +226,7 @@ async function connect(useCache = false) {
                 notification.type === 'reaction' && notification.reaction
                   ? `${label} ${notification.reaction}`
                   : label
-              sendDesktopNotification(`NoteDeck — ${userName}`, body, {
+              sendDesktopNotification(userName, body, {
                 noteId: notification.note?.id,
                 userId: notification.user?.id,
                 accountId: notification._accountId,
