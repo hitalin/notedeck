@@ -52,6 +52,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::api_get_user_policies,
         commands::api_update_user_setting,
         commands::api_get_timeline,
+        commands::api_get_timeline_enriched,
         commands::api_get_user_lists,
         commands::api_get_antennas,
         commands::api_get_antenna_notes,
@@ -97,6 +98,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::auth_complete_and_save,
         commands::stream_connect,
         commands::stream_disconnect,
+        commands::stream_connect_and_subscribe_timeline,
+        commands::stream_connect_and_subscribe_antenna,
+        commands::stream_connect_and_subscribe_channel,
         commands::stream_subscribe_timeline,
         commands::stream_subscribe_antenna,
         commands::stream_subscribe_channel,
@@ -128,13 +132,13 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         let emitter = std::sync::Arc::new(
             streaming::TauriEmitter::new(app.app_handle().clone()),
         );
-        app.manage(notecli::streaming::StreamingManager::new(emitter, event_bus, db));
+        app.manage(notecli::streaming::StreamingManager::new(emitter, event_bus, db.clone()));
 
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
 
-        // Initialize OGP cache
-        app.manage(ogp::OgpCache::new());
+        // Initialize OGP cache (backed by shared Database)
+        app.manage(ogp::OgpCache::new(db));
 
         // Generate API token and write to file
         let api_token = uuid::Uuid::new_v4().to_string();

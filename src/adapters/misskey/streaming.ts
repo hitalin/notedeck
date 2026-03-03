@@ -12,55 +12,10 @@ import type {
   TimelineType,
 } from '../types'
 
-interface StreamNoteEvent {
-  accountId: string
-  subscriptionId: string
-  note: NormalizedNote
-}
-
-interface StreamNotificationEvent {
-  accountId: string
-  subscriptionId: string
-  notification: NormalizedNotification
-}
-
-interface StreamMentionEvent {
-  accountId: string
-  subscriptionId: string
-  note: NormalizedNote
-}
-
-interface StreamChatMessageEvent {
-  accountId: string
-  subscriptionId: string
-  message: ChatMessage
-}
-
-interface StreamMainEvent {
-  accountId: string
-  subscriptionId: string
-  eventType: string
-  body: unknown
-}
-
-interface StreamNoteUpdatedEvent {
-  accountId: string
-  subscriptionId: string
-  noteId: string
-  updateType: string
-  body: unknown
-}
-
-interface StreamNoteCaptureEvent {
-  accountId: string
-  noteId: string
-  updateType: string
-  body: unknown
-}
-
-interface StreamStatusEvent {
-  accountId: string
-  state: StreamConnectionState
+/** Consolidated stream event from Rust TauriEmitter */
+interface StreamEventEnvelope {
+  kind: string
+  payload: Record<string, unknown>
 }
 
 export class MisskeyStream implements StreamAdapter {
@@ -129,97 +84,61 @@ export class MisskeyStream implements StreamAdapter {
   }
 
   private registerListeners(): void {
-    listen<StreamStatusEvent>('stream-status', (event) => {
-      if (event.payload.accountId !== this.accountId) return
-      this._state = event.payload.state
-      this.emit(event.payload.state)
-    })
-      .then((fn) => this.unlistenFns.push(fn))
-      .catch((e) =>
-        console.error('[stream] failed to listen stream-status:', e),
-      )
+    listen<StreamEventEnvelope>('stream-event', (event) => {
+      const { kind, payload } = event.payload
+      const p = payload as Record<string, unknown>
+      if (p.accountId !== this.accountId) return
 
-    listen<StreamNoteEvent>('stream-note', (event) => {
-      if (event.payload.accountId !== this.accountId) return
-      this.noteHandlers.get(event.payload.subscriptionId)?.(event.payload.note)
+      switch (kind) {
+        case 'stream-status':
+          this._state = p.state as StreamConnectionState
+          this.emit(p.state as string)
+          break
+        case 'stream-note':
+          this.noteHandlers.get(p.subscriptionId as string)?.(
+            p.note as NormalizedNote,
+          )
+          break
+        case 'stream-note-updated':
+          this.noteUpdateHandlers.get(p.subscriptionId as string)?.({
+            noteId: p.noteId as string,
+            type: p.updateType as NoteUpdateEvent['type'],
+            body: p.body as NoteUpdateEvent['body'],
+          })
+          break
+        case 'stream-notification':
+          this.notifHandlers.get(p.subscriptionId as string)?.({
+            type: 'notification',
+            body: p.notification as NormalizedNotification,
+          })
+          break
+        case 'stream-mention':
+          this.mentionHandlers.get(p.subscriptionId as string)?.(
+            p.note as NormalizedNote,
+          )
+          break
+        case 'stream-main-event':
+          this.mainHandlers.get(p.subscriptionId as string)?.({
+            type: p.eventType as string,
+            body: p.body,
+          })
+          break
+        case 'stream-note-capture-updated':
+          this.noteCaptureHandlers.get(p.noteId as string)?.({
+            noteId: p.noteId as string,
+            type: p.updateType as NoteUpdateEvent['type'],
+            body: p.body as NoteUpdateEvent['body'],
+          })
+          break
+        case 'stream-chat-message':
+          this.chatMessageHandlers.get(p.subscriptionId as string)?.(
+            p.message as ChatMessage,
+          )
+          break
+      }
     })
       .then((fn) => this.unlistenFns.push(fn))
-      .catch((e) => console.error('[stream] failed to listen stream-note:', e))
-
-    listen<StreamNoteUpdatedEvent>('stream-note-updated', (event) => {
-      if (event.payload.accountId !== this.accountId) return
-      this.noteUpdateHandlers.get(event.payload.subscriptionId)?.({
-        noteId: event.payload.noteId,
-        type: event.payload.updateType as NoteUpdateEvent['type'],
-        body: event.payload.body as NoteUpdateEvent['body'],
-      })
-    })
-      .then((fn) => this.unlistenFns.push(fn))
-      .catch((e) =>
-        console.error('[stream] failed to listen stream-note-updated:', e),
-      )
-
-    listen<StreamNotificationEvent>('stream-notification', (event) => {
-      if (event.payload.accountId !== this.accountId) return
-      this.notifHandlers.get(event.payload.subscriptionId)?.({
-        type: 'notification',
-        body: event.payload.notification,
-      })
-    })
-      .then((fn) => this.unlistenFns.push(fn))
-      .catch((e) =>
-        console.error('[stream] failed to listen stream-notification:', e),
-      )
-
-    listen<StreamMentionEvent>('stream-mention', (event) => {
-      if (event.payload.accountId !== this.accountId) return
-      this.mentionHandlers.get(event.payload.subscriptionId)?.(
-        event.payload.note,
-      )
-    })
-      .then((fn) => this.unlistenFns.push(fn))
-      .catch((e) =>
-        console.error('[stream] failed to listen stream-mention:', e),
-      )
-
-    listen<StreamMainEvent>('stream-main-event', (event) => {
-      if (event.payload.accountId !== this.accountId) return
-      this.mainHandlers.get(event.payload.subscriptionId)?.({
-        type: event.payload.eventType,
-        body: event.payload.body,
-      })
-    })
-      .then((fn) => this.unlistenFns.push(fn))
-      .catch((e) =>
-        console.error('[stream] failed to listen stream-main-event:', e),
-      )
-
-    listen<StreamNoteCaptureEvent>('stream-note-capture-updated', (event) => {
-      if (event.payload.accountId !== this.accountId) return
-      this.noteCaptureHandlers.get(event.payload.noteId)?.({
-        noteId: event.payload.noteId,
-        type: event.payload.updateType as NoteUpdateEvent['type'],
-        body: event.payload.body as NoteUpdateEvent['body'],
-      })
-    })
-      .then((fn) => this.unlistenFns.push(fn))
-      .catch((e) =>
-        console.error(
-          '[stream] failed to listen stream-note-capture-updated:',
-          e,
-        ),
-      )
-
-    listen<StreamChatMessageEvent>('stream-chat-message', (event) => {
-      if (event.payload.accountId !== this.accountId) return
-      this.chatMessageHandlers.get(event.payload.subscriptionId)?.(
-        event.payload.message,
-      )
-    })
-      .then((fn) => this.unlistenFns.push(fn))
-      .catch((e) =>
-        console.error('[stream] failed to listen stream-chat-message:', e),
-      )
+      .catch((e) => console.error('[stream] failed to listen stream-event:', e))
   }
 
   cleanup(): void {
@@ -309,7 +228,7 @@ export class MisskeyStream implements StreamAdapter {
     },
   ): ChannelSubscription {
     return this.createSubscription(
-      'stream_subscribe_timeline',
+      'stream_connect_and_subscribe_timeline',
       { timelineType: type, listId: options?.listId ?? null },
       (id) => {
         this.noteHandlers.set(id, handler)
@@ -329,7 +248,7 @@ export class MisskeyStream implements StreamAdapter {
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription {
     return this.createSubscription(
-      'stream_subscribe_antenna',
+      'stream_connect_and_subscribe_antenna',
       { antennaId },
       (id) => {
         this.noteHandlers.set(id, handler)
@@ -349,7 +268,7 @@ export class MisskeyStream implements StreamAdapter {
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription {
     return this.createSubscription(
-      'stream_subscribe_channel',
+      'stream_connect_and_subscribe_channel',
       { channelId },
       (id) => {
         this.noteHandlers.set(id, handler)

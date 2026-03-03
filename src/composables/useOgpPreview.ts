@@ -2,8 +2,25 @@ import { invoke } from '@tauri-apps/api/core'
 import { ref } from 'vue'
 import type { OgpData } from '@/utils/ogp'
 
+const OGP_CACHE_MAX = 1024
+
 const ogpCache = new Map<string, OgpData | null>()
 const pendingRequests = new Map<string, Promise<OgpData | null>>()
+
+function setOgpCache(url: string, value: OgpData | null) {
+  if (ogpCache.size >= OGP_CACHE_MAX) {
+    const oldest = ogpCache.keys().next().value
+    if (oldest !== undefined) ogpCache.delete(oldest)
+  }
+  ogpCache.set(url, value)
+}
+
+/** Pre-populate the OGP cache from batch IPC results (e.g. timeline enriched) */
+export function populateOgpCache(hints: Record<string, OgpData>) {
+  for (const [url, data] of Object.entries(hints)) {
+    setOgpCache(url, data)
+  }
+}
 
 export function useOgpPreview(url: string, accountId?: string) {
   const data = ref<OgpData | null>(null)
@@ -23,12 +40,12 @@ export function useOgpPreview(url: string, accountId?: string) {
         accountId: accountId ?? null,
       })
         .then((result) => {
-          ogpCache.set(url, result)
+          setOgpCache(url, result)
           pendingRequests.delete(url)
           return result
         })
         .catch(() => {
-          ogpCache.set(url, null)
+          setOgpCache(url, null)
           pendingRequests.delete(url)
           return null
         })

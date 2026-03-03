@@ -4,7 +4,7 @@ version = "0.0.18"
 edition = "2021"
 
 [dependencies]
-notecli = { git = "https://github.com/hitalin/notecli.git", rev = "4a0a2f9" }
+notecli = { git = "https://github.com/hitalin/notecli.git", rev = "d4e8512" }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
@@ -25,6 +25,8 @@ tower-http = { version = "0.6", features = ["cors"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
 sha2 = "0.10"
 scraper = "0.22"
+lru = "0.12"
+regex = "1"
 
 [features]
 default = ["desktop"]

@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { nextTick, onMounted, onUnmounted, shallowRef } from 'vue'
+import { nextTick, onMounted, onUnmounted, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type {
   ChannelSubscription,
@@ -8,6 +8,7 @@ import type {
   ServerAdapter,
 } from '@/adapters/types'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import { useColumnVisible } from '@/composables/useColumnVisibility'
 import { useNoteCapture } from '@/composables/useNoteCapture'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useNoteList } from '@/composables/useNoteList'
@@ -94,6 +95,14 @@ export function useNoteColumn(config: NoteColumnConfig) {
     setOnNotesChanged(sync)
   }
 
+  // Pause streaming batch when column scrolls off-screen
+  if (streamingBatch) {
+    const { isVisible } = useColumnVisible(config.getColumn().id)
+    watch(isVisible, (visible) => {
+      streamingBatch.setPaused(!visible)
+    })
+  }
+
   const { focusedNoteId } = useNoteFocus(
     config.getColumn().id,
     notes,
@@ -138,6 +147,18 @@ export function useNoteColumn(config: NoteColumnConfig) {
       const adapter = await initAdapter()
       if (!adapter) return
 
+      // Start streaming setup early (runs in parallel with API fetch below).
+      // Combined commands handle connect + subscribe in a single IPC round-trip.
+      if (config.streaming && streamingBatch) {
+        adapter.stream.connect()
+        setSubscription(
+          config.streaming.subscribe(adapter, streamingBatch.enqueueNote, {
+            onNoteUpdated: onNoteUpdate,
+          }),
+        )
+        noteSound?.warmup()
+      }
+
       const sinceId = notes.value.length > 0 ? notes.value[0]?.id : undefined
       const dedupKey = `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
       const fetched = await dedup(dedupKey, () =>
@@ -149,16 +170,6 @@ export function useNoteColumn(config: NoteColumnConfig) {
           setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
       } else if (fetched.length > 0) {
         setNotes(fetched)
-      }
-
-      if (config.streaming && streamingBatch) {
-        adapter.stream.connect()
-        setSubscription(
-          config.streaming.subscribe(adapter, streamingBatch.enqueueNote, {
-            onNoteUpdated: onNoteUpdate,
-          }),
-        )
-        noteSound?.warmup()
       }
     } catch (e) {
       if (notes.value.length === 0) {

@@ -1,7 +1,9 @@
 use bytes::Bytes;
 use futures_util::StreamExt;
+use lru::LruCache;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -38,13 +40,14 @@ pub enum StreamingFetchResult {
 struct MemEntry {
     data: Arc<Vec<u8>>,
     content_type: String,
-    inserted_at: Instant,
 }
 
 struct MemCacheState {
-    entries: HashMap<String, MemEntry>,
+    entries: LruCache<String, MemEntry>,
     total_size: usize,
 }
+
+const MEM_CACHE_CAPACITY: usize = MEMORY_CACHE_MAX_TOTAL / (MEMORY_CACHE_MAX_ITEM / 2);
 
 pub struct ImageCache {
     cache_dir: PathBuf,
@@ -62,6 +65,8 @@ impl ImageCache {
 
         let http_client = reqwest::Client::builder()
             .timeout(Duration::from_secs(10))
+            .pool_max_idle_per_host(8)
+            .pool_idle_timeout(Duration::from_secs(60))
             .user_agent(format!(
                 "Mozilla/5.0 (compatible; NoteDeck/{})",
                 env!("CARGO_PKG_VERSION")
@@ -76,7 +81,9 @@ impl ImageCache {
             fetch_semaphore: Arc::new(Semaphore::new(MAX_CONCURRENT_FETCHES)),
             negative_cache: Arc::new(Mutex::new(HashMap::new())),
             mem_cache: Arc::new(Mutex::new(MemCacheState {
-                entries: HashMap::new(),
+                entries: LruCache::new(
+                    NonZeroUsize::new(MEM_CACHE_CAPACITY).unwrap(),
+                ),
                 total_size: 0,
             })),
         }
@@ -93,15 +100,13 @@ impl ImageCache {
 
         // L1: Memory cache (fastest path)
         {
-            let mem = self.mem_cache.lock().await;
+            let mut mem = self.mem_cache.lock().await;
             if let Some(entry) = mem.entries.get(&hash) {
-                if entry.inserted_at.elapsed() < CACHE_TTL {
-                    return Ok(CacheEntry {
-                        path: data_path.clone(),
-                        content_type: entry.content_type.clone(),
-                        mem_bytes: Some(entry.data.clone()),
-                    });
-                }
+                return Ok(CacheEntry {
+                    path: data_path.clone(),
+                    content_type: entry.content_type.clone(),
+                    mem_bytes: Some(entry.data.clone()),
+                });
             }
         }
 
@@ -208,28 +213,24 @@ impl ImageCache {
 
     async fn insert_mem_cache(&self, hash: &str, data: &Arc<Vec<u8>>, content_type: &str) {
         let mut state = self.mem_cache.lock().await;
-        // LRU eviction: evict oldest entries until there is room
+        // LRU eviction: pop least-recently-used until there is room
         while state.total_size + data.len() > MEMORY_CACHE_MAX_TOTAL && !state.entries.is_empty() {
-            if let Some(oldest_key) = state
-                .entries
-                .iter()
-                .min_by_key(|(_, v)| v.inserted_at)
-                .map(|(k, _)| k.clone())
-            {
-                if let Some(removed) = state.entries.remove(&oldest_key) {
-                    state.total_size = state.total_size.saturating_sub(removed.data.len());
-                }
+            if let Some((_key, removed)) = state.entries.pop_lru() {
+                state.total_size = state.total_size.saturating_sub(removed.data.len());
             } else {
                 break;
             }
         }
+        // If key already exists, subtract old size
+        if let Some(old) = state.entries.pop(hash) {
+            state.total_size = state.total_size.saturating_sub(old.data.len());
+        }
         state.total_size += data.len();
-        state.entries.insert(
+        state.entries.push(
             hash.to_string(),
             MemEntry {
                 data: data.clone(),
                 content_type: content_type.to_string(),
-                inserted_at: Instant::now(),
             },
         );
     }
@@ -385,15 +386,13 @@ impl ImageCache {
 
         // L1: Memory cache
         {
-            let mem = self.mem_cache.lock().await;
+            let mut mem = self.mem_cache.lock().await;
             if let Some(entry) = mem.entries.get(&hash) {
-                if entry.inserted_at.elapsed() < CACHE_TTL {
-                    return Some(CacheEntry {
-                        path: data_path,
-                        content_type: entry.content_type.clone(),
-                        mem_bytes: Some(entry.data.clone()),
-                    });
-                }
+                return Some(CacheEntry {
+                    path: data_path,
+                    content_type: entry.content_type.clone(),
+                    mem_bytes: Some(entry.data.clone()),
+                });
             }
         }
 
@@ -555,27 +554,22 @@ impl ImageCache {
                     while state.total_size + arc.len() > MEMORY_CACHE_MAX_TOTAL
                         && !state.entries.is_empty()
                     {
-                        if let Some(oldest_key) = state
-                            .entries
-                            .iter()
-                            .min_by_key(|(_, v)| v.inserted_at)
-                            .map(|(k, _)| k.clone())
-                        {
-                            if let Some(removed) = state.entries.remove(&oldest_key) {
-                                state.total_size =
-                                    state.total_size.saturating_sub(removed.data.len());
-                            }
+                        if let Some((_key, removed)) = state.entries.pop_lru() {
+                            state.total_size =
+                                state.total_size.saturating_sub(removed.data.len());
                         } else {
                             break;
                         }
                     }
+                    if let Some(old) = state.entries.pop(&hash_clone) {
+                        state.total_size = state.total_size.saturating_sub(old.data.len());
+                    }
                     state.total_size += arc.len();
-                    state.entries.insert(
+                    state.entries.push(
                         hash_clone.clone(),
                         MemEntry {
                             data: arc.clone(),
                             content_type: ct_clone.clone(),
-                            inserted_at: Instant::now(),
                         },
                     );
                     Some(arc)
@@ -623,7 +617,7 @@ impl ImageCache {
     }
 }
 
-fn hex_hash(input: &str) -> String {
+pub fn hex_hash(input: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(input.as_bytes());
     format!("{:x}", hasher.finalize())

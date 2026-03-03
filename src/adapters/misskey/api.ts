@@ -1,4 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
+import { populateOgpCache } from '@/composables/useOgpPreview'
+import type { OgpData } from '@/utils/ogp'
 import type {
   Antenna,
   ApiAdapter,
@@ -20,6 +22,11 @@ import type {
   UserList,
 } from '../types'
 
+interface TimelineEnriched {
+  notes: NormalizedNote[]
+  ogp_hints: Record<string, OgpData>
+}
+
 export class MisskeyApi implements ApiAdapter {
   private accountId: string
 
@@ -31,7 +38,7 @@ export class MisskeyApi implements ApiAdapter {
     type: TimelineType,
     options: TimelineOptions = {},
   ): Promise<NormalizedNote[]> {
-    return invoke('api_get_timeline', {
+    const result = await invoke<TimelineEnriched>('api_get_timeline_enriched', {
       accountId: this.accountId,
       timelineType: type,
       options: {
@@ -42,6 +49,10 @@ export class MisskeyApi implements ApiAdapter {
         listId: options.listId ?? null,
       },
     })
+    if (result.ogp_hints && Object.keys(result.ogp_hints).length > 0) {
+      populateOgpCache(result.ogp_hints)
+    }
+    return result.notes
   }
 
   async getNote(noteId: string): Promise<NormalizedNote> {

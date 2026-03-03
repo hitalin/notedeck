@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
+use serde::Serialize;
 use tauri::State;
 
 use notecli::api::MisskeyClient;
@@ -16,6 +17,31 @@ use notecli::models::{
 };
 use notecli::streaming::StreamingManager;
 use zeroize::Zeroize;
+
+/// Regex for extracting HTTPS URLs from note text
+static URL_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r"https?://[\w\-._~:/?#\[\]@!$&'()*+,;=%]+").unwrap()
+});
+
+/// Media extensions to skip OGP prefetch for (they won't have OGP tags)
+static MEDIA_EXT_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r"(?i)\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mp3|ogg|wav)(\?.*)?$")
+        .unwrap()
+});
+
+#[derive(Serialize)]
+pub struct TimelineEnriched {
+    pub notes: Vec<NormalizedNote>,
+    pub ogp_hints: HashMap<String, crate::ogp::OgpData>,
+}
+
+fn extract_ogp_urls(text: &str) -> Vec<String> {
+    URL_RE
+        .find_iter(text)
+        .map(|m| m.as_str().to_string())
+        .filter(|u| !MEDIA_EXT_RE.is_match(u))
+        .collect()
+}
 
 type Result<T> = std::result::Result<T, NoteDeckError>;
 
@@ -259,6 +285,74 @@ pub async fn api_get_timeline(
         eprintln!("[cache] failed to cache timeline notes: {e}");
     }
     Ok(notes)
+}
+
+#[tauri::command]
+pub async fn api_get_timeline_enriched(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, MisskeyClient>,
+    ogp_cache: State<'_, crate::ogp::OgpCache>,
+    account_id: String,
+    timeline_type: TimelineType,
+    options: Option<TimelineOptions>,
+) -> Result<TimelineEnriched> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    let opts = options.unwrap_or_default();
+    let cache_key = if timeline_type.as_str() == "user-list" {
+        if let Some(ref list_id) = opts.list_id {
+            format!("user-list:{list_id}")
+        } else {
+            timeline_type.as_str().to_string()
+        }
+    } else {
+        timeline_type.as_str().to_string()
+    };
+    let notes = client
+        .get_timeline(&host, &token, &account_id, timeline_type, opts)
+        .await?;
+    if let Err(e) = db.cache_notes(&notes, &cache_key) {
+        eprintln!("[cache] failed to cache timeline notes: {e}");
+    }
+
+    // Extract unique URLs from all note texts (skip media URLs)
+    let mut urls: Vec<String> = Vec::new();
+    for note in &notes {
+        if let Some(ref text) = note.text {
+            urls.extend(extract_ogp_urls(text));
+        }
+        if let Some(ref renote) = note.renote {
+            if let Some(ref text) = renote.text {
+                urls.extend(extract_ogp_urls(text));
+            }
+        }
+    }
+    urls.sort_unstable();
+    urls.dedup();
+
+    // Parallel OGP prefetch (best-effort, errors are silently skipped)
+    let ogp_hints = if urls.is_empty() {
+        HashMap::new()
+    } else {
+        let ogp = &*ogp_cache;
+        let futs: Vec<_> = urls
+            .into_iter()
+            .map(|url| {
+                let host = host.clone();
+                let token = token.clone();
+                async move {
+                    let result = ogp.get_ogp_via_server(&url, &host, &token).await;
+                    (url, result.ok())
+                }
+            })
+            .collect();
+        let results = futures_util::future::join_all(futs).await;
+        results
+            .into_iter()
+            .filter_map(|(url, data)| data.map(|d| (url, d)))
+            .collect()
+    };
+
+    Ok(TimelineEnriched { notes, ogp_hints })
 }
 
 #[tauri::command]
@@ -1149,14 +1243,66 @@ pub async fn api_create_chat_message(
 
 // --- Streaming ---
 
+/// Ensure the streaming WebSocket is connected for the given account.
+async fn ensure_stream_connected(
+    db: &Database,
+    streaming: &StreamingManager,
+    account_id: &str,
+) -> Result<()> {
+    let (host, token) = get_credentials(db, account_id)?;
+    streaming.connect(account_id, &host, &token).await
+}
+
 #[tauri::command]
 pub async fn stream_connect(
     db: State<'_, Arc<Database>>,
     streaming: State<'_, StreamingManager>,
     account_id: String,
 ) -> Result<()> {
-    let (host, token) = get_credentials(&db, &account_id)?;
-    streaming.connect(&account_id, &host, &token).await
+    ensure_stream_connected(&db, &streaming, &account_id).await
+}
+
+/// Connect + subscribe in a single IPC round-trip (timeline).
+#[tauri::command]
+pub async fn stream_connect_and_subscribe_timeline(
+    db: State<'_, Arc<Database>>,
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    timeline_type: TimelineType,
+    list_id: Option<String>,
+) -> Result<String> {
+    ensure_stream_connected(&db, &streaming, &account_id).await?;
+    streaming
+        .subscribe_timeline(&account_id, timeline_type, list_id)
+        .await
+}
+
+/// Connect + subscribe in a single IPC round-trip (antenna).
+#[tauri::command]
+pub async fn stream_connect_and_subscribe_antenna(
+    db: State<'_, Arc<Database>>,
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    antenna_id: String,
+) -> Result<String> {
+    ensure_stream_connected(&db, &streaming, &account_id).await?;
+    streaming
+        .subscribe_antenna(&account_id, &antenna_id)
+        .await
+}
+
+/// Connect + subscribe in a single IPC round-trip (channel).
+#[tauri::command]
+pub async fn stream_connect_and_subscribe_channel(
+    db: State<'_, Arc<Database>>,
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    channel_id: String,
+) -> Result<String> {
+    ensure_stream_connected(&db, &streaming, &account_id).await?;
+    streaming
+        .subscribe_channel(&account_id, &channel_id)
+        .await
 }
 
 #[tauri::command]

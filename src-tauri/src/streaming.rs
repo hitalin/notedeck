@@ -14,7 +14,12 @@ impl TauriEmitter {
 
 impl FrontendEmitter for TauriEmitter {
     fn emit(&self, event: &str, payload: Value) {
-        if let Err(e) = self.app.emit(event, payload) {
+        // Consolidate all stream-* events into a single "stream-event" with kind discriminator
+        let wrapped = serde_json::json!({
+            "kind": event,
+            "payload": payload,
+        });
+        if let Err(e) = self.app.emit("stream-event", wrapped) {
             eprintln!("[stream] emit {event} failed: {e}");
         }
     }

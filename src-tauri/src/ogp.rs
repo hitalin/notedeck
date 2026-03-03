@@ -1,10 +1,25 @@
+use scraper::Selector;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant};
 use tokio::sync::{watch, Mutex};
 
+static OG_TITLE: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("meta[property='og:title']").unwrap());
+static OG_DESC: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("meta[property='og:description']").unwrap());
+static OG_IMAGE: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("meta[property='og:image']").unwrap());
+static OG_SITE: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("meta[property='og:site_name']").unwrap());
+static TITLE_SEL: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("title").unwrap());
+static DESC_SEL: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("meta[name='description']").unwrap());
+
 const CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
+const CACHE_TTL_SECS: i64 = 24 * 60 * 60;
 const MAX_ENTRIES: usize = 2048;
 const MAX_HTML_SIZE: usize = 2 * 1024 * 1024;
 const FETCH_TIMEOUT: Duration = Duration::from_secs(10);
@@ -28,21 +43,48 @@ pub struct OgpCache {
     cache: Arc<Mutex<HashMap<String, CacheEntry>>>,
     inflight: Arc<Mutex<InflightMap>>,
     http_client: reqwest::Client,
+    db: Arc<notecli::db::Database>,
 }
 
 impl OgpCache {
-    pub fn new() -> Self {
+    pub fn new(db: Arc<notecli::db::Database>) -> Self {
         let http_client = reqwest::Client::builder()
             .timeout(FETCH_TIMEOUT)
-            .user_agent(format!("Mozilla/5.0 (compatible; NoteDeck/{})", env!("CARGO_PKG_VERSION")))
+            .user_agent(format!(
+                "Mozilla/5.0 (compatible; NoteDeck/{})",
+                env!("CARGO_PKG_VERSION")
+            ))
             .redirect(reqwest::redirect::Policy::limited(5))
             .build()
             .unwrap_or_default();
 
+        // Cleanup expired entries on startup
+        db.cleanup_expired_ogp().ok();
+
+        // Pre-populate in-memory cache from disk
+        let mut mem = HashMap::new();
+        if let Ok(rows) = db.load_ogp_cache(MAX_ENTRIES) {
+            for (url, title, description, image, site_name) in rows {
+                mem.insert(
+                    url,
+                    CacheEntry {
+                        data: OgpData {
+                            title,
+                            description,
+                            image,
+                            site_name,
+                        },
+                        fetched_at: Instant::now(),
+                    },
+                );
+            }
+        }
+
         Self {
-            cache: Arc::new(Mutex::new(HashMap::new())),
+            cache: Arc::new(Mutex::new(mem)),
             inflight: Arc::new(Mutex::new(HashMap::new())),
             http_client,
+            db,
         }
     }
 
@@ -51,7 +93,7 @@ impl OgpCache {
             return Err("Only HTTPS URLs are allowed".to_string());
         }
 
-        // Cache hit
+        // Memory cache hit
         {
             let cache = self.cache.lock().await;
             if let Some(entry) = cache.get(url) {
@@ -59,6 +101,12 @@ impl OgpCache {
                     return Ok(entry.data.clone());
                 }
             }
+        }
+
+        // Disk cache hit (if not in memory)
+        if let Some(data) = self.load_from_disk(url) {
+            self.store_mem_cache(url, &data).await;
+            return Ok(data);
         }
 
         // Inflight dedup
@@ -90,8 +138,6 @@ impl OgpCache {
         result
     }
 
-    /// Try fetching OGP via Misskey server's /api/url endpoint first,
-    /// falling back to direct self-fetch on failure.
     pub async fn get_ogp_via_server(
         &self,
         url: &str,
@@ -102,7 +148,7 @@ impl OgpCache {
             return Err("Only HTTPS URLs are allowed".to_string());
         }
 
-        // Check local cache first (shared with self-fetch)
+        // Memory cache hit
         {
             let cache = self.cache.lock().await;
             if let Some(entry) = cache.get(url) {
@@ -110,6 +156,12 @@ impl OgpCache {
                     return Ok(entry.data.clone());
                 }
             }
+        }
+
+        // Disk cache hit
+        if let Some(data) = self.load_from_disk(url) {
+            self.store_mem_cache(url, &data).await;
+            return Ok(data);
         }
 
         // Try server's summary proxy
@@ -123,6 +175,54 @@ impl OgpCache {
                 self.get_ogp(url).await
             }
         }
+    }
+
+    fn load_from_disk(&self, url: &str) -> Option<OgpData> {
+        let (title, description, image, site_name) = self.db.get_cached_ogp(url).ok()??;
+        Some(OgpData {
+            title,
+            description,
+            image,
+            site_name,
+        })
+    }
+
+    fn persist_to_disk(&self, url: &str, data: &OgpData) {
+        self.db
+            .cache_ogp(
+                url,
+                data.title.as_deref(),
+                data.description.as_deref(),
+                data.image.as_deref(),
+                data.site_name.as_deref(),
+                CACHE_TTL_SECS,
+            )
+            .ok();
+    }
+
+    async fn store_mem_cache(&self, url: &str, data: &OgpData) {
+        let mut cache = self.cache.lock().await;
+        if cache.len() >= MAX_ENTRIES {
+            if let Some(oldest) = cache
+                .iter()
+                .min_by_key(|(_, v)| v.fetched_at)
+                .map(|(k, _)| k.clone())
+            {
+                cache.remove(&oldest);
+            }
+        }
+        cache.insert(
+            url.to_string(),
+            CacheEntry {
+                data: data.clone(),
+                fetched_at: Instant::now(),
+            },
+        );
+    }
+
+    async fn store_cache(&self, url: &str, data: &OgpData) {
+        self.store_mem_cache(url, data).await;
+        self.persist_to_disk(url, data);
     }
 
     async fn fetch_from_server(
@@ -155,26 +255,6 @@ impl OgpCache {
             image: server_data.thumbnail.filter(|u| u.starts_with("https://")),
             site_name: server_data.sitename,
         })
-    }
-
-    async fn store_cache(&self, url: &str, data: &OgpData) {
-        let mut cache = self.cache.lock().await;
-        if cache.len() >= MAX_ENTRIES {
-            if let Some(oldest) = cache
-                .iter()
-                .min_by_key(|(_, v)| v.fetched_at)
-                .map(|(k, _)| k.clone())
-            {
-                cache.remove(&oldest);
-            }
-        }
-        cache.insert(
-            url.to_string(),
-            CacheEntry {
-                data: data.clone(),
-                fetched_at: Instant::now(),
-            },
-        );
     }
 
     async fn fetch_and_parse(&self, url: &str) -> Result<OgpData, String> {
@@ -225,16 +305,9 @@ struct ServerUrlResponse {
 }
 
 fn parse_ogp(html: &str) -> OgpData {
-    use scraper::{Html, Selector};
+    use scraper::Html;
 
     let document = Html::parse_document(html);
-
-    let og_title = Selector::parse("meta[property='og:title']").unwrap();
-    let og_desc = Selector::parse("meta[property='og:description']").unwrap();
-    let og_image = Selector::parse("meta[property='og:image']").unwrap();
-    let og_site = Selector::parse("meta[property='og:site_name']").unwrap();
-    let title_sel = Selector::parse("title").unwrap();
-    let desc_sel = Selector::parse("meta[name='description']").unwrap();
 
     let get_content = |sel: &Selector| -> Option<String> {
         document
@@ -245,19 +318,19 @@ fn parse_ogp(html: &str) -> OgpData {
             .filter(|s| !s.is_empty())
     };
 
-    let title = get_content(&og_title).or_else(|| {
+    let title = get_content(&OG_TITLE).or_else(|| {
         document
-            .select(&title_sel)
+            .select(&TITLE_SEL)
             .next()
             .map(|el| el.text().collect::<String>().trim().to_string())
             .filter(|s| !s.is_empty())
     });
 
-    let description = get_content(&og_desc).or_else(|| get_content(&desc_sel));
+    let description = get_content(&OG_DESC).or_else(|| get_content(&DESC_SEL));
 
-    let image = get_content(&og_image).filter(|url| url.starts_with("https://"));
+    let image = get_content(&OG_IMAGE).filter(|url| url.starts_with("https://"));
 
-    let site_name = get_content(&og_site);
+    let site_name = get_content(&OG_SITE);
 
     OgpData {
         title,

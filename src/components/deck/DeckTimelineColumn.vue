@@ -24,6 +24,7 @@ const MkPostForm = defineAsyncComponent(
 
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import { useColumnVisible } from '@/composables/useColumnVisibility'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useNoteList } from '@/composables/useNoteList'
 import { useNoteSound } from '@/composables/useNoteSound'
@@ -94,6 +95,12 @@ const {
   onNewNotes: () => {
     if (!props.column.soundMuted) noteSound.play()
   },
+})
+
+// Pause streaming batch when column scrolls off-screen
+const { isVisible: columnVisible } = useColumnVisible(props.column.id)
+watch(columnVisible, (visible) => {
+  setPaused(!visible)
 })
 
 const { focusedNoteId } = useNoteFocus(
@@ -353,6 +360,21 @@ async function connect(useCache = false) {
     const adapter = await initAdapter()
     if (!adapter) return
 
+    // Start streaming setup immediately (connect + subscribe in single IPC).
+    // Runs in parallel with the API fetch below.
+    adapter.stream.connect()
+    setSubscription(
+      adapter.stream.subscribeTimeline(
+        tlType.value,
+        (note: NormalizedNote) => {
+          if (!matchesFilter(note, columnFilters.value, tlType.value)) return
+          enqueueNote(note)
+        },
+        { onNoteUpdated: onNoteUpdate },
+      ),
+    )
+    noteSound.warmup()
+
     const sinceId = notes.value.length > 0 ? notes.value[0]?.id : undefined
     const dedupKey = `${props.column.accountId}:timeline:${tlType.value}`
     const fetched = await dedup(dedupKey, () =>
@@ -367,19 +389,6 @@ async function connect(useCache = false) {
       setNotes(fetched)
     }
     // If fetched is empty and we have cache, keep showing cache
-
-    adapter.stream.connect()
-    setSubscription(
-      adapter.stream.subscribeTimeline(
-        tlType.value,
-        (note: NormalizedNote) => {
-          if (!matchesFilter(note, columnFilters.value, tlType.value)) return
-          enqueueNote(note)
-        },
-        { onNoteUpdated: onNoteUpdate },
-      ),
-    )
-    noteSound.warmup()
   } catch (e) {
     const err = AppError.from(e)
     // 3. Handle "disabled" errors — always refresh policies regardless of cache

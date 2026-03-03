@@ -618,9 +618,24 @@ struct ProxyImageParams {
 
 async fn proxy_image(
     State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
     Query(params): Query<ProxyImageParams>,
 ) -> Response {
-    use crate::image_cache::StreamingFetchResult;
+    use crate::image_cache::{StreamingFetchResult, hex_hash};
+
+    let etag = format!("\"{}\"", hex_hash(&params.url));
+
+    // ETag conditional: return 304 if client already has this image
+    if let Some(if_none_match) = headers.get("if-none-match").and_then(|v| v.to_str().ok()) {
+        if if_none_match == etag {
+            return Response::builder()
+                .status(StatusCode::NOT_MODIFIED)
+                .header("ETag", &etag)
+                .header("Cache-Control", "public, max-age=86400, immutable")
+                .body(Body::empty())
+                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
+        }
+    }
 
     // Phase 1: Check cache (instant response)
     if let Some(entry) = state.image_cache.check_cache_only(&params.url).await {
@@ -636,6 +651,7 @@ async fn proxy_image(
             .status(StatusCode::OK)
             .header("Content-Type", &entry.content_type)
             .header("Cache-Control", "public, max-age=86400, immutable")
+            .header("ETag", &etag)
             .body(Body::from(body_bytes))
             .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
     }
@@ -656,6 +672,7 @@ async fn proxy_image(
                 .status(StatusCode::OK)
                 .header("Content-Type", &entry.content_type)
                 .header("Cache-Control", "public, max-age=86400, immutable")
+                .header("ETag", &etag)
                 .body(Body::from(body_bytes))
                 .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
         }
@@ -668,6 +685,7 @@ async fn proxy_image(
                 .status(StatusCode::OK)
                 .header("Content-Type", &content_type)
                 .header("Cache-Control", "public, max-age=86400, immutable")
+                .header("ETag", &etag)
                 .body(body)
                 .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
         }

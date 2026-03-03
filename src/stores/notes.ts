@@ -46,11 +46,11 @@ function resolve(ids: string[]): NormalizedNote[] {
   for (const id of ids) {
     const note = map.get(id)
     if (!note) continue
+    // Sync renote reference in place (shallowRef: no deep reactivity overhead)
     if (note.renoteId) {
       const renote = map.get(note.renoteId)
       if (renote && renote !== note.renote) {
-        result.push({ ...note, renote })
-        continue
+        note.renote = renote
       }
     }
     result.push(note)

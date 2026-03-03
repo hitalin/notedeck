@@ -20,9 +20,10 @@ vi.mock('@tauri-apps/api/event', () => ({
 import { invoke } from '@tauri-apps/api/core'
 import { MisskeyStream } from '@/adapters/misskey/streaming'
 
-function emitTauriEvent(eventName: string, payload: unknown) {
-  const cb = listenCallbacks.get(eventName)
-  if (cb) cb({ payload })
+/** Emit a consolidated stream-event envelope (matching TauriEmitter format) */
+function emitStreamEvent(kind: string, payload: Record<string, unknown>) {
+  const cb = listenCallbacks.get('stream-event')
+  if (cb) cb({ payload: { kind, payload } })
 }
 
 describe('MisskeyStream', () => {
@@ -83,10 +84,10 @@ describe('MisskeyStream', () => {
 
       stream.connect()
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-status')).toBe(true)
+        expect(listenCallbacks.has('stream-event')).toBe(true)
       })
 
-      emitTauriEvent('stream-status', {
+      emitStreamEvent('stream-status', {
         accountId: 'acc-1',
         state: 'disconnected',
       })
@@ -102,7 +103,7 @@ describe('MisskeyStream', () => {
         expect(stream.state).toBe('connected')
       })
 
-      emitTauriEvent('stream-status', {
+      emitStreamEvent('stream-status', {
         accountId: 'acc-other',
         state: 'disconnected',
       })
@@ -123,12 +124,12 @@ describe('MisskeyStream', () => {
       expect(stream.state).toBe('disconnected')
     })
 
-    it('calls unlisten for status listener', async () => {
+    it('calls unlisten for stream-event listener', async () => {
       vi.mocked(invoke).mockResolvedValue(undefined)
 
       stream.connect()
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-status')).toBe(true)
+        expect(listenCallbacks.has('stream-event')).toBe(true)
       })
 
       stream.disconnect()
@@ -137,11 +138,11 @@ describe('MisskeyStream', () => {
   })
 
   describe('subscribeTimeline', () => {
-    it('invokes stream_subscribe_timeline and listens for notes', async () => {
+    it('invokes stream_connect_and_subscribe_timeline and dispatches notes', async () => {
       vi.mocked(invoke).mockResolvedValue(undefined)
       stream.connect()
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-note')).toBe(true)
+        expect(listenCallbacks.has('stream-event')).toBe(true)
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-123')
@@ -149,11 +150,14 @@ describe('MisskeyStream', () => {
       stream.subscribeTimeline('home', (note) => notes.push(note))
 
       await vi.waitFor(() => {
-        expect(invoke).toHaveBeenCalledWith('stream_subscribe_timeline', {
-          accountId: 'acc-1',
-          timelineType: 'home',
-          listId: null,
-        })
+        expect(invoke).toHaveBeenCalledWith(
+          'stream_connect_and_subscribe_timeline',
+          {
+            accountId: 'acc-1',
+            timelineType: 'home',
+            listId: null,
+          },
+        )
       })
 
       const mockNote: NormalizedNote = {
@@ -179,7 +183,7 @@ describe('MisskeyStream', () => {
         files: [],
       }
 
-      emitTauriEvent('stream-note', {
+      emitStreamEvent('stream-note', {
         accountId: 'acc-1',
         subscriptionId: 'sub-123',
         note: mockNote,
@@ -193,7 +197,7 @@ describe('MisskeyStream', () => {
       vi.mocked(invoke).mockResolvedValue(undefined)
       stream.connect()
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-note')).toBe(true)
+        expect(listenCallbacks.has('stream-event')).toBe(true)
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-123')
@@ -202,12 +206,12 @@ describe('MisskeyStream', () => {
 
       await vi.waitFor(() => {
         expect(invoke).toHaveBeenCalledWith(
-          'stream_subscribe_timeline',
+          'stream_connect_and_subscribe_timeline',
           expect.any(Object),
         )
       })
 
-      emitTauriEvent('stream-note', {
+      emitStreamEvent('stream-note', {
         accountId: 'acc-other',
         subscriptionId: 'sub-123',
         note: { id: 'note-x' },
@@ -220,14 +224,14 @@ describe('MisskeyStream', () => {
       vi.mocked(invoke).mockResolvedValue(undefined)
       stream.connect()
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-note')).toBe(true)
+        expect(listenCallbacks.has('stream-event')).toBe(true)
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-123')
       const sub = stream.subscribeTimeline('home', () => {})
       await vi.waitFor(() => {
         expect(invoke).toHaveBeenCalledWith(
-          'stream_subscribe_timeline',
+          'stream_connect_and_subscribe_timeline',
           expect.any(Object),
         )
       })
@@ -248,7 +252,7 @@ describe('MisskeyStream', () => {
       vi.mocked(invoke).mockResolvedValue(undefined)
       stream.connect()
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-notification')).toBe(true)
+        expect(listenCallbacks.has('stream-event')).toBe(true)
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-456')
@@ -276,7 +280,7 @@ describe('MisskeyStream', () => {
         },
       }
 
-      emitTauriEvent('stream-notification', {
+      emitStreamEvent('stream-notification', {
         accountId: 'acc-1',
         subscriptionId: 'sub-456',
         notification: mockNotification,
@@ -290,7 +294,7 @@ describe('MisskeyStream', () => {
       vi.mocked(invoke).mockResolvedValue(undefined)
       stream.connect()
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-main-event')).toBe(true)
+        expect(listenCallbacks.has('stream-event')).toBe(true)
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-456')
@@ -304,7 +308,7 @@ describe('MisskeyStream', () => {
         )
       })
 
-      emitTauriEvent('stream-main-event', {
+      emitStreamEvent('stream-main-event', {
         accountId: 'acc-1',
         subscriptionId: 'sub-456',
         eventType: 'followed',
@@ -320,7 +324,7 @@ describe('MisskeyStream', () => {
       vi.mocked(invoke).mockResolvedValue(undefined)
       stream.connect()
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-notification')).toBe(true)
+        expect(listenCallbacks.has('stream-event')).toBe(true)
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-456')
@@ -344,11 +348,11 @@ describe('MisskeyStream', () => {
   })
 
   describe('subscribeAntenna', () => {
-    it('invokes stream_subscribe_antenna and dispatches notes', async () => {
+    it('invokes stream_connect_and_subscribe_antenna and dispatches notes', async () => {
       vi.mocked(invoke).mockResolvedValue(undefined)
       stream.connect()
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-note')).toBe(true)
+        expect(listenCallbacks.has('stream-event')).toBe(true)
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-ant-1')
@@ -356,13 +360,16 @@ describe('MisskeyStream', () => {
       stream.subscribeAntenna('antenna-1', (note) => notes.push(note))
 
       await vi.waitFor(() => {
-        expect(invoke).toHaveBeenCalledWith('stream_subscribe_antenna', {
-          accountId: 'acc-1',
-          antennaId: 'antenna-1',
-        })
+        expect(invoke).toHaveBeenCalledWith(
+          'stream_connect_and_subscribe_antenna',
+          {
+            accountId: 'acc-1',
+            antennaId: 'antenna-1',
+          },
+        )
       })
 
-      emitTauriEvent('stream-note', {
+      emitStreamEvent('stream-note', {
         accountId: 'acc-1',
         subscriptionId: 'sub-ant-1',
         note: {
@@ -397,14 +404,14 @@ describe('MisskeyStream', () => {
       vi.mocked(invoke).mockResolvedValue(undefined)
       stream.connect()
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-note')).toBe(true)
+        expect(listenCallbacks.has('stream-event')).toBe(true)
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-ant-1')
       const sub = stream.subscribeAntenna('antenna-1', () => {})
       await vi.waitFor(() => {
         expect(invoke).toHaveBeenCalledWith(
-          'stream_subscribe_antenna',
+          'stream_connect_and_subscribe_antenna',
           expect.any(Object),
         )
       })
@@ -425,7 +432,7 @@ describe('MisskeyStream', () => {
       vi.mocked(invoke).mockResolvedValue(undefined)
       stream.connect()
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-chat-message')).toBe(true)
+        expect(listenCallbacks.has('stream-event')).toBe(true)
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-chat-1')
@@ -439,7 +446,7 @@ describe('MisskeyStream', () => {
         })
       })
 
-      emitTauriEvent('stream-chat-message', {
+      emitStreamEvent('stream-chat-message', {
         accountId: 'acc-1',
         subscriptionId: 'sub-chat-1',
         message: { id: 'msg-1', text: 'Hello' },
@@ -453,7 +460,7 @@ describe('MisskeyStream', () => {
       vi.mocked(invoke).mockResolvedValue(undefined)
       stream.connect()
       await vi.waitFor(() => {
-        expect(listenCallbacks.has('stream-chat-message')).toBe(true)
+        expect(listenCallbacks.has('stream-event')).toBe(true)
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-chat-1')

@@ -2,9 +2,11 @@
 import {
   computed,
   defineAsyncComponent,
+  nextTick,
   onMounted,
   onUnmounted,
   ref,
+  watch,
 } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -12,6 +14,7 @@ import {
   unregisterDefaultCommands,
 } from '@/commands/definitions'
 import { useCommandStore } from '@/commands/registry'
+import { provideColumnVisibility } from '@/composables/useColumnVisibility'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
@@ -92,6 +95,9 @@ function closeCompose() {
 function toggleAddMenu() {
   showAddMenu.value = !showAddMenu.value
 }
+
+// Column visibility tracking (pauses streaming for off-screen columns)
+const colVisibility = provideColumnVisibility()
 
 let handleResizeRef: (() => void) | null = null
 let unlistenQuickNote: (() => void) | null = null
@@ -209,6 +215,9 @@ onMounted(() => {
   window.addEventListener('resize', handleResizeRef)
   document.addEventListener('visibilitychange', onVisibilityChange)
 
+  // Column visibility observer
+  colVisibility.setup(columnsRef)
+
   // Quick Note: global hotkey (Ctrl+Alt+N) opens palette with "post " prefilled
   import('@tauri-apps/api/event').then(({ listen }) => {
     listen('nd:quick-note', () => {
@@ -220,6 +229,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  colVisibility.disconnect()
   destroyApiBridge()
   unregisterDefaultCommands()
   if (handleResizeRef) window.removeEventListener('resize', handleResizeRef)
@@ -232,6 +242,22 @@ function onVisibilityChange() {
     window.dispatchEvent(new CustomEvent('deck-resume'))
   }
 }
+
+// Re-observe column sections when layout changes
+watch(
+  resolvedColumns,
+  () => {
+    nextTick(() => {
+      if (!columnsRef.value) return
+      for (const section of columnsRef.value.querySelectorAll<HTMLElement>(
+        '.column-section[data-column-id]',
+      )) {
+        colVisibility.observe(section)
+      }
+    })
+  },
+  { flush: 'post', immediate: true },
+)
 </script>
 
 <template>
@@ -255,6 +281,7 @@ function onVisibilityChange() {
         <template v-for="col in resolvedColumns" :key="col.id">
           <section
             class="column-section"
+            :data-column-id="col.id"
             :style="{ flexBasis: col.width + 'px' }"
             @mousedown="deckStore.setActiveColumn(col.id)"
           >
