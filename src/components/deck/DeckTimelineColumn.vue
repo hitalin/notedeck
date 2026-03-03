@@ -160,6 +160,20 @@ function tmShiftDay(delta: number) {
   onTimeMachineDateChange(d.toISOString().slice(0, 10))
 }
 
+const tmDateEditing = ref(false)
+const tmDateInputRef = ref<HTMLInputElement | null>(null)
+
+function openTmDatePicker() {
+  tmDateEditing.value = true
+  nextTick(() => tmDateInputRef.value?.showPicker?.())
+}
+
+function onTmDatePick(e: Event) {
+  const target = e.target as HTMLInputElement
+  tmDateEditing.value = false
+  if (target.value) onTimeMachineDateChange(target.value)
+}
+
 function exitTimeMachine() {
   timeMachine.deactivate()
   setPaused(false)
@@ -638,7 +652,20 @@ onUnmounted(() => {
         <button class="_button time-machine-nav" @click="tmShiftDay(-1)">
           <i class="ti ti-chevron-left" />
         </button>
-        <span class="time-machine-date">{{ timeMachine.targetDate.value }}</span>
+        <input
+          v-if="tmDateEditing"
+          ref="tmDateInputRef"
+          type="date"
+          class="time-machine-date-input"
+          :value="timeMachine.targetDate.value"
+          :min="timeMachine.dateRange.value?.min?.slice(0, 10)"
+          :max="timeMachine.dateRange.value?.max?.slice(0, 10)"
+          @change="onTmDatePick"
+          @blur="tmDateEditing = false"
+        />
+        <button v-else class="_button time-machine-date" @click="openTmDatePicker">
+          {{ timeMachine.targetDate.value }}
+        </button>
         <button class="_button time-machine-nav" @click="tmShiftDay(1)">
           <i class="ti ti-chevron-right" />
         </button>
@@ -838,6 +865,21 @@ onUnmounted(() => {
   font-size: 0.9em;
   font-weight: bold;
   white-space: nowrap;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.time-machine-date:hover {
+  background: var(--nd-buttonHoverBg);
+}
+
+.time-machine-date-input {
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  border: 1px solid var(--nd-divider);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 0.9em;
 }
 
 .time-machine-nav {
