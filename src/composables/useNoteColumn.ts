@@ -236,42 +236,44 @@ export function useNoteColumn(config: NoteColumnConfig) {
     if (!adapter || !account.value) return
     if (config.validate && !config.validate()) return
 
-    // Streaming columns reload from cache on resume
-    if (isStreaming && config.cache) {
-      const column = config.getColumn()
-      const cacheKey = config.cache.getKey()
-      if (column.accountId && cacheKey) {
-        try {
-          const cached = await invoke<NormalizedNote[]>(
-            'api_get_cached_timeline',
-            {
-              accountId: column.accountId,
-              timelineType: cacheKey,
-              limit: 40,
-            },
-          )
-          if (cached.length > 0) {
-            const newFromCache = cached.filter((n) => !noteIds.has(n.id))
-            if (newFromCache.length > 0) {
-              setNotes([...newFromCache, ...notes.value])
-            }
-          }
-        } catch {
-          /* non-critical */
-        }
-      }
-    }
-
     const sinceId = notes.value[0]?.id
-    if (!sinceId) return
-    try {
-      const fetched = await config.fetch(adapter, { sinceId })
-      const newFromApi = fetched.filter((n) => !noteIds.has(n.id))
-      if (newFromApi.length > 0) {
-        setNotes([...newFromApi, ...notes.value])
-      }
-    } catch {
-      /* non-critical */
+
+    // Run cache fetch and API fetch in parallel
+    const cachePromise =
+      isStreaming && config.cache
+        ? (async () => {
+            const column = config.getColumn()
+            const cacheKey = config.cache!.getKey()
+            if (!column.accountId || !cacheKey) return []
+            try {
+              return await invoke<NormalizedNote[]>('api_get_cached_timeline', {
+                accountId: column.accountId,
+                timelineType: cacheKey,
+                limit: 40,
+              })
+            } catch {
+              return []
+            }
+          })()
+        : Promise.resolve([] as NormalizedNote[])
+
+    const apiPromise = sinceId
+      ? config.fetch(adapter, { sinceId }).catch(() => [] as NormalizedNote[])
+      : Promise.resolve([] as NormalizedNote[])
+
+    const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
+
+    // Merge results: API results take priority, then cache
+    const allNew = [...fetched, ...cached].filter((n) => !noteIds.has(n.id))
+    if (allNew.length > 0) {
+      // Deduplicate by id (API results first)
+      const seen = new Set<string>()
+      const deduped = allNew.filter((n) => {
+        if (seen.has(n.id)) return false
+        seen.add(n.id)
+        return true
+      })
+      setNotes([...deduped, ...notes.value])
     }
   }
 

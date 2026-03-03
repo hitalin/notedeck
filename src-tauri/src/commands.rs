@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::sync::Mutex;
-use std::time::Instant;
+use std::sync::{LazyLock, Mutex};
+use std::time::{Duration, Instant};
 
 use tauri::State;
 
@@ -18,6 +18,45 @@ use crate::streaming::StreamingManager;
 use zeroize::Zeroize;
 
 type Result<T> = std::result::Result<T, NoteDeckError>;
+
+const CREDENTIAL_CACHE_TTL: Duration = Duration::from_secs(60);
+
+pub struct CredentialCache {
+    cache: Mutex<HashMap<String, (String, String, Instant)>>,
+}
+
+impl CredentialCache {
+    pub fn new() -> Self {
+        Self {
+            cache: Mutex::new(HashMap::new()),
+        }
+    }
+
+    fn get(&self, account_id: &str) -> Option<(String, String)> {
+        let cache = self.cache.lock().ok()?;
+        let (host, token, at) = cache.get(account_id)?;
+        if at.elapsed() < CREDENTIAL_CACHE_TTL {
+            Some((host.clone(), token.clone()))
+        } else {
+            None
+        }
+    }
+
+    fn insert(&self, account_id: &str, host: &str, token: &str) {
+        if let Ok(mut cache) = self.cache.lock() {
+            cache.insert(
+                account_id.to_string(),
+                (host.to_string(), token.to_string(), Instant::now()),
+            );
+        }
+    }
+
+    pub fn invalidate(&self, account_id: &str) {
+        if let Ok(mut cache) = self.cache.lock() {
+            cache.remove(account_id);
+        }
+    }
+}
 
 /// Tracks MiAuth sessions to prevent replay attacks.
 /// Sessions expire after 15 minutes and are consumed on completion.
@@ -60,8 +99,15 @@ impl AuthSessionTracker {
     }
 }
 
-/// Look up account credentials: tries keychain first, falls back to DB (lazy migration)
+static CREDENTIAL_CACHE: LazyLock<CredentialCache> = LazyLock::new(CredentialCache::new);
+
+/// Look up account credentials: uses in-memory cache, then keychain, then DB (lazy migration)
 pub fn get_credentials(db: &Database, account_id: &str) -> Result<(String, String)> {
+    // Fast path: check in-memory cache first
+    if let Some(cached) = CREDENTIAL_CACHE.get(account_id) {
+        return Ok(cached);
+    }
+
     let account = db
         .get_account(account_id)?
         .ok_or_else(|| NoteDeckError::AccountNotFound(account_id.to_string()))?;
@@ -73,6 +119,7 @@ pub fn get_credentials(db: &Database, account_id: &str) -> Result<(String, Strin
         if !account.token.is_empty() {
             let _ = db.clear_token(account_id);
         }
+        CREDENTIAL_CACHE.insert(account_id, &host, &token);
         return Ok((host, token));
     }
 
@@ -90,12 +137,18 @@ pub fn get_credentials(db: &Database, account_id: &str) -> Result<(String, Strin
         }
         let token = db_token.clone();
         db_token.zeroize();
+        CREDENTIAL_CACHE.insert(account_id, &host, &token);
         return Ok((host, token));
     }
 
     Err(NoteDeckError::Auth(format!(
         "No token found for account {account_id}"
     )))
+}
+
+/// Invalidate cached credentials (call on logout/token change)
+pub fn invalidate_credentials(account_id: &str) {
+    CREDENTIAL_CACHE.invalidate(account_id);
 }
 
 // --- DB: Accounts ---
@@ -108,6 +161,7 @@ pub fn load_accounts(db: State<'_, Database>) -> Result<Vec<AccountPublic>> {
 
 #[tauri::command]
 pub fn delete_account(db: State<'_, Database>, id: String) -> Result<()> {
+    invalidate_credentials(&id);
     let _ = keychain::delete_token(&id);
     db.delete_account(&id)
 }
@@ -728,15 +782,16 @@ pub async fn api_fetch_account_theme(
 
     let mut result = serde_json::json!({});
 
-    // 1+2. Fetch sync preferences and legacy base in parallel
+    // Fetch all three sources in parallel
     let sync_scope = vec!["client".to_string(), "preferences".to_string(), "sync".to_string()];
     let base_scope = vec!["client".to_string(), "base".to_string()];
-    let (sync_res, base_res) = tokio::join!(
+    let (sync_res, base_res, meta_res) = tokio::join!(
         client.get_registry_all(&host, &token, &sync_scope),
         client.get_registry_all(&host, &token, &base_scope),
+        client.get_meta(&host, &token),
     );
 
-    // Apply sync results (higher priority)
+    // Apply sync results (highest priority)
     if let Ok(Some(data)) = sync_res {
         if let Some(dark) = data.get("default:darkTheme") {
             result["syncDark"] = dark.clone();
@@ -758,14 +813,14 @@ pub async fn api_fetch_account_theme(
         }
     }
 
-    // 3. Fall back to server defaults from /api/meta
+    // Fall back to server defaults from /api/meta
     let has_any = result.get("syncDark").is_some()
         || result.get("syncLight").is_some()
         || result.get("baseDark").is_some()
         || result.get("baseLight").is_some();
 
     if !has_any {
-        if let Ok(meta) = client.get_meta(&host, &token).await {
+        if let Ok(meta) = meta_res {
             if let Some(dark) = meta.get("defaultDarkTheme") {
                 result["metaDark"] = dark.clone();
             }

@@ -9,9 +9,9 @@ export function useTheme(): void {
   watch(
     () => accountsStore.accounts,
     (accounts) => {
-      for (const acc of accounts) {
-        themeStore.fetchAccountTheme(acc.id)
-      }
+      Promise.all(
+        accounts.map((acc) => themeStore.fetchAccountTheme(acc.id)),
+      ).catch(() => {})
     },
     { immediate: true },
   )

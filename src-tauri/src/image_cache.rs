@@ -28,14 +28,18 @@ struct MemEntry {
     inserted_at: Instant,
 }
 
+struct MemCacheState {
+    entries: HashMap<String, MemEntry>,
+    total_size: usize,
+}
+
 pub struct ImageCache {
     cache_dir: PathBuf,
     inflight: Arc<Mutex<InflightMap>>,
     http_client: reqwest::Client,
     fetch_semaphore: Arc<Semaphore>,
     negative_cache: Arc<Mutex<HashMap<String, Instant>>>,
-    mem_cache: Arc<Mutex<HashMap<String, MemEntry>>>,
-    mem_cache_size: Arc<Mutex<usize>>,
+    mem_cache: Arc<Mutex<MemCacheState>>,
 }
 
 impl ImageCache {
@@ -58,8 +62,10 @@ impl ImageCache {
             http_client,
             fetch_semaphore: Arc::new(Semaphore::new(MAX_CONCURRENT_FETCHES)),
             negative_cache: Arc::new(Mutex::new(HashMap::new())),
-            mem_cache: Arc::new(Mutex::new(HashMap::new())),
-            mem_cache_size: Arc::new(Mutex::new(0)),
+            mem_cache: Arc::new(Mutex::new(MemCacheState {
+                entries: HashMap::new(),
+                total_size: 0,
+            })),
         }
     }
 
@@ -75,7 +81,7 @@ impl ImageCache {
         // L1: Memory cache (fastest path)
         {
             let mem = self.mem_cache.lock().await;
-            if let Some(entry) = mem.get(&hash) {
+            if let Some(entry) = mem.entries.get(&hash) {
                 if entry.inserted_at.elapsed() < CACHE_TTL {
                     return Ok(CacheEntry {
                         path: data_path.clone(),
@@ -146,29 +152,29 @@ impl ImageCache {
         result
     }
 
-    fn check_cache_sync(&self, meta_path: &Path, data_path: &Path) -> Option<(String, Vec<u8>)> {
-        if !data_path.exists() || !meta_path.exists() {
-            return None;
-        }
-
-        let meta = data_path.metadata().ok()?;
-        let modified = meta.modified().ok()?;
-        if SystemTime::now().duration_since(modified).unwrap_or_default() > CACHE_TTL {
-            return None;
-        }
-
-        let content_type = std::fs::read_to_string(meta_path).ok()?;
-        let bytes = std::fs::read(data_path).ok()?;
-        Some((content_type, bytes))
-    }
-
     async fn check_cache(
         &self,
         hash: &str,
         meta_path: &Path,
         data_path: &Path,
     ) -> Option<CacheEntry> {
-        let (content_type, bytes) = self.check_cache_sync(meta_path, data_path)?;
+        let meta_path_owned = meta_path.to_path_buf();
+        let data_path_owned = data_path.to_path_buf();
+        let (content_type, bytes) = tokio::task::spawn_blocking(move || {
+            if !data_path_owned.exists() || !meta_path_owned.exists() {
+                return None;
+            }
+            let meta = data_path_owned.metadata().ok()?;
+            let modified = meta.modified().ok()?;
+            if SystemTime::now().duration_since(modified).unwrap_or_default() > CACHE_TTL {
+                return None;
+            }
+            let content_type = std::fs::read_to_string(&meta_path_owned).ok()?;
+            let bytes = std::fs::read(&data_path_owned).ok()?;
+            Some((content_type, bytes))
+        })
+        .await
+        .ok()??;
         let data_path = data_path.to_path_buf();
 
         // Promote small files to memory cache
@@ -188,14 +194,13 @@ impl ImageCache {
     }
 
     async fn insert_mem_cache(&self, hash: &str, data: &Arc<Vec<u8>>, content_type: &str) {
-        let mut mem = self.mem_cache.lock().await;
-        let mut total = self.mem_cache_size.lock().await;
-        if *total + data.len() > MEMORY_CACHE_MAX_TOTAL {
-            mem.clear();
-            *total = 0;
+        let mut state = self.mem_cache.lock().await;
+        if state.total_size + data.len() > MEMORY_CACHE_MAX_TOTAL {
+            state.entries.clear();
+            state.total_size = 0;
         }
-        *total += data.len();
-        mem.insert(
+        state.total_size += data.len();
+        state.entries.insert(
             hash.to_string(),
             MemEntry {
                 data: data.clone(),
@@ -269,10 +274,21 @@ impl ImageCache {
             return Err("File too large".to_string());
         }
 
-        // Write cache files
-        std::fs::write(data_path, &bytes).map_err(|e| format!("Write failed: {e}"))?;
-        std::fs::write(meta_path, &content_type)
-            .map_err(|e| format!("Meta write failed: {e}"))?;
+        // Write cache files asynchronously
+        {
+            let data_path = data_path.to_path_buf();
+            let meta_path = meta_path.to_path_buf();
+            let bytes_clone = bytes.clone();
+            let ct = content_type.clone();
+            tokio::task::spawn_blocking(move || {
+                if let Err(e) = std::fs::write(&data_path, &bytes_clone) {
+                    eprintln!("[image_cache] write failed: {e}");
+                }
+                if let Err(e) = std::fs::write(&meta_path, &ct) {
+                    eprintln!("[image_cache] meta write failed: {e}");
+                }
+            });
+        }
 
         // Evict old entries if cache is too large
         self.maybe_evict();
@@ -295,7 +311,7 @@ impl ImageCache {
 
     fn maybe_evict(&self) {
         let cache_dir = self.cache_dir.clone();
-        std::thread::spawn(move || {
+        tokio::task::spawn_blocking(move || {
             let mut entries: Vec<(PathBuf, SystemTime, u64)> = Vec::new();
             let mut total_size: u64 = 0;
 

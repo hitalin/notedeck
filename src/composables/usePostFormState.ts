@@ -222,7 +222,7 @@ export function usePostFormState(
         })
       }
       posted.value = true
-      setTimeout(() => callbacks.onPosted(props.editNote?.id), 500)
+      callbacks.onPosted(props.editNote?.id)
     } catch (e) {
       error.value = AppError.from(e).message
     } finally {
@@ -243,16 +243,17 @@ export function usePostFormState(
     error.value = null
 
     try {
-      for (const file of files) {
+      const uploadPromises = Array.from(files).map(async (file) => {
         const buffer = await file.arrayBuffer()
         const data = Array.from(new Uint8Array(buffer))
-        const uploaded = await adapter.api.uploadFile(
+        return adapter!.api.uploadFile(
           file.name,
           data,
           file.type || 'application/octet-stream',
         )
-        attachedFiles.value = [...attachedFiles.value, uploaded]
-      }
+      })
+      const uploaded = await Promise.all(uploadPromises)
+      attachedFiles.value = [...attachedFiles.value, ...uploaded]
     } catch (e) {
       error.value = AppError.from(e).message
     } finally {

@@ -617,7 +617,12 @@ async fn ws_loop(
             msg = read.next() => {
                 match msg {
                     Some(Ok(Message::Text(text))) => {
-                        handle_ws_message(app, account_id, &text, subscriptions).await;
+                        let app = app.clone();
+                        let account_id = account_id.to_string();
+                        let subscriptions = subscriptions.clone();
+                        tokio::spawn(async move {
+                            handle_ws_message(&app, &account_id, &text, &subscriptions).await;
+                        });
                     }
                     Some(Ok(Message::Ping(data))) => {
                         let mut w = write.lock().await;
