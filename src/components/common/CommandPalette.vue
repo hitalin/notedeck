@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { createCliHandlers } from '@/commands/cliHandlers'
+import { CLI_COMMAND_META, parseCliInput } from '@/commands/cliParser'
 import type { Command } from '@/commands/registry'
 import { useCommandStore } from '@/commands/registry'
+import { useNavigation } from '@/composables/useNavigation'
+import { useAccountsStore } from '@/stores/accounts'
+import { useDeckStore } from '@/stores/deck'
 import { fuzzyMatch } from '@/utils/fuzzyMatch'
 import { shortcutLabel } from '@/utils/shortcutLabel'
 
@@ -9,6 +14,15 @@ const commandStore = useCommandStore()
 const query = ref('')
 const selectedIndex = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
+
+const cliMatch = computed(() => parseCliInput(query.value))
+
+const cliHandlers = createCliHandlers({
+  deckStore: useDeckStore(),
+  accountsStore: useAccountsStore(),
+  navigateToNote: useNavigation().navigateToNote,
+  toggleAccountMenu: () => commandStore.execute('account-menu'),
+})
 
 interface CommandGroup {
   category: string
@@ -59,19 +73,31 @@ const flatList = computed(() => filteredGroups.value.flatMap((g) => g.commands))
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'ArrowDown') {
     e.preventDefault()
-    selectedIndex.value = Math.min(
-      selectedIndex.value + 1,
-      flatList.value.length - 1,
-    )
+    if (!cliMatch.value) {
+      selectedIndex.value = Math.min(
+        selectedIndex.value + 1,
+        flatList.value.length - 1,
+      )
+    }
   } else if (e.key === 'ArrowUp') {
     e.preventDefault()
-    selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
+    if (!cliMatch.value) {
+      selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
+    }
   } else if (e.key === 'Enter') {
     e.preventDefault()
-    const cmd = flatList.value[selectedIndex.value]
-    if (cmd) {
+    if (cliMatch.value) {
+      const { name, args } = cliMatch.value
+      const meta = CLI_COMMAND_META[name]
+      if (meta.needsArgs && !args.trim()) return
       commandStore.close()
-      cmd.execute()
+      cliHandlers[name](args)
+    } else {
+      const cmd = flatList.value[selectedIndex.value]
+      if (cmd) {
+        commandStore.close()
+        cmd.execute()
+      }
     }
   } else if (e.key === 'Escape') {
     e.preventDefault()
@@ -92,9 +118,22 @@ watch(
   () => commandStore.isOpen,
   (open) => {
     if (open) {
-      query.value = ''
+      if (commandStore.initialInput) {
+        query.value = commandStore.initialInput
+        commandStore.initialInput = null
+      } else {
+        query.value = ''
+      }
       selectedIndex.value = 0
-      nextTick(() => inputRef.value?.focus())
+      nextTick(() => {
+        inputRef.value?.focus()
+        if (query.value) {
+          inputRef.value?.setSelectionRange(
+            query.value.length,
+            query.value.length,
+          )
+        }
+      })
     }
   },
 )
@@ -120,7 +159,31 @@ function primaryShortcut(cmd: Command): string | null {
         />
         <kbd class="palette-esc">Esc</kbd>
       </div>
-      <div v-if="flatList.length" class="palette-list">
+      <!-- CLI mode -->
+      <div v-if="cliMatch" class="palette-cli">
+        <div class="palette-cli-row">
+          <i
+            :class="'ti ti-' + CLI_COMMAND_META[cliMatch.name].icon"
+            class="palette-item-icon"
+          />
+          <span
+            v-if="CLI_COMMAND_META[cliMatch.name].needsArgs && !cliMatch.args.trim()"
+            class="palette-cli-hint"
+          >
+            {{ CLI_COMMAND_META[cliMatch.name].usage }}
+          </span>
+          <span v-else class="palette-cli-action">
+            ↵ Enter to run:
+            <strong>{{ cliMatch.name }}</strong>
+            {{ cliMatch.args }}
+          </span>
+        </div>
+        <div class="palette-cli-desc">
+          {{ CLI_COMMAND_META[cliMatch.name].description }}
+        </div>
+      </div>
+      <!-- Normal command list -->
+      <div v-else-if="flatList.length" class="palette-list">
         <template v-for="group in filteredGroups" :key="group.category">
           <div class="palette-category">{{ group.label }}</div>
           <button
@@ -279,5 +342,34 @@ function primaryShortcut(cmd: Command): string | null {
   color: var(--nd-fg);
   opacity: 0.4;
   font-size: 13px;
+}
+
+.palette-cli {
+  padding: 12px 14px;
+}
+
+.palette-cli-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--nd-fg);
+}
+
+.palette-cli-hint {
+  opacity: 0.5;
+  font-family: monospace;
+}
+
+.palette-cli-action strong {
+  color: var(--nd-accent);
+}
+
+.palette-cli-desc {
+  margin-top: 6px;
+  padding-left: 30px;
+  font-size: 12px;
+  color: var(--nd-fg);
+  opacity: 0.45;
 }
 </style>

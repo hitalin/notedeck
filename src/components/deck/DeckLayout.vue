@@ -11,6 +11,7 @@ import {
   registerDefaultCommands,
   unregisterDefaultCommands,
 } from '@/commands/definitions'
+import { useCommandStore } from '@/commands/registry'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
@@ -51,6 +52,7 @@ const router = useRouter()
 const { navigateToNote, navigateToUser } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
+const commandStore = useCommandStore()
 // Pre-build column lookup map to avoid O(n) find per column per render
 const columnMap = computed(() => {
   const map = new Map<string, DeckColumn>()
@@ -92,6 +94,7 @@ function toggleAddMenu() {
 }
 
 let handleResizeRef: (() => void) | null = null
+let unlistenQuickNote: (() => void) | null = null
 
 // Mobile: track active column for tab bar
 const activeColumnIndex = ref(0)
@@ -205,6 +208,15 @@ onMounted(() => {
   handleResizeRef = () => navbarRef.value?.handleResize()
   window.addEventListener('resize', handleResizeRef)
   document.addEventListener('visibilitychange', onVisibilityChange)
+
+  // Quick Note: global hotkey (Ctrl+Alt+N) opens palette with "post " prefilled
+  import('@tauri-apps/api/event').then(({ listen }) => {
+    listen('nd:quick-note', () => {
+      commandStore.openWithInput('post ')
+    }).then((fn) => {
+      unlistenQuickNote = fn
+    })
+  })
 })
 
 onUnmounted(() => {
@@ -212,6 +224,7 @@ onUnmounted(() => {
   unregisterDefaultCommands()
   if (handleResizeRef) window.removeEventListener('resize', handleResizeRef)
   document.removeEventListener('visibilitychange', onVisibilityChange)
+  unlistenQuickNote?.()
 })
 
 function onVisibilityChange() {

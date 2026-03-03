@@ -31,6 +31,7 @@ export interface Command {
 export const useCommandStore = defineStore('commands', () => {
   const commands = ref(new Map<string, Command>())
   const isOpen = ref(false)
+  const initialInput = ref<string | null>(null)
 
   function register(command: Command) {
     commands.value.set(command.id, command)
@@ -57,6 +58,11 @@ export const useCommandStore = defineStore('commands', () => {
     isOpen.value = true
   }
 
+  function openWithInput(text: string) {
+    initialInput.value = text
+    isOpen.value = true
+  }
+
   function close() {
     isOpen.value = false
   }
@@ -68,11 +74,13 @@ export const useCommandStore = defineStore('commands', () => {
   return {
     commands,
     isOpen,
+    initialInput,
     register,
     unregister,
     getEnabled,
     execute,
     open,
+    openWithInput,
     close,
     toggle,
   }

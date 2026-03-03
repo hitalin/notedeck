@@ -1,3 +1,4 @@
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useCommandStore } from '@/commands/registry'
 import type { NoteAction } from '@/composables/useNoteFocus'
 
@@ -71,6 +72,15 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     category: 'navigation',
     shortcuts: [],
     execute: handlers.toggleNav,
+  })
+
+  commandStore.register({
+    id: 'boss-key',
+    label: 'Hide Window',
+    icon: 'eye-off',
+    category: 'general',
+    shortcuts: [{ key: 'b', ctrl: true, shift: true, scope: 'global' }],
+    execute: () => getCurrentWindow().hide(),
   })
 
   commandStore.register({
@@ -164,6 +174,7 @@ export function unregisterDefaultCommands() {
   for (const id of [
     'command-palette',
     'compose',
+    'boss-key',
     'add-column',
     'toggle-sidebar',
     'account-menu',

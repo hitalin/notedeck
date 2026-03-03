@@ -3,9 +3,11 @@ use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 #[cfg(not(mobile))]
 use tauri_plugin_autostart::MacosLauncher;
+#[cfg(not(mobile))]
+use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 mod commands;
 mod http_server;
@@ -152,6 +154,35 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         tauri::async_runtime::spawn(async move {
             http_server::start(app_handle, api_token, token_path_str, image_cache).await;
         });
+
+        // Global shortcuts (desktop only)
+        #[cfg(not(mobile))]
+        {
+            use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut as GShortcut};
+
+            // Boss Key: Ctrl+Shift+B — toggle window visibility
+            let boss_key = GShortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyB);
+            app.global_shortcut().on_shortcut(boss_key, |app: &tauri::AppHandle, _, _| {
+                if let Some(w) = app.get_webview_window("main") {
+                    if w.is_visible().unwrap_or(false) {
+                        let _ = w.hide();
+                    } else {
+                        let _ = w.show();
+                        let _ = w.set_focus();
+                    }
+                }
+            })?;
+
+            // Quick Note: Ctrl+Alt+N — show window + emit event for post mode
+            let quick_note = GShortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyN);
+            app.global_shortcut().on_shortcut(quick_note, |app: &tauri::AppHandle, _, _| {
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                    let _ = w.emit("nd:quick-note", ());
+                }
+            })?;
+        }
 
         // System tray (desktop only)
         #[cfg(not(mobile))]
