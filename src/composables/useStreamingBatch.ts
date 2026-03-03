@@ -14,8 +14,11 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   const MAX_NOTES = options.maxNotes ?? 500
   const pendingNotes = shallowRef<NormalizedNote[]>([])
   const isAtTop = ref(true)
+  const unreadCount = ref(0)
   let rafBuffer: NormalizedNote[] = []
   let rafId: number | null = null
+  let _lastReadNoteId: string | null = null
+  let _paused = false
 
   let forceUpdateTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -33,6 +36,32 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   function syncNoteIds() {
     options.noteIds.clear()
     for (const n of options.notes.value) options.noteIds.add(n.id)
+  }
+
+  function recalcUnread() {
+    if (!_lastReadNoteId) {
+      unreadCount.value = 0
+      return
+    }
+    const pending = pendingNotes.value.length
+    const idx = options.notes.value.findIndex(
+      (n) => n.id === _lastReadNoteId,
+    )
+    if (idx < 0) {
+      // lastReadNoteId not in current list — all notes + pending are unread
+      unreadCount.value = pending + options.notes.value.length
+    } else {
+      unreadCount.value = pending + idx
+    }
+  }
+
+  function setLastReadNoteId(id: string | null) {
+    _lastReadNoteId = id
+    recalcUnread()
+  }
+
+  function setPaused(paused: boolean) {
+    _paused = paused
   }
 
   function flushRafBuffer() {
@@ -53,9 +82,11 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       pendingNotes.value =
         merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
     }
+    recalcUnread()
   }
 
   function enqueueNote(note: NormalizedNote) {
+    if (_paused) return
     rafBuffer.push(note)
     if (rafId === null) {
       rafId = requestAnimationFrame(flushRafBuffer)
@@ -78,6 +109,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     if (merged.length > MAX_NOTES) syncNoteIds()
     pendingNotes.value = []
     scheduleForceUpdate()
+    recalcUnread()
   }
 
   function handleScroll() {
@@ -111,6 +143,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     }
     pendingNotes.value = []
     isAtTop.value = true
+    unreadCount.value = 0
   }
 
   onScopeDispose(resetBatch)
@@ -118,10 +151,13 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   return {
     pendingNotes,
     isAtTop,
+    unreadCount,
     enqueueNote,
     flushPending,
     handleScroll,
     scrollToTop,
     resetBatch,
+    setLastReadNoteId,
+    setPaused,
   }
 }

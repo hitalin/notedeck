@@ -28,6 +28,7 @@ import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useNoteList } from '@/composables/useNoteList'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
+import { useTimeMachine } from '@/composables/useTimeMachine'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -77,10 +78,13 @@ const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } =
 const noteSound = useNoteSound(() => account.value?.host)
 const {
   pendingNotes,
+  isAtTop,
   enqueueNote,
   handleScroll: batchHandleScroll,
   scrollToTop,
   resetBatch,
+  setLastReadNoteId,
+  setPaused,
 } = useStreamingBatch({
   notes,
   noteIds,
@@ -99,6 +103,61 @@ const { focusedNoteId } = useNoteFocus(
 )
 
 const tlType = ref<TimelineType>(props.column.tl || 'home')
+
+// --- Unread management ---
+// Restore lastReadNoteId from saved column state
+if (props.column.lastReadNoteId) {
+  setLastReadNoteId(props.column.lastReadNoteId)
+}
+
+// Auto-update lastReadNoteId when user is at top
+watch(
+  () => isAtTop.value && notes.value[0]?.id,
+  (topId) => {
+    if (topId && isAtTop.value && !timeMachine.isActive.value) {
+      setLastReadNoteId(topId as string)
+      deckStore.updateColumn(props.column.id, {
+        lastReadNoteId: topId as string,
+      })
+    }
+  },
+)
+
+// --- Time Machine ---
+const timeMachine = useTimeMachine(
+  () => props.column.accountId ?? undefined,
+  () => tlType.value,
+)
+
+async function toggleTimeMachine() {
+  if (timeMachine.isActive.value) {
+    exitTimeMachine()
+  } else {
+    await timeMachine.loadDateRange()
+    if (timeMachine.dateRange.value) {
+      setPaused(true)
+      const cached = await timeMachine.jumpToDate(
+        timeMachine.dateRange.value.max.slice(0, 10),
+      )
+      setNotes(cached)
+    }
+  }
+}
+
+async function onTimeMachineDateChange(e: Event) {
+  const target = e.target as HTMLInputElement
+  const cached = await timeMachine.jumpToDate(target.value)
+  setNotes(cached)
+  scrollToTop()
+}
+
+function exitTimeMachine() {
+  timeMachine.deactivate()
+  setPaused(false)
+  resetBatch()
+  setNotes([])
+  connect(true)
+}
 
 // Tab slide indicator
 const tabsRef = ref<HTMLElement | null>(null)
@@ -368,6 +427,8 @@ async function refreshPolicies() {
 
 async function switchTl(type: TimelineType) {
   if (type === tlType.value) return
+  if (timeMachine.isActive.value) timeMachine.deactivate()
+  setPaused(false)
   disconnect()
   resetBatch()
   isLoading.value = true
@@ -379,10 +440,28 @@ async function switchTl(type: TimelineType) {
 }
 
 async function loadMore() {
-  const adapter = getAdapter()
-  if (!adapter || isLoading.value || notes.value.length === 0) return
+  if (isLoading.value || notes.value.length === 0) return
   const lastNote = notes.value.at(-1)
   if (!lastNote) return
+
+  // Time machine mode: load from local cache
+  if (timeMachine.isActive.value) {
+    isLoading.value = true
+    try {
+      const older = await timeMachine.loadMoreBefore(lastNote.createdAt)
+      const filtered = older.filter((n) => n.id !== lastNote.id)
+      if (filtered.length > 0) setNotes([...notes.value, ...filtered])
+    } catch (e) {
+      error.value = AppError.from(e)
+    } finally {
+      isLoading.value = false
+    }
+    return
+  }
+
+  // Normal mode: load from server
+  const adapter = getAdapter()
+  if (!adapter) return
   isLoading.value = true
   try {
     const filters = columnFilters.value
@@ -422,6 +501,8 @@ async function onResume() {
   const now = Date.now()
   if (now - lastResumeAt < 3000) return
   lastResumeAt = now
+
+  if (timeMachine.isActive.value) return
 
   const adapter = getAdapter()
   if (!adapter || !account.value) return
@@ -492,10 +573,12 @@ onUnmounted(() => {
     @header-click="scrollToTop()"
   >
     <template #header-icon>
-      <i v-if="isTablerIcon(currentTlIcon)" :class="'ti ti-' + currentTlIcon" class="tl-header-icon" />
-      <svg v-else class="tl-header-icon" viewBox="0 0 24 24" width="14" height="14">
-        <path :d="currentTlIcon" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-      </svg>
+      <span class="tl-header-icon-wrap">
+        <i v-if="isTablerIcon(currentTlIcon)" :class="'ti ti-' + currentTlIcon" class="tl-header-icon" />
+        <svg v-else class="tl-header-icon" viewBox="0 0 24 24" width="14" height="14">
+          <path :d="currentTlIcon" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+        </svg>
+      </span>
     </template>
 
     <template #header-meta>
@@ -531,7 +614,30 @@ onUnmounted(() => {
         >
           <i class="ti ti-filter" />
         </button>
+        <button
+          class="_button tl-tab tl-timemachine-btn"
+          :class="{ active: timeMachine.isActive.value }"
+          title="Time Machine"
+          @click.stop="toggleTimeMachine"
+        >
+          <i class="ti ti-clock-rewind" />
+        </button>
         <div class="tl-tab-indicator" :style="tabIndicatorStyle" />
+      </div>
+
+      <div v-if="timeMachine.isActive.value" class="time-machine-bar">
+        <i class="ti ti-clock-rewind" />
+        <input
+          type="date"
+          class="time-machine-date"
+          :value="timeMachine.targetDate.value"
+          :min="timeMachine.dateRange.value?.min?.slice(0, 10)"
+          :max="timeMachine.dateRange.value?.max?.slice(0, 10)"
+          @change="onTimeMachineDateChange"
+        />
+        <button class="_button time-machine-live" @click="exitTimeMachine">
+          <i class="ti ti-live-photo" /> Live
+        </button>
       </div>
     </template>
 
@@ -557,6 +663,10 @@ onUnmounted(() => {
           {{ pendingNotes.length }} new notes
         </button>
 
+        <div v-if="notes.length === 0 && timeMachine.isActive.value" class="column-empty">
+          No cached notes for this date
+        </div>
+
         <DynamicScroller
           ref="scroller"
           class="tl-scroller"
@@ -572,6 +682,12 @@ onUnmounted(() => {
             :active="active"
             :data-index="index"
           >
+            <div
+              v-if="!timeMachine.isActive.value && column.lastReadNoteId && item.id === column.lastReadNoteId && index > 0"
+              class="unread-line"
+            >
+              <span class="unread-line-label">New</span>
+            </div>
             <MkNote
               :note="item"
               :focused="item.id === focusedNoteId"
@@ -694,6 +810,74 @@ onUnmounted(() => {
 
 .tl-filter-btn.active {
   color: var(--nd-accent);
+}
+
+.tl-timemachine-btn.active {
+  color: var(--nd-accent);
+}
+
+.tl-header-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+
+.unread-line {
+  height: 2px;
+  background: var(--nd-accent);
+  margin: 0 12px;
+  position: relative;
+}
+
+.unread-line-label {
+  position: absolute;
+  right: 0;
+  top: -10px;
+  font-size: 0.65em;
+  color: var(--nd-accent);
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.time-machine-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--nd-accentedBg);
+  border-bottom: 1px solid var(--nd-divider);
+  font-size: 0.85em;
+  color: var(--nd-accent);
+}
+
+.time-machine-date {
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  border: 1px solid var(--nd-divider);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.9em;
+  flex: 1;
+  min-width: 0;
+}
+
+.time-machine-live {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--nd-accent);
+  color: #fff;
+  font-size: 0.85em;
+  font-weight: bold;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.time-machine-live:hover {
+  opacity: 0.85;
 }
 </style>
 

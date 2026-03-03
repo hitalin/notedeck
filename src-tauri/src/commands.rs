@@ -748,6 +748,36 @@ pub fn api_search_notes_local(
     db.search_cached_notes(&account_id, &query, limit.unwrap_or(30).clamp(1, 200))
 }
 
+#[tauri::command]
+pub fn api_get_cached_timeline_before(
+    db: State<'_, Arc<Database>>,
+    account_id: String,
+    timeline_type: String,
+    before: String,
+    limit: Option<i64>,
+) -> Result<Vec<NormalizedNote>> {
+    if before.len() > 30 {
+        return Err(NoteDeckError::InvalidInput(
+            "Invalid date".to_string(),
+        ));
+    }
+    db.get_cached_timeline_before(
+        &account_id,
+        &timeline_type,
+        &before,
+        limit.unwrap_or(40).clamp(1, 200),
+    )
+}
+
+#[tauri::command]
+pub fn api_get_cache_date_range(
+    db: State<'_, Arc<Database>>,
+    account_id: String,
+    timeline_type: String,
+) -> Result<Option<(String, String)>> {
+    db.get_cache_date_range(&account_id, &timeline_type)
+}
+
 // --- Generic API proxy ---
 
 #[tauri::command]

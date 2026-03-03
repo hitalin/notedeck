@@ -43,6 +43,7 @@ export interface DeckColumn {
   userId?: string
   widgets?: WidgetConfig[]
   soundMuted?: boolean
+  lastReadNoteId?: string
 }
 
 let columnCounter = 0
