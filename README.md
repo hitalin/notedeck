@@ -21,10 +21,13 @@
 ## 特徴
 
 - **マルチサーバー** — 複数の Misskey 互換サーバーに同時ログイン。Sharkey・CherryPick などのフォークにも対応
-- **デッキ UI** — カラムをドラッグ＆ドロップで自由に配置。タイムライン、通知、検索を一画面に
-- **リアルタイム更新** — タイムラインと通知がリアルタイムに反映。自動再接続対応
+- **デッキ UI** — 14 種のカラム（TL・通知・検索・リスト・アンテナ・チャット等）をドラッグ＆ドロップで自由に配置
+- **ローカル全文検索** — SQLite FTS5 でノートを無期限キャッシュ。オフラインでも閲覧・検索可能
+- **キーボード操作** — Vim ライクな TL 操作（j/k/e/r/q）、コマンドパレット（Ctrl+K）、グローバルホットキー
 - **サーバーテーマ自動適用** — サーバーごとのテーマカラーをカラムに反映し、アカウントを一目で識別
-- **カスタム絵文字 & リアクション** — サーバー固有の絵文字とリアクションを完全サポート
+- **カスタム絵文字 & MFM** — サーバー固有の絵文字・リアクションと MFM アニメーションを完全サポート
+- **HTTP API** — `localhost:19820` で外部ツールや AI エージェントから操作可能（SSE イベントストリーム対応）
+- **AiScript** — Misskey Play 互換のスクリプト実行環境をウィジェットカラムに内蔵
 
 ## ダウンロード
 
@@ -32,10 +35,10 @@
 
 | OS | ファイル |
 |---|---|
-| Windows | `NoteDeck-x.x.x-windows-x64.zip` |
-| macOS | `NoteDeck-x.x.x-macos-universal.zip` |
-| Linux | `NoteDeck-x.x.x-linux-x64.tar.gz` |
-| Android (GrapheneOS) | `NoteDeck-x.x.x-android.apk` |
+| Windows | `.exe` (NSIS インストーラー) |
+| macOS | `.dmg` (Universal: Apple Silicon + Intel) |
+| Linux | `.deb` / `.AppImage` |
+| Android (GrapheneOS) | `.apk` |
 
 > スマートフォンで Misskey を使いたい場合は [Aria](https://github.com/poppingmoon/aria) がおすすめです。
 

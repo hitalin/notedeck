@@ -1,37 +1,6 @@
-# notedeck
+# NoteDeck Development Guide
 
 Multi-server Misskey deck client for desktop.
-
-Connect to multiple Misskey-compatible servers in one deck UI. Runs as a native desktop app (Windows / macOS / Linux) via Tauri v2. An Android APK is also available for custom ROMs (GrapheneOS).
-
-## Features
-
-- **Multi-server** - Connect to multiple Misskey-compatible servers simultaneously
-- **Multi-platform** - Desktop (Windows / macOS / Linux), Android APK (GrapheneOS)
-- **Deck UI** - TweetDeck-style multi-column layout with drag & drop reordering
-- **Real-time streaming** - WebSocket streaming with auto-reconnect (Rust backend)
-- **Notifications** - Dedicated notification column with real-time updates
-- **Per-account themes** - Fetches and applies each account's server theme
-- **Custom emoji** - Full support for server-specific custom emoji
-- **Fork support** - Extensible adapter pattern for Misskey forks (Sharkey, CherryPick, etc.)
-
-## Platforms
-
-| Platform | Method | Status |
-|----------|--------|--------|
-| Windows | Tauri v2 | Available |
-| macOS | Tauri v2 | Available |
-| Linux | Tauri v2 | Available |
-| Android (GrapheneOS) | Tauri v2 | Available |
-
-> **Note:** NoteDeck is a desktop-focused application. The Android APK is provided for custom ROMs such as GrapheneOS. Official Android (Google Play) and iOS are not supported.
->
-> **Why no official Android / iOS?**
-> - **iOS** — Requires App Store review, Apple Developer Program ($99/year), and a Mac for building. The ongoing cost and effort are not sustainable for an individual developer.
-> - **Official Android** — Google's upcoming [Android Developer Verification](https://keepandroidopen.org/) (September 2026) will block installation of apps from unregistered developers, eliminating the advantage of direct APK distribution.
-> - **GrapheneOS** — As a custom ROM independent of Google Play Services (GMS), it is unaffected by the above restrictions and can freely sideload APKs.
->
-> For a mobile Misskey client, we recommend [Aria](https://github.com/poppingmoon/aria).
 
 ## Tech Stack
 
@@ -41,11 +10,14 @@ Connect to multiple Misskey-compatible servers in one deck UI. Runs as a native 
 | Backend | Rust (Tauri v2) + [notecli](https://github.com/hitalin/notecli) |
 | Build | Vite + Cargo |
 | State | Pinia |
-| Local DB | SQLite (rusqlite, WAL mode) |
+| Local DB | SQLite (rusqlite, WAL mode, FTS5) |
 | HTTP | reqwest (Rust, via notecli) |
 | WebSocket | tokio-tungstenite (Rust, via notecli) |
+| HTTP API | Axum (localhost:19820) |
+| Script | AiScript (@syuilo/aiscript) |
+| Editor | CodeMirror 6 |
 | Linter | Biome |
-| Test | Vitest |
+| Test | Vitest + jsdom |
 
 ## Getting Started
 
@@ -97,25 +69,33 @@ src/                        # Vue 3 frontend
 │   ├── types.ts            # Shared interfaces (ServerAdapter, ApiAdapter, StreamAdapter)
 │   ├── registry.ts         # Adapter factory
 │   └── misskey/            # Misskey implementation (IPC via invoke/listen)
+├── aiscript/               # AiScript runtime & Misskey Play API
+├── commands/               # Command registry, definitions, CLI handlers
 ├── components/             # Vue components
-│   ├── common/             # MkNote, MkPostForm, MkEmoji, etc.
-│   └── deck/               # DeckLayout, DeckColumn, DeckTimelineColumn
-├── stores/                 # Pinia stores (accounts, deck, servers, emojis, theme, etc.)
-├── views/                  # Page components (NoteDetail, UserProfile)
+│   ├── common/             # MkNote, MkPostForm, MkEmoji, CommandPalette, etc.
+│   └── deck/               # DeckLayout, DeckColumn, 14 column types
+├── composables/            # Vue composables (useNoteFocus, useTimeMachine, etc.)
 ├── core/                   # Business logic (server detection)
-├── composables/            # Vue composables (useTheme, etc.)
-├── theme/                  # Theme compiler & applier
-└── utils/                  # Shared utilities
+├── data/                   # Static data & constants
+├── router/                 # Vue Router definitions
+├── stores/                 # Pinia stores (accounts, deck, servers, emojis, theme, etc.)
+├── styles/                 # Global CSS
+├── theme/                  # Misskey-compatible theme compiler & applier
+├── utils/                  # Shared utilities
+└── views/                  # Page components (NoteDetail, UserProfile)
 
 src-tauri/src/              # Rust backend (Tauri 固有部分)
-├── commands.rs             # Tauri IPC command handlers
-├── streaming.rs            # StreamingManager (Tauri AppHandle → FrontendEmitter)
-├── http_server.rs          # HTTP API server (notecli API + query_bridge)
-├── query_bridge.rs         # Frontend → HTTP API ブリッジ
-└── lib.rs                  # App setup (tray, plugins, state)
+├── lib.rs                  # App setup (tray, plugins, state)
+├── commands.rs             # Tauri IPC command handlers (notecli 呼び出し)
+├── http_server.rs          # Axum HTTP API server (localhost:19820)
+├── image_cache.rs          # 3-tier image cache (memory → disk → network)
+├── ogp.rs                  # OGP metadata extraction & cache
+├── streaming.rs            # TauriEmitter adapter (FrontendEmitter trait impl)
+├── query_bridge.rs         # HTTP API ↔ frontend (Pinia) bridge
+└── main.rs                 # Entry point
 ```
 
-Misskey API クライアント・DB・モデル・ストリーミングコアなどの共通ロジックは全て `notecli` クレートにあり、`src-tauri/` には Tauri 固有の薄いラッパーのみ残っています。
+Misskey API クライアント・DB・モデル・ストリーミングコアなどの共通ロジックは全て `notecli` クレートにあり、`src-tauri/` には Tauri 固有の薄いラッパー（約 2,800 行）のみ残っています。
 
 ### Adding support for a new fork
 

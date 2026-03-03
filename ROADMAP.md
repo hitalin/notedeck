@@ -251,9 +251,9 @@ NoteDeck は `Cargo.toml` で git 依存として参照している。
 
 | ファイル | 役割 | 行数 |
 |---------|------|------|
-| `lib.rs` | Tauri 初期化・プラグイン・システムトレイ | 216 |
-| `commands.rs` | `#[tauri::command]` IPC ハンドラ（notecli を呼び出し） | 1209 |
-| `streaming.rs` | TauriEmitter アダプタ（notecli の FrontendEmitter trait 実装） | 22 |
+| `lib.rs` | Tauri 初期化・プラグイン・システムトレイ | 256 |
+| `commands.rs` | `#[tauri::command]` IPC ハンドラ（notecli を呼び出し） | 1247 |
+| `streaming.rs` | TauriEmitter アダプタ（notecli の FrontendEmitter trait 実装） | 21 |
 | `http_server.rs` | Axum HTTP API サーバー（localhost:19820） | 643 |
 | `image_cache.rs` | 3 層イメージキャッシュ（メモリ→ディスク→ネットワーク） | 358 |
 | `ogp.rs` | OGP メタデータ抽出＆キャッシュ | 188 |
