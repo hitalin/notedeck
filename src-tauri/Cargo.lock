@@ -2474,7 +2474,7 @@ dependencies = [
 
 [[package]]
 name = "notedeck"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "axum",
  "futures-util",
