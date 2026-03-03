@@ -160,17 +160,6 @@ function tmShiftDay(delta: number) {
   onTimeMachineDateChange(d.toISOString().slice(0, 10))
 }
 
-const tmDateInputRef = ref<HTMLInputElement | null>(null)
-
-function onTmDatePick(e: Event) {
-  const target = e.target as HTMLInputElement
-  if (target.value) onTimeMachineDateChange(target.value)
-}
-
-function blurTmDate() {
-  tmDateInputRef.value?.blur()
-}
-
 function exitTimeMachine() {
   timeMachine.deactivate()
   setPaused(false)
@@ -610,61 +599,53 @@ onUnmounted(() => {
 
     <template #header-extra>
       <div ref="tabsRef" class="tl-tabs">
-        <button
-          v-for="opt in allTlTypes"
-          :key="opt.value"
-          class="_button tl-tab"
-          :class="{ active: tlType === opt.value }"
-          :title="opt.label"
-          @click="switchTl(opt.value)"
-        >
-          <i v-if="isTablerIcon(getTlIcon(opt.value))" :class="'ti ti-' + getTlIcon(opt.value)" class="tl-tab-icon" />
-          <svg v-else class="tl-tab-icon" viewBox="0 0 24 24" width="16" height="16">
-            <path :d="getTlIcon(opt.value)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
-          <span v-if="tlType === opt.value" class="tl-tab-label">{{ opt.label }}</span>
-        </button>
-        <button
-          v-if="availableFilterKeys.length > 0"
-          ref="filterBtnRef"
-          class="_button tl-tab tl-filter-btn"
-          :class="{ active: hasActiveFilter }"
-          title="Filter"
-          @click.stop="toggleFilterMenu"
-        >
-          <i class="ti ti-filter" />
-        </button>
-        <button
-          class="_button tl-tab tl-timemachine-btn"
-          :class="{ active: timeMachine.isActive.value }"
-          title="Time Machine"
-          @click.stop="toggleTimeMachine"
-        >
-          <i class="ti ti-history" />
-        </button>
+        <template v-if="timeMachine.isActive.value">
+          <button class="_button tl-tab" @click="tmShiftDay(-1)">
+            <i class="ti ti-chevron-left tl-tab-icon" />
+          </button>
+          <span class="tl-tab tl-tm-date active">{{ timeMachine.targetDate.value }}</span>
+          <button class="_button tl-tab" @click="tmShiftDay(1)">
+            <i class="ti ti-chevron-right tl-tab-icon" />
+          </button>
+          <button class="_button tl-tab tl-tm-live" @click="exitTimeMachine">
+            <i class="ti ti-live-photo tl-tab-icon" />
+            <span class="tl-tab-label">Live</span>
+          </button>
+        </template>
+        <template v-else>
+          <button
+            v-for="opt in allTlTypes"
+            :key="opt.value"
+            class="_button tl-tab"
+            :class="{ active: tlType === opt.value }"
+            :title="opt.label"
+            @click="switchTl(opt.value)"
+          >
+            <i v-if="isTablerIcon(getTlIcon(opt.value))" :class="'ti ti-' + getTlIcon(opt.value)" class="tl-tab-icon" />
+            <svg v-else class="tl-tab-icon" viewBox="0 0 24 24" width="16" height="16">
+              <path :d="getTlIcon(opt.value)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            </svg>
+            <span v-if="tlType === opt.value" class="tl-tab-label">{{ opt.label }}</span>
+          </button>
+          <button
+            v-if="availableFilterKeys.length > 0"
+            ref="filterBtnRef"
+            class="_button tl-tab tl-filter-btn"
+            :class="{ active: hasActiveFilter }"
+            title="Filter"
+            @click.stop="toggleFilterMenu"
+          >
+            <i class="ti ti-filter" />
+          </button>
+          <button
+            class="_button tl-tab tl-timemachine-btn"
+            title="Time Machine"
+            @click.stop="toggleTimeMachine"
+          >
+            <i class="ti ti-history" />
+          </button>
+        </template>
         <div class="tl-tab-indicator" :style="tabIndicatorStyle" />
-      </div>
-
-      <div v-if="timeMachine.isActive.value" class="time-machine-bar" @click="blurTmDate">
-        <button class="_button time-machine-nav" @click="tmShiftDay(-1)">
-          <i class="ti ti-chevron-left" />
-        </button>
-        <input
-          ref="tmDateInputRef"
-          type="date"
-          class="time-machine-date"
-          :value="timeMachine.targetDate.value"
-          :min="timeMachine.dateRange.value?.min?.slice(0, 10)"
-          :max="timeMachine.dateRange.value?.max?.slice(0, 10)"
-          @click.stop
-          @change="onTmDatePick"
-        />
-        <button class="_button time-machine-nav" @click="tmShiftDay(1)">
-          <i class="ti ti-chevron-right" />
-        </button>
-        <button class="_button time-machine-live" @click="exitTimeMachine">
-          Live
-        </button>
       </div>
     </template>
 
@@ -843,57 +824,14 @@ onUnmounted(() => {
 }
 
 
-.time-machine-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: var(--nd-accentedBg);
-  border-bottom: 1px solid var(--nd-divider);
-  font-size: 0.85em;
-  color: var(--nd-accent);
-}
-
-.time-machine-date {
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  border: 1px solid var(--nd-divider);
-  border-radius: 6px;
-  padding: 2px 6px;
-  font-size: 0.9em;
-  flex: 1;
-  min-width: 0;
-}
-
-.time-machine-nav {
-  display: flex;
-  align-items: center;
-  padding: 2px;
-  border-radius: 4px;
-  color: var(--nd-accent);
-  flex-shrink: 0;
-}
-
-.time-machine-nav:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.time-machine-live {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 6px;
-  background: var(--nd-accent);
-  color: #fff;
-  font-size: 0.85em;
+.tl-tm-date {
   font-weight: bold;
-  white-space: nowrap;
-  flex-shrink: 0;
+  cursor: default;
 }
 
-.time-machine-live:hover {
-  opacity: 0.85;
+.tl-tm-live {
+  margin-left: auto;
+  color: var(--nd-accent);
 }
 </style>
 
