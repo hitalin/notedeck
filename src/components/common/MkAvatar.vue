@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { type CSSProperties, computed, ref, watch } from 'vue'
 import type { AvatarDecoration } from '@/adapters/types'
+import { useLazyImage } from '@/composables/useLazyImage'
 import { proxyUrl } from '@/utils/imageProxy'
 
 const props = withDefaults(
@@ -38,6 +39,8 @@ const avatarSrc = computed(() => {
   return proxyUrl(props.avatarUrl)
 })
 
+const { targetRef, lazySrc, isVisible } = useLazyImage(avatarSrc)
+
 function onAvatarError(e: Event) {
   const img = e.target as HTMLImageElement
   if (!proxyFailed.value && img.src !== props.avatarUrl) {
@@ -63,6 +66,7 @@ const decorationStyles = computed(() =>
 
 <template>
   <div
+    ref="targetRef"
     class="mk-avatar"
     :style="{ width: `${props.size}px`, height: `${props.size}px` }"
     @click="$emit('click', $event)"
@@ -70,22 +74,24 @@ const decorationStyles = computed(() =>
     @mouseleave="$emit('mouseleave', $event)"
   >
     <img
-      v-if="props.avatarUrl"
-      :key="props.avatarUrl"
-      :src="avatarSrc"
+      v-if="lazySrc"
+      :key="props.avatarUrl ?? undefined"
+      :src="lazySrc"
       :alt="props.alt"
       class="avatar-img"
       decoding="async"
       @error="onAvatarError"
     />
     <div v-else class="avatar-img avatar-placeholder" />
-    <img
-      v-for="(d, i) in props.decorations"
-      :key="d.id"
-      :src="proxyUrl(d.url)"
-      class="avatar-decoration"
-      :style="decorationStyles[i]"
-    />
+    <template v-if="isVisible">
+      <img
+        v-for="(d, i) in props.decorations"
+        :key="d.id"
+        :src="proxyUrl(d.url)"
+        class="avatar-decoration"
+        :style="decorationStyles[i]"
+      />
+    </template>
   </div>
 </template>
 
