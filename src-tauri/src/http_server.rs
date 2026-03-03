@@ -39,8 +39,8 @@ struct AppState {
 }
 
 impl AppState {
-    fn db(&self) -> tauri::State<'_, Database> {
-        self.app_handle.state::<Database>()
+    fn db(&self) -> tauri::State<'_, Arc<Database>> {
+        self.app_handle.state::<Arc<Database>>()
     }
 
     fn client(&self) -> tauri::State<'_, MisskeyClient> {
@@ -434,7 +434,7 @@ async fn sse_events(
     State(state): State<AppState>,
     Query(params): Query<SseQueryParams>,
 ) -> Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>> {
-    let event_bus = state.app_handle.state::<EventBus>();
+    let event_bus = state.app_handle.state::<Arc<EventBus>>();
     let rx = event_bus.subscribe();
 
     let type_filter: Option<Vec<String>> = params

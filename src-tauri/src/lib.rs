@@ -109,17 +109,21 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         let app_dir = app.path().app_data_dir()?;
         std::fs::create_dir_all(&app_dir)?;
         let db_path = app_dir.join("notedeck.db");
-        let database = notecli::db::Database::open(&db_path)?;
-        app.manage(database);
+        let db = std::sync::Arc::new(notecli::db::Database::open(&db_path)?);
+        app.manage(db.clone());
 
         // Initialize Misskey HTTP client
         app.manage(notecli::api::MisskeyClient::new()?);
 
-        // Initialize streaming manager
-        app.manage(streaming::StreamingManager::new());
-
         // Initialize event bus (SSE broadcasting)
-        app.manage(notecli::event_bus::EventBus::new());
+        let event_bus = std::sync::Arc::new(notecli::event_bus::EventBus::new());
+        app.manage(event_bus.clone());
+
+        // Initialize streaming manager (delegates to notecli)
+        let emitter = std::sync::Arc::new(
+            streaming::TauriEmitter::new(app.app_handle().clone()),
+        );
+        app.manage(notecli::streaming::StreamingManager::new(emitter, event_bus, db));
 
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());

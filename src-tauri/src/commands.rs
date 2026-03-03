@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
 use tauri::State;
@@ -14,7 +14,7 @@ use notecli::models::{
     NormalizedUserDetail, Antenna, Channel, Clip, SearchOptions, StoredServer, TimelineOptions,
     TimelineType, UserList,
 };
-use crate::streaming::StreamingManager;
+use notecli::streaming::StreamingManager;
 use zeroize::Zeroize;
 
 type Result<T> = std::result::Result<T, NoteDeckError>;
@@ -154,13 +154,13 @@ pub fn invalidate_credentials(account_id: &str) {
 // --- DB: Accounts ---
 
 #[tauri::command]
-pub fn load_accounts(db: State<'_, Database>) -> Result<Vec<AccountPublic>> {
+pub fn load_accounts(db: State<'_, Arc<Database>>) -> Result<Vec<AccountPublic>> {
     let accounts = db.load_accounts()?;
     Ok(accounts.iter().map(AccountPublic::from).collect())
 }
 
 #[tauri::command]
-pub fn delete_account(db: State<'_, Database>, id: String) -> Result<()> {
+pub fn delete_account(db: State<'_, Arc<Database>>, id: String) -> Result<()> {
     invalidate_credentials(&id);
     let _ = keychain::delete_token(&id);
     db.delete_account(&id)
@@ -169,17 +169,17 @@ pub fn delete_account(db: State<'_, Database>, id: String) -> Result<()> {
 // --- DB: Servers ---
 
 #[tauri::command]
-pub fn load_servers(db: State<'_, Database>) -> Result<Vec<StoredServer>> {
+pub fn load_servers(db: State<'_, Arc<Database>>) -> Result<Vec<StoredServer>> {
     db.load_servers()
 }
 
 #[tauri::command]
-pub fn get_server(db: State<'_, Database>, host: String) -> Result<Option<StoredServer>> {
+pub fn get_server(db: State<'_, Arc<Database>>, host: String) -> Result<Option<StoredServer>> {
     db.get_server(&host)
 }
 
 #[tauri::command]
-pub fn upsert_server(db: State<'_, Database>, server: StoredServer) -> Result<()> {
+pub fn upsert_server(db: State<'_, Arc<Database>>, server: StoredServer) -> Result<()> {
     db.upsert_server(&server)
 }
 
@@ -196,7 +196,7 @@ pub async fn api_get_endpoints(
 
 #[tauri::command]
 pub async fn api_get_user_policies(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
 ) -> Result<HashMap<String, bool>> {
@@ -206,7 +206,7 @@ pub async fn api_get_user_policies(
 
 #[tauri::command]
 pub async fn api_update_user_setting(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     key: String,
@@ -235,7 +235,7 @@ pub async fn api_get_endpoint_params(
 
 #[tauri::command]
 pub async fn api_get_timeline(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     timeline_type: TimelineType,
@@ -263,7 +263,7 @@ pub async fn api_get_timeline(
 
 #[tauri::command]
 pub async fn api_get_user_lists(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
 ) -> Result<Vec<UserList>> {
@@ -273,7 +273,7 @@ pub async fn api_get_user_lists(
 
 #[tauri::command]
 pub async fn api_get_antennas(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
 ) -> Result<Vec<Antenna>> {
@@ -283,7 +283,7 @@ pub async fn api_get_antennas(
 
 #[tauri::command]
 pub async fn api_get_antenna_notes(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     antenna_id: String,
@@ -311,7 +311,7 @@ pub async fn api_get_antenna_notes(
 
 #[tauri::command]
 pub async fn api_get_favorites(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     limit: Option<i64>,
@@ -337,7 +337,7 @@ pub async fn api_get_favorites(
 
 #[tauri::command]
 pub async fn api_get_mentions(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     limit: Option<i64>,
@@ -365,7 +365,7 @@ pub async fn api_get_mentions(
 
 #[tauri::command]
 pub async fn api_get_clips(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
 ) -> Result<Vec<Clip>> {
@@ -375,7 +375,7 @@ pub async fn api_get_clips(
 
 #[tauri::command]
 pub async fn api_get_clip_notes(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     clip_id: String,
@@ -403,7 +403,7 @@ pub async fn api_get_clip_notes(
 
 #[tauri::command]
 pub async fn api_get_channels(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
 ) -> Result<Vec<Channel>> {
@@ -413,7 +413,7 @@ pub async fn api_get_channels(
 
 #[tauri::command]
 pub async fn api_get_channel_notes(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     channel_id: String,
@@ -441,7 +441,7 @@ pub async fn api_get_channel_notes(
 
 #[tauri::command]
 pub async fn api_get_note(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     note_id: String,
@@ -452,7 +452,7 @@ pub async fn api_get_note(
 
 #[tauri::command]
 pub async fn api_create_note(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     params: CreateNoteParams,
@@ -465,7 +465,7 @@ pub async fn api_create_note(
 
 #[tauri::command]
 pub async fn api_create_reaction(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     note_id: String,
@@ -479,7 +479,7 @@ pub async fn api_create_reaction(
 
 #[tauri::command]
 pub async fn api_delete_reaction(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     note_id: String,
@@ -490,7 +490,7 @@ pub async fn api_delete_reaction(
 
 #[tauri::command]
 pub async fn api_get_note_reactions(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     note_id: String,
@@ -511,7 +511,7 @@ pub async fn api_get_note_reactions(
 
 #[tauri::command]
 pub async fn api_update_note(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     note_id: String,
@@ -527,7 +527,7 @@ const MAX_UPLOAD_BYTES: usize = 50 * 1024 * 1024; // 50 MB
 
 #[tauri::command]
 pub async fn api_upload_file(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     file_name: String,
@@ -546,7 +546,7 @@ pub async fn api_upload_file(
 
 #[tauri::command]
 pub async fn api_create_favorite(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     note_id: String,
@@ -557,7 +557,7 @@ pub async fn api_create_favorite(
 
 #[tauri::command]
 pub async fn api_delete_favorite(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     note_id: String,
@@ -568,7 +568,7 @@ pub async fn api_delete_favorite(
 
 #[tauri::command]
 pub async fn api_delete_note(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     note_id: String,
@@ -579,7 +579,7 @@ pub async fn api_delete_note(
 
 #[tauri::command]
 pub async fn api_get_user(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     user_id: String,
@@ -590,7 +590,7 @@ pub async fn api_get_user(
 
 #[tauri::command]
 pub async fn api_get_user_detail(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     user_id: String,
@@ -601,7 +601,7 @@ pub async fn api_get_user_detail(
 
 #[tauri::command]
 pub async fn api_get_user_notes(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     user_id: String,
@@ -619,7 +619,7 @@ pub async fn api_get_user_notes(
 
 #[tauri::command]
 pub async fn api_get_server_emojis(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
 ) -> Result<HashMap<String, String>> {
@@ -629,7 +629,7 @@ pub async fn api_get_server_emojis(
 
 #[tauri::command]
 pub async fn api_get_notifications(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     options: Option<TimelineOptions>,
@@ -642,7 +642,7 @@ pub async fn api_get_notifications(
 
 #[tauri::command]
 pub async fn api_search_notes(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     query: String,
@@ -659,7 +659,7 @@ pub async fn api_search_notes(
 
 #[tauri::command]
 pub async fn api_get_note_children(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     note_id: String,
@@ -673,7 +673,7 @@ pub async fn api_get_note_children(
 
 #[tauri::command]
 pub async fn api_get_note_conversation(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     note_id: String,
@@ -687,7 +687,7 @@ pub async fn api_get_note_conversation(
 
 #[tauri::command]
 pub async fn api_lookup_user(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     username: String,
@@ -705,7 +705,7 @@ pub async fn api_lookup_user(
 
 #[tauri::command]
 pub async fn api_follow_user(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     user_id: String,
@@ -716,7 +716,7 @@ pub async fn api_follow_user(
 
 #[tauri::command]
 pub async fn api_unfollow_user(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     user_id: String,
@@ -727,7 +727,7 @@ pub async fn api_unfollow_user(
 
 #[tauri::command]
 pub fn api_get_cached_timeline(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     account_id: String,
     timeline_type: String,
     limit: Option<i64>,
@@ -737,7 +737,7 @@ pub fn api_get_cached_timeline(
 
 #[tauri::command]
 pub fn api_search_notes_local(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     account_id: String,
     query: String,
     limit: Option<i64>,
@@ -752,7 +752,7 @@ pub fn api_search_notes_local(
 
 #[tauri::command]
 pub async fn api_request(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     endpoint: String,
@@ -774,7 +774,7 @@ pub async fn api_request(
 
 #[tauri::command]
 pub async fn api_fetch_account_theme(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
 ) -> Result<serde_json::Value> {
@@ -943,7 +943,7 @@ pub async fn auth_start(
 pub async fn auth_complete_and_save(
     tracker: State<'_, AuthSessionTracker>,
     client: State<'_, MisskeyClient>,
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     session: AuthSession,
     software: String,
 ) -> Result<AccountPublic> {
@@ -1010,7 +1010,7 @@ pub async fn fetch_ogp(
 
 #[tauri::command]
 pub async fn api_get_chat_history(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     limit: Option<i64>,
@@ -1023,7 +1023,7 @@ pub async fn api_get_chat_history(
 
 #[tauri::command]
 pub async fn api_get_chat_user_messages(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     user_id: String,
@@ -1046,7 +1046,7 @@ pub async fn api_get_chat_user_messages(
 
 #[tauri::command]
 pub async fn api_get_chat_room_messages(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     room_id: String,
@@ -1069,7 +1069,7 @@ pub async fn api_get_chat_room_messages(
 
 #[tauri::command]
 pub async fn api_create_chat_message(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
     account_id: String,
     user_id: Option<String>,
@@ -1098,22 +1098,20 @@ pub async fn api_create_chat_message(
 
 #[tauri::command]
 pub async fn stream_connect(
-    app: tauri::AppHandle,
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     streaming: State<'_, StreamingManager>,
     account_id: String,
 ) -> Result<()> {
     let (host, token) = get_credentials(&db, &account_id)?;
-    streaming.connect(app, &account_id, &host, &token).await
+    streaming.connect(&account_id, &host, &token).await
 }
 
 #[tauri::command]
 pub async fn stream_disconnect(
-    app: tauri::AppHandle,
     streaming: State<'_, StreamingManager>,
     account_id: String,
 ) -> Result<()> {
-    streaming.disconnect(&app, &account_id).await;
+    streaming.disconnect(&account_id).await;
     Ok(())
 }
 
