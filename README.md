@@ -16,7 +16,7 @@
 
 ---
 
-<img width="1198" height="800" alt="image" src="https://github.com/user-attachments/assets/e7fa0f9e-7c6c-4194-93b6-199fc90e44c2" />
+<img width="1919" height="1029" alt="スクリーンショット 2026-03-04 150811" src="https://github.com/user-attachments/assets/59fb7359-c6fa-4aa0-beb0-cf421ac563c5" />
 
 ## 特徴
 
