@@ -12,8 +12,9 @@ import {
   placeholder as cmPlaceholder,
   EditorView,
   keymap,
+  lineNumbers,
 } from '@codemirror/view'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { aiscriptCompletions } from '@/aiscript/codemirror/completions'
 import { aiscriptLanguage } from '@/aiscript/codemirror/language'
 import { aiscriptLinter } from '@/aiscript/codemirror/linter'
@@ -24,10 +25,12 @@ const props = withDefaults(
     modelValue: string
     placeholder?: string
     maxHeight?: string
+    useLsp?: boolean
   }>(),
   {
     placeholder: '',
     maxHeight: '200px',
+    useLsp: false,
   },
 )
 
@@ -35,11 +38,22 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
+const isFlexMode = computed(() => props.maxHeight === 'none')
+const editorStyle = computed(() =>
+  isFlexMode.value
+    ? { flex: '1', minHeight: '0' }
+    : { maxHeight: props.maxHeight },
+)
+
 const editorRef = ref<HTMLDivElement>()
 let view: EditorView | null = null
 let isExternalUpdate = false
+let lspWorker: Worker | null = null
+let lspClient: any = null
 
-onMounted(() => {
+const fileURI = `file:///aiscript-${Math.random().toString(36).slice(2, 8)}.ais`
+
+onMounted(async () => {
   if (!editorRef.value) return
 
   const updateListener = EditorView.updateListener.of((update) => {
@@ -48,23 +62,57 @@ onMounted(() => {
     }
   })
 
+  const commonExtensions = [
+    aiscriptLanguage,
+    aiscriptTheme,
+    lineNumbers(),
+    history(),
+    bracketMatching(),
+    closeBrackets(),
+    lintGutter(),
+    keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap]),
+    cmPlaceholder(props.placeholder),
+    updateListener,
+  ]
+
+  let extensions
+  if (props.useLsp) {
+    // Dynamic import: only load LSP modules when needed
+    const [{ LSPClient, serverCompletion, serverDiagnostics }, { createWorkerTransport }] =
+      await Promise.all([
+        import('@codemirror/lsp-client'),
+        import('@/aiscript/lsp/transport'),
+      ])
+
+    lspWorker = new Worker(
+      new URL('../../../aiscript/lsp/worker.ts', import.meta.url),
+      { type: 'module' },
+    )
+    const transport = createWorkerTransport(lspWorker)
+    lspClient = new LSPClient({
+      extensions: [
+        serverCompletion({ override: true }),
+        serverDiagnostics(),
+      ],
+    })
+    lspClient.connect(transport)
+    extensions = [
+      ...commonExtensions,
+      autocompletion(),
+      lspClient.plugin(fileURI, 'aiscript'),
+    ]
+  } else {
+    extensions = [
+      ...commonExtensions,
+      autocompletion({ override: [aiscriptCompletions] }),
+      aiscriptLinter,
+    ]
+  }
+
   view = new EditorView({
     state: EditorState.create({
       doc: props.modelValue,
-      extensions: [
-        aiscriptLanguage,
-        aiscriptTheme,
-        history(),
-        bracketMatching(),
-        closeBrackets(),
-        autocompletion({ override: [aiscriptCompletions] }),
-        aiscriptLinter,
-        lintGutter(),
-        keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap]),
-        cmPlaceholder(props.placeholder),
-        updateListener,
-        EditorView.lineWrapping,
-      ],
+      extensions,
     }),
     parent: editorRef.value,
   })
@@ -89,18 +137,22 @@ watch(
 onUnmounted(() => {
   view?.destroy()
   view = null
+  lspClient?.disconnect()
+  lspClient = null
+  lspWorker?.terminate()
+  lspWorker = null
 })
 </script>
 
 <template>
-  <div ref="editorRef" class="ais-editor" :style="{ maxHeight }" />
+  <div ref="editorRef" class="ais-editor" :class="{ 'ais-editor-flex': isFlexMode }" :style="editorStyle" />
 </template>
 
 <style scoped>
 .ais-editor {
   border-radius: 6px;
   overflow: auto;
-  background: var(--nd-bg);
+  background: #1e1e1e;
   transition: box-shadow 0.15s;
 }
 
@@ -110,6 +162,21 @@ onUnmounted(() => {
 
 .ais-editor :deep(.cm-editor) {
   min-height: 80px;
+}
+
+.ais-editor-flex {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ais-editor-flex :deep(.cm-editor) {
+  height: 100%;
+  min-height: 0;
+}
+
+.ais-editor-flex :deep(.cm-scroller) {
+  overflow: auto;
 }
 
 .ais-editor :deep(.cm-scroller) {

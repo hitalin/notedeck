@@ -17,6 +17,7 @@ export type ColumnType =
   | 'specified'
   | 'chat'
   | 'widget'
+  | 'aiscript'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
@@ -50,6 +51,7 @@ export interface DeckColumn {
   channelId?: string
   userId?: string
   widgets?: WidgetConfig[]
+  aiscriptCode?: string
   soundMuted?: boolean
 }
 
@@ -74,6 +76,9 @@ export const useDeckStore = defineStore('deck', () => {
     if (!col) return null
     if (col.type === 'widget') {
       return `notedeck://widget/${col.id}`
+    }
+    if (col.type === 'aiscript') {
+      return `notedeck://aiscript/${col.id}`
     }
     if (!col.accountId) return null
 
@@ -203,8 +208,8 @@ export const useDeckStore = defineStore('deck', () => {
       const profile: DeckProfile = {
         id: genProfileId(),
         name: 'Main',
-        columns: JSON.parse(JSON.stringify(columns.value)),
-        layout: JSON.parse(JSON.stringify(layout.value)),
+        columns: structuredClone(columns.value),
+        layout: structuredClone(layout.value),
         createdAt: Date.now(),
       }
       profiles.push(profile)
@@ -309,8 +314,8 @@ export const useDeckStore = defineStore('deck', () => {
     const profiles = loadProfiles()
     const profile = profiles.find((p) => p.id === activeProfileId.value)
     if (!profile) return
-    profile.columns = JSON.parse(JSON.stringify(columns.value))
-    profile.layout = JSON.parse(JSON.stringify(layout.value))
+    profile.columns = structuredClone(columns.value)
+    profile.layout = structuredClone(layout.value)
     saveProfiles(profiles)
   }
 
@@ -354,8 +359,8 @@ export const useDeckStore = defineStore('deck', () => {
     const profiles = loadProfiles()
     const profile = profiles.find((p) => p.id === profileId)
     if (!profile) return
-    columns.value = JSON.parse(JSON.stringify(profile.columns))
-    layout.value = JSON.parse(JSON.stringify(profile.layout))
+    columns.value = structuredClone(profile.columns)
+    layout.value = structuredClone(profile.layout)
     saveActiveProfileId(profileId)
     save()
   }

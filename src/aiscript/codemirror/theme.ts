@@ -2,37 +2,37 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { EditorView } from '@codemirror/view'
 import { tags } from '@lezer/highlight'
 
+// VS Code Dark+ inspired theme (matches Shiki dark-plus)
 const editorTheme = EditorView.theme(
   {
     '&': {
-      backgroundColor: 'var(--nd-bg)',
-      color: 'var(--nd-fg)',
+      backgroundColor: '#1e1e1e',
+      color: '#d4d4d4',
       fontSize: '0.8em',
       fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', monospace",
     },
     '.cm-content': {
-      caretColor: 'var(--nd-accent)',
+      caretColor: '#aeafad',
       lineHeight: '1.6',
       padding: '4px 0',
     },
     '.cm-cursor, .cm-dropCursor': {
-      borderLeftColor: 'var(--nd-accent)',
+      borderLeftColor: '#aeafad',
     },
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': {
-      backgroundColor: 'var(--nd-focus)',
+      backgroundColor: '#264f78',
     },
     '.cm-activeLine': {
-      backgroundColor: 'var(--nd-panelHighlight)',
+      backgroundColor: 'rgba(255, 255, 255, 0.04)',
     },
     '.cm-gutters': {
-      backgroundColor: 'var(--nd-bg)',
-      color: 'var(--nd-fg)',
+      backgroundColor: '#1e1e1e',
+      color: '#858585',
       border: 'none',
-      opacity: '0.35',
     },
     '.cm-activeLineGutter': {
       backgroundColor: 'transparent',
-      opacity: '1',
+      color: '#c6c6c6',
     },
     '.cm-lineNumbers .cm-gutterElement': {
       padding: '0 8px 0 4px',
@@ -46,21 +46,21 @@ const editorTheme = EditorView.theme(
       outline: '1px solid rgba(255, 255, 255, 0.3)',
     },
     '.cm-tooltip': {
-      backgroundColor: 'var(--nd-popup)',
-      color: 'var(--nd-fg)',
-      border: '1px solid var(--nd-divider)',
-      borderRadius: '6px',
+      backgroundColor: '#252526',
+      color: '#d4d4d4',
+      border: '1px solid #454545',
+      borderRadius: '3px',
     },
     '.cm-tooltip-autocomplete ul li[aria-selected]': {
-      backgroundColor: 'var(--nd-focus)',
-      color: 'var(--nd-fg)',
+      backgroundColor: '#04395e',
+      color: '#d4d4d4',
     },
     '.cm-completionIcon': {
       opacity: '0.6',
     },
     '.cm-panels': {
-      backgroundColor: 'var(--nd-panel)',
-      color: 'var(--nd-fg)',
+      backgroundColor: '#252526',
+      color: '#d4d4d4',
     },
     '.cm-scroller': {
       overflow: 'auto',
@@ -69,18 +69,22 @@ const editorTheme = EditorView.theme(
   { dark: true },
 )
 
+// VS Code Dark+ syntax colors
 const highlightStyle = HighlightStyle.define([
-  { tag: tags.keyword, color: '#c792ea' },
-  { tag: tags.atom, color: 'var(--nd-codeBoolean)' },
-  { tag: tags.string, color: 'var(--nd-codeString)' },
-  { tag: tags.number, color: 'var(--nd-codeNumber)' },
-  { tag: tags.comment, color: '#546e7a', fontStyle: 'italic' },
-  { tag: tags.operator, color: '#89ddff' },
-  { tag: tags.definition(tags.variableName), color: '#82aaff' },
-  { tag: tags.namespace, color: '#ffcb6b' },
-  { tag: tags.variableName, color: 'var(--nd-fg)' },
-  { tag: tags.bracket, color: 'var(--nd-fg)' },
-  { tag: tags.punctuation, color: 'var(--nd-fg)', opacity: '0.6' },
+  { tag: tags.keyword, color: '#569cd6' },
+  { tag: tags.atom, color: '#569cd6' },
+  { tag: tags.bool, color: '#569cd6' },
+  { tag: tags.string, color: '#ce9178' },
+  { tag: tags.number, color: '#b5cea8' },
+  { tag: tags.comment, color: '#6a9955', fontStyle: 'italic' },
+  { tag: tags.operator, color: '#d4d4d4' },
+  { tag: tags.definition(tags.variableName), color: '#9cdcfe' },
+  { tag: tags.function(tags.variableName), color: '#dcdcaa' },
+  { tag: tags.namespace, color: '#4ec9b0' },
+  { tag: tags.typeName, color: '#4ec9b0' },
+  { tag: tags.variableName, color: '#9cdcfe' },
+  { tag: tags.bracket, color: '#d4d4d4' },
+  { tag: tags.punctuation, color: '#d4d4d4' },
 ])
 
 export const aiscriptTheme = [editorTheme, syntaxHighlighting(highlightStyle)]

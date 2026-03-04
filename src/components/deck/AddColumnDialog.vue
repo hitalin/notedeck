@@ -28,6 +28,7 @@ const addColumnType = ref<
   | 'specified'
   | 'chat'
   | 'widget'
+  | 'aiscript'
   | null
 >(null)
 
@@ -45,7 +46,8 @@ function selectColumnType(
     | 'channel'
     | 'specified'
     | 'chat'
-    | 'widget',
+    | 'widget'
+    | 'aiscript',
 ) {
   addColumnType.value = type
 }
@@ -69,6 +71,18 @@ function addColumnForAccount(accountId: string) {
       accountId,
       active: true,
       widgets: [],
+    })
+    close()
+    return
+  }
+  if (type === 'aiscript') {
+    deckStore.addColumn({
+      type: 'aiscript',
+      name: 'AiScript',
+      width: 330,
+      accountId,
+      active: true,
+      aiscriptCode: '<: "Hello, AiScript!"',
     })
     close()
     return
@@ -304,6 +318,10 @@ function close() {
         <button class="_button add-type-btn" @click="selectColumnType('widget')">
           <i class="ti ti-app-window" />
           <span>Widgets</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('aiscript')">
+          <i class="ti ti-code" />
+          <span>AiScript</span>
         </button>
       </template>
 
