@@ -47,6 +47,10 @@ NoteDeck は Misskey とそのフォーク（Sharkey・CherryPick・Firefish・I
 
 アニメーション MFM、サーバー固有のカスタム絵文字・リアクション、コードハイライト、OGP プレビューなど、Misskey の表現力をそのままデスクトップで。
 
+### AiScript エディタ内蔵
+
+Misskey Play 互換の AiScript 実行環境をウィジェットカラムに搭載。シンタックスハイライト・オートコンプリート・リアルタイム構文チェック付きの CodeMirror 6 エディタで、デッキの中でスクリプトを書いてそのまま動かせます。
+
 ### AI・外部ツールとの連携
 
 HTTP API（`localhost:19820`）で外部ツールや AI エージェントから NoteDeck を操作できます。SSE イベントストリームにも対応。
