@@ -90,22 +90,26 @@ export const useThemeStore = defineStore('theme', () => {
       }
     }
 
-    // Restore account theme cache from localStorage (avoids re-fetch on restart)
-    const storedAccountThemes = localStorage.getItem(STORAGE_ACCOUNT_THEMES_KEY)
-    if (storedAccountThemes) {
-      try {
-        const entries = JSON.parse(storedAccountThemes) as [
-          string,
-          { dark?: MisskeyTheme; light?: MisskeyTheme },
-        ][]
-        accountThemeCache.value = new Map(entries)
-      } catch {
-        /* ignore corrupt data */
-      }
-    }
-
-    // Apply theme based on OS preference
+    // Apply theme based on OS preference (sync, before mount)
     applyOsTheme()
+
+    // Defer account theme cache restoration (not needed for initial render)
+    queueMicrotask(() => {
+      const storedAccountThemes = localStorage.getItem(
+        STORAGE_ACCOUNT_THEMES_KEY,
+      )
+      if (storedAccountThemes) {
+        try {
+          const entries = JSON.parse(storedAccountThemes) as [
+            string,
+            { dark?: MisskeyTheme; light?: MisskeyTheme },
+          ][]
+          accountThemeCache.value = new Map(entries)
+        } catch {
+          /* ignore corrupt data */
+        }
+      }
+    })
 
     // Listen for OS dark/light mode changes
     window
