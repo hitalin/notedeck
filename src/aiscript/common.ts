@@ -1,10 +1,9 @@
 import { utils } from '@syuilo/aiscript'
-import type { AiScriptError } from '@syuilo/aiscript/error.js'
 import type { Value } from '@syuilo/aiscript/interpreter/value.js'
 
 export interface AiScriptIOCallbacks {
   onOutput: (text: string) => void
-  onError: (error: AiScriptError) => void
+  onError: (error: Error) => void
 }
 
 /**
@@ -16,7 +15,7 @@ export function createInterpreterOptions(callbacks: AiScriptIOCallbacks) {
     out: (val: Value) => {
       callbacks.onOutput(utils.reprValue(val))
     },
-    err: (e: AiScriptError) => {
+    err: (e: Error) => {
       callbacks.onError(e)
     },
     maxStep: 100000,
