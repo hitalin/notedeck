@@ -26,6 +26,14 @@ export interface WidgetConfig {
   data: Record<string, unknown>
 }
 
+export interface DeckProfile {
+  id: string
+  name: string
+  columns: DeckColumn[]
+  layout: string[][]
+  createdAt: number
+}
+
 export interface DeckColumn {
   id: string
   type: ColumnType
@@ -188,6 +196,23 @@ export const useDeckStore = defineStore('deck', () => {
     } catch (e) {
       console.warn('[deck] failed to load:', e)
     }
+
+    // Ensure a default "Main" profile exists
+    const profiles = loadProfiles()
+    if (profiles.length === 0) {
+      const profile: DeckProfile = {
+        id: genProfileId(),
+        name: 'Main',
+        columns: JSON.parse(JSON.stringify(columns.value)),
+        layout: JSON.parse(JSON.stringify(layout.value)),
+        createdAt: Date.now(),
+      }
+      profiles.push(profile)
+      saveProfiles(profiles)
+      saveActiveProfileId(profile.id)
+    } else {
+      loadActiveProfileId()
+    }
   }
 
   // Widget helpers
@@ -229,6 +254,111 @@ export const useDeckStore = defineStore('deck', () => {
     save()
   }
 
+  // --- Profile management ---
+  const PROFILES_KEY = 'nd-deck-profiles'
+  const ACTIVE_PROFILE_KEY = 'nd-deck-active-profile'
+  const activeProfileId = ref<string | null>(null)
+
+  function loadProfiles(): DeckProfile[] {
+    try {
+      const raw = localStorage.getItem(PROFILES_KEY)
+      return raw ? JSON.parse(raw) : []
+    } catch {
+      return []
+    }
+  }
+
+  function saveProfiles(profiles: DeckProfile[]) {
+    localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles))
+  }
+
+  function saveActiveProfileId(id: string | null) {
+    activeProfileId.value = id
+    if (id) {
+      localStorage.setItem(ACTIVE_PROFILE_KEY, id)
+    } else {
+      localStorage.removeItem(ACTIVE_PROFILE_KEY)
+    }
+  }
+
+  function loadActiveProfileId() {
+    activeProfileId.value = localStorage.getItem(ACTIVE_PROFILE_KEY)
+  }
+
+  /** Save current deck state into the active profile */
+  function syncCurrentToActiveProfile() {
+    if (!activeProfileId.value) return
+    const profiles = loadProfiles()
+    const profile = profiles.find((p) => p.id === activeProfileId.value)
+    if (!profile) return
+    profile.columns = JSON.parse(JSON.stringify(columns.value))
+    profile.layout = JSON.parse(JSON.stringify(layout.value))
+    saveProfiles(profiles)
+  }
+
+  let profileCounter = 0
+  function genProfileId(): string {
+    return `profile-${Date.now()}-${++profileCounter}`
+  }
+
+  function saveAsProfile(name: string): DeckProfile {
+    // Save current state to the active profile before creating a new one
+    syncCurrentToActiveProfile()
+
+    const profile: DeckProfile = {
+      id: genProfileId(),
+      name,
+      columns: [],
+      layout: [],
+      createdAt: Date.now(),
+    }
+    const profiles = loadProfiles()
+    profiles.push(profile)
+    saveProfiles(profiles)
+    saveActiveProfileId(profile.id)
+
+    // Switch to the empty new profile
+    columns.value = []
+    layout.value = []
+    save()
+
+    return profile
+  }
+
+  function getProfiles(): DeckProfile[] {
+    return loadProfiles()
+  }
+
+  function applyProfile(profileId: string) {
+    // Save current state to the currently active profile before switching
+    syncCurrentToActiveProfile()
+
+    const profiles = loadProfiles()
+    const profile = profiles.find((p) => p.id === profileId)
+    if (!profile) return
+    columns.value = JSON.parse(JSON.stringify(profile.columns))
+    layout.value = JSON.parse(JSON.stringify(profile.layout))
+    saveActiveProfileId(profileId)
+    save()
+  }
+
+  function deleteProfile(profileId: string) {
+    const profiles = loadProfiles().filter((p) => p.id !== profileId)
+    saveProfiles(profiles)
+    if (activeProfileId.value === profileId) {
+      saveActiveProfileId(profiles[0]?.id ?? null)
+    }
+  }
+
+  function renameProfile(profileId: string, newName: string) {
+    const profiles = loadProfiles()
+    const profile = profiles.find((p) => p.id === profileId)
+    if (profile) {
+      profile.name = newName
+      saveProfiles(profiles)
+    }
+  }
+
   return {
     columns,
     layout,
@@ -249,5 +379,13 @@ export const useDeckStore = defineStore('deck', () => {
     addWidget,
     removeWidget,
     updateWidgetData,
+    activeProfileId,
+    loadActiveProfileId,
+    syncCurrentToActiveProfile,
+    saveAsProfile,
+    getProfiles,
+    applyProfile,
+    deleteProfile,
+    renameProfile,
   }
 })

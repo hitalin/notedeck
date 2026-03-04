@@ -44,6 +44,7 @@ import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
 import DeckNavbar from './DeckNavbar.vue'
+import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
 import DeckSpecifiedColumn from './DeckSpecifiedColumn.vue'
@@ -81,6 +82,7 @@ const resolvedColumns = computed(() => {
 const navbarRef = ref<InstanceType<typeof DeckNavbar> | null>(null)
 const showAddMenu = ref(false)
 const showCompose = ref(false)
+const showProfileMenu = ref(false)
 const mobileDrawerOpen = ref(false)
 
 function openCompose() {
@@ -196,6 +198,7 @@ function stopColumnResize() {
 
 onMounted(() => {
   deckStore.load()
+  deckStore.loadActiveProfileId()
   initDesktopNotifications()
   initApiBridge()
   loadCliCommands()
@@ -349,7 +352,14 @@ watch(
 
       <!-- Bottom bar (column management) -->
       <div class="bottom-bar">
-        <div class="bottom-bar-left" />
+        <div class="bottom-bar-left">
+          <div class="profile-menu-wrap">
+            <button class="_button bottom-bar-btn" title="Deck profiles" @click.stop="showProfileMenu = !showProfileMenu">
+              <i class="ti ti-caret-down" />
+            </button>
+            <DeckProfileMenu :show="showProfileMenu" @close="showProfileMenu = false" />
+          </div>
+        </div>
         <button class="_button bottom-bar-btn" title="Add column" @click="toggleAddMenu">
           <i class="ti ti-plus" />
         </button>
@@ -480,6 +490,10 @@ watch(
   flex: 1;
   display: flex;
   justify-content: flex-end;
+}
+
+.profile-menu-wrap {
+  position: relative;
 }
 
 .bottom-bar-btn {

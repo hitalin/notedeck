@@ -189,4 +189,163 @@ describe('deck store', () => {
     expect(deck.columns).toHaveLength(0)
     expect(deck.layout).toHaveLength(0)
   })
+
+  describe('deck profiles', () => {
+    it('saveAsProfile creates empty profile and clears deck', () => {
+      const deck = useDeckStore()
+      deck.addColumn({ type: 'timeline', name: 'Home', width: 330, accountId: 'a1' })
+      vi.advanceTimersByTime(100)
+
+      const profile = deck.saveAsProfile('Work')
+
+      expect(profile.name).toBe('Work')
+      expect(profile.columns).toHaveLength(0)
+      expect(profile.layout).toHaveLength(0)
+      expect(deck.columns).toHaveLength(0)
+      expect(deck.layout).toHaveLength(0)
+      expect(deck.activeProfileId).toBe(profile.id)
+    })
+
+    it('applyProfile restores saved layout', () => {
+      const deck = useDeckStore()
+
+      // Create profile 1 (empty), then add a column to it
+      const p1 = deck.saveAsProfile('Work')
+      vi.advanceTimersByTime(100)
+      deck.addColumn({ type: 'timeline', name: 'Home', width: 330, accountId: 'a1' })
+      vi.advanceTimersByTime(100)
+
+      // Create profile 2 (auto-saves p1 with 1 column), then add a column
+      const p2 = deck.saveAsProfile('Play')
+      vi.advanceTimersByTime(100)
+      deck.addColumn({ type: 'notifications', name: 'Notif', width: 300, accountId: 'a1' })
+      vi.advanceTimersByTime(100)
+
+      // Switch back to p1 — should restore 1-column layout
+      deck.applyProfile(p1.id)
+
+      expect(deck.columns).toHaveLength(1)
+      expect(deck.columns[0]?.name).toBe('Home')
+    })
+
+    it('deleteProfile removes a profile', () => {
+      const deck = useDeckStore()
+      const profile = deck.saveAsProfile('Temp')
+      deck.deleteProfile(profile.id)
+      expect(deck.getProfiles()).toHaveLength(0)
+    })
+
+    it('renameProfile updates profile name', () => {
+      const deck = useDeckStore()
+      const profile = deck.saveAsProfile('Old Name')
+      deck.renameProfile(profile.id, 'New Name')
+      expect(deck.getProfiles()[0]?.name).toBe('New Name')
+    })
+
+    it('applyProfile does not mutate the other profile', () => {
+      const deck = useDeckStore()
+
+      // Create p1 (empty), add column
+      const p1 = deck.saveAsProfile('P1')
+      vi.advanceTimersByTime(100)
+      deck.addColumn({ type: 'timeline', name: 'Home', width: 330, accountId: 'a1' })
+      vi.advanceTimersByTime(100)
+
+      // Create p2 (auto-saves p1 with [Home]), add column
+      const p2 = deck.saveAsProfile('P2')
+      vi.advanceTimersByTime(100)
+      deck.addColumn({ type: 'notifications', name: 'Notif', width: 300, accountId: 'a1' })
+      vi.advanceTimersByTime(100)
+
+      // Switch to p1 (auto-saves p2 with [Notif]), modify column name
+      deck.applyProfile(p1.id)
+      deck.updateColumn(deck.columns[0]!.id, { name: 'Changed' })
+      vi.advanceTimersByTime(100)
+
+      // Switch to p2 (auto-saves p1 with [Changed]) — p2 should still have [Notif]
+      deck.applyProfile(p2.id)
+
+      expect(deck.columns).toHaveLength(1)
+      expect(deck.columns[0]?.name).toBe('Notif')
+    })
+
+    it('applyProfile with invalid id does nothing', () => {
+      const deck = useDeckStore()
+      deck.addColumn({ type: 'timeline', name: 'Keep', width: 400, accountId: null })
+
+      deck.applyProfile('nonexistent')
+
+      expect(deck.columns).toHaveLength(1)
+      expect(deck.columns[0]?.name).toBe('Keep')
+    })
+
+    it('applyProfile sets activeProfileId', () => {
+      const deck = useDeckStore()
+      const p1 = deck.saveAsProfile('Work')
+      vi.advanceTimersByTime(100)
+      const p2 = deck.saveAsProfile('Play')
+      vi.advanceTimersByTime(100)
+
+      deck.applyProfile(p1.id)
+
+      expect(deck.activeProfileId).toBe(p1.id)
+    })
+
+    it('switching profiles auto-saves current state to active profile', () => {
+      const deck = useDeckStore()
+
+      // Create Profile 1 (empty), add 1 column
+      const p1 = deck.saveAsProfile('Profile 1')
+      vi.advanceTimersByTime(100)
+      deck.addColumn({ type: 'timeline', name: 'Home', width: 330, accountId: 'a1' })
+      vi.advanceTimersByTime(100)
+
+      // Create Profile 2 (auto-saves p1 with 1 column), add 1 column
+      const p2 = deck.saveAsProfile('Profile 2')
+      vi.advanceTimersByTime(100)
+      deck.addColumn({ type: 'notifications', name: 'Notif', width: 300, accountId: 'a1' })
+      vi.advanceTimersByTime(100)
+
+      // Switch to p1 — should auto-save p2 with 1 column
+      deck.applyProfile(p1.id)
+
+      // Add another column while on p1
+      deck.addColumn({ type: 'search', name: 'Search', width: 300, accountId: 'a1' })
+      vi.advanceTimersByTime(100)
+
+      // Switch to p2 — should auto-save p1 with 2 columns (original 1 + added 1)
+      deck.applyProfile(p2.id)
+
+      const profiles = deck.getProfiles()
+      const savedP1 = profiles.find((p) => p.id === p1.id)!
+      expect(savedP1.columns).toHaveLength(2)
+    })
+
+    it('saveAsProfile auto-saves current state to previous profile', () => {
+      const deck = useDeckStore()
+
+      // Create profile 1 (empty), add columns
+      const p1 = deck.saveAsProfile('Profile 1')
+      vi.advanceTimersByTime(100)
+      deck.addColumn({ type: 'timeline', name: 'Home', width: 330, accountId: 'a1' })
+      deck.addColumn({ type: 'notifications', name: 'Notif', width: 300, accountId: 'a1' })
+      vi.advanceTimersByTime(100)
+
+      // Create profile 2 — should auto-save p1 with 2 columns
+      deck.saveAsProfile('Profile 2')
+
+      const savedP1 = deck.getProfiles().find((p) => p.id === p1.id)!
+      expect(savedP1.columns).toHaveLength(2)
+    })
+
+    it('deleteProfile clears activeProfileId when deleting active profile', () => {
+      const deck = useDeckStore()
+      const profile = deck.saveAsProfile('Temp')
+      expect(deck.activeProfileId).toBe(profile.id)
+
+      deck.deleteProfile(profile.id)
+
+      expect(deck.activeProfileId).toBeNull()
+    })
+  })
 })
