@@ -57,9 +57,9 @@ function isAudio(file: NormalizedDriveFile): boolean {
 </script>
 
 <template>
-  <div class="media-grid" :class="`media-count-${Math.min(files.length, 4)}`">
+  <div class="media-grid" :class="`media-count-${files.length <= 4 ? files.length : 'many'}`">
     <div
-      v-for="(file, idx) in files.slice(0, 4)"
+      v-for="file in files"
       :key="file.id"
       class="media-cell"
       :class="{ 'is-sensitive': file.isSensitive && !revealedIds.has(file.id), 'is-loaded': loadedIds.has(file.id) }"
@@ -131,10 +131,6 @@ function isAudio(file: NormalizedDriveFile): boolean {
         </svg>
       </button>
 
-      <!-- "+N more" badge -->
-      <div v-if="idx === 3 && files.length > 4" class="more-badge">
-        +{{ files.length - 4 }}
-      </div>
     </div>
   </div>
 
@@ -195,6 +191,10 @@ function isAudio(file: NormalizedDriveFile): boolean {
 .media-count-4 {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
+}
+
+.media-count-many {
+  grid-template-columns: 1fr 1fr;
 }
 
 .media-cell {
@@ -321,19 +321,6 @@ function isAudio(file: NormalizedDriveFile): boolean {
 
 .sensitive-hide-btn:hover {
   background: rgba(0, 0, 0, 0.7);
-}
-
-.more-badge {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
-  font-size: 1.4em;
-  font-weight: bold;
-  z-index: 2;
 }
 
 /* Lightbox */
