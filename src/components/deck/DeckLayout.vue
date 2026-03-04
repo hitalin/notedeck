@@ -9,11 +9,11 @@ import {
   watch,
 } from 'vue'
 import { useRouter } from 'vue-router'
+import { loadCliCommands } from '@/commands/cliParser'
 import {
   registerDefaultCommands,
   unregisterDefaultCommands,
 } from '@/commands/definitions'
-import { loadCliCommands } from '@/commands/cliParser'
 import { useCommandStore } from '@/commands/registry'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
 import { useNavigation } from '@/composables/useNavigation'
@@ -43,7 +43,6 @@ import DeckClipColumn from './DeckClipColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
-// biome-ignore lint/style/useImportType: used in template as <DeckNavbar>
 import DeckNavbar from './DeckNavbar.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'

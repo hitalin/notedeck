@@ -6,6 +6,7 @@ import type {
   NormalizedNote,
   ServerAdapter,
 } from '@/adapters/types'
+import { useNoteSound } from '@/composables/useNoteSound'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'
@@ -16,7 +17,6 @@ import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
 import { toggleFavorite } from '@/utils/toggleFavorite'
 import { toggleReaction } from '@/utils/toggleReaction'
-import { useNoteSound } from '@/composables/useNoteSound'
 
 export function useColumnSetup(getColumn: () => DeckColumn) {
   let customMutatedFn: (() => void) | undefined
@@ -99,10 +99,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   const postFormRenoteId = ref<string | undefined>()
   const postFormEditNote = ref<NormalizedNote | undefined>()
 
-  const actionSound = useNoteSound(
-    () => account.value?.host,
-    'syuilo/n-aec',
-  )
+  const actionSound = useNoteSound(() => account.value?.host, 'syuilo/n-aec')
 
   async function handleReaction(reaction: string, note: NormalizedNote) {
     if (!adapter) return
