@@ -1,5 +1,29 @@
 import { utils, values } from '@syuilo/aiscript'
 import type { Value } from '@syuilo/aiscript/interpreter/value.js'
+import { openUrl } from '@tauri-apps/plugin-opener'
+
+// Misskey 本家の nyaize 実装 (misskey-js/src/nyaize.ts)
+const enRegex1 = /(?<=n)a/gi
+const enRegex2 = /(?<=morn)ing/gi
+const enRegex3 = /(?<=every)one/gi
+const koRegex1 = /[나-낳]/g
+const koRegex2 = /(다$)|(다(?=\.))|(다(?= ))|(다(?=!))|(다(?=\?))/gm
+const koRegex3 = /(야(?=\?))|(야$)|(야(?= ))/gm
+
+function nyaize(text: string): string {
+  return text
+    .replaceAll('な', 'にゃ').replaceAll('ナ', 'ニャ').replaceAll('ﾅ', 'ﾆｬ')
+    .replace(enRegex1, (x) => (x === 'A' ? 'YA' : 'ya'))
+    .replace(enRegex2, (x) => (x === 'ING' ? 'YAN' : 'yan'))
+    .replace(enRegex3, (x) => (x === 'ONE' ? 'NYAN' : 'nyan'))
+    .replace(koRegex1, (match) =>
+      !Number.isNaN(match.charCodeAt(0))
+        ? String.fromCharCode(match.charCodeAt(0) + '냐'.charCodeAt(0) - '나'.charCodeAt(0))
+        : match,
+    )
+    .replace(koRegex2, '다냥')
+    .replace(koRegex3, '냥')
+}
 
 export interface AiScriptEnvOptions {
   /** Mk:api の実装。未設定なら Mk:api は使用不可エラー */
@@ -89,6 +113,29 @@ export function createAiScriptEnv(
     } catch {
       return values.NULL
     }
+  })
+
+  // --- Mk:toast ---
+  consts['Mk:toast'] = values.FN_NATIVE(([textVal, typeVal]) => {
+    const text = textVal?.type === 'str' ? textVal.value : ''
+    const type = typeVal?.type === 'str' ? typeVal.value : 'info'
+    // 将来的にトースト UI に置き換え
+    if (type === 'error') console.error(`[AiScript toast] ${text}`)
+    else if (type === 'warning') console.warn(`[AiScript toast] ${text}`)
+    else console.info(`[AiScript toast] ${text}`)
+  })
+
+  // --- Mk:url ---
+  consts['Mk:url'] = values.FN_NATIVE(async ([urlVal]) => {
+    const url = urlVal?.type === 'str' ? urlVal.value : ''
+    if (url) await openUrl(url)
+    return values.NULL
+  })
+
+  // --- Mk:nyaize ---
+  consts['Mk:nyaize'] = values.FN_NATIVE(([textVal]) => {
+    const text = textVal?.type === 'str' ? textVal.value : ''
+    return values.STR(nyaize(text))
   })
 
   // --- グローバル定数 ---
