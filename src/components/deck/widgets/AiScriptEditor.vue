@@ -49,11 +49,9 @@ const editorRef = ref<HTMLDivElement>()
 let view: EditorView | null = null
 let isExternalUpdate = false
 let lspWorker: Worker | null = null
-let lspClient: {
-  connect: (t: unknown) => void
-  plugin: (uri: string, lang: string) => Extension
-  destroy: () => void
-} | null = null
+let lspClient: InstanceType<
+  typeof import('@codemirror/lsp-client').LSPClient
+> | null = null
 
 const fileURI = `file:///aiscript-${Math.random().toString(36).slice(2, 8)}.ais`
 

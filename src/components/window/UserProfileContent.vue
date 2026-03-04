@@ -106,7 +106,10 @@ function formatCount(n: number): string {
 
 function formatBirthday(dateStr: string): string {
   if (!dateStr) return ''
-  const [year, month, day] = dateStr.split('-').map(Number)
+  const parts = dateStr.split('-').map(Number)
+  const year = parts[0] ?? 0
+  const month = parts[1] ?? 1
+  const day = parts[2] ?? 1
   const date = new Date(year, month - 1, day)
   return date.toLocaleDateString(undefined, {
     year: 'numeric',

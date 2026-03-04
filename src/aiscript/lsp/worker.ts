@@ -287,7 +287,7 @@ function handleNotification(method: string, params: LspNotificationParams) {
     case 'textDocument/didChange':
       if (params.contentChanges.length > 0) {
         const last = params.contentChanges[params.contentChanges.length - 1]
-        documents.set(params.textDocument.uri, last.text)
+        if (last) documents.set(params.textDocument.uri, last.text)
       }
       scheduleValidation(params.textDocument.uri)
       break
