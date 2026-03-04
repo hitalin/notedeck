@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { Interpreter } from '@syuilo/aiscript'
-import { type Ast, Parser } from '@syuilo/aiscript'
+import { Interpreter, type Ast, Parser } from '@syuilo/aiscript'
 import { invoke } from '@tauri-apps/api/core'
 import { computed, ref, watch } from 'vue'
-import { createInterpreter, executeAiScript } from '@/aiscript/execute'
+import { createAiScriptEnv } from '@/aiscript/api'
+import { createInterpreterOptions } from '@/aiscript/common'
 import { sanitizeCode } from '@/aiscript/sanitize'
-import type { UiComponent } from '@/aiscript/ui-types'
+import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useAccountsStore } from '@/stores/accounts'
 import type { WidgetConfig } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -57,28 +57,6 @@ async function run() {
       }
     : undefined
 
-  const options = {
-    onOutput: () => {},
-    onError: (err: Error) => {
-      error.value = err.message
-    },
-    onUiRender: (components: UiComponent[]) => {
-      uiComponents.value = components
-    },
-    api: apiOption,
-    storagePrefix: `app-${props.widget.id}`,
-    playVariables: {
-      THIS_ID: props.widget.id,
-      THIS_URL: '',
-      USER_ID: props.accountId ?? '',
-      USER_NAME: '',
-      USER_USERNAME: '',
-      LOCALE: navigator.language,
-      SERVER_URL: serverUrl.value,
-    },
-  }
-
-  // Create interpreter and keep reference for event handlers
   const parser = new Parser()
   let ast: Ast.Node[]
   try {
@@ -89,8 +67,35 @@ async function run() {
     return
   }
 
-  const interp = createInterpreter(options)
+  const env = createAiScriptEnv(
+    { api: apiOption, storagePrefix: `app-${props.widget.id}` },
+    {
+      THIS_ID: props.widget.id,
+      THIS_URL: '',
+      USER_ID: props.accountId ?? '',
+      USER_NAME: '',
+      USER_USERNAME: '',
+      LOCALE: navigator.language,
+      SERVER_URL: serverUrl.value,
+    },
+  )
+
+  const ui = createAiScriptUiLib({
+    onRender: (components) => {
+      uiComponents.value = components
+    },
+  })
+
+  const ioOpts = createInterpreterOptions({
+    onOutput: () => {},
+    onError: (err) => {
+      error.value = err.message
+    },
+  })
+
+  const interp = new Interpreter({ ...env, ...ui }, ioOpts)
   interpreter.value = interp
+
   try {
     await interp.exec(ast)
   } catch (e) {

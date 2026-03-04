@@ -3,7 +3,7 @@ import type { Interpreter } from '@syuilo/aiscript'
 import type { Value, VFn } from '@syuilo/aiscript/interpreter/value.js'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import type { CSSProperties } from 'vue'
-import type { UiComponent } from '@/aiscript/ui-types'
+import type { UiComponent } from '@/aiscript/ui'
 import MkMfm from '@/components/common/MkMfm.vue'
 
 const props = defineProps<{

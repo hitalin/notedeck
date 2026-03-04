@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { Interpreter } from '@syuilo/aiscript'
-import { type Ast, Parser } from '@syuilo/aiscript'
+import { Interpreter, type Ast, Parser } from '@syuilo/aiscript'
 import { invoke } from '@tauri-apps/api/core'
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { createInterpreter } from '@/aiscript/execute'
+import { createAiScriptEnv } from '@/aiscript/api'
+import { createInterpreterOptions } from '@/aiscript/common'
 import { sanitizeCode } from '@/aiscript/sanitize'
-import type { UiComponent } from '@/aiscript/ui-types'
+import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -75,17 +75,9 @@ async function run() {
     return
   }
 
-  const interp = createInterpreter({
-    onOutput: (text) => output.value.push({ text, isError: false }),
-    onError: (err) => {
-      error.value = err.message
-    },
-    onUiRender: (components) => {
-      uiComponents.value = components
-    },
-    api: apiOption,
-    storagePrefix: `col-aiscript-${props.column.id}`,
-    playVariables: {
+  const env = createAiScriptEnv(
+    { api: apiOption, storagePrefix: `col-aiscript-${props.column.id}` },
+    {
       THIS_ID: props.column.id,
       THIS_URL: '',
       USER_ID: props.column.accountId ?? '',
@@ -94,7 +86,22 @@ async function run() {
       LOCALE: navigator.language,
       SERVER_URL: serverUrl.value,
     },
+  )
+
+  const ui = createAiScriptUiLib({
+    onRender: (components) => {
+      uiComponents.value = components
+    },
   })
+
+  const ioOpts = createInterpreterOptions({
+    onOutput: (text) => output.value.push({ text, isError: false }),
+    onError: (err) => {
+      error.value = err.message
+    },
+  })
+
+  const interp = new Interpreter({ ...env, ...ui }, ioOpts)
   interpreter.value = interp
 
   try {
