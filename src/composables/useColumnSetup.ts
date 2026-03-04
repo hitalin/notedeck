@@ -16,6 +16,7 @@ import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
 import { toggleFavorite } from '@/utils/toggleFavorite'
 import { toggleReaction } from '@/utils/toggleReaction'
+import { useNoteSound } from '@/composables/useNoteSound'
 
 export function useColumnSetup(getColumn: () => DeckColumn) {
   let customMutatedFn: (() => void) | undefined
@@ -98,10 +99,16 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   const postFormRenoteId = ref<string | undefined>()
   const postFormEditNote = ref<NormalizedNote | undefined>()
 
+  const reactionSound = useNoteSound(
+    () => account.value?.host,
+    'syuilo/n-aec',
+  )
+
   async function handleReaction(reaction: string, note: NormalizedNote) {
     if (!adapter) return
     try {
       await toggleReaction(adapter.api, note, reaction, notifyMutationFor(note))
+      if (!getColumn().soundMuted) reactionSound.play()
     } catch (e) {
       const err = AppError.from(e)
       console.error('[reaction]', err.code, err.message)
