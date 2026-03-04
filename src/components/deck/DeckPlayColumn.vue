@@ -231,7 +231,7 @@ async function executePlay(detail: FlashDetail) {
   if (legacy) {
     const interp = new LegacyInterpreter(
       { ...env, ...ui } as Record<string, never>,
-      ioOpts,
+      ioOpts as unknown as ConstructorParameters<typeof LegacyInterpreter>[1],
     )
     interpreter.value = interp as unknown as Interpreter
     try {
