@@ -1,6 +1,6 @@
 # NoteDeck Development Guide
 
-Multi-server Misskey deck client for desktop.
+Desktop-only multi-server Misskey deck client with fork support.
 
 ## Tech Stack
 
@@ -61,7 +61,8 @@ Tauri に依存しない Misskey ヘッドレスクライアント。Rust ライ
 
 ### notedeck (このリポジトリ)
 
-notecli の上に Tauri v2 + Vue 3 の GUI を載せたデスクトップクライアント。
+notecli の上に Tauri v2 + Vue 3 の GUI を載せたデスクトップ専用クライアント。
+対象プラットフォームは Windows / macOS / Linux のみ。モバイルはサポートしない。
 
 ```
 src/                        # Vue 3 frontend
