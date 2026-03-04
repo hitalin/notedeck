@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useNavigation } from '@/composables/useNavigation'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { ChannelSubscription, NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
@@ -38,7 +38,7 @@ const {
   onScroll,
 } = useColumnSetup(() => props.column)
 
-const router = useRouter()
+const { navigateToNote } = useNavigation()
 const {
   notes,
   noteIds,
@@ -58,7 +58,7 @@ const { focusedNoteId } = useNoteFocus(
   notes,
   scroller,
   handlers,
-  (note) => router.push(`/note/${note._accountId}/${note.id}`),
+  (note) => navigateToNote(note._accountId, note.id),
 )
 const { sync: syncCapture } = useNoteCapture(
   () => getAdapter()?.stream,

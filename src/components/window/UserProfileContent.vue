@@ -104,6 +104,26 @@ function formatCount(n: number): string {
   return String(n)
 }
 
+function formatBirthday(dateStr: string): string {
+  if (!dateStr) return ''
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+}
+
+function displayUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    return u.hostname + (u.pathname !== '/' ? u.pathname : '')
+  } catch {
+    return url
+  }
+}
+
 // Post form state
 const showPostForm = ref(false)
 const postFormReplyTo = ref<NormalizedNote | undefined>()
@@ -243,6 +263,22 @@ async function handlePosted(editedNoteId?: string) {
             class="user-avatar"
           />
           <div v-else class="user-avatar avatar-placeholder" />
+
+          <!-- Banner actions -->
+          <div class="banner-actions">
+            <button class="_button banner-action-btn" @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}${user.host ? `@${user.host}` : ''}`}`)">
+              <i :class="isOwnProfile ? 'ti ti-pencil' : 'ti ti-dots'" />
+            </button>
+            <button
+              v-if="!isOwnProfile"
+              class="banner-follow-btn _button"
+              :class="{ following: user.isFollowing }"
+              :disabled="isFollowLoading"
+              @click="handleToggleFollow"
+            >
+              {{ user.isFollowing ? 'Following' : 'Follow' }}
+            </button>
+          </div>
         </div>
 
         <!-- Mobile title (shown below avatar on narrow screens) -->
@@ -258,33 +294,54 @@ async function handlePosted(editedNoteId?: string) {
           </div>
         </div>
 
+        <!-- Roles -->
+        <div v-if="user.roles?.length" class="roles">
+          <span
+            v-for="role in user.roles"
+            :key="role.id"
+            class="role"
+            :style="role.color ? { borderColor: role.color } : {}"
+          >
+            <img v-if="role.iconUrl" :src="role.iconUrl" class="role-icon" />
+            {{ role.name }}
+          </span>
+        </div>
+
         <!-- Description -->
         <div v-if="user.description" class="description">
           <MkMfm :text="user.description" :emojis="user.emojis" :server-host="account?.host" />
         </div>
 
-        <div v-if="user.createdAt" class="joined">
-          Joined {{ formatDate(user.createdAt) }}
+        <!-- Custom fields -->
+        <div v-if="user.fields?.length" class="profile-fields">
+          <div v-for="(field, i) in user.fields" :key="i" class="profile-field">
+            <div class="profile-field-name">{{ field.name }}</div>
+            <div class="profile-field-value">
+              <MkMfm :text="field.value" :emojis="user.emojis" :server-host="account?.host" />
+            </div>
+          </div>
         </div>
 
-        <!-- Follow button + Web UI link -->
-        <div class="follow-area">
-          <button
-            v-if="!isOwnProfile"
-            class="follow-btn _button"
-            :class="{ following: user.isFollowing }"
-            :disabled="isFollowLoading"
-            @click="handleToggleFollow"
-          >
-            {{ user.isFollowing ? 'Following' : 'Follow' }}
-          </button>
-          <button
-            class="webui-btn _button"
-            @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}${user.host ? `@${user.host}` : ''}`}`)"
-          >
-            <i class="ti ti-external-link" />
-            {{ isOwnProfile ? 'プロフィール編集' : 'Web UIで開く' }}
-          </button>
+        <!-- Profile info (birthday, location, url, registration date) -->
+        <div v-if="user.birthday || user.location || user.url || user.createdAt" class="profile-info">
+          <div v-if="user.birthday" class="profile-info-item">
+            <i class="ti ti-cake" />
+            <span>{{ formatBirthday(user.birthday) }}</span>
+          </div>
+          <div v-if="user.location" class="profile-info-item">
+            <i class="ti ti-map-pin" />
+            <span>{{ user.location }}</span>
+          </div>
+          <div v-if="user.url" class="profile-info-item">
+            <i class="ti ti-link" />
+            <button class="_button profile-info-link" @click="openUrl(user.url!)">
+              {{ displayUrl(user.url!) }}
+            </button>
+          </div>
+          <div v-if="user.createdAt" class="profile-info-item">
+            <i class="ti ti-calendar" />
+            <span>{{ formatDate(user.createdAt) }}</span>
+          </div>
         </div>
 
         <!-- Stats -->
@@ -441,6 +498,55 @@ async function handlePosted(editedNoteId?: string) {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Banner actions (top-right, Misskey style) */
+.banner-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(8px);
+  padding: 8px;
+  border-radius: 24px;
+  z-index: 3;
+}
+
+.banner-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 31px;
+  color: #fff;
+  text-shadow: 0 0 8px #000;
+  font-size: 16px;
+}
+
+.banner-follow-btn {
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-weight: bold;
+  color: #fff;
+  background: var(--nd-accent);
+  margin-left: 4px;
+}
+
+.banner-follow-btn:hover {
+  opacity: 0.85;
+}
+
+.banner-follow-btn:disabled {
+  opacity: 0.5;
+}
+
+.banner-follow-btn.following {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
 /* Avatar */
 .user-avatar {
   position: absolute;
@@ -474,58 +580,22 @@ async function handlePosted(editedNoteId?: string) {
   word-break: break-word;
 }
 
-/* Joined */
-.joined {
-  padding: 8px 24px 0 154px;
-  font-size: 0.8em;
-  opacity: 0.5;
-}
-
-/* Follow button + Web UI link */
-.follow-area {
+/* Roles (Misskey-style, border-based) */
+.roles {
+  padding: 12px 24px 0 154px;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  align-items: center;
-  padding: 16px 24px 0 154px;
+  font-size: 0.85em;
 }
 
-.webui-btn {
+.role {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 8px 16px;
+  padding: 3px 8px;
+  border: solid 1px var(--nd-divider);
   border-radius: 999px;
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  background: var(--nd-buttonBg);
-  transition: opacity 0.15s;
-}
-
-.webui-btn:hover {
-  opacity: 0.85;
-}
-
-.follow-btn {
-  padding: 8px 24px;
-  border-radius: 999px;
-  font-size: 0.85em;
-  font-weight: bold;
-  color: #fff;
-  background: var(--nd-accent);
-  transition: opacity 0.15s;
-}
-
-.follow-btn:hover {
-  opacity: 0.85;
-}
-
-.follow-btn:disabled {
-  opacity: 0.5;
-}
-
-.follow-btn.following {
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
 }
 
 /* Stats */
@@ -606,6 +676,71 @@ async function handlePosted(editedNoteId?: string) {
   color: var(--nd-accent);
 }
 
+.role-icon {
+  width: 1.3em;
+  height: 1.3em;
+  object-fit: contain;
+}
+
+/* Profile fields (key-value list) */
+.profile-fields {
+  padding: 16px 24px 0 154px;
+}
+
+.profile-field {
+  display: flex;
+  border-bottom: solid 0.5px var(--nd-divider);
+  padding: 10px 0;
+}
+
+.profile-field:last-child {
+  border-bottom: none;
+}
+
+.profile-field-name {
+  flex: 0 0 120px;
+  font-size: 0.85em;
+  font-weight: bold;
+  color: var(--nd-fgHighlighted);
+  word-break: break-word;
+}
+
+.profile-field-value {
+  flex: 1;
+  font-size: 0.85em;
+  word-break: break-word;
+  min-width: 0;
+}
+
+/* Profile info (birthday, location, url) */
+.profile-info {
+  padding: 8px 24px 0 154px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.profile-info-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8em;
+  opacity: 0.6;
+}
+
+.profile-info-item i {
+  font-size: 1em;
+}
+
+.profile-info-link {
+  color: var(--nd-accent);
+  text-decoration: none;
+}
+
+.profile-info-link:hover {
+  text-decoration: underline;
+}
+
 /* Mobile responsive via container query */
 @container (max-width: 500px) {
   .banner-area {
@@ -650,14 +785,21 @@ async function handlePosted(editedNoteId?: string) {
 
   .mobile-badges {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     justify-content: center;
     margin-top: 8px;
   }
 
-  .follow-area {
-    padding: 16px;
-    text-align: center;
+  .roles {
+    padding: 12px 16px 0;
+    justify-content: center;
+  }
+
+  .banner-actions {
+    top: 8px;
+    right: 8px;
+    padding: 6px;
   }
 
   .description {
@@ -665,9 +807,22 @@ async function handlePosted(editedNoteId?: string) {
     text-align: center;
   }
 
-  .joined {
-    padding: 0 16px;
-    text-align: center;
+  .profile-fields {
+    padding: 16px;
+  }
+
+  .profile-field {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .profile-field-name {
+    flex: none;
+  }
+
+  .profile-info {
+    padding: 8px 16px 0;
+    justify-content: center;
   }
 
   .stats {

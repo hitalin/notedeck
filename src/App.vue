@@ -16,6 +16,9 @@ const UpdateBanner = isDesktop ? UpdateBannerComponent : null
 const CommandPalette = defineAsyncComponent(
   () => import('@/components/common/CommandPalette.vue'),
 )
+const DeckWindowLayer = defineAsyncComponent(
+  () => import('@/components/deck/DeckWindowLayer.vue'),
+)
 
 const commandStore = useCommandStore()
 
@@ -47,6 +50,8 @@ onMounted(() => {
       <p>NoteDeck requires the Tauri runtime.</p>
       <p>Run <code>pnpm tauri:dev</code> instead of <code>pnpm dev</code>.</p>
     </div>
+
+    <DeckWindowLayer />
 
     <Teleport to="body">
       <CommandPalette v-if="commandStore.isOpen" />

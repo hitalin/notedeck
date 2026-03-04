@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { useRouter } from 'vue-router'
+import { useNavigation } from '@/composables/useNavigation'
 
 const props = defineProps<{
   show: boolean
@@ -21,7 +21,7 @@ const emit = defineEmits<{
   logout: []
 }>()
 
-const router = useRouter()
+const { navigateToUser } = useNavigation()
 
 function modeLabel(key: string): string {
   const match = key.match(/^isIn(.+)Mode$/)
@@ -59,7 +59,7 @@ function modeLabel(key: string): string {
       </template>
       <div v-if="modeError" class="nav-account-menu-error">{{ modeError }}</div>
       <div class="nav-account-menu-divider" />
-      <button class="_button nav-account-menu-item" @click="router.push(`/user/${account.id}/${account.userId}`)">
+      <button class="_button nav-account-menu-item" @click="navigateToUser(account.id, account.userId)">
         <span>Profile</span>
         <i class="ti ti-user" />
       </button>

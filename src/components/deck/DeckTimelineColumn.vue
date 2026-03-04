@@ -9,7 +9,7 @@ import {
   ref,
   watch,
 } from 'vue'
-import { useRouter } from 'vue-router'
+import { useNavigation } from '@/composables/useNavigation'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type {
   NormalizedNote,
@@ -70,7 +70,7 @@ const {
   onScroll,
 } = useColumnSetup(() => props.column)
 
-const router = useRouter()
+const { navigateToNote } = useNavigation()
 const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } =
   useNoteList({
     getMyUserId: () => account.value?.userId,
@@ -135,7 +135,7 @@ const { focusedNoteId } = useNoteFocus(
   notes,
   scroller,
   handlers,
-  (note) => router.push(`/note/${note._accountId}/${note.id}`),
+  (note) => navigateToNote(note._accountId, note.id),
 )
 
 const tlType = ref<TimelineType>(props.column.tl || 'home')

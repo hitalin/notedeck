@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { nextTick, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useNavigation } from '@/composables/useNavigation'
 import type {
   ChannelSubscription,
   NormalizedNote,
@@ -59,7 +59,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     onScroll,
   } = useColumnSetup(config.getColumn)
 
-  const router = useRouter()
+  const { navigateToNote } = useNavigation()
   const isStreaming = !!config.streaming
 
   const {
@@ -108,7 +108,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     notes,
     scroller,
     handlers,
-    (note) => router.push(`/note/${note._accountId}/${note.id}`),
+    (note) => navigateToNote(note._accountId, note.id),
   )
 
   const pendingNotes =

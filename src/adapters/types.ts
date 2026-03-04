@@ -192,6 +192,20 @@ export interface NormalizedUser {
   instance?: UserInstance
 }
 
+export interface UserRole {
+  id: string
+  name: string
+  color?: string | null
+  iconUrl?: string | null
+  description?: string | null
+  displayOrder: number
+}
+
+export interface UserField {
+  name: string
+  value: string
+}
+
 export interface NormalizedUserDetail extends NormalizedUser {
   bannerUrl: string | null
   description: string | null
@@ -203,6 +217,11 @@ export interface NormalizedUserDetail extends NormalizedUser {
   isFollowing: boolean
   isFollowed: boolean
   createdAt: string
+  roles: UserRole[]
+  fields: UserField[]
+  url?: string | null
+  birthday?: string | null
+  location?: string | null
 }
 
 export interface NormalizedPoll {

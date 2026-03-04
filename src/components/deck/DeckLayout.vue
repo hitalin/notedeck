@@ -32,9 +32,6 @@ const MkPostForm = defineAsyncComponent(
 const AddColumnDialog = defineAsyncComponent(
   () => import('./AddColumnDialog.vue'),
 )
-const DeckWindowLayer = defineAsyncComponent(
-  () => import('./DeckWindowLayer.vue'),
-)
 
 import DeckAntennaColumn from './DeckAntennaColumn.vue'
 import DeckChannelColumn from './DeckChannelColumn.vue'
@@ -436,9 +433,6 @@ watch(
       />
     </Teleport>
 
-    <Teleport to="body">
-      <DeckWindowLayer />
-    </Teleport>
   </div>
 </template>
 

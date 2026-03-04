@@ -8,7 +8,7 @@ import {
   shallowRef,
   watch,
 } from 'vue'
-import { useRouter } from 'vue-router'
+import { useNavigation } from '@/composables/useNavigation'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
@@ -45,7 +45,7 @@ const {
   setOnNotesMutated,
 } = useColumnSetup(() => props.column)
 
-const router = useRouter()
+const { navigateToNote } = useNavigation()
 const notes = shallowRef<NormalizedNote[]>([])
 setOnNotesMutated(() => {
   notes.value = [...notes.value]
@@ -55,7 +55,7 @@ const { focusedNoteId } = useNoteFocus(
   notes,
   scroller,
   handlers,
-  (note) => router.push(`/note/${note._accountId}/${note.id}`),
+  (note) => navigateToNote(note._accountId, note.id),
 )
 const searchQuery = ref(props.column.query ?? '')
 const searchInput = ref<HTMLInputElement | null>(null)
