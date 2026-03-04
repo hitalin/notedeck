@@ -97,10 +97,37 @@ const {
   },
 })
 
-// Pause streaming batch when column scrolls off-screen
+// Pause streaming batch when column scrolls off-screen; catch up when visible again
 const { isVisible: columnVisible } = useColumnVisible(props.column.id)
-watch(columnVisible, (visible) => {
+let _wasHidden = false
+let _lastCatchUpAt = 0
+watch(columnVisible, async (visible) => {
   setPaused(!visible)
+  if (visible && _wasHidden) {
+    _wasHidden = false
+    const now = Date.now()
+    if (now - _lastCatchUpAt < 10_000) return
+    _lastCatchUpAt = now
+    const adapter = getAdapter()
+    if (!adapter || timeMachine.isActive.value || notes.value.length === 0)
+      return
+    try {
+      const fetched = await adapter.api.getTimeline(
+        tlType.value,
+        buildTimelineOptions(),
+      )
+      if (fetched.length > 0) {
+        const newNotes = fetched.filter((n) => !noteIds.has(n.id))
+        if (newNotes.length > 0) {
+          setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
+        }
+      }
+    } catch {
+      // ignore catch-up errors
+    }
+  } else if (!visible) {
+    _wasHidden = true
+  }
 })
 
 const { focusedNoteId } = useNoteFocus(
@@ -337,11 +364,10 @@ async function fetchCachedNotes(): Promise<NormalizedNote[]> {
   }
 }
 
-function buildTimelineOptions(sinceId?: string) {
+function buildTimelineOptions() {
   const filters = columnFilters.value
   const hasFilters = Object.keys(filters).length > 0
   return {
-    ...(sinceId ? { sinceId } : {}),
     ...(hasFilters ? { filters } : {}),
   }
 }
@@ -375,20 +401,24 @@ async function connect(useCache = false) {
     )
     noteSound.warmup()
 
-    const sinceId = notes.value.length > 0 ? notes.value[0]?.id : undefined
+    // Always fetch latest notes (no sinceId) to ensure newest notes are shown.
+    // Misskey API with sinceId returns ascending order, so only the oldest
+    // "new" notes would be returned, missing the actual latest notes.
     const dedupKey = `${props.column.accountId}:timeline:${tlType.value}`
     const fetched = await dedup(dedupKey, () =>
-      adapter.api.getTimeline(tlType.value, buildTimelineOptions(sinceId)),
+      adapter.api.getTimeline(tlType.value, buildTimelineOptions()),
     )
 
-    if (sinceId && fetched.length > 0) {
-      // Merge new notes on top of cached
-      const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-      setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
-    } else if (fetched.length > 0) {
-      setNotes(fetched)
+    if (fetched.length > 0) {
+      if (notes.value.length > 0) {
+        const newNotes = fetched.filter((n) => !noteIds.has(n.id))
+        if (newNotes.length > 0) {
+          setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
+        }
+      } else {
+        setNotes(fetched)
+      }
     }
-    // If fetched is empty and we have cache, keep showing cache
   } catch (e) {
     const err = AppError.from(e)
     // 3. Handle "disabled" errors — always refresh policies regardless of cache
@@ -511,15 +541,11 @@ async function onResume() {
   const adapter = getAdapter()
   if (!adapter || !account.value) return
 
-  const sinceId = notes.value[0]?.id
-
-  // Run cache fetch and API fetch in parallel
+  // Run cache fetch and API fetch in parallel (always fetch latest)
   const cachePromise = fetchCachedNotes()
-  const apiPromise = sinceId
-    ? adapter.api
-        .getTimeline(tlType.value, buildTimelineOptions(sinceId))
-        .catch(() => [] as NormalizedNote[])
-    : Promise.resolve([] as NormalizedNote[])
+  const apiPromise = adapter.api
+    .getTimeline(tlType.value, buildTimelineOptions())
+    .catch(() => [] as NormalizedNote[])
 
   const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
 
