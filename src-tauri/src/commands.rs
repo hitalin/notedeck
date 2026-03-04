@@ -1404,3 +1404,8 @@ pub async fn stream_unsub_note(
 ) -> Result<()> {
     streaming.unsub_note(&account_id, &note_id).await
 }
+
+#[tauri::command]
+pub fn get_cli_commands() -> Vec<notecli::cli::CliCommandInfo> {
+    notecli::cli::command_metadata()
+}

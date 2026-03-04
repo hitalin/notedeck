@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { createCliHandlers } from '@/commands/cliHandlers'
-import { CLI_COMMAND_META, parseCliInput } from '@/commands/cliParser'
+import { getCliMeta, parseCliInput } from '@/commands/cliParser'
 import type { Command } from '@/commands/registry'
 import { useCommandStore } from '@/commands/registry'
 import { useNavigation } from '@/composables/useNavigation'
@@ -16,11 +16,16 @@ const selectedIndex = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
 
 const cliMatch = computed(() => parseCliInput(query.value))
+const cliMeta = computed(() =>
+  cliMatch.value ? getCliMeta(cliMatch.value.name) : undefined,
+)
 
+const { navigateToNote, navigateToUser } = useNavigation()
 const cliHandlers = createCliHandlers({
   deckStore: useDeckStore(),
   accountsStore: useAccountsStore(),
-  navigateToNote: useNavigation().navigateToNote,
+  navigateToNote,
+  navigateToUser,
   toggleAccountMenu: () => commandStore.execute('account-menu'),
 })
 
@@ -88,10 +93,12 @@ function onKeydown(e: KeyboardEvent) {
     e.preventDefault()
     if (cliMatch.value) {
       const { name, args } = cliMatch.value
-      const meta = CLI_COMMAND_META[name]
-      if (meta.needsArgs && !args.trim()) return
+      const meta = getCliMeta(name)
+      if (meta?.needsArgs && !args.trim()) return
+      const handler = cliHandlers[name]
+      if (!handler) return
       commandStore.close()
-      cliHandlers[name](args)
+      handler(args)
     } else {
       const cmd = flatList.value[selectedIndex.value]
       if (cmd) {
@@ -160,17 +167,17 @@ function primaryShortcut(cmd: Command): string | null {
         <kbd class="palette-esc">Esc</kbd>
       </div>
       <!-- CLI mode -->
-      <div v-if="cliMatch" class="palette-cli">
+      <div v-if="cliMatch && cliMeta" class="palette-cli">
         <div class="palette-cli-row">
           <i
-            :class="'ti ti-' + CLI_COMMAND_META[cliMatch.name].icon"
+            :class="'ti ti-' + cliMeta.icon"
             class="palette-item-icon"
           />
           <span
-            v-if="CLI_COMMAND_META[cliMatch.name].needsArgs && !cliMatch.args.trim()"
+            v-if="cliMeta.needsArgs && !cliMatch.args.trim()"
             class="palette-cli-hint"
           >
-            {{ CLI_COMMAND_META[cliMatch.name].usage }}
+            {{ cliMeta.usage }}
           </span>
           <span v-else class="palette-cli-action">
             ↵ Enter to run:
@@ -179,7 +186,7 @@ function primaryShortcut(cmd: Command): string | null {
           </span>
         </div>
         <div class="palette-cli-desc">
-          {{ CLI_COMMAND_META[cliMatch.name].description }}
+          {{ cliMeta.about }}
         </div>
       </div>
       <!-- Normal command list -->

@@ -13,6 +13,7 @@ import {
   registerDefaultCommands,
   unregisterDefaultCommands,
 } from '@/commands/definitions'
+import { loadCliCommands } from '@/commands/cliParser'
 import { useCommandStore } from '@/commands/registry'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
 import { useNavigation } from '@/composables/useNavigation'
@@ -198,6 +199,7 @@ onMounted(() => {
   deckStore.load()
   initDesktopNotifications()
   initApiBridge()
+  loadCliCommands()
   onNotificationAction((ctx) => {
     if (ctx.noteId) {
       navigateToNote(ctx.accountId, ctx.noteId)
