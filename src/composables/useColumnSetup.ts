@@ -122,7 +122,6 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     notify()
     try {
       await adapter.api.createNote({ renoteId: note.id })
-      if (!getColumn().soundMuted) actionSound.play()
     } catch (e) {
       note.renoteCount = Math.max(0, (note.renoteCount ?? 1) - 1)
       notify()
