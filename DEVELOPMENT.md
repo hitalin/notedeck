@@ -100,11 +100,62 @@ Misskey API クライアント・DB・モデル・ストリーミングコアな
 
 ### Adding support for a new fork
 
-1. Create `src/adapters/<fork>/` directory
-2. Extend `MisskeyAdapter` and override only what differs
-3. Register in `src/adapters/registry.ts`
+NoteDeck は adapter パターンでフォークごとの差異を吸収しています。
+ほとんどの Misskey フォークは基本アダプターのままで動作しますが、固有機能を活かすには以下の手順で対応を追加できます。
 
-Most Misskey forks work with the base adapter as-is.
+#### 最小構成（Misskey 互換フォーク）
+
+フォークが Misskey API と完全互換なら、検出ロジックとレジストリの追加だけで済みます。
+
+**1. サーバー検出に追加** — `src/core/server.ts`
+
+```typescript
+// detectSoftware() 内に追加
+if (n === 'yourfork') return 'yourfork'
+```
+
+**2. 型定義に追加** — `src/adapters/types.ts`
+
+```typescript
+export type ServerSoftware =
+  | 'misskey'
+  | 'yourfork'  // 追加
+  | ...
+```
+
+**3. レジストリに登録** — `src/adapters/registry.ts`
+
+```typescript
+// Misskey アダプターをそのまま再利用
+registerAdapter('yourfork', createMisskeyAdapter)
+```
+
+#### 固有機能がある場合
+
+フォーク固有の API やフィルターがある場合は、差分だけをオーバーライドします。
+
+**フィルターの追加** — `src/adapters/types.ts`
+
+```typescript
+export const FORK_EXTRA_FILTERS: Partial<
+  Record<ServerSoftware, (keyof TimelineFilter)[]>
+> = {
+  yourfork: ['withBots', 'withSensitive'],
+}
+```
+
+**API アダプターのオーバーライド** — `src/adapters/yourfork/index.ts`
+
+Misskey アダプターを継承し、差分のみ実装します。
+API の実処理は Rust 側（notecli）にあるため、TypeScript 側は薄いブリッジです。
+
+#### チェックリスト
+
+- [ ] `src/core/server.ts` — `detectSoftware()` に追加
+- [ ] `src/adapters/types.ts` — `ServerSoftware` に追加
+- [ ] `src/adapters/types.ts` — `FORK_EXTRA_FILTERS` に追加（必要なら）
+- [ ] `src/adapters/registry.ts` — `registerAdapter()` で登録
+- [ ] `src/adapters/<fork>/` — 差分があればアダプター作成
 
 ## License
 

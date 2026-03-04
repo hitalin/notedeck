@@ -69,9 +69,17 @@ HTTP API（`localhost:19820`）で外部ツールや AI エージェントから
 
 ---
 
-## 開発に参加する
+## 貢献する
 
-[DEVELOPMENT.md](DEVELOPMENT.md) を参照してください。
+NoteDeck はフォークごとの adapter を追加することで、対応サーバーを広げていく設計です。「自分の鯖の機能を NoteDeck で使いたい」という方の PR を歓迎します。
+
+- **フォーク対応の追加** — [DEVELOPMENT.md](DEVELOPMENT.md) の "Adding support for a new fork" を参照
+- **バグ報告・機能提案** — [Issues](https://github.com/hitalin/notedeck/issues)
+- **開発環境のセットアップ** — [DEVELOPMENT.md](DEVELOPMENT.md)
+
+## 支援する
+
+NoteDeck は個人で開発しているオープンソースプロジェクトです。開発の継続を支援していただける方は [GitHub Sponsors](https://github.com/sponsors/hitalin) からお願いします。
 
 ## ライセンス
 
