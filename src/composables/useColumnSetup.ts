@@ -99,7 +99,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   const postFormRenoteId = ref<string | undefined>()
   const postFormEditNote = ref<NormalizedNote | undefined>()
 
-  const reactionSound = useNoteSound(
+  const actionSound = useNoteSound(
     () => account.value?.host,
     'syuilo/n-aec',
   )
@@ -108,7 +108,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     if (!adapter) return
     try {
       await toggleReaction(adapter.api, note, reaction, notifyMutationFor(note))
-      if (!getColumn().soundMuted) reactionSound.play()
+      if (!getColumn().soundMuted) actionSound.play()
     } catch (e) {
       const err = AppError.from(e)
       console.error('[reaction]', err.code, err.message)
@@ -122,6 +122,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     notify()
     try {
       await adapter.api.createNote({ renoteId: note.id })
+      if (!getColumn().soundMuted) actionSound.play()
     } catch (e) {
       note.renoteCount = Math.max(0, (note.renoteCount ?? 1) - 1)
       notify()
