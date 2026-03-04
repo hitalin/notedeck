@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, toRaw } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 
@@ -208,8 +208,8 @@ export const useDeckStore = defineStore('deck', () => {
       const profile: DeckProfile = {
         id: genProfileId(),
         name: 'Main',
-        columns: structuredClone(columns.value),
-        layout: structuredClone(layout.value),
+        columns: structuredClone(toRaw(columns.value)),
+        layout: structuredClone(toRaw(layout.value)),
         createdAt: Date.now(),
       }
       profiles.push(profile)
@@ -314,8 +314,8 @@ export const useDeckStore = defineStore('deck', () => {
     const profiles = loadProfiles()
     const profile = profiles.find((p) => p.id === activeProfileId.value)
     if (!profile) return
-    profile.columns = structuredClone(columns.value)
-    profile.layout = structuredClone(layout.value)
+    profile.columns = structuredClone(toRaw(columns.value))
+    profile.layout = structuredClone(toRaw(layout.value))
     saveProfiles(profiles)
   }
 
