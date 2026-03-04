@@ -254,6 +254,24 @@ export const useDeckStore = defineStore('deck', () => {
     save()
   }
 
+  // --- Wallpaper ---
+  const WALLPAPER_KEY = 'nd-deck-wallpaper'
+  const wallpaper = ref<string | null>(null)
+
+  function setWallpaper(url: string) {
+    wallpaper.value = url
+    localStorage.setItem(WALLPAPER_KEY, url)
+  }
+
+  function clearWallpaper() {
+    wallpaper.value = null
+    localStorage.removeItem(WALLPAPER_KEY)
+  }
+
+  function loadWallpaper() {
+    wallpaper.value = localStorage.getItem(WALLPAPER_KEY)
+  }
+
   // --- Profile management ---
   const PROFILES_KEY = 'nd-deck-profiles'
   const ACTIVE_PROFILE_KEY = 'nd-deck-active-profile'
@@ -379,6 +397,10 @@ export const useDeckStore = defineStore('deck', () => {
     addWidget,
     removeWidget,
     updateWidgetData,
+    wallpaper,
+    setWallpaper,
+    clearWallpaper,
+    loadWallpaper,
     activeProfileId,
     loadActiveProfileId,
     syncCurrentToActiveProfile,

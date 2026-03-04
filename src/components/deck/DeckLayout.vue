@@ -45,6 +45,7 @@ import DeckListColumn from './DeckListColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
 import DeckNavbar from './DeckNavbar.vue'
 import DeckProfileMenu from './DeckProfileMenu.vue'
+import DeckSettingsMenu from './DeckSettingsMenu.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
 import DeckSpecifiedColumn from './DeckSpecifiedColumn.vue'
@@ -83,6 +84,7 @@ const navbarRef = ref<InstanceType<typeof DeckNavbar> | null>(null)
 const showAddMenu = ref(false)
 const showCompose = ref(false)
 const showProfileMenu = ref(false)
+const showSettingsMenu = ref(false)
 const mobileDrawerOpen = ref(false)
 
 function openCompose() {
@@ -199,6 +201,7 @@ function stopColumnResize() {
 onMounted(() => {
   deckStore.load()
   deckStore.loadActiveProfileId()
+  deckStore.loadWallpaper()
   initDesktopNotifications()
   initApiBridge()
   loadCliCommands()
@@ -274,7 +277,11 @@ watch(
     />
 
     <!-- Main content area -->
-    <div class="main-area">
+    <div
+      class="main-area"
+      :class="{ 'with-wallpaper': deckStore.wallpaper != null }"
+      :style="{ backgroundImage: deckStore.wallpaper != null ? `url(${deckStore.wallpaper})` : '' }"
+    >
       <!-- Column area -->
       <div
         ref="columnsRef"
@@ -363,7 +370,14 @@ watch(
         <button class="_button bottom-bar-btn" title="Add column" @click="toggleAddMenu">
           <i class="ti ti-plus" />
         </button>
-        <div class="bottom-bar-right" />
+        <div class="bottom-bar-right">
+          <div class="settings-menu-wrap">
+            <button class="_button bottom-bar-btn" title="Deck settings" @click.stop="showSettingsMenu = !showSettingsMenu">
+              <i class="ti ti-settings" />
+            </button>
+            <DeckSettingsMenu :show="showSettingsMenu" @close="showSettingsMenu = false" />
+          </div>
+        </div>
       </div>
     </div>
 
@@ -421,7 +435,6 @@ watch(
   display: flex;
   width: 100%;
   height: 100%;
-  background: var(--nd-deckBg);
 }
 
 /* ============================================================
@@ -432,6 +445,13 @@ watch(
   display: flex;
   flex-direction: column;
   min-width: 0;
+  background: var(--nd-deckBg);
+}
+
+.main-area.with-wallpaper {
+  background: none;
+  background-size: cover;
+  background-position: center;
 }
 
 .columns {
@@ -492,7 +512,8 @@ watch(
   justify-content: flex-end;
 }
 
-.profile-menu-wrap {
+.profile-menu-wrap,
+.settings-menu-wrap {
   position: relative;
 }
 

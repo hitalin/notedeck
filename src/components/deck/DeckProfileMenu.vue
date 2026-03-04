@@ -59,6 +59,7 @@ function remove(id: string) {
   deckStore.deleteProfile(id)
   profiles.value = deckStore.getProfiles()
 }
+
 </script>
 
 <template>
@@ -105,6 +106,7 @@ function remove(id: string) {
           <i class="ti ti-check" />
         </button>
       </div>
+
     </div>
   </Transition>
 </template>
