@@ -35,6 +35,11 @@ desktop = ["tauri/tray-icon", "dep:tauri-plugin-global-shortcut", "dep:tauri-plu
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
 [lib]
 name = "notedeck_lib"
 crate-type = ["lib", "cdylib", "staticlib"]

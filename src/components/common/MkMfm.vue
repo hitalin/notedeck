@@ -2,7 +2,7 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, defineAsyncComponent } from 'vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
-import { highlightCode } from '@/utils/highlight'
+import { highlightCode, highlighterLoaded } from '@/utils/highlight'
 import { proxyUrl } from '@/utils/imageProxy'
 import { type MfmToken, parseMfm } from '@/utils/mfm'
 import { isSafeUrl } from '@/utils/url'
@@ -209,7 +209,7 @@ function fnStyle(
     --><!-- Bold --><b v-else-if="token.type === 'bold'">{{ token.value }}</b><!--
     --><!-- Italic --><i v-else-if="token.type === 'italic'">{{ token.value }}</i><!--
     --><!-- Strike --><s v-else-if="token.type === 'strike'">{{ token.value }}</s><!--
-    --><!-- Code Block --><div v-else-if="token.type === 'codeBlock'" class="mfm-code-block" v-html="highlightCode(token.value, token.lang)"></div><!--
+    --><!-- Code Block --><div v-else-if="token.type === 'codeBlock'" :key="`cb-${i}-${highlighterLoaded}`" class="mfm-code-block" v-html="highlightCode(token.value, token.lang)"></div><!--
     --><!-- Inline Code --><code v-else-if="token.type === 'inlineCode'" class="mfm-code">{{ token.value }}</code><!--
     --><!-- Custom Emoji (resolved) --><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="proxyUrl(emojiUrls[token.shortcode]!)" :alt="`:${token.shortcode}:`" class="custom-emoji" decoding="async" loading="lazy" /><!--
     --><!-- Custom Emoji (unresolved) --><span v-else-if="token.type === 'customEmoji'">:{{ token.shortcode }}:</span><!--
