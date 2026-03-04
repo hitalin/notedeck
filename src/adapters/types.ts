@@ -332,6 +332,8 @@ export interface ApiAdapter {
   lookupUser(username: string, host?: string | null): Promise<NormalizedUser>
   followUser(userId: string): Promise<void>
   unfollowUser(userId: string): Promise<void>
+  acceptFollowRequest(userId: string): Promise<void>
+  rejectFollowRequest(userId: string): Promise<void>
   getUserLists(): Promise<UserList[]>
   getAntennas(): Promise<Antenna[]>
   getAntennaNotes(

@@ -257,6 +257,20 @@ export class MisskeyApi implements ApiAdapter {
     })
   }
 
+  async acceptFollowRequest(userId: string): Promise<void> {
+    return invoke('api_accept_follow_request', {
+      accountId: this.accountId,
+      userId,
+    })
+  }
+
+  async rejectFollowRequest(userId: string): Promise<void> {
+    return invoke('api_reject_follow_request', {
+      accountId: this.accountId,
+      userId,
+    })
+  }
+
   async getUserLists(): Promise<UserList[]> {
     return invoke('api_get_user_lists', {
       accountId: this.accountId,

@@ -74,6 +74,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::api_delete_note,
         commands::api_follow_user,
         commands::api_unfollow_user,
+        commands::api_accept_follow_request,
+        commands::api_reject_follow_request,
         commands::api_get_user,
         commands::api_get_user_detail,
         commands::api_get_user_notes,

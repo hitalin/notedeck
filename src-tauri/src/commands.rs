@@ -830,6 +830,28 @@ pub async fn api_unfollow_user(
 }
 
 #[tauri::command]
+pub async fn api_accept_follow_request(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.accept_follow_request(&host, &token, &user_id).await
+}
+
+#[tauri::command]
+pub async fn api_reject_follow_request(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.reject_follow_request(&host, &token, &user_id).await
+}
+
+#[tauri::command]
 pub fn api_get_cached_timeline(
     db: State<'_, Arc<Database>>,
     account_id: String,

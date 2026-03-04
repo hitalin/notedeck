@@ -86,6 +86,7 @@ function closeUserPopup() {
 
 const MAX_NOTIFICATIONS = 500
 const notifications = shallowRef<NormalizedNotification[]>([])
+const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 
 // rAF batching for streaming notifications
 let rafBuffer: NormalizedNotification[] = []
@@ -149,6 +150,7 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   mention: 'at',
   follow: 'user-plus',
   followRequestAccepted: 'user-check',
+  receiveFollowRequest: 'user-question',
   pollEnded: 'chart-bar',
 }
 
@@ -297,6 +299,20 @@ async function handlePosted(editedNoteId?: string) {
   }
 }
 
+async function handleFollowRequest(notif: NormalizedNotification, action: 'accepted' | 'rejected') {
+  const adapter = getAdapter()
+  if (!adapter || !notif.user) return
+  try {
+    if (action === 'accepted')
+      await adapter.api.acceptFollowRequest(notif.user.id)
+    else
+      await adapter.api.rejectFollowRequest(notif.user.id)
+    followRequestStates.value = { ...followRequestStates.value, [notif.id]: action }
+  } catch (e) {
+    error.value = AppError.from(e)
+  }
+}
+
 function handleScroll() {
   onScroll(loadMore)
 }
@@ -399,6 +415,26 @@ onUnmounted(() => {
                 </div>
 
                 <span class="notif-time">{{ formatTime(notif.createdAt) }}</span>
+              </div>
+
+              <!-- Follow request actions -->
+              <div
+                v-if="notif.type === 'receiveFollowRequest' && notif.user"
+                class="follow-request-actions"
+              >
+                <template v-if="followRequestStates[notif.id]">
+                  <span class="follow-request-done">
+                    {{ followRequestStates[notif.id] === 'accepted' ? 'Accepted' : 'Rejected' }}
+                  </span>
+                </template>
+                <template v-else>
+                  <button class="follow-request-btn accept-btn" @click="handleFollowRequest(notif, 'accepted')">
+                    <i class="ti ti-check" /> Accept
+                  </button>
+                  <button class="follow-request-btn reject-btn" @click="handleFollowRequest(notif, 'rejected')">
+                    <i class="ti ti-x" /> Reject
+                  </button>
+                </template>
               </div>
 
               <!-- Attached note (for reaction, reply, renote, quote, mention) -->
@@ -622,8 +658,8 @@ onUnmounted(() => {
   margin: 0 10px 0 0;
 }
 
-/* Notifications without attached note — add bottom padding to header */
-.notif-item:not(:has(.notif-note-wrap)) .notif-header {
+/* Notifications without attached note or action buttons — add bottom padding to header */
+.notif-item:not(:has(.notif-note-wrap)):not(:has(.follow-request-actions)) .notif-header {
   padding-bottom: 12px;
 }
 
@@ -647,5 +683,60 @@ onUnmounted(() => {
   padding: 1rem;
   font-size: 0.8em;
   opacity: 0.4;
+}
+
+.notif-type-receiveFollowRequest {
+  border-left-color: var(--nd-warn);
+}
+
+.notif-type-receiveFollowRequest .notif-icon {
+  color: var(--nd-warn);
+}
+
+.follow-request-actions {
+  display: flex;
+  gap: 8px;
+  max-width: 300px;
+  padding: 8px 16px 12px 60px;
+}
+
+.follow-request-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 100px;
+  padding: 7px 14px;
+  font-weight: bold;
+  font-size: 0.85em;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.accept-btn {
+  background: var(--nd-link);
+  color: #fff;
+}
+
+.accept-btn:hover {
+  filter: brightness(1.1);
+}
+
+.reject-btn {
+  background: transparent;
+  color: var(--nd-love);
+}
+
+.reject-btn:hover {
+  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
+}
+
+.follow-request-done {
+  font-size: 0.85em;
+  opacity: 0.6;
+  font-style: italic;
 }
 </style>
