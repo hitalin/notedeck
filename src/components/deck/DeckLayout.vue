@@ -53,6 +53,7 @@ import DeckTimelineColumn from './DeckTimelineColumn.vue'
 import DeckUserColumn from './DeckUserColumn.vue'
 import DeckWidgetColumn from './DeckWidgetColumn.vue'
 import DeckAiScriptColumn from './DeckAiScriptColumn.vue'
+import DeckPlayColumn from './DeckPlayColumn.vue'
 
 const router = useRouter()
 const { navigateToNote, navigateToUser } = useNavigation()
@@ -128,6 +129,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   chat: 'messages',
   widget: 'app-window',
   aiscript: 'code',
+  play: 'player-play',
 }
 
 function columnIcon(colId: string): string {
@@ -352,6 +354,10 @@ watch(
             />
             <DeckAiScriptColumn
               v-else-if="col.type === 'aiscript'"
+              :column="col"
+            />
+            <DeckPlayColumn
+              v-else-if="col.type === 'play'"
               :column="col"
             />
           </section>

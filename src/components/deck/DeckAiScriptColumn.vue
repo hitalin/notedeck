@@ -9,6 +9,7 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { useThemeStore } from '@/stores/theme'
 import DeckColumn from './DeckColumn.vue'
 import AiScriptEditor from './widgets/AiScriptEditor.vue'
 import AiScriptUiRenderer from './widgets/AiScriptUiRenderer.vue'
@@ -19,6 +20,13 @@ const props = defineProps<{
 
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
+const themeStore = useThemeStore()
+
+const columnThemeVars = computed(() => {
+  const accountId = props.column.accountId
+  if (!accountId) return undefined
+  return themeStore.getStyleVarsForAccount(accountId)
+})
 
 const serverUrl = computed(() => {
   if (!props.column.accountId) return ''
@@ -153,7 +161,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'AiScript'">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'AiScript'" :theme-vars="columnThemeVars">
     <template #header-icon>
       <i class="ti ti-code tl-header-icon" />
     </template>

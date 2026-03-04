@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { useThemeStore } from '@/stores/theme'
 import DeckColumn from './DeckColumn.vue'
 import { getWidgetComponent, getWidgetDefinitions } from './widgets/registry'
 
@@ -10,7 +11,14 @@ const props = defineProps<{
 }>()
 
 const deckStore = useDeckStore()
+const themeStore = useThemeStore()
 const showAddMenu = ref(false)
+
+const columnThemeVars = computed(() => {
+  const accountId = props.column.accountId
+  if (!accountId) return undefined
+  return themeStore.getStyleVarsForAccount(accountId)
+})
 
 const widgets = computed(() => props.column.widgets ?? [])
 
@@ -27,7 +35,7 @@ function removeWidget(widgetId: string) {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'Widgets'">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'Widgets'" :theme-vars="columnThemeVars">
     <template #header-icon>
       <i class="ti ti-app-window" />
     </template>

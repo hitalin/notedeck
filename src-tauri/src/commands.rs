@@ -1073,6 +1073,9 @@ pub async fn auth_start(
             "write:channels",
             "read:chat",
             "write:chat",
+            "read:flash",
+            "read:flash-likes",
+            "write:flash-likes",
         ]
         .into_iter()
         .map(String::from)

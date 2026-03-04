@@ -35,6 +35,9 @@ importers:
       '@syuilo/aiscript':
         specifier: ^1.2.1
         version: 1.2.1
+      '@syuilo/aiscript-0-19-0':
+        specifier: npm:@syuilo/aiscript@^0.19.0
+        version: '@syuilo/aiscript@0.19.0'
       '@tabler/icons-webfont':
         specifier: ^3.37.1
         version: 3.37.1
@@ -645,6 +648,9 @@ packages:
 
   '@shikijs/vscode-textmate@10.0.2':
     resolution: {integrity: sha512-83yeghZ2xxin3Nj8z1NMd/NCuca+gsYXswywDy5bHvwlWL8tpTQmzGeUuHd9FC3E/SBEMvzJRwWEOz5gGes9Qg==}
+
+  '@syuilo/aiscript@0.19.0':
+    resolution: {integrity: sha512-ZWG4s1m6RrFjE7NeIMaxFz769YO1jW5ReTrOROrEO4IHheOrjxxJ/Ffe2TUNqX9/XxDloMwfWplKhfSzx8LGMA==}
 
   '@syuilo/aiscript@1.2.1':
     resolution: {integrity: sha512-jTW4dFGBJVNfq3kn0+tbtQqcr71sUILZpAs8tV2ZC/zO4y7LsG8hSbIQ9QfRWWWdnNjr5R6EoEoOsC1hGqxu0A==}
@@ -1962,6 +1968,10 @@ packages:
     resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
     hasBin: true
 
+  uuid@9.0.1:
+    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
+    hasBin: true
+
   vfile-message@4.0.3:
     resolution: {integrity: sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==}
 
@@ -2592,6 +2602,12 @@ snapshots:
       '@types/hast': 3.0.4
 
   '@shikijs/vscode-textmate@10.0.2': {}
+
+  '@syuilo/aiscript@0.19.0':
+    dependencies:
+      seedrandom: 3.0.5
+      stringz: 2.1.0
+      uuid: 9.0.1
 
   '@syuilo/aiscript@1.2.1':
     dependencies:
@@ -4022,6 +4038,8 @@ snapshots:
   util-deprecate@1.0.2: {}
 
   uuid@11.1.0: {}
+
+  uuid@9.0.1: {}
 
   vfile-message@4.0.3:
     dependencies:

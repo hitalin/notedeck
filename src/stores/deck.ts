@@ -18,6 +18,7 @@ export type ColumnType =
   | 'chat'
   | 'widget'
   | 'aiscript'
+  | 'play'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
@@ -52,6 +53,7 @@ export interface DeckColumn {
   userId?: string
   widgets?: WidgetConfig[]
   aiscriptCode?: string
+  flashId?: string
   soundMuted?: boolean
 }
 
@@ -79,6 +81,9 @@ export const useDeckStore = defineStore('deck', () => {
     }
     if (col.type === 'aiscript') {
       return `notedeck://aiscript/${col.id}`
+    }
+    if (col.type === 'play') {
+      return `notedeck://play/${col.id}`
     }
     if (!col.accountId) return null
 
