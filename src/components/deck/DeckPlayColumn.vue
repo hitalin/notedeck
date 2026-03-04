@@ -78,12 +78,19 @@ async function fetchList(tab?: Tab) {
   }
 
   try {
-    const result = await invoke<FlashSummary[]>('api_request', {
-      accountId: props.column.accountId,
-      endpoint: endpointMap[t],
-      params: { limit: 30 },
-    })
-    listItems.value = result
+    const raw = await invoke<FlashSummary[] | { id: string; flash: FlashSummary }[]>(
+      'api_request',
+      {
+        accountId: props.column.accountId,
+        endpoint: endpointMap[t],
+        params: { limit: 30 },
+      },
+    )
+    // flash/my-likes returns { id, flash } wrapper objects
+    listItems.value =
+      t === 'likes'
+        ? (raw as { id: string; flash: FlashSummary }[]).map((item) => item.flash)
+        : (raw as FlashSummary[])
   } catch (e) {
     listError.value = AppError.from(e).message
   } finally {
