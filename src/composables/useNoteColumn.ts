@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
 import { nextTick, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { useNavigation } from '@/composables/useNavigation'
 import type {
   ChannelSubscription,
   NormalizedNote,
@@ -9,6 +8,7 @@ import type {
 } from '@/adapters/types'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useColumnVisible } from '@/composables/useColumnVisibility'
+import { useNavigation } from '@/composables/useNavigation'
 import { useNoteCapture } from '@/composables/useNoteCapture'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useNoteList } from '@/composables/useNoteList'

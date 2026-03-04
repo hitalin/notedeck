@@ -12,13 +12,17 @@ const koRegex3 = /(야(?=\?))|(야$)|(야(?= ))/gm
 
 function nyaize(text: string): string {
   return text
-    .replaceAll('な', 'にゃ').replaceAll('ナ', 'ニャ').replaceAll('ﾅ', 'ﾆｬ')
+    .replaceAll('な', 'にゃ')
+    .replaceAll('ナ', 'ニャ')
+    .replaceAll('ﾅ', 'ﾆｬ')
     .replace(enRegex1, (x) => (x === 'A' ? 'YA' : 'ya'))
     .replace(enRegex2, (x) => (x === 'ING' ? 'YAN' : 'yan'))
     .replace(enRegex3, (x) => (x === 'ONE' ? 'NYAN' : 'nyan'))
     .replace(koRegex1, (match) =>
       !Number.isNaN(match.charCodeAt(0))
-        ? String.fromCharCode(match.charCodeAt(0) + '냐'.charCodeAt(0) - '나'.charCodeAt(0))
+        ? String.fromCharCode(
+            match.charCodeAt(0) + '냐'.charCodeAt(0) - '나'.charCodeAt(0),
+          )
         : match,
     )
     .replace(koRegex2, '다냥')
@@ -27,10 +31,7 @@ function nyaize(text: string): string {
 
 export interface AiScriptEnvOptions {
   /** Mk:api の実装。未設定なら Mk:api は使用不可エラー */
-  api?: (
-    endpoint: string,
-    params: Record<string, unknown>,
-  ) => Promise<unknown>
+  api?: (endpoint: string, params: Record<string, unknown>) => Promise<unknown>
   /** localStorage のキー prefix（Mk:save/Mk:load 用） */
   storagePrefix?: string
 }
@@ -150,8 +151,7 @@ export function createAiScriptEnv(
       consts.USER_NAME = values.STR(globals.USER_NAME)
     if (globals.USER_USERNAME !== undefined)
       consts.USER_USERNAME = values.STR(globals.USER_USERNAME)
-    if (globals.LOCALE !== undefined)
-      consts.LOCALE = values.STR(globals.LOCALE)
+    if (globals.LOCALE !== undefined) consts.LOCALE = values.STR(globals.LOCALE)
     if (globals.SERVER_URL !== undefined)
       consts.SERVER_URL = values.STR(globals.SERVER_URL)
     if (globals.CUSTOM_EMOJIS !== undefined)

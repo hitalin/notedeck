@@ -7,7 +7,7 @@ import {
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { bracketMatching } from '@codemirror/language'
 import { lintGutter } from '@codemirror/lint'
-import { EditorState } from '@codemirror/state'
+import { EditorState, type Extension } from '@codemirror/state'
 import {
   placeholder as cmPlaceholder,
   EditorView,
@@ -49,7 +49,11 @@ const editorRef = ref<HTMLDivElement>()
 let view: EditorView | null = null
 let isExternalUpdate = false
 let lspWorker: Worker | null = null
-let lspClient: any = null
+let lspClient: {
+  connect: (t: unknown) => void
+  plugin: (uri: string, lang: string) => Extension
+  destroy: () => void
+} | null = null
 
 const fileURI = `file:///aiscript-${Math.random().toString(36).slice(2, 8)}.ais`
 
@@ -75,14 +79,16 @@ onMounted(async () => {
     updateListener,
   ]
 
-  let extensions
+  let extensions: Extension[]
   if (props.useLsp) {
     // Dynamic import: only load LSP modules when needed
-    const [{ LSPClient, serverCompletion, serverDiagnostics }, { createWorkerTransport }] =
-      await Promise.all([
-        import('@codemirror/lsp-client'),
-        import('@/aiscript/lsp/transport'),
-      ])
+    const [
+      { LSPClient, serverCompletion, serverDiagnostics },
+      { createWorkerTransport },
+    ] = await Promise.all([
+      import('@codemirror/lsp-client'),
+      import('@/aiscript/lsp/transport'),
+    ])
 
     lspWorker = new Worker(
       new URL('../../../aiscript/lsp/worker.ts', import.meta.url),
@@ -90,10 +96,7 @@ onMounted(async () => {
     )
     const transport = createWorkerTransport(lspWorker)
     lspClient = new LSPClient({
-      extensions: [
-        serverCompletion({ override: true }),
-        serverDiagnostics(),
-      ],
+      extensions: [serverCompletion({ override: true }), serverDiagnostics()],
     })
     lspClient.connect(transport)
     extensions = [

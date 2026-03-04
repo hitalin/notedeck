@@ -8,7 +8,11 @@ function stripUnusedFonts(): Plugin {
     name: 'strip-unused-fonts',
     generateBundle(_, bundle) {
       for (const chunk of Object.values(bundle)) {
-        if (chunk.type === 'asset' && typeof chunk.source === 'string' && chunk.fileName.endsWith('.css')) {
+        if (
+          chunk.type === 'asset' &&
+          typeof chunk.source === 'string' &&
+          chunk.fileName.endsWith('.css')
+        ) {
           chunk.source = chunk.source
             .replace(/,\s*url\([^)]*\.woff\b[^)]*\)\s*format\("woff"\)/g, '')
             .replace(/,\s*url\([^)]*\.ttf[^)]*\)\s*format\("truetype"\)/g, '')

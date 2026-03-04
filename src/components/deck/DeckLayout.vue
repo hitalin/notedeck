@@ -33,6 +33,7 @@ const AddColumnDialog = defineAsyncComponent(
   () => import('./AddColumnDialog.vue'),
 )
 
+import DeckAiScriptColumn from './DeckAiScriptColumn.vue'
 import DeckAntennaColumn from './DeckAntennaColumn.vue'
 import DeckChannelColumn from './DeckChannelColumn.vue'
 import DeckChatColumn from './DeckChatColumn.vue'
@@ -41,16 +42,15 @@ import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
 import DeckNavbar from './DeckNavbar.vue'
-import DeckProfileMenu from './DeckProfileMenu.vue'
-import DeckSettingsMenu from './DeckSettingsMenu.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
+import DeckPlayColumn from './DeckPlayColumn.vue'
+import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
+import DeckSettingsMenu from './DeckSettingsMenu.vue'
 import DeckSpecifiedColumn from './DeckSpecifiedColumn.vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
 import DeckUserColumn from './DeckUserColumn.vue'
 import DeckWidgetColumn from './DeckWidgetColumn.vue'
-import DeckAiScriptColumn from './DeckAiScriptColumn.vue'
-import DeckPlayColumn from './DeckPlayColumn.vue'
 
 const router = useRouter()
 const { navigateToNote, navigateToUser } = useNavigation()

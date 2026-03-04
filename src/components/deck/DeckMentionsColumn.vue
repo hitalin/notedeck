@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useNavigation } from '@/composables/useNavigation'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { ChannelSubscription, NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
+import { useNavigation } from '@/composables/useNavigation'
 import { sortByCreatedAtDesc } from '@/utils/sortNotes'
 
 const MkPostForm = defineAsyncComponent(

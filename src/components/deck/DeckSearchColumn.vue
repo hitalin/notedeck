@@ -8,10 +8,10 @@ import {
   shallowRef,
   watch,
 } from 'vue'
-import { useNavigation } from '@/composables/useNavigation'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
+import { useNavigation } from '@/composables/useNavigation'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),

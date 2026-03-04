@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Interpreter, type Ast, Parser, utils } from '@syuilo/aiscript'
+import { type Ast, Interpreter, Parser, utils } from '@syuilo/aiscript'
 import {
   Interpreter as LegacyInterpreter,
   Parser as LegacyParser,
@@ -11,9 +11,9 @@ import { createInterpreterOptions } from '@/aiscript/common'
 import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useAccountsStore } from '@/stores/accounts'
+import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
-import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import DeckColumn from './DeckColumn.vue'
 import AiScriptUiRenderer from './widgets/AiScriptUiRenderer.vue'
 
@@ -48,7 +48,12 @@ interface FlashSummary {
   title: string
   summary: string
   userId: string
-  user: { username: string; host: string | null; name: string | null; avatarUrl: string | null }
+  user: {
+    username: string
+    host: string | null
+    name: string | null
+    avatarUrl: string | null
+  }
   likedCount: number
   isLiked?: boolean
   createdAt: string
@@ -96,7 +101,12 @@ interface FlashDetail {
   summary: string
   script: string
   userId: string
-  user: { username: string; host: string | null; name: string | null; avatarUrl: string | null }
+  user: {
+    username: string
+    host: string | null
+    name: string | null
+    avatarUrl: string | null
+  }
   likedCount: number
   isLiked: boolean
   createdAt: string
@@ -163,7 +173,10 @@ function isLegacyScript(script: string): boolean {
 }
 
 async function executePlay(detail: FlashDetail) {
-  const apiOption = async (endpoint: string, params: Record<string, unknown>) => {
+  const apiOption = async (
+    endpoint: string,
+    params: Record<string, unknown>,
+  ) => {
     return invoke('api_request', {
       accountId: props.column.accountId,
       endpoint,

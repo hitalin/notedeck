@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Interpreter, type Ast, Parser } from '@syuilo/aiscript'
+import { type Ast, Interpreter, Parser } from '@syuilo/aiscript'
 import { invoke } from '@tauri-apps/api/core'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'

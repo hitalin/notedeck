@@ -299,15 +299,20 @@ async function handlePosted(editedNoteId?: string) {
   }
 }
 
-async function handleFollowRequest(notif: NormalizedNotification, action: 'accepted' | 'rejected') {
+async function handleFollowRequest(
+  notif: NormalizedNotification,
+  action: 'accepted' | 'rejected',
+) {
   const adapter = getAdapter()
   if (!adapter || !notif.user) return
   try {
     if (action === 'accepted')
       await adapter.api.acceptFollowRequest(notif.user.id)
-    else
-      await adapter.api.rejectFollowRequest(notif.user.id)
-    followRequestStates.value = { ...followRequestStates.value, [notif.id]: action }
+    else await adapter.api.rejectFollowRequest(notif.user.id)
+    followRequestStates.value = {
+      ...followRequestStates.value,
+      [notif.id]: action,
+    }
   } catch (e) {
     error.value = AppError.from(e)
   }
