@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { computed, onUnmounted, ref, watch } from 'vue'
+import type { StreamConnectionState } from '@/adapters/types'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
+import { useServersStore } from '@/stores/servers'
+import { useStreamingStore } from '@/stores/streaming'
 import {
   clearAvailableTlCache,
   detectAvailableTimelines,
@@ -23,6 +26,18 @@ const emit = defineEmits<{
 const { navigateToLogin } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
+const serversStore = useServersStore()
+const streamingStore = useStreamingStore()
+
+// Per-account server icon URL
+function getServerIconUrl(host: string): string {
+  return serversStore.getServer(host)?.iconUrl || `https://${host}/favicon.ico`
+}
+
+// Per-account streaming connection state
+function getAccountStreamState(accountId: string): StreamConnectionState {
+  return streamingStore.getState(accountId) ?? 'initializing'
+}
 
 // Navbar resize
 const MIN_WIDTH = 68
@@ -197,12 +212,23 @@ defineExpose({
               :title="`@${acc.username}@${acc.host}`"
               @click.stop="toggleAccountMenu(acc.id)"
             >
-              <img
-                v-if="acc.avatarUrl"
-                :src="acc.avatarUrl"
-                class="nav-avatar"
-              />
-              <div v-else class="nav-avatar nav-avatar-placeholder" />
+              <div class="nav-avatar-wrap">
+                <img
+                  v-if="acc.avatarUrl"
+                  :src="acc.avatarUrl"
+                  class="nav-avatar"
+                />
+                <div v-else class="nav-avatar nav-avatar-placeholder" />
+                <img
+                  :src="getServerIconUrl(acc.host)"
+                  class="nav-server-badge"
+                  :title="acc.host"
+                />
+                <span
+                  class="nav-stream-dot"
+                  :class="getAccountStreamState(acc.id)"
+                />
+              </div>
               <span class="nav-label">@{{ acc.username }}@{{ acc.host }}</span>
             </button>
 
@@ -348,12 +374,17 @@ defineExpose({
   gap: 10px;
 }
 
+.nav-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .nav-avatar {
   width: 28px;
   height: 28px;
   border-radius: 50%;
   object-fit: cover;
-  flex-shrink: 0;
+  display: block;
 }
 
 .collapsed .nav-avatar {
@@ -363,6 +394,47 @@ defineExpose({
 
 .nav-avatar-placeholder {
   background: var(--nd-buttonBg);
+}
+
+.nav-server-badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--nd-navBg);
+}
+
+.collapsed .nav-server-badge {
+  width: 16px;
+  height: 16px;
+  top: -2px;
+  right: -4px;
+}
+
+.nav-stream-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--nd-navBg);
+}
+
+.nav-stream-dot.connected {
+  background: var(--nd-accent);
+}
+
+.nav-stream-dot.reconnecting,
+.nav-stream-dot.initializing {
+  background: var(--nd-warn, #e5a400);
+}
+
+.nav-stream-dot.disconnected {
+  background: #888;
 }
 
 /* Add account button */
