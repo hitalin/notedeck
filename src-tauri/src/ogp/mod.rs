@@ -329,10 +329,13 @@ impl OgpCache {
         if let Ok(parsed) = url::Url::parse(&url) {
             for plugin in plugins::all() {
                 if plugin.test(&parsed) {
-                    return plugin
-                        .summarize(&parsed, &self.http_client)
-                        .await
-                        .map_err(|e| e.to_string());
+                    match plugin.summarize(&parsed, &self.http_client).await {
+                        Ok(data) => return Ok(data),
+                        Err(e) => {
+                            eprintln!("[ogp] plugin failed for {url}: {e}, falling back");
+                            break;
+                        }
+                    }
                 }
             }
         }
