@@ -153,6 +153,13 @@ export const useThemeStore = defineStore('theme', () => {
     applyCurrentTheme()
   }
 
+  /** Lock current appearance as manual mode (stop following OS) */
+  function pinCurrentMode(): void {
+    const isDark = currentSource.value?.kind.includes('light') === false
+    manualMode.value = isDark ? 'dark' : 'light'
+    localStorage.setItem(STORAGE_MANUAL_THEME_KEY, manualMode.value)
+  }
+
   function applySource(source: ThemeSource): void {
     const base = source.kind.includes('light') ? LIGHT_THEME : DARK_THEME
     const compiled = compileMisskeyTheme(source.theme, base)
@@ -304,6 +311,7 @@ export const useThemeStore = defineStore('theme', () => {
     applySource,
     toggleTheme,
     resetToOsTheme,
+    pinCurrentMode,
     fetchAccountTheme,
     getAccountThemes,
     getCompiledForAccount,
