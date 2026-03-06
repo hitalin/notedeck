@@ -7,6 +7,7 @@ import type {
   NoteVisibility,
   ServerAdapter,
 } from '@/adapters/types'
+import { applyNotePostInterruptors } from '@/aiscript/plugin-api'
 import {
   type Draft,
   deleteDraft,
@@ -237,7 +238,7 @@ export function usePostFormState(
                 expiresAt: pollExpiresAt.value ?? undefined,
               }
             : undefined
-        await adapter.api.createNote({
+        const noteParams = applyNotePostInterruptors({
           text: text.value || undefined,
           cw: showCw.value && cw.value ? cw.value : undefined,
           visibility: visibility.value,
@@ -252,6 +253,7 @@ export function usePostFormState(
           poll: pollParam,
           scheduledAt: scheduledAt.value ?? undefined,
         })
+        await adapter.api.createNote(noteParams)
       }
       posted.value = true
       callbacks.onPosted(props.editNote?.id)

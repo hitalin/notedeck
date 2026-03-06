@@ -2,6 +2,10 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, ref, watch } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
+import {
+  getPluginHandlers,
+  setPluginAccountContext,
+} from '@/aiscript/plugin-api'
 import { isSafeUrl } from '@/utils/url'
 
 const props = defineProps<{
@@ -27,6 +31,8 @@ watch(
     localIsFavorited.value = v
   },
 )
+
+const noteActions = computed(() => getPluginHandlers('note_action'))
 
 const noteWebUrl = computed(() => {
   const n = props.note
@@ -85,6 +91,18 @@ defineExpose({ open })
               <i class="ti ti-external-link" />
               Web UIで開く
             </button>
+            <template v-if="noteActions.length > 0">
+              <div class="popup-divider" />
+              <button
+                v-for="action in noteActions"
+                :key="action.pluginInstallId + action.title"
+                class="popup-item"
+                @click="setPluginAccountContext(action.pluginInstallId, note._accountId); action.handler(note); close()"
+              >
+                <i class="ti ti-plug" />
+                {{ action.title }}
+              </button>
+            </template>
             <template v-if="isOwnNote">
               <div class="popup-divider" />
               <button class="popup-item" @click="emit('edit', note); close()">

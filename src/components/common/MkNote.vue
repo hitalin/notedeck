@@ -6,6 +6,7 @@ import type {
   NormalizedUser,
   NoteVisibility,
 } from '@/adapters/types'
+import { applyNoteViewInterruptors } from '@/aiscript/plugin-api'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
@@ -32,11 +33,13 @@ const props = defineProps<{
 }>()
 
 /** Pure renote → show inner note, otherwise show note itself */
-const effectiveNote = computed(() =>
-  props.note.renote && props.note.text === null
-    ? props.note.renote
-    : props.note,
-)
+const effectiveNote = computed(() => {
+  const base =
+    props.note.renote && props.note.text === null
+      ? props.note.renote
+      : props.note
+  return applyNoteViewInterruptors(base)
+})
 const allEmojis = computed(() => ({
   ...effectiveNote.value.emojis,
   ...effectiveNote.value.user.emojis,

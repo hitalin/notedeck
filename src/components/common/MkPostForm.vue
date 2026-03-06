@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
+import {
+  getPluginHandlers,
+  setPluginAccountContext,
+} from '@/aiscript/plugin-api'
 import { usePostFormState } from '@/composables/usePostFormState'
 import MkMediaGrid from './MkMediaGrid.vue'
 import MkMfm from './MkMfm.vue'
@@ -186,6 +190,21 @@ function pickEmoji(reaction: string) {
 // --- Hashtag ---
 function insertHashtag() {
   insertAtCursor(textareaRef.value, '#')
+}
+
+// --- Plugin post_form_action ---
+const postFormActions = computed(() => getPluginHandlers('post_form_action'))
+
+function runPostFormAction(
+  action: ReturnType<typeof getPluginHandlers>[number],
+) {
+  if (!activeAccountId.value) return
+  setPluginAccountContext(action.pluginInstallId, activeAccountId.value)
+  const form = { text: text.value, cw: cw.value }
+  action.handler(form, (key: unknown, value: unknown) => {
+    if (key === 'text' && typeof value === 'string') text.value = value
+    if (key === 'cw' && typeof value === 'string') cw.value = value
+  })
 }
 
 // --- MFM menu ---
@@ -775,6 +794,17 @@ function onKeydown(e: KeyboardEvent) {
             @click="resetForm"
           >
             <i class="ti ti-trash" />
+          </button>
+
+          <!-- Plugin actions -->
+          <button
+            v-for="action in postFormActions"
+            :key="action.pluginInstallId + action.title"
+            class="_button footer-btn"
+            :title="action.title"
+            @click="runPostFormAction(action)"
+          >
+            <i class="ti ti-plug" />
           </button>
         </div>
         <div class="footer-right">

@@ -1,0 +1,470 @@
+import { type Ast, type Interpreter, utils, values } from '@syuilo/aiscript'
+import type { Value, VFn } from '@syuilo/aiscript/interpreter/value.js'
+import { invoke } from '@tauri-apps/api/core'
+import type { PluginConfigDef, PluginMeta } from '@/stores/plugins'
+import { createAiScriptEnv } from './api'
+import {
+  createAiScriptInterpreter,
+  createInterpreterOptions,
+  execAiScript,
+  parseAiScript,
+} from './common'
+import { sanitizeCode } from './sanitize'
+
+// ---------------------------------------------------------------------------
+// Metadata parsing
+// ---------------------------------------------------------------------------
+
+export interface ParsedPluginMeta {
+  name: string
+  version: string
+  author?: string
+  description?: string
+  permissions?: string[]
+  config?: Record<string, PluginConfigDef>
+}
+
+/**
+ * Extract plugin metadata from the `### { ... }` header block.
+ * Returns null if the header is missing or malformed.
+ */
+export function parsePluginMeta(code: string): ParsedPluginMeta | null {
+  const body = extractMetaBlock(code)
+  if (!body) return null
+
+  try {
+    const obj = parseMetaBlock(body)
+    if (
+      !obj ||
+      typeof obj.name !== 'string' ||
+      typeof obj.version !== 'string'
+    ) {
+      return null
+    }
+
+    const meta: ParsedPluginMeta = {
+      name: obj.name as string,
+      version: String(obj.version),
+    }
+    if (typeof obj.author === 'string') meta.author = obj.author
+    if (typeof obj.description === 'string') meta.description = obj.description
+    if (Array.isArray(obj.permissions)) {
+      meta.permissions = obj.permissions.filter(
+        (p: unknown): p is string => typeof p === 'string',
+      )
+    }
+    if (obj.config && typeof obj.config === 'object') {
+      meta.config = obj.config as Record<string, PluginConfigDef>
+    }
+    return meta
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Extract the body between `### { ... }` handling nested braces.
+ * Allows comments/version declaration before `###`.
+ */
+function extractMetaBlock(code: string): string | null {
+  const startMatch = code.match(/^[^\n]*###\s*\{/m)
+  if (!startMatch) return null
+
+  const openIndex = (startMatch.index ?? 0) + startMatch[0].length
+  let depth = 1
+  let i = openIndex
+  while (i < code.length && depth > 0) {
+    if (code[i] === '{') depth++
+    else if (code[i] === '}') depth--
+    i++
+  }
+  if (depth !== 0) return null
+  return code.slice(openIndex, i - 1)
+}
+
+/**
+ * Parse the meta block body into a plain object.
+ * The format is: `key: value` per line, with nested objects for config.
+ * We use a simple JSON5-like approach.
+ */
+function parseMetaBlock(body: string): Record<string, unknown> | null {
+  try {
+    // Strip line comments (// ...) before parsing
+    const stripped = body.replace(/\/\/[^\n]*/g, '')
+    // Wrap in braces and try JSON parse with relaxed quoting
+    const jsonish = `{${stripped}}`
+      // Add quotes around unquoted keys
+      .replace(/^\s*([\w]+)\s*:/gm, '"$1":')
+      // Replace single quotes with double quotes
+      .replace(/'/g, '"')
+      // Add missing commas between values on separate lines
+      .replace(/("|\d+|true|false|null|\]|\})\s*$/gm, '$1,')
+      // Remove trailing commas before } or ]
+      .replace(/,\s*([}\]])/g, '$1')
+      // Remove trailing comma at end of string
+      .replace(/,\s*$/, '')
+    return JSON.parse(jsonish) as Record<string, unknown>
+  } catch {
+    // Fallback: line-by-line parse for simple key: "value" pairs
+    const result: Record<string, unknown> = {}
+    for (const line of body.split('\n')) {
+      const m = line.match(/^\s*([\w]+)\s*:\s*"([^"]*)"/)
+      if (m) result[m[1] ?? ''] = m[2]
+    }
+    return Object.keys(result).length > 0 ? result : null
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Handler registry
+// ---------------------------------------------------------------------------
+
+type HandlerType =
+  | 'note_action'
+  | 'note_view_interruptor'
+  | 'note_post_interruptor'
+  | 'post_form_action'
+  | 'user_action'
+
+interface PluginHandler {
+  pluginInstallId: string
+  type: HandlerType
+  title?: string
+  handler: (...args: unknown[]) => unknown
+}
+
+const pluginHandlers: PluginHandler[] = []
+const pluginContexts = new Map<string, Interpreter>()
+const pluginAccountContext = new Map<string, { accountId: string | null }>()
+
+export function getPluginHandlers<T extends HandlerType>(
+  type: T,
+): PluginHandler[] {
+  return pluginHandlers.filter((h) => h.type === type)
+}
+
+function addPluginHandler(handler: PluginHandler) {
+  pluginHandlers.push(handler)
+}
+
+function removePluginHandlers(installId: string) {
+  for (let i = pluginHandlers.length - 1; i >= 0; i--) {
+    if (pluginHandlers[i]?.pluginInstallId === installId) {
+      pluginHandlers.splice(i, 1)
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Plugin environment (Plugin:* APIs)
+// ---------------------------------------------------------------------------
+
+function createPluginSpecificEnv(
+  plugin: PluginMeta,
+  ctx: { accountId: string | null },
+): Record<string, Value> {
+  const id = plugin.installId
+  const consts: Record<string, Value> = {}
+
+  // --- Plugin:register_note_action ---
+  consts['Plugin:register_note_action'] = values.FN_NATIVE(
+    ([titleVal, handlerVal]) => {
+      utils.assertString(titleVal)
+      utils.assertFunction(handlerVal)
+      addPluginHandler({
+        pluginInstallId: id,
+        type: 'note_action',
+        title: titleVal.value,
+        handler: (note: unknown) => {
+          const interp = pluginContexts.get(id)
+          if (!interp) return
+          interp.execFn(handlerVal as VFn, [utils.jsToVal(note)])
+        },
+      })
+    },
+  )
+
+  // --- Plugin:register_user_action ---
+  consts['Plugin:register_user_action'] = values.FN_NATIVE(
+    ([titleVal, handlerVal]) => {
+      utils.assertString(titleVal)
+      utils.assertFunction(handlerVal)
+      addPluginHandler({
+        pluginInstallId: id,
+        type: 'user_action',
+        title: titleVal.value,
+        handler: (user: unknown) => {
+          const interp = pluginContexts.get(id)
+          if (!interp) return
+          interp.execFn(handlerVal as VFn, [utils.jsToVal(user)])
+        },
+      })
+    },
+  )
+
+  // --- Plugin:register_post_form_action ---
+  consts['Plugin:register_post_form_action'] = values.FN_NATIVE(
+    ([titleVal, handlerVal]) => {
+      utils.assertString(titleVal)
+      utils.assertFunction(handlerVal)
+      addPluginHandler({
+        pluginInstallId: id,
+        type: 'post_form_action',
+        title: titleVal.value,
+        handler: (
+          form: unknown,
+          update: (key: unknown, value: unknown) => void,
+        ) => {
+          const interp = pluginContexts.get(id)
+          if (!interp) return
+          interp.execFn(handlerVal as VFn, [
+            utils.jsToVal(form),
+            values.FN_NATIVE(([keyVal, valueVal]) => {
+              if (!keyVal || !valueVal) return
+              update(utils.valToJs(keyVal), utils.valToJs(valueVal))
+            }),
+          ])
+        },
+      })
+    },
+  )
+
+  // --- Plugin:register_note_view_interruptor ---
+  consts['Plugin:register_note_view_interruptor'] = values.FN_NATIVE(
+    ([handlerVal]) => {
+      utils.assertFunction(handlerVal)
+      addPluginHandler({
+        pluginInstallId: id,
+        type: 'note_view_interruptor',
+        handler: (note: unknown) => {
+          const interp = pluginContexts.get(id)
+          if (!interp) return note
+          return utils.valToJs(
+            interp.execFnSync(handlerVal as VFn, [utils.jsToVal(note)]),
+          )
+        },
+      })
+    },
+  )
+
+  // --- Plugin:register_note_post_interruptor ---
+  consts['Plugin:register_note_post_interruptor'] = values.FN_NATIVE(
+    ([handlerVal]) => {
+      utils.assertFunction(handlerVal)
+      addPluginHandler({
+        pluginInstallId: id,
+        type: 'note_post_interruptor',
+        handler: (note: unknown) => {
+          const interp = pluginContexts.get(id)
+          if (!interp) return note
+          return utils.valToJs(
+            interp.execFnSync(handlerVal as VFn, [utils.jsToVal(note)]),
+          )
+        },
+      })
+    },
+  )
+
+  // Underscore aliases for backwards compat (Misskey supports both : and _)
+  const noteAction = consts['Plugin:register_note_action']
+  const userAction = consts['Plugin:register_user_action']
+  const postFormAction = consts['Plugin:register_post_form_action']
+  const noteViewInterruptor = consts['Plugin:register_note_view_interruptor']
+  const notePostInterruptor = consts['Plugin:register_note_post_interruptor']
+  if (noteAction) consts['Plugin:register:note_action'] = noteAction
+  if (userAction) consts['Plugin:register:user_action'] = userAction
+  if (postFormAction)
+    consts['Plugin:register:post_form_action'] = postFormAction
+  if (noteViewInterruptor)
+    consts['Plugin:register:note_view_interruptor'] = noteViewInterruptor
+  if (notePostInterruptor)
+    consts['Plugin:register:note_post_interruptor'] = notePostInterruptor
+
+  // --- Plugin:open_url ---
+  consts['Plugin:open_url'] = values.FN_NATIVE(async ([urlVal]) => {
+    if (urlVal?.type !== 'str') return
+    const { openUrl } = await import('@tauri-apps/plugin-opener')
+    await openUrl(urlVal.value)
+  })
+
+  // --- Plugin:config ---
+  const configMap = new Map<string, Value>()
+  if (plugin.config) {
+    for (const [key, def] of Object.entries(plugin.config)) {
+      const val =
+        key in plugin.configData ? plugin.configData[key] : def.default
+      configMap.set(key, utils.jsToVal(val))
+    }
+  }
+  consts['Plugin:config'] = values.OBJ(configMap)
+
+  // --- Mk:api with dynamic account context ---
+  consts['Mk:api'] = values.FN_NATIVE(async ([endpointVal, paramsVal]) => {
+    const accountId = ctx.accountId
+    if (!accountId) {
+      throw new Error('Mk:api: no account context available')
+    }
+    const endpoint = endpointVal?.type === 'str' ? endpointVal.value : ''
+    const params =
+      paramsVal?.type === 'obj'
+        ? (utils.valToJs(paramsVal) as Record<string, unknown>)
+        : {}
+    const result = await invoke('api_request', {
+      accountId,
+      endpoint,
+      params,
+    })
+    return utils.jsToVal(result)
+  })
+
+  return consts
+}
+
+// ---------------------------------------------------------------------------
+// Interruptor helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply all note_view_interruptors to a note object (sync).
+ * Each interruptor receives the note and returns a (possibly modified) note.
+ * If any interruptor throws, the original note is returned unchanged.
+ */
+export function applyNoteViewInterruptors<T>(note: T): T {
+  const handlers = getPluginHandlers('note_view_interruptor')
+  if (handlers.length === 0) return note
+  let result = note
+  for (const h of handlers) {
+    try {
+      const modified = h.handler(result) as T | undefined
+      if (modified != null) result = modified
+    } catch (e) {
+      console.warn('[plugin:note_view_interruptor]', e)
+    }
+  }
+  return result
+}
+
+/**
+ * Apply all note_post_interruptors to a post form object (sync).
+ */
+export function applyNotePostInterruptors<T>(form: T): T {
+  const handlers = getPluginHandlers('note_post_interruptor')
+  if (handlers.length === 0) return form
+  let result = form
+  for (const h of handlers) {
+    try {
+      const modified = h.handler(result) as T | undefined
+      if (modified != null) result = modified
+    } catch (e) {
+      console.warn('[plugin:note_post_interruptor]', e)
+    }
+  }
+  return result
+}
+
+// ---------------------------------------------------------------------------
+// Launch / Abort
+// ---------------------------------------------------------------------------
+
+const pluginLogs = new Map<string, { text: string; isError: boolean }[]>()
+
+export function getPluginLogs(
+  installId: string,
+): { text: string; isError: boolean }[] {
+  return pluginLogs.get(installId) ?? []
+}
+
+export async function launchPlugin(plugin: PluginMeta): Promise<void> {
+  if (!plugin.src || !plugin.active) return
+
+  // Abort existing instance if re-launching
+  abortPlugin(plugin.installId)
+
+  const logs: { text: string; isError: boolean }[] = []
+  pluginLogs.set(plugin.installId, logs)
+
+  const ctx = { accountId: null as string | null }
+  pluginAccountContext.set(plugin.installId, ctx)
+
+  // Build environment: base Mk:* (overridden by plugin-specific Mk:api) + Plugin:*
+  const baseEnv = createAiScriptEnv(
+    { storagePrefix: `plugin:${plugin.installId}` },
+    { LOCALE: navigator.language },
+  )
+  const pluginEnv = createPluginSpecificEnv(plugin, ctx)
+
+  // Plugin-specific Mk:api overrides the base one
+  const env = { ...baseEnv, ...pluginEnv }
+
+  const ioOpts = createInterpreterOptions({
+    onOutput: (text) => logs.push({ text, isError: false }),
+    onError: (err) => logs.push({ text: err.message, isError: true }),
+  })
+
+  const code = sanitizeCode(plugin.src)
+
+  let ast: Ast.Node[]
+  let legacy: boolean
+  try {
+    const result = parseAiScript(code)
+    ast = result.ast
+    legacy = result.legacy
+  } catch (e) {
+    logs.push({
+      text: `Parse error: ${e instanceof Error ? e.message : String(e)}`,
+      isError: true,
+    })
+    return
+  }
+
+  const interpreter = createAiScriptInterpreter(env, ioOpts, legacy)
+  try {
+    await execAiScript(interpreter, ast, legacy)
+  } catch (e) {
+    logs.push({
+      text: `Runtime error: ${e instanceof Error ? e.message : String(e)}`,
+      isError: true,
+    })
+  }
+  pluginContexts.set(plugin.installId, interpreter)
+}
+
+export function abortPlugin(installId: string): void {
+  const interp = pluginContexts.get(installId)
+  if (interp) {
+    interp.abort()
+    pluginContexts.delete(installId)
+  }
+  pluginAccountContext.delete(installId)
+  pluginLogs.delete(installId)
+  removePluginHandlers(installId)
+}
+
+/**
+ * Set the account context for a plugin before calling its handler.
+ * This makes Mk:api use the correct account for API calls.
+ */
+export function setPluginAccountContext(
+  installId: string,
+  accountId: string,
+): void {
+  const ctx = pluginAccountContext.get(installId)
+  if (ctx) ctx.accountId = accountId
+}
+
+/**
+ * Launch all active plugins. Called once on app startup.
+ */
+export async function launchAllPlugins(plugins: PluginMeta[]): Promise<void> {
+  const active = plugins.filter((p) => p.active && p.src)
+  await Promise.allSettled(active.map((p) => launchPlugin(p)))
+}
+
+/**
+ * Abort all running plugins. Called on app teardown.
+ */
+export function abortAllPlugins(): void {
+  for (const installId of pluginContexts.keys()) {
+    abortPlugin(installId)
+  }
+}

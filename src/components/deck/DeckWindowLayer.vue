@@ -19,6 +19,9 @@ const SearchContent = defineAsyncComponent(
 const NotificationsContent = defineAsyncComponent(
   () => import('@/components/window/NotificationsContent.vue'),
 )
+const PluginsContent = defineAsyncComponent(
+  () => import('@/components/window/PluginsContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -82,6 +85,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       />
       <SearchContent v-if="win.type === 'search'" />
       <NotificationsContent v-if="win.type === 'notifications'" />
+      <PluginsContent v-if="win.type === 'plugins'" />
     </DeckWindow>
   </TransitionGroup>
 </template>

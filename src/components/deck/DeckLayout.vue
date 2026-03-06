@@ -20,6 +20,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { usePluginsStore } from '@/stores/plugins'
 import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
   initDesktopNotifications,
@@ -61,6 +62,7 @@ const {
 } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
+const pluginsStore = usePluginsStore()
 const commandStore = useCommandStore()
 // Pre-build column lookup map to avoid O(n) find per column per render
 const columnMap = computed(() => {
@@ -233,6 +235,11 @@ onMounted(() => {
   // Column visibility observer
   colVisibility.setup(columnsRef)
 
+  // Launch plugins
+  import('@/aiscript/plugin-api').then(({ launchAllPlugins }) => {
+    launchAllPlugins(pluginsStore.plugins)
+  })
+
   // Quick Note: global hotkey (Ctrl+Alt+N) opens palette with "post " prefilled
   import('@tauri-apps/api/event').then(({ listen }) => {
     listen('nd:quick-note', () => {
@@ -244,6 +251,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  import('@/aiscript/plugin-api').then(({ abortAllPlugins }) => {
+    abortAllPlugins()
+  })
   colVisibility.disconnect()
   destroyApiBridge()
   unregisterDefaultCommands()

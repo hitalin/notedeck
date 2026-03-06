@@ -51,11 +51,18 @@ export function useNavigation() {
     }
   }
 
+  function navigateToPlugins() {
+    if (isDeckActive()) {
+      windowsStore.open('plugins')
+    }
+  }
+
   return {
     navigateToNote,
     navigateToUser,
     navigateToLogin,
     navigateToSearch,
     navigateToNotifications,
+    navigateToPlugins,
   }
 }
