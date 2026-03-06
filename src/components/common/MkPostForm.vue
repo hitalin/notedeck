@@ -3,8 +3,8 @@ import { invoke } from '@tauri-apps/api/core'
 import { nextTick, onMounted, ref } from 'vue'
 import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
 import { usePostFormState } from '@/composables/usePostFormState'
-import MkMfm from './MkMfm.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
+import MkMfm from './MkMfm.vue'
 import MkReactionPicker from './MkReactionPicker.vue'
 
 const props = defineProps<{
@@ -1523,7 +1523,7 @@ function onKeydown(e: KeyboardEvent) {
 
 /* ── Emoji popup ── */
 .emoji-popup {
-  width: 340px;
+  width: 320px;
   max-height: 360px;
   overflow: hidden;
   /* Override default centering: anchor to right edge since it's in footer-right */
