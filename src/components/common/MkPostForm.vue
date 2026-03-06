@@ -16,6 +16,7 @@ const props = defineProps<{
   replyTo?: NormalizedNote
   renoteId?: string
   editNote?: NormalizedNote
+  channelId?: string
 }>()
 
 const emit = defineEmits<{

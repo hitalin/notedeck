@@ -64,6 +64,7 @@ export function usePostFormState(
     replyTo?: NormalizedNote
     renoteId?: string
     editNote?: NormalizedNote
+    channelId?: string
   },
   callbacks: {
     onPosted: (editedNoteId?: string) => void
@@ -249,6 +250,7 @@ export function usePostFormState(
           modeFlags,
           replyId: props.replyTo?.id,
           renoteId: props.renoteId,
+          channelId: props.channelId,
           fileIds,
           poll: pollParam,
           scheduledAt: scheduledAt.value ?? undefined,

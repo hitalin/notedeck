@@ -285,6 +285,7 @@ export interface CreateNoteParams {
   modeFlags?: Record<string, boolean>
   replyId?: string
   renoteId?: string
+  channelId?: string
   fileIds?: string[]
   poll?: { choices: string[]; multiple?: boolean; expiresAt?: number | null }
   scheduledAt?: string

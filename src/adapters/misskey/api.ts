@@ -189,9 +189,11 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async createNote(params: CreateNoteParams): Promise<NormalizedNote> {
+    const { channelId, ...noteParams } = params
     return invoke('api_create_note', {
       accountId: this.accountId,
-      params,
+      params: noteParams,
+      channelId: channelId ?? null,
     })
   }
 

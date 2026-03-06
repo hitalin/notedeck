@@ -12,8 +12,8 @@ use notecli::keychain;
 use notecli::models::{
     Account, AccountPublic, AuthSession, ChatMessage, CreateNoteParams, NormalizedDriveFile,
     NormalizedNote, NormalizedNoteReaction, NormalizedNotification, NormalizedUser,
-    NormalizedUserDetail, Antenna, Channel, Clip, SearchOptions, ServerEmoji, StoredServer,
-    TimelineOptions, TimelineType, UserList,
+    NormalizedUserDetail, Antenna, Channel, Clip, RawCreateNoteResponse, SearchOptions,
+    ServerEmoji, StoredServer, TimelineOptions, TimelineType, UserList,
 };
 use notecli::streaming::StreamingManager;
 use zeroize::Zeroize;
@@ -550,11 +550,37 @@ pub async fn api_create_note(
     client: State<'_, MisskeyClient>,
     account_id: String,
     params: CreateNoteParams,
+    channel_id: Option<String>,
 ) -> Result<NormalizedNote> {
     let (host, token) = get_credentials(&db, &account_id)?;
-    client
-        .create_note(&host, &token, &account_id, params)
-        .await
+    if let Some(ref ch_id) = channel_id {
+        // Build request body manually to include channelId
+        // (notecli's CreateNoteParams doesn't have channelId)
+        let mut body = serde_json::json!({ "channelId": ch_id });
+        if let Some(ref v) = params.text { body["text"] = serde_json::json!(v); }
+        if let Some(ref v) = params.cw { body["cw"] = serde_json::json!(v); }
+        if let Some(ref v) = params.visibility { body["visibility"] = serde_json::json!(v); }
+        if let Some(v) = params.local_only { body["localOnly"] = serde_json::json!(v); }
+        if let Some(ref flags) = params.mode_flags {
+            for (key, value) in flags {
+                if key.starts_with("isNoteIn") && key.ends_with("Mode") && key.len() <= 30 {
+                    body[key] = serde_json::json!(value);
+                }
+            }
+        }
+        if let Some(ref v) = params.reply_id { body["replyId"] = serde_json::json!(v); }
+        if let Some(ref v) = params.renote_id { body["renoteId"] = serde_json::json!(v); }
+        if let Some(ref v) = params.file_ids { body["fileIds"] = serde_json::json!(v); }
+        if let Some(ref v) = params.poll { body["poll"] = serde_json::json!(v); }
+        if let Some(ref v) = params.scheduled_at { body["scheduledAt"] = serde_json::json!(v); }
+        let data = client.request(&host, &token, "notes/create", body).await?;
+        let raw: RawCreateNoteResponse = serde_json::from_value(data)?;
+        Ok(raw.created_note.normalize(&account_id, &host))
+    } else {
+        client
+            .create_note(&host, &token, &account_id, params)
+            .await
+    }
 }
 
 #[tauri::command]
