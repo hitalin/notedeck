@@ -179,7 +179,8 @@ export class MisskeyApi implements ApiAdapter {
     options: UserNotesOptions = {},
   ): Promise<NormalizedNote[]> {
     const { withReplies, withFiles, withChannelNotes, ...pagination } = options
-    const hasFilters = withReplies != null || withFiles != null || withChannelNotes != null
+    const hasFilters =
+      withReplies != null || withFiles != null || withChannelNotes != null
 
     if (hasFilters) {
       const params: Record<string, unknown> = {

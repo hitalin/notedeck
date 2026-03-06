@@ -4,7 +4,11 @@ import { invoke } from '@tauri-apps/api/core'
 import { computed, onMounted, ref, watch } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
 import { createInterpreterOptions } from '@/aiscript/common'
-import { cleanupNoteDeckEnv, createNoteDeckEnv } from '@/aiscript/notedeck-api'
+import {
+  cleanupNoteDeckEnv,
+  createNoteDeckEnv,
+  type NoteDeckEnvContext,
+} from '@/aiscript/notedeck-api'
 import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useCommandStore } from '@/commands/registry'
@@ -110,7 +114,7 @@ async function run() {
   })
 
   if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
-  const ndCtx = {
+  const ndCtx: NoteDeckEnvContext = {
     deckStore,
     commandStore,
     registeredCommandIds: [] as string[],

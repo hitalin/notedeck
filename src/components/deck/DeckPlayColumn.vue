@@ -9,7 +9,11 @@ import {
   execAiScript,
   parseAiScript,
 } from '@/aiscript/common'
-import { cleanupNoteDeckEnv, createNoteDeckEnv } from '@/aiscript/notedeck-api'
+import {
+  cleanupNoteDeckEnv,
+  createNoteDeckEnv,
+  type NoteDeckEnvContext,
+} from '@/aiscript/notedeck-api'
 import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useCommandStore } from '@/commands/registry'
@@ -245,7 +249,7 @@ async function executePlay(detail: FlashDetail) {
   })
 
   if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
-  const ndCtx = {
+  const ndCtx: NoteDeckEnvContext = {
     deckStore,
     commandStore,
     registeredCommandIds: [] as string[],

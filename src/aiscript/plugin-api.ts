@@ -135,7 +135,8 @@ interface PluginHandler {
   pluginInstallId: string
   type: HandlerType
   title?: string
-  handler: (...args: unknown[]) => unknown
+  // biome-ignore lint: handler signatures vary per type
+  handler: (...args: any[]) => any
 }
 
 const pluginHandlers: PluginHandler[] = []
@@ -220,7 +221,7 @@ function createPluginSpecificEnv(
         handler: (
           form: unknown,
           update: (key: unknown, value: unknown) => void,
-        ) => {
+        ): void => {
           const interp = pluginContexts.get(id)
           if (!interp) return
           interp.execFn(handlerVal as VFn, [
@@ -287,11 +288,14 @@ function createPluginSpecificEnv(
     consts['Plugin:register:note_post_interruptor'] = notePostInterruptor
 
   // --- Plugin:open_url ---
-  consts['Plugin:open_url'] = values.FN_NATIVE(async ([urlVal]) => {
-    if (urlVal?.type !== 'str') return
-    const { openUrl } = await import('@tauri-apps/plugin-opener')
-    await openUrl(urlVal.value)
-  })
+  consts['Plugin:open_url'] = values.FN_NATIVE(
+    async ([urlVal]): Promise<Value> => {
+      if (urlVal?.type !== 'str') return values.NULL
+      const { openUrl } = await import('@tauri-apps/plugin-opener')
+      await openUrl(urlVal.value)
+      return values.NULL
+    },
+  )
 
   // --- Plugin:config ---
   const configMap = new Map<string, Value>()

@@ -56,28 +56,6 @@ const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 // Per-account progress
 const loadProgress = ref<{ host: string; done: boolean }[]>([])
 
-// Streaming subscriptions
-const streamCleanups: (() => void)[] = []
-
-// rAF batching for streaming
-let rafBuffer: NormalizedNotification[] = []
-let rafId: number | null = null
-
-function flushRafBuffer() {
-  rafId = null
-  if (rafBuffer.length === 0) return
-  const batch = rafBuffer
-  rafBuffer = []
-  const seen = new Set(notifications.value.map((n) => n.id))
-  const fresh = batch.filter((n) => !seen.has(n.id))
-  if (fresh.length === 0) return
-  const updated = [...fresh, ...notifications.value]
-  notifications.value =
-    updated.length > MAX_NOTIFICATIONS
-      ? updated.slice(0, MAX_NOTIFICATIONS)
-      : updated
-}
-
 // Merge notifications: dedup by id, sort by createdAt desc
 function mergeNotifications(
   existing: NormalizedNotification[],
@@ -198,22 +176,7 @@ async function loadNotifications() {
       const adapter = await getOrCreate(acc.id)
       if (!adapter) return []
       try {
-        const fetched = await adapter.api.getNotifications()
-
-        // Subscribe to streaming for real-time updates
-        adapter.stream.connect()
-        const unsub = adapter.stream.subscribeMain((event) => {
-          if (event.type === 'notification') {
-            const notification = event.body as NormalizedNotification
-            rafBuffer.push(notification)
-            if (rafId === null) {
-              rafId = requestAnimationFrame(flushRafBuffer)
-            }
-          }
-        })
-        streamCleanups.push(unsub)
-
-        return fetched
+        return await adapter.api.getNotifications()
       } finally {
         loadProgress.value = loadProgress.value.map((p, j) =>
           j === i ? { ...p, done: true } : p,
@@ -342,12 +305,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  for (const cleanup of streamCleanups) cleanup()
-  streamCleanups.length = 0
-  if (rafId !== null) {
-    cancelAnimationFrame(rafId)
-    rafId = null
-  }
   reactionUrlLookup.clear()
   twemojiUrlLookup.clear()
 })

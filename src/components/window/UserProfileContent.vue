@@ -82,7 +82,7 @@ onMounted(async () => {
       const pinned = await Promise.all(
         userPinnedNoteIds.map((id) => adapter?.api.getNote(id)),
       )
-      pinnedNotes.value = pinned
+      pinnedNotes.value = pinned.filter((n): n is NormalizedNote => n != null)
     }
     await loadTabNotes()
   } catch (e) {
@@ -170,7 +170,6 @@ function onScroll(e: Event) {
     loadMoreNotes()
   }
 }
-
 
 // Post form state
 const showPostForm = ref(false)

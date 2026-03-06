@@ -338,14 +338,14 @@ function updateMessageReaction(
         user: {
           id: acc.userId ?? '',
           username: acc.username ?? '',
-          name: acc.displayName,
-          avatarUrl: acc.avatarUrl,
+          name: acc.displayName ?? undefined,
+          avatarUrl: acc.avatarUrl ?? undefined,
         },
         reaction,
       })
     } else {
       const idx = reactions.findIndex(
-        (r) => r.reaction === reaction && r.user.id === acc.userId,
+        (r) => r.reaction === reaction && r.user?.id === acc.userId,
       )
       if (idx >= 0) reactions.splice(idx, 1)
     }
@@ -494,7 +494,7 @@ onBeforeUnmount(() => {
           :key="msg.id"
           :message="msg"
           :my-user-id="myUserId"
-          :account-id="column.accountId"
+          :account-id="column.accountId ?? undefined"
           :server-host="account?.host"
           @react="handleReact"
           @unreact="handleUnreact"

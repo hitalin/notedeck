@@ -23,7 +23,8 @@ const conditionTypes: FilterConditionType[] = [
 
 function cycleType(cond: FilterCondition) {
   const i = conditionTypes.indexOf(cond.type)
-  cond.type = conditionTypes[(i + 1) % conditionTypes.length]
+  const next = conditionTypes[(i + 1) % conditionTypes.length]
+  if (next) cond.type = next
 }
 
 function addCondition() {

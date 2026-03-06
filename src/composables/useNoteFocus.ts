@@ -145,7 +145,9 @@ export function useNoteFocus(
           const acctId = accountId ?? note._accountId
           if (!acctId) break
           const reactions = pinnedReactionsStore.get(acctId)
-          const idx = Number.parseInt(m[1], 10) - 1
+          const digit = m[1]
+          if (!digit) break
+          const idx = Number.parseInt(digit, 10) - 1
           const reaction = reactions[idx]
           if (reaction) handlers.reaction(reaction, note)
         }

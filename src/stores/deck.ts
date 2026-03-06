@@ -76,14 +76,16 @@ export const useDeckStore = defineStore('deck', () => {
     if (columns.value.length === 0) return
     const idx = columns.value.findIndex((c) => c.id === activeColumnId.value)
     const next = idx < 0 ? 0 : Math.min(idx + 1, columns.value.length - 1)
-    activeColumnId.value = columns.value[next].id
+    const col = columns.value[next]
+    if (col) activeColumnId.value = col.id
   }
 
   function focusPrevColumn() {
     if (columns.value.length === 0) return
     const idx = columns.value.findIndex((c) => c.id === activeColumnId.value)
     const prev = idx <= 0 ? 0 : idx - 1
-    activeColumnId.value = columns.value[prev].id
+    const col = columns.value[prev]
+    if (col) activeColumnId.value = col.id
   }
 
   function focusColumnByIndex(index: number) {

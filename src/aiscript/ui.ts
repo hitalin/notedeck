@@ -224,7 +224,7 @@ export function createAiScriptUiLib(
   for (const type of uiTypes) {
     consts[`Ui:C:${type}`] = values.FN_NATIVE(([propsVal]) => {
       const id = genComponentId()
-      return createComponentValue(type, id, propsVal)
+      return createComponentValue(type, id, propsVal as Value)
     })
   }
 

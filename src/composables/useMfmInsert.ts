@@ -1,4 +1,4 @@
-import { type Ref, nextTick, ref } from 'vue'
+import { nextTick, type Ref, ref } from 'vue'
 
 export interface MfmFunction {
   label: string
@@ -42,8 +42,7 @@ export function useMfmInsert(
     const end = textarea.selectionEnd
     const selected = text.value.slice(start, end)
     const insert = fn.insert + selected + fn.suffix
-    text.value =
-      text.value.slice(0, start) + insert + text.value.slice(end)
+    text.value = text.value.slice(0, start) + insert + text.value.slice(end)
     nextTick(() => {
       const cursorPos = selected
         ? start + insert.length

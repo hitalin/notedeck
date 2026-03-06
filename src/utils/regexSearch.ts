@@ -12,7 +12,7 @@ export function extractLiterals(pattern: string): string {
     .filter((s) => s.length >= 2)
   if (parts.length === 0) return ''
   // 最長のリテラル部分を返す
-  return parts.sort((a, b) => b.length - a.length)[0]
+  return parts.sort((a, b) => b.length - a.length)[0] ?? ''
 }
 
 /**
@@ -146,5 +146,5 @@ export function extractHintFromConditions(
     words.push(...ws)
   }
   if (words.length === 0) return ''
-  return words.sort((a, b) => b.length - a.length)[0]
+  return words.sort((a, b) => b.length - a.length)[0] ?? ''
 }

@@ -37,8 +37,12 @@ export async function detectServer(host: string): Promise<ServerInfo> {
   }
 }
 
+const FETCH_TIMEOUT_MS = 10_000
+
 async function fetchNodeInfo(host: string): Promise<NodeInfo> {
-  const wellKnownRes = await fetch(`https://${host}/.well-known/nodeinfo`)
+  const wellKnownRes = await fetch(`https://${host}/.well-known/nodeinfo`, {
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  })
   const wellKnown: WellKnownNodeInfo = await wellKnownRes.json()
 
   const nodeinfoUrl = wellKnown.links.find((link) =>
@@ -61,7 +65,9 @@ async function fetchNodeInfo(host: string): Promise<NodeInfo> {
     throw new Error(`Invalid nodeinfo URL for ${host}: ${e}`)
   }
 
-  const res = await fetch(nodeinfoUrl)
+  const res = await fetch(nodeinfoUrl, {
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  })
   return res.json()
 }
 
@@ -71,6 +77,7 @@ async function fetchIconUrl(host: string): Promise<string> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: '{}',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     })
     const data = await res.json()
     const url = data.iconUrl ?? data.faviconUrl
