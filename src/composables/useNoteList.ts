@@ -1,5 +1,5 @@
-import { computed, shallowRef } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { computed, shallowRef } from 'vue'
 import type {
   NormalizedNote,
   NoteUpdateEvent,

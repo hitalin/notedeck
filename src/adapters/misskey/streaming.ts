@@ -335,7 +335,8 @@ export class MisskeyStream implements StreamAdapter {
       { otherId },
       (id) => {
         this.chatMessageHandlers.set(id, handler)
-        if (options?.onDeleted) this.chatDeletedHandlers.set(id, options.onDeleted)
+        if (options?.onDeleted)
+          this.chatDeletedHandlers.set(id, options.onDeleted)
       },
       (id) => {
         this.chatMessageHandlers.delete(id)
@@ -354,7 +355,8 @@ export class MisskeyStream implements StreamAdapter {
       { roomId },
       (id) => {
         this.chatMessageHandlers.set(id, handler)
-        if (options?.onDeleted) this.chatDeletedHandlers.set(id, options.onDeleted)
+        if (options?.onDeleted)
+          this.chatDeletedHandlers.set(id, options.onDeleted)
       },
       (id) => {
         this.chatMessageHandlers.delete(id)

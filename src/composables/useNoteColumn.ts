@@ -154,7 +154,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
         setSubscription(
           config.streaming.subscribe(adapter, streamingBatch.enqueueNote, {
             onNoteUpdated: (event) => {
-              if (event.type === 'deleted') streamingBatch.removePending(event.noteId)
+              if (event.type === 'deleted')
+                streamingBatch.removePending(event.noteId)
               onNoteUpdate(event)
             },
           }),

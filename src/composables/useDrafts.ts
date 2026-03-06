@@ -36,7 +36,10 @@ export function loadDrafts(accountId: string): Draft[] {
   }
 }
 
-export function saveDraft(accountId: string, draft: Omit<Draft, 'id' | 'savedAt'>): Draft {
+export function saveDraft(
+  accountId: string,
+  draft: Omit<Draft, 'id' | 'savedAt'>,
+): Draft {
   const drafts = loadDrafts(accountId)
   const newDraft: Draft = {
     ...draft,

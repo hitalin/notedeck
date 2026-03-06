@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
 import {
   defineAsyncComponent,
   onMounted,
@@ -7,13 +8,12 @@ import {
   shallowRef,
 } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import { invoke } from '@tauri-apps/api/core'
 import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
-import { noteStore } from '@/stores/notes'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import { noteStore } from '@/stores/notes'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),

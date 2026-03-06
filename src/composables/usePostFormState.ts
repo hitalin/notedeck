@@ -7,6 +7,12 @@ import type {
   NoteVisibility,
   ServerAdapter,
 } from '@/adapters/types'
+import {
+  type Draft,
+  deleteDraft,
+  loadDrafts,
+  saveDraft,
+} from '@/composables/useDrafts'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
@@ -15,7 +21,6 @@ import {
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
-import { type Draft, saveDraft, loadDrafts, deleteDraft } from '@/composables/useDrafts'
 
 const MAX_TEXT_LENGTH = 3000
 
@@ -128,8 +133,7 @@ export function usePostFormState(
     try {
       const serverInfo = await serversStore.getServerInfo(acc.host)
       adapter = createAdapter(serverInfo, acc.id)
-      supportsScheduledNotes.value =
-        serverInfo.features.scheduledNotes === true
+      supportsScheduledNotes.value = serverInfo.features.scheduledNotes === true
     } catch (e) {
       error.value = AppError.from(e).message
       supportsScheduledNotes.value = false
@@ -365,7 +369,10 @@ export function usePostFormState(
       showPoll: showPoll.value,
       scheduledAt: scheduledAt.value,
     })
-    drafts.value = [draft, ...drafts.value.filter((d) => d.id !== draft.id)].slice(0, 10)
+    drafts.value = [
+      draft,
+      ...drafts.value.filter((d) => d.id !== draft.id),
+    ].slice(0, 10)
     showDraftMenu.value = false
   }
 
@@ -375,7 +382,8 @@ export function usePostFormState(
     showCw.value = draft.showCw
     visibility.value = draft.visibility
     localOnly.value = draft.localOnly
-    pollChoices.value = draft.pollChoices.length >= 2 ? draft.pollChoices : ['', '']
+    pollChoices.value =
+      draft.pollChoices.length >= 2 ? draft.pollChoices : ['', '']
     pollMultiple.value = draft.pollMultiple
     showPoll.value = draft.showPoll
     scheduledAt.value = draft.scheduledAt
