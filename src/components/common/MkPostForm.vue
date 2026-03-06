@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
 import { nextTick, onMounted, ref } from 'vue'
-import type { NormalizedNote } from '@/adapters/types'
+import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
 import { usePostFormState } from '@/composables/usePostFormState'
 import MkMfm from './MkMfm.vue'
+import MkReactionPicker from './MkReactionPicker.vue'
 
 const props = defineProps<{
   accountId: string
@@ -43,6 +45,10 @@ const {
   canPost,
   MAX_TEXT_LENGTH,
   visibilityOptions,
+  showPoll,
+  pollChoices,
+  pollMultiple,
+  pollExpiresAt,
   initAdapter,
   switchAccount,
   post,
@@ -52,7 +58,133 @@ const {
   selectVisibility,
   noteModeLabel,
   noteModeIcon,
+  insertAtCursor,
+  addPollChoice,
+  removePollChoice,
+  resetForm,
 } = usePostFormState(props, { onPosted: (id) => emit('posted', id) }, fileInput)
+
+// --- Mention popup ---
+const showMentionPopup = ref(false)
+const mentionQuery = ref('')
+const mentionResults = ref<NormalizedUser[]>([])
+const mentionSearching = ref(false)
+let mentionDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+function toggleMentionPopup() {
+  showMentionPopup.value = !showMentionPopup.value
+  showEmojiPopup.value = false
+  showMfmMenu.value = false
+  if (showMentionPopup.value) {
+    mentionQuery.value = ''
+    mentionResults.value = []
+  }
+}
+
+function onMentionInput() {
+  if (mentionDebounceTimer) clearTimeout(mentionDebounceTimer)
+  const q = mentionQuery.value.trim()
+  if (!q) {
+    mentionResults.value = []
+    return
+  }
+  mentionDebounceTimer = setTimeout(async () => {
+    if (!activeAccountId.value) return
+    mentionSearching.value = true
+    try {
+      mentionResults.value = await invoke<NormalizedUser[]>('api_request', {
+        accountId: activeAccountId.value,
+        endpoint: 'users/search',
+        params: { query: q, limit: 10 },
+      })
+    } catch {
+      mentionResults.value = []
+    } finally {
+      mentionSearching.value = false
+    }
+  }, 300)
+}
+
+function pickMention(user: NormalizedUser) {
+  const mention = user.host
+    ? `@${user.username}@${user.host} `
+    : `@${user.username} `
+  insertAtCursor(textareaRef.value, mention)
+  showMentionPopup.value = false
+}
+
+// --- Emoji popup ---
+const showEmojiPopup = ref(false)
+
+function toggleEmojiPopup() {
+  showEmojiPopup.value = !showEmojiPopup.value
+  showMentionPopup.value = false
+  showMfmMenu.value = false
+}
+
+function pickEmoji(reaction: string) {
+  insertAtCursor(textareaRef.value, reaction)
+  showEmojiPopup.value = false
+}
+
+// --- Hashtag ---
+function insertHashtag() {
+  insertAtCursor(textareaRef.value, '#')
+}
+
+// --- MFM menu ---
+const showMfmMenu = ref(false)
+
+const mfmFunctions = [
+  { label: 'Flip (横)', insert: '$[flip ', suffix: ']' },
+  { label: 'Flip (縦)', insert: '$[flip.v ', suffix: ']' },
+  { label: 'Spin', insert: '$[spin ', suffix: ']' },
+  { label: 'Shake', insert: '$[shake ', suffix: ']' },
+  { label: 'Jump', insert: '$[jump ', suffix: ']' },
+  { label: 'Bounce', insert: '$[bounce ', suffix: ']' },
+  { label: 'Rainbow', insert: '$[rainbow ', suffix: ']' },
+  { label: 'Sparkle', insert: '$[sparkle ', suffix: ']' },
+  { label: 'Rotate', insert: '$[rotate ', suffix: ']' },
+  { label: 'Tada', insert: '$[tada ', suffix: ']' },
+  { label: 'Bold', insert: '**', suffix: '**' },
+  { label: 'Italic', insert: '<i>', suffix: '</i>' },
+  { label: 'Strike', insert: '~~', suffix: '~~' },
+  { label: 'Code', insert: '`', suffix: '`' },
+  { label: 'Center', insert: '<center>', suffix: '</center>' },
+  { label: 'Small', insert: '<small>', suffix: '</small>' },
+]
+
+function toggleMfmMenu() {
+  showMfmMenu.value = !showMfmMenu.value
+  showMentionPopup.value = false
+  showEmojiPopup.value = false
+}
+
+function pickMfm(fn: (typeof mfmFunctions)[number]) {
+  const textarea = textareaRef.value
+  if (!textarea) return
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  const selected = text.value.slice(start, end)
+  const insert = fn.insert + selected + fn.suffix
+  text.value = text.value.slice(0, start) + insert + text.value.slice(end)
+  nextTick(() => {
+    // Place cursor inside the MFM tags (after prefix, before suffix)
+    const cursorPos = selected
+      ? start + insert.length
+      : start + fn.insert.length
+    textarea.setSelectionRange(cursorPos, cursorPos)
+    textarea.focus()
+  })
+  showMfmMenu.value = false
+}
+
+// --- Close popups on form click ---
+function closePopups() {
+  showMentionPopup.value = false
+  showEmojiPopup.value = false
+  showMfmMenu.value = false
+}
 
 onMounted(async () => {
   await initAdapter()
@@ -82,7 +214,7 @@ function onKeydown(e: KeyboardEvent) {
 
 <template>
   <div class="post-overlay" @click="emit('close')">
-    <div class="post-form" :style="formThemeVars" @click.stop>
+    <div class="post-form" :style="formThemeVars" @click.stop="closePopups">
       <!-- Header -->
       <header class="header">
         <div class="header-left">
@@ -285,12 +417,44 @@ function onKeydown(e: KeyboardEvent) {
           :maxlength="MAX_TEXT_LENGTH"
           :placeholder="replyTo ? 'Reply...' : renoteId ? 'Quote...' : 'What\'s on your mind?'"
           @keydown="onKeydown"
+          @click.stop
         />
         <span
           v-if="remainingChars <= 100"
           class="text-count _acrylic"
           :class="{ over: remainingChars < 0 }"
         >{{ remainingChars }}</span>
+      </div>
+
+      <!-- Poll editor -->
+      <div v-if="showPoll" class="poll-editor">
+        <div v-for="(_, i) in pollChoices" :key="i" class="poll-choice-row">
+          <input
+            v-model="pollChoices[i]"
+            class="poll-choice-input"
+            :placeholder="`Choice ${i + 1}`"
+          />
+          <button
+            v-if="pollChoices.length > 2"
+            class="_button poll-choice-remove"
+            @click="removePollChoice(i)"
+          >
+            <i class="ti ti-x" />
+          </button>
+        </div>
+        <div class="poll-actions">
+          <button
+            v-if="pollChoices.length < 10"
+            class="_button poll-add-btn"
+            @click="addPollChoice"
+          >
+            <i class="ti ti-plus" /> Add choice
+          </button>
+          <label class="poll-multiple-label">
+            <input v-model="pollMultiple" type="checkbox" />
+            Multiple choice
+          </label>
+        </div>
       </div>
 
       <!-- File previews -->
@@ -327,14 +491,27 @@ function onKeydown(e: KeyboardEvent) {
       <!-- Footer -->
       <footer class="footer">
         <div class="footer-left">
+          <!-- Attach file -->
           <button
             class="_button footer-btn"
             title="Attach file"
             :disabled="isUploading"
             @click="openFilePicker"
           >
-            <i class="ti ti-paperclip" />
+            <i class="ti ti-photo-plus" />
           </button>
+
+          <!-- Poll -->
+          <button
+            class="_button footer-btn"
+            :class="{ active: showPoll }"
+            title="Poll"
+            @click="showPoll = !showPoll"
+          >
+            <i class="ti ti-chart-arrows" />
+          </button>
+
+          <!-- CW -->
           <button
             class="_button footer-btn"
             :class="{ active: showCw }"
@@ -343,6 +520,85 @@ function onKeydown(e: KeyboardEvent) {
           >
             <i class="ti ti-eye-off" />
           </button>
+
+          <!-- Hashtag -->
+          <button class="_button footer-btn" title="Hashtag" @click="insertHashtag">
+            <i class="ti ti-hash" />
+          </button>
+
+          <!-- Mention -->
+          <div class="footer-popup-wrapper">
+            <button class="_button footer-btn" title="Mention" @click.stop="toggleMentionPopup">
+              <i class="ti ti-at" />
+            </button>
+            <div v-if="showMentionPopup" class="footer-popup mention-popup" @click.stop>
+              <input
+                v-model="mentionQuery"
+                class="mention-search-input"
+                type="text"
+                placeholder="Search user..."
+                @input="onMentionInput"
+              />
+              <div class="mention-results">
+                <button
+                  v-for="user in mentionResults"
+                  :key="user.id"
+                  class="_button mention-result-item"
+                  @click="pickMention(user)"
+                >
+                  <img v-if="user.avatarUrl" :src="user.avatarUrl" class="mention-avatar" />
+                  <div class="mention-info">
+                    <span class="mention-name">{{ user.username }}</span>
+                    <span v-if="user.host" class="mention-host">@{{ user.host }}</span>
+                  </div>
+                </button>
+                <div v-if="mentionSearching" class="mention-status">Searching...</div>
+                <div v-else-if="mentionQuery && mentionResults.length === 0" class="mention-status">
+                  No users found
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MFM -->
+          <div class="footer-popup-wrapper">
+            <button class="_button footer-btn" title="MFM" @click.stop="toggleMfmMenu">
+              <i class="ti ti-palette" />
+            </button>
+            <div v-if="showMfmMenu" class="footer-popup mfm-menu" @click.stop>
+              <button
+                v-for="fn in mfmFunctions"
+                :key="fn.label"
+                class="_button mfm-menu-item"
+                @click="pickMfm(fn)"
+              >
+                {{ fn.label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Clear -->
+          <button
+            class="_button footer-btn"
+            title="Clear"
+            @click="resetForm"
+          >
+            <i class="ti ti-trash" />
+          </button>
+        </div>
+        <div class="footer-right">
+          <!-- Emoji -->
+          <div class="footer-popup-wrapper">
+            <button class="_button footer-btn" title="Emoji" @click.stop="toggleEmojiPopup">
+              <i class="ti ti-mood-happy" />
+            </button>
+            <div v-if="showEmojiPopup && account" class="footer-popup emoji-popup" @click.stop>
+              <MkReactionPicker
+                :server-host="account.host"
+                @pick="pickEmoji"
+              />
+            </div>
+          </div>
         </div>
       </footer>
     </div>
@@ -355,8 +611,9 @@ function onKeydown(e: KeyboardEvent) {
   inset: 0;
   z-index: 2000;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding-top: 12vh;
   background: var(--nd-modalBg);
 }
 
@@ -367,7 +624,7 @@ function onKeydown(e: KeyboardEvent) {
   width: 100%;
   max-width: 520px;
   margin: 16px;
-  overflow: clip;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   container-type: inline-size;
@@ -748,6 +1005,85 @@ function onKeydown(e: KeyboardEvent) {
   -webkit-backdrop-filter: blur(15px);
 }
 
+/* ── Poll editor ── */
+.poll-editor {
+  padding: 8px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.poll-choice-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.poll-choice-input {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 0.9em;
+  font-family: inherit;
+  color: var(--nd-fg);
+  background: var(--nd-buttonBg);
+  border: none;
+  border-radius: 6px;
+  outline: none;
+}
+
+.poll-choice-input::placeholder {
+  color: var(--nd-fg);
+  opacity: 0.35;
+}
+
+.poll-choice-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.poll-choice-remove:hover {
+  opacity: 1;
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+}
+
+.poll-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.poll-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 0.8em;
+  color: var(--nd-accent);
+  border-radius: 6px;
+}
+
+.poll-add-btn:hover {
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+}
+
+.poll-multiple-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  opacity: 0.7;
+  cursor: pointer;
+}
+
 /* ── Footer ── */
 .footer {
   display: flex;
@@ -763,6 +1099,20 @@ function onKeydown(e: KeyboardEvent) {
   grid-auto-rows: 40px;
 }
 
+.footer-right {
+  flex: 0;
+  margin-left: auto;
+  display: grid;
+  grid-auto-flow: row;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  grid-auto-rows: 40px;
+  direction: rtl;
+}
+
+.footer-popup-wrapper {
+  position: relative;
+}
+
 .footer-btn {
   display: inline-flex;
   align-items: center;
@@ -770,22 +1120,147 @@ function onKeydown(e: KeyboardEvent) {
   padding: 0;
   margin: 0;
   font-size: 1em;
-  width: auto;
+  width: 100%;
   height: 100%;
   border-radius: 6px;
   color: var(--nd-fg);
-  opacity: 0.6;
-  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .footer-btn:hover {
-  opacity: 1;
   background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
 }
 
 .footer-btn.active {
-  opacity: 1;
   color: var(--nd-accent);
+}
+
+/* ── Footer popups (shared) ── */
+.footer-popup {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  margin-top: 8px;
+  background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(16px);
+}
+
+/* ── Mention popup ── */
+.mention-popup {
+  width: 260px;
+  max-height: 300px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mention-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid var(--nd-divider);
+  background: transparent;
+  color: var(--nd-fg);
+  font-size: 0.85em;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.mention-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+  scrollbar-width: none;
+}
+
+.mention-result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  color: var(--nd-fg);
+  transition: background 0.15s;
+}
+
+.mention-result-item:hover {
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+}
+
+.mention-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 100%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.mention-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mention-name {
+  font-size: 0.85em;
+  font-weight: bold;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mention-host {
+  font-size: 0.75em;
+  opacity: 0.6;
+}
+
+.mention-status {
+  padding: 12px;
+  text-align: center;
+  font-size: 0.8em;
+  opacity: 0.5;
+}
+
+/* ── Emoji popup ── */
+.emoji-popup {
+  width: 340px;
+  max-height: 360px;
+  overflow: hidden;
+  /* Override default centering: anchor to right edge since it's in footer-right */
+  left: auto;
+  right: 0;
+  transform: none;
+  direction: ltr;
+}
+
+/* ── MFM menu ── */
+.mfm-menu {
+  width: 160px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+  scrollbar-width: none;
+}
+
+.mfm-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 0.82em;
+  text-align: left;
+  border-radius: 6px;
+  color: var(--nd-fg);
+  transition: background 0.15s;
+}
+
+.mfm-menu-item:hover {
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
 }
 
 /* ── File preview ── */
@@ -870,6 +1345,10 @@ function onKeydown(e: KeyboardEvent) {
 
   .footer {
     padding: 0 8px 8px;
+  }
+
+  .poll-editor {
+    padding: 8px 16px;
   }
 }
 
