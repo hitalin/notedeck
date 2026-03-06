@@ -5,7 +5,6 @@ import { ref } from 'vue'
 const updateAvailable = ref(false)
 const updateVersion = ref('')
 const isInstalling = ref(false)
-const dismissed = ref(false)
 
 let pendingUpdate: Update | null = null
 let checked = false
@@ -39,18 +38,12 @@ async function installUpdate() {
   }
 }
 
-function dismiss() {
-  dismissed.value = true
-}
-
 export function useUpdater() {
   return {
     updateAvailable,
     updateVersion,
     isInstalling,
-    dismissed,
     checkForUpdate,
     installUpdate,
-    dismiss,
   }
 }

@@ -2,6 +2,7 @@
 import { version as appVersion } from '../../../package.json'
 import { computed, nextTick, ref, watch } from 'vue'
 import ThemePreview from '@/components/ThemePreview.vue'
+import { useUpdater } from '@/composables/useUpdater'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
@@ -15,6 +16,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
 }>()
+
+const { updateAvailable, updateVersion, isInstalling, installUpdate } = useUpdater()
 
 const deckStore = useDeckStore()
 const themeStore = useThemeStore()
@@ -155,8 +158,8 @@ function syncScroll(e: Event) {
         <div class="toggle-area">
           <div class="toggle-inner">
             <div class="day-night-toggle" :class="{ checked: isDark }" @click="toggleDarkMode">
-              <span class="label-before">Light</span>
-              <span class="label-after">Dark</span>
+              <span class="label-before">ライト</span>
+              <span class="label-after">ダーク</span>
               <span class="toggle-handler">
                 <span class="crater crater-1" />
                 <span class="crater crater-2" />
@@ -272,11 +275,11 @@ function syncScroll(e: Event) {
 
       <div v-if="deckStore.wallpaper == null" class="settings-menu-item" @click="pickWallpaper">
         <i class="ti ti-photo" />
-        <span class="settings-menu-label">Set wallpaper</span>
+        <span class="settings-menu-label">壁紙を設定</span>
       </div>
       <div v-else class="settings-menu-item" @click="removeWallpaper">
         <i class="ti ti-photo-off" />
-        <span class="settings-menu-label">Remove wallpaper</span>
+        <span class="settings-menu-label">壁紙を削除</span>
       </div>
 
       <input
@@ -288,7 +291,19 @@ function syncScroll(e: Event) {
       />
 
       <div class="settings-menu-divider" />
-      <div class="version-info">v{{ appVersion }}</div>
+      <div v-if="updateAvailable" class="update-section">
+        <div class="update-text">
+          <span class="update-version">v{{ appVersion }} → v{{ updateVersion }}</span>
+        </div>
+        <button
+          class="update-btn"
+          :disabled="isInstalling"
+          @click="installUpdate"
+        >
+          {{ isInstalling ? 'インストール中...' : 'アップデート' }}
+        </button>
+      </div>
+      <div v-else class="version-info">v{{ appVersion }}</div>
     </div>
   </Transition>
 </template>
@@ -889,6 +904,46 @@ function syncScroll(e: Event) {
   color: var(--nd-fg);
   opacity: 0.4;
   user-select: text;
+}
+
+.update-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+}
+
+.update-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.update-version {
+  font-size: 0.8em;
+  color: var(--nd-accent);
+  font-weight: 500;
+}
+
+.update-btn {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border: none;
+  border-radius: 4px;
+  background: var(--nd-accent);
+  color: var(--nd-fgOnAccent, #fff);
+  font-size: 0.8em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.update-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.update-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .settings-menu-enter-from,

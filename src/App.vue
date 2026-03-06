@@ -2,7 +2,6 @@
 import { defineAsyncComponent, onMounted } from 'vue'
 import { useCommandStore } from '@/commands/registry'
 import TitleBarComponent from '@/components/common/TitleBar.vue'
-import UpdateBannerComponent from '@/components/common/UpdateBanner.vue'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { useTheme } from '@/composables/useTheme'
 
@@ -11,7 +10,6 @@ const isDesktop =
   isTauri && matchMedia('(hover: hover) and (pointer: fine)').matches
 
 const TitleBar = isDesktop ? TitleBarComponent : null
-const UpdateBanner = isDesktop ? UpdateBannerComponent : null
 
 const CommandPalette = defineAsyncComponent(
   () => import('@/components/common/CommandPalette.vue'),
@@ -41,7 +39,6 @@ onMounted(() => {
   <div class="app-root">
     <template v-if="isTauri">
       <TitleBar v-if="isDesktop" />
-      <UpdateBanner v-if="isDesktop" />
       <div class="app-content">
         <router-view />
       </div>

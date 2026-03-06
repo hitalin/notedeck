@@ -21,6 +21,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { usePluginsStore } from '@/stores/plugins'
+import { useUpdater } from '@/composables/useUpdater'
 import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
   initDesktopNotifications,
@@ -92,6 +93,7 @@ const showCompose = ref(false)
 const showProfileMenu = ref(false)
 const showSettingsMenu = ref(false)
 const mobileDrawerOpen = ref(false)
+const { updateAvailable, checkForUpdate } = useUpdater()
 
 function openCompose() {
   if (accountsStore.accounts.length === 0) return
@@ -230,6 +232,7 @@ onMounted(() => {
   })
   handleResizeRef = () => navbarRef.value?.handleResize()
   window.addEventListener('resize', handleResizeRef)
+  setTimeout(checkForUpdate, 5000)
   document.addEventListener('visibilitychange', onVisibilityChange)
 
   // Column visibility observer
@@ -398,8 +401,9 @@ watch(
         </button>
         <div class="bottom-bar-right">
           <div class="settings-menu-wrap">
-            <button class="_button bottom-bar-btn" title="Deck settings" @click.stop="showSettingsMenu = !showSettingsMenu">
+            <button class="_button bottom-bar-btn settings-btn" title="Deck settings" @click.stop="showSettingsMenu = !showSettingsMenu">
               <i class="ti ti-settings" />
+              <span v-if="updateAvailable" class="update-dot" />
             </button>
             <DeckSettingsMenu :show="showSettingsMenu" @close="showSettingsMenu = false" />
           </div>
@@ -554,6 +558,21 @@ watch(
 .bottom-bar-btn:hover {
   opacity: 1;
   background: var(--nd-buttonHoverBg);
+}
+
+.settings-btn {
+  position: relative;
+}
+
+.update-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--nd-accent);
+  pointer-events: none;
 }
 
 /* ============================================================
