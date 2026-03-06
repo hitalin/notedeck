@@ -36,6 +36,8 @@ const PLAYER_ALLOWED_ORIGINS = [
   'platform.twitter.com',
   'bandcamp.com',
   'soundcloud.com',
+  'w.soundcloud.com',
+  'embed.music.apple.com',
 ]
 
 const isPlayerAllowed = computed(() => {

@@ -1,5 +1,13 @@
+mod apple_music;
+mod dlsite;
+mod niconico;
+mod soundcloud;
+mod spotify;
+mod youtube;
+
 use async_trait::async_trait;
 use std::fmt;
+use std::sync::LazyLock;
 
 use super::SummaryData;
 
@@ -66,7 +74,14 @@ pub trait Plugin: Send + Sync {
 
 /// All registered plugins, tried in order.
 pub fn all() -> &'static [&'static dyn Plugin] {
-    &[]
+    &[
+        &youtube::PLUGIN,
+        &spotify::PLUGIN,
+        &soundcloud::PLUGIN,
+        &niconico::PLUGIN,
+        &apple_music::PLUGIN,
+        &dlsite::PLUGIN,
+    ]
 }
 
 // --- oEmbed helpers ---
@@ -81,6 +96,18 @@ pub struct OEmbedResponse {
     pub html: Option<String>,
     pub width: Option<u32>,
     pub height: Option<u32>,
+}
+
+/// Regex to extract iframe `src` from oEmbed HTML snippets.
+static IFRAME_SRC_RE: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r#"<iframe[^>]+src="([^"]+)""#).unwrap());
+
+/// Extract iframe `src` URL from an oEmbed HTML snippet.
+pub fn extract_iframe_src(html: &str) -> Option<String> {
+    IFRAME_SRC_RE
+        .captures(html)
+        .and_then(|c| c.get(1))
+        .map(|m| m.as_str().to_string())
 }
 
 /// Fetch an oEmbed JSON response from the given endpoint URL.
