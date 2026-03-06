@@ -167,6 +167,20 @@ export function usePostFormState(
     }
     disabledVisibilities.value = disabled
 
+    // Fetch default note visibility from server user settings
+    try {
+      const userInfo = await invoke<{ defaultNoteVisibility?: string }>(
+        'api_request',
+        { accountId: acc.id, endpoint: 'i', params: {} },
+      )
+      const v = userInfo.defaultNoteVisibility
+      if (v && visibilityOptions.some((o) => o.value === v)) {
+        visibility.value = v as NoteVisibility
+      }
+    } catch {
+      // Fallback to default (public)
+    }
+
     // Auto-correct if current visibility is disabled
     if (disabled.has(visibility.value)) {
       const first = visibilityOptions.find((o) => !disabled.has(o.value))
