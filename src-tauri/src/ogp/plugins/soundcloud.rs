@@ -31,7 +31,7 @@ impl Plugin for SoundCloudPlugin {
                 url: src,
                 width: oembed.width,
                 height: oembed.height,
-                allow: Vec::new(),
+                allow: vec!["autoplay".to_string()],
             }
         });
 
