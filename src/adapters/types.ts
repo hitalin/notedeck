@@ -76,6 +76,12 @@ export interface PaginationOptions {
   untilId?: string
 }
 
+export interface UserNotesOptions extends PaginationOptions {
+  withReplies?: boolean
+  withFiles?: boolean
+  withChannelNotes?: boolean
+}
+
 export interface SearchOptions {
   limit?: number
   sinceId?: string
@@ -351,6 +357,10 @@ export interface ApiAdapter {
   getUser(userId: string): Promise<NormalizedUser>
   getUserDetail(userId: string): Promise<NormalizedUserDetail>
   getUserNotes(
+    userId: string,
+    options?: UserNotesOptions,
+  ): Promise<NormalizedNote[]>
+  getUserFeaturedNotes(
     userId: string,
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>

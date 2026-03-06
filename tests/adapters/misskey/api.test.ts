@@ -116,7 +116,7 @@ describe('MisskeyApi', () => {
       expect(invoke).toHaveBeenCalledWith('api_get_user_notes', {
         accountId: 'acc-1',
         userId: 'user-1',
-        options: { limit: 20, sinceId: null, untilId: 'last-1' },
+        options: { limit: 20, sinceId: null, untilId: 'last-1', filters: null },
       })
     })
   })

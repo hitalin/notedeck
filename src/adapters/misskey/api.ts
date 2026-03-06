@@ -20,6 +20,7 @@ import type {
   TimelineOptions,
   TimelineType,
   UserList,
+  UserNotesOptions,
 } from '../types'
 
 interface TimelineEnriched {
@@ -175,17 +176,44 @@ export class MisskeyApi implements ApiAdapter {
 
   async getUserNotes(
     userId: string,
-    options: PaginationOptions = {},
+    options: UserNotesOptions = {},
   ): Promise<NormalizedNote[]> {
+    const { withReplies, withFiles, withChannelNotes, ...pagination } = options
+    const filters: Record<string, boolean> = {}
+    if (withReplies != null) filters.withReplies = withReplies
+    if (withFiles != null) filters.withFiles = withFiles
+    if (withChannelNotes != null) filters.withChannelNotes = withChannelNotes
     return invoke('api_get_user_notes', {
       accountId: this.accountId,
       userId,
       options: {
-        limit: options.limit ?? 20,
-        sinceId: options.sinceId ?? null,
-        untilId: options.untilId ?? null,
+        limit: pagination.limit ?? 20,
+        sinceId: pagination.sinceId ?? null,
+        untilId: pagination.untilId ?? null,
+        filters: Object.keys(filters).length > 0 ? filters : null,
       },
     })
+  }
+
+  async getUserFeaturedNotes(
+    userId: string,
+    options: PaginationOptions = {},
+  ): Promise<NormalizedNote[]> {
+    try {
+      const raw = await invoke<{ id: string }[]>('api_request', {
+        accountId: this.accountId,
+        endpoint: 'users/featured-notes',
+        params: {
+          userId,
+          limit: options.limit ?? 30,
+          untilId: options.untilId ?? undefined,
+        },
+      })
+      if (!raw.length) return []
+      return Promise.all(raw.map((n) => this.getNote(n.id)))
+    } catch {
+      return this.getUserNotes(userId, { limit: options.limit ?? 20 })
+    }
   }
 
   async createNote(params: CreateNoteParams): Promise<NormalizedNote> {

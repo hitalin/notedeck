@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, onMounted, ref, shallowRef } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type {
   NormalizedNote,
@@ -33,13 +33,23 @@ const accountsStore = useAccountsStore()
 const emojisStore = useEmojisStore()
 const serversStore = useServersStore()
 
+type ProfileTab = 'highlight' | 'notes' | 'all' | 'files'
+const PROFILE_TABS: { key: ProfileTab; label: string; icon: string }[] = [
+  { key: 'highlight', label: 'ハイライト', icon: 'ti ti-bolt' },
+  { key: 'notes', label: 'ノート', icon: 'ti ti-pencil' },
+  { key: 'all', label: '全て', icon: 'ti ti-notebook' },
+  { key: 'files', label: 'ファイル付き', icon: 'ti ti-photo' },
+]
+
 const user = ref<NormalizedUserDetail | null>(null)
 const MAX_PROFILE_NOTES = 500
+const activeTab = ref<ProfileTab>('highlight')
 const notes = shallowRef<NormalizedNote[]>([])
 const pinnedNotes = shallowRef<NormalizedNote[]>([])
 const pinnedNoteIds = ref<string[]>([])
 const isLoading = ref(true)
 const isLoadingNotes = ref(false)
+const hasMoreNotes = ref(true)
 const error = ref<AppError | null>(null)
 
 const account = computed(() =>
@@ -62,12 +72,11 @@ onMounted(async () => {
     const a = createAdapter(serverInfo, account.id)
     adapter = a
     emojisStore.ensureLoaded(account.host, () => a.api.getServerEmojis())
-    user.value = await adapter.api.getUserDetail(props.userId)
-    const [userNotes, userPinnedNoteIds] = await Promise.all([
-      adapter.api.getUserNotes(props.userId, { limit: 20 }),
+    const [userDetail, userPinnedNoteIds] = await Promise.all([
+      adapter.api.getUserDetail(props.userId),
       adapter.api.getUserPinnedNoteIds(props.userId),
     ])
-    notes.value = userNotes
+    user.value = userDetail
     pinnedNoteIds.value = userPinnedNoteIds
     if (userPinnedNoteIds.length > 0) {
       const pinned = await Promise.all(
@@ -75,6 +84,7 @@ onMounted(async () => {
       )
       pinnedNotes.value = pinned
     }
+    await loadTabNotes()
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -82,24 +92,73 @@ onMounted(async () => {
   }
 })
 
-async function loadMoreNotes() {
-  if (!adapter || isLoadingNotes.value || notes.value.length === 0) return
-  if (notes.value.length >= MAX_PROFILE_NOTES) return
-  const last = notes.value.at(-1)
-  if (!last) return
-  isLoadingNotes.value = true
-  try {
-    const older = await adapter.api.getUserNotes(props.userId, {
-      limit: 20,
-      untilId: last.id,
+async function fetchNotes(untilId?: string): Promise<NormalizedNote[]> {
+  if (!adapter) return []
+  const tab = activeTab.value
+  if (tab === 'highlight') {
+    return adapter.api.getUserFeaturedNotes(props.userId, {
+      limit: 30,
+      untilId,
     })
-    notes.value = [...notes.value, ...older]
+  }
+  if (tab === 'all') {
+    return adapter.api.getUserNotes(props.userId, {
+      limit: 20,
+      untilId,
+      withReplies: true,
+      withChannelNotes: true,
+    })
+  }
+  if (tab === 'files') {
+    return adapter.api.getUserNotes(props.userId, {
+      limit: 20,
+      untilId,
+      withFiles: true,
+    })
+  }
+  return adapter.api.getUserNotes(props.userId, { limit: 20, untilId })
+}
+
+async function loadTabNotes() {
+  isLoadingNotes.value = true
+  hasMoreNotes.value = true
+  notes.value = []
+  try {
+    const fetched = await fetchNotes()
+    notes.value = fetched
+    if (fetched.length === 0 || activeTab.value === 'highlight') {
+      hasMoreNotes.value = false
+    }
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
     isLoadingNotes.value = false
   }
 }
+
+async function loadMoreNotes() {
+  if (!adapter || isLoadingNotes.value || !hasMoreNotes.value) return
+  if (notes.value.length >= MAX_PROFILE_NOTES) return
+  const last = notes.value.at(-1)
+  if (!last) return
+  isLoadingNotes.value = true
+  try {
+    const older = await fetchNotes(last.id)
+    if (older.length === 0) {
+      hasMoreNotes.value = false
+    } else {
+      notes.value = [...notes.value, ...older]
+    }
+  } catch (e) {
+    error.value = AppError.from(e)
+  } finally {
+    isLoadingNotes.value = false
+  }
+}
+
+watch(activeTab, () => {
+  loadTabNotes()
+})
 
 let lastScrollCheck = 0
 function onScroll(e: Event) {
@@ -388,9 +447,20 @@ async function handlePosted(editedNoteId?: string) {
           />
         </div>
 
-        <!-- User's notes -->
+        <!-- Notes tabs -->
         <div class="notes-section">
-          <div class="notes-tab">ノート</div>
+          <div class="notes-tabs">
+            <button
+              v-for="tab in PROFILE_TABS"
+              :key="tab.key"
+              class="notes-tab-item _button"
+              :class="{ active: activeTab === tab.key }"
+              @click="activeTab = tab.key"
+            >
+              <i :class="tab.icon" />
+              {{ tab.label }}
+            </button>
+          </div>
 
           <MkNote
             v-for="note in notes"
@@ -407,11 +477,11 @@ async function handlePosted(editedNoteId?: string) {
           />
 
           <div v-if="isLoadingNotes" class="state-message">
-            Loading...
+            読み込み中...
           </div>
 
           <div v-if="!isLoadingNotes && notes.length === 0" class="state-message">
-            No notes yet
+            ノートはありません
           </div>
         </div>
       </div>
@@ -688,13 +758,42 @@ async function handlePosted(editedNoteId?: string) {
   border-top: solid 0.5px var(--nd-divider);
 }
 
-.notes-tab {
-  padding: 14px 24px;
+.notes-tabs {
+  display: flex;
+  border-bottom: solid 0.5px var(--nd-divider);
+  position: sticky;
+  top: 0;
+  background: var(--nd-bg);
+  z-index: 5;
+}
+
+.notes-tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 8px;
   font-size: 0.85em;
   font-weight: bold;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  border-bottom: 2px solid transparent;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+.notes-tab-item:hover {
+  opacity: 0.8;
+}
+
+.notes-tab-item.active {
   color: var(--nd-accent);
-  border-bottom: 2px solid var(--nd-accent);
-  display: inline-block;
+  opacity: 1;
+  border-bottom-color: var(--nd-accent);
+}
+
+.notes-tab-item i {
+  font-size: 1em;
 }
 
 .state-message {
