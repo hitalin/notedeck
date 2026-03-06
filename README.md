@@ -17,7 +17,7 @@
 
 ---
 
-<img width="1919" height="1029" alt="NoteDeck スクリーンショット" src="https://github.com/user-attachments/assets/59fb7359-c6fa-4aa0-beb0-cf421ac563c5" />
+<img width="1919" height="1029" alt="スクリーンショット 2026-03-06 211423" src="https://github.com/user-attachments/assets/797cbd5a-f358-43ac-b4ed-50ded014f5fb" />
 
 ## Misskey をデスクトップで、もっと快適に
 
