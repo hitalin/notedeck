@@ -1,6 +1,7 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useCommandStore } from '@/commands/registry'
 import type { NoteAction } from '@/composables/useNoteFocus'
+import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
 
 export interface CommandHandlers {
@@ -35,7 +36,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'command-palette',
-    label: 'Command Palette',
+    label: 'コマンドパレット',
     icon: 'search',
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('command-palette'),
@@ -45,7 +46,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'search',
-    label: 'Search',
+    label: '検索',
     icon: 'search',
     category: 'navigation',
     shortcuts: keybindsStore.getShortcuts('search'),
@@ -54,7 +55,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'notifications',
-    label: 'Notifications',
+    label: '通知',
     icon: 'bell',
     category: 'navigation',
     shortcuts: keybindsStore.getShortcuts('notifications'),
@@ -63,7 +64,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'compose',
-    label: 'New Note',
+    label: 'ノート作成',
     icon: 'pencil',
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('compose'),
@@ -72,7 +73,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'add-column',
-    label: 'Add Column',
+    label: 'カラム追加',
     icon: 'plus',
     category: 'column',
     shortcuts: keybindsStore.getShortcuts('add-column'),
@@ -81,7 +82,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'toggle-sidebar',
-    label: 'Toggle Sidebar',
+    label: 'サイドバー切替',
     icon: 'layout-sidebar-left-collapse',
     category: 'navigation',
     shortcuts: keybindsStore.getShortcuts('toggle-sidebar'),
@@ -90,7 +91,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'boss-key',
-    label: 'Hide Window',
+    label: 'ウィンドウを隠す',
     icon: 'eye-off',
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('boss-key'),
@@ -99,7 +100,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'account-menu',
-    label: 'Account Menu',
+    label: 'アカウントメニュー',
     icon: 'user',
     category: 'account',
     shortcuts: keybindsStore.getShortcuts('account-menu'),
@@ -109,7 +110,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
   // Note-level shortcuts (dispatched as CustomEvents to active column)
   commandStore.register({
     id: 'note-next',
-    label: 'Next Note',
+    label: '次のノート',
     icon: 'arrow-down',
     category: 'note',
     shortcuts: keybindsStore.getShortcuts('note-next'),
@@ -118,7 +119,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'note-prev',
-    label: 'Previous Note',
+    label: '前のノート',
     icon: 'arrow-up',
     category: 'note',
     shortcuts: keybindsStore.getShortcuts('note-prev'),
@@ -127,7 +128,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'note-reply',
-    label: 'Reply',
+    label: '返信',
     icon: 'arrow-back-up',
     category: 'note',
     shortcuts: keybindsStore.getShortcuts('note-reply'),
@@ -136,7 +137,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'note-react',
-    label: 'React',
+    label: 'リアクション',
     icon: 'mood-plus',
     category: 'note',
     shortcuts: keybindsStore.getShortcuts('note-react'),
@@ -145,7 +146,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'note-renote',
-    label: 'Renote / Quote',
+    label: 'リノート / 引用',
     icon: 'repeat',
     category: 'note',
     shortcuts: keybindsStore.getShortcuts('note-renote'),
@@ -154,7 +155,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'note-bookmark',
-    label: 'Bookmark',
+    label: 'ブックマーク',
     icon: 'star',
     category: 'note',
     shortcuts: keybindsStore.getShortcuts('note-bookmark'),
@@ -163,7 +164,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'note-open',
-    label: 'Open Note',
+    label: 'ノートを開く',
     icon: 'external-link',
     category: 'note',
     shortcuts: keybindsStore.getShortcuts('note-open'),
@@ -172,13 +173,68 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'note-cw',
-    label: 'Toggle CW',
+    label: 'CW切替',
     icon: 'eye',
     category: 'note',
     shortcuts: keybindsStore.getShortcuts('note-cw'),
     execute: () => dispatchNoteAction('toggle-cw'),
   })
+
+  // Column navigation
+  const deckStore = useDeckStore()
+
+  commandStore.register({
+    id: 'column-next',
+    label: '次のカラム',
+    icon: 'arrow-right',
+    category: 'column',
+    shortcuts: keybindsStore.getShortcuts('column-next'),
+    execute: () => deckStore.focusNextColumn(),
+  })
+
+  commandStore.register({
+    id: 'column-prev',
+    label: '前のカラム',
+    icon: 'arrow-left',
+    category: 'column',
+    shortcuts: keybindsStore.getShortcuts('column-prev'),
+    execute: () => deckStore.focusPrevColumn(),
+  })
+
+  for (let i = 1; i <= 9; i++) {
+    commandStore.register({
+      id: `column-${i}`,
+      label: `カラム ${i} に移動`,
+      icon: 'columns',
+      category: 'column',
+      shortcuts: keybindsStore.getShortcuts(`column-${i}`),
+      execute: () => deckStore.focusColumnByIndex(i - 1),
+    })
+  }
+
+  // Quick reactions (1-9 keys send pinned reactions to focused note)
+  for (let i = 1; i <= 9; i++) {
+    commandStore.register({
+      id: `quick-react-${i}`,
+      label: `クイックリアクション ${i}`,
+      icon: 'mood-plus',
+      category: 'note',
+      shortcuts: keybindsStore.getShortcuts(`quick-react-${i}`),
+      execute: () => dispatchNoteAction(`quick-react-${i}` as NoteAction),
+    })
+  }
 }
+
+const COLUMN_COMMAND_IDS = [
+  'column-next',
+  'column-prev',
+  ...Array.from({ length: 9 }, (_, i) => `column-${i + 1}`),
+] as const
+
+const QUICK_REACT_IDS = Array.from(
+  { length: 9 },
+  (_, i) => `quick-react-${i + 1}`,
+) as readonly string[]
 
 export function unregisterDefaultCommands() {
   const commandStore = useCommandStore()
@@ -192,6 +248,8 @@ export function unregisterDefaultCommands() {
     'toggle-sidebar',
     'account-menu',
     ...NOTE_COMMAND_IDS,
+    ...COLUMN_COMMAND_IDS,
+    ...QUICK_REACT_IDS,
   ]) {
     commandStore.unregister(id)
   }

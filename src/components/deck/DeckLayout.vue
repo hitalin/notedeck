@@ -286,6 +286,18 @@ watch(
   },
   { flush: 'post', immediate: true },
 )
+
+// Scroll to column when activeColumnId changes via keyboard navigation
+watch(
+  () => deckStore.activeColumnId,
+  (id) => {
+    if (!id || !columnsRef.value) return
+    const el = columnsRef.value.querySelector(
+      `.column-section[data-column-id="${CSS.escape(id)}"]`,
+    )
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+  },
+)
 </script>
 
 <template>

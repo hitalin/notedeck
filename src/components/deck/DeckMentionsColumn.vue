@@ -59,6 +59,7 @@ const { focusedNoteId } = useNoteFocus(
   scroller,
   handlers,
   (note) => navigateToNote(note._accountId, note.id),
+  props.column.accountId ?? undefined,
 )
 const { sync: syncCapture } = useNoteCapture(
   () => getAdapter()?.stream,

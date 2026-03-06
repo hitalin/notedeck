@@ -3,6 +3,7 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import type { DynamicScroller } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 import { useDeckStore } from '@/stores/deck'
+import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
 
 export type NoteAction =
   | 'next'
@@ -14,6 +15,7 @@ export type NoteAction =
   | 'bookmark'
   | 'open'
   | 'toggle-cw'
+  | `quick-react-${number}`
 
 export interface NoteActionHandlers {
   reply: (note: NormalizedNote) => void
@@ -37,8 +39,10 @@ export function useNoteFocus(
   scroller: ShallowRef<InstanceType<typeof DynamicScroller> | null>,
   handlers: NoteActionHandlers,
   onOpen?: (note: NormalizedNote) => void,
+  accountId?: string,
 ) {
   const deckStore = useDeckStore()
+  const pinnedReactionsStore = usePinnedReactionsStore()
   const focusedIndex = ref(-1)
 
   const focusedNoteId = computed(() => {
@@ -129,6 +133,21 @@ export function useNoteFocus(
         if (el) {
           const btn = el.querySelector('.cw-toggle') as HTMLElement
           btn?.click()
+        }
+        break
+      }
+      default: {
+        // quick-react-1 ~ quick-react-9
+        const m = action.match(/^quick-react-(\d)$/)
+        if (m) {
+          const note = getFocusedNote()
+          if (!note) break
+          const acctId = accountId ?? note._accountId
+          if (!acctId) break
+          const reactions = pinnedReactionsStore.get(acctId)
+          const idx = Number.parseInt(m[1], 10) - 1
+          const reaction = reactions[idx]
+          if (reaction) handlers.reaction(reaction, note)
         }
         break
       }

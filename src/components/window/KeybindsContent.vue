@@ -7,22 +7,30 @@ const keybindsStore = useKeybindsStore()
 const commandIds = keybindsStore.getAllCommandIds()
 
 const COMMAND_LABELS: Record<string, string> = {
-  'command-palette': 'Command Palette',
-  search: 'Search',
-  notifications: 'Notifications',
-  compose: 'New Note',
-  'add-column': 'Add Column',
-  'toggle-sidebar': 'Toggle Sidebar',
-  'boss-key': 'Hide Window',
-  'account-menu': 'Account Menu',
-  'note-next': 'Next Note',
-  'note-prev': 'Previous Note',
-  'note-reply': 'Reply',
-  'note-react': 'React',
-  'note-renote': 'Renote / Quote',
-  'note-bookmark': 'Bookmark',
-  'note-open': 'Open Note',
-  'note-cw': 'Toggle CW',
+  'command-palette': 'コマンドパレット',
+  search: '検索',
+  notifications: '通知',
+  compose: 'ノート作成',
+  'add-column': 'カラム追加',
+  'toggle-sidebar': 'サイドバー切替',
+  'boss-key': 'ウィンドウを隠す',
+  'account-menu': 'アカウントメニュー',
+  'note-next': '次のノート',
+  'note-prev': '前のノート',
+  'note-reply': '返信',
+  'note-react': 'リアクション',
+  'note-renote': 'リノート / 引用',
+  'note-bookmark': 'ブックマーク',
+  'note-open': 'ノートを開く',
+  'note-cw': 'CW切替',
+  'column-next': '次のカラム',
+  'column-prev': '前のカラム',
+  ...Object.fromEntries(
+    Array.from({ length: 9 }, (_, i) => [`column-${i + 1}`, `カラム ${i + 1} に移動`]),
+  ),
+  ...Object.fromEntries(
+    Array.from({ length: 9 }, (_, i) => [`quick-react-${i + 1}`, `クイックリアクション ${i + 1}`]),
+  ),
 }
 
 const CATEGORY_ORDER = [
@@ -50,14 +58,22 @@ const COMMAND_CATEGORIES: Record<string, string> = {
   'note-bookmark': 'note',
   'note-open': 'note',
   'note-cw': 'note',
+  'column-next': 'column',
+  'column-prev': 'column',
+  ...Object.fromEntries(
+    Array.from({ length: 9 }, (_, i) => [`column-${i + 1}`, 'column']),
+  ),
+  ...Object.fromEntries(
+    Array.from({ length: 9 }, (_, i) => [`quick-react-${i + 1}`, 'note']),
+  ),
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  general: 'General',
-  navigation: 'Navigation',
-  account: 'Account',
-  column: 'Column',
-  note: 'Note',
+  general: '全般',
+  navigation: 'ナビゲーション',
+  account: 'アカウント',
+  column: 'カラム',
+  note: 'ノート',
 }
 
 const groupedCommands = computed(() => {

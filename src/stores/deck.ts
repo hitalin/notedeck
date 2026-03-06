@@ -72,6 +72,25 @@ export const useDeckStore = defineStore('deck', () => {
     activeColumnId.value = id
   }
 
+  function focusNextColumn() {
+    if (columns.value.length === 0) return
+    const idx = columns.value.findIndex((c) => c.id === activeColumnId.value)
+    const next = idx < 0 ? 0 : Math.min(idx + 1, columns.value.length - 1)
+    activeColumnId.value = columns.value[next].id
+  }
+
+  function focusPrevColumn() {
+    if (columns.value.length === 0) return
+    const idx = columns.value.findIndex((c) => c.id === activeColumnId.value)
+    const prev = idx <= 0 ? 0 : idx - 1
+    activeColumnId.value = columns.value[prev].id
+  }
+
+  function focusColumnByIndex(index: number) {
+    const col = columns.value[index]
+    if (col) activeColumnId.value = col.id
+  }
+
   const activeColumnUri = computed(() => {
     if (!activeColumnId.value) return null
     const col = columns.value.find((c) => c.id === activeColumnId.value)
@@ -394,6 +413,9 @@ export const useDeckStore = defineStore('deck', () => {
     activeColumnId,
     activeColumnUri,
     setActiveColumn,
+    focusNextColumn,
+    focusPrevColumn,
+    focusColumnByIndex,
     addColumn,
     removeColumn,
     updateColumn,

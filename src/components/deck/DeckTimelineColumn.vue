@@ -137,6 +137,7 @@ const { focusedNoteId } = useNoteFocus(
   scroller,
   handlers,
   (note) => navigateToNote(note._accountId, note.id),
+  props.column.accountId ?? undefined,
 )
 
 const tlType = ref<TimelineType>(props.column.tl || 'home')
@@ -230,10 +231,10 @@ watch(tlType, () => nextTick(updateTabIndicator))
 onMounted(() => nextTick(updateTabIndicator))
 
 const TL_TYPES: { value: TimelineType; label: string }[] = [
-  { value: 'home', label: 'Home' },
-  { value: 'local', label: 'Local' },
-  { value: 'social', label: 'Social' },
-  { value: 'global', label: 'Global' },
+  { value: 'home', label: 'ホーム' },
+  { value: 'local', label: 'ローカル' },
+  { value: 'social', label: 'ソーシャル' },
+  { value: 'global', label: 'グローバル' },
 ]
 
 const TL_ICONS: Record<TimelineType, string> = {
