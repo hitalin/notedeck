@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
 import { applyTheme } from '@/theme/applier'
@@ -9,6 +10,9 @@ import type { CompiledProps, MisskeyTheme, ThemeSource } from '@/theme/types'
 const STORAGE_COMPILED_KEY = 'nd-theme-compiled'
 const STORAGE_ACCOUNT_THEMES_KEY = 'nd-account-themes'
 const STORAGE_MANUAL_THEME_KEY = 'nd-theme-manual'
+const STORAGE_INSTALLED_THEMES_KEY = 'nd-installed-themes'
+const STORAGE_SELECTED_DARK_KEY = 'nd-selected-dark-theme'
+const STORAGE_SELECTED_LIGHT_KEY = 'nd-selected-light-theme'
 
 // Keyed by "accountId:dark" / "accountId:light"
 const compiledCache = new Map<string, CompiledProps>()
@@ -82,6 +86,12 @@ export const useThemeStore = defineStore('theme', () => {
     new Map<string, { dark?: MisskeyTheme; light?: MisskeyTheme }>(),
   )
 
+  // User-installed custom themes
+  const installedThemes = ref<MisskeyTheme[]>([])
+  // Selected theme IDs per mode (null = builtin)
+  const selectedDarkThemeId = ref<string | null>(null)
+  const selectedLightThemeId = ref<string | null>(null)
+
   function init(): void {
     // Restore compiled CSS from localStorage first (sync, FOUC prevention)
     const storedCompiled = localStorage.getItem(STORAGE_COMPILED_KEY)
@@ -98,6 +108,20 @@ export const useThemeStore = defineStore('theme', () => {
     if (storedManual === 'dark' || storedManual === 'light') {
       manualMode.value = storedManual
     }
+
+    // Restore installed themes & selections
+    const storedThemes = localStorage.getItem(STORAGE_INSTALLED_THEMES_KEY)
+    if (storedThemes) {
+      try {
+        installedThemes.value = JSON.parse(storedThemes) as MisskeyTheme[]
+      } catch {
+        /* ignore */
+      }
+    }
+    selectedDarkThemeId.value =
+      localStorage.getItem(STORAGE_SELECTED_DARK_KEY)
+    selectedLightThemeId.value =
+      localStorage.getItem(STORAGE_SELECTED_LIGHT_KEY)
 
     // Apply theme (manual or OS-based)
     applyCurrentTheme()
@@ -133,10 +157,27 @@ export const useThemeStore = defineStore('theme', () => {
       manualMode.value != null
         ? manualMode.value === 'dark'
         : window.matchMedia('(prefers-color-scheme: dark)').matches
+
     if (wantDark) {
-      applySource({ kind: 'builtin-dark', theme: DARK_THEME })
+      const selectedId = selectedDarkThemeId.value
+      const custom = selectedId
+        ? installedThemes.value.find((t) => t.id === selectedId)
+        : null
+      if (custom) {
+        applySource({ kind: 'custom-dark', theme: custom })
+      } else {
+        applySource({ kind: 'builtin-dark', theme: DARK_THEME })
+      }
     } else {
-      applySource({ kind: 'builtin-light', theme: LIGHT_THEME })
+      const selectedId = selectedLightThemeId.value
+      const custom = selectedId
+        ? installedThemes.value.find((t) => t.id === selectedId)
+        : null
+      if (custom) {
+        applySource({ kind: 'custom-light', theme: custom })
+      } else {
+        applySource({ kind: 'builtin-light', theme: LIGHT_THEME })
+      }
     }
   }
 
@@ -158,6 +199,69 @@ export const useThemeStore = defineStore('theme', () => {
     const isDark = currentSource.value?.kind.includes('light') === false
     manualMode.value = isDark ? 'dark' : 'light'
     localStorage.setItem(STORAGE_MANUAL_THEME_KEY, manualMode.value)
+  }
+
+  /** Install a Misskey theme from JSON code. Returns true on success. */
+  function installTheme(code: string): boolean {
+    try {
+      const parsed = JSON5.parse(code)
+      if (!parsed || typeof parsed !== 'object' || !parsed.props) return false
+
+      const theme: MisskeyTheme = {
+        id: parsed.id || `custom-${Date.now()}`,
+        name: parsed.name || 'Untitled',
+        base: parsed.base === 'light' ? 'light' : 'dark',
+        props: parsed.props,
+      }
+
+      // Avoid duplicates
+      if (installedThemes.value.some((t) => t.id === theme.id)) {
+        installedThemes.value = installedThemes.value.map((t) =>
+          t.id === theme.id ? theme : t,
+        )
+      } else {
+        installedThemes.value = [...installedThemes.value, theme]
+      }
+      persistInstalledThemes()
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  function removeTheme(id: string): void {
+    installedThemes.value = installedThemes.value.filter((t) => t.id !== id)
+    // Clear selection if removed
+    if (selectedDarkThemeId.value === id) {
+      selectedDarkThemeId.value = null
+      localStorage.removeItem(STORAGE_SELECTED_DARK_KEY)
+    }
+    if (selectedLightThemeId.value === id) {
+      selectedLightThemeId.value = null
+      localStorage.removeItem(STORAGE_SELECTED_LIGHT_KEY)
+    }
+    persistInstalledThemes()
+    applyCurrentTheme()
+  }
+
+  function selectTheme(id: string | null, mode: 'dark' | 'light'): void {
+    if (mode === 'dark') {
+      selectedDarkThemeId.value = id
+      if (id) localStorage.setItem(STORAGE_SELECTED_DARK_KEY, id)
+      else localStorage.removeItem(STORAGE_SELECTED_DARK_KEY)
+    } else {
+      selectedLightThemeId.value = id
+      if (id) localStorage.setItem(STORAGE_SELECTED_LIGHT_KEY, id)
+      else localStorage.removeItem(STORAGE_SELECTED_LIGHT_KEY)
+    }
+    applyCurrentTheme()
+  }
+
+  function persistInstalledThemes(): void {
+    localStorage.setItem(
+      STORAGE_INSTALLED_THEMES_KEY,
+      JSON.stringify(installedThemes.value),
+    )
   }
 
   function applySource(source: ThemeSource): void {
@@ -307,11 +411,17 @@ export const useThemeStore = defineStore('theme', () => {
     currentSource,
     manualMode,
     accountThemeCache,
+    installedThemes,
+    selectedDarkThemeId,
+    selectedLightThemeId,
     init,
     applySource,
     toggleTheme,
     resetToOsTheme,
     pinCurrentMode,
+    installTheme,
+    removeTheme,
+    selectTheme,
     fetchAccountTheme,
     getAccountThemes,
     getCompiledForAccount,

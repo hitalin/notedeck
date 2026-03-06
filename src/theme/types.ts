@@ -8,7 +8,13 @@ export interface MisskeyTheme {
 export type CompiledProps = Record<string, string>
 
 export interface ThemeSource {
-  kind: 'builtin-dark' | 'builtin-light' | 'server-dark' | 'server-light'
+  kind:
+    | 'builtin-dark'
+    | 'builtin-light'
+    | 'server-dark'
+    | 'server-light'
+    | 'custom-dark'
+    | 'custom-light'
   host?: string
   theme: MisskeyTheme
 }

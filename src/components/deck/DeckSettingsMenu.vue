@@ -2,6 +2,8 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
+import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
+import ThemePreview from '@/components/ThemePreview.vue'
 
 const props = defineProps<{
   show: boolean
@@ -17,6 +19,48 @@ const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
 const fileInput = ref<HTMLInputElement | null>(null)
 
+// Theme install UI
+const showInstallInput = ref(false)
+const themeCode = ref('')
+const installError = ref('')
+
+// Current mode's builtin theme
+const builtinTheme = computed(() => (isDark.value ? DARK_THEME : LIGHT_THEME))
+
+// Installed themes filtered by current mode
+const currentModeThemes = computed(() => {
+  const mode = isDark.value ? 'dark' : 'light'
+  return themeStore.installedThemes.filter((t) => t.base === mode)
+})
+
+// Currently selected theme ID for the active mode
+const selectedId = computed(() =>
+  isDark.value
+    ? themeStore.selectedDarkThemeId
+    : themeStore.selectedLightThemeId,
+)
+
+function selectTheme(id: string | null) {
+  const mode = isDark.value ? 'dark' : 'light'
+  themeStore.selectTheme(id, mode)
+}
+
+function handleInstall() {
+  installError.value = ''
+  if (!themeCode.value.trim()) return
+  const ok = themeStore.installTheme(themeCode.value.trim())
+  if (ok) {
+    themeCode.value = ''
+    showInstallInput.value = false
+  } else {
+    installError.value = '無効なテーマJSONです'
+  }
+}
+
+function removeTheme(id: string) {
+  themeStore.removeTheme(id)
+}
+
 watch(
   () => props.show,
   (val) => {
@@ -24,6 +68,10 @@ watch(
       nextTick(() => {
         document.addEventListener('click', handleOutsideClick, { once: true })
       })
+    } else {
+      showInstallInput.value = false
+      themeCode.value = ''
+      installError.value = ''
     }
   },
 )
@@ -102,6 +150,52 @@ function removeWallpaper() {
         </div>
       </div>
 
+      <!-- Theme selection grid -->
+      <div class="theme-select-section">
+        <div class="theme-select-header">
+          <i :class="isDark ? 'ti ti-moon' : 'ti ti-sun'" />
+          <span>{{ isDark ? 'ダークテーマ' : 'ライトテーマ' }}</span>
+        </div>
+        <div class="theme-grid">
+          <!-- Builtin theme -->
+          <div class="theme-item" :class="{ selected: selectedId == null }" @click="selectTheme(null)">
+            <ThemePreview :theme="builtinTheme" class="theme-item-preview" />
+            <div class="theme-item-name">{{ builtinTheme.name }}</div>
+          </div>
+          <!-- Installed themes -->
+          <div
+            v-for="theme in currentModeThemes"
+            :key="theme.id"
+            class="theme-item"
+            :class="{ selected: selectedId === theme.id }"
+            @click="selectTheme(theme.id)"
+            @contextmenu.prevent="removeTheme(theme.id)"
+          >
+            <ThemePreview :theme="theme" class="theme-item-preview" />
+            <div class="theme-item-name">{{ theme.name }}</div>
+          </div>
+        </div>
+
+        <!-- Install theme -->
+        <div v-if="!showInstallInput" class="install-btn" @click="showInstallInput = true">
+          <i class="ti ti-download" />
+          <span>テーマをインストール</span>
+        </div>
+        <div v-else class="install-area">
+          <textarea
+            v-model="themeCode"
+            class="install-textarea"
+            placeholder="MisskeyテーマのJSONコードを貼り付け..."
+            rows="4"
+          />
+          <div v-if="installError" class="install-error">{{ installError }}</div>
+          <div class="install-actions">
+            <button class="install-action-btn cancel" @click="showInstallInput = false">キャンセル</button>
+            <button class="install-action-btn confirm" @click="handleInstall">インストール</button>
+          </div>
+        </div>
+      </div>
+
       <div class="settings-menu-divider" />
 
       <div v-if="deckStore.wallpaper == null" class="settings-menu-item" @click="pickWallpaper">
@@ -137,6 +231,8 @@ function removeWallpaper() {
   padding: 8px 0;
   z-index: 100;
   min-width: 260px;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 /* ── Theme panel (toggle + sync in one block) ── */
@@ -360,7 +456,7 @@ function removeWallpaper() {
   transition: all 300ms 400ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
 }
 
-/* ── Sync device dark mode (Misskey-style MkSwitch) ── */
+/* ── Sync device dark mode ── */
 
 .sync-area {
   padding: 12px 16px;
@@ -421,6 +517,148 @@ function removeWallpaper() {
 .sync-text {
   user-select: none;
   line-height: 1.3;
+}
+
+/* ── Theme selection grid ── */
+
+.theme-select-section {
+  padding: 8px 12px;
+}
+
+.theme-select-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  opacity: 0.7;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+.theme-item {
+  cursor: pointer;
+  border: 2px solid var(--nd-divider);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.theme-item:hover {
+  border-color: color-mix(in srgb, var(--nd-accent) 50%, var(--nd-divider));
+}
+
+.theme-item.selected {
+  border-color: var(--nd-accent);
+}
+
+.theme-item-preview {
+  display: block;
+  width: calc(100% + 2px);
+  margin-left: -1px;
+  height: auto;
+  border-bottom: 1px solid var(--nd-divider);
+}
+
+.theme-item-name {
+  padding: 4px 6px;
+  text-align: center;
+  font-size: 0.75em;
+  color: var(--nd-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Install theme ── */
+
+.install-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px;
+  margin-top: 8px;
+  cursor: pointer;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  opacity: 0.7;
+  border-radius: 4px;
+  transition: opacity 0.15s;
+}
+
+.install-btn:hover {
+  opacity: 1;
+}
+
+.install-area {
+  margin-top: 8px;
+}
+
+.install-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--nd-divider);
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  resize: vertical;
+  font-family: monospace;
+  min-height: 60px;
+}
+
+.install-textarea:focus {
+  outline: none;
+  border-color: var(--nd-accent);
+}
+
+.install-textarea::placeholder {
+  color: var(--nd-fg);
+  opacity: 0.4;
+}
+
+.install-error {
+  font-size: 0.75em;
+  color: var(--nd-error, #ec4137);
+  margin-top: 4px;
+  padding: 0 2px;
+}
+
+.install-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  justify-content: flex-end;
+}
+
+.install-action-btn {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.install-action-btn.cancel {
+  background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
+  color: var(--nd-fg);
+}
+
+.install-action-btn.confirm {
+  background: var(--nd-accent);
+  color: var(--nd-fgOnAccent, #fff);
+}
+
+.install-action-btn:hover {
+  opacity: 0.85;
 }
 
 /* ── Menu items (wallpaper etc.) ── */
