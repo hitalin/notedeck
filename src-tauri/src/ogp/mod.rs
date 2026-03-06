@@ -387,7 +387,36 @@ impl OgpCache {
         }
 
         let html = String::from_utf8_lossy(&bytes);
-        Ok(parser::parse_html(&html, &final_url))
+        let mut data = parser::parse_html(&html, &final_url);
+
+        // If no player found but page has an oEmbed link, try fetching it
+        if data.player.is_none() {
+            if let Some(oembed_url) = parser::extract_oembed_url(&html) {
+                if let Ok(oembed) = plugins::fetch_oembed(&self.http_client, &oembed_url).await {
+                    if let Some(src) = oembed.html.as_deref().and_then(plugins::extract_iframe_src)
+                    {
+                        data.player = Some(Player {
+                            url: src,
+                            width: oembed.width,
+                            height: oembed.height,
+                            allow: parser::default_player_allow(),
+                        });
+                    }
+                    // Supplement missing fields from oEmbed
+                    if data.title.is_none() {
+                        data.title = oembed.title;
+                    }
+                    if data.thumbnail.is_none() {
+                        data.thumbnail = oembed.thumbnail_url;
+                    }
+                    if data.sitename.is_none() {
+                        data.sitename = oembed.provider_name;
+                    }
+                }
+            }
+        }
+
+        Ok(data)
     }
 }
 

@@ -23,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://* http://127.0.0.1:19820; media-src 'self' https://*; font-src 'self' data:; connect-src ipc: http://ipc.localhost http://127.0.0.1:19820 https://*; frame-src https://*.youtube.com https://*.youtube-nocookie.com https://player.vimeo.com https://open.spotify.com https://embed.nicovideo.jp https://platform.twitter.com https://*.bandcamp.com https://*.soundcloud.com https://w.soundcloud.com https://embed.music.apple.com"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://* http://127.0.0.1:19820; media-src 'self' https://*; font-src 'self' data:; connect-src ipc: http://ipc.localhost http://127.0.0.1:19820 https://*; frame-src https://*"
     }
   },
   "bundle": {

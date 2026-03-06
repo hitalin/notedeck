@@ -21,6 +21,18 @@ static OG_VIDEO_HEIGHT: LazyLock<Selector> =
 static TITLE_SEL: LazyLock<Selector> = LazyLock::new(|| Selector::parse("title").unwrap());
 static DESC_SEL: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse("meta[name='description']").unwrap());
+static TWITTER_CARD: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("meta[name='twitter:card']").unwrap());
+static TWITTER_PLAYER: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("meta[name='twitter:player']").unwrap());
+static TWITTER_PLAYER_WIDTH: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("meta[name='twitter:player:width']").unwrap());
+static TWITTER_PLAYER_HEIGHT: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("meta[name='twitter:player:height']").unwrap());
+static OEMBED_LINK: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("link[type='application/json+oembed']").unwrap());
+static MIXI_CONTENT_RATING: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("meta[property='mixi:content-rating']").unwrap());
 static ICON_SEL: LazyLock<Selector> = LazyLock::new(|| {
     Selector::parse("link[rel='icon'], link[rel='shortcut icon'], link[rel='apple-touch-icon']")
         .unwrap()
@@ -61,7 +73,7 @@ pub fn parse_html(html: &str, final_url: &str) -> SummaryData {
         .collect();
     let thumbnail = medias.first().cloned();
 
-    // Player from og:video
+    // Player detection: og:video → twitter:player (same priority as summaly)
     let player = get_content(&OG_VIDEO_URL)
         .filter(|u| u.starts_with("https://"))
         .map(|video_url| {
@@ -71,9 +83,33 @@ pub fn parse_html(html: &str, final_url: &str) -> SummaryData {
                 url: video_url,
                 width,
                 height,
-                allow: Vec::new(),
+                allow: default_player_allow(),
             }
+        })
+        .or_else(|| {
+            // twitter:player (skip if card is summary_large_image)
+            let card = get_content(&TWITTER_CARD).unwrap_or_default();
+            if card == "summary_large_image" {
+                return None;
+            }
+            get_content(&TWITTER_PLAYER)
+                .filter(|u| u.starts_with("https://"))
+                .map(|player_url| {
+                    let width = get_content(&TWITTER_PLAYER_WIDTH).and_then(|w| w.parse().ok());
+                    let height = get_content(&TWITTER_PLAYER_HEIGHT).and_then(|h| h.parse().ok());
+                    super::Player {
+                        url: player_url,
+                        width,
+                        height,
+                        allow: default_player_allow(),
+                    }
+                })
         });
+
+    // Sensitive detection via mixi:content-rating
+    let sensitive = get_content(&MIXI_CONTENT_RATING)
+        .map(|r| r != "1")
+        .unwrap_or(false);
 
     // Favicon: resolve relative URLs against final_url
     let icon = document
@@ -92,8 +128,28 @@ pub fn parse_html(html: &str, final_url: &str) -> SummaryData {
         medias,
         player,
         url: final_url.to_string(),
-        sensitive: false,
+        sensitive,
     }
+}
+
+/// Extract oEmbed endpoint URL from HTML `<link>` tag (if present).
+pub fn extract_oembed_url(html: &str) -> Option<String> {
+    let document = Html::parse_document(html);
+    document
+        .select(&OEMBED_LINK)
+        .next()
+        .and_then(|el| el.value().attr("href"))
+        .map(|s| s.trim().to_string())
+        .filter(|s| s.starts_with("https://") || s.starts_with("http://"))
+}
+
+/// Default `allow` attributes for player iframes (matches summaly).
+pub fn default_player_allow() -> Vec<String> {
+    vec![
+        "autoplay".to_string(),
+        "encrypted-media".to_string(),
+        "fullscreen".to_string(),
+    ]
 }
 
 /// Resolve a potentially relative URL against a base URL.

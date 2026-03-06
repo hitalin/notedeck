@@ -26,27 +26,12 @@ const sensitiveRevealed = ref(false)
 const playerExpanded = ref(false)
 let observer: IntersectionObserver | null = null
 
-/** Allowed origins for player iframes */
-const PLAYER_ALLOWED_ORIGINS = [
-  'youtube.com',
-  'youtube-nocookie.com',
-  'player.vimeo.com',
-  'open.spotify.com',
-  'embed.nicovideo.jp',
-  'platform.twitter.com',
-  'bandcamp.com',
-  'soundcloud.com',
-  'w.soundcloud.com',
-  'embed.music.apple.com',
-]
-
+/** Check if player URL is allowed (HTTPS only, trusted from backend) */
 const isPlayerAllowed = computed(() => {
   if (!data.value?.player?.url) return false
   try {
-    const host = new URL(data.value.player.url).hostname
-    return PLAYER_ALLOWED_ORIGINS.some(
-      (o) => host === o || host.endsWith(`.${o}`),
-    )
+    const url = new URL(data.value.player.url)
+    return url.protocol === 'https:'
   } catch {
     return false
   }
