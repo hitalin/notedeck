@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { type Ast, Interpreter, Parser, utils } from '@syuilo/aiscript'
-import {
-  Interpreter as LegacyInterpreter,
-  Parser as LegacyParser,
-} from '@syuilo/aiscript-0-19-0'
+import { type Ast, type Interpreter } from '@syuilo/aiscript'
 import { invoke } from '@tauri-apps/api/core'
 import { computed, ref } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
-import { createInterpreterOptions } from '@/aiscript/common'
+import {
+  createAiScriptInterpreter,
+  createInterpreterOptions,
+  execAiScript,
+  parseAiScript,
+} from '@/aiscript/common'
 import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useAccountsStore } from '@/stores/accounts'
@@ -173,13 +174,6 @@ function resetRunState() {
   }
 }
 
-function isLegacyScript(script: string): boolean {
-  const version = utils.getLangVersion(script)
-  if (version == null) return true
-  const [major] = version.split('.').map(Number)
-  return (major ?? 0) < 1
-}
-
 async function executePlay(detail: FlashDetail) {
   const apiOption = async (
     endpoint: string,
@@ -193,17 +187,13 @@ async function executePlay(detail: FlashDetail) {
   }
 
   const code = sanitizeCode(detail.script)
-  const legacy = isLegacyScript(code)
 
   let ast: Ast.Node[]
+  let legacy: boolean
   try {
-    if (legacy) {
-      const legacyParser = new LegacyParser()
-      ast = legacyParser.parse(code) as unknown as Ast.Node[]
-    } else {
-      const parser = new Parser()
-      ast = parser.parse(code)
-    }
+    const result = parseAiScript(code)
+    ast = result.ast
+    legacy = result.legacy
   } catch (e) {
     runError.value = AppError.from(e).message
     running.value = false
@@ -236,25 +226,12 @@ async function executePlay(detail: FlashDetail) {
     },
   })
 
-  if (legacy) {
-    const interp = new LegacyInterpreter(
-      { ...env, ...ui } as Record<string, never>,
-      ioOpts as unknown as ConstructorParameters<typeof LegacyInterpreter>[1],
-    )
-    interpreter.value = interp as unknown as Interpreter
-    try {
-      await interp.exec(ast as unknown as Parameters<typeof interp.exec>[0])
-    } catch (e) {
-      runError.value = AppError.from(e).message
-    }
-  } else {
-    const interp = new Interpreter({ ...env, ...ui }, ioOpts)
-    interpreter.value = interp
-    try {
-      await interp.exec(ast)
-    } catch (e) {
-      runError.value = AppError.from(e).message
-    }
+  const interp = createAiScriptInterpreter({ ...env, ...ui }, ioOpts, legacy)
+  interpreter.value = interp
+  try {
+    await execAiScript(interp, ast, legacy)
+  } catch (e) {
+    runError.value = AppError.from(e).message
   }
   running.value = false
 }
