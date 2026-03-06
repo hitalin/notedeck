@@ -302,7 +302,7 @@ function onKeydown(e: KeyboardEvent) {
       <!-- Header -->
       <header class="header">
         <div class="header-left">
-          <button class="_button header-btn" title="Close" @click="emit('close')">
+          <button class="_button header-btn" title="閉じる" @click="emit('close')">
             <i class="ti ti-x" />
           </button>
           <div v-if="account" class="account-wrapper">
@@ -408,7 +408,7 @@ function onKeydown(e: KeyboardEvent) {
             v-if="visibility !== 'specified'"
             class="_button header-btn local-only-btn"
             :class="{ active: localOnly }"
-            :title="localOnly ? 'Local only (連合なし)' : 'Federated (連合あり)'"
+            :title="localOnly ? 'ローカルのみ (連合なし)' : '連合あり'"
             @click="localOnly = !localOnly"
           >
             <svg viewBox="0 0 24 24" width="18" height="18"
@@ -426,7 +426,7 @@ function onKeydown(e: KeyboardEvent) {
           <div class="more-menu-wrapper">
             <button
               class="_button header-btn"
-              title="More"
+              title="その他"
               @click.stop="toggleMoreMenu"
             >
               <i class="ti ti-dots" />
@@ -439,7 +439,7 @@ function onKeydown(e: KeyboardEvent) {
                 @click="showPreview = !showPreview; showMoreMenu = false"
               >
                 <i class="ti ti-eye" />
-                Preview
+                プレビュー
               </button>
               <!-- Draft save -->
               <button
@@ -447,7 +447,7 @@ function onKeydown(e: KeyboardEvent) {
                 @click="saveCurrentDraft(); showMoreMenu = false"
               >
                 <i class="ti ti-device-floppy" />
-                Save draft
+                下書きを保存
               </button>
               <!-- Draft list -->
               <button
@@ -456,7 +456,7 @@ function onKeydown(e: KeyboardEvent) {
                 @click.stop="showDraftMenu = !showDraftMenu"
               >
                 <i class="ti ti-notes" />
-                Drafts
+                下書き
                 <span v-if="drafts.length > 0" class="more-menu-badge">{{ drafts.length }}</span>
               </button>
               <!-- Draft list popup (nested) -->
@@ -467,18 +467,18 @@ function onKeydown(e: KeyboardEvent) {
                   class="draft-item"
                 >
                   <button class="_button draft-item-main" @click="restoreDraft(d); showMoreMenu = false">
-                    <span class="draft-item-text">{{ d.text || '(empty)' }}</span>
+                    <span class="draft-item-text">{{ d.text || '(空)' }}</span>
                     <span class="draft-item-date">{{ new Date(d.savedAt).toLocaleDateString() }}</span>
                   </button>
                   <button
                     class="_button draft-item-delete"
-                    title="Delete draft"
+                    title="下書きを削除"
                     @click.stop="removeDraft(d.id)"
                   >
                     <i class="ti ti-x" />
                   </button>
                 </div>
-                <div v-if="drafts.length === 0" class="draft-empty">No drafts</div>
+                <div v-if="drafts.length === 0" class="draft-empty">下書きはありません</div>
               </div>
               <!-- Schedule (only if server supports it) -->
               <template v-if="supportsScheduledNotes && !editNote">
@@ -489,7 +489,7 @@ function onKeydown(e: KeyboardEvent) {
                   @click.stop="showSchedulePopup = !showSchedulePopup"
                 >
                   <i class="ti ti-clock" />
-                  Schedule
+                  予約投稿
                   <span v-if="scheduledAt" class="more-menu-schedule-badge">{{ formatScheduledDate(scheduledAt) }}</span>
                 </button>
                 <div v-if="showSchedulePopup" class="more-menu-schedule-picker" @click.stop>
@@ -505,7 +505,7 @@ function onKeydown(e: KeyboardEvent) {
                     class="_button schedule-clear-btn"
                     @click="setSchedule(null)"
                   >
-                    Clear schedule
+                    予約を解除
                   </button>
                 </div>
               </template>
@@ -532,7 +532,7 @@ function onKeydown(e: KeyboardEvent) {
                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
                 <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
               </svg>
-              Schedule
+              予約投稿
             </template>
             <template v-else>
               <svg viewBox="0 0 24 24" width="16" height="16" class="submit-icon">
@@ -549,7 +549,7 @@ function onKeydown(e: KeyboardEvent) {
                   <path d="M22 2L11 13M22 2l-7 20-4-9-9-4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
                 </template>
               </svg>
-              {{ editNote ? 'Edit' : replyTo ? 'Reply' : renoteId ? 'Quote' : 'Note' }}
+              {{ editNote ? '編集' : replyTo ? '返信' : renoteId ? '引用' : 'ノート' }}
             </template>
           </button>
         </div>
@@ -577,7 +577,7 @@ function onKeydown(e: KeyboardEvent) {
         <svg viewBox="0 0 24 24" width="14" height="14">
           <path d="M10 11h6m-3-3v6M3 8V6a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
         </svg>
-        Quote attached
+        引用付き
       </div>
 
       <!-- Schedule indicator -->
@@ -597,7 +597,7 @@ function onKeydown(e: KeyboardEvent) {
         <input
           v-model="cw"
           class="cw-input"
-          placeholder="Content Warning"
+          placeholder="閲覧注意"
         />
       </div>
 
@@ -609,7 +609,7 @@ function onKeydown(e: KeyboardEvent) {
           v-model="text"
           class="text-area"
           :maxlength="MAX_TEXT_LENGTH"
-          :placeholder="replyTo ? 'Reply...' : renoteId ? 'Quote...' : 'What\'s on your mind?'"
+          :placeholder="replyTo ? '返信...' : renoteId ? '引用...' : '今どんな気分？'"
           @keydown="onKeydown"
           @click.stop
         />
@@ -622,7 +622,7 @@ function onKeydown(e: KeyboardEvent) {
               :account-id="activeAccountId"
             />
           </div>
-          <div v-else class="preview-empty">Preview</div>
+          <div v-else class="preview-empty">プレビュー</div>
         </div>
         <span
           v-if="remainingChars <= 100"
@@ -642,7 +642,7 @@ function onKeydown(e: KeyboardEvent) {
           <input
             v-model="pollChoices[i]"
             class="poll-choice-input"
-            :placeholder="`Choice ${i + 1}`"
+            :placeholder="`選択肢 ${i + 1}`"
           />
           <button
             v-if="pollChoices.length > 2"
@@ -658,11 +658,11 @@ function onKeydown(e: KeyboardEvent) {
             class="_button poll-add-btn"
             @click="addPollChoice"
           >
-            <i class="ti ti-plus" /> Add choice
+            <i class="ti ti-plus" /> 選択肢を追加
           </button>
           <label class="poll-multiple-label">
             <input v-model="pollMultiple" type="checkbox" />
-            Multiple choice
+            複数選択
           </label>
         </div>
       </div>
@@ -678,11 +678,11 @@ function onKeydown(e: KeyboardEvent) {
           <div v-else class="file-icon">
             <i class="ti ti-file-text" />
           </div>
-          <button class="_button file-remove" title="Remove" @click="removeFile(file.id)">
+          <button class="_button file-remove" title="削除" @click="removeFile(file.id)">
             <i class="ti ti-x" />
           </button>
         </div>
-        <div v-if="isUploading" class="file-uploading">Uploading...</div>
+        <div v-if="isUploading" class="file-uploading">アップロード中...</div>
       </div>
 
       <!-- Hidden file input -->
@@ -704,7 +704,7 @@ function onKeydown(e: KeyboardEvent) {
           <!-- Attach file -->
           <button
             class="_button footer-btn"
-            title="Attach file"
+            title="ファイルを添付"
             :disabled="isUploading"
             @click="openFilePicker"
           >
@@ -715,7 +715,7 @@ function onKeydown(e: KeyboardEvent) {
           <button
             class="_button footer-btn"
             :class="{ active: showPoll }"
-            title="Poll"
+            title="投票"
             @click="showPoll = !showPoll"
           >
             <i class="ti ti-chart-arrows" />
@@ -725,20 +725,20 @@ function onKeydown(e: KeyboardEvent) {
           <button
             class="_button footer-btn"
             :class="{ active: showCw }"
-            title="Content Warning"
+            title="閲覧注意"
             @click="showCw = !showCw"
           >
             <i class="ti ti-eye-off" />
           </button>
 
           <!-- Hashtag -->
-          <button class="_button footer-btn" title="Hashtag" @click="insertHashtag">
+          <button class="_button footer-btn" title="ハッシュタグ" @click="insertHashtag">
             <i class="ti ti-hash" />
           </button>
 
           <!-- Mention -->
           <div class="footer-popup-wrapper">
-            <button class="_button footer-btn" title="Mention" @click.stop="toggleMentionPopup">
+            <button class="_button footer-btn" title="メンション" @click.stop="toggleMentionPopup">
               <i class="ti ti-at" />
             </button>
             <div v-if="showMentionPopup" class="footer-popup mention-popup" @click.stop>
@@ -746,7 +746,7 @@ function onKeydown(e: KeyboardEvent) {
                 v-model="mentionQuery"
                 class="mention-search-input"
                 type="text"
-                placeholder="Search user..."
+                placeholder="ユーザーを検索..."
                 @input="onMentionInput"
               />
               <div class="mention-results">
@@ -762,9 +762,9 @@ function onKeydown(e: KeyboardEvent) {
                     <span v-if="user.host" class="mention-host">@{{ user.host }}</span>
                   </div>
                 </button>
-                <div v-if="mentionSearching" class="mention-status">Searching...</div>
+                <div v-if="mentionSearching" class="mention-status">検索中...</div>
                 <div v-else-if="mentionQuery && mentionResults.length === 0" class="mention-status">
-                  No users found
+                  ユーザーが見つかりません
                 </div>
               </div>
             </div>
@@ -790,7 +790,7 @@ function onKeydown(e: KeyboardEvent) {
           <!-- Clear -->
           <button
             class="_button footer-btn"
-            title="Clear"
+            title="クリア"
             @click="resetForm"
           >
             <i class="ti ti-trash" />
@@ -810,7 +810,7 @@ function onKeydown(e: KeyboardEvent) {
         <div class="footer-right">
           <!-- Emoji -->
           <div class="footer-popup-wrapper">
-            <button class="_button footer-btn" title="Emoji" @click.stop="toggleEmojiPopup">
+            <button class="_button footer-btn" title="絵文字" @click.stop="toggleEmojiPopup">
               <i class="ti ti-mood-happy" />
             </button>
             <div v-if="showEmojiPopup && account" class="footer-popup emoji-popup" @click.stop>

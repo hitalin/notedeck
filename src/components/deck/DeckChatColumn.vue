@@ -253,7 +253,7 @@ onBeforeUnmount(() => {
 <template>
   <DeckColumn
     :column-id="column.id"
-    :title="viewMode === 'conversation' ? conversationTitle : (column.name || 'Chat')"
+    :title="viewMode === 'conversation' ? conversationTitle : (column.name || 'チャット')"
     :theme-vars="columnThemeVars"
     @header-click="scrollToTop(true)"
   >
@@ -325,7 +325,7 @@ onBeforeUnmount(() => {
         class="messages-container"
         @scroll.passive="handleScroll"
       >
-        <div v-if="isLoading" class="loading-more">Loading...</div>
+        <div v-if="isLoading" class="loading-more">読み込み中...</div>
         <MkChatMessage
           v-for="msg in messages"
           :key="msg.id"
@@ -340,7 +340,7 @@ onBeforeUnmount(() => {
         <textarea
           v-model="messageText"
           class="chat-textarea"
-          placeholder="Message..."
+          placeholder="メッセージ..."
           rows="1"
           @keydown="handleKeydown"
         />

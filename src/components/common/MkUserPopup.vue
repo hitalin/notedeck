@@ -66,7 +66,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
     :style="{ left: `${x}px`, top: `${y}px` }"
     @mouseleave="handleMouseLeave"
   >
-    <div v-if="isLoading" class="popup-loading">Loading...</div>
+    <div v-if="isLoading" class="popup-loading">読み込み中...</div>
     <template v-else-if="user">
       <div class="popup-banner">
         <div
@@ -97,12 +97,12 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         </div>
 
         <div class="popup-stats">
-          <span><b>{{ formatCount(user.notesCount) }}</b> Notes</span>
-          <span><b>{{ formatCount(user.followingCount) }}</b> Following</span>
-          <span><b>{{ formatCount(user.followersCount) }}</b> Followers</span>
+          <span><b>{{ formatCount(user.notesCount) }}</b> ノート</span>
+          <span><b>{{ formatCount(user.followingCount) }}</b> フォロー</span>
+          <span><b>{{ formatCount(user.followersCount) }}</b> フォロワー</span>
         </div>
 
-        <div v-if="user.isFollowed" class="popup-badge">Follows you</div>
+        <div v-if="user.isFollowed" class="popup-badge">フォローされています</div>
 
         <button class="popup-webui-link" @click.stop="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}`)">
           <i class="ti ti-external-link" />

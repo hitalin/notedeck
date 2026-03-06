@@ -644,7 +644,7 @@ onUnmounted(() => {
           </button>
           <button class="_button tl-tab tl-tm-live" @click="exitTimeMachine">
             <i class="ti ti-live-photo tl-tab-icon" />
-            <span class="tl-tab-label">Live</span>
+            <span class="tl-tab-label">ライブ</span>
           </button>
         </template>
         <template v-else>

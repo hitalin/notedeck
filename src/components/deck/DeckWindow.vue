@@ -17,13 +17,13 @@ const windowsStore = useWindowsStore()
 const size = computed(() => WINDOW_SIZES[props.window.type])
 
 const titles: Record<string, string> = {
-  'note-detail': 'Note',
-  'user-profile': 'Profile',
-  login: 'Add Account',
-  search: 'Search',
-  notifications: 'Notifications',
-  plugins: 'Plugins',
-  keybinds: 'Keybinds',
+  'note-detail': 'ノート',
+  'user-profile': 'プロフィール',
+  login: 'アカウント追加',
+  search: '検索',
+  notifications: '通知',
+  plugins: 'プラグイン',
+  keybinds: 'キーバインド',
 }
 
 const icons: Record<string, string> = {
@@ -106,13 +106,13 @@ function onWindowMouseDown() {
     <div class="window-header" @mousedown="onHeaderMouseDown">
       <i :class="icons[window.type]" class="window-icon" />
       <span class="window-title">{{ titles[window.type] ?? '' }}</span>
-      <button class="_button window-btn" title="Minimize" @click="windowsStore.toggleMinimize(window.id)">
+      <button class="_button window-btn" title="最小化" @click="windowsStore.toggleMinimize(window.id)">
         <i class="ti ti-minus" />
       </button>
-      <button class="_button window-btn" title="Maximize" @click="windowsStore.toggleMaximize(window.id)">
+      <button class="_button window-btn" title="最大化" @click="windowsStore.toggleMaximize(window.id)">
         <i :class="isMaximized ? 'ti ti-picture-in-picture' : 'ti ti-square'" />
       </button>
-      <button class="_button window-btn window-close" title="Close" @click="emit('close')">
+      <button class="_button window-btn window-close" title="閉じる" @click="emit('close')">
         <i class="ti ti-x" />
       </button>
     </div>

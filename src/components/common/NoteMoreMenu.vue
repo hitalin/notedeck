@@ -68,14 +68,14 @@ defineExpose({ open })
           @click.stop
         >
           <template v-if="showDeleteConfirm">
-            <div class="popup-confirm-text">Delete this note?</div>
+            <div class="popup-confirm-text">このノートを削除しますか？</div>
             <button class="popup-item popup-item-danger" @click="emit('delete', note); close()">
               <i class="ti ti-trash" />
-              Delete
+              削除
             </button>
             <button class="popup-item" @click="showDeleteConfirm = false">
               <i class="ti ti-x" />
-              Cancel
+              キャンセル
             </button>
           </template>
           <template v-else>
@@ -107,11 +107,11 @@ defineExpose({ open })
               <div class="popup-divider" />
               <button class="popup-item" @click="emit('edit', note); close()">
                 <i class="ti ti-edit" />
-                Edit
+                編集
               </button>
               <button class="popup-item popup-item-danger" @click="showDeleteConfirm = true">
                 <i class="ti ti-trash" />
-                Delete
+                削除
               </button>
             </template>
           </template>

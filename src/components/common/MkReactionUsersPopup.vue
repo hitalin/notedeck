@@ -112,9 +112,9 @@ onUnmounted(() => {
     :style="{ left: `${x}px`, top: `${y}px` }"
     @mouseleave="handleMouseLeave"
   >
-    <div v-if="isLoading" class="popup-loading">Loading...</div>
+    <div v-if="isLoading" class="popup-loading">読み込み中...</div>
     <template v-else>
-      <div v-if="reactions.length === 0" class="popup-loading">No reactions</div>
+      <div v-if="reactions.length === 0" class="popup-loading">リアクションなし</div>
       <template v-else>
         <button
           v-for="r in reactions.slice(0, 10)"

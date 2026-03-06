@@ -36,11 +36,11 @@ interface CommandGroup {
 }
 
 const categoryLabels: Record<string, string> = {
-  general: 'General',
-  note: 'Note',
-  navigation: 'Navigation',
-  column: 'Column',
-  account: 'Account',
+  general: '全般',
+  note: 'ノート',
+  navigation: 'ナビゲーション',
+  column: 'カラム',
+  account: 'アカウント',
 }
 
 const categoryOrder = ['general', 'note', 'navigation', 'column', 'account']
@@ -161,7 +161,7 @@ function primaryShortcut(cmd: Command): string | null {
           ref="inputRef"
           v-model="query"
           class="palette-input"
-          placeholder="Type a command..."
+          placeholder="コマンドを入力..."
           spellcheck="false"
         />
         <kbd class="palette-esc">Esc</kbd>
@@ -180,7 +180,7 @@ function primaryShortcut(cmd: Command): string | null {
             {{ cliMeta.usage }}
           </span>
           <span v-else class="palette-cli-action">
-            ↵ Enter to run:
+            ↵ Enterで実行:
             <strong>{{ cliMatch.name }}</strong>
             {{ cliMatch.args }}
           </span>
@@ -209,7 +209,7 @@ function primaryShortcut(cmd: Command): string | null {
           </button>
         </template>
       </div>
-      <div v-else class="palette-empty">No matching commands</div>
+      <div v-else class="palette-empty">一致するコマンドがありません</div>
     </div>
   </div>
 </template>

@@ -218,7 +218,7 @@ async function handleMentionClick(username: string, host: string | null) {
         />
         <template v-else>{{ note.user.username }}</template>
       </span>
-      <span class="renote-label">Renoted</span>
+      <span class="renote-label">リノート</span>
       <span class="renote-time">{{ formatTime(note.createdAt) }}</span>
     </div>
 

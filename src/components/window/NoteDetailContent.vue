@@ -165,7 +165,7 @@ async function handlePosted(editedNoteId?: string) {
 
 <template>
   <div class="note-detail-content">
-    <div v-if="isLoading" class="state-message">Loading...</div>
+    <div v-if="isLoading" class="state-message">読み込み中...</div>
 
     <div v-else-if="error" class="state-message state-error">
       <p>{{ error.message }}</p>
@@ -200,7 +200,7 @@ async function handlePosted(editedNoteId?: string) {
       </div>
 
       <div v-if="children.length > 0" class="children">
-        <div class="children-header">Replies</div>
+        <div class="children-header">返信</div>
         <MkNote
           v-for="child in children"
           :key="child.id"

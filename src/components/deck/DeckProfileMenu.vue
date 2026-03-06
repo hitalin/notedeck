@@ -74,7 +74,7 @@ function remove(id: string) {
         <span class="profile-menu-name">{{ p.name }}</span>
         <button
           class="_button profile-menu-delete"
-          title="Delete"
+          title="削除"
           @click.stop="remove(p.id)"
         >
           <i class="ti ti-trash" />
@@ -82,14 +82,14 @@ function remove(id: string) {
       </div>
 
       <div v-if="profiles.length === 0" class="profile-menu-empty">
-        No saved profiles
+        保存されたプロフィールはありません
       </div>
 
       <div class="profile-menu-divider" />
 
       <div v-if="!showInput" class="profile-menu-item profile-menu-new" @click="startSave">
         <i class="ti ti-plus" />
-        <span>New profile</span>
+        <span>新しいプロフィール</span>
       </div>
 
       <div v-else class="profile-menu-input-row">
@@ -97,7 +97,7 @@ function remove(id: string) {
           ref="nameInput"
           v-model="newName"
           class="profile-menu-input"
-          placeholder="Profile name"
+          placeholder="プロフィール名"
           @keydown.enter="confirmSave"
           @keydown.escape="showInput = false"
         />

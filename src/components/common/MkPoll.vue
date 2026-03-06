@@ -44,10 +44,10 @@ function formatExpiry(iso: string): string {
       </svg>
     </div>
     <div class="poll-footer">
-      <span class="poll-total">{{ totalVotes }} votes</span>
-      <span v-if="poll.multiple" class="poll-badge">Multiple choice</span>
+      <span class="poll-total">{{ totalVotes }}票</span>
+      <span v-if="poll.multiple" class="poll-badge">複数選択</span>
       <span v-if="poll.expiresAt" class="poll-expiry">
-        {{ isExpired ? 'Ended' : `Until ${formatExpiry(poll.expiresAt)}` }}
+        {{ isExpired ? '終了' : `${formatExpiry(poll.expiresAt)}まで` }}
       </span>
     </div>
   </div>

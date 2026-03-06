@@ -152,7 +152,7 @@ defineExpose({ onMounted })
         v-model="searchQuery"
         class="picker-search-input"
         type="text"
-        placeholder="Search emoji..."
+        placeholder="絵文字を検索..."
         @click.stop
       />
     </div>
@@ -162,7 +162,7 @@ defineExpose({ onMounted })
       <!-- Search results -->
       <template v-if="searchResults">
         <div v-if="searchResults.custom.length === 0 && searchResults.unicode.length === 0" class="picker-empty">
-          No emoji found
+          絵文字が見つかりません
         </div>
         <template v-else>
           <div v-if="searchResults.custom.length > 0" class="picker-grid">
@@ -213,7 +213,7 @@ defineExpose({ onMounted })
         <!-- Recently used -->
         <MkReactionPickerSection
           v-if="recentEmojis.length > 0"
-          label="Recent"
+          label="最近使った絵文字"
           :count="recentEmojis.length"
         >
           <div class="picker-grid">

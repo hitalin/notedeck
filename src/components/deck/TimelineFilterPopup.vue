@@ -16,11 +16,11 @@ const emit = defineEmits<{
 }>()
 
 const FILTER_LABELS: Record<keyof TimelineFilter, string> = {
-  withRenotes: 'Renotes',
-  withReplies: 'Replies',
-  withFiles: 'Files only',
-  withBots: 'Bots',
-  withSensitive: 'Sensitive',
+  withRenotes: 'リノート',
+  withReplies: 'リプライ',
+  withFiles: 'ファイル付きのみ',
+  withBots: 'Bot',
+  withSensitive: 'センシティブ',
 }
 
 function isFilterActive(key: keyof TimelineFilter): boolean {
@@ -58,7 +58,7 @@ onUnmounted(() => {
         :style="{ ...themeVars, top: position.top + 'px', left: position.left + 'px' }"
         @click.stop
       >
-        <div class="nd-filter-popup-header">Filter</div>
+        <div class="nd-filter-popup-header">フィルター</div>
         <div
           v-for="key in filterKeys"
           :key="key"

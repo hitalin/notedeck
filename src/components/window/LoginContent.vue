@@ -71,11 +71,11 @@ function reset() {
       <div v-if="step === 'input'" key="input" class="dialog-body">
         <div class="logo-area">
           <img src="/favicon.svg" alt="NoteDeck" class="app-logo" />
-          <p class="subtitle">Connect to a Misskey server</p>
+          <p class="subtitle">Misskeyサーバーに接続</p>
         </div>
 
         <div class="form-area">
-          <label class="input-label" for="host">Server address</label>
+          <label class="input-label" for="host">サーバーアドレス</label>
           <input
             id="host"
             v-model="host"
@@ -93,10 +93,10 @@ function reset() {
             :disabled="!host.trim()"
             @click="startLogin"
           >
-            Login
+            ログイン
           </button>
           <button class="_button btn-cancel" @click="emit('close')">
-            Cancel
+            キャンセル
           </button>
         </div>
       </div>
@@ -105,20 +105,20 @@ function reset() {
       <div v-else-if="step === 'waiting'" key="waiting" class="dialog-body">
         <div class="logo-area">
           <div class="waiting-spinner" />
-          <p class="subtitle">Waiting for authorization...</p>
+          <p class="subtitle">認証待ち...</p>
         </div>
 
         <div class="waiting-info">
-          <p>Authenticate in the browser window that just opened.</p>
-          <p>After authorizing, click the button below.</p>
+          <p>ブラウザで認証画面が開きました。</p>
+          <p>認証が完了したら、下のボタンをクリックしてください。</p>
         </div>
 
         <div class="actions">
           <button class="btn-login" @click="completeLogin">
-            I've authorized
+            認証しました
           </button>
           <button class="_button btn-cancel" @click="reset">
-            Cancel
+            キャンセル
           </button>
         </div>
       </div>
@@ -135,7 +135,7 @@ function reset() {
 
         <div class="actions">
           <button class="btn-login" @click="reset">
-            Try again
+            やり直す
           </button>
         </div>
       </div>

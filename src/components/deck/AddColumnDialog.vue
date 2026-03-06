@@ -68,7 +68,7 @@ function addColumnForAccount(accountId: string) {
   if (type === 'widget') {
     deckStore.addColumn({
       type: 'widget',
-      name: 'Widgets',
+      name: 'ウィジェット',
       width: 330,
       accountId,
       active: true,
@@ -107,10 +107,10 @@ function addColumnForAccount(accountId: string) {
     type === 'chat'
   ) {
     const nameMap: Record<string, string> = {
-      favorites: 'Favorites',
-      mentions: 'Mentions',
-      specified: 'Direct',
-      chat: 'Chat',
+      favorites: 'お気に入り',
+      mentions: 'あなた宛て',
+      specified: 'ダイレクト',
+      chat: 'チャット',
     }
     deckStore.addColumn({
       type,
@@ -150,28 +150,28 @@ interface SelectableConfig {
 const SELECTABLE_CONFIGS: SelectableConfig[] = [
   {
     type: 'list',
-    label: 'List',
+    label: 'リスト',
     icon: 'ti-list',
     apiCommand: 'api_get_user_lists',
     idKey: 'listId',
   },
   {
     type: 'antenna',
-    label: 'Antenna',
+    label: 'アンテナ',
     icon: 'ti-antenna-bars-5',
     apiCommand: 'api_get_antennas',
     idKey: 'antennaId',
   },
   {
     type: 'channel',
-    label: 'Channel',
+    label: 'チャンネル',
     icon: 'ti-device-tv',
     apiCommand: 'api_get_channels',
     idKey: 'channelId',
   },
   {
     type: 'clip',
-    label: 'Clip',
+    label: 'クリップ',
     icon: 'ti-paperclip',
     apiCommand: 'api_get_clips',
     idKey: 'clipId',
@@ -251,7 +251,7 @@ async function searchAndAddUserColumn() {
     })
     close()
   } catch {
-    userSearchError.value = 'User not found'
+    userSearchError.value = 'ユーザーが見つかりません'
   } finally {
     searchingUser.value = false
   }
@@ -275,62 +275,62 @@ function close() {
         <button v-else-if="addUserAccountId" class="_button add-back-btn" @click="addUserAccountId = null; userSearchInput = ''; userSearchError = null">
           <i class="ti ti-chevron-left" />
         </button>
-        {{ selectConfig ? `Select ${selectConfig.label.toLowerCase()}` : addUserAccountId ? 'Find user' : addColumnType ? 'Select account' : 'Add column' }}
+        {{ selectConfig ? `${selectConfig.label}を選択` : addUserAccountId ? 'ユーザーを検索' : addColumnType ? 'アカウントを選択' : 'カラムを追加' }}
       </div>
 
       <!-- Step 1: Column type selection -->
       <template v-if="!addColumnType">
         <button class="_button add-type-btn" @click="selectColumnType('timeline')">
           <i class="ti ti-home" />
-          <span>Timeline</span>
+          <span>タイムライン</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('list')">
           <i class="ti ti-list" />
-          <span>List</span>
+          <span>リスト</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('antenna')">
           <i class="ti ti-antenna-bars-5" />
-          <span>Antenna</span>
+          <span>アンテナ</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('channel')">
           <i class="ti ti-device-tv" />
-          <span>Channel</span>
+          <span>チャンネル</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('notifications')">
           <i class="ti ti-bell" />
-          <span>Notifications</span>
+          <span>通知</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('search')">
           <i class="ti ti-search" />
-          <span>Search</span>
+          <span>検索</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('favorites')">
           <i class="ti ti-star" />
-          <span>Favorites</span>
+          <span>お気に入り</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('clip')">
           <i class="ti ti-paperclip" />
-          <span>Clip</span>
+          <span>クリップ</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('user')">
           <i class="ti ti-user" />
-          <span>User</span>
+          <span>ユーザー</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('mentions')">
           <i class="ti ti-at" />
-          <span>Mentions</span>
+          <span>あなた宛て</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('specified')">
           <i class="ti ti-mail" />
-          <span>Direct</span>
+          <span>ダイレクト</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('chat')">
           <i class="ti ti-messages" />
-          <span>Chat</span>
+          <span>チャット</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('widget')">
           <i class="ti ti-app-window" />
-          <span>Widgets</span>
+          <span>ウィジェット</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('aiscript')">
           <i class="ti ti-code" />
@@ -344,8 +344,8 @@ function close() {
 
       <!-- Step 3a: Item selection (list/antenna/channel/clip) -->
       <template v-else-if="selectConfig">
-        <div v-if="selectLoading" class="add-popup-empty">Loading...</div>
-        <div v-else-if="selectItems.length === 0" class="add-popup-empty">No {{ selectConfig.label.toLowerCase() }}s found.</div>
+        <div v-if="selectLoading" class="add-popup-empty">読み込み中...</div>
+        <div v-else-if="selectItems.length === 0" class="add-popup-empty">{{ selectConfig.label }}が見つかりません</div>
         <button
           v-for="item in selectItems"
           :key="item.id"
@@ -364,7 +364,7 @@ function close() {
             v-model="userSearchInput"
             class="add-user-input"
             type="text"
-            placeholder="@username or @username@host"
+            placeholder="@ユーザー名 or @ユーザー名@ホスト"
             @keydown.enter="searchAndAddUserColumn"
           />
           <button
@@ -372,7 +372,7 @@ function close() {
             :disabled="searchingUser || !userSearchInput.trim()"
             @click="searchAndAddUserColumn"
           >
-            {{ searchingUser ? '...' : 'Add' }}
+            {{ searchingUser ? '...' : '追加' }}
           </button>
         </div>
         <div v-if="userSearchError" class="add-popup-empty" style="color: var(--nd-love);">
@@ -383,9 +383,9 @@ function close() {
       <!-- Step 2: Account selection -->
       <template v-else>
         <div v-if="accountsStore.accounts.length === 0" class="add-popup-empty">
-          No accounts registered.
+          アカウントが登録されていません。
           <button class="_button" style="color: var(--nd-accent); text-decoration: underline;" @click="close(); navigateToLogin()">
-            Add account
+            アカウントを追加
           </button>
         </div>
 

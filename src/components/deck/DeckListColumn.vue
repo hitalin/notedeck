@@ -62,7 +62,7 @@ const webUiUrl = computed(() =>
 <template>
   <DeckColumn
     :column-id="column.id"
-    :title="column.name || 'List'"
+    :title="column.name || 'リスト'"
     :theme-vars="columnThemeVars"
     :web-ui-url="webUiUrl"
     sound-enabled

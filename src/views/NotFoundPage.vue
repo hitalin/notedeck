@@ -7,9 +7,9 @@ const router = useRouter()
 <template>
   <div class="not-found">
     <h1>404</h1>
-    <p>Page not found</p>
+    <p>ページが見つかりません</p>
     <button class="_buttonPrimary back-btn" @click="router.push('/')">
-      Back to Home
+      ホームに戻る
     </button>
   </div>
 </template>

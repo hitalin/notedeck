@@ -201,7 +201,7 @@ onBeforeUnmount(() => {
 <template>
   <DeckColumn
     :column-id="column.id"
-    :title="column.name || 'Mentions'"
+    :title="column.name || 'あなた宛て'"
     :theme-vars="columnThemeVars"
     @header-click="scrollToTop()"
   >

@@ -44,7 +44,7 @@ const {
 <template>
   <DeckColumn
     :column-id="column.id"
-    :title="column.name || 'Favorites'"
+    :title="column.name || 'お気に入り'"
     :theme-vars="columnThemeVars"
     @header-click="scrollToTop()"
   >

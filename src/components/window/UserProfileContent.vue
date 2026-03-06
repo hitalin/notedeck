@@ -223,7 +223,7 @@ async function handlePosted(editedNoteId?: string) {
 
 <template>
   <div class="user-profile-content" @scroll="onScroll">
-    <div v-if="isLoading" class="state-message">Loading...</div>
+    <div v-if="isLoading" class="state-message">読み込み中...</div>
 
     <div v-else-if="error" class="state-message state-error">
       <p>{{ error.message }}</p>
@@ -244,7 +244,7 @@ async function handlePosted(editedNoteId?: string) {
           <div class="banner-fade" />
 
           <!-- "Follows you" badge on banner -->
-          <div v-if="user.isFollowed" class="followed-badge">Follows you</div>
+          <div v-if="user.isFollowed" class="followed-badge">フォローされています</div>
 
           <!-- Name overlay on banner (desktop) -->
           <div class="banner-title">
@@ -269,7 +269,7 @@ async function handlePosted(editedNoteId?: string) {
 
           <!-- Banner actions -->
           <div class="banner-actions">
-            <button class="_button banner-action-btn" :title="isOwnProfile ? 'Edit profile' : 'Open in Web UI'" @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}${user.host ? `@${user.host}` : ''}`}`)">
+            <button class="_button banner-action-btn" :title="isOwnProfile ? 'プロフィールを編集' : 'Web UIで開く'" @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}${user.host ? `@${user.host}` : ''}`}`)">
               <i :class="isOwnProfile ? 'ti ti-pencil' : 'ti ti-external-link'" />
             </button>
             <button
@@ -279,7 +279,7 @@ async function handlePosted(editedNoteId?: string) {
               :disabled="isFollowLoading"
               @click="handleToggleFollow"
             >
-              {{ user.isFollowing ? 'Following' : 'Follow' }}
+              {{ user.isFollowing ? 'フォロー中' : 'フォロー' }}
             </button>
           </div>
         </div>
@@ -351,21 +351,21 @@ async function handlePosted(editedNoteId?: string) {
         <div class="stats">
           <div class="stat">
             <b>{{ formatCount(user.notesCount) }}</b>
-            <span>Notes</span>
+            <span>ノート</span>
           </div>
           <button class="stat stat-link _button" @click="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}/following`)">
             <b>{{ formatCount(user.followingCount) }}</b>
-            <span>Following</span>
+            <span>フォロー</span>
           </button>
           <button class="stat stat-link _button" @click="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}/followers`)">
             <b>{{ formatCount(user.followersCount) }}</b>
-            <span>Followers</span>
+            <span>フォロワー</span>
           </button>
         </div>
 
         <!-- User's notes -->
         <div class="notes-section">
-          <div class="notes-tab">Notes</div>
+          <div class="notes-tab">ノート</div>
 
           <MkNote
             v-for="note in notes"

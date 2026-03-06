@@ -25,7 +25,7 @@ const router = useRouter()
           />
         </svg>
       </router-link>
-      <h1 class="profile-title">Profile</h1>
+      <h1 class="profile-title">プロフィール</h1>
     </header>
 
     <UserProfileContent

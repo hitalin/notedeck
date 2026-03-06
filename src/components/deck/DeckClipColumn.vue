@@ -47,7 +47,7 @@ const {
 <template>
   <DeckColumn
     :column-id="column.id"
-    :title="column.name || 'Clip'"
+    :title="column.name || 'クリップ'"
     :theme-vars="columnThemeVars"
     @header-click="scrollToTop()"
   >

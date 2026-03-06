@@ -192,8 +192,8 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
 
       <div class="detail-body">
         <div class="detail-meta">
-          <div>Version: {{ selectedPlugin.version }}</div>
-          <div v-if="selectedPlugin.author">Author: {{ selectedPlugin.author }}</div>
+          <div>バージョン: {{ selectedPlugin.version }}</div>
+          <div v-if="selectedPlugin.author">作者: {{ selectedPlugin.author }}</div>
           <div v-if="selectedPlugin.description">{{ selectedPlugin.description }}</div>
         </div>
 

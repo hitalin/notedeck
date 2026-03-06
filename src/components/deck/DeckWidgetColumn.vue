@@ -35,7 +35,7 @@ function removeWidget(widgetId: string) {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'Widgets'" :theme-vars="columnThemeVars">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'ウィジェット'" :theme-vars="columnThemeVars">
     <template #header-icon>
       <i class="ti ti-app-window" />
     </template>

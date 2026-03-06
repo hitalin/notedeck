@@ -117,7 +117,7 @@ async function toggleAccountMode(accountId: string, key: string) {
     const err = AppError.from(e)
     if (err.isAuth || String(err.message).includes('permission')) {
       modeError.value =
-        'Permission denied. Try re-logging in to grant write:account.'
+        '権限がありません。write:account の権限を付与するために再ログインしてください。'
     } else {
       modeError.value = err.message
     }
@@ -192,27 +192,27 @@ defineExpose({
         <div class="nav-top">
           <button
             class="_button nav-item"
-            title="Notifications"
+            title="通知"
             @click="navigateToNotifications()"
           >
             <i class="ti ti-bell" />
-            <span class="nav-label">Notifications</span>
+            <span class="nav-label">通知</span>
           </button>
           <button
             class="_button nav-item"
-            title="Search"
+            title="検索"
             @click="navigateToSearch()"
           >
             <i class="ti ti-search" />
-            <span class="nav-label">Search</span>
+            <span class="nav-label">検索</span>
           </button>
           <button
             class="_button nav-item"
-            title="Plugins"
+            title="プラグイン"
             @click="navigateToPlugins()"
           >
             <i class="ti ti-plug" />
-            <span class="nav-label">Plugins</span>
+            <span class="nav-label">プラグイン</span>
           </button>
         </div>
 
@@ -225,11 +225,11 @@ defineExpose({
           <button
             class="_button nav-post-btn"
             :class="{ collapsed: navCollapsed }"
-            title="New Note"
+            title="ノート作成"
             @click="emit('open-compose')"
           >
             <i class="ti ti-pencil" />
-            <span class="nav-label">Note</span>
+            <span class="nav-label">ノート</span>
           </button>
 
           <div class="nav-divider" />
@@ -278,15 +278,15 @@ defineExpose({
           </div>
 
           <!-- Add account -->
-          <button class="_button nav-item nav-add-account" title="Add account" @click="navigateToLogin()">
+          <button class="_button nav-item nav-add-account" title="アカウント追加" @click="navigateToLogin()">
             <i class="ti ti-plus" />
-            <span class="nav-label">Add account</span>
+            <span class="nav-label">アカウント追加</span>
           </button>
         </div>
       </div>
 
       <!-- Collapse toggle -->
-      <button class="nav-toggle" title="Toggle sidebar" @click="toggleNav">
+      <button class="nav-toggle" title="サイドバー切替" @click="toggleNav">
         <i :class="navCollapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left'" />
       </button>
     </nav>

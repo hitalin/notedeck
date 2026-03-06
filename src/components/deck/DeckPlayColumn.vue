@@ -302,14 +302,14 @@ function reload() {
           :class="{ active: activeTab === tab }"
           @click="fetchList(tab)"
         >
-          {{ tab === 'featured' ? 'Featured' : tab === 'my' ? 'My' : 'Likes' }}
+          {{ tab === 'featured' ? '人気' : tab === 'my' ? '自分の' : 'いいね' }}
         </button>
       </div>
 
       <div class="play-list">
-        <div v-if="listLoading" class="column-empty">Loading...</div>
+        <div v-if="listLoading" class="column-empty">読み込み中...</div>
         <div v-else-if="listError" class="column-empty column-error">{{ listError }}</div>
-        <div v-else-if="listItems.length === 0" class="column-empty">No plays found</div>
+        <div v-else-if="listItems.length === 0" class="column-empty">Playが見つかりません</div>
         <button
           v-for="item in listItems"
           :key="item.id"

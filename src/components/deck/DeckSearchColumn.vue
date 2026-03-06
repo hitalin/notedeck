@@ -258,7 +258,7 @@ onUnmounted(() => {
           v-model="searchQuery"
           class="search-input"
           type="text"
-          placeholder="Search notes..."
+          placeholder="ノートを検索..."
           @keydown="onKeydown"
         />
         <button

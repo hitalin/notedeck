@@ -60,7 +60,7 @@ const {
 <template>
   <DeckColumn
     :column-id="column.id"
-    :title="column.name || 'User'"
+    :title="column.name || 'ユーザー'"
     :theme-vars="columnThemeVars"
     @header-click="scrollToTop()"
   >

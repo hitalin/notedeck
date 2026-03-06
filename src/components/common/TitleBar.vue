@@ -85,31 +85,31 @@ async function toggleMobileSize() {
     </div>
     <button class="titlebar-search-bar" @click="commandStore.toggle()">
       <i class="ti ti-search titlebar-search-icon" />
-      <span class="titlebar-search-text" :class="{ 'has-uri': deckStore.activeColumnUri }">{{ deckStore.activeColumnUri ?? 'Search commands...' }}</span>
+      <span class="titlebar-search-text" :class="{ 'has-uri': deckStore.activeColumnUri }">{{ deckStore.activeColumnUri ?? 'コマンドを検索...' }}</span>
       <kbd class="titlebar-search-kbd">Ctrl+K</kbd>
     </button>
     <div class="titlebar-controls">
       <button
         class="titlebar-btn titlebar-sidebar-btn"
         :class="{ 'titlebar-btn-active': !deckStore.navCollapsed }"
-        title="Toggle Sidebar"
+        title="サイドバー切替"
         @click="commandStore.execute('toggle-sidebar')"
       >
         <i class="ti ti-layout-sidebar" />
       </button>
       <button
         class="titlebar-btn titlebar-window-btn"
-        :title="isMobileSize ? 'Desktop size' : 'Mobile size'"
+        :title="isMobileSize ? 'デスクトップサイズ' : 'モバイルサイズ'"
         @click="toggleMobileSize"
       >
         <i :class="isMobileSize ? 'ti ti-device-desktop' : 'ti ti-device-mobile'" />
       </button>
-      <button class="titlebar-btn titlebar-window-btn" title="Minimize" @click="minimize">
+      <button class="titlebar-btn titlebar-window-btn" title="最小化" @click="minimize">
         <svg width="10" height="10" viewBox="0 0 10 10">
           <rect x="0" y="4.5" width="10" height="1" fill="currentColor" />
         </svg>
       </button>
-      <button class="titlebar-btn titlebar-window-btn" title="Maximize" @click="toggleMaximize">
+      <button class="titlebar-btn titlebar-window-btn" title="最大化" @click="toggleMaximize">
         <svg v-if="!isMaximized" width="10" height="10" viewBox="0 0 10 10">
           <rect x="0.5" y="0.5" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1" fill="none" />
         </svg>
@@ -118,7 +118,7 @@ async function toggleMobileSize() {
           <rect x="0.5" y="2.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1" fill="var(--nd-navBg, #1a1a2e)" />
         </svg>
       </button>
-      <button class="titlebar-btn titlebar-btn-close" title="Close" @click="close">
+      <button class="titlebar-btn titlebar-btn-close" title="閉じる" @click="close">
         <svg width="10" height="10" viewBox="0 0 10 10">
           <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
         </svg>

@@ -157,19 +157,19 @@ const NOTIFICATION_ICONS: Record<string, string> = {
 }
 
 const NOTIFICATION_LABELS: Record<string, string> = {
-  reaction: 'reacted',
-  reply: 'replied',
-  renote: 'renoted',
-  quote: 'quoted',
-  mention: 'mentioned you',
-  follow: 'followed you',
-  followRequestAccepted: 'accepted your follow request',
-  receiveFollowRequest: 'requested to follow you',
-  pollEnded: 'Poll ended',
-  achievementEarned: 'Achievement earned',
-  app: 'Notification',
-  login: 'Login detected',
-  test: 'Test notification',
+  reaction: 'リアクション',
+  reply: 'リプライ',
+  renote: 'リノート',
+  quote: '引用',
+  mention: 'メンション',
+  follow: 'フォロー',
+  followRequestAccepted: 'フォローリクエスト承認',
+  receiveFollowRequest: 'フォローリクエスト',
+  pollEnded: '投票終了',
+  achievementEarned: '実績獲得',
+  app: '通知',
+  login: 'ログイン検知',
+  test: 'テスト通知',
 }
 
 function notificationIcon(type: string): string {
@@ -226,7 +226,7 @@ async function connect(useCache = false) {
               const userName =
                 notification.user?.name ||
                 notification.user?.username ||
-                'Someone'
+                '誰か'
               const body =
                 notification.type === 'reaction' && notification.reaction
                   ? `${label} ${notification.reaction}`
@@ -433,15 +433,15 @@ onUnmounted(() => {
               >
                 <template v-if="followRequestStates[notif.id]">
                   <span class="follow-request-done">
-                    {{ followRequestStates[notif.id] === 'accepted' ? 'Accepted' : 'Rejected' }}
+                    {{ followRequestStates[notif.id] === 'accepted' ? '承認済み' : '拒否済み' }}
                   </span>
                 </template>
                 <template v-else>
                   <button class="follow-request-btn accept-btn" @click="handleFollowRequest(notif, 'accepted')">
-                    <i class="ti ti-check" /> Accept
+                    <i class="ti ti-check" /> 承認
                   </button>
                   <button class="follow-request-btn reject-btn" @click="handleFollowRequest(notif, 'rejected')">
-                    <i class="ti ti-x" /> Reject
+                    <i class="ti ti-x" /> 拒否
                   </button>
                 </template>
               </div>
@@ -465,7 +465,7 @@ onUnmounted(() => {
 
         <template #after>
           <div v-if="isLoading && notifications.length > 0" class="loading-more">
-            Loading...
+            読み込み中...
           </div>
         </template>
       </DynamicScroller>

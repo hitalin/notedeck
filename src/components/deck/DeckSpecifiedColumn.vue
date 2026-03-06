@@ -154,7 +154,7 @@ onBeforeUnmount(() => {
 <template>
   <DeckColumn
     :column-id="column.id"
-    :title="column.name || 'Direct'"
+    :title="column.name || 'ダイレクト'"
     :theme-vars="columnThemeVars"
     @header-click="scrollToTop()"
   >

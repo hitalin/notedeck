@@ -26,7 +26,7 @@ const { navigateToUser } = useNavigation()
 function modeLabel(key: string): string {
   const match = key.match(/^isIn(.+)Mode$/)
   if (!match) return key
-  return `${match[1]} mode`
+  return `${match[1]}モード`
 }
 </script>
 
@@ -60,47 +60,47 @@ function modeLabel(key: string): string {
       <div v-if="modeError" class="nav-account-menu-error">{{ modeError }}</div>
       <div class="nav-account-menu-divider" />
       <button class="_button nav-account-menu-item" @click="navigateToUser(account.id, account.userId)">
-        <span>Profile</span>
+        <span>プロフィール</span>
         <i class="ti ti-user" />
       </button>
       <div class="nav-account-menu-divider" />
       <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/my/lists`)">
-        <span>Lists</span>
+        <span>リスト</span>
         <i class="ti ti-external-link" />
       </button>
       <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/my/antennas`)">
-        <span>Antennas</span>
+        <span>アンテナ</span>
         <i class="ti ti-external-link" />
       </button>
       <div class="nav-account-menu-divider" />
       <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/my/drive`)">
-        <span>Drive</span>
+        <span>ドライブ</span>
         <i class="ti ti-external-link" />
       </button>
       <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/settings/mute-block`)">
-        <span>Mute & Block</span>
+        <span>ミュートとブロック</span>
         <i class="ti ti-external-link" />
       </button>
       <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/announcements`)">
-        <span>Announcements</span>
+        <span>お知らせ</span>
         <i class="ti ti-external-link" />
       </button>
       <div class="nav-account-menu-divider" />
       <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/settings`)">
-        <span>Settings</span>
+        <span>設定</span>
         <i class="ti ti-external-link" />
       </button>
       <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/admin`)">
-        <span>Admin</span>
+        <span>管理</span>
         <i class="ti ti-external-link" />
       </button>
       <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/pages`)">
-        <span>Pages</span>
+        <span>ページ</span>
         <i class="ti ti-external-link" />
       </button>
       <div class="nav-account-menu-divider" />
       <button class="_button nav-account-menu-item nav-account-logout" @click="emit('logout')">
-        <span>Logout</span>
+        <span>ログアウト</span>
         <i class="ti ti-logout" />
       </button>
     </div>

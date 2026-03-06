@@ -109,12 +109,12 @@ function onDrop(e: DragEvent) {
       </button>
 
       <!-- Sound mute toggle -->
-      <button v-if="soundEnabled" class="_button header-btn" :title="isMuted ? 'Unmute' : 'Mute'" @click.stop="toggleMute">
+      <button v-if="soundEnabled" class="_button header-btn" :title="isMuted ? 'ミュート解除' : 'ミュート'" @click.stop="toggleMute">
         <i :class="isMuted ? 'ti ti-volume-off' : 'ti ti-volume'" />
       </button>
 
       <!-- Remove column button -->
-      <button class="_button header-btn" title="Remove column" @click.stop="close">
+      <button class="_button header-btn" title="カラムを削除" @click.stop="close">
         <i class="ti ti-x" />
       </button>
     </header>

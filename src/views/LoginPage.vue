@@ -23,7 +23,7 @@ function onSuccess() {
       <div class="dialog-header">
         <div class="header-title">
           <i class="ti ti-login-2 header-icon" />
-          <span>Add Account</span>
+          <span>アカウントを追加</span>
         </div>
         <button v-if="hasAccounts" class="_button header-close" @click="onClose">
           <i class="ti ti-x" />

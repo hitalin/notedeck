@@ -29,7 +29,7 @@ function onClose() {
           />
         </svg>
       </router-link>
-      <h1 class="detail-title">Note</h1>
+      <h1 class="detail-title">ノート</h1>
     </header>
 
     <NoteDetailContent

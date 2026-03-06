@@ -157,7 +157,7 @@ async function performSearch() {
   updateLastNoteIds(notes.value)
 
   if (notes.value.length === 0) {
-    error.value = 'No results found'
+    error.value = '結果が見つかりません'
   }
 
   isLoading.value = false
@@ -269,7 +269,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
         v-model="searchQuery"
         class="search-input"
         type="text"
-        placeholder="Search all accounts..."
+        placeholder="全アカウントを検索..."
         @keydown="onKeydown"
       />
       <button
@@ -308,7 +308,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
       <div class="search-empty-icon">
         <i class="ti ti-search" />
       </div>
-      <span>Enter a search query</span>
+      <span>検索クエリを入力</span>
     </div>
 
     <div v-else-if="error && notes.length === 0" class="search-empty">
