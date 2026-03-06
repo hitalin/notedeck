@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { computed, type Ref, ref } from 'vue'
+import { computed, nextTick, type Ref, ref } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type {
   NormalizedDriveFile,
@@ -15,6 +15,7 @@ import {
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
+import { type Draft, saveDraft, loadDrafts, deleteDraft } from '@/composables/useDrafts'
 
 const MAX_TEXT_LENGTH = 3000
 
@@ -81,6 +82,14 @@ export function usePostFormState(
   const isUploading = ref(false)
   const noteModeFlags = ref<Record<string, boolean>>({})
   const disabledVisibilities = ref(new Set<string>())
+  const showPoll = ref(false)
+  const pollChoices = ref<string[]>(['', ''])
+  const pollMultiple = ref(false)
+  const pollExpiresAt = ref<number | null>(null)
+  const scheduledAt = ref<string | null>(null)
+  const supportsScheduledNotes = ref(false)
+  const drafts = ref<Draft[]>([])
+  const showDraftMenu = ref(false)
 
   let adapter: ServerAdapter | null = null
 
@@ -107,6 +116,8 @@ export function usePostFormState(
     if (remainingChars.value < 0) return false
     if (props.renoteId) return true
     if (attachedFiles.value.length > 0) return true
+    if (showPoll.value && pollChoices.value.filter((c) => c.trim()).length >= 2)
+      return true
     return text.value.trim().length > 0
   })
 
@@ -117,9 +128,14 @@ export function usePostFormState(
     try {
       const serverInfo = await serversStore.getServerInfo(acc.host)
       adapter = createAdapter(serverInfo, acc.id)
+      supportsScheduledNotes.value =
+        serverInfo.features.scheduledNotes === true
     } catch (e) {
       error.value = AppError.from(e).message
+      supportsScheduledNotes.value = false
     }
+    // Load drafts for this account
+    drafts.value = loadDrafts(acc.id)
     // Detect active modes for note-level flags
     try {
       const availability = await detectAvailableTimelines(acc.id)
@@ -208,6 +224,15 @@ export function usePostFormState(
           Object.keys(noteModeFlags.value).length > 0
             ? noteModeFlags.value
             : undefined
+        const pollParam =
+          showPoll.value &&
+          pollChoices.value.filter((c) => c.trim()).length >= 2
+            ? {
+                choices: pollChoices.value.filter((c) => c.trim()),
+                multiple: pollMultiple.value || undefined,
+                expiresAt: pollExpiresAt.value ?? undefined,
+              }
+            : undefined
         await adapter.api.createNote({
           text: text.value || undefined,
           cw: showCw.value && cw.value ? cw.value : undefined,
@@ -220,6 +245,8 @@ export function usePostFormState(
           replyId: props.replyTo?.id,
           renoteId: props.renoteId,
           fileIds,
+          poll: pollParam,
+          scheduledAt: scheduledAt.value ?? undefined,
         })
       }
       posted.value = true
@@ -283,6 +310,86 @@ export function usePostFormState(
     return CUSTOM_TL_ICONS[label] ?? DEFAULT_MODE_ICON
   }
 
+  function insertAtCursor(
+    textarea: HTMLTextAreaElement | null,
+    insert: string,
+  ) {
+    if (!textarea) return
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    text.value = text.value.slice(0, start) + insert + text.value.slice(end)
+    nextTick(() => {
+      const pos = start + insert.length
+      textarea.setSelectionRange(pos, pos)
+      textarea.focus()
+    })
+  }
+
+  function addPollChoice() {
+    if (pollChoices.value.length < 10) {
+      pollChoices.value.push('')
+    }
+  }
+
+  function removePollChoice(index: number) {
+    if (pollChoices.value.length > 2) {
+      pollChoices.value.splice(index, 1)
+    }
+  }
+
+  function resetForm() {
+    text.value = ''
+    cw.value = ''
+    showCw.value = false
+    attachedFiles.value = []
+    showPoll.value = false
+    pollChoices.value = ['', '']
+    pollMultiple.value = false
+    pollExpiresAt.value = null
+    scheduledAt.value = null
+    error.value = null
+  }
+
+  function saveCurrentDraft() {
+    const acc = account.value
+    if (!acc) return
+    const draft = saveDraft(acc.id, {
+      text: text.value,
+      cw: cw.value,
+      showCw: showCw.value,
+      visibility: visibility.value,
+      localOnly: localOnly.value,
+      fileIds: attachedFiles.value.map((f) => f.id),
+      pollChoices: pollChoices.value,
+      pollMultiple: pollMultiple.value,
+      showPoll: showPoll.value,
+      scheduledAt: scheduledAt.value,
+    })
+    drafts.value = [draft, ...drafts.value.filter((d) => d.id !== draft.id)].slice(0, 10)
+    showDraftMenu.value = false
+  }
+
+  function restoreDraft(draft: Draft) {
+    text.value = draft.text
+    cw.value = draft.cw
+    showCw.value = draft.showCw
+    visibility.value = draft.visibility
+    localOnly.value = draft.localOnly
+    pollChoices.value = draft.pollChoices.length >= 2 ? draft.pollChoices : ['', '']
+    pollMultiple.value = draft.pollMultiple
+    showPoll.value = draft.showPoll
+    scheduledAt.value = draft.scheduledAt
+    // Note: file attachments are not restored (IDs may be expired)
+    showDraftMenu.value = false
+  }
+
+  function removeDraft(draftId: string) {
+    const acc = account.value
+    if (!acc) return
+    deleteDraft(acc.id, draftId)
+    drafts.value = drafts.value.filter((d) => d.id !== draftId)
+  }
+
   return {
     // Refs
     text,
@@ -300,6 +407,14 @@ export function usePostFormState(
     noteModeFlags,
     disabledVisibilities,
     activeAccountId,
+    showPoll,
+    pollChoices,
+    pollMultiple,
+    pollExpiresAt,
+    scheduledAt,
+    supportsScheduledNotes,
+    drafts,
+    showDraftMenu,
     // Computed
     accounts,
     account,
@@ -320,5 +435,12 @@ export function usePostFormState(
     selectVisibility,
     noteModeLabel,
     noteModeIcon,
+    insertAtCursor,
+    addPollChoice,
+    removePollChoice,
+    resetForm,
+    saveCurrentDraft,
+    restoreDraft,
+    removeDraft,
   }
 }

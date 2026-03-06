@@ -285,6 +285,8 @@ export interface CreateNoteParams {
   replyId?: string
   renoteId?: string
   fileIds?: string[]
+  poll?: { choices: string[]; multiple?: boolean; expiresAt?: number | null }
+  scheduledAt?: string
 }
 
 export interface AuthSession {

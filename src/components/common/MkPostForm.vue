@@ -4,6 +4,7 @@ import { nextTick, onMounted, ref } from 'vue'
 import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
 import { usePostFormState } from '@/composables/usePostFormState'
 import MkMfm from './MkMfm.vue'
+import MkMediaGrid from './MkMediaGrid.vue'
 import MkReactionPicker from './MkReactionPicker.vue'
 
 const props = defineProps<{
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const showPreview = ref(false)
 
 const {
   text,
@@ -49,6 +51,10 @@ const {
   pollChoices,
   pollMultiple,
   pollExpiresAt,
+  scheduledAt,
+  supportsScheduledNotes,
+  drafts,
+  showDraftMenu,
   initAdapter,
   switchAccount,
   post,
@@ -62,7 +68,56 @@ const {
   addPollChoice,
   removePollChoice,
   resetForm,
+  saveCurrentDraft,
+  restoreDraft,
+  removeDraft,
 } = usePostFormState(props, { onPosted: (id) => emit('posted', id) }, fileInput)
+
+// --- Schedule popup ---
+const showSchedulePopup = ref(false)
+
+function toggleSchedulePopup() {
+  showSchedulePopup.value = !showSchedulePopup.value
+  showDraftMenu.value = false
+  showMentionPopup.value = false
+  showEmojiPopup.value = false
+  showMfmMenu.value = false
+}
+
+function setSchedule(value: string | null) {
+  if (value) {
+    scheduledAt.value = new Date(value).toISOString()
+  } else {
+    scheduledAt.value = null
+  }
+  showSchedulePopup.value = false
+}
+
+function formatScheduledDate(iso: string): string {
+  const d = new Date(iso)
+  return d.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+// --- Draft menu ---
+function toggleDraftMenu() {
+  showDraftMenu.value = !showDraftMenu.value
+  showSchedulePopup.value = false
+  showMentionPopup.value = false
+  showEmojiPopup.value = false
+  showMfmMenu.value = false
+}
+
+/** Minimum datetime for schedule picker (5 minutes from now) */
+function minScheduleDatetime(): string {
+  const d = new Date(Date.now() + 5 * 60 * 1000)
+  d.setSeconds(0, 0)
+  return d.toISOString().slice(0, 16)
+}
 
 // --- Mention popup ---
 const showMentionPopup = ref(false)
@@ -184,6 +239,8 @@ function closePopups() {
   showMentionPopup.value = false
   showEmojiPopup.value = false
   showMfmMenu.value = false
+  showSchedulePopup.value = false
+  showDraftMenu.value = false
 }
 
 onMounted(async () => {
@@ -341,7 +398,7 @@ function onKeydown(e: KeyboardEvent) {
           <!-- Submit -->
           <button
             class="submit-btn"
-            :class="{ posted }"
+            :class="{ posted, scheduled: !!scheduledAt }"
             :disabled="!canPost"
             @click="post"
           >
@@ -352,6 +409,13 @@ function onKeydown(e: KeyboardEvent) {
             </template>
             <template v-else-if="isPosting">
               <span class="posting-dots">...</span>
+            </template>
+            <template v-else-if="scheduledAt">
+              <svg viewBox="0 0 24 24" width="16" height="16" class="submit-icon">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
+                <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              </svg>
+              Schedule
             </template>
             <template v-else>
               <svg viewBox="0 0 24 24" width="16" height="16" class="submit-icon">
@@ -399,6 +463,18 @@ function onKeydown(e: KeyboardEvent) {
         Quote attached
       </div>
 
+      <!-- Schedule indicator -->
+      <div v-if="scheduledAt" class="schedule-indicator">
+        <svg viewBox="0 0 24 24" width="14" height="14">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
+          <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+        </svg>
+        {{ formatScheduledDate(scheduledAt) }}
+        <button class="_button schedule-clear" @click="scheduledAt = null">
+          <i class="ti ti-x" />
+        </button>
+      </div>
+
       <!-- CW input -->
       <div v-if="showCw" class="cw-outer">
         <input
@@ -408,9 +484,10 @@ function onKeydown(e: KeyboardEvent) {
         />
       </div>
 
-      <!-- Textarea -->
+      <!-- Textarea / Preview -->
       <div class="text-outer" :class="{ withCw: showCw }">
         <textarea
+          v-if="!showPreview"
           ref="textareaRef"
           v-model="text"
           class="text-area"
@@ -419,11 +496,27 @@ function onKeydown(e: KeyboardEvent) {
           @keydown="onKeydown"
           @click.stop
         />
+        <div v-else class="preview-area">
+          <div v-if="text" class="preview-content">
+            <MkMfm
+              :text="text"
+              :emojis="{}"
+              :server-host="account?.host"
+              :account-id="activeAccountId"
+            />
+          </div>
+          <div v-else class="preview-empty">Preview</div>
+        </div>
         <span
           v-if="remainingChars <= 100"
           class="text-count _acrylic"
           :class="{ over: remainingChars < 0 }"
         >{{ remainingChars }}</span>
+      </div>
+
+      <!-- Preview: file attachments -->
+      <div v-if="showPreview && attachedFiles.length > 0" class="preview-files">
+        <MkMediaGrid :files="attachedFiles" />
       </div>
 
       <!-- Poll editor -->
@@ -577,6 +670,16 @@ function onKeydown(e: KeyboardEvent) {
             </div>
           </div>
 
+          <!-- Preview -->
+          <button
+            class="_button footer-btn"
+            :class="{ active: showPreview }"
+            title="Preview"
+            @click="showPreview = !showPreview"
+          >
+            <i class="ti ti-eye" />
+          </button>
+
           <!-- Clear -->
           <button
             class="_button footer-btn"
@@ -585,6 +688,75 @@ function onKeydown(e: KeyboardEvent) {
           >
             <i class="ti ti-trash" />
           </button>
+
+          <!-- Draft -->
+          <div class="footer-popup-wrapper">
+            <button
+              class="_button footer-btn"
+              :class="{ active: showDraftMenu }"
+              title="Drafts"
+              @click.stop="toggleDraftMenu"
+            >
+              <i class="ti ti-notes" />
+            </button>
+            <div v-if="showDraftMenu" class="footer-popup draft-menu" @click.stop>
+              <button class="_button draft-menu-item draft-save" @click="saveCurrentDraft">
+                <i class="ti ti-device-floppy" />
+                Save draft
+              </button>
+              <div v-if="drafts.length > 0" class="draft-divider" />
+              <div v-if="drafts.length > 0" class="draft-list">
+                <div
+                  v-for="d in drafts"
+                  :key="d.id"
+                  class="draft-item"
+                >
+                  <button class="_button draft-item-main" @click="restoreDraft(d)">
+                    <span class="draft-item-text">{{ d.text || '(empty)' }}</span>
+                    <span class="draft-item-date">{{ new Date(d.savedAt).toLocaleDateString() }}</span>
+                  </button>
+                  <button
+                    class="_button draft-item-delete"
+                    title="Delete draft"
+                    @click.stop="removeDraft(d.id)"
+                  >
+                    <i class="ti ti-x" />
+                  </button>
+                </div>
+              </div>
+              <div v-else class="draft-empty">No drafts</div>
+            </div>
+          </div>
+
+          <!-- Schedule (only if server supports it) -->
+          <div v-if="supportsScheduledNotes && !editNote" class="footer-popup-wrapper">
+            <button
+              class="_button footer-btn"
+              :class="{ active: !!scheduledAt }"
+              title="Schedule"
+              @click.stop="toggleSchedulePopup"
+            >
+              <i class="ti ti-clock" />
+            </button>
+            <div v-if="showSchedulePopup" class="footer-popup schedule-popup" @click.stop>
+              <div class="schedule-popup-content">
+                <input
+                  type="datetime-local"
+                  class="schedule-datetime-input"
+                  :min="minScheduleDatetime()"
+                  :value="scheduledAt ? scheduledAt.slice(0, 16) : ''"
+                  @change="setSchedule(($event.target as HTMLInputElement).value || null)"
+                />
+                <button
+                  v-if="scheduledAt"
+                  class="_button schedule-clear-btn"
+                  @click="setSchedule(null)"
+                >
+                  Clear schedule
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="footer-right">
           <!-- Emoji -->
@@ -975,6 +1147,35 @@ function onKeydown(e: KeyboardEvent) {
   opacity: 0.35;
 }
 
+/* ── Preview ── */
+.preview-area {
+  padding: 0 24px;
+  min-height: 90px;
+  max-height: 500px;
+  overflow-y: auto;
+  line-height: 1.5;
+  font-size: 110%;
+  scrollbar-width: thin;
+}
+
+.preview-content {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.preview-empty {
+  min-height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nd-fg);
+  opacity: 0.35;
+}
+
+.preview-files {
+  padding: 8px 24px;
+}
+
 /* ── Error ── */
 .post-error {
   padding: 8px 24px;
@@ -1321,6 +1522,176 @@ function onKeydown(e: KeyboardEvent) {
   background: var(--nd-buttonBg);
   font-size: 0.7em;
   opacity: 0.6;
+}
+
+/* ── Schedule indicator ── */
+.schedule-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 24px;
+  font-size: 0.82em;
+  color: var(--nd-accent);
+}
+
+.schedule-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  margin-left: 2px;
+}
+
+.schedule-clear:hover {
+  opacity: 1;
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+}
+
+.submit-btn.scheduled {
+  background: var(--nd-accent);
+}
+
+/* ── Draft menu ── */
+.draft-menu {
+  width: 280px;
+  max-height: 360px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.draft-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.draft-menu-item:hover {
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+}
+
+.draft-save {
+  color: var(--nd-accent);
+  font-weight: bold;
+}
+
+.draft-divider {
+  height: 1px;
+  margin: 2px 8px;
+  background: var(--nd-divider);
+}
+
+.draft-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+  scrollbar-width: none;
+}
+
+.draft-item {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.draft-item:hover {
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+}
+
+.draft-item-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  min-width: 0;
+  text-align: left;
+  color: var(--nd-fg);
+}
+
+.draft-item-text {
+  font-size: 0.82em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.draft-item-date {
+  font-size: 0.72em;
+  opacity: 0.5;
+}
+
+.draft-item-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  color: var(--nd-fg);
+  opacity: 0.4;
+}
+
+.draft-item-delete:hover {
+  opacity: 1;
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+}
+
+.draft-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 0.8em;
+  opacity: 0.5;
+}
+
+/* ── Schedule popup ── */
+.schedule-popup {
+  width: 240px;
+  padding: 12px;
+}
+
+.schedule-popup-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedule-datetime-input {
+  width: 100%;
+  padding: 8px;
+  font-size: 0.85em;
+  font-family: inherit;
+  color: var(--nd-fg);
+  background: var(--nd-buttonBg);
+  border: none;
+  border-radius: 6px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.schedule-clear-btn {
+  padding: 6px;
+  font-size: 0.8em;
+  color: #ff2a2a;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.schedule-clear-btn:hover {
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
 }
 
 /* ── Responsive ── */

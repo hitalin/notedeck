@@ -277,6 +277,8 @@ async fn create_note(
         reply_id: body.reply_id,
         renote_id: body.renote_id,
         file_ids: body.file_ids,
+        poll: None,
+        scheduled_at: body.scheduled_at,
     };
     let note = state
         .client()
@@ -607,6 +609,7 @@ struct CreateNoteBody {
     reply_id: Option<String>,
     renote_id: Option<String>,
     file_ids: Option<Vec<String>>,
+    scheduled_at: Option<String>,
 }
 
 // --- Image proxy ---

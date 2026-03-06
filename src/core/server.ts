@@ -32,7 +32,7 @@ export async function detectServer(host: string): Promise<ServerInfo> {
     host,
     software,
     version: nodeinfo.software.version,
-    features: defaultFeatures(),
+    features: detectFeatures(software, nodeinfo.software.version),
     iconUrl,
   }
 }
@@ -92,6 +92,48 @@ function detectSoftware(name: string): ServerSoftware {
   return 'unknown'
 }
 
+/**
+ * Parse a Misskey-style version string (e.g. "2025.10.0") into comparable parts.
+ * Returns null for unparseable versions.
+ */
+function parseMisskeyVersion(
+  version: string,
+): { major: number; minor: number; patch: number } | null {
+  const match = version.match(/^(\d{4})\.(\d+)\.(\d+)/)
+  if (!match) return null
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+  }
+}
+
+function isVersionAtLeast(
+  version: string,
+  minMajor: number,
+  minMinor: number,
+  minPatch: number,
+): boolean {
+  const v = parseMisskeyVersion(version)
+  if (!v) return false
+  if (v.major !== minMajor) return v.major > minMajor
+  if (v.minor !== minMinor) return v.minor > minMinor
+  return v.patch >= minPatch
+}
+
+function detectFeatures(
+  software: ServerSoftware,
+  version: string,
+): ServerFeatures {
+  const features = defaultFeatures()
+
+  if (software === 'misskey') {
+    features.scheduledNotes = isVersionAtLeast(version, 2025, 10, 0)
+  }
+
+  return features
+}
+
 function defaultFeatures(): ServerFeatures {
   return {
     mastodonApi: false,
@@ -101,5 +143,6 @@ function defaultFeatures(): ServerFeatures {
     channels: true,
     antennas: true,
     quotes: true,
+    scheduledNotes: false,
   }
 }
