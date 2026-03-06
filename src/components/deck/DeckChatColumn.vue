@@ -117,6 +117,7 @@ async function openConversation(
       chatSub = adapter.stream.subscribeChatRoom(
         currentRoomId.value,
         onNewMessage,
+        { onDeleted: onMessageDeleted },
       )
     } else {
       const otherId =
@@ -127,7 +128,9 @@ async function openConversation(
       currentRoomId.value = null
       const msgs = await adapter.api.getChatUserMessages(otherId)
       messages.value = msgs.slice().reverse()
-      chatSub = adapter.stream.subscribeChatUser(otherId, onNewMessage)
+      chatSub = adapter.stream.subscribeChatUser(otherId, onNewMessage, {
+        onDeleted: onMessageDeleted,
+      })
     }
     viewMode.value = 'conversation'
     scrollToBottom()
@@ -142,6 +145,10 @@ function onNewMessage(msg: ChatMessage) {
   if (messages.value.some((m) => m.id === msg.id)) return
   messages.value = [...messages.value, msg]
   scrollToBottom()
+}
+
+function onMessageDeleted(messageId: string) {
+  messages.value = messages.value.filter((m) => m.id !== messageId)
 }
 
 function goBack() {

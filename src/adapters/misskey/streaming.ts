@@ -36,6 +36,7 @@ export class MisskeyStream implements StreamAdapter {
   private mainHandlers = new Map<string, (event: MainChannelEvent) => void>()
   private mentionHandlers = new Map<string, (note: NormalizedNote) => void>()
   private chatMessageHandlers = new Map<string, (msg: ChatMessage) => void>()
+  private chatDeletedHandlers = new Map<string, (messageId: string) => void>()
   private noteCaptureHandlers = new Map<
     string,
     (event: NoteUpdateEvent) => void
@@ -135,6 +136,11 @@ export class MisskeyStream implements StreamAdapter {
             p.message as ChatMessage,
           )
           break
+        case 'stream-chat-message-deleted':
+          this.chatDeletedHandlers.get(p.subscriptionId as string)?.(
+            p.messageId as string,
+          )
+          break
       }
     })
       .then((fn) => this.unlistenFns.push(fn))
@@ -149,6 +155,7 @@ export class MisskeyStream implements StreamAdapter {
     this.notifHandlers.clear()
     this.mainHandlers.clear()
     this.chatMessageHandlers.clear()
+    this.chatDeletedHandlers.clear()
     this.noteCaptureHandlers.clear()
     this._state = 'disconnected'
   }
@@ -321,24 +328,38 @@ export class MisskeyStream implements StreamAdapter {
   subscribeChatUser(
     otherId: string,
     handler: (msg: ChatMessage) => void,
+    options?: { onDeleted?: (messageId: string) => void },
   ): ChannelSubscription {
     return this.createSubscription(
       'stream_subscribe_chat_user',
       { otherId },
-      (id) => this.chatMessageHandlers.set(id, handler),
-      (id) => this.chatMessageHandlers.delete(id),
+      (id) => {
+        this.chatMessageHandlers.set(id, handler)
+        if (options?.onDeleted) this.chatDeletedHandlers.set(id, options.onDeleted)
+      },
+      (id) => {
+        this.chatMessageHandlers.delete(id)
+        this.chatDeletedHandlers.delete(id)
+      },
     )
   }
 
   subscribeChatRoom(
     roomId: string,
     handler: (msg: ChatMessage) => void,
+    options?: { onDeleted?: (messageId: string) => void },
   ): ChannelSubscription {
     return this.createSubscription(
       'stream_subscribe_chat_room',
       { roomId },
-      (id) => this.chatMessageHandlers.set(id, handler),
-      (id) => this.chatMessageHandlers.delete(id),
+      (id) => {
+        this.chatMessageHandlers.set(id, handler)
+        if (options?.onDeleted) this.chatDeletedHandlers.set(id, options.onDeleted)
+      },
+      (id) => {
+        this.chatMessageHandlers.delete(id)
+        this.chatDeletedHandlers.delete(id)
+      },
     )
   }
 

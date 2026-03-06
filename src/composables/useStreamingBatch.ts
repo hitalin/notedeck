@@ -106,6 +106,13 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     })
   }
 
+  function removePending(noteId: string) {
+    rafBuffer = rafBuffer.filter((n) => n.id !== noteId)
+    if (pendingNotes.value.some((n) => n.id === noteId)) {
+      pendingNotes.value = pendingNotes.value.filter((n) => n.id !== noteId)
+    }
+  }
+
   function resetBatch() {
     rafBuffer = []
     if (rafId !== null) {
@@ -129,6 +136,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     flushPending,
     handleScroll,
     scrollToTop,
+    removePending,
     resetBatch,
     setPaused,
   }

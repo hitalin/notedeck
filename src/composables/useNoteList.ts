@@ -1,4 +1,5 @@
 import { computed, shallowRef } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import type {
   NormalizedNote,
   NoteUpdateEvent,
@@ -44,6 +45,8 @@ export function useNoteList(options: UseNoteListOptions) {
         orderedIds.value = orderedIds.value.filter((id) => id !== event.noteId)
         noteIds.delete(event.noteId)
       }
+      noteStore.remove(event.noteId)
+      invoke('api_delete_cached_note', { noteId: event.noteId }).catch(() => {})
       return
     }
     noteStore.applyUpdate(event, options.getMyUserId())
@@ -68,7 +71,10 @@ export function useNoteList(options: UseNoteListOptions) {
     const prevIds = orderedIds.value
     notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
 
-    if (!(await options.deleteHandler(note))) {
+    if (await options.deleteHandler(note)) {
+      noteStore.remove(id)
+      invoke('api_delete_cached_note', { noteId: id }).catch(() => {})
+    } else {
       orderedIds.value = prevIds
       noteIds.clear()
       for (const nid of prevIds) noteIds.add(nid)

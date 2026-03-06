@@ -875,6 +875,14 @@ pub fn api_search_notes_local(
 }
 
 #[tauri::command]
+pub fn api_delete_cached_note(
+    db: State<'_, Arc<Database>>,
+    note_id: String,
+) -> Result<()> {
+    db.delete_cached_note(&note_id)
+}
+
+#[tauri::command]
 pub fn api_get_cached_timeline_before(
     db: State<'_, Arc<Database>>,
     account_id: String,

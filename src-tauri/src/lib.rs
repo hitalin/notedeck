@@ -87,6 +87,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::api_get_note_conversation,
         commands::api_lookup_user,
         commands::api_get_cached_timeline,
+        commands::api_delete_cached_note,
         commands::api_get_cached_timeline_before,
         commands::api_get_cache_date_range,
         commands::api_search_notes_local,

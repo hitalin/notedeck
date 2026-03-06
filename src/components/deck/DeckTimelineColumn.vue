@@ -86,6 +86,7 @@ const {
   enqueueNote,
   handleScroll: batchHandleScroll,
   scrollToTop,
+  removePending,
   resetBatch,
   setPaused,
 } = useStreamingBatch({
@@ -396,7 +397,12 @@ async function connect(useCache = false) {
           if (!matchesFilter(note, columnFilters.value, tlType.value)) return
           enqueueNote(note)
         },
-        { onNoteUpdated: onNoteUpdate },
+        {
+          onNoteUpdated: (event) => {
+            if (event.type === 'deleted') removePending(event.noteId)
+            onNoteUpdate(event)
+          },
+        },
       ),
     )
     noteSound.warmup()

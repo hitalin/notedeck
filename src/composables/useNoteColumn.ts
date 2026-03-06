@@ -153,7 +153,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
         adapter.stream.connect()
         setSubscription(
           config.streaming.subscribe(adapter, streamingBatch.enqueueNote, {
-            onNoteUpdated: onNoteUpdate,
+            onNoteUpdated: (event) => {
+              if (event.type === 'deleted') streamingBatch.removePending(event.noteId)
+              onNoteUpdate(event)
+            },
           }),
         )
         noteSound?.warmup()

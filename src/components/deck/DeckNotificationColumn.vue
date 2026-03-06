@@ -7,7 +7,9 @@ import {
   shallowRef,
 } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
+import { invoke } from '@tauri-apps/api/core'
 import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
+import { noteStore } from '@/stores/notes'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
@@ -276,6 +278,8 @@ async function removeNote(note: NormalizedNote) {
     notifications.value = notifications.value.filter(
       (x) => x.note?.id !== id && x.note?.renoteId !== id,
     )
+    noteStore.remove(id)
+    invoke('api_delete_cached_note', { noteId: id }).catch(() => {})
   }
 }
 

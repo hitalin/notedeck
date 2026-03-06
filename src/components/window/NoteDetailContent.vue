@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import { createAdapter } from '@/adapters/registry'
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
+import { noteStore } from '@/stores/notes'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useAccountsStore } from '@/stores/accounts'
@@ -108,6 +110,8 @@ async function handleDelete(target: NormalizedNote) {
   try {
     await adapter.api.deleteNote(target.id)
     const id = target.id
+    noteStore.remove(id)
+    invoke('api_delete_cached_note', { noteId: id }).catch(() => {})
     if (id === note.value?.id) {
       emit('close')
     } else {

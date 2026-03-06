@@ -58,8 +58,16 @@ function resolve(ids: string[]): NormalizedNote[] {
   return result
 }
 
+function remove(id: string) {
+  noteMap.value.delete(id)
+  scheduleTrigger()
+}
+
 function applyUpdate(event: NoteUpdateEvent, myUserId: string | undefined) {
-  if (event.type === 'deleted') return
+  if (event.type === 'deleted') {
+    remove(event.noteId)
+    return
+  }
 
   const note = noteMap.value.get(event.noteId)
   if (!note) return
@@ -136,6 +144,7 @@ export const noteStore = {
   get,
   resolve,
   update,
+  remove,
   applyUpdate,
   notifyMutation,
 }

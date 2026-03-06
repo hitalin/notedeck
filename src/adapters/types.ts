@@ -437,10 +437,12 @@ export interface StreamAdapter {
   subscribeChatUser(
     otherId: string,
     handler: (msg: ChatMessage) => void,
+    options?: { onDeleted?: (messageId: string) => void },
   ): ChannelSubscription
   subscribeChatRoom(
     roomId: string,
     handler: (msg: ChatMessage) => void,
+    options?: { onDeleted?: (messageId: string) => void },
   ): ChannelSubscription
   subNote(noteId: string, handler: (event: NoteUpdateEvent) => void): void
   unsubNote(noteId: string): void
