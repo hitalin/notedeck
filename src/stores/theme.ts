@@ -8,6 +8,7 @@ import type { CompiledProps, MisskeyTheme, ThemeSource } from '@/theme/types'
 
 const STORAGE_COMPILED_KEY = 'nd-theme-compiled'
 const STORAGE_ACCOUNT_THEMES_KEY = 'nd-account-themes'
+const STORAGE_MANUAL_THEME_KEY = 'nd-theme-manual'
 
 // Keyed by "accountId:dark" / "accountId:light"
 const compiledCache = new Map<string, CompiledProps>()
@@ -74,6 +75,8 @@ function parseMetaTheme(
 
 export const useThemeStore = defineStore('theme', () => {
   const currentSource = ref<ThemeSource | null>(null)
+  // 'dark' | 'light' | null (null = follow OS)
+  const manualMode = ref<'dark' | 'light' | null>(null)
   // shallowRef + full Map replacement ensures Vue always detects changes
   const accountThemeCache = shallowRef(
     new Map<string, { dark?: MisskeyTheme; light?: MisskeyTheme }>(),
@@ -90,8 +93,14 @@ export const useThemeStore = defineStore('theme', () => {
       }
     }
 
-    // Apply theme based on OS preference (sync, before mount)
-    applyOsTheme()
+    // Restore manual theme preference
+    const storedManual = localStorage.getItem(STORAGE_MANUAL_THEME_KEY)
+    if (storedManual === 'dark' || storedManual === 'light') {
+      manualMode.value = storedManual
+    }
+
+    // Apply theme (manual or OS-based)
+    applyCurrentTheme()
 
     // Defer account theme cache restoration (not needed for initial render)
     queueMicrotask(() => {
@@ -111,21 +120,37 @@ export const useThemeStore = defineStore('theme', () => {
       }
     })
 
-    // Listen for OS dark/light mode changes
+    // Listen for OS dark/light mode changes (only applies when following OS)
     window
       .matchMedia('(prefers-color-scheme: dark)')
-      .addEventListener('change', () => applyOsTheme())
+      .addEventListener('change', () => {
+        if (manualMode.value == null) applyCurrentTheme()
+      })
   }
 
-  function applyOsTheme(): void {
-    const prefersDark = window.matchMedia(
-      '(prefers-color-scheme: dark)',
-    ).matches
-    if (prefersDark) {
+  function applyCurrentTheme(): void {
+    const wantDark =
+      manualMode.value != null
+        ? manualMode.value === 'dark'
+        : window.matchMedia('(prefers-color-scheme: dark)').matches
+    if (wantDark) {
       applySource({ kind: 'builtin-dark', theme: DARK_THEME })
     } else {
       applySource({ kind: 'builtin-light', theme: LIGHT_THEME })
     }
+  }
+
+  function toggleTheme(): void {
+    const isDark = currentSource.value?.kind.includes('light') === false
+    manualMode.value = isDark ? 'light' : 'dark'
+    localStorage.setItem(STORAGE_MANUAL_THEME_KEY, manualMode.value)
+    applyCurrentTheme()
+  }
+
+  function resetToOsTheme(): void {
+    manualMode.value = null
+    localStorage.removeItem(STORAGE_MANUAL_THEME_KEY)
+    applyCurrentTheme()
   }
 
   function applySource(source: ThemeSource): void {
@@ -273,9 +298,12 @@ export const useThemeStore = defineStore('theme', () => {
 
   return {
     currentSource,
+    manualMode,
     accountThemeCache,
     init,
     applySource,
+    toggleTheme,
+    resetToOsTheme,
     fetchAccountTheme,
     getAccountThemes,
     getCompiledForAccount,

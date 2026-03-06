@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useDeckStore } from '@/stores/deck'
+import { useThemeStore } from '@/stores/theme'
 
 const props = defineProps<{
   show: boolean
@@ -11,6 +12,8 @@ const emit = defineEmits<{
 }>()
 
 const deckStore = useDeckStore()
+const themeStore = useThemeStore()
+const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const fileInput = ref<HTMLInputElement | null>(null)
 
 watch(
@@ -51,6 +54,17 @@ function removeWallpaper() {
 <template>
   <Transition name="settings-menu">
     <div v-if="show" class="settings-menu" @click.stop>
+      <div class="settings-menu-item" @click="themeStore.toggleTheme()">
+        <i :class="isDark ? 'ti ti-sun' : 'ti ti-moon'" />
+        <span class="settings-menu-label">{{ isDark ? 'Light theme' : 'Dark theme' }}</span>
+      </div>
+      <div v-if="themeStore.manualMode != null" class="settings-menu-item" @click="themeStore.resetToOsTheme()">
+        <i class="ti ti-device-desktop" />
+        <span class="settings-menu-label">Follow system theme</span>
+      </div>
+
+      <div class="settings-menu-divider" />
+
       <div v-if="deckStore.wallpaper == null" class="settings-menu-item" @click="pickWallpaper">
         <i class="ti ti-photo" />
         <span class="settings-menu-label">Set wallpaper</span>
@@ -109,6 +123,12 @@ function removeWallpaper() {
 
 .settings-menu-item:hover::before {
   background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+}
+
+.settings-menu-divider {
+  height: 1px;
+  background: var(--nd-divider);
+  margin: 4px 12px;
 }
 
 .settings-menu-label {
