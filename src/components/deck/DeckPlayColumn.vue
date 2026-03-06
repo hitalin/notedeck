@@ -9,10 +9,13 @@ import {
   execAiScript,
   parseAiScript,
 } from '@/aiscript/common'
+import { cleanupNoteDeckEnv, createNoteDeckEnv } from '@/aiscript/notedeck-api'
 import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
+import { useCommandStore } from '@/commands/registry'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import AiScriptToast from '@/components/common/AiScriptToast.vue'
@@ -24,6 +27,8 @@ const props = defineProps<{
   column: DeckColumnType
 }>()
 
+const deckStore = useDeckStore()
+const commandStore = useCommandStore()
 const accountsStore = useAccountsStore()
 const themeStore = useThemeStore()
 const account = computed(() =>
@@ -135,6 +140,7 @@ const running = ref(false)
 const toastRef = ref<InstanceType<typeof AiScriptToast> | null>(null)
 const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
 const interpreter = ref<Interpreter | null>(null)
+let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
 
 // --- Open Play (show ready screen) ---
 async function openPlay(flashId: string) {
@@ -238,7 +244,17 @@ async function executePlay(detail: FlashDetail) {
     },
   })
 
-  const interp = createAiScriptInterpreter({ ...env, ...ui }, ioOpts, legacy)
+  if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
+  const ndCtx = {
+    deckStore,
+    commandStore,
+    registeredCommandIds: [] as string[],
+  }
+  const ndEnv = createNoteDeckEnv(ndCtx)
+  currentNdCtx = ndCtx
+
+  const interp = createAiScriptInterpreter({ ...env, ...ndEnv, ...ui }, ioOpts, legacy)
+  ndCtx.interpreter = interp
   interpreter.value = interp
   try {
     await execAiScript(interp, ast, legacy)

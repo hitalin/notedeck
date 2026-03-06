@@ -4,8 +4,10 @@ import { invoke } from '@tauri-apps/api/core'
 import { computed, onMounted, ref, watch } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
 import { createInterpreterOptions } from '@/aiscript/common'
+import { cleanupNoteDeckEnv, createNoteDeckEnv } from '@/aiscript/notedeck-api'
 import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
+import { useCommandStore } from '@/commands/registry'
 import { useAccountsStore } from '@/stores/accounts'
 import type { WidgetConfig } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -21,6 +23,7 @@ const props = defineProps<{
 }>()
 
 const deckStore = useDeckStore()
+const commandStore = useCommandStore()
 const accountsStore = useAccountsStore()
 const serverUrl = computed(() => {
   if (!props.accountId) return ''
@@ -35,6 +38,7 @@ const showEditor = ref(!code.value)
 const interpreter = ref<Interpreter | null>(null)
 const toastRef = ref<InstanceType<typeof AiScriptToast> | null>(null)
 const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
+let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
 
 // Persist code on change
 let saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -105,7 +109,17 @@ async function run() {
     },
   })
 
-  const interp = new Interpreter({ ...env, ...ui }, ioOpts)
+  if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
+  const ndCtx = {
+    deckStore,
+    commandStore,
+    registeredCommandIds: [] as string[],
+  }
+  const ndEnv = createNoteDeckEnv(ndCtx)
+  currentNdCtx = ndCtx
+
+  const interp = new Interpreter({ ...env, ...ndEnv, ...ui }, ioOpts)
+  ndCtx.interpreter = interp
   interpreter.value = interp
 
   try {

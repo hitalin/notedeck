@@ -4,8 +4,10 @@ import { invoke } from '@tauri-apps/api/core'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
 import { createInterpreterOptions } from '@/aiscript/common'
+import { cleanupNoteDeckEnv, createNoteDeckEnv } from '@/aiscript/notedeck-api'
 import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
+import { useCommandStore } from '@/commands/registry'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -21,6 +23,7 @@ const props = defineProps<{
 }>()
 
 const deckStore = useDeckStore()
+const commandStore = useCommandStore()
 const accountsStore = useAccountsStore()
 const themeStore = useThemeStore()
 
@@ -46,6 +49,7 @@ const running = ref(false)
 const interpreter = ref<Interpreter | null>(null)
 const toastRef = ref<InstanceType<typeof AiScriptToast> | null>(null)
 const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
+let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
 
 // Split ratio (editor height fraction)
 const editorRatio = ref(0.6)
@@ -108,6 +112,13 @@ async function run() {
     },
   )
 
+  const ndCtx = {
+    deckStore,
+    commandStore,
+    registeredCommandIds: [] as string[],
+  }
+  const ndEnv = createNoteDeckEnv(ndCtx)
+
   const ui = createAiScriptUiLib({
     onRender: (components) => {
       uiComponents.value = components
@@ -121,7 +132,12 @@ async function run() {
     },
   })
 
-  const interp = new Interpreter({ ...env, ...ui }, ioOpts)
+  // Cleanup previous run's commands
+  if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
+  currentNdCtx = ndCtx
+
+  const interp = new Interpreter({ ...env, ...ndEnv, ...ui }, ioOpts)
+  ndCtx.interpreter = interp
   interpreter.value = interp
 
   try {
@@ -169,6 +185,7 @@ function onKeydown(e: KeyboardEvent) {
 onUnmounted(() => {
   if (saveTimer) clearTimeout(saveTimer)
   if (resizing) stopResize()
+  if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
 })
 </script>
 

@@ -237,14 +237,18 @@ Misskey ユーザーが既に馴染んでいるサンドボックス言語で、
   `Plugin:register_note_post_interruptor`, `Plugin:open_url`, `Plugin:config`。
   コロン区切りエイリアス（`Plugin:register:*`）にも後方互換対応。
   レガシー AiScript（v0.13.2 / v0.19.0）のプラグインにも対応
-- [ ] **Misskey 本家 API 互換性ギャップ** — 以下の API が未実装:
-  - `Plugin:register_page_view_interruptor` — ページ表示の書き換えフック。NoteDeck にページビューがないため優先度低
+- [x] **Misskey 本家 API 互換性ギャップ** — 以下の API は構造的に対応しない:
+  - `Plugin:register_page_view_interruptor` — ページビューの書き換えフック。NoteDeck にページビューがないため対応不要
 - [x] **プラグイン管理 UI** — インストール・有効/無効切替・アンインストール。
   Misskey 本家と同じくテキストベースでコピペインストール、AiScript エディタによるシンタックスハイライト
-- [ ] **NoteDeck 拡張 API** — Misskey 本家にない NoteDeck 固有の拡張ポイント。
-  名前空間は本家パターンに準拠: ハンドラ登録は `Plugin:*`、ランタイム操作は `Nd:*`
-  - `Plugin:register_command` — コマンドパレットにカスタムコマンドを登録
-  - `Nd:columns` / `Nd:addColumn` / `Nd:removeColumn` — カラム操作 API
+- [x] **NoteDeck 拡張 API** — Misskey 本家にない NoteDeck 固有の拡張ポイント。
+  名前空間は `Nd:*` に統一し、Misskey 本家の `Mk:*` / `Plugin:*` との衝突を回避。
+  フィーチャーディテクション用の定数で、プラグインが実行環境を判別できる。
+  AiScript カラム・Play カラム・ウィジェット・プラグインの全実行ポイントに統合済み
+  - `NOTEDECK` — bool 定数。`exists("NOTEDECK")` でフィーチャーゲート可能
+  - `Nd:version` — NoteDeck のバージョン文字列
+  - `Nd:register_command` — コマンドパレットにカスタムコマンドを登録（ライフサイクル管理付き）
+  - `Nd:columns` / `Nd:addColumn` / `Nd:removeColumn` — カラム操作 API（型バリデーション付き）
 
 **なぜ AiScript か:**
 - **安全** — サンドボックス実行。ファイルシステム・ネットワークへの直接アクセスなし

@@ -9,6 +9,11 @@ import {
   execAiScript,
   parseAiScript,
 } from './common'
+import {
+  type NoteDeckEnvContext,
+  cleanupNoteDeckEnv,
+  createNoteDeckEnv,
+} from './notedeck-api'
 import { sanitizeCode } from './sanitize'
 
 // ---------------------------------------------------------------------------
@@ -136,6 +141,7 @@ interface PluginHandler {
 const pluginHandlers: PluginHandler[] = []
 const pluginContexts = new Map<string, Interpreter>()
 const pluginAccountContext = new Map<string, { accountId: string | null }>()
+const pluginNdContexts = new Map<string, NoteDeckEnvContext>()
 
 export function getPluginHandlers<T extends HandlerType>(
   type: T,
@@ -386,15 +392,26 @@ export async function launchPlugin(plugin: PluginMeta): Promise<void> {
   const ctx = { accountId: null as string | null }
   pluginAccountContext.set(plugin.installId, ctx)
 
-  // Build environment: base Mk:* (overridden by plugin-specific Mk:api) + Plugin:*
+  // Build environment: base Mk:* (overridden by plugin-specific Mk:api) + Plugin:* + Nd:*
   const baseEnv = createAiScriptEnv(
     { storagePrefix: `plugin:${plugin.installId}` },
     { LOCALE: navigator.language },
   )
   const pluginEnv = createPluginSpecificEnv(plugin, ctx)
 
+  // Nd:* APIs (lazy import to avoid circular deps)
+  const { useDeckStore } = await import('@/stores/deck')
+  const { useCommandStore } = await import('@/commands/registry')
+  const ndCtx: NoteDeckEnvContext = {
+    deckStore: useDeckStore(),
+    commandStore: useCommandStore(),
+    registeredCommandIds: [],
+  }
+  const ndEnv = createNoteDeckEnv(ndCtx)
+  pluginNdContexts.set(plugin.installId, ndCtx)
+
   // Plugin-specific Mk:api overrides the base one
-  const env = { ...baseEnv, ...pluginEnv }
+  const env = { ...baseEnv, ...pluginEnv, ...ndEnv }
 
   const ioOpts = createInterpreterOptions({
     onOutput: (text) => logs.push({ text, isError: false }),
@@ -418,6 +435,7 @@ export async function launchPlugin(plugin: PluginMeta): Promise<void> {
   }
 
   const interpreter = createAiScriptInterpreter(env, ioOpts, legacy)
+  ndCtx.interpreter = interpreter
   try {
     await execAiScript(interpreter, ast, legacy)
   } catch (e) {
@@ -434,6 +452,11 @@ export function abortPlugin(installId: string): void {
   if (interp) {
     interp.abort()
     pluginContexts.delete(installId)
+  }
+  const ndCtx = pluginNdContexts.get(installId)
+  if (ndCtx) {
+    cleanupNoteDeckEnv(ndCtx)
+    pluginNdContexts.delete(installId)
   }
   pluginAccountContext.delete(installId)
   pluginLogs.delete(installId)
