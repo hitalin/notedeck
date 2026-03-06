@@ -23,6 +23,7 @@ const titles: Record<string, string> = {
   search: 'Search',
   notifications: 'Notifications',
   plugins: 'Plugins',
+  keybinds: 'Keybinds',
 }
 
 const icons: Record<string, string> = {
@@ -32,6 +33,7 @@ const icons: Record<string, string> = {
   search: 'ti ti-search',
   notifications: 'ti ti-bell',
   plugins: 'ti ti-plug',
+  keybinds: 'ti ti-keyboard',
 }
 
 const isMinimized = computed(() => props.window.minimized)

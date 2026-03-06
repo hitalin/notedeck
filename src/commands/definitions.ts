@@ -1,6 +1,7 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useCommandStore } from '@/commands/registry'
 import type { NoteAction } from '@/composables/useNoteFocus'
+import { useKeybindsStore } from '@/stores/keybinds'
 
 export interface CommandHandlers {
   openCompose: () => void
@@ -30,17 +31,14 @@ const NOTE_COMMAND_IDS = [
 
 export function registerDefaultCommands(handlers: CommandHandlers) {
   const commandStore = useCommandStore()
+  const keybindsStore = useKeybindsStore()
 
   commandStore.register({
     id: 'command-palette',
     label: 'Command Palette',
     icon: 'search',
     category: 'general',
-    shortcuts: [
-      { key: 'k', ctrl: true, scope: 'global' },
-      { key: '/', scope: 'body' },
-      { key: '?', scope: 'body' },
-    ],
+    shortcuts: keybindsStore.getShortcuts('command-palette'),
     execute: () => commandStore.toggle(),
     visible: false,
   })
@@ -50,10 +48,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Search',
     icon: 'search',
     category: 'navigation',
-    shortcuts: [
-      { key: 'f', ctrl: true, shift: true, scope: 'global' },
-      { key: 's', scope: 'body' },
-    ],
+    shortcuts: keybindsStore.getShortcuts('search'),
     execute: handlers.openSearch,
   })
 
@@ -62,7 +57,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Notifications',
     icon: 'bell',
     category: 'navigation',
-    shortcuts: [{ key: 'i', scope: 'body' }],
+    shortcuts: keybindsStore.getShortcuts('notifications'),
     execute: handlers.openNotifications,
   })
 
@@ -71,11 +66,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'New Note',
     icon: 'pencil',
     category: 'general',
-    shortcuts: [
-      { key: 'p', scope: 'body' },
-      { key: 'n', scope: 'body' },
-      { key: 'n', ctrl: true, shift: true, scope: 'global' },
-    ],
+    shortcuts: keybindsStore.getShortcuts('compose'),
     execute: handlers.openCompose,
   })
 
@@ -84,7 +75,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Add Column',
     icon: 'plus',
     category: 'column',
-    shortcuts: [],
+    shortcuts: keybindsStore.getShortcuts('add-column'),
     execute: handlers.toggleAddMenu,
   })
 
@@ -93,7 +84,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Toggle Sidebar',
     icon: 'layout-sidebar-left-collapse',
     category: 'navigation',
-    shortcuts: [],
+    shortcuts: keybindsStore.getShortcuts('toggle-sidebar'),
     execute: handlers.toggleNav,
   })
 
@@ -102,7 +93,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Hide Window',
     icon: 'eye-off',
     category: 'general',
-    shortcuts: [{ key: 'b', ctrl: true, shift: true, scope: 'global' }],
+    shortcuts: keybindsStore.getShortcuts('boss-key'),
     execute: () => getCurrentWindow().hide(),
   })
 
@@ -111,7 +102,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Account Menu',
     icon: 'user',
     category: 'account',
-    shortcuts: [{ key: 'a', scope: 'body' }],
+    shortcuts: keybindsStore.getShortcuts('account-menu'),
     execute: handlers.toggleAccountMenu,
   })
 
@@ -121,7 +112,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Next Note',
     icon: 'arrow-down',
     category: 'note',
-    shortcuts: [{ key: 'j', scope: 'body' }],
+    shortcuts: keybindsStore.getShortcuts('note-next'),
     execute: () => dispatchNoteAction('next'),
   })
 
@@ -130,7 +121,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Previous Note',
     icon: 'arrow-up',
     category: 'note',
-    shortcuts: [{ key: 'k', scope: 'body' }],
+    shortcuts: keybindsStore.getShortcuts('note-prev'),
     execute: () => dispatchNoteAction('prev'),
   })
 
@@ -139,7 +130,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Reply',
     icon: 'arrow-back-up',
     category: 'note',
-    shortcuts: [{ key: 'r', scope: 'body' }],
+    shortcuts: keybindsStore.getShortcuts('note-reply'),
     execute: () => dispatchNoteAction('reply'),
   })
 
@@ -148,10 +139,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'React',
     icon: 'mood-plus',
     category: 'note',
-    shortcuts: [
-      { key: 'e', scope: 'body' },
-      { key: '+', scope: 'body' },
-    ],
+    shortcuts: keybindsStore.getShortcuts('note-react'),
     execute: () => dispatchNoteAction('react'),
   })
 
@@ -160,7 +148,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Renote / Quote',
     icon: 'repeat',
     category: 'note',
-    shortcuts: [{ key: 'q', scope: 'body' }],
+    shortcuts: keybindsStore.getShortcuts('note-renote'),
     execute: () => dispatchNoteAction('renote'),
   })
 
@@ -169,7 +157,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Bookmark',
     icon: 'star',
     category: 'note',
-    shortcuts: [{ key: 'b', scope: 'body' }],
+    shortcuts: keybindsStore.getShortcuts('note-bookmark'),
     execute: () => dispatchNoteAction('bookmark'),
   })
 
@@ -178,7 +166,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Open Note',
     icon: 'external-link',
     category: 'note',
-    shortcuts: [{ key: 'Enter', scope: 'body' }],
+    shortcuts: keybindsStore.getShortcuts('note-open'),
     execute: () => dispatchNoteAction('open'),
   })
 
@@ -187,7 +175,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     label: 'Toggle CW',
     icon: 'eye',
     category: 'note',
-    shortcuts: [{ key: 'v', scope: 'body' }],
+    shortcuts: keybindsStore.getShortcuts('note-cw'),
     execute: () => dispatchNoteAction('toggle-cw'),
   })
 }

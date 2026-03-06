@@ -22,6 +22,9 @@ const NotificationsContent = defineAsyncComponent(
 const PluginsContent = defineAsyncComponent(
   () => import('@/components/window/PluginsContent.vue'),
 )
+const KeybindsContent = defineAsyncComponent(
+  () => import('@/components/window/KeybindsContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -86,6 +89,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       <SearchContent v-if="win.type === 'search'" />
       <NotificationsContent v-if="win.type === 'notifications'" />
       <PluginsContent v-if="win.type === 'plugins'" />
+      <KeybindsContent v-if="win.type === 'keybinds'" />
     </DeckWindow>
   </TransitionGroup>
 </template>

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import ThemePreview from '@/components/ThemePreview.vue'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
+import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { highlightCode } from '@/utils/highlight'
-import ThemePreview from '@/components/ThemePreview.vue'
 
 const props = defineProps<{
   show: boolean
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 
 const deckStore = useDeckStore()
 const themeStore = useThemeStore()
+const windowsStore = useWindowsStore()
 const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -134,7 +136,9 @@ const highlightedCss = computed(() => {
 
 function syncScroll(e: Event) {
   const textarea = e.target as HTMLTextAreaElement
-  const highlight = textarea.parentElement?.querySelector('.css-highlight') as HTMLElement | null
+  const highlight = textarea.parentElement?.querySelector(
+    '.css-highlight',
+  ) as HTMLElement | null
   if (highlight) {
     highlight.scrollTop = textarea.scrollTop
     highlight.scrollLeft = textarea.scrollLeft
@@ -254,6 +258,13 @@ function syncScroll(e: Event) {
           <button class="install-action-btn cancel" @click="showCustomCss = false">閉じる</button>
           <button class="install-action-btn confirm" @click="saveCustomCss">適用</button>
         </div>
+      </div>
+
+      <div class="settings-menu-divider" />
+
+      <div class="settings-menu-item" @click="windowsStore.open('keybinds')">
+        <i class="ti ti-keyboard" />
+        <span class="settings-menu-label">キーバインド設定</span>
       </div>
 
       <div class="settings-menu-divider" />

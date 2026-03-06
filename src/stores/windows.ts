@@ -8,6 +8,7 @@ export type WindowType =
   | 'search'
   | 'notifications'
   | 'plugins'
+  | 'keybinds'
 
 export interface DeckWindow {
   id: string
@@ -31,6 +32,7 @@ export const WINDOW_SIZES: Record<
   search: { width: 500, maxHeight: 650 },
   notifications: { width: 500, maxHeight: 650 },
   plugins: { width: 500, maxHeight: 650 },
+  keybinds: { width: 520, maxHeight: 600 },
 }
 
 let windowCounter = 0
@@ -59,6 +61,7 @@ export const useWindowsStore = defineStore('windows', () => {
       if (type === 'search') return true
       if (type === 'notifications') return true
       if (type === 'plugins') return true
+      if (type === 'keybinds') return true
       return false
     })
     if (duplicate) {
