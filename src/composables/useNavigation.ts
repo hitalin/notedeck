@@ -39,5 +39,11 @@ export function useNavigation() {
     }
   }
 
-  return { navigateToNote, navigateToUser, navigateToLogin }
+  function navigateToSearch() {
+    if (isDeckActive()) {
+      windowsStore.open('search')
+    }
+  }
+
+  return { navigateToNote, navigateToUser, navigateToLogin, navigateToSearch }
 }

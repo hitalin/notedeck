@@ -20,12 +20,14 @@ const titles: Record<string, string> = {
   'note-detail': 'Note',
   'user-profile': 'Profile',
   login: 'Add Account',
+  search: 'Search',
 }
 
 const icons: Record<string, string> = {
   'note-detail': 'ti ti-note',
   'user-profile': 'ti ti-user',
   login: 'ti ti-login-2',
+  search: 'ti ti-search',
 }
 
 const isMinimized = computed(() => props.window.minimized)

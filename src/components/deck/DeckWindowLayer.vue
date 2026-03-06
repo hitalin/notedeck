@@ -13,6 +13,9 @@ const UserProfileContent = defineAsyncComponent(
 const LoginContent = defineAsyncComponent(
   () => import('@/components/window/LoginContent.vue'),
 )
+const SearchContent = defineAsyncComponent(
+  () => import('@/components/window/SearchContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -74,6 +77,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         @close="closeWindow(win.id)"
         @success="closeWindow(win.id)"
       />
+      <SearchContent v-if="win.type === 'search'" />
     </DeckWindow>
   </TransitionGroup>
 </template>

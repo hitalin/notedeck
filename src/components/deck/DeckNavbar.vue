@@ -23,7 +23,7 @@ const emit = defineEmits<{
   'update:mobileDrawerOpen': [value: boolean]
 }>()
 
-const { navigateToLogin } = useNavigation()
+const { navigateToLogin, navigateToSearch } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
@@ -183,6 +183,18 @@ defineExpose({
   <div class="deck-navbar">
     <nav class="navbar" :class="{ collapsed: navCollapsed, 'drawer-open': props.mobileDrawerOpen }" :style="{ flexBasis: navWidth + 'px' }">
       <div class="nav-body">
+        <!-- Top section -->
+        <div class="nav-top">
+          <button
+            class="_button nav-item"
+            title="Search"
+            @click="navigateToSearch()"
+          >
+            <i class="ti ti-search" />
+            <span class="nav-label">Search</span>
+          </button>
+        </div>
+
         <!-- Spacer -->
         <div class="nav-spacer" />
 
