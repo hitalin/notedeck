@@ -17,6 +17,7 @@ const props = defineProps<{
   renoteId?: string
   editNote?: NormalizedNote
   channelId?: string
+  inline?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -77,7 +78,13 @@ const {
   saveCurrentDraft,
   restoreDraft,
   removeDraft,
-} = usePostFormState(props, { onPosted: (id) => emit('posted', id) }, fileInput)
+} = usePostFormState(props, { onPosted: (id) => {
+  emit('posted', id)
+  if (props.inline) {
+    // Reset form for next post instead of closing
+    resetForm()
+  }
+} }, fileInput)
 
 // --- Schedule popup ---
 const showSchedulePopup = ref(false)
@@ -284,25 +291,25 @@ onMounted(async () => {
     visibility.value = props.replyTo.visibility
   }
   await nextTick()
-  textareaRef.value?.focus()
+  if (!props.inline) textareaRef.value?.focus()
 })
 
 function onKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     if (!isPosting.value) post()
   }
-  if (e.key === 'Escape') {
+  if (e.key === 'Escape' && !props.inline) {
     emit('close')
   }
 }
 </script>
 
 <template>
-  <div class="post-overlay" @click="emit('close')">
-    <div class="post-form" :style="formThemeVars" @click.stop="closePopups">
+  <div :class="inline ? 'post-inline-wrapper' : 'post-overlay'" @click="!inline && emit('close')">
+    <div class="post-form" :class="{ 'post-form--inline': inline }" :style="formThemeVars" @click.stop="closePopups">
       <!-- Header -->
       <header class="header">
-        <div class="header-left">
+        <div v-if="!inline" class="header-left">
           <button class="_button header-btn" title="閉じる" @click="emit('close')">
             <i class="ti ti-x" />
           </button>
@@ -339,6 +346,7 @@ function onKeydown(e: KeyboardEvent) {
             </div>
           </div>
         </div>
+        <div v-else class="header-left" />
         <div class="header-right">
           <!-- Note mode flags -->
           <button
@@ -361,8 +369,8 @@ function onKeydown(e: KeyboardEvent) {
             </svg>
           </button>
 
-          <!-- Visibility -->
-          <div class="visibility-wrapper">
+          <!-- Visibility (hidden in inline channel mode: always public) -->
+          <div v-if="!inline" class="visibility-wrapper">
             <button
               class="_button header-btn"
               :title="currentVisibility.label"
@@ -404,9 +412,9 @@ function onKeydown(e: KeyboardEvent) {
             </div>
           </div>
 
-          <!-- Local only (Tabler Icons: ti-rocket / ti-rocket-off) -->
+          <!-- Local only (hidden in inline channel mode: always local-only) -->
           <button
-            v-if="visibility !== 'specified'"
+            v-if="!inline && visibility !== 'specified'"
             class="_button header-btn local-only-btn"
             :class="{ active: localOnly }"
             :title="localOnly ? 'ローカルのみ (連合なし)' : '連合あり'"
@@ -839,6 +847,10 @@ function onKeydown(e: KeyboardEvent) {
   background: var(--nd-modalBg);
 }
 
+.post-inline-wrapper {
+  display: contents;
+}
+
 .post-form {
   background: var(--nd-popup);
   border-radius: 16px;
@@ -850,6 +862,96 @@ function onKeydown(e: KeyboardEvent) {
   display: flex;
   flex-direction: column;
   container-type: inline-size;
+}
+
+/* ── Inline mode ── */
+.post-form--inline {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  max-width: none;
+  margin: 0;
+  border-bottom: 1px solid var(--nd-divider);
+}
+
+.post-form--inline .header {
+  min-height: 36px;
+}
+
+.post-form--inline .header-right {
+  min-height: 36px;
+  font-size: 0.85em;
+}
+
+.post-form--inline .header-btn {
+  padding: 5px;
+}
+
+.post-form--inline .header-btn-text {
+  display: none;
+}
+
+.post-form--inline .text-area {
+  min-height: 42px;
+  padding: 0 12px;
+  font-size: 0.95em;
+  field-sizing: content;
+}
+
+.post-form--inline .cw-input {
+  padding: 6px 12px;
+  font-size: 0.95em;
+}
+
+.post-form--inline .text-area::placeholder,
+.post-form--inline .cw-input::placeholder {
+  font-size: 1em;
+}
+
+.post-form--inline .footer {
+  padding: 0 6px 6px;
+  font-size: 0.9em;
+}
+
+.post-form--inline .footer-left {
+  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+  grid-auto-rows: 32px;
+}
+
+.post-form--inline .footer-right {
+  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+  grid-auto-rows: 32px;
+}
+
+.post-form--inline .submit-btn {
+  margin: 6px 6px 6px 4px;
+  padding: 0 10px;
+  line-height: 30px;
+  font-size: 0.85em;
+  min-width: 70px;
+}
+
+.post-form--inline .file-preview-area {
+  padding: 6px 12px;
+}
+
+.post-form--inline .file-preview {
+  width: 60px;
+  height: 60px;
+}
+
+.post-form--inline .poll-editor {
+  padding: 6px 12px;
+}
+
+.post-form--inline .reply-preview {
+  padding: 8px 12px;
+  font-size: 0.85em;
+}
+
+.post-form--inline .post-error {
+  padding: 4px 12px;
+  font-size: 0.8em;
 }
 
 /* ── Header ── */

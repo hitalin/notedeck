@@ -79,7 +79,7 @@ export function usePostFormState(
   const cw = ref('')
   const showCw = ref(false)
   const visibility = ref<NoteVisibility>('public')
-  const localOnly = ref(false)
+  const localOnly = ref(!!props.channelId)
   const showVisibilityMenu = ref(false)
   const showAccountMenu = ref(false)
   const isPosting = ref(false)
@@ -356,6 +356,7 @@ export function usePostFormState(
     pollExpiresAt.value = null
     scheduledAt.value = null
     error.value = null
+    posted.value = false
   }
 
   function saveCurrentDraft() {
