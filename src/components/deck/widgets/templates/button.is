@@ -1,0 +1,27 @@
+/// ボタンウィジェット
+/// ボタンを押すとアクションを実行します。
+/// Mk:api を使って好きな API を呼べます。
+
+var count = 0
+
+@render() {
+  Ui:render([
+    Ui:C:container({
+      children: [
+        Ui:C:mfm({ text: "<center>**カスタムボタン**</center>" })
+        Ui:C:button({
+          text: `クリック！ ({count})`
+          primary: true
+          rounded: true
+          onClick: @() {
+            count = count + 1
+            render()
+          }
+        })
+        Ui:C:mfm({ text: `<center>$[fg.color=888888 クリック回数: **{count}**]</center>` })
+      ]
+    })
+  ])
+}
+
+render()

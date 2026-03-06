@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { type Ast, Interpreter, Parser } from '@syuilo/aiscript'
 import { invoke } from '@tauri-apps/api/core'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
 import { createInterpreterOptions } from '@/aiscript/common'
 import { sanitizeCode } from '@/aiscript/sanitize'
@@ -104,6 +104,15 @@ async function run() {
 
   running.value = false
 }
+
+onMounted(() => {
+  if (props.widget.data.autoRun && code.value) {
+    deckStore.updateWidgetData(props.columnId, props.widget.id, {
+      autoRun: false,
+    })
+    run()
+  }
+})
 </script>
 
 <template>

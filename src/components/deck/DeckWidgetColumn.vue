@@ -5,6 +5,7 @@ import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import DeckColumn from './DeckColumn.vue'
 import { getWidgetComponent, getWidgetDefinitions } from './widgets/registry'
+import { widgetTemplates } from './widgets/templates'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -26,6 +27,16 @@ const widgetDefinitions = getWidgetDefinitions()
 
 function addWidget(type: (typeof widgetDefinitions)[number]['type']) {
   deckStore.addWidget(props.column.id, type)
+  showAddMenu.value = false
+}
+
+function addFromTemplate(templateId: string) {
+  const tmpl = widgetTemplates.find((t) => t.id === templateId)
+  if (!tmpl) return
+  deckStore.addWidget(props.column.id, 'aiscriptApp', {
+    code: tmpl.code,
+    autoRun: tmpl.autoRun,
+  })
   showAddMenu.value = false
 }
 
@@ -72,6 +83,18 @@ function removeWidget(widgetId: string) {
           <i class="ti ti-plus" /> Add Widget
         </button>
         <div v-else class="add-widget-menu">
+          <div class="menu-section-label">テンプレート</div>
+          <button
+            v-for="tmpl in widgetTemplates"
+            :key="tmpl.id"
+            class="menu-item"
+            :title="tmpl.description"
+            @click="addFromTemplate(tmpl.id)"
+          >
+            <i :class="'ti ' + tmpl.icon" />
+            {{ tmpl.label }}
+          </button>
+          <div class="menu-section-label">カスタム</div>
           <button
             v-for="def in widgetDefinitions"
             :key="def.type"
@@ -82,7 +105,7 @@ function removeWidget(widgetId: string) {
             {{ def.label }}
           </button>
           <button class="menu-item cancel" @click="showAddMenu = false">
-            Cancel
+            キャンセル
           </button>
         </div>
       </div>
@@ -206,5 +229,14 @@ function removeWidget(widgetId: string) {
 .menu-item.cancel {
   justify-content: center;
   opacity: 0.5;
+}
+
+.menu-section-label {
+  padding: 6px 12px 2px;
+  font-size: 0.75em;
+  font-weight: 600;
+  opacity: 0.45;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 </style>

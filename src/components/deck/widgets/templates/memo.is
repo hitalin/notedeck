@@ -1,0 +1,30 @@
+/// メモ帳ウィジェット
+/// テキストを入力すると自動保存されます。
+/// 自由に改造してください！
+
+var memo = ""
+
+@onSave(text) {
+  memo = text
+  Mk:save("memo", memo)
+}
+
+// 保存済みのメモを読み込み
+let saved = Mk:load("memo")
+if (saved != null) {
+  memo = saved
+}
+
+Ui:render([
+  Ui:C:container({
+    children: [
+      Ui:C:mfm({ text: "<center>**メモ帳**</center>" })
+      Ui:C:textInput({
+        default: memo
+        placeholder: "ここにメモを入力..."
+        onInput: onSave
+      })
+      Ui:C:mfm({ text: "<small>$[fg.color=888888 入力すると自動保存されます]</small>" })
+    ]
+  })
+])

@@ -1,0 +1,23 @@
+/// プロフィールウィジェット
+/// 自分のアカウント情報を表示します。
+
+Ui:render([
+  Ui:C:mfm({ text: "<center>$[fg.color=888888 読み込み中...]</center>" })
+])
+
+let me = Mk:api("i", {})
+
+let info = `<center>$[x2 **{me.name}**]
+@{me.username}</center>
+
+ノート数: **{me.notesCount}**
+フォロー: **{me.followingCount}**
+フォロワー: **{me.followersCount}**`
+
+Ui:render([
+  Ui:C:container({
+    children: [
+      Ui:C:mfm({ text: info })
+    ]
+  })
+])

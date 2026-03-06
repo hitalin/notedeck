@@ -250,11 +250,15 @@ export const useDeckStore = defineStore('deck', () => {
     return `wgt-${Date.now()}-${++widgetCounter}`
   }
 
-  function addWidget(columnId: string, type: WidgetType) {
+  function addWidget(
+    columnId: string,
+    type: WidgetType,
+    initialData?: Record<string, unknown>,
+  ) {
     const col = columns.value.find((c) => c.id === columnId)
     if (!col || col.type !== 'widget') return
     if (!col.widgets) col.widgets = []
-    col.widgets.push({ id: genWidgetId(), type, data: {} })
+    col.widgets.push({ id: genWidgetId(), type, data: initialData ?? {} })
     save()
   }
 
