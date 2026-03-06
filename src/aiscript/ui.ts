@@ -75,7 +75,7 @@ function valueToUiComponent(val: Value): UiComponent | null {
   return { id, type: typeVal.value as UiComponent['type'], props, children }
 }
 
-function createUiConstructor(type: string): Value {
+function _createUiConstructor(type: string): Value {
   return values.FN_NATIVE(([propsVal]) => {
     const id = genComponentId()
     const obj = new Map<string, Value>()
@@ -125,32 +125,46 @@ export function createAiScriptUiLib(
   }
 
   // コンポーネントに update メソッドを付与して登録
-  function createComponentValue(type: string, id: string, propsVal: Value): Value {
+  function createComponentValue(
+    type: string,
+    id: string,
+    propsVal: Value,
+  ): Value {
     const obj = new Map<string, Value>()
     obj.set('type', values.STR(type))
     obj.set('id', values.STR(id))
-    obj.set('props', propsVal?.type === 'obj' ? propsVal : values.OBJ(new Map()))
-    obj.set('update', values.FN_NATIVE(([newPropsVal]) => {
-      if (newPropsVal?.type !== 'obj') return
-      const currentProps = obj.get('props')
-      if (currentProps?.type === 'obj') {
-        const currentMap = currentProps.value as Map<string, Value>
-        const newMap = (newPropsVal.value as Map<string, Value>)
-        for (const [k, v] of newMap) {
-          currentMap.set(k, v)
+    obj.set(
+      'props',
+      propsVal?.type === 'obj' ? propsVal : values.OBJ(new Map()),
+    )
+    obj.set(
+      'update',
+      values.FN_NATIVE(([newPropsVal]) => {
+        if (newPropsVal?.type !== 'obj') return
+        const currentProps = obj.get('props')
+        if (currentProps?.type === 'obj') {
+          const currentMap = currentProps.value as Map<string, Value>
+          const newMap = newPropsVal.value as Map<string, Value>
+          for (const [k, v] of newMap) {
+            currentMap.set(k, v)
+          }
+        } else {
+          obj.set('props', newPropsVal)
         }
-      } else {
-        obj.set('props', newPropsVal)
-      }
-      reRender()
-    }))
+        reRender()
+      }),
+    )
     const val = values.OBJ(obj)
     componentRegistry.set(id, val)
     return val
   }
 
   // --- Ui:root ---
-  consts['Ui:root'] = createComponentValue('container', genComponentId(), values.OBJ(new Map()))
+  consts['Ui:root'] = createComponentValue(
+    'container',
+    genComponentId(),
+    values.OBJ(new Map()),
+  )
 
   // --- Ui:render ---
   consts['Ui:render'] = values.FN_NATIVE(([componentsVal]) => {
@@ -161,7 +175,7 @@ export function createAiScriptUiLib(
       const rootObj = rootVal.value as Map<string, Value>
       const propsVal = rootObj.get('props')
       if (propsVal?.type === 'obj') {
-        (propsVal.value as Map<string, Value>).set('children', componentsVal)
+        ;(propsVal.value as Map<string, Value>).set('children', componentsVal)
       }
     }
     // 子コンポーネントをレジストリに登録

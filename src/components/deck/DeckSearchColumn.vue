@@ -89,7 +89,10 @@ function openRegexGuide() {
   }
   if (regexGuideBtnRef.value) {
     const rect = regexGuideBtnRef.value.getBoundingClientRect()
-    regexGuidePos.value = { top: rect.bottom + 4, right: window.innerWidth - rect.right }
+    regexGuidePos.value = {
+      top: rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    }
   }
   showRegexGuide.value = true
   setTimeout(() => {

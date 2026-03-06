@@ -26,10 +26,16 @@ const COMMAND_LABELS: Record<string, string> = {
   'column-next': '次のカラム',
   'column-prev': '前のカラム',
   ...Object.fromEntries(
-    Array.from({ length: 9 }, (_, i) => [`column-${i + 1}`, `カラム ${i + 1} に移動`]),
+    Array.from({ length: 9 }, (_, i) => [
+      `column-${i + 1}`,
+      `カラム ${i + 1} に移動`,
+    ]),
   ),
   ...Object.fromEntries(
-    Array.from({ length: 9 }, (_, i) => [`quick-react-${i + 1}`, `クイックリアクション ${i + 1}`]),
+    Array.from({ length: 9 }, (_, i) => [
+      `quick-react-${i + 1}`,
+      `クイックリアクション ${i + 1}`,
+    ]),
   ),
 }
 

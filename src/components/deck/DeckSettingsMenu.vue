@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { version as appVersion } from '../../../package.json'
 import { computed, nextTick, ref, watch } from 'vue'
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
@@ -8,6 +7,7 @@ import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { highlightCode } from '@/utils/highlight'
+import { version as appVersion } from '../../../package.json'
 
 const props = defineProps<{
   show: boolean
@@ -17,7 +17,8 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const { updateAvailable, updateVersion, isInstalling, installUpdate } = useUpdater()
+const { updateAvailable, updateVersion, isInstalling, installUpdate } =
+  useUpdater()
 
 const deckStore = useDeckStore()
 const themeStore = useThemeStore()

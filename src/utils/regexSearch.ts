@@ -62,10 +62,7 @@ export function filterNotesByRegex(
 }
 
 /** フィルタ条件の種別 */
-export type FilterConditionType =
-  | 'contains_any'
-  | 'contains_all'
-  | 'excludes'
+export type FilterConditionType = 'contains_any' | 'contains_all' | 'excludes'
 
 export const FILTER_CONDITION_LABELS: Record<FilterConditionType, string> = {
   contains_any: 'いずれかを含む',
@@ -84,7 +81,9 @@ function escapeRegex(s: string): string {
 }
 
 /** フィルタ条件から正規表現パターンを生成 */
-export function buildRegexFromConditions(conditions: FilterCondition[]): string {
+export function buildRegexFromConditions(
+  conditions: FilterCondition[],
+): string {
   const parts: string[] = []
 
   for (const cond of conditions) {
@@ -116,8 +115,12 @@ export function buildRegexFromConditions(conditions: FilterCondition[]): string 
   if (parts.length === 0) return ''
 
   // contains_all と excludes は先読みなので先頭に、contains_any は後に
-  const lookaheads = parts.filter((p) => p.startsWith('(?=') || p.startsWith('(?!'))
-  const matches = parts.filter((p) => !p.startsWith('(?=') && !p.startsWith('(?!'))
+  const lookaheads = parts.filter(
+    (p) => p.startsWith('(?=') || p.startsWith('(?!'),
+  )
+  const matches = parts.filter(
+    (p) => !p.startsWith('(?=') && !p.startsWith('(?!'),
+  )
 
   if (lookaheads.length > 0 && matches.length > 0) {
     return `^${lookaheads.join('')}.*${matches.join('.*')}`
@@ -129,7 +132,9 @@ export function buildRegexFromConditions(conditions: FilterCondition[]): string 
 }
 
 /** フィルタ条件から検索ヒント（FTS5 用）を抽出 */
-export function extractHintFromConditions(conditions: FilterCondition[]): string {
+export function extractHintFromConditions(
+  conditions: FilterCondition[],
+): string {
   // contains_any / contains_all のワードから最長のものを返す
   const words: string[] = []
   for (const cond of conditions) {

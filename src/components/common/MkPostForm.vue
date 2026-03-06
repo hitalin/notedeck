@@ -78,13 +78,19 @@ const {
   saveCurrentDraft,
   restoreDraft,
   removeDraft,
-} = usePostFormState(props, { onPosted: (id) => {
-  emit('posted', id)
-  if (props.inline) {
-    // Reset form for next post instead of closing
-    resetForm()
-  }
-} }, fileInput)
+} = usePostFormState(
+  props,
+  {
+    onPosted: (id) => {
+      emit('posted', id)
+      if (props.inline) {
+        // Reset form for next post instead of closing
+        resetForm()
+      }
+    },
+  },
+  fileInput,
+)
 
 // --- Schedule popup ---
 const showSchedulePopup = ref(false)

@@ -121,10 +121,10 @@ export const useThemeStore = defineStore('theme', () => {
         /* ignore */
       }
     }
-    selectedDarkThemeId.value =
-      localStorage.getItem(STORAGE_SELECTED_DARK_KEY)
-    selectedLightThemeId.value =
-      localStorage.getItem(STORAGE_SELECTED_LIGHT_KEY)
+    selectedDarkThemeId.value = localStorage.getItem(STORAGE_SELECTED_DARK_KEY)
+    selectedLightThemeId.value = localStorage.getItem(
+      STORAGE_SELECTED_LIGHT_KEY,
+    )
 
     // Restore custom CSS
     const storedCss = localStorage.getItem(STORAGE_CUSTOM_CSS_KEY)

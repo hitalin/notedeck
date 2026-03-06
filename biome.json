@@ -20,7 +20,7 @@
         "noUnusedImports": "error"
       },
       "style": {
-        "noNonNullAssertion": "warn"
+        "noNonNullAssertion": "error"
       },
       "complexity": {
         "useOptionalChain": "warn"

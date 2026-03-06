@@ -224,9 +224,7 @@ async function connect(useCache = false) {
             const label = NOTIFICATION_LABELS[notification.type]
             if (label) {
               const userName =
-                notification.user?.name ||
-                notification.user?.username ||
-                '誰か'
+                notification.user?.name || notification.user?.username || '誰か'
               const body =
                 notification.type === 'reaction' && notification.reaction
                   ? `${label} ${notification.reaction}`

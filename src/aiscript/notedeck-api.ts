@@ -1,10 +1,9 @@
-import { utils, values } from '@syuilo/aiscript'
 import type { Interpreter } from '@syuilo/aiscript'
+import { utils, values } from '@syuilo/aiscript'
 import type { Value, VFn } from '@syuilo/aiscript/interpreter/value.js'
-import { version as appVersion } from '../../package.json'
-import type { ColumnType } from '@/stores/deck'
 import type { useCommandStore } from '@/commands/registry'
-import type { useDeckStore } from '@/stores/deck'
+import type { ColumnType, useDeckStore } from '@/stores/deck'
+import { version as appVersion } from '../../package.json'
 
 const VALID_COLUMN_TYPES: readonly string[] = [
   'timeline',
@@ -33,7 +32,9 @@ export interface NoteDeckEnvContext {
   registeredCommandIds: string[]
 }
 
-export function createNoteDeckEnv(ctx: NoteDeckEnvContext): Record<string, Value> {
+export function createNoteDeckEnv(
+  ctx: NoteDeckEnvContext,
+): Record<string, Value> {
   const { deckStore, commandStore } = ctx
   const consts: Record<string, Value> = {}
 
@@ -67,7 +68,8 @@ export function createNoteDeckEnv(ctx: NoteDeckEnvContext): Record<string, Value
       type: typeVal.value as ColumnType,
       name: typeof options.name === 'string' ? options.name : null,
       width: typeof options.width === 'number' ? options.width : 380,
-      accountId: typeof options.accountId === 'string' ? options.accountId : null,
+      accountId:
+        typeof options.accountId === 'string' ? options.accountId : null,
     })
     return values.STR(col.id)
   })
@@ -115,9 +117,7 @@ export function createNoteDeckEnv(ctx: NoteDeckEnvContext): Record<string, Value
 /**
  * Cleanup NoteDeck API resources (unregister commands, etc.)
  */
-export function cleanupNoteDeckEnv(
-  ctx: NoteDeckEnvContext,
-): void {
+export function cleanupNoteDeckEnv(ctx: NoteDeckEnvContext): void {
   for (const id of ctx.registeredCommandIds) {
     ctx.commandStore.unregister(id)
   }

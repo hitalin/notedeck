@@ -13,12 +13,12 @@ import { cleanupNoteDeckEnv, createNoteDeckEnv } from '@/aiscript/notedeck-api'
 import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useCommandStore } from '@/commands/registry'
+import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
+import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
-import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
-import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
 import AiScriptUiRenderer from './widgets/AiScriptUiRenderer.vue'
@@ -253,7 +253,11 @@ async function executePlay(detail: FlashDetail) {
   const ndEnv = createNoteDeckEnv(ndCtx)
   currentNdCtx = ndCtx
 
-  const interp = createAiScriptInterpreter({ ...env, ...ndEnv, ...ui }, ioOpts, legacy)
+  const interp = createAiScriptInterpreter(
+    { ...env, ...ndEnv, ...ui },
+    ioOpts,
+    legacy,
+  )
   ndCtx.interpreter = interp
   interpreter.value = interp
   try {

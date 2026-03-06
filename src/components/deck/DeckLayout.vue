@@ -17,11 +17,11 @@ import {
 import { useCommandStore } from '@/commands/registry'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
 import { useNavigation } from '@/composables/useNavigation'
+import { useUpdater } from '@/composables/useUpdater'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { usePluginsStore } from '@/stores/plugins'
-import { useUpdater } from '@/composables/useUpdater'
 import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
   initDesktopNotifications,
@@ -295,7 +295,12 @@ watch(
     const el = columnsRef.value.querySelector(
       `.column-section[data-column-id="${CSS.escape(id)}"]`,
     )
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+    if (el)
+      el.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest',
+      })
   },
 )
 </script>

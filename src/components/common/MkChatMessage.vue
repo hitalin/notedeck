@@ -55,9 +55,12 @@ const groupedReactions = computed(() => {
   const reactions = props.message.reactions
   if (!reactions || reactions.length === 0) return []
 
-  const map = new Map<string, { reaction: string; count: number; users: string[]; reacted: boolean }>()
+  const map = new Map<
+    string,
+    { reaction: string; count: number; users: string[]; reacted: boolean }
+  >()
   for (const r of reactions) {
-    const userName = r.user ? (r.user.name || r.user.username) : ''
+    const userName = r.user ? r.user.name || r.user.username : ''
     const isMe = r.user ? r.user.id === props.myUserId : false
     const existing = map.get(r.reaction)
     if (existing) {

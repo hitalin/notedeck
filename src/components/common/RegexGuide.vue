@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue'
 import {
+  buildRegexFromConditions,
+  FILTER_CONDITION_LABELS,
   type FilterCondition,
   type FilterConditionType,
-  FILTER_CONDITION_LABELS,
-  buildRegexFromConditions,
 } from '@/utils/regexSearch'
 
 const emit = defineEmits<{
@@ -15,7 +15,11 @@ const conditions = reactive<FilterCondition[]>([
   { type: 'contains_any', words: '' },
 ])
 
-const conditionTypes: FilterConditionType[] = ['contains_any', 'contains_all', 'excludes']
+const conditionTypes: FilterConditionType[] = [
+  'contains_any',
+  'contains_all',
+  'excludes',
+]
 
 function cycleType(cond: FilterCondition) {
   const i = conditionTypes.indexOf(cond.type)

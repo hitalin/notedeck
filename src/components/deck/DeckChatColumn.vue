@@ -1,7 +1,18 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
-import type { ChannelSubscription, ChatMessage, NormalizedDriveFile } from '@/adapters/types'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+} from 'vue'
+import type {
+  ChannelSubscription,
+  ChatMessage,
+  NormalizedDriveFile,
+} from '@/adapters/types'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
@@ -215,7 +226,9 @@ function pickEmoji(reaction: string) {
     const start = textarea.selectionStart
     const end = textarea.selectionEnd
     messageText.value =
-      messageText.value.slice(0, start) + reaction + messageText.value.slice(end)
+      messageText.value.slice(0, start) +
+      reaction +
+      messageText.value.slice(end)
     nextTick(() => {
       const pos = start + reaction.length
       textarea.setSelectionRange(pos, pos)
@@ -309,7 +322,11 @@ function pickReaction(reaction: string) {
   reactionTargetId.value = null
 }
 
-function updateMessageReaction(messageId: string, reaction: string, add: boolean) {
+function updateMessageReaction(
+  messageId: string,
+  reaction: string,
+  add: boolean,
+) {
   const acc = account.value
   if (!acc) return
 

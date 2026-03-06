@@ -65,7 +65,7 @@ onMounted(async () => {
     pinnedNoteIds.value = userPinnedNoteIds
     if (userPinnedNoteIds.length > 0) {
       const pinned = await Promise.all(
-        userPinnedNoteIds.map((id) => adapter!.api.getNote(id)),
+        userPinnedNoteIds.map((id) => adapter?.api.getNote(id)),
       )
       pinnedNotes.value = pinned
     }
