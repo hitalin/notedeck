@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, ref } from 'vue'
 import { useDeckStore } from '@/stores/deck'
 
@@ -8,6 +9,7 @@ const props = defineProps<{
   color?: string
   themeVars?: Record<string, string>
   soundEnabled?: boolean
+  webUiUrl?: string
 }>()
 
 const emit = defineEmits<{ 'header-click': [] }>()
@@ -100,6 +102,11 @@ function onDrop(e: DragEvent) {
       <i class="ti ti-grip-vertical grabber" />
 
       <slot name="header-meta" />
+
+      <!-- Open in Web UI -->
+      <button v-if="webUiUrl" class="_button header-btn" title="Web UIで開く" @click.stop="openUrl(webUiUrl)">
+        <i class="ti ti-external-link" />
+      </button>
 
       <!-- Sound mute toggle -->
       <button v-if="soundEnabled" class="_button header-btn" :title="isMuted ? 'Unmute' : 'Mute'" @click.stop="toggleMute">

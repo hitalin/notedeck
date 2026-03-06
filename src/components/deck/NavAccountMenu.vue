@@ -63,22 +63,42 @@ function modeLabel(key: string): string {
         <span>Profile</span>
         <i class="ti ti-user" />
       </button>
-      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/admin`)">
-        <span>Admin</span>
+      <div class="nav-account-menu-divider" />
+      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/my/lists`)">
+        <span>Lists</span>
         <i class="ti ti-external-link" />
       </button>
+      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/my/antennas`)">
+        <span>Antennas</span>
+        <i class="ti ti-external-link" />
+      </button>
+      <div class="nav-account-menu-divider" />
       <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/my/drive`)">
         <span>Drive</span>
+        <i class="ti ti-external-link" />
+      </button>
+      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/settings/mute-block`)">
+        <span>Mute & Block</span>
+        <i class="ti ti-external-link" />
+      </button>
+      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/announcements`)">
+        <span>Announcements</span>
+        <i class="ti ti-external-link" />
+      </button>
+      <div class="nav-account-menu-divider" />
+      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/settings`)">
+        <span>Settings</span>
+        <i class="ti ti-external-link" />
+      </button>
+      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/admin`)">
+        <span>Admin</span>
         <i class="ti ti-external-link" />
       </button>
       <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/pages`)">
         <span>Pages</span>
         <i class="ti ti-external-link" />
       </button>
-      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/settings`)">
-        <span>Settings</span>
-        <i class="ti ti-external-link" />
-      </button>
+      <div class="nav-account-menu-divider" />
       <button class="_button nav-account-menu-item nav-account-logout" @click="emit('logout')">
         <span>Logout</span>
         <i class="ti ti-logout" />

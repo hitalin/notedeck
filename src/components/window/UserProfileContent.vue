@@ -269,8 +269,8 @@ async function handlePosted(editedNoteId?: string) {
 
           <!-- Banner actions -->
           <div class="banner-actions">
-            <button class="_button banner-action-btn" @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}${user.host ? `@${user.host}` : ''}`}`)">
-              <i :class="isOwnProfile ? 'ti ti-pencil' : 'ti ti-dots'" />
+            <button class="_button banner-action-btn" :title="isOwnProfile ? 'Edit profile' : 'Open in Web UI'" @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}${user.host ? `@${user.host}` : ''}`}`)">
+              <i :class="isOwnProfile ? 'ti ti-pencil' : 'ti ti-external-link'" />
             </button>
             <button
               v-if="!isOwnProfile"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import MkNote from '@/components/common/MkNote.vue'
 
@@ -52,6 +52,12 @@ const {
       ),
   },
 })
+
+const webUiUrl = computed(() =>
+  account.value && props.column.antennaId
+    ? `https://${account.value.host}/my/antennas/${props.column.antennaId}`
+    : undefined,
+)
 </script>
 
 <template>
@@ -59,6 +65,7 @@ const {
     :column-id="column.id"
     :title="column.name || 'Antenna'"
     :theme-vars="columnThemeVars"
+    :web-ui-url="webUiUrl"
     sound-enabled
     @header-click="scrollToTop()"
   >
