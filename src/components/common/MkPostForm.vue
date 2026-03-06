@@ -768,16 +768,6 @@ function onKeydown(e: KeyboardEvent) {
             </div>
           </div>
 
-          <!-- Preview -->
-          <button
-            class="_button footer-btn"
-            :class="{ active: showPreview }"
-            title="Preview"
-            @click="showPreview = !showPreview"
-          >
-            <i class="ti ti-eye" />
-          </button>
-
           <!-- Clear -->
           <button
             class="_button footer-btn"
@@ -786,75 +776,6 @@ function onKeydown(e: KeyboardEvent) {
           >
             <i class="ti ti-trash" />
           </button>
-
-          <!-- Draft -->
-          <div class="footer-popup-wrapper">
-            <button
-              class="_button footer-btn"
-              :class="{ active: showDraftMenu }"
-              title="Drafts"
-              @click.stop="toggleDraftMenu"
-            >
-              <i class="ti ti-notes" />
-            </button>
-            <div v-if="showDraftMenu" class="footer-popup draft-menu" @click.stop>
-              <button class="_button draft-menu-item draft-save" @click="saveCurrentDraft">
-                <i class="ti ti-device-floppy" />
-                Save draft
-              </button>
-              <div v-if="drafts.length > 0" class="draft-divider" />
-              <div v-if="drafts.length > 0" class="draft-list">
-                <div
-                  v-for="d in drafts"
-                  :key="d.id"
-                  class="draft-item"
-                >
-                  <button class="_button draft-item-main" @click="restoreDraft(d)">
-                    <span class="draft-item-text">{{ d.text || '(empty)' }}</span>
-                    <span class="draft-item-date">{{ new Date(d.savedAt).toLocaleDateString() }}</span>
-                  </button>
-                  <button
-                    class="_button draft-item-delete"
-                    title="Delete draft"
-                    @click.stop="removeDraft(d.id)"
-                  >
-                    <i class="ti ti-x" />
-                  </button>
-                </div>
-              </div>
-              <div v-else class="draft-empty">No drafts</div>
-            </div>
-          </div>
-
-          <!-- Schedule (only if server supports it) -->
-          <div v-if="supportsScheduledNotes && !editNote" class="footer-popup-wrapper">
-            <button
-              class="_button footer-btn"
-              :class="{ active: !!scheduledAt }"
-              title="Schedule"
-              @click.stop="toggleSchedulePopup"
-            >
-              <i class="ti ti-clock" />
-            </button>
-            <div v-if="showSchedulePopup" class="footer-popup schedule-popup" @click.stop>
-              <div class="schedule-popup-content">
-                <input
-                  type="datetime-local"
-                  class="schedule-datetime-input"
-                  :min="minScheduleDatetime()"
-                  :value="scheduledAt ? scheduledAt.slice(0, 16) : ''"
-                  @change="setSchedule(($event.target as HTMLInputElement).value || null)"
-                />
-                <button
-                  v-if="scheduledAt"
-                  class="_button schedule-clear-btn"
-                  @click="setSchedule(null)"
-                >
-                  Clear schedule
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
         <div class="footer-right">
           <!-- Emoji -->
@@ -1129,6 +1050,80 @@ function onKeydown(e: KeyboardEvent) {
 /* ── Local only button ── */
 .local-only-btn.active {
   color: #ff2a2a;
+}
+
+/* ── More menu ── */
+.more-menu-wrapper {
+  position: relative;
+}
+
+.more-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 10;
+  min-width: 200px;
+  padding: 4px;
+  margin-top: 4px;
+  background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(16px);
+}
+
+.more-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.85em;
+  border-radius: 6px;
+  color: var(--nd-fg);
+  transition: background 0.15s;
+}
+
+.more-menu-item:hover {
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+}
+
+.more-menu-item.active {
+  color: var(--nd-accent);
+}
+
+.more-menu-badge {
+  margin-left: auto;
+  font-size: 0.75em;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--nd-accent);
+  color: var(--nd-fgOnAccent);
+}
+
+.more-menu-divider {
+  height: 1px;
+  margin: 2px 8px;
+  background: var(--nd-divider);
+}
+
+.more-menu-schedule-badge {
+  margin-left: auto;
+  font-size: 0.75em;
+  opacity: 0.7;
+}
+
+.more-menu-draft-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 0 4px 4px;
+  scrollbar-width: none;
+}
+
+.more-menu-schedule-picker {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* ── Note mode button ── */
