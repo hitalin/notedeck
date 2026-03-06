@@ -22,6 +22,7 @@ const emit = defineEmits<{
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showPreview = ref(false)
+const showMoreMenu = ref(false)
 
 const {
   text,
@@ -235,12 +236,19 @@ function pickMfm(fn: (typeof mfmFunctions)[number]) {
 }
 
 // --- Close popups on form click ---
+function toggleMoreMenu() {
+  showMoreMenu.value = !showMoreMenu.value
+  showSchedulePopup.value = false
+  showDraftMenu.value = false
+}
+
 function closePopups() {
   showMentionPopup.value = false
   showEmojiPopup.value = false
   showMfmMenu.value = false
   showSchedulePopup.value = false
   showDraftMenu.value = false
+  showMoreMenu.value = false
 }
 
 onMounted(async () => {
@@ -394,6 +402,96 @@ function onKeydown(e: KeyboardEvent) {
               <path v-if="localOnly" d="M3 3l18 18" />
             </svg>
           </button>
+
+          <!-- More menu (preview, drafts, schedule) -->
+          <div class="more-menu-wrapper">
+            <button
+              class="_button header-btn"
+              title="More"
+              @click.stop="toggleMoreMenu"
+            >
+              <i class="ti ti-dots" />
+            </button>
+            <div v-if="showMoreMenu" class="more-menu" @click.stop>
+              <!-- Preview -->
+              <button
+                class="_button more-menu-item"
+                :class="{ active: showPreview }"
+                @click="showPreview = !showPreview; showMoreMenu = false"
+              >
+                <i class="ti ti-eye" />
+                Preview
+              </button>
+              <!-- Draft save -->
+              <button
+                class="_button more-menu-item"
+                @click="saveCurrentDraft(); showMoreMenu = false"
+              >
+                <i class="ti ti-device-floppy" />
+                Save draft
+              </button>
+              <!-- Draft list -->
+              <button
+                class="_button more-menu-item"
+                :class="{ active: showDraftMenu }"
+                @click.stop="showDraftMenu = !showDraftMenu"
+              >
+                <i class="ti ti-notes" />
+                Drafts
+                <span v-if="drafts.length > 0" class="more-menu-badge">{{ drafts.length }}</span>
+              </button>
+              <!-- Draft list popup (nested) -->
+              <div v-if="showDraftMenu" class="more-menu-draft-list">
+                <div
+                  v-for="d in drafts"
+                  :key="d.id"
+                  class="draft-item"
+                >
+                  <button class="_button draft-item-main" @click="restoreDraft(d); showMoreMenu = false">
+                    <span class="draft-item-text">{{ d.text || '(empty)' }}</span>
+                    <span class="draft-item-date">{{ new Date(d.savedAt).toLocaleDateString() }}</span>
+                  </button>
+                  <button
+                    class="_button draft-item-delete"
+                    title="Delete draft"
+                    @click.stop="removeDraft(d.id)"
+                  >
+                    <i class="ti ti-x" />
+                  </button>
+                </div>
+                <div v-if="drafts.length === 0" class="draft-empty">No drafts</div>
+              </div>
+              <!-- Schedule (only if server supports it) -->
+              <template v-if="supportsScheduledNotes && !editNote">
+                <div class="more-menu-divider" />
+                <button
+                  class="_button more-menu-item"
+                  :class="{ active: !!scheduledAt }"
+                  @click.stop="showSchedulePopup = !showSchedulePopup"
+                >
+                  <i class="ti ti-clock" />
+                  Schedule
+                  <span v-if="scheduledAt" class="more-menu-schedule-badge">{{ formatScheduledDate(scheduledAt) }}</span>
+                </button>
+                <div v-if="showSchedulePopup" class="more-menu-schedule-picker" @click.stop>
+                  <input
+                    type="datetime-local"
+                    class="schedule-datetime-input"
+                    :min="minScheduleDatetime()"
+                    :value="scheduledAt ? scheduledAt.slice(0, 16) : ''"
+                    @change="setSchedule(($event.target as HTMLInputElement).value || null)"
+                  />
+                  <button
+                    v-if="scheduledAt"
+                    class="_button schedule-clear-btn"
+                    @click="setSchedule(null)"
+                  >
+                    Clear schedule
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
 
           <!-- Submit -->
           <button
