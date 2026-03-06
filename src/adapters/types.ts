@@ -103,13 +103,13 @@ export interface Channel {
 }
 
 export interface ChatMessageReaction {
-  user: {
+  user?: {
     id: string
     name?: string
     username: string
     host?: string
     avatarUrl?: string
-  }
+  } | null
   reaction: string
 }
 
