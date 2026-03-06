@@ -105,7 +105,7 @@ function hostname(url: string): string {
           :width="data.player.width ?? 480"
           :height="data.player.height ?? 270"
           frameborder="0"
-          allow="autoplay; encrypted-media"
+          :allow="data.player.allow.length ? data.player.allow.join('; ') : 'autoplay; encrypted-media'"
           sandbox="allow-scripts allow-same-origin allow-popups"
           allowfullscreen
         />

@@ -2,6 +2,7 @@ export interface Player {
   url: string
   width: number | null
   height: number | null
+  allow: string[]
 }
 
 export interface SummaryData {

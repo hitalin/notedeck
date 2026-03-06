@@ -71,6 +71,7 @@ pub fn parse_html(html: &str, final_url: &str) -> SummaryData {
                 url: video_url,
                 width,
                 height,
+                allow: Vec::new(),
             }
         });
 

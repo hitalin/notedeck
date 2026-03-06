@@ -1170,20 +1170,19 @@ pub async fn fetch_ogp(
         return Err(NoteDeckError::InvalidInput("URL too long".to_string()));
     }
 
-    // Try server's summary proxy if account context is available
-    if let Some(ref aid) = account_id {
+    // With server context: plugins → server → direct HTML parse
+    // Without: plugins → direct HTML parse
+    let result = if let Some(ref aid) = account_id {
         if let Ok((host, token)) = get_credentials(&db, aid) {
-            if let Ok(data) = ogp_cache.get_ogp_via_server(&url, &host, &token).await {
-                return Ok(data);
-            }
+            ogp_cache.get_ogp_via_server(&url, &host, &token).await
+        } else {
+            ogp_cache.get_ogp(&url).await
         }
-    }
+    } else {
+        ogp_cache.get_ogp(&url).await
+    };
 
-    // Fallback to self-fetch
-    ogp_cache
-        .get_ogp(&url)
-        .await
-        .map_err(|e| NoteDeckError::InvalidInput(format!("OGP: {e}")))
+    result.map_err(|e| NoteDeckError::InvalidInput(format!("OGP: {e}")))
 }
 
 // --- Chat ---

@@ -19,6 +19,8 @@ pub struct Player {
     pub url: String,
     pub width: Option<u32>,
     pub height: Option<u32>,
+    #[serde(default)]
+    pub allow: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,10 +44,18 @@ pub type OgpData = SummaryData;
 impl SummaryData {
     /// Convert from a DB row into SummaryData.
     pub fn from_row(row: &SummaryRow) -> Self {
-        let player = row.player_url.as_ref().map(|pu| Player {
-            url: pu.clone(),
-            width: row.player_width,
-            height: row.player_height,
+        let player = row.player_url.as_ref().map(|pu| {
+            let allow: Vec<String> = row
+                .player_allow
+                .as_deref()
+                .and_then(|j| serde_json::from_str(j).ok())
+                .unwrap_or_default();
+            Player {
+                url: pu.clone(),
+                width: row.player_width,
+                height: row.player_height,
+                allow,
+            }
         });
         let medias: Vec<String> = row
             .medias_json
@@ -82,6 +92,13 @@ impl SummaryData {
             player_url: self.player.as_ref().map(|p| p.url.clone()),
             player_width: self.player.as_ref().and_then(|p| p.width),
             player_height: self.player.as_ref().and_then(|p| p.height),
+            player_allow: self.player.as_ref().and_then(|p| {
+                if p.allow.is_empty() {
+                    None
+                } else {
+                    serde_json::to_string(&p.allow).ok()
+                }
+            }),
             final_url: Some(self.url.clone()),
             sensitive: self.sensitive,
             medias_json,
@@ -140,12 +157,13 @@ impl OgpCache {
         }
     }
 
-    /// Primary fetch: direct HTTP.
+    /// Fetch without server context (plugins → direct HTML parse).
     pub async fn get_ogp(&self, url: &str) -> Result<SummaryData, String> {
-        self.cached_or_fetch(url, |this| Box::pin(this.resolve(url.to_string()))).await
+        self.cached_or_fetch(url, |this| Box::pin(this.resolve(url.to_string(), None))).await
     }
 
-    /// Fetch via Misskey server proxy, falling back to direct.
+    /// Fetch with server context.
+    /// Priority: plugins → server `/api/url` → direct HTML parse.
     pub async fn get_ogp_via_server(
         &self,
         url: &str,
@@ -156,12 +174,7 @@ impl OgpCache {
         let token = token.to_string();
         let url_owned = url.to_string();
         self.cached_or_fetch(url, |this| {
-            Box::pin(async move {
-                match this.fetch_from_server(&url_owned, &host, &token).await {
-                    Ok(data) => Ok(data),
-                    Err(_) => this.resolve(url_owned).await,
-                }
-            })
+            Box::pin(this.resolve(url_owned, Some((host, token))))
         }).await
     }
 
@@ -279,15 +292,13 @@ impl OgpCache {
             .map_err(|e| format!("Server OGP parse failed: {e}"))?;
 
         let player = server_data.player.and_then(|p| {
-            if p.url.is_empty() {
-                None
-            } else {
-                Some(Player {
-                    url: p.url,
-                    width: p.width,
-                    height: p.height,
-                })
-            }
+            let player_url = p.url.filter(|u| !u.is_empty())?;
+            Some(Player {
+                url: player_url,
+                width: p.width,
+                height: p.height,
+                allow: p.allow.unwrap_or_default(),
+            })
         });
 
         Ok(SummaryData {
@@ -295,7 +306,7 @@ impl OgpCache {
             description: server_data.description,
             icon: server_data.icon,
             sitename: server_data.sitename,
-            thumbnail: server_data.thumbnail.filter(|u| u.starts_with("https://")),
+            thumbnail: server_data.thumbnail,
             medias: Vec::new(),
             player,
             url: server_data.url.unwrap_or_else(|| url.to_string()),
@@ -303,8 +314,18 @@ impl OgpCache {
         })
     }
 
-    /// Try plugins first, then fall back to generic HTML fetch + parse.
-    async fn resolve(&self, url: String) -> Result<SummaryData, String> {
+    /// Resolve URL summary with priority: plugins → server → direct HTML parse.
+    ///
+    /// Plugins are tried first because they are only registered when they produce
+    /// better results than the server (e.g. richer oEmbed data).
+    /// The server's `/api/url` endpoint is used next — it is fast and already
+    /// cached server-side, so we prefer it over a direct HTTP fetch.
+    async fn resolve(
+        &self,
+        url: String,
+        server: Option<(String, String)>,
+    ) -> Result<SummaryData, String> {
+        // 1. Plugins (only registered when they beat the server)
         if let Ok(parsed) = url::Url::parse(&url) {
             for plugin in plugins::all() {
                 if plugin.test(&parsed) {
@@ -315,6 +336,15 @@ impl OgpCache {
                 }
             }
         }
+
+        // 2. Server summary (fast, already cached on server)
+        if let Some((host, token)) = server {
+            if let Ok(data) = self.fetch_from_server(&url, &host, &token).await {
+                return Ok(data);
+            }
+        }
+
+        // 3. Direct HTML fetch + parse (fallback)
         self.fetch_and_parse(&url).await
     }
 
@@ -373,7 +403,8 @@ struct ServerUrlResponse {
 
 #[derive(Debug, Deserialize)]
 struct ServerPlayer {
-    url: String,
+    url: Option<String>,
     width: Option<u32>,
     height: Option<u32>,
+    allow: Option<Vec<String>>,
 }
