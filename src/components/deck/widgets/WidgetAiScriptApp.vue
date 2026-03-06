@@ -9,6 +9,8 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useAccountsStore } from '@/stores/accounts'
 import type { WidgetConfig } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
+import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import AiScriptEditor from './AiScriptEditor.vue'
 import AiScriptUiRenderer from './AiScriptUiRenderer.vue'
 
@@ -31,6 +33,8 @@ const error = ref<string | null>(null)
 const running = ref(false)
 const showEditor = ref(!code.value)
 const interpreter = ref<Interpreter | null>(null)
+const toastRef = ref<InstanceType<typeof AiScriptToast> | null>(null)
+const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
 
 // Persist code on change
 let saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -68,7 +72,15 @@ async function run() {
   }
 
   const env = createAiScriptEnv(
-    { api: apiOption, storagePrefix: `app-${props.widget.id}` },
+    {
+      api: apiOption,
+      storagePrefix: `app-${props.widget.id}`,
+      onDialog: (title, text, type) =>
+        dialogRef.value?.showDialog(title, text, type) ?? Promise.resolve(),
+      onConfirm: (title, text) =>
+        dialogRef.value?.showConfirm(title, text) ?? Promise.resolve(false),
+      onToast: (text, type) => toastRef.value?.show(text, type),
+    },
     {
       THIS_ID: props.widget.id,
       THIS_URL: '',
@@ -117,6 +129,8 @@ onMounted(() => {
 
 <template>
   <div class="widget-app">
+    <AiScriptToast ref="toastRef" />
+    <AiScriptDialog ref="dialogRef" />
     <div class="app-toolbar">
       <button class="tool-btn" @click="showEditor = !showEditor">
         <i :class="showEditor ? 'ti ti-chevron-up' : 'ti ti-code'" />

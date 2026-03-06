@@ -7,13 +7,17 @@ export type UiComponentType =
   | 'text'
   | 'mfm'
   | 'button'
+  | 'buttons'
   | 'textInput'
+  | 'textarea'
   | 'numberInput'
   | 'switch'
   | 'select'
   | 'container'
   | 'folder'
   | 'postFormButton'
+  | 'postForm'
+  | 'spacer'
 
 export interface UiComponent {
   id: string
@@ -134,13 +138,17 @@ export function createAiScriptUiLib(
     'text',
     'mfm',
     'button',
+    'buttons',
     'textInput',
+    'textarea',
     'numberInput',
     'switch',
     'select',
     'container',
     'folder',
     'postFormButton',
+    'postForm',
+    'spacer',
   ]
   for (const type of uiTypes) {
     consts[`Ui:C:${type}`] = createUiConstructor(type)

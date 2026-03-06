@@ -10,6 +10,8 @@ import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
+import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
+import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import DeckColumn from './DeckColumn.vue'
 import AiScriptEditor from './widgets/AiScriptEditor.vue'
 import AiScriptUiRenderer from './widgets/AiScriptUiRenderer.vue'
@@ -42,6 +44,8 @@ const uiComponents = ref<UiComponent[]>([])
 const error = ref<string | null>(null)
 const running = ref(false)
 const interpreter = ref<Interpreter | null>(null)
+const toastRef = ref<InstanceType<typeof AiScriptToast> | null>(null)
+const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
 
 // Split ratio (editor height fraction)
 const editorRatio = ref(0.6)
@@ -84,7 +88,15 @@ async function run() {
   }
 
   const env = createAiScriptEnv(
-    { api: apiOption, storagePrefix: `col-aiscript-${props.column.id}` },
+    {
+      api: apiOption,
+      storagePrefix: `col-aiscript-${props.column.id}`,
+      onDialog: (title, text, type) =>
+        dialogRef.value?.showDialog(title, text, type) ?? Promise.resolve(),
+      onConfirm: (title, text) =>
+        dialogRef.value?.showConfirm(title, text) ?? Promise.resolve(false),
+      onToast: (text, type) => toastRef.value?.show(text, type),
+    },
     {
       THIS_ID: props.column.id,
       THIS_URL: '',
@@ -178,6 +190,8 @@ onUnmounted(() => {
       </button>
     </template>
 
+    <AiScriptToast ref="toastRef" />
+    <AiScriptDialog ref="dialogRef" />
     <div ref="bodyRef" class="ais-col-body" @keydown="onKeydown">
       <div
         class="editor-panel"

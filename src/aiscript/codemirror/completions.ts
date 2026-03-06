@@ -30,19 +30,24 @@ const keywordCompletions: Completion[] = [
 
 // Namespace:member built-in functions
 const builtins: Record<string, string[]> = {
-  Mk: ['dialog', 'confirm', 'api', 'save', 'load', 'toast', 'url', 'nyaize'],
+  Mk: ['dialog', 'confirm', 'api', 'save', 'load', 'remove', 'toast', 'url', 'nyaize'],
   Ui: [
     'render',
     'get',
     'C:text',
     'C:mfm',
     'C:button',
+    'C:buttons',
     'C:textInput',
+    'C:textarea',
     'C:numberInput',
     'C:switch',
     'C:select',
     'C:container',
     'C:folder',
+    'C:postFormButton',
+    'C:postForm',
+    'C:spacer',
   ],
   Core: ['v', 'type', 'to_str', 'sleep', 'abort', 'range'],
   Math: [

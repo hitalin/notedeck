@@ -34,6 +34,19 @@ export interface AiScriptEnvOptions {
   api?: (endpoint: string, params: Record<string, unknown>) => Promise<unknown>
   /** localStorage のキー prefix（Mk:save/Mk:load 用） */
   storagePrefix?: string
+  /** Mk:dialog のUI実装 */
+  onDialog?: (
+    title: string,
+    text: string,
+    type: 'info' | 'success' | 'warning' | 'error',
+  ) => Promise<void>
+  /** Mk:confirm のUI実装 */
+  onConfirm?: (title: string, text: string) => Promise<boolean>
+  /** Mk:toast のUI実装 */
+  onToast?: (
+    text: string,
+    type: 'info' | 'success' | 'warning' | 'error',
+  ) => void
 }
 
 export interface AiScriptGlobalConstants {
@@ -61,10 +74,19 @@ export function createAiScriptEnv(
 
   // --- Mk:dialog ---
   consts['Mk:dialog'] = values.FN_NATIVE(
-    async ([titleVal, textVal, _typeVal]) => {
+    async ([titleVal, textVal, typeVal]) => {
       const title = titleVal?.type === 'str' ? titleVal.value : ''
       const text = textVal?.type === 'str' ? textVal.value : ''
-      window.alert(`${title}\n${text}`)
+      const type = (typeVal?.type === 'str' ? typeVal.value : 'info') as
+        | 'info'
+        | 'success'
+        | 'warning'
+        | 'error'
+      if (options.onDialog) {
+        await options.onDialog(title, text, type)
+      } else {
+        window.alert(`${title}\n${text}`)
+      }
       return values.NULL
     },
   )
@@ -73,6 +95,10 @@ export function createAiScriptEnv(
   consts['Mk:confirm'] = values.FN_NATIVE(async ([titleVal, textVal]) => {
     const title = titleVal?.type === 'str' ? titleVal.value : ''
     const text = textVal?.type === 'str' ? textVal.value : ''
+    if (options.onConfirm) {
+      const result = await options.onConfirm(title, text)
+      return values.BOOL(result)
+    }
     const result = window.confirm(`${title}\n${text}`)
     return values.BOOL(result)
   })
@@ -116,14 +142,23 @@ export function createAiScriptEnv(
     }
   })
 
+  // --- Mk:remove ---
+  consts['Mk:remove'] = values.FN_NATIVE(([keyVal]) => {
+    if (keyVal?.type !== 'str') return
+    try {
+      localStorage.removeItem(storageKey(keyVal.value))
+    } catch {
+      // ignore storage errors
+    }
+  })
+
   // --- Mk:toast ---
   consts['Mk:toast'] = values.FN_NATIVE(([textVal, typeVal]) => {
     const text = textVal?.type === 'str' ? textVal.value : ''
     const type = typeVal?.type === 'str' ? typeVal.value : 'info'
-    // 将来的にトースト UI に置き換え
-    if (type === 'error') console.error(`[AiScript toast] ${text}`)
-    else if (type === 'warning') console.warn(`[AiScript toast] ${text}`)
-    else console.info(`[AiScript toast] ${text}`)
+    if (options.onToast) {
+      options.onToast(text, type as 'info' | 'success' | 'warning' | 'error')
+    }
   })
 
   // --- Mk:url ---

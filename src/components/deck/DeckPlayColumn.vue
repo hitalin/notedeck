@@ -14,6 +14,8 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
+import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
+import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
 import AiScriptUiRenderer from './widgets/AiScriptUiRenderer.vue'
@@ -130,6 +132,8 @@ const uiComponents = ref<UiComponent[]>([])
 const consoleOutput = ref<{ text: string; isError: boolean }[]>([])
 const runError = ref<string | null>(null)
 const running = ref(false)
+const toastRef = ref<InstanceType<typeof AiScriptToast> | null>(null)
+const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
 const interpreter = ref<Interpreter | null>(null)
 
 // --- Open Play (show ready screen) ---
@@ -201,7 +205,15 @@ async function executePlay(detail: FlashDetail) {
   }
 
   const env = createAiScriptEnv(
-    { api: apiOption, storagePrefix: `play-${detail.id}` },
+    {
+      api: apiOption,
+      storagePrefix: `play-${detail.id}`,
+      onDialog: (title, text, type) =>
+        dialogRef.value?.showDialog(title, text, type) ?? Promise.resolve(),
+      onConfirm: (title, text) =>
+        dialogRef.value?.showConfirm(title, text) ?? Promise.resolve(false),
+      onToast: (text, type) => toastRef.value?.show(text, type),
+    },
     {
       THIS_ID: detail.id,
       THIS_URL: `${serverUrl.value}/play/${detail.id}`,
@@ -276,6 +288,8 @@ function reload() {
 
 <template>
   <DeckColumn :column-id="column.id" :title="column.name ?? 'Play'" :theme-vars="columnThemeVars">
+    <AiScriptToast ref="toastRef" />
+    <AiScriptDialog ref="dialogRef" />
     <template #header-icon>
       <i class="ti ti-player-play tl-header-icon" />
     </template>

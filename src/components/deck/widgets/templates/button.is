@@ -1,6 +1,6 @@
 /// ボタンウィジェット
 /// ボタンを押すとアクションを実行します。
-/// Mk:api を使って好きな API を呼べます。
+/// Mk:dialog や Mk:toast を使ったデモです。
 
 var count = 0
 
@@ -15,7 +15,19 @@ var count = 0
           rounded: true
           onClick: @() {
             count = count + 1
+            Mk:toast(`{count} 回クリックされました`, "info")
             render()
+          }
+        })
+        Ui:C:button({
+          text: "リセット"
+          onClick: @() {
+            let ok = Mk:confirm("リセット", "カウントを0に戻しますか？")
+            if (ok) {
+              count = 0
+              Mk:toast("リセットしました", "success")
+              render()
+            }
           }
         })
         Ui:C:mfm({ text: `<center>$[fg.color=888888 クリック回数: **{count}**]</center>` })

@@ -161,6 +161,33 @@ async function handlePostFormButton(comp: UiComponent) {
         />
       </details>
 
+      <!-- buttons (horizontal button group) -->
+      <div v-else-if="comp.type === 'buttons'" class="ais-buttons">
+        <button
+          v-for="(btn, idx) in (comp.props.buttons as { text: string; onClick?: unknown; disabled?: boolean }[]) ?? []"
+          :key="idx"
+          class="ais-button"
+          :disabled="!!btn.disabled"
+          @click="callHandler(btn.onClick, interpreter)"
+        >
+          {{ btn.text }}
+        </button>
+      </div>
+
+      <!-- textarea -->
+      <textarea
+        v-else-if="comp.type === 'textarea'"
+        class="ais-textarea"
+        :placeholder="(comp.props.placeholder as string) ?? ''"
+        :value="(comp.props.default as string) ?? ''"
+        @input="
+          (e) => {
+            const val = (e.target as HTMLTextAreaElement).value
+            callHandler(comp.props.onInput, interpreter, { type: 'str', value: val } as Value)
+          }
+        "
+      />
+
       <!-- postFormButton (Play-specific: opens share page in browser) -->
       <button
         v-else-if="comp.type === 'postFormButton'"
@@ -170,6 +197,27 @@ async function handlePostFormButton(comp: UiComponent) {
       >
         {{ comp.props.text ?? 'Post' }}
       </button>
+
+      <!-- postForm (embedded post form) -->
+      <div v-else-if="comp.type === 'postForm'" class="ais-post-form">
+        <textarea
+          class="ais-textarea"
+          :placeholder="(comp.props.placeholder as string) ?? ''"
+          @input="
+            (e) => {
+              const val = (e.target as HTMLTextAreaElement).value
+              callHandler(comp.props.onInput, interpreter, { type: 'str', value: val } as Value)
+            }
+          "
+        />
+      </div>
+
+      <!-- spacer -->
+      <div
+        v-else-if="comp.type === 'spacer'"
+        class="ais-spacer"
+        :style="{ height: `${(comp.props.size as number) ?? 16}px` }"
+      />
     </template>
   </div>
 </template>
@@ -215,6 +263,12 @@ async function handlePostFormButton(comp: UiComponent) {
   cursor: not-allowed;
 }
 
+.ais-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .ais-text-input,
 .ais-number-input,
 .ais-select {
@@ -228,9 +282,24 @@ async function handlePostFormButton(comp: UiComponent) {
   transition: box-shadow 0.15s;
 }
 
+.ais-textarea {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  font-size: 0.85em;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+  min-height: 60px;
+  transition: box-shadow 0.15s;
+}
+
 .ais-text-input:focus,
 .ais-number-input:focus,
-.ais-select:focus {
+.ais-select:focus,
+.ais-textarea:focus {
   box-shadow: 0 0 0 2px var(--nd-accent);
 }
 
@@ -282,5 +351,15 @@ async function handlePostFormButton(comp: UiComponent) {
 
 .ais-post-form-button.rounded {
   border-radius: 999px;
+}
+
+.ais-post-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ais-spacer {
+  flex-shrink: 0;
 }
 </style>
