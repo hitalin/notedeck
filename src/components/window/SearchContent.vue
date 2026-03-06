@@ -4,10 +4,16 @@ import { defineAsyncComponent, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
+import RegexGuide from '@/components/common/RegexGuide.vue'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNoteActions } from '@/composables/useNoteActions'
 import { useAccountsStore } from '@/stores/accounts'
 import { noteStore } from '@/stores/notes'
+import {
+  extractLiterals,
+  filterNotesByRegex,
+  isValidRegex,
+} from '@/utils/regexSearch'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -36,6 +42,51 @@ const confirmedQuery = ref('')
 const error = ref<string | null>(null)
 const scroller = ref<InstanceType<typeof DynamicScroller> | null>(null)
 
+// Regex mode
+const regexMode = ref(false)
+const showRegexGuide = ref(false)
+const regexError = ref<string | null>(null)
+
+const regexGuidePos = ref({ top: 0, right: 0 })
+const regexGuideBtnRef = ref<HTMLElement | null>(null)
+
+function toggleRegexMode() {
+  regexMode.value = !regexMode.value
+  showRegexGuide.value = false
+  regexError.value = null
+}
+
+function openRegexGuide() {
+  if (showRegexGuide.value) {
+    showRegexGuide.value = false
+    return
+  }
+  if (regexGuideBtnRef.value) {
+    const rect = regexGuideBtnRef.value.getBoundingClientRect()
+    regexGuidePos.value = { top: rect.bottom + 4, right: window.innerWidth - rect.right }
+  }
+  showRegexGuide.value = true
+  setTimeout(() => {
+    document.addEventListener('click', closeRegexGuide, { once: true })
+  }, 0)
+}
+
+function closeRegexGuide() {
+  showRegexGuide.value = false
+}
+
+function onFilterApply(pattern: string) {
+  searchQuery.value = pattern
+  showRegexGuide.value = false
+  searchInput.value?.focus()
+}
+
+/** 正規表現モード時、検索クエリを取得（リテラル抽出 or 空） */
+function getSearchHint(q: string): string {
+  if (!regexMode.value) return q
+  return extractLiterals(q)
+}
+
 // Per-account search progress
 const searchProgress = ref<{ host: string; done: boolean }[]>([])
 
@@ -62,21 +113,28 @@ async function searchLocalAll(q: string) {
   const accounts = accountsStore.accounts
   if (accounts.length === 0) return
 
+  const hint = getSearchHint(q)
+  if (!hint) return
+
   const results = await Promise.allSettled(
     accounts.map((acc) =>
       invoke<NormalizedNote[]>('api_search_notes_local', {
         accountId: acc.id,
-        query: q,
-        limit: 10,
+        query: hint,
+        limit: regexMode.value ? 50 : 10,
       }),
     ),
   )
 
   if (searchQuery.value.trim() !== q) return
 
-  const allNotes: NormalizedNote[] = []
+  let allNotes: NormalizedNote[] = []
   for (const r of results) {
     if (r.status === 'fulfilled') allNotes.push(...r.value)
+  }
+
+  if (regexMode.value) {
+    allNotes = filterNotesByRegex(allNotes, q)
   }
 
   notes.value = mergeNotes([], allNotes)
@@ -86,9 +144,14 @@ async function searchLocalAll(q: string) {
 watch(searchQuery, (val) => {
   const q = val.trim()
   if (debounceTimer) clearTimeout(debounceTimer)
+  regexError.value = null
   if (!q) {
     notes.value = []
     isPreview.value = false
+    return
+  }
+  if (regexMode.value && !isValidRegex(q)) {
+    regexError.value = '無効な正規表現です'
     return
   }
   if (q === confirmedQuery.value) return
@@ -116,7 +179,13 @@ async function performSearch() {
   if (!q) return
   if (debounceTimer) clearTimeout(debounceTimer)
 
+  if (regexMode.value && !isValidRegex(q)) {
+    regexError.value = '無効な正規表現です'
+    return
+  }
+
   error.value = null
+  regexError.value = null
   isLoading.value = true
   isPreview.value = false
   confirmedQuery.value = q
@@ -128,32 +197,40 @@ async function performSearch() {
   const localNotes = notes.value
 
   // Server search (all accounts in parallel) with progress
+  const hint = getSearchHint(q)
   const accounts = accountsStore.accounts
   searchProgress.value = accounts.map((acc) => ({
     host: acc.host,
     done: false,
   }))
 
-  const results = await Promise.allSettled(
-    accounts.map(async (acc, i) => {
-      const adapter = await getOrCreate(acc.id)
-      if (!adapter) return []
-      try {
-        return await adapter.api.searchNotes(q)
-      } finally {
-        searchProgress.value = searchProgress.value.map((p, j) =>
-          j === i ? { ...p, done: true } : p,
-        )
-      }
-    }),
-  )
+  if (hint) {
+    const results = await Promise.allSettled(
+      accounts.map(async (acc, i) => {
+        const adapter = await getOrCreate(acc.id)
+        if (!adapter) return []
+        try {
+          return await adapter.api.searchNotes(hint)
+        } finally {
+          searchProgress.value = searchProgress.value.map((p, j) =>
+            j === i ? { ...p, done: true } : p,
+          )
+        }
+      }),
+    )
 
-  const serverNotes: NormalizedNote[] = []
-  for (const r of results) {
-    if (r.status === 'fulfilled') serverNotes.push(...r.value)
+    let serverNotes: NormalizedNote[] = []
+    for (const r of results) {
+      if (r.status === 'fulfilled') serverNotes.push(...r.value)
+    }
+
+    if (regexMode.value) {
+      serverNotes = filterNotesByRegex(serverNotes, q)
+    }
+
+    notes.value = mergeNotes(localNotes, serverNotes)
   }
 
-  notes.value = mergeNotes(localNotes, serverNotes)
   updateLastNoteIds(notes.value)
 
   if (notes.value.length === 0) {
@@ -169,6 +246,9 @@ async function loadMore() {
   const q = confirmedQuery.value
   if (!q) return
 
+  const hint = getSearchHint(q)
+  if (!hint) return
+
   isLoading.value = true
   const accounts = accountsStore.accounts
 
@@ -178,13 +258,17 @@ async function loadMore() {
       if (!adapter) return []
       const untilId = lastNoteIds.get(acc.id)
       if (!untilId) return []
-      return adapter.api.searchNotes(q, { untilId })
+      return adapter.api.searchNotes(hint, { untilId })
     }),
   )
 
-  const olderNotes: NormalizedNote[] = []
+  let olderNotes: NormalizedNote[] = []
   for (const r of results) {
     if (r.status === 'fulfilled') olderNotes.push(...r.value)
+  }
+
+  if (regexMode.value) {
+    olderNotes = filterNotesByRegex(olderNotes, q)
   }
 
   if (olderNotes.length > 0) {
@@ -254,6 +338,7 @@ function onKeydown(e: KeyboardEvent) {
 
 onUnmounted(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
+  document.removeEventListener('click', closeRegexGuide)
 })
 
 // Auto-focus the search input
@@ -268,10 +353,31 @@ setTimeout(() => searchInput.value?.focus(), 100)
         ref="searchInput"
         v-model="searchQuery"
         class="search-input"
+        :class="{ 'regex-input': regexMode, 'regex-invalid': regexMode && regexError }"
         type="text"
-        placeholder="全アカウントを検索..."
+        :placeholder="regexMode ? '正規表現で検索...' : '全アカウントを検索...'"
         @keydown="onKeydown"
       />
+      <div class="regex-controls">
+        <button
+          class="_button regex-toggle"
+          :class="{ active: regexMode }"
+          title="正規表現モード"
+          @click="toggleRegexMode"
+        >
+          <span class="regex-icon">.*</span>
+        </button>
+        <button
+          v-if="regexMode"
+          ref="regexGuideBtnRef"
+          class="_button regex-guide-btn"
+          :class="{ active: showRegexGuide }"
+          title="正規表現ガイド"
+          @click.stop="openRegexGuide"
+        >
+          <i class="ti ti-help" />
+        </button>
+      </div>
       <button
         v-if="searchQuery"
         class="_button search-clear"
@@ -282,12 +388,29 @@ setTimeout(() => searchInput.value?.focus(), 100)
       </button>
       <button
         class="_button search-btn"
-        :disabled="!searchQuery.trim() || isLoading"
+        :disabled="!searchQuery.trim() || isLoading || (regexMode && !!regexError)"
         @click="performSearch"
       >
         <i class="ti ti-arrow-right" />
       </button>
     </div>
+
+    <div v-if="regexError" class="regex-error">
+      {{ regexError }}
+    </div>
+
+    <Teleport to="body">
+      <Transition name="nd-regex-guide">
+        <div
+          v-if="showRegexGuide"
+          class="nd-regex-guide-popup"
+          :style="{ top: regexGuidePos.top + 'px', right: regexGuidePos.right + 'px' }"
+          @click.stop
+        >
+          <RegexGuide @select="onFilterApply" />
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Per-account progress bar -->
     <div v-if="searchProgress.length > 0" class="search-progress">
@@ -411,6 +534,75 @@ setTimeout(() => searchInput.value?.focus(), 100)
   opacity: 0.4;
 }
 
+.regex-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.regex-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  opacity: 0.35;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.regex-toggle:hover {
+  background: var(--nd-buttonHoverBg);
+  opacity: 0.7;
+}
+
+.regex-toggle.active {
+  opacity: 1;
+  color: var(--nd-accent);
+  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+}
+
+.regex-icon {
+  font-family: monospace;
+  font-size: 0.8em;
+  font-weight: 700;
+}
+
+.regex-guide-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  opacity: 0.35;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.regex-guide-btn:hover,
+.regex-guide-btn.active {
+  background: var(--nd-buttonHoverBg);
+  opacity: 0.7;
+}
+
+.regex-input {
+  font-family: monospace;
+}
+
+.regex-invalid {
+  box-shadow: 0 0 0 2px var(--nd-love) !important;
+}
+
+.regex-error {
+  padding: 4px 12px;
+  font-size: 0.75em;
+  color: var(--nd-love);
+  flex-shrink: 0;
+}
+
+
 .search-clear {
   display: flex;
   align-items: center;
@@ -511,5 +703,24 @@ setTimeout(() => searchInput.value?.focus(), 100)
   padding: 1rem;
   font-size: 0.8em;
   opacity: 0.4;
+}
+</style>
+
+<style>
+/* Teleported regex guide popup — unscoped */
+.nd-regex-guide-popup {
+  position: fixed;
+  z-index: 10001;
+}
+
+.nd-regex-guide-enter-active,
+.nd-regex-guide-leave-active {
+  transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.nd-regex-guide-enter-from,
+.nd-regex-guide-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(-4px);
 }
 </style>

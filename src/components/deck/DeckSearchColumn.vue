@@ -11,6 +11,7 @@ import {
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
+import RegexGuide from '@/components/common/RegexGuide.vue'
 import { useNavigation } from '@/composables/useNavigation'
 
 const MkPostForm = defineAsyncComponent(
@@ -22,6 +23,11 @@ import { useNoteFocus } from '@/composables/useNoteFocus'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
+import {
+  extractLiterals,
+  filterNotesByRegex,
+  isValidRegex,
+} from '@/utils/regexSearch'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -63,6 +69,49 @@ const hasLocalResults = ref(false)
 const isPreview = ref(false)
 const confirmedQuery = ref('')
 
+// Regex mode
+const regexMode = ref(false)
+const showRegexGuide = ref(false)
+const regexError = ref<string | null>(null)
+const regexGuidePos = ref({ top: 0, right: 0 })
+const regexGuideBtnRef = ref<HTMLElement | null>(null)
+
+function toggleRegexMode() {
+  regexMode.value = !regexMode.value
+  showRegexGuide.value = false
+  regexError.value = null
+}
+
+function openRegexGuide() {
+  if (showRegexGuide.value) {
+    showRegexGuide.value = false
+    return
+  }
+  if (regexGuideBtnRef.value) {
+    const rect = regexGuideBtnRef.value.getBoundingClientRect()
+    regexGuidePos.value = { top: rect.bottom + 4, right: window.innerWidth - rect.right }
+  }
+  showRegexGuide.value = true
+  setTimeout(() => {
+    document.addEventListener('click', closeRegexGuide, { once: true })
+  }, 0)
+}
+
+function closeRegexGuide() {
+  showRegexGuide.value = false
+}
+
+function onFilterApply(pattern: string) {
+  searchQuery.value = pattern
+  showRegexGuide.value = false
+  searchInput.value?.focus()
+}
+
+function getSearchHint(q: string): string {
+  if (!regexMode.value) return q
+  return extractLiterals(q)
+}
+
 function mergeNotes(
   existing: NormalizedNote[],
   incoming: NormalizedNote[],
@@ -83,14 +132,19 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 async function searchLocal(q: string) {
   if (!props.column.accountId || !q) return
+  const hint = getSearchHint(q)
+  if (!hint) return
   try {
-    const local = await invoke<NormalizedNote[]>('api_search_notes_local', {
+    let local = await invoke<NormalizedNote[]>('api_search_notes_local', {
       accountId: props.column.accountId,
-      query: q,
-      limit: 10,
+      query: hint,
+      limit: regexMode.value ? 50 : 10,
     })
     // Only update if query hasn't changed since we started
     if (searchQuery.value.trim() === q) {
+      if (regexMode.value) {
+        local = filterNotesByRegex(local, q)
+      }
       notes.value = local
       isPreview.value = true
       hasLocalResults.value = local.length > 0
@@ -103,10 +157,15 @@ async function searchLocal(q: string) {
 watch(searchQuery, (val) => {
   const q = val.trim()
   if (debounceTimer) clearTimeout(debounceTimer)
+  regexError.value = null
   if (!q) {
     notes.value = []
     isPreview.value = false
     hasLocalResults.value = false
+    return
+  }
+  if (regexMode.value && !isValidRegex(q)) {
+    regexError.value = '無効な正規表現です'
     return
   }
   // Don't show preview if already showing confirmed results for this query
@@ -119,20 +178,32 @@ async function performSearch() {
   if (!q) return
   if (debounceTimer) clearTimeout(debounceTimer)
 
+  if (regexMode.value && !isValidRegex(q)) {
+    regexError.value = '無効な正規表現です'
+    return
+  }
+
   error.value = null
+  regexError.value = null
   isLoading.value = true
   isPreview.value = false
   confirmedQuery.value = q
 
   deckStore.updateColumn(props.column.id, { query: q })
 
+  const hint = getSearchHint(q)
+
   // Local search first (instant) if not already showing preview
-  if (!hasLocalResults.value && props.column.accountId) {
+  if (!hasLocalResults.value && props.column.accountId && hint) {
     try {
-      const local = await invoke<NormalizedNote[]>('api_search_notes_local', {
+      let local = await invoke<NormalizedNote[]>('api_search_notes_local', {
         accountId: props.column.accountId,
-        query: q,
+        query: hint,
+        limit: regexMode.value ? 100 : undefined,
       })
+      if (regexMode.value) {
+        local = filterNotesByRegex(local, q)
+      }
       if (local.length > 0) {
         notes.value = local
         hasLocalResults.value = true
@@ -143,21 +214,26 @@ async function performSearch() {
   }
 
   // Server search
-  try {
-    const adapter = await initAdapter()
-    if (!adapter) return
+  if (hint) {
+    try {
+      const adapter = await initAdapter()
+      if (!adapter) return
 
-    const results = await adapter.api.searchNotes(q)
-    notes.value = hasLocalResults.value
-      ? mergeNotes(notes.value, results)
-      : results
-  } catch (e) {
-    if (!hasLocalResults.value) {
-      error.value = AppError.from(e)
+      let results = await adapter.api.searchNotes(hint)
+      if (regexMode.value) {
+        results = filterNotesByRegex(results, q)
+      }
+      notes.value = hasLocalResults.value
+        ? mergeNotes(notes.value, results)
+        : results
+    } catch (e) {
+      if (!hasLocalResults.value) {
+        error.value = AppError.from(e)
+      }
     }
-  } finally {
-    isLoading.value = false
   }
+
+  isLoading.value = false
 }
 
 async function loadMore() {
@@ -165,11 +241,19 @@ async function loadMore() {
   if (!adapter || isLoading.value || notes.value.length === 0) return
   const lastNote = notes.value.at(-1)
   if (!lastNote) return
+
+  const q = confirmedQuery.value || searchQuery.value.trim()
+  const hint = getSearchHint(q)
+  if (!hint) return
+
   isLoading.value = true
   try {
-    const older = await adapter.api.searchNotes(searchQuery.value.trim(), {
+    let older = await adapter.api.searchNotes(hint, {
       untilId: lastNote.id,
     })
+    if (regexMode.value) {
+      older = filterNotesByRegex(older, q)
+    }
     notes.value = [...notes.value, ...older]
   } catch (e) {
     error.value = AppError.from(e)
@@ -229,6 +313,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
+  document.removeEventListener('click', closeRegexGuide)
   disconnect()
 })
 </script>
@@ -257,18 +342,56 @@ onUnmounted(() => {
           ref="searchInput"
           v-model="searchQuery"
           class="search-input"
+          :class="{ 'regex-input': regexMode, 'regex-invalid': regexMode && regexError }"
           type="text"
-          placeholder="ノートを検索..."
+          :placeholder="regexMode ? '正規表現で検索...' : 'ノートを検索...'"
           @keydown="onKeydown"
         />
+        <div class="regex-controls">
+          <button
+            class="_button regex-toggle"
+            :class="{ active: regexMode }"
+            title="正規表現モード"
+            @click="toggleRegexMode"
+          >
+            <span class="regex-icon">.*</span>
+          </button>
+          <button
+            v-if="regexMode"
+            ref="regexGuideBtnRef"
+            class="_button regex-guide-btn"
+            :class="{ active: showRegexGuide }"
+            title="正規表現ガイド"
+            @click.stop="openRegexGuide"
+          >
+            <i class="ti ti-help" />
+          </button>
+        </div>
         <button
           class="_button search-btn"
-          :disabled="!searchQuery.trim() || isLoading"
+          :disabled="!searchQuery.trim() || isLoading || (regexMode && !!regexError)"
           @click="performSearch"
         >
           <i class="ti ti-arrow-right" />
         </button>
       </div>
+
+      <div v-if="regexError" class="regex-error">
+        {{ regexError }}
+      </div>
+
+      <Teleport to="body">
+        <Transition name="nd-regex-guide">
+          <div
+            v-if="showRegexGuide"
+            class="nd-regex-guide-popup"
+            :style="{ top: regexGuidePos.top + 'px', right: regexGuidePos.right + 'px' }"
+            @click.stop
+          >
+            <RegexGuide @select="onFilterApply" />
+          </div>
+        </Transition>
+      </Teleport>
     </template>
 
     <div v-if="!account" class="column-empty">
@@ -410,6 +533,73 @@ onUnmounted(() => {
   opacity: 0.4;
 }
 
+.regex-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.regex-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  opacity: 0.35;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.regex-toggle:hover {
+  background: var(--nd-buttonHoverBg);
+  opacity: 0.7;
+}
+
+.regex-toggle.active {
+  opacity: 1;
+  color: var(--nd-accent);
+  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+}
+
+.regex-icon {
+  font-family: monospace;
+  font-size: 0.8em;
+  font-weight: 700;
+}
+
+.regex-guide-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  opacity: 0.35;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.regex-guide-btn:hover,
+.regex-guide-btn.active {
+  background: var(--nd-buttonHoverBg);
+  opacity: 0.7;
+}
+
+.regex-input {
+  font-family: monospace;
+}
+
+.regex-invalid {
+  box-shadow: 0 0 0 2px var(--nd-love) !important;
+}
+
+.regex-error {
+  padding: 4px 12px;
+  font-size: 0.75em;
+  color: var(--nd-love);
+}
+
 .search-btn {
   display: flex;
   align-items: center;
@@ -474,5 +664,24 @@ onUnmounted(() => {
   font-size: 0.75em;
   opacity: 0.4;
   border-top: 1px solid var(--nd-divider);
+}
+</style>
+
+<style>
+/* Teleported regex guide popup — unscoped */
+.nd-regex-guide-popup {
+  position: fixed;
+  z-index: 10001;
+}
+
+.nd-regex-guide-enter-active,
+.nd-regex-guide-leave-active {
+  transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.nd-regex-guide-enter-from,
+.nd-regex-guide-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(-4px);
 }
 </style>
