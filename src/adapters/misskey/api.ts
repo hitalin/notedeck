@@ -179,10 +179,28 @@ export class MisskeyApi implements ApiAdapter {
     options: UserNotesOptions = {},
   ): Promise<NormalizedNote[]> {
     const { withReplies, withFiles, withChannelNotes, ...pagination } = options
-    const filters: Record<string, boolean> = {}
-    if (withReplies != null) filters.withReplies = withReplies
-    if (withFiles != null) filters.withFiles = withFiles
-    if (withChannelNotes != null) filters.withChannelNotes = withChannelNotes
+    const hasFilters = withReplies != null || withFiles != null || withChannelNotes != null
+
+    if (hasFilters) {
+      const params: Record<string, unknown> = {
+        userId,
+        limit: pagination.limit ?? 20,
+      }
+      if (pagination.untilId) params.untilId = pagination.untilId
+      if (pagination.sinceId) params.sinceId = pagination.sinceId
+      if (withReplies != null) params.withReplies = withReplies
+      if (withFiles != null) params.withFiles = withFiles
+      if (withChannelNotes != null) params.withChannelNotes = withChannelNotes
+
+      const raw = await invoke<{ id: string }[]>('api_request', {
+        accountId: this.accountId,
+        endpoint: 'users/notes',
+        params,
+      })
+      if (!raw.length) return []
+      return Promise.all(raw.map((n) => this.getNote(n.id)))
+    }
+
     return invoke('api_get_user_notes', {
       accountId: this.accountId,
       userId,
@@ -190,7 +208,7 @@ export class MisskeyApi implements ApiAdapter {
         limit: pagination.limit ?? 20,
         sinceId: pagination.sinceId ?? null,
         untilId: pagination.untilId ?? null,
-        filters: Object.keys(filters).length > 0 ? filters : null,
+        filters: null,
       },
     })
   }
