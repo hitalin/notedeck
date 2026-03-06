@@ -1,12 +1,24 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { ChatMessage } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
+import MkMfm from '@/components/common/MkMfm.vue'
+import { useEmojiResolver } from '@/composables/useEmojiResolver'
+import { proxyUrl } from '@/utils/imageProxy'
 
 const props = defineProps<{
   message: ChatMessage
   myUserId?: string
+  accountId?: string
+  serverHost?: string
 }>()
+
+const emit = defineEmits<{
+  react: [messageId: string, reaction: string]
+  unreact: [messageId: string, reaction: string]
+}>()
+
+const { reactionUrl } = useEmojiResolver()
 
 const isMine = computed(
   () => props.myUserId && props.message.fromUserId === props.myUserId,
@@ -27,6 +39,53 @@ const timeStr = computed(() => {
   const d = new Date(props.message.createdAt)
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
 })
+
+const lightboxUrl = ref<string | null>(null)
+
+function openLightbox(url: string) {
+  lightboxUrl.value = url
+}
+
+function closeLightbox() {
+  lightboxUrl.value = null
+}
+
+// Group reactions: { reaction, count, users[], reacted (by me) }
+const groupedReactions = computed(() => {
+  const reactions = props.message.reactions
+  if (!reactions || reactions.length === 0) return []
+
+  const map = new Map<string, { reaction: string; count: number; users: string[]; reacted: boolean }>()
+  for (const r of reactions) {
+    const existing = map.get(r.reaction)
+    if (existing) {
+      existing.count++
+      existing.users.push(r.user.name || r.user.username)
+      if (r.user.id === props.myUserId) existing.reacted = true
+    } else {
+      map.set(r.reaction, {
+        reaction: r.reaction,
+        count: 1,
+        users: [r.user.name || r.user.username],
+        reacted: r.user.id === props.myUserId,
+      })
+    }
+  }
+  return Array.from(map.values())
+})
+
+function getReactionImageUrl(reaction: string): string | null {
+  if (!props.serverHost) return null
+  return reactionUrl(reaction, {}, {}, props.serverHost)
+}
+
+function handleReactionClick(reaction: string, reacted: boolean) {
+  if (reacted) {
+    emit('unreact', props.message.id, reaction)
+  } else {
+    emit('react', props.message.id, reaction)
+  }
+}
 </script>
 
 <template>
@@ -37,31 +96,83 @@ const timeStr = computed(() => {
       :avatar-url="displayUser.avatarUrl"
       :size="32"
     />
-    <div class="chat-bubble">
-      <div v-if="!isMine && displayUser" class="chat-sender">
-        {{ displayUser.name }}
+    <div class="chat-bubble-wrapper">
+      <div class="chat-bubble">
+        <div v-if="!isMine && displayUser" class="chat-sender">
+          {{ displayUser.name }}
+        </div>
+        <div v-if="message.text" class="chat-text">
+          <MkMfm :text="message.text" :account-id="accountId" />
+        </div>
+        <div v-if="message.file" class="chat-file">
+          <img
+            v-if="message.file.type.startsWith('image/')"
+            :src="message.file.thumbnailUrl || message.file.url"
+            class="chat-image"
+            loading="lazy"
+            @click="openLightbox(message.file!.url)"
+          />
+          <a v-else :href="message.file.url" target="_blank" rel="noopener">
+            {{ message.file.name }}
+          </a>
+        </div>
+        <div class="chat-time">{{ timeStr }}</div>
       </div>
-      <div v-if="message.text" class="chat-text">{{ message.text }}</div>
-      <div v-if="message.file" class="chat-file">
-        <img
-          v-if="message.file.type.startsWith('image/')"
-          :src="message.file.thumbnailUrl || message.file.url"
-          class="chat-image"
-          loading="lazy"
-        />
-        <a v-else :href="message.file.url" target="_blank" rel="noopener">
-          {{ message.file.name }}
-        </a>
+
+      <!-- Reactions -->
+      <div v-if="groupedReactions.length > 0" class="chat-reactions">
+        <button
+          v-for="r in groupedReactions"
+          :key="r.reaction"
+          class="chat-reaction-pill"
+          :class="{ reacted: r.reacted }"
+          :title="r.users.join(', ')"
+          @click="handleReactionClick(r.reaction, r.reacted)"
+        >
+          <img
+            v-if="getReactionImageUrl(r.reaction)"
+            :src="proxyUrl(getReactionImageUrl(r.reaction)!)"
+            :alt="r.reaction"
+            class="reaction-emoji-img"
+            decoding="async"
+            loading="lazy"
+          />
+          <span v-else class="reaction-emoji-text">{{ r.reaction }}</span>
+          <span v-if="r.count > 1" class="reaction-count">{{ r.count }}</span>
+        </button>
       </div>
-      <div class="chat-time">{{ timeStr }}</div>
+
+      <!-- Add reaction button -->
+      <button
+        class="chat-add-reaction"
+        title="リアクション"
+        @click.stop="emit('react', message.id, '')"
+      >
+        <i class="ti ti-mood-plus" />
+      </button>
     </div>
   </div>
+
+  <Teleport to="body">
+    <div v-if="lightboxUrl" class="lightbox-overlay" @click="closeLightbox">
+      <button class="lightbox-close" @click="closeLightbox">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      </button>
+      <img
+        :src="lightboxUrl"
+        class="lightbox-image"
+        @click.stop
+      />
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
 .chat-msg {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 8px;
   padding: 4px 12px;
 }
@@ -74,10 +185,19 @@ const timeStr = computed(() => {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.chat-bubble-wrapper {
+  max-width: 75%;
+  position: relative;
+}
+
+.chat-bubble-wrapper:hover .chat-add-reaction {
+  opacity: 1;
 }
 
 .chat-bubble {
-  max-width: 75%;
   padding: 8px 12px;
   border-radius: 14px;
   background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.05));
@@ -115,6 +235,7 @@ const timeStr = computed(() => {
   max-height: 200px;
   border-radius: 8px;
   object-fit: contain;
+  cursor: pointer;
 }
 
 .chat-time {
@@ -122,5 +243,126 @@ const timeStr = computed(() => {
   opacity: 0.5;
   text-align: right;
   margin-top: 2px;
+}
+
+/* Reactions */
+.chat-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.mine .chat-reactions {
+  justify-content: flex-end;
+}
+
+.chat-reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--nd-divider, rgba(255, 255, 255, 0.1));
+  background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.05));
+  color: var(--nd-fg);
+  font-size: 0.8em;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.chat-reaction-pill:hover {
+  background: var(--nd-buttonHoverBg, rgba(255, 255, 255, 0.1));
+}
+
+.chat-reaction-pill.reacted {
+  border-color: var(--nd-accent);
+  background: var(--nd-accentedBg, rgba(134, 179, 0, 0.15));
+}
+
+.reaction-emoji-img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.reaction-emoji-text {
+  font-size: 1.1em;
+}
+
+.reaction-count {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+/* Add reaction button */
+.chat-add-reaction {
+  position: absolute;
+  top: 2px;
+  border: none;
+  background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.08));
+  color: var(--nd-fg);
+  opacity: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: opacity 0.15s;
+}
+
+.chat-msg:not(.mine) .chat-add-reaction {
+  right: -28px;
+}
+
+.mine .chat-add-reaction {
+  left: -28px;
+}
+
+.chat-add-reaction:hover {
+  background: var(--nd-buttonHoverBg, rgba(255, 255, 255, 0.15));
+}
+
+/* Lightbox */
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.lightbox-image {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  cursor: default;
 }
 </style>

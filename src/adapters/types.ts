@@ -102,6 +102,17 @@ export interface Channel {
   name: string
 }
 
+export interface ChatMessageReaction {
+  user: {
+    id: string
+    name?: string
+    username: string
+    host?: string
+    avatarUrl?: string
+  }
+  reaction: string
+}
+
 export interface ChatMessage {
   id: string
   createdAt: string
@@ -115,6 +126,7 @@ export interface ChatMessage {
   fileId?: string
   file?: NormalizedDriveFile
   isRead?: boolean
+  reactions?: ChatMessageReaction[]
 }
 
 export interface ChatUser {

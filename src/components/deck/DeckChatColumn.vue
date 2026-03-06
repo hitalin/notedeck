@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
-import type { ChannelSubscription, ChatMessage } from '@/adapters/types'
+import { invoke } from '@tauri-apps/api/core'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import type { ChannelSubscription, ChatMessage, NormalizedDriveFile } from '@/adapters/types'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
+import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -30,6 +32,11 @@ const currentRoomId = ref<string | null>(null)
 const conversationTitle = ref('')
 const messageText = ref('')
 const isSending = ref(false)
+const showEmojiPicker = ref(false)
+const attachedFile = ref<NormalizedDriveFile | null>(null)
+const isUploading = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
 let chatSub: ChannelSubscription | null = null
 
@@ -160,18 +167,30 @@ function goBack() {
   currentRoomId.value = null
 }
 
+const canSend = computed(() => {
+  if (isSending.value || isUploading.value) return false
+  return messageText.value.trim().length > 0 || attachedFile.value !== null
+})
+
 async function sendMessage() {
-  const adapter = getAdapter()
-  if (!adapter || !messageText.value.trim() || isSending.value) return
+  if (!canSend.value || !props.column.accountId) return
 
   isSending.value = true
   try {
-    const sent = await adapter.api.createChatMessage({
-      userId: currentOtherId.value ?? undefined,
-      roomId: currentRoomId.value ?? undefined,
-      text: messageText.value.trim(),
+    const params: Record<string, unknown> = {
+      text: messageText.value.trim() || undefined,
+    }
+    if (currentOtherId.value) params.userId = currentOtherId.value
+    if (currentRoomId.value) params.roomId = currentRoomId.value
+    if (attachedFile.value) params.fileId = attachedFile.value.id
+
+    const sent = await invoke<ChatMessage>('api_request', {
+      accountId: props.column.accountId,
+      endpoint: 'messaging/messages/create',
+      params,
     })
     messageText.value = ''
+    attachedFile.value = null
     if (!messages.value.some((m) => m.id === sent.id)) {
       messages.value = [...messages.value, sent]
       scrollToBottom()
@@ -188,6 +207,133 @@ function handleKeydown(e: KeyboardEvent) {
     e.preventDefault()
     sendMessage()
   }
+}
+
+function pickEmoji(reaction: string) {
+  const textarea = textareaRef.value
+  if (textarea) {
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    messageText.value =
+      messageText.value.slice(0, start) + reaction + messageText.value.slice(end)
+    nextTick(() => {
+      const pos = start + reaction.length
+      textarea.setSelectionRange(pos, pos)
+      textarea.focus()
+    })
+  } else {
+    messageText.value += reaction
+  }
+  showEmojiPicker.value = false
+}
+
+function openFilePicker() {
+  fileInput.value?.click()
+}
+
+async function onFileSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const files = input.files
+  const adapter = getAdapter()
+  if (!files || !files[0] || !adapter) return
+
+  isUploading.value = true
+  try {
+    const file = files[0]
+    const buffer = await file.arrayBuffer()
+    const data = Array.from(new Uint8Array(buffer))
+    attachedFile.value = await adapter.api.uploadFile(
+      file.name,
+      data,
+      file.type || 'application/octet-stream',
+    )
+  } catch (e) {
+    error.value = AppError.from(e)
+  } finally {
+    isUploading.value = false
+    input.value = ''
+  }
+}
+
+function removeAttachment() {
+  attachedFile.value = null
+}
+
+// --- Reactions ---
+const reactionTargetId = ref<string | null>(null)
+const showReactionPicker = ref(false)
+
+async function handleReact(messageId: string, reaction: string) {
+  if (!props.column.accountId) return
+
+  if (!reaction) {
+    // Empty reaction = open picker
+    reactionTargetId.value = messageId
+    showReactionPicker.value = true
+    return
+  }
+
+  try {
+    await invoke('api_request', {
+      accountId: props.column.accountId,
+      endpoint: 'chat/messages/react',
+      params: { messageId, reaction },
+    })
+    // Optimistically add reaction to local state
+    updateMessageReaction(messageId, reaction, true)
+  } catch (e) {
+    error.value = AppError.from(e)
+  }
+}
+
+async function handleUnreact(messageId: string, reaction: string) {
+  if (!props.column.accountId) return
+
+  try {
+    await invoke('api_request', {
+      accountId: props.column.accountId,
+      endpoint: 'chat/messages/unreact',
+      params: { messageId, reaction },
+    })
+    updateMessageReaction(messageId, reaction, false)
+  } catch (e) {
+    error.value = AppError.from(e)
+  }
+}
+
+function pickReaction(reaction: string) {
+  if (reactionTargetId.value) {
+    handleReact(reactionTargetId.value, reaction)
+  }
+  showReactionPicker.value = false
+  reactionTargetId.value = null
+}
+
+function updateMessageReaction(messageId: string, reaction: string, add: boolean) {
+  const acc = account.value
+  if (!acc) return
+
+  messages.value = messages.value.map((msg) => {
+    if (msg.id !== messageId) return msg
+    const reactions = [...(msg.reactions ?? [])]
+    if (add) {
+      reactions.push({
+        user: {
+          id: acc.userId ?? '',
+          username: acc.username ?? '',
+          name: acc.displayName,
+          avatarUrl: acc.avatarUrl,
+        },
+        reaction,
+      })
+    } else {
+      const idx = reactions.findIndex(
+        (r) => r.reaction === reaction && r.user.id === acc.userId,
+      )
+      if (idx >= 0) reactions.splice(idx, 1)
+    }
+    return { ...msg, reactions }
+  })
 }
 
 const messagesContainer = ref<HTMLElement | null>(null)
@@ -331,26 +477,78 @@ onBeforeUnmount(() => {
           :key="msg.id"
           :message="msg"
           :my-user-id="myUserId"
+          :account-id="column.accountId"
+          :server-host="account?.host"
+          @react="handleReact"
+          @unreact="handleUnreact"
         />
       </div>
 
       <div v-if="error" class="chat-error">{{ error.message }}</div>
 
-      <div class="chat-input">
-        <textarea
-          v-model="messageText"
-          class="chat-textarea"
-          placeholder="メッセージ..."
-          rows="1"
-          @keydown="handleKeydown"
+      <!-- Reaction picker popup -->
+      <div v-if="showReactionPicker && account" class="chat-reaction-picker" @click.stop>
+        <MkReactionPicker
+          :server-host="account.host"
+          @pick="pickReaction"
         />
-        <button
-          class="chat-send"
-          :disabled="!messageText.trim() || isSending"
-          @click="sendMessage"
-        >
-          <i class="ti ti-send" />
-        </button>
+      </div>
+
+      <div class="chat-input">
+        <!-- File attachment preview -->
+        <div v-if="attachedFile" class="chat-attachment">
+          <img
+            v-if="attachedFile.type.startsWith('image/')"
+            :src="attachedFile.thumbnailUrl || attachedFile.url"
+            class="chat-attachment-thumb"
+          />
+          <span v-else class="chat-attachment-name">{{ attachedFile.name }}</span>
+          <button class="chat-attachment-remove" @click="removeAttachment">
+            <i class="ti ti-x" />
+          </button>
+        </div>
+        <div v-if="isUploading" class="chat-uploading">
+          <i class="ti ti-loader-2 spin" /> アップロード中...
+        </div>
+        <div class="chat-input-row">
+          <div class="chat-input-actions">
+            <button class="chat-action-btn" title="ファイル" @click="openFilePicker">
+              <i class="ti ti-photo" />
+            </button>
+            <button class="chat-action-btn" title="絵文字" @click.stop="showEmojiPicker = !showEmojiPicker">
+              <i class="ti ti-mood-happy" />
+            </button>
+          </div>
+          <textarea
+            ref="textareaRef"
+            v-model="messageText"
+            class="chat-textarea"
+            placeholder="メッセージ..."
+            rows="1"
+            @keydown="handleKeydown"
+          />
+          <button
+            class="chat-send"
+            :disabled="!canSend"
+            @click="sendMessage"
+          >
+            <i class="ti ti-send" />
+          </button>
+        </div>
+        <!-- Emoji picker popup -->
+        <div v-if="showEmojiPicker && account" class="chat-emoji-popup" @click.stop>
+          <MkReactionPicker
+            :server-host="account.host"
+            @pick="pickEmoji"
+          />
+        </div>
+        <input
+          ref="fileInput"
+          type="file"
+          style="display: none"
+          accept="image/*,video/*,audio/*"
+          @change="onFileSelected"
+        />
       </div>
     </div>
   </DeckColumn>
@@ -491,11 +689,97 @@ onBeforeUnmount(() => {
 
 .chat-input {
   display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  padding: 8px;
+  flex-direction: column;
+  padding: 6px 8px 8px;
   border-top: 1px solid var(--nd-divider, rgba(255, 255, 255, 0.05));
   background: var(--nd-panel);
+  position: relative;
+}
+
+.chat-attachment {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.05));
+  border-radius: 8px;
+}
+
+.chat-attachment-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.chat-attachment-name {
+  font-size: 0.8em;
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.chat-attachment-remove {
+  background: none;
+  border: none;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 0.9em;
+}
+
+.chat-attachment-remove:hover {
+  opacity: 1;
+}
+
+.chat-uploading {
+  font-size: 0.8em;
+  opacity: 0.5;
+  padding: 2px 8px 4px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+.chat-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.chat-input-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.chat-action-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 1.1em;
+}
+
+.chat-action-btn:hover {
+  opacity: 0.8;
+  background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.05));
 }
 
 .chat-textarea {
@@ -511,6 +795,7 @@ onBeforeUnmount(() => {
   line-height: 1.4;
   max-height: 120px;
   outline: none;
+  field-sizing: content;
 }
 
 .chat-textarea::placeholder {
@@ -539,6 +824,19 @@ onBeforeUnmount(() => {
 
 .chat-send:not(:disabled):hover {
   filter: brightness(1.1);
+}
+
+.chat-emoji-popup {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  overflow: auto;
+  background: var(--nd-popup);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 100;
 }
 
 .column-empty {
