@@ -1,10 +1,9 @@
 /// オンラインユーザー数ウィジェット
-/// サーバーの現在のオンラインユーザー数を表示します。
+/// サーバーのオンラインユーザー数を表示します。
 /// 30秒ごとに自動更新します。
 
 @render() {
-  let count = Mk:api("get-online-users-count", {})
-  let n = count.count
+  let n = Mk:api("get-online-users-count", {}).count
 
   Ui:render([
     Ui:C:container({

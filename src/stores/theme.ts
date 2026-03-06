@@ -162,38 +162,39 @@ export const useThemeStore = defineStore('theme', () => {
       })
   }
 
-  function applyCurrentTheme(): void {
-    const wantDark =
-      manualMode.value != null
-        ? manualMode.value === 'dark'
-        : window.matchMedia('(prefers-color-scheme: dark)').matches
+  function wantsDark(): boolean {
+    return manualMode.value != null
+      ? manualMode.value === 'dark'
+      : window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
 
-    if (wantDark) {
-      const selectedId = selectedDarkThemeId.value
-      const custom = selectedId
-        ? installedThemes.value.find((t) => t.id === selectedId)
-        : null
-      if (custom) {
-        applySource({ kind: 'custom-dark', theme: custom })
-      } else {
-        applySource({ kind: 'builtin-dark', theme: DARK_THEME })
-      }
+  function applyCurrentTheme(): void {
+    const dark = wantsDark()
+    const selectedId = dark
+      ? selectedDarkThemeId.value
+      : selectedLightThemeId.value
+    const custom = selectedId
+      ? installedThemes.value.find((t) => t.id === selectedId)
+      : null
+    if (custom) {
+      applySource({
+        kind: dark ? 'custom-dark' : 'custom-light',
+        theme: custom,
+      })
     } else {
-      const selectedId = selectedLightThemeId.value
-      const custom = selectedId
-        ? installedThemes.value.find((t) => t.id === selectedId)
-        : null
-      if (custom) {
-        applySource({ kind: 'custom-light', theme: custom })
-      } else {
-        applySource({ kind: 'builtin-light', theme: LIGHT_THEME })
-      }
+      applySource({
+        kind: dark ? 'builtin-dark' : 'builtin-light',
+        theme: dark ? DARK_THEME : LIGHT_THEME,
+      })
     }
   }
 
+  function isCurrentDark(): boolean {
+    return currentSource.value?.kind.includes('light') === false
+  }
+
   function toggleTheme(): void {
-    const isDark = currentSource.value?.kind.includes('light') === false
-    manualMode.value = isDark ? 'light' : 'dark'
+    manualMode.value = isCurrentDark() ? 'light' : 'dark'
     localStorage.setItem(STORAGE_MANUAL_THEME_KEY, manualMode.value)
     applyCurrentTheme()
   }
@@ -206,8 +207,7 @@ export const useThemeStore = defineStore('theme', () => {
 
   /** Lock current appearance as manual mode (stop following OS) */
   function pinCurrentMode(): void {
-    const isDark = currentSource.value?.kind.includes('light') === false
-    manualMode.value = isDark ? 'dark' : 'light'
+    manualMode.value = isCurrentDark() ? 'dark' : 'light'
     localStorage.setItem(STORAGE_MANUAL_THEME_KEY, manualMode.value)
   }
 
@@ -328,47 +328,25 @@ export const useThemeStore = defineStore('theme', () => {
       })
       const entry: { dark?: MisskeyTheme; light?: MisskeyTheme } = {}
 
-      // 1. sync preferences
-      if (data.syncDark) {
-        const parsed = parseThemeFromData(data.syncDark)
-        if (parsed)
-          entry.dark = {
+      // Try each source in priority order: sync > base > meta
+      function trySet(mode: 'dark' | 'light', rawData: unknown) {
+        if (entry[mode]) return
+        const parsed = parseThemeFromData(rawData)
+        if (parsed) {
+          entry[mode] = {
             ...parsed,
-            id: `account-dark-${accountId}`,
-            base: 'dark',
+            id: `account-${mode}-${accountId}`,
+            base: mode,
           }
-      }
-      if (data.syncLight) {
-        const parsed = parseThemeFromData(data.syncLight)
-        if (parsed)
-          entry.light = {
-            ...parsed,
-            id: `account-light-${accountId}`,
-            base: 'light',
-          }
+        }
       }
 
-      // 2. legacy base
-      if (!entry.dark && data.baseDark) {
-        const parsed = parseThemeFromData(data.baseDark)
-        if (parsed)
-          entry.dark = {
-            ...parsed,
-            id: `account-dark-${accountId}`,
-            base: 'dark',
-          }
-      }
-      if (!entry.light && data.baseLight) {
-        const parsed = parseThemeFromData(data.baseLight)
-        if (parsed)
-          entry.light = {
-            ...parsed,
-            id: `account-light-${accountId}`,
-            base: 'light',
-          }
-      }
+      trySet('dark', data.syncDark)
+      trySet('light', data.syncLight)
+      trySet('dark', data.baseDark)
+      trySet('light', data.baseLight)
 
-      // 3. server meta defaults (JSON strings)
+      // Server meta defaults (JSON strings)
       if (!entry.dark && data.metaDark) {
         entry.dark =
           parseMetaTheme(data.metaDark, `server-dark-${accountId}`, 'dark') ??
@@ -411,11 +389,14 @@ export const useThemeStore = defineStore('theme', () => {
 
   const styleVarsCache = new Map<string, Record<string, string>>()
 
+  function accountCacheKey(accountId: string): string {
+    return `${accountId}:${isCurrentDark() ? 'dark' : 'light'}`
+  }
+
   function getStyleVarsForAccount(
     accountId: string,
   ): Record<string, string> | undefined {
-    const wantLight = currentSource.value?.kind.includes('light') ?? false
-    const cacheKey = `${accountId}:${wantLight ? 'light' : 'dark'}`
+    const cacheKey = accountCacheKey(accountId)
 
     const cached = styleVarsCache.get(cacheKey)
     if (cached) return cached
@@ -431,20 +412,20 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   function getCompiledForAccount(accountId: string): CompiledProps | null {
-    const wantLight = currentSource.value?.kind.includes('light') ?? false
-    const cacheKey = `${accountId}:${wantLight ? 'light' : 'dark'}`
+    const cacheKey = accountCacheKey(accountId)
 
     if (compiledCache.has(cacheKey)) return compiledCache.get(cacheKey) ?? null
 
     const cached = accountThemeCache.value.get(accountId)
     if (!cached) return null
 
-    const theme = wantLight
-      ? (cached.light ?? cached.dark)
-      : (cached.dark ?? cached.light)
+    const dark = isCurrentDark()
+    const theme = dark
+      ? (cached.dark ?? cached.light)
+      : (cached.light ?? cached.dark)
     if (!theme) return null
 
-    const base = wantLight ? LIGHT_THEME : DARK_THEME
+    const base = dark ? DARK_THEME : LIGHT_THEME
     const compiled = compileMisskeyTheme(theme, base)
     compiledCache.set(cacheKey, compiled)
     return compiled

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { computed, nextTick, onMounted, ref } from 'vue'
-import type { NormalizedNote, NormalizedUser } from '@/adapters/types'
+import type { NormalizedNote } from '@/adapters/types'
 import {
   getPluginHandlers,
   setPluginAccountContext,
 } from '@/aiscript/plugin-api'
+import { useMentionSearch } from '@/composables/useMentionSearch'
+import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePostFormState } from '@/composables/usePostFormState'
 import MkMediaGrid from './MkMediaGrid.vue'
 import MkMfm from './MkMfm.vue'
@@ -139,52 +140,24 @@ function minScheduleDatetime(): string {
 }
 
 // --- Mention popup ---
-const showMentionPopup = ref(false)
-const mentionQuery = ref('')
-const mentionResults = ref<NormalizedUser[]>([])
-const mentionSearching = ref(false)
-let mentionDebounceTimer: ReturnType<typeof setTimeout> | null = null
+const {
+  showMentionPopup,
+  mentionQuery,
+  mentionResults,
+  mentionSearching,
+  toggleMentionPopup: rawToggleMention,
+  onMentionInput,
+  pickMention: rawPickMention,
+} = useMentionSearch(activeAccountId)
 
 function toggleMentionPopup() {
-  showMentionPopup.value = !showMentionPopup.value
+  rawToggleMention()
   showEmojiPopup.value = false
   showMfmMenu.value = false
-  if (showMentionPopup.value) {
-    mentionQuery.value = ''
-    mentionResults.value = []
-  }
 }
 
-function onMentionInput() {
-  if (mentionDebounceTimer) clearTimeout(mentionDebounceTimer)
-  const q = mentionQuery.value.trim()
-  if (!q) {
-    mentionResults.value = []
-    return
-  }
-  mentionDebounceTimer = setTimeout(async () => {
-    if (!activeAccountId.value) return
-    mentionSearching.value = true
-    try {
-      mentionResults.value = await invoke<NormalizedUser[]>('api_request', {
-        accountId: activeAccountId.value,
-        endpoint: 'users/search',
-        params: { query: q, limit: 10 },
-      })
-    } catch {
-      mentionResults.value = []
-    } finally {
-      mentionSearching.value = false
-    }
-  }, 300)
-}
-
-function pickMention(user: NormalizedUser) {
-  const mention = user.host
-    ? `@${user.username}@${user.host} `
-    : `@${user.username} `
-  insertAtCursor(textareaRef.value, mention)
-  showMentionPopup.value = false
+function pickMention(user: Parameters<typeof rawPickMention>[0]) {
+  rawPickMention(user, insertAtCursor, textareaRef)
 }
 
 // --- Emoji popup ---
@@ -222,50 +195,17 @@ function runPostFormAction(
 }
 
 // --- MFM menu ---
-const showMfmMenu = ref(false)
-
-const mfmFunctions = [
-  { label: 'Flip (横)', insert: '$[flip ', suffix: ']' },
-  { label: 'Flip (縦)', insert: '$[flip.v ', suffix: ']' },
-  { label: 'Spin', insert: '$[spin ', suffix: ']' },
-  { label: 'Shake', insert: '$[shake ', suffix: ']' },
-  { label: 'Jump', insert: '$[jump ', suffix: ']' },
-  { label: 'Bounce', insert: '$[bounce ', suffix: ']' },
-  { label: 'Rainbow', insert: '$[rainbow ', suffix: ']' },
-  { label: 'Sparkle', insert: '$[sparkle ', suffix: ']' },
-  { label: 'Rotate', insert: '$[rotate ', suffix: ']' },
-  { label: 'Tada', insert: '$[tada ', suffix: ']' },
-  { label: 'Bold', insert: '**', suffix: '**' },
-  { label: 'Italic', insert: '<i>', suffix: '</i>' },
-  { label: 'Strike', insert: '~~', suffix: '~~' },
-  { label: 'Code', insert: '`', suffix: '`' },
-  { label: 'Center', insert: '<center>', suffix: '</center>' },
-  { label: 'Small', insert: '<small>', suffix: '</small>' },
-]
+const {
+  showMfmMenu,
+  mfmFunctions,
+  toggleMfmMenu: rawToggleMfm,
+  pickMfm,
+} = useMfmInsert(textareaRef, text)
 
 function toggleMfmMenu() {
-  showMfmMenu.value = !showMfmMenu.value
+  rawToggleMfm()
   showMentionPopup.value = false
   showEmojiPopup.value = false
-}
-
-function pickMfm(fn: (typeof mfmFunctions)[number]) {
-  const textarea = textareaRef.value
-  if (!textarea) return
-  const start = textarea.selectionStart
-  const end = textarea.selectionEnd
-  const selected = text.value.slice(start, end)
-  const insert = fn.insert + selected + fn.suffix
-  text.value = text.value.slice(0, start) + insert + text.value.slice(end)
-  nextTick(() => {
-    // Place cursor inside the MFM tags (after prefix, before suffix)
-    const cursorPos = selected
-      ? start + insert.length
-      : start + fn.insert.length
-    textarea.setSelectionRange(cursorPos, cursorPos)
-    textarea.focus()
-  })
-  showMfmMenu.value = false
 }
 
 // --- Close popups on form click ---

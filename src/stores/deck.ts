@@ -158,7 +158,7 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   function updateColumn(id: string, updates: Partial<DeckColumn>) {
-    const col = columns.value.find((c) => c.id === id)
+    const col = getColumn(id)
     if (col) {
       Object.assign(col, updates)
       save()
@@ -204,7 +204,7 @@ export const useDeckStore = defineStore('deck', () => {
       saveTimer = null
       try {
         localStorage.setItem(
-          'nd-deck',
+          DECK_KEY,
           JSON.stringify({ columns: columns.value, layout: layout.value }),
         )
       } catch (e) {
@@ -215,7 +215,7 @@ export const useDeckStore = defineStore('deck', () => {
 
   function load() {
     try {
-      const raw = localStorage.getItem('nd-deck')
+      const raw = localStorage.getItem(DECK_KEY)
       if (!raw) return
       const data = JSON.parse(raw)
       if (data.columns && data.layout) {
@@ -255,7 +255,7 @@ export const useDeckStore = defineStore('deck', () => {
     type: WidgetType,
     initialData?: Record<string, unknown>,
   ) {
-    const col = columns.value.find((c) => c.id === columnId)
+    const col = getColumn(columnId)
     if (!col || col.type !== 'widget') return
     if (!col.widgets) col.widgets = []
     col.widgets.push({ id: genWidgetId(), type, data: initialData ?? {} })
@@ -263,7 +263,7 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   function removeWidget(columnId: string, widgetId: string) {
-    const col = columns.value.find((c) => c.id === columnId)
+    const col = getColumn(columnId)
     if (!col?.widgets) return
     col.widgets = col.widgets.filter((w) => w.id !== widgetId)
     save()
@@ -274,7 +274,7 @@ export const useDeckStore = defineStore('deck', () => {
     widgetId: string,
     data: Record<string, unknown>,
   ) {
-    const col = columns.value.find((c) => c.id === columnId)
+    const col = getColumn(columnId)
     const widget = col?.widgets?.find((w) => w.id === widgetId)
     if (!widget) return
     widget.data = { ...widget.data, ...data }
@@ -288,6 +288,7 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   // --- Wallpaper ---
+  const DECK_KEY = 'nd-deck'
   const WALLPAPER_KEY = 'nd-deck-wallpaper'
   const wallpaper = ref<string | null>(null)
 

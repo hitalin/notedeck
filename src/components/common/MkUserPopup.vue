@@ -5,6 +5,7 @@ import { createAdapter } from '@/adapters/registry'
 import type { NormalizedUserDetail } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
+import { formatCount } from '@/utils/format'
 import MkAvatar from './MkAvatar.vue'
 import MkMfm from './MkMfm.vue'
 
@@ -44,12 +45,6 @@ onMounted(async () => {
 
 function handleMouseLeave() {
   emit('close')
-}
-
-function formatCount(n: number): string {
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
-  return String(n)
 }
 
 // Close on Escape

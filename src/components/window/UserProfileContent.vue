@@ -14,6 +14,12 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
+import {
+  displayUrl,
+  formatBirthday,
+  formatCount,
+  formatDate,
+} from '@/utils/format'
 import { toggleFollow } from '@/utils/toggleFollow'
 import { toggleReaction } from '@/utils/toggleReaction'
 import { safeCssUrl } from '@/utils/url'
@@ -106,39 +112,6 @@ function onScroll(e: Event) {
   }
 }
 
-function formatDate(iso: string): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleDateString()
-}
-
-function formatCount(n: number): string {
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
-  return String(n)
-}
-
-function formatBirthday(dateStr: string): string {
-  if (!dateStr) return ''
-  const parts = dateStr.split('-').map(Number)
-  const year = parts[0] ?? 0
-  const month = parts[1] ?? 1
-  const day = parts[2] ?? 1
-  const date = new Date(year, month - 1, day)
-  return date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
-
-function displayUrl(url: string): string {
-  try {
-    const u = new URL(url)
-    return u.hostname + (u.pathname !== '/' ? u.pathname : '')
-  } catch {
-    return url
-  }
-}
 
 // Post form state
 const showPostForm = ref(false)
