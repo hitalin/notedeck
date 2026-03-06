@@ -1,0 +1,52 @@
+/// デジタル時計ウィジェット
+/// 現在の日時をリアルタイム表示します。
+
+let weekdays = ["日", "月", "火", "水", "木", "金", "土"]
+
+// Zeller's formula: 曜日を計算 (0=日, 1=月, ..., 6=土)
+@day_of_week(y, m, d) {
+  var yy = y
+  var mm = m
+  if (mm < 3) {
+    mm = mm + 12
+    yy = yy - 1
+  }
+  let k = yy % 100
+  let j = Math:trunc(yy / 100)
+  let h = (d + Math:trunc(13 * (mm + 1) / 5) + k + Math:trunc(k / 4) + Math:trunc(j / 4) - 2 * j) % 7
+  var dow = h - 1
+  if (dow < 0) { dow = dow + 7 }
+  dow
+}
+
+@render() {
+  let now = Date:now()
+  let y = Date:year(now)
+  let mo = Date:month(now)
+  let d = Date:day(now)
+  let h = Date:hour(now)
+  let mi = Date:minute(now)
+  let s = Date:second(now)
+  let w = weekdays[day_of_week(y, mo, d)]
+
+  let hh = if (h < 10) { `0{h}` } else { `{h}` }
+  let mm = if (mi < 10) { `0{mi}` } else { `{mi}` }
+  let ss = if (s < 10) { `0{s}` } else { `{s}` }
+
+  Ui:render([
+    Ui:C:container({
+      align: "center"
+      children: [
+        Ui:C:mfm({ text: `$[x4 **{hh}:{mm}**]` })
+        Ui:C:mfm({ text: `$[x2 :{ss}]` })
+        Ui:C:text({ text: `{y}/{mo}/{d} ({w})` })
+      ]
+    })
+  ])
+}
+
+render()
+loop {
+  Core:sleep(1000)
+  render()
+}

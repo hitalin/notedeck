@@ -7,7 +7,10 @@
  */
 
 import buttonCode from './templates/button.is?raw'
+import calendarCode from './templates/calendar.is?raw'
+import digitalClockCode from './templates/digital-clock.is?raw'
 import memoCode from './templates/memo.is?raw'
+import onlineUsersCode from './templates/online-users.is?raw'
 import pollCode from './templates/poll.is?raw'
 import postFormCode from './templates/post-form.is?raw'
 import profileCode from './templates/profile.is?raw'
@@ -71,5 +74,29 @@ export const widgetTemplates: WidgetTemplate[] = [
     description: 'ローカル保存の簡易投票',
     autoRun: true,
     code: pollCode,
+  },
+  {
+    id: 'digitalClock',
+    label: 'デジタル時計',
+    icon: 'ti-clock',
+    description: '現在の日時をリアルタイム表示',
+    autoRun: true,
+    code: digitalClockCode,
+  },
+  {
+    id: 'calendar',
+    label: 'カレンダー',
+    icon: 'ti-calendar',
+    description: '今月のカレンダーを表示',
+    autoRun: true,
+    code: calendarCode,
+  },
+  {
+    id: 'onlineUsers',
+    label: 'オンラインユーザー数',
+    icon: 'ti-users',
+    description: 'サーバーのオンラインユーザー数を表示',
+    autoRun: true,
+    code: onlineUsersCode,
   },
 ]
