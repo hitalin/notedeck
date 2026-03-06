@@ -1,6 +1,20 @@
-export interface OgpData {
+export interface Player {
+  url: string
+  width: number | null
+  height: number | null
+}
+
+export interface SummaryData {
   title: string | null
   description: string | null
-  image: string | null
-  site_name: string | null
+  icon: string | null
+  sitename: string | null
+  thumbnail: string | null
+  medias: string[]
+  player: Player | null
+  url: string
+  sensitive: boolean
 }
+
+/** Legacy alias for backward compatibility */
+export type OgpData = SummaryData
