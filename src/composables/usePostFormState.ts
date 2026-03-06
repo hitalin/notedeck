@@ -167,18 +167,21 @@ export function usePostFormState(
     }
     disabledVisibilities.value = disabled
 
-    // Fetch default note visibility from server user settings
+    // Fetch default note settings from server user settings
     try {
-      const userInfo = await invoke<{ defaultNoteVisibility?: string }>(
-        'api_request',
-        { accountId: acc.id, endpoint: 'i', params: {} },
-      )
+      const userInfo = await invoke<{
+        defaultNoteVisibility?: string
+        defaultNoteLocalOnly?: boolean
+      }>('api_request', { accountId: acc.id, endpoint: 'i', params: {} })
       const v = userInfo.defaultNoteVisibility
       if (v && visibilityOptions.some((o) => o.value === v)) {
         visibility.value = v as NoteVisibility
       }
+      if (!props.channelId) {
+        localOnly.value = userInfo.defaultNoteLocalOnly === true
+      }
     } catch {
-      // Fallback to default (public)
+      // Fallback to defaults (public, federation on)
     }
 
     // Auto-correct if current visibility is disabled
