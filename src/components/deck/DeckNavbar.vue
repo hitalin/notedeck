@@ -316,6 +316,7 @@ defineExpose({
   -webkit-backdrop-filter: blur(15px);
   border-right: 1px solid var(--nd-divider);
   position: relative;
+  z-index: 1;
 }
 
 .nav-body {
@@ -394,6 +395,12 @@ defineExpose({
   justify-content: center;
   padding: 16px 0;
   width: 100%;
+}
+
+.collapsed .nav-account {
+  padding: 8px;
+  width: auto;
+  border-radius: 50%;
 }
 
 .collapsed .nav-top,

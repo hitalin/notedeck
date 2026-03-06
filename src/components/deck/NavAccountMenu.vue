@@ -124,8 +124,8 @@ function modeLabel(key: string): string {
 }
 
 .nav-account-menu.menu-right {
-  bottom: auto;
-  top: 0;
+  top: auto;
+  bottom: 0;
   left: 100%;
   right: auto;
   margin-bottom: 0;
