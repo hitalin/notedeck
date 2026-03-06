@@ -2,28 +2,32 @@
 import { invoke } from '@tauri-apps/api/core'
 import { defineAsyncComponent, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import { createAdapter } from '@/adapters/registry'
-import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
+import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
+import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
+import { useNoteActions } from '@/composables/useNoteActions'
 import { useAccountsStore } from '@/stores/accounts'
-import { useEmojisStore } from '@/stores/emojis'
 import { noteStore } from '@/stores/notes'
-import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
-import { useServersStore } from '@/stores/servers'
-import { AppError } from '@/utils/errors'
-import { toggleFavorite } from '@/utils/toggleFavorite'
-import { toggleReaction } from '@/utils/toggleReaction'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
 const accountsStore = useAccountsStore()
-const serversStore = useServersStore()
-const emojisStore = useEmojisStore()
-const pinnedReactionsStore = usePinnedReactionsStore()
+const { getOrCreate } = useMultiAccountAdapters()
 
 const notes = shallowRef<NormalizedNote[]>([])
+
+function onMutated(note: NormalizedNote) {
+  noteStore.update(note.id, { ...note })
+  notes.value = [...notes.value]
+}
+
+const { postForm, handlers } = useNoteActions(
+  (note) => getOrCreate(note._accountId),
+  onMutated,
+)
+
 const searchQuery = ref('')
 const searchInput = ref<HTMLInputElement | null>(null)
 const isLoading = ref(false)
@@ -32,39 +36,8 @@ const confirmedQuery = ref('')
 const error = ref<string | null>(null)
 const scroller = ref<InstanceType<typeof DynamicScroller> | null>(null)
 
-// Post form state
-const showPostForm = ref(false)
-const postFormReplyTo = ref<NormalizedNote | undefined>()
-const postFormRenoteId = ref<string | undefined>()
-const postFormEditNote = ref<NormalizedNote | undefined>()
-const postFormAccountId = ref<string | undefined>()
-
-// Per-account adapter cache
-const adapters = new Map<string, ServerAdapter>()
-
-async function getOrCreateAdapter(
-  accountId: string,
-): Promise<ServerAdapter | null> {
-  const cached = adapters.get(accountId)
-  if (cached) return cached
-  const acc = accountsStore.accounts.find((a) => a.id === accountId)
-  if (!acc) return null
-  const serverInfo = await serversStore.getServerInfo(acc.host)
-  const adapter = createAdapter(serverInfo, acc.id)
-  emojisStore.ensureLoaded(acc.host, () => adapter.api.getServerEmojis())
-  pinnedReactionsStore.ensureLoaded(acc.id, () =>
-    adapter.api.getPinnedReactions(),
-  )
-  adapters.set(accountId, adapter)
-  return adapter
-}
-
-function notifyMutationFor(note: NormalizedNote) {
-  return () => {
-    noteStore.update(note.id, { ...note })
-    notes.value = [...notes.value]
-  }
-}
+// Per-account search progress
+const searchProgress = ref<{ host: string; done: boolean }[]>([])
 
 // Merge notes: dedup by id, sort by createdAt desc
 function mergeNotes(
@@ -154,13 +127,24 @@ async function performSearch() {
   await searchLocalAll(q)
   const localNotes = notes.value
 
-  // Server search (all accounts in parallel)
+  // Server search (all accounts in parallel) with progress
   const accounts = accountsStore.accounts
+  searchProgress.value = accounts.map((acc) => ({
+    host: acc.host,
+    done: false,
+  }))
+
   const results = await Promise.allSettled(
-    accounts.map(async (acc) => {
-      const adapter = await getOrCreateAdapter(acc.id)
+    accounts.map(async (acc, i) => {
+      const adapter = await getOrCreate(acc.id)
       if (!adapter) return []
-      return adapter.api.searchNotes(q)
+      try {
+        return await adapter.api.searchNotes(q)
+      } finally {
+        searchProgress.value = searchProgress.value.map((p, j) =>
+          j === i ? { ...p, done: true } : p,
+        )
+      }
     }),
   )
 
@@ -177,6 +161,7 @@ async function performSearch() {
   }
 
   isLoading.value = false
+  searchProgress.value = []
 }
 
 async function loadMore() {
@@ -189,7 +174,7 @@ async function loadMore() {
 
   const results = await Promise.allSettled(
     accounts.map(async (acc) => {
-      const adapter = await getOrCreateAdapter(acc.id)
+      const adapter = await getOrCreate(acc.id)
       if (!adapter) return []
       const untilId = lastNoteIds.get(acc.id)
       if (!untilId) return []
@@ -223,93 +208,21 @@ function handleScroll() {
   }
 }
 
-// Note action handlers
-async function handleReaction(reaction: string, note: NormalizedNote) {
-  const adapter = await getOrCreateAdapter(note._accountId)
-  if (!adapter) return
-  try {
-    await toggleReaction(adapter.api, note, reaction, notifyMutationFor(note))
-  } catch (e) {
-    console.error('[search:reaction]', AppError.from(e).message)
-  }
-}
-
-async function handleRenote(note: NormalizedNote) {
-  const adapter = await getOrCreateAdapter(note._accountId)
-  if (!adapter) return
-  const notify = notifyMutationFor(note)
-  note.renoteCount = (note.renoteCount ?? 0) + 1
-  notify()
-  try {
-    await adapter.api.createNote({ renoteId: note.id })
-  } catch (e) {
-    note.renoteCount = Math.max(0, (note.renoteCount ?? 1) - 1)
-    notify()
-    console.error('[search:renote]', AppError.from(e).message)
-  }
-}
-
-function handleReply(note: NormalizedNote) {
-  postFormAccountId.value = note._accountId
-  postFormReplyTo.value = note
-  postFormRenoteId.value = undefined
-  postFormEditNote.value = undefined
-  showPostForm.value = true
-}
-
-function handleQuote(note: NormalizedNote) {
-  postFormAccountId.value = note._accountId
-  postFormReplyTo.value = undefined
-  postFormRenoteId.value = note.id
-  postFormEditNote.value = undefined
-  showPostForm.value = true
-}
-
+// Delete with optimistic removal from list
 async function handleDelete(note: NormalizedNote) {
-  const adapter = await getOrCreateAdapter(note._accountId)
-  if (!adapter) return
   const id = note.id
   const prevNotes = notes.value
   notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
-  try {
-    await adapter.api.deleteNote(id)
-  } catch {
-    notes.value = prevNotes
-  }
-}
-
-function handleEdit(note: NormalizedNote) {
-  postFormAccountId.value = note._accountId
-  postFormReplyTo.value = undefined
-  postFormRenoteId.value = undefined
-  postFormEditNote.value = note
-  showPostForm.value = true
-}
-
-async function handleBookmark(note: NormalizedNote) {
-  const adapter = await getOrCreateAdapter(note._accountId)
-  if (!adapter) return
-  try {
-    await toggleFavorite(adapter.api, note, notifyMutationFor(note))
-  } catch (e) {
-    console.error('[search:bookmark]', AppError.from(e).message)
-  }
-}
-
-function closePostForm() {
-  showPostForm.value = false
-  postFormReplyTo.value = undefined
-  postFormRenoteId.value = undefined
-  postFormEditNote.value = undefined
-  postFormAccountId.value = undefined
+  const ok = await handlers.delete(note)
+  if (!ok) notes.value = prevNotes
 }
 
 async function handlePosted(editedNoteId?: string) {
-  closePostForm()
+  postForm.close()
   if (editedNoteId) {
     const note = notes.value.find((n) => n.id === editedNoteId)
     if (!note) return
-    const adapter = await getOrCreateAdapter(note._accountId)
+    const adapter = await getOrCreate(note._accountId)
     if (!adapter) return
     try {
       const updated = await adapter.api.getNote(editedNoteId)
@@ -326,16 +239,21 @@ async function handlePosted(editedNoteId?: string) {
   }
 }
 
+function clearSearch() {
+  searchQuery.value = ''
+  confirmedQuery.value = ''
+  notes.value = []
+  isPreview.value = false
+  error.value = null
+  searchInput.value?.focus()
+}
+
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter') performSearch()
 }
 
 onUnmounted(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
-  for (const adapter of adapters.values()) {
-    adapter.stream.cleanup()
-  }
-  adapters.clear()
 })
 
 // Auto-focus the search input
@@ -355,6 +273,14 @@ setTimeout(() => searchInput.value?.focus(), 100)
         @keydown="onKeydown"
       />
       <button
+        v-if="searchQuery"
+        class="_button search-clear"
+        title="Clear"
+        @click="clearSearch"
+      >
+        <i class="ti ti-x" />
+      </button>
+      <button
         class="_button search-btn"
         :disabled="!searchQuery.trim() || isLoading"
         @click="performSearch"
@@ -363,12 +289,26 @@ setTimeout(() => searchInput.value?.focus(), 100)
       </button>
     </div>
 
-    <div v-if="isLoading && notes.length === 0" class="search-empty">
+    <!-- Per-account progress bar -->
+    <div v-if="searchProgress.length > 0" class="search-progress">
+      <span
+        v-for="(p, i) in searchProgress"
+        :key="i"
+        class="progress-dot"
+        :class="{ done: p.done }"
+        :title="p.host"
+      />
+    </div>
+
+    <div v-if="isLoading && notes.length === 0 && searchProgress.length === 0" class="search-empty">
       Searching...
     </div>
 
     <div v-else-if="!searchQuery.trim() && notes.length === 0" class="search-empty">
-      Enter a search query
+      <div class="search-empty-icon">
+        <i class="ti ti-search" />
+      </div>
+      <span>Enter a search query</span>
     </div>
 
     <div v-else-if="error && notes.length === 0" class="search-empty">
@@ -393,13 +333,13 @@ setTimeout(() => searchInput.value?.focus(), 100)
         >
           <MkNote
             :note="item"
-            @react="handleReaction"
-            @reply="handleReply"
-            @renote="handleRenote"
-            @quote="handleQuote"
+            @react="handlers.reaction"
+            @reply="handlers.reply"
+            @renote="handlers.renote"
+            @quote="handlers.quote"
             @delete="handleDelete"
-            @edit="handleEdit"
-            @bookmark="handleBookmark"
+            @edit="handlers.edit"
+            @bookmark="handlers.bookmark"
           />
         </DynamicScrollerItem>
       </template>
@@ -417,12 +357,12 @@ setTimeout(() => searchInput.value?.focus(), 100)
 
   <Teleport to="body">
     <MkPostForm
-      v-if="showPostForm && postFormAccountId"
-      :account-id="postFormAccountId"
-      :reply-to="postFormReplyTo"
-      :renote-id="postFormRenoteId"
-      :edit-note="postFormEditNote"
-      @close="closePostForm"
+      v-if="postForm.show.value && postForm.accountId.value"
+      :account-id="postForm.accountId.value"
+      :reply-to="postForm.replyTo.value"
+      :renote-id="postForm.renoteId.value"
+      :edit-note="postForm.editNote.value"
+      @close="postForm.close"
       @posted="handlePosted"
     />
   </Teleport>
@@ -471,6 +411,24 @@ setTimeout(() => searchInput.value?.focus(), 100)
   opacity: 0.4;
 }
 
+.search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  opacity: 0.35;
+  font-size: 0.8em;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.search-clear:hover {
+  background: var(--nd-buttonHoverBg);
+  opacity: 0.7;
+}
+
 .search-btn {
   display: flex;
   align-items: center;
@@ -492,14 +450,44 @@ setTimeout(() => searchInput.value?.focus(), 100)
   opacity: 0.2;
 }
 
-.search-empty {
+.search-progress {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  flex-shrink: 0;
+}
+
+.progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--nd-fg);
+  opacity: 0.15;
+  transition: opacity 0.3s, background 0.3s;
+}
+
+.progress-dot.done {
+  background: var(--nd-accent);
+  opacity: 0.8;
+}
+
+.search-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: 2rem 1rem;
   color: var(--nd-fg);
   opacity: 0.5;
   font-size: 0.85em;
+}
+
+.search-empty-icon {
+  font-size: 2em;
+  opacity: 0.3;
 }
 
 .search-scroller {

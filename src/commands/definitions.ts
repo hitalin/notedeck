@@ -4,6 +4,7 @@ import type { NoteAction } from '@/composables/useNoteFocus'
 
 export interface CommandHandlers {
   openCompose: () => void
+  openSearch: () => void
   toggleAddMenu: () => void
   toggleNav: () => void
   toggleAccountMenu: () => void
@@ -41,6 +42,18 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     ],
     execute: () => commandStore.toggle(),
     visible: false,
+  })
+
+  commandStore.register({
+    id: 'search',
+    label: 'Search',
+    icon: 'search',
+    category: 'navigation',
+    shortcuts: [
+      { key: 'f', ctrl: true, shift: true, scope: 'global' },
+      { key: 's', scope: 'body' },
+    ],
+    execute: handlers.openSearch,
   })
 
   commandStore.register({
@@ -173,6 +186,7 @@ export function unregisterDefaultCommands() {
   const commandStore = useCommandStore()
   for (const id of [
     'command-palette',
+    'search',
     'compose',
     'boss-key',
     'add-column',

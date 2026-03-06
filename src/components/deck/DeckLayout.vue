@@ -53,7 +53,7 @@ import DeckUserColumn from './DeckUserColumn.vue'
 import DeckWidgetColumn from './DeckWidgetColumn.vue'
 
 const router = useRouter()
-const { navigateToNote, navigateToUser } = useNavigation()
+const { navigateToNote, navigateToUser, navigateToSearch } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 const commandStore = useCommandStore()
@@ -215,6 +215,7 @@ onMounted(() => {
   })
   registerDefaultCommands({
     openCompose,
+    openSearch: navigateToSearch,
     toggleAddMenu,
     toggleNav: () => navbarRef.value?.toggleNav(),
     toggleAccountMenu: () => navbarRef.value?.toggleFirstAccountMenu(),
