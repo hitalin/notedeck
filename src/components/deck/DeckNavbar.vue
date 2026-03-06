@@ -329,7 +329,7 @@ defineExpose({
 .nav-bottom {
   display: flex;
   flex-direction: column;
-  padding: 8px;
+  padding: 10px 16px;
 }
 
 .nav-spacer {
@@ -339,15 +339,15 @@ defineExpose({
 .nav-divider {
   height: 1px;
   background: var(--nd-divider);
-  margin: 4px 10px;
+  margin: 10px 16px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 8px 14px;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
   color: var(--nd-navFg, var(--nd-fg));
   font-size: 0.9em;
   white-space: nowrap;
@@ -362,7 +362,7 @@ defineExpose({
 
 .nav-item .ti {
   flex-shrink: 0;
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 .nav-item:hover .ti {
@@ -380,13 +380,13 @@ defineExpose({
 
 .collapsed .nav-item {
   justify-content: center;
-  padding: 10px 0;
+  padding: 16px 0;
   width: 100%;
 }
 
 .collapsed .nav-top,
 .collapsed .nav-bottom {
-  padding: 8px 0;
+  padding: 10px 0;
   align-items: center;
 }
 
