@@ -34,6 +34,7 @@ const builtins: Record<string, string[]> = {
   Ui: [
     'render',
     'get',
+    'root',
     'C:text',
     'C:mfm',
     'C:button',

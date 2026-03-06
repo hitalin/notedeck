@@ -228,7 +228,7 @@ Misskey ユーザーが既に馴染んでいるサンドボックス言語で、
   ウィジェットカラム（Console / App）および独立 AiScript エディタカラムで記述・実行可能。
   CodeMirror 6 エディタ統合（VS Code Dark+ テーマ、行番号、横スクロール、Web Worker LSP による補完・診断）
 - [x] **Misskey Play 互換 API** — `Mk:dialog`, `Mk:confirm`, `Mk:toast`, `Mk:api`, `Mk:save`, `Mk:load`,
-  `Mk:remove`, `Ui:render`, `Ui:get`, `Ui:C:*`（text/mfm/button/buttons/textInput/textarea/numberInput/
+  `Mk:remove`, `Ui:render`, `Ui:get`, `Ui:root`, `Ui:C:*`（text/mfm/button/buttons/textInput/textarea/numberInput/
   switch/select/container/folder/postFormButton/postForm/spacer）。
   `Mk:dialog`/`Mk:confirm`/`Mk:toast` は専用 Vue コンポーネント（AiScriptDialog/AiScriptToast）で表示
 - [x] **Misskey Plugin API 互換** — Misskey 本家の全 Plugin API を実装:
@@ -239,7 +239,6 @@ Misskey ユーザーが既に馴染んでいるサンドボックス言語で、
   レガシー AiScript（v0.13.2 / v0.19.0）のプラグインにも対応
 - [ ] **Misskey 本家 API 互換性ギャップ** — 以下の API が未実装:
   - `Plugin:register_page_view_interruptor` — ページ表示の書き換えフック。NoteDeck にページビューがないため優先度低
-  - `Ui:root` — ルートコンポーネントへの直接アクセス。`Ui:render` で代替可能
 - [x] **プラグイン管理 UI** — インストール・有効/無効切替・アンインストール。
   Misskey 本家と同じくテキストベースでコピペインストール、AiScript エディタによるシンタックスハイライト
 - [ ] **NoteDeck 拡張 API** — Misskey 本家にない NoteDeck 固有の拡張ポイント。
