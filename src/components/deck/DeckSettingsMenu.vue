@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { version as appVersion } from '../../../package.json'
 import { computed, nextTick, ref, watch } from 'vue'
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useDeckStore } from '@/stores/deck'
@@ -285,6 +286,9 @@ function syncScroll(e: Event) {
         style="display: none"
         @change="onFileSelected"
       />
+
+      <div class="settings-menu-divider" />
+      <div class="version-info">v{{ appVersion }}</div>
     </div>
   </Transition>
 </template>
@@ -876,6 +880,15 @@ function syncScroll(e: Event) {
 .settings-menu-enter-active,
 .settings-menu-leave-active {
   transition: opacity 0.15s, transform 0.15s;
+}
+
+.version-info {
+  text-align: center;
+  padding: 4px 16px 8px;
+  font-size: 0.75em;
+  color: var(--nd-fg);
+  opacity: 0.4;
+  user-select: text;
 }
 
 .settings-menu-enter-from,
