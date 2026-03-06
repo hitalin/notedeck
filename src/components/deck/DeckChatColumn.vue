@@ -839,6 +839,14 @@ onBeforeUnmount(() => {
   z-index: 100;
 }
 
+.chat-reaction-picker {
+  flex-shrink: 0;
+  max-height: 280px;
+  overflow: auto;
+  border-top: 1px solid var(--nd-divider, rgba(255, 255, 255, 0.05));
+  background: var(--nd-panel);
+}
+
 .column-empty {
   display: flex;
   align-items: center;

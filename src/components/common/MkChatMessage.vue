@@ -102,7 +102,7 @@ function handleReactionClick(reaction: string, reacted: boolean) {
           {{ displayUser.name }}
         </div>
         <div v-if="message.text" class="chat-text">
-          <MkMfm :text="message.text" :account-id="accountId" />
+          <MkMfm :text="message.text" :account-id="accountId" :server-host="serverHost" />
         </div>
         <div v-if="message.file" class="chat-file">
           <img
