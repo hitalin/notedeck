@@ -13,6 +13,7 @@ const STORAGE_MANUAL_THEME_KEY = 'nd-theme-manual'
 const STORAGE_INSTALLED_THEMES_KEY = 'nd-installed-themes'
 const STORAGE_SELECTED_DARK_KEY = 'nd-selected-dark-theme'
 const STORAGE_SELECTED_LIGHT_KEY = 'nd-selected-light-theme'
+const STORAGE_CUSTOM_CSS_KEY = 'nd-custom-css'
 
 // Keyed by "accountId:dark" / "accountId:light"
 const compiledCache = new Map<string, CompiledProps>()
@@ -91,6 +92,8 @@ export const useThemeStore = defineStore('theme', () => {
   // Selected theme IDs per mode (null = builtin)
   const selectedDarkThemeId = ref<string | null>(null)
   const selectedLightThemeId = ref<string | null>(null)
+  // Custom CSS
+  const customCss = ref('')
 
   function init(): void {
     // Restore compiled CSS from localStorage first (sync, FOUC prevention)
@@ -122,6 +125,13 @@ export const useThemeStore = defineStore('theme', () => {
       localStorage.getItem(STORAGE_SELECTED_DARK_KEY)
     selectedLightThemeId.value =
       localStorage.getItem(STORAGE_SELECTED_LIGHT_KEY)
+
+    // Restore custom CSS
+    const storedCss = localStorage.getItem(STORAGE_CUSTOM_CSS_KEY)
+    if (storedCss) {
+      customCss.value = storedCss
+      applyCustomCss(storedCss)
+    }
 
     // Apply theme (manual or OS-based)
     applyCurrentTheme()
@@ -262,6 +272,39 @@ export const useThemeStore = defineStore('theme', () => {
       STORAGE_INSTALLED_THEMES_KEY,
       JSON.stringify(installedThemes.value),
     )
+  }
+
+  function setCustomCss(css: string): void {
+    customCss.value = css
+    if (css) {
+      localStorage.setItem(STORAGE_CUSTOM_CSS_KEY, css)
+    } else {
+      localStorage.removeItem(STORAGE_CUSTOM_CSS_KEY)
+    }
+    applyCustomCss(css)
+  }
+
+  let customSheet: CSSStyleSheet | null = null
+
+  function applyCustomCss(css: string): void {
+    if (!css) {
+      if (customSheet) {
+        document.adoptedStyleSheets = document.adoptedStyleSheets.filter(
+          (s) => s !== customSheet,
+        )
+        customSheet = null
+      }
+      return
+    }
+    if (!customSheet) {
+      customSheet = new CSSStyleSheet()
+    }
+    customSheet.replaceSync(css)
+    // Always re-append to ensure it's last (highest priority)
+    document.adoptedStyleSheets = [
+      ...document.adoptedStyleSheets.filter((s) => s !== customSheet),
+      customSheet,
+    ]
   }
 
   function applySource(source: ThemeSource): void {
@@ -414,6 +457,7 @@ export const useThemeStore = defineStore('theme', () => {
     installedThemes,
     selectedDarkThemeId,
     selectedLightThemeId,
+    customCss,
     init,
     applySource,
     toggleTheme,
@@ -422,6 +466,7 @@ export const useThemeStore = defineStore('theme', () => {
     installTheme,
     removeTheme,
     selectTheme,
+    setCustomCss,
     fetchAccountTheme,
     getAccountThemes,
     getCompiledForAccount,

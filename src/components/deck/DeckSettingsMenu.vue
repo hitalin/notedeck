@@ -3,6 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
+import { highlightCode } from '@/utils/highlight'
 import ThemePreview from '@/components/ThemePreview.vue'
 
 const props = defineProps<{
@@ -111,6 +112,34 @@ function onFileSelected(e: Event) {
 function removeWallpaper() {
   deckStore.clearWallpaper()
 }
+
+// Custom CSS
+const showCustomCss = ref(false)
+const customCssInput = ref(themeStore.customCss)
+
+function saveCustomCss() {
+  themeStore.setCustomCss(customCssInput.value)
+}
+
+function clearCustomCss() {
+  customCssInput.value = ''
+  themeStore.setCustomCss('')
+}
+
+const highlightedCss = computed(() => {
+  const code = customCssInput.value
+  if (!code) return ''
+  return highlightCode(code, 'css')
+})
+
+function syncScroll(e: Event) {
+  const textarea = e.target as HTMLTextAreaElement
+  const highlight = textarea.parentElement?.querySelector('.css-highlight') as HTMLElement | null
+  if (highlight) {
+    highlight.scrollTop = textarea.scrollTop
+    highlight.scrollLeft = textarea.scrollLeft
+  }
+}
 </script>
 
 <template>
@@ -193,6 +222,37 @@ function removeWallpaper() {
             <button class="install-action-btn cancel" @click="showInstallInput = false">キャンセル</button>
             <button class="install-action-btn confirm" @click="handleInstall">インストール</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Custom CSS -->
+      <div class="settings-menu-divider" />
+
+      <div v-if="!showCustomCss" class="settings-menu-item" @click="showCustomCss = true">
+        <i class="ti ti-code" />
+        <span class="settings-menu-label">カスタムCSS</span>
+        <span v-if="themeStore.customCss" class="css-active-dot" />
+      </div>
+      <div v-else class="custom-css-section">
+        <div class="custom-css-header">
+          <i class="ti ti-code" />
+          <span>カスタムCSS</span>
+        </div>
+        <div class="css-editor">
+          <div class="css-highlight" v-html="highlightedCss" />
+          <textarea
+            v-model="customCssInput"
+            class="custom-css-textarea"
+            placeholder=":root { cursor: auto; }&#10;body { font-family: ... }"
+            rows="6"
+            spellcheck="false"
+            @scroll="syncScroll"
+          />
+        </div>
+        <div class="custom-css-actions">
+          <button v-if="themeStore.customCss" class="install-action-btn cancel" @click="clearCustomCss">クリア</button>
+          <button class="install-action-btn cancel" @click="showCustomCss = false">閉じる</button>
+          <button class="install-action-btn confirm" @click="saveCustomCss">適用</button>
         </div>
       </div>
 
@@ -659,6 +719,106 @@ function removeWallpaper() {
 
 .install-action-btn:hover {
   opacity: 0.85;
+}
+
+/* ── Custom CSS ── */
+
+.css-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--nd-accent);
+  margin-left: auto;
+}
+
+.custom-css-section {
+  padding: 8px 12px;
+}
+
+.custom-css-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  opacity: 0.7;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.css-editor {
+  position: relative;
+  border: 1px solid var(--nd-divider);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
+  transition: border-color 0.15s;
+}
+
+.css-editor:focus-within {
+  border-color: var(--nd-accent);
+}
+
+.css-highlight {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  padding: 8px;
+  font-size: 0.8em;
+  font-family: monospace;
+  line-height: 1.4;
+  tab-size: 2;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.css-highlight :deep(pre) {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  font-size: inherit;
+  font-family: inherit;
+  line-height: inherit;
+}
+
+.css-highlight :deep(code) {
+  font-family: inherit;
+  line-height: inherit;
+}
+
+.custom-css-textarea {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  padding: 8px;
+  font-size: 0.8em;
+  color: transparent;
+  caret-color: var(--nd-fg);
+  resize: vertical;
+  font-family: monospace;
+  line-height: 1.4;
+  min-height: 80px;
+  tab-size: 2;
+  z-index: 1;
+}
+
+.custom-css-textarea:focus {
+  outline: none;
+}
+
+.custom-css-textarea::placeholder {
+  color: var(--nd-fg);
+  opacity: 0.4;
+}
+
+.custom-css-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  justify-content: flex-end;
 }
 
 /* ── Menu items (wallpaper etc.) ── */
