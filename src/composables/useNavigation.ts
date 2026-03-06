@@ -45,5 +45,17 @@ export function useNavigation() {
     }
   }
 
-  return { navigateToNote, navigateToUser, navigateToLogin, navigateToSearch }
+  function navigateToNotifications() {
+    if (isDeckActive()) {
+      windowsStore.open('notifications')
+    }
+  }
+
+  return {
+    navigateToNote,
+    navigateToUser,
+    navigateToLogin,
+    navigateToSearch,
+    navigateToNotifications,
+  }
 }

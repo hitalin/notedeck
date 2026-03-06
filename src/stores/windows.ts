@@ -1,7 +1,12 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-export type WindowType = 'note-detail' | 'user-profile' | 'login' | 'search'
+export type WindowType =
+  | 'note-detail'
+  | 'user-profile'
+  | 'login'
+  | 'search'
+  | 'notifications'
 
 export interface DeckWindow {
   id: string
@@ -23,6 +28,7 @@ export const WINDOW_SIZES: Record<
   'user-profile': { width: 500, maxHeight: 650 },
   login: { width: 420, maxHeight: 480 },
   search: { width: 500, maxHeight: 650 },
+  notifications: { width: 500, maxHeight: 650 },
 }
 
 let windowCounter = 0
@@ -49,6 +55,7 @@ export const useWindowsStore = defineStore('windows', () => {
         )
       if (type === 'login') return true
       if (type === 'search') return true
+      if (type === 'notifications') return true
       return false
     })
     if (duplicate) {

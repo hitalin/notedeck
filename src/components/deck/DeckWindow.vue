@@ -21,6 +21,7 @@ const titles: Record<string, string> = {
   'user-profile': 'Profile',
   login: 'Add Account',
   search: 'Search',
+  notifications: 'Notifications',
 }
 
 const icons: Record<string, string> = {
@@ -28,6 +29,7 @@ const icons: Record<string, string> = {
   'user-profile': 'ti ti-user',
   login: 'ti ti-login-2',
   search: 'ti ti-search',
+  notifications: 'ti ti-bell',
 }
 
 const isMinimized = computed(() => props.window.minimized)

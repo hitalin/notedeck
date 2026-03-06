@@ -23,7 +23,8 @@ const emit = defineEmits<{
   'update:mobileDrawerOpen': [value: boolean]
 }>()
 
-const { navigateToLogin, navigateToSearch } = useNavigation()
+const { navigateToLogin, navigateToSearch, navigateToNotifications } =
+  useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
@@ -185,6 +186,14 @@ defineExpose({
       <div class="nav-body">
         <!-- Top section -->
         <div class="nav-top">
+          <button
+            class="_button nav-item"
+            title="Notifications"
+            @click="navigateToNotifications()"
+          >
+            <i class="ti ti-bell" />
+            <span class="nav-label">Notifications</span>
+          </button>
           <button
             class="_button nav-item"
             title="Search"
