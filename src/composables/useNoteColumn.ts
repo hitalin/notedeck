@@ -15,6 +15,7 @@ import { useNoteList } from '@/composables/useNoteList'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { noteStore } from '@/stores/notes'
 import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
 import { sortByCreatedAtDesc } from '@/utils/sortNotes'
@@ -114,6 +115,33 @@ export function useNoteColumn(config: NoteColumnConfig) {
   const pendingNotes =
     streamingBatch?.pendingNotes ?? shallowRef<NormalizedNote[]>([])
 
+  /**
+   * Background-verify that cached notes still exist on the server.
+   * Any note returning 404 is purged from noteStore + DB cache.
+   * Confirmed notes are refreshed with latest data.
+   */
+  async function purgeStaleCachedNotes(
+    adapter: ServerAdapter,
+    idsToVerify: string[],
+  ) {
+    const BATCH_SIZE = 5
+    for (let i = 0; i < idsToVerify.length; i += BATCH_SIZE) {
+      if (!getAdapter()) return // column was unmounted
+      const batch = idsToVerify.slice(i, i + BATCH_SIZE)
+      await Promise.allSettled(
+        batch.map(async (id) => {
+          try {
+            const fresh = await adapter.api.getNote(id)
+            noteStore.update(id, fresh)
+          } catch {
+            noteStore.remove(id)
+            invoke('api_delete_cached_note', { noteId: id }).catch(() => {})
+          }
+        }),
+      )
+    }
+  }
+
   async function connect(useCache = false) {
     error.value = null
     isLoading.value = true
@@ -122,6 +150,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
       isLoading.value = false
       return
     }
+
+    let cachedIds: string[] = []
 
     if (useCache && config.cache) {
       const column = config.getColumn()
@@ -136,7 +166,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
               limit: 40,
             },
           )
-          if (cached.length > 0) setNotes(cached)
+          if (cached.length > 0) {
+            setNotes(cached)
+            cachedIds = cached.map((n) => n.id)
+          }
         } catch {
           /* non-critical */
         }
@@ -168,12 +201,22 @@ export function useNoteColumn(config: NoteColumnConfig) {
       const fetched = await dedup(dedupKey, () =>
         config.fetch(adapter, sinceId ? { sinceId } : {}),
       )
+      const freshIds = new Set(fetched.map((n) => n.id))
+
       if (sinceId && fetched.length > 0) {
         const newNotes = fetched.filter((n) => !noteIds.has(n.id))
         if (newNotes.length > 0)
           setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
       } else if (fetched.length > 0) {
         setNotes(fetched)
+      }
+
+      // Background: verify cached notes not confirmed by fresh API fetch
+      if (cachedIds.length > 0) {
+        const unverified = cachedIds.filter((id) => !freshIds.has(id))
+        if (unverified.length > 0) {
+          purgeStaleCachedNotes(adapter, unverified)
+        }
       }
     } catch (e) {
       if (notes.value.length === 0) {
@@ -296,6 +339,17 @@ export function useNoteColumn(config: NoteColumnConfig) {
         return true
       })
       setNotes(sortByCreatedAtDesc([...deduped, ...notes.value]))
+    }
+
+    // Background: verify cached notes not confirmed by fresh API fetch
+    if (cached.length > 0 && adapter) {
+      const freshIds = new Set(fetched.map((n) => n.id))
+      const unverified = cached
+        .map((n) => n.id)
+        .filter((id) => !freshIds.has(id))
+      if (unverified.length > 0) {
+        purgeStaleCachedNotes(adapter, unverified)
+      }
     }
   }
 

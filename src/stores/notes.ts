@@ -2,6 +2,7 @@ import { shallowRef, triggerRef } from 'vue'
 import type { NormalizedNote, NoteUpdateEvent } from '@/adapters/types'
 
 const noteMap = shallowRef(new Map<string, NormalizedNote>())
+const deleteListeners = new Set<(id: string) => void>()
 
 /** Batch triggerRef calls into one per animation frame (streaming events fire rapidly) */
 let triggerRafId: number | null = null
@@ -61,6 +62,12 @@ function resolve(ids: string[]): NormalizedNote[] {
 function remove(id: string) {
   noteMap.value.delete(id)
   scheduleTrigger()
+  for (const listener of deleteListeners) listener(id)
+}
+
+function onDelete(listener: (id: string) => void): () => void {
+  deleteListeners.add(listener)
+  return () => deleteListeners.delete(listener)
 }
 
 function applyUpdate(event: NoteUpdateEvent, myUserId: string | undefined) {
@@ -145,6 +152,7 @@ export const noteStore = {
   resolve,
   update,
   remove,
+  onDelete,
   applyUpdate,
   notifyMutation,
 }

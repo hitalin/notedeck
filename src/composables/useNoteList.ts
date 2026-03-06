@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { computed, shallowRef } from 'vue'
+import { computed, onScopeDispose, shallowRef } from 'vue'
 import type {
   NormalizedNote,
   NoteUpdateEvent,
@@ -19,6 +19,15 @@ export function useNoteList(options: UseNoteListOptions) {
   const orderedIds = shallowRef<string[]>([])
   const noteIds = new Set<string>()
   let onNotesChangedFn = options.onNotesChanged
+
+  // Listen for global note deletions so ALL columns clean up their orderedIds
+  const unsubDelete = noteStore.onDelete((id) => {
+    if (noteIds.has(id)) {
+      orderedIds.value = orderedIds.value.filter((oid) => oid !== id)
+      noteIds.delete(id)
+    }
+  })
+  onScopeDispose(unsubDelete)
 
   const notes = computed({
     get: () => noteStore.resolve(orderedIds.value),
@@ -41,10 +50,8 @@ export function useNoteList(options: UseNoteListOptions) {
 
   function onNoteUpdate(event: NoteUpdateEvent) {
     if (event.type === 'deleted') {
-      if (noteIds.has(event.noteId)) {
-        orderedIds.value = orderedIds.value.filter((id) => id !== event.noteId)
-        noteIds.delete(event.noteId)
-      }
+      // noteStore.remove() triggers global onDelete listeners,
+      // which clean up orderedIds/noteIds in ALL columns
       noteStore.remove(event.noteId)
       invoke('api_delete_cached_note', { noteId: event.noteId }).catch(() => {})
       return
