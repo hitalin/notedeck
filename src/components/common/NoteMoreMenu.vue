@@ -12,23 +12,33 @@ const props = defineProps<{
   note: NormalizedNote
   isOwnNote: boolean
   isFavorited: boolean
+  isPinned: boolean
 }>()
 
 const emit = defineEmits<{
   delete: [note: NormalizedNote]
   edit: [note: NormalizedNote]
   bookmark: [note: NormalizedNote]
+  pin: [note: NormalizedNote]
 }>()
 
 const showMenu = ref(false)
 const showDeleteConfirm = ref(false)
 const menuPos = ref({ x: 0, y: 0 })
 const localIsFavorited = ref(props.isFavorited)
+const localIsPinned = ref(props.isPinned)
 
 watch(
   () => props.isFavorited,
   (v) => {
     localIsFavorited.value = v
+  },
+)
+
+watch(
+  () => props.isPinned,
+  (v) => {
+    localIsPinned.value = v
   },
 )
 
@@ -105,6 +115,14 @@ defineExpose({ open })
             </template>
             <template v-if="isOwnNote">
               <div class="popup-divider" />
+              <button
+                class="popup-item"
+                :class="{ 'popup-item-active': localIsPinned }"
+                @click="localIsPinned = !localIsPinned; emit('pin', note); close()"
+              >
+                <i :class="localIsPinned ? 'ti ti-pinned-off' : 'ti ti-pin'" />
+                {{ localIsPinned ? 'ピン留め解除' : 'ピン留め' }}
+              </button>
               <button class="popup-item" @click="emit('edit', note); close()">
                 <i class="ti ti-edit" />
                 編集

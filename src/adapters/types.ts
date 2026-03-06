@@ -222,6 +222,7 @@ export interface NormalizedUserDetail extends NormalizedUser {
   url?: string | null
   birthday?: string | null
   location?: string | null
+  pinnedNoteIds?: string[]
 }
 
 export interface NormalizedPoll {
@@ -323,6 +324,9 @@ export interface ApiAdapter {
   deleteNote(noteId: string): Promise<void>
   createFavorite(noteId: string): Promise<void>
   deleteFavorite(noteId: string): Promise<void>
+  pinNote(noteId: string): Promise<void>
+  unpinNote(noteId: string): Promise<void>
+  getUserPinnedNoteIds(userId: string): Promise<string[]>
   uploadFile(
     fileName: string,
     fileData: number[],

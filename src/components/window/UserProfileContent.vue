@@ -30,6 +30,8 @@ const serversStore = useServersStore()
 const user = ref<NormalizedUserDetail | null>(null)
 const MAX_PROFILE_NOTES = 500
 const notes = shallowRef<NormalizedNote[]>([])
+const pinnedNotes = shallowRef<NormalizedNote[]>([])
+const pinnedNoteIds = ref<string[]>([])
 const isLoading = ref(true)
 const isLoadingNotes = ref(false)
 const error = ref<AppError | null>(null)
@@ -55,7 +57,18 @@ onMounted(async () => {
     adapter = a
     emojisStore.ensureLoaded(account.host, () => a.api.getServerEmojis())
     user.value = await adapter.api.getUserDetail(props.userId)
-    notes.value = await adapter.api.getUserNotes(props.userId, { limit: 20 })
+    const [userNotes, userPinnedNoteIds] = await Promise.all([
+      adapter.api.getUserNotes(props.userId, { limit: 20 }),
+      adapter.api.getUserPinnedNoteIds(props.userId),
+    ])
+    notes.value = userNotes
+    pinnedNoteIds.value = userPinnedNoteIds
+    if (userPinnedNoteIds.length > 0) {
+      const pinned = await Promise.all(
+        userPinnedNoteIds.map((id) => adapter!.api.getNote(id)),
+      )
+      pinnedNotes.value = pinned
+    }
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -182,6 +195,24 @@ function handleEdit(target: NormalizedNote) {
   postFormRenoteId.value = undefined
   postFormEditNote.value = target
   showPostForm.value = true
+}
+
+async function handlePin(target: NormalizedNote) {
+  if (!adapter) return
+  try {
+    const isPinned = pinnedNoteIds.value.includes(target.id)
+    if (isPinned) {
+      await adapter.api.unpinNote(target.id)
+      pinnedNoteIds.value = pinnedNoteIds.value.filter((id) => id !== target.id)
+      pinnedNotes.value = pinnedNotes.value.filter((n) => n.id !== target.id)
+    } else {
+      await adapter.api.pinNote(target.id)
+      pinnedNoteIds.value = [...pinnedNoteIds.value, target.id]
+      pinnedNotes.value = [...pinnedNotes.value, target]
+    }
+  } catch (e) {
+    error.value = AppError.from(e)
+  }
 }
 
 async function handleDelete(target: NormalizedNote) {
@@ -363,6 +394,27 @@ async function handlePosted(editedNoteId?: string) {
           </button>
         </div>
 
+        <!-- Pinned notes -->
+        <div v-if="pinnedNotes.length > 0" class="pinned-section">
+          <div class="pinned-header">
+            <i class="ti ti-pin" />
+            ピン留め
+          </div>
+          <MkNote
+            v-for="note in pinnedNotes"
+            :key="'pinned-' + note.id"
+            :note="note"
+            :pinned-note-ids="pinnedNoteIds"
+            @react="handleReaction"
+            @reply="handleReply"
+            @renote="handleRenote"
+            @quote="handleQuote"
+            @delete="handleDelete"
+            @edit="handleEdit"
+            @pin="handlePin"
+          />
+        </div>
+
         <!-- User's notes -->
         <div class="notes-section">
           <div class="notes-tab">ノート</div>
@@ -371,12 +423,14 @@ async function handlePosted(editedNoteId?: string) {
             v-for="note in notes"
             :key="note.id"
             :note="note"
+            :pinned-note-ids="pinnedNoteIds"
             @react="handleReaction"
             @reply="handleReply"
             @renote="handleRenote"
             @quote="handleQuote"
             @delete="handleDelete"
             @edit="handleEdit"
+            @pin="handlePin"
           />
 
           <div v-if="isLoadingNotes" class="state-message">
@@ -634,6 +688,26 @@ async function handlePosted(editedNoteId?: string) {
 
 .stat-link:hover {
   background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.03));
+}
+
+/* Pinned notes section */
+.pinned-section {
+  border-top: solid 0.5px var(--nd-divider);
+}
+
+.pinned-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  font-size: 0.85em;
+  font-weight: bold;
+  color: var(--nd-fg);
+  opacity: 0.7;
+}
+
+.pinned-header .ti {
+  font-size: 1em;
 }
 
 /* Notes section */

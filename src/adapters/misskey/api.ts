@@ -134,6 +134,31 @@ export class MisskeyApi implements ApiAdapter {
     })
   }
 
+  async pinNote(noteId: string): Promise<void> {
+    await invoke('api_request', {
+      accountId: this.accountId,
+      endpoint: 'i/pin',
+      params: { noteId },
+    })
+  }
+
+  async unpinNote(noteId: string): Promise<void> {
+    await invoke('api_request', {
+      accountId: this.accountId,
+      endpoint: 'i/unpin',
+      params: { noteId },
+    })
+  }
+
+  async getUserPinnedNoteIds(userId: string): Promise<string[]> {
+    const result = await invoke<{ pinnedNoteIds?: string[] }>('api_request', {
+      accountId: this.accountId,
+      endpoint: 'users/show',
+      params: { userId },
+    })
+    return result.pinnedNoteIds ?? []
+  }
+
   async getUser(userId: string): Promise<NormalizedUser> {
     return invoke('api_get_user', {
       accountId: this.accountId,

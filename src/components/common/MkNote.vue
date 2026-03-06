@@ -30,6 +30,7 @@ const props = defineProps<{
   note: NormalizedNote
   detailed?: boolean
   focused?: boolean
+  pinnedNoteIds?: string[]
 }>()
 
 /** Pure renote → show inner note, otherwise show note itself */
@@ -64,6 +65,7 @@ const emit = defineEmits<{
   delete: [note: NormalizedNote]
   edit: [note: NormalizedNote]
   bookmark: [note: NormalizedNote]
+  pin: [note: NormalizedNote]
 }>()
 
 const { navigateToNote: navToNote, navigateToUser: navToUser } = useNavigation()
@@ -449,9 +451,11 @@ async function handleMentionClick(username: string, host: string | null) {
     :note="effectiveNote"
     :is-own-note="isOwnNote"
     :is-favorited="effectiveNote.isFavorited ?? false"
+    :is-pinned="props.pinnedNoteIds?.includes(effectiveNote.id) ?? false"
     @delete="emit('delete', $event)"
     @edit="emit('edit', $event)"
     @bookmark="emit('bookmark', $event)"
+    @pin="emit('pin', $event)"
   />
 
   <NoteReactionPickerPopup
