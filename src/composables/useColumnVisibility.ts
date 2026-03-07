@@ -22,6 +22,7 @@ export function provideColumnVisibility() {
   function setup(container: Ref<HTMLElement | null>) {
     observer = new IntersectionObserver(
       (entries) => {
+        if (document.hidden) return
         for (const entry of entries) {
           const colId = (entry.target as HTMLElement).dataset.columnId
           if (colId) map.set(colId, entry.isIntersecting)
