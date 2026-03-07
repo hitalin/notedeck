@@ -260,6 +260,27 @@ jobs:
           echo "=== Downloaded assets ==="
           ls -la assets/ || true
 
+      - name: Generate checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          mkdir -p checksums
+          gh release download "v${VERSION}" \
+            --repo "${{ github.repository }}" \
+            --dir checksums \
+            --pattern "*.exe" \
+            --pattern "*.dmg" \
+            --pattern "*.deb" \
+            --pattern "*.AppImage" \
+            --pattern "*.tar.gz" || true
+          cd checksums
+          sha256sum * > SHA256SUMS.txt || true
+          cat SHA256SUMS.txt
+          gh release upload "v${VERSION}" SHA256SUMS.txt \
+            --repo "${{ github.repository }}" \
+            --clobber
+
       - name: Generate latest.json
         run: |
           VERSION=${{ steps.version.outputs.version }}
