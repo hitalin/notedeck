@@ -100,7 +100,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   const postFormRenoteId = ref<string | undefined>()
   const postFormEditNote = ref<NormalizedNote | undefined>()
 
-  const actionSound = useNoteSound(() => account.value?.host, 'syuilo/n-aec')
+  const actionSound = useNoteSound(() => account.value?.host, 'syuilo/bubble2')
 
   async function handleReaction(reaction: string, note: NormalizedNote) {
     if (!adapter) return
