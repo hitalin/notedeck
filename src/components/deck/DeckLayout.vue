@@ -48,6 +48,7 @@ import DeckClipColumn from './DeckClipColumn.vue'
 import DeckDriveColumn from './DeckDriveColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckAchievementsColumn from './DeckAchievementsColumn.vue'
+import DeckFollowRequestsColumn from './DeckFollowRequestsColumn.vue'
 import DeckGalleryColumn from './DeckGalleryColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
@@ -151,6 +152,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   page: 'note',
   announcements: 'speakerphone',
   gallery: 'icons',
+  followRequests: 'user-plus',
 }
 
 function columnIcon(colId: string): string {
@@ -445,6 +447,10 @@ watch(
             />
             <DeckGalleryColumn
               v-else-if="col.type === 'gallery'"
+              :column="col"
+            />
+            <DeckFollowRequestsColumn
+              v-else-if="col.type === 'followRequests'"
               :column="col"
             />
             <DeckAchievementsColumn

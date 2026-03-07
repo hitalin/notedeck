@@ -37,6 +37,7 @@ const addColumnType = ref<
   | 'announcements'
   | 'drive'
   | 'gallery'
+  | 'followRequests'
   | 'achievements'
   | null
 >(null)
@@ -63,6 +64,7 @@ function selectColumnType(
     | 'announcements'
     | 'drive'
     | 'gallery'
+    | 'followRequests'
     | 'achievements',
 ) {
   addColumnType.value = type
@@ -164,6 +166,7 @@ function addColumnForAccount(accountId: string) {
     type === 'specified' ||
     type === 'chat' ||
     type === 'announcements' ||
+    type === 'followRequests' ||
     type === 'achievements'
   ) {
     const nameMap: Record<string, string> = {
@@ -172,6 +175,7 @@ function addColumnForAccount(accountId: string) {
       specified: 'ダイレクト',
       chat: 'チャット',
       announcements: 'お知らせ',
+      followRequests: 'フォローリクエスト',
       achievements: '実績',
     }
     deckStore.addColumn({
@@ -409,6 +413,10 @@ function close() {
         <button class="_button add-type-btn" @click="selectColumnType('page')">
           <i class="ti ti-note" />
           <span>Pages</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('followRequests')">
+          <i class="ti ti-user-plus" />
+          <span>フォローリクエスト</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('drive')">
           <i class="ti ti-cloud" />
