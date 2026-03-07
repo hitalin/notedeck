@@ -120,6 +120,19 @@ input {
   user-select: text;
 }
 
+@media (max-width: 500px) {
+  input[type="text"],
+  input[type="search"],
+  input[type="email"],
+  input[type="url"],
+  input[type="password"],
+  input[type="number"],
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 /* ---- Shadow depth (Misskey style) ---- */
 ._shadow-s { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
 ._shadow-m { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); }

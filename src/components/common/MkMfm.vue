@@ -272,6 +272,8 @@ function fnStyle(
 
 .mfm-code-block {
   margin: 8px 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .mfm-code-block :deep(pre) {

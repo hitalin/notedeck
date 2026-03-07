@@ -316,4 +316,11 @@ function hostname(url: string): string {
     background-position: 200% 0;
   }
 }
+
+@media (max-width: 500px) {
+  .url-preview-thumb-wrap {
+    width: 80px;
+    min-height: 64px;
+  }
+}
 </style>

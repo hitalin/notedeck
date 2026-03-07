@@ -977,5 +977,9 @@ async function handlePosted(editedNoteId?: string) {
   .stats {
     padding: 16px;
   }
+
+  .notes-tab-item {
+    min-height: 44px;
+  }
 }
 </style>

@@ -1893,6 +1893,11 @@ function onKeydown(e: KeyboardEvent) {
     padding: 0 8px 8px;
   }
 
+  .footer-left,
+  .footer-right {
+    grid-auto-rows: 44px;
+  }
+
   .poll-editor {
     padding: 8px 16px;
   }

@@ -388,4 +388,26 @@ defineExpose({ onMounted })
   opacity: 0.4;
   font-size: 0.85em;
 }
+
+@media (max-width: 500px) {
+  .reaction-picker-panel {
+    width: 100%;
+    max-width: 100%;
+    max-height: 50vh;
+  }
+
+  .picker-search-input {
+    padding: 10px 12px;
+    font-size: 1em;
+  }
+
+  .picker-grid {
+    grid-template-columns: repeat(auto-fill, 40px);
+  }
+
+  .picker-emoji-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
 </style>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { defineAsyncComponent, ref } from 'vue'
+import { useUiStore } from '@/stores/ui'
 import { extractThemeVars } from '@/utils/themeVars'
 
 const MkReactionPicker = defineAsyncComponent(
@@ -15,6 +16,7 @@ const emit = defineEmits<{
   pick: [reaction: string]
 }>()
 
+const { isMobile } = useUiStore()
 const show = ref(false)
 const pos = ref({ x: 0, y: 0 })
 const theme = ref<Record<string, string>>({})
@@ -39,11 +41,11 @@ defineExpose({ open })
 
 <template>
   <Teleport to="body">
-    <Transition name="nd-popup">
-      <div v-if="show" class="popup-backdrop" @click="close">
+    <Transition :name="isMobile ? 'nd-sheet' : 'nd-popup'">
+      <div v-if="show" class="popup-backdrop" :class="{ mobile: isMobile }" @click="close">
         <div
           class="reaction-picker-popup"
-          :style="{ ...theme, top: pos.y + 'px', left: pos.x + 'px' }"
+          :style="isMobile ? theme : { ...theme, top: pos.y + 'px', left: pos.x + 'px' }"
           @click.stop
         >
           <MkReactionPicker
@@ -65,6 +67,12 @@ defineExpose({ open })
   background: transparent;
 }
 
+.popup-backdrop.mobile {
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-end;
+}
+
 .reaction-picker-popup {
   position: fixed;
   transform: translateX(-100%);
@@ -77,6 +85,16 @@ defineExpose({ open })
   overflow: hidden;
 }
 
+.mobile .reaction-picker-popup {
+  position: static;
+  transform: none;
+  width: 100%;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Desktop popup transition */
 .nd-popup-enter-active,
 .nd-popup-leave-active {
   transition: opacity 0.15s ease;
@@ -95,5 +113,26 @@ defineExpose({ open })
 .nd-popup-enter-from .reaction-picker-popup,
 .nd-popup-leave-to .reaction-picker-popup {
   transform: translateX(-100%) scale(0.95);
+}
+
+/* Mobile bottom-sheet transition */
+.nd-sheet-enter-active,
+.nd-sheet-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.nd-sheet-enter-active .reaction-picker-popup,
+.nd-sheet-leave-active .reaction-picker-popup {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nd-sheet-enter-from,
+.nd-sheet-leave-to {
+  opacity: 0;
+}
+
+.nd-sheet-enter-from .reaction-picker-popup,
+.nd-sheet-leave-to .reaction-picker-popup {
+  transform: translateY(100%);
 }
 </style>
