@@ -64,15 +64,6 @@ function modeLabel(key: string): string {
         <i class="ti ti-user" />
       </button>
       <div class="nav-account-menu-divider" />
-      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/my/lists`)">
-        <span>リスト</span>
-        <i class="ti ti-external-link" />
-      </button>
-      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/my/antennas`)">
-        <span>アンテナ</span>
-        <i class="ti ti-external-link" />
-      </button>
-      <div class="nav-account-menu-divider" />
       <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/my/drive`)">
         <span>ドライブ</span>
         <i class="ti ti-external-link" />
@@ -92,10 +83,6 @@ function modeLabel(key: string): string {
       </button>
       <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/admin`)">
         <span>管理</span>
-        <i class="ti ti-external-link" />
-      </button>
-      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/pages`)">
-        <span>ページ</span>
         <i class="ti ti-external-link" />
       </button>
       <div class="nav-account-menu-divider" />
