@@ -670,7 +670,7 @@ watch(
     justify-content: center;
     position: fixed;
     right: 16px;
-    bottom: calc(66px + env(safe-area-inset-bottom));
+    bottom: calc(60px + env(safe-area-inset-bottom));
     z-index: 1000;
     width: 56px;
     height: 56px;
@@ -696,7 +696,7 @@ watch(
     display: flex;
     align-items: stretch;
     flex: 0 0 auto;
-    height: 56px;
+    height: 50px;
     padding-bottom: env(safe-area-inset-bottom);
     background: var(--nd-navBg);
     border-top: 1px solid var(--nd-divider);
@@ -708,7 +708,7 @@ watch(
     align-items: center;
     justify-content: center;
     flex: 1;
-    height: 56px;
+    min-height: 50px;
     color: var(--nd-fg);
     opacity: 0.45;
     transition: opacity 0.2s, color 0.2s;

@@ -239,4 +239,26 @@ function onDrop(e: DragEvent) {
   pointer-events: none;
   z-index: 10;
 }
+
+@media (max-width: 500px) {
+  .deck-column {
+    border-radius: 0;
+  }
+
+  .column-header {
+    height: 50px;
+    line-height: 50px;
+    padding: 0 12px 0 28px;
+  }
+
+  .color-indicator {
+    top: 16px;
+    height: calc(100% - 32px);
+  }
+
+  .header-btn {
+    width: 36px;
+    height: 36px;
+  }
+}
 </style>
