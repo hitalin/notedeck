@@ -37,25 +37,28 @@
       {
         packages.default = pkgs.stdenv.mkDerivation (finalAttrs: {
           pname = "notedeck";
-          version = "0.0.10";
+          version = "0.1.3";
           src = ./.;
 
           cargoDeps = pkgs.rustPlatform.importCargoLock {
             lockFile = ./src-tauri/Cargo.lock;
+            outputHashes = {
+              "notecli-0.1.0" = "sha256-IyRDu2jsAtWf8CvjpDvsvNMUgSvnFB9Zetp522OVBFI=";
+            };
           };
 
           pnpmDeps = pkgs.fetchPnpmDeps {
             inherit (finalAttrs) pname version src;
-            pnpm = pkgs.pnpm_9;
+            pnpm = pkgs.pnpm_10;
             fetcherVersion = 3;
-            hash = "sha256-lV3ReT0XVb0kEEG+8ldq/02xLzyTsoxpfHM/dI9TnOc=";
+            hash = "sha256-br4gb/EQMv2w66v5hirZj8GUGuYPdKJXNEel9HNmfVc=";
           };
 
           nativeBuildInputs = with pkgs; [
             cargo
             rustc
             rustPlatform.cargoSetupHook
-            pnpm_9
+            pnpm_10
             pnpmConfigHook
             nodejs
             pkg-config
