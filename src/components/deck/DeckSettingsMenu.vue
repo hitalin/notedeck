@@ -952,4 +952,28 @@ function syncScroll(e: Event) {
   opacity: 0;
   transform: translateY(4px);
 }
+
+@media (max-width: 500px) {
+  .settings-menu {
+    position: fixed;
+    bottom: calc(50px + env(safe-area-inset-bottom));
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    min-width: 0;
+    border-radius: 12px;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+    max-height: 70vh;
+  }
+
+  .settings-menu-item {
+    padding: 10px 16px;
+    min-height: 44px;
+  }
+
+  .settings-menu-enter-from,
+  .settings-menu-leave-to {
+    transform: translateY(8px);
+  }
+}
 </style>

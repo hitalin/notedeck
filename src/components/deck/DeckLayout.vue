@@ -455,6 +455,12 @@ watch(
 
     <!-- Mobile bottom nav (visible only on small screens via CSS) -->
     <nav class="mobile-nav">
+      <div class="mobile-menu-wrap">
+        <button class="_button mobile-tab mobile-edge-btn" title="プロフィール" @click.stop="showProfileMenu = !showProfileMenu">
+          <i class="ti ti-layout" />
+        </button>
+        <DeckProfileMenu :show="showProfileMenu" @close="showProfileMenu = false" />
+      </div>
       <button class="_button mobile-tab mobile-menu-btn" @click="mobileDrawerOpen = !mobileDrawerOpen">
         <i class="ti ti-menu-2" />
       </button>
@@ -470,6 +476,13 @@ watch(
       <button class="_button mobile-tab" title="Add column" @click="toggleAddMenu">
         <i class="ti ti-plus" />
       </button>
+      <div class="mobile-menu-wrap">
+        <button class="_button mobile-tab mobile-edge-btn" title="設定" @click.stop="showSettingsMenu = !showSettingsMenu">
+          <i class="ti ti-settings" />
+          <span v-if="updateAvailable" class="update-dot" />
+        </button>
+        <DeckSettingsMenu :show="showSettingsMenu" @close="showSettingsMenu = false" />
+      </div>
     </nav>
 
     <!-- Add column popup -->
@@ -641,6 +654,17 @@ watch(
   .mobile-menu-btn {
     flex: 0 0 auto !important;
     width: 50px;
+  }
+
+  .mobile-edge-btn {
+    flex: 0 0 auto !important;
+    width: 50px;
+  }
+
+  .mobile-menu-wrap {
+    position: relative;
+    flex: 0 0 auto;
+    display: flex;
   }
 
   .deck-root {

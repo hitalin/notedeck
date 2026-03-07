@@ -253,4 +253,36 @@ function remove(id: string) {
   opacity: 0;
   transform: translateY(4px);
 }
+
+@media (max-width: 500px) {
+  .profile-menu {
+    position: fixed;
+    bottom: calc(50px + env(safe-area-inset-bottom));
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    min-width: 0;
+    border-radius: 12px;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .profile-menu-item {
+    padding: 10px 16px;
+    min-height: 44px;
+  }
+
+  .profile-menu-action {
+    display: flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .profile-menu-enter-from,
+  .profile-menu-leave-to {
+    transform: translateY(8px);
+  }
+}
 </style>
