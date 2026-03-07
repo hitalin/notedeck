@@ -4,6 +4,7 @@ import type { NoteAction } from '@/composables/useNoteFocus'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { useThemeStore } from '@/stores/theme'
+import { useUiStore } from '@/stores/ui'
 
 export interface CommandHandlers {
   openCompose: () => void
@@ -90,14 +91,16 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     execute: handlers.toggleNav,
   })
 
-  commandStore.register({
-    id: 'boss-key',
-    label: 'ウィンドウを隠す',
-    icon: 'eye-off',
-    category: 'general',
-    shortcuts: keybindsStore.getShortcuts('boss-key'),
-    execute: () => getCurrentWindow().hide(),
-  })
+  if (useUiStore().isDesktop) {
+    commandStore.register({
+      id: 'boss-key',
+      label: 'ウィンドウを隠す',
+      icon: 'eye-off',
+      category: 'general',
+      shortcuts: keybindsStore.getShortcuts('boss-key'),
+      execute: () => getCurrentWindow().hide(),
+    })
+  }
 
   commandStore.register({
     id: 'account-menu',

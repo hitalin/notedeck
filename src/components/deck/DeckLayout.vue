@@ -22,6 +22,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { usePluginsStore } from '@/stores/plugins'
+import { useUiStore } from '@/stores/ui'
 import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
   initDesktopNotifications,
@@ -67,6 +68,7 @@ const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 const pluginsStore = usePluginsStore()
 const commandStore = useCommandStore()
+const uiStore = useUiStore()
 // Pre-build column lookup map to avoid O(n) find per column per render
 const columnMap = computed(() => {
   const map = new Map<string, DeckColumn>()
@@ -247,13 +249,15 @@ onMounted(() => {
   })
 
   // Quick Note: global hotkey (Ctrl+Alt+N) opens palette with "post " prefilled
-  import('@tauri-apps/api/event').then(({ listen }) => {
-    listen('nd:quick-note', () => {
-      commandStore.openWithInput('post ')
-    }).then((fn) => {
-      unlistenQuickNote = fn
+  if (uiStore.isDesktop) {
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen('nd:quick-note', () => {
+        commandStore.openWithInput('post ')
+      }).then((fn) => {
+        unlistenQuickNote = fn
+      })
     })
-  })
+  }
 })
 
 onUnmounted(() => {

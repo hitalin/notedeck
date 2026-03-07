@@ -1,19 +1,19 @@
-import { relaunch } from '@tauri-apps/plugin-process'
-import { check, type Update } from '@tauri-apps/plugin-updater'
 import { ref } from 'vue'
+import { useUiStore } from '@/stores/ui'
 
 const updateAvailable = ref(false)
 const updateVersion = ref('')
 const isInstalling = ref(false)
 
-let pendingUpdate: Update | null = null
+let pendingUpdate: import('@tauri-apps/plugin-updater').Update | null = null
 let checked = false
 
 async function checkForUpdate() {
-  if (checked) return
+  if (checked || useUiStore().isMobile) return
   checked = true
 
   try {
+    const { check } = await import('@tauri-apps/plugin-updater')
     const update = await check()
     if (update) {
       pendingUpdate = update
@@ -31,6 +31,7 @@ async function installUpdate() {
 
   try {
     await pendingUpdate.downloadAndInstall()
+    const { relaunch } = await import('@tauri-apps/plugin-process')
     await relaunch()
   } catch (e) {
     console.error('[updater] install failed:', e)
