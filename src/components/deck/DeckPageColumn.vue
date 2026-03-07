@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { type Ast, type Interpreter } from '@syuilo/aiscript'
 import { invoke } from '@tauri-apps/api/core'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, ref } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
 import {
@@ -317,10 +318,25 @@ const contentTexts = computed(() => {
 })
 
 const hasScript = computed(() => !!page.value?.script)
+
+const isOwnPage = computed(
+  () =>
+    page.value && account.value && page.value.userId === account.value.userId,
+)
+
+const pageWebUrl = computed(() => {
+  if (!page.value || !serverUrl.value) return undefined
+  return `${serverUrl.value}/@${page.value.user.username}/pages/${page.value.name}`
+})
+
+const pageEditUrl = computed(() => {
+  if (!isOwnPage.value || !pageWebUrl.value) return undefined
+  return `${serverUrl.value}/pages/edit/${page.value?.id}`
+})
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'Pages'" :theme-vars="columnThemeVars">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'Pages'" :theme-vars="columnThemeVars" :web-ui-url="pageWebUrl">
     <AiScriptToast ref="toastRef" />
     <AiScriptDialog ref="dialogRef" />
     <template #header-icon>
@@ -449,6 +465,14 @@ const hasScript = computed(() => !!page.value?.script)
               >
                 <i :class="page.isLiked ? 'ti ti-heart-filled' : 'ti ti-heart'" />
                 {{ page.likedCount }}
+              </button>
+              <button
+                v-if="pageEditUrl"
+                class="_button page-action-btn"
+                @click="pageEditUrl && openUrl(pageEditUrl)"
+              >
+                <i class="ti ti-pencil" />
+                編集
               </button>
             </div>
           </div>
