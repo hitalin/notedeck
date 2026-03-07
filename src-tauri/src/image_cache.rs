@@ -66,10 +66,7 @@ impl ImageCache {
             .timeout(Duration::from_secs(10))
             .pool_max_idle_per_host(8)
             .pool_idle_timeout(Duration::from_secs(60))
-            .user_agent(format!(
-                "Mozilla/5.0 (compatible; NoteDeck/{})",
-                env!("CARGO_PKG_VERSION")
-            ))
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
             .build()
             .unwrap_or_default();
 
