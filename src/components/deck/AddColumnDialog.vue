@@ -359,6 +359,7 @@ function close() {
 
       <!-- Step 1: Column type selection -->
       <template v-if="!addColumnType">
+        <div class="add-category-label">アカウント</div>
         <button class="_button add-type-btn" @click="selectColumnType('timeline')">
           <i class="ti ti-home" />
           <span>タイムライン</span>
@@ -375,18 +376,6 @@ function close() {
           <i class="ti ti-user-plus" />
           <span>フォローリクエスト</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('explore')">
-          <i class="ti ti-compass" />
-          <span>みつける</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('announcements')">
-          <i class="ti ti-speakerphone" />
-          <span>お知らせ</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('search')">
-          <i class="ti ti-search" />
-          <span>検索</span>
-        </button>
         <button class="_button add-type-btn" @click="selectColumnType('list')">
           <i class="ti ti-list" />
           <span>リスト</span>
@@ -399,33 +388,9 @@ function close() {
           <i class="ti ti-star" />
           <span>お気に入り</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('page')">
-          <i class="ti ti-note" />
-          <span>Pages</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('play')">
-          <i class="ti ti-player-play" />
-          <span>Play</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('gallery')">
-          <i class="ti ti-icons" />
-          <span>ギャラリー</span>
-        </button>
         <button class="_button add-type-btn" @click="selectColumnType('clip')">
           <i class="ti ti-paperclip" />
           <span>クリップ</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('channel')">
-          <i class="ti ti-device-tv" />
-          <span>チャンネル</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('chat')">
-          <i class="ti ti-messages" />
-          <span>チャット</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('achievements')">
-          <i class="ti ti-medal" />
-          <span>実績</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('mentions')">
           <i class="ti ti-at" />
@@ -435,10 +400,50 @@ function close() {
           <i class="ti ti-mail" />
           <span>ダイレクト</span>
         </button>
+        <button class="_button add-type-btn" @click="selectColumnType('chat')">
+          <i class="ti ti-messages" />
+          <span>チャット</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('achievements')">
+          <i class="ti ti-medal" />
+          <span>実績</span>
+        </button>
+
+        <div class="add-category-label">サーバー</div>
+        <button class="_button add-type-btn" @click="selectColumnType('explore')">
+          <i class="ti ti-compass" />
+          <span>みつける</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('announcements')">
+          <i class="ti ti-speakerphone" />
+          <span>お知らせ</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('search')">
+          <i class="ti ti-search" />
+          <span>検索</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('channel')">
+          <i class="ti ti-device-tv" />
+          <span>チャンネル</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('gallery')">
+          <i class="ti ti-icons" />
+          <span>ギャラリー</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('play')">
+          <i class="ti ti-player-play" />
+          <span>Play</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('page')">
+          <i class="ti ti-note" />
+          <span>Pages</span>
+        </button>
         <button class="_button add-type-btn" @click="selectColumnType('user')">
           <i class="ti ti-user" />
           <span>ユーザー</span>
         </button>
+
+        <div class="add-category-label">ツール</div>
         <button class="_button add-type-btn" @click="selectColumnType('widget')">
           <i class="ti ti-app-window" />
           <span>ウィジェット</span>
@@ -654,6 +659,20 @@ function close() {
 
 .add-type-btn + .add-type-btn {
   border-top: 1px solid var(--nd-divider);
+}
+
+.add-category-label {
+  padding: 12px 24px 4px;
+  font-size: 0.75em;
+  font-weight: bold;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.add-category-label + .add-type-btn {
+  border-top: none;
 }
 
 .add-type-btn .ti {
