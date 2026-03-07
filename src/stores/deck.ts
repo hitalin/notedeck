@@ -21,6 +21,8 @@ export type ColumnType =
   | 'play'
   | 'page'
   | 'ai'
+  | 'announcements'
+  | 'drive'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
@@ -58,6 +60,7 @@ export interface DeckColumn {
   flashId?: string
   pageId?: string
   soundMuted?: boolean
+  folderId?: string | null
 }
 
 let columnCounter = 0
@@ -141,6 +144,10 @@ export const useDeckStore = defineStore('deck', () => {
         return `notedeck://${host}/direct`
       case 'chat':
         return `notedeck://${host}/chat`
+      case 'announcements':
+        return `notedeck://${host}/announcements`
+      case 'drive':
+        return `notedeck://${host}/drive`
       default:
         return null
     }

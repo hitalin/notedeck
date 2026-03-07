@@ -40,10 +40,12 @@ const AddColumnDialog = defineAsyncComponent(
 
 import DeckAiColumn from './DeckAiColumn.vue'
 import DeckAiScriptColumn from './DeckAiScriptColumn.vue'
+import DeckAnnouncementsColumn from './DeckAnnouncementsColumn.vue'
 import DeckAntennaColumn from './DeckAntennaColumn.vue'
 import DeckChannelColumn from './DeckChannelColumn.vue'
 import DeckChatColumn from './DeckChatColumn.vue'
 import DeckClipColumn from './DeckClipColumn.vue'
+import DeckDriveColumn from './DeckDriveColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
@@ -145,6 +147,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   aiscript: 'code',
   play: 'player-play',
   page: 'note',
+  announcements: 'speakerphone',
 }
 
 function columnIcon(colId: string): string {
@@ -427,6 +430,14 @@ watch(
             />
             <DeckAiColumn
               v-else-if="col.type === 'ai'"
+              :column="col"
+            />
+            <DeckDriveColumn
+              v-else-if="col.type === 'drive'"
+              :column="col"
+            />
+            <DeckAnnouncementsColumn
+              v-else-if="col.type === 'announcements'"
               :column="col"
             />
           </section>

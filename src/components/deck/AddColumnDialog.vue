@@ -34,6 +34,8 @@ const addColumnType = ref<
   | 'play'
   | 'page'
   | 'ai'
+  | 'announcements'
+  | 'drive'
   | null
 >(null)
 
@@ -55,7 +57,9 @@ function selectColumnType(
     | 'aiscript'
     | 'play'
     | 'page'
-    | 'ai',
+    | 'ai'
+    | 'announcements'
+    | 'drive',
 ) {
   addColumnType.value = type
 }
@@ -128,17 +132,30 @@ function addColumnForAccount(accountId: string) {
     close()
     return
   }
+  if (type === 'drive') {
+    deckStore.addColumn({
+      type: 'drive',
+      name: 'ドライブ',
+      width: 360,
+      accountId,
+      active: true,
+    })
+    close()
+    return
+  }
   if (
     type === 'favorites' ||
     type === 'mentions' ||
     type === 'specified' ||
-    type === 'chat'
+    type === 'chat' ||
+    type === 'announcements'
   ) {
     const nameMap: Record<string, string> = {
       favorites: 'お気に入り',
       mentions: 'あなた宛て',
       specified: 'ダイレクト',
       chat: 'チャット',
+      announcements: 'お知らせ',
     }
     deckStore.addColumn({
       type,
@@ -328,6 +345,10 @@ function close() {
           <i class="ti ti-bell" />
           <span>通知</span>
         </button>
+        <button class="_button add-type-btn" @click="selectColumnType('announcements')">
+          <i class="ti ti-speakerphone" />
+          <span>お知らせ</span>
+        </button>
         <button class="_button add-type-btn" @click="selectColumnType('search')">
           <i class="ti ti-search" />
           <span>検索</span>
@@ -371,6 +392,10 @@ function close() {
         <button class="_button add-type-btn" @click="selectColumnType('page')">
           <i class="ti ti-note" />
           <span>Pages</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('drive')">
+          <i class="ti ti-cloud" />
+          <span>ドライブ</span>
         </button>
         <button v-if="!isMobile" class="_button add-type-btn" @click="selectColumnType('ai')">
           <i class="ti ti-sparkles" />
