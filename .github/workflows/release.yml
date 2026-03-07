@@ -353,36 +353,3 @@ jobs:
           commit_email: hitalin@proton.me
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: "Update to ${{ steps.version.outputs.version }}"
-
-  homebrew:
-    needs: publish
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get version
-        id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
-
-      - name: Update Homebrew tap
-        uses: dawidd6/action-homebrew-bump-formula@v4
-        with:
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          tap: hitalin/homebrew-tap
-          formula: Casks/notedeck.rb
-          tag: v${{ steps.version.outputs.version }}
-
-  winget:
-    needs: publish
-    runs-on: windows-latest
-    steps:
-      - name: Get version
-        id: version
-        shell: bash
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
-
-      - name: Publish to Winget
-        uses: vedantmgoyal9/winget-releaser@v2
-        with:
-          identifier: hitalin.NoteDeck
-          version: ${{ steps.version.outputs.version }}
-          installers-regex: '-windows-x64-setup\.exe$'
-          token: ${{ secrets.WINGET_TOKEN }}
