@@ -397,6 +397,7 @@ export interface ApiAdapter {
     options?: PaginationOptions & { visibility?: NoteVisibility },
   ): Promise<NormalizedNote[]>
   getFavorites(options?: PaginationOptions): Promise<NormalizedNote[]>
+  getFeaturedNotes(options?: { limit?: number }): Promise<NormalizedNote[]>
   getClips(): Promise<Clip[]>
   getClipNotes(
     clipId: string,

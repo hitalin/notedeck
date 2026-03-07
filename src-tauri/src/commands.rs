@@ -430,6 +430,20 @@ pub async fn api_get_favorites(
 }
 
 #[tauri::command]
+pub async fn api_get_featured_notes(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    limit: Option<i64>,
+) -> Result<Vec<NormalizedNote>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    let notes = client
+        .get_featured_notes(&host, &token, &account_id, limit.unwrap_or(30))
+        .await?;
+    Ok(notes)
+}
+
+#[tauri::command]
 pub async fn api_get_mentions(
     db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,

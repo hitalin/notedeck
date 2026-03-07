@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { computed, defineAsyncComponent, ref } from 'vue'
-import type { NormalizedNote } from '@/adapters/types'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import MkNote from '@/components/common/MkNote.vue'
 
@@ -44,13 +43,9 @@ const {
   isRefreshing,
 } = useNoteColumn({
   getColumn: () => props.column,
-  fetch: async (_adapter, opts) => {
+  fetch: async (adapter, opts) => {
     if (opts.untilId) return []
-    return invoke<NormalizedNote[]>('api_request', {
-      accountId: props.column.accountId,
-      endpoint: 'notes/featured',
-      params: { limit: 30 },
-    })
+    return adapter.api.getFeaturedNotes({ limit: 30 })
   },
   cache: {
     getKey: () => 'explore',

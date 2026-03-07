@@ -404,6 +404,15 @@ export class MisskeyApi implements ApiAdapter {
     })
   }
 
+  async getFeaturedNotes(
+    options: { limit?: number } = {},
+  ): Promise<NormalizedNote[]> {
+    return invoke('api_get_featured_notes', {
+      accountId: this.accountId,
+      limit: options.limit ?? 30,
+    })
+  }
+
   async getClips(): Promise<Clip[]> {
     return invoke('api_get_clips', {
       accountId: this.accountId,

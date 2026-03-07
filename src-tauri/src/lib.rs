@@ -57,6 +57,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::api_get_antennas,
         commands::api_get_antenna_notes,
         commands::api_get_favorites,
+        commands::api_get_featured_notes,
         commands::api_get_mentions,
         commands::api_get_clips,
         commands::api_get_clip_notes,
