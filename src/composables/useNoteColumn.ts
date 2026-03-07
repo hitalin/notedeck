@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { nextTick, onMounted, onUnmounted, shallowRef, watch } from 'vue'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import type {
   ChannelSubscription,
   NormalizedNote,
@@ -289,6 +290,25 @@ export function useNoteColumn(config: NoteColumnConfig) {
     }
   }
 
+  async function pullRefresh() {
+    const adapter = getAdapter()
+    if (!adapter) return
+    if (config.validate && !config.validate()) return
+    const sinceId = notes.value[0]?.id
+    const fetched = await config.fetch(adapter, sinceId ? { sinceId } : {})
+    if (sinceId && fetched.length > 0) {
+      const newNotes = fetched.filter((n) => !noteIds.has(n.id))
+      if (newNotes.length > 0) {
+        setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
+      }
+    } else if (fetched.length > 0) {
+      setNotes(fetched)
+    }
+    scrollToTop()
+  }
+
+  const { pullDistance, isRefreshing } = usePullToRefresh(scroller, pullRefresh)
+
   let lastResumeAt = 0
 
   async function onResume() {
@@ -381,5 +401,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     handlePosted,
     removeNote,
     refresh,
+    pullDistance,
+    isRefreshing,
   }
 }

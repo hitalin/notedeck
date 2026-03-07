@@ -23,6 +23,7 @@ const MkPostForm = defineAsyncComponent(
 )
 
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useColumnVisible } from '@/composables/useColumnVisibility'
 import { useNoteFocus } from '@/composables/useNoteFocus'
@@ -524,6 +525,27 @@ function handleScroll() {
   onScroll(loadMore)
 }
 
+async function pullRefresh() {
+  const adapter = getAdapter()
+  if (!adapter || !account.value) return
+  const sinceId = notes.value[0]?.id
+  const fetched = await adapter.api.getTimeline(tlType.value, {
+    ...(sinceId ? { sinceId } : {}),
+    ...buildTimelineOptions(),
+  })
+  if (sinceId && fetched.length > 0) {
+    const newNotes = fetched.filter((n) => !noteIds.has(n.id))
+    if (newNotes.length > 0) {
+      setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
+    }
+  } else if (fetched.length > 0) {
+    setNotes(fetched)
+  }
+  scrollToTop()
+}
+
+const { pullDistance, isRefreshing } = usePullToRefresh(scroller, pullRefresh)
+
 watch(
   () => accountsStore.modeVersion,
   async () => {
@@ -693,6 +715,14 @@ onUnmounted(() => {
     </div>
 
     <div v-else class="tl-body">
+      <div
+        v-if="pullDistance > 0 || isRefreshing"
+        class="pull-indicator"
+        :style="{ height: pullDistance + 'px' }"
+      >
+        <i class="ti" :class="isRefreshing ? 'ti-loader-2 spin' : pullDistance >= 64 ? 'ti-arrow-down' : 'ti-arrow-down'" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
+      </div>
+
       <div v-if="isLoading && notes.length === 0">
         <MkSkeleton v-for="i in 5" :key="i" />
       </div>
@@ -847,5 +877,20 @@ onUnmounted(() => {
 .tl-tm-live {
   margin-left: auto;
   color: var(--nd-accent);
+}
+
+.pull-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  color: var(--nd-accent);
+  font-size: 1.2em;
+  transition: height 0.2s ease;
+}
+
+.pull-indicator .ti {
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 </style>

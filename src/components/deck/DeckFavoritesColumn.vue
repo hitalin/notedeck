@@ -32,6 +32,8 @@ const {
   handlePosted,
   removeNote,
   refresh,
+  pullDistance,
+  isRefreshing,
 } = useNoteColumn({
   getColumn: () => props.column,
   fetch: (adapter, opts) => adapter.api.getFavorites(opts),
@@ -71,6 +73,13 @@ const {
     </div>
 
     <div v-else class="tl-body">
+      <div
+        v-if="pullDistance > 0 || isRefreshing"
+        class="pull-indicator"
+        :style="{ height: pullDistance + 'px' }"
+      >
+        <i class="ti" :class="isRefreshing ? 'ti-loader-2 spin' : 'ti-arrow-down'" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
+      </div>
       <div v-if="isLoading && notes.length === 0">
         <MkSkeleton v-for="i in 5" :key="i" />
       </div>
@@ -130,4 +139,19 @@ const {
 
 <style scoped>
 @import "./column-common.css";
+
+.pull-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  color: var(--nd-accent);
+  font-size: 1.2em;
+  transition: height 0.2s ease;
+}
+
+.pull-indicator .ti {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
 </style>

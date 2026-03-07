@@ -566,6 +566,7 @@ function close() {
   gap: 12px;
   width: 100%;
   padding: 14px 24px;
+  min-height: 44px;
   font-size: 0.9em;
   font-weight: bold;
   color: var(--nd-fgHighlighted);

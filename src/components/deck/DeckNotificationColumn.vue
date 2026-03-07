@@ -23,6 +23,7 @@ const MkUserPopup = defineAsyncComponent(
 )
 
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
@@ -324,6 +325,16 @@ function handleScroll() {
   onScroll(loadMore)
 }
 
+async function pullRefresh() {
+  const adapter = getAdapter()
+  if (!adapter) return
+  const fetched = await adapter.api.getNotifications()
+  notifications.value = fetched
+  scrollToTop()
+}
+
+const { pullDistance, isRefreshing } = usePullToRefresh(scroller, pullRefresh)
+
 onMounted(() => {
   connect(true)
 })
@@ -367,6 +378,14 @@ onUnmounted(() => {
     </div>
 
     <div v-else class="notif-body">
+      <div
+        v-if="pullDistance > 0 || isRefreshing"
+        class="pull-indicator"
+        :style="{ height: pullDistance + 'px' }"
+      >
+        <i class="ti" :class="isRefreshing ? 'ti-loader-2 spin' : 'ti-arrow-down'" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
+      </div>
+
       <div v-if="isLoading && notifications.length === 0">
         <MkSkeleton v-for="i in 5" :key="i" />
       </div>
@@ -745,5 +764,29 @@ onUnmounted(() => {
   font-size: 0.85em;
   opacity: 0.6;
   font-style: italic;
+}
+
+.pull-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  color: var(--nd-accent);
+  font-size: 1.2em;
+  transition: height 0.2s ease;
+}
+
+.pull-indicator .ti {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>
