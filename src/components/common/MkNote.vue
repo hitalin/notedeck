@@ -372,7 +372,7 @@ async function handleMentionClick(username: string, host: string | null) {
 
         <!-- Reactions -->
         <div
-          v-if="sortedReactions.length > 0"
+          v-if="sortedReactions.length > 0 && !embedded"
           class="reactions"
         >
           <button
