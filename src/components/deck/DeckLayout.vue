@@ -115,7 +115,7 @@ function toggleAddMenu() {
 
 // Column visibility tracking (pauses streaming for off-screen columns)
 const colVisibility = provideColumnVisibility()
-const { navHidden } = provideScrollDirection()
+provideScrollDirection()
 
 let handleResizeRef: (() => void) | null = null
 let unlistenQuickNote: (() => void) | null = null
@@ -446,7 +446,7 @@ watch(
     </div>
 
     <!-- Mobile FAB (visible only on small screens via CSS) -->
-    <button class="_button mobile-fab" :class="{ hidden: navHidden }" title="New Note" @click="openCompose">
+    <button class="_button mobile-fab" title="New Note" @click="openCompose">
       <i class="ti ti-pencil" />
     </button>
 
@@ -456,7 +456,7 @@ watch(
     </Transition>
 
     <!-- Mobile bottom nav (visible only on small screens via CSS) -->
-    <nav class="mobile-nav" :class="{ hidden: navHidden }">
+    <nav class="mobile-nav">
       <button class="_button mobile-tab mobile-menu-btn" @click="mobileDrawerOpen = !mobileDrawerOpen">
         <i class="ti ti-menu-2" />
       </button>
@@ -707,6 +707,7 @@ watch(
       var(--nd-buttonGradateB, var(--nd-accentDarken))
     );
     color: var(--nd-fgOnAccent, #fff);
+    font-size: 20px;
     box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
     transition: transform 0.3s ease;
   }
@@ -719,13 +720,7 @@ watch(
     transform: scale(0.92);
   }
 
-  .mobile-fab.hidden {
-    transform: translateY(calc(100% + 16px + env(safe-area-inset-bottom)));
-    pointer-events: none;
-  }
-
   .mobile-nav {
-    transition: transform 0.3s ease;
     display: flex;
     align-items: stretch;
     flex: 0 0 auto;
@@ -742,6 +737,7 @@ watch(
     justify-content: center;
     flex: 1;
     min-height: 50px;
+    font-size: 20px;
     color: var(--nd-fg);
     opacity: 0.45;
     transition: opacity 0.2s, color 0.2s;
@@ -768,10 +764,6 @@ watch(
     opacity: 0.7;
     transform: scale(0.9);
     transition: opacity 0.1s, color 0.2s, transform 0.1s;
-  }
-
-  .mobile-nav.hidden {
-    transform: translateY(100%);
   }
 
 }
