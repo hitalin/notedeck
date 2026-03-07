@@ -24,6 +24,7 @@ export type ColumnType =
   | 'announcements'
   | 'drive'
   | 'gallery'
+  | 'achievements'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 

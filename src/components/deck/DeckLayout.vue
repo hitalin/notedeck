@@ -47,6 +47,7 @@ import DeckChatColumn from './DeckChatColumn.vue'
 import DeckClipColumn from './DeckClipColumn.vue'
 import DeckDriveColumn from './DeckDriveColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
+import DeckAchievementsColumn from './DeckAchievementsColumn.vue'
 import DeckGalleryColumn from './DeckGalleryColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
@@ -444,6 +445,10 @@ watch(
             />
             <DeckGalleryColumn
               v-else-if="col.type === 'gallery'"
+              :column="col"
+            />
+            <DeckAchievementsColumn
+              v-else-if="col.type === 'achievements'"
               :column="col"
             />
           </section>

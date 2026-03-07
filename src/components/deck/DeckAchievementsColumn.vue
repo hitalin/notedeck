@@ -1,0 +1,468 @@
+<script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
+import { computed, ref } from 'vue'
+import { useAccountsStore } from '@/stores/accounts'
+import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useThemeStore } from '@/stores/theme'
+import { AppError } from '@/utils/errors'
+import DeckColumn from './DeckColumn.vue'
+
+const props = defineProps<{
+  column: DeckColumnType
+}>()
+
+const accountsStore = useAccountsStore()
+const themeStore = useThemeStore()
+const account = computed(() =>
+  accountsStore.accounts.find((a) => a.id === props.column.accountId),
+)
+const columnThemeVars = computed(() => {
+  const accountId = props.column.accountId
+  if (!accountId) return undefined
+  return themeStore.getStyleVarsForAccount(accountId)
+})
+
+interface Achievement {
+  name: string
+  unlockedAt: number
+}
+
+const ACHIEVEMENT_TYPES = [
+  'notes1', 'notes10', 'notes100', 'notes500', 'notes1000',
+  'notes5000', 'notes10000', 'notes20000', 'notes30000', 'notes40000',
+  'notes50000', 'notes60000', 'notes70000', 'notes80000', 'notes90000',
+  'notes100000',
+  'login3', 'login7', 'login15', 'login30', 'login60',
+  'login100', 'login200', 'login300', 'login400', 'login500',
+  'login600', 'login700', 'login800', 'login900', 'login1000',
+  'passedSinceAccountCreated1', 'passedSinceAccountCreated2', 'passedSinceAccountCreated3',
+  'loggedInOnBirthday', 'loggedInOnNewYearsDay',
+  'noteClipped1', 'noteFavorited1', 'myNoteFavorited1',
+  'profileFilled', 'markedAsCat',
+  'following1', 'following10', 'following50', 'following100', 'following300',
+  'followers1', 'followers10', 'followers50', 'followers100', 'followers300',
+  'followers500', 'followers1000',
+  'collectAchievements30', 'viewAchievements3min', 'iLoveMisskey',
+  'foundTreasure', 'client30min', 'client60min',
+  'noteDeletedWithin1min', 'postedAtLateNight', 'postedAt0min0sec',
+  'selfQuote', 'htl20npm', 'viewInstanceChart',
+  'outputHelloWorldOnScratchpad', 'open3windows',
+  'driveFolderCircularReference', 'reactWithoutRead',
+  'clickedClickHere', 'justPlainLucky', 'setNameToSyuilo',
+  'cookieClicked', 'brainDiver', 'smashTestNotificationButton',
+  'tutorialCompleted', 'bubbleGameExplodingHead', 'bubbleGameDoubleExplodingHead',
+] as const
+
+interface BadgeInfo {
+  emoji: string
+  frame: 'bronze' | 'silver' | 'gold' | 'platinum'
+  bg: string | null
+}
+
+const BADGES: Record<string, BadgeInfo> = {
+  notes1: { emoji: '\u{1F4DD}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  notes10: { emoji: '\u{1F4D1}', frame: 'bronze', bg: null },
+  notes100: { emoji: '\u{1F4D2}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  notes500: { emoji: '\u{1F4DA}', frame: 'bronze', bg: null },
+  notes1000: { emoji: '\u{1F5C3}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  notes5000: { emoji: '\u{1F304}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  notes10000: { emoji: '\u{1F3D9}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(220 223 225), rgb(172 192 207))' },
+  notes20000: { emoji: '\u{1F307}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(220 223 225), rgb(172 192 207))' },
+  notes30000: { emoji: '\u{1F306}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  notes40000: { emoji: '\u{1F303}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(197 69 192), rgb(2 112 155))' },
+  notes50000: { emoji: '\u{1FA90}', frame: 'gold', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  notes60000: { emoji: '\u2604\uFE0F', frame: 'gold', bg: 'linear-gradient(0deg, rgb(197 69 192), rgb(2 112 155))' },
+  notes70000: { emoji: '\u{1F30C}', frame: 'gold', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  notes80000: { emoji: '\u{1F30C}', frame: 'gold', bg: 'linear-gradient(0deg, rgb(197 69 192), rgb(2 112 155))' },
+  notes90000: { emoji: '\u{1F30C}', frame: 'gold', bg: 'linear-gradient(0deg, rgb(255 232 119), rgb(255 140 41))' },
+  notes100000: { emoji: '\u267E\uFE0F', frame: 'platinum', bg: 'linear-gradient(0deg, rgb(255 232 119), rgb(255 140 41))' },
+  login3: { emoji: '\u{1F331}', frame: 'bronze', bg: null },
+  login7: { emoji: '\u{1F331}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  login15: { emoji: '\u{1F331}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  login30: { emoji: '\u{1FAB4}', frame: 'bronze', bg: null },
+  login60: { emoji: '\u{1FAB4}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  login100: { emoji: '\u{1FAB4}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  login200: { emoji: '\u{1F333}', frame: 'silver', bg: null },
+  login300: { emoji: '\u{1F333}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  login400: { emoji: '\u{1F333}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  login500: { emoji: '\u{1F304}', frame: 'silver', bg: null },
+  login600: { emoji: '\u{1F304}', frame: 'gold', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  login700: { emoji: '\u{1F304}', frame: 'gold', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  login800: { emoji: '\u{1F307}', frame: 'gold', bg: null },
+  login900: { emoji: '\u{1F307}', frame: 'gold', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  login1000: { emoji: '\u{1F307}', frame: 'platinum', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  passedSinceAccountCreated1: { emoji: '1\uFE0F\u20E3', frame: 'bronze', bg: null },
+  passedSinceAccountCreated2: { emoji: '2\uFE0F\u20E3', frame: 'silver', bg: null },
+  passedSinceAccountCreated3: { emoji: '3\uFE0F\u20E3', frame: 'gold', bg: null },
+  loggedInOnBirthday: { emoji: '\u{1F382}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(255 77 77), rgb(247 155 214))' },
+  loggedInOnNewYearsDay: { emoji: '\u{1F38D}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(255 144 144), rgb(255 232 168))' },
+  noteClipped1: { emoji: '\u{1F587}\uFE0F', frame: 'bronze', bg: null },
+  noteFavorited1: { emoji: '\u{1F31F}', frame: 'bronze', bg: null },
+  myNoteFavorited1: { emoji: '\u{1F320}', frame: 'silver', bg: null },
+  profileFilled: { emoji: '\u{1F44C}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(187 183 59), rgb(255 143 77))' },
+  markedAsCat: { emoji: '\u{1F408}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(187 183 59), rgb(255 143 77))' },
+  following1: { emoji: '\u2618\uFE0F', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  following10: { emoji: '\u{1F6B8}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  following50: { emoji: '\u{1F91D}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  following100: { emoji: '\u{1F4AF}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(255 53 184), rgb(255 206 69))' },
+  following300: { emoji: '\u{1F970}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  followers1: { emoji: '\u2618\uFE0F', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  followers10: { emoji: '\u{1F44B}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(199 211 102))' },
+  followers50: { emoji: '\u{1F411}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(220 223 225), rgb(172 192 207))' },
+  followers100: { emoji: '\u{1F60E}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  followers300: { emoji: '\u{1F3C6}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  followers500: { emoji: '\u{1F4E1}', frame: 'gold', bg: 'linear-gradient(0deg, rgb(220 223 225), rgb(172 192 207))' },
+  followers1000: { emoji: '\u{1F451}', frame: 'platinum', bg: 'linear-gradient(0deg, rgb(255 232 119), rgb(255 140 41))' },
+  collectAchievements30: { emoji: '\u{1F3C5}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(255 77 77), rgb(247 155 214))' },
+  viewAchievements3min: { emoji: '\u{1F3C5}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  iLoveMisskey: { emoji: '\u2764\uFE0F', frame: 'silver', bg: 'linear-gradient(0deg, rgb(255 77 77), rgb(247 155 214))' },
+  foundTreasure: { emoji: '\u{1F3C6}', frame: 'gold', bg: 'linear-gradient(0deg, rgb(197 69 192), rgb(2 112 155))' },
+  client30min: { emoji: '\u{1F552}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(220 223 225), rgb(172 192 207))' },
+  client60min: { emoji: '\u{1F552}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(220 223 225), rgb(172 192 207))' },
+  noteDeletedWithin1min: { emoji: '\u{1F5D1}\uFE0F', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(220 223 225), rgb(172 192 207))' },
+  postedAtLateNight: { emoji: '\u{1F319}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(197 69 192), rgb(2 112 155))' },
+  postedAt0min0sec: { emoji: '\u{1F55B}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(58 231 198), rgb(37 194 255))' },
+  selfQuote: { emoji: '\u{1F4DD}', frame: 'bronze', bg: null },
+  htl20npm: { emoji: '\u{1F30A}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(220 223 225), rgb(172 192 207))' },
+  viewInstanceChart: { emoji: '\u{1F4CA}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(58 231 198), rgb(37 194 255))' },
+  outputHelloWorldOnScratchpad: { emoji: '\u{1F530}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(58 231 198), rgb(37 194 255))' },
+  open3windows: { emoji: '\u{1F5A5}\uFE0F', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  driveFolderCircularReference: { emoji: '\u{1F4C2}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  reactWithoutRead: { emoji: '\u2753', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  clickedClickHere: { emoji: '\u2757', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  justPlainLucky: { emoji: '\u{1F340}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(187 183 59), rgb(255 143 77))' },
+  setNameToSyuilo: { emoji: '\u{1F36E}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(187 183 59), rgb(255 143 77))' },
+  cookieClicked: { emoji: '\u{1F36A}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(187 183 59), rgb(255 143 77))' },
+  brainDiver: { emoji: '\u{1F9E0}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(144 224 255), rgb(255 168 252))' },
+  smashTestNotificationButton: { emoji: '\u{1F514}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(187 183 59), rgb(255 143 77))' },
+  tutorialCompleted: { emoji: '\u{1F393}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(220 223 225), rgb(172 192 207))' },
+  bubbleGameExplodingHead: { emoji: '\u{1F92F}', frame: 'bronze', bg: 'linear-gradient(0deg, rgb(255 77 77), rgb(247 155 214))' },
+  bubbleGameDoubleExplodingHead: { emoji: '\u{1F92F}', frame: 'silver', bg: 'linear-gradient(0deg, rgb(255 77 77), rgb(247 155 214))' },
+}
+
+const LABELS: Record<string, string> = {
+  notes1: 'はじめてのノート',
+  notes10: '10ノート',
+  notes100: '100ノート',
+  notes500: '500ノート',
+  notes1000: '1,000ノート',
+  notes5000: '5,000ノート',
+  notes10000: '10,000ノート',
+  notes20000: '20,000ノート',
+  notes30000: '30,000ノート',
+  notes40000: '40,000ノート',
+  notes50000: '50,000ノート',
+  notes60000: '60,000ノート',
+  notes70000: '70,000ノート',
+  notes80000: '80,000ノート',
+  notes90000: '90,000ノート',
+  notes100000: '100,000ノート',
+  login3: 'ログイン3日',
+  login7: 'ログイン7日',
+  login15: 'ログイン15日',
+  login30: 'ログイン30日',
+  login60: 'ログイン60日',
+  login100: 'ログイン100日',
+  login200: 'ログイン200日',
+  login300: 'ログイン300日',
+  login400: 'ログイン400日',
+  login500: 'ログイン500日',
+  login600: 'ログイン600日',
+  login700: 'ログイン700日',
+  login800: 'ログイン800日',
+  login900: 'ログイン900日',
+  login1000: 'ログイン1,000日',
+  passedSinceAccountCreated1: 'アカウント作成から1年',
+  passedSinceAccountCreated2: 'アカウント作成から2年',
+  passedSinceAccountCreated3: 'アカウント作成から3年',
+  loggedInOnBirthday: '誕生日にログイン',
+  loggedInOnNewYearsDay: '元日にログイン',
+  noteClipped1: 'はじめてのクリップ',
+  noteFavorited1: 'はじめてのお気に入り',
+  myNoteFavorited1: 'お気に入りされた',
+  profileFilled: 'プロフィール設定',
+  markedAsCat: 'Cat',
+  following1: 'はじめてのフォロー',
+  following10: '10フォロー',
+  following50: '50フォロー',
+  following100: '100フォロー',
+  following300: '300フォロー',
+  followers1: 'はじめてのフォロワー',
+  followers10: '10フォロワー',
+  followers50: '50フォロワー',
+  followers100: '100フォロワー',
+  followers300: '300フォロワー',
+  followers500: '500フォロワー',
+  followers1000: '1,000フォロワー',
+  collectAchievements30: '実績コレクター',
+  viewAchievements3min: '実績を眺める',
+  iLoveMisskey: 'I Love Misskey',
+  foundTreasure: '隠された宝物',
+  client30min: '30分利用',
+  client60min: '60分利用',
+  noteDeletedWithin1min: '1分以内に削除',
+  postedAtLateNight: '深夜の投稿',
+  postedAt0min0sec: 'ジャスト0分0秒',
+  selfQuote: 'セルフ引用',
+  htl20npm: 'TLが速い',
+  viewInstanceChart: 'インスタンスチャートを見る',
+  outputHelloWorldOnScratchpad: 'Hello, World!',
+  open3windows: '3つのウィンドウ',
+  driveFolderCircularReference: '循環参照',
+  reactWithoutRead: '読まずにリアクション',
+  clickedClickHere: 'ここをクリック',
+  justPlainLucky: 'ただの幸運',
+  setNameToSyuilo: 'しゅいろの名前',
+  cookieClicked: 'クッキークリック',
+  brainDiver: 'Brain Diver',
+  smashTestNotificationButton: '通知テスト連打',
+  tutorialCompleted: 'チュートリアル完了',
+  bubbleGameExplodingHead: 'バブルゲーム',
+  bubbleGameDoubleExplodingHead: 'バブルゲーム(ダブル)',
+}
+
+const FRAME_COLORS = {
+  bronze: { outer: 'linear-gradient(0deg, #703827, #d37566)', inner: 'linear-gradient(0deg, #d37566, #703827)' },
+  silver: { outer: 'linear-gradient(0deg, #7c7c7c, #e1e1e1)', inner: 'linear-gradient(0deg, #e1e1e1, #7c7c7c)' },
+  gold: { outer: 'linear-gradient(0deg, rgba(255,182,85,1) 0%, rgba(233,133,0,1) 49%, rgba(255,243,93,1) 51%, rgba(255,187,25,1) 100%)', inner: 'linear-gradient(0deg, #ffee20, #eb7018)' },
+  platinum: { outer: 'linear-gradient(0deg, rgba(154,154,154,1) 0%, rgba(226,226,226,1) 49%, rgba(255,255,255,1) 51%, rgba(195,195,195,1) 100%)', inner: 'linear-gradient(0deg, #e1e1e1, #7c7c7c)' },
+}
+
+const achievements = ref<Achievement[]>([])
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+const unlockedSet = computed(() => new Set(achievements.value.map((a) => a.name)))
+const unlockedCount = computed(() => achievements.value.length)
+
+const sortedAchievements = computed(() => {
+  const unlocked: Array<{ name: string; unlockedAt: number | null }> = []
+  const locked: Array<{ name: string; unlockedAt: number | null }> = []
+  for (const name of ACHIEVEMENT_TYPES) {
+    const a = achievements.value.find((x) => x.name === name)
+    if (a) {
+      unlocked.push(a)
+    } else {
+      locked.push({ name, unlockedAt: null })
+    }
+  }
+  return [...unlocked, ...locked]
+})
+
+function getBadge(name: string): BadgeInfo {
+  return BADGES[name] ?? { emoji: '\u{1F3C5}', frame: 'bronze', bg: null }
+}
+
+function formatDate(ts: number): string {
+  const d = new Date(ts)
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
+}
+
+async function fetchAchievements() {
+  if (!props.column.accountId) return
+  const acc = account.value
+  if (!acc) return
+  loading.value = true
+  error.value = null
+
+  try {
+    const result = await invoke<Achievement[]>('api_request', {
+      accountId: props.column.accountId,
+      endpoint: 'users/achievements',
+      params: { userId: acc.userId },
+    })
+    achievements.value = result
+  } catch (e) {
+    error.value = AppError.from(e).message
+  } finally {
+    loading.value = false
+  }
+}
+
+fetchAchievements()
+</script>
+
+<template>
+  <DeckColumn :column-id="column.id" :title="column.name ?? '実績'" :theme-vars="columnThemeVars">
+    <template #header-icon>
+      <i class="ti ti-medal tl-header-icon" />
+    </template>
+
+    <template #header-meta>
+      <span v-if="unlockedCount > 0" class="header-count">{{ unlockedCount }}/{{ ACHIEVEMENT_TYPES.length }}</span>
+      <button class="_button header-refresh" title="更新" :disabled="loading" @click.stop="fetchAchievements()">
+        <i class="ti ti-refresh" :class="{ spin: loading }" />
+      </button>
+      <div v-if="account" class="header-account">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
+      </div>
+    </template>
+
+    <div class="achievements-scroll">
+      <div v-if="loading && achievements.length === 0" class="column-empty">読み込み中...</div>
+      <div v-else-if="error" class="column-empty column-error">{{ error }}</div>
+      <div v-else-if="achievements.length === 0 && !loading" class="column-empty">実績がありません</div>
+      <template v-else>
+        <div class="achievements-grid">
+          <div
+            v-for="item in sortedAchievements"
+            :key="item.name"
+            class="achievement-card"
+            :class="{ locked: !item.unlockedAt }"
+          >
+            <div class="achievement-badge">
+              <div
+                class="badge-frame"
+                :class="'frame-' + getBadge(item.name).frame"
+                :style="{ background: FRAME_COLORS[getBadge(item.name).frame].outer }"
+              >
+                <div
+                  class="badge-inner"
+                  :style="{
+                    background: (item.unlockedAt ? getBadge(item.name).bg : null) ?? FRAME_COLORS[getBadge(item.name).frame].inner,
+                  }"
+                >
+                  <span v-if="item.unlockedAt" class="badge-emoji">{{ getBadge(item.name).emoji }}</span>
+                  <span v-else class="badge-emoji locked-emoji">?</span>
+                </div>
+              </div>
+            </div>
+            <div class="achievement-info">
+              <div class="achievement-name">{{ item.unlockedAt ? (LABELS[item.name] ?? item.name) : '???' }}</div>
+              <div v-if="item.unlockedAt" class="achievement-date">{{ formatDate(item.unlockedAt) }}</div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </DeckColumn>
+</template>
+
+<style scoped>
+@import "./column-common.css";
+
+.header-count {
+  font-size: 0.75em;
+  opacity: 0.6;
+  margin-right: 4px;
+}
+
+.achievements-scroll {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 2px;
+  padding: 4px;
+}
+
+.achievement-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.achievement-card:hover {
+  background: var(--nd-buttonHoverBg);
+}
+
+.achievement-card.locked {
+  opacity: 0.35;
+}
+
+.achievement-badge {
+  flex-shrink: 0;
+}
+
+@keyframes shine {
+  0% { translate: -30px; }
+  100% { translate: -130px; }
+}
+
+.badge-frame {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  padding: 5px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.27));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.53) inset;
+  overflow: clip;
+}
+
+.frame-gold::before,
+.frame-platinum::before {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 26px;
+  width: 200px;
+  height: 6px;
+  rotate: -45deg;
+  translate: -30px;
+  animation: shine 2s infinite;
+}
+
+.frame-gold::before {
+  background: rgba(255, 255, 255, 0.53);
+}
+
+.frame-platinum::before {
+  background: rgba(255, 255, 255, 0.93);
+}
+
+.badge-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.53) inset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badge-emoji {
+  font-size: 22px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.67));
+  line-height: 1;
+}
+
+.locked-emoji {
+  font-size: 16px;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.5);
+  filter: none;
+}
+
+.achievement-info {
+  text-align: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.achievement-name {
+  font-size: 0.7em;
+  font-weight: 600;
+  color: var(--nd-fgHighlighted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.achievement-date {
+  font-size: 0.6em;
+  opacity: 0.5;
+  margin-top: 2px;
+}
+</style>
