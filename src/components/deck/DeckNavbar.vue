@@ -31,6 +31,11 @@ const {
   navigateToAi,
 } = useNavigation()
 const deckStore = useDeckStore()
+
+function closeDrawerAndDo(fn: () => void) {
+  emit('update:mobileDrawerOpen', false)
+  fn()
+}
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const streamingStore = useStreamingStore()
@@ -194,7 +199,7 @@ defineExpose({
           <button
             class="_button nav-item"
             title="通知"
-            @click="navigateToNotifications()"
+            @click="closeDrawerAndDo(navigateToNotifications)"
           >
             <i class="ti ti-bell" />
             <span class="nav-label">通知</span>
@@ -202,7 +207,7 @@ defineExpose({
           <button
             class="_button nav-item"
             title="検索"
-            @click="navigateToSearch()"
+            @click="closeDrawerAndDo(navigateToSearch)"
           >
             <i class="ti ti-search" />
             <span class="nav-label">検索</span>
@@ -210,7 +215,7 @@ defineExpose({
           <button
             class="_button nav-item"
             title="プラグイン"
-            @click="navigateToPlugins()"
+            @click="closeDrawerAndDo(navigateToPlugins)"
           >
             <i class="ti ti-plug" />
             <span class="nav-label">プラグイン</span>
@@ -218,7 +223,7 @@ defineExpose({
           <button
             class="_button nav-item"
             title="AI アシスタント"
-            @click="navigateToAi()"
+            @click="closeDrawerAndDo(navigateToAi)"
           >
             <i class="ti ti-sparkles" />
             <span class="nav-label">AI</span>
@@ -235,7 +240,7 @@ defineExpose({
             class="_button nav-post-btn"
             :class="{ collapsed: navCollapsed }"
             title="ノート作成"
-            @click="emit('open-compose')"
+            @click="closeDrawerAndDo(() => emit('open-compose'))"
           >
             <i class="ti ti-pencil" />
             <span class="nav-label">ノート</span>
@@ -287,7 +292,7 @@ defineExpose({
           </div>
 
           <!-- Add account -->
-          <button class="_button nav-item nav-add-account" title="アカウント追加" @click="navigateToLogin()">
+          <button class="_button nav-item nav-add-account" title="アカウント追加" @click="closeDrawerAndDo(navigateToLogin)">
             <i class="ti ti-plus" />
             <span class="nav-label">アカウント追加</span>
           </button>
