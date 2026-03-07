@@ -228,8 +228,18 @@ export const useDeckStore = defineStore('deck', () => {
       console.warn('[deck] failed to load:', e)
     }
 
-    // Ensure a default "Main" profile exists
+    // Fix blank profile names from previous sessions
     const profiles = loadProfiles()
+    let needsSave = false
+    for (let i = 0; i < profiles.length; i++) {
+      if (!profiles[i]!.name || profiles[i]!.name.trim() === '') {
+        profiles[i]!.name = `プロフィール ${i + 1}`
+        needsSave = true
+      }
+    }
+    if (needsSave) saveProfiles(profiles)
+
+    // Ensure a default "Main" profile exists
     if (profiles.length === 0) {
       const profile: DeckProfile = {
         id: genProfileId(),
@@ -355,18 +365,20 @@ export const useDeckStore = defineStore('deck', () => {
     return `profile-${Date.now()}-${++profileCounter}`
   }
 
-  function saveAsProfile(name: string): DeckProfile {
+  function saveAsProfile(name?: string): DeckProfile {
     // Save current state to the active profile before creating a new one
     syncCurrentToActiveProfile()
 
+    const profiles = loadProfiles()
+    const autoName = name || `プロフィール ${profiles.length + 1}`
+
     const profile: DeckProfile = {
       id: genProfileId(),
-      name,
+      name: autoName,
       columns: [],
       layout: [],
       createdAt: Date.now(),
     }
-    const profiles = loadProfiles()
     profiles.push(profile)
     saveProfiles(profiles)
     saveActiveProfileId(profile.id)

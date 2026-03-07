@@ -15,17 +15,15 @@ const emit = defineEmits<{
 const deckStore = useDeckStore()
 
 const profiles = ref<DeckProfile[]>([])
-const showInput = ref(false)
-const newName = ref('')
-const nameInput = ref<HTMLInputElement | null>(null)
+const editingId = ref<string | null>(null)
+const editingName = ref('')
 
 watch(
   () => props.show,
   (val) => {
     if (val) {
       profiles.value = deckStore.getProfiles()
-      showInput.value = false
-      newName.value = ''
+      editingId.value = null
       nextTick(() => {
         document.addEventListener('click', handleOutsideClick, { once: true })
       })
@@ -37,25 +35,33 @@ function handleOutsideClick() {
   emit('close')
 }
 
-function startSave() {
-  showInput.value = true
-  nextTick(() => nameInput.value?.focus())
-}
-
-function confirmSave() {
-  // Read from DOM directly to handle IME composition edge cases on Windows WebView2
-  const name = (nameInput.value?.value ?? newName.value).trim()
-  if (!name) return
-  deckStore.saveAsProfile(name)
+function createProfile() {
+  deckStore.saveAsProfile()
   profiles.value = deckStore.getProfiles()
-  showInput.value = false
-  newName.value = ''
   refreshProfileCommands()
 }
 
 function apply(id: string) {
+  if (editingId.value === id) return
   deckStore.applyProfile(id)
   emit('close')
+}
+
+function startRename(id: string, name: string) {
+  editingId.value = id
+  editingName.value = name
+}
+
+function commitRename() {
+  if (editingId.value) {
+    const trimmed = editingName.value.trim()
+    if (trimmed) {
+      deckStore.renameProfile(editingId.value, trimmed)
+      profiles.value = deckStore.getProfiles()
+      refreshProfileCommands()
+    }
+    editingId.value = null
+  }
 }
 
 function remove(id: string) {
@@ -75,9 +81,25 @@ function remove(id: string) {
         :class="{ active: p.id === deckStore.activeProfileId }"
         @click="apply(p.id)"
       >
-        <span class="profile-menu-name">{{ p.name }}</span>
+        <input
+          v-if="editingId === p.id"
+          v-model="editingName"
+          class="profile-menu-rename-input"
+          @blur="commitRename"
+          @click.stop
+          @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
+          @vue:mounted="({ el }: { el: HTMLInputElement }) => { el.focus(); el.select() }"
+        />
+        <span v-else class="profile-menu-name">{{ p.name }}</span>
         <button
-          class="_button profile-menu-delete"
+          class="_button profile-menu-action"
+          title="名前変更"
+          @click.stop="startRename(p.id, p.name)"
+        >
+          <i class="ti ti-edit" />
+        </button>
+        <button
+          class="_button profile-menu-action profile-menu-delete"
           title="削除"
           @click.stop="remove(p.id)"
         >
@@ -91,23 +113,9 @@ function remove(id: string) {
 
       <div class="profile-menu-divider" />
 
-      <div v-if="!showInput" class="profile-menu-item profile-menu-new" @click="startSave">
+      <div class="profile-menu-item profile-menu-new" @click="createProfile">
         <i class="ti ti-plus" />
         <span>新しいプロフィール</span>
-      </div>
-
-      <div v-else class="profile-menu-input-row">
-        <input
-          ref="nameInput"
-          v-model="newName"
-          class="profile-menu-input"
-          placeholder="プロフィール名"
-          @keydown.enter="confirmSave"
-          @keydown.escape="showInput = false"
-        />
-        <button class="_button profile-menu-confirm" :class="{ 'is-empty': !newName.trim() }" @click="confirmSave">
-          <i class="ti ti-check" />
-        </button>
       </div>
 
     </div>
@@ -180,7 +188,21 @@ function remove(id: string) {
   position: relative;
 }
 
-.profile-menu-delete {
+.profile-menu-rename-input {
+  flex: 1;
+  min-width: 0;
+  font-size: inherit;
+  line-height: inherit;
+  color: var(--nd-fg);
+  background: color-mix(in srgb, var(--nd-accent) 10%, transparent);
+  border: 1px solid var(--nd-accent);
+  border-radius: 4px;
+  padding: 0 4px;
+  position: relative;
+  outline: none;
+}
+
+.profile-menu-action {
   display: none;
   flex-shrink: 0;
   color: var(--nd-fg);
@@ -190,12 +212,15 @@ function remove(id: string) {
   transition: opacity 0.1s;
 }
 
-.profile-menu-item:hover .profile-menu-delete {
+.profile-menu-item:hover .profile-menu-action {
   display: flex;
 }
 
-.profile-menu-delete:hover {
+.profile-menu-action:hover {
   opacity: 1;
+}
+
+.profile-menu-delete:hover {
   color: var(--nd-love, #ff6b6b);
 }
 
@@ -216,49 +241,6 @@ function remove(id: string) {
 .profile-menu-new i,
 .profile-menu-new span {
   position: relative;
-}
-
-.profile-menu-input-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 12px;
-}
-
-.profile-menu-input {
-  flex: 1;
-  background: var(--nd-buttonHoverBg);
-  border: none;
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 0.9em;
-  color: var(--nd-fg);
-  outline: none;
-}
-
-.profile-menu-input::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.3;
-}
-
-.profile-menu-confirm {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  color: var(--nd-accent);
-  transition: background 0.1s;
-}
-
-.profile-menu-confirm:hover:not(.is-empty) {
-  background: var(--nd-buttonHoverBg);
-}
-
-.profile-menu-confirm.is-empty {
-  opacity: 0.3;
 }
 
 .profile-menu-enter-active,
