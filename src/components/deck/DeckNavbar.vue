@@ -409,7 +409,7 @@ defineExpose({
 .collapsed .nav-account {
   padding: 8px;
   width: auto;
-  border-radius: 50%;
+  border-radius: 999px;
 }
 
 .collapsed .nav-top,
