@@ -318,6 +318,10 @@ function pickReaction(reaction: string) {
   if (reactionTargetId.value) {
     handleReact(reactionTargetId.value, reaction)
   }
+  closeReactionPicker()
+}
+
+function closeReactionPicker() {
   showReactionPicker.value = false
   reactionTargetId.value = null
 }
@@ -482,7 +486,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Conversation View -->
-    <div v-else class="chat-body conversation">
+    <div v-else class="chat-body conversation" @click="closeReactionPicker">
       <div
         ref="messagesContainer"
         class="messages-container"
