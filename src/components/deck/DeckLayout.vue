@@ -24,8 +24,6 @@ import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { usePluginsStore } from '@/stores/plugins'
 import { useServersStore } from '@/stores/servers'
-import { useStreamingStore } from '@/stores/streaming'
-import type { StreamConnectionState } from '@/adapters/types'
 import { useUiStore } from '@/stores/ui'
 import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
@@ -71,7 +69,6 @@ const {
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
-const streamingStore = useStreamingStore()
 const pluginsStore = usePluginsStore()
 const commandStore = useCommandStore()
 const uiStore = useUiStore()
@@ -171,12 +168,6 @@ function columnServerIcon(colId: string): string | null {
   return serversStore.getServer(acc.host)?.iconUrl ?? null
 }
 
-function columnStreamState(colId: string): StreamConnectionState | null {
-  if (!hasMultipleAccounts.value) return null
-  const col = columnMap.value.get(colId)
-  if (!col?.accountId) return null
-  return streamingStore.getState(col.accountId) ?? 'initializing'
-}
 
 function onColumnsScroll() {
   if (!columnsRef.value) return
@@ -516,7 +507,6 @@ watch(
           />
           <span v-else class="tab-badge-initial">{{ columnAccount(colId)!.username.charAt(0).toUpperCase() }}</span>
         </span>
-        <span v-if="columnStreamState(colId)" class="tab-stream-dot" :class="columnStreamState(colId)!" />
       </button>
       <button class="_button mobile-tab" title="Add column" @click="toggleAddMenu">
         <i class="ti ti-plus" />
@@ -854,28 +844,6 @@ watch(
     opacity: 0.7;
   }
 
-  .tab-stream-dot {
-    position: absolute;
-    bottom: 5px;
-    right: calc(50% - 16px);
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    border: 1.5px solid var(--nd-navBg);
-  }
-
-  .tab-stream-dot.connected {
-    background: var(--nd-accent);
-  }
-
-  .tab-stream-dot.reconnecting,
-  .tab-stream-dot.initializing {
-    background: var(--nd-warn, #e5a400);
-  }
-
-  .tab-stream-dot.disconnected {
-    background: var(--nd-switchOffFg, #888);
-  }
 
 }
 </style>
