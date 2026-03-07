@@ -231,9 +231,9 @@ export const useDeckStore = defineStore('deck', () => {
     // Fix blank profile names from previous sessions
     const profiles = loadProfiles()
     let needsSave = false
-    for (let i = 0; i < profiles.length; i++) {
-      if (!profiles[i]!.name || profiles[i]!.name.trim() === '') {
-        profiles[i]!.name = `プロフィール ${i + 1}`
+    for (const [i, profile] of profiles.entries()) {
+      if (!profile.name || profile.name.trim() === '') {
+        profile.name = `プロフィール ${i + 1}`
         needsSave = true
       }
     }

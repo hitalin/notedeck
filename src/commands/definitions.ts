@@ -251,8 +251,10 @@ export function refreshProfileCommands() {
   // Register commands for current profiles
   const profiles = deckStore.getProfiles()
   for (let i = 1; i <= Math.min(profiles.length, 9); i++) {
-    const profileId = profiles[i - 1]!.id
-    const profileName = profiles[i - 1]!.name
+    const profile = profiles[i - 1]
+    if (!profile) continue
+    const profileId = profile.id
+    const profileName = profile.name
     commandStore.register({
       id: `profile-${i}`,
       label: `${profileName} に切替`,
