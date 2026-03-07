@@ -14,6 +14,7 @@ const props = defineProps<{
   modes: Record<string, boolean>
   togglingMode: boolean
   modeError: string | null
+  isAdmin: boolean
 }>()
 
 const emit = defineEmits<{
@@ -73,8 +74,8 @@ function modeLabel(key: string): string {
         <span>設定</span>
         <i class="ti ti-external-link" />
       </button>
-      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/admin`)">
-        <span>管理</span>
+      <button v-if="isAdmin" class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/admin`)">
+        <span>コントロールパネル</span>
         <i class="ti ti-external-link" />
       </button>
       <div class="nav-account-menu-divider" />

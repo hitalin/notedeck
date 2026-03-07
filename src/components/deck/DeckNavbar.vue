@@ -75,6 +75,7 @@ function toggleNav() {
 // Account menu
 const accountMenuId = ref<string | null>(null)
 const accountModes = ref<Record<string, Record<string, boolean>>>({})
+const accountIsAdmin = ref<Record<string, boolean>>({})
 const togglingMode = ref(false)
 const modeError = ref<string | null>(null)
 
@@ -103,6 +104,18 @@ async function loadAccountModes(id: string) {
   try {
     const result = await detectAvailableTimelines(id)
     accountModes.value = { ...accountModes.value, [id]: result.modes }
+  } catch {
+    // non-critical
+  }
+  try {
+    const me = await invoke<Record<string, unknown>>('api_request', {
+      accountId: id,
+      endpoint: 'i',
+    })
+    accountIsAdmin.value = {
+      ...accountIsAdmin.value,
+      [id]: me.isAdmin === true || me.isModerator === true,
+    }
   } catch {
     // non-critical
   }
@@ -289,6 +302,7 @@ defineExpose({
               :modes="accountModes[acc.id] ?? {}"
               :toggling-mode="togglingMode"
               :mode-error="modeError"
+              :is-admin="accountIsAdmin[acc.id] ?? false"
               @toggle-mode="toggleAccountMode(acc.id, $event)"
               @logout="logout(acc.id)"
             />
