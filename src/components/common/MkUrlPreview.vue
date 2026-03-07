@@ -1,9 +1,18 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  onUnmounted,
+  ref,
+} from 'vue'
 import { useOgpPreview } from '@/composables/useOgpPreview'
 import { proxyUrl } from '@/utils/imageProxy'
+import { parseNoteUrl } from '@/utils/noteUrl'
 import { isSafeUrl } from '@/utils/url'
+
+const MkNoteEmbed = defineAsyncComponent(() => import('./MkNoteEmbed.vue'))
 
 const props = defineProps<{
   url: string
@@ -13,9 +22,12 @@ const props = defineProps<{
 const mediaExtRe =
   /\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mp3|ogg|wav)(\?.*)?$/i
 
+const isNoteUrl = computed(() => parseNoteUrl(props.url) !== null)
+
 const shouldPreview = computed(() => {
   if (!isSafeUrl(props.url)) return false
   if (mediaExtRe.test(props.url)) return false
+  if (isNoteUrl.value) return false
   return true
 })
 
@@ -73,7 +85,8 @@ function hostname(url: string): string {
 </script>
 
 <template>
-  <div v-if="shouldPreview" ref="el" class="url-preview" @click="handleClick">
+  <MkNoteEmbed v-if="isNoteUrl" :url="url" :account-id="accountId" />
+  <div v-else-if="shouldPreview" ref="el" class="url-preview" @click="handleClick">
     <div v-if="loading" class="url-preview-skeleton">
       <div class="skeleton-text">
         <div class="skeleton-line" style="width: 60%" />

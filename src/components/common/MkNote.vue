@@ -365,7 +365,7 @@ async function handleMentionClick(username: string, host: string | null) {
           />
 
           <!-- Quote renote (when note has text + renote) -->
-          <div v-if="note.renote && note.text !== null" class="quote">
+          <div v-if="note.renote && note.text !== null" class="quote" @click.stop>
             <MkNote :note="note.renote" embedded />
           </div>
         </div>
