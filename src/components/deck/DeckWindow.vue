@@ -221,8 +221,19 @@ function onWindowMouseDown() {
     right: 0 !important;
     bottom: 0 !important;
     width: 100% !important;
+    height: 100% !important;
     max-height: 100% !important;
     border-radius: 0;
+    z-index: 2100 !important;
+  }
+
+  .window-header {
+    height: 46px;
+  }
+
+  .window-btn {
+    width: 44px;
+    height: 44px;
   }
 }
 </style>
