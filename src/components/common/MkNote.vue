@@ -31,6 +31,7 @@ const props = defineProps<{
   detailed?: boolean
   focused?: boolean
   pinnedNoteIds?: string[]
+  embedded?: boolean
 }>()
 
 /** Pure renote → show inner note, otherwise show note itself */
@@ -365,7 +366,7 @@ async function handleMentionClick(username: string, host: string | null) {
 
           <!-- Quote renote (when note has text + renote) -->
           <div v-if="note.renote && note.text !== null" class="quote">
-            <MkNote :note="note.renote" />
+            <MkNote :note="note.renote" embedded />
           </div>
         </div>
 
@@ -391,7 +392,7 @@ async function handleMentionClick(username: string, host: string | null) {
         </div>
 
         <!-- Footer -->
-        <footer class="footer">
+        <footer v-if="!embedded" class="footer">
           <button class="footer-button" @click.stop="emit('reply', effectiveNote)">
             <i class="ti ti-arrow-back-up" />
             <span v-if="effectiveNote.repliesCount > 0" class="button-count">
@@ -419,7 +420,7 @@ async function handleMentionClick(username: string, host: string | null) {
         </footer>
 
         <!-- Renote menu -->
-        <div v-if="showRenoteMenu" class="renote-menu">
+        <div v-if="showRenoteMenu && !embedded" class="renote-menu">
           <button class="_button renote-menu-item" @click.stop="emit('renote', effectiveNote); showRenoteMenu = false">
             <i class="ti ti-repeat" />
             Renote
