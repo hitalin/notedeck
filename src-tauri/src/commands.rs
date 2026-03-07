@@ -1121,6 +1121,7 @@ pub async fn auth_start(
             "read:notifications",
             "read:reactions",
             "read:favorites",
+            "read:drive",
             "write:drive",
             "write:favorites",
             "write:following",
