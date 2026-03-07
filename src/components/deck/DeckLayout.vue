@@ -23,6 +23,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { usePluginsStore } from '@/stores/plugins'
+import { useServersStore } from '@/stores/servers'
 import { useUiStore } from '@/stores/ui'
 import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
@@ -67,6 +68,7 @@ const {
 } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
+const serversStore = useServersStore()
 const pluginsStore = usePluginsStore()
 const commandStore = useCommandStore()
 const uiStore = useUiStore()
@@ -157,6 +159,13 @@ function columnAccount(colId: string) {
   const col = columnMap.value.get(colId)
   if (!col?.accountId) return null
   return accountsStore.accountMap.get(col.accountId) ?? null
+}
+
+function columnServerIcon(colId: string): string | null {
+  if (!hasMultipleAccounts.value) return null
+  const acc = columnAccount(colId)
+  if (!acc) return null
+  return serversStore.getServer(acc.host)?.iconUrl ?? null
 }
 
 function onColumnsScroll() {
@@ -483,13 +492,19 @@ watch(
         @click="scrollToColumn(i)"
       >
         <i :class="'ti ti-' + columnIcon(colId)" />
+        <span v-if="columnServerIcon(colId)" class="tab-server-badge">
+          <img :src="columnServerIcon(colId)!" class="tab-badge-img" />
+        </span>
+        <span v-else-if="columnAccount(colId)" class="tab-server-badge">
+          <span class="tab-badge-initial">{{ columnAccount(colId)!.host.charAt(0).toUpperCase() }}</span>
+        </span>
         <span v-if="columnAccount(colId)" class="tab-account-badge">
           <img
             v-if="columnAccount(colId)!.avatarUrl"
             :src="columnAccount(colId)!.avatarUrl!"
-            class="tab-account-avatar"
+            class="tab-badge-img"
           />
-          <span v-else class="tab-account-initial">{{ columnAccount(colId)!.host.charAt(0).toUpperCase() }}</span>
+          <span v-else class="tab-badge-initial">{{ columnAccount(colId)!.username.charAt(0).toUpperCase() }}</span>
         </span>
       </button>
       <button class="_button mobile-tab" title="Add column" @click="toggleAddMenu">
@@ -789,10 +804,9 @@ watch(
     transition: opacity 0.1s, color 0.2s, transform 0.1s;
   }
 
+  .tab-server-badge,
   .tab-account-badge {
     position: absolute;
-    bottom: 4px;
-    right: calc(50% - 16px);
     width: 14px;
     height: 14px;
     border-radius: 50%;
@@ -804,14 +818,24 @@ watch(
     justify-content: center;
   }
 
-  .tab-account-avatar {
+  .tab-server-badge {
+    top: 5px;
+    right: calc(50% - 16px);
+  }
+
+  .tab-account-badge {
+    bottom: 4px;
+    right: calc(50% - 16px);
+  }
+
+  .tab-badge-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
   }
 
-  .tab-account-initial {
+  .tab-badge-initial {
     font-size: 7px;
     font-weight: bold;
     line-height: 1;
