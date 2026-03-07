@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { ref } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
+import { useUiStore } from '@/stores/ui'
 import type { ColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 
@@ -13,6 +14,7 @@ const emit = defineEmits<{
 const { navigateToLogin } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
+const { isMobile } = useUiStore()
 
 const addColumnType = ref<
   | 'timeline'
@@ -370,7 +372,7 @@ function close() {
           <i class="ti ti-note" />
           <span>Pages</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('ai')">
+        <button v-if="!isMobile" class="_button add-type-btn" @click="selectColumnType('ai')">
           <i class="ti ti-sparkles" />
           <span>AI Chat</span>
         </button>

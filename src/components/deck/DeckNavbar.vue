@@ -7,6 +7,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { useStreamingStore } from '@/stores/streaming'
+import { useUiStore } from '@/stores/ui'
 import {
   clearAvailableTlCache,
   detectAvailableTimelines,
@@ -31,6 +32,7 @@ const {
   navigateToAi,
 } = useNavigation()
 const deckStore = useDeckStore()
+const { isMobile } = useUiStore()
 
 function closeDrawerAndDo(fn: () => void) {
   emit('update:mobileDrawerOpen', false)
@@ -221,6 +223,7 @@ defineExpose({
             <span class="nav-label">プラグイン</span>
           </button>
           <button
+            v-if="!isMobile"
             class="_button nav-item"
             title="AI アシスタント"
             @click="closeDrawerAndDo(navigateToAi)"
