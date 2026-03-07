@@ -42,7 +42,8 @@ function startSave() {
 }
 
 function confirmSave() {
-  const name = newName.value.trim()
+  // Read from DOM directly to handle IME composition edge cases on Windows WebView2
+  const name = (nameInput.value?.value ?? newName.value).trim()
   if (!name) return
   deckStore.saveAsProfile(name)
   profiles.value = deckStore.getProfiles()
@@ -101,7 +102,7 @@ function remove(id: string) {
           @keydown.enter="confirmSave"
           @keydown.escape="showInput = false"
         />
-        <button class="_button profile-menu-confirm" :disabled="!newName.trim()" @click="confirmSave">
+        <button class="_button profile-menu-confirm" :class="{ 'is-empty': !newName.trim() }" @click="confirmSave">
           <i class="ti ti-check" />
         </button>
       </div>
@@ -249,11 +250,11 @@ function remove(id: string) {
   transition: background 0.1s;
 }
 
-.profile-menu-confirm:hover:not(:disabled) {
+.profile-menu-confirm:hover:not(.is-empty) {
   background: var(--nd-buttonHoverBg);
 }
 
-.profile-menu-confirm:disabled {
+.profile-menu-confirm.is-empty {
   opacity: 0.3;
 }
 
