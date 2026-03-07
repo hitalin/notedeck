@@ -23,12 +23,12 @@ const MkUserPopup = defineAsyncComponent(
 )
 
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
-import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteSound } from '@/composables/useNoteSound'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { sendDesktopNotification } from '@/utils/desktopNotification'
 import { AppError } from '@/utils/errors'

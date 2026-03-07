@@ -13,7 +13,9 @@ const inputRef = ref<HTMLTextAreaElement | null>(null)
 const messages = shallowRef<ChatMessage[]>([])
 const isGenerating = ref(false)
 const messagesEndRef = ref<HTMLElement | null>(null)
-const providerStatus = ref<'connected' | 'disconnected' | 'checking'>('checking')
+const providerStatus = ref<'connected' | 'disconnected' | 'checking'>(
+  'checking',
+)
 
 // TODO: Replace with actual Ollama/OpenAI integration
 async function checkProvider() {

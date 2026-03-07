@@ -3,9 +3,9 @@ import { invoke } from '@tauri-apps/api/core'
 import { ref } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
-import { useUiStore } from '@/stores/ui'
 import type { ColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { useUiStore } from '@/stores/ui'
 
 const emit = defineEmits<{
   close: []

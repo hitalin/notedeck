@@ -4,10 +4,10 @@ import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
+import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { highlightCode } from '@/utils/highlight'
-import { useUiStore } from '@/stores/ui'
 import { version as appVersion } from '../../../package.json'
 
 const props = defineProps<{

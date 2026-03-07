@@ -1,5 +1,4 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useScrollDirection } from '@/composables/useScrollDirection'
 import type { DynamicScroller } from 'vue-virtual-scroller'
 import { createAdapter } from '@/adapters/registry'
 import type {
@@ -8,6 +7,7 @@ import type {
   ServerAdapter,
 } from '@/adapters/types'
 import { useNoteSound } from '@/composables/useNoteSound'
+import { useScrollDirection } from '@/composables/useScrollDirection'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'

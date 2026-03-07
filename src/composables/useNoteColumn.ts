@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
 import { nextTick, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import type {
   ChannelSubscription,
   NormalizedNote,
@@ -14,6 +13,7 @@ import { useNoteCapture } from '@/composables/useNoteCapture'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useNoteList } from '@/composables/useNoteList'
 import { useNoteSound } from '@/composables/useNoteSound'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { noteStore } from '@/stores/notes'

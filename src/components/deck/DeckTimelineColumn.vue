@@ -23,12 +23,12 @@ const MkPostForm = defineAsyncComponent(
 )
 
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
-import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useColumnVisible } from '@/composables/useColumnVisibility'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useNoteList } from '@/composables/useNoteList'
 import { useNoteSound } from '@/composables/useNoteSound'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import { useTimeMachine } from '@/composables/useTimeMachine'
 import { useAccountsStore } from '@/stores/accounts'

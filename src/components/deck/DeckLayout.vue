@@ -16,8 +16,8 @@ import {
 } from '@/commands/definitions'
 import { useCommandStore } from '@/commands/registry'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
-import { provideScrollDirection } from '@/composables/useScrollDirection'
 import { useNavigation } from '@/composables/useNavigation'
+import { provideScrollDirection } from '@/composables/useScrollDirection'
 import { useUpdater } from '@/composables/useUpdater'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
@@ -167,7 +167,6 @@ function columnServerIcon(colId: string): string | null {
   if (!acc) return null
   return serversStore.getServer(acc.host)?.iconUrl ?? null
 }
-
 
 function onColumnsScroll() {
   if (!columnsRef.value) return

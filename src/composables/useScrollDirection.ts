@@ -15,7 +15,10 @@ export function provideScrollDirection() {
   function reportScroll(scrollTop: number) {
     const delta = scrollTop - lastScrollTop
     // Reset accumulation on direction change
-    if ((delta > 0 && accumulatedDelta < 0) || (delta < 0 && accumulatedDelta > 0)) {
+    if (
+      (delta > 0 && accumulatedDelta < 0) ||
+      (delta < 0 && accumulatedDelta > 0)
+    ) {
       accumulatedDelta = 0
     }
     accumulatedDelta += delta
