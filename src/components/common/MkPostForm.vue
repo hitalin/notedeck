@@ -1065,7 +1065,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .submit-btn.posted {
-  background: #4caf50;
+  background: var(--nd-success);
 }
 
 .posting-dots {
@@ -1123,7 +1123,7 @@ function onKeydown(e: KeyboardEvent) {
 
 /* ── Local only button ── */
 .local-only-btn.active {
-  color: #ff2a2a;
+  color: var(--nd-error);
 }
 
 /* ── More menu ── */
@@ -1346,7 +1346,7 @@ function onKeydown(e: KeyboardEvent) {
 /* ── Error ── */
 .post-error {
   padding: 8px 24px;
-  color: #ff2a2a;
+  color: var(--nd-error);
   font-size: 0.85em;
 }
 
@@ -1364,7 +1364,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .text-count.over {
-  color: #ff2a2a;
+  color: var(--nd-error);
 }
 
 ._acrylic {
@@ -1852,7 +1852,7 @@ function onKeydown(e: KeyboardEvent) {
 .schedule-clear-btn {
   padding: 6px;
   font-size: 0.8em;
-  color: #ff2a2a;
+  color: var(--nd-error);
   border-radius: 6px;
   text-align: center;
 }

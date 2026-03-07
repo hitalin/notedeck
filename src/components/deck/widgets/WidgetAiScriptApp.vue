@@ -227,7 +227,7 @@ onMounted(() => {
 .app-error {
   padding: 6px 8px;
   border-radius: 6px;
-  background: rgba(221, 46, 68, 0.1);
+  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
   color: var(--nd-love);
   font-size: 0.8em;
   white-space: pre-wrap;

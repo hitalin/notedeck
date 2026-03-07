@@ -408,8 +408,8 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   gap: 6px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: rgba(255, 42, 42, 0.1);
-  color: #ff2a2a;
+  background: color-mix(in srgb, var(--nd-error) 10%, transparent);
+  color: var(--nd-error);
   font-size: 0.85em;
 }
 
@@ -455,8 +455,8 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   padding: 8px;
   border: none;
   border-radius: 8px;
-  background: rgba(255, 42, 42, 0.1);
-  color: #ff2a2a;
+  background: color-mix(in srgb, var(--nd-error) 10%, transparent);
+  color: var(--nd-error);
   font-size: 0.85em;
   font-weight: bold;
   cursor: pointer;
@@ -533,7 +533,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
 }
 
 .log-line.error {
-  color: #ff2a2a;
+  color: var(--nd-error);
 }
 
 @media (max-width: 500px) {

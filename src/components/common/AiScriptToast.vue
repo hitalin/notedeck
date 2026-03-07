@@ -59,15 +59,15 @@ defineExpose({ show })
 }
 
 .ais-toast.success {
-  background: #86b300;
+  background: var(--nd-success);
 }
 
 .ais-toast.warning {
-  background: #e2a100;
+  background: var(--nd-warn);
 }
 
 .ais-toast.error {
-  background: #e36749;
+  background: var(--nd-error);
 }
 
 .toast-enter-active {

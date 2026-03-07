@@ -207,7 +207,7 @@ defineExpose({ open })
 }
 
 .popup-item-danger {
-  color: #ff2a2a;
+  color: var(--nd-error);
 }
 
 .popup-divider {

@@ -75,7 +75,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #888;
+  color: var(--nd-fg);
   font-size: 0.9em;
   gap: 4px;
 }

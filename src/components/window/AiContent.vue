@@ -205,7 +205,7 @@ setTimeout(() => inputRef.value?.focus(), 100)
 }
 
 .status-dot.disconnected {
-  background: #888;
+  background: var(--nd-switchOffFg, #888);
 }
 
 .status-text {

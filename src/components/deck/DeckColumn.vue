@@ -139,6 +139,7 @@ function onDrop(e: DragEvent) {
   display: flex;
   flex-direction: column;
   background: var(--nd-panel);
+  color: var(--nd-fg);
   border-radius: 10px;
   overflow: clip;
   contain: layout paint style;

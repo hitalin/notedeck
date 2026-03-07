@@ -189,7 +189,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .provider-dot.disconnected {
-  background: #888;
+  background: var(--nd-switchOffFg, #888);
 }
 
 .ai-column-body {

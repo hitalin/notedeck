@@ -6,6 +6,7 @@ export const DARK_THEME: MisskeyTheme = {
   base: 'dark',
   props: {
     accent: '#86b300',
+    accentDarken: ':darken<10<@accent',
     accentedBg: ':alpha<0.15<@accent',
     love: '#dd2e44',
     focus: ':alpha<0.3<@accent',
@@ -76,6 +77,7 @@ export const LIGHT_THEME: MisskeyTheme = {
   base: 'light',
   props: {
     accent: '#86b300',
+    accentDarken: ':darken<10<@accent',
     accentedBg: ':alpha<0.15<@accent',
     love: '#dd2e44',
     focus: ':alpha<0.3<@accent',

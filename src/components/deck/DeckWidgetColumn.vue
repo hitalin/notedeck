@@ -166,7 +166,7 @@ function removeWidget(widgetId: string) {
 .widget-remove:hover {
   opacity: 1;
   color: var(--nd-love);
-  background: rgba(221, 46, 68, 0.1);
+  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
 }
 
 .widget-content {

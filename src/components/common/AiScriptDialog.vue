@@ -96,15 +96,15 @@ defineExpose({ showDialog, showConfirm })
 }
 
 .ais-dialog.warning .ais-dialog-title {
-  color: #e2a100;
+  color: var(--nd-warn);
 }
 
 .ais-dialog.error .ais-dialog-title {
-  color: #e36749;
+  color: var(--nd-error);
 }
 
 .ais-dialog.success .ais-dialog-title {
-  color: #86b300;
+  color: var(--nd-success);
 }
 
 .ais-dialog-text {

@@ -303,7 +303,7 @@ function reset() {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(221, 46, 68, 0.15);
+  background: color-mix(in srgb, var(--nd-love) 15%, transparent);
   color: var(--nd-love);
   font-size: 1.4em;
 }

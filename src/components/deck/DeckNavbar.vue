@@ -491,7 +491,7 @@ defineExpose({
 }
 
 .nav-stream-dot.disconnected {
-  background: #888;
+  background: var(--nd-switchOffFg, #888);
 }
 
 /* Add account button */
@@ -526,7 +526,7 @@ defineExpose({
 
 .nav-post-btn:hover {
   transform: scale(1.03);
-  box-shadow: 0 4px 12px rgba(134, 179, 0, 0.3);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--nd-accent) 40%, transparent);
 }
 
 .nav-post-btn:active {

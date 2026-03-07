@@ -630,7 +630,7 @@ const pageEditUrl = computed(() => {
   padding: 8px 10px;
   margin: 0 12px;
   border-radius: 6px;
-  background: rgba(221, 46, 68, 0.1);
+  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
   color: var(--nd-love);
   font-size: 0.8em;
   white-space: pre-wrap;
