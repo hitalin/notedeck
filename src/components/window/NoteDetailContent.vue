@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { createAdapter } from '@/adapters/registry'
-import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
+import type { NormalizedNote, NoteReaction, ServerAdapter } from '@/adapters/types'
+import MkAvatar from '@/components/common/MkAvatar.vue'
+import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
+import { useEmojiResolver } from '@/composables/useEmojiResolver'
+import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { useEmojisStore } from '@/stores/emojis'
 import { noteStore } from '@/stores/notes'
 import { useServersStore } from '@/stores/servers'
+import { proxyUrl } from '@/utils/imageProxy'
 import { AppError } from '@/utils/errors'
 import { toggleReaction } from '@/utils/toggleReaction'
 
@@ -22,12 +27,25 @@ const emit = defineEmits<{ close: [] }>()
 const accountsStore = useAccountsStore()
 const emojisStore = useEmojisStore()
 const serversStore = useServersStore()
+const { navigateToUser: navToUser } = useNavigation()
+const { reactionUrl: reactionUrlRaw } = useEmojiResolver()
 
 const note = ref<NormalizedNote | null>(null)
 const ancestors = ref<NormalizedNote[]>([])
 const children = ref<NormalizedNote[]>([])
+const renotes = ref<NormalizedNote[]>([])
+const reactions = ref<NoteReaction[]>([])
 const isLoading = ref(true)
 const error = ref<AppError | null>(null)
+
+type DetailTab = 'replies' | 'renotes' | 'reactions'
+const activeTab = ref<DetailTab>('replies')
+
+const DETAIL_TABS: { key: DetailTab; label: string; icon: string }[] = [
+  { key: 'replies', label: '返信', icon: 'ti ti-arrow-back-up' },
+  { key: 'renotes', label: 'リノート', icon: 'ti ti-repeat' },
+  { key: 'reactions', label: 'リアクション', icon: 'ti ti-mood-happy' },
+]
 
 let adapter: ServerAdapter | null = null
 
@@ -62,6 +80,32 @@ onMounted(async () => {
     isLoading.value = false
   }
 })
+
+const loadedTabs = ref<Set<DetailTab>>(new Set(['replies']))
+
+watch(activeTab, async (tab) => {
+  if (loadedTabs.value.has(tab) || !adapter) return
+  loadedTabs.value.add(tab)
+  try {
+    if (tab === 'renotes') {
+      renotes.value = await adapter.api.getNoteRenotes(props.noteId)
+    } else if (tab === 'reactions') {
+      reactions.value = await adapter.api.getNoteReactions(props.noteId, undefined, 100)
+    }
+  } catch (e) {
+    console.warn('[NoteDetail] failed to load tab:', tab, e)
+  }
+})
+
+function getReactionUrl(reaction: NoteReaction): string | null {
+  if (!note.value) return null
+  return reactionUrlRaw(
+    reaction.type,
+    note.value.emojis,
+    note.value.reactionEmojis,
+    note.value._serverHost,
+  )
+}
 
 async function handleReaction(reaction: string, target: NormalizedNote) {
   if (!adapter) return
@@ -199,8 +243,22 @@ async function handlePosted(editedNoteId?: string) {
         />
       </div>
 
-      <div v-if="children.length > 0" class="children">
-        <div class="children-header">返信</div>
+      <!-- Tabs -->
+      <div class="detail-tabs">
+        <button
+          v-for="tab in DETAIL_TABS"
+          :key="tab.key"
+          class="detail-tab-item _button"
+          :class="{ active: activeTab === tab.key }"
+          @click="activeTab = tab.key"
+        >
+          <i :class="tab.icon" />
+          {{ tab.label }}
+        </button>
+      </div>
+
+      <!-- Tab: Replies -->
+      <div v-if="activeTab === 'replies'">
         <MkNote
           v-for="child in children"
           :key="child.id"
@@ -212,6 +270,77 @@ async function handlePosted(editedNoteId?: string) {
           @delete="handleDelete"
           @edit="handleEdit"
         />
+        <div v-if="children.length === 0" class="state-message">
+          返信はありません
+        </div>
+      </div>
+
+      <!-- Tab: Renotes -->
+      <div v-if="activeTab === 'renotes'">
+        <div v-if="renotes.length > 0" class="renote-users">
+          <button
+            v-for="rn in renotes"
+            :key="rn.id"
+            class="renote-user-item _button"
+            @click="navToUser(accountId, rn.user.id)"
+          >
+            <MkAvatar
+              :avatar-url="rn.user.avatarUrl"
+              :decorations="rn.user.avatarDecorations"
+              :size="36"
+            />
+            <span class="renote-user-name">
+              {{ rn.user.name || rn.user.username }}
+            </span>
+            <span class="renote-user-handle">
+              @{{ rn.user.username }}
+            </span>
+          </button>
+        </div>
+        <div v-else class="state-message">
+          リノートはありません
+        </div>
+      </div>
+
+      <!-- Tab: Reactions -->
+      <div v-if="activeTab === 'reactions'">
+        <div v-if="reactions.length > 0" class="reaction-users">
+          <div
+            v-for="r in reactions"
+            :key="r.id"
+            class="reaction-user-item"
+          >
+            <button
+              class="reaction-user-left _button"
+              @click="navToUser(accountId, r.user.id)"
+            >
+              <MkAvatar
+                :avatar-url="r.user.avatarUrl"
+                :decorations="r.user.avatarDecorations"
+                :size="36"
+              />
+              <span class="reaction-user-name">
+                {{ r.user.name || r.user.username }}
+              </span>
+              <span class="reaction-user-handle">
+                @{{ r.user.username }}
+              </span>
+            </button>
+            <span class="reaction-type">
+              <img
+                v-if="getReactionUrl(r)"
+                :src="proxyUrl(getReactionUrl(r)!)"
+                :alt="r.type"
+                class="reaction-emoji-img"
+                decoding="async"
+              />
+              <MkEmoji v-else :emoji="r.type" class="reaction-emoji" />
+            </span>
+          </div>
+        </div>
+        <div v-else class="state-message">
+          リアクションはありません
+        </div>
       </div>
     </div>
 
@@ -256,16 +385,135 @@ async function handlePosted(editedNoteId?: string) {
   border-bottom: 1px solid var(--nd-divider);
 }
 
-.children-header {
-  padding: 12px 32px 4px;
+/* Tabs */
+.detail-tabs {
+  display: flex;
+  border-bottom: solid 0.5px var(--nd-divider);
+  position: sticky;
+  top: 0;
+  background: var(--nd-bg);
+  z-index: 5;
+}
+
+.detail-tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 8px;
   font-size: 0.85em;
   font-weight: bold;
   color: var(--nd-fg);
   opacity: 0.6;
+  border-bottom: 2px solid transparent;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+.detail-tab-item:hover {
+  opacity: 0.8;
+}
+
+.detail-tab-item.active {
+  color: var(--nd-accent);
+  opacity: 1;
+  border-bottom-color: var(--nd-accent);
+}
+
+.detail-tab-item i {
+  font-size: 1em;
+}
+
+/* Renote users list */
+.renote-users {
+  display: flex;
+  flex-direction: column;
+}
+
+.renote-user-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 24px;
+  transition: background 0.15s;
+}
+
+.renote-user-item:hover {
+  background: var(--nd-panelHighlight);
+}
+
+.renote-user-name {
+  font-weight: bold;
+  font-size: 0.9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.renote-user-handle {
+  font-size: 0.8em;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Reaction users list */
+.reaction-users {
+  display: flex;
+  flex-direction: column;
+}
+
+.reaction-user-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 24px;
+  gap: 10px;
+}
+
+.reaction-user-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  transition: opacity 0.15s;
+}
+
+.reaction-user-left:hover {
+  opacity: 0.7;
+}
+
+.reaction-user-name {
+  font-weight: bold;
+  font-size: 0.9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reaction-user-handle {
+  font-size: 0.8em;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reaction-type {
+  flex-shrink: 0;
+}
+
+.reaction-emoji-img {
+  height: 1.5em;
+  width: auto;
+}
+
+.reaction-emoji {
+  font-size: 1.5em;
 }
 
 .state-message {
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -281,8 +529,13 @@ async function handlePosted(editedNoteId?: string) {
 }
 
 @media (max-width: 500px) {
-  .children-header {
-    padding: 12px 16px 4px;
+  .detail-tab-item {
+    min-height: 44px;
+  }
+
+  .renote-user-item,
+  .reaction-user-item {
+    padding: 10px 16px;
   }
 }
 </style>

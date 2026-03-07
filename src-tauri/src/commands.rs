@@ -12,7 +12,7 @@ use notecli::keychain;
 use notecli::models::{
     Account, AccountPublic, AuthSession, ChatMessage, CreateNoteParams, NormalizedDriveFile,
     NormalizedNote, NormalizedNoteReaction, NormalizedNotification, NormalizedUser,
-    NormalizedUserDetail, Antenna, Channel, Clip, RawCreateNoteResponse, SearchOptions,
+    NormalizedUserDetail, Antenna, Channel, Clip, RawCreateNoteResponse, RawNote, SearchOptions,
     ServerEmoji, StoredServer, TimelineOptions, TimelineType, UserList,
 };
 use notecli::streaming::StreamingManager;
@@ -799,6 +799,30 @@ pub async fn api_get_note_children(
     client
         .get_note_children(&host, &token, &account_id, &note_id, limit.unwrap_or(30).clamp(1, 100))
         .await
+}
+
+#[tauri::command]
+pub async fn api_get_note_renotes(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    note_id: String,
+    limit: Option<u32>,
+) -> Result<Vec<NormalizedNote>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    let data = client
+        .request(
+            &host,
+            &token,
+            "notes/renotes",
+            serde_json::json!({ "noteId": note_id, "limit": limit.unwrap_or(30).clamp(1, 100) }),
+        )
+        .await?;
+    let raw: Vec<RawNote> = serde_json::from_value(data)?;
+    Ok(raw
+        .into_iter()
+        .map(|n| n.normalize(&account_id, &host))
+        .collect())
 }
 
 #[tauri::command]

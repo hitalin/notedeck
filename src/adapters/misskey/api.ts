@@ -295,6 +295,17 @@ export class MisskeyApi implements ApiAdapter {
     })
   }
 
+  async getNoteRenotes(
+    noteId: string,
+    options: PaginationOptions = {},
+  ): Promise<NormalizedNote[]> {
+    return invoke('api_get_note_renotes', {
+      accountId: this.accountId,
+      noteId,
+      limit: options.limit ?? 30,
+    })
+  }
+
   async getNoteConversation(
     noteId: string,
     options: PaginationOptions = {},

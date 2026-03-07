@@ -373,6 +373,10 @@ export interface ApiAdapter {
     noteId: string,
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>
+  getNoteRenotes(
+    noteId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
   getNoteConversation(
     noteId: string,
     options?: PaginationOptions,
