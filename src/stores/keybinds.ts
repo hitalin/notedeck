@@ -174,6 +174,42 @@ const DEFAULT_KEYBINDS: KeybindEntry[] = [
     commandId: 'quick-react-9',
     shortcuts: [{ key: '9', scope: 'body' }],
   },
+  {
+    commandId: 'profile-1',
+    shortcuts: [{ key: '1', alt: true, scope: 'global' }],
+  },
+  {
+    commandId: 'profile-2',
+    shortcuts: [{ key: '2', alt: true, scope: 'global' }],
+  },
+  {
+    commandId: 'profile-3',
+    shortcuts: [{ key: '3', alt: true, scope: 'global' }],
+  },
+  {
+    commandId: 'profile-4',
+    shortcuts: [{ key: '4', alt: true, scope: 'global' }],
+  },
+  {
+    commandId: 'profile-5',
+    shortcuts: [{ key: '5', alt: true, scope: 'global' }],
+  },
+  {
+    commandId: 'profile-6',
+    shortcuts: [{ key: '6', alt: true, scope: 'global' }],
+  },
+  {
+    commandId: 'profile-7',
+    shortcuts: [{ key: '7', alt: true, scope: 'global' }],
+  },
+  {
+    commandId: 'profile-8',
+    shortcuts: [{ key: '8', alt: true, scope: 'global' }],
+  },
+  {
+    commandId: 'profile-9',
+    shortcuts: [{ key: '9', alt: true, scope: 'global' }],
+  },
 ]
 
 const STORAGE_KEY = 'nd-keybinds'

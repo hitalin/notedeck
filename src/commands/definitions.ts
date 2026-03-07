@@ -233,6 +233,35 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
       execute: () => dispatchNoteAction(`quick-react-${i}` as NoteAction),
     })
   }
+
+  // Profile switching (Alt+1-9 to switch deck profiles)
+  refreshProfileCommands()
+}
+
+export function refreshProfileCommands() {
+  const commandStore = useCommandStore()
+  const keybindsStore = useKeybindsStore()
+  const deckStore = useDeckStore()
+
+  // Unregister existing profile commands
+  for (const id of PROFILE_IDS) {
+    commandStore.unregister(id)
+  }
+
+  // Register commands for current profiles
+  const profiles = deckStore.getProfiles()
+  for (let i = 1; i <= Math.min(profiles.length, 9); i++) {
+    const profileId = profiles[i - 1]!.id
+    const profileName = profiles[i - 1]!.name
+    commandStore.register({
+      id: `profile-${i}`,
+      label: `${profileName} に切替`,
+      icon: 'layout',
+      category: 'general',
+      shortcuts: keybindsStore.getShortcuts(`profile-${i}`),
+      execute: () => deckStore.applyProfile(profileId),
+    })
+  }
 }
 
 const COLUMN_COMMAND_IDS = [
@@ -244,6 +273,11 @@ const COLUMN_COMMAND_IDS = [
 const QUICK_REACT_IDS = Array.from(
   { length: 9 },
   (_, i) => `quick-react-${i + 1}`,
+) as readonly string[]
+
+const PROFILE_IDS = Array.from(
+  { length: 9 },
+  (_, i) => `profile-${i + 1}`,
 ) as readonly string[]
 
 export function unregisterDefaultCommands() {
@@ -261,6 +295,7 @@ export function unregisterDefaultCommands() {
     ...NOTE_COMMAND_IDS,
     ...COLUMN_COMMAND_IDS,
     ...QUICK_REACT_IDS,
+    ...PROFILE_IDS,
   ]) {
     commandStore.unregister(id)
   }

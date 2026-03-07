@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
+import { refreshProfileCommands } from '@/commands/definitions'
 import type { DeckProfile } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 
@@ -49,6 +50,7 @@ function confirmSave() {
   profiles.value = deckStore.getProfiles()
   showInput.value = false
   newName.value = ''
+  refreshProfileCommands()
 }
 
 function apply(id: string) {
@@ -59,6 +61,7 @@ function apply(id: string) {
 function remove(id: string) {
   deckStore.deleteProfile(id)
   profiles.value = deckStore.getProfiles()
+  refreshProfileCommands()
 }
 </script>
 
