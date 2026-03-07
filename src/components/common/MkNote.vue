@@ -853,30 +853,22 @@ async function handleMentionClick(username: string, host: string | null) {
 
 @container (max-width: 500px) {
   .note-root { font-size: 0.9em; }
-  .article { padding: 20px 22px; }
-  .footer { margin-bottom: -8px; justify-content: space-between; }
-  .footer-button { margin-right: 0; }
-}
-
-@container (max-width: 480px) {
-  .article { padding: 14px 16px; }
+  .article { padding: 16px; }
   .renote-info { padding: 8px 16px 4px 16px; }
+  .footer { margin-bottom: -4px; }
+  .footer-button { margin-right: 12px; }
 }
 
 @container (max-width: 450px) {
   .avatar { margin: 0 10px 0 0; }
 }
 
-@container (max-width: 400px) {
-  .footer-button { margin-right: 18px; }
-}
-
 @container (max-width: 350px) {
-  .footer-button { margin-right: 12px; }
+  .article { padding: 12px 14px; }
+  .footer-button { margin-right: 8px; }
 }
 
 @container (max-width: 300px) {
-  .footer-button { margin-right: 8px; }
   .reaction { height: 32px; font-size: 1em; border-radius: 4px; }
   .reaction .count { font-size: 0.9em; line-height: 32px; }
 }

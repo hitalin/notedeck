@@ -634,13 +634,15 @@ defineExpose({
 
   .navbar.drawer-open .nav-item {
     justify-content: flex-start;
-    padding: 12px 14px;
+    padding: 10px 14px;
     width: auto;
+    min-height: 44px;
   }
 
   .navbar.drawer-open .nav-top,
   .navbar.drawer-open .nav-bottom {
-    padding: 8px;
+    padding: 6px 8px;
+    gap: 2px;
     align-items: stretch;
   }
 

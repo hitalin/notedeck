@@ -737,4 +737,19 @@ onUnmounted(() => {
   opacity: 0.6;
   font-style: italic;
 }
+
+@media (max-width: 500px) {
+  .notif-header {
+    padding: 10px 12px 0;
+    gap: 6px;
+  }
+
+  .notif-note-wrap {
+    padding: 0 4px 4px;
+  }
+
+  .follow-request-actions {
+    padding-left: 48px;
+  }
+}
 </style>

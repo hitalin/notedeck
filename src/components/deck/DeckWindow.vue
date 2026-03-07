@@ -213,4 +213,16 @@ function onWindowMouseDown() {
   min-height: 0;
   overflow: auto;
 }
+
+@media (max-width: 500px) {
+  .deck-window {
+    left: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0;
+  }
+}
 </style>

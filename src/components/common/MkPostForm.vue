@@ -1915,9 +1915,10 @@ function onKeydown(e: KeyboardEvent) {
 /* Mobile fullscreen */
 @media (max-width: 600px) {
   .post-overlay {
-    background: none;
+    background: var(--nd-bg);
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
+    align-items: stretch;
   }
 
   .post-form {
@@ -1926,6 +1927,7 @@ function onKeydown(e: KeyboardEvent) {
     border-radius: 0;
     height: 100%;
     max-height: none;
+    box-shadow: none;
   }
 }
 </style>

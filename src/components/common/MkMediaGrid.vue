@@ -376,4 +376,19 @@ function isAudio(file: NormalizedDriveFile): boolean {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+@container (max-width: 500px) {
+  .media-grid {
+    gap: 2px;
+  }
+
+  .media-cell {
+    min-height: 80px;
+    max-height: 200px;
+  }
+
+  .media-count-1 > .media-cell {
+    max-height: 300px;
+  }
+}
 </style>

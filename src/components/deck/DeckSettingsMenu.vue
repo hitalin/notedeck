@@ -7,6 +7,7 @@ import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { highlightCode } from '@/utils/highlight'
+import { useUiStore } from '@/stores/ui'
 import { version as appVersion } from '../../../package.json'
 
 const props = defineProps<{
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 const { updateAvailable, updateVersion, isInstalling, installUpdate } =
   useUpdater()
 
+const { isMobile } = useUiStore()
 const deckStore = useDeckStore()
 const themeStore = useThemeStore()
 const windowsStore = useWindowsStore()
@@ -267,7 +269,7 @@ function syncScroll(e: Event) {
 
       <div class="settings-menu-divider" />
 
-      <div class="settings-menu-item" @click="windowsStore.open('keybinds')">
+      <div v-if="!isMobile" class="settings-menu-item" @click="windowsStore.open('keybinds')">
         <i class="ti ti-keyboard" />
         <span class="settings-menu-label">キーバインド設定</span>
       </div>
