@@ -19,6 +19,7 @@ export type ColumnType =
   | 'widget'
   | 'aiscript'
   | 'play'
+  | 'page'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
@@ -54,6 +55,7 @@ export interface DeckColumn {
   widgets?: WidgetConfig[]
   aiscriptCode?: string
   flashId?: string
+  pageId?: string
   soundMuted?: boolean
 }
 

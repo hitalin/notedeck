@@ -30,6 +30,7 @@ const addColumnType = ref<
   | 'widget'
   | 'aiscript'
   | 'play'
+  | 'page'
   | null
 >(null)
 
@@ -49,7 +50,8 @@ function selectColumnType(
     | 'chat'
     | 'widget'
     | 'aiscript'
-    | 'play',
+    | 'play'
+    | 'page',
 ) {
   addColumnType.value = type
 }
@@ -93,6 +95,17 @@ function addColumnForAccount(accountId: string) {
     deckStore.addColumn({
       type: 'play',
       name: 'Play',
+      width: 360,
+      accountId,
+      active: true,
+    })
+    close()
+    return
+  }
+  if (type === 'page') {
+    deckStore.addColumn({
+      type: 'page',
+      name: 'Pages',
       width: 360,
       accountId,
       active: true,
@@ -339,6 +352,10 @@ function close() {
         <button class="_button add-type-btn" @click="selectColumnType('play')">
           <i class="ti ti-player-play" />
           <span>Play</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('page')">
+          <i class="ti ti-note" />
+          <span>Pages</span>
         </button>
       </template>
 

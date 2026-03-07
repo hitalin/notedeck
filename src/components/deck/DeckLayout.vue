@@ -45,6 +45,7 @@ import DeckListColumn from './DeckListColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
 import DeckNavbar from './DeckNavbar.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
+import DeckPageColumn from './DeckPageColumn.vue'
 import DeckPlayColumn from './DeckPlayColumn.vue'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
@@ -136,6 +137,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   widget: 'app-window',
   aiscript: 'code',
   play: 'player-play',
+  page: 'note',
 }
 
 function columnIcon(colId: string): string {
@@ -392,6 +394,10 @@ watch(
             />
             <DeckPlayColumn
               v-else-if="col.type === 'play'"
+              :column="col"
+            />
+            <DeckPageColumn
+              v-else-if="col.type === 'page'"
               :column="col"
             />
           </section>

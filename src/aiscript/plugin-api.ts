@@ -130,6 +130,7 @@ type HandlerType =
   | 'note_post_interruptor'
   | 'post_form_action'
   | 'user_action'
+  | 'page_view_interruptor'
 
 interface PluginHandler {
   pluginInstallId: string
@@ -272,12 +273,31 @@ function createPluginSpecificEnv(
     },
   )
 
+  // --- Plugin:register_page_view_interruptor ---
+  consts['Plugin:register_page_view_interruptor'] = values.FN_NATIVE(
+    ([handlerVal]) => {
+      utils.assertFunction(handlerVal)
+      addPluginHandler({
+        pluginInstallId: id,
+        type: 'page_view_interruptor',
+        handler: (page: unknown) => {
+          const interp = pluginContexts.get(id)
+          if (!interp) return page
+          return utils.valToJs(
+            interp.execFnSync(handlerVal as VFn, [utils.jsToVal(page)]),
+          )
+        },
+      })
+    },
+  )
+
   // Underscore aliases for backwards compat (Misskey supports both : and _)
   const noteAction = consts['Plugin:register_note_action']
   const userAction = consts['Plugin:register_user_action']
   const postFormAction = consts['Plugin:register_post_form_action']
   const noteViewInterruptor = consts['Plugin:register_note_view_interruptor']
   const notePostInterruptor = consts['Plugin:register_note_post_interruptor']
+  const pageViewInterruptor = consts['Plugin:register_page_view_interruptor']
   if (noteAction) consts['Plugin:register:note_action'] = noteAction
   if (userAction) consts['Plugin:register:user_action'] = userAction
   if (postFormAction)
@@ -286,6 +306,8 @@ function createPluginSpecificEnv(
     consts['Plugin:register:note_view_interruptor'] = noteViewInterruptor
   if (notePostInterruptor)
     consts['Plugin:register:note_post_interruptor'] = notePostInterruptor
+  if (pageViewInterruptor)
+    consts['Plugin:register:page_view_interruptor'] = pageViewInterruptor
 
   // --- Plugin:open_url ---
   consts['Plugin:open_url'] = values.FN_NATIVE(
@@ -349,6 +371,26 @@ export function applyNoteViewInterruptors<T>(note: T): T {
       if (modified != null) result = modified
     } catch (e) {
       console.warn('[plugin:note_view_interruptor]', e)
+    }
+  }
+  return result
+}
+
+/**
+ * Apply all page_view_interruptors to a page object (sync).
+ * Each interruptor receives the page and returns a (possibly modified) page.
+ * If any interruptor throws, the original page is returned unchanged.
+ */
+export function applyPageViewInterruptors<T>(page: T): T {
+  const handlers = getPluginHandlers('page_view_interruptor')
+  if (handlers.length === 0) return page
+  let result = page
+  for (const h of handlers) {
+    try {
+      const modified = h.handler(result) as T | undefined
+      if (modified != null) result = modified
+    } catch (e) {
+      console.warn('[plugin:page_view_interruptor]', e)
     }
   }
   return result
