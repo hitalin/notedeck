@@ -704,6 +704,7 @@ onUnmounted(() => {
   justify-content: center;
   gap: 4px;
   min-width: 100px;
+  min-height: 44px;
   padding: 7px 14px;
   font-weight: bold;
   font-size: 0.85em;

@@ -295,6 +295,7 @@ defineExpose({ onMounted })
   display: flex;
   flex-direction: column;
   width: 320px;
+  max-width: calc(100vw - 32px);
   max-height: 360px;
   overflow: hidden;
 }
@@ -343,7 +344,7 @@ defineExpose({ onMounted })
 
 .picker-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 40px);
+  grid-template-columns: repeat(auto-fill, 44px);
   gap: 2px;
 }
 
@@ -351,8 +352,8 @@ defineExpose({ onMounted })
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 6px;
   background: none;

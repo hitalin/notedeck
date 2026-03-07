@@ -782,8 +782,11 @@ async function handleMentionClick(username: string, host: string | null) {
 .footer-button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   padding: 8px;
+  min-height: 44px;
+  min-width: 44px;
   margin-right: 28px;
   border: none;
   background: none;
@@ -851,7 +854,8 @@ async function handleMentionClick(username: string, host: string | null) {
 @container (max-width: 500px) {
   .note-root { font-size: 0.9em; }
   .article { padding: 20px 22px; }
-  .footer { margin-bottom: -8px; }
+  .footer { margin-bottom: -8px; justify-content: space-between; }
+  .footer-button { margin-right: 0; }
 }
 
 @container (max-width: 480px) {

@@ -616,15 +616,16 @@ async function handlePosted(editedNoteId?: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 31px;
-  height: 31px;
+  width: 44px;
+  height: 44px;
   color: #fff;
   text-shadow: 0 0 8px #000;
   font-size: 16px;
 }
 
 .banner-follow-btn {
-  padding: 6px 16px;
+  padding: 8px 16px;
+  min-height: 44px;
   border-radius: 999px;
   font-size: 0.85em;
   font-weight: bold;

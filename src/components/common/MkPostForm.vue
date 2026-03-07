@@ -934,6 +934,8 @@ function onKeydown(e: KeyboardEvent) {
   align-items: center;
   gap: 6px;
   padding: 8px;
+  min-height: 44px;
+  min-width: 44px;
   margin: 0;
   border-radius: 6px;
   color: var(--nd-fg);
@@ -1874,6 +1876,7 @@ function onKeydown(e: KeyboardEvent) {
 
   .submit-btn {
     margin: 8px 8px 8px 4px;
+    min-height: 44px;
   }
 
   .cw-input,
