@@ -107,6 +107,7 @@ function getHistoryEntries() {
         message: msg,
         isRoom: true,
         name: msg.toRoom?.name || 'Room',
+        avatarUrl: msg.fromUser?.avatarUrl ?? undefined,
       })
     } else {
       const otherId =
