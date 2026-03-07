@@ -94,6 +94,8 @@ interface RoleSummary {
   color: string | null
   iconUrl: string | null
   usersCount: number
+  target: string
+  displayOrder: number
 }
 
 const roles = ref<RoleSummary[]>([])
@@ -112,11 +114,14 @@ async function fetchRoles() {
   rolesLoading.value = true
   rolesError.value = null
   try {
-    roles.value = await invoke<RoleSummary[]>('api_request', {
+    const allRoles = await invoke<RoleSummary[]>('api_request', {
       accountId: props.column.accountId,
-      endpoint: 'roles',
+      endpoint: 'roles/list',
       params: {},
     })
+    roles.value = allRoles
+      .filter((r) => r.target === 'manual')
+      .sort((a, b) => b.displayOrder - a.displayOrder)
     rolesFetched.value = true
   } catch (e) {
     rolesError.value = AppError.from(e).message
@@ -132,12 +137,12 @@ async function openRole(role: RoleSummary) {
   roleUsersError.value = null
   roleUsers.value = []
   try {
-    const result = await invoke<{ users: UserSummary[] }>('api_request', {
+    const result = await invoke<{ id: string; user: UserSummary }[]>('api_request', {
       accountId: props.column.accountId,
       endpoint: 'roles/users',
       params: { roleId: role.id, limit: 30 },
     })
-    roleUsers.value = result.users ?? (result as unknown as UserSummary[])
+    roleUsers.value = result.map((entry) => entry.user)
   } catch (e) {
     roleUsersError.value = AppError.from(e).message
   } finally {
