@@ -363,21 +363,21 @@ function close() {
           <i class="ti ti-home" />
           <span>タイムライン</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('list')">
-          <i class="ti ti-list" />
-          <span>リスト</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('antenna')">
-          <i class="ti ti-antenna-bars-5" />
-          <span>アンテナ</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('channel')">
-          <i class="ti ti-device-tv" />
-          <span>チャンネル</span>
-        </button>
         <button class="_button add-type-btn" @click="selectColumnType('notifications')">
           <i class="ti ti-bell" />
           <span>通知</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('drive')">
+          <i class="ti ti-cloud" />
+          <span>ドライブ</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('followRequests')">
+          <i class="ti ti-user-plus" />
+          <span>フォローリクエスト</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('explore')">
+          <i class="ti ti-compass" />
+          <span>みつける</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('announcements')">
           <i class="ti ti-speakerphone" />
@@ -387,17 +387,45 @@ function close() {
           <i class="ti ti-search" />
           <span>検索</span>
         </button>
+        <button class="_button add-type-btn" @click="selectColumnType('list')">
+          <i class="ti ti-list" />
+          <span>リスト</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('antenna')">
+          <i class="ti ti-antenna-bars-5" />
+          <span>アンテナ</span>
+        </button>
         <button class="_button add-type-btn" @click="selectColumnType('favorites')">
           <i class="ti ti-star" />
           <span>お気に入り</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('page')">
+          <i class="ti ti-note" />
+          <span>Pages</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('play')">
+          <i class="ti ti-player-play" />
+          <span>Play</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('gallery')">
+          <i class="ti ti-icons" />
+          <span>ギャラリー</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('clip')">
           <i class="ti ti-paperclip" />
           <span>クリップ</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('user')">
-          <i class="ti ti-user" />
-          <span>ユーザー</span>
+        <button class="_button add-type-btn" @click="selectColumnType('channel')">
+          <i class="ti ti-device-tv" />
+          <span>チャンネル</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('chat')">
+          <i class="ti ti-messages" />
+          <span>チャット</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('achievements')">
+          <i class="ti ti-medal" />
+          <span>実績</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('mentions')">
           <i class="ti ti-at" />
@@ -407,9 +435,9 @@ function close() {
           <i class="ti ti-mail" />
           <span>ダイレクト</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('chat')">
-          <i class="ti ti-messages" />
-          <span>チャット</span>
+        <button class="_button add-type-btn" @click="selectColumnType('user')">
+          <i class="ti ti-user" />
+          <span>ユーザー</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('widget')">
           <i class="ti ti-app-window" />
@@ -418,34 +446,6 @@ function close() {
         <button class="_button add-type-btn" @click="selectColumnType('aiscript')">
           <i class="ti ti-code" />
           <span>AiScript</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('play')">
-          <i class="ti ti-player-play" />
-          <span>Play</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('page')">
-          <i class="ti ti-note" />
-          <span>Pages</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('followRequests')">
-          <i class="ti ti-user-plus" />
-          <span>フォローリクエスト</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('drive')">
-          <i class="ti ti-cloud" />
-          <span>ドライブ</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('gallery')">
-          <i class="ti ti-icons" />
-          <span>ギャラリー</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('explore')">
-          <i class="ti ti-compass" />
-          <span>みつける</span>
-        </button>
-        <button class="_button add-type-btn" @click="selectColumnType('achievements')">
-          <i class="ti ti-medal" />
-          <span>実績</span>
         </button>
         <button v-if="!isMobile" class="_button add-type-btn" @click="selectColumnType('ai')">
           <i class="ti ti-sparkles" />
