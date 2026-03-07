@@ -67,8 +67,20 @@ async function connect() {
     const adapter = await initAdapter()
     if (!adapter) return
 
-    const history = await adapter.api.getChatHistory()
-    chatHistory.value = history
+    const userHistory = await adapter.api.getChatHistory()
+
+    let roomHistory: ChatMessage[] = []
+    if (props.column.accountId) {
+      roomHistory = await invoke<ChatMessage[]>('api_request', {
+        accountId: props.column.accountId,
+        endpoint: 'chat/history',
+        params: { limit: 100, room: true },
+      })
+    }
+
+    chatHistory.value = [...userHistory, ...roomHistory].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
