@@ -30,6 +30,7 @@ const displayUser = computed(() => {
   return {
     name: u.name || u.username,
     avatarUrl: u.avatarUrl ?? null,
+    avatarDecorations: u.avatarDecorations ?? [],
     username: u.username,
     host: u.host ?? null,
   }
@@ -99,6 +100,7 @@ function handleReactionClick(reaction: string, reacted: boolean) {
       v-if="!isMine && displayUser"
       class="chat-avatar"
       :avatar-url="displayUser.avatarUrl"
+      :decorations="displayUser.avatarDecorations"
       :size="32"
     />
     <div class="chat-bubble-wrapper">

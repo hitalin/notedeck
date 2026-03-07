@@ -141,6 +141,7 @@ export interface ChatUser {
   username: string
   host?: string
   avatarUrl?: string
+  avatarDecorations?: AvatarDecoration[]
   emojis?: Record<string, string>
 }
 

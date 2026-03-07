@@ -9,10 +9,12 @@ import {
   shallowRef,
 } from 'vue'
 import type {
+  AvatarDecoration,
   ChannelSubscription,
   ChatMessage,
   NormalizedDriveFile,
 } from '@/adapters/types'
+import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
@@ -96,6 +98,7 @@ function getHistoryEntries() {
     isRoom: boolean
     name: string
     avatarUrl?: string
+    avatarDecorations?: AvatarDecoration[]
   }[] = []
 
   for (const msg of chatHistory.value) {
@@ -108,6 +111,7 @@ function getHistoryEntries() {
         isRoom: true,
         name: msg.toRoom?.name || 'Room',
         avatarUrl: msg.fromUser?.avatarUrl ?? undefined,
+        avatarDecorations: msg.fromUser?.avatarDecorations,
       })
     } else {
       const otherId =
@@ -122,6 +126,7 @@ function getHistoryEntries() {
         isRoom: false,
         name: other?.name || other?.username || otherId,
         avatarUrl: other?.avatarUrl ?? undefined,
+        avatarDecorations: other?.avatarDecorations,
       })
     }
   }
@@ -487,10 +492,11 @@ onBeforeUnmount(() => {
           class="history-item"
           @click="openConversation(entry)"
         >
-          <img
+          <MkAvatar
             v-if="entry.avatarUrl"
-            :src="entry.avatarUrl"
-            class="history-avatar"
+            :avatar-url="entry.avatarUrl"
+            :decorations="entry.avatarDecorations ?? []"
+            :size="36"
           />
           <div v-else class="history-avatar-placeholder">
             <i :class="entry.isRoom ? 'ti ti-users' : 'ti ti-user'" />
@@ -666,12 +672,12 @@ onBeforeUnmount(() => {
   background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.03));
 }
 
-.history-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
+.history-item :deep(.mk-avatar) {
   flex-shrink: 0;
+}
+
+.history-item :deep(.mk-avatar:hover) {
+  transform: none;
 }
 
 .history-avatar-placeholder {
