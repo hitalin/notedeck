@@ -475,7 +475,7 @@ async function handleMentionClick(username: string, host: string | null) {
 <style scoped>
 .note-root {
   position: relative;
-  font-size: 1.05em;
+  font-size: 1em;
   contain: content;
   container-type: inline-size;
 }
@@ -503,7 +503,7 @@ async function handleMentionClick(username: string, host: string | null) {
 /* Renote info bar */
 .renote-info {
   display: flex;
-  padding: 16px 32px 8px 32px;
+  padding: 16px 24px 8px 24px;
   align-items: center;
   gap: 8px;
   font-size: 0.85em;
@@ -542,7 +542,7 @@ async function handleMentionClick(username: string, host: string | null) {
 /* Main article layout */
 .article {
   display: flex;
-  padding: 28px 32px;
+  padding: 24px;
 }
 
 .avatar {
@@ -829,7 +829,7 @@ async function handleMentionClick(username: string, host: string | null) {
   background: none;
   cursor: pointer;
   color: color-mix(in srgb, var(--nd-panel) 30%, var(--nd-fg) 70%);
-  font-size: 1.05em;
+  font-size: 1em;
   border-radius: 6px;
   transition: color 0.15s, background 0.15s, transform 0.1s;
 }
@@ -884,8 +884,8 @@ async function handleMentionClick(username: string, host: string | null) {
 /* Container query responsive breakpoints */
 @container (max-width: 580px) {
   .note-root { font-size: 0.95em; }
-  .article { padding: 24px 26px; }
-  .renote-info { padding: 12px 26px 6px 26px; }
+  .article { padding: 20px; }
+  .renote-info { padding: 12px 20px 6px 20px; }
 }
 
 @container (max-width: 500px) {

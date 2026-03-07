@@ -164,7 +164,7 @@ function isAudio(file: NormalizedDriveFile): boolean {
 <style scoped>
 .media-grid {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   margin-top: 8px;
   border-radius: 8px;
   overflow: hidden;
@@ -379,7 +379,7 @@ function isAudio(file: NormalizedDriveFile): boolean {
 
 @container (max-width: 500px) {
   .media-grid {
-    gap: 2px;
+    gap: 4px;
   }
 
   .media-cell {

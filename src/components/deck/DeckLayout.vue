@@ -489,16 +489,20 @@ watch(
 
     <!-- Add column popup -->
     <Teleport to="body">
-      <AddColumnDialog v-if="showAddMenu" @close="showAddMenu = false" />
+      <Transition name="modal">
+        <AddColumnDialog v-if="showAddMenu" @close="showAddMenu = false" />
+      </Transition>
     </Teleport>
 
     <Teleport to="body">
-      <MkPostForm
-        v-if="showCompose && accountsStore.accounts.length > 0"
-        :account-id="accountsStore.accounts[0]!.id"
-        @close="closeCompose"
-        @posted="closeCompose"
-      />
+      <Transition name="modal">
+        <MkPostForm
+          v-if="showCompose && accountsStore.accounts.length > 0"
+          :account-id="accountsStore.accounts[0]!.id"
+          @close="closeCompose"
+          @posted="closeCompose"
+        />
+      </Transition>
     </Teleport>
 
   </div>
@@ -652,7 +656,6 @@ watch(
   .fade-leave-to {
     opacity: 0;
   }
-
   .mobile-menu-btn {
     flex: 0 0 auto !important;
     width: 50px;
@@ -708,12 +711,13 @@ watch(
     );
     color: var(--nd-fgOnAccent, #fff);
     font-size: 20px;
-    box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
-    transition: transform 0.3s ease;
+    box-shadow: 0 4px 12px var(--nd-shadow);
+    transition: transform 0.3s ease, box-shadow 0.2s ease;
   }
 
   .mobile-fab:hover {
     transform: scale(1.05);
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--nd-accent) 40%, rgba(0, 0, 0, 0.3));
   }
 
   .mobile-fab:active {
@@ -726,7 +730,9 @@ watch(
     flex: 0 0 auto;
     height: 50px;
     padding-bottom: env(safe-area-inset-bottom);
-    background: var(--nd-navBg);
+    background: color-mix(in srgb, var(--nd-navBg) 80%, transparent);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
     border-top: 1px solid var(--nd-divider);
   }
 
@@ -766,5 +772,17 @@ watch(
     transition: opacity 0.1s, color 0.2s, transform 0.1s;
   }
 
+}
+</style>
+
+<style>
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
 }
 </style>

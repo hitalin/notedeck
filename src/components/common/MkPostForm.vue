@@ -1051,11 +1051,12 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-fgOnAccent);
   background: linear-gradient(90deg, var(--nd-buttonGradateA, var(--nd-accent)), var(--nd-buttonGradateB, var(--nd-accent)));
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, box-shadow 0.2s ease;
 }
 
 .submit-btn:hover:not(:disabled) {
   opacity: 0.85;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--nd-accent) 40%, transparent);
 }
 
 .submit-btn:disabled {
