@@ -693,7 +693,7 @@ watch(
     align-items: center;
     justify-content: center;
     position: fixed;
-    right: 16px;
+    right: calc(16px + env(safe-area-inset-right));
     bottom: calc(60px + env(safe-area-inset-bottom));
     z-index: 1000;
     width: 56px;
@@ -757,6 +757,8 @@ watch(
 
   .mobile-tab:active {
     opacity: 0.7;
+    transform: scale(0.9);
+    transition: opacity 0.1s, color 0.2s, transform 0.1s;
   }
 
 }

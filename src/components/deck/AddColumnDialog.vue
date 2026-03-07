@@ -548,8 +548,8 @@ function close() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 44px;
+  height: 44px;
   border-radius: 6px;
   opacity: 0.7;
   transition: background 0.15s, opacity 0.15s;

@@ -74,6 +74,7 @@
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
   will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tl-scroller :deep(.vue-recycle-scroller__item-view) {

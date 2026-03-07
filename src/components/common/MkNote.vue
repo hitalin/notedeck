@@ -269,24 +269,11 @@ async function handleMentionClick(username: string, host: string | null) {
             >
               <path :d="mode.icon" fill="currentColor" />
             </svg>
-            <svg
+            <i
               v-if="effectiveNote.localOnly"
-              class="visibility-icon"
-              viewBox="0 0 24 24"
-              width="14"
-              height="14"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              fill="none"
+              class="ti ti-rocket-off visibility-icon"
               title="Local only"
-            >
-              <path d="M4 13a8 8 0 0 1 7-7 4 4 0 0 0 6.243 6.243 8 8 0 0 1-7 7" />
-              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
-              <path d="M15 9h.01" />
-              <path d="M3 3l18 18" />
-            </svg>
+            />
             <svg
               v-if="effectiveNote.visibility !== 'public'"
               class="visibility-icon"
@@ -330,7 +317,8 @@ async function handleMentionClick(username: string, host: string | null) {
             />
           </p>
           <button class="cw-toggle _button" @click.stop="cwExpanded = !cwExpanded">
-            {{ cwExpanded ? 'Hide' : 'Show more' }}
+            {{ cwExpanded ? '隠す' : 'もっと見る' }}
+            <span v-if="!cwExpanded && effectiveNote.text" class="cw-chars">({{ effectiveNote.text.length }}文字)</span>
           </button>
         </div>
 
@@ -402,7 +390,7 @@ async function handleMentionClick(username: string, host: string | null) {
             class="footer-button reaction-trigger"
             @click.stop="reactionPickerRef?.open($event)"
           >
-            <i class="ti ti-mood-plus" />
+            <i class="ti ti-plus" />
           </button>
           <button
             class="footer-button more-button"
@@ -616,6 +604,7 @@ async function handleMentionClick(username: string, host: string | null) {
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
+  max-width: 200px;
   -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.7);
   paint-order: stroke fill;
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
@@ -641,6 +630,7 @@ async function handleMentionClick(username: string, host: string | null) {
 
 .visibility-icon {
   opacity: 0.5;
+  font-size: 14px;
 }
 
 /* CW */
@@ -654,21 +644,31 @@ async function handleMentionClick(username: string, host: string | null) {
 }
 
 .cw-toggle {
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
   margin-top: 4px;
   padding: 4px 12px;
+  min-height: 36px;
   border: none;
   border-radius: 999px;
   background: var(--nd-accentedBg);
   color: var(--nd-accent);
   font-size: 0.8em;
-  font-weight: bold;
+  font-weight: normal;
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .cw-toggle:hover {
   background: var(--nd-buttonHoverBg);
+}
+
+.cw-chars {
+  opacity: 0.7;
+  font-weight: normal;
 }
 
 /* Body */
@@ -702,7 +702,7 @@ async function handleMentionClick(username: string, host: string | null) {
 
 .reaction {
   display: inline-flex;
-  height: 42px;
+  height: 44px;
   padding: 0 6px;
   font-size: 1.5em;
   border-radius: 6px;
@@ -763,7 +763,7 @@ async function handleMentionClick(username: string, host: string | null) {
 
 .reaction .count {
   font-size: 0.7em;
-  line-height: 42px;
+  line-height: 44px;
   margin: 0 0 0 4px;
 }
 
@@ -792,7 +792,7 @@ async function handleMentionClick(username: string, host: string | null) {
   background: none;
   cursor: pointer;
   color: color-mix(in srgb, var(--nd-panel) 30%, var(--nd-fg) 70%);
-  font-size: 0.9em;
+  font-size: 1.05em;
   border-radius: 6px;
   transition: color 0.15s, background 0.15s, transform 0.1s;
 }
@@ -857,6 +857,7 @@ async function handleMentionClick(username: string, host: string | null) {
   .renote-info { padding: 8px 16px 4px 16px; }
   .footer { margin-bottom: -4px; }
   .footer-button { margin-right: 12px; }
+  .instance-name { max-width: 120px; }
 }
 
 @container (max-width: 450px) {
@@ -869,7 +870,7 @@ async function handleMentionClick(username: string, host: string | null) {
 }
 
 @container (max-width: 300px) {
-  .reaction { height: 32px; font-size: 1em; border-radius: 4px; }
-  .reaction .count { font-size: 0.9em; line-height: 32px; }
+  .reaction { height: 36px; font-size: 1em; border-radius: 4px; }
+  .reaction .count { font-size: 0.9em; line-height: 36px; }
 }
 </style>

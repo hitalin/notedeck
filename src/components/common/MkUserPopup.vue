@@ -225,6 +225,10 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   .user-popup {
     width: auto;
     max-width: calc(100vw - 32px);
+    left: 16px !important;
+    right: 16px;
+    top: auto !important;
+    bottom: calc(60px + env(safe-area-inset-bottom));
   }
 }
 </style>

@@ -342,8 +342,8 @@ function isAudio(file: NormalizedDriveFile): boolean {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.15);

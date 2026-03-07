@@ -400,14 +400,5 @@ defineExpose({ onMounted })
     padding: 10px 12px;
     font-size: 1em;
   }
-
-  .picker-grid {
-    grid-template-columns: repeat(auto-fill, 40px);
-  }
-
-  .picker-emoji-btn {
-    width: 40px;
-    height: 40px;
-  }
 }
 </style>

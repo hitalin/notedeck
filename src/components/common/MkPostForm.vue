@@ -366,15 +366,7 @@ function onKeydown(e: KeyboardEvent) {
             :title="localOnly ? 'ローカルのみ (連合なし)' : '連合あり'"
             @click="localOnly = !localOnly"
           >
-            <svg viewBox="0 0 24 24" width="18" height="18"
-              stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round" fill="none"
-            >
-              <path d="M4 13a8 8 0 0 1 7-7 4 4 0 0 0 6.243 6.243 8 8 0 0 1-7 7" />
-              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
-              <path d="M15 9h.01" />
-              <path v-if="localOnly" d="M3 3l18 18" />
-            </svg>
+            <i :class="localOnly ? 'ti ti-rocket-off' : 'ti ti-rocket'" />
           </button>
 
           <!-- More menu (preview, drafts, schedule) -->
@@ -1673,10 +1665,10 @@ function onKeydown(e: KeyboardEvent) {
 
 .file-remove {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 22px;
-  height: 22px;
+  top: 0;
+  right: 0;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
