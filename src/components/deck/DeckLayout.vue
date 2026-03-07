@@ -455,15 +455,15 @@ watch(
 
     <!-- Mobile bottom nav (visible only on small screens via CSS) -->
     <nav class="mobile-nav">
+      <button class="_button mobile-tab mobile-menu-btn" @click="mobileDrawerOpen = !mobileDrawerOpen">
+        <i class="ti ti-menu-2" />
+      </button>
       <div class="mobile-menu-wrap">
         <button class="_button mobile-tab mobile-edge-btn" title="プロフィール" @click.stop="showProfileMenu = !showProfileMenu">
           <i class="ti ti-layout" />
         </button>
         <DeckProfileMenu :show="showProfileMenu" @close="showProfileMenu = false" />
       </div>
-      <button class="_button mobile-tab mobile-menu-btn" @click="mobileDrawerOpen = !mobileDrawerOpen">
-        <i class="ti ti-menu-2" />
-      </button>
       <button
         v-for="(colId, i) in visibleColumns"
         :key="colId"
