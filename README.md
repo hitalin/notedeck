@@ -74,6 +74,19 @@ HTTP API（`localhost:19820`）で外部ツールや AI エージェントから
 yay -S misskey-notedeck-bin
 ```
 
+**macOS (Homebrew)**
+
+```bash
+brew tap hitalin/tap
+brew install --cask notedeck
+```
+
+**Windows (Winget)**
+
+```
+winget install hitalin.NoteDeck
+```
+
 **Nix Flake**
 
 ```bash
