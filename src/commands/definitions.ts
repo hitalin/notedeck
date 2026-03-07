@@ -3,6 +3,7 @@ import { useCommandStore } from '@/commands/registry'
 import type { NoteAction } from '@/composables/useNoteFocus'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
+import { useThemeStore } from '@/stores/theme'
 
 export interface CommandHandlers {
   openCompose: () => void
@@ -105,6 +106,15 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     category: 'account',
     shortcuts: keybindsStore.getShortcuts('account-menu'),
     execute: handlers.toggleAccountMenu,
+  })
+
+  commandStore.register({
+    id: 'toggle-dark-mode',
+    label: 'ダーク/ライトモード切替',
+    icon: 'sun-moon',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('toggle-dark-mode'),
+    execute: () => useThemeStore().toggleTheme(),
   })
 
   // Note-level shortcuts (dispatched as CustomEvents to active column)
@@ -247,6 +257,7 @@ export function unregisterDefaultCommands() {
     'add-column',
     'toggle-sidebar',
     'account-menu',
+    'toggle-dark-mode',
     ...NOTE_COMMAND_IDS,
     ...COLUMN_COMMAND_IDS,
     ...QUICK_REACT_IDS,

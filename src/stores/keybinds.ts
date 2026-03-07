@@ -56,6 +56,10 @@ const DEFAULT_KEYBINDS: KeybindEntry[] = [
     shortcuts: [{ key: 'a', scope: 'body' }],
   },
   {
+    commandId: 'toggle-dark-mode',
+    shortcuts: [{ key: 'd', scope: 'body' }],
+  },
+  {
     commandId: 'note-next',
     shortcuts: [{ key: 'j', scope: 'body' }],
   },
