@@ -323,6 +323,7 @@ function pickReaction(reaction: string) {
 
 function closeReactionPicker() {
   showReactionPicker.value = false
+  showEmojiPicker.value = false
   reactionTargetId.value = null
 }
 
