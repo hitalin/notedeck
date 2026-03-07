@@ -126,10 +126,7 @@ impl OgpCache {
     pub fn new(db: Arc<notecli::db::Database>) -> Self {
         let http_client = reqwest::Client::builder()
             .timeout(FETCH_TIMEOUT)
-            .user_agent(format!(
-                "Mozilla/5.0 (compatible; NoteDeck/{})",
-                env!("CARGO_PKG_VERSION")
-            ))
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
             .redirect(reqwest::redirect::Policy::limited(5))
             .build()
             .unwrap_or_default();
