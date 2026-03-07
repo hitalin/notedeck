@@ -92,7 +92,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
         onNewNotes: (batch) => {
           if (config.getColumn().soundMuted) return
           const myId = account.value?.userId
-          const hasMy = myId && batch.some((n) => n.userId === myId)
+          const hasMy = myId && batch.some((n) => n.user.id === myId)
           if (hasMy) {
             myNoteSound?.play()
           } else {

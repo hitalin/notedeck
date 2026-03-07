@@ -2,7 +2,11 @@
 import { invoke } from '@tauri-apps/api/core'
 import { onMounted, ref, watch } from 'vue'
 import { createAdapter } from '@/adapters/registry'
-import type { NormalizedNote, NoteReaction, ServerAdapter } from '@/adapters/types'
+import type {
+  NormalizedNote,
+  NoteReaction,
+  ServerAdapter,
+} from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkNote from '@/components/common/MkNote.vue'
@@ -13,8 +17,8 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useEmojisStore } from '@/stores/emojis'
 import { noteStore } from '@/stores/notes'
 import { useServersStore } from '@/stores/servers'
-import { proxyUrl } from '@/utils/imageProxy'
 import { AppError } from '@/utils/errors'
+import { proxyUrl } from '@/utils/imageProxy'
 import { toggleReaction } from '@/utils/toggleReaction'
 
 const props = defineProps<{
@@ -90,7 +94,11 @@ watch(activeTab, async (tab) => {
     if (tab === 'renotes') {
       renotes.value = await adapter.api.getNoteRenotes(props.noteId)
     } else if (tab === 'reactions') {
-      reactions.value = await adapter.api.getNoteReactions(props.noteId, undefined, 100)
+      reactions.value = await adapter.api.getNoteReactions(
+        props.noteId,
+        undefined,
+        100,
+      )
     }
   } catch (e) {
     console.warn('[NoteDetail] failed to load tab:', tab, e)
