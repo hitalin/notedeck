@@ -220,4 +220,11 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 .popup-webui-link:hover {
   opacity: 1;
 }
+
+@media (max-width: 500px) {
+  .user-popup {
+    width: auto;
+    max-width: calc(100vw - 32px);
+  }
+}
 </style>

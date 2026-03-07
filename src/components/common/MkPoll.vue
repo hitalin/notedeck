@@ -66,7 +66,7 @@ function formatExpiry(iso: string): string {
   border-radius: 6px;
   overflow: hidden;
   background: var(--nd-buttonBg);
-  min-height: 36px;
+  min-height: 44px;
   display: flex;
   align-items: center;
 }

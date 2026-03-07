@@ -392,8 +392,13 @@ function primaryShortcut(cmd: Command): string | null {
     max-height: 70vh;
   }
 
+  .palette-overlay {
+    padding-top: calc(20px + env(safe-area-inset-top));
+  }
+
   .palette-item {
     padding: 10px 14px;
+    min-height: 44px;
   }
 }
 </style>

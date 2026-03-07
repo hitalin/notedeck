@@ -331,4 +331,23 @@ function reset() {
   opacity: 0;
   transform: translateX(-50px);
 }
+
+@media (max-width: 500px) {
+  .dialog-body {
+    padding: 24px 16px;
+  }
+
+  .mk-input {
+    height: 44px;
+    font-size: 1em;
+  }
+
+  .btn-login {
+    height: 44px;
+  }
+
+  .btn-cancel {
+    min-height: 44px;
+  }
+}
 </style>

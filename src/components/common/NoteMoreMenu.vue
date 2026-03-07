@@ -51,7 +51,20 @@ const noteWebUrl = computed(() => {
 
 function open(e: MouseEvent) {
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  menuPos.value = { x: rect.left, y: rect.bottom + 4 }
+  let x = rect.left
+  let y = rect.bottom + 4
+  // 画面外に出ないよう調整
+  const menuWidth = 250
+  const menuHeight = 300
+  if (x + menuWidth > window.innerWidth) {
+    x = window.innerWidth - menuWidth - 8
+  }
+  if (y + menuHeight > window.innerHeight) {
+    y = rect.top - menuHeight - 4
+  }
+  x = Math.max(8, x)
+  y = Math.max(8, y)
+  menuPos.value = { x, y }
   showMenu.value = true
 }
 

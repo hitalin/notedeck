@@ -535,4 +535,36 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
 .log-line.error {
   color: #ff2a2a;
 }
+
+@media (max-width: 500px) {
+  .plugins-content {
+    padding: 8px;
+  }
+
+  .plugins-back-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .plugins-install-btn {
+    padding: 10px 16px;
+    min-height: 44px;
+  }
+
+  .plugin-card {
+    padding: 12px;
+    min-height: 44px;
+  }
+
+  .detail-uninstall-btn {
+    padding: 12px;
+    min-height: 44px;
+  }
+
+  .config-input {
+    padding: 10px 12px;
+    font-size: 1em;
+    min-height: 44px;
+  }
+}
 </style>

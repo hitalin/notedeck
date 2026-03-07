@@ -279,4 +279,10 @@ async function handlePosted(editedNoteId?: string) {
   color: var(--nd-love);
   opacity: 1;
 }
+
+@media (max-width: 500px) {
+  .children-header {
+    padding: 12px 16px 4px;
+  }
+}
 </style>

@@ -431,4 +431,31 @@ setTimeout(() => inputRef.value?.focus(), 100)
 .ai-send:disabled {
   opacity: 0.3;
 }
+
+@media (max-width: 500px) {
+  .ai-input-area {
+    padding: 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .ai-input {
+    padding: 10px 12px;
+    font-size: 1em;
+  }
+
+  .ai-send {
+    width: 40px;
+    height: 40px;
+  }
+
+  .status-retry {
+    width: 36px;
+    height: 36px;
+  }
+
+  .ai-suggestion {
+    padding: 10px 14px;
+    min-height: 44px;
+  }
+}
 </style>

@@ -707,6 +707,37 @@ setTimeout(() => searchInput.value?.focus(), 100)
   font-size: 0.8em;
   opacity: 0.4;
 }
+
+@media (max-width: 500px) {
+  .search-bar {
+    padding: 8px;
+  }
+
+  .search-input {
+    padding: 8px 10px;
+    font-size: 1em;
+  }
+
+  .regex-toggle {
+    width: 36px;
+    height: 36px;
+  }
+
+  .regex-guide-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .search-clear {
+    width: 36px;
+    height: 36px;
+  }
+
+  .search-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
 </style>
 
 <style>
