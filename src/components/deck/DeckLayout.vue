@@ -35,6 +35,7 @@ const AddColumnDialog = defineAsyncComponent(
   () => import('./AddColumnDialog.vue'),
 )
 
+import DeckAiColumn from './DeckAiColumn.vue'
 import DeckAiScriptColumn from './DeckAiScriptColumn.vue'
 import DeckAntennaColumn from './DeckAntennaColumn.vue'
 import DeckChannelColumn from './DeckChannelColumn.vue'
@@ -398,6 +399,10 @@ watch(
             />
             <DeckPageColumn
               v-else-if="col.type === 'page'"
+              :column="col"
+            />
+            <DeckAiColumn
+              v-else-if="col.type === 'ai'"
               :column="col"
             />
           </section>

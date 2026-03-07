@@ -24,6 +24,7 @@ const titles: Record<string, string> = {
   notifications: '通知',
   plugins: 'プラグイン',
   keybinds: 'キーバインド',
+  ai: 'AI アシスタント',
 }
 
 const icons: Record<string, string> = {
@@ -34,6 +35,7 @@ const icons: Record<string, string> = {
   notifications: 'ti ti-bell',
   plugins: 'ti ti-plug',
   keybinds: 'ti ti-keyboard',
+  ai: 'ti ti-sparkles',
 }
 
 const isMinimized = computed(() => props.window.minimized)

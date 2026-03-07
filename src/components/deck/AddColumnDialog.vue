@@ -31,6 +31,7 @@ const addColumnType = ref<
   | 'aiscript'
   | 'play'
   | 'page'
+  | 'ai'
   | null
 >(null)
 
@@ -51,7 +52,8 @@ function selectColumnType(
     | 'widget'
     | 'aiscript'
     | 'play'
-    | 'page',
+    | 'page'
+    | 'ai',
 ) {
   addColumnType.value = type
 }
@@ -106,6 +108,17 @@ function addColumnForAccount(accountId: string) {
     deckStore.addColumn({
       type: 'page',
       name: 'Pages',
+      width: 360,
+      accountId,
+      active: true,
+    })
+    close()
+    return
+  }
+  if (type === 'ai') {
+    deckStore.addColumn({
+      type: 'ai',
+      name: 'AI Chat',
       width: 360,
       accountId,
       active: true,
@@ -356,6 +369,10 @@ function close() {
         <button class="_button add-type-btn" @click="selectColumnType('page')">
           <i class="ti ti-note" />
           <span>Pages</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('ai')">
+          <i class="ti ti-sparkles" />
+          <span>AI Chat</span>
         </button>
       </template>
 

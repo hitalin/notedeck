@@ -57,6 +57,12 @@ export function useNavigation() {
     }
   }
 
+  function navigateToAi() {
+    if (isDeckActive()) {
+      windowsStore.open('ai')
+    }
+  }
+
   return {
     navigateToNote,
     navigateToUser,
@@ -64,5 +70,6 @@ export function useNavigation() {
     navigateToSearch,
     navigateToNotifications,
     navigateToPlugins,
+    navigateToAi,
   }
 }

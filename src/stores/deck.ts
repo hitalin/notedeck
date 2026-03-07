@@ -20,6 +20,7 @@ export type ColumnType =
   | 'aiscript'
   | 'play'
   | 'page'
+  | 'ai'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 

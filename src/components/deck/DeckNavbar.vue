@@ -28,6 +28,7 @@ const {
   navigateToSearch,
   navigateToNotifications,
   navigateToPlugins,
+  navigateToAi,
 } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
@@ -213,6 +214,14 @@ defineExpose({
           >
             <i class="ti ti-plug" />
             <span class="nav-label">プラグイン</span>
+          </button>
+          <button
+            class="_button nav-item"
+            title="AI アシスタント"
+            @click="navigateToAi()"
+          >
+            <i class="ti ti-sparkles" />
+            <span class="nav-label">AI</span>
           </button>
         </div>
 
