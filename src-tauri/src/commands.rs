@@ -1138,6 +1138,9 @@ pub async fn auth_start(
             "read:pages",
             "read:page-likes",
             "write:page-likes",
+            "read:gallery",
+            "read:gallery-likes",
+            "write:gallery-likes",
         ]
         .into_iter()
         .map(String::from)

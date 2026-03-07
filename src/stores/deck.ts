@@ -23,6 +23,7 @@ export type ColumnType =
   | 'ai'
   | 'announcements'
   | 'drive'
+  | 'gallery'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
@@ -148,6 +149,8 @@ export const useDeckStore = defineStore('deck', () => {
         return `notedeck://${host}/announcements`
       case 'drive':
         return `notedeck://${host}/drive`
+      case 'gallery':
+        return `notedeck://${host}/gallery`
       default:
         return null
     }

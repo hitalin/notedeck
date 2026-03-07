@@ -47,6 +47,7 @@ import DeckChatColumn from './DeckChatColumn.vue'
 import DeckClipColumn from './DeckClipColumn.vue'
 import DeckDriveColumn from './DeckDriveColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
+import DeckGalleryColumn from './DeckGalleryColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
 import DeckNavbar from './DeckNavbar.vue'
@@ -148,6 +149,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   play: 'player-play',
   page: 'note',
   announcements: 'speakerphone',
+  gallery: 'icons',
 }
 
 function columnIcon(colId: string): string {
@@ -438,6 +440,10 @@ watch(
             />
             <DeckAnnouncementsColumn
               v-else-if="col.type === 'announcements'"
+              :column="col"
+            />
+            <DeckGalleryColumn
+              v-else-if="col.type === 'gallery'"
               :column="col"
             />
           </section>

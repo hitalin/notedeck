@@ -36,6 +36,7 @@ const addColumnType = ref<
   | 'ai'
   | 'announcements'
   | 'drive'
+  | 'gallery'
   | null
 >(null)
 
@@ -59,7 +60,8 @@ function selectColumnType(
     | 'page'
     | 'ai'
     | 'announcements'
-    | 'drive',
+    | 'drive'
+    | 'gallery',
 ) {
   addColumnType.value = type
 }
@@ -136,6 +138,17 @@ function addColumnForAccount(accountId: string) {
     deckStore.addColumn({
       type: 'drive',
       name: 'ドライブ',
+      width: 360,
+      accountId,
+      active: true,
+    })
+    close()
+    return
+  }
+  if (type === 'gallery') {
+    deckStore.addColumn({
+      type: 'gallery',
+      name: 'ギャラリー',
       width: 360,
       accountId,
       active: true,
@@ -396,6 +409,10 @@ function close() {
         <button class="_button add-type-btn" @click="selectColumnType('drive')">
           <i class="ti ti-cloud" />
           <span>ドライブ</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('gallery')">
+          <i class="ti ti-icons" />
+          <span>ギャラリー</span>
         </button>
         <button v-if="!isMobile" class="_button add-type-btn" @click="selectColumnType('ai')">
           <i class="ti ti-sparkles" />
