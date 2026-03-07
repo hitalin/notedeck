@@ -10,7 +10,14 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/hitalin/notedeck/releases/latest"><img src="https://img.shields.io/github/v/release/hitalin/notedeck?style=flat-square" alt="GitHub Release" /></a>
+  <a href="https://aur.archlinux.org/packages/misskey-notedeck-bin"><img src="https://img.shields.io/aur/version/misskey-notedeck-bin?style=flat-square&logo=archlinux&label=AUR" alt="AUR" /></a>
+  <a href="https://github.com/hitalin/notedeck/blob/main/LICENSE"><img src="https://img.shields.io/github/license/hitalin/notedeck?style=flat-square" alt="License" /></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/hitalin/notedeck/releases/latest"><strong>ダウンロード</strong></a> ·
+  <a href="#インストール">インストール</a> ·
   <a href="https://github.com/hitalin/notedeck/issues">Issues</a> ·
   <a href="ROADMAP.md">Roadmap</a>
 </p>
@@ -57,7 +64,23 @@ HTTP API（`localhost:19820`）で外部ツールや AI エージェントから
 
 ---
 
-## ダウンロード
+## インストール
+
+### パッケージマネージャ
+
+**Arch Linux (AUR)**
+
+```bash
+yay -S misskey-notedeck-bin
+```
+
+**Nix Flake**
+
+```bash
+nix run github:hitalin/notedeck
+```
+
+### 直接ダウンロード
 
 [**最新版をダウンロード**](https://github.com/hitalin/notedeck/releases/latest)
 
