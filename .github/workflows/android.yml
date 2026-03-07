@@ -1,8 +1,9 @@
-name: Release (Android) [DEPRECATED]
+name: Release (Android)
 
-# Android support is deprecated. Desktop-only (Windows/macOS/Linux).
-# Kept for manual builds only.
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 concurrency:
