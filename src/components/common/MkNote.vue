@@ -202,6 +202,37 @@ async function handleMentionClick(username: string, host: string | null) {
     console.warn('[MkNote] failed to lookup user:', username, host, e)
   }
 }
+
+// User hover popup for mentions
+const mentionPopup = useHoverPopup()
+const mentionUserId = ref('')
+let mentionHovering = false
+
+async function onMentionHover(e: MouseEvent, username: string, host: string | null) {
+  mentionHovering = true
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  try {
+    const user = await invoke<NormalizedUser>('api_lookup_user', {
+      accountId: props.note._accountId,
+      username,
+      host: host ?? null,
+    })
+    if (!mentionHovering) return
+    mentionUserId.value = user.id
+    mentionPopup.show({ x: rect.right + 8, y: rect.top })
+  } catch {
+    // lookup failed
+  }
+}
+
+function onMentionLeave() {
+  mentionHovering = false
+  mentionPopup.hide()
+}
+
+function closeMentionPopup() {
+  mentionPopup.forceClose()
+}
 </script>
 
 <template>
@@ -259,6 +290,8 @@ async function handleMentionClick(username: string, host: string | null) {
               :server-host="effectiveNote._serverHost"
               :account-id="effectiveNote._accountId"
               @mention-click="handleMentionClick"
+              @mention-hover="onMentionHover"
+              @mention-leave="onMentionLeave"
             />
             <template v-else>{{ effectiveNote.user.username }}</template>
           </span>
@@ -326,6 +359,8 @@ async function handleMentionClick(username: string, host: string | null) {
               :server-host="effectiveNote._serverHost"
               :account-id="effectiveNote._accountId"
               @mention-click="handleMentionClick"
+              @mention-hover="onMentionHover"
+              @mention-leave="onMentionLeave"
             />
           </p>
           <button class="cw-toggle _button" @click.stop="cwExpanded = !cwExpanded">
@@ -345,6 +380,8 @@ async function handleMentionClick(username: string, host: string | null) {
                 :server-host="effectiveNote._serverHost"
                 :account-id="effectiveNote._accountId"
                 @mention-click="handleMentionClick"
+                @mention-hover="onMentionHover"
+                @mention-leave="onMentionLeave"
               />
             </p>
             <div v-if="isLongText && !longTextExpanded" class="long-text-fade" />
@@ -443,6 +480,17 @@ async function handleMentionClick(username: string, host: string | null) {
       :x="userPopup.position.value.x"
       :y="userPopup.position.value.y"
       @close="closeUserPopup"
+    />
+  </Teleport>
+
+  <Teleport to="body">
+    <MkUserPopup
+      v-if="mentionPopup.isVisible.value && mentionUserId"
+      :user-id="mentionUserId"
+      :account-id="note._accountId"
+      :x="mentionPopup.position.value.x"
+      :y="mentionPopup.position.value.y"
+      @close="closeMentionPopup"
     />
   </Teleport>
 

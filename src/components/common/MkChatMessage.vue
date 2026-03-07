@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import type { ChatMessage } from '@/adapters/types'
+import { invoke } from '@tauri-apps/api/core'
+import { computed, defineAsyncComponent, ref } from 'vue'
+import type { ChatMessage, NormalizedUser } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
+import { useHoverPopup } from '@/composables/useHoverPopup'
 import { proxyUrl } from '@/utils/imageProxy'
+
+const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
 
 const props = defineProps<{
   message: ChatMessage
@@ -92,6 +96,38 @@ function handleReactionClick(reaction: string, reacted: boolean) {
     emit('react', props.message.id, reaction)
   }
 }
+
+// User hover popup for mentions
+const mentionPopup = useHoverPopup()
+const mentionUserId = ref('')
+let mentionHovering = false
+
+async function onMentionHover(e: MouseEvent, username: string, host: string | null) {
+  if (!props.accountId) return
+  mentionHovering = true
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  try {
+    const user = await invoke<NormalizedUser>('api_lookup_user', {
+      accountId: props.accountId,
+      username,
+      host: host ?? null,
+    })
+    if (!mentionHovering) return
+    mentionUserId.value = user.id
+    mentionPopup.show({ x: rect.right + 8, y: rect.top })
+  } catch {
+    // lookup failed — don't show popup
+  }
+}
+
+function onMentionLeave() {
+  mentionHovering = false
+  mentionPopup.hide()
+}
+
+function closeMentionPopup() {
+  mentionPopup.forceClose()
+}
 </script>
 
 <template>
@@ -109,7 +145,7 @@ function handleReactionClick(reaction: string, reacted: boolean) {
           {{ displayUser.name }}
         </div>
         <div v-if="message.text" class="chat-text">
-          <MkMfm :text="message.text" :account-id="accountId" :server-host="serverHost" />
+          <MkMfm :text="message.text" :account-id="accountId" :server-host="serverHost" @mention-hover="onMentionHover" @mention-leave="onMentionLeave" />
         </div>
         <div v-if="message.file" class="chat-file">
           <img
@@ -159,6 +195,17 @@ function handleReactionClick(reaction: string, reacted: boolean) {
       </button>
     </div>
   </div>
+
+  <Teleport to="body">
+    <MkUserPopup
+      v-if="mentionPopup.isVisible.value && mentionUserId"
+      :user-id="mentionUserId"
+      :account-id="accountId!"
+      :x="mentionPopup.position.value.x"
+      :y="mentionPopup.position.value.y"
+      @close="closeMentionPopup"
+    />
+  </Teleport>
 
   <Teleport to="body">
     <div v-if="lightboxUrl" class="lightbox-overlay" @click="closeLightbox">
