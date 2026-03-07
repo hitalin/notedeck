@@ -37,6 +37,7 @@ const addColumnType = ref<
   | 'announcements'
   | 'drive'
   | 'gallery'
+  | 'explore'
   | 'followRequests'
   | 'achievements'
   | null
@@ -64,6 +65,7 @@ function selectColumnType(
     | 'announcements'
     | 'drive'
     | 'gallery'
+    | 'explore'
     | 'followRequests'
     | 'achievements',
 ) {
@@ -153,6 +155,17 @@ function addColumnForAccount(accountId: string) {
     deckStore.addColumn({
       type: 'gallery',
       name: 'ギャラリー',
+      width: 360,
+      accountId,
+      active: true,
+    })
+    close()
+    return
+  }
+  if (type === 'explore') {
+    deckStore.addColumn({
+      type: 'explore',
+      name: 'みつける',
       width: 360,
       accountId,
       active: true,
@@ -425,6 +438,10 @@ function close() {
         <button class="_button add-type-btn" @click="selectColumnType('gallery')">
           <i class="ti ti-icons" />
           <span>ギャラリー</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('explore')">
+          <i class="ti ti-compass" />
+          <span>みつける</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('achievements')">
           <i class="ti ti-medal" />
