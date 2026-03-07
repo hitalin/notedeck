@@ -305,3 +305,30 @@ jobs:
           gh release edit "v${VERSION}" \
             --repo "${{ github.repository }}" \
             --draft=false
+
+  aur:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Update PKGBUILD
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" packaging/aur/PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" packaging/aur/PKGBUILD
+
+      - name: Publish to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v3
+        with:
+          pkgname: misskey-notedeck-bin
+          pkgbuild: packaging/aur/PKGBUILD
+          assets: packaging/aur/notedeck.desktop
+          commit_username: hitalin
+          commit_email: hitalin@proton.me
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ steps.version.outputs.version }}"
