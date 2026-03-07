@@ -4,10 +4,9 @@ import { useCommandStore } from '@/commands/registry'
 import TitleBarComponent from '@/components/common/TitleBar.vue'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { useTheme } from '@/composables/useTheme'
+import { useUiStore } from '@/stores/ui'
 
-const isTauri = '__TAURI_INTERNALS__' in window
-const isDesktop =
-  isTauri && matchMedia('(hover: hover) and (pointer: fine)').matches
+const { isTauri, isDesktop } = useUiStore()
 
 const TitleBar = isDesktop ? TitleBarComponent : null
 
