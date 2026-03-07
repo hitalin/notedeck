@@ -17,6 +17,7 @@ import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import { useNoteSound } from '@/composables/useNoteSound'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
@@ -34,6 +35,8 @@ const {
   initAdapter,
   getAdapter,
 } = useColumnSetup(() => props.column)
+
+const chatSound = useNoteSound(() => account.value?.host, 'syuilo/waon')
 
 const viewMode = ref<'history' | 'conversation'>('history')
 const chatHistory = shallowRef<ChatMessage[]>([])
@@ -162,6 +165,7 @@ async function openConversation(
 function onNewMessage(msg: ChatMessage) {
   if (messages.value.some((m) => m.id === msg.id)) return
   messages.value = [...messages.value, msg]
+  if (!props.column.soundMuted) chatSound.play()
   scrollToBottom()
 }
 

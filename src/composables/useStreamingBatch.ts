@@ -8,7 +8,7 @@ export interface UseStreamingBatchOptions {
   noteIds: Set<string>
   scroller: { value: InstanceType<typeof DynamicScroller> | null }
   maxNotes?: number
-  onNewNotes?: (count: number) => void
+  onNewNotes?: (notes: NormalizedNote[]) => void
 }
 
 export function useStreamingBatch(options: UseStreamingBatchOptions) {
@@ -52,7 +52,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       options.notes.value =
         merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
       if (merged.length > MAX_NOTES) syncNoteIds()
-      options.onNewNotes?.(batch.length)
+      options.onNewNotes?.(batch)
       scheduleForceUpdate()
     } else {
       const merged = sortByCreatedAtDesc([...batch, ...pendingNotes.value])

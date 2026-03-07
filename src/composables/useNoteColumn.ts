@@ -81,13 +81,23 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   // Streaming (Group A) or NoteCapture (Group B)
   const noteSound = isStreaming ? useNoteSound(() => account.value?.host) : null
+  const myNoteSound = isStreaming
+    ? useNoteSound(() => account.value?.host, 'syuilo/n-cea-4va')
+    : null
   const streamingBatch = isStreaming
     ? useStreamingBatch({
         notes,
         noteIds,
         scroller,
-        onNewNotes: () => {
-          if (!config.getColumn().soundMuted) noteSound?.play()
+        onNewNotes: (batch) => {
+          if (config.getColumn().soundMuted) return
+          const myId = account.value?.userId
+          const hasMy = myId && batch.some((n) => n.userId === myId)
+          if (hasMy) {
+            myNoteSound?.play()
+          } else {
+            noteSound?.play()
+          }
         },
       })
     : null
