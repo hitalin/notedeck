@@ -7,9 +7,11 @@ import { useCommandStore } from '@/commands/registry'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
+import { useUiStore } from '@/stores/ui'
 import { fuzzyMatch } from '@/utils/fuzzyMatch'
 import { shortcutLabel } from '@/utils/shortcutLabel'
 
+const { isDesktop } = useUiStore()
 const commandStore = useCommandStore()
 const query = ref('')
 const selectedIndex = ref(0)
@@ -164,7 +166,7 @@ function primaryShortcut(cmd: Command): string | null {
           placeholder="コマンドを入力..."
           spellcheck="false"
         />
-        <kbd class="palette-esc">Esc</kbd>
+        <kbd v-if="isDesktop" class="palette-esc">Esc</kbd>
       </div>
       <!-- CLI mode -->
       <div v-if="cliMatch && cliMeta" class="palette-cli">
@@ -203,7 +205,7 @@ function primaryShortcut(cmd: Command): string | null {
           >
             <i :class="'ti ti-' + cmd.icon" class="palette-item-icon" />
             <span class="palette-item-label">{{ cmd.label }}</span>
-            <kbd v-if="primaryShortcut(cmd)" class="palette-item-kbd">
+            <kbd v-if="isDesktop && primaryShortcut(cmd)" class="palette-item-kbd">
               {{ primaryShortcut(cmd) }}
             </kbd>
           </button>
@@ -378,5 +380,20 @@ function primaryShortcut(cmd: Command): string | null {
   font-size: 12px;
   color: var(--nd-fg);
   opacity: 0.45;
+}
+
+@media (max-width: 500px) {
+  .palette-overlay {
+    padding-top: 20px;
+    padding-inline: 8px;
+  }
+
+  .palette {
+    max-height: 70vh;
+  }
+
+  .palette-item {
+    padding: 10px 14px;
+  }
 }
 </style>
