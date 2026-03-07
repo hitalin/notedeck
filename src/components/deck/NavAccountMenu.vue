@@ -65,10 +65,6 @@ function modeLabel(key: string): string {
         <i class="ti ti-user" />
       </button>
       <div class="nav-account-menu-divider" />
-      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/settings/mute-block`)">
-        <span>ミュートとブロック</span>
-        <i class="ti ti-external-link" />
-      </button>
       <div class="nav-account-menu-divider" />
       <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/settings`)">
         <span>設定</span>
