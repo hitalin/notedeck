@@ -150,6 +150,15 @@ function columnIcon(colId: string): string {
   return MOBILE_TAB_ICONS[col?.type ?? ''] ?? MOBILE_TAB_ICONS.timeline ?? ''
 }
 
+const hasMultipleAccounts = computed(() => accountsStore.accounts.length > 1)
+
+function columnAccount(colId: string) {
+  if (!hasMultipleAccounts.value) return null
+  const col = columnMap.value.get(colId)
+  if (!col?.accountId) return null
+  return accountsStore.accountMap.get(col.accountId) ?? null
+}
+
 function onColumnsScroll() {
   if (!columnsRef.value) return
   const w = columnsRef.value.clientWidth
@@ -474,6 +483,14 @@ watch(
         @click="scrollToColumn(i)"
       >
         <i :class="'ti ti-' + columnIcon(colId)" />
+        <span v-if="columnAccount(colId)" class="tab-account-badge">
+          <img
+            v-if="columnAccount(colId)!.avatarUrl"
+            :src="columnAccount(colId)!.avatarUrl!"
+            class="tab-account-avatar"
+          />
+          <span v-else class="tab-account-initial">{{ columnAccount(colId)!.host.charAt(0).toUpperCase() }}</span>
+        </span>
       </button>
       <button class="_button mobile-tab" title="Add column" @click="toggleAddMenu">
         <i class="ti ti-plus" />
@@ -770,6 +787,36 @@ watch(
     opacity: 0.7;
     transform: scale(0.9);
     transition: opacity 0.1s, color 0.2s, transform 0.1s;
+  }
+
+  .tab-account-badge {
+    position: absolute;
+    bottom: 4px;
+    right: calc(50% - 16px);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 1.5px solid var(--nd-navBg);
+    background: var(--nd-navBg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tab-account-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+
+  .tab-account-initial {
+    font-size: 7px;
+    font-weight: bold;
+    line-height: 1;
+    color: var(--nd-fg);
+    opacity: 0.7;
   }
 
 }
