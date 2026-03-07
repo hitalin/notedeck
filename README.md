@@ -6,7 +6,7 @@
 
 <p align="center">
   複数の Misskey サーバーをひとつのデッキで。<br />
-  <strong>デスクトップ専用・マルチサーバー対応 Misskey デッキクライアント</strong>
+  <strong>マルチサーバー対応 Misskey デッキクライアント</strong>
 </p>
 
 <p align="center">
@@ -28,9 +28,7 @@
 
 ## Misskey をデスクトップで、もっと快適に
 
-NoteDeck は Misskey とそのフォーク（Sharkey・CherryPick・Firefish・Iceshrimp 等）に対応したデスクトップ専用のデッキクライアントです。複数サーバーのタイムラインを一画面に並べて、キーボードだけで操作できます。
-
-> スマホには [Aria](https://github.com/poppingmoon/aria) や PWA。デスクトップには NoteDeck。
+NoteDeck は Misskey とそのフォークに対応したデッキクライアントです。複数サーバーのタイムラインを一画面に並べて、キーボードだけで操作できます。
 
 ---
 
@@ -89,6 +87,7 @@ nix run github:hitalin/notedeck
 | Windows | `.exe` (NSIS インストーラー) |
 | macOS | `.dmg` (Universal: Apple Silicon + Intel) |
 | Linux | `.deb` / `.AppImage` |
+| Android | `.apk` |
 
 ---
 
