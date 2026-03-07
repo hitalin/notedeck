@@ -91,6 +91,17 @@ const instanceTickerStyle = computed(() => {
 
 const showRenoteMenu = ref(false)
 const cwExpanded = ref(false)
+const longTextExpanded = ref(false)
+
+const LONG_TEXT_THRESHOLD = 500
+const LONG_TEXT_LINES = 8
+const isLongText = computed(() => {
+  const text = effectiveNote.value.text
+  if (!text || effectiveNote.value.cw !== null) return false
+  if (text.length > LONG_TEXT_THRESHOLD) return true
+  const lines = text.split('\n').length
+  return lines > LONG_TEXT_LINES
+})
 
 const isOwnNote = computed(() => {
   const account = accountsStore.accountMap.get(props.note._accountId)
@@ -324,16 +335,23 @@ async function handleMentionClick(username: string, host: string | null) {
 
         <!-- Body -->
         <div v-show="effectiveNote.cw === null || cwExpanded" class="body">
-          <p v-if="effectiveNote.text" class="text">
-            <MkMfm
-              :text="effectiveNote.text"
-              :emojis="effectiveNote.emojis"
-              :reaction-emojis="effectiveNote.reactionEmojis"
-              :server-host="effectiveNote._serverHost"
-              :account-id="effectiveNote._accountId"
-              @mention-click="handleMentionClick"
-            />
-          </p>
+          <div v-if="effectiveNote.text" class="text-container" :class="{ collapsed: isLongText && !longTextExpanded }">
+            <p class="text">
+              <MkMfm
+                :text="effectiveNote.text"
+                :emojis="effectiveNote.emojis"
+                :reaction-emojis="effectiveNote.reactionEmojis"
+                :server-host="effectiveNote._serverHost"
+                :account-id="effectiveNote._accountId"
+                @mention-click="handleMentionClick"
+              />
+            </p>
+            <div v-if="isLongText && !longTextExpanded" class="long-text-fade" />
+          </div>
+          <button v-if="isLongText" class="cw-toggle _button" @click.stop="longTextExpanded = !longTextExpanded">
+            {{ longTextExpanded ? '隠す' : 'もっと見る' }}
+            <span v-if="!longTextExpanded && effectiveNote.text" class="cw-chars">({{ effectiveNote.text.length }}文字)</span>
+          </button>
 
           <MkMediaGrid
             v-if="effectiveNote.files.length > 0"
@@ -674,6 +692,25 @@ async function handleMentionClick(username: string, host: string | null) {
 /* Body */
 .body {
   overflow-wrap: break-word;
+}
+
+.text-container {
+  position: relative;
+}
+
+.text-container.collapsed {
+  max-height: 200px;
+  overflow: hidden;
+}
+
+.long-text-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: linear-gradient(to bottom, transparent, var(--nd-panel));
+  pointer-events: none;
 }
 
 .text {
