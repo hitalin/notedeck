@@ -40,27 +40,19 @@ export function useNavigation() {
   }
 
   function navigateToSearch() {
-    if (isDeckActive()) {
-      windowsStore.open('search')
-    }
+    windowsStore.open('search')
   }
 
   function navigateToNotifications() {
-    if (isDeckActive()) {
-      windowsStore.open('notifications')
-    }
+    windowsStore.open('notifications')
   }
 
   function navigateToPlugins() {
-    if (isDeckActive()) {
-      windowsStore.open('plugins')
-    }
+    windowsStore.open('plugins')
   }
 
   function navigateToAi() {
-    if (isDeckActive()) {
-      windowsStore.open('ai')
-    }
+    windowsStore.open('ai')
   }
 
   return {
