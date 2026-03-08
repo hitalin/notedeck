@@ -21,6 +21,12 @@ static OG_VIDEO_HEIGHT: LazyLock<Selector> =
 static TITLE_SEL: LazyLock<Selector> = LazyLock::new(|| Selector::parse("title").unwrap());
 static DESC_SEL: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse("meta[name='description']").unwrap());
+static TWITTER_TITLE: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("meta[name='twitter:title']").unwrap());
+static TWITTER_DESC: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("meta[name='twitter:description']").unwrap());
+static TWITTER_IMAGE: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("meta[name='twitter:image']").unwrap());
 static TWITTER_CARD: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse("meta[name='twitter:card']").unwrap());
 static TWITTER_PLAYER: LazyLock<Selector> =
@@ -52,15 +58,19 @@ pub fn parse_html(html: &str, final_url: &str) -> SummaryData {
             .filter(|s| !s.is_empty())
     };
 
-    let title = get_content(&OG_TITLE).or_else(|| {
-        document
-            .select(&TITLE_SEL)
-            .next()
-            .map(|el| el.text().collect::<String>().trim().to_string())
-            .filter(|s| !s.is_empty())
-    });
+    let title = get_content(&OG_TITLE)
+        .or_else(|| get_content(&TWITTER_TITLE))
+        .or_else(|| {
+            document
+                .select(&TITLE_SEL)
+                .next()
+                .map(|el| el.text().collect::<String>().trim().to_string())
+                .filter(|s| !s.is_empty())
+        });
 
-    let description = get_content(&OG_DESC).or_else(|| get_content(&DESC_SEL));
+    let description = get_content(&OG_DESC)
+        .or_else(|| get_content(&TWITTER_DESC))
+        .or_else(|| get_content(&DESC_SEL));
 
     let sitename = get_content(&OG_SITE);
 
@@ -71,7 +81,10 @@ pub fn parse_html(html: &str, final_url: &str) -> SummaryData {
         .map(|s| s.trim().to_string())
         .filter(|u| u.starts_with("https://"))
         .collect();
-    let thumbnail = medias.first().cloned();
+    let thumbnail = medias
+        .first()
+        .cloned()
+        .or_else(|| get_content(&TWITTER_IMAGE).filter(|u| u.starts_with("https://")));
 
     // Player detection: og:video → twitter:player (same priority as summaly)
     let player = get_content(&OG_VIDEO_URL)
@@ -150,6 +163,20 @@ pub fn default_player_allow() -> Vec<String> {
         "encrypted-media".to_string(),
         "fullscreen".to_string(),
     ]
+}
+
+/// Detect bot-challenge / captcha pages (Cloudflare, Datadome, etc.)
+/// so we don't show them as valid URL previews.
+pub fn is_challenge_page(html: &str) -> bool {
+    // Cloudflare challenge
+    if html.contains("cf-browser-verification") || html.contains("cf_chl_opt") {
+        return true;
+    }
+    // Datadome (used by SoundCloud, etc.)
+    if html.contains("geo.captcha-delivery.com") || html.contains("interstitialUrl") {
+        return true;
+    }
+    false
 }
 
 /// Resolve a potentially relative URL against a base URL.

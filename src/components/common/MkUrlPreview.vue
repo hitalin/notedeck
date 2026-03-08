@@ -59,6 +59,12 @@ const isPlayerAllowed = computed(() => {
   }
 })
 
+/** Responsive player style: width always 100%, height from oEmbed or default */
+const playerStyle = computed(() => {
+  const h = data.value?.player?.height ?? 270
+  return { width: '100%', height: `${h}px`, border: 'none' }
+})
+
 onMounted(() => {
   if (!shouldPreview.value || !el.value) return
   observer = new IntersectionObserver(
@@ -112,8 +118,7 @@ function hostname(url: string): string {
       >
         <iframe
           :src="data.player.url"
-          :width="data.player.width ?? 480"
-          :height="data.player.height ?? 270"
+          :style="playerStyle"
           frameborder="0"
           :allow="data.player.allow.length ? data.player.allow.join('; ') : 'autoplay; encrypted-media'"
           allowfullscreen
@@ -350,9 +355,7 @@ function hostname(url: string): string {
 }
 
 .url-preview-player iframe {
-  width: 100%;
-  max-height: 300px;
-  border: none;
+  display: block;
 }
 
 .url-preview-body {

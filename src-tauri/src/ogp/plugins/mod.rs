@@ -1,7 +1,10 @@
 mod apple_music;
 mod bluesky;
 mod dlsite;
+mod iwara;
+mod komiflo;
 mod niconico;
+mod nijie;
 mod pixiv;
 mod soundcloud;
 mod spotify;
@@ -89,6 +92,9 @@ pub fn all() -> &'static [&'static dyn Plugin] {
         &tiktok::PLUGIN,
         &apple_music::PLUGIN,
         &dlsite::PLUGIN,
+        &nijie::PLUGIN,
+        &iwara::PLUGIN,
+        &komiflo::PLUGIN,
     ]
 }
 
@@ -102,8 +108,24 @@ pub struct OEmbedResponse {
     pub thumbnail_url: Option<String>,
     pub provider_name: Option<String>,
     pub html: Option<String>,
+    #[serde(default, deserialize_with = "flexible_u32")]
     pub width: Option<u32>,
+    #[serde(default, deserialize_with = "flexible_u32")]
     pub height: Option<u32>,
+}
+
+/// Deserialize a value that may be a number or a non-numeric string (e.g. "100%").
+fn flexible_u32<'de, D>(deserializer: D) -> Result<Option<u32>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+    let v = serde_json::Value::deserialize(deserializer)?;
+    match &v {
+        serde_json::Value::Number(n) => Ok(n.as_u64().map(|n| n as u32)),
+        serde_json::Value::String(s) => Ok(s.parse().ok()),
+        _ => Ok(None),
+    }
 }
 
 /// Regex to extract iframe `src` from oEmbed HTML snippets.

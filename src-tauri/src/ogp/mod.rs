@@ -384,6 +384,11 @@ impl OgpCache {
         }
 
         let html = String::from_utf8_lossy(&bytes);
+
+        // Detect bot-challenge / captcha pages (Cloudflare, etc.)
+        if parser::is_challenge_page(&html) {
+            return Err("Bot challenge page detected".to_string());
+        }
         let mut data = parser::parse_html(&html, &final_url);
 
         // If no player found but page has an oEmbed link, try fetching it
