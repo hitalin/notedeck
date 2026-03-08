@@ -55,13 +55,8 @@ async function handlePostFormButton(comp: UiComponent) {
 <template>
   <div class="ais-ui-renderer">
     <template v-for="comp in components" :key="comp.id">
-      <!-- text -->
-      <span v-if="comp.type === 'text'" class="ais-text">{{
-        comp.props.text ?? ''
-      }}</span>
-
-      <!-- mfm -->
-      <div v-else-if="comp.type === 'mfm'" class="ais-mfm">
+      <!-- text / mfm (both rendered as MFM, matching Misskey behavior) -->
+      <div v-if="comp.type === 'text' || comp.type === 'mfm'" class="ais-mfm">
         <MkMfm :text="(comp.props.text as string) ?? ''" :server-host="serverHost" />
       </div>
 
