@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import QRCodeStyling from 'qr-code-styling'
+import tinycolor from 'tinycolor2'
+import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type {
   NormalizedNote,
@@ -178,6 +180,63 @@ const postFormRenoteId = ref<string | undefined>()
 const postFormEditNote = ref<NormalizedNote | undefined>()
 
 const isFollowLoading = ref(false)
+const showQrCode = ref(false)
+const qrCodeContainerEl = ref<HTMLDivElement | null>(null)
+
+async function openQrCode() {
+  if (!user.value || !account.value) return
+  showQrCode.value = true
+  await nextTick()
+
+  const container = qrCodeContainerEl.value
+  if (!container) return
+  container.innerHTML = ''
+
+  const username = user.value.username
+  const host = user.value.host || ''
+  const profileUrl = `https://${account.value.host}/@${username}${host ? `@${host}` : ''}`
+
+  const themeColor = user.value.instance?.themeColor
+  const baseColor = tinycolor(themeColor || '#86b300')
+  const hsl = baseColor.toHsl()
+
+  const serverInfo = serversStore.getServer(account.value.host)
+
+  const qr = new QRCodeStyling({
+    width: 600,
+    height: 600,
+    margin: 42,
+    type: 'canvas',
+    data: profileUrl,
+    image: serverInfo?.iconUrl || undefined,
+    qrOptions: {
+      typeNumber: 0,
+      mode: 'Byte',
+      errorCorrectionLevel: 'H',
+    },
+    imageOptions: {
+      hideBackgroundDots: true,
+      imageSize: 0.3,
+      margin: 16,
+      crossOrigin: 'anonymous',
+    },
+    dotsOptions: {
+      type: 'dots',
+      color: tinycolor({ h: hsl.h, s: 1, l: 0.18 }).toRgbString(),
+    },
+    cornersDotOptions: {
+      type: 'dot',
+    },
+    cornersSquareOptions: {
+      type: 'extra-rounded',
+    },
+    backgroundOptions: {
+      color: tinycolor({ h: hsl.h, s: 1, l: 0.97 }).toRgbString(),
+    },
+  })
+
+  qr.append(container)
+}
 
 async function handleToggleFollow() {
   if (!adapter || !user.value || isOwnProfile.value) return
@@ -331,6 +390,9 @@ async function handlePosted(editedNoteId?: string) {
 
           <!-- Banner actions -->
           <div class="banner-actions">
+            <button class="_button banner-action-btn" title="QRコード" @click="openQrCode">
+              <i class="ti ti-qrcode" />
+            </button>
             <button class="_button banner-action-btn" :title="isOwnProfile ? 'プロフィールを編集' : 'Web UIで開く'" @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}${user.host ? `@${user.host}` : ''}`}`)">
               <i :class="isOwnProfile ? 'ti ti-pencil' : 'ti ti-external-link'" />
             </button>
@@ -496,6 +558,25 @@ async function handlePosted(editedNoteId?: string) {
         @close="closePostForm"
         @posted="handlePosted"
       />
+
+      <div v-if="showQrCode" class="qr-overlay" @click="showQrCode = false">
+        <div class="qr-modal" @click.stop>
+          <button class="_button qr-close-btn" @click="showQrCode = false">
+            <i class="ti ti-x" />
+          </button>
+          <div ref="qrCodeContainerEl" class="qr-canvas" />
+          <div class="qr-user">
+            <img v-if="user?.avatarUrl" :src="user.avatarUrl" class="qr-avatar" />
+            <div class="qr-user-info">
+              <div class="qr-name">
+                <MkMfm v-if="user?.name" :text="user.name" :emojis="user?.emojis" :server-host="account?.host" />
+                <template v-else>{{ user?.username }}</template>
+              </div>
+              <div class="qr-acct">@{{ user?.username }}@{{ account?.host }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </Teleport>
   </div>
 </template>
@@ -888,6 +969,96 @@ async function handlePosted(editedNoteId?: string) {
 
 .profile-info-link:hover {
   text-decoration: underline;
+}
+
+/* QR code modal */
+.qr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.qr-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.qr-close-btn {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+  font-size: 16px;
+}
+
+.qr-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.qr-canvas {
+  width: 230px;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.qr-canvas :deep(canvas) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.qr-user {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-top: 28px;
+  color: #fff;
+  max-width: 230px;
+}
+
+.qr-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 16px;
+}
+
+.qr-user-info {
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.qr-name {
+  font-weight: bold;
+  font-size: 1.1em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qr-acct {
+  font-size: 0.9em;
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Mobile responsive via container query */
