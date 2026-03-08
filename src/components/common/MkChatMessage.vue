@@ -55,28 +55,31 @@ function closeLightbox() {
   lightboxUrl.value = null
 }
 
-// Group reactions: { reaction, count, users[], reacted (by me) }
+// Group reactions: { reaction, count, users[], avatarUrls[], reacted (by me) }
 const groupedReactions = computed(() => {
   const reactions = props.message.reactions
   if (!reactions || reactions.length === 0) return []
 
   const map = new Map<
     string,
-    { reaction: string; count: number; users: string[]; reacted: boolean }
+    { reaction: string; count: number; users: string[]; avatarUrls: (string | null)[]; reacted: boolean }
   >()
   for (const r of reactions) {
     const userName = r.user ? r.user.name || r.user.username : ''
+    const avatarUrl = r.user?.avatarUrl ?? null
     const isMe = r.user ? r.user.id === props.myUserId : false
     const existing = map.get(r.reaction)
     if (existing) {
       existing.count++
       if (userName) existing.users.push(userName)
+      existing.avatarUrls.push(avatarUrl)
       if (isMe) existing.reacted = true
     } else {
       map.set(r.reaction, {
         reaction: r.reaction,
         count: 1,
         users: userName ? [userName] : [],
+        avatarUrls: [avatarUrl],
         reacted: isMe,
       })
     }
@@ -176,6 +179,17 @@ function closeMentionPopup() {
           :title="r.users.join(', ')"
           @click="handleReactionClick(r.reaction, r.reacted)"
         >
+          <span class="reaction-avatars">
+            <img
+              v-for="(url, i) in r.avatarUrls.slice(0, 3)"
+              :key="i"
+              :src="url ? proxyUrl(url) : ''"
+              class="reaction-avatar"
+              :style="{ marginLeft: i > 0 ? '-6px' : '0' }"
+              decoding="async"
+              loading="lazy"
+            />
+          </span>
           <img
             v-if="getReactionImageUrl(r.reaction)"
             :src="proxyUrl(getReactionImageUrl(r.reaction)!)"
@@ -336,6 +350,19 @@ function closeMentionPopup() {
 .chat-reaction-pill.reacted {
   border-color: var(--nd-accent);
   background: var(--nd-accentedBg, rgba(134, 179, 0, 0.15));
+}
+
+.reaction-avatars {
+  display: inline-flex;
+  align-items: center;
+}
+
+.reaction-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--nd-panel, #1a1a1a);
 }
 
 .reaction-emoji-img {
