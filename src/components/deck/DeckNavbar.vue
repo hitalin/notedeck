@@ -13,15 +13,22 @@ import {
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
+import DeckProfileMenu from './DeckProfileMenu.vue'
+import DeckSettingsMenu from './DeckSettingsMenu.vue'
 import NavAccountMenu from './NavAccountMenu.vue'
 
 const props = defineProps<{
   mobileDrawerOpen: boolean
+  showProfileMenu: boolean
+  showSettingsMenu: boolean
+  updateAvailable: boolean
 }>()
 
 const emit = defineEmits<{
   'open-compose': []
   'update:mobileDrawerOpen': [value: boolean]
+  'update:showProfileMenu': [value: boolean]
+  'update:showSettingsMenu': [value: boolean]
 }>()
 
 const {
@@ -251,6 +258,34 @@ defineExpose({
 
         <!-- Bottom section: post button → accounts -->
         <div class="nav-bottom">
+          <!-- Mobile-only: profile & settings -->
+          <div class="nav-mobile-only">
+            <div class="nav-menu-wrap">
+              <button
+                class="_button nav-item"
+                title="プロフィール"
+                @click.stop="emit('update:showProfileMenu', !props.showProfileMenu)"
+              >
+                <i class="ti ti-layout" />
+                <span class="nav-label">プロフィール</span>
+              </button>
+              <DeckProfileMenu :show="props.showProfileMenu" @close="emit('update:showProfileMenu', false)" />
+            </div>
+            <div class="nav-menu-wrap">
+              <button
+                class="_button nav-item"
+                title="設定"
+                @click.stop="emit('update:showSettingsMenu', !props.showSettingsMenu)"
+              >
+                <i class="ti ti-settings" />
+                <span class="nav-label">設定</span>
+                <span v-if="props.updateAvailable" class="update-dot" />
+              </button>
+              <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" />
+            </div>
+            <div class="nav-divider" />
+          </div>
+
           <!-- Post button -->
           <button
             class="_button nav-post-btn"
@@ -609,7 +644,31 @@ defineExpose({
   position: relative;
 }
 
+.nav-mobile-only {
+  display: none;
+}
+
+.nav-menu-wrap {
+  position: relative;
+}
+
+.update-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--nd-accent);
+  pointer-events: none;
+}
+
 @media (max-width: 500px) {
+  .nav-mobile-only {
+    display: flex;
+    flex-direction: column;
+  }
+
   .nav-resize-handle,
   .nav-toggle {
     display: none !important;
