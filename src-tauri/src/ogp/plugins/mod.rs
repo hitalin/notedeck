@@ -2,6 +2,7 @@ mod apple_music;
 mod bluesky;
 mod dlsite;
 mod niconico;
+mod pixiv;
 mod soundcloud;
 mod spotify;
 mod tiktok;
@@ -84,6 +85,7 @@ pub fn all() -> &'static [&'static dyn Plugin] {
         &spotify::PLUGIN,
         &soundcloud::PLUGIN,
         &niconico::PLUGIN,
+        &pixiv::PLUGIN,
         &tiktok::PLUGIN,
         &apple_music::PLUGIN,
         &dlsite::PLUGIN,
