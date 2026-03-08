@@ -14,13 +14,13 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import AiScriptToast from '@/components/common/AiScriptToast.vue'
+import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import type { WidgetConfig } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
-import MkPostForm from '@/components/common/MkPostForm.vue'
 import AiScriptEditor from './AiScriptEditor.vue'
-import AiScriptUiRenderer from './AiScriptUiRenderer.vue'
 import type { PostFormRequest } from './AiScriptUiRenderer.vue'
+import AiScriptUiRenderer from './AiScriptUiRenderer.vue'
 
 const props = defineProps<{
   widget: WidgetConfig

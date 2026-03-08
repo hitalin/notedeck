@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Interpreter } from '@syuilo/aiscript'
 import type { Value, VFn } from '@syuilo/aiscript/interpreter/value.js'
-import { computed, type CSSProperties } from 'vue'
+import { type CSSProperties, computed } from 'vue'
 import type { UiComponent } from '@/aiscript/ui'
 import MkMfm from '@/components/common/MkMfm.vue'
 

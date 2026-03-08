@@ -22,15 +22,15 @@ import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
+import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
-import MkPostForm from '@/components/common/MkPostForm.vue'
 import DeckColumn from './DeckColumn.vue'
-import AiScriptUiRenderer from './widgets/AiScriptUiRenderer.vue'
 import type { PostFormRequest } from './widgets/AiScriptUiRenderer.vue'
+import AiScriptUiRenderer from './widgets/AiScriptUiRenderer.vue'
 
 const props = defineProps<{
   column: DeckColumnType

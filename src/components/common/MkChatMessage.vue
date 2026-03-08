@@ -62,7 +62,13 @@ const groupedReactions = computed(() => {
 
   const map = new Map<
     string,
-    { reaction: string; count: number; users: string[]; avatarUrls: (string | null)[]; reacted: boolean }
+    {
+      reaction: string
+      count: number
+      users: string[]
+      avatarUrls: (string | null)[]
+      reacted: boolean
+    }
   >()
   for (const r of reactions) {
     const userName = r.user ? r.user.name || r.user.username : ''

@@ -245,7 +245,8 @@ onMounted(async () => {
     cw.value = props.initialCw
     showCw.value = true
   }
-  if (props.initialVisibility) visibility.value = props.initialVisibility as typeof visibility.value
+  if (props.initialVisibility)
+    visibility.value = props.initialVisibility as typeof visibility.value
   if (props.initialLocalOnly) localOnly.value = true
   await nextTick()
   if (!props.inline) textareaRef.value?.focus()
