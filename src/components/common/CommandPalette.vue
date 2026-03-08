@@ -158,7 +158,7 @@ function primaryShortcut(cmd: Command): string | null {
   <div class="palette-overlay" @click="commandStore.close()">
     <div class="palette" @click.stop @keydown="onKeydown">
       <div class="palette-input-wrap">
-        <i class="ti ti-search palette-search-icon" />
+        <span class="palette-prefix">&gt;</span>
         <input
           ref="inputRef"
           v-model="query"
@@ -193,7 +193,8 @@ function primaryShortcut(cmd: Command): string | null {
       </div>
       <!-- Normal command list -->
       <div v-else-if="flatList.length" class="palette-list">
-        <template v-for="group in filteredGroups" :key="group.category">
+        <template v-for="(group, gi) in filteredGroups" :key="group.category">
+          <div v-if="gi > 0" class="palette-separator" />
           <div class="palette-category">{{ group.label }}</div>
           <button
             v-for="cmd in group.commands"
@@ -223,38 +224,41 @@ function primaryShortcut(cmd: Command): string | null {
   z-index: 99999;
   display: flex;
   justify-content: center;
-  padding-top: 60px;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
+  align-items: flex-start;
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .palette {
   width: 100%;
-  max-width: 480px;
-  max-height: 60vh;
+  max-width: 600px;
+  max-height: 440px;
+  margin-top: 50px;
   display: flex;
   flex-direction: column;
-  background: var(--nd-popup, #363636);
-  border: 1px solid var(--nd-divider);
-  border-radius: 12px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  background: var(--nd-popup, #252526);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(0, 0, 0, 0.15);
   overflow: hidden;
-  align-self: flex-start;
 }
 
+/* --- Input --- */
 .palette-input-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--nd-divider);
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.palette-search-icon {
-  font-size: 16px;
+.palette-prefix {
+  font-size: 14px;
   color: var(--nd-fg);
-  opacity: 0.4;
+  opacity: 0.5;
   flex-shrink: 0;
+  user-select: none;
 }
 
 .palette-input {
@@ -265,6 +269,7 @@ function primaryShortcut(cmd: Command): string | null {
   color: var(--nd-fg);
   font-size: 14px;
   font-family: inherit;
+  line-height: 22px;
 }
 
 .palette-input::placeholder {
@@ -273,80 +278,114 @@ function primaryShortcut(cmd: Command): string | null {
 }
 
 .palette-esc {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--nd-fg);
-  opacity: 0.5;
+  opacity: 0.45;
   font-family: inherit;
-  border: none;
+  line-height: 1.4;
 }
 
+/* --- List --- */
 .palette-list {
   overflow-y: auto;
   padding: 4px 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.palette-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.palette-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.palette-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+
+.palette-separator {
+  height: 1px;
+  margin: 4px 0;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .palette-category {
-  padding: 8px 14px 4px;
+  padding: 6px 12px 2px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: var(--nd-fg);
-  opacity: 0.4;
+  opacity: 0.45;
 }
 
 .palette-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  padding: 8px 14px;
+  padding: 4px 12px;
   border: none;
+  border-left: 2px solid transparent;
   background: none;
   color: var(--nd-fg);
   font-size: 13px;
   font-family: inherit;
   cursor: pointer;
   text-align: left;
-  transition: background 0.08s;
+  line-height: 22px;
 }
 
 .palette-item.selected {
-  background: var(--nd-accentedBg, rgba(134, 179, 0, 0.15));
+  background: var(--nd-accentedBg, rgba(134, 179, 0, 0.12));
+  border-left-color: var(--nd-accent, #86b300);
 }
 
-.palette-item:hover {
-  background: var(--nd-buttonHoverBg);
+.palette-item:hover:not(.selected) {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .palette-item-icon {
   font-size: 16px;
-  opacity: 0.6;
+  opacity: 0.55;
   width: 20px;
   text-align: center;
   flex-shrink: 0;
 }
 
+.palette-item.selected .palette-item-icon {
+  opacity: 0.8;
+}
+
 .palette-item-label {
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .palette-item-kbd {
   font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  opacity: 0.5;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  opacity: 0.45;
   font-family: inherit;
-  border: none;
   white-space: nowrap;
+  line-height: 1.4;
 }
 
+/* --- Empty / CLI --- */
 .palette-empty {
-  padding: 20px 14px;
+  padding: 20px 12px;
   text-align: center;
   color: var(--nd-fg);
   opacity: 0.4;
@@ -354,13 +393,13 @@ function primaryShortcut(cmd: Command): string | null {
 }
 
 .palette-cli {
-  padding: 12px 14px;
+  padding: 10px 12px;
 }
 
 .palette-cli-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-size: 13px;
   color: var(--nd-fg);
 }
@@ -368,6 +407,7 @@ function primaryShortcut(cmd: Command): string | null {
 .palette-cli-hint {
   opacity: 0.5;
   font-family: monospace;
+  font-size: 12px;
 }
 
 .palette-cli-action strong {
@@ -375,30 +415,35 @@ function primaryShortcut(cmd: Command): string | null {
 }
 
 .palette-cli-desc {
-  margin-top: 6px;
-  padding-left: 30px;
+  margin-top: 4px;
+  padding-left: 28px;
   font-size: 12px;
   color: var(--nd-fg);
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
+/* --- Mobile --- */
 @media (max-width: 500px) {
   .palette-overlay {
-    padding-top: 20px;
-    padding-inline: 8px;
+    background: rgba(0, 0, 0, 0.2);
   }
 
   .palette {
+    margin-top: 0;
     max-height: 70vh;
+    border-radius: 0 0 6px 6px;
+    margin-inline: 8px;
+    margin-top: calc(8px + env(safe-area-inset-top));
   }
 
-  .palette-overlay {
-    padding-top: calc(20px + env(safe-area-inset-top));
+  .palette-input-wrap {
+    padding: 10px 14px;
   }
 
   .palette-item {
-    padding: 10px 14px;
+    padding: 8px 14px;
     min-height: 44px;
+    border-left: none;
   }
 }
 </style>
