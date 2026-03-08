@@ -112,13 +112,17 @@ function hostname(url: string): string {
 
       <!-- Thumbnail with sensitive overlay -->
       <div
-        v-else-if="data.thumbnail && !imageError"
+        v-else-if="(data.thumbnail || (!data.thumbnail && data.icon)) && !imageError"
         class="url-preview-thumb-wrap"
-        :class="{ 'is-sensitive': data.sensitive && !sensitiveRevealed }"
+        :class="{
+          'is-sensitive': data.sensitive && !sensitiveRevealed,
+          'is-icon-thumb': !data.thumbnail && data.icon,
+        }"
       >
         <img
-          :src="proxyUrl(data.thumbnail) ?? data.thumbnail"
+          :src="data.thumbnail ? (proxyUrl(data.thumbnail) ?? data.thumbnail) : data.icon!"
           class="url-preview-image"
+          :class="{ 'is-icon': !data.thumbnail }"
           loading="lazy"
           decoding="async"
           @error="imageError = true"
@@ -203,6 +207,20 @@ function hostname(url: string): string {
 .url-preview-image {
   width: 100%;
   height: 100%;
+  object-fit: cover;
+}
+
+.url-preview-thumb-wrap.is-icon-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--nd-buttonBg);
+}
+
+.url-preview-image.is-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
   object-fit: cover;
 }
 

@@ -1,8 +1,11 @@
 mod apple_music;
+mod bluesky;
 mod dlsite;
 mod niconico;
 mod soundcloud;
 mod spotify;
+mod tiktok;
+mod twitter;
 mod youtube;
 
 use async_trait::async_trait;
@@ -75,10 +78,13 @@ pub trait Plugin: Send + Sync {
 /// All registered plugins, tried in order.
 pub fn all() -> &'static [&'static dyn Plugin] {
     &[
+        &twitter::PLUGIN,
+        &bluesky::PLUGIN,
         &youtube::PLUGIN,
         &spotify::PLUGIN,
         &soundcloud::PLUGIN,
         &niconico::PLUGIN,
+        &tiktok::PLUGIN,
         &apple_music::PLUGIN,
         &dlsite::PLUGIN,
     ]
