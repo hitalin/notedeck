@@ -7,8 +7,13 @@ import MkNote from '@/components/common/MkNote.vue'
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
+const MkUserPopup = defineAsyncComponent(
+  () => import('@/components/common/MkUserPopup.vue'),
+)
 
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
+import { useHoverPopup } from '@/composables/useHoverPopup'
+import { useNavigation } from '@/composables/useNavigation'
 import { useNoteColumn } from '@/composables/useNoteColumn'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
@@ -188,6 +193,30 @@ const currentLoading = computed(() => {
   if (activeTab.value === 'users') return usersLoading.value
   return rolesLoading.value
 })
+
+// --- User interaction ---
+const { navigateToUser } = useNavigation()
+const userPopup = useHoverPopup()
+const hoverUserId = ref('')
+
+function onUserClick(userId: string) {
+  if (!props.column.accountId) return
+  navigateToUser(props.column.accountId, userId)
+}
+
+function onUserMouseEnter(e: MouseEvent, userId: string) {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  hoverUserId.value = userId
+  userPopup.show({ x: rect.right + 8, y: rect.top })
+}
+
+function onUserMouseLeave() {
+  userPopup.hide()
+}
+
+function closeUserPopup() {
+  userPopup.forceClose()
+}
 </script>
 
 <template>
@@ -290,10 +319,13 @@ const currentLoading = computed(() => {
           <div v-if="usersLoading" class="column-empty">読み込み中...</div>
           <div v-else-if="usersError" class="column-empty column-error">{{ usersError }}</div>
           <div v-else-if="users.length === 0" class="column-empty">ユーザーが見つかりません</div>
-          <div
+          <button
             v-for="user in users"
             :key="user.id"
-            class="explore-user-card"
+            class="_button explore-user-card"
+            @click="onUserClick(user.id)"
+            @mouseenter="onUserMouseEnter($event, user.id)"
+            @mouseleave="onUserMouseLeave"
           >
             <img v-if="user.avatarUrl" :src="user.avatarUrl" class="explore-user-avatar" />
             <div class="explore-user-info">
@@ -306,7 +338,7 @@ const currentLoading = computed(() => {
                 <i class="ti ti-users" /> {{ user.followersCount }}
               </div>
             </div>
-          </div>
+          </button>
         </div>
       </template>
 
@@ -324,10 +356,13 @@ const currentLoading = computed(() => {
             <div v-if="roleUsersLoading" class="column-empty">読み込み中...</div>
             <div v-else-if="roleUsersError" class="column-empty column-error">{{ roleUsersError }}</div>
             <div v-else-if="roleUsers.length === 0" class="column-empty">ユーザーがいません</div>
-            <div
+            <button
               v-for="user in roleUsers"
               :key="user.id"
-              class="explore-user-card"
+              class="_button explore-user-card"
+              @click="onUserClick(user.id)"
+              @mouseenter="onUserMouseEnter($event, user.id)"
+              @mouseleave="onUserMouseLeave"
             >
               <img v-if="user.avatarUrl" :src="user.avatarUrl" class="explore-user-avatar" />
               <div class="explore-user-info">
@@ -336,7 +371,7 @@ const currentLoading = computed(() => {
                   <span class="explore-user-acct">@{{ user.username }}<template v-if="user.host">@{{ user.host }}</template></span>
                 </div>
               </div>
-            </div>
+            </button>
           </div>
         </template>
 
@@ -378,6 +413,14 @@ const currentLoading = computed(() => {
       :edit-note="postForm.editNote.value"
       @close="postForm.close"
       @posted="handlePosted"
+    />
+    <MkUserPopup
+      v-if="userPopup.isVisible.value && column.accountId"
+      :user-id="hoverUserId"
+      :account-id="column.accountId"
+      :x="userPopup.position.value.x"
+      :y="userPopup.position.value.y"
+      @close="closeUserPopup"
     />
   </Teleport>
 </template>
@@ -444,8 +487,16 @@ const currentLoading = computed(() => {
 .explore-user-card {
   display: flex;
   gap: 10px;
+  width: 100%;
   padding: 12px 14px;
+  text-align: left;
   border-bottom: 1px solid var(--nd-divider);
+  transition: background 0.15s;
+  cursor: pointer;
+}
+
+.explore-user-card:hover {
+  background: var(--nd-buttonHoverBg);
 }
 
 .explore-user-avatar {
