@@ -122,7 +122,7 @@ impl Plugin for BlueskyPlugin {
         .unwrap();
         posts_url.query_pairs_mut().append_pair("uris", &at_uri);
         let posts_url = posts_url.as_str();
-        let mut posts = fetch_json::<GetPostsResponse>(client, &posts_url)
+        let mut posts = fetch_json::<GetPostsResponse>(client, posts_url)
             .await?
             .posts;
 
