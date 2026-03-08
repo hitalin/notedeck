@@ -36,6 +36,16 @@ const el = ref<HTMLElement | null>(null)
 const imageError = ref(false)
 const sensitiveRevealed = ref(false)
 const playerExpanded = ref(false)
+const galleryErrors = ref(new Set<number>())
+
+const galleryImages = computed(() => {
+  if (!data.value?.medias?.length || data.value.medias.length < 2) return []
+  return data.value.medias.slice(0, 4)
+})
+
+function onGalleryError(index: number) {
+  galleryErrors.value.add(index)
+}
 let observer: IntersectionObserver | null = null
 
 /** Check if player URL is allowed (HTTPS only, trusted from backend) */
@@ -108,6 +118,39 @@ function hostname(url: string): string {
           :allow="data.player.allow.length ? data.player.allow.join('; ') : 'autoplay; encrypted-media'"
           allowfullscreen
         />
+      </div>
+
+      <!-- Multi-image gallery (2-4 images) -->
+      <div
+        v-else-if="galleryImages.length >= 2"
+        class="url-preview-gallery"
+        :class="{
+          'is-sensitive': data.sensitive && !sensitiveRevealed,
+          [`gallery-${galleryImages.length}`]: true,
+        }"
+      >
+        <img
+          v-for="(media, i) in galleryImages"
+          :key="i"
+          :src="proxyUrl(media) ?? media"
+          class="gallery-image"
+          loading="lazy"
+          decoding="async"
+          @error="onGalleryError(i)"
+        />
+        <div
+          v-if="data.sensitive && !sensitiveRevealed"
+          class="sensitive-overlay"
+          @click.stop="sensitiveRevealed = true"
+        >
+          <svg viewBox="0 0 24 24" width="24" height="24">
+            <path
+              fill="currentColor"
+              d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.804 11.804 0 001 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"
+            />
+          </svg>
+          <span>NSFW</span>
+        </div>
       </div>
 
       <!-- Thumbnail with sensitive overlay -->
@@ -189,7 +232,8 @@ function hostname(url: string): string {
   max-width: 100%;
 }
 
-.url-preview:has(.url-preview-player) {
+.url-preview:has(.url-preview-player),
+.url-preview:has(.url-preview-gallery) {
   flex-direction: column;
 }
 
@@ -222,6 +266,44 @@ function hostname(url: string): string {
   height: 48px;
   border-radius: 50%;
   object-fit: cover;
+}
+
+/* Gallery grid */
+.url-preview-gallery {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  max-height: 200px;
+  overflow: hidden;
+}
+
+.url-preview-gallery.gallery-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.url-preview-gallery.gallery-3 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.url-preview-gallery.gallery-3 .gallery-image:first-child {
+  grid-row: 1 / -1;
+}
+
+.url-preview-gallery.gallery-4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.gallery-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  min-height: 0;
+}
+
+.url-preview-gallery.is-sensitive .gallery-image {
+  filter: blur(16px);
 }
 
 .url-preview-thumb-wrap.is-sensitive .url-preview-image {
