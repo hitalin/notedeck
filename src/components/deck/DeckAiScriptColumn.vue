@@ -108,7 +108,9 @@ async function run() {
     {
       THIS_ID: props.column.id,
       THIS_URL: '',
-      USER_ID: props.column.accountId ?? '',
+      USER_ID:
+        accountsStore.accounts.find((a) => a.id === props.column.accountId)
+          ?.userId ?? '',
       USER_NAME: '',
       USER_USERNAME: '',
       LOCALE: navigator.language,

@@ -227,7 +227,7 @@ async function executePlay(detail: FlashDetail) {
     {
       THIS_ID: detail.id,
       THIS_URL: `${serverUrl.value}/play/${detail.id}`,
-      USER_ID: props.column.accountId ?? '',
+      USER_ID: account.value?.userId ?? '',
       USER_NAME: account.value?.displayName ?? '',
       USER_USERNAME: account.value?.username ?? '',
       LOCALE: navigator.language,

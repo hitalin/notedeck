@@ -92,7 +92,9 @@ async function run() {
     {
       THIS_ID: props.widget.id,
       THIS_URL: '',
-      USER_ID: props.accountId ?? '',
+      USER_ID:
+        accountsStore.accounts.find((a) => a.id === props.accountId)?.userId ??
+        '',
       USER_NAME: '',
       USER_USERNAME: '',
       LOCALE: navigator.language,
