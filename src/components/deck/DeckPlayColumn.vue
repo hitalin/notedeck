@@ -25,6 +25,7 @@ import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
+import MkMfm from '@/components/common/MkMfm.vue'
 import AiScriptUiRenderer from './widgets/AiScriptUiRenderer.vue'
 
 const props = defineProps<{
@@ -361,7 +362,7 @@ function reload() {
               <i class="ti ti-heart" /> {{ item.likedCount }}
             </span>
           </div>
-          <div v-if="item.summary" class="play-card-summary">{{ item.summary }}</div>
+          <div v-if="item.summary" class="play-card-summary"><MkMfm :text="item.summary" :server-host="account?.host ?? ''" /></div>
         </button>
       </div>
     </template>
@@ -374,7 +375,7 @@ function reload() {
         <template v-else-if="flash">
           <div class="play-ready">
             <div class="play-ready-title">{{ flash.title }}</div>
-            <div v-if="flash.summary" class="play-ready-summary">{{ flash.summary }}</div>
+            <div v-if="flash.summary" class="play-ready-summary"><MkMfm :text="flash.summary" :server-host="account?.host ?? ''" /></div>
             <button class="_button play-start-btn" @click="startPlay">
               <i class="ti ti-player-play" /> Play
             </button>
