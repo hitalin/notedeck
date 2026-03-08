@@ -76,7 +76,12 @@ async function fetchUsers() {
     users.value = await invoke<UserSummary[]>('api_request', {
       accountId: props.column.accountId,
       endpoint: 'users',
-      params: { limit: 30, sort: '+follower', state: 'alive', origin: 'combined' },
+      params: {
+        limit: 30,
+        sort: '+follower',
+        state: 'alive',
+        origin: 'combined',
+      },
     })
     usersFetched.value = true
   } catch (e) {
@@ -137,11 +142,14 @@ async function openRole(role: RoleSummary) {
   roleUsersError.value = null
   roleUsers.value = []
   try {
-    const result = await invoke<{ id: string; user: UserSummary }[]>('api_request', {
-      accountId: props.column.accountId,
-      endpoint: 'roles/users',
-      params: { roleId: role.id, limit: 30 },
-    })
+    const result = await invoke<{ id: string; user: UserSummary }[]>(
+      'api_request',
+      {
+        accountId: props.column.accountId,
+        endpoint: 'roles/users',
+        params: { roleId: role.id, limit: 30 },
+      },
+    )
     roleUsers.value = result.map((entry) => entry.user)
   } catch (e) {
     roleUsersError.value = AppError.from(e).message

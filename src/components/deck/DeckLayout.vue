@@ -38,6 +38,7 @@ const AddColumnDialog = defineAsyncComponent(
   () => import('./AddColumnDialog.vue'),
 )
 
+import DeckAchievementsColumn from './DeckAchievementsColumn.vue'
 import DeckAiColumn from './DeckAiColumn.vue'
 import DeckAiScriptColumn from './DeckAiScriptColumn.vue'
 import DeckAnnouncementsColumn from './DeckAnnouncementsColumn.vue'
@@ -48,7 +49,6 @@ import DeckClipColumn from './DeckClipColumn.vue'
 import DeckDriveColumn from './DeckDriveColumn.vue'
 import DeckExploreColumn from './DeckExploreColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
-import DeckAchievementsColumn from './DeckAchievementsColumn.vue'
 import DeckFollowRequestsColumn from './DeckFollowRequestsColumn.vue'
 import DeckGalleryColumn from './DeckGalleryColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'

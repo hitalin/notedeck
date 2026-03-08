@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue'
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
-import { onMounted, onUnmounted, ref } from 'vue'
+import { defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
 import { useCommandStore } from '@/commands/registry'
 import { useDeckStore } from '@/stores/deck'
 

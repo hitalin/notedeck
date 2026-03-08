@@ -102,7 +102,11 @@ const mentionPopup = useHoverPopup()
 const mentionUserId = ref('')
 let mentionHovering = false
 
-async function onMentionHover(e: MouseEvent, username: string, host: string | null) {
+async function onMentionHover(
+  e: MouseEvent,
+  username: string,
+  host: string | null,
+) {
   if (!props.accountId) return
   mentionHovering = true
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()

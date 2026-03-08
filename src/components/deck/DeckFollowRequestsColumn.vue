@@ -71,14 +71,18 @@ async function fetchRequests() {
   }
 }
 
-async function handleAction(req: FollowRequest, action: 'accepted' | 'rejected') {
+async function handleAction(
+  req: FollowRequest,
+  action: 'accepted' | 'rejected',
+) {
   const acc = account.value
   if (!acc) return
 
   try {
-    const endpoint = action === 'accepted'
-      ? 'following/requests/accept'
-      : 'following/requests/reject'
+    const endpoint =
+      action === 'accepted'
+        ? 'following/requests/accept'
+        : 'following/requests/reject'
     await invoke('api_request', {
       accountId: acc.id,
       endpoint,
@@ -147,7 +151,7 @@ onMounted(() => {
           :key="req.id"
           class="fr-item"
         >
-          <div class="fr-user" @click="navToUser(req.follower.id, column.accountId ?? undefined)">
+          <div class="fr-user" @click="column.accountId && navToUser(column.accountId, req.follower.id)">
             <MkAvatar
               :avatar-url="req.follower.avatarUrl"
               :decorations="req.follower.avatarDecorations"

@@ -113,7 +113,7 @@ async function deleteFile() {
       endpoint: 'drive/files/delete',
       params: { fileId: detailFile.value.id },
     })
-    files.value = files.value.filter((f) => f.id !== detailFile.value!.id)
+    files.value = files.value.filter((f) => f.id !== detailFile.value?.id)
     detailFile.value = null
   } catch (e) {
     deleteError.value = AppError.from(e).message
@@ -142,7 +142,8 @@ function isAudio(file: NormalizedDriveFile): boolean {
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 

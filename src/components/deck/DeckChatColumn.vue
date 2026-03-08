@@ -81,7 +81,8 @@ async function connect() {
     }
 
     chatHistory.value = [...userHistory, ...roomHistory].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     )
   } catch (e) {
     error.value = AppError.from(e)

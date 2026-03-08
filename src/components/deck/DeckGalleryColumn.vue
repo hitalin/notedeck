@@ -69,7 +69,7 @@ async function fetchGallery(older = false) {
   try {
     const params: Record<string, unknown> = { limit: 20 }
     if (older && posts.value.length > 0) {
-      params.untilId = posts.value[posts.value.length - 1]!.id
+      params.untilId = posts.value[posts.value.length - 1]?.id
     }
     const result = await invoke<GalleryPost[]>('api_request', {
       accountId: props.column.accountId,
@@ -106,7 +106,10 @@ function prevImage() {
 }
 
 function nextImage() {
-  if (detailPost.value && detailImageIndex.value < detailPost.value.files.length - 1) {
+  if (
+    detailPost.value &&
+    detailImageIndex.value < detailPost.value.files.length - 1
+  ) {
     detailImageIndex.value++
   }
 }
@@ -125,7 +128,7 @@ async function toggleLike() {
     })
     detailPost.value.isLiked = !detailPost.value.isLiked
     detailPost.value.likedCount += detailPost.value.isLiked ? 1 : -1
-    const idx = posts.value.findIndex((p) => p.id === detailPost.value!.id)
+    const idx = posts.value.findIndex((p) => p.id === detailPost.value?.id)
     if (idx >= 0) {
       posts.value[idx] = { ...detailPost.value }
     }
@@ -152,7 +155,11 @@ function formatDate(dateStr: string): string {
 
 function onScroll(e: Event) {
   const el = e.target as HTMLElement
-  if (el.scrollHeight - el.scrollTop - el.clientHeight < 200 && !loading.value && hasMore.value) {
+  if (
+    el.scrollHeight - el.scrollTop - el.clientHeight < 200 &&
+    !loading.value &&
+    hasMore.value
+  ) {
     fetchGallery(true)
   }
 }
