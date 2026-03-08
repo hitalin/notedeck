@@ -396,9 +396,6 @@ async function handlePosted(editedNoteId?: string) {
             <button class="_button banner-action-btn" :title="isOwnProfile ? 'プロフィールを編集' : 'Web UIで開く'" @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}${user.host ? `@${user.host}` : ''}`}`)">
               <i :class="isOwnProfile ? 'ti ti-pencil' : 'ti ti-external-link'" />
             </button>
-            <button class="_button banner-action-btn" title="Misskey Games" @click="openUrl(`https://${account?.host}/games`)">
-              <i class="ti ti-device-gamepad-2" />
-            </button>
             <button
               v-if="!isOwnProfile"
               class="banner-follow-btn _button"

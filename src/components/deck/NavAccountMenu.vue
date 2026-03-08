@@ -70,6 +70,10 @@ function modeLabel(key: string): string {
         <span>設定</span>
         <i class="ti ti-external-link" />
       </button>
+      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/games`)">
+        <span>Misskey Games</span>
+        <i class="ti ti-external-link" />
+      </button>
       <button v-if="isAdmin" class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/admin`)">
         <span>コントロールパネル</span>
         <i class="ti ti-external-link" />
