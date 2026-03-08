@@ -3,7 +3,7 @@ use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
-use tauri::{Emitter, Manager};
+use tauri::Manager;
 #[cfg(not(mobile))]
 use tauri_plugin_autostart::MacosLauncher;
 #[cfg(not(mobile))]
