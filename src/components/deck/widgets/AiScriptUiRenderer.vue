@@ -2,7 +2,7 @@
 import type { Interpreter } from '@syuilo/aiscript'
 import type { Value, VFn } from '@syuilo/aiscript/interpreter/value.js'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import type { CSSProperties } from 'vue'
+import { computed, type CSSProperties } from 'vue'
 import type { UiComponent } from '@/aiscript/ui'
 import MkMfm from '@/components/common/MkMfm.vue'
 
@@ -11,6 +11,15 @@ const props = defineProps<{
   interpreter: Interpreter | null
   serverUrl?: string
 }>()
+
+const serverHost = computed(() => {
+  if (!props.serverUrl) return ''
+  try {
+    return new URL(props.serverUrl).host
+  } catch {
+    return ''
+  }
+})
 
 async function callHandler(
   handler: unknown,
@@ -53,7 +62,7 @@ async function handlePostFormButton(comp: UiComponent) {
 
       <!-- mfm -->
       <div v-else-if="comp.type === 'mfm'" class="ais-mfm">
-        <MkMfm :text="(comp.props.text as string) ?? ''" />
+        <MkMfm :text="(comp.props.text as string) ?? ''" :server-host="serverHost" />
       </div>
 
       <!-- button -->
