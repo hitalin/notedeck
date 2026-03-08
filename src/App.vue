@@ -50,7 +50,7 @@ onMounted(() => {
     <DeckWindowLayer />
 
     <Teleport to="body">
-      <CommandPalette v-if="commandStore.isOpen" />
+      <CommandPalette v-if="commandStore.isOpen && !isDesktop" />
     </Teleport>
   </div>
 </template>

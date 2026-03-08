@@ -1,8 +1,13 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useCommandStore } from '@/commands/registry'
 import { useDeckStore } from '@/stores/deck'
+
+const CommandPalette = defineAsyncComponent(
+  () => import('@/components/common/CommandPalette.vue'),
+)
 
 const MOBILE_WIDTH = 420
 const MOBILE_HEIGHT = 780
@@ -83,11 +88,16 @@ async function toggleMobileSize() {
     <div class="titlebar-left" data-tauri-drag-region>
       <img src="/favicon.svg" alt="" class="titlebar-icon" draggable="false" data-tauri-drag-region />
     </div>
-    <button class="titlebar-search-bar" @click="commandStore.toggle()">
-      <i class="ti ti-search titlebar-search-icon" />
-      <span class="titlebar-search-text" :class="{ 'has-uri': deckStore.activeColumnUri }">{{ deckStore.activeColumnUri ?? 'コマンドを検索...' }}</span>
-      <kbd class="titlebar-search-kbd">Ctrl+K</kbd>
-    </button>
+    <div class="titlebar-center" data-tauri-drag-region>
+      <!-- Open: inline command palette -->
+      <CommandPalette v-if="commandStore.isOpen" inline />
+      <!-- Closed: search bar button -->
+      <button v-else class="titlebar-search-bar" @click="commandStore.toggle()">
+        <i class="ti ti-search titlebar-search-icon" />
+        <span class="titlebar-search-text" :class="{ 'has-uri': deckStore.activeColumnUri }">{{ deckStore.activeColumnUri ?? 'コマンドを検索...' }}</span>
+        <kbd class="titlebar-search-kbd">Ctrl+K</kbd>
+      </button>
+    </div>
     <div class="titlebar-controls">
       <button
         class="titlebar-btn titlebar-sidebar-btn"
@@ -131,18 +141,20 @@ async function toggleMobileSize() {
 .titlebar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   height: 32px;
   background: var(--nd-navBg);
   user-select: none;
   flex-shrink: 0;
+  position: relative;
 }
 
 .titlebar-left {
+  position: absolute;
+  left: 0;
   display: flex;
   align-items: center;
   height: 100%;
-  flex-shrink: 0;
 }
 
 .titlebar-icon {
@@ -152,14 +164,20 @@ async function toggleMobileSize() {
   border-radius: 4px;
 }
 
+.titlebar-center {
+  display: flex;
+  width: 100%;
+  max-width: 600px;
+  padding: 0 12px;
+  position: relative;
+}
+
 .titlebar-search-bar {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: 1;
-  max-width: 360px;
+  width: 100%;
   height: 22px;
-  margin: 0 12px;
   padding: 0 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
@@ -209,6 +227,8 @@ async function toggleMobileSize() {
 }
 
 .titlebar-controls {
+  position: absolute;
+  right: 0;
   display: flex;
   height: 100%;
 }
