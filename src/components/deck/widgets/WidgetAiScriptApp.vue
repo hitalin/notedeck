@@ -17,8 +17,10 @@ import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import type { WidgetConfig } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import MkPostForm from '@/components/common/MkPostForm.vue'
 import AiScriptEditor from './AiScriptEditor.vue'
 import AiScriptUiRenderer from './AiScriptUiRenderer.vue'
+import type { PostFormRequest } from './AiScriptUiRenderer.vue'
 
 const props = defineProps<{
   widget: WidgetConfig
@@ -43,6 +45,20 @@ const interpreter = ref<Interpreter | null>(null)
 const toastRef = ref<InstanceType<typeof AiScriptToast> | null>(null)
 const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
 let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
+
+const showPostForm = ref(false)
+const postFormData = ref<PostFormRequest>({})
+
+function handlePost(form: PostFormRequest) {
+  if (!props.accountId) return
+  postFormData.value = form
+  showPostForm.value = true
+}
+
+function closePostForm() {
+  showPostForm.value = false
+  postFormData.value = {}
+}
 
 // Persist code on change
 let saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -173,8 +189,21 @@ onMounted(() => {
       :components="uiComponents"
       :interpreter="(interpreter as Interpreter | null)"
       :server-url="serverUrl"
+      @post="handlePost"
     />
   </div>
+
+  <Teleport v-if="showPostForm && props.accountId" to="body">
+    <MkPostForm
+      :account-id="props.accountId"
+      :initial-text="postFormData.text"
+      :initial-cw="postFormData.cw"
+      :initial-visibility="postFormData.visibility"
+      :initial-local-only="postFormData.localOnly"
+      @close="closePostForm"
+      @posted="closePostForm"
+    />
+  </Teleport>
 </template>
 
 <style scoped>

@@ -18,9 +18,11 @@ import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
+import MkPostForm from '@/components/common/MkPostForm.vue'
 import DeckColumn from './DeckColumn.vue'
 import AiScriptEditor from './widgets/AiScriptEditor.vue'
 import AiScriptUiRenderer from './widgets/AiScriptUiRenderer.vue'
+import type { PostFormRequest } from './widgets/AiScriptUiRenderer.vue'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -54,6 +56,20 @@ const interpreter = ref<Interpreter | null>(null)
 const toastRef = ref<InstanceType<typeof AiScriptToast> | null>(null)
 const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
 let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
+
+const showPostForm = ref(false)
+const postFormData = ref<PostFormRequest>({})
+
+function handlePost(form: PostFormRequest) {
+  if (!props.column.accountId) return
+  postFormData.value = form
+  showPostForm.value = true
+}
+
+function closePostForm() {
+  showPostForm.value = false
+  postFormData.value = {}
+}
 
 // Split ratio (editor height fraction)
 const editorRatio = ref(0.6)
@@ -243,6 +259,7 @@ onUnmounted(() => {
           :components="uiComponents"
           :interpreter="(interpreter as Interpreter | null)"
           :server-url="serverUrl"
+          @post="handlePost"
         />
 
         <div v-if="output.length" class="console-output">
@@ -265,6 +282,18 @@ onUnmounted(() => {
       </div>
     </div>
   </DeckColumn>
+
+  <Teleport v-if="showPostForm && props.column.accountId" to="body">
+    <MkPostForm
+      :account-id="props.column.accountId"
+      :initial-text="postFormData.text"
+      :initial-cw="postFormData.cw"
+      :initial-visibility="postFormData.visibility"
+      :initial-local-only="postFormData.localOnly"
+      @close="closePostForm"
+      @posted="closePostForm"
+    />
+  </Teleport>
 </template>
 
 <style scoped>

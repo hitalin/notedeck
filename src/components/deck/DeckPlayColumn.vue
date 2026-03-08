@@ -25,7 +25,9 @@ import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
+import MkPostForm from '@/components/common/MkPostForm.vue'
 import AiScriptUiRenderer from './widgets/AiScriptUiRenderer.vue'
+import type { PostFormRequest } from './widgets/AiScriptUiRenderer.vue'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -145,6 +147,21 @@ const toastRef = ref<InstanceType<typeof AiScriptToast> | null>(null)
 const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
 const interpreter = ref<Interpreter | null>(null)
 let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
+
+// --- Post form ---
+const showPostForm = ref(false)
+const postFormData = ref<PostFormRequest>({})
+
+function handlePost(form: PostFormRequest) {
+  if (!props.column.accountId) return
+  postFormData.value = form
+  showPostForm.value = true
+}
+
+function closePostForm() {
+  showPostForm.value = false
+  postFormData.value = {}
+}
 
 // --- Open Play (show ready screen) ---
 async function openPlay(flashId: string) {
@@ -410,6 +427,7 @@ function reload() {
             :components="uiComponents"
             :interpreter="(interpreter as Interpreter | null)"
             :server-url="serverUrl"
+            @post="handlePost"
           />
         </div>
 
@@ -454,6 +472,18 @@ function reload() {
       </div>
     </template>
   </DeckColumn>
+
+  <Teleport v-if="showPostForm && props.column.accountId" to="body">
+    <MkPostForm
+      :account-id="props.column.accountId"
+      :initial-text="postFormData.text"
+      :initial-cw="postFormData.cw"
+      :initial-visibility="postFormData.visibility"
+      :initial-local-only="postFormData.localOnly"
+      @close="closePostForm"
+      @posted="closePostForm"
+    />
+  </Teleport>
 </template>
 
 <style scoped>

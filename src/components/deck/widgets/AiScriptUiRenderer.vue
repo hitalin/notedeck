@@ -1,15 +1,25 @@
 <script setup lang="ts">
 import type { Interpreter } from '@syuilo/aiscript'
 import type { Value, VFn } from '@syuilo/aiscript/interpreter/value.js'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, type CSSProperties } from 'vue'
 import type { UiComponent } from '@/aiscript/ui'
 import MkMfm from '@/components/common/MkMfm.vue'
+
+export interface PostFormRequest {
+  text?: string
+  cw?: string
+  visibility?: string
+  localOnly?: boolean
+}
 
 const props = defineProps<{
   components: UiComponent[]
   interpreter: Interpreter | null
   serverUrl?: string
+}>()
+
+const emit = defineEmits<{
+  post: [form: PostFormRequest]
 }>()
 
 const serverHost = computed(() => {
@@ -36,19 +46,14 @@ async function callHandler(
   }
 }
 
-async function handlePostFormButton(comp: UiComponent) {
+function handlePostFormButton(comp: UiComponent) {
   const form = comp.props.form as Record<string, unknown> | undefined
-  const params = new URLSearchParams()
-  if (form?.text) params.set('text', String(form.text))
-  if (form?.cw) params.set('cw', String(form.cw))
-  if (form?.visibility) params.set('visibility', String(form.visibility))
-  if (form?.localOnly) params.set('localOnly', '1')
-  const base = props.serverUrl || 'https://misskey.io'
-  try {
-    await openUrl(`${base}/share?${params.toString()}`)
-  } catch (e) {
-    console.error('Failed to open share URL:', e)
-  }
+  emit('post', {
+    text: form?.text ? String(form.text) : undefined,
+    cw: form?.cw ? String(form.cw) : undefined,
+    visibility: form?.visibility ? String(form.visibility) : undefined,
+    localOnly: !!form?.localOnly,
+  })
 }
 </script>
 
@@ -151,6 +156,7 @@ async function handlePostFormButton(comp: UiComponent) {
           :components="comp.children"
           :interpreter="interpreter"
           :server-url="serverUrl"
+          @post="(form: PostFormRequest) => emit('post', form)"
         />
       </div>
 
@@ -162,6 +168,7 @@ async function handlePostFormButton(comp: UiComponent) {
           :components="comp.children"
           :interpreter="interpreter"
           :server-url="serverUrl"
+          @post="(form: PostFormRequest) => emit('post', form)"
         />
       </details>
 

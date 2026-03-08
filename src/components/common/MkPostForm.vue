@@ -19,6 +19,10 @@ const props = defineProps<{
   editNote?: NormalizedNote
   channelId?: string
   inline?: boolean
+  initialText?: string
+  initialCw?: string
+  initialVisibility?: string
+  initialLocalOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -236,6 +240,13 @@ onMounted(async () => {
   } else if (props.replyTo) {
     visibility.value = props.replyTo.visibility
   }
+  if (props.initialText) text.value = props.initialText
+  if (props.initialCw) {
+    cw.value = props.initialCw
+    showCw.value = true
+  }
+  if (props.initialVisibility) visibility.value = props.initialVisibility as typeof visibility.value
+  if (props.initialLocalOnly) localOnly.value = true
   await nextTick()
   if (!props.inline) textareaRef.value?.focus()
 })
@@ -548,10 +559,9 @@ function onKeydown(e: KeyboardEvent) {
         />
       </div>
 
-      <!-- Textarea / Preview -->
+      <!-- Textarea -->
       <div class="text-outer" :class="{ withCw: showCw }">
         <textarea
-          v-if="!showPreview"
           ref="textareaRef"
           v-model="text"
           class="text-area"
@@ -560,7 +570,20 @@ function onKeydown(e: KeyboardEvent) {
           @keydown="onKeydown"
           @click.stop
         />
-        <div v-else class="preview-area">
+        <span
+          v-if="remainingChars <= 100"
+          class="text-count _acrylic"
+          :class="{ over: remainingChars < 0 }"
+        >{{ remainingChars }}</span>
+      </div>
+
+      <!-- Preview -->
+      <div v-if="showPreview" class="preview-section">
+        <div class="preview-header">
+          <i class="ti ti-eye" />
+          プレビュー
+        </div>
+        <div class="preview-area">
           <div v-if="text" class="preview-content">
             <MkMfm
               :text="text"
@@ -569,18 +592,11 @@ function onKeydown(e: KeyboardEvent) {
               :account-id="activeAccountId"
             />
           </div>
-          <div v-else class="preview-empty">プレビュー</div>
+          <div v-else class="preview-empty">テキストを入力するとプレビューが表示されます</div>
         </div>
-        <span
-          v-if="remainingChars <= 100"
-          class="text-count _acrylic"
-          :class="{ over: remainingChars < 0 }"
-        >{{ remainingChars }}</span>
-      </div>
-
-      <!-- Preview: file attachments -->
-      <div v-if="showPreview && attachedFiles.length > 0" class="preview-files">
-        <MkMediaGrid :files="attachedFiles" />
+        <div v-if="attachedFiles.length > 0" class="preview-files">
+          <MkMediaGrid :files="attachedFiles" />
+        </div>
       </div>
 
       <!-- Poll editor -->
@@ -1315,10 +1331,23 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* ── Preview ── */
+.preview-section {
+  border-top: 1px solid color-mix(in srgb, var(--nd-fg) 12%, transparent);
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 24px;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  opacity: 0.5;
+}
+
 .preview-area {
   padding: 0 24px;
-  min-height: 90px;
-  max-height: 500px;
+  max-height: 300px;
   overflow-y: auto;
   line-height: 1.5;
   font-size: 110%;
@@ -1331,12 +1360,11 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .preview-empty {
-  min-height: 90px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 16px 0;
+  text-align: center;
   color: var(--nd-fg);
   opacity: 0.35;
+  font-size: 0.9em;
 }
 
 .preview-files {
