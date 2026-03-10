@@ -135,8 +135,7 @@ const mobileNavRef = ref<HTMLElement | null>(null)
 watch(activeColumnIndex, () => {
   nextTick(() => {
     if (!mobileNavRef.value) return
-    // +1 to skip the menu button at index 0
-    const tab = mobileNavRef.value.children[activeColumnIndex.value + 1] as HTMLElement | undefined
+    const tab = mobileNavRef.value.children[activeColumnIndex.value] as HTMLElement | undefined
     if (tab) {
       tab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
     }
@@ -524,34 +523,36 @@ watch(
     </Transition>
 
     <!-- Mobile bottom nav (visible only on small screens via CSS) -->
-    <nav ref="mobileNavRef" class="mobile-nav">
+    <nav class="mobile-nav">
       <button class="_button mobile-tab mobile-menu-btn" @click="mobileDrawerOpen = !mobileDrawerOpen">
         <i class="ti ti-menu-2" />
       </button>
-      <button
-        v-for="(colId, i) in visibleColumns"
-        :key="colId"
-        class="_button mobile-tab"
-        :class="{ active: activeColumnIndex === i }"
-        @click="scrollToColumn(i)"
-      >
-        <i :class="'ti ti-' + columnIcon(colId)" />
-        <span v-if="columnServerIcon(colId)" class="tab-server-badge">
-          <img :src="columnServerIcon(colId)!" class="tab-badge-img" />
-        </span>
-        <span v-else-if="columnAccount(colId)" class="tab-server-badge">
-          <span class="tab-badge-initial">{{ columnAccount(colId)!.host.charAt(0).toUpperCase() }}</span>
-        </span>
-        <span v-if="columnAccount(colId)" class="tab-account-badge">
-          <img
-            v-if="columnAccount(colId)!.avatarUrl"
-            :src="columnAccount(colId)!.avatarUrl!"
-            class="tab-badge-img"
-          />
-          <span v-else class="tab-badge-initial">{{ columnAccount(colId)!.username.charAt(0).toUpperCase() }}</span>
-        </span>
-      </button>
-      <button class="_button mobile-tab" title="Add column" @click="toggleAddMenu">
+      <div ref="mobileNavRef" class="mobile-tabs-scroll">
+        <button
+          v-for="(colId, i) in visibleColumns"
+          :key="colId"
+          class="_button mobile-tab"
+          :class="{ active: activeColumnIndex === i }"
+          @click="scrollToColumn(i)"
+        >
+          <i :class="'ti ti-' + columnIcon(colId)" />
+          <span v-if="columnServerIcon(colId)" class="tab-server-badge">
+            <img :src="columnServerIcon(colId)!" class="tab-badge-img" />
+          </span>
+          <span v-else-if="columnAccount(colId)" class="tab-server-badge">
+            <span class="tab-badge-initial">{{ columnAccount(colId)!.host.charAt(0).toUpperCase() }}</span>
+          </span>
+          <span v-if="columnAccount(colId)" class="tab-account-badge">
+            <img
+              v-if="columnAccount(colId)!.avatarUrl"
+              :src="columnAccount(colId)!.avatarUrl!"
+              class="tab-badge-img"
+            />
+            <span v-else class="tab-badge-initial">{{ columnAccount(colId)!.username.charAt(0).toUpperCase() }}</span>
+          </span>
+        </button>
+      </div>
+      <button class="_button mobile-tab mobile-add-btn" title="Add column" @click="toggleAddMenu">
         <i class="ti ti-plus" />
       </button>
     </nav>
@@ -725,7 +726,8 @@ watch(
   .fade-leave-to {
     opacity: 0;
   }
-  .mobile-menu-btn {
+  .mobile-menu-btn,
+  .mobile-add-btn {
     flex: 0 0 auto !important;
     width: 50px;
   }
@@ -792,13 +794,20 @@ watch(
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
     border-top: 1px solid var(--nd-divider);
+  }
+
+  .mobile-tabs-scroll {
+    display: flex;
+    align-items: stretch;
+    flex: 1;
+    min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
 
-  .mobile-nav::-webkit-scrollbar {
+  .mobile-tabs-scroll::-webkit-scrollbar {
     display: none;
   }
 
