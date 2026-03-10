@@ -71,11 +71,32 @@ function open(e: MouseEvent) {
 function close() {
   showMenu.value = false
   showDeleteConfirm.value = false
+  showCopyMenu.value = false
 }
 
 function openInWebUI() {
   const url = noteWebUrl.value
   if (url && isSafeUrl(url)) openUrl(url)
+}
+
+const showCopyMenu = ref(false)
+const copyDone = ref(false)
+
+async function copyToClipboard(text: string) {
+  await navigator.clipboard.writeText(text)
+  copyDone.value = true
+  setTimeout(() => {
+    copyDone.value = false
+    close()
+  }, 600)
+}
+
+function copyNoteText() {
+  copyToClipboard(props.note.text ?? '')
+}
+
+function copyNoteLink() {
+  copyToClipboard(noteWebUrl.value)
 }
 
 defineExpose({ open })
@@ -113,6 +134,25 @@ defineExpose({ open })
             <button class="popup-item" @click="openInWebUI(); close()">
               <i class="ti ti-external-link" />
               Web UIで開く
+            </button>
+            <div class="popup-divider" />
+            <template v-if="showCopyMenu">
+              <button class="popup-item" @click="copyNoteText()" :disabled="!note.text">
+                <i class="ti ti-file-text" />
+                {{ copyDone ? 'コピーしました' : 'テキスト' }}
+              </button>
+              <button class="popup-item" @click="copyNoteLink()">
+                <i class="ti ti-link" />
+                {{ copyDone ? 'コピーしました' : 'リンク' }}
+              </button>
+              <button class="popup-item" @click="showCopyMenu = false">
+                <i class="ti ti-arrow-left" />
+                戻る
+              </button>
+            </template>
+            <button v-else class="popup-item" @click="showCopyMenu = true">
+              <i class="ti ti-copy" />
+              コピー
             </button>
             <template v-if="noteActions.length > 0">
               <div class="popup-divider" />
