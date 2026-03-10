@@ -677,12 +677,14 @@ defineExpose({
   .navbar {
     display: flex !important;
     position: fixed;
-    top: env(safe-area-inset-top);
+    top: 0;
     left: 0;
-    bottom: env(safe-area-inset-bottom);
+    bottom: 0;
     z-index: 2000;
     width: 250px !important;
     flex-basis: 250px !important;
+    padding-top: max(env(safe-area-inset-top), 12px);
+    padding-bottom: env(safe-area-inset-bottom);
     transform: translateX(-100%);
     transition: transform 0.25s ease;
     box-shadow: none;
