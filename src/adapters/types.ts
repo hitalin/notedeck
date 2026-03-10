@@ -108,6 +108,18 @@ export interface Channel {
   name: string
 }
 
+export interface ServerAd {
+  id: string
+  url: string
+  imageUrl: string
+  ratio: number
+  place: string
+  memo: string
+  dayOfWeek: number
+  startsAt: string | null
+  expiresAt: string | null
+}
+
 export interface ChatMessageReaction {
   user?: {
     id: string

@@ -15,7 +15,9 @@ import type {
   TimelineFilter,
   TimelineType,
 } from '@/adapters/types'
+import MkAd from '@/components/common/MkAd.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import { useAds } from '@/composables/useAds'
 import { useNavigation } from '@/composables/useNavigation'
 
 const MkPostForm = defineAsyncComponent(
@@ -72,6 +74,9 @@ const {
 } = useColumnSetup(() => props.column)
 
 const { navigateToNote } = useNavigation()
+const { fetchAds, pickAd, shouldShowAd } = useAds(
+  () => props.column.accountId ?? undefined,
+)
 const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } =
   useNoteList({
     getMyUserId: () => account.value?.userId,
@@ -598,6 +603,7 @@ onMounted(async () => {
   const accountId = props.column.accountId
   // Clear stale policy cache so external mode changes are reflected
   if (accountId) clearAvailableTlCache(accountId)
+  fetchAds()
   connect(true)
   if (host && accountId) {
     const [ct, , availability] = await Promise.all([
@@ -766,6 +772,7 @@ onUnmounted(() => {
               @edit="handlers.edit"
               @bookmark="handlers.bookmark"
             />
+            <MkAd v-if="shouldShowAd(index)" :ad="pickAd(index)!" />
           </DynamicScrollerItem>
         </template>
 
