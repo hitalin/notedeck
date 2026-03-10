@@ -1,15 +1,19 @@
 import { invoke } from '@tauri-apps/api/core'
 import { ref } from 'vue'
 import type { ServerAd } from '@/adapters/types'
+import { useAccountsStore } from '@/stores/accounts'
 
-const AD_INTERVAL = 8
 const REFRESH_INTERVAL = 10 * 60 * 1000 // 10 minutes
 
 // Per-account ad cache
-const adsCache = new Map<string, { ads: ServerAd[]; fetchedAt: number }>()
+const adsCache = new Map<
+  string,
+  { ads: ServerAd[]; notesPerOneAd: number; fetchedAt: number }
+>()
 
 export function useAds(getAccountId: () => string | undefined) {
   const ads = ref<ServerAd[]>([])
+  const notesPerOneAd = ref(0)
 
   async function fetchAds() {
     const accountId = getAccountId()
@@ -18,15 +22,35 @@ export function useAds(getAccountId: () => string | undefined) {
     const cached = adsCache.get(accountId)
     if (cached && Date.now() - cached.fetchedAt < REFRESH_INTERVAL) {
       ads.value = cached.ads
+      notesPerOneAd.value = cached.notesPerOneAd
       return
     }
 
     try {
+      // Fetch notesPerOneAd from server meta
+      const accountsStore = useAccountsStore()
+      const account = accountsStore.accounts.find((a) => a.id === accountId)
+      let interval = 0
+      if (account) {
+        try {
+          const meta = await fetch(`https://${account.host}/api/meta`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}',
+            signal: AbortSignal.timeout(5000),
+          })
+          const metaData = await meta.json()
+          interval = metaData.notesPerOneAd ?? 0
+        } catch {
+          // Fallback: server may not expose this field
+        }
+      }
+
       const result = await invoke<ServerAd[]>('api_request', {
         accountId,
         endpoint: 'ads',
       })
-      // Filter to only timeline-relevant ads (horizontal), and active today
+      // Filter to only timeline-relevant ads, and active today
       const now = new Date()
       const dayOfWeek = now.getDay()
       const filtered = (result ?? []).filter((ad) => {
@@ -35,10 +59,16 @@ export function useAds(getAccountId: () => string | undefined) {
         return true
       })
       ads.value = filtered
-      adsCache.set(accountId, { ads: filtered, fetchedAt: Date.now() })
+      notesPerOneAd.value = interval
+      adsCache.set(accountId, {
+        ads: filtered,
+        notesPerOneAd: interval,
+        fetchedAt: Date.now(),
+      })
     } catch {
       // Older servers may not support ads API
       ads.value = []
+      notesPerOneAd.value = 0
     }
   }
 
@@ -62,7 +92,8 @@ export function useAds(getAccountId: () => string | undefined) {
   }
 
   function shouldShowAd(index: number): boolean {
-    return ads.value.length > 0 && (index + 1) % AD_INTERVAL === 0
+    if (ads.value.length === 0 || notesPerOneAd.value <= 0) return false
+    return (index + 1) % notesPerOneAd.value === 0
   }
 
   return { ads, fetchAds, pickAd, shouldShowAd }
