@@ -307,6 +307,7 @@ function closeMentionPopup() {
           :emojis="{ ...effectiveNote.reply!.emojis, ...effectiveNote.reply!.reactionEmojis }"
           :server-host="effectiveNote._serverHost"
           :account-id="note._accountId"
+          compact
         />
       </span>
     </div>

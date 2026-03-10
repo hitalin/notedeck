@@ -16,6 +16,7 @@ const props = defineProps<{
   reactionEmojis?: Record<string, string>
   serverHost?: string
   accountId?: string
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -204,7 +205,7 @@ function fnStyle(
 
 <template>
   <span class="mfm"><template v-for="(token, i) in resolvedTokens" :key="i"><!--
-    --><!-- URL --><span v-if="token.type === 'url'" class="mfm-url-block"><a :href="isSafeUrl(token.value) ? token.value : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><MkUrlPreview :url="token.value" :account-id="accountId" /></span><!--
+    --><!-- URL --><span v-if="token.type === 'url'" class="mfm-url-block"><a :href="isSafeUrl(token.value) ? token.value : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><MkUrlPreview v-if="!compact" :url="token.value" :account-id="accountId" /></span><!--
     --><!-- Link --><a v-else-if="token.type === 'link'" :href="isSafeUrl(token.url) ? token.url : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.url)"><MkMfm :tokens="token.label" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></a><!--
     --><!-- Mention --><span v-else-if="token.type === 'mention'" class="mfm-mention" @click.stop="emit('mentionClick', token.username, token.host)" @mouseenter="emit('mentionHover', $event, token.username, token.host)" @mouseleave="emit('mentionLeave')">{{ token.acct }}</span><!--
     --><!-- Hashtag --><span v-else-if="token.type === 'hashtag'" class="mfm-hashtag" @click.stop>#{{ token.value }}</span><!--
