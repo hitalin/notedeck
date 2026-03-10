@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, nextTick, ref, watch } from 'vue'
 import AboutDialog from '@/components/common/AboutDialog.vue'
 import ThemePreview from '@/components/ThemePreview.vue'
@@ -297,10 +296,6 @@ function syncScroll(e: Event) {
       />
 
       <div class="settings-menu-divider" />
-      <button class="support-link" @click="openUrl('https://github.com/sponsors/hitalin')">
-        <i class="ti ti-heart" />
-        開発を支援する
-      </button>
       <div v-if="updateAvailable" class="update-section">
         <div class="update-text">
           <span class="update-version">v{{ appVersion }} → v{{ updateVersion }}</span>
@@ -906,30 +901,6 @@ function syncScroll(e: Event) {
 .settings-menu-enter-active,
 .settings-menu-leave-active {
   transition: opacity 0.15s, transform 0.15s;
-}
-
-.support-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 6px 16px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 0.75em;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  transition: opacity 0.15s;
-}
-
-.support-link:hover {
-  opacity: 0.8;
-}
-
-.support-link .ti {
-  color: #e05a7a;
 }
 
 .version-info {
