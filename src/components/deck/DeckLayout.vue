@@ -135,9 +135,15 @@ const mobileNavRef = ref<HTMLElement | null>(null)
 watch(activeColumnIndex, () => {
   nextTick(() => {
     if (!mobileNavRef.value) return
-    const tab = mobileNavRef.value.children[activeColumnIndex.value] as HTMLElement | undefined
+    const tab = mobileNavRef.value.children[activeColumnIndex.value] as
+      | HTMLElement
+      | undefined
     if (tab) {
-      tab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+      tab.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest',
+      })
     }
   })
 })
@@ -799,6 +805,7 @@ watch(
   .mobile-tabs-scroll {
     display: flex;
     align-items: stretch;
+    justify-content: center;
     flex: 1;
     min-width: 0;
     overflow-x: auto;
