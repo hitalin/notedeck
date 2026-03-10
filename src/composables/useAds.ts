@@ -3,6 +3,7 @@ import type { ServerAd } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 
 const REFRESH_INTERVAL = 10 * 60 * 1000 // 10 minutes
+const MUTED_ADS_KEY = 'nd-muted-ads'
 
 // Per-account ad cache
 const adsCache = new Map<
@@ -10,13 +11,26 @@ const adsCache = new Map<
   { ads: ServerAd[]; notesPerOneAd: number; fetchedAt: number }
 >()
 
+function getMutedAds(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(MUTED_ADS_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
 export function useAds(getAccountId: () => string | undefined) {
   const ads = ref<ServerAd[]>([])
   const notesPerOneAd = ref(0)
+  const serverHost = ref('')
 
   async function fetchAds() {
     const accountId = getAccountId()
     if (!accountId) return
+
+    const accountsStore = useAccountsStore()
+    const account = accountsStore.accounts.find((a) => a.id === accountId)
+    if (account) serverHost.value = account.host
 
     const cached = adsCache.get(accountId)
     if (cached && Date.now() - cached.fetchedAt < REFRESH_INTERVAL) {
@@ -26,8 +40,6 @@ export function useAds(getAccountId: () => string | undefined) {
     }
 
     try {
-      const accountsStore = useAccountsStore()
-      const account = accountsStore.accounts.find((a) => a.id === accountId)
       if (!account) return
 
       // Ads are included in /api/meta response (not a separate endpoint)
@@ -43,9 +55,11 @@ export function useAds(getAccountId: () => string | undefined) {
 
       // Filter to timeline-relevant ads, active today (dayOfWeek is a bitmask)
       const dayBit = 1 << new Date().getDay()
+      const muted = getMutedAds()
       const filtered = rawAds.filter((ad) => {
         if (ad.place !== 'horizontal' && ad.place !== 'square') return false
         if ((ad.dayOfWeek & dayBit) === 0) return false
+        if (muted.includes(ad.id)) return false
         return true
       })
 
@@ -83,5 +97,17 @@ export function useAds(getAccountId: () => string | undefined) {
     return (index + 1) % notesPerOneAd.value === 0
   }
 
-  return { ads, fetchAds, pickAd, shouldShowAd }
+  function muteAd(adId: string) {
+    const muted = getMutedAds()
+    if (!muted.includes(adId)) {
+      muted.push(adId)
+      localStorage.setItem(MUTED_ADS_KEY, JSON.stringify(muted))
+    }
+    ads.value = ads.value.filter((ad) => ad.id !== adId)
+    // Invalidate cache
+    const accountId = getAccountId()
+    if (accountId) adsCache.delete(accountId)
+  }
+
+  return { ads, serverHost, fetchAds, pickAd, shouldShowAd, muteAd }
 }

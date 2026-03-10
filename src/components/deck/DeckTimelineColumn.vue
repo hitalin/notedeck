@@ -74,7 +74,7 @@ const {
 } = useColumnSetup(() => props.column)
 
 const { navigateToNote } = useNavigation()
-const { fetchAds, pickAd, shouldShowAd } = useAds(
+const { fetchAds, pickAd, shouldShowAd, muteAd, serverHost } = useAds(
   () => props.column.accountId ?? undefined,
 )
 const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } =
@@ -772,7 +772,7 @@ onUnmounted(() => {
               @edit="handlers.edit"
               @bookmark="handlers.bookmark"
             />
-            <MkAd v-if="shouldShowAd(index)" :ad="pickAd(index)!" />
+            <MkAd v-if="shouldShowAd(index)" :ad="pickAd(index)!" :server-host="serverHost" @mute="muteAd" />
           </DynamicScrollerItem>
         </template>
 
