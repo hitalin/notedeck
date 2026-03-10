@@ -385,12 +385,16 @@ async function handlePosted(editedNoteId?: string) {
 
 .ancestors {
   opacity: 0.85;
-  border-left: 3px solid var(--nd-accent);
+}
+
+.ancestors :deep(.note-root + .note-root) {
+  border-top: none;
 }
 
 .focal-note {
-  border-top: 1px solid var(--nd-divider);
+  border-top: 2px solid var(--nd-accent);
   border-bottom: 1px solid var(--nd-divider);
+  background: var(--nd-panelHighlight);
 }
 
 /* Tabs */

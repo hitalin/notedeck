@@ -245,6 +245,12 @@ function closeMentionPopup() {
     :class="{ detailed, focused }"
     tabindex="0"
   >
+    <!-- Pinned indicator -->
+    <div v-if="pinnedNoteIds?.includes(note.id)" class="pinned-info">
+      <i class="ti ti-pin pinned-icon" />
+      <span class="pinned-label">ピン留めされたノート</span>
+    </div>
+
     <!-- Renote info bar -->
     <div v-if="isPureRenote" class="renote-info">
       <i class="ti ti-repeat renote-icon" />
@@ -271,6 +277,40 @@ function closeMentionPopup() {
       <span class="renote-time">{{ formatTime(note.createdAt) }}</span>
     </div>
 
+    <!-- Reply-to preview (Misskey style) -->
+    <div
+      v-if="effectiveNote.reply && !embedded"
+      class="reply-to"
+      @click.stop="navToNote(note._accountId, effectiveNote.reply!.id)"
+    >
+      <img
+        v-if="effectiveNote.reply!.user.avatarUrl"
+        :src="proxyUrl(effectiveNote.reply!.user.avatarUrl)"
+        class="reply-to-avatar"
+        width="20"
+        height="20"
+        decoding="async"
+      />
+      <span class="reply-to-name">
+        <MkMfm
+          v-if="effectiveNote.reply!.user.name"
+          :text="effectiveNote.reply!.user.name"
+          :emojis="{ ...effectiveNote.reply!.emojis, ...effectiveNote.reply!.user.emojis }"
+          :server-host="effectiveNote._serverHost"
+          :account-id="note._accountId"
+        />
+        <template v-else>{{ effectiveNote.reply!.user.username }}</template>
+      </span>
+      <span class="reply-to-text">
+        <MkMfm
+          :text="effectiveNote.reply!.cw ?? effectiveNote.reply!.text?.slice(0, 100) ?? ''"
+          :emojis="{ ...effectiveNote.reply!.emojis, ...effectiveNote.reply!.reactionEmojis }"
+          :server-host="effectiveNote._serverHost"
+          :account-id="note._accountId"
+        />
+      </span>
+    </div>
+
     <article class="article" @click="navigateToDetail">
       <MkAvatar
         :avatar-url="effectiveNote.user.avatarUrl"
@@ -286,6 +326,7 @@ function closeMentionPopup() {
       <div class="main">
         <!-- Header -->
         <header class="header">
+          <i v-if="effectiveNote.replyId" class="ti ti-arrow-back-up reply-icon" />
           <span class="name">
             <MkMfm
               v-if="effectiveNote.user.name"
@@ -434,7 +475,7 @@ function closeMentionPopup() {
 
         <!-- Footer -->
         <footer v-if="!embedded" class="footer">
-          <button class="footer-button" @click.stop="emit('reply', effectiveNote)">
+          <button class="footer-button reply-button" @click.stop="emit('reply', effectiveNote)">
             <i class="ti ti-arrow-back-up" />
             <span v-if="effectiveNote.repliesCount > 0" class="button-count">
               {{ effectiveNote.repliesCount }}
@@ -447,7 +488,7 @@ function closeMentionPopup() {
             </span>
           </button>
           <button
-            class="footer-button reaction-trigger"
+            class="footer-button reaction-button"
             @click.stop="reactionPickerRef?.open($event)"
           >
             <i class="ti ti-plus" />
@@ -551,6 +592,80 @@ function closeMentionPopup() {
 
 .note-root.focused > .article {
   background: var(--nd-panelHighlight);
+}
+
+/* Pinned indicator */
+.pinned-info {
+  display: flex;
+  padding: 12px 24px 0 24px;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85em;
+  color: var(--nd-accent);
+}
+
+.pinned-icon {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.pinned-label {
+  opacity: 0.8;
+  font-weight: bold;
+}
+
+/* Reply-to preview */
+.reply-to {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 24px 0 24px;
+  cursor: pointer;
+  overflow: hidden;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.reply-to:hover {
+  opacity: 1;
+}
+
+.reply-to-avatar {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.reply-to-name {
+  flex-shrink: 0;
+  font-size: 0.8em;
+  font-weight: bold;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reply-to-name :deep(.custom-emoji) {
+  height: 1em;
+  width: auto;
+}
+
+.reply-to-text {
+  flex: 1;
+  font-size: 0.8em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.7;
+}
+
+/* Reply icon in header */
+.reply-icon {
+  color: var(--nd-accent);
+  margin-right: 0.5em;
+  flex-shrink: 0;
 }
 
 /* Renote info bar */
@@ -892,12 +1007,23 @@ function closeMentionPopup() {
 }
 
 .footer-button:hover {
-  color: var(--nd-fgHighlighted);
   background: var(--nd-buttonHoverBg);
+}
+
+.reply-button:hover {
+  color: #3b97c4;
 }
 
 .renote-button:hover {
   color: var(--nd-renote);
+}
+
+.reaction-button:hover {
+  color: #e5a400;
+}
+
+.more-button:hover {
+  color: var(--nd-fgHighlighted);
 }
 
 .button-count {
@@ -939,12 +1065,16 @@ function closeMentionPopup() {
   .note-root { font-size: 0.95em; }
   .article { padding: 20px; }
   .renote-info { padding: 12px 20px 6px 20px; }
+  .pinned-info { padding: 10px 20px 0 20px; }
+  .reply-to { padding: 10px 20px 0 20px; }
 }
 
 @container (max-width: 500px) {
   .note-root { font-size: 0.9em; }
   .article { padding: 16px; }
   .renote-info { padding: 8px 16px 4px 16px; }
+  .pinned-info { padding: 8px 16px 0 16px; }
+  .reply-to { padding: 8px 16px 0 16px; }
   .footer { margin-bottom: -4px; }
   .footer-button { margin-right: 12px; }
   .instance-name { max-width: 120px; }
@@ -957,6 +1087,7 @@ function closeMentionPopup() {
 @container (max-width: 350px) {
   .article { padding: 12px 14px; }
   .footer-button { margin-right: 8px; }
+  .reply-to { padding: 6px 14px 0 14px; }
 }
 
 @container (max-width: 300px) {
