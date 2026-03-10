@@ -1,3 +1,4 @@
+mod amazon;
 mod apple_music;
 mod bluesky;
 mod dlsite;
@@ -95,6 +96,7 @@ pub fn all() -> &'static [&'static dyn Plugin] {
         &nijie::PLUGIN,
         &iwara::PLUGIN,
         &komiflo::PLUGIN,
+        &amazon::PLUGIN,
     ]
 }
 
