@@ -228,7 +228,7 @@ function onWindowMouseDown() {
   }
 
   .window-header {
-    height: 46px;
+    min-height: 46px;
     padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
   }
 
