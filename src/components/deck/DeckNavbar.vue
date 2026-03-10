@@ -733,6 +733,7 @@ defineExpose({
     padding: 10px 14px;
     margin: 0;
     border-radius: 999px;
+    justify-content: flex-start;
   }
 }
 </style>
