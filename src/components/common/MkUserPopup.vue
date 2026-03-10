@@ -14,6 +14,7 @@ const props = defineProps<{
   accountId: string
   x: number
   y: number
+  themeVars?: Record<string, string>
 }>()
 
 const emit = defineEmits<{
@@ -58,7 +59,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 <template>
   <div
     class="user-popup"
-    :style="{ left: `${x}px`, top: `${y}px` }"
+    :style="{ ...themeVars, left: `${x}px`, top: `${y}px` }"
     @mouseleave="handleMouseLeave"
   >
     <div v-if="isLoading" class="popup-loading">読み込み中...</div>

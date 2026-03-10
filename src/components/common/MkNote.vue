@@ -9,6 +9,7 @@ import type {
 import { applyNoteViewInterruptors } from '@/aiscript/plugin-api'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
+import { extractThemeVars } from '@/utils/themeVars'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
@@ -111,9 +112,13 @@ const isOwnNote = computed(() => {
 
 // User hover popup
 const userPopup = useHoverPopup()
+const popupTheme = ref<Record<string, string>>({})
 
 function onAvatarMouseEnter(e: MouseEvent) {
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  const el = e.currentTarget as HTMLElement
+  const rect = el.getBoundingClientRect()
+  const column = el.closest('.deck-column') as HTMLElement | null
+  if (column) popupTheme.value = extractThemeVars(column)
   userPopup.show({ x: rect.right + 8, y: rect.top })
 }
 
@@ -214,7 +219,10 @@ async function onMentionHover(
   host: string | null,
 ) {
   mentionHovering = true
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  const el = e.currentTarget as HTMLElement
+  const rect = el.getBoundingClientRect()
+  const column = el.closest('.deck-column') as HTMLElement | null
+  if (column) popupTheme.value = extractThemeVars(column)
   try {
     const user = await invoke<NormalizedUser>('api_lookup_user', {
       accountId: props.note._accountId,
@@ -525,6 +533,7 @@ function closeMentionPopup() {
       :account-id="note._accountId"
       :x="userPopup.position.value.x"
       :y="userPopup.position.value.y"
+      :theme-vars="popupTheme"
       @close="closeUserPopup"
     />
   </Teleport>
@@ -536,6 +545,7 @@ function closeMentionPopup() {
       :account-id="note._accountId"
       :x="mentionPopup.position.value.x"
       :y="mentionPopup.position.value.y"
+      :theme-vars="popupTheme"
       @close="closeMentionPopup"
     />
   </Teleport>
