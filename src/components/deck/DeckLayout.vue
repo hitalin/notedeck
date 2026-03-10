@@ -805,7 +805,7 @@ watch(
   .mobile-tabs-scroll {
     display: flex;
     align-items: stretch;
-    justify-content: center;
+    justify-content: space-evenly;
     flex: 1;
     min-width: 0;
     overflow-x: auto;
