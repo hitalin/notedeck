@@ -158,7 +158,7 @@ function onDrop(e: DragEvent) {
   gap: 6px;
   height: 38px;
   line-height: 38px;
-  padding: 0 8px 0 28px;
+  padding: 0 8px 0 30px;
   background: var(--nd-panelHeaderBg);
   color: var(--nd-panelHeaderFg);
   font-size: 0.9em;
@@ -179,7 +179,7 @@ function onDrop(e: DragEvent) {
   position: absolute;
   top: 12px;
   left: 12px;
-  width: 3px;
+  width: 5px;
   height: calc(100% - 24px);
   border-radius: 999px;
 }

@@ -324,7 +324,7 @@ function closeMentionPopup() {
       <MkAvatar
         :avatar-url="effectiveNote.user.avatarUrl"
         :decorations="effectiveNote.user.avatarDecorations"
-        :size="46"
+        :size="58"
         :alt="effectiveNote.user.username ?? undefined"
         class="avatar"
         @click="navigateToUser(effectiveNote.user.id, $event)"
@@ -580,7 +580,7 @@ function closeMentionPopup() {
 <style scoped>
 .note-root {
   position: relative;
-  font-size: 1em;
+  font-size: 1.05em;
   contain: content;
   container-type: inline-size;
 }
@@ -608,7 +608,7 @@ function closeMentionPopup() {
 /* Pinned indicator */
 .pinned-info {
   display: flex;
-  padding: 12px 24px 0 24px;
+  padding: 12px 32px 0 32px;
   align-items: center;
   gap: 6px;
   font-size: 0.85em;
@@ -630,7 +630,7 @@ function closeMentionPopup() {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 12px 24px 0 24px;
+  padding: 12px 32px 0 32px;
   cursor: pointer;
   overflow: hidden;
   opacity: 0.7;
@@ -682,7 +682,8 @@ function closeMentionPopup() {
 /* Renote info bar */
 .renote-info {
   display: flex;
-  padding: 16px 24px 8px 24px;
+  padding: 16px 32px 8px 32px;
+  line-height: 28px;
   align-items: center;
   gap: 8px;
   font-size: 0.85em;
@@ -721,7 +722,7 @@ function closeMentionPopup() {
 /* Main article layout */
 .article {
   display: flex;
-  padding: 24px;
+  padding: 28px 32px;
 }
 
 .avatar {
@@ -918,7 +919,7 @@ function closeMentionPopup() {
 
 .reaction {
   display: inline-flex;
-  height: 44px;
+  height: 42px;
   padding: 0 6px;
   font-size: 1.5em;
   border-radius: 6px;
@@ -979,7 +980,7 @@ function closeMentionPopup() {
 
 .reaction .count {
   font-size: 0.7em;
-  line-height: 44px;
+  line-height: 42px;
   margin: 0 0 0 4px;
 }
 
@@ -1001,7 +1002,7 @@ function closeMentionPopup() {
   justify-content: center;
   gap: 4px;
   padding: 8px;
-  min-height: 44px;
+  min-height: 42px;
   min-width: 44px;
   margin-right: 28px;
   border: none;
@@ -1074,35 +1075,45 @@ function closeMentionPopup() {
 /* Container query responsive breakpoints */
 @container (max-width: 580px) {
   .note-root { font-size: 0.95em; }
-  .article { padding: 20px; }
-  .renote-info { padding: 12px 20px 6px 20px; }
-  .pinned-info { padding: 10px 20px 0 20px; }
-  .reply-to { padding: 10px 20px 0 20px; }
+  .article { padding: 24px 26px; }
+  .renote-info { padding: 12px 26px 6px 26px; }
+  .pinned-info { padding: 10px 26px 0 26px; }
+  .reply-to { padding: 10px 26px 0 26px; }
 }
 
 @container (max-width: 500px) {
   .note-root { font-size: 0.9em; }
-  .article { padding: 16px; }
+  .article { padding: 20px 22px; }
+  .renote-info { padding: 8px 22px 4px 22px; }
+  .pinned-info { padding: 8px 22px 0 22px; }
+  .reply-to { padding: 8px 22px 0 22px; }
+  .footer { margin-bottom: -8px; }
+  .footer-button { margin-right: 12px; }
+  .instance-name { max-width: 120px; }
+}
+
+@container (max-width: 480px) {
+  .article { padding: 14px 16px; }
   .renote-info { padding: 8px 16px 4px 16px; }
   .pinned-info { padding: 8px 16px 0 16px; }
   .reply-to { padding: 8px 16px 0 16px; }
-  .footer { margin-bottom: -4px; }
-  .footer-button { margin-right: 12px; }
-  .instance-name { max-width: 120px; }
 }
 
 @container (max-width: 450px) {
   .avatar { margin: 0 10px 0 0; }
 }
 
+@container (max-width: 400px) {
+  .footer-button { margin-right: 18px; }
+}
+
 @container (max-width: 350px) {
-  .article { padding: 12px 14px; }
-  .footer-button { margin-right: 8px; }
-  .reply-to { padding: 6px 14px 0 14px; }
+  .footer-button { margin-right: 12px; }
 }
 
 @container (max-width: 300px) {
-  .reaction { height: 36px; font-size: 1em; border-radius: 4px; }
-  .reaction .count { font-size: 0.9em; line-height: 36px; }
+  .footer-button { margin-right: 8px; }
+  .reaction { height: 32px; font-size: 1em; border-radius: 4px; }
+  .reaction .count { font-size: 0.9em; line-height: 32px; }
 }
 </style>

@@ -228,9 +228,10 @@ function hostname(url: string): string {
 <style scoped>
 .url-preview {
   display: flex;
-  border: 1px solid var(--nd-divider);
+  font-size: 14px;
+  box-shadow: 0 0 0 1px var(--nd-divider);
   border-radius: 8px;
-  overflow: hidden;
+  overflow: clip;
   margin-top: 8px;
   cursor: pointer;
   background: var(--nd-panelHighlight);
@@ -359,13 +360,13 @@ function hostname(url: string): string {
 }
 
 .url-preview-body {
-  padding: 8px 12px;
+  padding: 16px;
   min-width: 0;
   flex: 1;
 }
 
 .url-preview-title {
-  font-size: 0.9em;
+  font-size: 1em;
   font-weight: 600;
   color: var(--nd-fg);
   overflow: hidden;
@@ -377,7 +378,7 @@ function hostname(url: string): string {
   font-size: 0.8em;
   color: var(--nd-fg);
   opacity: 0.7;
-  margin-top: 2px;
+  margin-top: 4px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -385,10 +386,10 @@ function hostname(url: string): string {
 }
 
 .url-preview-host {
-  font-size: 0.75em;
+  font-size: 0.8em;
   color: var(--nd-fg);
   opacity: 0.5;
-  margin-top: 4px;
+  margin-top: 8px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -433,10 +434,32 @@ function hostname(url: string): string {
   }
 }
 
-@media (max-width: 500px) {
+@container (max-width: 400px) {
+  .url-preview {
+    font-size: 12px;
+  }
+
+  .url-preview-body {
+    padding: 12px;
+  }
+
   .url-preview-thumb-wrap {
     width: 80px;
     min-height: 64px;
+  }
+}
+
+@container (max-width: 350px) {
+  .url-preview {
+    font-size: 10px;
+  }
+
+  .url-preview-body {
+    padding: 8px;
+  }
+
+  .url-preview-host {
+    margin-top: 4px;
   }
 }
 </style>
