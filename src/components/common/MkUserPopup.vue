@@ -76,6 +76,8 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
           :avatar-url="user.avatarUrl"
           :decorations="user.avatarDecorations"
           :size="56"
+          indicator
+          :online-status="user.onlineStatus"
           class="popup-avatar"
         />
 

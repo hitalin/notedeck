@@ -10,11 +10,15 @@ const props = withDefaults(
     decorations?: AvatarDecoration[]
     size?: number
     alt?: string
+    indicator?: boolean
+    onlineStatus?: 'online' | 'active' | 'offline' | 'unknown' | null
   }>(),
   {
     decorations: () => [],
     size: 58,
     alt: undefined,
+    indicator: false,
+    onlineStatus: null,
   },
 )
 
@@ -92,6 +96,11 @@ const decorationStyles = computed(() =>
         :style="decorationStyles[i]"
       />
     </template>
+    <div
+      v-if="indicator && onlineStatus"
+      class="online-indicator"
+      :class="`status-${onlineStatus}`"
+    />
   </div>
 </template>
 
@@ -127,5 +136,32 @@ const decorationStyles = computed(() =>
   width: 200%;
   pointer-events: none;
   z-index: 1;
+}
+
+.online-indicator {
+  position: absolute;
+  z-index: 2;
+  bottom: 0;
+  left: 0;
+  width: 20%;
+  height: 20%;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--nd-panel, var(--nd-bg));
+}
+
+.online-indicator.status-online {
+  background: #58d4c9;
+}
+
+.online-indicator.status-active {
+  background: #e4bc48;
+}
+
+.online-indicator.status-offline {
+  background: #ea5353;
+}
+
+.online-indicator.status-unknown {
+  background: #888;
 }
 </style>

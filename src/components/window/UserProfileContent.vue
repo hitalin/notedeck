@@ -9,6 +9,7 @@ import type {
   NormalizedUserDetail,
   ServerAdapter,
 } from '@/adapters/types'
+import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
@@ -381,12 +382,14 @@ async function handlePosted(editedNoteId?: string) {
           </div>
 
           <!-- Avatar -->
-          <img
-            v-if="user.avatarUrl"
-            :src="user.avatarUrl"
+          <MkAvatar
+            :avatar-url="user.avatarUrl"
+            :decorations="user.avatarDecorations"
+            :size="120"
+            indicator
+            :online-status="user.onlineStatus"
             class="user-avatar"
           />
-          <div v-else class="user-avatar avatar-placeholder" />
 
           <!-- Banner actions -->
           <div class="banner-actions">
@@ -733,17 +736,9 @@ async function handlePosted(editedNoteId?: string) {
   position: absolute;
   top: 170px;
   left: 16px;
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  object-fit: cover;
   box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
   border: 4px solid var(--nd-bg);
   z-index: 2;
-}
-
-.avatar-placeholder {
-  background: var(--nd-buttonBg);
 }
 
 /* Mobile title (hidden on desktop) */
@@ -1079,8 +1074,8 @@ async function handlePosted(editedNoteId?: string) {
     top: 90px;
     left: 0;
     right: 0;
-    width: 92px;
-    height: 92px;
+    width: 92px !important;
+    height: 92px !important;
     margin: auto;
   }
 

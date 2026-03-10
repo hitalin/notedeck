@@ -323,8 +323,8 @@ defineExpose({
                   :title="acc.host"
                 />
                 <span
-                  class="nav-stream-dot"
-                  :class="getAccountStreamState(acc.id)"
+                  class="nav-online-indicator"
+                  :class="`status-${getAccountStreamState(acc.id)}`"
                 />
               </div>
               <span class="nav-label">@{{ acc.username }}@{{ acc.host }}</span>
@@ -520,27 +520,27 @@ defineExpose({
   right: -4px;
 }
 
-.nav-stream-dot {
+.nav-online-indicator {
   position: absolute;
-  bottom: -1px;
-  right: -3px;
-  width: 8px;
-  height: 8px;
+  bottom: 0;
+  left: 0;
+  width: 20%;
+  height: 20%;
   border-radius: 50%;
-  border: 1.5px solid var(--nd-navBg);
+  box-shadow: 0 0 0 2px var(--nd-navBg);
 }
 
-.nav-stream-dot.connected {
-  background: var(--nd-accent);
+.nav-online-indicator.status-connected {
+  background: #58d4c9;
 }
 
-.nav-stream-dot.reconnecting,
-.nav-stream-dot.initializing {
-  background: var(--nd-warn, #e5a400);
+.nav-online-indicator.status-reconnecting,
+.nav-online-indicator.status-initializing {
+  background: #e4bc48;
 }
 
-.nav-stream-dot.disconnected {
-  background: var(--nd-switchOffFg, #888);
+.nav-online-indicator.status-disconnected {
+  background: #ea5353;
 }
 
 /* Add account button */

@@ -253,6 +253,7 @@ export interface NormalizedUserDetail extends NormalizedUser {
   url?: string | null
   birthday?: string | null
   location?: string | null
+  onlineStatus?: 'online' | 'active' | 'offline' | 'unknown' | null
   pinnedNoteIds?: string[]
 }
 
