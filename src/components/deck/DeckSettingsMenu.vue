@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, nextTick, ref, watch } from 'vue'
+import AboutDialog from '@/components/common/AboutDialog.vue'
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
 import { useDeckStore } from '@/stores/deck'
@@ -29,6 +30,7 @@ const windowsStore = useWindowsStore()
 const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const showAbout = ref(false)
 
 // Theme install UI
 const showInstallInput = ref(false)
@@ -311,9 +313,10 @@ function syncScroll(e: Event) {
           {{ isInstalling ? 'インストール中...' : 'アップデート' }}
         </button>
       </div>
-      <div v-else class="version-info">v{{ appVersion }}</div>
+      <button v-else class="version-info" @click="showAbout = true">v{{ appVersion }}</button>
     </div>
   </Transition>
+  <AboutDialog :show="showAbout" @close="showAbout = false" />
 </template>
 
 <style scoped>
@@ -930,12 +933,21 @@ function syncScroll(e: Event) {
 }
 
 .version-info {
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
   text-align: center;
   padding: 4px 16px 8px;
   font-size: 0.75em;
   color: var(--nd-fg);
   opacity: 0.4;
-  user-select: text;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.version-info:hover {
+  opacity: 0.7;
 }
 
 .update-section {
