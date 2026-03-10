@@ -700,18 +700,18 @@ async function handlePosted(editedNoteId?: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 31px;
+  height: 31px;
   color: #fff;
   text-shadow: 0 0 8px #000;
   font-size: 16px;
 }
 
 .banner-follow-btn {
-  padding: 8px 16px;
-  min-height: 44px;
-  border-radius: 999px;
-  font-size: 0.85em;
+  padding: 0 8px 0 12px;
+  height: 31px;
+  border-radius: 32px;
+  font-size: 14px;
   font-weight: bold;
   color: #fff;
   background: var(--nd-accent);
@@ -727,7 +727,7 @@ async function handlePosted(editedNoteId?: string) {
 }
 
 .banner-follow-btn.following {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--nd-accent);
   color: #fff;
 }
 
