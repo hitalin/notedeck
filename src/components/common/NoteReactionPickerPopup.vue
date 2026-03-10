@@ -91,7 +91,7 @@ defineExpose({ open })
   width: 100%;
   border-radius: 16px 16px 0 0;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
 }
 
 /* Desktop popup transition */

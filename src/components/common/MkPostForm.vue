@@ -1943,8 +1943,8 @@ function onKeydown(e: KeyboardEvent) {
 @media (max-width: 600px) {
   .post-overlay {
     background: var(--nd-bg);
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
+    padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
     align-items: stretch;
   }
 

@@ -366,7 +366,7 @@ function primaryShortcut(cmd: Command): string | null {
   width: 100%;
   max-width: 600px;
   max-height: 70vh;
-  margin-top: calc(8px + env(safe-area-inset-top));
+  margin-top: calc(8px + var(--nd-safe-area-top, env(safe-area-inset-top)));
   margin-inline: 8px;
   display: flex;
   flex-direction: column;

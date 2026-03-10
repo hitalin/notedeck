@@ -257,7 +257,7 @@ function remove(id: string) {
 @media (max-width: 500px) {
   .profile-menu {
     position: fixed;
-    bottom: calc(50px + env(safe-area-inset-bottom));
+    bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
     left: 8px;
     right: 8px;
     max-width: none;

@@ -765,7 +765,7 @@ watch(
     justify-content: center;
     position: fixed;
     right: calc(16px + env(safe-area-inset-right));
-    bottom: calc(60px + env(safe-area-inset-bottom));
+    bottom: calc(60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
     z-index: 1000;
     width: 56px;
     height: 56px;
@@ -795,7 +795,7 @@ watch(
     align-items: stretch;
     flex: 0 0 auto;
     height: 50px;
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
     background: color-mix(in srgb, var(--nd-navBg) 80%, transparent);
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);

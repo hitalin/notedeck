@@ -229,7 +229,7 @@ function onWindowMouseDown() {
 
   .window-header {
     height: 46px;
-    padding-top: env(safe-area-inset-top);
+    padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
   }
 
   .window-btn {

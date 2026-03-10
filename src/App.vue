@@ -61,7 +61,7 @@ onMounted(() => {
   flex-direction: column;
   height: 100dvh;
   overflow: hidden;
-  padding-top: env(safe-area-inset-top);
+  padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
 }
 
 .app-content {

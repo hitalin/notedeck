@@ -228,7 +228,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
     left: 16px !important;
     right: 16px;
     top: auto !important;
-    bottom: calc(60px + env(safe-area-inset-bottom));
+    bottom: calc(60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
   }
 }
 </style>

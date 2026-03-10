@@ -437,7 +437,7 @@ setTimeout(() => inputRef.value?.focus(), 100)
 @media (max-width: 500px) {
   .ai-input-area {
     padding: 8px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    padding-bottom: calc(8px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
   }
 
   .ai-input {
