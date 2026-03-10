@@ -130,6 +130,18 @@ let unlistenQuickNote: (() => void) | null = null
 
 // Mobile: track active column for tab bar
 const activeColumnIndex = ref(0)
+const mobileNavRef = ref<HTMLElement | null>(null)
+
+watch(activeColumnIndex, () => {
+  nextTick(() => {
+    if (!mobileNavRef.value) return
+    // +1 to skip the menu button at index 0
+    const tab = mobileNavRef.value.children[activeColumnIndex.value + 1] as HTMLElement | undefined
+    if (tab) {
+      tab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+    }
+  })
+})
 const visibleColumns = computed(() =>
   deckStore.layout.flat().filter((id) => columnMap.value.has(id)),
 )
@@ -512,7 +524,7 @@ watch(
     </Transition>
 
     <!-- Mobile bottom nav (visible only on small screens via CSS) -->
-    <nav class="mobile-nav">
+    <nav ref="mobileNavRef" class="mobile-nav">
       <button class="_button mobile-tab mobile-menu-btn" @click="mobileDrawerOpen = !mobileDrawerOpen">
         <i class="ti ti-menu-2" />
       </button>
@@ -780,6 +792,14 @@ watch(
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
     border-top: 1px solid var(--nd-divider);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .mobile-nav::-webkit-scrollbar {
+    display: none;
   }
 
   .mobile-tab {
@@ -787,8 +807,10 @@ watch(
     display: flex;
     align-items: center;
     justify-content: center;
-    flex: 1;
+    flex: 0 0 auto;
+    min-width: 50px;
     min-height: 50px;
+    padding: 0 8px;
     font-size: 20px;
     color: var(--nd-fg);
     opacity: 0.45;
