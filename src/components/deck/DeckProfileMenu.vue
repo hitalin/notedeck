@@ -108,14 +108,14 @@ function remove(id: string) {
       </div>
 
       <div v-if="profiles.length === 0" class="profile-menu-empty">
-        保存されたプロフィールはありません
+        保存されたプロファイルはありません
       </div>
 
       <div class="profile-menu-divider" />
 
       <div class="profile-menu-item profile-menu-new" @click="createProfile">
         <i class="ti ti-plus" />
-        <span>新しいプロフィール</span>
+        <span>新しいプロファイル</span>
       </div>
 
     </div>

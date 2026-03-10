@@ -249,7 +249,7 @@ export const useDeckStore = defineStore('deck', () => {
     let needsSave = false
     for (const [i, profile] of profiles.entries()) {
       if (!profile.name || profile.name.trim() === '') {
-        profile.name = `プロフィール ${i + 1}`
+        profile.name = `プロファイル ${i + 1}`
         needsSave = true
       }
     }
@@ -386,7 +386,7 @@ export const useDeckStore = defineStore('deck', () => {
     syncCurrentToActiveProfile()
 
     const profiles = loadProfiles()
-    const autoName = name || `プロフィール ${profiles.length + 1}`
+    const autoName = name || `プロファイル ${profiles.length + 1}`
 
     const profile: DeckProfile = {
       id: genProfileId(),
