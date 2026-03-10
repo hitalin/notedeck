@@ -263,11 +263,11 @@ defineExpose({
             <div class="nav-menu-wrap">
               <button
                 class="_button nav-item"
-                title="プロフィール"
+                title="プロファイル"
                 @click.stop="emit('update:showProfileMenu', !props.showProfileMenu)"
               >
                 <i class="ti ti-layout" />
-                <span class="nav-label">プロフィール</span>
+                <span class="nav-label">プロファイル</span>
               </button>
               <DeckProfileMenu :show="props.showProfileMenu" @close="emit('update:showProfileMenu', false)" />
             </div>
