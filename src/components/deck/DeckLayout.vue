@@ -385,112 +385,116 @@ watch(
         @wheel="onColumnsWheel"
         @scroll="onColumnsScroll"
       >
-        <template v-for="col in resolvedColumns" :key="col.id">
-          <section
-            class="column-section"
-            :data-column-id="col.id"
-            :style="{ flexBasis: col.width + 'px' }"
-            @mousedown="deckStore.setActiveColumn(col.id)"
-          >
-            <DeckTimelineColumn
-              v-if="col.type === 'timeline'"
-              :column="col"
+        <TransitionGroup name="col-transition">
+          <template v-for="col in resolvedColumns" :key="col.id">
+            <section
+              :key="col.id"
+              class="column-section"
+              :data-column-id="col.id"
+              :style="{ flexBasis: col.width + 'px' }"
+              @mousedown="deckStore.setActiveColumn(col.id)"
+            >
+              <DeckTimelineColumn
+                v-if="col.type === 'timeline'"
+                :column="col"
+              />
+              <DeckListColumn
+                v-else-if="col.type === 'list'"
+                :column="col"
+              />
+              <DeckAntennaColumn
+                v-else-if="col.type === 'antenna'"
+                :column="col"
+              />
+              <DeckNotificationColumn
+                v-else-if="col.type === 'notifications'"
+                :column="col"
+              />
+              <DeckSearchColumn
+                v-else-if="col.type === 'search'"
+                :column="col"
+              />
+              <DeckFavoritesColumn
+                v-else-if="col.type === 'favorites'"
+                :column="col"
+              />
+              <DeckClipColumn
+                v-else-if="col.type === 'clip'"
+                :column="col"
+              />
+              <DeckChannelColumn
+                v-else-if="col.type === 'channel'"
+                :column="col"
+              />
+              <DeckUserColumn
+                v-else-if="col.type === 'user'"
+                :column="col"
+              />
+              <DeckMentionsColumn
+                v-else-if="col.type === 'mentions'"
+                :column="col"
+              />
+              <DeckSpecifiedColumn
+                v-else-if="col.type === 'specified'"
+                :column="col"
+              />
+              <DeckChatColumn
+                v-else-if="col.type === 'chat'"
+                :column="col"
+              />
+              <DeckWidgetColumn
+                v-else-if="col.type === 'widget'"
+                :column="col"
+              />
+              <DeckAiScriptColumn
+                v-else-if="col.type === 'aiscript'"
+                :column="col"
+              />
+              <DeckPlayColumn
+                v-else-if="col.type === 'play'"
+                :column="col"
+              />
+              <DeckPageColumn
+                v-else-if="col.type === 'page'"
+                :column="col"
+              />
+              <DeckAiColumn
+                v-else-if="col.type === 'ai'"
+                :column="col"
+              />
+              <DeckDriveColumn
+                v-else-if="col.type === 'drive'"
+                :column="col"
+              />
+              <DeckAnnouncementsColumn
+                v-else-if="col.type === 'announcements'"
+                :column="col"
+              />
+              <DeckGalleryColumn
+                v-else-if="col.type === 'gallery'"
+                :column="col"
+              />
+              <DeckExploreColumn
+                v-else-if="col.type === 'explore'"
+                :column="col"
+              />
+              <DeckFollowRequestsColumn
+                v-else-if="col.type === 'followRequests'"
+                :column="col"
+              />
+              <DeckAchievementsColumn
+                v-else-if="col.type === 'achievements'"
+                :column="col"
+              />
+            </section>
+            <div
+              :key="col.id + '-h'"
+              class="col-resize-handle"
+              :class="{ active: resizingColId === col.id }"
+              @mousedown="startColumnResize(col.id, $event)"
             />
-            <DeckListColumn
-              v-else-if="col.type === 'list'"
-              :column="col"
-            />
-            <DeckAntennaColumn
-              v-else-if="col.type === 'antenna'"
-              :column="col"
-            />
-            <DeckNotificationColumn
-              v-else-if="col.type === 'notifications'"
-              :column="col"
-            />
-            <DeckSearchColumn
-              v-else-if="col.type === 'search'"
-              :column="col"
-            />
-            <DeckFavoritesColumn
-              v-else-if="col.type === 'favorites'"
-              :column="col"
-            />
-            <DeckClipColumn
-              v-else-if="col.type === 'clip'"
-              :column="col"
-            />
-            <DeckChannelColumn
-              v-else-if="col.type === 'channel'"
-              :column="col"
-            />
-            <DeckUserColumn
-              v-else-if="col.type === 'user'"
-              :column="col"
-            />
-            <DeckMentionsColumn
-              v-else-if="col.type === 'mentions'"
-              :column="col"
-            />
-            <DeckSpecifiedColumn
-              v-else-if="col.type === 'specified'"
-              :column="col"
-            />
-            <DeckChatColumn
-              v-else-if="col.type === 'chat'"
-              :column="col"
-            />
-            <DeckWidgetColumn
-              v-else-if="col.type === 'widget'"
-              :column="col"
-            />
-            <DeckAiScriptColumn
-              v-else-if="col.type === 'aiscript'"
-              :column="col"
-            />
-            <DeckPlayColumn
-              v-else-if="col.type === 'play'"
-              :column="col"
-            />
-            <DeckPageColumn
-              v-else-if="col.type === 'page'"
-              :column="col"
-            />
-            <DeckAiColumn
-              v-else-if="col.type === 'ai'"
-              :column="col"
-            />
-            <DeckDriveColumn
-              v-else-if="col.type === 'drive'"
-              :column="col"
-            />
-            <DeckAnnouncementsColumn
-              v-else-if="col.type === 'announcements'"
-              :column="col"
-            />
-            <DeckGalleryColumn
-              v-else-if="col.type === 'gallery'"
-              :column="col"
-            />
-            <DeckExploreColumn
-              v-else-if="col.type === 'explore'"
-              :column="col"
-            />
-            <DeckFollowRequestsColumn
-              v-else-if="col.type === 'followRequests'"
-              :column="col"
-            />
-            <DeckAchievementsColumn
-              v-else-if="col.type === 'achievements'"
-              :column="col"
-            />
-          </section>
-          <div
-            class="col-resize-handle"
-            :class="{ active: resizingColId === col.id }"
-            @mousedown="startColumnResize(col.id, $event)"
-          />
-        </template>
+          </template>
+        </TransitionGroup>
       </div>
 
       <!-- Bottom bar (column management) -->
@@ -642,6 +646,29 @@ watch(
 
 .col-resize-handle.active {
   opacity: 0.6;
+}
+
+/* Column add/remove/move transitions */
+.col-transition-enter-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.col-transition-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.col-transition-enter-from {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.col-transition-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.col-transition-move {
+  transition: transform 0.3s ease;
 }
 
 /* ============================================================
