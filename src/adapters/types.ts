@@ -366,6 +366,10 @@ export interface ApiAdapter {
     contentType: string,
     isSensitive?: boolean,
   ): Promise<NormalizedDriveFile>
+  uploadFileFromPath(
+    filePath: string,
+    isSensitive?: boolean,
+  ): Promise<NormalizedDriveFile>
   getServerEmojis(): Promise<ServerEmoji[]>
   getPinnedReactions(): Promise<string[]>
   getUser(userId: string): Promise<NormalizedUser>

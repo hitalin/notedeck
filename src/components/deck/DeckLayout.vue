@@ -16,6 +16,7 @@ import {
 } from '@/commands/definitions'
 import { useCommandStore } from '@/commands/registry'
 import { useColumnDrag } from '@/composables/useColumnDrag'
+import { useFileDrop } from '@/composables/useFileDrop'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
 import { useNavigation } from '@/composables/useNavigation'
 import { provideScrollDirection } from '@/composables/useScrollDirection'
@@ -26,6 +27,7 @@ import { useDeckStore } from '@/stores/deck'
 import { usePluginsStore } from '@/stores/plugins'
 import { useServersStore } from '@/stores/servers'
 import { useUiStore } from '@/stores/ui'
+import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
   initDesktopNotifications,
@@ -80,6 +82,48 @@ const pluginsStore = usePluginsStore()
 const commandStore = useCommandStore()
 const uiStore = useUiStore()
 const columnDrag = useColumnDrag(deckStore)
+const pendingFilePaths = ref<string[]>([])
+
+const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i
+
+const fileDrop = useFileDrop((paths, position) => {
+  // If compose form is open, attach files to the post
+  if (showCompose.value) {
+    pendingFilePaths.value = paths
+    return
+  }
+
+  // Check what's under the drop position
+  const el = document.elementFromPoint(position.x, position.y)
+  const columnCell = el?.closest('[data-column-id]') as HTMLElement | null
+
+  if (columnCell) {
+    const colId = columnCell.dataset.columnId
+    const col = colId ? columnMap.value.get(colId) : undefined
+    // Drop on drive column → upload files
+    if (col?.type === 'drive' && col.accountId) {
+      const accountId = col.accountId
+      for (const path of paths) {
+        invoke('api_upload_file_from_path', {
+          accountId,
+          filePath: path,
+          isSensitive: false,
+        }).then(() => {
+          window.dispatchEvent(
+            new CustomEvent('drive-files-changed', { detail: { accountId } }),
+          )
+        })
+      }
+      return
+    }
+  }
+
+  // Drop on empty area with image files → set as wallpaper
+  if (!columnCell && paths.length === 1 && IMAGE_EXTENSIONS.test(paths[0] ?? '')) {
+    deckStore.setWallpaper(convertFileSrc(paths[0] ?? ''))
+    return
+  }
+})
 // Pre-build column lookup map to avoid O(n) find per column per render
 const columnMap = computed(() => {
   const map = new Map<string, DeckColumn>()
@@ -116,6 +160,7 @@ function openCompose() {
 
 function closeCompose() {
   showCompose.value = false
+  pendingFilePaths.value = []
 }
 
 function toggleAddMenu() {
@@ -605,11 +650,22 @@ watch(
         <MkPostForm
           v-if="showCompose && accountsStore.accounts.length > 0"
           :account-id="accountsStore.accounts[0]!.id"
+          :initial-file-paths="pendingFilePaths"
           @close="closeCompose"
           @posted="closeCompose"
         />
       </Transition>
     </Teleport>
+
+    <!-- File drop overlay -->
+    <Transition name="fade">
+      <div v-if="fileDrop.isDragging.value" class="file-drop-overlay">
+        <div class="file-drop-content">
+          <i class="ti ti-upload" />
+          <span>ファイルをドロップしてアップロード</span>
+        </div>
+      </div>
+    </Transition>
 
   </div>
 </template>
@@ -1001,5 +1057,41 @@ watch(
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.file-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.file-drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.file-drop-content .ti {
+  font-size: 48px;
+  opacity: 0.9;
 }
 </style>

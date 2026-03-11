@@ -2580,6 +2580,7 @@ dependencies = [
  "bytes",
  "futures-util",
  "lru",
+ "mime_guess",
  "notecli",
  "regex",
  "reqwest 0.12.28",

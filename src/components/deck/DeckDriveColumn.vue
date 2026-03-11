@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -151,6 +151,115 @@ const canGoUp = computed(() => {
   return detailFile.value !== null || folderStack.value.length > 0
 })
 
+// --- Selection mode ---
+const selectMode = ref(false)
+const selectedIds = ref(new Set<string>())
+
+function toggleSelectMode() {
+  selectMode.value = !selectMode.value
+  if (!selectMode.value) {
+    selectedIds.value = new Set()
+  }
+}
+
+function toggleFileSelection(fileId: string) {
+  const next = new Set(selectedIds.value)
+  if (next.has(fileId)) {
+    next.delete(fileId)
+  } else {
+    next.add(fileId)
+  }
+  selectedIds.value = next
+}
+
+function selectAll() {
+  selectedIds.value = new Set(files.value.map((f) => f.id))
+}
+
+function deselectAll() {
+  selectedIds.value = new Set()
+}
+
+const batchDeleting = ref(false)
+const batchDeleteError = ref<string | null>(null)
+
+async function batchDelete() {
+  if (!props.column.accountId || batchDeleting.value || selectedIds.value.size === 0) return
+  batchDeleting.value = true
+  batchDeleteError.value = null
+  const idsToDelete = [...selectedIds.value]
+  try {
+    for (const fileId of idsToDelete) {
+      await invoke('api_request', {
+        accountId: props.column.accountId,
+        endpoint: 'drive/files/delete',
+        params: { fileId },
+      })
+      files.value = files.value.filter((f) => f.id !== fileId)
+    }
+    selectedIds.value = new Set()
+    selectMode.value = false
+  } catch (e) {
+    batchDeleteError.value = AppError.from(e).message
+  } finally {
+    batchDeleting.value = false
+  }
+}
+
+function onFileClick(file: NormalizedDriveFile) {
+  if (selectMode.value) {
+    toggleFileSelection(file.id)
+  } else {
+    openDetail(file)
+  }
+}
+
+// --- File upload ---
+const fileInput = ref<HTMLInputElement | null>(null)
+const uploading = ref(false)
+
+function openFilePicker() {
+  fileInput.value?.click()
+}
+
+async function onFileSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (!input.files?.length || !props.column.accountId) return
+  uploading.value = true
+  try {
+    for (const file of input.files) {
+      const buf = await file.arrayBuffer()
+      await invoke('api_upload_file', {
+        accountId: props.column.accountId,
+        fileName: file.name,
+        fileData: [...new Uint8Array(buf)],
+        contentType: file.type || 'application/octet-stream',
+        isSensitive: false,
+      })
+    }
+    fetchDrive()
+  } finally {
+    uploading.value = false
+    input.value = ''
+  }
+}
+
+// Listen for external drive-files-changed events (e.g. from file drop)
+function onDriveFilesChanged(e: Event) {
+  const detail = (e as CustomEvent).detail
+  if (detail?.accountId === props.column.accountId) {
+    fetchDrive()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('drive-files-changed', onDriveFilesChanged)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('drive-files-changed', onDriveFilesChanged)
+})
+
 // Initial load
 fetchDrive()
 </script>
@@ -168,13 +277,27 @@ fetchDrive()
       <button v-if="folderStack.length > 1" class="_button header-refresh" title="ルート" @click.stop="goRoot">
         <i class="ti ti-home" />
       </button>
-      <button v-if="!detailFile" class="_button header-refresh" title="更新" :disabled="loading" @click.stop="fetchDrive()">
+      <button v-if="!detailFile" class="_button header-refresh" :class="{ 'header-btn-active': selectMode }" title="選択" @click.stop="toggleSelectMode">
+        <i class="ti ti-checkbox" />
+      </button>
+      <button v-if="!detailFile && !selectMode" class="_button header-refresh" title="アップロード" :disabled="uploading" @click.stop="openFilePicker">
+        <i class="ti ti-upload" />
+      </button>
+      <button v-if="!detailFile && !selectMode" class="_button header-refresh" title="更新" :disabled="loading" @click.stop="fetchDrive()">
         <i class="ti ti-refresh" :class="{ spin: loading }" />
       </button>
       <div v-if="account" class="header-account">
         <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
       </div>
     </template>
+
+    <input
+      ref="fileInput"
+      type="file"
+      multiple
+      style="display: none"
+      @change="onFileSelected"
+    />
 
     <!-- Detail view -->
     <template v-if="detailFile">
@@ -250,9 +373,6 @@ fetchDrive()
       <div class="drive-grid-scroll">
         <div v-if="loading" class="column-empty">読み込み中...</div>
         <div v-else-if="error" class="column-empty column-error">{{ error }}</div>
-        <div v-else-if="folders.length === 0 && files.length === 0" class="column-empty">
-          ファイルがありません
-        </div>
         <template v-else>
           <!-- Folders -->
           <button
@@ -267,12 +387,25 @@ fetchDrive()
           </button>
 
           <!-- File grid -->
-          <div v-if="files.length > 0" class="drive-grid">
+          <div class="drive-grid">
+            <button
+              v-if="!selectMode"
+              class="_button drive-grid-cell drive-upload-cell"
+              :disabled="uploading"
+              @click="openFilePicker"
+            >
+              <div class="drive-grid-thumb drive-upload-thumb">
+                <i v-if="uploading" class="ti ti-loader-2 spin" />
+                <i v-else class="ti ti-plus" />
+              </div>
+              <div class="drive-grid-label">アップロード</div>
+            </button>
             <button
               v-for="file in files"
               :key="file.id"
               class="_button drive-grid-cell"
-              @click="openDetail(file)"
+              :class="{ selected: selectMode && selectedIds.has(file.id) }"
+              @click="onFileClick(file)"
             >
               <div class="drive-grid-thumb">
                 <img
@@ -291,11 +424,33 @@ fetchDrive()
                 <div v-if="isVideo(file) && !file.isSensitive" class="drive-grid-badge">
                   <i class="ti ti-player-play" />
                 </div>
+                <div v-if="selectMode" class="drive-select-check" :class="{ checked: selectedIds.has(file.id) }">
+                  <i class="ti ti-check" />
+                </div>
               </div>
               <div class="drive-grid-label">{{ file.name }}</div>
             </button>
           </div>
         </template>
+      </div>
+
+      <!-- Selection action bar -->
+      <div v-if="selectMode" class="drive-action-bar">
+        <div class="drive-action-info">
+          <button class="_button drive-action-select-all" @click="selectedIds.size === files.length ? deselectAll() : selectAll()">
+            {{ selectedIds.size === files.length ? '全解除' : '全選択' }}
+          </button>
+          <span class="drive-action-count">{{ selectedIds.size }}件選択</span>
+        </div>
+        <div v-if="batchDeleteError" class="drive-action-error">{{ batchDeleteError }}</div>
+        <button
+          class="_button drive-action-delete"
+          :disabled="selectedIds.size === 0 || batchDeleting"
+          @click="batchDelete"
+        >
+          <i class="ti ti-trash" />
+          {{ batchDeleting ? '削除中...' : '削除' }}
+        </button>
       </div>
     </template>
   </DeckColumn>
@@ -458,6 +613,37 @@ fetchDrive()
   text-align: center;
 }
 
+.drive-upload-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: var(--nd-accent);
+  opacity: 0.6;
+  border: 2px dashed var(--nd-accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nd-accent) 5%, transparent);
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.drive-upload-cell:hover .drive-upload-thumb {
+  opacity: 1;
+  background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
+}
+
+.drive-upload-cell:disabled .drive-upload-thumb {
+  opacity: 0.3;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
 /* --- Detail view --- */
 .drive-detail-scroll {
   flex: 1;
@@ -565,5 +751,102 @@ fetchDrive()
 .drive-detail-error {
   font-size: 0.8em;
   color: var(--nd-love);
+}
+
+/* --- Selection mode --- */
+.header-btn-active {
+  color: var(--nd-accent) !important;
+  opacity: 1 !important;
+}
+
+.drive-select-check {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  font-size: 12px;
+  transition: all 0.15s;
+}
+
+.drive-select-check.checked {
+  background: var(--nd-accent);
+  border-color: var(--nd-accent);
+  color: #fff;
+}
+
+.drive-grid-cell.selected .drive-grid-thumb {
+  outline: 3px solid var(--nd-accent);
+  outline-offset: -3px;
+}
+
+.drive-action-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--nd-divider);
+  background: var(--nd-panelBg);
+}
+
+.drive-action-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drive-action-count {
+  font-size: 0.8em;
+  opacity: 0.6;
+}
+
+.drive-action-select-all {
+  font-size: 0.8em;
+  color: var(--nd-accent);
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.drive-action-select-all:hover {
+  background: var(--nd-buttonHoverBg);
+}
+
+.drive-action-delete {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nd-love) 15%, transparent);
+  color: var(--nd-love);
+  font-size: 0.8em;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.drive-action-delete:hover {
+  background: color-mix(in srgb, var(--nd-love) 25%, transparent);
+}
+
+.drive-action-delete:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.drive-action-error {
+  font-size: 0.75em;
+  color: var(--nd-love);
+  flex: 1;
+  text-align: center;
 }
 </style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
 import {
   getPluginHandlers,
@@ -23,6 +23,7 @@ const props = defineProps<{
   initialCw?: string
   initialVisibility?: string
   initialLocalOnly?: boolean
+  initialFilePaths?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -72,6 +73,7 @@ const {
   post,
   openFilePicker,
   onFileSelected,
+  uploadFilesFromPaths,
   removeFile,
   selectVisibility,
   noteModeLabel,
@@ -248,9 +250,20 @@ onMounted(async () => {
   if (props.initialVisibility)
     visibility.value = props.initialVisibility as typeof visibility.value
   if (props.initialLocalOnly) localOnly.value = true
+  if (props.initialFilePaths?.length) {
+    uploadFilesFromPaths(props.initialFilePaths)
+  }
   await nextTick()
   if (!props.inline) textareaRef.value?.focus()
 })
+
+// Watch for additional file drops while the form is open
+watch(
+  () => props.initialFilePaths,
+  (paths) => {
+    if (paths?.length) uploadFilesFromPaths(paths)
+  },
+)
 
 function onKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {

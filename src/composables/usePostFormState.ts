@@ -288,6 +288,26 @@ export function usePostFormState(
     }
   }
 
+  async function uploadFilesFromPaths(paths: string[]) {
+    if (!adapter || paths.length === 0) return
+
+    isUploading.value = true
+    error.value = null
+
+    try {
+      const uploadPromises = paths.map((path) =>
+        // biome-ignore lint/style/noNonNullAssertion: adapter is initialized before upload
+        adapter!.api.uploadFileFromPath(path),
+      )
+      const uploaded = await Promise.all(uploadPromises)
+      attachedFiles.value = [...attachedFiles.value, ...uploaded]
+    } catch (e) {
+      error.value = AppError.from(e).message
+    } finally {
+      isUploading.value = false
+    }
+  }
+
   function removeFile(fileId: string) {
     attachedFiles.value = attachedFiles.value.filter((f) => f.id !== fileId)
   }
@@ -433,6 +453,7 @@ export function usePostFormState(
     post,
     openFilePicker,
     onFileSelected,
+    uploadFilesFromPaths,
     removeFile,
     selectVisibility,
     noteModeLabel,

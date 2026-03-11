@@ -121,6 +121,17 @@ export class MisskeyApi implements ApiAdapter {
     })
   }
 
+  async uploadFileFromPath(
+    filePath: string,
+    isSensitive = false,
+  ): Promise<NormalizedDriveFile> {
+    return invoke('api_upload_file_from_path', {
+      accountId: this.accountId,
+      filePath,
+      isSensitive,
+    })
+  }
+
   async createFavorite(noteId: string): Promise<void> {
     return invoke('api_create_favorite', {
       accountId: this.accountId,

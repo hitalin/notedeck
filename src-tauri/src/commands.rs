@@ -679,6 +679,34 @@ pub async fn api_upload_file(
 }
 
 #[tauri::command]
+pub async fn api_upload_file_from_path(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, MisskeyClient>,
+    account_id: String,
+    file_path: String,
+    is_sensitive: bool,
+) -> Result<NormalizedDriveFile> {
+    let path = std::path::Path::new(&file_path);
+    let file_data = std::fs::read(path)
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to read file: {e}")))?;
+    if file_data.len() > MAX_UPLOAD_BYTES {
+        return Err(NoteDeckError::InvalidInput("File too large".to_string()));
+    }
+    let file_name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("file")
+        .to_string();
+    let content_type = mime_guess::from_path(path)
+        .first_or_octet_stream()
+        .to_string();
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .upload_file(&host, &token, &file_name, file_data, &content_type, is_sensitive)
+        .await
+}
+
+#[tauri::command]
 pub async fn api_create_favorite(
     db: State<'_, Arc<Database>>,
     client: State<'_, MisskeyClient>,
