@@ -56,6 +56,8 @@ const serverIcons = ref<Map<string, string>>(new Map())
 const error = ref<string | null>(null)
 let subscription: ChannelSubscription | null = null
 let adapter: ServerAdapter | null = null
+let pendingNotes: NormalizedNote[] = []
+let flushTimer: ReturnType<typeof setTimeout> | null = null
 
 async function startTimeline(tl: TimelineType) {
   const acc = account.value
@@ -67,6 +69,11 @@ async function startTimeline(tl: TimelineType) {
   // Clean up previous subscription
   subscription?.dispose()
   subscription = null
+  if (flushTimer) {
+    clearTimeout(flushTimer)
+    flushTimer = null
+  }
+  pendingNotes = []
   notes.value = []
   noteIds.clear()
   error.value = null
@@ -85,7 +92,7 @@ async function startTimeline(tl: TimelineType) {
     for (const n of fetched) noteIds.add(n.id)
     notes.value = fetched
 
-    // Streaming
+    // Streaming (batched to avoid excessive re-renders)
     adapter.stream.connect()
     subscription = adapter.stream.subscribeTimeline(
       tl,
@@ -93,9 +100,17 @@ async function startTimeline(tl: TimelineType) {
         if (noteIds.has(note.id)) return
         noteStore.put([note])
         noteIds.add(note.id)
-        const merged = sortByCreatedAtDesc([note, ...notes.value])
-        notes.value =
-          merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+        pendingNotes.push(note)
+        if (!flushTimer) {
+          flushTimer = setTimeout(() => {
+            flushTimer = null
+            if (pendingNotes.length === 0) return
+            const merged = sortByCreatedAtDesc([...pendingNotes, ...notes.value])
+            pendingNotes = []
+            notes.value =
+              merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+          }, 200)
+        }
       },
       {
         onNoteUpdated: (event: NoteUpdateEvent) => {
@@ -167,6 +182,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   subscription?.dispose()
+  if (flushTimer) {
+    clearTimeout(flushTimer)
+    flushTimer = null
+  }
 })
 </script>
 
@@ -180,9 +199,9 @@ onUnmounted(() => {
       />
 
       <!-- Current TL icon -->
-      <i :class="'ti ' + TL_TYPES.find(t => t.type === currentTimeline)?.icon" class="tl-header-icon" />
+      <i :class="'ti ' + TL_TYPES.find(t => t.type === currentTimeline)?.icon" class="tl-header-icon" data-tauri-drag-region />
 
-      <span class="header-title">{{ TL_TYPES.find(t => t.type === currentTimeline)?.label }}</span>
+      <span class="header-title" data-tauri-drag-region>{{ TL_TYPES.find(t => t.type === currentTimeline)?.label }}</span>
 
       <!-- Account indicator (matches main column header-meta) -->
       <button
