@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import type { ServerEmoji } from '@/adapters/types'
 import { emojiCharByCategory, unicodeEmojiCategories } from '@/data/emojilist'
 import { useEmojisStore } from '@/stores/emojis'
@@ -93,11 +93,13 @@ const searchResults = computed(() => {
     }
   }
 
-  // Unicode emoji search by name (we don't have name data, search by char matching)
-  // For now, limit unicode search results
+  // Unicode emoji: 名前データがないため文字一致のみ
   for (const [, emojis] of emojiCharByCategory) {
     for (const char of emojis) {
-      if (unicodeResults.length >= 100) break
+      if (char.includes(q)) {
+        unicodeResults.push(char)
+        if (unicodeResults.length >= 100) break
+      }
     }
     if (unicodeResults.length >= 100) break
   }
@@ -136,11 +138,9 @@ function pickPinnedOrRecent(reaction: string) {
   emit('pick', reaction)
 }
 
-function onMounted() {
+onMounted(() => {
   nextTick(() => searchInput.value?.focus())
-}
-
-defineExpose({ onMounted })
+})
 </script>
 
 <template>
@@ -174,6 +174,16 @@ defineExpose({ onMounted })
               @click="pickCustom(emoji.name)"
             >
               <img :src="emoji.url" :alt="emoji.name" class="picker-custom-img" loading="lazy" />
+            </button>
+          </div>
+          <div v-if="searchResults.unicode.length > 0" class="picker-grid">
+            <button
+              v-for="emoji in searchResults.unicode"
+              :key="emoji"
+              class="picker-emoji-btn"
+              @click="pickEmoji(emoji)"
+            >
+              <img :src="char2twemojiUrl(emoji)" :alt="emoji" class="picker-twemoji" decoding="async" loading="lazy" />
             </button>
           </div>
         </template>
