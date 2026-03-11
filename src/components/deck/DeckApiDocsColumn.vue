@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useThemeStore } from '@/stores/theme'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -8,6 +10,12 @@ const props = defineProps<{
 }>()
 
 const { columnThemeVars } = useColumnTheme(() => props.column)
+const themeStore = useThemeStore()
+
+const iframeSrc = computed(() => {
+  const isDark = !themeStore.currentSource?.kind.includes('light')
+  return `http://127.0.0.1:19820/api/docs#${isDark ? 'dark' : 'light'}`
+})
 </script>
 
 <template>
@@ -22,7 +30,7 @@ const { columnThemeVars } = useColumnTheme(() => props.column)
 
     <iframe
       class="docs-frame"
-      src="http://127.0.0.1:19820/api/docs"
+      :src="iframeSrc"
       title="API Documentation"
     />
   </DeckColumn>

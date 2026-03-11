@@ -905,8 +905,17 @@ async fn openapi_docs() -> axum::response::Html<&'static str> {
 <html><head>
 <title>NoteDeck API</title>
 <meta charset="utf-8">
+<script>
+(function() {
+  var dark = location.hash !== '#light';
+  var el = document.createElement('script');
+  el.id = 'api-reference';
+  el.dataset.url = '/api/openapi.json';
+  el.dataset.configuration = JSON.stringify({ darkMode: dark });
+  document.currentScript.after(el);
+})();
+</script>
 </head><body>
-<script id="api-reference" data-url="/api/openapi.json"></script>
 <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
 </body></html>"#,
     )
