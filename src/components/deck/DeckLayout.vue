@@ -255,14 +255,29 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   aiscript: 'code',
   play: 'player-play',
   page: 'note',
+  ai: 'sparkles',
   announcements: 'speakerphone',
+  drive: 'cloud',
+  explore: 'compass',
   gallery: 'icons',
   followRequests: 'user-plus',
+  achievements: 'medal',
+}
+
+const TL_ICONS: Record<string, string> = {
+  home: 'home',
+  local: 'planet',
+  social: 'rocket',
+  global: 'whirl',
 }
 
 function columnIcon(colId: string): string {
   const col = columnMap.value.get(colId)
-  return MOBILE_TAB_ICONS[col?.type ?? ''] ?? MOBILE_TAB_ICONS.timeline ?? ''
+  if (!col) return MOBILE_TAB_ICONS.timeline ?? ''
+  if (col.type === 'timeline' && col.tl) {
+    return TL_ICONS[col.tl] ?? MOBILE_TAB_ICONS.timeline ?? ''
+  }
+  return MOBILE_TAB_ICONS[col.type] ?? MOBILE_TAB_ICONS.timeline ?? ''
 }
 
 const hasMultipleAccounts = computed(() => accountsStore.accounts.length > 1)
