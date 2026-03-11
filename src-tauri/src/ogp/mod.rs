@@ -189,13 +189,16 @@ impl OgpCache {
             let cache = self.cache.lock().await;
             if let Some(entry) = cache.get(url) {
                 if entry.fetched_at.elapsed() < CACHE_TTL {
-                    return Ok(entry.data.clone());
+                    let mut data = entry.data.clone();
+                    Self::sanitize_player(&mut data);
+                    return Ok(data);
                 }
             }
         }
 
         // Disk cache
-        if let Some(data) = self.load_from_disk(url) {
+        if let Some(mut data) = self.load_from_disk(url) {
+            Self::sanitize_player(&mut data);
             self.store_mem_cache(url, &data).await;
             return Ok(data);
         }
@@ -217,7 +220,10 @@ impl OgpCache {
         inflight.insert(url.to_string(), rx);
         drop(inflight);
 
-        let result = fetch_fn(self).await;
+        let result = fetch_fn(self).await.map(|mut data| {
+            Self::sanitize_player(&mut data);
+            data
+        });
 
         if let Ok(ref data) = result {
             self.store_cache(url, data).await;
@@ -309,6 +315,23 @@ impl OgpCache {
             url: server_data.url.unwrap_or_else(|| url.to_string()),
             sensitive: server_data.sensitive.unwrap_or(false),
         })
+    }
+
+    /// Player URLs that are known to be broken (e.g. Cloudflare challenge).
+    const BLOCKED_PLAYER_HOSTS: &'static [&'static str] = &["embed.pixiv.net"];
+
+    /// Remove player if its URL belongs to a blocked host.
+    fn sanitize_player(data: &mut SummaryData) {
+        if let Some(ref player) = data.player {
+            if let Ok(u) = url::Url::parse(&player.url) {
+                if Self::BLOCKED_PLAYER_HOSTS
+                    .iter()
+                    .any(|h| u.host_str() == Some(h))
+                {
+                    data.player = None;
+                }
+            }
+        }
     }
 
     /// Resolve URL summary with priority: plugins → server → direct HTML parse.
