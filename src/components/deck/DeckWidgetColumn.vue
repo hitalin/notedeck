@@ -138,6 +138,8 @@ function removeWidget(widgetId: string) {
   padding: 6px 10px;
   border-bottom: 1px solid var(--nd-divider);
   font-size: 0.85em;
+  background: var(--nd-panelHeaderBg);
+  color: var(--nd-panelHeaderFg);
 }
 
 .widget-label {
@@ -229,6 +231,17 @@ function removeWidget(widgetId: string) {
 .menu-item.cancel {
   justify-content: center;
   opacity: 0.5;
+}
+
+/* ウィジェットカラムのヘッダーはプレーンに（Misskey本家準拠） */
+:deep(.column-header) {
+  background: var(--nd-panel);
+  box-shadow: none;
+  border-bottom: 1px solid var(--nd-divider);
+}
+
+:deep(.color-indicator) {
+  display: none;
 }
 
 .menu-section-label {
