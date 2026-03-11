@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
 import { isSafeUrl } from '@/utils/url'
 
@@ -8,13 +8,39 @@ function safeMediaSrc(url: string | null | undefined): string | undefined {
   return isSafeUrl(url) ? url : undefined
 }
 
-defineProps<{
+const props = defineProps<{
   files: NormalizedDriveFile[]
 }>()
 
 const revealedIds = ref(new Set<string>())
 const loadedIds = ref(new Set<string>())
 const lightboxFile = ref<NormalizedDriveFile | null>(null)
+
+function isImage(file: NormalizedDriveFile): boolean {
+  return file.type.startsWith('image/')
+}
+
+function isVideo(file: NormalizedDriveFile): boolean {
+  return file.type.startsWith('video/')
+}
+
+function isAudio(file: NormalizedDriveFile): boolean {
+  return file.type.startsWith('audio/')
+}
+
+function isPreviewable(file: NormalizedDriveFile): boolean {
+  return isImage(file) || isVideo(file)
+}
+
+const previewableFiles = computed(() => props.files.filter(isPreviewable))
+const audioFiles = computed(() => props.files.filter(isAudio))
+const otherFiles = computed(() =>
+  props.files.filter((f) => !isPreviewable(f) && !isAudio(f)),
+)
+const previewableCount = computed(() => {
+  const c = previewableFiles.value.length
+  return c <= 4 ? c : 'many'
+})
 
 function onImageLoaded(fileId: string) {
   const next = new Set(loadedIds.value)
@@ -42,24 +68,44 @@ function openLightbox(file: NormalizedDriveFile, e: Event) {
 function closeLightbox() {
   lightboxFile.value = null
 }
-
-function isImage(file: NormalizedDriveFile): boolean {
-  return file.type.startsWith('image/')
-}
-
-function isVideo(file: NormalizedDriveFile): boolean {
-  return file.type.startsWith('video/')
-}
-
-function isAudio(file: NormalizedDriveFile): boolean {
-  return file.type.startsWith('audio/')
-}
 </script>
 
 <template>
-  <div class="media-grid" :class="`media-count-${files.length <= 4 ? files.length : 'many'}`">
+  <!-- Banner: Audio files (outside grid, like Misskey's MkMediaBanner) -->
+  <div v-for="file in audioFiles" :key="file.id" class="media-banner">
+    <div v-if="file.isSensitive && !revealedIds.has(file.id)" class="banner-sensitive" @click="toggleSensitive(file, $event)">
+      <svg viewBox="0 0 24 24" width="16" height="16">
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+            stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+        <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      <b>NSFW</b>
+      <span>{{ file.name }}</span>
+    </div>
+    <div v-else class="banner-audio">
+      <audio controls preload="metadata" class="audio-player" @click.stop>
+        <source :src="safeMediaSrc(file.url)">
+      </audio>
+      <span class="audio-name">{{ file.name }}</span>
+    </div>
+  </div>
+
+  <!-- Banner: Other files (download link, like Misskey's MkMediaBanner) -->
+  <div v-for="file in otherFiles" :key="file.id" class="media-banner">
+    <a :href="safeMediaSrc(file.url)" :download="file.name" class="banner-download" @click.stop>
+      <svg viewBox="0 0 24 24" width="20" height="20">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+        <polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+        <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      <b>{{ file.name }}</b>
+    </a>
+  </div>
+
+  <!-- Grid: Previewable files only (image + video) -->
+  <div v-if="previewableFiles.length > 0" class="media-grid" :class="`media-count-${previewableCount}`">
     <div
-      v-for="file in files"
+      v-for="file in previewableFiles"
       :key="file.id"
       class="media-cell"
       :class="{ 'is-sensitive': file.isSensitive && !revealedIds.has(file.id), 'is-loaded': loadedIds.has(file.id) }"
@@ -81,28 +127,9 @@ function isAudio(file: NormalizedDriveFile): boolean {
           :src="safeMediaSrc(file.url)"
           class="media-video"
           preload="metadata"
+          controls
           @click.stop
         />
-        <div class="media-badge">VIDEO</div>
-      </template>
-      <template v-else-if="isAudio(file)">
-        <div class="media-audio-placeholder">
-          <svg viewBox="0 0 24 24" width="32" height="32">
-            <path d="M9 18V5l12-2v13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-            <circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="2" fill="none" />
-            <circle cx="18" cy="16" r="3" stroke="currentColor" stroke-width="2" fill="none" />
-          </svg>
-          <span>{{ file.name }}</span>
-        </div>
-      </template>
-      <template v-else>
-        <div class="media-file-placeholder">
-          <svg viewBox="0 0 24 24" width="28" height="28">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" fill="none" />
-            <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" fill="none" />
-          </svg>
-          <span>{{ file.name }}</span>
-        </div>
       </template>
 
       <!-- NSFW overlay -->
@@ -113,7 +140,7 @@ function isAudio(file: NormalizedDriveFile): boolean {
       >
         <svg viewBox="0 0 24 24" width="24" height="24">
           <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-            stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+              stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
           <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
         </svg>
         <span>NSFW</span>
@@ -162,6 +189,74 @@ function isAudio(file: NormalizedDriveFile): boolean {
 </template>
 
 <style scoped>
+/* Banner: Audio & Other files (like Misskey's MkMediaBanner) */
+.media-banner {
+  margin-top: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 0.5px solid var(--nd-border, rgba(128, 128, 128, 0.2));
+}
+
+.banner-audio {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+}
+
+.audio-player {
+  width: 100%;
+  height: 32px;
+}
+
+.audio-name {
+  font-size: 0.75em;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.banner-sensitive {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #111;
+  color: #fff;
+  font-size: 0.8em;
+  cursor: pointer;
+}
+
+.banner-sensitive span {
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.banner-download {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.banner-download b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.banner-download:hover {
+  background: var(--nd-bg-hover, rgba(128, 128, 128, 0.1));
+}
+
+/* Grid: Image + Video */
 .media-grid {
   display: grid;
   gap: 8px;
@@ -247,35 +342,6 @@ function isAudio(file: NormalizedDriveFile): boolean {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.media-badge {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.7em;
-  font-weight: bold;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
-}
-
-.media-audio-placeholder,
-.media-file-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 100%;
-  min-height: 80px;
-  padding: 16px;
-  color: var(--nd-fg);
-  opacity: 0.6;
-  font-size: 0.8em;
-  text-align: center;
-  word-break: break-all;
 }
 
 /* NSFW overlay */
