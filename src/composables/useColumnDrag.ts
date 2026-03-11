@@ -92,9 +92,7 @@ export function useColumnDrag(deckStore: DeckStore) {
       return
     }
 
-    const section = el.closest(
-      '.column-section[data-column-id]',
-    ) as HTMLElement | null
+    const section = el.closest('[data-column-id]') as HTMLElement | null
     if (!section) {
       dropTarget.value = null
       return

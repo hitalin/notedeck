@@ -89,19 +89,6 @@ const columnMap = computed(() => {
   return map
 })
 
-// Flatten layout into resolved column objects (avoids repeated Map.get in template)
-const resolvedColumns = computed(() => {
-  const map = columnMap.value
-  const result: DeckColumn[] = []
-  for (const group of deckStore.layout) {
-    for (const colId of group) {
-      const col = map.get(colId)
-      if (col) result.push(col)
-    }
-  }
-  return result
-})
-
 const navbarRef = ref<InstanceType<typeof DeckNavbar> | null>(null)
 const showAddMenu = ref(false)
 const showCompose = ref(false)
@@ -333,20 +320,20 @@ function onVisibilityChange() {
   }
 }
 
-// Re-observe column sections when layout changes
+// Re-observe column cells when layout changes
 watch(
-  resolvedColumns,
+  () => deckStore.layout,
   () => {
     nextTick(() => {
       if (!columnsRef.value) return
-      for (const section of columnsRef.value.querySelectorAll<HTMLElement>(
-        '.column-section[data-column-id]',
+      for (const cell of columnsRef.value.querySelectorAll<HTMLElement>(
+        '.stack-cell[data-column-id]',
       )) {
-        colVisibility.observe(section)
+        colVisibility.observe(cell)
       }
     })
   },
-  { flush: 'post', immediate: true },
+  { flush: 'post', immediate: true, deep: true },
 )
 
 // Scroll to column when activeColumnId changes via keyboard navigation
@@ -355,7 +342,7 @@ watch(
   (id) => {
     if (!id || !columnsRef.value) return
     const el = columnsRef.value.querySelector(
-      `.column-section[data-column-id="${CSS.escape(id)}"]`,
+      `.stack-cell[data-column-id="${CSS.escape(id)}"]`,
     )
     if (el)
       el.scrollIntoView({
@@ -394,113 +381,122 @@ watch(
         @wheel="onColumnsWheel"
         @scroll="onColumnsScroll"
       >
-        <template v-for="col in resolvedColumns" :key="col.id">
+        <template v-for="group in deckStore.layout" :key="group.join('-')">
           <section
             class="column-section"
-            :class="{ 'drag-source': columnDrag.dragColumnId.value === col.id }"
-            :data-column-id="col.id"
-            :data-drop-zone="columnDrag.dropTarget.value?.columnId === col.id ? columnDrag.dropTarget.value.position : undefined"
-            :style="{ flexBasis: col.width + 'px' }"
-            @mousedown="deckStore.setActiveColumn(col.id)"
-            @pointerdown="onColumnPointerDown(col.id, $event)"
+            :class="{ stacked: group.length > 1 }"
+            :style="{ flexBasis: (columnMap.get(group[0]!)?.width ?? 400) + 'px' }"
           >
-            <DeckTimelineColumn
-              v-if="col.type === 'timeline'"
-              :column="col"
-            />
-            <DeckListColumn
-              v-else-if="col.type === 'list'"
-              :column="col"
-            />
-            <DeckAntennaColumn
-              v-else-if="col.type === 'antenna'"
-              :column="col"
-            />
-            <DeckNotificationColumn
-              v-else-if="col.type === 'notifications'"
-              :column="col"
-            />
-            <DeckSearchColumn
-              v-else-if="col.type === 'search'"
-              :column="col"
-            />
-            <DeckFavoritesColumn
-              v-else-if="col.type === 'favorites'"
-              :column="col"
-            />
-            <DeckClipColumn
-              v-else-if="col.type === 'clip'"
-              :column="col"
-            />
-            <DeckChannelColumn
-              v-else-if="col.type === 'channel'"
-              :column="col"
-            />
-            <DeckUserColumn
-              v-else-if="col.type === 'user'"
-              :column="col"
-            />
-            <DeckMentionsColumn
-              v-else-if="col.type === 'mentions'"
-              :column="col"
-            />
-            <DeckSpecifiedColumn
-              v-else-if="col.type === 'specified'"
-              :column="col"
-            />
-            <DeckChatColumn
-              v-else-if="col.type === 'chat'"
-              :column="col"
-            />
-            <DeckWidgetColumn
-              v-else-if="col.type === 'widget'"
-              :column="col"
-            />
-            <DeckAiScriptColumn
-              v-else-if="col.type === 'aiscript'"
-              :column="col"
-            />
-            <DeckPlayColumn
-              v-else-if="col.type === 'play'"
-              :column="col"
-            />
-            <DeckPageColumn
-              v-else-if="col.type === 'page'"
-              :column="col"
-            />
-            <DeckAiColumn
-              v-else-if="col.type === 'ai'"
-              :column="col"
-            />
-            <DeckDriveColumn
-              v-else-if="col.type === 'drive'"
-              :column="col"
-            />
-            <DeckAnnouncementsColumn
-              v-else-if="col.type === 'announcements'"
-              :column="col"
-            />
-            <DeckGalleryColumn
-              v-else-if="col.type === 'gallery'"
-              :column="col"
-            />
-            <DeckExploreColumn
-              v-else-if="col.type === 'explore'"
-              :column="col"
-            />
-            <DeckFollowRequestsColumn
-              v-else-if="col.type === 'followRequests'"
-              :column="col"
-            />
-            <DeckAchievementsColumn
-              v-else-if="col.type === 'achievements'"
-              :column="col"
-            />
+            <div
+              v-for="colId in group"
+              :key="colId"
+              class="stack-cell"
+              :class="{ 'drag-source': columnDrag.dragColumnId.value === colId }"
+              :data-column-id="colId"
+              :data-drop-zone="columnDrag.dropTarget.value?.columnId === colId ? columnDrag.dropTarget.value.position : undefined"
+              @mousedown="deckStore.setActiveColumn(colId)"
+              @pointerdown="onColumnPointerDown(colId, $event)"
+            >
+              <template v-if="columnMap.get(colId)">
+                <DeckTimelineColumn
+                  v-if="columnMap.get(colId)!.type === 'timeline'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckListColumn
+                  v-else-if="columnMap.get(colId)!.type === 'list'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckAntennaColumn
+                  v-else-if="columnMap.get(colId)!.type === 'antenna'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckNotificationColumn
+                  v-else-if="columnMap.get(colId)!.type === 'notifications'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckSearchColumn
+                  v-else-if="columnMap.get(colId)!.type === 'search'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckFavoritesColumn
+                  v-else-if="columnMap.get(colId)!.type === 'favorites'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckClipColumn
+                  v-else-if="columnMap.get(colId)!.type === 'clip'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckChannelColumn
+                  v-else-if="columnMap.get(colId)!.type === 'channel'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckUserColumn
+                  v-else-if="columnMap.get(colId)!.type === 'user'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckMentionsColumn
+                  v-else-if="columnMap.get(colId)!.type === 'mentions'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckSpecifiedColumn
+                  v-else-if="columnMap.get(colId)!.type === 'specified'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckChatColumn
+                  v-else-if="columnMap.get(colId)!.type === 'chat'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckWidgetColumn
+                  v-else-if="columnMap.get(colId)!.type === 'widget'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckAiScriptColumn
+                  v-else-if="columnMap.get(colId)!.type === 'aiscript'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckPlayColumn
+                  v-else-if="columnMap.get(colId)!.type === 'play'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckPageColumn
+                  v-else-if="columnMap.get(colId)!.type === 'page'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckAiColumn
+                  v-else-if="columnMap.get(colId)!.type === 'ai'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckDriveColumn
+                  v-else-if="columnMap.get(colId)!.type === 'drive'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckAnnouncementsColumn
+                  v-else-if="columnMap.get(colId)!.type === 'announcements'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckGalleryColumn
+                  v-else-if="columnMap.get(colId)!.type === 'gallery'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckExploreColumn
+                  v-else-if="columnMap.get(colId)!.type === 'explore'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckFollowRequestsColumn
+                  v-else-if="columnMap.get(colId)!.type === 'followRequests'"
+                  :column="columnMap.get(colId)!"
+                />
+                <DeckAchievementsColumn
+                  v-else-if="columnMap.get(colId)!.type === 'achievements'"
+                  :column="columnMap.get(colId)!"
+                />
+              </template>
+            </div>
           </section>
           <div
             class="col-resize-handle"
-            :class="{ active: resizingColId === col.id }"
-            @mousedown="startColumnResize(col.id, $event)"
+            :class="{ active: resizingColId === group[0] }"
+            @mousedown="startColumnResize(group[0]!, $event)"
           />
         </template>
       </div>
@@ -639,16 +635,30 @@ watch(
   height: 100%;
 }
 
-/* Column drag feedback */
-.column-section {
-  position: relative;
+/* Stacked columns (vertical split) */
+.column-section.stacked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nd-columnGap, 6px);
 }
 
-.column-section.drag-source {
+.stack-cell {
+  position: relative;
+  height: 100%;
+}
+
+.column-section.stacked .stack-cell {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+/* Column drag feedback */
+.stack-cell.drag-source {
   opacity: 0.4;
 }
 
-.column-section[data-drop-zone]::after {
+.stack-cell[data-drop-zone]::after {
   content: '';
   position: absolute;
   left: 0;
@@ -658,13 +668,13 @@ watch(
   border-radius: 10px;
 }
 
-.column-section[data-drop-zone="swap"]::after {
+.stack-cell[data-drop-zone="swap"]::after {
   inset: 0;
   background: color-mix(in srgb, var(--nd-accent) 20%, transparent);
   border: 2px solid var(--nd-accent);
 }
 
-.column-section[data-drop-zone="above"]::after {
+.stack-cell[data-drop-zone="above"]::after {
   top: 0;
   height: 50%;
   background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
@@ -672,7 +682,7 @@ watch(
   border-radius: 10px 10px 0 0;
 }
 
-.column-section[data-drop-zone="below"]::after {
+.stack-cell[data-drop-zone="below"]::after {
   bottom: 0;
   height: 50%;
   background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
