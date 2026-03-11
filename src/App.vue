@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useCommandStore } from '@/commands/registry'
 import TitleBarComponent from '@/components/common/TitleBar.vue'
 import { useKeyboard } from '@/composables/useKeyboard'
+import { listenPipEvents } from '@/composables/usePipWindow'
 import { useTheme } from '@/composables/useTheme'
+import { useWindowsStore } from '@/stores/windows'
 import { useUiStore } from '@/stores/ui'
 
 const { isTauri, isDesktop } = useUiStore()
+const route = useRoute()
+const isPipWindow = computed(() => route.meta.pip === true)
 
 const TitleBar = isDesktop ? TitleBarComponent : null
 
@@ -23,21 +28,40 @@ useTheme()
 const { init: initKeyboard } = useKeyboard()
 initKeyboard()
 
-onMounted(() => {
+// Listen for PiP IPC events (main window only)
+let cleanupPipListener: (() => void) | null = null
+
+onMounted(async () => {
   if (isTauri) {
     import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
       getCurrentWindow()
         .show()
         .catch(() => {})
     })
+
+    // Set up PiP event listener in main window
+    if (!isPipWindow.value) {
+      const windowsStore = useWindowsStore()
+      cleanupPipListener = await listenPipEvents({
+        onOpenNote: async (accountId, noteId) => {
+          windowsStore.open('note-detail', { accountId, noteId })
+          const { getCurrentWindow } = await import('@tauri-apps/api/window')
+          await getCurrentWindow().setFocus()
+        },
+      }).catch(() => null)
+    }
   }
+})
+
+onUnmounted(() => {
+  cleanupPipListener?.()
 })
 </script>
 
 <template>
   <div class="app-root">
     <template v-if="isTauri">
-      <TitleBar v-if="isDesktop" />
+      <TitleBar v-if="isDesktop && !isPipWindow" />
       <div class="app-content">
         <router-view />
       </div>
@@ -47,11 +71,13 @@ onMounted(() => {
       <p>Run <code>pnpm tauri:dev</code> instead of <code>pnpm dev</code>.</p>
     </div>
 
-    <DeckWindowLayer />
+    <template v-if="!isPipWindow">
+      <DeckWindowLayer />
 
-    <Teleport to="body">
-      <CommandPalette v-if="commandStore.isOpen && !isDesktop" />
-    </Teleport>
+      <Teleport to="body">
+        <CommandPalette v-if="commandStore.isOpen && !isDesktop" />
+      </Teleport>
+    </template>
   </div>
 </template>
 

@@ -28,6 +28,12 @@ export const router = createRouter({
       props: true,
     },
     {
+      path: '/pip',
+      name: 'pip',
+      component: () => import('@/views/PipPage.vue'),
+      meta: { pip: true },
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('@/views/NotFoundPage.vue'),
