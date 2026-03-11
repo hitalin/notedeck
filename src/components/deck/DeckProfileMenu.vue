@@ -266,18 +266,8 @@ function remove(id: string) {
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
   }
 
-  .profile-menu-item {
-    padding: 10px 16px;
-    min-height: 44px;
-  }
-
   .profile-menu-action {
     display: flex;
-    min-width: 44px;
-    min-height: 44px;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
   }
 
   .profile-menu-enter-from,
