@@ -22,6 +22,7 @@ import {
   saveDraft,
 } from '@/composables/useDrafts'
 import { useAccountsStore } from '@/stores/accounts'
+import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import {
@@ -44,6 +45,7 @@ export function usePostFormState(
   fileInput: Ref<HTMLInputElement | null>,
 ) {
   const accountsStore = useAccountsStore()
+  const emojisStore = useEmojisStore()
   const serversStore = useServersStore()
   const themeStore = useThemeStore()
 
@@ -107,6 +109,7 @@ export function usePostFormState(
     try {
       const serverInfo = await serversStore.getServerInfo(acc.host)
       adapter = createAdapter(serverInfo, acc.id)
+      emojisStore.ensureLoaded(acc.host, () => adapter!.api.getServerEmojis())
       supportsScheduledNotes.value = serverInfo.features.scheduledNotes === true
     } catch (e) {
       error.value = AppError.from(e).message
