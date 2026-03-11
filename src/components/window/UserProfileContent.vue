@@ -191,7 +191,7 @@ async function openQrCode() {
 
   const container = qrCodeContainerEl.value
   if (!container) return
-  container.innerHTML = ''
+  container.replaceChildren()
 
   const username = user.value.username
   const host = user.value.host || ''

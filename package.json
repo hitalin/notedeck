@@ -36,6 +36,7 @@
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.10.0",
     "@vueuse/core": "^14.2.1",
+    "dompurify": "^3.3.3",
     "json5": "^2.2.3",
     "pinia": "^3.0.3",
     "qr-code-styling": "^1.9.2",
