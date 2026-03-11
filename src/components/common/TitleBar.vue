@@ -2,7 +2,7 @@
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
 import { defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
 import { useCommandStore } from '@/commands/registry'
-import { openPipWindow } from '@/composables/usePipWindow'
+import { openPipWindow, closePipWindow, isPipOpen } from '@/composables/usePipWindow'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 
@@ -61,7 +61,6 @@ async function close() {
 }
 
 async function toggleMobileSize() {
-  const factor = await appWindow.scaleFactor()
   if (isMobileSize.value) {
     if (savedDesktopSize) {
       await appWindow.setSize(
@@ -72,6 +71,11 @@ async function toggleMobileSize() {
     }
     savedDesktopSize = null
   } else {
+    // Unmaximize first if maximized
+    if (isMaximized.value) {
+      await appWindow.unmaximize()
+    }
+    const factor = await appWindow.scaleFactor()
     const current = await appWindow.innerSize()
     savedDesktopSize = {
       width: current.width / factor,
@@ -82,8 +86,11 @@ async function toggleMobileSize() {
   await appWindow.center()
 }
 
-async function launchPip() {
-  // Use active column's account & timeline, fallback to first account
+async function togglePip() {
+  if (isPipOpen()) {
+    await closePipWindow()
+    return
+  }
   const col = deckStore.activeColumnId
     ? deckStore.columns.find((c) => c.id === deckStore.activeColumnId)
     : null
@@ -129,7 +136,7 @@ async function launchPip() {
       <button
         class="titlebar-btn titlebar-window-btn"
         title="ピクチャーインピクチャー"
-        @click="launchPip"
+        @click="togglePip"
       >
         <i class="ti ti-picture-in-picture" />
       </button>
