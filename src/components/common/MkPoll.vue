@@ -66,7 +66,7 @@ function formatExpiry(iso: string): string {
   border-radius: 6px;
   overflow: hidden;
   background: var(--nd-buttonBg);
-  min-height: 44px;
+  min-height: 35px;
   display: flex;
   align-items: center;
 }
@@ -92,7 +92,7 @@ function formatExpiry(iso: string): string {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 8px 12px;
+  padding: 4px 12px;
 }
 
 .poll-text {
