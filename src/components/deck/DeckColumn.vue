@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useDeckStore } from '@/stores/deck'
 
 const props = defineProps<{
@@ -15,8 +15,6 @@ const props = defineProps<{
 const emit = defineEmits<{ 'header-click': [] }>()
 
 const deckStore = useDeckStore()
-const dragging = ref(false)
-const dragHover = ref(false)
 
 function close() {
   deckStore.removeColumn(props.columnId)
@@ -29,64 +27,15 @@ const isMuted = computed(
 function toggleMute() {
   deckStore.updateColumn(props.columnId, { soundMuted: !isMuted.value })
 }
-
-function hasColumnData(dt: DataTransfer): boolean {
-  return Array.from(dt.types).includes('text/x-nd-column')
-}
-
-function onDragStart(e: DragEvent) {
-  if (!e.dataTransfer) return
-  e.dataTransfer.effectAllowed = 'move'
-  e.dataTransfer.setData('text/x-nd-column', props.columnId)
-  dragging.value = true
-}
-
-function onDragEnd() {
-  dragging.value = false
-}
-
-function onDragOver(e: DragEvent) {
-  if (!e.dataTransfer || !hasColumnData(e.dataTransfer)) return
-  e.preventDefault()
-  e.dataTransfer.dropEffect = 'move'
-  dragHover.value = true
-}
-
-function onDragLeave() {
-  dragHover.value = false
-}
-
-function onDrop(e: DragEvent) {
-  dragHover.value = false
-  if (!e.dataTransfer) return
-  const fromId = e.dataTransfer.getData('text/x-nd-column')
-  if (!fromId || fromId === props.columnId) return
-  e.preventDefault()
-
-  const fromIdx = deckStore.layout.findIndex((ids) => ids.includes(fromId))
-  const toIdx = deckStore.layout.findIndex((ids) =>
-    ids.includes(props.columnId),
-  )
-  if (fromIdx >= 0 && toIdx >= 0) {
-    deckStore.swapColumns(fromIdx, toIdx)
-  }
-}
 </script>
 
 <template>
   <section
     class="deck-column"
-    :class="{ dragging, dragHover }"
     :style="themeVars"
-    @dragover="onDragOver"
-    @dragleave="onDragLeave"
-    @drop="onDrop"
   >
     <header
       class="column-header"
-      draggable="true"
-      @dragstart="onDragStart"
-      @dragend="onDragEnd"
       @click="emit('header-click')"
     >
       <!-- Color indicator bar (Misskey style) -->
@@ -127,8 +76,6 @@ function onDrop(e: DragEvent) {
       <slot />
     </div>
 
-    <!-- Drag hover overlay -->
-    <div v-if="dragHover" class="drop-overlay" />
   </section>
 </template>
 
@@ -145,10 +92,6 @@ function onDrop(e: DragEvent) {
   contain: layout paint style;
   container-type: inline-size;
   position: relative;
-}
-
-.deck-column.dragging {
-  box-shadow: 0 0 0 2px var(--nd-accent);
 }
 
 .column-header {
@@ -230,15 +173,6 @@ function onDrop(e: DragEvent) {
   flex-direction: column;
   overflow: hidden;
   background-color: var(--nd-bg);
-}
-
-.drop-overlay {
-  position: absolute;
-  inset: 0;
-  border-radius: 10px;
-  background: var(--nd-focus);
-  pointer-events: none;
-  z-index: 10;
 }
 
 @media (max-width: 500px) {

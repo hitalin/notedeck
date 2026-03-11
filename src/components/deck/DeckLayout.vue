@@ -15,6 +15,7 @@ import {
   unregisterDefaultCommands,
 } from '@/commands/definitions'
 import { useCommandStore } from '@/commands/registry'
+import { useColumnDrag } from '@/composables/useColumnDrag'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
 import { useNavigation } from '@/composables/useNavigation'
 import { provideScrollDirection } from '@/composables/useScrollDirection'
@@ -78,6 +79,7 @@ const serversStore = useServersStore()
 const pluginsStore = usePluginsStore()
 const commandStore = useCommandStore()
 const uiStore = useUiStore()
+const columnDrag = useColumnDrag(deckStore)
 // Pre-build column lookup map to avoid O(n) find per column per render
 const columnMap = computed(() => {
   const map = new Map<string, DeckColumn>()
@@ -219,6 +221,13 @@ function onColumnsWheel(e: WheelEvent) {
   if (target?.closest('.deck-column')) return
   e.preventDefault()
   columnsRef.value.scrollLeft += e.deltaY
+}
+
+// Column pointer drag (swap / stack)
+function onColumnPointerDown(colId: string, e: PointerEvent) {
+  const target = e.target as HTMLElement
+  if (!target.closest('.column-header')) return
+  columnDrag.startDrag(colId, e)
 }
 
 // Column drag resize
@@ -388,9 +397,12 @@ watch(
         <template v-for="col in resolvedColumns" :key="col.id">
           <section
             class="column-section"
+            :class="{ 'drag-source': columnDrag.dragColumnId.value === col.id }"
             :data-column-id="col.id"
+            :data-drop-zone="columnDrag.dropTarget.value?.columnId === col.id ? columnDrag.dropTarget.value.position : undefined"
             :style="{ flexBasis: col.width + 'px' }"
             @mousedown="deckStore.setActiveColumn(col.id)"
+            @pointerdown="onColumnPointerDown(col.id, $event)"
           >
             <DeckTimelineColumn
               v-if="col.type === 'timeline'"
@@ -625,6 +637,47 @@ watch(
   min-width: 280px;
   max-width: 600px;
   height: 100%;
+}
+
+/* Column drag feedback */
+.column-section {
+  position: relative;
+}
+
+.column-section.drag-source {
+  opacity: 0.4;
+}
+
+.column-section[data-drop-zone]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 10px;
+}
+
+.column-section[data-drop-zone="swap"]::after {
+  inset: 0;
+  background: color-mix(in srgb, var(--nd-accent) 20%, transparent);
+  border: 2px solid var(--nd-accent);
+}
+
+.column-section[data-drop-zone="above"]::after {
+  top: 0;
+  height: 50%;
+  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  border-bottom: 3px solid var(--nd-accent);
+  border-radius: 10px 10px 0 0;
+}
+
+.column-section[data-drop-zone="below"]::after {
+  bottom: 0;
+  height: 50%;
+  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  border-top: 3px solid var(--nd-accent);
+  border-radius: 0 0 10px 10px;
 }
 
 .col-resize-handle {
