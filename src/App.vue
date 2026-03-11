@@ -6,8 +6,8 @@ import TitleBarComponent from '@/components/common/TitleBar.vue'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { listenPipEvents } from '@/composables/usePipWindow'
 import { useTheme } from '@/composables/useTheme'
-import { useWindowsStore } from '@/stores/windows'
 import { useUiStore } from '@/stores/ui'
+import { useWindowsStore } from '@/stores/windows'
 
 const { isTauri, isDesktop } = useUiStore()
 const route = useRoute()

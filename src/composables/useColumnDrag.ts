@@ -136,12 +136,9 @@ export function useColumnDrag(deckStore: DeckStore) {
     function isInsertNoop(insertIndex: number): boolean {
       const dragId = dragColumnId.value
       if (!dragId) return false
-      const fromIdx = deckStore.layout.findIndex((ids) =>
-        ids.includes(dragId),
-      )
+      const fromIdx = deckStore.layout.findIndex((ids) => ids.includes(dragId))
       return (
-        fromIdx >= 0 &&
-        (insertIndex === fromIdx || insertIndex === fromIdx + 1)
+        fromIdx >= 0 && (insertIndex === fromIdx || insertIndex === fromIdx + 1)
       )
     }
 

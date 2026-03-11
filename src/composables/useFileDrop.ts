@@ -1,7 +1,10 @@
-import { onMounted, onUnmounted, ref } from 'vue'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
+import { onMounted, onUnmounted, ref } from 'vue'
 
-export type FileDropHandler = (paths: string[], position: { x: number; y: number }) => void
+export type FileDropHandler = (
+  paths: string[],
+  position: { x: number; y: number },
+) => void
 
 export function useFileDrop(onDrop?: FileDropHandler) {
   const isDragging = ref(false)

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { getCurrentWindow } from '@tauri-apps/api/window'
 import { emit } from '@tauri-apps/api/event'
-import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { getCurrentWindow } from '@tauri-apps/api/window'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { createAdapter } from '@/adapters/registry'
 import type {
@@ -14,9 +14,9 @@ import type {
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useAccountsStore } from '@/stores/accounts'
+import { noteStore } from '@/stores/notes'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
-import { noteStore } from '@/stores/notes'
 import { formatTime } from '@/utils/formatTime'
 import { sortByCreatedAtDesc } from '@/utils/sortNotes'
 
@@ -35,7 +35,9 @@ const serversStore = useServersStore()
 const themeStore = useThemeStore()
 
 const currentAccountId = ref(route.query.accountId as string)
-const currentTimeline = ref<TimelineType>((route.query.timeline as TimelineType) || 'home')
+const currentTimeline = ref<TimelineType>(
+  (route.query.timeline as TimelineType) || 'home',
+)
 const showAccountMenu = ref(false)
 
 const account = computed(() =>
@@ -92,7 +94,8 @@ async function startTimeline(tl: TimelineType) {
         noteStore.put([note])
         noteIds.add(note.id)
         const merged = sortByCreatedAtDesc([note, ...notes.value])
-        notes.value = merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+        notes.value =
+          merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
       },
       {
         onNoteUpdated: (event: NoteUpdateEvent) => {

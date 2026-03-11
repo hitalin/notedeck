@@ -2,7 +2,11 @@
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
 import { defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
 import { useCommandStore } from '@/commands/registry'
-import { openPipWindow, closePipWindow, isPipOpen } from '@/composables/usePipWindow'
+import {
+  closePipWindow,
+  isPipOpen,
+  openPipWindow,
+} from '@/composables/usePipWindow'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import {
   computed,
   defineAsyncComponent,
@@ -16,8 +17,8 @@ import {
 } from '@/commands/definitions'
 import { useCommandStore } from '@/commands/registry'
 import { useColumnDrag } from '@/composables/useColumnDrag'
-import { useFileDrop } from '@/composables/useFileDrop'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
+import { useFileDrop } from '@/composables/useFileDrop'
 import { useNavigation } from '@/composables/useNavigation'
 import { provideScrollDirection } from '@/composables/useScrollDirection'
 import { useUpdater } from '@/composables/useUpdater'
@@ -27,7 +28,6 @@ import { useDeckStore } from '@/stores/deck'
 import { usePluginsStore } from '@/stores/plugins'
 import { useServersStore } from '@/stores/servers'
 import { useUiStore } from '@/stores/ui'
-import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
   initDesktopNotifications,
@@ -146,7 +146,11 @@ const fileDrop = useFileDrop((paths, position) => {
   }
 
   // Drop on empty area with image files → set as wallpaper
-  if (!columnCell && paths.length === 1 && IMAGE_EXTENSIONS.test(paths[0] ?? '')) {
+  if (
+    !columnCell &&
+    paths.length === 1 &&
+    IMAGE_EXTENSIONS.test(paths[0] ?? '')
+  ) {
     deckStore.setWallpaper(convertFileSrc(paths[0] ?? ''))
     return
   }
@@ -167,7 +171,11 @@ const dropInsertIndex = computed(() => {
   const dragId = columnDrag.dragColumnId.value
   if (dragId) {
     const fromIdx = deckStore.layout.findIndex((ids) => ids.includes(dragId))
-    if (fromIdx >= 0 && (dt.insertIndex === fromIdx || dt.insertIndex === fromIdx + 1)) return -1
+    if (
+      fromIdx >= 0 &&
+      (dt.insertIndex === fromIdx || dt.insertIndex === fromIdx + 1)
+    )
+      return -1
   }
   return dt.insertIndex
 })

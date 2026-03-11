@@ -2,6 +2,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
+import { useColumnTheme } from '@/composables/useColumnTheme'
 import {
   formatFileSize,
   isAudio,
@@ -10,7 +11,6 @@ import {
   safeUrl,
   useDriveFolder,
 } from '@/composables/useDriveFolder'
-import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
@@ -36,7 +36,7 @@ const {
   selectAll,
   deselectAll,
 } = useDriveFolder({
-  accountId: () => props.column.accountId,
+  accountId: () => props.column.accountId ?? undefined,
   initialFolderId: props.column.folderId,
 })
 
@@ -107,7 +107,12 @@ const batchDeleting = ref(false)
 const batchDeleteError = ref<string | null>(null)
 
 async function batchDelete() {
-  if (!props.column.accountId || batchDeleting.value || selectedIds.value.size === 0) return
+  if (
+    !props.column.accountId ||
+    batchDeleting.value ||
+    selectedIds.value.size === 0
+  )
+    return
   batchDeleting.value = true
   batchDeleteError.value = null
   const idsToDelete = [...selectedIds.value]

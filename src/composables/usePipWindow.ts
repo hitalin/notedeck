@@ -1,5 +1,5 @@
-import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { listen } from '@tauri-apps/api/event'
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import type { TimelineType } from '@/adapters/types'
 
 const PIP_LABEL = 'pip'
