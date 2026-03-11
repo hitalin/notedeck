@@ -22,6 +22,9 @@ export function useColumnDrag(deckStore: DeckStore) {
     const sx = e.clientX
     const sy = e.clientY
 
+    // Prevent text selection as soon as the header is grabbed
+    document.body.style.userSelect = 'none'
+
     function onMove(ev: PointerEvent) {
       const dx = ev.clientX - sx
       const dy = ev.clientY - sy
@@ -34,6 +37,7 @@ export function useColumnDrag(deckStore: DeckStore) {
     function onCancel() {
       document.removeEventListener('pointermove', onMove)
       document.removeEventListener('pointerup', onCancel)
+      document.body.style.userSelect = ''
     }
 
     document.addEventListener('pointermove', onMove)
