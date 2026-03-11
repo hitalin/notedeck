@@ -353,7 +353,7 @@ onUnmounted(() => {
 <template>
   <DeckColumn
     :column-id="column.id"
-    title="Notifications"
+    title="通知"
     :theme-vars="columnThemeVars"
     sound-enabled
     @header-click="scrollToTop"

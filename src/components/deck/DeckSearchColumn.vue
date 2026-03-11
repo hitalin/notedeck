@@ -324,7 +324,7 @@ onUnmounted(() => {
 <template>
   <DeckColumn
     :column-id="column.id"
-    title="Search"
+    title="検索"
     :theme-vars="columnThemeVars"
   >
     <template #header-icon>

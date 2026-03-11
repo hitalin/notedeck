@@ -639,7 +639,7 @@ onUnmounted(() => {
 <template>
   <DeckColumn
     :column-id="column.id"
-    title="Timeline"
+    title="タイムライン"
     :theme-vars="columnThemeVars"
     sound-enabled
     @header-click="scrollToTop()"

@@ -343,7 +343,7 @@ const pageEditUrl = computed(() => {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'Pages'" :theme-vars="columnThemeVars" :web-ui-url="pageWebUrl">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'ページ'" :theme-vars="columnThemeVars" :web-ui-url="pageWebUrl">
     <AiScriptToast ref="toastRef" />
     <AiScriptDialog ref="dialogRef" />
     <template #header-icon>

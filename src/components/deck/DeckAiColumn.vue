@@ -83,7 +83,7 @@ function onKeydown(e: KeyboardEvent) {
 </script>
 
 <template>
-  <DeckColumnComponent :column-id="column.id" :title="column.name || 'AI Chat'">
+  <DeckColumnComponent :column-id="column.id" :title="column.name || 'AIチャット'">
     <template #header-icon>
       <i class="ti ti-sparkles" />
     </template>
