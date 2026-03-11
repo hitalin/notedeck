@@ -223,9 +223,16 @@ impl ImageCache {
             .map_err(|_| "Semaphore closed".to_string())?;
 
         // Start HTTP request (headers only, don't consume body yet)
-        let resp = self
-            .http_client
-            .get(url)
+        // Some hosts (e.g. i.pximg.net) require a valid Referer header
+        let referer = url::Url::parse(url)
+            .ok()
+            .map(|u| format!("{}://{}/", u.scheme(), u.host_str().unwrap_or_default()));
+
+        let mut req = self.http_client.get(url);
+        if let Some(ref referer) = referer {
+            req = req.header(reqwest::header::REFERER, referer);
+        }
+        let resp = req
             .send()
             .await
             .map_err(|e| {
