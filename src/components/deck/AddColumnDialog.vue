@@ -126,7 +126,7 @@ function addColumnForAccount(accountId: string) {
     deckStore.addColumn({
       type: 'apiDocs',
       name: 'APIドキュメント',
-      width: 480,
+      width: 990,
       accountId: null,
       active: true,
     })

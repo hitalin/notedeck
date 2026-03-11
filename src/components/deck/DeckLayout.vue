@@ -355,12 +355,20 @@ function startColumnResize(colId: string, e: MouseEvent) {
   document.addEventListener('mouseup', stopColumnResize)
 }
 
+const WIDE_COLUMN_TYPES: ReadonlySet<string> = new Set(['apiDocs'])
+
+function getColMaxWidth(colId: string): number {
+  const col = columnMap.value.get(colId)
+  return col && WIDE_COLUMN_TYPES.has(col.type) ? 1200 : COL_MAX_WIDTH
+}
+
 function onColumnResize(e: MouseEvent) {
   if (!resizingColId.value) return
   const delta = e.clientX - resizingColStartX.value
+  const maxW = getColMaxWidth(resizingColId.value)
   const newW = Math.max(
     COL_MIN_WIDTH,
-    Math.min(resizingColStartW.value + delta, COL_MAX_WIDTH),
+    Math.min(resizingColStartW.value + delta, maxW),
   )
   deckStore.updateColumn(resizingColId.value, { width: newW })
 }
@@ -507,7 +515,7 @@ watch(
         <template v-for="(group, groupIndex) in deckStore.layout" :key="group.join('-')">
           <section
             class="column-section"
-            :class="{ stacked: group.length > 1 }"
+            :class="{ stacked: group.length > 1, 'wide-column': WIDE_COLUMN_TYPES.has(columnMap.get(group[0]!)?.type ?? '') }"
             :style="{ flexBasis: (columnMap.get(group[0]!)?.width ?? 400) + 'px' }"
           >
             <div
@@ -683,6 +691,10 @@ watch(
   min-width: 280px;
   max-width: 600px;
   height: 100%;
+}
+
+.column-section.wide-column {
+  max-width: 1200px;
 }
 
 /* Stacked columns (vertical split) */

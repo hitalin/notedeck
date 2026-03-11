@@ -199,15 +199,15 @@ pub async fn start(app_handle: AppHandle, api_token: String, token_path: String,
 
     // Public routes (localhost-only, no auth needed)
     let public_routes = Router::new()
-        .route("/proxy/image", get(proxy_image));
+        .route("/proxy/image", get(proxy_image))
+        .route("/api/openapi.json", get(openapi_json))
+        .route("/api/docs", get(openapi_docs));
 
     let app = Router::new()
         .merge(api_routes)
         .merge(public_routes)
         .layer(CorsLayer::permissive())
-        .with_state(state)
-        .route("/api/openapi.json", get(openapi_json))
-        .route("/api/docs", get(openapi_docs));
+        .with_state(state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], PORT));
     eprintln!("[http] listening on http://{addr}");

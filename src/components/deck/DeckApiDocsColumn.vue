@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { ApiReference } from '@scalar/api-reference'
+import '@scalar/api-reference/style.css'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
@@ -12,10 +14,25 @@ const props = defineProps<{
 const { columnThemeVars } = useColumnTheme(() => props.column)
 const themeStore = useThemeStore()
 
-const iframeSrc = computed(() => {
-  const isDark = !themeStore.currentSource?.kind.includes('light')
-  return `http://127.0.0.1:19820/api/docs#${isDark ? 'dark' : 'light'}`
+const spec = ref<string | null>(null)
+const error = ref<string | null>(null)
+
+onMounted(async () => {
+  try {
+    const res = await fetch('http://127.0.0.1:19820/api/openapi.json')
+    spec.value = await res.text()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  }
 })
+
+const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
+
+const config = computed(() => ({
+  spec: { content: spec.value },
+  darkMode: isDark.value,
+  hideDownloadButton: true,
+}))
 </script>
 
 <template>
@@ -28,19 +45,33 @@ const iframeSrc = computed(() => {
       <i class="ti ti-book tl-header-icon" />
     </template>
 
-    <iframe
-      class="docs-frame"
-      :src="iframeSrc"
-      title="API Documentation"
-    />
+    <div class="docs-container">
+      <div v-if="error" class="docs-error">{{ error }}</div>
+      <div v-else-if="!spec" class="docs-loading">読み込み中...</div>
+      <ApiReference v-else :key="isDark ? 'dark' : 'light'" :configuration="config" />
+    </div>
   </DeckColumn>
 </template>
 
 <style scoped>
-.docs-frame {
+.docs-container {
   flex: 1;
-  width: 100%;
-  border: none;
   min-height: 0;
+  overflow-y: auto;
+}
+
+.docs-error {
+  padding: 16px;
+  color: var(--nd-love);
+  font-size: 0.85em;
+}
+
+.docs-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  opacity: 0.4;
+  font-size: 0.85em;
 }
 </style>
