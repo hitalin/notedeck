@@ -27,6 +27,7 @@ export type ColumnType =
   | 'explore'
   | 'followRequests'
   | 'achievements'
+  | 'apiConsole'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 

@@ -40,6 +40,7 @@ const addColumnType = ref<
   | 'explore'
   | 'followRequests'
   | 'achievements'
+  | 'apiConsole'
   | null
 >(null)
 
@@ -67,7 +68,8 @@ function selectColumnType(
     | 'gallery'
     | 'explore'
     | 'followRequests'
-    | 'achievements',
+    | 'achievements'
+    | 'apiConsole',
 ) {
   addColumnType.value = type
 }
@@ -103,6 +105,17 @@ function addColumnForAccount(accountId: string) {
       accountId,
       active: true,
       aiscriptCode: '<: "Hello, AiScript!"',
+    })
+    close()
+    return
+  }
+  if (type === 'apiConsole') {
+    deckStore.addColumn({
+      type: 'apiConsole',
+      name: 'APIコンソール',
+      width: 360,
+      accountId,
+      active: true,
     })
     close()
     return
@@ -451,6 +464,10 @@ function close() {
         <button class="_button add-type-btn" @click="selectColumnType('aiscript')">
           <i class="ti ti-terminal-2" />
           <span>スクラッチパッド</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('apiConsole')">
+          <i class="ti ti-api" />
+          <span>APIコンソール</span>
         </button>
         <button v-if="!isMobile" class="_button add-type-btn" @click="selectColumnType('ai')">
           <i class="ti ti-sparkles" />

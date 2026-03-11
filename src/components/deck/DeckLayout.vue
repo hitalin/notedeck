@@ -47,6 +47,7 @@ import DeckAiColumn from './DeckAiColumn.vue'
 import DeckAiScriptColumn from './DeckAiScriptColumn.vue'
 import DeckAnnouncementsColumn from './DeckAnnouncementsColumn.vue'
 import DeckAntennaColumn from './DeckAntennaColumn.vue'
+import DeckApiConsoleColumn from './DeckApiConsoleColumn.vue'
 import DeckChannelColumn from './DeckChannelColumn.vue'
 import DeckChatColumn from './DeckChatColumn.vue'
 import DeckClipColumn from './DeckClipColumn.vue'
@@ -93,6 +94,7 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
   explore: DeckExploreColumn,
   followRequests: DeckFollowRequestsColumn,
   achievements: DeckAchievementsColumn,
+  apiConsole: DeckApiConsoleColumn,
 }
 
 const router = useRouter()
@@ -262,6 +264,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   gallery: 'icons',
   followRequests: 'user-plus',
   achievements: 'medal',
+  apiConsole: 'api',
 }
 
 const TL_ICONS: Record<string, string> = {
