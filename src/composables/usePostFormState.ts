@@ -111,8 +111,13 @@ export function usePostFormState(
     try {
       const serverInfo = await serversStore.getServerInfo(acc.host)
       adapter = createAdapter(serverInfo, acc.id)
+      // biome-ignore lint/style/noNonNullAssertion: adapter is assigned above
       emojisStore.ensureLoaded(acc.host, () => adapter!.api.getServerEmojis())
-      pinnedReactionsStore.ensureLoaded(acc.id, () => adapter!.api.getPinnedReactions())
+      pinnedReactionsStore.ensureLoaded(
+        acc.id,
+        // biome-ignore lint/style/noNonNullAssertion: adapter is assigned above
+        () => adapter!.api.getPinnedReactions(),
+      )
       supportsScheduledNotes.value = serverInfo.features.scheduledNotes === true
     } catch (e) {
       error.value = AppError.from(e).message

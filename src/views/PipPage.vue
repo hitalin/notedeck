@@ -105,7 +105,10 @@ async function startTimeline(tl: TimelineType) {
           flushTimer = setTimeout(() => {
             flushTimer = null
             if (pendingNotes.length === 0) return
-            const merged = sortByCreatedAtDesc([...pendingNotes, ...notes.value])
+            const merged = sortByCreatedAtDesc([
+              ...pendingNotes,
+              ...notes.value,
+            ])
             pendingNotes = []
             notes.value =
               merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
