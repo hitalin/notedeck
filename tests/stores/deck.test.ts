@@ -527,6 +527,135 @@ describe('deck store', () => {
       expect(deck.layout).toHaveLength(1)
       expect(deck.layout[0]).toEqual([col1.id])
     })
+
+    it('swapInGroup swaps two columns within the same group', () => {
+      const deck = useDeckStore()
+      const col1 = deck.addColumn({
+        type: 'timeline',
+        name: 'A',
+        width: 400,
+        accountId: null,
+      })
+      const col2 = deck.addColumn({
+        type: 'notifications',
+        name: 'B',
+        width: 400,
+        accountId: null,
+      })
+      const col3 = deck.addColumn({
+        type: 'search',
+        name: 'C',
+        width: 400,
+        accountId: null,
+      })
+
+      // Stack all three into one group
+      deck.stackColumn(col2.id, col1.id, 'below')
+      deck.stackColumn(col3.id, col2.id, 'below')
+      expect(deck.layout[0]).toEqual([col1.id, col2.id, col3.id])
+
+      // Swap first and third
+      deck.swapInGroup(col1.id, col3.id)
+      expect(deck.layout[0]).toEqual([col3.id, col2.id, col1.id])
+    })
+
+    it('swapInGroup does nothing for columns in different groups', () => {
+      const deck = useDeckStore()
+      const col1 = deck.addColumn({
+        type: 'timeline',
+        name: 'A',
+        width: 400,
+        accountId: null,
+      })
+      const col2 = deck.addColumn({
+        type: 'notifications',
+        name: 'B',
+        width: 400,
+        accountId: null,
+      })
+
+      deck.swapInGroup(col1.id, col2.id)
+
+      expect(deck.layout).toHaveLength(2)
+      expect(deck.layout[0]).toEqual([col1.id])
+      expect(deck.layout[1]).toEqual([col2.id])
+    })
+
+    it('insertColumnAt moves a stacked column to a specific layout position', () => {
+      const deck = useDeckStore()
+      const col1 = deck.addColumn({
+        type: 'timeline',
+        name: 'A',
+        width: 400,
+        accountId: null,
+      })
+      const col2 = deck.addColumn({
+        type: 'notifications',
+        name: 'B',
+        width: 400,
+        accountId: null,
+      })
+      const col3 = deck.addColumn({
+        type: 'search',
+        name: 'C',
+        width: 400,
+        accountId: null,
+      })
+
+      // Stack col2 onto col1
+      deck.stackColumn(col2.id, col1.id, 'below')
+      // Layout: [[col1, col2], [col3]]
+
+      // Insert col2 at position 2 (after col3)
+      deck.insertColumnAt(col2.id, 2)
+
+      expect(deck.layout).toHaveLength(3)
+      expect(deck.layout[0]).toEqual([col1.id])
+      expect(deck.layout[1]).toEqual([col3.id])
+      expect(deck.layout[2]).toEqual([col2.id])
+    })
+
+    it('insertColumnAt moves a stacked column to position 0', () => {
+      const deck = useDeckStore()
+      const col1 = deck.addColumn({
+        type: 'timeline',
+        name: 'A',
+        width: 400,
+        accountId: null,
+      })
+      const col2 = deck.addColumn({
+        type: 'notifications',
+        name: 'B',
+        width: 400,
+        accountId: null,
+      })
+
+      // Stack col2 onto col1
+      deck.stackColumn(col2.id, col1.id, 'below')
+      // Layout: [[col1, col2]]
+
+      // Insert col2 at position 0
+      deck.insertColumnAt(col2.id, 0)
+
+      expect(deck.layout).toHaveLength(2)
+      expect(deck.layout[0]).toEqual([col2.id])
+      expect(deck.layout[1]).toEqual([col1.id])
+    })
+
+    it('insertColumnAt does nothing for solo column at same position', () => {
+      const deck = useDeckStore()
+      const col1 = deck.addColumn({
+        type: 'timeline',
+        name: 'A',
+        width: 400,
+        accountId: null,
+      })
+
+      deck.insertColumnAt(col1.id, 0)
+
+      expect(deck.layout).toHaveLength(1)
+      expect(deck.layout[0]).toEqual([col1.id])
+    })
   })
 
   describe('deck wallpaper', () => {

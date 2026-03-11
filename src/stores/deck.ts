@@ -241,6 +241,55 @@ export const useDeckStore = defineStore('deck', () => {
     save()
   }
 
+  function swapInGroup(idA: string, idB: string) {
+    if (idA === idB) return
+    const groupIdx = layout.value.findIndex(
+      (ids) => ids.includes(idA) && ids.includes(idB),
+    )
+    if (groupIdx < 0) return
+    const group = layout.value[groupIdx]
+    if (!group) return
+    const posA = group.indexOf(idA)
+    const posB = group.indexOf(idB)
+    if (posA < 0 || posB < 0) return
+    const newGroup = [...group]
+    newGroup[posA] = idB
+    newGroup[posB] = idA
+    const newLayout = [...layout.value]
+    newLayout[groupIdx] = newGroup
+    layout.value = newLayout
+    save()
+  }
+
+  function insertColumnAt(id: string, targetIndex: number) {
+    const groupIdx = layout.value.findIndex((ids) => ids.includes(id))
+    if (groupIdx < 0) return
+    const group = layout.value[groupIdx]
+    if (!group) return
+
+    // Solo column already at this position — nothing to do
+    if (group.length === 1 && groupIdx === targetIndex) return
+
+    // Remove from current group
+    const newGroup = group.filter((colId) => colId !== id)
+    const newLayout = [...layout.value]
+    if (newGroup.length === 0) {
+      newLayout.splice(groupIdx, 1)
+    } else {
+      newLayout[groupIdx] = newGroup
+    }
+
+    // Adjust target index if removal shifted it
+    const adjustedIndex =
+      newGroup.length === 0 && targetIndex > groupIdx
+        ? targetIndex - 1
+        : targetIndex
+    const clampedIndex = Math.max(0, Math.min(adjustedIndex, newLayout.length))
+    newLayout.splice(clampedIndex, 0, [id])
+    layout.value = newLayout
+    save()
+  }
+
   function unstackColumn(id: string) {
     const groupIdx = layout.value.findIndex((ids) => ids.includes(id))
     if (groupIdx < 0) return
@@ -510,7 +559,9 @@ export const useDeckStore = defineStore('deck', () => {
     removeColumn,
     updateColumn,
     swapColumns,
+    swapInGroup,
     stackColumn,
+    insertColumnAt,
     unstackColumn,
     moveLeft,
     moveRight,

@@ -89,6 +89,18 @@ const columnMap = computed(() => {
   return map
 })
 
+const dropInsertIndex = computed(() => {
+  const dt = columnDrag.dropTarget.value
+  if (!dt || !('insertIndex' in dt)) return -1
+  return dt.insertIndex
+})
+
+const dropInsertWidth = computed(() => {
+  const dragId = columnDrag.dragColumnId.value
+  if (!dragId) return 400
+  return columnMap.value.get(dragId)?.width ?? 400
+})
+
 const navbarRef = ref<InstanceType<typeof DeckNavbar> | null>(null)
 const showAddMenu = ref(false)
 const showCompose = ref(false)
@@ -381,7 +393,12 @@ watch(
         @wheel="onColumnsWheel"
         @scroll="onColumnsScroll"
       >
-        <template v-for="group in deckStore.layout" :key="group.join('-')">
+        <div
+          v-if="dropInsertIndex === 0"
+          class="drop-placeholder"
+          :style="{ flexBasis: dropInsertWidth + 'px' }"
+        />
+        <template v-for="(group, groupIndex) in deckStore.layout" :key="group.join('-')">
           <section
             class="column-section"
             :class="{ stacked: group.length > 1 }"
@@ -393,7 +410,7 @@ watch(
               class="stack-cell"
               :class="{ 'drag-source': columnDrag.dragColumnId.value === colId }"
               :data-column-id="colId"
-              :data-drop-zone="columnDrag.dropTarget.value?.columnId === colId ? columnDrag.dropTarget.value.position : undefined"
+              :data-drop-zone="columnDrag.dropTarget.value && 'columnId' in columnDrag.dropTarget.value && columnDrag.dropTarget.value.columnId === colId ? columnDrag.dropTarget.value.position : undefined"
               @mousedown="deckStore.setActiveColumn(colId)"
               @pointerdown="onColumnPointerDown(colId, $event)"
             >
@@ -497,6 +514,11 @@ watch(
             class="col-resize-handle"
             :class="{ active: resizingColId === group[0] }"
             @mousedown="startColumnResize(group[0]!, $event)"
+          />
+          <div
+            v-if="dropInsertIndex === groupIndex + 1"
+            class="drop-placeholder"
+            :style="{ flexBasis: dropInsertWidth + 'px' }"
           />
         </template>
       </div>
@@ -705,6 +727,14 @@ watch(
 
 .col-resize-handle.active {
   opacity: 0.6;
+}
+
+.drop-placeholder {
+  flex-shrink: 0;
+  border: 2px dashed var(--nd-accent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nd-accent) 10%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--nd-accent) 30%, transparent);
 }
 
 /* ============================================================
