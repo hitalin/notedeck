@@ -132,6 +132,19 @@ export function useColumnDrag(deckStore: DeckStore) {
       return
     }
 
+    // Helper: inserting at fromIdx or fromIdx+1 is a no-op (same position)
+    function isInsertNoop(insertIndex: number): boolean {
+      const dragId = dragColumnId.value
+      if (!dragId) return false
+      const fromIdx = deckStore.layout.findIndex((ids) =>
+        ids.includes(dragId),
+      )
+      return (
+        fromIdx >= 0 &&
+        (insertIndex === fromIdx || insertIndex === fromIdx + 1)
+      )
+    }
+
     // Check if hovering over a resize handle or gap between columns
     const handle = el.closest('.col-resize-handle') as HTMLElement | null
     if (handle) {
@@ -151,7 +164,9 @@ export function useColumnDrag(deckStore: DeckStore) {
         }
       }
 
-      dropTarget.value = { insertIndex, position: 'insert' }
+      dropTarget.value = isInsertNoop(insertIndex)
+        ? null
+        : { insertIndex, position: 'insert' }
       return
     }
 
@@ -172,7 +187,9 @@ export function useColumnDrag(deckStore: DeckStore) {
         }
       }
 
-      dropTarget.value = { insertIndex, position: 'insert' }
+      dropTarget.value = isInsertNoop(insertIndex)
+        ? null
+        : { insertIndex, position: 'insert' }
       return
     }
 
