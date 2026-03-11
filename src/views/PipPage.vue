@@ -276,8 +276,13 @@ onUnmounted(() => {
           <div class="pip-note-body">
             <div class="pip-note-header">
               <span class="pip-note-name">
-                {{ (note.renote && note.text === null ? note.renote.user : note.user).name
-                  || (note.renote && note.text === null ? note.renote.user : note.user).username }}
+                <MkMfm
+                  v-if="(note.renote && note.text === null ? note.renote.user : note.user).name"
+                  :text="(note.renote && note.text === null ? note.renote.user : note.user).name!"
+                  :emojis="(note.renote && note.text === null ? note.renote.user : note.user).emojis"
+                  :account-id="currentAccountId"
+                />
+                <template v-else>{{ (note.renote && note.text === null ? note.renote.user : note.user).username }}</template>
               </span>
               <span class="pip-note-time">{{ formatTime(note.createdAt) }}</span>
             </div>
@@ -287,7 +292,6 @@ onUnmounted(() => {
                 :text="(note.renote && note.text === null ? note.renote.text : note.text)!"
                 :emojis="(note.renote && note.text === null ? note.renote.emojis : note.emojis)"
                 :account-id="currentAccountId"
-                :plain="true"
               />
               <span v-else class="pip-note-empty">
                 <i class="ti ti-repeat" /> Renote
