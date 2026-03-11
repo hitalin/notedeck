@@ -201,6 +201,61 @@ export const useDeckStore = defineStore('deck', () => {
     save()
   }
 
+  function stackColumn(
+    fromId: string,
+    toId: string,
+    position: 'above' | 'below',
+  ) {
+    if (fromId === toId) return
+    const fromGroupIdx = layout.value.findIndex((ids) => ids.includes(fromId))
+    const toGroupIdx = layout.value.findIndex((ids) => ids.includes(toId))
+    if (fromGroupIdx < 0 || toGroupIdx < 0) return
+
+    // Remove fromId from its current group
+    const fromGroup = layout.value[fromGroupIdx]
+    if (!fromGroup) return
+    const newFromGroup = fromGroup.filter((id) => id !== fromId)
+
+    const newLayout = [...layout.value]
+    // Update or remove the source group
+    if (newFromGroup.length === 0) {
+      newLayout.splice(fromGroupIdx, 1)
+    } else {
+      newLayout[fromGroupIdx] = newFromGroup
+    }
+
+    // Find target group in updated layout (index may have shifted)
+    const targetIdx = newLayout.findIndex((ids) => ids.includes(toId))
+    if (targetIdx < 0) return
+    const targetGroup = newLayout[targetIdx]
+    if (!targetGroup) return
+
+    // Insert into target group
+    const toPos = targetGroup.indexOf(toId)
+    const insertAt = position === 'above' ? toPos : toPos + 1
+    const newTargetGroup = [...targetGroup]
+    newTargetGroup.splice(insertAt, 0, fromId)
+    newLayout[targetIdx] = newTargetGroup
+
+    layout.value = newLayout
+    save()
+  }
+
+  function unstackColumn(id: string) {
+    const groupIdx = layout.value.findIndex((ids) => ids.includes(id))
+    if (groupIdx < 0) return
+    const group = layout.value[groupIdx]
+    if (!group || group.length <= 1) return
+
+    const newGroup = group.filter((colId) => colId !== id)
+    const newLayout = [...layout.value]
+    newLayout[groupIdx] = newGroup
+    // Insert as new solo group right after
+    newLayout.splice(groupIdx + 1, 0, [id])
+    layout.value = newLayout
+    save()
+  }
+
   function moveLeft(id: string) {
     const idx = layout.value.findIndex((ids) => ids.includes(id))
     if (idx > 0) swapColumns(idx, idx - 1)
@@ -455,6 +510,8 @@ export const useDeckStore = defineStore('deck', () => {
     removeColumn,
     updateColumn,
     swapColumns,
+    stackColumn,
+    unstackColumn,
     moveLeft,
     moveRight,
     getColumn,

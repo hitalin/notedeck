@@ -133,8 +133,9 @@ export function useColumnDrag(deckStore: DeckStore) {
 
       if (position === 'swap' && fromIdx >= 0 && toIdx >= 0) {
         deckStore.swapColumns(fromIdx, toIdx)
+      } else if (position === 'above' || position === 'below') {
+        deckStore.stackColumn(dragId, targetId, position)
       }
-      // TODO: stacking (above/below) — Step 5-6
     }
 
     // Cleanup

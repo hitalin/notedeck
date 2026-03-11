@@ -404,6 +404,131 @@ describe('deck store', () => {
     })
   })
 
+  describe('column stacking', () => {
+    it('stackColumn merges two columns into one group (below)', () => {
+      const deck = useDeckStore()
+      const col1 = deck.addColumn({
+        type: 'timeline',
+        name: 'A',
+        width: 400,
+        accountId: null,
+      })
+      const col2 = deck.addColumn({
+        type: 'notifications',
+        name: 'B',
+        width: 400,
+        accountId: null,
+      })
+
+      deck.stackColumn(col2.id, col1.id, 'below')
+
+      expect(deck.layout).toHaveLength(1)
+      expect(deck.layout[0]).toEqual([col1.id, col2.id])
+    })
+
+    it('stackColumn merges two columns into one group (above)', () => {
+      const deck = useDeckStore()
+      const col1 = deck.addColumn({
+        type: 'timeline',
+        name: 'A',
+        width: 400,
+        accountId: null,
+      })
+      const col2 = deck.addColumn({
+        type: 'notifications',
+        name: 'B',
+        width: 400,
+        accountId: null,
+      })
+
+      deck.stackColumn(col2.id, col1.id, 'above')
+
+      expect(deck.layout).toHaveLength(1)
+      expect(deck.layout[0]).toEqual([col2.id, col1.id])
+    })
+
+    it('stackColumn adds to existing group', () => {
+      const deck = useDeckStore()
+      const col1 = deck.addColumn({
+        type: 'timeline',
+        name: 'A',
+        width: 400,
+        accountId: null,
+      })
+      const col2 = deck.addColumn({
+        type: 'notifications',
+        name: 'B',
+        width: 400,
+        accountId: null,
+      })
+      const col3 = deck.addColumn({
+        type: 'search',
+        name: 'C',
+        width: 400,
+        accountId: null,
+      })
+
+      deck.stackColumn(col2.id, col1.id, 'below')
+      deck.stackColumn(col3.id, col2.id, 'below')
+
+      expect(deck.layout).toHaveLength(1)
+      expect(deck.layout[0]).toEqual([col1.id, col2.id, col3.id])
+    })
+
+    it('stackColumn does nothing when stacking onto self', () => {
+      const deck = useDeckStore()
+      const col1 = deck.addColumn({
+        type: 'timeline',
+        name: 'A',
+        width: 400,
+        accountId: null,
+      })
+
+      deck.stackColumn(col1.id, col1.id, 'below')
+
+      expect(deck.layout).toHaveLength(1)
+      expect(deck.layout[0]).toEqual([col1.id])
+    })
+
+    it('unstackColumn separates a column from its group', () => {
+      const deck = useDeckStore()
+      const col1 = deck.addColumn({
+        type: 'timeline',
+        name: 'A',
+        width: 400,
+        accountId: null,
+      })
+      const col2 = deck.addColumn({
+        type: 'notifications',
+        name: 'B',
+        width: 400,
+        accountId: null,
+      })
+
+      deck.stackColumn(col2.id, col1.id, 'below')
+      deck.unstackColumn(col2.id)
+
+      expect(deck.layout).toHaveLength(2)
+      expect(deck.layout[0]).toEqual([col1.id])
+      expect(deck.layout[1]).toEqual([col2.id])
+    })
+
+    it('unstackColumn does nothing for solo column', () => {
+      const deck = useDeckStore()
+      const col1 = deck.addColumn({
+        type: 'timeline',
+        name: 'A',
+        width: 400,
+        accountId: null,
+      })
+
+      deck.unstackColumn(col1.id)
+
+      expect(deck.layout).toHaveLength(1)
+      expect(deck.layout[0]).toEqual([col1.id])
+    })
+  })
+
   describe('deck wallpaper', () => {
     it('setWallpaper sets wallpaper URL', () => {
       const deck = useDeckStore()
