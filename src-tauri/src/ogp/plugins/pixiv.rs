@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 
-use super::{extract_iframe_src, fetch_oembed, Plugin, PluginError, SummaryData};
-use crate::ogp::Player;
+use super::{fetch_oembed, Plugin, PluginError, SummaryData};
 
 pub struct PixivPlugin;
 pub const PLUGIN: PixivPlugin = PixivPlugin;
@@ -28,15 +27,8 @@ impl Plugin for PixivPlugin {
             .append_pair("format", "json");
         let oembed = fetch_oembed(client, endpoint.as_str()).await?;
 
-        let player = oembed.html.as_deref().and_then(extract_iframe_src).map(|src| {
-            Player {
-                url: src,
-                width: oembed.width,
-                height: oembed.height,
-                allow: Vec::new(),
-            }
-        });
-
+        // pixiv embed iframe is behind Cloudflare challenge and won't render
+        // in Tauri WebView, so we only use the thumbnail image via proxy.
         Ok(SummaryData {
             title: oembed.title,
             description: oembed.author_name.map(|a| format!("by {a}")),
@@ -44,7 +36,7 @@ impl Plugin for PixivPlugin {
             sitename: oembed.provider_name,
             thumbnail: oembed.thumbnail_url,
             medias: Vec::new(),
-            player,
+            player: None,
             url: url.to_string(),
             sensitive: false,
         })
