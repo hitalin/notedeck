@@ -49,5 +49,7 @@ export function highlightCode(code: string, lang: string | null): string {
   if (!lang || !highlighter?.getLoadedLanguages().includes(lang)) {
     return `<pre><code>${escapeHtml(code)}</code></pre>`
   }
-  return DOMPurify.sanitize(highlighter.codeToHtml(code, { lang, theme: 'dark-plus' }))
+  return DOMPurify.sanitize(
+    highlighter.codeToHtml(code, { lang, theme: 'dark-plus' }),
+  )
 }

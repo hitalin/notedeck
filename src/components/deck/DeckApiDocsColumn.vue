@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
 import { ApiReference } from '@scalar/api-reference'
+import { computed, onMounted, ref } from 'vue'
 import '@scalar/api-reference/style.css'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
