@@ -2,20 +2,23 @@
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
 import { defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
 import { useCommandStore } from '@/commands/registry'
+import { openPipWindow } from '@/composables/usePipWindow'
+import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 
 const CommandPalette = defineAsyncComponent(
   () => import('@/components/common/CommandPalette.vue'),
 )
 
-const MOBILE_WIDTH = 420
-const MOBILE_HEIGHT = 780
-
 const appWindow = getCurrentWindow()
 const commandStore = useCommandStore()
+const accountsStore = useAccountsStore()
 const deckStore = useDeckStore()
 const isMaximized = ref(false)
 const isMobileSize = ref(false)
+
+const MOBILE_WIDTH = 420
+const MOBILE_HEIGHT = 780
 
 let savedDesktopSize: { width: number; height: number } | null = null
 
@@ -60,7 +63,6 @@ async function close() {
 async function toggleMobileSize() {
   const factor = await appWindow.scaleFactor()
   if (isMobileSize.value) {
-    // Restore desktop size (saved as logical pixels)
     if (savedDesktopSize) {
       await appWindow.setSize(
         new LogicalSize(savedDesktopSize.width, savedDesktopSize.height),
@@ -70,7 +72,6 @@ async function toggleMobileSize() {
     }
     savedDesktopSize = null
   } else {
-    // Save current size as logical pixels, then switch to mobile
     const current = await appWindow.innerSize()
     savedDesktopSize = {
       width: current.width / factor,
@@ -79,6 +80,18 @@ async function toggleMobileSize() {
     await appWindow.setSize(new LogicalSize(MOBILE_WIDTH, MOBILE_HEIGHT))
   }
   await appWindow.center()
+}
+
+async function launchPip() {
+  // Use active column's account & timeline, fallback to first account
+  const col = deckStore.activeColumnId
+    ? deckStore.columns.find((c) => c.id === deckStore.activeColumnId)
+    : null
+  const accountId = col?.accountId ?? accountsStore.accounts[0]?.id
+  const timeline = col?.tl ?? 'home'
+  if (accountId) {
+    await openPipWindow(accountId, timeline)
+  }
 }
 </script>
 
@@ -112,6 +125,13 @@ async function toggleMobileSize() {
         @click="toggleMobileSize"
       >
         <i :class="isMobileSize ? 'ti ti-device-desktop' : 'ti ti-device-mobile'" />
+      </button>
+      <button
+        class="titlebar-btn titlebar-window-btn"
+        title="ピクチャーインピクチャー"
+        @click="launchPip"
+      >
+        <i class="ti ti-picture-in-picture" />
       </button>
       <button class="titlebar-btn titlebar-window-btn" title="最小化" @click="minimize">
         <svg width="10" height="10" viewBox="0 0 10 10">
