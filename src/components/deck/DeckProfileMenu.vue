@@ -18,6 +18,14 @@ const profiles = ref<DeckProfile[]>([])
 const editingId = ref<string | null>(null)
 const editingName = ref('')
 
+function handleOutsideClick() {
+  emit('close')
+}
+
+function removeOutsideClickListener() {
+  document.removeEventListener('click', handleOutsideClick)
+}
+
 watch(
   () => props.show,
   (val) => {
@@ -27,13 +35,11 @@ watch(
       nextTick(() => {
         document.addEventListener('click', handleOutsideClick, { once: true })
       })
+    } else {
+      removeOutsideClickListener()
     }
   },
 )
-
-function handleOutsideClick() {
-  emit('close')
-}
 
 function createProfile() {
   deckStore.saveAsProfile()

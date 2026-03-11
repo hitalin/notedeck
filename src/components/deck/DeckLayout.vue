@@ -383,7 +383,6 @@ function stopColumnResize() {
 
 onMounted(() => {
   deckStore.load()
-  deckStore.loadActiveProfileId()
   deckStore.loadWallpaper()
   initDesktopNotifications()
   initApiBridge()

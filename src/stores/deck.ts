@@ -325,18 +325,27 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null
+
+  function flushSave() {
+    if (saveTimer) {
+      clearTimeout(saveTimer)
+      saveTimer = null
+    }
+    try {
+      localStorage.setItem(
+        DECK_KEY,
+        JSON.stringify({ columns: columns.value, layout: layout.value }),
+      )
+    } catch (e) {
+      console.warn('[deck] failed to save:', e)
+    }
+  }
+
   function save() {
-    if (saveTimer) return
+    if (saveTimer) clearTimeout(saveTimer)
     saveTimer = setTimeout(() => {
       saveTimer = null
-      try {
-        localStorage.setItem(
-          DECK_KEY,
-          JSON.stringify({ columns: columns.value, layout: layout.value }),
-        )
-      } catch (e) {
-        console.warn('[deck] failed to save:', e)
-      }
+      flushSave()
     }, 100)
   }
 
@@ -511,7 +520,7 @@ export const useDeckStore = defineStore('deck', () => {
     // Switch to the empty new profile
     columns.value = []
     layout.value = []
-    save()
+    flushSave()
 
     return profile
   }
@@ -530,7 +539,7 @@ export const useDeckStore = defineStore('deck', () => {
     columns.value = structuredClone(profile.columns)
     layout.value = structuredClone(profile.layout)
     saveActiveProfileId(profileId)
-    save()
+    flushSave()
   }
 
   function deleteProfile(profileId: string) {
