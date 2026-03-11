@@ -2052,5 +2052,20 @@ function onKeydown(e: KeyboardEvent) {
     max-height: none;
     box-shadow: none;
   }
+
+  .emoji-popup {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 50vh;
+    border-radius: 16px 16px 0 0;
+    margin: 0;
+    z-index: 100;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+    padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
+  }
 }
 </style>
