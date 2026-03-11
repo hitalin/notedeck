@@ -11,7 +11,7 @@ use axum::{
     Json, Router,
 };
 use futures_util::stream::Stream;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -19,6 +19,7 @@ use tauri::{AppHandle, Manager};
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::StreamExt;
 use tower_http::cors::CorsLayer;
+use utoipa::{IntoParams, OpenApi, ToSchema};
 
 use notecli::api::MisskeyClient;
 use crate::commands;
@@ -27,6 +28,64 @@ use notecli::db::Database;
 use notecli::event_bus::EventBus;
 use notecli::models::{AccountPublic, CreateNoteParams, TimelineType};
 use crate::query_bridge;
+
+#[derive(OpenApi)]
+#[openapi(
+    info(
+        title = "NoteDeck API",
+        description = "NoteDeck localhost API — Misskey desktop client control interface",
+        license(name = "MIT"),
+    ),
+    paths(
+        index, list_accounts, get_timeline, get_notifications,
+        create_note, search_notes, get_note, delete_note,
+        get_note_children, get_note_conversation, get_note_reactions,
+        create_reaction, delete_reaction, get_user, get_user_notes,
+        sse_events, get_deck_columns, add_deck_column, remove_deck_column,
+        get_deck_active, list_commands, execute_command, proxy_image,
+    ),
+    components(schemas(CreateNoteBody, ReactionBody, ApiErrorResponse)),
+    tags(
+        (name = "general", description = "API info"),
+        (name = "accounts", description = "Account management"),
+        (name = "timeline", description = "Timeline & notifications"),
+        (name = "notes", description = "Note CRUD"),
+        (name = "reactions", description = "Reaction operations"),
+        (name = "users", description = "User info"),
+        (name = "search", description = "Full-text search"),
+        (name = "events", description = "Server-Sent Events"),
+        (name = "deck", description = "Deck state"),
+        (name = "commands", description = "Command execution"),
+        (name = "proxy", description = "Image proxy / CDN cache"),
+    ),
+    modifiers(&SecurityAddon),
+)]
+struct ApiDoc;
+
+struct SecurityAddon;
+
+impl utoipa::Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        let components = openapi.components.get_or_insert_with(Default::default);
+        components.add_security_scheme(
+            "bearer_auth",
+            utoipa::openapi::security::SecurityScheme::Http(
+                utoipa::openapi::security::Http::new(
+                    utoipa::openapi::security::HttpAuthScheme::Bearer,
+                ),
+            ),
+        );
+    }
+}
+
+/// Error response body
+#[derive(Serialize, ToSchema)]
+struct ApiErrorResponse {
+    /// Error code (e.g. "NOT_FOUND", "UNAUTHORIZED")
+    error: String,
+    /// Human-readable error message
+    message: String,
+}
 
 const PORT: u16 = 19820;
 
@@ -146,7 +205,9 @@ pub async fn start(app_handle: AppHandle, api_token: String, token_path: String,
         .merge(api_routes)
         .merge(public_routes)
         .layer(CorsLayer::permissive())
-        .with_state(state);
+        .with_state(state)
+        .route("/api/openapi.json", get(openapi_json))
+        .route("/api/docs", get(openapi_docs));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], PORT));
     eprintln!("[http] listening on http://{addr}");
@@ -190,12 +251,17 @@ async fn auth_middleware(
 
 // --- Handlers ---
 
+#[utoipa::path(get, path = "/api", tag = "general",
+    responses((status = 200, description = "API info and endpoint list"))
+)]
 async fn index(State(state): State<AppState>) -> Json<Value> {
     Json(json!({
         "name": "notedeck",
         "version": env!("CARGO_PKG_VERSION"),
         "auth": "Bearer token required. Read token from the file at tokenPath.",
         "tokenPath": state.token_path,
+        "docs": "/api/docs",
+        "openapi": "/api/openapi.json",
         "endpoints": [
             { "method": "GET",    "path": "/api",                                  "description": "This endpoint list" },
             { "method": "GET",    "path": "/api/accounts",                         "description": "List accounts (no tokens)" },
@@ -223,6 +289,13 @@ async fn index(State(state): State<AppState>) -> Json<Value> {
     }))
 }
 
+#[utoipa::path(get, path = "/api/accounts", tag = "accounts",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "List of accounts (tokens excluded)"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn list_accounts(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<AccountPublic>>, ApiError> {
@@ -230,6 +303,19 @@ async fn list_accounts(
     Ok(Json(accounts.iter().map(AccountPublic::from).collect()))
 }
 
+#[utoipa::path(get, path = "/api/{host}/timeline/{tl_type}", tag = "timeline",
+    security(("bearer_auth" = [])),
+    params(
+        ("host" = String, Path, description = "Misskey server host"),
+        ("tl_type" = String, Path, description = "Timeline type (home, local, social, global, etc.)"),
+        TimelineQueryParams,
+    ),
+    responses(
+        (status = 200, description = "Timeline notes array"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+        (status = 404, description = "Account not found", body = ApiErrorResponse),
+    )
+)]
 async fn get_timeline(
     State(state): State<AppState>,
     Path((host, tl_type)): Path<(String, String)>,
@@ -246,6 +332,18 @@ async fn get_timeline(
     Ok(Json(serde_json::to_value(notes).unwrap_or_default()))
 }
 
+#[utoipa::path(get, path = "/api/{host}/notifications", tag = "timeline",
+    security(("bearer_auth" = [])),
+    params(
+        ("host" = String, Path, description = "Misskey server host"),
+        TimelineQueryParams,
+    ),
+    responses(
+        (status = 200, description = "Notifications array"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+        (status = 404, description = "Account not found", body = ApiErrorResponse),
+    )
+)]
 async fn get_notifications(
     State(state): State<AppState>,
     Path(host): Path<String>,
@@ -261,6 +359,16 @@ async fn get_notifications(
     Ok(Json(serde_json::to_value(notifications).unwrap_or_default()))
 }
 
+#[utoipa::path(post, path = "/api/{host}/note", tag = "notes",
+    security(("bearer_auth" = [])),
+    params(("host" = String, Path, description = "Misskey server host")),
+    request_body = CreateNoteBody,
+    responses(
+        (status = 200, description = "Created note"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+        (status = 404, description = "Account not found", body = ApiErrorResponse),
+    )
+)]
 async fn create_note(
     State(state): State<AppState>,
     Path(host): Path<String>,
@@ -287,6 +395,18 @@ async fn create_note(
     Ok(Json(serde_json::to_value(note).unwrap_or_default()))
 }
 
+#[utoipa::path(get, path = "/api/{host}/search", tag = "search",
+    security(("bearer_auth" = [])),
+    params(
+        ("host" = String, Path, description = "Misskey server host"),
+        SearchQueryParams,
+    ),
+    responses(
+        (status = 200, description = "Search results"),
+        (status = 400, description = "Missing query parameter", body = ApiErrorResponse),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn search_notes(
     State(state): State<AppState>,
     Path(host): Path<String>,
@@ -309,6 +429,18 @@ async fn search_notes(
     Ok(Json(serde_json::to_value(notes).unwrap_or_default()))
 }
 
+#[utoipa::path(get, path = "/api/{host}/notes/{note_id}", tag = "notes",
+    security(("bearer_auth" = [])),
+    params(
+        ("host" = String, Path, description = "Misskey server host"),
+        ("note_id" = String, Path, description = "Note ID"),
+    ),
+    responses(
+        (status = 200, description = "Note detail"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+        (status = 404, description = "Not found", body = ApiErrorResponse),
+    )
+)]
 async fn get_note(
     State(state): State<AppState>,
     Path((host, note_id)): Path<(String, String)>,
@@ -322,6 +454,18 @@ async fn get_note(
     Ok(Json(serde_json::to_value(note).unwrap_or_default()))
 }
 
+#[utoipa::path(delete, path = "/api/{host}/notes/{note_id}", tag = "notes",
+    security(("bearer_auth" = [])),
+    params(
+        ("host" = String, Path, description = "Misskey server host"),
+        ("note_id" = String, Path, description = "Note ID"),
+    ),
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+        (status = 404, description = "Not found", body = ApiErrorResponse),
+    )
+)]
 async fn delete_note(
     State(state): State<AppState>,
     Path((host, note_id)): Path<(String, String)>,
@@ -332,6 +476,18 @@ async fn delete_note(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(get, path = "/api/{host}/notes/{note_id}/children", tag = "notes",
+    security(("bearer_auth" = [])),
+    params(
+        ("host" = String, Path, description = "Misskey server host"),
+        ("note_id" = String, Path, description = "Note ID"),
+        LimitQueryParams,
+    ),
+    responses(
+        (status = 200, description = "Child notes (replies)"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn get_note_children(
     State(state): State<AppState>,
     Path((host, note_id)): Path<(String, String)>,
@@ -347,6 +503,18 @@ async fn get_note_children(
     Ok(Json(serde_json::to_value(notes).unwrap_or_default()))
 }
 
+#[utoipa::path(get, path = "/api/{host}/notes/{note_id}/conversation", tag = "notes",
+    security(("bearer_auth" = [])),
+    params(
+        ("host" = String, Path, description = "Misskey server host"),
+        ("note_id" = String, Path, description = "Note ID"),
+        LimitQueryParams,
+    ),
+    responses(
+        (status = 200, description = "Conversation thread"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn get_note_conversation(
     State(state): State<AppState>,
     Path((host, note_id)): Path<(String, String)>,
@@ -362,6 +530,18 @@ async fn get_note_conversation(
     Ok(Json(serde_json::to_value(notes).unwrap_or_default()))
 }
 
+#[utoipa::path(get, path = "/api/{host}/notes/{note_id}/reactions", tag = "reactions",
+    security(("bearer_auth" = [])),
+    params(
+        ("host" = String, Path, description = "Misskey server host"),
+        ("note_id" = String, Path, description = "Note ID"),
+        ReactionQueryParams,
+    ),
+    responses(
+        (status = 200, description = "Reactions list"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn get_note_reactions(
     State(state): State<AppState>,
     Path((host, note_id)): Path<(String, String)>,
@@ -377,6 +557,18 @@ async fn get_note_reactions(
     Ok(Json(serde_json::to_value(reactions).unwrap_or_default()))
 }
 
+#[utoipa::path(post, path = "/api/{host}/notes/{note_id}/reactions", tag = "reactions",
+    security(("bearer_auth" = [])),
+    params(
+        ("host" = String, Path, description = "Misskey server host"),
+        ("note_id" = String, Path, description = "Note ID"),
+    ),
+    request_body = ReactionBody,
+    responses(
+        (status = 204, description = "Reaction added"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn create_reaction(
     State(state): State<AppState>,
     Path((host, note_id)): Path<(String, String)>,
@@ -391,6 +583,17 @@ async fn create_reaction(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(delete, path = "/api/{host}/notes/{note_id}/reactions", tag = "reactions",
+    security(("bearer_auth" = [])),
+    params(
+        ("host" = String, Path, description = "Misskey server host"),
+        ("note_id" = String, Path, description = "Note ID"),
+    ),
+    responses(
+        (status = 204, description = "Reaction removed"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn delete_reaction(
     State(state): State<AppState>,
     Path((host, note_id)): Path<(String, String)>,
@@ -404,6 +607,18 @@ async fn delete_reaction(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(get, path = "/api/{host}/users/{user_id}", tag = "users",
+    security(("bearer_auth" = [])),
+    params(
+        ("host" = String, Path, description = "Misskey server host"),
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    responses(
+        (status = 200, description = "User detail"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+        (status = 404, description = "Not found", body = ApiErrorResponse),
+    )
+)]
 async fn get_user(
     State(state): State<AppState>,
     Path((host, user_id)): Path<(String, String)>,
@@ -417,6 +632,19 @@ async fn get_user(
     Ok(Json(serde_json::to_value(user).unwrap_or_default()))
 }
 
+#[utoipa::path(get, path = "/api/{host}/users/{user_id}/notes", tag = "users",
+    security(("bearer_auth" = [])),
+    params(
+        ("host" = String, Path, description = "Misskey server host"),
+        ("user_id" = String, Path, description = "User ID"),
+        TimelineQueryParams,
+    ),
+    responses(
+        (status = 200, description = "User's notes"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+        (status = 404, description = "Not found", body = ApiErrorResponse),
+    )
+)]
 async fn get_user_notes(
     State(state): State<AppState>,
     Path((host, user_id)): Path<(String, String)>,
@@ -432,6 +660,14 @@ async fn get_user_notes(
     Ok(Json(serde_json::to_value(notes).unwrap_or_default()))
 }
 
+#[utoipa::path(get, path = "/api/events", tag = "events",
+    security(("bearer_auth" = [])),
+    params(SseQueryParams),
+    responses(
+        (status = 200, description = "SSE event stream (text/event-stream)"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn sse_events(
     State(state): State<AppState>,
     Query(params): Query<SseQueryParams>,
@@ -466,6 +702,13 @@ async fn sse_events(
 
 // --- QueryBridge handlers (deck state + commands) ---
 
+#[utoipa::path(get, path = "/api/deck/columns", tag = "deck",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Deck columns list"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn get_deck_columns(
     State(state): State<AppState>,
 ) -> Result<Json<Value>, ApiError> {
@@ -479,6 +722,14 @@ async fn get_deck_columns(
     Ok(Json(data))
 }
 
+#[utoipa::path(post, path = "/api/deck/columns", tag = "deck",
+    security(("bearer_auth" = [])),
+    request_body = Value,
+    responses(
+        (status = 200, description = "Column added"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn add_deck_column(
     State(state): State<AppState>,
     Json(body): Json<Value>,
@@ -493,6 +744,14 @@ async fn add_deck_column(
     Ok(Json(data))
 }
 
+#[utoipa::path(delete, path = "/api/deck/columns/{column_id}", tag = "deck",
+    security(("bearer_auth" = [])),
+    params(("column_id" = String, Path, description = "Column ID")),
+    responses(
+        (status = 204, description = "Column removed"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn remove_deck_column(
     State(state): State<AppState>,
     Path(column_id): Path<String>,
@@ -511,6 +770,13 @@ async fn remove_deck_column(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(get, path = "/api/deck/active", tag = "deck",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Active column info"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn get_deck_active(
     State(state): State<AppState>,
 ) -> Result<Json<Value>, ApiError> {
@@ -524,6 +790,13 @@ async fn get_deck_active(
     Ok(Json(data))
 }
 
+#[utoipa::path(get, path = "/api/commands", tag = "commands",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Available commands"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn list_commands(
     State(state): State<AppState>,
 ) -> Result<Json<Value>, ApiError> {
@@ -537,6 +810,14 @@ async fn list_commands(
     Ok(Json(data))
 }
 
+#[utoipa::path(post, path = "/api/commands/{command_id}/execute", tag = "commands",
+    security(("bearer_auth" = [])),
+    params(("command_id" = String, Path, description = "Command ID")),
+    responses(
+        (status = 200, description = "Command result"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+    )
+)]
 async fn execute_command(
     State(state): State<AppState>,
     Path(command_id): Path<String>,
@@ -557,7 +838,7 @@ async fn execute_command(
 
 // --- Query / Body types ---
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 struct TimelineQueryParams {
     limit: Option<i64>,
     since_id: Option<String>,
@@ -574,33 +855,33 @@ impl TimelineQueryParams {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 struct SearchQueryParams {
     q: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 struct LimitQueryParams {
     limit: Option<u32>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 struct ReactionQueryParams {
     r#type: Option<String>,
     limit: Option<u32>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 struct ReactionBody {
     reaction: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 struct SseQueryParams {
     r#type: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 struct CreateNoteBody {
     text: String,
     cw: Option<String>,
@@ -612,13 +893,40 @@ struct CreateNoteBody {
     scheduled_at: Option<String>,
 }
 
+// --- OpenAPI docs ---
+
+async fn openapi_json() -> Json<utoipa::openapi::OpenApi> {
+    Json(ApiDoc::openapi())
+}
+
+async fn openapi_docs() -> axum::response::Html<&'static str> {
+    axum::response::Html(
+        r#"<!DOCTYPE html>
+<html><head>
+<title>NoteDeck API</title>
+<meta charset="utf-8">
+</head><body>
+<script id="api-reference" data-url="/api/openapi.json"></script>
+<script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+</body></html>"#,
+    )
+}
+
 // --- Image proxy ---
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 struct ProxyImageParams {
     url: String,
 }
 
+#[utoipa::path(get, path = "/proxy/image", tag = "proxy",
+    params(ProxyImageParams),
+    responses(
+        (status = 200, description = "Proxied image (with 3-layer cache)"),
+        (status = 304, description = "Not Modified (ETag match)"),
+        (status = 502, description = "Upstream fetch failed"),
+    )
+)]
 async fn proxy_image(
     State(state): State<AppState>,
     headers: axum::http::HeaderMap,

@@ -30,6 +30,7 @@ lru = "0.12"
 regex = "1"
 async-trait = "0.1"
 mime_guess = "2"
+utoipa = { version = "5", features = ["axum_extras"] }
 
 [features]
 default = ["desktop"]
