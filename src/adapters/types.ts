@@ -269,6 +269,12 @@ export interface NormalizedPollChoice {
   isVoted: boolean
 }
 
+export interface DriveFolder {
+  id: string
+  name: string
+  parentId: string | null
+}
+
 export interface NormalizedDriveFile {
   id: string
   name: string

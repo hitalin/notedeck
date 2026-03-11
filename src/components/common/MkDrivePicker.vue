@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
-import { computed, ref } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
-import { AppError } from '@/utils/errors'
-import { isSafeUrl } from '@/utils/url'
+import { isImage, safeUrl, useDriveFolder } from '@/composables/useDriveFolder'
 
 const props = defineProps<{
   accountId: string
@@ -14,86 +11,25 @@ const emit = defineEmits<{
   close: []
 }>()
 
-interface DriveFolder {
-  id: string
-  name: string
-  parentId: string | null
-}
-
-const currentFolderId = ref<string | null>(null)
-const folderStack = ref<DriveFolder[]>([])
-const folders = ref<DriveFolder[]>([])
-const files = ref<NormalizedDriveFile[]>([])
-const loading = ref(false)
-const error = ref<string | null>(null)
-const selectedIds = ref(new Set<string>())
-
-async function fetchDrive(folderId?: string | null) {
-  const targetFolderId = folderId ?? currentFolderId.value
-  loading.value = true
-  error.value = null
-
-  try {
-    const [folderResult, fileResult] = await Promise.all([
-      invoke<DriveFolder[]>('api_request', {
-        accountId: props.accountId,
-        endpoint: 'drive/folders',
-        params: { folderId: targetFolderId, limit: 50 },
-      }),
-      invoke<NormalizedDriveFile[]>('api_request', {
-        accountId: props.accountId,
-        endpoint: 'drive/files',
-        params: { folderId: targetFolderId, limit: 50 },
-      }),
-    ])
-    folders.value = folderResult
-    files.value = fileResult
-  } catch (e) {
-    error.value = AppError.from(e).message
-  } finally {
-    loading.value = false
-  }
-}
-
-function openFolder(folder: DriveFolder) {
-  folderStack.value.push(folder)
-  currentFolderId.value = folder.id
-  fetchDrive(folder.id)
-}
-
-function goUp() {
-  folderStack.value.pop()
-  const parent = folderStack.value[folderStack.value.length - 1]
-  currentFolderId.value = parent?.id ?? null
-  fetchDrive(currentFolderId.value)
-}
-
-function toggleFile(fileId: string) {
-  const next = new Set(selectedIds.value)
-  if (next.has(fileId)) {
-    next.delete(fileId)
-  } else {
-    next.add(fileId)
-  }
-  selectedIds.value = next
-}
+const {
+  folderStack,
+  folders,
+  files,
+  loading,
+  error,
+  fetchDrive,
+  openFolder,
+  goUp,
+  selectedIds,
+  toggleFile,
+  selectedCount,
+} = useDriveFolder({ accountId: () => props.accountId })
 
 function confirm() {
   const picked = files.value.filter((f) => selectedIds.value.has(f.id))
   if (picked.length > 0) {
     emit('pick', picked)
   }
-}
-
-const selectedCount = computed(() => selectedIds.value.size)
-
-function safeUrl(url: string | null | undefined): string | undefined {
-  if (!url) return undefined
-  return isSafeUrl(url) ? url : undefined
-}
-
-function isImage(file: NormalizedDriveFile): boolean {
-  return file.type.startsWith('image/')
 }
 
 // Initial load

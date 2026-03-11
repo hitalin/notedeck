@@ -2,11 +2,18 @@
 import { invoke } from '@tauri-apps/api/core'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
+import {
+  formatFileSize,
+  isAudio,
+  isImage,
+  isVideo,
+  safeUrl,
+  useDriveFolder,
+} from '@/composables/useDriveFolder'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
-import { isSafeUrl } from '@/utils/url'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -24,58 +31,33 @@ const columnThemeVars = computed(() => {
   return themeStore.getStyleVarsForAccount(accountId)
 })
 
-// --- Folder navigation ---
-interface DriveFolder {
-  id: string
-  name: string
-  parentId: string | null
-}
-
-const currentFolderId = ref<string | null>(props.column.folderId ?? null)
-const folderStack = ref<DriveFolder[]>([])
-const folders = ref<DriveFolder[]>([])
-const files = ref<NormalizedDriveFile[]>([])
-const loading = ref(false)
-const error = ref<string | null>(null)
+const {
+  folderStack,
+  folders,
+  files,
+  loading,
+  error,
+  fetchDrive,
+  openFolder: _openFolder,
+  goUp: _goUp,
+  goRoot: _goRoot,
+  selectedIds,
+  toggleFile,
+  selectAll,
+  deselectAll,
+} = useDriveFolder({
+  accountId: () => props.column.accountId,
+  initialFolderId: props.column.folderId,
+})
 
 // --- Detail view ---
 const detailFile = ref<NormalizedDriveFile | null>(null)
 const deleting = ref(false)
 const deleteError = ref<string | null>(null)
 
-async function fetchDrive(folderId?: string | null) {
-  if (!props.column.accountId) return
-  const targetFolderId = folderId ?? currentFolderId.value
-  loading.value = true
-  error.value = null
-
-  try {
-    const [folderResult, fileResult] = await Promise.all([
-      invoke<DriveFolder[]>('api_request', {
-        accountId: props.column.accountId,
-        endpoint: 'drive/folders',
-        params: { folderId: targetFolderId, limit: 50 },
-      }),
-      invoke<NormalizedDriveFile[]>('api_request', {
-        accountId: props.column.accountId,
-        endpoint: 'drive/files',
-        params: { folderId: targetFolderId, limit: 50 },
-      }),
-    ])
-    folders.value = folderResult
-    files.value = fileResult
-  } catch (e) {
-    error.value = AppError.from(e).message
-  } finally {
-    loading.value = false
-  }
-}
-
-function openFolder(folder: DriveFolder) {
-  folderStack.value.push(folder)
-  currentFolderId.value = folder.id
+function openFolder(folder: Parameters<typeof _openFolder>[0]) {
   detailFile.value = null
-  fetchDrive(folder.id)
+  _openFolder(folder)
 }
 
 function goUp() {
@@ -84,18 +66,13 @@ function goUp() {
     deleteError.value = null
     return
   }
-  folderStack.value.pop()
-  const parent = folderStack.value[folderStack.value.length - 1]
-  currentFolderId.value = parent?.id ?? null
-  fetchDrive(currentFolderId.value)
+  _goUp()
 }
 
 function goRoot() {
-  folderStack.value = []
-  currentFolderId.value = null
   detailFile.value = null
   deleteError.value = null
-  fetchDrive(null)
+  _goRoot()
 }
 
 function openDetail(file: NormalizedDriveFile) {
@@ -122,62 +99,18 @@ async function deleteFile() {
   }
 }
 
-function safeUrl(url: string | null | undefined): string | undefined {
-  if (!url) return undefined
-  return isSafeUrl(url) ? url : undefined
-}
-
-function isImage(file: NormalizedDriveFile): boolean {
-  return file.type.startsWith('image/')
-}
-
-function isVideo(file: NormalizedDriveFile): boolean {
-  return file.type.startsWith('video/')
-}
-
-function isAudio(file: NormalizedDriveFile): boolean {
-  return file.type.startsWith('audio/')
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024)
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
-}
-
 const canGoUp = computed(() => {
   return detailFile.value !== null || folderStack.value.length > 0
 })
 
 // --- Selection mode ---
 const selectMode = ref(false)
-const selectedIds = ref(new Set<string>())
 
 function toggleSelectMode() {
   selectMode.value = !selectMode.value
   if (!selectMode.value) {
-    selectedIds.value = new Set()
+    deselectAll()
   }
-}
-
-function toggleFileSelection(fileId: string) {
-  const next = new Set(selectedIds.value)
-  if (next.has(fileId)) {
-    next.delete(fileId)
-  } else {
-    next.add(fileId)
-  }
-  selectedIds.value = next
-}
-
-function selectAll() {
-  selectedIds.value = new Set(files.value.map((f) => f.id))
-}
-
-function deselectAll() {
-  selectedIds.value = new Set()
 }
 
 const batchDeleting = ref(false)
@@ -197,7 +130,7 @@ async function batchDelete() {
       })
       files.value = files.value.filter((f) => f.id !== fileId)
     }
-    selectedIds.value = new Set()
+    deselectAll()
     selectMode.value = false
   } catch (e) {
     batchDeleteError.value = AppError.from(e).message
@@ -208,7 +141,7 @@ async function batchDelete() {
 
 function onFileClick(file: NormalizedDriveFile) {
   if (selectMode.value) {
-    toggleFileSelection(file.id)
+    toggleFile(file.id)
   } else {
     openDetail(file)
   }
@@ -330,7 +263,7 @@ fetchDrive()
             <div class="drive-detail-name">{{ detailFile.name }}</div>
             <div class="drive-detail-meta">
               <span>{{ detailFile.type }}</span>
-              <span>{{ formatSize(detailFile.size) }}</span>
+              <span>{{ formatFileSize(detailFile.size) }}</span>
             </div>
             <div v-if="detailFile.isSensitive" class="drive-detail-sensitive">
               <i class="ti ti-eye-off" /> NSFW

@@ -41,6 +41,7 @@ const AddColumnDialog = defineAsyncComponent(
   () => import('./AddColumnDialog.vue'),
 )
 
+import type { Component } from 'vue'
 import DeckAchievementsColumn from './DeckAchievementsColumn.vue'
 import DeckAiColumn from './DeckAiColumn.vue'
 import DeckAiScriptColumn from './DeckAiScriptColumn.vue'
@@ -67,6 +68,32 @@ import DeckSpecifiedColumn from './DeckSpecifiedColumn.vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
 import DeckUserColumn from './DeckUserColumn.vue'
 import DeckWidgetColumn from './DeckWidgetColumn.vue'
+
+const COLUMN_COMPONENTS: Record<string, Component> = {
+  timeline: DeckTimelineColumn,
+  list: DeckListColumn,
+  antenna: DeckAntennaColumn,
+  notifications: DeckNotificationColumn,
+  search: DeckSearchColumn,
+  favorites: DeckFavoritesColumn,
+  clip: DeckClipColumn,
+  channel: DeckChannelColumn,
+  user: DeckUserColumn,
+  mentions: DeckMentionsColumn,
+  specified: DeckSpecifiedColumn,
+  chat: DeckChatColumn,
+  widget: DeckWidgetColumn,
+  aiscript: DeckAiScriptColumn,
+  play: DeckPlayColumn,
+  page: DeckPageColumn,
+  ai: DeckAiColumn,
+  drive: DeckDriveColumn,
+  announcements: DeckAnnouncementsColumn,
+  gallery: DeckGalleryColumn,
+  explore: DeckExploreColumn,
+  followRequests: DeckFollowRequestsColumn,
+  achievements: DeckAchievementsColumn,
+}
 
 const router = useRouter()
 const {
@@ -459,100 +486,11 @@ watch(
               @mousedown="deckStore.setActiveColumn(colId)"
               @pointerdown="onColumnPointerDown(colId, $event)"
             >
-              <template v-if="columnMap.get(colId)">
-                <DeckTimelineColumn
-                  v-if="columnMap.get(colId)!.type === 'timeline'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckListColumn
-                  v-else-if="columnMap.get(colId)!.type === 'list'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckAntennaColumn
-                  v-else-if="columnMap.get(colId)!.type === 'antenna'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckNotificationColumn
-                  v-else-if="columnMap.get(colId)!.type === 'notifications'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckSearchColumn
-                  v-else-if="columnMap.get(colId)!.type === 'search'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckFavoritesColumn
-                  v-else-if="columnMap.get(colId)!.type === 'favorites'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckClipColumn
-                  v-else-if="columnMap.get(colId)!.type === 'clip'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckChannelColumn
-                  v-else-if="columnMap.get(colId)!.type === 'channel'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckUserColumn
-                  v-else-if="columnMap.get(colId)!.type === 'user'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckMentionsColumn
-                  v-else-if="columnMap.get(colId)!.type === 'mentions'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckSpecifiedColumn
-                  v-else-if="columnMap.get(colId)!.type === 'specified'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckChatColumn
-                  v-else-if="columnMap.get(colId)!.type === 'chat'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckWidgetColumn
-                  v-else-if="columnMap.get(colId)!.type === 'widget'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckAiScriptColumn
-                  v-else-if="columnMap.get(colId)!.type === 'aiscript'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckPlayColumn
-                  v-else-if="columnMap.get(colId)!.type === 'play'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckPageColumn
-                  v-else-if="columnMap.get(colId)!.type === 'page'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckAiColumn
-                  v-else-if="columnMap.get(colId)!.type === 'ai'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckDriveColumn
-                  v-else-if="columnMap.get(colId)!.type === 'drive'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckAnnouncementsColumn
-                  v-else-if="columnMap.get(colId)!.type === 'announcements'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckGalleryColumn
-                  v-else-if="columnMap.get(colId)!.type === 'gallery'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckExploreColumn
-                  v-else-if="columnMap.get(colId)!.type === 'explore'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckFollowRequestsColumn
-                  v-else-if="columnMap.get(colId)!.type === 'followRequests'"
-                  :column="columnMap.get(colId)!"
-                />
-                <DeckAchievementsColumn
-                  v-else-if="columnMap.get(colId)!.type === 'achievements'"
-                  :column="columnMap.get(colId)!"
-                />
-              </template>
+              <component
+                v-if="columnMap.get(colId) && COLUMN_COMPONENTS[columnMap.get(colId)!.type]"
+                :is="COLUMN_COMPONENTS[columnMap.get(colId)!.type]"
+                :column="columnMap.get(colId)!"
+              />
             </div>
           </section>
           <div
