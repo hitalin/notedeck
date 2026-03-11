@@ -107,7 +107,7 @@ const webUiUrl = computed(() =>
           class="new-notes-banner _button"
           @click="scrollToTop()"
         >
-          {{ pendingNotes.length }} new notes
+          <i class="ti ti-arrow-up" />{{ pendingNotes.length }}件の新しいノート
         </button>
 
         <DynamicScroller

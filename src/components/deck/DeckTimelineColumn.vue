@@ -734,17 +734,17 @@ onUnmounted(() => {
       </div>
 
       <template v-else>
+        <div v-if="notes.length === 0 && timeMachine.isActive.value" class="column-empty">
+          No cached notes for this date
+        </div>
+
         <button
           v-if="pendingNotes.length > 0"
           class="new-notes-banner _button"
           @click="scrollToTop()"
         >
-          {{ pendingNotes.length }} new notes
+          <i class="ti ti-arrow-up" />{{ pendingNotes.length }}件の新しいノート
         </button>
-
-        <div v-if="notes.length === 0 && timeMachine.isActive.value" class="column-empty">
-          No cached notes for this date
-        </div>
 
         <DynamicScroller
           ref="scroller"
