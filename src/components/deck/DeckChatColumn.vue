@@ -536,6 +536,7 @@ onBeforeUnmount(() => {
       <div v-if="showReactionPicker && account" class="chat-reaction-picker" @click.stop>
         <MkReactionPicker
           :server-host="account.host"
+          :account-id="column.accountId!"
           @pick="pickReaction"
         />
       </div>
@@ -585,6 +586,7 @@ onBeforeUnmount(() => {
         <div v-if="showEmojiPicker && account" class="chat-emoji-popup" @click.stop>
           <MkReactionPicker
             :server-host="account.host"
+            :account-id="column.accountId!"
             @pick="pickEmoji"
           />
         </div>

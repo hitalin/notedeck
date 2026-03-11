@@ -834,6 +834,7 @@ function onKeydown(e: KeyboardEvent) {
             <div v-if="showEmojiPopup && account" class="footer-popup emoji-popup" @click.stop>
               <MkReactionPicker
                 :server-host="account.host"
+                :account-id="activeAccountId"
                 @pick="pickEmoji"
               />
             </div>

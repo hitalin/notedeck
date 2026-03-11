@@ -9,7 +9,7 @@ const MkReactionPicker = defineAsyncComponent(
 
 const props = defineProps<{
   serverHost: string
-  pinnedEmojis?: string[]
+  accountId: string
 }>()
 
 const emit = defineEmits<{
@@ -50,7 +50,7 @@ defineExpose({ open })
         >
           <MkReactionPicker
             :server-host="serverHost"
-            :pinned-emojis="pinnedEmojis"
+            :account-id="accountId"
             @pick="(r: string) => { emit('pick', r); close() }"
           />
         </div>

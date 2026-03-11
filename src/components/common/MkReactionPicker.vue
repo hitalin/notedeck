@@ -3,37 +3,25 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import type { ServerEmoji } from '@/adapters/types'
 import { emojiCharByCategory, unicodeEmojiCategories } from '@/data/emojilist'
 import { useEmojisStore } from '@/stores/emojis'
+import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
 import { useRecentEmojisStore } from '@/stores/recentEmojis'
 import { char2twemojiUrl } from '@/utils/twemoji'
 import MkReactionPickerSection from './MkReactionPickerSection.vue'
 
-const props = withDefaults(
-  defineProps<{
-    serverHost: string
-    pinnedEmojis?: string[]
-  }>(),
-  {
-    pinnedEmojis: () => [
-      '👍',
-      '❤️',
-      '😆',
-      '🤔',
-      '😮',
-      '🎉',
-      '💢',
-      '😥',
-      '😇',
-      '🍮',
-    ],
-  },
-)
+const props = defineProps<{
+  serverHost: string
+  accountId: string
+}>()
 
 const emit = defineEmits<{
   pick: [reaction: string]
 }>()
 
 const emojisStore = useEmojisStore()
+const pinnedReactionsStore = usePinnedReactionsStore()
 const recentEmojisStore = useRecentEmojisStore()
+
+const pinnedEmojis = computed(() => pinnedReactionsStore.get(props.accountId))
 const searchQuery = ref('')
 const searchInput = ref<HTMLInputElement | null>(null)
 
@@ -123,18 +111,18 @@ function isCustomEmoji(reaction: string): boolean {
 }
 
 function pickEmoji(emoji: string) {
-  recentEmojisStore.add(emoji, props.pinnedEmojis)
+  recentEmojisStore.add(emoji, pinnedEmojis.value)
   emit('pick', emoji)
 }
 
 function pickCustom(name: string) {
   const key = `:${name}:`
-  recentEmojisStore.add(key, props.pinnedEmojis)
+  recentEmojisStore.add(key, pinnedEmojis.value)
   emit('pick', key)
 }
 
 function pickPinnedOrRecent(reaction: string) {
-  recentEmojisStore.add(reaction, props.pinnedEmojis)
+  recentEmojisStore.add(reaction, pinnedEmojis.value)
   emit('pick', reaction)
 }
 
