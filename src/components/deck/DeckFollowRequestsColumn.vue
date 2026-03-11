@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import type { NormalizedUser } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
+import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNavigation } from '@/composables/useNavigation'
-import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
-import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
 
@@ -23,19 +22,9 @@ const props = defineProps<{
 }>()
 
 const { navigateToUser: navToUser } = useNavigation()
-const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
-const themeStore = useThemeStore()
 
-const account = computed(() =>
-  accountsStore.accounts.find((a) => a.id === props.column.accountId),
-)
-
-const columnThemeVars = computed(() => {
-  const accountId = props.column.accountId
-  if (!accountId) return undefined
-  return themeStore.getStyleVarsForAccount(accountId)
-})
+const { account, columnThemeVars } = useColumnTheme(() => props.column)
 
 const serverIconUrl = ref<string | undefined>()
 const isLoading = ref(false)

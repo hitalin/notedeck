@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
+import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
-import { useThemeStore } from '@/stores/theme'
 import DeckColumn from './DeckColumn.vue'
 import { getWidgetComponent, getWidgetDefinitions } from './widgets/registry'
 import { widgetTemplates } from './widgets/templates'
@@ -12,14 +12,9 @@ const props = defineProps<{
 }>()
 
 const deckStore = useDeckStore()
-const themeStore = useThemeStore()
 const showAddMenu = ref(false)
 
-const columnThemeVars = computed(() => {
-  const accountId = props.column.accountId
-  if (!accountId) return undefined
-  return themeStore.getStyleVarsForAccount(accountId)
-})
+const { columnThemeVars } = useColumnTheme(() => props.column)
 
 const widgets = computed(() => props.column.widgets ?? [])
 

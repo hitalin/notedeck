@@ -1,27 +1,17 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { computed, ref } from 'vue'
-import { useAccountsStore } from '@/stores/accounts'
+import { ref } from 'vue'
+import { useColumnTheme } from '@/composables/useColumnTheme'
+import { safeUrl } from '@/composables/useDriveFolder'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
-import { isSafeUrl } from '@/utils/url'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
 
-const accountsStore = useAccountsStore()
-const themeStore = useThemeStore()
-const account = computed(() =>
-  accountsStore.accounts.find((a) => a.id === props.column.accountId),
-)
-const columnThemeVars = computed(() => {
-  const accountId = props.column.accountId
-  if (!accountId) return undefined
-  return themeStore.getStyleVarsForAccount(accountId)
-})
+const { account, columnThemeVars } = useColumnTheme(() => props.column)
 
 interface GalleryPost {
   id: string
@@ -137,11 +127,6 @@ async function toggleLike() {
   } finally {
     liking.value = false
   }
-}
-
-function safeUrl(url: string | null | undefined): string | undefined {
-  if (!url) return undefined
-  return isSafeUrl(url) ? url : undefined
 }
 
 function isImage(file: GalleryFile): boolean {

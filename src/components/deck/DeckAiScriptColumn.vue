@@ -15,10 +15,9 @@ import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
-import { useAccountsStore } from '@/stores/accounts'
+import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
-import { useThemeStore } from '@/stores/theme'
 import DeckColumn from './DeckColumn.vue'
 import AiScriptEditor from './widgets/AiScriptEditor.vue'
 import type { PostFormRequest } from './widgets/AiScriptUiRenderer.vue'
@@ -30,22 +29,12 @@ const props = defineProps<{
 
 const deckStore = useDeckStore()
 const commandStore = useCommandStore()
-const accountsStore = useAccountsStore()
-const themeStore = useThemeStore()
 
-const columnThemeVars = computed(() => {
-  const accountId = props.column.accountId
-  if (!accountId) return undefined
-  return themeStore.getStyleVarsForAccount(accountId)
-})
+const { account, columnThemeVars } = useColumnTheme(() => props.column)
 
-const serverUrl = computed(() => {
-  if (!props.column.accountId) return ''
-  const account = accountsStore.accounts.find(
-    (a) => a.id === props.column.accountId,
-  )
-  return account ? `https://${account.host}` : ''
-})
+const serverUrl = computed(() =>
+  account.value ? `https://${account.value.host}` : '',
+)
 
 const code = ref(props.column.aiscriptCode ?? '<: "Hello, AiScript!"')
 const output = ref<{ text: string; isError: boolean }[]>([])

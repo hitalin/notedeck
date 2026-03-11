@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { computed, ref } from 'vue'
-import { useAccountsStore } from '@/stores/accounts'
+import { ref } from 'vue'
+import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
 
@@ -11,16 +10,7 @@ const props = defineProps<{
   column: DeckColumnType
 }>()
 
-const accountsStore = useAccountsStore()
-const themeStore = useThemeStore()
-const account = computed(() =>
-  accountsStore.accounts.find((a) => a.id === props.column.accountId),
-)
-const columnThemeVars = computed(() => {
-  const accountId = props.column.accountId
-  if (!accountId) return undefined
-  return themeStore.getStyleVarsForAccount(accountId)
-})
+const { account, columnThemeVars } = useColumnTheme(() => props.column)
 
 interface Achievement {
   name: string
