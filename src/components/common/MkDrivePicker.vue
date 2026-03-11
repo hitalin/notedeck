@@ -186,9 +186,10 @@ fetchDrive()
 
 <style scoped>
 .drive-picker {
-  width: 360px;
-  max-width: 90%;
-  max-height: 70vh;
+  width: 100%;
+  max-width: 520px;
+  max-height: 50vh;
+  margin: 0 16px 16px;
   display: flex;
   flex-direction: column;
   background: var(--nd-panelBg);

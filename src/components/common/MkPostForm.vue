@@ -841,15 +841,15 @@ function onKeydown(e: KeyboardEvent) {
         </div>
       </footer>
 
-      <!-- Drive picker modal -->
-      <div v-if="showDrivePicker" class="drive-picker-overlay" @click.self="showDrivePicker = false">
-        <MkDrivePicker
-          :account-id="activeAccountId!"
-          @pick="onDriveFilesPicked"
-          @close="showDrivePicker = false"
-        />
-      </div>
     </div>
+
+    <!-- Drive picker (below post form) -->
+    <MkDrivePicker
+      v-if="showDrivePicker"
+      :account-id="activeAccountId!"
+      @pick="onDriveFilesPicked"
+      @close="showDrivePicker = false"
+    />
   </div>
 </template>
 
@@ -859,10 +859,11 @@ function onKeydown(e: KeyboardEvent) {
   inset: 0;
   z-index: 2000;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   padding-top: 12vh;
   background: var(--nd-modalBg);
+  overflow-y: auto;
 }
 
 .post-inline-wrapper {
@@ -2030,17 +2031,6 @@ function onKeydown(e: KeyboardEvent) {
   opacity: 0.7;
 }
 
-/* ── Drive picker overlay ── */
-.drive-picker-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 30;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: inherit;
-}
 
 /* Mobile fullscreen */
 @media (max-width: 600px) {
