@@ -308,6 +308,10 @@ export function usePostFormState(
     }
   }
 
+  function attachDriveFiles(driveFiles: NormalizedDriveFile[]) {
+    attachedFiles.value = [...attachedFiles.value, ...driveFiles]
+  }
+
   function removeFile(fileId: string) {
     attachedFiles.value = attachedFiles.value.filter((f) => f.id !== fileId)
   }
@@ -454,6 +458,7 @@ export function usePostFormState(
     openFilePicker,
     onFileSelected,
     uploadFilesFromPaths,
+    attachDriveFiles,
     removeFile,
     selectVisibility,
     noteModeLabel,

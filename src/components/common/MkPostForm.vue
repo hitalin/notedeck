@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import type { NormalizedNote } from '@/adapters/types'
+import type { NormalizedDriveFile, NormalizedNote } from '@/adapters/types'
 import {
   getPluginHandlers,
   setPluginAccountContext,
@@ -8,6 +8,7 @@ import {
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePostFormState } from '@/composables/usePostFormState'
+import MkDrivePicker from './MkDrivePicker.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
 import MkMfm from './MkMfm.vue'
 import MkReactionPicker from './MkReactionPicker.vue'
@@ -74,6 +75,7 @@ const {
   openFilePicker,
   onFileSelected,
   uploadFilesFromPaths,
+  attachDriveFiles,
   removeFile,
   selectVisibility,
   noteModeLabel,
@@ -214,6 +216,32 @@ function toggleMfmMenu() {
   showEmojiPopup.value = false
 }
 
+// --- File attach menu ---
+const showAttachMenu = ref(false)
+const showDrivePicker = ref(false)
+
+function toggleAttachMenu() {
+  showAttachMenu.value = !showAttachMenu.value
+  showMentionPopup.value = false
+  showEmojiPopup.value = false
+  showMfmMenu.value = false
+}
+
+function attachFromLocal() {
+  showAttachMenu.value = false
+  openFilePicker()
+}
+
+function attachFromDrive() {
+  showAttachMenu.value = false
+  showDrivePicker.value = true
+}
+
+function onDriveFilesPicked(driveFiles: NormalizedDriveFile[]) {
+  attachDriveFiles(driveFiles)
+  showDrivePicker.value = false
+}
+
 // --- Close popups on form click ---
 function toggleMoreMenu() {
   showMoreMenu.value = !showMoreMenu.value
@@ -228,6 +256,7 @@ function closePopups() {
   showSchedulePopup.value = false
   showDraftMenu.value = false
   showMoreMenu.value = false
+  showAttachMenu.value = false
 }
 
 onMounted(async () => {
@@ -679,14 +708,26 @@ function onKeydown(e: KeyboardEvent) {
       <footer class="footer">
         <div class="footer-left">
           <!-- Attach file -->
-          <button
-            class="_button footer-btn"
-            title="ファイルを添付"
-            :disabled="isUploading"
-            @click="openFilePicker"
-          >
-            <i class="ti ti-photo-plus" />
-          </button>
+          <div class="footer-popup-wrapper">
+            <button
+              class="_button footer-btn"
+              title="ファイルを添付"
+              :disabled="isUploading"
+              @click.stop="toggleAttachMenu"
+            >
+              <i class="ti ti-photo-plus" />
+            </button>
+            <div v-if="showAttachMenu" class="footer-popup attach-menu" @click.stop>
+              <button class="_button attach-menu-item" @click="attachFromLocal">
+                <i class="ti ti-upload" />
+                <span>アップロード</span>
+              </button>
+              <button class="_button attach-menu-item" @click="attachFromDrive">
+                <i class="ti ti-cloud" />
+                <span>ドライブから</span>
+              </button>
+            </div>
+          </div>
 
           <!-- Poll -->
           <button
@@ -799,6 +840,15 @@ function onKeydown(e: KeyboardEvent) {
           </div>
         </div>
       </footer>
+
+      <!-- Drive picker modal -->
+      <div v-if="showDrivePicker" class="drive-picker-overlay" @click.self="showDrivePicker = false">
+        <MkDrivePicker
+          :account-id="activeAccountId!"
+          @pick="onDriveFilesPicked"
+          @close="showDrivePicker = false"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -1950,6 +2000,46 @@ function onKeydown(e: KeyboardEvent) {
   .header-right {
     gap: 0;
   }
+}
+
+/* ── Attach menu ── */
+.attach-menu {
+  min-width: 200px;
+  padding: 4px;
+}
+
+.attach-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  border-radius: 6px;
+  transition: background 0.15s;
+  text-align: left;
+}
+
+.attach-menu-item:hover {
+  background: var(--nd-buttonHoverBg);
+}
+
+.attach-menu-item .ti {
+  font-size: 16px;
+  opacity: 0.7;
+}
+
+/* ── Drive picker overlay ── */
+.drive-picker-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
 }
 
 /* Mobile fullscreen */
