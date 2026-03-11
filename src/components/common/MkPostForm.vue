@@ -2008,6 +2008,8 @@ function onKeydown(e: KeyboardEvent) {
 .attach-menu {
   min-width: 200px;
   padding: 4px;
+  left: 0;
+  transform: none;
 }
 
 .attach-menu-item {
