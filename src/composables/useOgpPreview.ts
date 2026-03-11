@@ -22,40 +22,52 @@ export function populateOgpCache(hints: Record<string, OgpData>) {
   }
 }
 
-export function useOgpPreview(url: string, accountId?: string) {
+export function useOgpPreview(initialUrl: string, accountId?: string) {
   const data = ref<OgpData | null>(null)
   const loading = ref(true)
+  let currentUrl = initialUrl
 
-  async function fetch() {
-    if (ogpCache.has(url)) {
-      data.value = ogpCache.get(url) ?? null
+  async function fetchUrl(targetUrl: string) {
+    currentUrl = targetUrl
+    loading.value = true
+    data.value = null
+
+    if (ogpCache.has(targetUrl)) {
+      data.value = ogpCache.get(targetUrl) ?? null
       loading.value = false
       return
     }
 
-    let promise = pendingRequests.get(url)
+    let promise = pendingRequests.get(targetUrl)
     if (!promise) {
       promise = invoke<OgpData>('fetch_ogp', {
-        url,
+        url: targetUrl,
         accountId: accountId ?? null,
       })
         .then((result) => {
-          setOgpCache(url, result)
-          pendingRequests.delete(url)
+          setOgpCache(targetUrl, result)
+          pendingRequests.delete(targetUrl)
           return result
         })
         .catch(() => {
-          setOgpCache(url, null)
-          pendingRequests.delete(url)
+          setOgpCache(targetUrl, null)
+          pendingRequests.delete(targetUrl)
           return null
         })
-      pendingRequests.set(url, promise)
+      pendingRequests.set(targetUrl, promise)
     }
 
     const result = await promise
-    data.value = result
-    loading.value = false
+    // Only update if still the current URL (guard against race conditions)
+    if (currentUrl === targetUrl) {
+      data.value = result
+      loading.value = false
+    }
   }
 
-  return { data, loading, fetch }
+  async function fetch() {
+    await fetchUrl(currentUrl)
+  }
+
+  return { data, loading, fetch, fetchUrl }
 }

@@ -6,6 +6,7 @@ import {
   onMounted,
   onUnmounted,
   ref,
+  watch,
 } from 'vue'
 import { useOgpPreview } from '@/composables/useOgpPreview'
 import { proxyUrl } from '@/utils/imageProxy'
@@ -31,12 +32,27 @@ const shouldPreview = computed(() => {
   return true
 })
 
-const { data, loading, fetch } = useOgpPreview(props.url, props.accountId)
+const { data, loading, fetch, fetchUrl } = useOgpPreview(
+  props.url,
+  props.accountId,
+)
 const el = ref<HTMLElement | null>(null)
 const imageError = ref(false)
 const sensitiveRevealed = ref(false)
 const playerExpanded = ref(false)
 const galleryErrors = ref(new Set<number>())
+
+// When virtual scroller recycles this component with a new URL, re-fetch
+watch(
+  () => props.url,
+  (newUrl) => {
+    imageError.value = false
+    sensitiveRevealed.value = false
+    playerExpanded.value = false
+    galleryErrors.value = new Set()
+    fetchUrl(newUrl)
+  },
+)
 
 const galleryImages = computed(() => {
   if (!data.value?.medias?.length || data.value.medias.length < 2) return []
