@@ -22,6 +22,7 @@ const VALID_COLUMN_TYPES: readonly string[] = [
   'aiscript',
   'play',
   'apiConsole',
+  'apiDocs',
 ] as const
 
 export interface NoteDeckEnvContext {

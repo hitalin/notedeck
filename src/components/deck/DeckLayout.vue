@@ -48,6 +48,7 @@ import DeckAiScriptColumn from './DeckAiScriptColumn.vue'
 import DeckAnnouncementsColumn from './DeckAnnouncementsColumn.vue'
 import DeckAntennaColumn from './DeckAntennaColumn.vue'
 import DeckApiConsoleColumn from './DeckApiConsoleColumn.vue'
+import DeckApiDocsColumn from './DeckApiDocsColumn.vue'
 import DeckChannelColumn from './DeckChannelColumn.vue'
 import DeckChatColumn from './DeckChatColumn.vue'
 import DeckClipColumn from './DeckClipColumn.vue'
@@ -95,6 +96,7 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
   followRequests: DeckFollowRequestsColumn,
   achievements: DeckAchievementsColumn,
   apiConsole: DeckApiConsoleColumn,
+  apiDocs: DeckApiDocsColumn,
 }
 
 const router = useRouter()

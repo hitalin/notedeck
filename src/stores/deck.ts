@@ -28,6 +28,7 @@ export type ColumnType =
   | 'followRequests'
   | 'achievements'
   | 'apiConsole'
+  | 'apiDocs'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
@@ -116,6 +117,9 @@ export const useDeckStore = defineStore('deck', () => {
     }
     if (col.type === 'play') {
       return `notedeck://play/${col.id}`
+    }
+    if (col.type === 'apiDocs') {
+      return 'notedeck://api/docs'
     }
     if (!col.accountId) return null
 

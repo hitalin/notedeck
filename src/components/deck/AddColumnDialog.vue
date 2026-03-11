@@ -41,6 +41,7 @@ const addColumnType = ref<
   | 'followRequests'
   | 'achievements'
   | 'apiConsole'
+  | 'apiDocs'
   | null
 >(null)
 
@@ -69,7 +70,8 @@ function selectColumnType(
     | 'explore'
     | 'followRequests'
     | 'achievements'
-    | 'apiConsole',
+    | 'apiConsole'
+    | 'apiDocs',
 ) {
   addColumnType.value = type
 }
@@ -115,6 +117,17 @@ function addColumnForAccount(accountId: string) {
       name: 'APIコンソール',
       width: 360,
       accountId,
+      active: true,
+    })
+    close()
+    return
+  }
+  if (type === 'apiDocs') {
+    deckStore.addColumn({
+      type: 'apiDocs',
+      name: 'APIドキュメント',
+      width: 480,
+      accountId: null,
       active: true,
     })
     close()
@@ -468,6 +481,10 @@ function close() {
         <button class="_button add-type-btn" @click="selectColumnType('apiConsole')">
           <i class="ti ti-api" />
           <span>APIコンソール</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('apiDocs')">
+          <i class="ti ti-book" />
+          <span>APIドキュメント</span>
         </button>
         <button v-if="!isMobile" class="_button add-type-btn" @click="selectColumnType('ai')">
           <i class="ti ti-sparkles" />
