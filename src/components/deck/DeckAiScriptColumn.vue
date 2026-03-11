@@ -42,6 +42,49 @@ const uiComponents = ref<UiComponent[]>([])
 const error = ref<string | null>(null)
 const running = ref(false)
 const interpreter = ref<Interpreter | null>(null)
+
+// Output panel tab: 'output' | 'inspector'
+const outputTab = ref<'output' | 'inspector'>('output')
+
+// Inspector: track which components are expanded
+const inspectorExpanded = ref(new Set<string>())
+
+function toggleInspectorItem(id: string) {
+  if (inspectorExpanded.value.has(id)) {
+    inspectorExpanded.value.delete(id)
+  } else {
+    inspectorExpanded.value.add(id)
+  }
+}
+
+function flattenComponents(components: UiComponent[]): UiComponent[] {
+  const result: UiComponent[] = []
+  for (const c of components) {
+    result.push(c)
+    if (c.children?.length) {
+      result.push(...flattenComponents(c.children))
+    }
+  }
+  return result
+}
+
+function stringifyUiProps(props: Record<string, unknown>): string {
+  const cleaned: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(props)) {
+    if (k === 'children') continue
+    if (
+      v &&
+      typeof v === 'object' &&
+      'type' in v &&
+      (v as { type: string }).type === 'fn'
+    ) {
+      cleaned[k] = '(function)'
+    } else {
+      cleaned[k] = v
+    }
+  }
+  return JSON.stringify(cleaned, null, 2)
+}
 const toastRef = ref<InstanceType<typeof AiScriptToast> | null>(null)
 const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
 let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
@@ -199,9 +242,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'AiScript'" :theme-vars="columnThemeVars">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'スクラッチパッド'" :theme-vars="columnThemeVars">
     <template #header-icon>
-      <i class="ti ti-code tl-header-icon" />
+      <i class="ti ti-terminal-2 tl-header-icon" />
     </template>
 
     <template #header-meta>
@@ -236,35 +279,82 @@ onUnmounted(() => {
       </div>
 
       <div
-        class="output-panel"
+        class="output-section"
         :style="{ flex: `${1 - editorRatio} 0 0` }"
       >
-        <div v-if="error" class="output-error">{{ error }}</div>
-
-        <AiScriptUiRenderer
-          v-if="uiComponents.length"
-          :components="uiComponents"
-          :interpreter="(interpreter as Interpreter | null)"
-          :server-url="serverUrl"
-          @post="handlePost"
-        />
-
-        <div v-if="output.length" class="console-output">
-          <div
-            v-for="(line, i) in output"
-            :key="i"
-            class="output-line"
-            :class="{ error: line.isError }"
+        <div class="output-tabs">
+          <button
+            class="_button output-tab"
+            :class="{ active: outputTab === 'output' }"
+            @click="outputTab = 'output'"
           >
-            {{ line.text }}
+            <i class="ti ti-terminal" />
+            出力
+          </button>
+          <button
+            class="_button output-tab"
+            :class="{ active: outputTab === 'inspector' }"
+            @click="outputTab = 'inspector'"
+          >
+            <i class="ti ti-eye-code" />
+            UI
+            <span v-if="uiComponents.length" class="tab-badge">{{ flattenComponents(uiComponents).length }}</span>
+          </button>
+        </div>
+
+        <div v-show="outputTab === 'output'" class="output-panel">
+          <div v-if="error" class="output-error">{{ error }}</div>
+
+          <AiScriptUiRenderer
+            v-if="uiComponents.length"
+            :components="uiComponents"
+            :interpreter="(interpreter as Interpreter | null)"
+            :server-url="serverUrl"
+            @post="handlePost"
+          />
+
+          <div v-if="output.length" class="console-output">
+            <div
+              v-for="(line, i) in output"
+              :key="i"
+              class="output-line"
+              :class="{ error: line.isError }"
+            >
+              {{ line.text }}
+            </div>
+          </div>
+
+          <div
+            v-if="!error && !output.length && !uiComponents.length"
+            class="output-empty"
+          >
+            Ctrl+Enter to run
           </div>
         </div>
 
-        <div
-          v-if="!error && !output.length && !uiComponents.length"
-          class="output-empty"
-        >
-          Ctrl+Enter to run
+        <div v-show="outputTab === 'inspector'" class="inspector-panel">
+          <div v-if="!uiComponents.length" class="output-empty">
+            UIコンポーネントなし
+          </div>
+          <div v-else class="inspector-list">
+            <div
+              v-for="comp in flattenComponents(uiComponents)"
+              :key="comp.id"
+              class="inspector-item"
+            >
+              <button class="_button inspector-item-header" @click="toggleInspectorItem(comp.id)">
+                <i
+                  class="ti"
+                  :class="inspectorExpanded.has(comp.id) ? 'ti-chevron-down' : 'ti-chevron-right'"
+                />
+                <span class="inspector-type-badge">{{ comp.type }}</span>
+                <span class="inspector-id">{{ comp.id }}</span>
+              </button>
+              <div v-if="inspectorExpanded.has(comp.id)" class="inspector-props">
+                <pre>{{ stringifyUiProps(comp.props) }}</pre>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -354,6 +444,57 @@ onUnmounted(() => {
   background: var(--nd-accent);
 }
 
+.output-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.output-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--nd-divider);
+  flex-shrink: 0;
+}
+
+.output-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  font-size: 0.75em;
+  font-weight: bold;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  border-bottom: 2px solid transparent;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+.output-tab:hover {
+  opacity: 0.8;
+}
+
+.output-tab.active {
+  opacity: 1;
+  border-bottom-color: var(--nd-accent);
+  color: var(--nd-accent);
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--nd-accent);
+  color: var(--nd-fgOnAccent);
+  font-size: 0.85em;
+  line-height: 1;
+}
+
 .output-panel {
   display: flex;
   flex-direction: column;
@@ -361,6 +502,72 @@ onUnmounted(() => {
   min-height: 0;
   overflow-y: auto;
   padding: 10px;
+  flex: 1;
+}
+
+.inspector-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.inspector-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.inspector-item {
+  border-bottom: 1px solid var(--nd-divider);
+}
+
+.inspector-item-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 0.8em;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.inspector-item-header:hover {
+  background: var(--nd-buttonHoverBg);
+}
+
+.inspector-type-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--nd-accent);
+  color: var(--nd-fgOnAccent);
+  font-size: 0.85em;
+  font-weight: bold;
+}
+
+.inspector-id {
+  opacity: 0.5;
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.85em;
+}
+
+.inspector-props {
+  padding: 4px 10px 8px 28px;
+}
+
+.inspector-props pre {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--nd-fg) 5%, transparent);
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.75em;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
 }
 
 .output-error {

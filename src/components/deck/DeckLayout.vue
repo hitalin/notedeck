@@ -252,7 +252,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   specified: 'mail',
   chat: 'messages',
   widget: 'app-window',
-  aiscript: 'code',
+  aiscript: 'terminal-2',
   play: 'player-play',
   page: 'note',
   ai: 'sparkles',

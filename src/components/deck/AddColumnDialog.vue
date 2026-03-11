@@ -98,7 +98,7 @@ function addColumnForAccount(accountId: string) {
   if (type === 'aiscript') {
     deckStore.addColumn({
       type: 'aiscript',
-      name: 'AiScript',
+      name: 'スクラッチパッド',
       width: 330,
       accountId,
       active: true,
@@ -449,8 +449,8 @@ function close() {
           <span>ウィジェット</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('aiscript')">
-          <i class="ti ti-code" />
-          <span>AiScript</span>
+          <i class="ti ti-terminal-2" />
+          <span>スクラッチパッド</span>
         </button>
         <button v-if="!isMobile" class="_button add-type-btn" @click="selectColumnType('ai')">
           <i class="ti ti-sparkles" />
