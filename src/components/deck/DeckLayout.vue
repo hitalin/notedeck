@@ -163,6 +163,12 @@ const columnMap = computed(() => {
 const dropInsertIndex = computed(() => {
   const dt = columnDrag.dropTarget.value
   if (!dt || !('insertIndex' in dt)) return -1
+  // Suppress placeholder when inserting at the same position (no-op)
+  const dragId = columnDrag.dragColumnId.value
+  if (dragId) {
+    const fromIdx = deckStore.layout.findIndex((ids) => ids.includes(dragId))
+    if (fromIdx >= 0 && (dt.insertIndex === fromIdx || dt.insertIndex === fromIdx + 1)) return -1
+  }
   return dt.insertIndex
 })
 
