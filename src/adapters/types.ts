@@ -188,6 +188,7 @@ export interface NormalizedNote {
   url?: string
   updatedAt?: string
   localOnly?: boolean
+  visibleUserIds?: string[]
   isFavorited?: boolean
   /** Fork-specific mode flags (e.g., isNoteInYamiMode) */
   modeFlags?: Record<string, boolean>
