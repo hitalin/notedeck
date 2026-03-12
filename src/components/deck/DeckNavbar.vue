@@ -13,6 +13,7 @@ import {
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
+import { useUnreadNotifications } from '@/composables/useUnreadNotifications'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
 import NavAccountMenu from './NavAccountMenu.vue'
@@ -40,6 +41,12 @@ const {
 } = useNavigation()
 const deckStore = useDeckStore()
 const { isMobile } = useUiStore()
+const { totalUnread, markAllAsRead } = useUnreadNotifications()
+
+function openNotifications() {
+  markAllAsRead()
+  navigateToNotifications()
+}
 
 function closeDrawerAndDo(fn: () => void) {
   emit('update:mobileDrawerOpen', false)
@@ -221,9 +228,12 @@ defineExpose({
           <button
             class="_button nav-item"
             title="通知"
-            @click="closeDrawerAndDo(navigateToNotifications)"
+            @click="closeDrawerAndDo(openNotifications)"
           >
-            <i class="ti ti-bell" />
+            <div class="nav-icon-wrap">
+              <i class="ti ti-bell" />
+              <span v-if="totalUnread > 0" class="nav-badge">{{ totalUnread > 99 ? '99+' : totalUnread }}</span>
+            </div>
             <span class="nav-label">通知</span>
           </button>
           <button
@@ -446,6 +456,30 @@ defineExpose({
 
 .nav-item:hover .ti {
   opacity: 1;
+}
+
+.nav-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.nav-badge {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--nd-indicator, #e53935);
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+  box-sizing: border-box;
 }
 
 .nav-label {
