@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import DOMPurify from 'dompurify'
 import { invoke } from '@tauri-apps/api/core'
+import DOMPurify from 'dompurify'
 import { computed, onMounted, ref } from 'vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
@@ -71,9 +71,31 @@ const sanitizedDescription = computed(() => {
   if (!meta.value?.description) return null
   return DOMPurify.sanitize(meta.value.description, {
     ALLOWED_TAGS: [
-      'b', 'i', 'em', 'strong', 'a', 'br', 'p', 'ul', 'ol', 'li',
-      'blockquote', 'code', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'hr', 'img', 'span', 'div', 'small', 'center',
+      'b',
+      'i',
+      'em',
+      'strong',
+      'a',
+      'br',
+      'p',
+      'ul',
+      'ol',
+      'li',
+      'blockquote',
+      'code',
+      'pre',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'hr',
+      'img',
+      'span',
+      'div',
+      'small',
+      'center',
     ],
     ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class', 'style'],
   })
