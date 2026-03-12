@@ -121,7 +121,6 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::get_cli_commands,
         commands::set_window_vibrancy,
         commands::clear_window_vibrancy,
-        commands::fix_window_frame,
     ]);
 
     builder = builder.setup(|app| {
