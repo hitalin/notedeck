@@ -43,6 +43,11 @@ yay -S misskey-notedeck-bin
 nix run github:hitalin/notedeck
 ```
 
+## 広告ポリシー
+
+- **サーバー広告を表示します** — サーバーが設定した広告をタイムラインに表示します（デフォルト ON）。表示間隔・曜日指定などサーバー設定に準拠します
+- **アプリ内広告はありません** — NoteDeck 自身の収益源としての広告は表示しません
+
 ## 貢献する
 
 - **フォーク対応の追加** — [DEVELOPMENT.md](DEVELOPMENT.md) を参照
