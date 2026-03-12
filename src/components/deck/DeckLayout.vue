@@ -377,68 +377,50 @@ function stopColumnResize() {
 }
 
 onMounted(() => {
-  // Critical: only what's needed for initial render
   deckStore.load()
+  deckStore.loadWallpaper()
   handleResizeRef = () => navbarRef.value?.handleResize()
   window.addEventListener('resize', handleResizeRef)
   document.addEventListener('visibilitychange', onVisibilityChange)
   colVisibility.setup(columnsRef)
 
-  // Initial column observation (replaces immediate watcher)
-  nextTick(() => {
-    if (columnsRef.value) {
-      for (const cell of columnsRef.value.querySelectorAll<HTMLElement>(
-        '.stack-cell[data-column-id]',
-      )) {
-        colVisibility.observe(cell)
-      }
+  initApiBridge()
+  initDesktopNotifications()
+  loadCliCommands()
+  registerDefaultCommands({
+    openCompose,
+    openSearch: navigateToSearch,
+    openNotifications: navigateToNotifications,
+    toggleAddMenu,
+    toggleNav: () => navbarRef.value?.toggleNav(),
+    toggleAccountMenu: () => navbarRef.value?.toggleFirstAccountMenu(),
+  })
+  onNotificationAction((ctx) => {
+    if (ctx.noteId) {
+      navigateToNote(ctx.accountId, ctx.noteId)
+    } else if (ctx.userId) {
+      navigateToUser(ctx.accountId, ctx.userId)
     }
   })
 
-  // After first paint: commands, API bridge, wallpaper
-  requestAnimationFrame(() => {
-    registerDefaultCommands({
-      openCompose,
-      openSearch: navigateToSearch,
-      openNotifications: navigateToNotifications,
-      toggleAddMenu,
-      toggleNav: () => navbarRef.value?.toggleNav(),
-      toggleAccountMenu: () => navbarRef.value?.toggleFirstAccountMenu(),
-    })
-    initApiBridge()
-    deckStore.loadWallpaper()
-    onNotificationAction((ctx) => {
-      if (ctx.noteId) {
-        navigateToNote(ctx.accountId, ctx.noteId)
-      } else if (ctx.userId) {
-        navigateToUser(ctx.accountId, ctx.userId)
-      }
-    })
+  setTimeout(checkForUpdate, 5000)
 
-    // Low priority: notifications, CLI, plugins, update check
-    setTimeout(() => {
-      initDesktopNotifications()
-      loadCliCommands()
-      setTimeout(checkForUpdate, 5000)
-
-      // Launch plugins (ensureLoaded defers localStorage read to here)
-      import('@/aiscript/plugin-api').then(({ launchAllPlugins }) => {
-        pluginsStore.ensureLoaded()
-        launchAllPlugins(pluginsStore.plugins)
-      })
-
-      // Quick Note: global hotkey (Ctrl+Alt+N) opens palette with "post " prefilled
-      if (uiStore.isDesktop) {
-        import('@tauri-apps/api/event').then(({ listen }) => {
-          listen('nd:quick-note', () => {
-            commandStore.openWithInput('post ')
-          }).then((fn) => {
-            unlistenQuickNote = fn
-          })
-        })
-      }
-    }, 0)
+  // Plugins
+  import('@/aiscript/plugin-api').then(({ launchAllPlugins }) => {
+    pluginsStore.ensureLoaded()
+    launchAllPlugins(pluginsStore.plugins)
   })
+
+  // Quick Note: global hotkey (Ctrl+Alt+N)
+  if (uiStore.isDesktop) {
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen('nd:quick-note', () => {
+        commandStore.openWithInput('post ')
+      }).then((fn) => {
+        unlistenQuickNote = fn
+      })
+    })
+  }
 })
 
 onUnmounted(() => {
@@ -463,17 +445,37 @@ function onVisibilityChange() {
 watch(
   () => deckStore.layout,
   () => {
-    nextTick(() => {
-      if (!columnsRef.value) return
-      for (const cell of columnsRef.value.querySelectorAll<HTMLElement>(
-        '.stack-cell[data-column-id]',
-      )) {
-        colVisibility.observe(cell)
-      }
-    })
+    if (!columnsRef.value) return
+    for (const cell of columnsRef.value.querySelectorAll<HTMLElement>(
+      '.stack-cell[data-column-id]',
+    )) {
+      colVisibility.observe(cell)
+    }
   },
-  { flush: 'post', deep: true },
+  { flush: 'post', deep: true, immediate: true },
 )
+
+// Template helpers
+function sectionClass(group: string[]) {
+  const first = group[0]
+  const col = first ? columnMap.value.get(first) : undefined
+  return {
+    stacked: group.length > 1,
+    'wide-column': col ? WIDE_COLUMN_TYPES.has(col.type) : false,
+  }
+}
+
+function sectionWidth(group: string[]): string {
+  const first = group[0]
+  const col = first ? columnMap.value.get(first) : undefined
+  return `${col?.width ?? 400}px`
+}
+
+function cellDropZone(colId: string): string | undefined {
+  const dt = columnDrag.dropTarget.value
+  if (!dt || !('columnId' in dt) || dt.columnId !== colId) return undefined
+  return dt.position
+}
 
 // Scroll to column when activeColumnId changes via keyboard navigation
 watch(
@@ -528,8 +530,8 @@ watch(
         <template v-for="(group, groupIndex) in deckStore.layout" :key="group.join('-')">
           <section
             class="column-section"
-            :class="{ stacked: group.length > 1, 'wide-column': WIDE_COLUMN_TYPES.has(columnMap.get(group[0]!)?.type ?? '') }"
-            :style="{ flexBasis: (columnMap.get(group[0]!)?.width ?? 400) + 'px' }"
+            :class="sectionClass(group)"
+            :style="{ flexBasis: sectionWidth(group) }"
           >
             <div
               v-for="colId in group"
@@ -537,7 +539,7 @@ watch(
               class="stack-cell"
               :class="{ 'drag-source': columnDrag.dragColumnId.value === colId }"
               :data-column-id="colId"
-              :data-drop-zone="columnDrag.dropTarget.value && 'columnId' in columnDrag.dropTarget.value && columnDrag.dropTarget.value.columnId === colId ? columnDrag.dropTarget.value.position : undefined"
+              :data-drop-zone="cellDropZone(colId)"
               @mousedown="deckStore.setActiveColumn(colId)"
               @pointerdown="onColumnPointerDown(colId, $event)"
             >
