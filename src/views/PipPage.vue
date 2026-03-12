@@ -14,6 +14,7 @@ import type {
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useAccountsStore } from '@/stores/accounts'
+import { useEmojisStore } from '@/stores/emojis'
 import { noteStore } from '@/stores/notes'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
@@ -33,6 +34,7 @@ const route = useRoute()
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const themeStore = useThemeStore()
+const emojisStore = useEmojisStore()
 
 const currentAccountId = ref(route.query.accountId as string)
 const currentTimeline = ref<TimelineType>(
@@ -85,6 +87,7 @@ async function startTimeline(tl: TimelineType) {
       serverIconUrl.value = serverInfo.iconUrl
       adapter = createAdapter(serverInfo, acc.id)
     }
+    emojisStore.ensureLoaded(acc.host, () => adapter!.api.getServerEmojis())
 
     // Initial fetch
     const fetched = await adapter.api.getTimeline(tl, { limit: MAX_NOTES })
