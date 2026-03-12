@@ -397,18 +397,9 @@ function stopColumnResize() {
 }
 
 onMounted(() => {
+  // Critical: needed for initial render
   deckStore.load()
-  deckStore.loadWallpaper()
-  initDesktopNotifications()
   initApiBridge()
-  loadCliCommands()
-  onNotificationAction((ctx) => {
-    if (ctx.noteId) {
-      navigateToNote(ctx.accountId, ctx.noteId)
-    } else if (ctx.userId) {
-      navigateToUser(ctx.accountId, ctx.userId)
-    }
-  })
   registerDefaultCommands({
     openCompose,
     openSearch: navigateToSearch,
@@ -419,27 +410,43 @@ onMounted(() => {
   })
   handleResizeRef = () => navbarRef.value?.handleResize()
   window.addEventListener('resize', handleResizeRef)
-  setTimeout(checkForUpdate, 5000)
   document.addEventListener('visibilitychange', onVisibilityChange)
-
-  // Column visibility observer
   colVisibility.setup(columnsRef)
 
-  // Launch plugins
-  import('@/aiscript/plugin-api').then(({ launchAllPlugins }) => {
-    launchAllPlugins(pluginsStore.plugins)
-  })
-
-  // Quick Note: global hotkey (Ctrl+Alt+N) opens palette with "post " prefilled
-  if (uiStore.isDesktop) {
-    import('@tauri-apps/api/event').then(({ listen }) => {
-      listen('nd:quick-note', () => {
-        commandStore.openWithInput('post ')
-      }).then((fn) => {
-        unlistenQuickNote = fn
-      })
+  // Deferred: not needed for first paint
+  requestAnimationFrame(() => {
+    deckStore.loadWallpaper()
+    onNotificationAction((ctx) => {
+      if (ctx.noteId) {
+        navigateToNote(ctx.accountId, ctx.noteId)
+      } else if (ctx.userId) {
+        navigateToUser(ctx.accountId, ctx.userId)
+      }
     })
-  }
+
+    // Low priority: notifications, CLI, plugins, update check
+    setTimeout(() => {
+      initDesktopNotifications()
+      loadCliCommands()
+      setTimeout(checkForUpdate, 5000)
+
+      // Launch plugins
+      import('@/aiscript/plugin-api').then(({ launchAllPlugins }) => {
+        launchAllPlugins(pluginsStore.plugins)
+      })
+
+      // Quick Note: global hotkey (Ctrl+Alt+N) opens palette with "post " prefilled
+      if (uiStore.isDesktop) {
+        import('@tauri-apps/api/event').then(({ listen }) => {
+          listen('nd:quick-note', () => {
+            commandStore.openWithInput('post ')
+          }).then((fn) => {
+            unlistenQuickNote = fn
+          })
+        })
+      }
+    }, 0)
+  })
 })
 
 onUnmounted(() => {

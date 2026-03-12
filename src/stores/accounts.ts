@@ -39,14 +39,20 @@ export const useAccountsStore = defineStore('accounts', () => {
     return map
   })
 
-  async function loadAccounts(): Promise<void> {
-    // Deduplication is handled by UNIQUE(host, user_id) constraint in SQLite
-    const stored = await invoke<Account[]>('load_accounts')
-    accounts.value = stored
-    if (accounts.value.length > 0 && !activeAccountId.value) {
-      activeAccountId.value = accounts.value[0]?.id ?? null
-    }
-    isLoaded.value = true
+  let loadPromise: Promise<void> | null = null
+
+  function loadAccounts(): Promise<void> {
+    if (loadPromise) return loadPromise
+    loadPromise = (async () => {
+      // Deduplication is handled by UNIQUE(host, user_id) constraint in SQLite
+      const stored = await invoke<Account[]>('load_accounts')
+      accounts.value = stored
+      if (accounts.value.length > 0 && !activeAccountId.value) {
+        activeAccountId.value = accounts.value[0]?.id ?? null
+      }
+      isLoaded.value = true
+    })()
+    return loadPromise
   }
 
   function addAccount(account: Account): void {

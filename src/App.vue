@@ -31,14 +31,18 @@ initKeyboard()
 // Listen for PiP IPC events (main window only)
 let cleanupPipListener: (() => void) | null = null
 
-onMounted(async () => {
-  if (isTauri) {
-    import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
-      getCurrentWindow()
-        .show()
-        .catch(() => {})
-    })
+function dismissSplash() {
+  const splash = document.getElementById('nd-splash')
+  if (!splash) return
+  splash.style.opacity = '0'
+  splash.addEventListener('transitionend', () => splash.remove(), { once: true })
+}
 
+onMounted(async () => {
+  // Dismiss splash screen as soon as Vue app is mounted
+  dismissSplash()
+
+  if (isTauri) {
     // Set up PiP event listener in main window
     if (!isPipWindow.value) {
       const windowsStore = useWindowsStore()
