@@ -31,6 +31,9 @@ export type ColumnType =
   | 'apiDocs'
   | 'lookup'
   | 'serverInfo'
+  | 'ads'
+  | 'aboutMisskey'
+  | 'emoji'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 

@@ -44,6 +44,9 @@ const addColumnType = ref<
   | 'apiDocs'
   | 'lookup'
   | 'serverInfo'
+  | 'ads'
+  | 'aboutMisskey'
+  | 'emoji'
   | null
 >(null)
 
@@ -75,7 +78,10 @@ function selectColumnType(
     | 'apiConsole'
     | 'apiDocs'
     | 'lookup'
-    | 'serverInfo',
+    | 'serverInfo'
+    | 'ads'
+    | 'aboutMisskey'
+    | 'emoji',
 ) {
   addColumnType.value = type
 }
@@ -141,6 +147,39 @@ function addColumnForAccount(accountId: string) {
     deckStore.addColumn({
       type: 'serverInfo',
       name: 'サーバー情報',
+      width: 330,
+      accountId,
+      active: true,
+    })
+    close()
+    return
+  }
+  if (type === 'ads') {
+    deckStore.addColumn({
+      type: 'ads',
+      name: '広告',
+      width: 330,
+      accountId,
+      active: true,
+    })
+    close()
+    return
+  }
+  if (type === 'aboutMisskey') {
+    deckStore.addColumn({
+      type: 'aboutMisskey',
+      name: 'Misskeyについて',
+      width: 330,
+      accountId,
+      active: true,
+    })
+    close()
+    return
+  }
+  if (type === 'emoji') {
+    deckStore.addColumn({
+      type: 'emoji',
+      name: 'カスタム絵文字',
       width: 330,
       accountId,
       active: true,
@@ -465,6 +504,18 @@ function close() {
         <button class="_button add-type-btn" @click="selectColumnType('serverInfo')">
           <i class="ti ti-server" />
           <span>サーバー情報</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('aboutMisskey')">
+          <i class="ti ti-info-circle" />
+          <span>Misskeyについて</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('emoji')">
+          <i class="ti ti-mood-smile" />
+          <span>カスタム絵文字</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('ads')">
+          <i class="ti ti-ad-2" />
+          <span>広告</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('explore')">
           <i class="ti ti-compass" />

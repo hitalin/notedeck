@@ -42,7 +42,9 @@ const AddColumnDialog = defineAsyncComponent(
 )
 
 import type { Component } from 'vue'
+import DeckAboutMisskeyColumn from './DeckAboutMisskeyColumn.vue'
 import DeckAchievementsColumn from './DeckAchievementsColumn.vue'
+import DeckAdsColumn from './DeckAdsColumn.vue'
 import DeckAiColumn from './DeckAiColumn.vue'
 import DeckAiScriptColumn from './DeckAiScriptColumn.vue'
 import DeckAnnouncementsColumn from './DeckAnnouncementsColumn.vue'
@@ -53,6 +55,7 @@ import DeckChannelColumn from './DeckChannelColumn.vue'
 import DeckChatColumn from './DeckChatColumn.vue'
 import DeckClipColumn from './DeckClipColumn.vue'
 import DeckDriveColumn from './DeckDriveColumn.vue'
+import DeckEmojiColumn from './DeckEmojiColumn.vue'
 import DeckExploreColumn from './DeckExploreColumn.vue'
 import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckFollowRequestsColumn from './DeckFollowRequestsColumn.vue'
@@ -101,6 +104,9 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
   apiDocs: DeckApiDocsColumn,
   lookup: DeckLookupColumn,
   serverInfo: DeckServerInfoColumn,
+  ads: DeckAdsColumn,
+  aboutMisskey: DeckAboutMisskeyColumn,
+  emoji: DeckEmojiColumn,
 }
 
 const router = useRouter()
@@ -273,6 +279,9 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   apiConsole: 'api',
   lookup: 'world-search',
   serverInfo: 'server',
+  ads: 'ad-2',
+  aboutMisskey: 'info-circle',
+  emoji: 'mood-smile',
 }
 
 const TL_ICONS: Record<string, string> = {
