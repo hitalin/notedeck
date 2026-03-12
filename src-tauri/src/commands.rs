@@ -1634,7 +1634,7 @@ pub fn fix_window_frame(
         })?;
         if let raw_window_handle::RawWindowHandle::Win32(handle) = wh.as_raw() {
             let hwnd = windows::Win32::Foundation::HWND(handle.hwnd.get() as *mut _);
-            let margins = windows::Win32::Graphics::Dwm::MARGINS {
+            let margins = windows::Win32::UI::Controls::MARGINS {
                 cxLeftWidth: -1,
                 cxRightWidth: -1,
                 cyTopHeight: -1,
