@@ -10,6 +10,7 @@ export type WindowType =
   | 'plugins'
   | 'keybinds'
   | 'ai'
+  | 'chat'
 
 export interface DeckWindow {
   id: string
@@ -35,6 +36,7 @@ export const WINDOW_SIZES: Record<
   plugins: { width: 500, maxHeight: 650 },
   keybinds: { width: 520, maxHeight: 600 },
   ai: { width: 480, maxHeight: 650 },
+  chat: { width: 500, maxHeight: 650 },
 }
 
 let windowCounter = 0
@@ -65,6 +67,7 @@ export const useWindowsStore = defineStore('windows', () => {
       if (type === 'plugins') return true
       if (type === 'keybinds') return true
       if (type === 'ai') return true
+      if (type === 'chat') return true
       return false
     })
     if (duplicate) {

@@ -13,6 +13,7 @@ import {
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
+import { useUnreadChat } from '@/composables/useUnreadChat'
 import { useUnreadNotifications } from '@/composables/useUnreadNotifications'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
@@ -38,14 +39,21 @@ const {
   navigateToNotifications,
   navigateToPlugins,
   navigateToAi,
+  navigateToChat,
 } = useNavigation()
 const deckStore = useDeckStore()
 const { isMobile } = useUiStore()
 const { totalUnread, markAllAsRead } = useUnreadNotifications()
+const { totalUnread: chatUnread, resetAll: resetChatUnread } = useUnreadChat()
 
 function openNotifications() {
   markAllAsRead()
   navigateToNotifications()
+}
+
+function openChat() {
+  resetChatUnread()
+  navigateToChat()
 }
 
 function closeDrawerAndDo(fn: () => void) {
@@ -235,6 +243,17 @@ defineExpose({
               <span v-if="totalUnread > 0" class="nav-badge">{{ totalUnread > 99 ? '99+' : totalUnread }}</span>
             </div>
             <span class="nav-label">通知</span>
+          </button>
+          <button
+            class="_button nav-item"
+            title="チャット"
+            @click="closeDrawerAndDo(openChat)"
+          >
+            <div class="nav-icon-wrap">
+              <i class="ti ti-messages" />
+              <span v-if="chatUnread > 0" class="nav-badge">{{ chatUnread > 99 ? '99+' : chatUnread }}</span>
+            </div>
+            <span class="nav-label">チャット</span>
           </button>
           <button
             class="_button nav-item"

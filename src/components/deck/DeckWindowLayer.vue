@@ -28,6 +28,9 @@ const KeybindsContent = defineAsyncComponent(
 const AiContent = defineAsyncComponent(
   () => import('@/components/window/AiContent.vue'),
 )
+const ChatContent = defineAsyncComponent(
+  () => import('@/components/window/ChatContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -94,6 +97,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       <PluginsContent v-if="win.type === 'plugins'" />
       <KeybindsContent v-if="win.type === 'keybinds'" />
       <AiContent v-if="win.type === 'ai'" />
+      <ChatContent v-if="win.type === 'chat'" />
     </DeckWindow>
   </TransitionGroup>
 </template>

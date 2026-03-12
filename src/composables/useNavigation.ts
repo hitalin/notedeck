@@ -55,6 +55,10 @@ export function useNavigation() {
     windowsStore.open('ai')
   }
 
+  function navigateToChat() {
+    windowsStore.open('chat')
+  }
+
   return {
     navigateToNote,
     navigateToUser,
@@ -63,5 +67,6 @@ export function useNavigation() {
     navigateToNotifications,
     navigateToPlugins,
     navigateToAi,
+    navigateToChat,
   }
 }
