@@ -73,6 +73,9 @@ jobs:
       - name: Init Android project
         run: npx tauri android init
 
+      - name: Sync custom Android files
+        run: ./src-tauri/android/sync.sh
+
       - name: Generate app icons
         run: npx tauri icon src-tauri/icons/icon.png
 

@@ -17,6 +17,20 @@ tasks:
     desc: Tauri native build
     cmd: pnpm tauri build
 
+  android:sync:
+    desc: Sync custom Android files to gen/
+    cmd: ./src-tauri/android/sync.sh
+
+  android:dev:
+    desc: Tauri Android development
+    deps: [android:sync]
+    cmd: pnpm tauri android dev
+
+  android:build:
+    desc: Tauri Android production build
+    deps: [android:sync]
+    cmd: pnpm tauri android build
+
   test:
     desc: Run unit tests
     cmd: pnpm vitest run
