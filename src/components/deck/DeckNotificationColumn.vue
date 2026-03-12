@@ -31,7 +31,6 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { sendDesktopNotification } from '@/utils/desktopNotification'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { char2twemojiUrl } from '@/utils/twemoji'
@@ -225,23 +224,6 @@ async function connect(useCache = false) {
       adapter.stream.subscribeMain((event) => {
         if (event.type === 'notification') {
           const notification = event.body as NormalizedNotification
-
-          {
-            const label = NOTIFICATION_LABELS[notification.type]
-            if (label) {
-              const userName =
-                notification.user?.name || notification.user?.username || '誰か'
-              const body =
-                notification.type === 'reaction' && notification.reaction
-                  ? `${label} ${notification.reaction}`
-                  : label
-              sendDesktopNotification(userName, body, {
-                noteId: notification.note?.id,
-                userId: notification.user?.id,
-                accountId: notification._accountId,
-              })
-            }
-          }
 
           if (!props.column.soundMuted) noteSound.play()
           rafBuffer.push(notification)
