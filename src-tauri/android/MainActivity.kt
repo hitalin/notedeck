@@ -7,10 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
-import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : TauriActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,20 +41,5 @@ class MainActivity : TauriActivity() {
       data = Uri.parse("package:$packageName")
     }
     startActivity(intent)
-  }
-
-  override fun onWebViewCreate(webView: WebView) {
-    ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
-      val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-      val density = view.resources.displayMetrics.density
-      val topDp = bars.top / density
-      val bottomDp = bars.bottom / density
-      webView.evaluateJavascript(
-        "document.documentElement.style.setProperty('--nd-safe-area-top','${topDp}px');" +
-        "document.documentElement.style.setProperty('--nd-safe-area-bottom','${bottomDp}px');",
-        null
-      )
-      insets
-    }
   }
 }
