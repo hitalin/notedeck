@@ -43,7 +43,9 @@ onMounted(async () => {
   // Show window (visible: false in tauri.conf.json to avoid Windows titlebar flicker)
   if (isTauri) {
     import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
-      getCurrentWindow().show().catch(() => {})
+      getCurrentWindow()
+        .show()
+        .catch(() => {})
     })
   }
 

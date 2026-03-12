@@ -87,6 +87,7 @@ async function startTimeline(tl: TimelineType) {
       serverIconUrl.value = serverInfo.iconUrl
       adapter = createAdapter(serverInfo, acc.id)
     }
+    // biome-ignore lint/style/noNonNullAssertion: adapter is guaranteed to be initialized above
     emojisStore.ensureLoaded(acc.host, () => adapter!.api.getServerEmojis())
 
     // Initial fetch
