@@ -77,6 +77,7 @@
 }
 
 html {
+  height: 100%;
   font-family: 'Hiragino Maru Gothic Pro', 'BIZ UDGothic', Roboto,
     HelveticaNeue, Arial, sans-serif;
   font-size: 14px;
@@ -97,6 +98,7 @@ html {
 }
 
 body {
+  height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
 }
