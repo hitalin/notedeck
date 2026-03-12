@@ -1629,11 +1629,20 @@ pub fn fix_window_frame(
     #[cfg(target_os = "windows")]
     {
         use raw_window_handle::HasWindowHandle;
+        use windows::Win32::UI::WindowsAndMessaging::*;
         let wh = window.window_handle().map_err(|e| {
             NoteDeckError::InvalidInput(format!("Failed to get window handle: {e}"))
         })?;
         if let raw_window_handle::RawWindowHandle::Win32(handle) = wh.as_raw() {
             let hwnd = windows::Win32::Foundation::HWND(handle.hwnd.get() as *mut _);
+
+            // Explicitly remove WS_CAPTION (title bar) while keeping resize frame
+            unsafe {
+                let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+                let new_style = (style as u32 & !WS_CAPTION.0) | WS_THICKFRAME.0;
+                SetWindowLongPtrW(hwnd, GWL_STYLE, new_style as isize);
+            }
+
             let margins = windows::Win32::UI::Controls::MARGINS {
                 cxLeftWidth: -1,
                 cxRightWidth: -1,
@@ -1645,6 +1654,16 @@ pub fn fix_window_frame(
                     .map_err(|e| {
                         NoteDeckError::InvalidInput(format!("DwmExtendFrameIntoClientArea failed: {e}"))
                     })?;
+            }
+
+            // Apply the style change
+            unsafe {
+                let _ = SetWindowPos(
+                    hwnd,
+                    None,
+                    0, 0, 0, 0,
+                    SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER,
+                );
             }
         }
     }
