@@ -1619,3 +1619,34 @@ pub fn clear_window_vibrancy(
         "Window effects are not supported on this platform".to_string(),
     ))
 }
+
+/// Remove the non-client area (title bar gap) on Windows.
+/// On other platforms this is a no-op.
+#[tauri::command]
+pub fn fix_window_frame(
+    #[allow(unused_variables)] window: tauri::WebviewWindow,
+) -> Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        use raw_window_handle::HasWindowHandle;
+        let wh = window.window_handle().map_err(|e| {
+            NoteDeckError::InvalidInput(format!("Failed to get window handle: {e}"))
+        })?;
+        if let raw_window_handle::RawWindowHandle::Win32(handle) = wh.as_raw() {
+            let hwnd = windows::Win32::Foundation::HWND(handle.hwnd.get() as *mut _);
+            let margins = windows::Win32::Graphics::Dwm::MARGINS {
+                cxLeftWidth: -1,
+                cxRightWidth: -1,
+                cyTopHeight: -1,
+                cyBottomHeight: -1,
+            };
+            unsafe {
+                windows::Win32::Graphics::Dwm::DwmExtendFrameIntoClientArea(hwnd, &margins)
+                    .map_err(|e| {
+                        NoteDeckError::InvalidInput(format!("DwmExtendFrameIntoClientArea failed: {e}"))
+                    })?;
+            }
+        }
+    }
+    Ok(())
+}

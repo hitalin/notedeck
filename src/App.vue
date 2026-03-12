@@ -41,13 +41,12 @@ function dismissSplash() {
 }
 
 onMounted(async () => {
-  // Show window (visible: false in tauri.conf.json to avoid Windows titlebar flicker)
+  // Fix Windows titlebar gap + show window
   if (isTauri) {
-    import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
-      getCurrentWindow()
-        .show()
-        .catch(() => {})
-    })
+    const { invoke } = await import('@tauri-apps/api/core')
+    await invoke('fix_window_frame').catch(() => {})
+    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    await getCurrentWindow().show().catch(() => {})
   }
 
   // Dismiss splash screen as soon as Vue app is mounted

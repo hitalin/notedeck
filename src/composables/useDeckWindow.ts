@@ -21,8 +21,9 @@ export async function openDeckWindow(): Promise<string | null> {
       minWidth: 400,
       minHeight: 400,
       decorations: false,
+      transparent: true,
       resizable: true,
-      visible: true,
+      visible: false,
       dragDropEnabled: true,
     })
 
