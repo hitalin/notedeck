@@ -5,9 +5,11 @@ import {
   getPluginHandlers,
   setPluginAccountContext,
 } from '@/aiscript/plugin-api'
+import { useAutocomplete } from '@/composables/useAutocomplete'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePostFormState } from '@/composables/usePostFormState'
+import MkAutocompletePopup from './MkAutocompletePopup.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
 import MkMfm from './MkMfm.vue'
@@ -216,6 +218,20 @@ function toggleMfmMenu() {
   showEmojiPopup.value = false
 }
 
+// --- Autocomplete ---
+const serverHost = computed(() => account.value?.host ?? '')
+const {
+  autocompleteState,
+  candidates: acCandidates,
+  isSearching: acSearching,
+  onTextInput: acOnTextInput,
+  onCompositionStart: acOnCompositionStart,
+  onCompositionEnd: acOnCompositionEnd,
+  handleKeydown: acHandleKeydown,
+  confirmSelection: acConfirmSelection,
+  dismiss: acDismiss,
+} = useAutocomplete(text, textareaRef, activeAccountId, serverHost)
+
 // --- File attach menu ---
 const showAttachMenu = ref(false)
 const showDrivePicker = ref(false)
@@ -257,6 +273,7 @@ function closePopups() {
   showDraftMenu.value = false
   showMoreMenu.value = false
   showAttachMenu.value = false
+  acDismiss()
 }
 
 onMounted(async () => {
@@ -295,6 +312,7 @@ watch(
 )
 
 function onKeydown(e: KeyboardEvent) {
+  if (acHandleKeydown(e)) return
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     if (!isPosting.value) post()
   }
@@ -611,7 +629,18 @@ function onKeydown(e: KeyboardEvent) {
           :maxlength="MAX_TEXT_LENGTH"
           :placeholder="replyTo ? '返信...' : renoteId ? '引用...' : '今どんな気分？'"
           @keydown="onKeydown"
+          @input="acOnTextInput"
+          @compositionstart="acOnCompositionStart"
+          @compositionend="acOnCompositionEnd"
           @click.stop
+        />
+        <MkAutocompletePopup
+          v-if="autocompleteState && acCandidates.length > 0"
+          :type="autocompleteState.type"
+          :candidates="acCandidates"
+          :selected-index="autocompleteState.selectedIndex"
+          :is-searching="acSearching"
+          @select="acConfirmSelection"
         />
         <span
           v-if="remainingChars <= 100"
