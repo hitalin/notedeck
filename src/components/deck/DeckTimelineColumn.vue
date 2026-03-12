@@ -355,7 +355,6 @@ async function reconnectWithFilter() {
   disconnect()
   resetBatch()
   isLoading.value = true
-  setNotes([])
   await connect(true)
 }
 
@@ -390,7 +389,7 @@ async function connect(useCache = false) {
     const filtered = cached.filter((n) =>
       matchesFilter(n, columnFilters.value, tlType.value),
     )
-    if (filtered.length > 0) setNotes(filtered)
+    setNotes(filtered)
   }
 
   try {
@@ -426,13 +425,15 @@ async function connect(useCache = false) {
     )
 
     if (fetched.length > 0) {
-      if (notes.value.length > 0) {
+      if (useCache || notes.value.length === 0) {
+        // 再接続時: API結果で完全置き換え（キャッシュの古いノートを残さない）
+        setNotes(fetched)
+      } else {
+        // 初回接続時: ストリーミング受信済みノートとマージ
         const newNotes = fetched.filter((n) => !noteIds.has(n.id))
         if (newNotes.length > 0) {
           setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
         }
-      } else {
-        setNotes(fetched)
       }
     }
   } catch (e) {
@@ -586,8 +587,13 @@ async function onResume() {
 
   const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
 
-  // Merge results: API results take priority, then cache
-  const allNew = [...fetched, ...cached].filter((n) => !noteIds.has(n.id))
+  // Merge results: API results take priority, then cache (with filter)
+  const filteredCache = cached.filter((n) =>
+    matchesFilter(n, columnFilters.value, tlType.value),
+  )
+  const allNew = [...fetched, ...filteredCache].filter(
+    (n) => !noteIds.has(n.id),
+  )
   if (allNew.length > 0) {
     // Deduplicate by id (API results first)
     const seen = new Set<string>()
