@@ -284,6 +284,7 @@ onUnmounted(() => {
                   :text="(note.renote && note.text === null ? note.renote.user : note.user).name!"
                   :emojis="(note.renote && note.text === null ? note.renote.user : note.user).emojis"
                   :account-id="currentAccountId"
+                  :server-host="account?.host"
                 />
                 <template v-else>{{ (note.renote && note.text === null ? note.renote.user : note.user).username }}</template>
               </span>
@@ -295,6 +296,7 @@ onUnmounted(() => {
                 :text="(note.renote && note.text === null ? note.renote.text : note.text)!"
                 :emojis="(note.renote && note.text === null ? note.renote.emojis : note.emojis)"
                 :account-id="currentAccountId"
+                :server-host="account?.host"
               />
               <span v-else class="pip-note-empty">
                 <i class="ti ti-repeat" /> Renote
