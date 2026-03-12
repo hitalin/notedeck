@@ -8,56 +8,75 @@ const PIP_HEIGHT = 420
 
 let pipWindow: WebviewWindow | null = null
 let unlistenFn: (() => void) | null = null
+let creating = false
+
+async function getExistingPipWindow(): Promise<WebviewWindow | null> {
+  return await WebviewWindow.getByLabel(PIP_LABEL)
+}
 
 export async function openPipWindow(
   accountId: string,
   timeline: TimelineType = 'home',
 ): Promise<void> {
-  // If PiP already exists, focus it
-  if (pipWindow) {
-    try {
-      await pipWindow.setFocus()
-      return
-    } catch {
-      // Window might have been closed externally
-      pipWindow = null
+  // Prevent double creation (guard before any await)
+  if (creating) return
+  creating = true
+
+  try {
+    // Check for existing window (including externally managed ones)
+    const existing = pipWindow ?? (await getExistingPipWindow())
+    if (existing) {
+      try {
+        await existing.setFocus()
+        pipWindow = existing
+        return
+      } catch {
+        pipWindow = null
+      }
     }
+
+    const url = `/pip?accountId=${encodeURIComponent(accountId)}&timeline=${encodeURIComponent(timeline)}`
+
+    const win = new WebviewWindow(PIP_LABEL, {
+      url,
+      title: 'NoteDeck PiP',
+      width: PIP_WIDTH,
+      height: PIP_HEIGHT,
+      decorations: false,
+      alwaysOnTop: true,
+      resizable: true,
+      minimizable: false,
+      maximizable: false,
+      visible: true,
+      dragDropEnabled: false,
+    })
+
+    // Wait for actual creation or error
+    await new Promise<void>((resolve, reject) => {
+      win.once('tauri://created', () => resolve())
+      win.once('tauri://error', (e) => reject(new Error(String(e.payload))))
+    })
+
+    pipWindow = win
+
+    // Clean up reference when window is closed
+    win.once('tauri://destroyed', () => {
+      pipWindow = null
+      unlistenFn?.()
+      unlistenFn = null
+    })
+  } catch {
+    pipWindow = null
+  } finally {
+    creating = false
   }
-
-  const url = `/pip?accountId=${encodeURIComponent(accountId)}&timeline=${encodeURIComponent(timeline)}`
-
-  const win = new WebviewWindow(PIP_LABEL, {
-    url,
-    title: 'NoteDeck PiP',
-    width: PIP_WIDTH,
-    height: PIP_HEIGHT,
-    decorations: false,
-    alwaysOnTop: true,
-    resizable: true,
-    minimizable: false,
-    maximizable: false,
-    visible: true,
-    dragDropEnabled: false,
-  })
-
-  win.once('tauri://error', () => {
-    pipWindow = null
-  })
-
-  pipWindow = win
-
-  // Clean up reference when window is closed
-  win.once('tauri://destroyed', () => {
-    pipWindow = null
-    unlistenFn?.()
-    unlistenFn = null
-  })
 }
 
 export async function closePipWindow(): Promise<void> {
-  if (pipWindow) {
+  const win = pipWindow ?? (await getExistingPipWindow())
+  if (win) {
     try {
-      await pipWindow.close()
+      await win.close()
     } catch {
       // Already closed
     }
@@ -65,8 +84,9 @@ export async function closePipWindow(): Promise<void> {
   }
 }
 
-export function isPipOpen(): boolean {
-  return pipWindow !== null
+export async function isPipOpen(): Promise<boolean> {
+  if (pipWindow) return true
+  return (await getExistingPipWindow()) !== null
 }
 
 /**

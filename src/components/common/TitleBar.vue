@@ -91,7 +91,7 @@ async function toggleMobileSize() {
 }
 
 async function togglePip() {
-  if (isPipOpen()) {
+  if (await isPipOpen()) {
     await closePipWindow()
     return
   }
