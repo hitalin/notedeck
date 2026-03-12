@@ -104,7 +104,6 @@ onUnmounted(() => {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  padding-top: var(--nd-safe-area-top, env(safe-area-inset-top, 0px));
 }
 
 .app-content {
