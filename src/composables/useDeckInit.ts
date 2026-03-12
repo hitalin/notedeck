@@ -6,6 +6,7 @@ import {
   unregisterDefaultCommands,
 } from '@/commands/definitions'
 import { useCommandStore } from '@/commands/registry'
+import { useDeckStore } from '@/stores/deck'
 import { usePluginsStore } from '@/stores/plugins'
 import { useUiStore } from '@/stores/ui'
 import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
@@ -28,6 +29,7 @@ export function useDeckInit(options: {
   } | null>
   checkForUpdate: () => void
 }) {
+  const deckStore = useDeckStore()
   const pluginsStore = usePluginsStore()
   const commandStore = useCommandStore()
   const uiStore = useUiStore()
@@ -46,6 +48,7 @@ export function useDeckInit(options: {
     window.addEventListener('resize', handleResizeRef)
     document.addEventListener('visibilitychange', onVisibilityChange)
 
+    deckStore.startSync()
     initApiBridge()
     initDesktopNotifications()
     loadCliCommands()
@@ -90,6 +93,7 @@ export function useDeckInit(options: {
     import('@/aiscript/plugin-api').then(({ abortAllPlugins }) => {
       abortAllPlugins()
     })
+    deckStore.stopSync()
     destroyApiBridge()
     unregisterDefaultCommands()
     if (handleResizeRef) window.removeEventListener('resize', handleResizeRef)

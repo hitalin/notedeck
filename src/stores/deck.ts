@@ -1,3 +1,4 @@
+import { emit, listen } from '@tauri-apps/api/event'
 import { defineStore } from 'pinia'
 import { computed, ref, toRaw } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
@@ -78,6 +79,8 @@ let columnCounter = 0
 function genColumnId(): string {
   return `col-${Date.now()}-${++columnCounter}`
 }
+
+const DECK_KEY = 'nd-deck'
 
 export const useDeckStore = defineStore('deck', () => {
   const columns = ref<DeckColumn[]>([])
@@ -350,6 +353,8 @@ export const useDeckStore = defineStore('deck', () => {
     } catch (e) {
       console.warn('[deck] failed to save:', e)
     }
+    // Notify other windows
+    emit('deck:sync', {}).catch(() => {})
   }
 
   function save() {
@@ -445,7 +450,6 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   // --- Wallpaper ---
-  const DECK_KEY = 'nd-deck'
   const WALLPAPER_KEY = 'nd-deck-wallpaper'
   const wallpaper = ref<string | null>(null)
 
@@ -570,6 +574,31 @@ export const useDeckStore = defineStore('deck', () => {
     }
   }
 
+  /** Listen for sync events from other windows and reload shared state */
+  let unlistenSync: (() => void) | null = null
+
+  async function startSync() {
+    unlistenSync?.()
+    unlistenSync = await listen('deck:sync', () => {
+      try {
+        const raw = localStorage.getItem(DECK_KEY)
+        if (!raw) return
+        const data = JSON.parse(raw)
+        if (data.columns && data.layout) {
+          columns.value = data.columns
+          layout.value = data.layout
+        }
+      } catch {
+        /* ignore */
+      }
+    })
+  }
+
+  function stopSync() {
+    unlistenSync?.()
+    unlistenSync = null
+  }
+
   return {
     columns,
     layout,
@@ -609,5 +638,7 @@ export const useDeckStore = defineStore('deck', () => {
     applyProfile,
     deleteProfile,
     renameProfile,
+    startSync,
+    stopSync,
   }
 })

@@ -2,6 +2,7 @@
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
 import { defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
 import { useCommandStore } from '@/commands/registry'
+import { openDeckWindow } from '@/composables/useDeckWindow'
 import {
   closePipWindow,
   isPipOpen,
@@ -122,6 +123,13 @@ async function togglePip() {
       </button>
     </div>
     <div class="titlebar-controls">
+      <button
+        class="titlebar-btn titlebar-window-btn"
+        title="新しいウィンドウ"
+        @click="openDeckWindow()"
+      >
+        <i class="ti ti-app-window" />
+      </button>
       <button
         class="titlebar-btn titlebar-sidebar-btn"
         :class="{ 'titlebar-btn-active': !deckStore.navCollapsed }"
