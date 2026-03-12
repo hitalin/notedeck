@@ -24,7 +24,6 @@ const DeckWindowLayer = defineAsyncComponent(
 
 const commandStore = useCommandStore()
 
-useTheme()
 const { init: initKeyboard } = useKeyboard()
 initKeyboard()
 
@@ -41,6 +40,9 @@ function dismissSplash() {
 onMounted(async () => {
   // Dismiss splash screen as soon as Vue app is mounted
   dismissSplash()
+
+  // Defer theme account fetching (network I/O) to after first paint
+  useTheme()
 
   if (isTauri) {
     // Set up PiP event listener in main window

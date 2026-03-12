@@ -367,24 +367,24 @@ function stopColumnResize() {
 }
 
 onMounted(() => {
-  // Critical: needed for initial render
+  // Critical: only what's needed for initial render
   deckStore.load()
-  initApiBridge()
-  registerDefaultCommands({
-    openCompose,
-    openSearch: navigateToSearch,
-    openNotifications: navigateToNotifications,
-    toggleAddMenu,
-    toggleNav: () => navbarRef.value?.toggleNav(),
-    toggleAccountMenu: () => navbarRef.value?.toggleFirstAccountMenu(),
-  })
   handleResizeRef = () => navbarRef.value?.handleResize()
   window.addEventListener('resize', handleResizeRef)
   document.addEventListener('visibilitychange', onVisibilityChange)
   colVisibility.setup(columnsRef)
 
-  // Deferred: not needed for first paint
+  // After first paint: commands, API bridge, wallpaper
   requestAnimationFrame(() => {
+    registerDefaultCommands({
+      openCompose,
+      openSearch: navigateToSearch,
+      openNotifications: navigateToNotifications,
+      toggleAddMenu,
+      toggleNav: () => navbarRef.value?.toggleNav(),
+      toggleAccountMenu: () => navbarRef.value?.toggleFirstAccountMenu(),
+    })
+    initApiBridge()
     deckStore.loadWallpaper()
     onNotificationAction((ctx) => {
       if (ctx.noteId) {
@@ -400,8 +400,9 @@ onMounted(() => {
       loadCliCommands()
       setTimeout(checkForUpdate, 5000)
 
-      // Launch plugins
+      // Launch plugins (ensureLoaded defers localStorage read to here)
       import('@/aiscript/plugin-api').then(({ launchAllPlugins }) => {
+        pluginsStore.ensureLoaded()
         launchAllPlugins(pluginsStore.plugins)
       })
 
