@@ -28,6 +28,7 @@ const scrollContainer = ref<HTMLElement | null>(null)
 
 const { ads, serverHost, fetchAds, muteAd } = useAds(
   () => props.column.accountId ?? undefined,
+  { filterPlace: false },
 )
 
 function scrollToTop() {

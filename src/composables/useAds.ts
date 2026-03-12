@@ -5,10 +5,10 @@ import { useAccountsStore } from '@/stores/accounts'
 const REFRESH_INTERVAL = 10 * 60 * 1000 // 10 minutes
 const MUTED_ADS_KEY = 'nd-muted-ads'
 
-// Per-account ad cache
+// Per-account raw ad cache (unfiltered)
 const adsCache = new Map<
   string,
-  { ads: ServerAd[]; notesPerOneAd: number; fetchedAt: number }
+  { rawAds: ServerAd[]; notesPerOneAd: number; fetchedAt: number }
 >()
 
 function getMutedAds(): string[] {
@@ -19,7 +19,11 @@ function getMutedAds(): string[] {
   }
 }
 
-export function useAds(getAccountId: () => string | undefined) {
+export function useAds(
+  getAccountId: () => string | undefined,
+  options?: { filterPlace?: boolean },
+) {
+  const filterPlace = options?.filterPlace ?? true
   const ads = ref<ServerAd[]>([])
   const notesPerOneAd = ref(0)
   const serverHost = ref('')
@@ -33,47 +37,49 @@ export function useAds(getAccountId: () => string | undefined) {
     if (account) serverHost.value = account.host
 
     const cached = adsCache.get(accountId)
+    let rawAds: ServerAd[]
+    let interval: number
+
     if (cached && Date.now() - cached.fetchedAt < REFRESH_INTERVAL) {
-      ads.value = cached.ads
-      notesPerOneAd.value = cached.notesPerOneAd
-      return
+      rawAds = cached.rawAds
+      interval = cached.notesPerOneAd
+    } else {
+      try {
+        if (!account) return
+
+        // Ads are included in /api/meta response (not a separate endpoint)
+        const res = await fetch(`https://${account.host}/api/meta`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ detail: true }),
+          signal: AbortSignal.timeout(5000),
+        })
+        const meta = await res.json()
+        interval = meta.notesPerOneAd ?? 0
+        rawAds = meta.ads ?? []
+
+        adsCache.set(accountId, {
+          rawAds,
+          notesPerOneAd: interval,
+          fetchedAt: Date.now(),
+        })
+      } catch {
+        ads.value = []
+        notesPerOneAd.value = 0
+        return
+      }
     }
 
-    try {
-      if (!account) return
-
-      // Ads are included in /api/meta response (not a separate endpoint)
-      const res = await fetch(`https://${account.host}/api/meta`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ detail: true }),
-        signal: AbortSignal.timeout(5000),
-      })
-      const meta = await res.json()
-      const interval: number = meta.notesPerOneAd ?? 0
-      const rawAds: ServerAd[] = meta.ads ?? []
-
-      // Filter to timeline-relevant ads, active today (dayOfWeek is a bitmask)
-      const dayBit = 1 << new Date().getDay()
-      const muted = getMutedAds()
-      const filtered = rawAds.filter((ad) => {
-        if (ad.place !== 'horizontal' && ad.place !== 'square') return false
-        if ((ad.dayOfWeek & dayBit) === 0) return false
-        if (muted.includes(ad.id)) return false
-        return true
-      })
-
-      ads.value = filtered
-      notesPerOneAd.value = interval
-      adsCache.set(accountId, {
-        ads: filtered,
-        notesPerOneAd: interval,
-        fetchedAt: Date.now(),
-      })
-    } catch {
-      ads.value = []
-      notesPerOneAd.value = 0
-    }
+    const dayBit = 1 << new Date().getDay()
+    const muted = getMutedAds()
+    ads.value = rawAds.filter((ad) => {
+      if (filterPlace && ad.place !== 'horizontal' && ad.place !== 'square')
+        return false
+      if ((ad.dayOfWeek & dayBit) === 0) return false
+      if (muted.includes(ad.id)) return false
+      return true
+    })
+    notesPerOneAd.value = interval
   }
 
   /**
