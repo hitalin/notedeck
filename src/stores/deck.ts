@@ -389,7 +389,7 @@ export const useDeckStore = defineStore('deck', () => {
     }
 
     // Fix blank profile names from previous sessions
-    let profiles = loadProfiles()
+    const profiles = loadProfiles()
     let needsSave = false
     for (const [i, profile] of profiles.entries()) {
       if (!profile.name || profile.name.trim() === '') {
@@ -416,9 +416,7 @@ export const useDeckStore = defineStore('deck', () => {
     }
 
     // All windows use windowProfileId — set it from query or activeProfileId
-    const profileId = new URLSearchParams(window.location.search).get(
-      'profile',
-    )
+    const profileId = new URLSearchParams(window.location.search).get('profile')
     if (profileId) {
       initWindowProfile(profileId)
     } else if (activeProfileId.value) {
@@ -536,12 +534,21 @@ export const useDeckStore = defineStore('deck', () => {
     return `profile-${Date.now()}-${++profileCounter}`
   }
 
+  /** Find the next available "プロファイル N" name */
+  function nextProfileName(profiles: DeckProfile[]): string {
+    const names = new Set(profiles.map((p) => p.name))
+    for (let i = 1; ; i++) {
+      const candidate = `プロファイル ${i}`
+      if (!names.has(candidate)) return candidate
+    }
+  }
+
   function saveAsProfile(name?: string): DeckProfile {
     // Save current state to the active profile before creating a new one
     syncCurrentToActiveProfile()
 
     const profiles = loadProfiles()
-    const autoName = name || `プロファイル ${profiles.length + 1}`
+    const autoName = name || nextProfileName(profiles)
 
     const profile: DeckProfile = {
       id: genProfileId(),
@@ -565,7 +572,7 @@ export const useDeckStore = defineStore('deck', () => {
   /** Create an empty profile without switching the current window to it */
   function createEmptyProfile(name?: string): DeckProfile {
     const profiles = loadProfiles()
-    const autoName = name || `プロファイル ${profiles.length + 1}`
+    const autoName = name || nextProfileName(profiles)
     const profile: DeckProfile = {
       id: genProfileId(),
       name: autoName,
