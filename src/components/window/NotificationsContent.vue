@@ -50,7 +50,9 @@ const { postForm, handlers } = useNoteActions(
 const MAX_NOTIFICATIONS = 500
 const isLoading = ref(false)
 const error = ref<string | null>(null)
-const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(null)
+const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(
+  null,
+)
 const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 
 // Per-account progress

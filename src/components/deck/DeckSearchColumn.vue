@@ -53,10 +53,16 @@ const {
 
 const { navigateToNote } = useNavigation()
 const notes = shallowRef<NormalizedNote[]>([])
-const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(null)
-watch(noteScrollerRef, () => {
-  scroller.value = noteScrollerRef.value?.getElement() ?? null
-}, { flush: 'post' })
+const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(
+  null,
+)
+watch(
+  noteScrollerRef,
+  () => {
+    scroller.value = noteScrollerRef.value?.getElement() ?? null
+  },
+  { flush: 'post' },
+)
 setOnNotesMutated(() => {
   notes.value = [...notes.value]
 })

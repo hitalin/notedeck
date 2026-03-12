@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { NormalizedUser, ServerEmoji } from '@/adapters/types'
-import type { AutocompleteCandidate, TriggerType } from '@/composables/useAutocomplete'
+import type {
+  AutocompleteCandidate,
+  TriggerType,
+} from '@/composables/useAutocomplete'
 
 defineProps<{
   type: TriggerType

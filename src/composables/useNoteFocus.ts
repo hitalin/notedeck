@@ -24,10 +24,7 @@ export interface NoteActionHandlers {
   bookmark: (note: NormalizedNote) => void
 }
 
-function scrollTo(
-  scroller: ShallowRef<HTMLElement | null>,
-  index: number,
-) {
+function scrollTo(scroller: ShallowRef<HTMLElement | null>, index: number) {
   const el = scroller.value
   if (!el) return
   const item = el.querySelector(`[data-index="${index}"]`) as HTMLElement | null

@@ -40,7 +40,9 @@ const isLoading = ref(false)
 const isPreview = ref(false)
 const confirmedQuery = ref('')
 const error = ref<string | null>(null)
-const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(null)
+const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(
+  null,
+)
 
 // Regex mode
 const regexMode = ref(false)

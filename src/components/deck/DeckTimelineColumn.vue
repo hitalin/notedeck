@@ -76,9 +76,13 @@ const {
 } = useColumnSetup(() => props.column)
 
 // Sync NoteScroller's scroll container element to the scroller ref used by composables
-watch(noteScroller, () => {
-  scroller.value = noteScroller.value?.getElement() ?? null
-}, { flush: 'post' })
+watch(
+  noteScroller,
+  () => {
+    scroller.value = noteScroller.value?.getElement() ?? null
+  },
+  { flush: 'post' },
+)
 
 const { navigateToNote } = useNavigation()
 const { fetchAds, pickAd, shouldShowAd, muteAd, serverHost } = useAds(
@@ -92,13 +96,12 @@ const {
   onNoteUpdate,
   handlePosted,
   removeNote,
-} =
-  useNoteList({
-    getMyUserId: () => account.value?.userId,
-    getAdapter,
-    deleteHandler: handlers.delete,
-    closePostForm: postForm.close,
-  })
+} = useNoteList({
+  getMyUserId: () => account.value?.userId,
+  getAdapter,
+  deleteHandler: handlers.delete,
+  closePostForm: postForm.close,
+})
 
 const noteSound = useNoteSound(() => account.value?.host)
 const {

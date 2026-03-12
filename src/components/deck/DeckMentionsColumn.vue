@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  defineAsyncComponent,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 import type { ChannelSubscription, NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
@@ -66,10 +72,16 @@ const { sync: syncCapture } = useNoteCapture(
   onNoteUpdate,
 )
 setOnNotesChanged(syncCapture)
-const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(null)
-watch(noteScrollerRef, () => {
-  scroller.value = noteScrollerRef.value?.getElement() ?? null
-}, { flush: 'post' })
+const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(
+  null,
+)
+watch(
+  noteScrollerRef,
+  () => {
+    scroller.value = noteScrollerRef.value?.getElement() ?? null
+  },
+  { flush: 'post' },
+)
 
 let mentionSub: ChannelSubscription | null = null
 

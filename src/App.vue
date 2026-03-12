@@ -34,7 +34,9 @@ function dismissSplash() {
   const splash = document.getElementById('nd-splash')
   if (!splash) return
   splash.style.opacity = '0'
-  splash.addEventListener('transitionend', () => splash.remove(), { once: true })
+  splash.addEventListener('transitionend', () => splash.remove(), {
+    once: true,
+  })
 }
 
 onMounted(async () => {

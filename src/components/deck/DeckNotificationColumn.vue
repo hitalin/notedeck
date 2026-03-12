@@ -91,10 +91,16 @@ const MAX_NOTIFICATIONS = 500
 const notifications = shallowRef<NormalizedNotification[]>([])
 const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 
-const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(null)
-watch(noteScrollerRef, () => {
-  scroller.value = noteScrollerRef.value?.getElement() ?? null
-}, { flush: 'post' })
+const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(
+  null,
+)
+watch(
+  noteScrollerRef,
+  () => {
+    scroller.value = noteScrollerRef.value?.getElement() ?? null
+  },
+  { flush: 'post' },
+)
 
 // rAF batching for streaming notifications
 let rafBuffer: NormalizedNotification[] = []

@@ -114,10 +114,7 @@ export function useAutocomplete(
     if (results.length < 10) {
       for (const e of allEmojis) {
         if (seen.has(e.name)) continue
-        if (
-          e.name.startsWith(q) ||
-          e.aliases.some((a) => a.startsWith(q))
-        ) {
+        if (e.name.startsWith(q) || e.aliases.some((a) => a.startsWith(q))) {
           seen.add(e.name)
           results.push(e)
           if (results.length >= 10) break
@@ -129,10 +126,7 @@ export function useAutocomplete(
     if (results.length < 10) {
       for (const e of allEmojis) {
         if (seen.has(e.name)) continue
-        if (
-          e.name.includes(q) ||
-          e.aliases.some((a) => a.includes(q))
-        ) {
+        if (e.name.includes(q) || e.aliases.some((a) => a.includes(q))) {
           seen.add(e.name)
           results.push(e)
           if (results.length >= 10) break
@@ -146,9 +140,7 @@ export function useAutocomplete(
   function searchMfm(query: string): string[] {
     const q = query.toLowerCase()
     if (q.length === 0) return mfmFunctionNames.slice(0, 10)
-    return mfmFunctionNames
-      .filter((name) => name.startsWith(q))
-      .slice(0, 10)
+    return mfmFunctionNames.filter((name) => name.startsWith(q)).slice(0, 10)
   }
 
   async function searchMention(query: string) {

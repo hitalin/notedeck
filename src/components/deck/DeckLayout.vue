@@ -50,7 +50,9 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
   timeline: defineAsyncComponent(() => import('./DeckTimelineColumn.vue')),
   list: defineAsyncComponent(() => import('./DeckListColumn.vue')),
   antenna: defineAsyncComponent(() => import('./DeckAntennaColumn.vue')),
-  notifications: defineAsyncComponent(() => import('./DeckNotificationColumn.vue')),
+  notifications: defineAsyncComponent(
+    () => import('./DeckNotificationColumn.vue'),
+  ),
   search: defineAsyncComponent(() => import('./DeckSearchColumn.vue')),
   favorites: defineAsyncComponent(() => import('./DeckFavoritesColumn.vue')),
   clip: defineAsyncComponent(() => import('./DeckClipColumn.vue')),
@@ -65,17 +67,25 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
   page: defineAsyncComponent(() => import('./DeckPageColumn.vue')),
   ai: defineAsyncComponent(() => import('./DeckAiColumn.vue')),
   drive: defineAsyncComponent(() => import('./DeckDriveColumn.vue')),
-  announcements: defineAsyncComponent(() => import('./DeckAnnouncementsColumn.vue')),
+  announcements: defineAsyncComponent(
+    () => import('./DeckAnnouncementsColumn.vue'),
+  ),
   gallery: defineAsyncComponent(() => import('./DeckGalleryColumn.vue')),
   explore: defineAsyncComponent(() => import('./DeckExploreColumn.vue')),
-  followRequests: defineAsyncComponent(() => import('./DeckFollowRequestsColumn.vue')),
-  achievements: defineAsyncComponent(() => import('./DeckAchievementsColumn.vue')),
+  followRequests: defineAsyncComponent(
+    () => import('./DeckFollowRequestsColumn.vue'),
+  ),
+  achievements: defineAsyncComponent(
+    () => import('./DeckAchievementsColumn.vue'),
+  ),
   apiConsole: defineAsyncComponent(() => import('./DeckApiConsoleColumn.vue')),
   apiDocs: defineAsyncComponent(() => import('./DeckApiDocsColumn.vue')),
   lookup: defineAsyncComponent(() => import('./DeckLookupColumn.vue')),
   serverInfo: defineAsyncComponent(() => import('./DeckServerInfoColumn.vue')),
   ads: defineAsyncComponent(() => import('./DeckAdsColumn.vue')),
-  aboutMisskey: defineAsyncComponent(() => import('./DeckAboutMisskeyColumn.vue')),
+  aboutMisskey: defineAsyncComponent(
+    () => import('./DeckAboutMisskeyColumn.vue'),
+  ),
   emoji: defineAsyncComponent(() => import('./DeckEmojiColumn.vue')),
 }
 

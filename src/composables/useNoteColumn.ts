@@ -394,10 +394,16 @@ export function useNoteColumn(config: NoteColumnConfig) {
   })
 
   // Ref for NoteScroller component — syncs its scroll container to the scroller ref
-  const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(null)
-  watch(noteScrollerRef, () => {
-    scroller.value = noteScrollerRef.value?.getElement() ?? null
-  }, { flush: 'post' })
+  const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(
+    null,
+  )
+  watch(
+    noteScrollerRef,
+    () => {
+      scroller.value = noteScrollerRef.value?.getElement() ?? null
+    },
+    { flush: 'post' },
+  )
 
   return {
     account,

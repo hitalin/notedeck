@@ -22,9 +22,9 @@ defineExpose({
 })
 
 defineSlots<{
-  default(props: { item: T; index: number }): any
-  prepend(): any
-  append(): any
+  default(props: { item: T; index: number }): unknown
+  prepend(): unknown
+  append(): unknown
 }>()
 </script>
 

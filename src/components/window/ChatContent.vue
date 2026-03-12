@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef } from 'vue'
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  shallowRef,
+} from 'vue'
 import type {
   AvatarDecoration,
   ChatMessage,
@@ -88,7 +95,8 @@ async function loadHistory() {
   const seen = new Set<string>()
 
   // Collect all messages and sort by time
-  const allMessages: { msg: ChatMessage; accountId: string; host: string }[] = []
+  const allMessages: { msg: ChatMessage; accountId: string; host: string }[] =
+    []
   for (const r of results) {
     if (r.status === 'fulfilled') allMessages.push(...r.value)
   }
@@ -121,8 +129,7 @@ async function loadHistory() {
       const key = `${accountId}:user:${otherId}`
       if (seen.has(key)) continue
       seen.add(key)
-      const other =
-        msg.fromUserId === myUserId ? msg.toUser : msg.fromUser
+      const other = msg.fromUserId === myUserId ? msg.toUser : msg.fromUser
       entries.push({
         key,
         accountId,
@@ -190,22 +197,18 @@ async function openConversation(entry: HistoryEntry) {
       const msgs = await adapter.api.getChatRoomMessages(entry.roomId)
       messages.value = msgs.slice().reverse()
       adapter.stream.connect()
-      chatSub = adapter.stream.subscribeChatRoom(
-        entry.roomId,
-        onNewMessage,
-        { onDeleted: onMessageDeleted },
-      )
+      chatSub = adapter.stream.subscribeChatRoom(entry.roomId, onNewMessage, {
+        onDeleted: onMessageDeleted,
+      })
     } else if (entry.otherId) {
       currentOtherId.value = entry.otherId
       currentRoomId.value = null
       const msgs = await adapter.api.getChatUserMessages(entry.otherId)
       messages.value = msgs.slice().reverse()
       adapter.stream.connect()
-      chatSub = adapter.stream.subscribeChatUser(
-        entry.otherId,
-        onNewMessage,
-        { onDeleted: onMessageDeleted },
-      )
+      chatSub = adapter.stream.subscribeChatUser(entry.otherId, onNewMessage, {
+        onDeleted: onMessageDeleted,
+      })
     }
     viewMode.value = 'conversation'
     scrollToBottom()
@@ -431,7 +434,12 @@ function scrollToBottom() {
 }
 
 async function loadOlder() {
-  if (!conversationAccountId.value || isLoading.value || messages.value.length === 0) return
+  if (
+    !conversationAccountId.value ||
+    isLoading.value ||
+    messages.value.length === 0
+  )
+    return
   const adapter = await getOrCreate(conversationAccountId.value)
   if (!adapter) return
 
