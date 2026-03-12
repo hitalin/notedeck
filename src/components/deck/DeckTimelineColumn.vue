@@ -387,7 +387,10 @@ async function connect(useCache = false) {
 
   if (useCache) {
     const cached = await fetchCachedNotes()
-    if (cached.length > 0) setNotes(cached)
+    const filtered = cached.filter((n) =>
+      matchesFilter(n, columnFilters.value, tlType.value),
+    )
+    if (filtered.length > 0) setNotes(filtered)
   }
 
   try {
