@@ -9,7 +9,6 @@ import {
   ref,
   watch,
 } from 'vue'
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type {
   NormalizedNote,
   TimelineFilter,
@@ -17,6 +16,7 @@ import type {
 } from '@/adapters/types'
 import MkAd from '@/components/common/MkAd.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import NoteScroller from '@/components/common/NoteScroller.vue'
 import { useAds } from '@/composables/useAds'
 import { useNavigation } from '@/composables/useNavigation'
 
@@ -55,6 +55,8 @@ const props = defineProps<{
   column: DeckColumnType
 }>()
 
+const noteScroller = ref<{ getElement: () => HTMLElement | null } | null>(null)
+
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 const {
@@ -72,6 +74,11 @@ const {
   scroller,
   onScroll,
 } = useColumnSetup(() => props.column)
+
+// Sync NoteScroller's scroll container element to the scroller ref used by composables
+watch(noteScroller, () => {
+  scroller.value = noteScroller.value?.getElement() ?? null
+}, { flush: 'post' })
 
 const { navigateToNote } = useNavigation()
 const { fetchAds, pickAd, shouldShowAd, muteAd, serverHost } = useAds(
@@ -91,7 +98,6 @@ const {
     getAdapter,
     deleteHandler: handlers.delete,
     closePostForm: postForm.close,
-    scroller,
   })
 
 const noteSound = useNoteSound(() => account.value?.host)
@@ -617,26 +623,8 @@ async function onResume() {
   }
 }
 
-// Image load listener: when emoji/OGP images finish loading inside the scroller,
-// the item height may change. DynamicScroller doesn't detect this automatically,
-// so we schedule a forceUpdate on the capture phase of 'load' events.
-let imgForceUpdateTimer: ReturnType<typeof setTimeout> | null = null
-function onImgLoad(e: Event) {
-  if (!(e.target instanceof HTMLImageElement)) return
-  if (imgForceUpdateTimer) return
-  imgForceUpdateTimer = setTimeout(() => {
-    imgForceUpdateTimer = null
-    // biome-ignore lint/suspicious/noExplicitAny: vue-virtual-scroller lacks forceUpdate typing
-    ;(scroller.value as any)?.forceUpdate()
-  }, 50)
-}
-
 onMounted(async () => {
   window.addEventListener('deck-resume', onResume)
-  // Capture image load events to trigger DynamicScroller height recalculation
-  // biome-ignore lint/suspicious/noExplicitAny: vue-virtual-scroller $el access
-  const scrollerEl = (scroller.value as any)?.$el as HTMLElement | undefined
-  scrollerEl?.addEventListener('load', onImgLoad, true)
   const host = account.value?.host
   const accountId = props.column.accountId
   // Clear stale policy cache so external mode changes are reflected
@@ -669,10 +657,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('deck-resume', onResume)
-  // biome-ignore lint/suspicious/noExplicitAny: vue-virtual-scroller $el access
-  const scrollerEl = (scroller.value as any)?.$el as HTMLElement | undefined
-  scrollerEl?.removeEventListener('load', onImgLoad, true)
-  if (imgForceUpdateTimer) clearTimeout(imgForceUpdateTimer)
   disconnect()
   resetBatch()
 })
@@ -788,42 +772,35 @@ onUnmounted(() => {
           <i class="ti ti-arrow-up" />{{ pendingNotes.length }}件の新しいノート
         </button>
 
-        <DynamicScroller
-          ref="scroller"
-          class="tl-scroller"
+        <NoteScroller
+          ref="noteScroller"
           :items="notes"
-          :min-item-size="120"
-          :buffer="400"
-          key-field="id"
-          @scroll.passive="handleScroll"
+          class="tl-scroller"
+          @scroll="handleScroll"
         >
-        <template #default="{ item, active, index }">
-          <DynamicScrollerItem
-            :item="item"
-            :active="active"
-            :data-index="index"
-          >
-            <MkNote
-              :note="item"
-              :focused="item.id === focusedNoteId"
-              @react="handlers.reaction"
-              @reply="handlers.reply"
-              @renote="handlers.renote"
-              @quote="handlers.quote"
-              @delete="removeNote"
-              @edit="handlers.edit"
-              @bookmark="handlers.bookmark"
-            />
-            <MkAd v-if="shouldShowAd(index)" :ad="pickAd(index)!" :server-host="serverHost" @mute="muteAd" />
-          </DynamicScrollerItem>
-        </template>
+          <template #default="{ item, index }">
+            <div :data-index="index">
+              <MkNote
+                :note="item"
+                :focused="item.id === focusedNoteId"
+                @react="handlers.reaction"
+                @reply="handlers.reply"
+                @renote="handlers.renote"
+                @quote="handlers.quote"
+                @delete="removeNote"
+                @edit="handlers.edit"
+                @bookmark="handlers.bookmark"
+              />
+              <MkAd v-if="shouldShowAd(index)" :ad="pickAd(index)!" :server-host="serverHost" @mute="muteAd" />
+            </div>
+          </template>
 
-        <template #after>
-          <div v-if="isLoading && notes.length > 0" class="loading-more">
-            Loading...
-          </div>
-        </template>
-      </DynamicScroller>
+          <template #append>
+            <div v-if="isLoading && notes.length > 0" class="loading-more">
+              Loading...
+            </div>
+          </template>
+        </NoteScroller>
       </template>
     </div>
   </DeckColumn>

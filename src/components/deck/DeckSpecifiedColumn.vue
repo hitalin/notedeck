@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue'
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
+import { defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ChannelSubscription, NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
+import NoteScroller from '@/components/common/NoteScroller.vue'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -47,13 +47,17 @@ const {
   getAdapter,
   deleteHandler: handlers.delete,
   closePostForm: postForm.close,
-  scroller,
 })
 const { sync: syncCapture } = useNoteCapture(
   () => getAdapter()?.stream,
   onNoteUpdate,
 )
 setOnNotesChanged(syncCapture)
+const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(null)
+watch(noteScrollerRef, () => {
+  scroller.value = noteScrollerRef.value?.getElement() ?? null
+}, { flush: 'post' })
+
 let mentionSub: ChannelSubscription | null = null
 
 async function connect() {
@@ -87,8 +91,7 @@ async function connect() {
 }
 
 function scrollToTop() {
-  const el = scroller.value?.$el as HTMLElement | undefined
-  if (el) el.scrollTop = 0
+  if (scroller.value) scroller.value.scrollTop = 0
 }
 
 async function loadMore() {
@@ -184,21 +187,9 @@ onBeforeUnmount(() => {
       </div>
 
       <template v-else>
-        <DynamicScroller
-          ref="scroller"
-          class="tl-scroller"
-          :items="notes"
-          :min-item-size="120"
-          :buffer="400"
-          key-field="id"
-          @scroll.passive="handleScroll"
-        >
-          <template #default="{ item, active, index }">
-            <DynamicScrollerItem
-              :item="item"
-              :active="active"
-              :data-index="index"
-            >
+        <NoteScroller ref="noteScrollerRef" :items="notes" class="tl-scroller" @scroll="handleScroll">
+          <template #default="{ item, index }">
+            <div :data-index="index">
               <MkNote
                 :note="item"
                 @react="handlers.reaction"
@@ -209,15 +200,15 @@ onBeforeUnmount(() => {
                 @edit="handlers.edit"
                 @bookmark="handlers.bookmark"
               />
-            </DynamicScrollerItem>
+            </div>
           </template>
 
-          <template #after>
+          <template #append>
             <div v-if="isLoading && notes.length > 0" class="loading-more">
               Loading...
             </div>
           </template>
-        </DynamicScroller>
+        </NoteScroller>
       </template>
     </div>
   </DeckColumn>

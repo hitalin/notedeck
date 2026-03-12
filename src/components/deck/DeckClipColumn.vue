@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import MkNote from '@/components/common/MkNote.vue'
+import NoteScroller from '@/components/common/NoteScroller.vue'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -26,7 +26,7 @@ const {
   focusedNoteId,
   postForm,
   handlers,
-  scroller,
+  noteScrollerRef,
   scrollToTop,
   handleScroll,
   handlePosted,
@@ -88,21 +88,9 @@ const {
       </div>
 
       <template v-else>
-        <DynamicScroller
-          ref="scroller"
-          class="tl-scroller"
-          :items="notes"
-          :min-item-size="120"
-          :buffer="400"
-          key-field="id"
-          @scroll.passive="handleScroll"
-        >
-          <template #default="{ item, active, index }">
-            <DynamicScrollerItem
-              :item="item"
-              :active="active"
-              :data-index="index"
-            >
+        <NoteScroller ref="noteScrollerRef" :items="notes" class="tl-scroller" @scroll="handleScroll">
+          <template #default="{ item, index }">
+            <div :data-index="index">
               <MkNote
                 :note="item"
                 :focused="item.id === focusedNoteId"
@@ -114,15 +102,15 @@ const {
                 @edit="handlers.edit"
                 @bookmark="handlers.bookmark"
               />
-            </DynamicScrollerItem>
+            </div>
           </template>
 
-          <template #after>
+          <template #append>
             <div v-if="isLoading && notes.length > 0" class="loading-more">
               Loading...
             </div>
           </template>
-        </DynamicScroller>
+        </NoteScroller>
       </template>
     </div>
   </DeckColumn>

@@ -6,12 +6,12 @@ import {
   ref,
   shallowRef,
 } from 'vue'
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import NoteScroller from '@/components/common/NoteScroller.vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNavigation } from '@/composables/useNavigation'
@@ -50,7 +50,7 @@ const { postForm, handlers } = useNoteActions(
 const MAX_NOTIFICATIONS = 500
 const isLoading = ref(false)
 const error = ref<string | null>(null)
-const scroller = ref<InstanceType<typeof DynamicScroller> | null>(null)
+const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(null)
 const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 
 // Per-account progress
@@ -235,7 +235,7 @@ function handleScroll() {
   const now = Date.now()
   if (now - lastScrollCheck < 200) return
   lastScrollCheck = now
-  const el = scroller.value?.$el as HTMLElement | undefined
+  const el = noteScrollerRef.value?.getElement()
   if (!el) return
   if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
     loadMore()
@@ -340,22 +340,16 @@ onUnmounted(() => {
       <span>{{ error }}</span>
     </div>
 
-    <DynamicScroller
+    <NoteScroller
       v-else-if="notifications.length > 0"
-      ref="scroller"
-      class="notif-scroller"
+      ref="noteScrollerRef"
       :items="notifications"
-      :min-item-size="60"
-      :buffer="400"
-      key-field="id"
-      @scroll.passive="handleScroll"
+      :estimated-height="80"
+      class="notif-scroller"
+      @scroll="handleScroll"
     >
-      <template #default="{ item: notif, active, index }">
-        <DynamicScrollerItem
-          :item="notif"
-          :active="active"
-          :data-index="index"
-        >
+      <template #default="{ item: notif, index }">
+        <div :data-index="index">
           <div
             class="notif-item"
             :class="`notif-type-${notif.type}`"
@@ -458,15 +452,15 @@ onUnmounted(() => {
               />
             </div>
           </div>
-        </DynamicScrollerItem>
+        </div>
       </template>
 
-      <template #after>
+      <template #append>
         <div v-if="isLoading && notifications.length > 0" class="notif-loading">
           Loading more...
         </div>
       </template>
-    </DynamicScroller>
+    </NoteScroller>
   </div>
 
   <Teleport to="body">

@@ -8,9 +8,9 @@ import {
   shallowRef,
   watch,
 } from 'vue'
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
+import NoteScroller from '@/components/common/NoteScroller.vue'
 import RegexGuide from '@/components/common/RegexGuide.vue'
 import { useNavigation } from '@/composables/useNavigation'
 
@@ -53,6 +53,10 @@ const {
 
 const { navigateToNote } = useNavigation()
 const notes = shallowRef<NormalizedNote[]>([])
+const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(null)
+watch(noteScrollerRef, () => {
+  scroller.value = noteScrollerRef.value?.getElement() ?? null
+}, { flush: 'post' })
 setOnNotesMutated(() => {
   notes.value = [...notes.value]
 })
@@ -418,22 +422,15 @@ onUnmounted(() => {
         No results found
       </div>
 
-      <DynamicScroller
+      <NoteScroller
         v-else
-        ref="scroller"
-        class="search-scroller"
+        ref="noteScrollerRef"
         :items="notes"
-        :min-item-size="120"
-        :buffer="400"
-        key-field="id"
-        @scroll.passive="handleScroll"
+        class="search-scroller"
+        @scroll="handleScroll"
       >
-        <template #default="{ item, active, index }">
-          <DynamicScrollerItem
-            :item="item"
-            :active="active"
-            :data-index="index"
-          >
+        <template #default="{ item, index }">
+          <div :data-index="index">
             <MkNote
               :note="item"
               :focused="item.id === focusedNoteId"
@@ -445,10 +442,10 @@ onUnmounted(() => {
               @edit="handlers.edit"
               @bookmark="handlers.bookmark"
             />
-          </DynamicScrollerItem>
+          </div>
         </template>
 
-        <template #after>
+        <template #append>
           <div v-if="isPreview && notes.length > 0" class="search-preview-hint">
             Press Enter to search server
           </div>
@@ -456,7 +453,7 @@ onUnmounted(() => {
             {{ hasLocalResults ? 'Searching server...' : 'Loading...' }}
           </div>
         </template>
-      </DynamicScroller>
+      </NoteScroller>
     </div>
   </DeckColumn>
 

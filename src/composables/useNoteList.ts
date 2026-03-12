@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { computed, nextTick, onScopeDispose, shallowRef } from 'vue'
-import type { DynamicScroller } from 'vue-virtual-scroller'
+import { computed, onScopeDispose, shallowRef } from 'vue'
 import type {
   NormalizedNote,
   NoteUpdateEvent,
@@ -14,27 +13,12 @@ export interface UseNoteListOptions {
   deleteHandler: (note: NormalizedNote) => Promise<boolean>
   closePostForm: () => void
   onNotesChanged?: (notes: NormalizedNote[]) => void
-  /** Scroller ref — used to force DynamicScroller re-render on note content updates */
-  scroller?: { value: InstanceType<typeof DynamicScroller> | null }
 }
 
 export function useNoteList(options: UseNoteListOptions) {
   const orderedIds = shallowRef<string[]>([])
   const noteIds = new Set<string>()
   let onNotesChangedFn = options.onNotesChanged
-
-  // Schedule DynamicScroller forceUpdate after note content changes (reactions, polls)
-  let forceUpdateTimer: ReturnType<typeof setTimeout> | null = null
-  function scheduleForceUpdate() {
-    if (!options.scroller || forceUpdateTimer) return
-    forceUpdateTimer = setTimeout(() => {
-      forceUpdateTimer = null
-      nextTick(() => {
-        // biome-ignore lint/suspicious/noExplicitAny: vue-virtual-scroller lacks forceUpdate typing
-        ;(options.scroller?.value as any)?.forceUpdate()
-      })
-    }, 25)
-  }
 
   // Listen for global note deletions so ALL columns clean up their orderedIds
   const unsubDelete = noteStore.onDelete((id) => {
@@ -67,14 +51,14 @@ export function useNoteList(options: UseNoteListOptions) {
   /**
    * Update notes without changing list structure.
    * If the new notes have the same IDs in the same order, only update
-   * note content in the store (avoids DynamicScroller re-mount).
+   * note content in the store (avoids list re-render).
    * Returns true if a lightweight update was performed.
    */
   function mergeIfSameList(newNotes: NormalizedNote[]): boolean {
     const currentIds = orderedIds.value
     if (
       currentIds.length === newNotes.length &&
-      currentIds.every((id, i) => id === newNotes[i].id)
+      currentIds.every((id, i) => id === newNotes[i]?.id)
     ) {
       noteStore.put(newNotes)
       return true
@@ -91,8 +75,6 @@ export function useNoteList(options: UseNoteListOptions) {
       return
     }
     noteStore.applyUpdate(event, options.getMyUserId())
-    // DynamicScroller doesn't detect item content changes — force re-render
-    scheduleForceUpdate()
   }
 
   async function handlePosted(editedNoteId?: string) {

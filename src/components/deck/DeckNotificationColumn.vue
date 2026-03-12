@@ -6,13 +6,14 @@ import {
   onUnmounted,
   ref,
   shallowRef,
+  watch,
 } from 'vue'
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import NoteScroller from '@/components/common/NoteScroller.vue'
 import { noteStore } from '@/stores/notes'
 
 const MkPostForm = defineAsyncComponent(
@@ -91,13 +92,17 @@ const MAX_NOTIFICATIONS = 500
 const notifications = shallowRef<NormalizedNotification[]>([])
 const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 
+const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(null)
+watch(noteScrollerRef, () => {
+  scroller.value = noteScrollerRef.value?.getElement() ?? null
+}, { flush: 'post' })
+
 // rAF batching for streaming notifications
 let rafBuffer: NormalizedNotification[] = []
 let rafId: number | null = null
 
 function scrollToTop() {
-  const el = scroller.value?.$el as HTMLElement | undefined
-  if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+  scroller.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function flushRafBuffer() {
@@ -390,22 +395,16 @@ onUnmounted(() => {
         <MkSkeleton v-for="i in 5" :key="i" />
       </div>
 
-      <DynamicScroller
+      <NoteScroller
         v-else
-        ref="scroller"
-        class="notif-scroller"
+        ref="noteScrollerRef"
         :items="notifications"
-        :min-item-size="60"
-        :buffer="400"
-        key-field="id"
-        @scroll.passive="handleScroll"
+        :estimated-height="80"
+        class="notif-scroller"
+        @scroll="handleScroll"
       >
-        <template #default="{ item: notif, active, index }">
-          <DynamicScrollerItem
-            :item="notif"
-            :active="active"
-            :data-index="index"
-          >
+        <template #default="{ item: notif, index }">
+          <div :data-index="index">
             <div
               class="notif-item"
               :class="`notif-type-${notif.type}`"
@@ -477,15 +476,15 @@ onUnmounted(() => {
                 />
               </div>
             </div>
-          </DynamicScrollerItem>
+          </div>
         </template>
 
-        <template #after>
+        <template #append>
           <div v-if="isLoading && notifications.length > 0" class="loading-more">
             読み込み中...
           </div>
         </template>
-      </DynamicScroller>
+      </NoteScroller>
     </div>
   </DeckColumn>
 
@@ -555,10 +554,6 @@ onUnmounted(() => {
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
   will-change: scroll-position;
-}
-
-.notif-scroller :deep(.vue-recycle-scroller__item-view) {
-  will-change: transform;
 }
 
 .notif-item {

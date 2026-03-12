@@ -1,36 +1,22 @@
-import { nextTick, onScopeDispose, ref, shallowRef } from 'vue'
-import type { DynamicScroller } from 'vue-virtual-scroller'
+import { onScopeDispose, ref, shallowRef } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
 import { sortByCreatedAtDesc } from '@/utils/sortNotes'
 
 export interface UseStreamingBatchOptions {
   notes: { value: NormalizedNote[] }
   noteIds: Set<string>
-  scroller: { value: InstanceType<typeof DynamicScroller> | null }
+  scroller: { value: HTMLElement | null }
   maxNotes?: number
   onNewNotes?: (notes: NormalizedNote[]) => void
 }
 
 export function useStreamingBatch(options: UseStreamingBatchOptions) {
-  const MAX_NOTES = options.maxNotes ?? 500
+  const MAX_NOTES = options.maxNotes ?? 300
   const pendingNotes = shallowRef<NormalizedNote[]>([])
   const isAtTop = ref(true)
   let rafBuffer: NormalizedNote[] = []
   let rafId: number | null = null
   let _paused = false
-
-  let forceUpdateTimer: ReturnType<typeof setTimeout> | null = null
-
-  function scheduleForceUpdate() {
-    if (forceUpdateTimer) return
-    forceUpdateTimer = setTimeout(() => {
-      forceUpdateTimer = null
-      nextTick(() => {
-        // biome-ignore lint/suspicious/noExplicitAny: vue-virtual-scroller lacks forceUpdate typing
-        ;(options.scroller.value as any)?.forceUpdate()
-      })
-    }, 25)
-  }
 
   function syncNoteIds() {
     options.noteIds.clear()
@@ -53,7 +39,6 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
         merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
       if (merged.length > MAX_NOTES) syncNoteIds()
       options.onNewNotes?.(batch)
-      scheduleForceUpdate()
     } else {
       const merged = sortByCreatedAtDesc([...batch, ...pendingNotes.value])
       pendingNotes.value =
@@ -84,11 +69,10 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
     if (merged.length > MAX_NOTES) syncNoteIds()
     pendingNotes.value = []
-    scheduleForceUpdate()
   }
 
   function handleScroll() {
-    const el = options.scroller.value?.$el as HTMLElement | undefined
+    const el = options.scroller.value ?? undefined
     if (el) {
       isAtTop.value = el.scrollTop <= 10
       if (isAtTop.value && pendingNotes.value.length > 0) {
@@ -100,10 +84,8 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   function scrollToTop() {
     isAtTop.value = true
     flushPending()
-    nextTick(() => {
-      const el = options.scroller.value?.$el as HTMLElement | undefined
-      if (el) el.scrollTop = 0
-    })
+    const el = options.scroller.value ?? undefined
+    if (el) el.scrollTop = 0
   }
 
   function removePending(noteId: string) {
@@ -118,10 +100,6 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     if (rafId !== null) {
       cancelAnimationFrame(rafId)
       rafId = null
-    }
-    if (forceUpdateTimer) {
-      clearTimeout(forceUpdateTimer)
-      forceUpdateTimer = null
     }
     pendingNotes.value = []
     isAtTop.value = true

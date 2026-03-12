@@ -1,6 +1,5 @@
 import type { ShallowRef } from 'vue'
 import { computed, onUnmounted, ref, watch } from 'vue'
-import type { DynamicScroller } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 import { useDeckStore } from '@/stores/deck'
 import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
@@ -26,17 +25,19 @@ export interface NoteActionHandlers {
 }
 
 function scrollTo(
-  scroller: ShallowRef<InstanceType<typeof DynamicScroller> | null>,
+  scroller: ShallowRef<HTMLElement | null>,
   index: number,
 ) {
-  const s = scroller.value as { scrollToItem?: (i: number) => void } | null
-  s?.scrollToItem?.(index)
+  const el = scroller.value
+  if (!el) return
+  const item = el.querySelector(`[data-index="${index}"]`) as HTMLElement | null
+  item?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
 export function useNoteFocus(
   columnId: string,
   notes: ShallowRef<NormalizedNote[]>,
-  scroller: ShallowRef<InstanceType<typeof DynamicScroller> | null>,
+  scroller: ShallowRef<HTMLElement | null>,
   handlers: NoteActionHandlers,
   onOpen?: (note: NormalizedNote) => void,
   accountId?: string,
@@ -157,9 +158,8 @@ export function useNoteFocus(
   }
 
   function findFocusedNoteEl(): HTMLElement | null {
-    const scrollerEl = scroller.value?.$el as HTMLElement | undefined
-    if (!scrollerEl) return null
-    return scrollerEl.querySelector(
+    if (!scroller.value) return null
+    return scroller.value.querySelector(
       `[data-index="${focusedIndex.value}"] .note-root`,
     )
   }

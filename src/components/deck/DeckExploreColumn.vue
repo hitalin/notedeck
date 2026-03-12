@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { computed, defineAsyncComponent, ref } from 'vue'
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import MkNote from '@/components/common/MkNote.vue'
+import NoteScroller from '@/components/common/NoteScroller.vue'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -38,7 +38,7 @@ const {
   focusedNoteId,
   postForm,
   handlers,
-  scroller,
+  noteScrollerRef,
   scrollToTop,
   handleScroll,
   handlePosted,
@@ -280,21 +280,9 @@ function closeUserPopup() {
           </div>
 
           <template v-else>
-            <DynamicScroller
-              ref="scroller"
-              class="tl-scroller"
-              :items="notes"
-              :min-item-size="120"
-              :buffer="400"
-              key-field="id"
-              @scroll.passive="handleScroll"
-            >
-              <template #default="{ item, active, index }">
-                <DynamicScrollerItem
-                  :item="item"
-                  :active="active"
-                  :data-index="index"
-                >
+            <NoteScroller ref="noteScrollerRef" :items="notes" class="tl-scroller" @scroll="handleScroll">
+              <template #default="{ item, index }">
+                <div :data-index="index">
                   <MkNote
                     :note="item"
                     :focused="item.id === focusedNoteId"
@@ -306,9 +294,9 @@ function closeUserPopup() {
                     @edit="handlers.edit"
                     @bookmark="handlers.bookmark"
                   />
-                </DynamicScrollerItem>
+                </div>
               </template>
-            </DynamicScroller>
+            </NoteScroller>
           </template>
         </div>
       </template>

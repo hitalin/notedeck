@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { nextTick, onMounted, onUnmounted, shallowRef, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import type {
   ChannelSubscription,
   NormalizedNote,
@@ -77,7 +77,6 @@ export function useNoteColumn(config: NoteColumnConfig) {
     getAdapter,
     deleteHandler: handlers.delete,
     closePostForm: postForm.close,
-    scroller,
   })
 
   // Streaming (Group A) or NoteCapture (Group B)
@@ -266,8 +265,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
       streamingBatch.scrollToTop()
     } else {
       nextTick(() => {
-        const el = scroller.value?.$el as HTMLElement | undefined
-        if (el) el.scrollTop = 0
+        if (scroller.value) scroller.value.scrollTop = 0
       })
     }
   }
@@ -395,6 +393,12 @@ export function useNoteColumn(config: NoteColumnConfig) {
     streamingBatch?.resetBatch()
   })
 
+  // Ref for NoteScroller component — syncs its scroll container to the scroller ref
+  const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(null)
+  watch(noteScrollerRef, () => {
+    scroller.value = noteScrollerRef.value?.getElement() ?? null
+  }, { flush: 'post' })
+
   return {
     account,
     columnThemeVars,
@@ -406,7 +410,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     pendingNotes,
     postForm,
     handlers,
-    scroller,
+    noteScrollerRef,
     scrollToTop,
     handleScroll,
     handlePosted,

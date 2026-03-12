@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { defineAsyncComponent, onUnmounted, ref, shallowRef, watch } from 'vue'
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
+import NoteScroller from '@/components/common/NoteScroller.vue'
 import RegexGuide from '@/components/common/RegexGuide.vue'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNoteActions } from '@/composables/useNoteActions'
@@ -40,7 +40,7 @@ const isLoading = ref(false)
 const isPreview = ref(false)
 const confirmedQuery = ref('')
 const error = ref<string | null>(null)
-const scroller = ref<InstanceType<typeof DynamicScroller> | null>(null)
+const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(null)
 
 // Regex mode
 const regexMode = ref(false)
@@ -288,7 +288,7 @@ function handleScroll() {
   const now = Date.now()
   if (now - lastScrollCheck < 200) return
   lastScrollCheck = now
-  const el = scroller.value?.$el as HTMLElement | undefined
+  const el = noteScrollerRef.value?.getElement()
   if (!el) return
   if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
     loadMore()
@@ -441,22 +441,15 @@ setTimeout(() => searchInput.value?.focus(), 100)
       {{ error }}
     </div>
 
-    <DynamicScroller
+    <NoteScroller
       v-else-if="notes.length > 0"
-      ref="scroller"
-      class="search-scroller"
+      ref="noteScrollerRef"
       :items="notes"
-      :min-item-size="120"
-      :buffer="400"
-      key-field="id"
-      @scroll.passive="handleScroll"
+      class="search-scroller"
+      @scroll="handleScroll"
     >
-      <template #default="{ item, active, index }">
-        <DynamicScrollerItem
-          :item="item"
-          :active="active"
-          :data-index="index"
-        >
+      <template #default="{ item, index }">
+        <div :data-index="index">
           <MkNote
             :note="item"
             @react="handlers.reaction"
@@ -467,10 +460,10 @@ setTimeout(() => searchInput.value?.focus(), 100)
             @edit="handlers.edit"
             @bookmark="handlers.bookmark"
           />
-        </DynamicScrollerItem>
+        </div>
       </template>
 
-      <template #after>
+      <template #append>
         <div v-if="isPreview && notes.length > 0" class="search-hint">
           Press Enter to search server
         </div>
@@ -478,7 +471,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
           Loading more...
         </div>
       </template>
-    </DynamicScroller>
+    </NoteScroller>
   </div>
 
   <Teleport to="body">

@@ -1,11 +1,10 @@
 import { onUnmounted, type Ref, ref, watch } from 'vue'
-import type { DynamicScroller } from 'vue-virtual-scroller'
 
 const PULL_THRESHOLD = 64
 const MAX_PULL = 128
 
 export function usePullToRefresh(
-  scrollerRef: Ref<InstanceType<typeof DynamicScroller> | null>,
+  scrollerRef: Ref<HTMLElement | null>,
   onRefresh: () => Promise<void>,
 ) {
   const pullDistance = ref(0)
@@ -16,7 +15,7 @@ export function usePullToRefresh(
   let boundEl: HTMLElement | null = null
 
   function getEl(): HTMLElement | null {
-    return (scrollerRef.value?.$el as HTMLElement) ?? null
+    return scrollerRef.value
   }
 
   function onTouchStart(e: TouchEvent) {
@@ -83,8 +82,7 @@ export function usePullToRefresh(
   watch(
     scrollerRef,
     (v) => {
-      const el = (v?.$el as HTMLElement) ?? null
-      if (el) bind(el)
+      if (v) bind(v)
       else unbind()
     },
     { flush: 'post' },

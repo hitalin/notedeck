@@ -5,7 +5,6 @@ import { router } from './router'
 import { useThemeStore } from './stores/theme'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
 import './styles/global.css'
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 
 const app = createApp(App)
 const pinia = createPinia()

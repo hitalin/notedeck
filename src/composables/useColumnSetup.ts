@@ -1,5 +1,4 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import type { DynamicScroller } from 'vue-virtual-scroller'
 import { createAdapter } from '@/adapters/registry'
 import type {
   ChannelSubscription,
@@ -177,12 +176,12 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   }
 
   // Scroll
-  const scroller = ref<InstanceType<typeof DynamicScroller> | null>(null)
+  const scroller = ref<HTMLElement | null>(null)
   const { reportScroll } = useScrollDirection()
 
   let lastScrollCheck = 0
   function onScroll(loadMore: () => void) {
-    const el = scroller.value?.$el as HTMLElement | undefined
+    const el = scroller.value ?? undefined
     if (!el) return
 
     reportScroll(el.scrollTop)
