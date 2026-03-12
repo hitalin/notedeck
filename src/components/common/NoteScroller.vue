@@ -35,7 +35,15 @@ defineSlots<{
     @scroll.passive="$emit('scroll', $event)"
   >
     <slot name="prepend" />
-    <TransitionGroup name="note" tag="div" class="note-list">
+    <TransitionGroup
+      tag="div"
+      class="note-list"
+      :enter-active-class="$style.enterActive"
+      :leave-active-class="$style.leaveActive"
+      :enter-from-class="$style.enterFrom"
+      :leave-to-class="$style.leaveTo"
+      :move-class="$style.move"
+    >
       <div
         v-for="(item, index) in props.items"
         :key="item.id"
@@ -65,26 +73,38 @@ defineSlots<{
   contain-intrinsic-size: 0 150px; /* fallback, overridden by inline style */
   contain: content;
 }
+</style>
 
-/* TransitionGroup animations */
-.note-enter-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+<style module>
+/* Misskey-style TransitionGroup animations */
+/* enter/move: elastic easing over 0.7s */
+.move {
+  transition: transform 0.7s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.note-leave-active {
-  transition: opacity 0.15s ease;
+.enterActive {
+  transition: transform 0.7s cubic-bezier(0.23, 1, 0.32, 1),
+              opacity 0.7s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.note-enter-from {
+.enterFrom {
   opacity: 0;
-  transform: translateY(-20px);
+  transform: translateY(max(-64px, -100%));
 }
 
-.note-leave-to {
+/* Disable content-visibility during enter animation to prevent visual stutter */
+.enterActive :deep(.note-item) {
+  content-visibility: visible !important;
+}
+
+/* leave: quick collapse */
+.leaveActive {
+  transition: height 0.2s cubic-bezier(0, 0.5, 0.5, 1),
+              opacity 0.2s cubic-bezier(0, 0.5, 0.5, 1);
+}
+
+.leaveTo {
   opacity: 0;
-}
-
-.note-move {
-  transition: transform 0.2s ease;
+  height: 0;
 }
 </style>
