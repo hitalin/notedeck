@@ -43,6 +43,7 @@ const addColumnType = ref<
   | 'apiConsole'
   | 'apiDocs'
   | 'lookup'
+  | 'serverInfo'
   | null
 >(null)
 
@@ -73,7 +74,8 @@ function selectColumnType(
     | 'achievements'
     | 'apiConsole'
     | 'apiDocs'
-    | 'lookup',
+    | 'lookup'
+    | 'serverInfo',
 ) {
   addColumnType.value = type
 }
@@ -128,6 +130,17 @@ function addColumnForAccount(accountId: string) {
     deckStore.addColumn({
       type: 'lookup',
       name: '照会',
+      width: 330,
+      accountId,
+      active: true,
+    })
+    close()
+    return
+  }
+  if (type === 'serverInfo') {
+    deckStore.addColumn({
+      type: 'serverInfo',
+      name: 'サーバー情報',
       width: 330,
       accountId,
       active: true,
@@ -449,6 +462,10 @@ function close() {
         </button>
 
         <div class="add-category-label">サーバー</div>
+        <button class="_button add-type-btn" @click="selectColumnType('serverInfo')">
+          <i class="ti ti-server" />
+          <span>サーバー情報</span>
+        </button>
         <button class="_button add-type-btn" @click="selectColumnType('explore')">
           <i class="ti ti-compass" />
           <span>みつける</span>
