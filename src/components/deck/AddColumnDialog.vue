@@ -42,6 +42,7 @@ const addColumnType = ref<
   | 'achievements'
   | 'apiConsole'
   | 'apiDocs'
+  | 'lookup'
   | null
 >(null)
 
@@ -71,7 +72,8 @@ function selectColumnType(
     | 'followRequests'
     | 'achievements'
     | 'apiConsole'
-    | 'apiDocs',
+    | 'apiDocs'
+    | 'lookup',
 ) {
   addColumnType.value = type
 }
@@ -116,6 +118,17 @@ function addColumnForAccount(accountId: string) {
       type: 'apiConsole',
       name: 'APIコンソール',
       width: 360,
+      accountId,
+      active: true,
+    })
+    close()
+    return
+  }
+  if (type === 'lookup') {
+    deckStore.addColumn({
+      type: 'lookup',
+      name: '照会',
+      width: 330,
       accountId,
       active: true,
     })
@@ -447,6 +460,10 @@ function close() {
         <button class="_button add-type-btn" @click="selectColumnType('search')">
           <i class="ti ti-search" />
           <span>検索</span>
+        </button>
+        <button class="_button add-type-btn" @click="selectColumnType('lookup')">
+          <i class="ti ti-world-search" />
+          <span>照会</span>
         </button>
         <button class="_button add-type-btn" @click="selectColumnType('channel')">
           <i class="ti ti-device-tv" />

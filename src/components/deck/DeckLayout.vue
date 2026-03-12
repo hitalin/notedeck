@@ -58,6 +58,7 @@ import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
 import DeckFollowRequestsColumn from './DeckFollowRequestsColumn.vue'
 import DeckGalleryColumn from './DeckGalleryColumn.vue'
 import DeckListColumn from './DeckListColumn.vue'
+import DeckLookupColumn from './DeckLookupColumn.vue'
 import DeckMentionsColumn from './DeckMentionsColumn.vue'
 import DeckNavbar from './DeckNavbar.vue'
 import DeckNotificationColumn from './DeckNotificationColumn.vue'
@@ -65,6 +66,7 @@ import DeckPageColumn from './DeckPageColumn.vue'
 import DeckPlayColumn from './DeckPlayColumn.vue'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSearchColumn from './DeckSearchColumn.vue'
+import DeckServerInfoColumn from './DeckServerInfoColumn.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
 import DeckSpecifiedColumn from './DeckSpecifiedColumn.vue'
 import DeckTimelineColumn from './DeckTimelineColumn.vue'
@@ -97,6 +99,8 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
   achievements: DeckAchievementsColumn,
   apiConsole: DeckApiConsoleColumn,
   apiDocs: DeckApiDocsColumn,
+  lookup: DeckLookupColumn,
+  serverInfo: DeckServerInfoColumn,
 }
 
 const router = useRouter()
@@ -267,6 +271,8 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   followRequests: 'user-plus',
   achievements: 'medal',
   apiConsole: 'api',
+  lookup: 'world-search',
+  serverInfo: 'server',
 }
 
 const TL_ICONS: Record<string, string> = {

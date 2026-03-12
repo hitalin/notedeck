@@ -29,6 +29,8 @@ export type ColumnType =
   | 'achievements'
   | 'apiConsole'
   | 'apiDocs'
+  | 'lookup'
+  | 'serverInfo'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
@@ -120,6 +122,12 @@ export const useDeckStore = defineStore('deck', () => {
     }
     if (col.type === 'apiDocs') {
       return 'notedeck://api/docs'
+    }
+    if (col.type === 'lookup') {
+      return `notedeck://lookup/${col.id}`
+    }
+    if (col.type === 'serverInfo') {
+      return `notedeck://server-info/${col.id}`
     }
     if (!col.accountId) return null
 
