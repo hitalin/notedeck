@@ -11,6 +11,7 @@ mod soundcloud;
 mod spotify;
 mod tiktok;
 mod twitter;
+mod xfolio;
 mod youtube;
 
 use async_trait::async_trait;
@@ -97,6 +98,7 @@ pub fn all() -> &'static [&'static dyn Plugin] {
         &iwara::PLUGIN,
         &komiflo::PLUGIN,
         &amazon::PLUGIN,
+        &xfolio::PLUGIN,
     ]
 }
 
