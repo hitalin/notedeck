@@ -59,7 +59,7 @@ function createProfile() {
 function apply(id: string) {
   if (editingId.value === id) return
   deckStore.applyProfile(id)
-  emit('close')
+  profiles.value = deckStore.getProfiles()
 }
 
 function startRename(id: string, name: string) {
