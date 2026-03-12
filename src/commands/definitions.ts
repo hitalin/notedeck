@@ -237,6 +237,19 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     })
   }
 
+  commandStore.register({
+    id: 'profile-new',
+    label: '新しいプロファイルを作成',
+    icon: 'plus',
+    category: 'general',
+    shortcuts: [],
+    execute: () => {
+      const deckStore = useDeckStore()
+      deckStore.saveAsProfile()
+      refreshProfileCommands()
+    },
+  })
+
   // Profile switching (Alt+1-9 to switch deck profiles)
   refreshProfileCommands()
 }
@@ -297,6 +310,7 @@ export function unregisterDefaultCommands() {
     'toggle-sidebar',
     'account-menu',
     'toggle-dark-mode',
+    'profile-new',
     ...NOTE_COMMAND_IDS,
     ...COLUMN_COMMAND_IDS,
     ...QUICK_REACT_IDS,

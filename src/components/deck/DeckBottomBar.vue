@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useDeckStore } from '@/stores/deck'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
 
@@ -13,6 +14,8 @@ const emit = defineEmits<{
   'update:show-profile-menu': [value: boolean]
   'update:show-settings-menu': [value: boolean]
 }>()
+
+const deckStore = useDeckStore()
 </script>
 
 <template>
@@ -20,11 +23,12 @@ const emit = defineEmits<{
     <div class="bottom-bar-left">
       <div class="profile-menu-wrap">
         <button
-          class="_button bottom-bar-btn"
-          title="Deck profiles"
+          class="_button profile-indicator"
+          title="プロファイル切替"
           @click.stop="emit('update:show-profile-menu', !showProfileMenu)"
         >
-          <i class="ti ti-caret-down" />
+          <i class="ti ti-layout" />
+          <span class="profile-indicator-name">{{ deckStore.currentProfileName ?? 'プロファイル' }}</span>
         </button>
         <DeckProfileMenu
           :show="showProfileMenu"
@@ -70,6 +74,7 @@ const emit = defineEmits<{
 
 .bottom-bar-left {
   flex: 1;
+  height: 100%;
 }
 
 .bottom-bar-right {
@@ -81,6 +86,35 @@ const emit = defineEmits<{
 .profile-menu-wrap,
 .settings-menu-wrap {
   position: relative;
+  height: 100%;
+}
+
+.profile-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  padding: 0 8px;
+  background: var(--nd-accent, #86b300);
+  color: var(--nd-fgOnAccent, #fff);
+  font-size: 0.75em;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+
+.profile-indicator:hover {
+  filter: brightness(1.15);
+}
+
+.profile-indicator .ti {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.profile-indicator-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 }
 
 .bottom-bar-btn {

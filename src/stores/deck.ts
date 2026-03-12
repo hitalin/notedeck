@@ -491,6 +491,16 @@ export const useDeckStore = defineStore('deck', () => {
   const activeProfileId = ref<string | null>(null)
   /** Per-window profile ID (set via ?profile= query). Isolates this window from deck:sync. */
   const windowProfileId = ref<string | null>(null)
+  /** Bumped on every saveProfiles() to make profile-derived computeds reactive */
+  const profileVersion = ref(0)
+
+  const currentProfileName = computed(() => {
+    // Depend on both windowProfileId and profileVersion for reactivity
+    const _v = profileVersion.value
+    if (!windowProfileId.value) return null
+    const profiles = loadProfiles()
+    return profiles.find((p) => p.id === windowProfileId.value)?.name ?? null
+  })
 
   function loadProfiles(): DeckProfile[] {
     try {
@@ -503,6 +513,7 @@ export const useDeckStore = defineStore('deck', () => {
 
   function saveProfiles(profiles: DeckProfile[]) {
     localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles))
+    profileVersion.value++
   }
 
   function saveActiveProfileId(id: string | null) {
@@ -692,6 +703,7 @@ export const useDeckStore = defineStore('deck', () => {
     deleteProfile,
     renameProfile,
     windowProfileId,
+    currentProfileName,
     initWindowProfile,
     createEmptyProfile,
     startSync,

@@ -52,7 +52,11 @@ const categoryLabels: Record<string, string> = {
 const categoryOrder = ['general', 'note', 'navigation', 'column', 'account']
 
 const filteredGroups = computed<CommandGroup[]>(() => {
-  const enabled = commandStore.getEnabled().filter((c) => c.visible !== false)
+  let enabled = commandStore.getEnabled().filter((c) => c.visible !== false)
+
+  if (commandStore.commandFilter) {
+    enabled = enabled.filter(commandStore.commandFilter)
+  }
 
   const matched = query.value
     ? enabled.filter((c) => fuzzyMatch(query.value, c.label))

@@ -32,6 +32,8 @@ export const useCommandStore = defineStore('commands', () => {
   const commands = ref(new Map<string, Command>())
   const isOpen = ref(false)
   const initialInput = ref<string | null>(null)
+  /** When set, only commands matching this predicate are shown */
+  const commandFilter = ref<((cmd: Command) => boolean) | null>(null)
 
   function register(command: Command) {
     commands.value.set(command.id, command)
@@ -63,8 +65,15 @@ export const useCommandStore = defineStore('commands', () => {
     isOpen.value = true
   }
 
+  function openWithFilter(filter: (cmd: Command) => boolean, input?: string) {
+    commandFilter.value = filter
+    initialInput.value = input ?? null
+    isOpen.value = true
+  }
+
   function close() {
     isOpen.value = false
+    commandFilter.value = null
   }
 
   function toggle() {
@@ -75,12 +84,14 @@ export const useCommandStore = defineStore('commands', () => {
     commands,
     isOpen,
     initialInput,
+    commandFilter,
     register,
     unregister,
     getEnabled,
     execute,
     open,
     openWithInput,
+    openWithFilter,
     close,
     toggle,
   }
