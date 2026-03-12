@@ -47,6 +47,7 @@ const {
   getAdapter,
   deleteHandler: handlers.delete,
   closePostForm: postForm.close,
+  scroller,
 })
 const { sync: syncCapture } = useNoteCapture(
   () => getAdapter()?.stream,

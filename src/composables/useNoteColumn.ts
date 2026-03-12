@@ -77,6 +77,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     getAdapter,
     deleteHandler: handlers.delete,
     closePostForm: postForm.close,
+    scroller,
   })
 
   // Streaming (Group A) or NoteCapture (Group B)

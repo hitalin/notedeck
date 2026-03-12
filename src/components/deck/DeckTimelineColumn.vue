@@ -83,6 +83,7 @@ const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } =
     getAdapter,
     deleteHandler: handlers.delete,
     closePostForm: postForm.close,
+    scroller,
   })
 
 const noteSound = useNoteSound(() => account.value?.host)

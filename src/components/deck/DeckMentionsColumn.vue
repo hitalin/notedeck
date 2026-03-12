@@ -52,6 +52,7 @@ const {
   getAdapter,
   deleteHandler: handlers.delete,
   closePostForm: postForm.close,
+  scroller,
 })
 const { focusedNoteId } = useNoteFocus(
   props.column.id,

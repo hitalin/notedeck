@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
-import { computed, onScopeDispose, shallowRef } from 'vue'
+import { computed, nextTick, onScopeDispose, shallowRef } from 'vue'
+import type { DynamicScroller } from 'vue-virtual-scroller'
 import type {
   NormalizedNote,
   NoteUpdateEvent,
@@ -13,12 +14,27 @@ export interface UseNoteListOptions {
   deleteHandler: (note: NormalizedNote) => Promise<boolean>
   closePostForm: () => void
   onNotesChanged?: (notes: NormalizedNote[]) => void
+  /** Scroller ref — used to force DynamicScroller re-render on note content updates */
+  scroller?: { value: InstanceType<typeof DynamicScroller> | null }
 }
 
 export function useNoteList(options: UseNoteListOptions) {
   const orderedIds = shallowRef<string[]>([])
   const noteIds = new Set<string>()
   let onNotesChangedFn = options.onNotesChanged
+
+  // Schedule DynamicScroller forceUpdate after note content changes (reactions, polls)
+  let forceUpdateTimer: ReturnType<typeof setTimeout> | null = null
+  function scheduleForceUpdate() {
+    if (!options.scroller || forceUpdateTimer) return
+    forceUpdateTimer = setTimeout(() => {
+      forceUpdateTimer = null
+      nextTick(() => {
+        // biome-ignore lint/suspicious/noExplicitAny: vue-virtual-scroller lacks forceUpdate typing
+        ;(options.scroller?.value as any)?.forceUpdate()
+      })
+    }, 25)
+  }
 
   // Listen for global note deletions so ALL columns clean up their orderedIds
   const unsubDelete = noteStore.onDelete((id) => {
@@ -57,6 +73,8 @@ export function useNoteList(options: UseNoteListOptions) {
       return
     }
     noteStore.applyUpdate(event, options.getMyUserId())
+    // DynamicScroller doesn't detect item content changes — force re-render
+    scheduleForceUpdate()
   }
 
   async function handlePosted(editedNoteId?: string) {

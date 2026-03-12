@@ -45,13 +45,14 @@ function resolve(ids: string[]): NormalizedNote[] {
   const map = noteMap.value
   const result: NormalizedNote[] = []
   for (const id of ids) {
-    const note = map.get(id)
+    let note = map.get(id)
     if (!note) continue
-    // Sync renote reference in place (shallowRef: no deep reactivity overhead)
+    // Create a new parent reference when renote changes so Vue detects the prop update
     if (note.renoteId) {
       const renote = map.get(note.renoteId)
       if (renote && renote !== note.renote) {
-        note.renote = renote
+        note = { ...note, renote }
+        map.set(id, note)
       }
     }
     result.push(note)

@@ -457,8 +457,10 @@ function closeMentionPopup() {
         </div>
 
         <!-- Reactions -->
-        <div
+        <TransitionGroup
           v-if="sortedReactions.length > 0 && !embedded"
+          tag="div"
+          name="reaction-appear"
           class="reactions"
         >
           <button
@@ -475,7 +477,7 @@ function closeMentionPopup() {
             <MkEmoji v-else :emoji="r.reaction" class="reaction-emoji" />
             <span class="count">{{ r.count }}</span>
           </button>
-        </div>
+        </TransitionGroup>
 
         <!-- Footer -->
         <footer v-if="!embedded" class="footer">
@@ -981,6 +983,28 @@ function closeMentionPopup() {
 
 .reaction.reacted .count {
   color: var(--nd-accent);
+}
+
+/* Reaction appear/leave animation (matches Misskey) */
+.reaction-appear-enter-active,
+.reaction-appear-leave-active {
+  transition:
+    opacity 0.2s cubic-bezier(0, 0.5, 0.5, 1),
+    transform 0.2s cubic-bezier(0, 0.5, 0.5, 1);
+}
+
+.reaction-appear-enter-from {
+  opacity: 0;
+  transform: scale(0.7);
+}
+
+.reaction-appear-leave-active {
+  position: absolute;
+}
+
+.reaction-appear-leave-to {
+  opacity: 0;
+  transform: scale(0.7);
 }
 
 /* Footer */
