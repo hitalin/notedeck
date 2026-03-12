@@ -561,7 +561,8 @@ export const useDeckStore = defineStore('deck', () => {
     saveProfiles(profiles)
     saveActiveProfileId(profile.id)
 
-    // Switch to the empty new profile
+    // Switch to the new empty profile
+    windowProfileId.value = profile.id
     columns.value = []
     layout.value = []
     flushSave()
