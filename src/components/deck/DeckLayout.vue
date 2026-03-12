@@ -374,6 +374,17 @@ onMounted(() => {
   document.addEventListener('visibilitychange', onVisibilityChange)
   colVisibility.setup(columnsRef)
 
+  // Initial column observation (replaces immediate watcher)
+  nextTick(() => {
+    if (columnsRef.value) {
+      for (const cell of columnsRef.value.querySelectorAll<HTMLElement>(
+        '.stack-cell[data-column-id]',
+      )) {
+        colVisibility.observe(cell)
+      }
+    }
+  })
+
   // After first paint: commands, API bridge, wallpaper
   requestAnimationFrame(() => {
     registerDefaultCommands({
@@ -451,7 +462,7 @@ watch(
       }
     })
   },
-  { flush: 'post', immediate: true, deep: true },
+  { flush: 'post', deep: true },
 )
 
 // Scroll to column when activeColumnId changes via keyboard navigation

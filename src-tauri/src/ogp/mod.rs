@@ -120,6 +120,7 @@ pub struct OgpCache {
     inflight: Arc<Mutex<InflightMap>>,
     http_client: reqwest::Client,
     db: Arc<notecli::db::Database>,
+    loaded: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl OgpCache {
@@ -131,12 +132,28 @@ impl OgpCache {
             .build()
             .unwrap_or_default();
 
-        db.cleanup_expired_ogp().ok();
+        Self {
+            cache: Arc::new(Mutex::new(HashMap::new())),
+            inflight: Arc::new(Mutex::new(HashMap::new())),
+            http_client,
+            db,
+            loaded: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        }
+    }
 
-        let mut mem = HashMap::new();
-        if let Ok(rows) = db.load_summary_cache(MAX_ENTRIES) {
+    /// Load DB cache on first use (lazy init).
+    async fn ensure_loaded(&self) {
+        if self.loaded.load(std::sync::atomic::Ordering::Acquire) {
+            return;
+        }
+        self.loaded.store(true, std::sync::atomic::Ordering::Release);
+
+        self.db.cleanup_expired_ogp().ok();
+
+        if let Ok(rows) = self.db.load_summary_cache(MAX_ENTRIES) {
+            let mut cache = self.cache.lock().await;
             for row in &rows {
-                mem.insert(
+                cache.insert(
                     row.url.clone(),
                     CacheEntry {
                         data: SummaryData::from_row(row),
@@ -144,13 +161,6 @@ impl OgpCache {
                     },
                 );
             }
-        }
-
-        Self {
-            cache: Arc::new(Mutex::new(mem)),
-            inflight: Arc::new(Mutex::new(HashMap::new())),
-            http_client,
-            db,
         }
     }
 
@@ -183,6 +193,8 @@ impl OgpCache {
         if !url.starts_with("https://") {
             return Err("Only HTTPS URLs are allowed".to_string());
         }
+
+        self.ensure_loaded().await;
 
         // Memory cache
         {

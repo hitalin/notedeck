@@ -51,7 +51,6 @@ export default defineConfig({
             '@codemirror/view',
             '@lezer/highlight',
           ],
-          'vendor-shiki': ['shiki'],
         },
       },
     },

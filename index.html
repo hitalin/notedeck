@@ -8,7 +8,8 @@
   </head>
   <body>
     <div id="nd-splash" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#232323;transition:opacity .2s">
-      <svg width="48" height="48" viewBox="0 0 512 512" style="opacity:.7"><defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#aad635"/><stop offset="100%" stop-color="#7ab800"/></linearGradient></defs><g fill="url(#fg)"><rect x="72" y="136" width="100" height="280" rx="36"/><rect x="206" y="136" width="100" height="280" rx="36"/><rect x="340" y="136" width="100" height="280" rx="36"/><polygon points="136,136 189,224 242,136"/><polygon points="270,136 323,224 376,136"/></g></svg>
+      <style>@keyframes nd-pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}</style>
+      <svg width="48" height="48" viewBox="0 0 512 512" style="animation:nd-pulse 1.8s ease-in-out infinite"><defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#aad635"/><stop offset="100%" stop-color="#7ab800"/></linearGradient></defs><g fill="url(#fg)"><rect x="72" y="136" width="100" height="280" rx="36"/><rect x="206" y="136" width="100" height="280" rx="36"/><rect x="340" y="136" width="100" height="280" rx="36"/><polygon points="136,136 189,224 242,136"/><polygon points="270,136 323,224 376,136"/></g></svg>
     </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
