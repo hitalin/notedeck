@@ -3,13 +3,13 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import AboutDialog from '@/components/common/AboutDialog.vue'
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
+import { useVibrancy } from '@/composables/useVibrancy'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { highlightCode } from '@/utils/highlight'
-import { useVibrancy } from '@/composables/useVibrancy'
 import { version as appVersion } from '../../../package.json'
 
 const props = defineProps<{
@@ -31,7 +31,8 @@ const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showAbout = ref(false)
-const { opacity: vibrancyOpacity, setOpacity: setVibrancyOpacity } = useVibrancy()
+const { opacity: vibrancyOpacity, setOpacity: setVibrancyOpacity } =
+  useVibrancy()
 
 // Theme install UI
 const showInstallInput = ref(false)
