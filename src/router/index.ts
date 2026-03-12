@@ -1,3 +1,4 @@
+import { watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAccountsStore } from '@/stores/accounts'
 
@@ -42,11 +43,11 @@ export const router = createRouter({
   ],
 })
 
-router.beforeEach(async (to) => {
+// Non-blocking: let routes through immediately, redirect reactively when loaded
+router.beforeEach((to) => {
   const accountsStore = useAccountsStore()
-  if (!accountsStore.isLoaded) {
-    await accountsStore.loadAccounts()
-  }
+
+  if (!accountsStore.isLoaded) return
 
   const isPublic = to.meta.public === true
   const hasAccounts = accountsStore.accounts.length > 0
@@ -55,3 +56,22 @@ router.beforeEach(async (to) => {
     return { name: 'login' }
   }
 })
+
+// Redirect to login after accounts finish loading if none exist
+export function setupAccountRedirect(): void {
+  const accountsStore = useAccountsStore()
+  const stop = watch(
+    () => accountsStore.isLoaded,
+    (loaded) => {
+      if (!loaded) return
+      stop()
+      if (accountsStore.accounts.length === 0) {
+        const route = router.currentRoute.value
+        if (route.meta.public !== true) {
+          router.replace({ name: 'login' })
+        }
+      }
+    },
+    { immediate: true },
+  )
+}

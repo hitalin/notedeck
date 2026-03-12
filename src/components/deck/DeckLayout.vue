@@ -42,71 +42,41 @@ const AddColumnDialog = defineAsyncComponent(
 )
 
 import type { Component } from 'vue'
-import DeckAboutMisskeyColumn from './DeckAboutMisskeyColumn.vue'
-import DeckAchievementsColumn from './DeckAchievementsColumn.vue'
-import DeckAdsColumn from './DeckAdsColumn.vue'
-import DeckAiColumn from './DeckAiColumn.vue'
-import DeckAiScriptColumn from './DeckAiScriptColumn.vue'
-import DeckAnnouncementsColumn from './DeckAnnouncementsColumn.vue'
-import DeckAntennaColumn from './DeckAntennaColumn.vue'
-import DeckApiConsoleColumn from './DeckApiConsoleColumn.vue'
-import DeckApiDocsColumn from './DeckApiDocsColumn.vue'
-import DeckChannelColumn from './DeckChannelColumn.vue'
-import DeckChatColumn from './DeckChatColumn.vue'
-import DeckClipColumn from './DeckClipColumn.vue'
-import DeckDriveColumn from './DeckDriveColumn.vue'
-import DeckEmojiColumn from './DeckEmojiColumn.vue'
-import DeckExploreColumn from './DeckExploreColumn.vue'
-import DeckFavoritesColumn from './DeckFavoritesColumn.vue'
-import DeckFollowRequestsColumn from './DeckFollowRequestsColumn.vue'
-import DeckGalleryColumn from './DeckGalleryColumn.vue'
-import DeckListColumn from './DeckListColumn.vue'
-import DeckLookupColumn from './DeckLookupColumn.vue'
-import DeckMentionsColumn from './DeckMentionsColumn.vue'
 import DeckNavbar from './DeckNavbar.vue'
-import DeckNotificationColumn from './DeckNotificationColumn.vue'
-import DeckPageColumn from './DeckPageColumn.vue'
-import DeckPlayColumn from './DeckPlayColumn.vue'
 import DeckProfileMenu from './DeckProfileMenu.vue'
-import DeckSearchColumn from './DeckSearchColumn.vue'
-import DeckServerInfoColumn from './DeckServerInfoColumn.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
-import DeckSpecifiedColumn from './DeckSpecifiedColumn.vue'
-import DeckTimelineColumn from './DeckTimelineColumn.vue'
-import DeckUserColumn from './DeckUserColumn.vue'
-import DeckWidgetColumn from './DeckWidgetColumn.vue'
 
 const COLUMN_COMPONENTS: Record<string, Component> = {
-  timeline: DeckTimelineColumn,
-  list: DeckListColumn,
-  antenna: DeckAntennaColumn,
-  notifications: DeckNotificationColumn,
-  search: DeckSearchColumn,
-  favorites: DeckFavoritesColumn,
-  clip: DeckClipColumn,
-  channel: DeckChannelColumn,
-  user: DeckUserColumn,
-  mentions: DeckMentionsColumn,
-  specified: DeckSpecifiedColumn,
-  chat: DeckChatColumn,
-  widget: DeckWidgetColumn,
-  aiscript: DeckAiScriptColumn,
-  play: DeckPlayColumn,
-  page: DeckPageColumn,
-  ai: DeckAiColumn,
-  drive: DeckDriveColumn,
-  announcements: DeckAnnouncementsColumn,
-  gallery: DeckGalleryColumn,
-  explore: DeckExploreColumn,
-  followRequests: DeckFollowRequestsColumn,
-  achievements: DeckAchievementsColumn,
-  apiConsole: DeckApiConsoleColumn,
-  apiDocs: DeckApiDocsColumn,
-  lookup: DeckLookupColumn,
-  serverInfo: DeckServerInfoColumn,
-  ads: DeckAdsColumn,
-  aboutMisskey: DeckAboutMisskeyColumn,
-  emoji: DeckEmojiColumn,
+  timeline: defineAsyncComponent(() => import('./DeckTimelineColumn.vue')),
+  list: defineAsyncComponent(() => import('./DeckListColumn.vue')),
+  antenna: defineAsyncComponent(() => import('./DeckAntennaColumn.vue')),
+  notifications: defineAsyncComponent(() => import('./DeckNotificationColumn.vue')),
+  search: defineAsyncComponent(() => import('./DeckSearchColumn.vue')),
+  favorites: defineAsyncComponent(() => import('./DeckFavoritesColumn.vue')),
+  clip: defineAsyncComponent(() => import('./DeckClipColumn.vue')),
+  channel: defineAsyncComponent(() => import('./DeckChannelColumn.vue')),
+  user: defineAsyncComponent(() => import('./DeckUserColumn.vue')),
+  mentions: defineAsyncComponent(() => import('./DeckMentionsColumn.vue')),
+  specified: defineAsyncComponent(() => import('./DeckSpecifiedColumn.vue')),
+  chat: defineAsyncComponent(() => import('./DeckChatColumn.vue')),
+  widget: defineAsyncComponent(() => import('./DeckWidgetColumn.vue')),
+  aiscript: defineAsyncComponent(() => import('./DeckAiScriptColumn.vue')),
+  play: defineAsyncComponent(() => import('./DeckPlayColumn.vue')),
+  page: defineAsyncComponent(() => import('./DeckPageColumn.vue')),
+  ai: defineAsyncComponent(() => import('./DeckAiColumn.vue')),
+  drive: defineAsyncComponent(() => import('./DeckDriveColumn.vue')),
+  announcements: defineAsyncComponent(() => import('./DeckAnnouncementsColumn.vue')),
+  gallery: defineAsyncComponent(() => import('./DeckGalleryColumn.vue')),
+  explore: defineAsyncComponent(() => import('./DeckExploreColumn.vue')),
+  followRequests: defineAsyncComponent(() => import('./DeckFollowRequestsColumn.vue')),
+  achievements: defineAsyncComponent(() => import('./DeckAchievementsColumn.vue')),
+  apiConsole: defineAsyncComponent(() => import('./DeckApiConsoleColumn.vue')),
+  apiDocs: defineAsyncComponent(() => import('./DeckApiDocsColumn.vue')),
+  lookup: defineAsyncComponent(() => import('./DeckLookupColumn.vue')),
+  serverInfo: defineAsyncComponent(() => import('./DeckServerInfoColumn.vue')),
+  ads: defineAsyncComponent(() => import('./DeckAdsColumn.vue')),
+  aboutMisskey: defineAsyncComponent(() => import('./DeckAboutMisskeyColumn.vue')),
+  emoji: defineAsyncComponent(() => import('./DeckEmojiColumn.vue')),
 }
 
 const router = useRouter()

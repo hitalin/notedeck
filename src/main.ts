@@ -1,7 +1,7 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
-import { router } from './router'
+import { router, setupAccountRedirect } from './router'
 import { useAccountsStore } from './stores/accounts'
 import { useThemeStore } from './stores/theme'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
@@ -19,4 +19,8 @@ themeStore.init()
 useAccountsStore().loadAccounts()
 
 app.use(router)
+
+// Redirect to login reactively after accounts load (non-blocking)
+setupAccountRedirect()
+
 app.mount('#app')
