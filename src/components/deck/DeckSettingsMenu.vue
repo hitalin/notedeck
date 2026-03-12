@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import AboutDialog from '@/components/common/AboutDialog.vue'
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
@@ -73,14 +73,21 @@ function removeTheme(id: string) {
   themeStore.removeTheme(id)
 }
 
+const menuEl = ref<HTMLElement | null>(null)
+
+function handlePointerDown(e: PointerEvent) {
+  if (menuEl.value && !menuEl.value.contains(e.target as Node)) {
+    emit('close')
+  }
+}
+
 watch(
   () => props.show,
   (val) => {
     if (val) {
-      nextTick(() => {
-        document.addEventListener('click', handleOutsideClick, { once: true })
-      })
+      document.addEventListener('pointerdown', handlePointerDown)
     } else {
+      document.removeEventListener('pointerdown', handlePointerDown)
       showInstallInput.value = false
       themeCode.value = ''
       installError.value = ''
@@ -88,9 +95,9 @@ watch(
   },
 )
 
-function handleOutsideClick() {
-  emit('close')
-}
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', handlePointerDown)
+})
 
 function toggleDarkMode() {
   themeStore.toggleTheme()
@@ -157,7 +164,7 @@ function syncScroll(e: Event) {
 
 <template>
   <Transition name="settings-menu">
-    <div v-if="show" class="settings-menu" @click.stop>
+    <div v-if="show" ref="menuEl" class="settings-menu">
       <!-- Misskey-style day/night toggle panel -->
       <div class="theme-panel">
         <div class="toggle-area">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import { refreshProfileCommands } from '@/commands/definitions'
 import type { DeckProfile } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -17,13 +17,20 @@ const deckStore = useDeckStore()
 const profiles = ref<DeckProfile[]>([])
 const editingId = ref<string | null>(null)
 const editingName = ref('')
+const menuEl = ref<HTMLElement | null>(null)
 
-function handleOutsideClick() {
-  emit('close')
+function handlePointerDown(e: PointerEvent) {
+  if (menuEl.value && !menuEl.value.contains(e.target as Node)) {
+    emit('close')
+  }
+}
+
+function addOutsideClickListener() {
+  document.addEventListener('pointerdown', handlePointerDown)
 }
 
 function removeOutsideClickListener() {
-  document.removeEventListener('click', handleOutsideClick)
+  document.removeEventListener('pointerdown', handlePointerDown)
 }
 
 watch(
@@ -32,14 +39,16 @@ watch(
     if (val) {
       profiles.value = deckStore.getProfiles()
       editingId.value = null
-      nextTick(() => {
-        document.addEventListener('click', handleOutsideClick, { once: true })
-      })
+      addOutsideClickListener()
     } else {
       removeOutsideClickListener()
     }
   },
 )
+
+onBeforeUnmount(() => {
+  removeOutsideClickListener()
+})
 
 function createProfile() {
   deckStore.saveAsProfile()
@@ -79,7 +88,7 @@ function remove(id: string) {
 
 <template>
   <Transition name="profile-menu">
-    <div v-if="show" class="profile-menu" @click.stop>
+    <div v-if="show" ref="menuEl" class="profile-menu">
       <div
         v-for="p in profiles"
         :key="p.id"
