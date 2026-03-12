@@ -103,6 +103,10 @@ body {
   overscroll-behavior: none;
 }
 
+#app {
+  height: 100%;
+}
+
 a {
   color: var(--nd-accent);
   text-decoration: none;
