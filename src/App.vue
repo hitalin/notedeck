@@ -6,6 +6,7 @@ import TitleBarComponent from '@/components/common/TitleBar.vue'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { listenPipEvents } from '@/composables/usePipWindow'
 import { useTheme } from '@/composables/useTheme'
+import { useVibrancy } from '@/composables/useVibrancy'
 import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 
@@ -54,6 +55,10 @@ onMounted(async () => {
 
   // Defer theme account fetching (network I/O) to after first paint
   useTheme()
+
+  // Restore window vibrancy if previously enabled
+  const { init: initVibrancy } = useVibrancy()
+  initVibrancy()
 
   if (isTauri) {
     // Set up PiP event listener in main window

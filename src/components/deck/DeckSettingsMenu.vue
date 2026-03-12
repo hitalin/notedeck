@@ -9,6 +9,7 @@ import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { highlightCode } from '@/utils/highlight'
+import { useVibrancy } from '@/composables/useVibrancy'
 import { version as appVersion } from '../../../package.json'
 
 const props = defineProps<{
@@ -30,6 +31,7 @@ const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showAbout = ref(false)
+const { opacity: vibrancyOpacity, setOpacity: setVibrancyOpacity } = useVibrancy()
 
 // Theme install UI
 const showInstallInput = ref(false)
@@ -281,6 +283,23 @@ function syncScroll(e: Event) {
       <div v-if="!isMobile" class="settings-menu-item" @click="windowsStore.open('keybinds')">
         <i class="ti ti-keyboard" />
         <span class="settings-menu-label">キーバインド設定</span>
+      </div>
+
+      <!-- Window vibrancy -->
+      <div class="settings-menu-divider" />
+
+      <div class="vibrancy-row">
+        <i class="ti ti-droplet-half-2" />
+        <span class="vibrancy-label">透過</span>
+        <input
+          type="range"
+          class="vibrancy-slider"
+          min="0"
+          max="80"
+          step="5"
+          :value="vibrancyOpacity"
+          @input="setVibrancyOpacity(Number(($event.target as HTMLInputElement).value))"
+        />
       </div>
 
       <div class="settings-menu-divider" />
@@ -862,6 +881,28 @@ function syncScroll(e: Event) {
   gap: 6px;
   margin-top: 6px;
   justify-content: flex-end;
+}
+
+/* ── Vibrancy slider ── */
+
+.vibrancy-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px;
+  font-size: 0.9em;
+  color: var(--nd-fg);
+}
+
+.vibrancy-label {
+  white-space: nowrap;
+}
+
+.vibrancy-slider {
+  margin-left: auto;
+  width: 120px;
+  accent-color: var(--nd-accent);
+  cursor: pointer;
 }
 
 /* ── Menu items (wallpaper etc.) ── */
