@@ -57,6 +57,12 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
           <i class="ti ti-hash ac-hashtag-icon" />
           <span class="ac-hashtag-name">{{ candidate }}</span>
         </template>
+
+        <!-- MFM function -->
+        <template v-else-if="type === '$['">
+          <i class="ti ti-sparkles ac-mfm-icon" />
+          <span class="ac-mfm-name">${{ '[' }}{{ candidate }} ]</span>
+        </template>
       </button>
     </div>
     <div v-else-if="isSearching" class="autocomplete-status">検索中...</div>
@@ -141,6 +147,17 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
 }
 
 .ac-hashtag-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-mfm-icon {
+  opacity: 0.5;
+}
+
+.ac-mfm-name {
+  font-family: monospace;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

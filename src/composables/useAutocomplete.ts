@@ -3,7 +3,32 @@ import { nextTick, type Ref, ref } from 'vue'
 import type { NormalizedUser, ServerEmoji } from '@/adapters/types'
 import { useEmojisStore } from '@/stores/emojis'
 
-export type TriggerType = ':' | '@' | '#'
+/** MFM function names supported by the renderer */
+const mfmFunctionNames = [
+  'flip',
+  'jelly',
+  'tada',
+  'jump',
+  'bounce',
+  'spin',
+  'shake',
+  'twitch',
+  'rainbow',
+  'sparkle',
+  'blur',
+  'rotate',
+  'scale',
+  'position',
+  'fg',
+  'bg',
+  'border',
+  'font',
+  'x2',
+  'x3',
+  'x4',
+]
+
+export type TriggerType = ':' | '@' | '#' | '$['
 
 export interface AutocompleteState {
   type: TriggerType
@@ -46,6 +71,17 @@ export function useAutocomplete(
 
       // Space or newline means no trigger in this segment
       if (ch === ' ' || ch === '\n' || ch === '\t') return null
+
+      // Check for $[ (2-char trigger)
+      if (ch === '[' && i > 0 && value[i - 1] === '$') {
+        const before = i - 1
+        if (before > 0) {
+          const prev = value[before - 1]
+          if (prev !== ' ' && prev !== '\n' && prev !== '\t') return null
+        }
+        const query = value.slice(i + 1, cursorPos)
+        return { type: '$[', start: before, query }
+      }
 
       if (ch === ':' || ch === '@' || ch === '#') {
         // Validate: trigger must be at start of text, or preceded by whitespace/newline
@@ -107,6 +143,14 @@ export function useAutocomplete(
     return results
   }
 
+  function searchMfm(query: string): string[] {
+    const q = query.toLowerCase()
+    if (q.length === 0) return mfmFunctionNames.slice(0, 10)
+    return mfmFunctionNames
+      .filter((name) => name.startsWith(q))
+      .slice(0, 10)
+  }
+
   async function searchMention(query: string) {
     if (!activeAccountId.value) return []
     try {
@@ -139,7 +183,8 @@ export function useAutocomplete(
     if (!textarea) return
 
     const trigger = detectTrigger(text.value, textarea.selectionStart)
-    if (!trigger || trigger.query.length === 0) {
+    // $[ triggers with empty query (show all MFM functions), others need at least 1 char
+    if (!trigger || (trigger.type !== '$[' && trigger.query.length === 0)) {
       autocompleteState.value = null
       candidates.value = []
       return
@@ -157,6 +202,12 @@ export function useAutocomplete(
     if (trigger.type === ':') {
       // Local search, no debounce needed
       candidates.value = searchEmoji(trigger.query)
+      if (candidates.value.length === 0) {
+        autocompleteState.value = null
+      }
+    } else if (trigger.type === '$[') {
+      // Local search for MFM functions
+      candidates.value = searchMfm(trigger.query)
       if (candidates.value.length === 0) {
         autocompleteState.value = null
       }
@@ -208,6 +259,10 @@ export function useAutocomplete(
       }
       case '#': {
         replacement = `#${candidate as string} `
+        break
+      }
+      case '$[': {
+        replacement = `$[${candidate as string} `
         break
       }
     }
