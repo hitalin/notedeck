@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
-import { defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
+import { defineAsyncComponent, onBeforeUnmount, onMounted, onUnmounted, ref } from 'vue'
 import { useCommandStore } from '@/commands/registry'
 import { openDeckWindow } from '@/composables/useDeckWindow'
 import {
@@ -9,6 +9,7 @@ import {
   openPipWindow,
 } from '@/composables/usePipWindow'
 import { useAccountsStore } from '@/stores/accounts'
+import type { DeckProfile } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 
 const CommandPalette = defineAsyncComponent(
@@ -91,6 +92,46 @@ async function toggleMobileSize() {
   await appWindow.center()
 }
 
+// --- New window profile picker ---
+const showWindowPicker = ref(false)
+const windowPickerProfiles = ref<DeckProfile[]>([])
+const windowPickerEl = ref<HTMLElement | null>(null)
+
+function toggleWindowPicker() {
+  showWindowPicker.value = !showWindowPicker.value
+  if (showWindowPicker.value) {
+    windowPickerProfiles.value = deckStore.getProfiles()
+  }
+}
+
+function handleWindowPickerOutside(e: PointerEvent) {
+  if (
+    windowPickerEl.value &&
+    !windowPickerEl.value.contains(e.target as Node)
+  ) {
+    showWindowPicker.value = false
+  }
+}
+
+function openWithProfile(profileId: string) {
+  showWindowPicker.value = false
+  openDeckWindow(profileId)
+}
+
+function openWithNewProfile() {
+  showWindowPicker.value = false
+  const profile = deckStore.createEmptyProfile()
+  openDeckWindow(profile.id)
+}
+
+onMounted(() => {
+  document.addEventListener('pointerdown', handleWindowPickerOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', handleWindowPickerOutside)
+})
+
 async function togglePip() {
   if (await isPipOpen()) {
     await closePipWindow()
@@ -123,13 +164,33 @@ async function togglePip() {
       </button>
     </div>
     <div class="titlebar-controls">
-      <button
-        class="titlebar-btn titlebar-window-btn"
-        title="新しいウィンドウ"
-        @click="openDeckWindow()"
-      >
-        <i class="ti ti-app-window" />
-      </button>
+      <div class="titlebar-window-picker-wrap">
+        <button
+          class="titlebar-btn titlebar-window-btn"
+          title="新しいウィンドウ"
+          @click.stop="toggleWindowPicker()"
+        >
+          <i class="ti ti-app-window" />
+        </button>
+        <Transition name="window-picker">
+          <div v-if="showWindowPicker" ref="windowPickerEl" class="window-picker" @pointerdown.stop>
+            <div class="window-picker-title">プロファイルを選択</div>
+            <div
+              v-for="p in windowPickerProfiles"
+              :key="p.id"
+              class="window-picker-item"
+              @click="openWithProfile(p.id)"
+            >
+              {{ p.name }}
+            </div>
+            <div class="window-picker-divider" />
+            <div class="window-picker-item window-picker-new" @click="openWithNewProfile">
+              <i class="ti ti-plus" />
+              <span>新しいプロファイル</span>
+            </div>
+          </div>
+        </Transition>
+      </div>
       <button
         class="titlebar-btn titlebar-sidebar-btn"
         :class="{ 'titlebar-btn-active': !deckStore.navCollapsed }"
@@ -298,6 +359,88 @@ async function togglePip() {
   background: #e81123;
   color: #fff;
   opacity: 1;
+}
+
+.titlebar-window-picker-wrap {
+  position: relative;
+  display: flex;
+  height: 100%;
+}
+
+.window-picker {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--nd-popup, var(--nd-panelBg));
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(16px);
+  padding: 8px 0;
+  z-index: 100;
+  min-width: 180px;
+  max-width: 280px;
+}
+
+.window-picker-title {
+  padding: 4px 16px 8px;
+  font-size: 0.8em;
+  opacity: 0.4;
+  color: var(--nd-fg);
+}
+
+.window-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px;
+  cursor: pointer;
+  font-size: 0.9em;
+  line-height: 20px;
+  color: var(--nd-fg);
+  position: relative;
+}
+
+.window-picker-item::before {
+  content: '';
+  display: block;
+  position: absolute;
+  inset: 2px 8px;
+  border-radius: 6px;
+  transition: background 0.1s;
+}
+
+.window-picker-item:hover::before {
+  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+}
+
+.window-picker-item > * {
+  position: relative;
+}
+
+.window-picker-divider {
+  border: 0;
+  border-top: 0.5px solid var(--nd-divider);
+  margin: 8px 0;
+}
+
+.window-picker-new {
+  opacity: 0.7;
+}
+
+.window-picker-new:hover {
+  opacity: 1;
+}
+
+.window-picker-enter-active,
+.window-picker-leave-active {
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.window-picker-enter-from,
+.window-picker-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 @media (max-width: 500px) {
