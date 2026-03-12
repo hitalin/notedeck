@@ -77,10 +77,8 @@ function removeTheme(id: string) {
 }
 
 const menuEl = ref<HTMLElement | null>(null)
-const isDraggingSlider = ref(false)
 
 function handlePointerDown(e: PointerEvent) {
-  if (isDraggingSlider.value) return
   if (menuEl.value && !menuEl.value.contains(e.target as Node)) {
     emit('close')
   }
@@ -294,10 +292,7 @@ function syncScroll(e: Event) {
           max="80"
           step="5"
           :value="vibrancyOpacity"
-          @pointerdown="isDraggingSlider = true"
-          @pointerup="isDraggingSlider = false"
-          @pointercancel="isDraggingSlider = false"
-          @lostpointercapture="isDraggingSlider = false"
+          @pointerdown.stop
           @input="setVibrancyOpacity(Number(($event.target as HTMLInputElement).value))"
         />
       </div>
