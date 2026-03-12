@@ -278,13 +278,6 @@ function syncScroll(e: Event) {
         </div>
       </div>
 
-      <div class="settings-menu-divider" />
-
-      <div v-if="!isMobile" class="settings-menu-item" @click="windowsStore.open('keybinds')">
-        <i class="ti ti-keyboard" />
-        <span class="settings-menu-label">キーバインド設定</span>
-      </div>
-
       <!-- Window vibrancy -->
       <div class="settings-menu-divider" />
 
@@ -320,6 +313,13 @@ function syncScroll(e: Event) {
         style="display: none"
         @change="onFileSelected"
       />
+
+      <div class="settings-menu-divider" />
+
+      <div v-if="!isMobile" class="settings-menu-item" @click="windowsStore.open('keybinds')">
+        <i class="ti ti-keyboard" />
+        <span class="settings-menu-label">キーバインド設定</span>
+      </div>
 
       <div class="settings-menu-divider" />
       <div v-if="updateAvailable" class="update-section">
