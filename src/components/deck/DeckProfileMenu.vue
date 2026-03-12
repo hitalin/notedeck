@@ -88,7 +88,7 @@ function remove(id: string) {
 
 <template>
   <Transition name="profile-menu">
-    <div v-if="show" ref="menuEl" class="profile-menu">
+    <div v-if="show" ref="menuEl" class="profile-menu" @pointerdown.stop>
       <div
         v-for="p in profiles"
         :key="p.id"
