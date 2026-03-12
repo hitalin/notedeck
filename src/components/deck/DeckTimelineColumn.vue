@@ -77,7 +77,15 @@ const { navigateToNote } = useNavigation()
 const { fetchAds, pickAd, shouldShowAd, muteAd, serverHost } = useAds(
   () => props.column.accountId ?? undefined,
 )
-const { notes, noteIds, setNotes, onNoteUpdate, handlePosted, removeNote } =
+const {
+  notes,
+  noteIds,
+  setNotes,
+  mergeIfSameList,
+  onNoteUpdate,
+  handlePosted,
+  removeNote,
+} =
   useNoteList({
     getMyUserId: () => account.value?.userId,
     getAdapter,
@@ -427,8 +435,10 @@ async function connect(useCache = false) {
 
     if (fetched.length > 0) {
       if (useCache || notes.value.length === 0) {
-        // 再接続時: API結果で完全置き換え（キャッシュの古いノートを残さない）
-        setNotes(fetched)
+        // 再接続時: キャッシュと同じ構成ならノート内容だけ更新（レイアウトシフト防止）
+        if (!mergeIfSameList(fetched)) {
+          setNotes(fetched)
+        }
       } else {
         // 初回接続時: ストリーミング受信済みノートとマージ
         const newNotes = fetched.filter((n) => !noteIds.has(n.id))
@@ -607,8 +617,26 @@ async function onResume() {
   }
 }
 
+// Image load listener: when emoji/OGP images finish loading inside the scroller,
+// the item height may change. DynamicScroller doesn't detect this automatically,
+// so we schedule a forceUpdate on the capture phase of 'load' events.
+let imgForceUpdateTimer: ReturnType<typeof setTimeout> | null = null
+function onImgLoad(e: Event) {
+  if (!(e.target instanceof HTMLImageElement)) return
+  if (imgForceUpdateTimer) return
+  imgForceUpdateTimer = setTimeout(() => {
+    imgForceUpdateTimer = null
+    // biome-ignore lint/suspicious/noExplicitAny: vue-virtual-scroller lacks forceUpdate typing
+    ;(scroller.value as any)?.forceUpdate()
+  }, 50)
+}
+
 onMounted(async () => {
   window.addEventListener('deck-resume', onResume)
+  // Capture image load events to trigger DynamicScroller height recalculation
+  // biome-ignore lint/suspicious/noExplicitAny: vue-virtual-scroller $el access
+  const scrollerEl = (scroller.value as any)?.$el as HTMLElement | undefined
+  scrollerEl?.addEventListener('load', onImgLoad, true)
   const host = account.value?.host
   const accountId = props.column.accountId
   // Clear stale policy cache so external mode changes are reflected
@@ -641,6 +669,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('deck-resume', onResume)
+  // biome-ignore lint/suspicious/noExplicitAny: vue-virtual-scroller $el access
+  const scrollerEl = (scroller.value as any)?.$el as HTMLElement | undefined
+  scrollerEl?.removeEventListener('load', onImgLoad, true)
+  if (imgForceUpdateTimer) clearTimeout(imgForceUpdateTimer)
   disconnect()
   resetBatch()
 })

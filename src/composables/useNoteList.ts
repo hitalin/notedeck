@@ -64,6 +64,24 @@ export function useNoteList(options: UseNoteListOptions) {
     onNotesChangedFn?.(newNotes)
   }
 
+  /**
+   * Update notes without changing list structure.
+   * If the new notes have the same IDs in the same order, only update
+   * note content in the store (avoids DynamicScroller re-mount).
+   * Returns true if a lightweight update was performed.
+   */
+  function mergeIfSameList(newNotes: NormalizedNote[]): boolean {
+    const currentIds = orderedIds.value
+    if (
+      currentIds.length === newNotes.length &&
+      currentIds.every((id, i) => id === newNotes[i].id)
+    ) {
+      noteStore.put(newNotes)
+      return true
+    }
+    return false
+  }
+
   function onNoteUpdate(event: NoteUpdateEvent) {
     if (event.type === 'deleted') {
       // noteStore.remove() triggers global onDelete listeners,
@@ -110,6 +128,7 @@ export function useNoteList(options: UseNoteListOptions) {
     notes,
     noteIds,
     setNotes,
+    mergeIfSameList,
     setOnNotesChanged,
     onNoteUpdate,
     handlePosted,

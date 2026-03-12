@@ -224,7 +224,10 @@ function hostname(url: string): string {
 
       <div class="url-preview-body">
         <div class="url-preview-title">{{ data.title }}</div>
-        <div v-if="data.description" class="url-preview-description">
+        <div
+          v-if="data.description"
+          class="url-preview-description"
+        >
           {{ data.description }}
         </div>
         <div class="url-preview-host">
