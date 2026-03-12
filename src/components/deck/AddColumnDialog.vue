@@ -482,7 +482,7 @@ function close() {
           <i class="ti ti-api" />
           <span>APIコンソール</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('apiDocs')">
+        <button v-if="!isMobile" class="_button add-type-btn" @click="selectColumnType('apiDocs')">
           <i class="ti ti-book" />
           <span>APIドキュメント</span>
         </button>
