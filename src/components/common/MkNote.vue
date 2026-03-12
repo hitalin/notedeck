@@ -955,12 +955,15 @@ function closeMentionPopup() {
 
 .custom-emoji {
   height: 2em;
+  min-width: 2em;
   width: auto;
   vertical-align: middle;
+  object-fit: contain;
 }
 
 .reaction .custom-emoji {
   height: 1.25em;
+  min-width: 1.25em;
 }
 
 .reaction-emoji-fallback {

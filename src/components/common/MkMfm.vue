@@ -296,8 +296,10 @@ function fnStyle(
 
 .custom-emoji {
   height: 2em;
+  min-width: 2em;
   width: auto;
   vertical-align: middle;
+  object-fit: contain;
 }
 
 .twemoji {
