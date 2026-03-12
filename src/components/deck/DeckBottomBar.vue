@@ -81,6 +81,7 @@ const deckStore = useDeckStore()
   flex: 1;
   display: flex;
   justify-content: flex-end;
+  padding-right: 8px;
 }
 
 .profile-menu-wrap,
