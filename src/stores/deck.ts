@@ -1,4 +1,4 @@
-import { emit, listen } from '@tauri-apps/api/event'
+import { listen } from '@tauri-apps/api/event'
 import { defineStore } from 'pinia'
 import { computed, ref, toRaw } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
@@ -346,6 +346,17 @@ export const useDeckStore = defineStore('deck', () => {
       saveTimer = null
     }
     try {
+      if (windowProfileId.value) {
+        // Save to the profile entry
+        const profiles = loadProfiles()
+        const profile = profiles.find((p) => p.id === windowProfileId.value)
+        if (profile) {
+          profile.columns = structuredClone(toRaw(columns.value))
+          profile.layout = structuredClone(toRaw(layout.value))
+          saveProfiles(profiles)
+        }
+      }
+      // Always keep nd-deck in sync for backward compatibility
       localStorage.setItem(
         DECK_KEY,
         JSON.stringify({ columns: columns.value, layout: layout.value }),
@@ -353,8 +364,6 @@ export const useDeckStore = defineStore('deck', () => {
     } catch (e) {
       console.warn('[deck] failed to save:', e)
     }
-    // Notify other windows
-    emit('deck:sync', {}).catch(() => {})
   }
 
   function save() {
@@ -366,6 +375,7 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   function load() {
+    // Load from nd-deck (backward compat / initial data)
     try {
       const raw = localStorage.getItem(DECK_KEY)
       if (!raw) return
@@ -379,7 +389,7 @@ export const useDeckStore = defineStore('deck', () => {
     }
 
     // Fix blank profile names from previous sessions
-    const profiles = loadProfiles()
+    let profiles = loadProfiles()
     let needsSave = false
     for (const [i, profile] of profiles.entries()) {
       if (!profile.name || profile.name.trim() === '') {
@@ -389,11 +399,11 @@ export const useDeckStore = defineStore('deck', () => {
     }
     if (needsSave) saveProfiles(profiles)
 
-    // Ensure a default "Main" profile exists
+    // Ensure a default profile exists
     if (profiles.length === 0) {
       const profile: DeckProfile = {
         id: genProfileId(),
-        name: 'Main',
+        name: 'プロファイル 1',
         columns: structuredClone(toRaw(columns.value)),
         layout: structuredClone(toRaw(layout.value)),
         createdAt: Date.now(),
@@ -403,6 +413,16 @@ export const useDeckStore = defineStore('deck', () => {
       saveActiveProfileId(profile.id)
     } else {
       loadActiveProfileId()
+    }
+
+    // All windows use windowProfileId — set it from query or activeProfileId
+    const profileId = new URLSearchParams(window.location.search).get(
+      'profile',
+    )
+    if (profileId) {
+      initWindowProfile(profileId)
+    } else if (activeProfileId.value) {
+      initWindowProfile(activeProfileId.value)
     }
   }
 
@@ -471,6 +491,8 @@ export const useDeckStore = defineStore('deck', () => {
   const PROFILES_KEY = 'nd-deck-profiles'
   const ACTIVE_PROFILE_KEY = 'nd-deck-active-profile'
   const activeProfileId = ref<string | null>(null)
+  /** Per-window profile ID (set via ?profile= query). Isolates this window from deck:sync. */
+  const windowProfileId = ref<string | null>(null)
 
   function loadProfiles(): DeckProfile[] {
     try {
@@ -500,9 +522,9 @@ export const useDeckStore = defineStore('deck', () => {
 
   /** Save current deck state into the active profile */
   function syncCurrentToActiveProfile() {
-    if (!activeProfileId.value) return
+    if (!windowProfileId.value) return
     const profiles = loadProfiles()
-    const profile = profiles.find((p) => p.id === activeProfileId.value)
+    const profile = profiles.find((p) => p.id === windowProfileId.value)
     if (!profile) return
     profile.columns = structuredClone(toRaw(columns.value))
     profile.layout = structuredClone(toRaw(layout.value))
@@ -540,12 +562,28 @@ export const useDeckStore = defineStore('deck', () => {
     return profile
   }
 
+  /** Create an empty profile without switching the current window to it */
+  function createEmptyProfile(name?: string): DeckProfile {
+    const profiles = loadProfiles()
+    const autoName = name || `プロファイル ${profiles.length + 1}`
+    const profile: DeckProfile = {
+      id: genProfileId(),
+      name: autoName,
+      columns: [],
+      layout: [],
+      createdAt: Date.now(),
+    }
+    profiles.push(profile)
+    saveProfiles(profiles)
+    return profile
+  }
+
   function getProfiles(): DeckProfile[] {
     return loadProfiles()
   }
 
   function applyProfile(profileId: string) {
-    // Save current state to the currently active profile before switching
+    // Save current state before switching
     syncCurrentToActiveProfile()
 
     const profiles = loadProfiles()
@@ -553,6 +591,7 @@ export const useDeckStore = defineStore('deck', () => {
     if (!profile) return
     columns.value = structuredClone(profile.columns)
     layout.value = structuredClone(profile.layout)
+    windowProfileId.value = profileId
     saveActiveProfileId(profileId)
     flushSave()
   }
@@ -580,18 +619,24 @@ export const useDeckStore = defineStore('deck', () => {
   async function startSync() {
     unlistenSync?.()
     unlistenSync = await listen('deck:sync', () => {
-      try {
-        const raw = localStorage.getItem(DECK_KEY)
-        if (!raw) return
-        const data = JSON.parse(raw)
-        if (data.columns && data.layout) {
-          columns.value = data.columns
-          layout.value = data.layout
-        }
-      } catch {
-        /* ignore */
-      }
+      // Noop — each window manages its own profile now.
+      // Kept for future cross-window notifications if needed.
     })
+  }
+
+  /** Initialize this window with an isolated profile (used by sub-windows via ?profile= query) */
+  function initWindowProfile(profileId: string) {
+    windowProfileId.value = profileId
+    const profiles = loadProfiles()
+    const profile = profiles.find((p) => p.id === profileId)
+    if (profile) {
+      columns.value = structuredClone(profile.columns)
+      layout.value = structuredClone(profile.layout)
+    } else {
+      // Profile not found — start empty
+      columns.value = []
+      layout.value = []
+    }
   }
 
   function stopSync() {
@@ -638,6 +683,9 @@ export const useDeckStore = defineStore('deck', () => {
     applyProfile,
     deleteProfile,
     renameProfile,
+    windowProfileId,
+    initWindowProfile,
+    createEmptyProfile,
     startSync,
     stopSync,
   }

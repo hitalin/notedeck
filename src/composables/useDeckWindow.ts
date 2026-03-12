@@ -1,4 +1,5 @@
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { useDeckStore } from '@/stores/deck'
 
 let windowCounter = 0
 
@@ -10,7 +11,11 @@ const openWindows = new Map<string, WebviewWindow>()
 
 export async function openDeckWindow(): Promise<string | null> {
   const windowId = genWindowId()
-  const url = '/'
+
+  // Create an empty profile for the new window (without affecting the current window)
+  const deckStore = useDeckStore()
+  const profile = deckStore.createEmptyProfile()
+  const url = `/?profile=${profile.id}`
 
   try {
     const win = new WebviewWindow(windowId, {

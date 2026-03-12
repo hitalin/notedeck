@@ -93,7 +93,7 @@ function remove(id: string) {
         v-for="p in profiles"
         :key="p.id"
         class="profile-menu-item"
-        :class="{ active: p.id === deckStore.activeProfileId }"
+        :class="{ active: p.id === deckStore.windowProfileId }"
         @click="apply(p.id)"
       >
         <input
