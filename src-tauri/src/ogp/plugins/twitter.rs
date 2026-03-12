@@ -123,17 +123,19 @@ impl Plugin for TwitterPlugin {
             .map(|ps| ps.iter().filter_map(|p| p.url.clone()).collect())
             .unwrap_or_default();
 
-        // Video player
-        let player = media
-            .and_then(|m| m.videos.as_ref())
-            .and_then(|vs| vs.first())
-            .and_then(|v| {
-                v.url.as_ref().map(|video_url| Player {
-                    url: video_url.clone(),
-                    width: v.width,
-                    height: v.height,
-                    allow: vec!["autoplay".to_string()],
-                })
+        // Tweet embed player: extract tweet ID from path (e.g. /user/status/123)
+        let player = url
+            .path()
+            .rsplit('/')
+            .next()
+            .filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_digit()))
+            .map(|tweet_id| Player {
+                url: format!(
+                    "https://platform.twitter.com/embed/Tweet.html?id={tweet_id}"
+                ),
+                width: None,
+                height: Some(350),
+                allow: vec![],
             });
 
         Ok(SummaryData {
