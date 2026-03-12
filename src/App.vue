@@ -46,7 +46,9 @@ onMounted(async () => {
     const { invoke } = await import('@tauri-apps/api/core')
     await invoke('fix_window_frame').catch(() => {})
     const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    await getCurrentWindow().show().catch(() => {})
+    await getCurrentWindow()
+      .show()
+      .catch(() => {})
   }
 
   // Dismiss splash screen as soon as Vue app is mounted
