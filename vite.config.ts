@@ -31,7 +31,7 @@ export default defineConfig({
   plugins: [vue(), stripUnusedFonts()],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
+      '@': resolve(import.meta.dirname, 'src'),
     },
   },
   build: {
