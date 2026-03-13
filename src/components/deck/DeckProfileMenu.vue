@@ -261,13 +261,13 @@ function remove(id: string) {
 
 .profile-menu-enter-active,
 .profile-menu-leave-active {
-  transition: opacity 0.15s, transform 0.15s;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 .profile-menu-enter-from,
 .profile-menu-leave-to {
   opacity: 0;
-  transform: translateY(4px);
+  transform: translateY(4px) scale(0.97);
 }
 
 @media (max-width: 500px) {
@@ -288,7 +288,7 @@ function remove(id: string) {
 
   .profile-menu-enter-from,
   .profile-menu-leave-to {
-    transform: translateY(8px);
+    transform: translateY(8px) scale(0.97);
   }
 }
 </style>

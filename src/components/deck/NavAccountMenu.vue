@@ -161,17 +161,17 @@ function modeLabel(key: string): string {
 
 .nav-account-menu-enter-active,
 .nav-account-menu-leave-active {
-  transition: opacity 0.15s, transform 0.15s;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 .nav-account-menu-enter-from,
 .nav-account-menu-leave-to {
   opacity: 0;
-  transform: translateY(4px);
+  transform: translateY(4px) scale(0.97);
 }
 
 .nav-account-menu.menu-right.nav-account-menu-enter-from,
 .nav-account-menu.menu-right.nav-account-menu-leave-to {
-  transform: translateX(-4px);
+  transform: translateX(-4px) scale(0.97);
 }
 </style>

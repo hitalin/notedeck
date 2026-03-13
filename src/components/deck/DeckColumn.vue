@@ -131,7 +131,7 @@ function toggleMute() {
   gap: 6px;
   height: 38px;
   line-height: 38px;
-  padding: 0 8px 0 30px;
+  padding: 0 8px;
   background: var(--nd-panelHeaderBg);
   color: var(--nd-panelHeaderFg);
   font-size: 0.9em;
@@ -141,7 +141,6 @@ function toggleMute() {
   user-select: none;
   z-index: 2;
   overflow: visible;
-  box-shadow: 0 0.5px 0 0 rgba(255, 255, 255, 0.07);
 }
 
 .column-header:active {
@@ -150,11 +149,10 @@ function toggleMute() {
 
 .color-indicator {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  width: 5px;
-  height: calc(100% - 24px);
-  border-radius: 999px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
 }
 
 .header-title {
@@ -167,7 +165,7 @@ function toggleMute() {
 
 .grabber {
   flex-shrink: 0;
-  opacity: 0.35;
+  opacity: 0.5;
   cursor: grab;
   margin-left: auto;
 }
@@ -184,7 +182,7 @@ function toggleMute() {
   height: 28px;
   border-radius: 6px;
   flex-shrink: 0;
-  opacity: 0.35;
+  opacity: 0.5;
 }
 
 .header-btn:hover {
@@ -213,12 +211,7 @@ function toggleMute() {
   .column-header {
     height: 50px;
     line-height: 50px;
-    padding: 0 12px 0 28px;
-  }
-
-  .color-indicator {
-    top: 16px;
-    height: calc(100% - 32px);
+    padding: 0 12px;
   }
 
   .header-btn {
