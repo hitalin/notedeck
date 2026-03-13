@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import QRCodeStyling from 'qr-code-styling'
 import { colord } from 'colord'
+import QRCodeStyling from 'qr-code-styling'
 import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type {
@@ -975,8 +975,8 @@ async function handlePosted(editedNoteId?: string) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  background: var(--nd-overlayDark);
+  backdrop-filter: blur(var(--nd-blur-content));
 }
 
 .qr-modal {

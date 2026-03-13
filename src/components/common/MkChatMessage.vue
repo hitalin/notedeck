@@ -422,7 +422,7 @@ function closeMentionPopup() {
   position: fixed;
   inset: 0;
   z-index: var(--nd-z-popup);
-  background: rgba(0, 0, 0, 0.85);
+  background: var(--nd-overlayLightbox);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -433,7 +433,7 @@ function closeMentionPopup() {
   position: absolute;
   top: 16px;
   right: 16px;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--nd-modalBg);
   border: none;
   color: white;
   width: 40px;

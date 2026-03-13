@@ -408,8 +408,8 @@ defineExpose({
   flex: 0 0 auto;
   display: flex;
   background: color-mix(in srgb, var(--nd-navBg) 80%, transparent);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
   border-right: 1px solid var(--nd-divider);
   position: relative;
   z-index: 1;

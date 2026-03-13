@@ -76,7 +76,7 @@ defineExpose({ showDialog, showConfirm })
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--nd-modalBg);
 }
 
 .ais-dialog {

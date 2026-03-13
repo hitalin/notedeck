@@ -161,7 +161,7 @@ function hostname(url: string): string {
         />
         <div
           v-if="data.sensitive && !sensitiveRevealed"
-          class="sensitive-overlay"
+          class="_sensitiveOverlay url-sensitive"
           @click.stop="sensitiveRevealed = true"
         >
           <svg viewBox="0 0 24 24" width="24" height="24">
@@ -199,7 +199,7 @@ function hostname(url: string): string {
         <!-- Sensitive overlay -->
         <div
           v-if="data.sensitive && !sensitiveRevealed"
-          class="sensitive-overlay"
+          class="_sensitiveOverlay url-sensitive"
           @click.stop="sensitiveRevealed = true"
         >
           <svg viewBox="0 0 24 24" width="24" height="24">
@@ -335,21 +335,9 @@ function hostname(url: string): string {
   filter: blur(16px);
 }
 
-.sensitive-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.url-sensitive {
   gap: 4px;
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
   font-size: 0.75em;
-  font-weight: bold;
-  cursor: pointer;
-  backdrop-filter: blur(4px);
-  z-index: 2;
 }
 
 .play-indicator {

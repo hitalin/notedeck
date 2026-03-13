@@ -525,7 +525,7 @@ fetchDrive()
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--nd-overlayDark);
   color: #fff;
   font-size: 12px;
 }

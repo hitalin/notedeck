@@ -78,8 +78,8 @@ defineExpose({ open })
   transform: translateX(-100%);
   z-index: calc(var(--nd-z-popup) + 1);
   background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 85%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   overflow: hidden;

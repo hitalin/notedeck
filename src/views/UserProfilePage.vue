@@ -54,7 +54,7 @@ const router = useRouter()
   position: sticky;
   top: 0;
   background: var(--nd-windowHeader);
-  backdrop-filter: blur(15px);
+  backdrop-filter: blur(var(--nd-blur));
   z-index: 10;
 }
 

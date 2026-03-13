@@ -135,7 +135,7 @@ function closeLightbox() {
       <!-- NSFW overlay -->
       <div
         v-if="file.isSensitive && !revealedIds.has(file.id)"
-        class="sensitive-overlay"
+        class="_sensitiveOverlay"
         @click.stop="toggleSensitive(file, $event)"
       >
         <svg viewBox="0 0 24 24" width="24" height="24">
@@ -350,22 +350,6 @@ function closeLightbox() {
   filter: blur(16px);
 }
 
-.sensitive-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
-  font-size: 0.85em;
-  font-weight: bold;
-  cursor: pointer;
-  backdrop-filter: blur(4px);
-  z-index: 2;
-}
 
 .sensitive-hide-btn {
   position: absolute;
@@ -378,7 +362,7 @@ function closeLightbox() {
   height: 44px;
   border: none;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--nd-modalBg);
   color: #fff;
   cursor: pointer;
   z-index: 2;
@@ -397,7 +381,7 @@ function closeLightbox() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.85);
+  background: var(--nd-overlayLightbox);
   cursor: pointer;
 }
 

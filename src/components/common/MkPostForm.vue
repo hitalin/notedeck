@@ -1093,7 +1093,7 @@ function onKeydown(e: KeyboardEvent) {
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: 12px;
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--nd-blur));
 }
 
 .account-option {
@@ -1203,7 +1203,7 @@ function onKeydown(e: KeyboardEvent) {
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: 12px;
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--nd-blur));
 }
 
 .visibility-option {
@@ -1253,7 +1253,7 @@ function onKeydown(e: KeyboardEvent) {
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: 12px;
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--nd-blur));
 }
 
 .more-menu-item {
@@ -1492,8 +1492,8 @@ function onKeydown(e: KeyboardEvent) {
 
 ._acrylic {
   background: color-mix(in srgb, var(--nd-panelBg, var(--nd-popup)) 50%, transparent);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
 }
 
 /* ── Poll editor ── */
@@ -1637,7 +1637,7 @@ function onKeydown(e: KeyboardEvent) {
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: 12px;
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--nd-blur));
 }
 
 /* ── Mention popup ── */
@@ -1797,7 +1797,7 @@ function onKeydown(e: KeyboardEvent) {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--nd-overlayDark);
   color: #fff;
   cursor: pointer;
 }

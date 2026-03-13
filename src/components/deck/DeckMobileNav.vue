@@ -173,8 +173,8 @@ watch(
   height: 50px;
   padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
   background: color-mix(in srgb, var(--nd-navBg) 80%, transparent);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
   border-top: 1px solid var(--nd-divider);
 }
 

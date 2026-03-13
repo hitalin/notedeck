@@ -33,6 +33,8 @@
   --nd-mentionMe: #d44c4c;
   --nd-renote: #86b300;
   --nd-modalBg: rgba(0, 0, 0, 0.5);
+  --nd-overlayDark: rgba(0, 0, 0, 0.6);
+  --nd-overlayLightbox: rgba(0, 0, 0, 0.85);
   --nd-scrollbarHandle: rgba(255, 255, 255, 0.2);
   --nd-scrollbarHandleHover: rgba(255, 255, 255, 0.4);
   --nd-dateLabelFg: rgb(199, 209, 216);
@@ -78,6 +80,8 @@
   --nd-radius: 12px;
   --nd-margin: 10px;
   --nd-columnGap: 2px;
+  --nd-blur: 16px;
+  --nd-blur-content: 4px;
   /* Z-index layers */
   --nd-z-menu: 100;
   --nd-z-overlay: 1000;
@@ -256,7 +260,24 @@ html.nd-mobile select {
 
 ._acrylic {
   background: color(from var(--nd-panel) srgb r g b / 0.5);
-  backdrop-filter: var(--MI-blur, blur(15px));
+  backdrop-filter: blur(var(--nd-blur));
+}
+
+._sensitiveOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--nd-modalBg);
+  color: #fff;
+  font-size: 0.85em;
+  font-weight: bold;
+  cursor: pointer;
+  backdrop-filter: blur(var(--nd-blur-content));
+  z-index: 2;
 }
 
 /* ---- Scrollbar (Webkit) ---- */

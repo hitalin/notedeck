@@ -382,7 +382,7 @@ fetchGallery()
   gap: 2px;
   padding: 2px 6px;
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--nd-overlayDark);
   color: #fff;
   font-size: 11px;
 }
@@ -495,7 +495,7 @@ fetchGallery()
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--nd-modalBg);
   color: #fff;
   font-size: 16px;
   transition: background 0.15s;
