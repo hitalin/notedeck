@@ -315,7 +315,7 @@ onMounted(() => {
   width: 100%;
   padding: 6px 10px;
   border: 1px solid var(--nd-divider);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-panel);
   color: var(--nd-fg);
   font-size: 0.85em;
@@ -353,7 +353,7 @@ onMounted(() => {
   width: 44px;
   height: 44px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: none;
   cursor: pointer;
   transition: background 0.15s;

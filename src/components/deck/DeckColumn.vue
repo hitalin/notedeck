@@ -132,7 +132,7 @@ function onOpenWebUi() {
 
       <!-- Column action menu -->
       <Transition name="col-menu">
-        <div v-if="showMenu" ref="menuEl" class="column-menu" @pointerdown.stop>
+        <div v-if="showMenu" ref="menuEl" class="column-menu _popupMenu" @pointerdown.stop>
           <button v-if="webUiUrl" class="_button column-menu-item" @click="onOpenWebUi">
             <i class="ti ti-external-link" />
             <span>Web UIで開く</span>
@@ -223,7 +223,7 @@ function onOpenWebUi() {
   left: 10px;
   width: 3px;
   height: calc(100% - 20px);
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
 }
 
 .header-title {
@@ -250,7 +250,7 @@ function onOpenWebUi() {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   flex-shrink: 0;
   opacity: 0.5;
 }
@@ -262,16 +262,9 @@ function onOpenWebUi() {
 
 /* Column action menu */
 .column-menu {
-  position: absolute;
   top: 100%;
   right: 4px;
   margin-top: 4px;
-  background: var(--nd-popup, var(--nd-panelBg));
-  border-radius: 8px;
-  box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(var(--nd-blur));
-  padding: 8px 0;
-  z-index: var(--nd-z-menu);
   min-width: 180px;
   max-width: 260px;
   cursor: default;
@@ -287,11 +280,11 @@ function onOpenWebUi() {
   color: var(--nd-fg);
   cursor: pointer;
   position: relative;
-  transition: background 0.1s;
+  transition: background var(--nd-duration-fast);
 }
 
 .column-menu-item:hover {
-  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  background: var(--nd-accent-hover);
 }
 
 .column-menu-item i {

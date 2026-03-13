@@ -127,7 +127,7 @@ function onKeydown(e: KeyboardEvent) {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent);
   font-size: 0.85em;
@@ -192,7 +192,7 @@ function onKeydown(e: KeyboardEvent) {
   flex: 1;
   padding: 6px 10px;
   border: 1px solid var(--nd-divider);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-bg);
   color: var(--nd-fg);
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
@@ -220,7 +220,7 @@ function onKeydown(e: KeyboardEvent) {
 .params-textarea {
   padding: 8px 10px;
   border: 1px solid var(--nd-divider);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-bg);
   color: var(--nd-fg);
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
@@ -244,8 +244,8 @@ function onKeydown(e: KeyboardEvent) {
 
 .response-error {
   padding: 6px 8px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-love-subtle);
   color: var(--nd-love);
   font-size: 0.8em;
   white-space: pre-wrap;

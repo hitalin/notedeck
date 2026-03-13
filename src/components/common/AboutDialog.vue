@@ -163,7 +163,7 @@ async function copyInfo() {
   gap: 8px;
   padding: 8px 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: none;
   color: var(--nd-accent);
   font-size: 0.85em;
@@ -196,7 +196,7 @@ async function copyInfo() {
   gap: 6px;
   padding: 6px 14px;
   border: 1px solid var(--nd-divider);
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: none;
   color: var(--nd-fg);
   font-size: 0.8em;
@@ -211,7 +211,7 @@ async function copyInfo() {
 .about-close {
   padding: 6px 20px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: var(--nd-accent);
   color: #fff;
   font-size: 0.85em;

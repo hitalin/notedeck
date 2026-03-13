@@ -632,12 +632,13 @@ async function handlePosted(editedNoteId?: string) {
   top: 12px;
   left: 12px;
   padding: 4px 12px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   font-size: 0.75em;
   font-weight: bold;
   color: #fff;
   background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(var(--nd-blur-panel));
+  -webkit-backdrop-filter: blur(var(--nd-blur-panel));
 }
 
 /* Name overlay on banner (desktop only) */
@@ -676,7 +677,7 @@ async function handlePosted(editedNoteId?: string) {
   display: inline-block;
   margin-right: 8px;
   padding: 1px 8px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   font-size: 0.8em;
   background: rgba(255, 255, 255, 0.2);
 }
@@ -690,7 +691,8 @@ async function handlePosted(editedNoteId?: string) {
   align-items: center;
   gap: 4px;
   background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(var(--nd-blur-panel));
+  -webkit-backdrop-filter: blur(var(--nd-blur-panel));
   padding: 8px;
   border-radius: 24px;
   z-index: 3;
@@ -771,7 +773,7 @@ async function handlePosted(editedNoteId?: string) {
   gap: 4px;
   padding: 3px 8px;
   border: solid 1px var(--nd-divider);
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
 }
 
 /* Stats */
@@ -801,7 +803,7 @@ async function handlePosted(editedNoteId?: string) {
 
 .stat-link {
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   padding: 4px;
 }
 
@@ -891,7 +893,7 @@ async function handlePosted(editedNoteId?: string) {
 .badge {
   font-size: 0.75em;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
 }
@@ -977,6 +979,7 @@ async function handlePosted(editedNoteId?: string) {
   justify-content: center;
   background: var(--nd-overlayDark);
   backdrop-filter: blur(var(--nd-blur-content));
+  -webkit-backdrop-filter: blur(var(--nd-blur-content));
 }
 
 .qr-modal {

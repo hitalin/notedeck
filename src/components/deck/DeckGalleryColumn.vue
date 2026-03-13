@@ -603,8 +603,8 @@ fetchGallery()
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
+  border-radius: var(--nd-radius-md);
+  background: var(--nd-love-subtle);
   color: var(--nd-fg);
   font-size: 0.85em;
   font-weight: 600;
@@ -617,7 +617,7 @@ fetchGallery()
 
 .gallery-like-btn.liked {
   color: var(--nd-love);
-  background: color-mix(in srgb, var(--nd-love) 15%, transparent);
+  background: var(--nd-love-hover);
 }
 
 .gallery-like-btn:disabled {

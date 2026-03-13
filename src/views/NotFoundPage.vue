@@ -39,6 +39,6 @@ const router = useRouter()
 .back-btn {
   margin-top: 16px;
   padding: 8px 24px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
 }
 </style>

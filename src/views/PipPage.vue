@@ -321,7 +321,7 @@ onUnmounted(() => {
   background: var(--nd-bg);
   color: var(--nd-fg);
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
 }
 
 /* === Column header (unified with DeckColumn.vue) === */
@@ -348,7 +348,7 @@ onUnmounted(() => {
   left: 12px;
   width: 5px;
   height: calc(100% - 24px);
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
 }
 
 .tl-header-icon {
@@ -413,7 +413,7 @@ onUnmounted(() => {
   border: none;
   background: none;
   color: var(--nd-panelHeaderFg);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   flex-shrink: 0;
   opacity: 0.35;
   cursor: pointer;
@@ -491,7 +491,7 @@ onUnmounted(() => {
   color: var(--nd-fg);
   font-size: 0.75em;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background var(--nd-duration-fast);
 }
 
 .pip-account-item:hover {
@@ -534,7 +534,7 @@ onUnmounted(() => {
   padding: 6px 8px;
   border-bottom: 1px solid var(--nd-divider);
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background var(--nd-duration-fast);
 }
 
 .pip-note:hover {

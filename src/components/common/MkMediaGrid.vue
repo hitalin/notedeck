@@ -192,7 +192,7 @@ function closeLightbox() {
 /* Banner: Audio & Other files (like Misskey's MkMediaBanner) */
 .media-banner {
   margin-top: 8px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   overflow: hidden;
   border: 0.5px solid var(--nd-border, rgba(128, 128, 128, 0.2));
 }
@@ -261,7 +261,7 @@ function closeLightbox() {
   display: grid;
   gap: 8px;
   margin-top: 8px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   overflow: hidden;
   contain: content;
 }
@@ -347,7 +347,7 @@ function closeLightbox() {
 /* NSFW overlay */
 .is-sensitive .media-image,
 .is-sensitive .media-video {
-  filter: blur(16px);
+  filter: blur(var(--nd-blur));
 }
 
 
@@ -361,7 +361,7 @@ function closeLightbox() {
   width: 44px;
   height: 44px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-modalBg);
   color: #fff;
   cursor: pointer;

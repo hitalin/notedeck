@@ -93,12 +93,12 @@ async function run() {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent);
   cursor: pointer;
   font-size: 0.85em;
-  transition: background 0.1s;
+  transition: background var(--nd-duration-fast);
 }
 
 .run-btn:hover:not(:disabled) {
@@ -112,7 +112,7 @@ async function run() {
 
 .console-output {
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-bg);
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
   font-size: 0.8em;

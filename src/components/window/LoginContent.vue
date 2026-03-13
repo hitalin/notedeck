@@ -200,7 +200,7 @@ function reset() {
   color: var(--nd-fg);
   background: transparent;
   border: solid 1px var(--nd-inputBorder, var(--nd-divider));
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   outline: none;
   transition: border-color 0.15s;
 }
@@ -234,7 +234,7 @@ function reset() {
   height: 42px;
   padding: 0 20px;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: linear-gradient(90deg, var(--nd-buttonGradateA), var(--nd-buttonGradateB));
   color: var(--nd-fgOnAccent);
   font-size: 0.95em;
@@ -303,7 +303,7 @@ function reset() {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--nd-love) 15%, transparent);
+  background: var(--nd-love-hover);
   color: var(--nd-love);
   font-size: 1.4em;
 }

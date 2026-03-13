@@ -516,7 +516,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
   min-width: 0;
   background: var(--nd-buttonBg);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   padding: 6px 10px;
   font-size: 0.85em;
   color: var(--nd-fg);
@@ -558,7 +558,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
 .regex-toggle.active {
   opacity: 1;
   color: var(--nd-accent);
-  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  background: var(--nd-accent-hover);
 }
 
 .regex-icon {
@@ -625,7 +625,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   flex-shrink: 0;
   opacity: 0.6;
   transition: opacity 0.15s, background 0.15s;

@@ -249,7 +249,7 @@ function hostname(url: string): string {
   display: flex;
   font-size: 14px;
   box-shadow: 0 0 0 1px var(--nd-divider);
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   overflow: clip;
   margin-top: 8px;
   cursor: pointer;
@@ -328,11 +328,11 @@ function hostname(url: string): string {
 }
 
 .url-preview-gallery.is-sensitive .gallery-image {
-  filter: blur(16px);
+  filter: blur(var(--nd-blur));
 }
 
 .url-preview-thumb-wrap.is-sensitive .url-preview-image {
-  filter: blur(16px);
+  filter: blur(var(--nd-blur));
 }
 
 .url-sensitive {

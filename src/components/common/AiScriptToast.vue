@@ -50,7 +50,7 @@ defineExpose({ show })
 
 .ais-toast {
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   font-size: 0.85em;
   color: #fff;
   background: var(--nd-accent);

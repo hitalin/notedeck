@@ -124,7 +124,7 @@ defineExpose({ showDialog, showConfirm })
 .ais-dialog-btn {
   padding: 6px 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   font-size: 0.85em;
   cursor: pointer;
   transition: opacity 0.15s;
@@ -149,7 +149,7 @@ defineExpose({ showDialog, showConfirm })
 }
 
 .dialog-fade-leave-active {
-  transition: opacity 0.1s ease;
+  transition: opacity var(--nd-duration-fast) ease;
 }
 
 .dialog-fade-enter-from,

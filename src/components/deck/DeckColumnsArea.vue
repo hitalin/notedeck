@@ -335,7 +335,7 @@ defineExpose({ scrollToColumn, columnMap })
 .stack-cell[data-drop-zone="above"]::after {
   top: 0;
   height: 50%;
-  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  background: var(--nd-accent-hover);
   border-bottom: 3px solid var(--nd-accent);
   border-radius: 10px 10px 0 0;
 }
@@ -343,7 +343,7 @@ defineExpose({ scrollToColumn, columnMap })
 .stack-cell[data-drop-zone="below"]::after {
   bottom: 0;
   height: 50%;
-  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  background: var(--nd-accent-hover);
   border-top: 3px solid var(--nd-accent);
   border-radius: 0 0 10px 10px;
 }
@@ -369,7 +369,7 @@ defineExpose({ scrollToColumn, columnMap })
   flex-shrink: 0;
   border: 2px dashed var(--nd-accent);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--nd-accent) 10%, transparent);
+  background: var(--nd-accent-subtle);
   box-shadow: 0 0 12px color-mix(in srgb, var(--nd-accent) 30%, transparent);
 }
 

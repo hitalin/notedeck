@@ -259,7 +259,7 @@ onUnmounted(() => {
 
 .announcement-image img {
   max-width: 100%;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
 }
 
 .announcement-text {
@@ -280,7 +280,7 @@ onUnmounted(() => {
   padding: 6px 14px;
   font-size: 0.85em;
   font-weight: bold;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: var(--nd-accent);
   color: #fff;
   cursor: pointer;

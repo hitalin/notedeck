@@ -865,7 +865,7 @@ onUnmounted(() => {
   bottom: 0;
   height: 3px;
   background: var(--nd-accent);
-  border-radius: 999px 999px 0 0;
+  border-radius: var(--nd-radius-full) var(--nd-radius-full) 0 0;
   transition: left 0.3s cubic-bezier(0, 0, 0.2, 1), width 0.3s cubic-bezier(0, 0, 0.2, 1);
   pointer-events: none;
 }

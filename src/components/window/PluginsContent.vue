@@ -305,7 +305,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   color: var(--nd-fg);
   transition: background 0.15s;
 }
@@ -320,7 +320,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   gap: 6px;
   padding: 8px 14px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent, #fff);
   font-size: 0.85em;
@@ -360,7 +360,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -407,7 +407,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   align-items: center;
   gap: 6px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: color-mix(in srgb, var(--nd-error) 10%, transparent);
   color: var(--nd-error);
   font-size: 0.85em;
@@ -454,7 +454,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   width: 100%;
   padding: 8px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: color-mix(in srgb, var(--nd-error) 10%, transparent);
   color: var(--nd-error);
   font-size: 0.85em;
@@ -503,7 +503,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
 .config-input {
   padding: 6px 10px;
   border: 1px solid var(--nd-divider);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-inputBg, var(--nd-bg));
   color: var(--nd-fg);
   font-size: 0.85em;
@@ -517,7 +517,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
 /* Logs */
 .detail-logs {
   background: var(--nd-codeEditorBg, #1e1e1e);
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   padding: 8px;
   max-height: 200px;
   overflow-y: auto;

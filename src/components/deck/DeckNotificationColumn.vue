@@ -720,9 +720,9 @@ onUnmounted(() => {
   font-weight: bold;
   font-size: 0.85em;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   cursor: pointer;
-  transition: background 0.1s ease;
+  transition: background var(--nd-duration-fast) ease;
 }
 
 .accept-btn {
@@ -740,7 +740,7 @@ onUnmounted(() => {
 }
 
 .reject-btn:hover {
-  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
+  background: var(--nd-love-subtle);
 }
 
 .follow-request-done {

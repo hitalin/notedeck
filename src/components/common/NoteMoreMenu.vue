@@ -189,7 +189,7 @@ defineExpose({ open })
   padding: 9px 12px;
   min-height: 44px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: none;
   cursor: pointer;
   color: var(--nd-fg);

@@ -691,7 +691,7 @@ function close() {
   flex: 1;
   padding: 8px 12px;
   border: 1px solid var(--nd-divider);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-bg);
   color: var(--nd-fg);
   font-size: 0.85em;
@@ -704,7 +704,7 @@ function close() {
 
 .add-user-submit {
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-accent);
   color: #fff;
   font-size: 0.85em;
@@ -749,7 +749,7 @@ function close() {
   justify-content: center;
   width: 44px;
   height: 44px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   opacity: 0.7;
   transition: background 0.15s, opacity 0.15s;
 }

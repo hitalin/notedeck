@@ -262,7 +262,7 @@ onMounted(() => {
   font-weight: bold;
   font-size: 0.85em;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   cursor: pointer;
   transition: filter 0.15s;
 }
@@ -282,7 +282,7 @@ onMounted(() => {
 }
 
 .reject-btn:hover {
-  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
+  background: var(--nd-love-subtle);
 }
 
 .fr-done {

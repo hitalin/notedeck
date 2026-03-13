@@ -101,13 +101,13 @@ import MkNote from './MkNote.vue'
 .note-embed-content > :deep(.note-root) {
   padding: 12px 16px;
   border: dashed 1px var(--nd-renote);
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
 }
 
 .note-embed-skeleton {
   padding: 12px 16px;
   border: dashed 1px var(--nd-divider);
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   display: flex;
   flex-direction: column;
   gap: 6px;

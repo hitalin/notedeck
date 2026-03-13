@@ -235,7 +235,7 @@ watch(
 .mobile-tab:active {
   opacity: 0.7;
   transform: scale(0.9);
-  transition: opacity 0.1s, color 0.2s, transform 0.1s;
+  transition: opacity var(--nd-duration-fast), color 0.2s, transform var(--nd-duration-fast);
 }
 
 .tab-server-badge,

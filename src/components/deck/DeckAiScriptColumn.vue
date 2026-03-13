@@ -380,7 +380,7 @@ onUnmounted(() => {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent);
   font-size: 0.85em;
@@ -488,7 +488,7 @@ onUnmounted(() => {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent);
   font-size: 0.85em;
@@ -560,7 +560,7 @@ onUnmounted(() => {
 .inspector-props pre {
   margin: 0;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: color-mix(in srgb, var(--nd-fg) 5%, transparent);
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
   font-size: 0.75em;
@@ -572,8 +572,8 @@ onUnmounted(() => {
 
 .output-error {
   padding: 6px 8px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-love-subtle);
   color: var(--nd-love);
   font-size: 0.8em;
   white-space: pre-wrap;

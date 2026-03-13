@@ -195,7 +195,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   display: inline-block;
   margin-top: 8px;
   padding: 2px 10px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   font-size: 0.7em;
   font-weight: bold;
   background: var(--nd-accentedBg);

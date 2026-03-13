@@ -91,7 +91,7 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
   gap: 8px;
   width: 100%;
   padding: 6px 8px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   font-size: 0.85em;
   text-align: left;
 }

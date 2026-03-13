@@ -1040,7 +1040,7 @@ function onKeydown(e: KeyboardEvent) {
   min-height: 44px;
   min-width: 44px;
   margin: 0;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background 0.15s;
 }
@@ -1066,7 +1066,7 @@ function onKeydown(e: KeyboardEvent) {
   align-items: center;
   justify-content: center;
   padding: 8px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   transition: background 0.15s;
 }
 
@@ -1094,6 +1094,7 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: 12px;
   box-shadow: var(--nd-shadow-m);
   backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
 }
 
 .account-option {
@@ -1102,7 +1103,7 @@ function onKeydown(e: KeyboardEvent) {
   gap: 8px;
   width: 100%;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background 0.15s;
 }
@@ -1157,7 +1158,7 @@ function onKeydown(e: KeyboardEvent) {
   font-weight: bold;
   font-family: inherit;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   min-width: 90px;
   color: var(--nd-fgOnAccent);
   background: linear-gradient(90deg, var(--nd-buttonGradateA, var(--nd-accent)), var(--nd-buttonGradateB, var(--nd-accent)));
@@ -1204,6 +1205,7 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: 12px;
   box-shadow: var(--nd-shadow-m);
   backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
 }
 
 .visibility-option {
@@ -1213,7 +1215,7 @@ function onKeydown(e: KeyboardEvent) {
   width: 100%;
   padding: 8px 12px;
   font-size: 0.85em;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background 0.15s;
 }
@@ -1254,6 +1256,7 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: 12px;
   box-shadow: var(--nd-shadow-m);
   backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
 }
 
 .more-menu-item {
@@ -1263,7 +1266,7 @@ function onKeydown(e: KeyboardEvent) {
   width: 100%;
   padding: 8px 12px;
   font-size: 0.85em;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background 0.15s;
 }
@@ -1481,7 +1484,7 @@ function onKeydown(e: KeyboardEvent) {
   padding: 4px 6px;
   font-size: 0.9em;
   color: var(--nd-warn, #ecb637);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   min-width: 1.6em;
   text-align: center;
 }
@@ -1518,7 +1521,7 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-fg);
   background: var(--nd-buttonBg);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   outline: none;
 }
 
@@ -1533,7 +1536,7 @@ function onKeydown(e: KeyboardEvent) {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   opacity: 0.5;
   flex-shrink: 0;
@@ -1558,7 +1561,7 @@ function onKeydown(e: KeyboardEvent) {
   padding: 4px 8px;
   font-size: 0.8em;
   color: var(--nd-accent);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
 }
 
 .poll-add-btn:hover {
@@ -1613,7 +1616,7 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 1em;
   width: 100%;
   height: 100%;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background 0.15s, color 0.15s;
 }
@@ -1638,6 +1641,7 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: 12px;
   box-shadow: var(--nd-shadow-m);
   backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
 }
 
 /* ── Mention popup ── */
@@ -1675,7 +1679,7 @@ function onKeydown(e: KeyboardEvent) {
   gap: 8px;
   width: 100%;
   padding: 8px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background 0.15s;
 }
@@ -1745,7 +1749,7 @@ function onKeydown(e: KeyboardEvent) {
   padding: 6px 10px;
   font-size: 0.82em;
   text-align: left;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background 0.15s;
 }
@@ -1766,7 +1770,7 @@ function onKeydown(e: KeyboardEvent) {
   position: relative;
   width: 80px;
   height: 80px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   overflow: hidden;
   background: var(--nd-buttonBg);
 }
@@ -1808,7 +1812,7 @@ function onKeydown(e: KeyboardEvent) {
   justify-content: center;
   width: 80px;
   height: 80px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: var(--nd-buttonBg);
   font-size: 0.7em;
   opacity: 0.6;
@@ -1863,7 +1867,7 @@ function onKeydown(e: KeyboardEvent) {
   padding: 10px 12px;
   font-size: 0.85em;
   color: var(--nd-fg);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   transition: background 0.15s;
 }
 
@@ -1892,7 +1896,7 @@ function onKeydown(e: KeyboardEvent) {
 .draft-item {
   display: flex;
   align-items: center;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   transition: background 0.15s;
 }
 
@@ -1930,7 +1934,7 @@ function onKeydown(e: KeyboardEvent) {
   width: 28px;
   height: 28px;
   flex-shrink: 0;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   opacity: 0.4;
 }
@@ -1967,7 +1971,7 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-fg);
   background: var(--nd-buttonBg);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   outline: none;
   box-sizing: border-box;
 }
@@ -1976,7 +1980,7 @@ function onKeydown(e: KeyboardEvent) {
   padding: 6px;
   font-size: 0.8em;
   color: var(--nd-error);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   text-align: center;
 }
 
@@ -2049,7 +2053,7 @@ function onKeydown(e: KeyboardEvent) {
   padding: 8px 12px;
   font-size: 0.85em;
   color: var(--nd-fg);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   transition: background 0.15s;
   text-align: left;
 }

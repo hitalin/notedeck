@@ -292,8 +292,8 @@ function resetAll() {
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
-  border-radius: 6px;
-  transition: background 0.1s;
+  border-radius: var(--nd-radius-sm);
+  transition: background var(--nd-duration-fast);
 }
 
 .keybind-row:hover {
@@ -349,7 +349,7 @@ function resetAll() {
 
 .shortcut-badge.recording {
   border-color: var(--nd-accent);
-  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  background: var(--nd-accent-hover);
   animation: pulse 1s infinite;
 }
 

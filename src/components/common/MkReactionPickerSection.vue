@@ -42,7 +42,7 @@ function toggle() {
   width: 100%;
   padding: 6px 8px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: none;
   color: var(--nd-fg);
   font-size: 0.75em;
@@ -52,7 +52,8 @@ function toggle() {
   position: sticky;
   top: 0;
   z-index: 1;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
   background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 70%, transparent);
 }
 

@@ -155,7 +155,7 @@ function removeWidget(widgetId: string) {
   background: none;
   color: var(--nd-fg);
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   opacity: 0.35;
   transition: opacity 0.15s, background 0.15s;
 }
@@ -163,7 +163,7 @@ function removeWidget(widgetId: string) {
 .widget-remove:hover {
   opacity: 1;
   color: var(--nd-love);
-  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
+  background: var(--nd-love-subtle);
 }
 
 .widget-content {
@@ -182,7 +182,7 @@ function removeWidget(widgetId: string) {
   gap: 6px;
   padding: 7px 16px;
   border: 1px dashed var(--nd-divider);
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: none;
   color: var(--nd-fg);
   cursor: pointer;
@@ -210,7 +210,7 @@ function removeWidget(widgetId: string) {
   gap: 8px;
   padding: 8px 12px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   cursor: pointer;

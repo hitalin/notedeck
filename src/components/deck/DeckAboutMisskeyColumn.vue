@@ -370,7 +370,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   padding: 10px 24px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: linear-gradient(90deg, var(--nd-buttonGradateA), var(--nd-buttonGradateB));
   color: var(--nd-fgOnAccent);
   font-weight: bold;
@@ -419,7 +419,7 @@ onMounted(() => {
   padding: 10px 14px;
   margin-bottom: 6px;
   background: var(--nd-buttonBg);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   font-size: 0.9em;
   color: var(--nd-fg);
   transition: background 0.15s;
@@ -448,7 +448,7 @@ onMounted(() => {
   gap: 8px;
   margin: 12px 16px 8px;
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: var(--nd-infoWarnBg, var(--nd-accentedBg));
   font-size: 0.85em;
   color: var(--nd-infoWarnFg, #ffbd3e);
@@ -475,7 +475,7 @@ onMounted(() => {
   gap: 8px;
   padding: 10px;
   background: var(--nd-buttonBg);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   transition: background 0.15s;
 }
 
@@ -512,7 +512,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 8px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   transition: background 0.15s;
 }
 

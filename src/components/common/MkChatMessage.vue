@@ -311,7 +311,7 @@ function closeMentionPopup() {
 .chat-image {
   max-width: 100%;
   max-height: 200px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   object-fit: contain;
   cursor: pointer;
 }

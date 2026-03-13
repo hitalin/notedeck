@@ -257,12 +257,12 @@ function handlePostFormButton(comp: UiComponent) {
 .ais-button {
   padding: 7px 14px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   cursor: pointer;
   font-size: 0.85em;
-  transition: background 0.1s;
+  transition: background var(--nd-duration-fast);
 }
 
 .ais-button:hover:not(:disabled) {
@@ -285,7 +285,7 @@ function handlePostFormButton(comp: UiComponent) {
 .ais-select {
   padding: 6px 10px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   font-size: 0.85em;
@@ -296,7 +296,7 @@ function handlePostFormButton(comp: UiComponent) {
 .ais-textarea {
   padding: 6px 10px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   font-size: 0.85em;
@@ -330,7 +330,7 @@ function handlePostFormButton(comp: UiComponent) {
 
 .ais-folder {
   border: 1px solid var(--nd-divider);
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   overflow: hidden;
 }
 
@@ -361,7 +361,7 @@ function handlePostFormButton(comp: UiComponent) {
 }
 
 .ais-post-form-button.rounded {
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
 }
 
 .ais-post-form {

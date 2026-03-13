@@ -55,6 +55,7 @@ const router = useRouter()
   top: 0;
   background: var(--nd-windowHeader);
   backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
   z-index: 10;
 }
 
@@ -64,7 +65,7 @@ const router = useRouter()
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   text-decoration: none;
   transition: background 0.15s;

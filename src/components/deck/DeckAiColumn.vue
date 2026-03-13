@@ -246,7 +246,7 @@ function onKeydown(e: KeyboardEvent) {
 
 .ai-suggestion {
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: var(--nd-buttonBg);
   font-size: 0.78em;
   opacity: 0.7;
@@ -282,7 +282,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .ai-message.assistant .message-avatar {
-  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  background: var(--nd-accent-hover);
   color: var(--nd-accent);
   opacity: 1;
 }
@@ -357,7 +357,7 @@ function onKeydown(e: KeyboardEvent) {
   min-width: 0;
   background: var(--nd-buttonBg);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   padding: 8px 10px;
   font-size: 0.83em;
   color: var(--nd-fg);
@@ -386,7 +386,7 @@ function onKeydown(e: KeyboardEvent) {
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent, #fff);
   flex-shrink: 0;

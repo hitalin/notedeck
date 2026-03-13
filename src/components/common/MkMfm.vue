@@ -283,7 +283,7 @@ function fnStyle(
   font-family: 'Fira Code', 'Cascadia Code', monospace;
   font-size: 0.85em;
   padding: 12px 16px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   overflow-x: auto;
   white-space: pre;
   word-break: normal;

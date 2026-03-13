@@ -602,7 +602,7 @@ function reload() {
   gap: 6px;
   margin: 8px 0;
   padding: 10px 32px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: linear-gradient(90deg, var(--nd-accent), color-mix(in srgb, var(--nd-accent), #fff 20%));
   color: #fff;
   font-size: 1em;
@@ -667,7 +667,7 @@ function reload() {
 .play-console {
   padding: 8px 10px;
   margin: 0 12px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-bg);
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
   font-size: 0.8em;
@@ -686,8 +686,8 @@ function reload() {
 .play-error {
   padding: 8px 10px;
   margin: 0 12px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-love-subtle);
   color: var(--nd-love);
   font-size: 0.8em;
   white-space: pre-wrap;
@@ -716,7 +716,7 @@ function reload() {
   align-items: center;
   gap: 4px;
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   font-size: 0.8em;

@@ -223,7 +223,7 @@ async function togglePip() {
   height: 22px;
   padding: 0 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: rgba(255, 255, 255, 0.05);
   color: var(--nd-fg);
   cursor: pointer;
@@ -287,7 +287,7 @@ async function togglePip() {
   color: var(--nd-fg);
   opacity: 0.6;
   cursor: pointer;
-  transition: background 0.1s, opacity 0.1s;
+  transition: background var(--nd-duration-fast), opacity var(--nd-duration-fast);
 }
 
 .titlebar-btn:hover {

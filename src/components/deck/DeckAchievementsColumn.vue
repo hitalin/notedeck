@@ -696,7 +696,7 @@ fetchAchievements()
   align-items: center;
   gap: 6px;
   padding: 12px 8px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   transition: background 0.15s;
 }
 

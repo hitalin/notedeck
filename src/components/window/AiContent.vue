@@ -276,7 +276,7 @@ setTimeout(() => inputRef.value?.focus(), 100)
 
 .ai-suggestion {
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: var(--nd-buttonBg);
   font-size: 0.8em;
   opacity: 0.7;
@@ -313,7 +313,7 @@ setTimeout(() => inputRef.value?.focus(), 100)
 }
 
 .ai-message.assistant .message-avatar {
-  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  background: var(--nd-accent-hover);
   color: var(--nd-accent);
   opacity: 1;
 }
@@ -390,7 +390,7 @@ setTimeout(() => inputRef.value?.focus(), 100)
   min-width: 0;
   background: var(--nd-buttonBg);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   padding: 8px 10px;
   font-size: 0.85em;
   color: var(--nd-fg);
@@ -419,7 +419,7 @@ setTimeout(() => inputRef.value?.focus(), 100)
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent, #fff);
   flex-shrink: 0;

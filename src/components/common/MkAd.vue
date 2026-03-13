@@ -122,7 +122,7 @@ function reduceFrequency() {
   margin: 4px 0;
   padding: 8px 16px;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: var(--nd-accent);
   color: #fff;
   font-size: 0.85em;

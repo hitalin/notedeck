@@ -549,7 +549,7 @@ fetchDrive()
   color: var(--nd-accent);
   opacity: 0.6;
   border: 2px dashed var(--nd-accent);
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: color-mix(in srgb, var(--nd-accent) 5%, transparent);
   transition: opacity 0.15s, background 0.15s;
 }
@@ -588,7 +588,7 @@ fetchDrive()
 }
 
 .drive-detail-preview {
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   overflow: hidden;
   background: var(--nd-bg);
 }
@@ -659,8 +659,8 @@ fetchDrive()
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--nd-love) 15%, transparent);
+  border-radius: var(--nd-radius-md);
+  background: var(--nd-love-hover);
   color: var(--nd-love);
   font-size: 0.85em;
   font-weight: 600;
@@ -741,7 +741,7 @@ fetchDrive()
   font-size: 0.8em;
   color: var(--nd-accent);
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   transition: background 0.15s;
 }
 
@@ -754,8 +754,8 @@ fetchDrive()
   align-items: center;
   gap: 4px;
   padding: 6px 14px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--nd-love) 15%, transparent);
+  border-radius: var(--nd-radius-md);
+  background: var(--nd-love-hover);
   color: var(--nd-love);
   font-size: 0.8em;
   font-weight: 600;

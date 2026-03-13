@@ -63,7 +63,7 @@ function formatExpiry(iso: string): string {
 
 .poll-choice {
   position: relative;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   overflow: hidden;
   background: var(--nd-buttonBg);
   min-height: 35px;
@@ -125,7 +125,7 @@ function formatExpiry(iso: string): string {
 
 .poll-badge {
   padding: 1px 6px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: var(--nd-buttonBg);
   font-weight: bold;
 }

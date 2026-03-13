@@ -226,7 +226,7 @@ onMounted(() => {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   cursor: pointer;
@@ -257,8 +257,8 @@ onMounted(() => {
 
 .app-error {
   padding: 6px 8px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-love-subtle);
   color: var(--nd-love);
   font-size: 0.8em;
   white-space: pre-wrap;

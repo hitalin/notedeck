@@ -67,6 +67,7 @@ function onSuccess() {
   padding: 0 8px 0 20px;
   background: color-mix(in srgb, var(--nd-panel) 80%, transparent);
   backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
   border-bottom: 1px solid var(--nd-divider);
   z-index: 1;
 }
@@ -91,7 +92,7 @@ function onSuccess() {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   opacity: 0.6;
   transition: background 0.15s, opacity 0.15s;

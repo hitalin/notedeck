@@ -292,7 +292,7 @@ onMounted(() => {
 .category-chip {
   flex-shrink: 0;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   font-size: 0.75em;
   font-weight: bold;
   background: var(--nd-buttonBg);
@@ -355,7 +355,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   aspect-ratio: 1;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   transition: background 0.15s;
   cursor: pointer;
 }

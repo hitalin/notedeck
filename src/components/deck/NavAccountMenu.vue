@@ -115,7 +115,7 @@ function modeLabel(key: string): string {
   gap: 8px;
   padding: 8px 14px;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background var(--nd-duration-fast);
   font-size: 0.85em;
   color: var(--nd-fg);
   width: 100%;

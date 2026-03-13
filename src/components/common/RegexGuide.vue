@@ -127,7 +127,7 @@ function apply() {
 .condition-type {
   flex-shrink: 0;
   padding: 5px 8px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-buttonBg, rgba(255, 255, 255, 0.05));
   color: var(--nd-fg);
   font-size: 0.8em;
@@ -144,7 +144,7 @@ function apply() {
   min-width: 0;
   padding: 5px 8px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-buttonBg, rgba(255, 255, 255, 0.05));
   color: var(--nd-fg);
   font-size: 0.85em;
@@ -166,7 +166,7 @@ function apply() {
   justify-content: center;
   width: 22px;
   height: 22px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   flex-shrink: 0;
   opacity: 0.3;
   transition: opacity 0.15s, background 0.15s;
@@ -189,7 +189,7 @@ function apply() {
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   font-size: 0.8em;
   opacity: 0.45;
   transition: opacity 0.15s, background 0.15s;
@@ -202,7 +202,7 @@ function apply() {
 
 .apply-btn {
   padding: 5px 14px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-accent);
   color: #fff;
   font-size: 0.8em;
@@ -221,7 +221,7 @@ function apply() {
 .pattern-preview {
   margin: 4px 10px 4px;
   padding: 5px 8px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: color-mix(in srgb, var(--nd-accent) 8%, transparent);
   overflow-x: auto;
   scrollbar-width: none;

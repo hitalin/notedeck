@@ -110,13 +110,13 @@
   justify-content: center;
   gap: 6px;
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   font-size: 0.85em;
   font-weight: bold;
   color: var(--nd-fgOnAccent);
   background: color-mix(in srgb, var(--nd-accent) 70%, transparent);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(var(--nd-blur-panel));
+  backdrop-filter: blur(var(--nd-blur-panel));
   cursor: pointer;
   transition: opacity 0.15s;
   animation: slide-down 0.3s cubic-bezier(0.23, 1, 0.32, 1);

@@ -453,7 +453,7 @@ defineExpose({
   align-items: center;
   gap: 14px;
   padding: 10px 14px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   color: var(--nd-navFg, var(--nd-fg));
   font-size: 0.9em;
   white-space: nowrap;
@@ -488,7 +488,7 @@ defineExpose({
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: var(--nd-indicator, #e53935);
   color: #fff;
   font-size: 10px;
@@ -578,7 +578,7 @@ defineExpose({
   gap: 10px;
   width: 100%;
   padding: 10px 14px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: linear-gradient(90deg, var(--nd-buttonGradateA, var(--nd-accent)), var(--nd-buttonGradateB, var(--nd-accentDarken)));
   color: var(--nd-fgOnAccent, #fff);
   font-weight: bold;
@@ -690,7 +690,7 @@ defineExpose({
   .nav-account {
     padding: 8px;
     width: auto;
-    border-radius: 999px;
+    border-radius: var(--nd-radius-full);
   }
 
   .nav-top,

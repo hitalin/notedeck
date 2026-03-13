@@ -396,7 +396,7 @@ onMounted(() => {
   display: block;
   margin: 16px auto 0 auto;
   height: 48px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
 }
 
 .banner-name {
@@ -504,7 +504,7 @@ onMounted(() => {
   margin: 0 16px 8px;
   width: calc(100% - 32px);
   background: var(--nd-buttonBg);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   font-size: 0.9em;
   color: var(--nd-fg);
   text-decoration: none;
@@ -549,7 +549,7 @@ onMounted(() => {
 
 .description :deep(img) {
   max-width: 100%;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
 }
 
 .description :deep(h1),
@@ -597,7 +597,7 @@ onMounted(() => {
 .rules-toggle {
   margin: 0;
   width: 100%;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
 }
 
 .rules-chevron {
@@ -626,7 +626,7 @@ onMounted(() => {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: var(--nd-accentedBg);
   color: var(--nd-accent);
   font-size: 13px;

@@ -751,13 +751,13 @@ onBeforeUnmount(() => {
   padding: 4px 8px;
   margin-bottom: 4px;
   background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.05));
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
 }
 
 .chat-attachment-thumb {
   width: 48px;
   height: 48px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   object-fit: cover;
 }
 

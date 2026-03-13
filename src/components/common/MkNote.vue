@@ -849,7 +849,7 @@ function closeMentionPopup() {
   padding: 4px 12px;
   min-height: 36px;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: var(--nd-accentedBg);
   color: var(--nd-accent);
   font-size: 0.8em;
@@ -903,7 +903,7 @@ function closeMentionPopup() {
 .quote > .note-root {
   padding: 16px;
   border: dashed 1px var(--nd-renote);
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
 }
 
 /* Reactions */
@@ -920,7 +920,7 @@ function closeMentionPopup() {
   height: 42px;
   padding: 0 6px;
   font-size: 1.5em;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   align-items: center;
   justify-content: center;
   background: var(--nd-buttonBg);
@@ -1033,8 +1033,8 @@ function closeMentionPopup() {
   cursor: pointer;
   color: color-mix(in srgb, var(--nd-panel) 30%, var(--nd-fg) 70%);
   font-size: 1em;
-  border-radius: 6px;
-  transition: color 0.15s, background 0.15s, transform 0.1s;
+  border-radius: var(--nd-radius-sm);
+  transition: color 0.15s, background 0.15s, transform var(--nd-duration-fast);
 }
 
 .footer-button:active {
@@ -1079,7 +1079,7 @@ function closeMentionPopup() {
   padding: 6px 12px;
   font-size: 0.85em;
   font-weight: bold;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   transition: background 0.15s;

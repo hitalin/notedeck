@@ -162,7 +162,7 @@ fetchDrive()
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   opacity: 0.6;
   transition: opacity 0.15s, background 0.15s;
@@ -317,7 +317,7 @@ fetchDrive()
 
 .dp-confirm {
   padding: 6px 20px;
-  border-radius: 8px;
+  border-radius: var(--nd-radius-md);
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent, #fff);
   font-size: 0.85em;

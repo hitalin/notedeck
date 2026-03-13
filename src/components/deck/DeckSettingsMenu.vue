@@ -163,7 +163,7 @@ function syncScroll(e: Event) {
 
 <template>
   <Transition name="settings-menu">
-    <div v-if="show" ref="menuEl" class="settings-menu">
+    <div v-if="show" ref="menuEl" class="settings-menu _popupMenu">
       <!-- Misskey-style day/night toggle panel -->
       <div class="theme-panel">
         <div class="toggle-area">
@@ -322,16 +322,9 @@ function syncScroll(e: Event) {
 
 <style scoped>
 .settings-menu {
-  position: absolute;
   bottom: 100%;
   right: 0;
   margin-bottom: 4px;
-  background: var(--nd-popup, var(--nd-panelBg));
-  border-radius: 8px;
-  box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(var(--nd-blur));
-  padding: 8px 0;
-  z-index: var(--nd-z-menu);
   min-width: 260px;
   max-height: 80vh;
   overflow-y: auto;
@@ -340,7 +333,7 @@ function syncScroll(e: Event) {
 /* ── Theme panel (toggle + sync in one block) ── */
 
 .theme-panel {
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
 }
 
 .toggle-area {
@@ -647,7 +640,7 @@ function syncScroll(e: Event) {
 .theme-item {
   cursor: pointer;
   border: 2px solid var(--nd-divider);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   overflow: hidden;
   transition: border-color 0.15s;
 }
@@ -707,7 +700,7 @@ function syncScroll(e: Event) {
   box-sizing: border-box;
   background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
   border: 1px solid var(--nd-divider);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   padding: 8px;
   font-size: 0.8em;
   color: var(--nd-fg);
@@ -791,7 +784,7 @@ function syncScroll(e: Event) {
 .css-editor {
   position: relative;
   border: 1px solid var(--nd-divider);
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   overflow: hidden;
   background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
   transition: border-color 0.15s;
@@ -882,12 +875,12 @@ function syncScroll(e: Event) {
   display: block;
   position: absolute;
   inset: 2px 8px;
-  border-radius: 6px;
-  transition: background 0.1s;
+  border-radius: var(--nd-radius-sm);
+  transition: background var(--nd-duration-fast);
 }
 
 .settings-menu-item:hover::before {
-  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  background: var(--nd-accent-hover);
 }
 
 .settings-menu-divider {

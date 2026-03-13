@@ -89,7 +89,7 @@ function remove(id: string) {
 
 <template>
   <Transition name="profile-menu">
-    <div v-if="show" ref="menuEl" class="profile-menu" @pointerdown.stop>
+    <div v-if="show" ref="menuEl" class="profile-menu _popupMenu" @pointerdown.stop>
       <div
         v-for="p in profiles"
         :key="p.id"
@@ -140,16 +140,9 @@ function remove(id: string) {
 
 <style scoped>
 .profile-menu {
-  position: absolute;
   bottom: 100%;
   left: 0;
   margin-bottom: 4px;
-  background: var(--nd-popup, var(--nd-panelBg));
-  border-radius: 8px;
-  box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(var(--nd-blur));
-  padding: 8px 0;
-  z-index: var(--nd-z-menu);
   min-width: 200px;
   max-width: 300px;
 }
@@ -179,12 +172,12 @@ function remove(id: string) {
   display: block;
   position: absolute;
   inset: 2px 8px;
-  border-radius: 6px;
-  transition: background 0.1s;
+  border-radius: var(--nd-radius-sm);
+  transition: background var(--nd-duration-fast);
 }
 
 .profile-menu-item:hover::before {
-  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  background: var(--nd-accent-hover);
 }
 
 .profile-menu-item.active {
@@ -193,7 +186,7 @@ function remove(id: string) {
 }
 
 .profile-menu-item.active::before {
-  background: color-mix(in srgb, var(--nd-accent) 10%, transparent);
+  background: var(--nd-accent-subtle);
 }
 
 .profile-menu-name {
@@ -210,7 +203,7 @@ function remove(id: string) {
   font-size: inherit;
   line-height: inherit;
   color: var(--nd-fg);
-  background: color-mix(in srgb, var(--nd-accent) 10%, transparent);
+  background: var(--nd-accent-subtle);
   border: 1px solid var(--nd-accent);
   border-radius: 4px;
   padding: 0 4px;
@@ -225,7 +218,7 @@ function remove(id: string) {
   opacity: 0.4;
   padding: 2px;
   position: relative;
-  transition: opacity 0.1s;
+  transition: opacity var(--nd-duration-fast);
 }
 
 .profile-menu-item:hover .profile-menu-action {

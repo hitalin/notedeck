@@ -72,16 +72,32 @@
   /* Footer action hover */
   --nd-replyHover: #3b97c4;
   --nd-reactionHover: #e5a400;
+  /* Color utilities */
+  --nd-accent-hover: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  --nd-accent-subtle: color-mix(in srgb, var(--nd-accent) 10%, transparent);
+  --nd-love-hover: color-mix(in srgb, var(--nd-love) 15%, transparent);
+  --nd-love-subtle: color-mix(in srgb, var(--nd-love) 10%, transparent);
   /* Shadow depth */
   --nd-shadow-s: 0 2px 8px rgba(0, 0, 0, 0.1);
   --nd-shadow-m: 0 4px 16px rgba(0, 0, 0, 0.15);
   --nd-shadow-l: 0 8px 32px rgba(0, 0, 0, 0.2);
   /* Non-theme layout constants */
   --nd-radius: 12px;
+  --nd-radius-sm: 6px;
+  --nd-radius-md: 8px;
+  --nd-radius-full: 999px;
   --nd-margin: 10px;
   --nd-columnGap: 2px;
   --nd-blur: 16px;
+  --nd-blur-panel: 8px;
   --nd-blur-content: 4px;
+  /* Transition duration */
+  --nd-duration-fast: 0.1s;
+  --nd-duration-base: 0.15s;
+  --nd-duration-slow: 0.2s;
+  --nd-duration-slower: 0.3s;
+  /* Easing */
+  --nd-ease-pop: cubic-bezier(0, 0, 0.2, 1);
   /* Z-index layers */
   --nd-z-menu: 100;
   --nd-z-overlay: 1000;
@@ -179,8 +195,19 @@ html.nd-mobile select {
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: var(--nd-radius);
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
+}
+
+._popupMenu {
+  position: absolute;
+  background: var(--nd-popup, var(--nd-panelBg));
+  border-radius: var(--nd-radius-md);
+  box-shadow: var(--nd-shadow-m);
+  backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
+  padding: 8px 0;
+  z-index: var(--nd-z-menu);
 }
 
 /* ---- Shadow depth (Misskey style) ---- */
@@ -237,7 +264,7 @@ html.nd-mobile select {
   font-family: inherit;
   line-height: inherit;
   touch-action: manipulation;
-  transition: background 0.1s;
+  transition: background var(--nd-duration-fast);
 }
 
 ._buttonPrimary:hover:not(:disabled) {
@@ -261,6 +288,7 @@ html.nd-mobile select {
 ._acrylic {
   background: color(from var(--nd-panel) srgb r g b / 0.5);
   backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
 }
 
 ._sensitiveOverlay {
@@ -277,6 +305,7 @@ html.nd-mobile select {
   font-weight: bold;
   cursor: pointer;
   backdrop-filter: blur(var(--nd-blur-content));
+  -webkit-backdrop-filter: blur(var(--nd-blur-content));
   z-index: 2;
 }
 
@@ -293,7 +322,7 @@ html.nd-mobile select {
 
 ::-webkit-scrollbar-thumb {
   background: var(--nd-scrollbarHandle);
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
 }
 
 /* ---- Toggle switch (shared) ---- */
@@ -306,7 +335,7 @@ html.nd-mobile select {
   background: var(--nd-buttonBg, rgba(255, 255, 255, 0.1));
   border: none;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--nd-duration-slow);
   padding: 0;
   flex-shrink: 0;
 }
@@ -323,7 +352,7 @@ html.nd-mobile select {
   height: 18px;
   border-radius: 50%;
   background: #fff;
-  transition: transform 0.2s;
+  transition: transform var(--nd-duration-slow);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
@@ -335,12 +364,12 @@ html.nd-mobile select {
 
 .nd-popup-enter-active,
 .nd-popup-leave-active {
-  transition: opacity 0.15s ease;
+  transition: opacity var(--nd-duration-base) ease;
 }
 
 .nd-popup-enter-active .nd-popup-content,
 .nd-popup-leave-active .nd-popup-content {
-  transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+  transition: opacity var(--nd-duration-slow) var(--nd-ease-pop), transform var(--nd-duration-slow) var(--nd-ease-pop);
 }
 
 .nd-popup-enter-from,

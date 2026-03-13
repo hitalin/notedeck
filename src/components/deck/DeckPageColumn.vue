@@ -630,7 +630,7 @@ const pageEditUrl = computed(() => {
 .page-console {
   padding: 8px 10px;
   margin: 0 12px;
-  border-radius: 6px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-bg);
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
   font-size: 0.8em;
@@ -649,8 +649,8 @@ const pageEditUrl = computed(() => {
 .page-error {
   padding: 8px 10px;
   margin: 0 12px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-love-subtle);
   color: var(--nd-love);
   font-size: 0.8em;
   white-space: pre-wrap;
@@ -698,7 +698,7 @@ const pageEditUrl = computed(() => {
   align-items: center;
   gap: 4px;
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: var(--nd-radius-full);
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   font-size: 0.8em;
