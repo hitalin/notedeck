@@ -1,15 +1,22 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, onUnmounted } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  onUnmounted,
+  watch,
+} from 'vue'
 import { useRoute } from 'vue-router'
 import { useCommandStore } from '@/commands/registry'
 import TitleBarComponent from '@/components/common/TitleBar.vue'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { listenPipEvents } from '@/composables/usePipWindow'
 import { useTheme } from '@/composables/useTheme'
-import { useUiStore } from '@/stores/ui'
+import { useIsMobile, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 
-const { isTauri, isDesktop, isMobile } = useUiStore()
+const { isTauri, isDesktop } = useUiStore()
+const isMobile = useIsMobile()
 const route = useRoute()
 const isPipWindow = computed(() => route.meta.pip === true)
 
@@ -46,9 +53,13 @@ onMounted(async () => {
     document.documentElement.dataset.platform = platformName
   }
   document.documentElement.dataset.env = isTauri ? 'tauri' : 'web'
-  if (isMobile) {
-    document.documentElement.classList.add('nd-mobile')
-  }
+  watch(
+    isMobile,
+    (mobile) => {
+      document.documentElement.classList.toggle('nd-mobile', mobile)
+    },
+    { immediate: true },
+  )
 
   // Show window (visible: false in tauri.conf.json to avoid Windows titlebar flicker)
   if (isTauri) {
