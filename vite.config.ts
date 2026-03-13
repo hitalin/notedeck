@@ -37,26 +37,33 @@ export default defineConfig({
   build: {
     target: 'esnext',
     sourcemap: false,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          'vendor-vue': ['vue', 'vue-router', 'pinia'],
-          'vendor-aiscript': ['@syuilo/aiscript'],
-          'vendor-codemirror': [
-            '@codemirror/autocomplete',
-            '@codemirror/commands',
-            '@codemirror/language',
-            '@codemirror/lint',
-            '@codemirror/state',
-            '@codemirror/view',
-            '@lezer/highlight',
-          ],
+        manualChunks(id) {
+          if (
+            id.includes('node_modules/vue/') ||
+            id.includes('node_modules/vue-router/') ||
+            id.includes('node_modules/pinia/')
+          ) {
+            return 'vendor-vue'
+          }
+          if (id.includes('node_modules/@syuilo/aiscript/')) {
+            return 'vendor-aiscript'
+          }
+          if (
+            id.includes('node_modules/@codemirror/') ||
+            id.includes('node_modules/@lezer/')
+          ) {
+            return 'vendor-codemirror'
+          }
+        },
+        minify: {
+          compress: {
+            dropConsole: true,
+          },
         },
       },
     },
-  },
-  esbuild: {
-    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
   },
   clearScreen: false,
   server: {
