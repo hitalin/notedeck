@@ -10,18 +10,17 @@ use notecli::db::Database;
 use notecli::error::NoteDeckError;
 use notecli::keychain;
 use notecli::models::{
-    Account, AccountPublic, AuthSession, ChatMessage, CreateNoteParams, NormalizedDriveFile,
-    NormalizedNote, NormalizedNoteReaction, NormalizedNotification, NormalizedUser,
-    NormalizedUserDetail, Antenna, Channel, Clip, RawCreateNoteResponse, RawNote, SearchOptions,
+    Account, AccountPublic, Antenna, AuthSession, Channel, ChatMessage, Clip, CreateNoteParams,
+    NormalizedDriveFile, NormalizedNote, NormalizedNoteReaction, NormalizedNotification,
+    NormalizedUser, NormalizedUserDetail, RawCreateNoteResponse, RawNote, SearchOptions,
     ServerEmoji, StoredServer, TimelineOptions, TimelineType, UserList,
 };
 use notecli::streaming::StreamingManager;
 use zeroize::Zeroize;
 
 /// Regex for extracting HTTPS URLs from note text
-static URL_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
-    regex::Regex::new(r"https?://[\w\-._~:/?#\[\]@!$&'()*+,;=%]+").unwrap()
-});
+static URL_RE: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"https?://[\w\-._~:/?#\[\]@!$&'()*+,;=%]+").unwrap());
 
 /// Media extensions to skip OGP prefetch for (they won't have OGP tags)
 static MEDIA_EXT_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
@@ -154,10 +153,7 @@ pub fn get_credentials(db: &Database, account_id: &str) -> Result<(String, Strin
     if !db_token.is_empty() {
         // Try lazy migration to keychain; verify before clearing DB
         if keychain::store_token(account_id, &db_token).is_ok()
-            && keychain::get_token(account_id)
-                .ok()
-                .flatten()
-                .is_some()
+            && keychain::get_token(account_id).ok().flatten().is_some()
         {
             let _ = db.clear_token(account_id);
         }
@@ -240,7 +236,9 @@ pub async fn api_update_user_setting(
 ) -> Result<()> {
     // Only allow mode-flag toggles (e.g., isInYamiMode, isInHanamiMode)
     if !(key.starts_with("isIn") && key.ends_with("Mode") && key.len() <= 30) {
-        return Err(NoteDeckError::InvalidInput(format!("Disallowed setting key: {key}")));
+        return Err(NoteDeckError::InvalidInput(format!(
+            "Disallowed setting key: {key}"
+        )));
     }
     let (host, token) = get_credentials(&db, &account_id)?;
     client.update_user_setting(&host, &token, &key, value).await
@@ -253,8 +251,14 @@ pub async fn api_get_endpoint_params(
     endpoint: String,
 ) -> Result<Vec<String>> {
     let host = validate_host(&host)?;
-    if endpoint.len() > 100 || !endpoint.chars().all(|c| c.is_alphanumeric() || c == '/' || c == '-') {
-        return Err(NoteDeckError::InvalidInput("Invalid endpoint name".to_string()));
+    if endpoint.len() > 100
+        || !endpoint
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '/' || c == '-')
+    {
+        return Err(NoteDeckError::InvalidInput(
+            "Invalid endpoint name".to_string(),
+        ));
     }
     client.get_endpoint_params(&host, &endpoint).await
 }
@@ -571,10 +575,18 @@ pub async fn api_create_note(
         // Build request body manually to include channelId
         // (notecli's CreateNoteParams doesn't have channelId)
         let mut body = serde_json::json!({ "channelId": ch_id });
-        if let Some(ref v) = params.text { body["text"] = serde_json::json!(v); }
-        if let Some(ref v) = params.cw { body["cw"] = serde_json::json!(v); }
-        if let Some(ref v) = params.visibility { body["visibility"] = serde_json::json!(v); }
-        if let Some(v) = params.local_only { body["localOnly"] = serde_json::json!(v); }
+        if let Some(ref v) = params.text {
+            body["text"] = serde_json::json!(v);
+        }
+        if let Some(ref v) = params.cw {
+            body["cw"] = serde_json::json!(v);
+        }
+        if let Some(ref v) = params.visibility {
+            body["visibility"] = serde_json::json!(v);
+        }
+        if let Some(v) = params.local_only {
+            body["localOnly"] = serde_json::json!(v);
+        }
         if let Some(ref flags) = params.mode_flags {
             for (key, value) in flags {
                 if key.starts_with("isNoteIn") && key.ends_with("Mode") && key.len() <= 30 {
@@ -582,18 +594,26 @@ pub async fn api_create_note(
                 }
             }
         }
-        if let Some(ref v) = params.reply_id { body["replyId"] = serde_json::json!(v); }
-        if let Some(ref v) = params.renote_id { body["renoteId"] = serde_json::json!(v); }
-        if let Some(ref v) = params.file_ids { body["fileIds"] = serde_json::json!(v); }
-        if let Some(ref v) = params.poll { body["poll"] = serde_json::json!(v); }
-        if let Some(ref v) = params.scheduled_at { body["scheduledAt"] = serde_json::json!(v); }
+        if let Some(ref v) = params.reply_id {
+            body["replyId"] = serde_json::json!(v);
+        }
+        if let Some(ref v) = params.renote_id {
+            body["renoteId"] = serde_json::json!(v);
+        }
+        if let Some(ref v) = params.file_ids {
+            body["fileIds"] = serde_json::json!(v);
+        }
+        if let Some(ref v) = params.poll {
+            body["poll"] = serde_json::json!(v);
+        }
+        if let Some(ref v) = params.scheduled_at {
+            body["scheduledAt"] = serde_json::json!(v);
+        }
         let data = client.request(&host, &token, "notes/create", body).await?;
         let raw: RawCreateNoteResponse = serde_json::from_value(data)?;
         Ok(raw.created_note.normalize(&account_id, &host))
     } else {
-        client
-            .create_note(&host, &token, &account_id, params)
-            .await
+        client.create_note(&host, &token, &account_id, params).await
     }
 }
 
@@ -652,9 +672,7 @@ pub async fn api_update_note(
     params: CreateNoteParams,
 ) -> Result<()> {
     let (host, token) = get_credentials(&db, &account_id)?;
-    client
-        .update_note(&host, &token, &note_id, params)
-        .await
+    client.update_note(&host, &token, &note_id, params).await
 }
 
 const MAX_UPLOAD_BYTES: usize = 50 * 1024 * 1024; // 50 MB
@@ -674,7 +692,14 @@ pub async fn api_upload_file(
     }
     let (host, token) = get_credentials(&db, &account_id)?;
     client
-        .upload_file(&host, &token, &file_name, file_data, &content_type, is_sensitive)
+        .upload_file(
+            &host,
+            &token,
+            &file_name,
+            file_data,
+            &content_type,
+            is_sensitive,
+        )
         .await
 }
 
@@ -702,7 +727,14 @@ pub async fn api_upload_file_from_path(
         .to_string();
     let (host, token) = get_credentials(&db, &account_id)?;
     client
-        .upload_file(&host, &token, &file_name, file_data, &content_type, is_sensitive)
+        .upload_file(
+            &host,
+            &token,
+            &file_name,
+            file_data,
+            &content_type,
+            is_sensitive,
+        )
         .await
 }
 
@@ -771,7 +803,13 @@ pub async fn api_get_user_notes(
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
     let notes = client
-        .get_user_notes(&host, &token, &account_id, &user_id, options.unwrap_or_default())
+        .get_user_notes(
+            &host,
+            &token,
+            &account_id,
+            &user_id,
+            options.unwrap_or_default(),
+        )
         .await?;
     if let Err(e) = db.cache_notes(&notes, &format!("user:{user_id}")) {
         eprintln!("[cache] failed to cache user notes: {e}");
@@ -821,11 +859,19 @@ pub async fn api_search_notes(
     options: Option<SearchOptions>,
 ) -> Result<Vec<NormalizedNote>> {
     if query.len() > 1000 {
-        return Err(NoteDeckError::InvalidInput("Search query too long".to_string()));
+        return Err(NoteDeckError::InvalidInput(
+            "Search query too long".to_string(),
+        ));
     }
     let (host, token) = get_credentials(&db, &account_id)?;
     client
-        .search_notes(&host, &token, &account_id, &query, options.unwrap_or_default())
+        .search_notes(
+            &host,
+            &token,
+            &account_id,
+            &query,
+            options.unwrap_or_default(),
+        )
         .await
 }
 
@@ -839,7 +885,13 @@ pub async fn api_get_note_children(
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
     client
-        .get_note_children(&host, &token, &account_id, &note_id, limit.unwrap_or(30).clamp(1, 100))
+        .get_note_children(
+            &host,
+            &token,
+            &account_id,
+            &note_id,
+            limit.unwrap_or(30).clamp(1, 100),
+        )
         .await
 }
 
@@ -877,7 +929,13 @@ pub async fn api_get_note_conversation(
 ) -> Result<Vec<NormalizedNote>> {
     let (host, token) = get_credentials(&db, &account_id)?;
     client
-        .get_note_conversation(&host, &token, &account_id, &note_id, limit.unwrap_or(30).clamp(1, 100))
+        .get_note_conversation(
+            &host,
+            &token,
+            &account_id,
+            &note_id,
+            limit.unwrap_or(30).clamp(1, 100),
+        )
         .await
 }
 
@@ -950,7 +1008,11 @@ pub fn api_get_cached_timeline(
     timeline_type: String,
     limit: Option<i64>,
 ) -> Result<Vec<NormalizedNote>> {
-    db.get_cached_timeline(&account_id, &timeline_type, limit.unwrap_or(40).clamp(1, 200))
+    db.get_cached_timeline(
+        &account_id,
+        &timeline_type,
+        limit.unwrap_or(40).clamp(1, 200),
+    )
 }
 
 #[tauri::command]
@@ -961,16 +1023,15 @@ pub fn api_search_notes_local(
     limit: Option<i64>,
 ) -> Result<Vec<NormalizedNote>> {
     if query.len() > 1000 {
-        return Err(NoteDeckError::InvalidInput("Search query too long".to_string()));
+        return Err(NoteDeckError::InvalidInput(
+            "Search query too long".to_string(),
+        ));
     }
     db.search_cached_notes(&account_id, &query, limit.unwrap_or(30).clamp(1, 200))
 }
 
 #[tauri::command]
-pub fn api_delete_cached_note(
-    db: State<'_, Arc<Database>>,
-    note_id: String,
-) -> Result<()> {
+pub fn api_delete_cached_note(db: State<'_, Arc<Database>>, note_id: String) -> Result<()> {
     db.delete_cached_note(&note_id)
 }
 
@@ -983,9 +1044,7 @@ pub fn api_get_cached_timeline_before(
     limit: Option<i64>,
 ) -> Result<Vec<NormalizedNote>> {
     if before.len() > 30 {
-        return Err(NoteDeckError::InvalidInput(
-            "Invalid date".to_string(),
-        ));
+        return Err(NoteDeckError::InvalidInput("Invalid date".to_string()));
     }
     db.get_cached_timeline_before(
         &account_id,
@@ -1015,14 +1074,26 @@ pub async fn api_request(
     params: Option<serde_json::Value>,
 ) -> Result<serde_json::Value> {
     if endpoint.is_empty() || endpoint.len() > 100 {
-        return Err(NoteDeckError::InvalidInput("Invalid endpoint name".to_string()));
+        return Err(NoteDeckError::InvalidInput(
+            "Invalid endpoint name".to_string(),
+        ));
     }
-    if !endpoint.chars().all(|c| c.is_alphanumeric() || c == '/' || c == '-' || c == '_') {
-        return Err(NoteDeckError::InvalidInput("Invalid endpoint name".to_string()));
+    if !endpoint
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '/' || c == '-' || c == '_')
+    {
+        return Err(NoteDeckError::InvalidInput(
+            "Invalid endpoint name".to_string(),
+        ));
     }
     let (host, token) = get_credentials(&db, &account_id)?;
     client
-        .request(&host, &token, &endpoint, params.unwrap_or(serde_json::json!({})))
+        .request(
+            &host,
+            &token,
+            &endpoint,
+            params.unwrap_or(serde_json::json!({})),
+        )
         .await
 }
 
@@ -1039,7 +1110,11 @@ pub async fn api_fetch_account_theme(
     let mut result = serde_json::json!({});
 
     // Fetch all three sources in parallel
-    let sync_scope = vec!["client".to_string(), "preferences".to_string(), "sync".to_string()];
+    let sync_scope = vec![
+        "client".to_string(),
+        "preferences".to_string(),
+        "sync".to_string(),
+    ];
     let base_scope = vec!["client".to_string(), "base".to_string()];
     let (sync_res, base_res, meta_res) = tokio::join!(
         client.get_registry_all(&host, &token, &sync_scope),
@@ -1094,13 +1169,17 @@ pub async fn api_fetch_account_theme(
 fn validate_host(host: &str) -> Result<String> {
     let normalized = host.trim().to_ascii_lowercase();
     if normalized.is_empty() {
-        return Err(NoteDeckError::InvalidInput("Host cannot be empty".to_string()));
+        return Err(NoteDeckError::InvalidInput(
+            "Host cannot be empty".to_string(),
+        ));
     }
     if normalized.len() > 253 {
         return Err(NoteDeckError::InvalidInput("Host too long".to_string()));
     }
     if normalized.contains(['/', '?', '#', '@', ' ', '\n', '\r']) {
-        return Err(NoteDeckError::InvalidInput(format!("Invalid host: {normalized}")));
+        return Err(NoteDeckError::InvalidInput(format!(
+            "Invalid host: {normalized}"
+        )));
     }
 
     // SSRF prevention: block loopback, private, and link-local addresses
@@ -1113,10 +1192,10 @@ fn validate_host(host: &str) -> Result<String> {
         "10.",
         "192.168.",
         "169.254.",
-        "[fc",       // IPv6 ULA (fc00::/7)
-        "[fd",       // IPv6 ULA (fd00::/8)
-        "[fe80:",    // IPv6 link-local
-        "[::ffff:",  // IPv4-mapped IPv6
+        "[fc",      // IPv6 ULA (fc00::/7)
+        "[fd",      // IPv6 ULA (fd00::/8)
+        "[fe80:",   // IPv6 link-local
+        "[::ffff:", // IPv4-mapped IPv6
     ];
     if ssrf_blocked.iter().any(|p| normalized.starts_with(p)) {
         return Err(NoteDeckError::InvalidInput(
@@ -1125,7 +1204,10 @@ fn validate_host(host: &str) -> Result<String> {
     }
     // 172.16.0.0/12
     if normalized.starts_with("172.") {
-        if let Some(second) = normalized.strip_prefix("172.").and_then(|s| s.split('.').next()) {
+        if let Some(second) = normalized
+            .strip_prefix("172.")
+            .and_then(|s| s.split('.').next())
+        {
             if let Ok(n) = second.parse::<u8>() {
                 if (16..=31).contains(&n) {
                     return Err(NoteDeckError::InvalidInput(
@@ -1190,14 +1272,19 @@ pub async fn auth_start(
         .collect()
     });
     for perm in &perms {
-        if !perm.chars().all(|c| c.is_alphanumeric() || c == ':' || c == '-') || perm.len() > 50 {
-            return Err(NoteDeckError::InvalidInput(format!("Invalid permission: {perm}")));
+        if !perm
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == ':' || c == '-')
+            || perm.len() > 50
+        {
+            return Err(NoteDeckError::InvalidInput(format!(
+                "Invalid permission: {perm}"
+            )));
         }
     }
     let permission_str = perms.join(",");
-    let url = format!(
-        "https://{host}/miauth/{session_id}?name=notedeck&permission={permission_str}"
-    );
+    let url =
+        format!("https://{host}/miauth/{session_id}?name=notedeck&permission={permission_str}");
     tracker.register(&session_id, &host);
     Ok(AuthSession {
         session_id,
@@ -1244,10 +1331,7 @@ pub async fn auth_complete_and_save(
 
     // キーチェーンに保存し、読み戻せたら DB のトークンをクリア
     if keychain::store_token(&saved.id, &token).is_ok()
-        && keychain::get_token(&saved.id)
-            .ok()
-            .flatten()
-            .is_some()
+        && keychain::get_token(&saved.id).ok().flatten().is_some()
     {
         let _ = db.clear_token(&saved.id);
     }
@@ -1418,9 +1502,7 @@ pub async fn stream_connect_and_subscribe_antenna(
     antenna_id: String,
 ) -> Result<String> {
     ensure_stream_connected(&db, &streaming, &account_id).await?;
-    streaming
-        .subscribe_antenna(&account_id, &antenna_id)
-        .await
+    streaming.subscribe_antenna(&account_id, &antenna_id).await
 }
 
 /// Connect + subscribe in a single IPC round-trip (channel).
@@ -1432,9 +1514,7 @@ pub async fn stream_connect_and_subscribe_channel(
     channel_id: String,
 ) -> Result<String> {
     ensure_stream_connected(&db, &streaming, &account_id).await?;
-    streaming
-        .subscribe_channel(&account_id, &channel_id)
-        .await
+    streaming.subscribe_channel(&account_id, &channel_id).await
 }
 
 #[tauri::command]
@@ -1464,9 +1544,7 @@ pub async fn stream_subscribe_antenna(
     account_id: String,
     antenna_id: String,
 ) -> Result<String> {
-    streaming
-        .subscribe_antenna(&account_id, &antenna_id)
-        .await
+    streaming.subscribe_antenna(&account_id, &antenna_id).await
 }
 
 #[tauri::command]
@@ -1475,9 +1553,7 @@ pub async fn stream_subscribe_channel(
     account_id: String,
     channel_id: String,
 ) -> Result<String> {
-    streaming
-        .subscribe_channel(&account_id, &channel_id)
-        .await
+    streaming.subscribe_channel(&account_id, &channel_id).await
 }
 
 #[tauri::command]
@@ -1486,9 +1562,7 @@ pub async fn stream_subscribe_chat_user(
     account_id: String,
     other_id: String,
 ) -> Result<String> {
-    streaming
-        .subscribe_chat_user(&account_id, &other_id)
-        .await
+    streaming.subscribe_chat_user(&account_id, &other_id).await
 }
 
 #[tauri::command]
@@ -1497,9 +1571,7 @@ pub async fn stream_subscribe_chat_room(
     account_id: String,
     room_id: String,
 ) -> Result<String> {
-    streaming
-        .subscribe_chat_room(&account_id, &room_id)
-        .await
+    streaming.subscribe_chat_room(&account_id, &room_id).await
 }
 
 #[tauri::command]
@@ -1541,4 +1613,3 @@ pub async fn stream_unsub_note(
 pub fn get_cli_commands() -> Vec<notecli::cli::CliCommandInfo> {
     notecli::cli::command_metadata()
 }
-

@@ -20,9 +20,7 @@ impl Plugin for TikTokPlugin {
         client: &reqwest::Client,
     ) -> Result<SummaryData, PluginError> {
         let mut endpoint = url::Url::parse("https://www.tiktok.com/oembed").unwrap();
-        endpoint
-            .query_pairs_mut()
-            .append_pair("url", url.as_str());
+        endpoint.query_pairs_mut().append_pair("url", url.as_str());
         let oembed = fetch_oembed(client, endpoint.as_str()).await?;
 
         Ok(SummaryData {

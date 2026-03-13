@@ -23,6 +23,7 @@
     "core:webview:allow-create-webview",
     "core:webview:allow-create-webview-window",
     "opener:default",
-    "notification:default"
+    "notification:default",
+    "os:default"
   ]
 }

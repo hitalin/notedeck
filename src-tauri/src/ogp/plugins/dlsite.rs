@@ -11,10 +11,7 @@ const SENSITIVE_PATHS: &[&str] = &["/maniax/", "/girls/", "/bl/", "/gay/"];
 #[async_trait]
 impl Plugin for DLsitePlugin {
     fn test(&self, url: &url::Url) -> bool {
-        matches!(
-            url.host_str(),
-            Some("www.dlsite.com" | "dlsite.com")
-        )
+        matches!(url.host_str(), Some("www.dlsite.com" | "dlsite.com"))
     }
 
     async fn summarize(

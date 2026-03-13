@@ -55,9 +55,7 @@ enum BskyEmbedView {
     #[serde(rename = "app.bsky.embed.external#view")]
     External { external: BskyExternalView },
     #[serde(rename = "app.bsky.embed.record#view")]
-    Record {
-        record: serde_json::Value,
-    },
+    Record { record: serde_json::Value },
     #[serde(rename = "app.bsky.embed.recordWithMedia#view")]
     RecordWithMedia {
         media: Box<BskyEmbedView>,
@@ -90,8 +88,7 @@ struct BskyExternalView {
 #[async_trait]
 impl Plugin for BlueskyPlugin {
     fn test(&self, url: &url::Url) -> bool {
-        matches!(url.host_str(), Some("bsky.app" | "www.bsky.app"))
-            && url.path().contains("/post/")
+        matches!(url.host_str(), Some("bsky.app" | "www.bsky.app")) && url.path().contains("/post/")
     }
 
     async fn summarize(
@@ -107,19 +104,16 @@ impl Plugin for BlueskyPlugin {
         };
 
         // Step 1: Resolve handle → DID
-        let resolve_url = format!(
-            "{PUBLIC_API}/com.atproto.identity.resolveHandle?handle={handle}"
-        );
+        let resolve_url =
+            format!("{PUBLIC_API}/com.atproto.identity.resolveHandle?handle={handle}");
         let did = fetch_json::<ResolveHandleResponse>(client, &resolve_url)
             .await?
             .did;
 
         // Step 2: Fetch post via getPosts
         let at_uri = format!("at://{did}/app.bsky.feed.post/{post_id}");
-        let mut posts_url = url::Url::parse(&format!(
-            "{PUBLIC_API}/app.bsky.feed.getPosts"
-        ))
-        .unwrap();
+        let mut posts_url =
+            url::Url::parse(&format!("{PUBLIC_API}/app.bsky.feed.getPosts")).unwrap();
         posts_url.query_pairs_mut().append_pair("uris", &at_uri);
         let posts_url = posts_url.as_str();
         let mut posts = fetch_json::<GetPostsResponse>(client, posts_url)
@@ -165,15 +159,9 @@ fn extract_media(embed: Option<&BskyEmbedView>) -> (Option<String>, Vec<String>)
             let thumb = urls.first().cloned();
             (thumb, urls)
         }
-        Some(BskyEmbedView::Video { thumbnail, .. }) => {
-            (thumbnail.clone(), Vec::new())
-        }
-        Some(BskyEmbedView::External { external }) => {
-            (external.thumb.clone(), Vec::new())
-        }
-        Some(BskyEmbedView::RecordWithMedia { media, .. }) => {
-            extract_media(Some(media))
-        }
+        Some(BskyEmbedView::Video { thumbnail, .. }) => (thumbnail.clone(), Vec::new()),
+        Some(BskyEmbedView::External { external }) => (external.thumb.clone(), Vec::new()),
+        Some(BskyEmbedView::RecordWithMedia { media, .. }) => extract_media(Some(media)),
         _ => (None, Vec::new()),
     }
 }

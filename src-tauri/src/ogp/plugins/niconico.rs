@@ -4,7 +4,6 @@ use std::sync::LazyLock;
 use super::{Plugin, PluginError, SummaryData};
 use crate::ogp::Player;
 
-
 static VIDEO_ID_RE: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"/(sm|nm|so)\d+").unwrap());
 

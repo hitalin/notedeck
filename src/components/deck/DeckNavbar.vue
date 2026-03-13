@@ -403,7 +403,7 @@ defineExpose({
 }
 
 /* ============================================================
-   Left Navbar
+   Left Navbar — base styles (all sizes)
    ============================================================ */
 .navbar {
   flex: 0 0 auto;
@@ -424,11 +424,6 @@ defineExpose({
   overflow-y: auto;
   overflow-x: hidden;
   direction: rtl;
-}
-
-.collapsed .nav-body {
-  overflow: visible;
-  direction: ltr;
 }
 
 .nav-body > * {
@@ -508,30 +503,6 @@ defineExpose({
   text-overflow: ellipsis;
 }
 
-.collapsed .nav-label {
-  display: none;
-}
-
-.collapsed .nav-item {
-  justify-content: center;
-  padding: 16px 0;
-  width: 100%;
-  font-size: 1.4em;
-}
-
-.collapsed .nav-account {
-  padding: 8px;
-  width: auto;
-  border-radius: 999px;
-}
-
-.collapsed .nav-top,
-.collapsed .nav-bottom {
-  padding: 10px 0;
-  align-items: center;
-}
-
-/* Account in nav */
 .nav-account {
   gap: 10px;
 }
@@ -549,11 +520,6 @@ defineExpose({
   display: block;
 }
 
-.collapsed .nav-avatar {
-  width: 38px;
-  height: 38px;
-}
-
 .nav-avatar-placeholder {
   background: var(--nd-buttonBg);
 }
@@ -567,13 +533,6 @@ defineExpose({
   border-radius: 50%;
   object-fit: cover;
   border: 1.5px solid var(--nd-navBg);
-}
-
-.collapsed .nav-server-badge {
-  width: 16px;
-  height: 16px;
-  top: -2px;
-  right: -4px;
 }
 
 .nav-online-indicator {
@@ -599,7 +558,6 @@ defineExpose({
   background: #ea5353;
 }
 
-/* Add account button */
 .nav-add-account {
   opacity: 0.5;
   font-size: 0.8em;
@@ -613,7 +571,6 @@ defineExpose({
   font-size: 16px;
 }
 
-/* Post button (prominent) */
 .nav-post-btn {
   display: flex;
   align-items: center;
@@ -638,17 +595,6 @@ defineExpose({
   transform: scale(0.97);
 }
 
-.nav-post-btn.collapsed {
-  width: 54px;
-  height: 54px;
-  padding: 0;
-  margin: 0 auto;
-  border-radius: 50%;
-  justify-content: center;
-  font-size: 1.3em;
-}
-
-/* Nav resize handle */
 .nav-resize-handle {
   flex: 0 0 6px;
   cursor: col-resize;
@@ -667,7 +613,6 @@ defineExpose({
   opacity: 0.6;
 }
 
-/* Nav toggle button */
 .nav-toggle {
   position: absolute;
   right: 0;
@@ -720,6 +665,68 @@ defineExpose({
   pointer-events: none;
 }
 
+/* ============================================================
+   Collapsed sidebar — desktop only (≥501px)
+   These styles NEVER apply in mobile drawer mode, avoiding
+   the need for drawer-open overrides.
+   ============================================================ */
+@media (min-width: 501px) {
+  .collapsed .nav-body {
+    overflow: visible;
+    direction: ltr;
+  }
+
+  .collapsed .nav-label {
+    display: none;
+  }
+
+  .collapsed .nav-item {
+    justify-content: center;
+    padding: 16px 0;
+    width: 100%;
+    font-size: 1.4em;
+  }
+
+  .collapsed .nav-account {
+    padding: 8px;
+    width: auto;
+    border-radius: 999px;
+  }
+
+  .collapsed .nav-top,
+  .collapsed .nav-bottom {
+    padding: 10px 0;
+    align-items: center;
+  }
+
+  .collapsed .nav-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .collapsed .nav-server-badge {
+    width: 16px;
+    height: 16px;
+    top: -2px;
+    right: -4px;
+  }
+
+  .nav-post-btn.collapsed {
+    width: 54px;
+    height: 54px;
+    padding: 0;
+    margin: 0 auto;
+    border-radius: 50%;
+    justify-content: center;
+    font-size: 1.3em;
+  }
+}
+
+/* ============================================================
+   Mobile drawer (≤500px)
+   Navbar becomes a slide-in drawer. Base styles apply directly
+   (no collapsed interference), so minimal overrides needed.
+   ============================================================ */
 @media (max-width: 500px) {
   .nav-mobile-only {
     display: flex;
@@ -732,7 +739,6 @@ defineExpose({
   }
 
   .navbar {
-    display: flex !important;
     position: fixed;
     top: 0;
     left: 0;
@@ -747,22 +753,26 @@ defineExpose({
     box-shadow: none;
   }
 
+  .navbar .nav-body {
+    direction: rtl;
+  }
+
+  .navbar .nav-top,
+  .navbar .nav-bottom {
+    padding: 6px 8px;
+    gap: 2px;
+    align-items: stretch;
+  }
+
+  .navbar .nav-item {
+    min-height: 44px;
+  }
+
   .navbar.drawer-open {
     transform: translateX(0);
     box-shadow: 4px 0 16px rgb(0 0 0 / 0.3);
   }
 
-  /* Override collapsed styles when drawer is open */
-  .navbar.drawer-open .nav-label {
-    display: inline !important;
-  }
-
-  .navbar.drawer-open .nav-body {
-    overflow: visible;
-    direction: rtl;
-  }
-
-  /* On mobile drawer, show menu above the button (not to the right) */
   .navbar.drawer-open :deep(.nav-account-menu.menu-right) {
     bottom: 100%;
     top: auto;
@@ -771,33 +781,10 @@ defineExpose({
     margin-bottom: 4px;
     margin-left: 0;
   }
-
-  .navbar.drawer-open .nav-item {
-    justify-content: flex-start;
-    padding: 10px 14px;
-    width: auto;
-    min-height: 44px;
-  }
-
-  .navbar.drawer-open .nav-top,
-  .navbar.drawer-open .nav-bottom {
-    padding: 6px 8px;
-    gap: 2px;
-    align-items: stretch;
-  }
-
-  .navbar.drawer-open .nav-post-btn {
-    width: 100%;
-    height: auto;
-    padding: 10px 14px;
-    margin: 0;
-    border-radius: 999px;
-    justify-content: flex-start;
-  }
 }
 </style>
 
-<!-- Android/iOS: viewport width may exceed 500px -->
+<!-- Android/iOS: viewport width may exceed 500px, use html.nd-mobile class -->
 <style>
 html.nd-mobile .nav-mobile-only {
   display: flex !important;
@@ -810,8 +797,7 @@ html.nd-mobile .nav-toggle {
 }
 
 html.nd-mobile .navbar {
-  display: flex !important;
-  position: fixed;
+  position: fixed !important;
   top: 0;
   left: 0;
   bottom: 0;
@@ -825,18 +811,27 @@ html.nd-mobile .navbar {
   box-shadow: none;
 }
 
+html.nd-mobile .navbar .nav-body {
+  direction: rtl;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+html.nd-mobile .navbar .nav-top,
+html.nd-mobile .navbar .nav-bottom {
+  padding: 6px 8px;
+  gap: 2px;
+  align-items: stretch;
+}
+
+html.nd-mobile .navbar .nav-item {
+  min-height: 44px;
+  font-size: 0.9em;
+}
+
 html.nd-mobile .navbar.drawer-open {
   transform: translateX(0);
   box-shadow: 4px 0 16px rgb(0 0 0 / 0.3);
-}
-
-html.nd-mobile .navbar.drawer-open .nav-label {
-  display: inline !important;
-}
-
-html.nd-mobile .navbar.drawer-open .nav-body {
-  overflow: visible;
-  direction: rtl;
 }
 
 html.nd-mobile .navbar.drawer-open .nav-account-menu.menu-right {
@@ -846,28 +841,5 @@ html.nd-mobile .navbar.drawer-open .nav-account-menu.menu-right {
   right: 0;
   margin-bottom: 4px;
   margin-left: 0;
-}
-
-html.nd-mobile .navbar.drawer-open .nav-item {
-  justify-content: flex-start;
-  padding: 10px 14px;
-  width: auto;
-  min-height: 44px;
-}
-
-html.nd-mobile .navbar.drawer-open .nav-top,
-html.nd-mobile .navbar.drawer-open .nav-bottom {
-  padding: 6px 8px;
-  gap: 2px;
-  align-items: stretch;
-}
-
-html.nd-mobile .navbar.drawer-open .nav-post-btn {
-  width: 100%;
-  height: auto;
-  padding: 10px 14px;
-  margin: 0;
-  border-radius: 999px;
-  justify-content: flex-start;
 }
 </style>

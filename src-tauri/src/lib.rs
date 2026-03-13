@@ -1,10 +1,10 @@
+use tauri::Manager;
 #[cfg(not(mobile))]
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter,
 };
-use tauri::Manager;
 #[cfg(not(mobile))]
 use tauri_plugin_autostart::MacosLauncher;
 #[cfg(not(mobile))]
@@ -27,6 +27,7 @@ pub fn run() {
 
 fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
     let mut builder = tauri::Builder::default()
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init());
 
@@ -137,10 +138,12 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         app.manage(event_bus.clone());
 
         // Initialize streaming manager (delegates to notecli)
-        let emitter = std::sync::Arc::new(
-            streaming::TauriEmitter::new(app.app_handle().clone()),
-        );
-        app.manage(notecli::streaming::StreamingManager::new(emitter, event_bus, db.clone()));
+        let emitter = std::sync::Arc::new(streaming::TauriEmitter::new(app.app_handle().clone()));
+        app.manage(notecli::streaming::StreamingManager::new(
+            emitter,
+            event_bus,
+            db.clone(),
+        ));
 
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
@@ -171,32 +174,40 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Global shortcuts (desktop only)
         #[cfg(not(mobile))]
         {
-            use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut as GShortcut, ShortcutState};
+            use tauri_plugin_global_shortcut::{
+                Code, Modifiers, Shortcut as GShortcut, ShortcutState,
+            };
 
             // Boss Key: Ctrl+Shift+B — toggle window visibility
             let boss_key = GShortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyB);
-            app.global_shortcut().on_shortcut(boss_key, |app: &tauri::AppHandle, _, event| {
-                if event.state != ShortcutState::Pressed { return; }
-                if let Some(w) = app.get_webview_window("main") {
-                    if w.is_visible().unwrap_or(false) {
-                        let _ = w.hide();
-                    } else {
-                        let _ = w.show();
-                        let _ = w.set_focus();
+            app.global_shortcut()
+                .on_shortcut(boss_key, |app: &tauri::AppHandle, _, event| {
+                    if event.state != ShortcutState::Pressed {
+                        return;
                     }
-                }
-            })?;
+                    if let Some(w) = app.get_webview_window("main") {
+                        if w.is_visible().unwrap_or(false) {
+                            let _ = w.hide();
+                        } else {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                })?;
 
             // Quick Note: Ctrl+Alt+N — show window + emit event for post mode
             let quick_note = GShortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyN);
-            app.global_shortcut().on_shortcut(quick_note, |app: &tauri::AppHandle, _, event| {
-                if event.state != ShortcutState::Pressed { return; }
-                if let Some(w) = app.get_webview_window("main") {
-                    let _ = w.show();
-                    let _ = w.set_focus();
-                    let _ = w.emit("nd:quick-note", ());
-                }
-            })?;
+            app.global_shortcut()
+                .on_shortcut(quick_note, |app: &tauri::AppHandle, _, event| {
+                    if event.state != ShortcutState::Pressed {
+                        return;
+                    }
+                    if let Some(w) = app.get_webview_window("main") {
+                        let _ = w.show();
+                        let _ = w.set_focus();
+                        let _ = w.emit("nd:quick-note", ());
+                    }
+                })?;
         }
 
         // System tray (desktop only)

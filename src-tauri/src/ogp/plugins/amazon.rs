@@ -104,8 +104,8 @@ async fn resolve_shortlink(
         .await
         .map_err(|e| PluginError::FetchFailed(e.to_string()))?;
 
-    let resolved =
-        url::Url::parse(resp.url().as_str()).map_err(|e| PluginError::ParseFailed(e.to_string()))?;
+    let resolved = url::Url::parse(resp.url().as_str())
+        .map_err(|e| PluginError::ParseFailed(e.to_string()))?;
 
     Ok(canonicalize(&resolved))
 }
@@ -140,8 +140,7 @@ fn extract_asin(path: &str) -> Option<&str> {
 fn extract_product_image(html: &str) -> Option<String> {
     let document = Html::parse_document(html);
 
-    image_from_landing(&document)
-        .or_else(|| image_from_jsonld(&document))
+    image_from_landing(&document).or_else(|| image_from_jsonld(&document))
 }
 
 fn image_from_landing(doc: &Html) -> Option<String> {

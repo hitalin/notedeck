@@ -85,9 +85,9 @@ impl Plugin for TwitterPlugin {
             .await
             .map_err(|e| PluginError::ParseFailed(e.to_string()))?;
 
-        let tweet = fx.tweet.ok_or_else(|| {
-            PluginError::ParseFailed("missing tweet field".to_string())
-        })?;
+        let tweet = fx
+            .tweet
+            .ok_or_else(|| PluginError::ParseFailed("missing tweet field".to_string()))?;
 
         let author = tweet.author.as_ref();
         let title = match (
@@ -131,9 +131,7 @@ impl Plugin for TwitterPlugin {
             .next()
             .filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_digit()))
             .map(|tweet_id| Player {
-                url: format!(
-                    "https://platform.twitter.com/embed/Tweet.html?id={tweet_id}"
-                ),
+                url: format!("https://platform.twitter.com/embed/Tweet.html?id={tweet_id}"),
                 width: None,
                 height: Some(350),
                 allow: vec![],

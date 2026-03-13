@@ -1,12 +1,12 @@
+import { platform } from '@tauri-apps/plugin-os'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 const isTauri = '__TAURI_INTERNALS__' in window
 
-const isDesktop =
-  isTauri && matchMedia('(hover: hover) and (pointer: fine)').matches
-
-const isMobile = isTauri && !isDesktop
+const platformName = isTauri ? platform() : null
+const isMobile = platformName === 'android' || platformName === 'ios'
+const isDesktop = isTauri && !isMobile
 
 export const useUiStore = defineStore('ui', () => {
   const sidebarOpen = ref(true)

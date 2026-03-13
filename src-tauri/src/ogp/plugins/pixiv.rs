@@ -8,10 +8,8 @@ pub const PLUGIN: PixivPlugin = PixivPlugin;
 #[async_trait]
 impl Plugin for PixivPlugin {
     fn test(&self, url: &url::Url) -> bool {
-        matches!(
-            url.host_str(),
-            Some("www.pixiv.net" | "pixiv.net")
-        ) && url.path().contains("/artworks/")
+        matches!(url.host_str(), Some("www.pixiv.net" | "pixiv.net"))
+            && url.path().contains("/artworks/")
     }
 
     async fn summarize(
@@ -19,8 +17,7 @@ impl Plugin for PixivPlugin {
         url: &url::Url,
         client: &reqwest::Client,
     ) -> Result<SummaryData, PluginError> {
-        let mut endpoint =
-            url::Url::parse("https://embed.pixiv.net/oembed.php").unwrap();
+        let mut endpoint = url::Url::parse("https://embed.pixiv.net/oembed.php").unwrap();
         endpoint
             .query_pairs_mut()
             .append_pair("url", url.as_str())

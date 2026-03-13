@@ -53,10 +53,7 @@ impl Plugin for NijiePlugin {
         // Try JSON-LD for richer metadata (summaly approach)
         for cap in JSON_LD_RE.captures_iter(&html) {
             if let Some(json_str) = cap.get(1) {
-                let cleaned = json_str
-                    .as_str()
-                    .replace('\n', "\\n")
-                    .replace('\r', "");
+                let cleaned = json_str.as_str().replace('\n', "\\n").replace('\r', "");
                 if let Ok(ld) = serde_json::from_str::<JsonLd>(&cleaned) {
                     if data.title.is_none() {
                         data.title = ld.name;

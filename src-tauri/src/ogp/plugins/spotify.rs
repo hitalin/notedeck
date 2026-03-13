@@ -21,8 +21,11 @@ impl Plugin for SpotifyPlugin {
         endpoint.query_pairs_mut().append_pair("url", url.as_str());
         let oembed = fetch_oembed(client, endpoint.as_str()).await?;
 
-        let player = oembed.html.as_deref().and_then(extract_iframe_src).map(|src| {
-            Player {
+        let player = oembed
+            .html
+            .as_deref()
+            .and_then(extract_iframe_src)
+            .map(|src| Player {
                 url: src,
                 width: oembed.width,
                 height: oembed.height,
@@ -31,8 +34,7 @@ impl Plugin for SpotifyPlugin {
                     "clipboard-write".to_string(),
                     "encrypted-media".to_string(),
                 ],
-            }
-        });
+            });
 
         Ok(SummaryData {
             title: oembed.title,

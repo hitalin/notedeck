@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
-use tokio::sync::{Mutex, Semaphore, watch};
+use tokio::sync::{watch, Mutex, Semaphore};
 
 const CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 const MAX_FILE_SIZE: u64 = 20 * 1024 * 1024; // 20MB
@@ -77,9 +77,7 @@ impl ImageCache {
             fetch_semaphore: Arc::new(Semaphore::new(MAX_CONCURRENT_FETCHES)),
             negative_cache: Arc::new(Mutex::new(HashMap::new())),
             mem_cache: Arc::new(Mutex::new(MemCacheState {
-                entries: LruCache::new(
-                    NonZeroUsize::new(MEM_CACHE_CAPACITY).unwrap(),
-                ),
+                entries: LruCache::new(NonZeroUsize::new(MEM_CACHE_CAPACITY).unwrap()),
                 total_size: 0,
             })),
         }
@@ -99,7 +97,11 @@ impl ImageCache {
             }
             let meta = data_path_owned.metadata().ok()?;
             let modified = meta.modified().ok()?;
-            if SystemTime::now().duration_since(modified).unwrap_or_default() > CACHE_TTL {
+            if SystemTime::now()
+                .duration_since(modified)
+                .unwrap_or_default()
+                > CACHE_TTL
+            {
                 return None;
             }
             let content_type = std::fs::read_to_string(&meta_path_owned).ok()?;
@@ -201,9 +203,7 @@ impl ImageCache {
             drop(inflight);
             while rx.changed().await.is_ok() {
                 if let Some(result) = rx.borrow().as_ref() {
-                    return result
-                        .clone()
-                        .map(StreamingFetchResult::Cached);
+                    return result.clone().map(StreamingFetchResult::Cached);
                 }
             }
             return Err("Inflight request dropped".to_string());
@@ -232,14 +232,11 @@ impl ImageCache {
         if let Some(ref referer) = referer {
             req = req.header(reqwest::header::REFERER, referer);
         }
-        let resp = req
-            .send()
-            .await
-            .map_err(|e| {
-                let msg = format!("Fetch failed: {e}");
-                self.record_negative_and_notify(&hash, &tx, &msg);
-                msg
-            })?;
+        let resp = req.send().await.map_err(|e| {
+            let msg = format!("Fetch failed: {e}");
+            self.record_negative_and_notify(&hash, &tx, &msg);
+            msg
+        })?;
 
         if !resp.status().is_success() {
             let msg = format!("HTTP {}", resp.status());
@@ -294,7 +291,10 @@ impl ImageCache {
                             while let Some(r) = stream.next().await {
                                 match r {
                                     Ok(c) => all_bytes.extend_from_slice(&c),
-                                    Err(_) => { error = true; break; }
+                                    Err(_) => {
+                                        error = true;
+                                        break;
+                                    }
                                 }
                             }
                             break;
@@ -325,7 +325,9 @@ impl ImageCache {
                 tokio::task::spawn_blocking(move || {
                     std::fs::write(&dp, &bytes_for_disk).ok();
                     std::fs::write(&mp, &ct_for_disk).ok();
-                }).await.ok();
+                })
+                .await
+                .ok();
 
                 // Store in memory cache if small enough
                 let mem_bytes = if all_bytes.len() <= MEMORY_CACHE_MAX_ITEM {
@@ -335,8 +337,7 @@ impl ImageCache {
                         && !state.entries.is_empty()
                     {
                         if let Some((_key, removed)) = state.entries.pop_lru() {
-                            state.total_size =
-                                state.total_size.saturating_sub(removed.data.len());
+                            state.total_size = state.total_size.saturating_sub(removed.data.len());
                         } else {
                             break;
                         }

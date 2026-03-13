@@ -27,24 +27,26 @@ impl Plugin for YouTubePlugin {
         client: &reqwest::Client,
     ) -> Result<SummaryData, PluginError> {
         let mut endpoint = url::Url::parse("https://www.youtube.com/oembed").unwrap();
-        endpoint.query_pairs_mut()
+        endpoint
+            .query_pairs_mut()
             .append_pair("url", url.as_str())
             .append_pair("format", "json");
         let oembed = fetch_oembed(client, endpoint.as_str()).await?;
 
-        let player = oembed.html.as_deref().and_then(extract_iframe_src).map(|src| {
-            // Replace youtube.com with youtube-nocookie.com for privacy
-            let nocookie = src.replace("youtube.com/", "youtube-nocookie.com/");
-            Player {
-                url: nocookie,
-                width: oembed.width,
-                height: oembed.height,
-                allow: vec![
-                    "autoplay".to_string(),
-                    "encrypted-media".to_string(),
-                ],
-            }
-        });
+        let player = oembed
+            .html
+            .as_deref()
+            .and_then(extract_iframe_src)
+            .map(|src| {
+                // Replace youtube.com with youtube-nocookie.com for privacy
+                let nocookie = src.replace("youtube.com/", "youtube-nocookie.com/");
+                Player {
+                    url: nocookie,
+                    width: oembed.width,
+                    height: oembed.height,
+                    allow: vec!["autoplay".to_string(), "encrypted-media".to_string()],
+                }
+            });
 
         Ok(SummaryData {
             title: oembed.title,

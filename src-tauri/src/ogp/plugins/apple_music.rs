@@ -48,10 +48,7 @@ impl Plugin for AppleMusicPlugin {
             url: embed_url,
             width: Some(660),
             height: Some(height),
-            allow: vec![
-                "autoplay".to_string(),
-                "encrypted-media".to_string(),
-            ],
+            allow: vec!["autoplay".to_string(), "encrypted-media".to_string()],
         });
 
         Ok(data)

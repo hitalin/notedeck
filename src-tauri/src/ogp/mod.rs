@@ -146,7 +146,8 @@ impl OgpCache {
         if self.loaded.load(std::sync::atomic::Ordering::Acquire) {
             return;
         }
-        self.loaded.store(true, std::sync::atomic::Ordering::Release);
+        self.loaded
+            .store(true, std::sync::atomic::Ordering::Release);
 
         self.db.cleanup_expired_ogp().ok();
 
@@ -166,7 +167,8 @@ impl OgpCache {
 
     /// Fetch without server context (plugins → direct HTML parse).
     pub async fn get_ogp(&self, url: &str) -> Result<SummaryData, String> {
-        self.cached_or_fetch(url, |this| Box::pin(this.resolve(url.to_string(), None))).await
+        self.cached_or_fetch(url, |this| Box::pin(this.resolve(url.to_string(), None)))
+            .await
     }
 
     /// Fetch with server context.
@@ -182,13 +184,18 @@ impl OgpCache {
         let url_owned = url.to_string();
         self.cached_or_fetch(url, |this| {
             Box::pin(this.resolve(url_owned, Some((host, token))))
-        }).await
+        })
+        .await
     }
 
     /// Shared cache-check + inflight-dedup + fetch logic.
     async fn cached_or_fetch<F>(&self, url: &str, fetch_fn: F) -> Result<SummaryData, String>
     where
-        F: FnOnce(&Self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SummaryData, String>> + Send + '_>>,
+        F: FnOnce(
+            &Self,
+        ) -> std::pin::Pin<
+            Box<dyn std::future::Future<Output = Result<SummaryData, String>> + Send + '_>,
+        >,
     {
         if !url.starts_with("https://") {
             return Err("Only HTTPS URLs are allowed".to_string());
@@ -413,7 +420,10 @@ impl OgpCache {
             }
         }
 
-        let bytes = resp.bytes().await.map_err(|e| format!("Read failed: {e}"))?;
+        let bytes = resp
+            .bytes()
+            .await
+            .map_err(|e| format!("Read failed: {e}"))?;
         if bytes.len() > MAX_HTML_SIZE {
             return Err("Page too large".to_string());
         }

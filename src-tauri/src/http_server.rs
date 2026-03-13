@@ -21,13 +21,13 @@ use tokio_stream::StreamExt;
 use tower_http::cors::CorsLayer;
 use utoipa::{IntoParams, OpenApi, ToSchema};
 
-use notecli::api::MisskeyClient;
 use crate::commands;
 use crate::image_cache::ImageCache;
+use crate::query_bridge;
+use notecli::api::MisskeyClient;
 use notecli::db::Database;
 use notecli::event_bus::EventBus;
 use notecli::models::{AccountPublic, CreateNoteParams, TimelineType};
-use crate::query_bridge;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -69,11 +69,9 @@ impl utoipa::Modify for SecurityAddon {
         let components = openapi.components.get_or_insert_with(Default::default);
         components.add_security_scheme(
             "bearer_auth",
-            utoipa::openapi::security::SecurityScheme::Http(
-                utoipa::openapi::security::Http::new(
-                    utoipa::openapi::security::HttpAuthScheme::Bearer,
-                ),
-            ),
+            utoipa::openapi::security::SecurityScheme::Http(utoipa::openapi::security::Http::new(
+                utoipa::openapi::security::HttpAuthScheme::Bearer,
+            )),
         );
     }
 }
@@ -163,7 +161,12 @@ impl IntoResponse for ApiError {
 
 // --- Routes ---
 
-pub async fn start(app_handle: AppHandle, api_token: String, token_path: String, image_cache: Arc<ImageCache>) {
+pub async fn start(
+    app_handle: AppHandle,
+    api_token: String,
+    token_path: String,
+    image_cache: Arc<ImageCache>,
+) {
     let state = AppState {
         app_handle,
         api_token,
@@ -180,11 +183,26 @@ pub async fn start(app_handle: AppHandle, api_token: String, token_path: String,
         .route("/api/{host}/note", post(create_note))
         .route("/api/{host}/notes/{note_id}", get(get_note))
         .route("/api/{host}/notes/{note_id}", delete(delete_note))
-        .route("/api/{host}/notes/{note_id}/children", get(get_note_children))
-        .route("/api/{host}/notes/{note_id}/conversation", get(get_note_conversation))
-        .route("/api/{host}/notes/{note_id}/reactions", get(get_note_reactions))
-        .route("/api/{host}/notes/{note_id}/reactions", post(create_reaction))
-        .route("/api/{host}/notes/{note_id}/reactions", delete(delete_reaction))
+        .route(
+            "/api/{host}/notes/{note_id}/children",
+            get(get_note_children),
+        )
+        .route(
+            "/api/{host}/notes/{note_id}/conversation",
+            get(get_note_conversation),
+        )
+        .route(
+            "/api/{host}/notes/{note_id}/reactions",
+            get(get_note_reactions),
+        )
+        .route(
+            "/api/{host}/notes/{note_id}/reactions",
+            post(create_reaction),
+        )
+        .route(
+            "/api/{host}/notes/{note_id}/reactions",
+            delete(delete_reaction),
+        )
         .route("/api/{host}/users/{user_id}", get(get_user))
         .route("/api/{host}/users/{user_id}/notes", get(get_user_notes))
         .route("/api/{host}/search", get(search_notes))
@@ -195,7 +213,10 @@ pub async fn start(app_handle: AppHandle, api_token: String, token_path: String,
         .route("/api/deck/active", get(get_deck_active))
         .route("/api/commands", get(list_commands))
         .route("/api/commands/{command_id}/execute", post(execute_command))
-        .layer(middleware::from_fn_with_state(state.clone(), auth_middleware));
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            auth_middleware,
+        ));
 
     // Public routes (localhost-only, no auth needed)
     let public_routes = Router::new()
@@ -356,7 +377,9 @@ async fn get_notifications(
         .client()
         .get_notifications(&h, &token, &account_id, options)
         .await?;
-    Ok(Json(serde_json::to_value(notifications).unwrap_or_default()))
+    Ok(Json(
+        serde_json::to_value(notifications).unwrap_or_default(),
+    ))
 }
 
 #[utoipa::path(post, path = "/api/{host}/note", tag = "notes",
@@ -600,10 +623,7 @@ async fn delete_reaction(
 ) -> Result<StatusCode, ApiError> {
     let account_id = state.account_id_for_host(&host)?;
     let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    state
-        .client()
-        .delete_reaction(&h, &token, &note_id)
-        .await?;
+    state.client().delete_reaction(&h, &token, &note_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -625,10 +645,7 @@ async fn get_user(
 ) -> Result<Json<Value>, ApiError> {
     let account_id = state.account_id_for_host(&host)?;
     let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    let user = state
-        .client()
-        .get_user_detail(&h, &token, &user_id)
-        .await?;
+    let user = state.client().get_user_detail(&h, &token, &user_id).await?;
     Ok(Json(serde_json::to_value(user).unwrap_or_default()))
 }
 
@@ -679,22 +696,20 @@ async fn sse_events(
         .r#type
         .map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
 
-    let stream = BroadcastStream::new(rx).filter_map(move |result| {
-        match result {
-            Ok(sse_event) => {
-                if let Some(ref filter) = type_filter {
-                    if !filter.iter().any(|f| sse_event.event_type.starts_with(f)) {
-                        return None;
-                    }
+    let stream = BroadcastStream::new(rx).filter_map(move |result| match result {
+        Ok(sse_event) => {
+            if let Some(ref filter) = type_filter {
+                if !filter.iter().any(|f| sse_event.event_type.starts_with(f)) {
+                    return None;
                 }
-                let event = Event::default()
-                    .event(&sse_event.event_type)
-                    .json_data(&sse_event.data)
-                    .ok()?;
-                Some(Ok(event))
             }
-            Err(_) => None,
+            let event = Event::default()
+                .event(&sse_event.event_type)
+                .json_data(&sse_event.data)
+                .ok()?;
+            Some(Ok(event))
         }
+        Err(_) => None,
     });
 
     Sse::new(stream).keep_alive(KeepAlive::default())
@@ -709,9 +724,7 @@ async fn sse_events(
         (status = 401, description = "Unauthorized", body = ApiErrorResponse),
     )
 )]
-async fn get_deck_columns(
-    State(state): State<AppState>,
-) -> Result<Json<Value>, ApiError> {
+async fn get_deck_columns(State(state): State<AppState>) -> Result<Json<Value>, ApiError> {
     let data = query_bridge::query_frontend(&state.app_handle, "deck/columns", json!({}))
         .await
         .map_err(|e| ApiError {
@@ -777,9 +790,7 @@ async fn remove_deck_column(
         (status = 401, description = "Unauthorized", body = ApiErrorResponse),
     )
 )]
-async fn get_deck_active(
-    State(state): State<AppState>,
-) -> Result<Json<Value>, ApiError> {
+async fn get_deck_active(State(state): State<AppState>) -> Result<Json<Value>, ApiError> {
     let data = query_bridge::query_frontend(&state.app_handle, "deck/active", json!({}))
         .await
         .map_err(|e| ApiError {
@@ -797,9 +808,7 @@ async fn get_deck_active(
         (status = 401, description = "Unauthorized", body = ApiErrorResponse),
     )
 )]
-async fn list_commands(
-    State(state): State<AppState>,
-) -> Result<Json<Value>, ApiError> {
+async fn list_commands(State(state): State<AppState>) -> Result<Json<Value>, ApiError> {
     let data = query_bridge::query_frontend(&state.app_handle, "commands/list", json!({}))
         .await
         .map_err(|e| ApiError {
@@ -941,7 +950,7 @@ async fn proxy_image(
     headers: axum::http::HeaderMap,
     Query(params): Query<ProxyImageParams>,
 ) -> Response {
-    use crate::image_cache::{StreamingFetchResult, hex_hash};
+    use crate::image_cache::{hex_hash, StreamingFetchResult};
 
     let etag = format!("\"{}\"", hex_hash(&params.url));
 
