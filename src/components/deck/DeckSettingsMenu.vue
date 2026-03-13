@@ -3,7 +3,6 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import AboutDialog from '@/components/common/AboutDialog.vue'
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
-import { useVibrancy } from '@/composables/useVibrancy'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { useUiStore } from '@/stores/ui'
@@ -31,9 +30,6 @@ const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showAbout = ref(false)
-const { opacity: vibrancyOpacity, setOpacity: setVibrancyOpacity } =
-  useVibrancy()
-
 // Theme install UI
 const showInstallInput = ref(false)
 const themeCode = ref('')
@@ -277,24 +273,6 @@ function syncScroll(e: Event) {
           <button class="install-action-btn cancel" @click="showCustomCss = false">閉じる</button>
           <button class="install-action-btn confirm" @click="saveCustomCss">適用</button>
         </div>
-      </div>
-
-      <!-- Window vibrancy -->
-      <div class="settings-menu-divider" />
-
-      <div class="vibrancy-row">
-        <i class="ti ti-droplet-half-2" />
-        <span class="vibrancy-label">透過</span>
-        <input
-          type="range"
-          class="vibrancy-slider"
-          min="0"
-          max="80"
-          step="5"
-          :value="vibrancyOpacity"
-          @pointerdown.stop
-          @input="setVibrancyOpacity(Number(($event.target as HTMLInputElement).value))"
-        />
       </div>
 
       <div class="settings-menu-divider" />
@@ -883,28 +861,6 @@ function syncScroll(e: Event) {
   gap: 6px;
   margin-top: 6px;
   justify-content: flex-end;
-}
-
-/* ── Vibrancy slider ── */
-
-.vibrancy-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 16px;
-  font-size: 0.9em;
-  color: var(--nd-fg);
-}
-
-.vibrancy-label {
-  white-space: nowrap;
-}
-
-.vibrancy-slider {
-  margin-left: auto;
-  width: 120px;
-  accent-color: var(--nd-accent);
-  cursor: pointer;
 }
 
 /* ── Menu items (wallpaper etc.) ── */

@@ -800,7 +800,7 @@ defineExpose({
 <!-- Android/iOS: viewport width may exceed 500px -->
 <style>
 html.nd-mobile .nav-mobile-only {
-  display: flex;
+  display: flex !important;
   flex-direction: column;
 }
 

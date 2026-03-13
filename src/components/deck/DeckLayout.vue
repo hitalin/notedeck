@@ -423,7 +423,7 @@ html.nd-mobile .mobile-drawer-overlay {
 }
 
 html.nd-mobile .mobile-fab {
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   position: fixed;

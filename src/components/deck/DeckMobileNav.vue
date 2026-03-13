@@ -286,7 +286,7 @@ watch(
 <!-- Android/iOS: viewport width may exceed 500px, use html.nd-mobile class -->
 <style>
 html.nd-mobile .mobile-nav {
-  display: flex;
+  display: flex !important;
   align-items: stretch;
   flex: 0 0 auto;
   height: 50px;

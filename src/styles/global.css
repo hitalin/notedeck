@@ -218,33 +218,6 @@ input {
   backdrop-filter: var(--MI-blur, blur(15px));
 }
 
-/* ---- Window vibrancy / transparency mode ---- */
-/* --nd-vibrancy-alpha is set by JS (0..1, lower = more transparent) */
-
-html.nd-vibrancy {
-  background: transparent !important;
-}
-
-html.nd-vibrancy body {
-  background: transparent !important;
-}
-
-html.nd-vibrancy .app-root {
-  background: color(from var(--nd-bg) srgb r g b / var(--nd-vibrancy-alpha, 0.7));
-}
-
-html.nd-vibrancy .deck-column {
-  background: color(from var(--nd-panel) srgb r g b / var(--nd-vibrancy-alpha, 0.7));
-}
-
-html.nd-vibrancy .nav-sidebar {
-  background: color(from var(--nd-navBg) srgb r g b / var(--nd-vibrancy-alpha, 0.7));
-}
-
-html.nd-vibrancy .title-bar {
-  background: color(from var(--nd-bg) srgb r g b / var(--nd-vibrancy-alpha, 0.7));
-}
-
 /* ---- Scrollbar (Webkit) ---- */
 
 ::-webkit-scrollbar {
