@@ -293,6 +293,7 @@ defineExpose({
               <button
                 class="_button nav-item"
                 title="プロファイル"
+                @pointerdown.stop
                 @click.stop="emit('update:showProfileMenu', !props.showProfileMenu)"
               >
                 <i class="ti ti-layout" />
@@ -304,6 +305,7 @@ defineExpose({
               <button
                 class="_button nav-item"
                 title="設定"
+                @pointerdown.stop
                 @click.stop="emit('update:showSettingsMenu', !props.showSettingsMenu)"
               >
                 <i class="ti ti-settings" />

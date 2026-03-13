@@ -25,6 +25,7 @@ const deckStore = useDeckStore()
         <button
           class="_button profile-indicator"
           title="プロファイル切替"
+          @pointerdown.stop
           @click.stop="emit('update:show-profile-menu', !showProfileMenu)"
         >
           <i class="ti ti-layout" />
@@ -48,6 +49,7 @@ const deckStore = useDeckStore()
         <button
           class="_button bottom-bar-btn settings-btn"
           title="Deck settings"
+          @pointerdown.stop
           @click.stop="emit('update:show-settings-menu', !showSettingsMenu)"
         >
           <i class="ti ti-settings" />
