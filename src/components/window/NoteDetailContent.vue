@@ -550,4 +550,14 @@ async function handlePosted(editedNoteId?: string) {
     padding: 10px 16px;
   }
 }
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .detail-tab-item {
+  min-height: 44px;
+}
+
+html.nd-mobile .renote-user-item,
+html.nd-mobile .reaction-user-item {
+  padding: 10px 16px;
+}
 </style>

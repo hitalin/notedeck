@@ -230,4 +230,14 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
     bottom: calc(60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
   }
 }
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .user-popup {
+  width: auto;
+  max-width: calc(100vw - 32px);
+  left: 16px !important;
+  right: 16px;
+  top: auto !important;
+  bottom: calc(60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+}
 </style>

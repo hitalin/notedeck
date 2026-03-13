@@ -153,15 +153,14 @@ const deckStore = useDeckStore()
   pointer-events: none;
 }
 
-/* Small viewport & mobile platform: hide bottom bar */
+/* Small viewport: hide bottom bar */
 @media (max-width: 500px) {
   .bottom-bar {
     display: none;
   }
 }
-</style>
 
-<style>
+/* Mobile platform (viewport may exceed 500px) */
 html.nd-mobile .bottom-bar {
   display: none;
 }

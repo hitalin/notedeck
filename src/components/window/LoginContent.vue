@@ -350,4 +350,22 @@ function reset() {
     min-height: 44px;
   }
 }
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .dialog-body {
+  padding: 24px 16px;
+}
+
+html.nd-mobile .mk-input {
+  height: 44px;
+  font-size: 1em;
+}
+
+html.nd-mobile .btn-login {
+  height: 44px;
+}
+
+html.nd-mobile .btn-cancel {
+  min-height: 44px;
+}
 </style>

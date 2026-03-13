@@ -237,4 +237,27 @@ function onWindowMouseDown() {
     height: 44px;
   }
 }
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .deck-window {
+  left: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  border-radius: 0;
+  z-index: 2100 !important;
+}
+
+html.nd-mobile .window-header {
+  min-height: 46px;
+  padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
+}
+
+html.nd-mobile .window-btn {
+  width: 44px;
+  height: 44px;
+}
 </style>

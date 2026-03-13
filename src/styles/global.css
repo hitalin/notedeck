@@ -157,6 +157,18 @@ input {
   }
 }
 
+/* Mobile platform (viewport may exceed 500px) — prevents iOS auto-zoom */
+html.nd-mobile input[type="text"],
+html.nd-mobile input[type="search"],
+html.nd-mobile input[type="email"],
+html.nd-mobile input[type="url"],
+html.nd-mobile input[type="password"],
+html.nd-mobile input[type="number"],
+html.nd-mobile textarea,
+html.nd-mobile select {
+  font-size: 16px;
+}
+
 /* ---- Popup (shared acrylic panel) ---- */
 
 ._popup {

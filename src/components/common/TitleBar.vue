@@ -311,4 +311,10 @@ async function togglePip() {
     display: none;
   }
 }
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .titlebar-sidebar-btn,
+html.nd-mobile .titlebar-window-btn {
+  display: none;
+}
 </style>

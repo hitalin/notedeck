@@ -277,17 +277,15 @@ watch(
   opacity: 0.7;
 }
 
-/* Small viewport: toggle display only */
+/* Small viewport: toggle display */
 @media (max-width: 500px) {
   .mobile-nav {
     display: flex;
   }
 }
-</style>
 
-<!-- Mobile platform (viewport may exceed 500px) — toggle display only -->
-<style>
+/* Mobile platform (viewport may exceed 500px) */
 html.nd-mobile .mobile-nav {
-  display: flex !important;
+  display: flex;
 }
 </style>

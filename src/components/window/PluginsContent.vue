@@ -567,4 +567,35 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
     min-height: 44px;
   }
 }
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .plugins-content {
+  padding: 8px;
+}
+
+html.nd-mobile .plugins-back-btn {
+  width: 44px;
+  height: 44px;
+}
+
+html.nd-mobile .plugins-install-btn {
+  padding: 10px 16px;
+  min-height: 44px;
+}
+
+html.nd-mobile .plugin-card {
+  padding: 12px;
+  min-height: 44px;
+}
+
+html.nd-mobile .detail-uninstall-btn {
+  padding: 12px;
+  min-height: 44px;
+}
+
+html.nd-mobile .config-input {
+  padding: 10px 12px;
+  font-size: 1em;
+  min-height: 44px;
+}
 </style>

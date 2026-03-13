@@ -733,6 +733,36 @@ setTimeout(() => searchInput.value?.focus(), 100)
     height: 40px;
   }
 }
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .search-bar {
+  padding: 8px;
+}
+
+html.nd-mobile .search-input {
+  padding: 8px 10px;
+  font-size: 1em;
+}
+
+html.nd-mobile .regex-toggle {
+  width: 36px;
+  height: 36px;
+}
+
+html.nd-mobile .regex-guide-btn {
+  width: 36px;
+  height: 36px;
+}
+
+html.nd-mobile .search-clear {
+  width: 36px;
+  height: 36px;
+}
+
+html.nd-mobile .search-btn {
+  width: 40px;
+  height: 40px;
+}
 </style>
 
 <style>

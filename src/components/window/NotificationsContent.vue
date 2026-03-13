@@ -748,4 +748,18 @@ onUnmounted(() => {
     padding-left: 48px;
   }
 }
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .notif-header {
+  padding: 10px 12px 0;
+  gap: 6px;
+}
+
+html.nd-mobile .notif-note-wrap {
+  padding: 0 4px 4px;
+}
+
+html.nd-mobile .follow-request-actions {
+  padding-left: 48px;
+}
 </style>

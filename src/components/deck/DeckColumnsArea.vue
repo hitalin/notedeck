@@ -376,7 +376,7 @@ defineExpose({ scrollToColumn, columnMap })
 /* Small viewport: full-width swipe columns */
 @media (max-width: 500px) {
   .col-resize-handle {
-    display: none !important;
+    display: none;
   }
 
   .columns {
@@ -392,12 +392,10 @@ defineExpose({ scrollToColumn, columnMap })
     scroll-snap-align: start;
   }
 }
-</style>
 
-<!-- Mobile platform (viewport may exceed 500px) — same swipe mode -->
-<style>
+/* Mobile platform (viewport may exceed 500px) */
 html.nd-mobile .col-resize-handle {
-  display: none !important;
+  display: none;
 }
 
 html.nd-mobile .columns {

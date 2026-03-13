@@ -460,4 +460,30 @@ setTimeout(() => inputRef.value?.focus(), 100)
     min-height: 44px;
   }
 }
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .ai-input-area {
+  padding: 8px;
+  padding-bottom: calc(8px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+}
+
+html.nd-mobile .ai-input {
+  padding: 10px 12px;
+  font-size: 1em;
+}
+
+html.nd-mobile .ai-send {
+  width: 40px;
+  height: 40px;
+}
+
+html.nd-mobile .status-retry {
+  width: 36px;
+  height: 36px;
+}
+
+html.nd-mobile .ai-suggestion {
+  padding: 10px 14px;
+  min-height: 44px;
+}
 </style>

@@ -399,4 +399,16 @@ onMounted(() => {
     font-size: 1em;
   }
 }
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .reaction-picker-panel {
+  width: 100%;
+  max-width: 100%;
+  max-height: 50vh;
+}
+
+html.nd-mobile .picker-search-input {
+  padding: 10px 12px;
+  font-size: 1em;
+}
 </style>
