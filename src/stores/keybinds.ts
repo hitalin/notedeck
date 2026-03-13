@@ -210,6 +210,24 @@ const DEFAULT_KEYBINDS: KeybindEntry[] = [
     commandId: 'profile-9',
     shortcuts: [{ key: '9', alt: true, scope: 'global' }],
   },
+  {
+    commandId: 'pop-out-column',
+    shortcuts: [{ key: 'o', ctrl: true, shift: true, scope: 'global' }],
+  },
+  {
+    commandId: 'new-window',
+    shortcuts: [
+      { key: 'n', ctrl: true, shift: true, alt: true, scope: 'global' },
+    ],
+  },
+  {
+    commandId: 'close-all-windows',
+    shortcuts: [],
+  },
+  {
+    commandId: 'pip-window',
+    shortcuts: [],
+  },
 ]
 
 const STORAGE_KEY = 'nd-keybinds'

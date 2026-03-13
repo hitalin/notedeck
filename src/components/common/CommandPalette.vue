@@ -47,9 +47,17 @@ const categoryLabels: Record<string, string> = {
   navigation: 'ナビゲーション',
   column: 'カラム',
   account: 'アカウント',
+  window: 'ウィンドウ',
 }
 
-const categoryOrder = ['general', 'note', 'navigation', 'column', 'account']
+const categoryOrder = [
+  'general',
+  'note',
+  'navigation',
+  'column',
+  'account',
+  'window',
+]
 
 const filteredGroups = computed<CommandGroup[]>(() => {
   let enabled = commandStore.getEnabled().filter((c) => c.visible !== false)

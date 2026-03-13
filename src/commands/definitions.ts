@@ -1,6 +1,7 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useCommandStore } from '@/commands/registry'
 import type { NoteAction } from '@/composables/useNoteFocus'
+import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { useThemeStore } from '@/stores/theme'
@@ -250,6 +251,72 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     },
   })
 
+  // Window management (desktop only)
+  if (useUiStore().isDesktop) {
+    commandStore.register({
+      id: 'pop-out-column',
+      label: 'カラムを別ウィンドウにポップアウト',
+      icon: 'external-link',
+      category: 'window',
+      shortcuts: keybindsStore.getShortcuts('pop-out-column'),
+      enabled: () => !!deckStore.activeColumnId,
+      execute: () => {
+        const columnId = deckStore.activeColumnId
+        if (!columnId) return
+        import('@/composables/useDeckWindow').then(
+          ({ popOutColumnToWindow }) => {
+            popOutColumnToWindow(columnId)
+          },
+        )
+      },
+    })
+
+    commandStore.register({
+      id: 'new-window',
+      label: '新しいウィンドウを開く',
+      icon: 'app-window',
+      category: 'window',
+      shortcuts: keybindsStore.getShortcuts('new-window'),
+      enabled: () => !!deckStore.windowProfileId,
+      execute: () => {
+        const profileId = deckStore.windowProfileId
+        if (!profileId) return
+        import('@/composables/useDeckWindow').then(({ openDeckWindow }) => {
+          openDeckWindow(profileId)
+        })
+      },
+    })
+
+    commandStore.register({
+      id: 'close-all-windows',
+      label: 'すべてのサブウィンドウを閉じる',
+      icon: 'x',
+      category: 'window',
+      shortcuts: keybindsStore.getShortcuts('close-all-windows'),
+      execute: () => {
+        import('@/composables/useDeckWindow').then(({ closeAllSubWindows }) => {
+          closeAllSubWindows()
+        })
+      },
+    })
+
+    commandStore.register({
+      id: 'pip-window',
+      label: 'PiPウィンドウを開く',
+      icon: 'picture-in-picture',
+      category: 'window',
+      shortcuts: keybindsStore.getShortcuts('pip-window'),
+      enabled: () => !!useAccountsStore().activeAccountId,
+      execute: () => {
+        const accountId = useAccountsStore().activeAccountId
+        if (!accountId) return
+        import('@/composables/usePipWindow').then(({ openPipWindow }) => {
+          openPipWindow(accountId)
+        })
+      },
+    })
+  }
+
   // Profile switching (Alt+1-9 to switch deck profiles)
   refreshProfileCommands()
 }
@@ -299,6 +366,13 @@ const QUICK_REACT_IDS = Array.from(
   (_, i) => `quick-react-${i + 1}`,
 ) as readonly string[]
 
+const WINDOW_COMMAND_IDS = [
+  'pop-out-column',
+  'new-window',
+  'close-all-windows',
+  'pip-window',
+] as const
+
 const PROFILE_IDS = Array.from(
   { length: 9 },
   (_, i) => `profile-${i + 1}`,
@@ -321,6 +395,7 @@ export function unregisterDefaultCommands() {
     ...COLUMN_COMMAND_IDS,
     ...QUICK_REACT_IDS,
     ...PROFILE_IDS,
+    ...WINDOW_COMMAND_IDS,
   ]) {
     commandStore.unregister(id)
   }
