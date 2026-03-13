@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, useCssModule, watch } from 'vue'
 import type { StreamConnectionState } from '@/adapters/types'
 import { useNavigation } from '@/composables/useNavigation'
 import { useUnreadChat } from '@/composables/useUnreadChat'
@@ -33,6 +33,7 @@ const emit = defineEmits<{
   'update:showSettingsMenu': [value: boolean]
 }>()
 
+const $style = useCssModule()
 const {
   navigateToLogin,
   navigateToSearch,
@@ -116,7 +117,10 @@ function toggleAccountMenu(id: string) {
 function onDocumentClick(e: MouseEvent) {
   if (!accountMenuId.value) return
   const target = e.target as HTMLElement
-  if (target.closest('.nav-account-menu') || target.closest('.nav-account'))
+  if (
+    target.closest(`.${$style.account}`) ||
+    target.closest('.nav-account-menu')
+  )
     return
   accountMenuId.value = null
 }
@@ -230,136 +234,153 @@ defineExpose({
 </script>
 
 <template>
-  <div class="deck-navbar">
-    <nav class="navbar" :class="{ 'drawer-open': props.mobileDrawerOpen }" :style="{ flexBasis: navWidth + 'px' }">
-      <div class="nav-body">
+  <div :class="$style.wrapper">
+    <nav
+      :class="[
+        $style.navbar,
+        {
+          [$style.drawerMode]: isMobile,
+          [$style.drawerOpen]: props.mobileDrawerOpen,
+        },
+      ]"
+      :style="isMobile ? undefined : { flexBasis: navWidth + 'px' }"
+    >
+      <div :class="$style.body">
         <!-- Top section -->
-        <div class="nav-top">
+        <div :class="$style.section">
           <button
-            class="_button nav-item"
+            class="_button"
+            :class="$style.item"
             title="通知"
             @click="closeDrawerAndDo(openNotifications)"
           >
-            <div class="nav-icon-wrap">
+            <div :class="$style.iconWrap">
               <i class="ti ti-bell" />
-              <span v-if="totalUnread > 0" class="nav-badge">{{ totalUnread > 99 ? '99+' : totalUnread }}</span>
+              <span v-if="totalUnread > 0" :class="$style.badge">{{ totalUnread > 99 ? '99+' : totalUnread }}</span>
             </div>
-            <span class="nav-label">通知</span>
+            <span :class="$style.label">通知</span>
           </button>
           <button
-            class="_button nav-item"
+            class="_button"
+            :class="$style.item"
             title="チャット"
             @click="closeDrawerAndDo(openChat)"
           >
-            <div class="nav-icon-wrap">
+            <div :class="$style.iconWrap">
               <i class="ti ti-messages" />
-              <span v-if="chatUnread > 0" class="nav-badge">{{ chatUnread > 99 ? '99+' : chatUnread }}</span>
+              <span v-if="chatUnread > 0" :class="$style.badge">{{ chatUnread > 99 ? '99+' : chatUnread }}</span>
             </div>
-            <span class="nav-label">チャット</span>
+            <span :class="$style.label">チャット</span>
           </button>
           <button
-            class="_button nav-item"
+            class="_button"
+            :class="$style.item"
             title="検索"
             @click="closeDrawerAndDo(navigateToSearch)"
           >
             <i class="ti ti-search" />
-            <span class="nav-label">検索</span>
+            <span :class="$style.label">検索</span>
           </button>
           <button
-            class="_button nav-item"
+            class="_button"
+            :class="$style.item"
             title="プラグイン"
             @click="closeDrawerAndDo(navigateToPlugins)"
           >
             <i class="ti ti-plug" />
-            <span class="nav-label">プラグイン</span>
+            <span :class="$style.label">プラグイン</span>
           </button>
           <button
             v-if="!isMobile"
-            class="_button nav-item"
+            class="_button"
+            :class="$style.item"
             title="AI アシスタント"
             @click="closeDrawerAndDo(navigateToAi)"
           >
             <i class="ti ti-sparkles" />
-            <span class="nav-label">AI</span>
+            <span :class="$style.label">AI</span>
           </button>
         </div>
 
         <!-- Spacer -->
-        <div class="nav-spacer" />
+        <div :class="$style.spacer" />
 
         <!-- Bottom section: post button → accounts -->
-        <div class="nav-bottom">
+        <div :class="$style.section">
           <!-- Mobile-only: profile & settings -->
-          <div class="nav-mobile-only">
-            <div class="nav-menu-wrap">
+          <div v-if="isMobile" :class="$style.mobileOnly">
+            <div :class="$style.menuWrap">
               <button
-                class="_button nav-item"
+                class="_button"
+                :class="$style.item"
                 title="プロファイル"
                 @pointerdown.stop
                 @click.stop="emit('update:showProfileMenu', !props.showProfileMenu)"
               >
                 <i class="ti ti-layout" />
-                <span class="nav-label">プロファイル</span>
+                <span :class="$style.label">プロファイル</span>
               </button>
               <DeckProfileMenu :show="props.showProfileMenu" @close="emit('update:showProfileMenu', false)" />
             </div>
-            <div class="nav-menu-wrap">
+            <div :class="$style.menuWrap">
               <button
-                class="_button nav-item"
+                class="_button"
+                :class="$style.item"
                 title="設定"
                 @pointerdown.stop
                 @click.stop="emit('update:showSettingsMenu', !props.showSettingsMenu)"
               >
                 <i class="ti ti-settings" />
-                <span class="nav-label">設定</span>
-                <span v-if="props.updateAvailable" class="update-dot" />
+                <span :class="$style.label">設定</span>
+                <span v-if="props.updateAvailable" :class="$style.updateDot" />
               </button>
               <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" />
             </div>
-            <div class="nav-divider" />
+            <div :class="$style.divider" />
           </div>
 
           <!-- Post button -->
           <button
-            class="_button nav-post-btn"
+            class="_button"
+            :class="$style.postBtn"
             title="ノート作成"
             @click="closeDrawerAndDo(() => emit('open-compose'))"
           >
             <i class="ti ti-pencil" />
-            <span class="nav-label">ノート</span>
+            <span :class="$style.label">ノート</span>
           </button>
 
-          <div class="nav-divider" />
+          <div :class="$style.divider" />
 
           <!-- Account avatars with dropdown menu -->
           <div
             v-for="acc in accountsStore.accounts"
             :key="acc.id"
-            class="nav-account-wrap"
+            :class="$style.accountWrap"
           >
             <button
-              class="_button nav-item nav-account"
+              class="_button"
+              :class="[$style.item, $style.account]"
               :title="`@${acc.username}@${acc.host}`"
               @click.stop="toggleAccountMenu(acc.id)"
             >
-              <div class="nav-avatar-wrap">
+              <div :class="$style.avatarWrap">
                 <img
                   v-if="acc.avatarUrl"
                   :src="acc.avatarUrl"
-                  class="nav-avatar"
+                  :class="$style.avatar"
                 />
-                <div v-else class="nav-avatar nav-avatar-placeholder" />
+                <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
                 <img
                   :src="getServerIconUrl(acc.host)"
-                  class="nav-server-badge"
+                  :class="$style.serverBadge"
                   :title="acc.host"
                 />
                 <span
-                  class="nav-online-indicator"
-                  :class="`status-${getAccountStreamState(acc.id)}`"
+                  :class="[$style.onlineIndicator, $style[`status_${getAccountStreamState(acc.id)}`]]"
                 />
               </div>
-              <span class="nav-label">@{{ acc.username }}@{{ acc.host }}</span>
+              <span :class="$style.label">@{{ acc.username }}@{{ acc.host }}</span>
             </button>
 
             <NavAccountMenu
@@ -376,36 +397,41 @@ defineExpose({
           </div>
 
           <!-- Add account -->
-          <button class="_button nav-item nav-add-account" title="アカウント追加" @click="closeDrawerAndDo(navigateToLogin)">
+          <button
+            class="_button"
+            :class="[$style.item, $style.addAccount]"
+            title="アカウント追加"
+            @click="closeDrawerAndDo(navigateToLogin)"
+          >
             <i class="ti ti-plus" />
-            <span class="nav-label">アカウント追加</span>
+            <span :class="$style.label">アカウント追加</span>
           </button>
         </div>
       </div>
 
       <!-- Collapse toggle -->
-      <button class="nav-toggle" title="サイドバー切替" @click="toggleNav">
+      <button v-if="!isMobile" :class="$style.toggle" title="サイドバー切替" @click="toggleNav">
         <i :class="navCollapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left'" />
       </button>
     </nav>
 
     <!-- Resize handle -->
     <div
-      class="nav-resize-handle"
-      :class="{ active: isResizing }"
+      v-if="!isMobile"
+      :class="[$style.resizeHandle, { [$style.resizeActive]: isResizing }]"
       @mousedown="startResize"
     />
   </div>
 </template>
 
-<style scoped>
-.deck-navbar {
+<style lang="scss" module>
+.wrapper {
   display: contents;
 }
 
-/* ============================================================
-   Left Navbar — base styles (all sizes)
-   ============================================================ */
+// ============================================================
+// Left Navbar — base styles (all sizes)
+// ============================================================
 .navbar {
   flex: 0 0 auto;
   display: flex;
@@ -419,7 +445,7 @@ defineExpose({
   container-name: navbar;
 }
 
-.nav-body {
+.body {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -427,30 +453,29 @@ defineExpose({
   overflow-y: auto;
   overflow-x: hidden;
   direction: rtl;
+
+  > * {
+    direction: ltr;
+  }
 }
 
-.nav-body > * {
-  direction: ltr;
-}
-
-.nav-top,
-.nav-bottom {
+.section {
   display: flex;
   flex-direction: column;
   padding: 10px 16px;
 }
 
-.nav-spacer {
+.spacer {
   flex: 1;
 }
 
-.nav-divider {
+.divider {
   height: 1px;
   background: var(--nd-divider);
   margin: 10px 16px;
 }
 
-.nav-item {
+.item {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -461,29 +486,29 @@ defineExpose({
   white-space: nowrap;
   text-decoration: none;
   transition: background var(--nd-duration-base), color var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    color: var(--nd-fgHighlighted);
+
+    .ti {
+      opacity: 1;
+    }
+  }
+
+  .ti {
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
 }
 
-.nav-item:hover {
-  background: var(--nd-buttonHoverBg);
-  color: var(--nd-fgHighlighted);
-}
-
-.nav-item .ti {
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-
-.nav-item:hover .ti {
-  opacity: 1;
-}
-
-.nav-icon-wrap {
+.iconWrap {
   position: relative;
   display: inline-flex;
   flex-shrink: 0;
 }
 
-.nav-badge {
+.badge {
   position: absolute;
   top: -8px;
   right: -10px;
@@ -501,21 +526,21 @@ defineExpose({
   box-sizing: border-box;
 }
 
-.nav-label {
+.label {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.nav-account {
+.account {
   gap: 10px;
 }
 
-.nav-avatar-wrap {
+.avatarWrap {
   position: relative;
   flex-shrink: 0;
 }
 
-.nav-avatar {
+.avatar {
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -523,11 +548,11 @@ defineExpose({
   display: block;
 }
 
-.nav-avatar-placeholder {
+.avatarPlaceholder {
   background: var(--nd-buttonBg);
 }
 
-.nav-server-badge {
+.serverBadge {
   position: absolute;
   top: -2px;
   right: -4px;
@@ -538,7 +563,7 @@ defineExpose({
   border: 1.5px solid var(--nd-navBg);
 }
 
-.nav-online-indicator {
+.onlineIndicator {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -548,33 +573,33 @@ defineExpose({
   box-shadow: 0 0 0 2px var(--nd-navBg);
 }
 
-.nav-online-indicator.status-connected {
+.status_connected {
   background: var(--nd-statusOnline);
 }
 
-.nav-online-indicator.status-reconnecting,
-.nav-online-indicator.status-initializing {
+.status_reconnecting,
+.status_initializing {
   background: var(--nd-statusActive);
 }
 
-.nav-online-indicator.status-disconnected {
+.status_disconnected {
   background: var(--nd-statusOffline);
 }
 
-.nav-add-account {
+.addAccount {
   opacity: 0.5;
   font-size: 0.8em;
+
+  &:hover {
+    opacity: 0.8;
+  }
+
+  .ti {
+    font-size: 16px;
+  }
 }
 
-.nav-add-account:hover {
-  opacity: 0.8;
-}
-
-.nav-add-account .ti {
-  font-size: 16px;
-}
-
-.nav-post-btn {
+.postBtn {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -587,36 +612,36 @@ defineExpose({
   font-size: 0.9em;
   white-space: nowrap;
   transition: transform var(--nd-duration-base), box-shadow var(--nd-duration-base);
+
+  &:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--nd-accent) 40%, transparent);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
 }
 
-.nav-post-btn:hover {
-  transform: scale(1.03);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--nd-accent) 40%, transparent);
-}
-
-.nav-post-btn:active {
-  transform: scale(0.97);
-}
-
-.nav-resize-handle {
+.resizeHandle {
   flex: 0 0 6px;
   cursor: col-resize;
   background: transparent;
   transition: background var(--nd-duration-base);
   z-index: 10;
+
+  &:hover,
+  &.resizeActive {
+    background: var(--nd-accent);
+    opacity: 0.4;
+  }
 }
 
-.nav-resize-handle:hover,
-.nav-resize-handle.active {
-  background: var(--nd-accent);
-  opacity: 0.4;
-}
-
-.nav-resize-handle.active {
+.resizeActive {
   opacity: 0.6;
 }
 
-.nav-toggle {
+.toggle {
   position: absolute;
   right: 0;
   top: 50%;
@@ -635,29 +660,30 @@ defineExpose({
   cursor: pointer;
   transition: opacity var(--nd-duration-base);
   z-index: 10;
+
+  .navbar:hover & {
+    opacity: 0.5;
+  }
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
-.navbar:hover .nav-toggle {
-  opacity: 0.5;
-}
-
-.nav-toggle:hover {
-  opacity: 1;
-}
-
-.nav-account-wrap {
+.accountWrap {
   position: relative;
 }
 
-.nav-mobile-only {
-  display: none;
+.mobileOnly {
+  display: flex;
+  flex-direction: column;
 }
 
-.nav-menu-wrap {
+.menuWrap {
   position: relative;
 }
 
-.update-dot {
+.updateDot {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -668,52 +694,51 @@ defineExpose({
   pointer-events: none;
 }
 
-/* ============================================================
-   Icon-only mode — navbar adapts to its own width via
-   Container Query. No class flags needed.
-   ============================================================ */
+// ============================================================
+// Icon-only mode — navbar adapts to its own width via
+// Container Query. No class flags needed.
+// ============================================================
 @container navbar (max-width: 100px) {
-  .nav-body {
+  .body {
     overflow: visible;
     direction: ltr;
   }
 
-  .nav-label {
+  .label {
     display: none;
   }
 
-  .nav-item {
+  .item {
     justify-content: center;
     padding: 16px 0;
     width: 100%;
     font-size: 1.4em;
   }
 
-  .nav-account {
+  .account {
     padding: 8px;
     width: auto;
     border-radius: var(--nd-radius-full);
   }
 
-  .nav-top,
-  .nav-bottom {
+  .section {
     padding: 10px 0;
     align-items: center;
   }
 
-  .nav-avatar {
+  .avatar {
     width: 38px;
     height: 38px;
   }
 
-  .nav-server-badge {
+  .serverBadge {
     width: 16px;
     height: 16px;
     top: -2px;
     right: -4px;
   }
 
-  .nav-post-btn {
+  .postBtn {
     width: 54px;
     height: 54px;
     padding: 0;
@@ -724,68 +749,10 @@ defineExpose({
   }
 }
 
-/* ============================================================
-   Small viewport drawer mode (≤500px)
-   Only layout/positioning — size adaptation is handled by
-   Container Query (navbar is 250px → full mode automatically).
-   ============================================================ */
-@media (max-width: 500px) {
-  .nav-mobile-only {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .nav-resize-handle,
-  .nav-toggle {
-    display: none !important;
-  }
-
-  .navbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    z-index: var(--nd-z-navbar);
-    width: 250px !important;
-    flex-basis: 250px !important;
-    padding-top: max(var(--nd-safe-area-top, env(safe-area-inset-top)), 12px);
-    padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
-    transform: translateX(-100%);
-    transition: transform 0.25s ease;
-    box-shadow: none;
-  }
-
-  .navbar .nav-item {
-    min-height: 44px;
-  }
-
-  .navbar.drawer-open {
-    transform: translateX(0);
-    box-shadow: 4px 0 16px rgb(0 0 0 / 0.3);
-  }
-
-  .navbar.drawer-open :deep(.nav-account-menu.menu-right) {
-    bottom: 100%;
-    top: auto;
-    left: 0;
-    right: 0;
-    margin-bottom: 4px;
-    margin-left: 0;
-  }
-}
-
-/* Mobile platform (viewport may exceed 500px) — drawer mode */
-html.nd-mobile .nav-mobile-only {
-  display: flex;
-  flex-direction: column;
-}
-
-html.nd-mobile .nav-resize-handle,
-html.nd-mobile .nav-toggle {
-  display: none;
-}
-
-html.nd-mobile .navbar {
+// ============================================================
+// Drawer mode (mobile platform)
+// ============================================================
+.drawerMode {
   position: fixed;
   top: 0;
   left: 0;
@@ -798,23 +765,23 @@ html.nd-mobile .navbar {
   transform: translateX(-100%);
   transition: transform 0.25s ease;
   box-shadow: none;
+
+  .item {
+    min-height: 44px;
+  }
 }
 
-html.nd-mobile .navbar .nav-item {
-  min-height: 44px;
-}
-
-html.nd-mobile .navbar.drawer-open {
+.drawerOpen {
   transform: translateX(0);
   box-shadow: 4px 0 16px rgb(0 0 0 / 0.3);
-}
 
-html.nd-mobile .navbar.drawer-open :deep(.nav-account-menu.menu-right) {
-  bottom: 100%;
-  top: auto;
-  left: 0;
-  right: 0;
-  margin-bottom: 4px;
-  margin-left: 0;
+  :global(.nav-account-menu.menu-right) {
+    bottom: 100%;
+    top: auto;
+    left: 0;
+    right: 0;
+    margin-bottom: 4px;
+    margin-left: 0;
+  }
 }
 </style>

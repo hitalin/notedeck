@@ -127,6 +127,11 @@ export default defineConfig({
       '@': resolve(import.meta.dirname, 'src'),
     },
   },
+  css: {
+    modules: {
+      localsConvention: 'camelCaseOnly',
+    },
+  },
   build: {
     target: 'esnext',
     sourcemap: false,

@@ -19,17 +19,18 @@ const deckStore = useDeckStore()
 </script>
 
 <template>
-  <div class="bottom-bar">
-    <div class="bottom-bar-left">
-      <div class="profile-menu-wrap">
+  <div :class="$style.root">
+    <div :class="$style.left">
+      <div :class="$style.menuWrap">
         <button
-          class="_button profile-indicator"
+          class="_button"
+          :class="$style.profileIndicator"
           title="プロファイル切替"
           @pointerdown.stop
           @click.stop="emit('update:show-profile-menu', !showProfileMenu)"
         >
           <i class="ti ti-layout" />
-          <span class="profile-indicator-name">{{ deckStore.currentProfileName ?? 'プロファイル' }}</span>
+          <span :class="$style.profileName">{{ deckStore.currentProfileName ?? 'プロファイル' }}</span>
         </button>
         <DeckProfileMenu
           :show="showProfileMenu"
@@ -38,22 +39,24 @@ const deckStore = useDeckStore()
       </div>
     </div>
     <button
-      class="_button bottom-bar-btn"
+      class="_button"
+      :class="$style.btn"
       title="Add column"
       @click="emit('toggle-add-menu')"
     >
       <i class="ti ti-plus" />
     </button>
-    <div class="bottom-bar-right">
-      <div class="settings-menu-wrap">
+    <div :class="$style.right">
+      <div :class="$style.menuWrap">
         <button
-          class="_button bottom-bar-btn settings-btn"
+          class="_button"
+          :class="[$style.btn, $style.settingsBtn]"
           title="Deck settings"
           @pointerdown.stop
           @click.stop="emit('update:show-settings-menu', !showSettingsMenu)"
         >
           <i class="ti ti-settings" />
-          <span v-if="updateAvailable" class="update-dot" />
+          <span v-if="updateAvailable" :class="$style.updateDot" />
         </button>
         <DeckSettingsMenu
           :show="showSettingsMenu"
@@ -64,8 +67,8 @@ const deckStore = useDeckStore()
   </div>
 </template>
 
-<style scoped>
-.bottom-bar {
+<style lang="scss" module>
+.root {
   flex: 0 0 32px;
   display: flex;
   align-items: center;
@@ -74,25 +77,24 @@ const deckStore = useDeckStore()
   border-top: 1px solid var(--nd-divider);
 }
 
-.bottom-bar-left {
+.left {
   flex: 1;
   height: 100%;
 }
 
-.bottom-bar-right {
+.right {
   flex: 1;
   display: flex;
   justify-content: flex-end;
   padding-right: 8px;
 }
 
-.profile-menu-wrap,
-.settings-menu-wrap {
+.menuWrap {
   position: relative;
   height: 100%;
 }
 
-.profile-indicator {
+.profileIndicator {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -103,26 +105,26 @@ const deckStore = useDeckStore()
   white-space: nowrap;
   opacity: 0.7;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
+
+  .ti {
+    font-size: 12px;
+    flex-shrink: 0;
+    color: var(--nd-accent);
+  }
 }
 
-.profile-indicator:hover {
-  opacity: 1;
-  background: var(--nd-buttonHoverBg);
-}
-
-.profile-indicator .ti {
-  font-size: 12px;
-  flex-shrink: 0;
-  color: var(--nd-accent);
-}
-
-.profile-indicator-name {
+.profileName {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 120px;
 }
 
-.bottom-bar-btn {
+.btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -131,18 +133,18 @@ const deckStore = useDeckStore()
   color: var(--nd-fg);
   opacity: 0.5;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.bottom-bar-btn:hover {
-  opacity: 1;
-  background: var(--nd-buttonHoverBg);
-}
-
-.settings-btn {
+.settingsBtn {
   position: relative;
 }
 
-.update-dot {
+.updateDot {
   position: absolute;
   top: 6px;
   right: 6px;
@@ -151,17 +153,5 @@ const deckStore = useDeckStore()
   border-radius: 50%;
   background: var(--nd-accent);
   pointer-events: none;
-}
-
-/* Small viewport: hide bottom bar */
-@media (max-width: 500px) {
-  .bottom-bar {
-    display: none;
-  }
-}
-
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .bottom-bar {
-  display: none;
 }
 </style>

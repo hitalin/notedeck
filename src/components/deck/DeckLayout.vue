@@ -10,6 +10,7 @@ import { provideScrollDirection } from '@/composables/useScrollDirection'
 import { useUpdater } from '@/composables/useUpdater'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
+import { useUiStore } from '@/stores/ui'
 import DeckBottomBar from './DeckBottomBar.vue'
 import DeckColumnsArea from './DeckColumnsArea.vue'
 import DeckMobileNav from './DeckMobileNav.vue'
@@ -30,6 +31,7 @@ const {
 } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
+const { isMobile } = useUiStore()
 const columnDrag = useColumnDrag(deckStore)
 
 const navbarRef = ref<InstanceType<typeof DeckNavbar> | null>(null)
@@ -133,7 +135,7 @@ function acceptCrossWindowDrop() {
 </script>
 
 <template>
-  <div class="deck-root">
+  <div :class="[$style.root, { [$style.mobile]: isMobile }]">
     <DeckNavbar
       ref="navbarRef"
       :mobile-drawer-open="mobileDrawerOpen"
@@ -148,8 +150,7 @@ function acceptCrossWindowDrop() {
 
     <!-- Main content area -->
     <div
-      class="main-area"
-      :class="{ 'with-wallpaper': deckStore.wallpaper != null }"
+      :class="[$style.mainArea, { [$style.withWallpaper]: deckStore.wallpaper != null }]"
       :style="{
         backgroundImage:
           deckStore.wallpaper != null ? `url(${deckStore.wallpaper})` : '',
@@ -162,6 +163,7 @@ function acceptCrossWindowDrop() {
       />
 
       <DeckBottomBar
+        v-if="!isMobile"
         :show-profile-menu="showProfileMenu"
         :show-settings-menu="showSettingsMenu"
         :update-available="updateAvailable"
@@ -172,7 +174,13 @@ function acceptCrossWindowDrop() {
     </div>
 
     <!-- Mobile FAB -->
-    <button class="_button mobile-fab" title="New Note" @click="openCompose">
+    <button
+      v-if="isMobile"
+      class="_button"
+      :class="$style.fab"
+      title="New Note"
+      @click="openCompose"
+    >
       <i class="ti ti-pencil" />
     </button>
 
@@ -180,13 +188,14 @@ function acceptCrossWindowDrop() {
     <Transition name="fade">
       <div
         v-if="mobileDrawerOpen"
-        class="mobile-drawer-overlay"
+        :class="$style.drawerOverlay"
         @click="mobileDrawerOpen = false"
       />
     </Transition>
 
     <!-- Mobile bottom nav -->
     <DeckMobileNav
+      v-if="isMobile"
       :columns="columns"
       :layout="deckStore.windowLayout"
       :active-column-index="activeColumnIndex"
@@ -216,8 +225,8 @@ function acceptCrossWindowDrop() {
 
     <!-- File drop overlay -->
     <Transition name="fade">
-      <div v-if="fileDrop.isDragging.value" class="file-drop-overlay">
-        <div class="file-drop-content">
+      <div v-if="fileDrop.isDragging.value" :class="$style.fileDropOverlay">
+        <div :class="$style.dropContent">
           <i class="ti ti-upload" />
           <span>ファイルをドロップしてアップロード</span>
         </div>
@@ -228,10 +237,10 @@ function acceptCrossWindowDrop() {
     <Transition name="fade">
       <div
         v-if="deckStore.crossWindowDragColumnId"
-        class="cross-window-drop-overlay"
+        :class="$style.crossWindowDropOverlay"
         @click="acceptCrossWindowDrop"
       >
-        <div class="cross-window-drop-content">
+        <div :class="$style.dropContent">
           <i class="ti ti-arrows-move" />
           <span>ここにカラムを移動</span>
         </div>
@@ -240,15 +249,19 @@ function acceptCrossWindowDrop() {
   </div>
 </template>
 
-<style scoped>
-.deck-root {
+<style lang="scss" module>
+.root {
   display: flex;
   flex: 1;
   min-height: 0;
   width: 100%;
 }
 
-.main-area {
+.mobile {
+  flex-direction: column;
+}
+
+.mainArea {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -256,15 +269,14 @@ function acceptCrossWindowDrop() {
   background: var(--nd-deckBg);
 }
 
-.main-area.with-wallpaper {
+.withWallpaper {
   background: none;
   background-size: cover;
   background-position: center;
 }
 
-/* Mobile FAB — full styles defined here, toggled via display */
-.mobile-fab {
-  display: none;
+.fab {
+  display: flex;
   align-items: center;
   justify-content: center;
   position: fixed;
@@ -285,52 +297,65 @@ function acceptCrossWindowDrop() {
   font-size: 20px;
   box-shadow: 0 4px 12px var(--nd-shadow);
   transition: transform var(--nd-duration-slower) ease, box-shadow var(--nd-duration-slow) ease;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px
+      color-mix(in srgb, var(--nd-accent) 40%, rgba(0, 0, 0, 0.3));
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
 }
 
-.mobile-fab:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 20px
-    color-mix(in srgb, var(--nd-accent) 40%, rgba(0, 0, 0, 0.3));
-}
-
-.mobile-fab:active {
-  transform: scale(0.92);
-}
-
-/* Mobile drawer overlay — full styles defined here */
-.mobile-drawer-overlay {
+.drawerOverlay {
   position: fixed;
   inset: 0;
   z-index: calc(var(--nd-z-navbar) - 1);
   background: rgb(0 0 0 / 0.5);
 }
 
-/* Small viewport layout mode (≤500px) */
-@media (max-width: 500px) {
-  .deck-root {
-    flex-direction: column;
-  }
-
-  .main-area {
-    min-height: 0;
-  }
-
-  .mobile-fab {
-    display: flex;
-  }
-}
-
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .deck-root {
-  flex-direction: column;
-}
-
-html.nd-mobile .deck-root .main-area {
-  min-height: 0;
-}
-
-html.nd-mobile .mobile-fab {
+.fileDropOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--nd-z-popup) - 1);
+  background: var(--nd-overlayDark);
   display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.crossWindowDropOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--nd-z-popup) - 2);
+  background: color-mix(in srgb, var(--nd-accent, #86b300) 20%, rgba(0, 0, 0, 0.5));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 3px dashed var(--nd-accent, #86b300);
+
+  &:hover {
+    background: color-mix(in srgb, var(--nd-accent, #86b300) 30%, rgba(0, 0, 0, 0.5));
+  }
+}
+
+.dropContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+
+  .ti {
+    font-size: 48px;
+    opacity: 0.9;
+  }
 }
 </style>
 
@@ -354,62 +379,4 @@ html.nd-mobile .mobile-fab {
 .fade-leave-to {
   opacity: 0;
 }
-
-.file-drop-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: calc(var(--nd-z-popup) - 1);
-  background: var(--nd-overlayDark);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.cross-window-drop-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: calc(var(--nd-z-popup) - 2);
-  background: color-mix(in srgb, var(--nd-accent, #86b300) 20%, rgba(0, 0, 0, 0.5));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border: 3px dashed var(--nd-accent, #86b300);
-}
-
-.cross-window-drop-overlay:hover {
-  background: color-mix(in srgb, var(--nd-accent, #86b300) 30%, rgba(0, 0, 0, 0.5));
-}
-
-.cross-window-drop-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  color: #fff;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.cross-window-drop-content .ti {
-  font-size: 48px;
-  opacity: 0.9;
-}
-
-.file-drop-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  color: #fff;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.file-drop-content .ti {
-  font-size: 48px;
-  opacity: 0.9;
-}
-
 </style>

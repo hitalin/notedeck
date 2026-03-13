@@ -118,44 +118,46 @@ watch(
 </script>
 
 <template>
-  <nav class="mobile-nav">
+  <nav :class="$style.root">
     <button
-      class="_button mobile-tab mobile-menu-btn"
+      class="_button"
+      :class="$style.menuBtn"
       @click="emit('toggle-drawer')"
     >
       <i class="ti ti-menu-2" />
     </button>
-    <div ref="mobileNavRef" class="mobile-tabs-scroll">
+    <div ref="mobileNavRef" :class="$style.tabsScroll">
       <button
         v-for="(colId, i) in visibleColumns"
         :key="colId"
-        class="_button mobile-tab"
-        :class="{ active: activeColumnIndex === i }"
+        class="_button"
+        :class="[$style.tab, { [$style.active]: activeColumnIndex === i }]"
         @click="emit('scroll-to-column', i)"
       >
         <i :class="'ti ti-' + columnIcon(colId)" />
-        <span v-if="columnServerIcon(colId)" class="tab-server-badge">
-          <img :src="columnServerIcon(colId)!" class="tab-badge-img" />
+        <span v-if="columnServerIcon(colId)" :class="$style.serverBadge">
+          <img :src="columnServerIcon(colId)!" :class="$style.badgeImg" />
         </span>
-        <span v-else-if="columnAccount(colId)" class="tab-server-badge">
-          <span class="tab-badge-initial">{{
+        <span v-else-if="columnAccount(colId)" :class="$style.serverBadge">
+          <span :class="$style.badgeInitial">{{
             columnAccount(colId)!.host.charAt(0).toUpperCase()
           }}</span>
         </span>
-        <span v-if="columnAccount(colId)" class="tab-account-badge">
+        <span v-if="columnAccount(colId)" :class="$style.accountBadge">
           <img
             v-if="columnAccount(colId)!.avatarUrl"
             :src="columnAccount(colId)!.avatarUrl!"
-            class="tab-badge-img"
+            :class="$style.badgeImg"
           />
-          <span v-else class="tab-badge-initial">{{
+          <span v-else :class="$style.badgeInitial">{{
             columnAccount(colId)!.username.charAt(0).toUpperCase()
           }}</span>
         </span>
       </button>
     </div>
     <button
-      class="_button mobile-tab mobile-add-btn"
+      class="_button"
+      :class="$style.addBtn"
       title="Add column"
       @click="emit('toggle-add-menu')"
     >
@@ -164,10 +166,9 @@ watch(
   </nav>
 </template>
 
-<style scoped>
-/* Base: hidden by default, full styles defined here */
-.mobile-nav {
-  display: none;
+<style lang="scss" module>
+.root {
+  display: flex;
   align-items: stretch;
   flex: 0 0 auto;
   height: 50px;
@@ -178,13 +179,13 @@ watch(
   border-top: 1px solid var(--nd-divider);
 }
 
-.mobile-menu-btn,
-.mobile-add-btn {
+.menuBtn,
+.addBtn {
   flex: 0 0 auto;
   width: 50px;
 }
 
-.mobile-tabs-scroll {
+.tabsScroll {
   display: flex;
   align-items: stretch;
   justify-content: space-evenly;
@@ -194,13 +195,13 @@ watch(
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
-.mobile-tabs-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-.mobile-tab {
+.tab {
   position: relative;
   display: flex;
   align-items: center;
@@ -213,33 +214,33 @@ watch(
   color: var(--nd-fg);
   opacity: 0.45;
   transition: opacity var(--nd-duration-slow), color var(--nd-duration-slow);
+
+  &:active {
+    opacity: 0.7;
+    transform: scale(0.9);
+    transition: opacity var(--nd-duration-fast), color var(--nd-duration-slow), transform var(--nd-duration-fast);
+  }
 }
 
-.mobile-tab.active {
+.active {
   opacity: 1;
   color: var(--nd-accent);
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+    background: var(--nd-accent);
+  }
 }
 
-.mobile-tab.active::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 24px;
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-  background: var(--nd-accent);
-}
-
-.mobile-tab:active {
-  opacity: 0.7;
-  transform: scale(0.9);
-  transition: opacity var(--nd-duration-fast), color var(--nd-duration-slow), transform var(--nd-duration-fast);
-}
-
-.tab-server-badge,
-.tab-account-badge {
+.serverBadge,
+.accountBadge {
   position: absolute;
   width: 14px;
   height: 14px;
@@ -252,40 +253,28 @@ watch(
   justify-content: center;
 }
 
-.tab-server-badge {
+.serverBadge {
   top: 5px;
   right: calc(50% - 16px);
 }
 
-.tab-account-badge {
+.accountBadge {
   bottom: 4px;
   left: calc(50% - 16px);
 }
 
-.tab-badge-img {
+.badgeImg {
   width: 100%;
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
 }
 
-.tab-badge-initial {
+.badgeInitial {
   font-size: 7px;
   font-weight: bold;
   line-height: 1;
   color: var(--nd-fg);
   opacity: 0.7;
-}
-
-/* Small viewport: toggle display */
-@media (max-width: 500px) {
-  .mobile-nav {
-    display: flex;
-  }
-}
-
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .mobile-nav {
-  display: flex;
 }
 </style>

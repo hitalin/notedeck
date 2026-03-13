@@ -85,14 +85,14 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-root">
+  <div :class="$style.root">
     <template v-if="isTauri">
       <TitleBar v-if="isDesktop && !isPipWindow" />
-      <div class="app-content">
+      <div :class="$style.content">
         <router-view />
       </div>
     </template>
-    <div v-else class="no-tauri">
+    <div v-else :class="$style.noTauri">
       <p>NoteDeck requires the Tauri runtime.</p>
       <p>Run <code>pnpm tauri:dev</code> instead of <code>pnpm dev</code>.</p>
     </div>
@@ -107,15 +107,15 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scoped>
-.app-root {
+<style lang="scss" module>
+.root {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
 
-.app-content {
+.content {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -123,7 +123,7 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.no-tauri {
+.noTauri {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -132,12 +132,12 @@ onUnmounted(() => {
   color: var(--nd-fg);
   font-size: 0.9em;
   gap: 4px;
-}
 
-.no-tauri code {
-  background: #333;
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: #ddd;
+  code {
+    background: #333;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #ddd;
+  }
 }
 </style>
