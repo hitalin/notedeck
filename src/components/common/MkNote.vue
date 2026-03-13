@@ -467,6 +467,7 @@ function closeMentionPopup() {
           <button
             v-for="r in sortedReactions"
             :key="r.reaction"
+            v-memo="[r.reaction, r.count, effectiveNote.myReaction === r.reaction, reactionUrls[r.reaction]]"
             class="reaction"
             :class="{ reacted: effectiveNote.myReaction === r.reaction }"
             @click.stop="emit('react', r.reaction, effectiveNote)"
