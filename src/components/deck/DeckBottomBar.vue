@@ -98,20 +98,22 @@ const deckStore = useDeckStore()
   gap: 4px;
   height: 100%;
   padding: 0 8px;
-  background: var(--nd-accent, #86b300);
-  color: var(--nd-fgOnAccent, #fff);
+  color: var(--nd-fg);
   font-size: 0.75em;
   white-space: nowrap;
-  transition: filter 0.15s;
+  opacity: 0.7;
+  transition: opacity 0.15s, background 0.15s;
 }
 
 .profile-indicator:hover {
-  filter: brightness(1.15);
+  opacity: 1;
+  background: var(--nd-buttonHoverBg);
 }
 
 .profile-indicator .ti {
   font-size: 12px;
   flex-shrink: 0;
+  color: var(--nd-accent);
 }
 
 .profile-indicator-name {
