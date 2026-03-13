@@ -101,24 +101,24 @@ onMounted(() => {
     @header-click="scrollToTop"
   >
     <template #header-icon>
-      <i class="ti ti-user-plus tl-header-icon" />
+      <i class="ti ti-user-plus" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <button class="_button header-refresh" title="更新" :disabled="isLoading" @click.stop="fetchRequests">
-        <i class="ti ti-refresh" :class="{ 'spin': isLoading }" />
+      <button class="_button" :class="$style.headerRefresh" title="更新" :disabled="isLoading" @click.stop="fetchRequests">
+        <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
       </button>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
-        <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
-    <div v-if="!account" class="column-empty">
+    <div v-if="!account" :class="$style.columnEmpty">
       Account not found
     </div>
 
-    <div v-else-if="error" class="column-empty column-error">
+    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
       {{ error.message }}
     </div>
 
@@ -129,7 +129,7 @@ onMounted(() => {
 
       <div
         v-else-if="requests.length === 0"
-        class="column-empty"
+        :class="$style.columnEmpty"
       >
         フォローリクエストはありません
       </div>
@@ -182,11 +182,9 @@ onMounted(() => {
   </DeckColumn>
 </template>
 
-<style scoped>
-@use "./column-common.module.scss";
-</style>
-
 <style lang="scss" module>
+@use './column-common.module.scss';
+
 .frBody {
   flex: 1;
   min-height: 0;

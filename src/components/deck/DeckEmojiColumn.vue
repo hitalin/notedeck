@@ -136,25 +136,25 @@ onMounted(() => {
     @header-click="scrollToTop"
   >
     <template #header-icon>
-      <i class="ti ti-mood-smile tl-header-icon" />
+      <i class="ti ti-mood-smile" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <span v-if="allEmojis.length > 0" class="header-count">{{ allEmojis.length }}</span>
-      <button class="_button header-refresh" title="更新" :disabled="isLoading" @click.stop="loadEmojis">
-        <i class="ti ti-refresh" :class="{ 'spin': isLoading }" />
+      <span v-if="allEmojis.length > 0" :class="$style.headerCount">{{ allEmojis.length }}</span>
+      <button class="_button" :class="$style.headerRefresh" title="更新" :disabled="isLoading" @click.stop="loadEmojis">
+        <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
       </button>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
-        <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
-    <div v-if="!account" class="column-empty">
+    <div v-if="!account" :class="$style.columnEmpty">
       Account not found
     </div>
 
-    <div v-else-if="error" class="column-empty column-error">
+    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
       {{ error.message }}
     </div>
 
@@ -196,7 +196,7 @@ onMounted(() => {
         <MkSkeleton v-for="i in 3" :key="i" />
       </div>
 
-      <div v-else-if="filteredEmojis.length === 0" class="column-empty">
+      <div v-else-if="filteredEmojis.length === 0" :class="$style.columnEmpty">
         絵文字が見つかりません
       </div>
 
@@ -223,11 +223,15 @@ onMounted(() => {
   </DeckColumn>
 </template>
 
-<style scoped>
-@use "./column-common.module.scss";
-</style>
-
 <style lang="scss" module>
+@use './column-common.module.scss';
+
+.headerCount {
+  font-size: 0.75em;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
 .emojiBody {
   flex: 1;
   min-height: 0;

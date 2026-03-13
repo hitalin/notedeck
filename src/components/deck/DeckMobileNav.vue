@@ -277,4 +277,5 @@ watch(
   color: var(--nd-fg);
   opacity: 0.7;
 }
+
 </style>

@@ -227,23 +227,23 @@ function closeUserPopup() {
     @header-click="activeTab === 'notes' ? scrollToTop() : undefined"
   >
     <template #header-icon>
-      <i class="ti ti-compass tl-header-icon" />
+      <i class="ti ti-compass" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <button v-if="selectedRole" class="_button header-refresh" title="Back" @click.stop="closeRole">
+      <button v-if="selectedRole" class="_button" :class="$style.headerRefresh" title="Back" @click.stop="closeRole">
         <i class="ti ti-arrow-left" />
       </button>
-      <button v-else class="_button header-refresh" title="Refresh" :disabled="currentLoading" @click.stop="refresh">
-        <i class="ti ti-refresh" :class="{ spin: currentLoading }" />
+      <button v-else class="_button" :class="$style.headerRefresh" title="Refresh" :disabled="currentLoading" @click.stop="refresh">
+        <i class="ti ti-refresh" :class="{ [String($style.spin)]: currentLoading }" />
       </button>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
-        <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
-    <div v-if="!account" class="column-empty">
+    <div v-if="!account" :class="$style.columnEmpty">
       Account not found
     </div>
 
@@ -263,24 +263,24 @@ function closeUserPopup() {
 
       <!-- Notes tab -->
       <template v-if="activeTab === 'notes'">
-        <div v-if="error" class="column-empty column-error">
+        <div v-if="error" :class="[$style.columnEmpty, $style.columnError]">
           {{ error.message }}
         </div>
 
-        <div v-else class="tl-body">
+        <div v-else :class="$style.tlBody">
           <div
             v-if="pullDistance > 0 || isRefreshing"
             :class="$style.pullIndicator"
             :style="{ height: pullDistance + 'px' }"
           >
-            <i class="ti" :class="isRefreshing ? 'ti-loader-2 spin' : 'ti-arrow-down'" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
+            <i class="ti" :class="[isRefreshing ? 'ti-loader-2' : 'ti-arrow-down', { [String($style.spin)]: isRefreshing }]" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
           </div>
           <div v-if="isLoading && notes.length === 0">
             <MkSkeleton v-for="i in 5" :key="i" />
           </div>
 
           <template v-else>
-            <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" class="tl-scroller" @scroll="handleScroll">
+            <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" :class="$style.tlScroller" @scroll="handleScroll">
               <template #default="{ item, index }">
                 <div :data-index="index">
                   <MkNote
@@ -304,9 +304,9 @@ function closeUserPopup() {
       <!-- Users tab -->
       <template v-else-if="activeTab === 'users'">
         <div :class="$style.exploreList">
-          <div v-if="usersLoading" class="column-empty">読み込み中...</div>
-          <div v-else-if="usersError" class="column-empty column-error">{{ usersError }}</div>
-          <div v-else-if="users.length === 0" class="column-empty">ユーザーが見つかりません</div>
+          <div v-if="usersLoading" :class="$style.columnEmpty">読み込み中...</div>
+          <div v-else-if="usersError" :class="[$style.columnEmpty, $style.columnError]">{{ usersError }}</div>
+          <div v-else-if="users.length === 0" :class="$style.columnEmpty">ユーザーが見つかりません</div>
           <button
             v-for="user in users"
             :key="user.id"
@@ -342,9 +342,9 @@ function closeUserPopup() {
             <span>{{ selectedRole.name }}</span>
           </div>
           <div :class="$style.exploreList">
-            <div v-if="roleUsersLoading" class="column-empty">読み込み中...</div>
-            <div v-else-if="roleUsersError" class="column-empty column-error">{{ roleUsersError }}</div>
-            <div v-else-if="roleUsers.length === 0" class="column-empty">ユーザーがいません</div>
+            <div v-if="roleUsersLoading" :class="$style.columnEmpty">読み込み中...</div>
+            <div v-else-if="roleUsersError" :class="[$style.columnEmpty, $style.columnError]">{{ roleUsersError }}</div>
+            <div v-else-if="roleUsers.length === 0" :class="$style.columnEmpty">ユーザーがいません</div>
             <button
               v-for="user in roleUsers"
               :key="user.id"
@@ -368,9 +368,9 @@ function closeUserPopup() {
         <!-- Roles list -->
         <template v-else>
           <div :class="$style.exploreList">
-            <div v-if="rolesLoading" class="column-empty">読み込み中...</div>
-            <div v-else-if="rolesError" class="column-empty column-error">{{ rolesError }}</div>
-            <div v-else-if="roles.length === 0" class="column-empty">ロールが見つかりません</div>
+            <div v-if="rolesLoading" :class="$style.columnEmpty">読み込み中...</div>
+            <div v-else-if="rolesError" :class="[$style.columnEmpty, $style.columnError]">{{ rolesError }}</div>
+            <div v-else-if="roles.length === 0" :class="$style.columnEmpty">ロールが見つかりません</div>
             <button
               v-for="role in roles"
               :key="role.id"
@@ -416,11 +416,8 @@ function closeUserPopup() {
   </Teleport>
 </template>
 
-<style scoped>
-@use "./column-common.module.scss";
-</style>
-
 <style lang="scss" module>
+@use './column-common.module.scss';
 .pullIndicator {
   display: flex;
   align-items: center;

@@ -126,24 +126,24 @@ onUnmounted(() => {
     @header-click="scrollToTop"
   >
     <template #header-icon>
-      <i class="ti ti-speakerphone tl-header-icon" />
+      <i class="ti ti-speakerphone" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <button class="_button header-refresh" title="更新" :disabled="isLoading" @click.stop="fetchAnnouncements">
-        <i class="ti ti-refresh" :class="{ 'spin': isLoading }" />
+      <button class="_button" :class="$style.headerRefresh" title="更新" :disabled="isLoading" @click.stop="fetchAnnouncements">
+        <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
       </button>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
-        <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
-    <div v-if="!account" class="column-empty">
+    <div v-if="!account" :class="$style.columnEmpty">
       Account not found
     </div>
 
-    <div v-else-if="error" class="column-empty column-error">
+    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
       {{ error.message }}
     </div>
 
@@ -154,7 +154,7 @@ onUnmounted(() => {
 
       <div
         v-else-if="announcements.length === 0"
-        class="column-empty"
+        :class="$style.columnEmpty"
       >
         お知らせはありません
       </div>
@@ -193,11 +193,8 @@ onUnmounted(() => {
   </DeckColumn>
 </template>
 
-<style scoped>
-@use "./column-common.module.scss";
-</style>
-
 <style lang="scss" module>
+@use './column-common.module.scss';
 .announcementsBody {
   flex: 1;
   min-height: 0;

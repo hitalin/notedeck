@@ -162,18 +162,18 @@ fetchGallery()
 <template>
   <DeckColumn :column-id="column.id" :title="column.name ?? 'ギャラリー'" :theme-vars="columnThemeVars">
     <template #header-icon>
-      <i class="ti ti-icons tl-header-icon" />
+      <i class="ti ti-icons" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <button v-if="canGoBack" class="_button header-refresh" title="戻る" @click.stop="goBack">
+      <button v-if="canGoBack" class="_button" :class="$style.headerRefresh" title="戻る" @click.stop="goBack">
         <i class="ti ti-arrow-left" />
       </button>
-      <button v-if="!detailPost" class="_button header-refresh" title="更新" :disabled="loading" @click.stop="fetchGallery()">
-        <i class="ti ti-refresh" :class="{ spin: loading }" />
+      <button v-if="!detailPost" class="_button" :class="$style.headerRefresh" title="更新" :disabled="loading" @click.stop="fetchGallery()">
+        <i class="ti ti-refresh" :class="{ [String($style.spin)]: loading }" />
       </button>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
       </div>
     </template>
 
@@ -264,9 +264,9 @@ fetchGallery()
     <!-- Grid view -->
     <template v-else>
       <div :class="$style.galleryGridScroll" @scroll="onScroll">
-        <div v-if="loading && posts.length === 0" class="column-empty">読み込み中...</div>
-        <div v-else-if="error" class="column-empty column-error">{{ error }}</div>
-        <div v-else-if="posts.length === 0" class="column-empty">
+        <div v-if="loading && posts.length === 0" :class="$style.columnEmpty">読み込み中...</div>
+        <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
+        <div v-else-if="posts.length === 0" :class="$style.columnEmpty">
           ギャラリーの投稿がありません
         </div>
         <template v-else>
@@ -315,18 +315,16 @@ fetchGallery()
               </div>
             </button>
           </div>
-          <div v-if="loading" class="column-empty">読み込み中...</div>
+          <div v-if="loading" :class="$style.columnEmpty">読み込み中...</div>
         </template>
       </div>
     </template>
   </DeckColumn>
 </template>
 
-<style scoped>
-@use "./column-common.module.scss";
-</style>
-
 <style lang="scss" module>
+@use './column-common.module.scss';
+
 /* --- Grid scroll --- */
 .galleryGridScroll {
   flex: 1;

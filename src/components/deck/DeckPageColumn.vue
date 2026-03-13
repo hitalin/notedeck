@@ -351,18 +351,18 @@ const pageEditUrl = computed(() => {
     <AiScriptToast ref="toastRef" />
     <AiScriptDialog ref="dialogRef" />
     <template #header-icon>
-      <i class="ti ti-note tl-header-icon" />
+      <i class="ti ti-note" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <button v-if="mode !== 'list'" class="_button header-refresh" title="Back" @click.stop="goBack">
+      <button v-if="mode !== 'list'" class="_button" :class="$style.headerRefresh" title="Back" @click.stop="goBack">
         <i class="ti ti-arrow-left" />
       </button>
-      <button v-else class="_button header-refresh" title="Refresh" :disabled="listLoading" @click.stop="fetchList()">
-        <i class="ti ti-refresh" :class="{ spin: listLoading }" />
+      <button v-else class="_button" :class="$style.headerRefresh" title="Refresh" :disabled="listLoading" @click.stop="fetchList()">
+        <i class="ti ti-refresh" :class="{ [String($style.spin)]: listLoading }" />
       </button>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
       </div>
     </template>
 
@@ -381,9 +381,9 @@ const pageEditUrl = computed(() => {
       </div>
 
       <div :class="$style.pageList">
-        <div v-if="listLoading" class="column-empty">読み込み中...</div>
-        <div v-else-if="listError" class="column-empty column-error">{{ listError }}</div>
-        <div v-else-if="listItems.length === 0" class="column-empty">ページが見つかりません</div>
+        <div v-if="listLoading" :class="$style.columnEmpty">読み込み中...</div>
+        <div v-else-if="listError" :class="[$style.columnEmpty, $style.columnError]">{{ listError }}</div>
+        <div v-else-if="listItems.length === 0" :class="$style.columnEmpty">ページが見つかりません</div>
         <button
           v-for="item in listItems"
           :key="item.id"
@@ -406,8 +406,8 @@ const pageEditUrl = computed(() => {
     <!-- View mode -->
     <template v-else>
       <div :class="$style.pageViewScroll">
-        <div v-if="fetching" class="column-empty">Loading...</div>
-        <div v-else-if="fetchError" class="column-empty column-error">{{ fetchError }}</div>
+        <div v-if="fetching" :class="$style.columnEmpty">Loading...</div>
+        <div v-else-if="fetchError" :class="[$style.columnEmpty, $style.columnError]">{{ fetchError }}</div>
         <template v-else-if="page">
           <!-- Page header -->
           <div :class="$style.pageHeader">
@@ -451,7 +451,7 @@ const pageEditUrl = computed(() => {
           <div v-if="runError" :class="$style.pageError">{{ runError }}</div>
 
           <!-- Loading (script running, no UI yet) -->
-          <div v-if="running && !uiComponents.length && !runError" class="column-empty">
+          <div v-if="running && !uiComponents.length && !runError" :class="$style.columnEmpty">
             Running...
           </div>
 

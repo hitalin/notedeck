@@ -378,7 +378,7 @@ onUnmounted(() => {
         :class="$style.pullIndicator"
         :style="{ height: pullDistance + 'px' }"
       >
-        <i class="ti" :class="[isRefreshing ? 'ti-loader-2' : 'ti-arrow-down', { [$style.spin]: isRefreshing }]" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
+        <i class="ti" :class="[isRefreshing ? 'ti-loader-2' : 'ti-arrow-down', { [String($style.spin)]: isRefreshing }]" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
       </div>
 
       <div v-if="isLoading && notifications.length === 0">

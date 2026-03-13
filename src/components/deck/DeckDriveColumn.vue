@@ -195,27 +195,27 @@ fetchDrive()
 <template>
   <DeckColumn :column-id="column.id" :title="column.name ?? 'ドライブ'" :theme-vars="columnThemeVars">
     <template #header-icon>
-      <i class="ti ti-cloud tl-header-icon" />
+      <i class="ti ti-cloud" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <button v-if="canGoUp" class="_button header-refresh" title="戻る" @click.stop="goUp">
+      <button v-if="canGoUp" class="_button" :class="$style.headerRefresh" title="戻る" @click.stop="goUp">
         <i class="ti ti-arrow-left" />
       </button>
-      <button v-if="folderStack.length > 1" class="_button header-refresh" title="ルート" @click.stop="goRoot">
+      <button v-if="folderStack.length > 1" class="_button" :class="$style.headerRefresh" title="ルート" @click.stop="goRoot">
         <i class="ti ti-home" />
       </button>
-      <button v-if="!detailFile" class="_button header-refresh" :class="{ [$style.headerBtnActive]: selectMode }" title="選択" @click.stop="toggleSelectMode">
+      <button v-if="!detailFile" class="_button" :class="[$style.headerRefresh, { [$style.headerBtnActive]: selectMode }]" title="選択" @click.stop="toggleSelectMode">
         <i class="ti ti-checkbox" />
       </button>
-      <button v-if="!detailFile && !selectMode" class="_button header-refresh" title="アップロード" :disabled="uploading" @click.stop="openFilePicker">
+      <button v-if="!detailFile && !selectMode" class="_button" :class="$style.headerRefresh" title="アップロード" :disabled="uploading" @click.stop="openFilePicker">
         <i class="ti ti-upload" />
       </button>
-      <button v-if="!detailFile && !selectMode" class="_button header-refresh" title="更新" :disabled="loading" @click.stop="fetchDrive()">
-        <i class="ti ti-refresh" :class="{ spin: loading }" />
+      <button v-if="!detailFile && !selectMode" class="_button" :class="$style.headerRefresh" title="更新" :disabled="loading" @click.stop="fetchDrive()">
+        <i class="ti ti-refresh" :class="{ [String($style.spin)]: loading }" />
       </button>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
       </div>
     </template>
 
@@ -300,8 +300,8 @@ fetchDrive()
       </div>
 
       <div :class="$style.driveGridScroll">
-        <div v-if="loading" class="column-empty">読み込み中...</div>
-        <div v-else-if="error" class="column-empty column-error">{{ error }}</div>
+        <div v-if="loading" :class="$style.columnEmpty">読み込み中...</div>
+        <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
         <template v-else>
           <!-- Folders -->
           <button
@@ -326,7 +326,7 @@ fetchDrive()
               @click="openFilePicker"
             >
               <div :class="[$style.driveGridThumb, $style.driveUploadThumb]">
-                <i v-if="uploading" class="ti ti-loader-2 spin" />
+                <i v-if="uploading" class="ti ti-loader-2" :class="$style.spin" />
                 <i v-else class="ti ti-plus" />
               </div>
               <div :class="$style.driveGridLabel">アップロード</div>
@@ -388,11 +388,8 @@ fetchDrive()
   </DeckColumn>
 </template>
 
-<style scoped>
-@use "./column-common.module.scss";
-</style>
-
 <style lang="scss" module>
+@use './column-common.module.scss';
 /* --- Breadcrumb --- */
 .driveBreadcrumb {
   display: flex;

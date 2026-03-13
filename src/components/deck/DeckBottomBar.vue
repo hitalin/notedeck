@@ -154,4 +154,5 @@ const deckStore = useDeckStore()
   background: var(--nd-accent);
   pointer-events: none;
 }
+
 </style>

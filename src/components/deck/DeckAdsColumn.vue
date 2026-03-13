@@ -66,20 +66,20 @@ onMounted(() => {
     @header-click="scrollToTop"
   >
     <template #header-icon>
-      <i class="ti ti-ad-2 tl-header-icon" />
+      <i class="ti ti-ad-2" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <button class="_button header-refresh" title="更新" :disabled="isLoading" @click.stop="load">
-        <i class="ti ti-refresh" :class="{ 'spin': isLoading }" />
+      <button class="_button" :class="$style.headerRefresh" title="更新" :disabled="isLoading" @click.stop="load">
+        <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
       </button>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
-        <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
-    <div v-if="!account" class="column-empty">
+    <div v-if="!account" :class="$style.columnEmpty">
       Account not found
     </div>
 
@@ -87,7 +87,7 @@ onMounted(() => {
       <MkSkeleton v-for="i in 3" :key="i" />
     </div>
 
-    <div v-else-if="ads.length === 0" class="column-empty">
+    <div v-else-if="ads.length === 0" :class="$style.columnEmpty">
       広告はありません
     </div>
 
@@ -103,11 +103,9 @@ onMounted(() => {
   </DeckColumn>
 </template>
 
-<style scoped>
-@use "./column-common.module.scss";
-</style>
-
 <style lang="scss" module>
+@use './column-common.module.scss';
+
 .adsBody {
   flex: 1;
   min-height: 0;

@@ -614,23 +614,23 @@ fetchAchievements()
 <template>
   <DeckColumn :column-id="column.id" :title="column.name ?? '実績'" :theme-vars="columnThemeVars">
     <template #header-icon>
-      <i class="ti ti-medal tl-header-icon" />
+      <i class="ti ti-medal" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
       <span v-if="unlockedCount > 0" :class="$style.headerCount">{{ unlockedCount }}/{{ ACHIEVEMENT_TYPES.length }}</span>
-      <button class="_button header-refresh" title="更新" :disabled="loading" @click.stop="fetchAchievements()">
-        <i class="ti ti-refresh" :class="{ spin: loading }" />
+      <button class="_button" :class="$style.headerRefresh" title="更新" :disabled="loading" @click.stop="fetchAchievements()">
+        <i class="ti ti-refresh" :class="{ [String($style.spin)]: loading }" />
       </button>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
       </div>
     </template>
 
     <div :class="$style.achievementsScroll">
-      <div v-if="loading && achievements.length === 0" class="column-empty">読み込み中...</div>
-      <div v-else-if="error" class="column-empty column-error">{{ error }}</div>
-      <div v-else-if="achievements.length === 0 && !loading" class="column-empty">実績がありません</div>
+      <div v-if="loading && achievements.length === 0" :class="$style.columnEmpty">読み込み中...</div>
+      <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
+      <div v-else-if="achievements.length === 0 && !loading" :class="$style.columnEmpty">実績がありません</div>
       <template v-else>
         <div :class="$style.achievementsGrid">
           <div
@@ -665,11 +665,9 @@ fetchAchievements()
   </DeckColumn>
 </template>
 
-<style scoped>
-@use "./column-common.module.scss";
-</style>
-
 <style lang="scss" module>
+@use './column-common.module.scss';
+
 .headerCount {
   font-size: 0.75em;
   opacity: 0.6;
