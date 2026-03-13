@@ -280,7 +280,8 @@ defineExpose({ scrollToColumn, columnMap })
   flex: 0 0 auto;
   min-width: 280px;
   max-width: 600px;
-  height: 100%;
+  display: flex;
+  flex-direction: column;
   contain: layout style;
 }
 
@@ -297,13 +298,15 @@ defineExpose({ scrollToColumn, columnMap })
 
 .stack-cell {
   position: relative;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .column-section.stacked .stack-cell {
   flex: 1;
   min-height: 0;
-  height: auto;
 }
 
 /* Column drag feedback */
