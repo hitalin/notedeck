@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
+import { useIntersectionObserver } from '@vueuse/core'
 import { computed, defineAsyncComponent, ref } from 'vue'
 import type {
   NormalizedNote,
@@ -57,6 +58,18 @@ const reactionPickerRef = ref<InstanceType<
 const reactionUsersRef = ref<InstanceType<
   typeof NoteReactionUsersPopup
 > | null>(null)
+const reactionsAreaRef = ref<HTMLElement | null>(null)
+const reactionsVisible = ref(false)
+const { stop: stopReactionsObserver } = useIntersectionObserver(
+  reactionsAreaRef,
+  ([entry]) => {
+    if (entry?.isIntersecting) {
+      reactionsVisible.value = true
+      stopReactionsObserver()
+    }
+  },
+  { rootMargin: '200px' },
+)
 
 const emit = defineEmits<{
   react: [reaction: string, note: NormalizedNote]
@@ -458,28 +471,30 @@ function closeMentionPopup() {
         </div>
 
         <!-- Reactions -->
-        <TransitionGroup
-          v-if="sortedReactions.length > 0 && !embedded"
-          tag="div"
-          name="reaction-appear"
-          class="reactions"
-        >
-          <button
-            v-for="r in sortedReactions"
-            :key="r.reaction"
-            v-memo="[r.reaction, r.count, effectiveNote.myReaction === r.reaction, reactionUrls[r.reaction]]"
-            class="reaction"
-            :class="{ reacted: effectiveNote.myReaction === r.reaction }"
-            @click.stop="emit('react', r.reaction, effectiveNote)"
-            @mouseenter="reactionUsersRef?.show($event, r.reaction, reactionUrls[r.reaction] ?? null, effectiveNote.reactions[r.reaction] ?? 0)"
-            @mouseleave="reactionUsersRef?.hide()"
+        <div v-if="sortedReactions.length > 0 && !embedded" ref="reactionsAreaRef" class="reactions-area">
+          <TransitionGroup
+            v-if="reactionsVisible"
+            tag="div"
+            name="reaction-appear"
+            class="reactions"
           >
-            <img v-if="reactionUrls[r.reaction]" :src="proxyUrl(reactionUrls[r.reaction]!)" :alt="r.reaction" class="custom-emoji" decoding="async" loading="lazy" />
-            <span v-else-if="r.reaction.startsWith(':')" class="reaction-emoji-fallback">{{ r.reaction }}</span>
-            <MkEmoji v-else :emoji="r.reaction" class="reaction-emoji" />
-            <span class="count">{{ r.count }}</span>
-          </button>
+            <button
+              v-for="r in sortedReactions"
+              :key="r.reaction"
+              v-memo="[r.reaction, r.count, effectiveNote.myReaction === r.reaction, reactionUrls[r.reaction]]"
+              class="reaction"
+              :class="{ reacted: effectiveNote.myReaction === r.reaction }"
+              @click.stop="emit('react', r.reaction, effectiveNote)"
+              @mouseenter="reactionUsersRef?.show($event, r.reaction, reactionUrls[r.reaction] ?? null, effectiveNote.reactions[r.reaction] ?? 0)"
+              @mouseleave="reactionUsersRef?.hide()"
+            >
+              <img v-if="reactionUrls[r.reaction]" :src="proxyUrl(reactionUrls[r.reaction]!)" :alt="r.reaction" class="custom-emoji" decoding="async" loading="lazy" />
+              <span v-else-if="r.reaction.startsWith(':')" class="reaction-emoji-fallback">{{ r.reaction }}</span>
+              <MkEmoji v-else :emoji="r.reaction" class="reaction-emoji" />
+              <span class="count">{{ r.count }}</span>
+            </button>
         </TransitionGroup>
+        </div>
 
         <!-- Footer -->
         <footer v-if="!embedded" class="footer">
