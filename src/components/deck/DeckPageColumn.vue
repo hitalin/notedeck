@@ -471,7 +471,7 @@ const pageEditUrl = computed(() => {
                 :class="{ liked: page.isLiked }"
                 @click="toggleLike"
               >
-                <i :class="page.isLiked ? 'ti ti-heart-filled' : 'ti ti-heart'" />
+                <i class="ti ti-heart" />
                 {{ page.likedCount }}
               </button>
               <button

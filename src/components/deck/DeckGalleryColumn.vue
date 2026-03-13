@@ -251,7 +251,7 @@ fetchGallery()
                 :disabled="liking"
                 @click="toggleLike"
               >
-                <i :class="detailPost.isLiked ? 'ti ti-heart-filled' : 'ti ti-heart'" />
+                <i class="ti ti-heart" />
                 <span v-if="detailPost.likedCount > 0">{{ detailPost.likedCount }}</span>
               </button>
             </div>

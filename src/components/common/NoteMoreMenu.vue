@@ -113,7 +113,7 @@ defineExpose({ open })
               :class="{ 'popup-item-active': localIsFavorited }"
               @click="localIsFavorited = !localIsFavorited; emit('bookmark', note); close()"
             >
-              <i :class="localIsFavorited ? 'ti ti-star-filled' : 'ti ti-star'" />
+              <i class="ti ti-star" />
               {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
             </button>
             <button class="popup-item" @click="openInWebUI(); close()">

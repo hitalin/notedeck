@@ -455,7 +455,7 @@ function reload() {
               :class="{ liked: flash.isLiked }"
               @click="toggleLike"
             >
-              <i :class="flash.isLiked ? 'ti ti-heart-filled' : 'ti ti-heart'" />
+              <i class="ti ti-heart" />
               {{ flash.likedCount }}
             </button>
           </div>
