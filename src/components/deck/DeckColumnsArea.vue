@@ -96,7 +96,7 @@ onUnmounted(() => {
 
 // Re-observe column cells when layout changes
 watch(
-  () => deckStore.layout,
+  () => deckStore.windowLayout,
   () => {
     if (!columnsRef.value) return
     for (const cell of columnsRef.value.querySelectorAll<HTMLElement>(
@@ -114,7 +114,7 @@ const dropInsertIndex = computed(() => {
   if (!dt || !('insertIndex' in dt)) return -1
   const dragId = props.columnDrag.dragColumnId.value
   if (dragId) {
-    const fromIdx = deckStore.layout.findIndex((ids) => ids.includes(dragId))
+    const fromIdx = deckStore.windowLayout.findIndex((ids) => ids.includes(dragId))
     if (
       fromIdx >= 0 &&
       (dt.insertIndex === fromIdx || dt.insertIndex === fromIdx + 1)
@@ -219,7 +219,7 @@ defineExpose({ scrollToColumn, columnMap })
       :style="{ flexBasis: `${dropInsertWidth}px` }"
     />
     <template
-      v-for="(group, groupIndex) in deckStore.layout"
+      v-for="(group, groupIndex) in deckStore.windowLayout"
       :key="group.join('-')"
     >
       <section

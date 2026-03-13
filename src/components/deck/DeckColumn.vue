@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed } from 'vue'
+import { popOutColumnToWindow } from '@/composables/useDeckWindow'
 import { useDeckStore } from '@/stores/deck'
+import { useUiStore } from '@/stores/ui'
 
 const props = defineProps<{
   columnId: string
@@ -15,9 +17,17 @@ const props = defineProps<{
 const emit = defineEmits<{ 'header-click': [] }>()
 
 const deckStore = useDeckStore()
+const { isDesktop } = useUiStore()
+
+/** Whether this column can be popped out (desktop + main window only) */
+const canPopOut = computed(() => isDesktop && !deckStore.currentWindowId)
 
 function close() {
   deckStore.removeColumn(props.columnId)
+}
+
+function popOut() {
+  popOutColumnToWindow(props.columnId)
 }
 
 const isMuted = computed(
@@ -55,6 +65,11 @@ function toggleMute() {
       <!-- Open in Web UI -->
       <button v-if="webUiUrl" class="_button header-btn" title="Web UIで開く" @click.stop="openUrl(webUiUrl)">
         <i class="ti ti-external-link" />
+      </button>
+
+      <!-- Pop out to separate window -->
+      <button v-if="canPopOut" class="_button header-btn" title="別ウィンドウで開く" @click.stop="popOut">
+        <i class="ti ti-app-window" />
       </button>
 
       <!-- Sound mute toggle -->

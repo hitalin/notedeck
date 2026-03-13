@@ -179,7 +179,7 @@ const columns = computed(() => deckStore.columns)
     <!-- Mobile bottom nav -->
     <DeckMobileNav
       :columns="columns"
-      :layout="deckStore.layout"
+      :layout="deckStore.windowLayout"
       :active-column-index="activeColumnIndex"
       @scroll-to-column="scrollToColumn"
       @toggle-add-menu="toggleAddMenu"

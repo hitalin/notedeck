@@ -11,6 +11,10 @@ import { usePluginsStore } from '@/stores/plugins'
 import { useUiStore } from '@/stores/ui'
 import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
+  listenDeckWindowEvents,
+  saveCurrentWindowLayout,
+} from '@/composables/useDeckWindow'
+import {
   initDesktopNotifications,
   onNotificationAction,
 } from '@/utils/desktopNotification'
@@ -36,6 +40,7 @@ export function useDeckInit(options: {
 
   let handleResizeRef: (() => void) | null = null
   let unlistenQuickNote: (() => void) | null = null
+  let unlistenWindowEvents: (() => void) | null = null
 
   function onVisibilityChange() {
     if (!document.hidden) {
@@ -86,6 +91,20 @@ export function useDeckInit(options: {
           unlistenQuickNote = fn
         })
       })
+
+      // Cross-window event listeners (main window listens for sub-window events)
+      if (!deckStore.currentWindowId) {
+        listenDeckWindowEvents().then((fn) => {
+          unlistenWindowEvents = fn
+        })
+      }
+
+      // Sub-windows save their layout on beforeunload
+      if (deckStore.currentWindowId) {
+        window.addEventListener('beforeunload', () => {
+          saveCurrentWindowLayout()
+        })
+      }
     }
   })
 
@@ -99,5 +118,6 @@ export function useDeckInit(options: {
     if (handleResizeRef) window.removeEventListener('resize', handleResizeRef)
     document.removeEventListener('visibilitychange', onVisibilityChange)
     unlistenQuickNote?.()
+    unlistenWindowEvents?.()
   })
 }

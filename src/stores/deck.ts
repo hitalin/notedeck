@@ -44,12 +44,23 @@ export interface WidgetConfig {
   data: Record<string, unknown>
 }
 
+export interface DeckWindowLayout {
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+  monitor?: string
+}
+
 export interface DeckProfile {
   id: string
   name: string
   columns: DeckColumn[]
   layout: string[][]
   createdAt: number
+  /** Window positions/sizes for multi-window layouts */
+  windows?: DeckWindowLayout[]
 }
 
 export interface DeckColumn {
@@ -73,6 +84,8 @@ export interface DeckColumn {
   pageId?: string
   soundMuted?: boolean
   folderId?: string | null
+  /** Window assignment: undefined/null = main window */
+  windowId?: string
 }
 
 let columnCounter = 0
@@ -87,6 +100,8 @@ export const useDeckStore = defineStore('deck', () => {
   const layout = ref<string[][]>([])
   const navCollapsed = ref(false)
   const activeColumnId = ref<string | null>(null)
+  /** This window's sub-window ID (null = main window) */
+  const currentWindowId = ref<string | null>(null)
 
   function setActiveColumn(id: string) {
     activeColumnId.value = id
@@ -416,7 +431,12 @@ export const useDeckStore = defineStore('deck', () => {
     }
 
     // All windows use windowProfileId — set it from query or activeProfileId
-    const profileId = new URLSearchParams(window.location.search).get('profile')
+    const params = new URLSearchParams(window.location.search)
+    const profileId = params.get('profile')
+    const windowId = params.get('window')
+    if (windowId) {
+      currentWindowId.value = windowId
+    }
     if (profileId) {
       initWindowProfile(profileId)
     } else if (activeProfileId.value) {
@@ -663,6 +683,101 @@ export const useDeckStore = defineStore('deck', () => {
     unlistenSync = null
   }
 
+  // --- Multi-window column management ---
+
+  /** Layout groups visible in the current window */
+  const windowLayout = computed(() => {
+    const wid = currentWindowId.value
+    return layout.value.filter((group) =>
+      group.some((colId) => {
+        const col = columns.value.find((c) => c.id === colId)
+        if (!col) return false
+        // Main window shows columns without windowId
+        if (!wid) return !col.windowId
+        // Sub-windows show their assigned columns
+        return col.windowId === wid
+      }),
+    )
+  })
+
+  /** Pop out a column to a sub-window. Unstacks first if needed. */
+  function popOutColumn(columnId: string, windowId: string) {
+    // Unstack first
+    unstackColumn(columnId)
+    // Assign to sub-window
+    const col = getColumn(columnId)
+    if (col) {
+      col.windowId = windowId
+      save()
+    }
+  }
+
+  /** Recall a column from a sub-window back to main */
+  function recallColumn(columnId: string) {
+    const col = getColumn(columnId)
+    if (col) {
+      col.windowId = undefined
+      save()
+    }
+  }
+
+  /** Recall all columns from a specific sub-window (e.g. when window closes) */
+  function recallColumnsFromWindow(windowId: string) {
+    let changed = false
+    for (const col of columns.value) {
+      if (col.windowId === windowId) {
+        col.windowId = undefined
+        changed = true
+      }
+    }
+    if (changed) save()
+  }
+
+  /** Move a column between windows */
+  function moveColumnToWindow(
+    columnId: string,
+    targetWindowId: string | null,
+  ) {
+    const col = getColumn(columnId)
+    if (!col) return
+    col.windowId = targetWindowId || undefined
+    save()
+  }
+
+  /** Save window layout (position/size) to the current profile */
+  function saveWindowLayout(windowLayout: DeckWindowLayout) {
+    if (!windowProfileId.value) return
+    const profiles = loadProfiles()
+    const profile = profiles.find((p) => p.id === windowProfileId.value)
+    if (!profile) return
+    if (!profile.windows) profile.windows = []
+    const existing = profile.windows.findIndex((w) => w.id === windowLayout.id)
+    if (existing >= 0) {
+      profile.windows[existing] = windowLayout
+    } else {
+      profile.windows.push(windowLayout)
+    }
+    saveProfiles(profiles)
+  }
+
+  /** Remove a window layout entry from the current profile */
+  function removeWindowLayout(windowId: string) {
+    if (!windowProfileId.value) return
+    const profiles = loadProfiles()
+    const profile = profiles.find((p) => p.id === windowProfileId.value)
+    if (!profile?.windows) return
+    profile.windows = profile.windows.filter((w) => w.id !== windowId)
+    saveProfiles(profiles)
+  }
+
+  /** Get saved window layouts for the current profile */
+  function getWindowLayouts(): DeckWindowLayout[] {
+    if (!windowProfileId.value) return []
+    const profiles = loadProfiles()
+    const profile = profiles.find((p) => p.id === windowProfileId.value)
+    return profile?.windows ?? []
+  }
+
   return {
     columns,
     layout,
@@ -706,6 +821,15 @@ export const useDeckStore = defineStore('deck', () => {
     currentProfileName,
     initWindowProfile,
     createEmptyProfile,
+    currentWindowId,
+    windowLayout,
+    popOutColumn,
+    recallColumn,
+    recallColumnsFromWindow,
+    moveColumnToWindow,
+    saveWindowLayout,
+    removeWindowLayout,
+    getWindowLayouts,
     startSync,
     stopSync,
   }
