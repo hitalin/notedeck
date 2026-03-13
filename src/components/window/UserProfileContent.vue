@@ -2,7 +2,15 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { colord } from 'colord'
 import QRCodeStyling from 'qr-code-styling'
-import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  nextTick,
+  onMounted,
+  ref,
+  shallowRef,
+  watch,
+} from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   NormalizedNote,
@@ -12,7 +20,11 @@ import type {
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
-import MkPostForm from '@/components/common/MkPostForm.vue'
+
+const MkPostForm = defineAsyncComponent(
+  () => import('@/components/common/MkPostForm.vue'),
+)
+
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'

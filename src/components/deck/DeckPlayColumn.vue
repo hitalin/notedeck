@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { type Ast, type Interpreter } from '@syuilo/aiscript'
 import { invoke } from '@tauri-apps/api/core'
-import { computed, ref } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
 import {
   createAiScriptInterpreter,
@@ -19,7 +19,11 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import AiScriptToast from '@/components/common/AiScriptToast.vue'
-import MkPostForm from '@/components/common/MkPostForm.vue'
+
+const MkPostForm = defineAsyncComponent(
+  () => import('@/components/common/MkPostForm.vue'),
+)
+
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'

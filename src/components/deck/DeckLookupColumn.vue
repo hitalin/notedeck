@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { ref } from 'vue'
+import { defineAsyncComponent, ref } from 'vue'
 import { MisskeyApi } from '@/adapters/misskey/api'
 import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
-import MkPostForm from '@/components/common/MkPostForm.vue'
+
+const MkPostForm = defineAsyncComponent(
+  () => import('@/components/common/MkPostForm.vue'),
+)
+
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
