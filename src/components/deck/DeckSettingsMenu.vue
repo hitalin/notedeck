@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { CSSProperties } from 'vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import AboutDialog from '@/components/common/AboutDialog.vue'
 import ThemePreview from '@/components/ThemePreview.vue'
@@ -13,6 +14,7 @@ import { version as appVersion } from '../../../package.json'
 
 const props = defineProps<{
   show: boolean
+  anchor?: HTMLElement | null
 }>()
 
 const emit = defineEmits<{
@@ -73,6 +75,7 @@ function removeTheme(id: string) {
 }
 
 const menuEl = ref<HTMLElement | null>(null)
+const fixedStyle = ref<CSSProperties | undefined>()
 
 function handlePointerDown(e: PointerEvent) {
   if (menuEl.value && !menuEl.value.contains(e.target as Node)) {
@@ -84,6 +87,16 @@ watch(
   () => props.show,
   (val) => {
     if (val) {
+      if (props.anchor) {
+        const rect = props.anchor.getBoundingClientRect()
+        fixedStyle.value = {
+          position: 'fixed',
+          bottom: `${window.innerHeight - rect.top + 4}px`,
+          right: `${window.innerWidth - rect.right}px`,
+        }
+      } else {
+        fixedStyle.value = undefined
+      }
       document.addEventListener('pointerdown', handlePointerDown)
     } else {
       document.removeEventListener('pointerdown', handlePointerDown)
@@ -162,8 +175,9 @@ function syncScroll(e: Event) {
 </script>
 
 <template>
+  <Teleport to="body" :disabled="!anchor">
   <Transition name="settings-menu">
-    <div v-if="show" ref="menuEl" :class="[$style.settingsMenu, { [$style.mobile]: isMobile }]" class="_popupMenu">
+    <div v-if="show" ref="menuEl" :class="[$style.settingsMenu, { [$style.mobile]: isMobile }]" :style="fixedStyle" class="_popupMenu">
       <!-- Misskey-style day/night toggle panel -->
       <div :class="$style.themePanel">
         <div :class="$style.toggleArea">
@@ -316,6 +330,7 @@ function syncScroll(e: Event) {
       <button v-else :class="$style.versionInfo" @click="showAbout = true">v{{ appVersion }}</button>
     </div>
   </Transition>
+  </Teleport>
   <AboutDialog :show="showAbout" @close="showAbout = false" />
 </template>
 

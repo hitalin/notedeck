@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { CSSProperties } from 'vue'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
@@ -8,6 +9,7 @@ import { useIsMobile } from '@/stores/ui'
 
 const props = defineProps<{
   show: boolean
+  anchor?: HTMLElement | null
 }>()
 
 const emit = defineEmits<{
@@ -21,6 +23,7 @@ const profiles = ref<DeckProfile[]>([])
 const editingId = ref<string | null>(null)
 const editingName = ref('')
 const menuEl = ref<HTMLElement | null>(null)
+const fixedStyle = ref<CSSProperties | undefined>()
 
 function handlePointerDown(e: PointerEvent) {
   if (menuEl.value && !menuEl.value.contains(e.target as Node)) {
@@ -40,6 +43,16 @@ watch(
   () => props.show,
   (val) => {
     if (val) {
+      if (props.anchor) {
+        const rect = props.anchor.getBoundingClientRect()
+        fixedStyle.value = {
+          position: 'fixed',
+          bottom: `${window.innerHeight - rect.top + 4}px`,
+          left: `${rect.left}px`,
+        }
+      } else {
+        fixedStyle.value = undefined
+      }
       profiles.value = deckStore.getProfiles()
       editingId.value = null
       addOutsideClickListener()
@@ -90,55 +103,59 @@ function remove(id: string) {
 </script>
 
 <template>
+  <Teleport to="body" :disabled="!anchor">
   <Transition name="profile-menu">
-    <div v-if="show" ref="menuEl" :class="[$style.profileMenu, { [String($style.mobile)]: isMobile }]" class="_popupMenu" @pointerdown.stop>
-      <div
-        v-for="p in profiles"
-        :key="p.id"
-        :class="[$style.profileMenuItem, { [String($style.active)]: p.id === deckStore.windowProfileId }]"
-        @click="apply(p.id)"
-      >
-        <input
-          v-if="editingId === p.id"
-          v-model="editingName"
-          :class="$style.profileMenuRenameInput"
-          @blur="commitRename"
-          @click.stop
-          @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
-          @vue:mounted="({ el }: { el: HTMLInputElement }) => { el.focus(); el.select() }"
-        />
-        <span v-else :class="$style.profileMenuName">{{ p.name }}</span>
-        <button
-          class="_button"
-          :class="$style.profileMenuAction"
-          title="名前変更"
-          @click.stop="startRename(p.id, p.name)"
+    <div v-if="show" ref="menuEl" :class="[$style.profileMenu, { [$style.mobile]: isMobile }]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
+      <div :class="$style.list">
+        <div
+          v-for="p in profiles"
+          :key="p.id"
+          :class="[$style.item, { [$style.active]: p.id === deckStore.windowProfileId }]"
+          @click="apply(p.id)"
         >
-          <i class="ti ti-edit" />
-        </button>
-        <button
-          class="_button"
-          :class="[$style.profileMenuAction, $style.profileMenuDelete]"
-          title="削除"
-          @click.stop="remove(p.id)"
-        >
-          <i class="ti ti-trash" />
-        </button>
+          <input
+            v-if="editingId === p.id"
+            v-model="editingName"
+            :class="$style.renameInput"
+            @blur="commitRename"
+            @click.stop
+            @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
+            @vue:mounted="({ el }: { el: HTMLInputElement }) => { el.focus(); el.select() }"
+          />
+          <span v-else :class="$style.name">{{ p.name }}</span>
+          <button
+            class="_button"
+            :class="$style.action"
+            title="名前変更"
+            @click.stop="startRename(p.id, p.name)"
+          >
+            <i class="ti ti-edit" />
+          </button>
+          <button
+            class="_button"
+            :class="[$style.action, $style.deleteAction]"
+            title="削除"
+            @click.stop="remove(p.id)"
+          >
+            <i class="ti ti-trash" />
+          </button>
+        </div>
       </div>
 
-      <div v-if="profiles.length === 0" :class="$style.profileMenuEmpty">
+      <div v-if="profiles.length === 0" :class="$style.empty">
         保存されたプロファイルはありません
       </div>
 
-      <div :class="$style.profileMenuDivider" />
+      <div :class="$style.divider" />
 
-      <div :class="[$style.profileMenuItem, $style.profileMenuNew]" @click="createProfile">
+      <div :class="[$style.item, $style.newItem]" @click="createProfile">
         <i class="ti ti-plus" />
-        <span>新しいプロファイル</span>
+        <span>新規プロファイル</span>
       </div>
 
     </div>
   </Transition>
+  </Teleport>
 </template>
 
 <style lang="scss" module>
@@ -146,23 +163,19 @@ function remove(id: string) {
   bottom: 100%;
   left: 0;
   margin-bottom: 4px;
-  min-width: 200px;
-  max-width: 300px;
+  min-width: 180px;
+  max-width: 260px;
 }
 
-.profileMenuEmpty {
-  padding: 8px 16px;
-  font-size: 0.9em;
-  color: var(--nd-fg);
-  opacity: 0.4;
-  text-align: center;
+.list {
+  padding: 2px 0;
 }
 
-.profileMenuItem {
+.item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 16px;
+  padding: 6px 16px;
   cursor: pointer;
   font-size: 0.9em;
   line-height: 20px;
@@ -192,7 +205,7 @@ function remove(id: string) {
   }
 }
 
-.profileMenuName {
+.name {
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -200,7 +213,7 @@ function remove(id: string) {
   position: relative;
 }
 
-.profileMenuRenameInput {
+.renameInput {
   flex: 1;
   min-width: 0;
   font-size: inherit;
@@ -209,12 +222,12 @@ function remove(id: string) {
   background: var(--nd-accent-subtle);
   border: 1px solid var(--nd-accent);
   border-radius: 4px;
-  padding: 0 4px;
+  padding: 2px 6px;
   position: relative;
   outline: none;
 }
 
-.profileMenuAction {
+.action {
   display: none;
   flex-shrink: 0;
   color: var(--nd-fg);
@@ -223,7 +236,7 @@ function remove(id: string) {
   position: relative;
   transition: opacity var(--nd-duration-fast);
 
-  .profileMenuItem:hover & {
+  .item:hover & {
     display: flex;
   }
 
@@ -232,19 +245,27 @@ function remove(id: string) {
   }
 }
 
-.profileMenuDelete {
+.deleteAction {
   &:hover {
     color: var(--nd-love, #ff6b6b);
   }
 }
 
-.profileMenuDivider {
-  border: 0;
-  border-top: 0.5px solid var(--nd-divider);
-  margin: 8px 0;
+.divider {
+  height: 1px;
+  background: var(--nd-divider);
+  margin: 4px 12px;
 }
 
-.profileMenuNew {
+.empty {
+  padding: 12px 16px;
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  opacity: 0.4;
+  text-align: center;
+}
+
+.newItem {
   opacity: 0.7;
 
   &:hover {
@@ -253,6 +274,46 @@ function remove(id: string) {
 
   i, span {
     position: relative;
+  }
+}
+
+/* Mobile overrides */
+.mobile {
+  &.profileMenu {
+    position: fixed;
+    bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    min-width: 0;
+    border-radius: 12px;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+    padding: 4px 0;
+  }
+
+  .item {
+    padding: 10px 16px;
+    min-height: 44px;
+    font-size: 0.95em;
+    gap: 12px;
+  }
+
+  .action {
+    display: flex;
+    padding: 8px;
+  }
+
+  .newItem {
+    min-height: 44px;
+    gap: 12px;
+  }
+
+  .divider {
+    margin: 4px 12px;
+  }
+
+  .empty {
+    padding: 16px;
   }
 }
 </style>
@@ -274,26 +335,6 @@ function remove(id: string) {
   .profile-menu-enter-from,
   .profile-menu-leave-to {
     transform: translateY(8px) scale(0.97);
-  }
-}
-</style>
-
-<style lang="scss" module>
-/* Mobile overrides */
-.mobile {
-  &.profileMenu {
-    position: fixed;
-    bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
-    left: 8px;
-    right: 8px;
-    max-width: none;
-    min-width: 0;
-    border-radius: 12px;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
-  }
-
-  .profileMenuAction {
-    display: flex;
   }
 }
 </style>

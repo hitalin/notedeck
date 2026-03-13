@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useDeckStore } from '@/stores/deck'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
@@ -8,6 +9,9 @@ defineProps<{
   showSettingsMenu: boolean
   updateAvailable: boolean
 }>()
+
+const profileWrapRef = ref<HTMLElement>()
+const settingsWrapRef = ref<HTMLElement>()
 
 const emit = defineEmits<{
   'toggle-add-menu': []
@@ -21,7 +25,7 @@ const deckStore = useDeckStore()
 <template>
   <div :class="$style.root">
     <div :class="$style.left">
-      <div :class="$style.menuWrap">
+      <div ref="profileWrapRef" :class="$style.menuWrap">
         <button
           class="_button"
           :class="$style.profileIndicator"
@@ -34,6 +38,7 @@ const deckStore = useDeckStore()
         </button>
         <DeckProfileMenu
           :show="showProfileMenu"
+          :anchor="profileWrapRef"
           @close="emit('update:show-profile-menu', false)"
         />
       </div>
@@ -47,7 +52,7 @@ const deckStore = useDeckStore()
       <i class="ti ti-plus" />
     </button>
     <div :class="$style.right">
-      <div :class="$style.menuWrap">
+      <div ref="settingsWrapRef" :class="$style.menuWrap">
         <button
           class="_button"
           :class="[$style.btn, $style.settingsBtn]"
@@ -60,6 +65,7 @@ const deckStore = useDeckStore()
         </button>
         <DeckSettingsMenu
           :show="showSettingsMenu"
+          :anchor="settingsWrapRef"
           @close="emit('update:show-settings-menu', false)"
         />
       </div>
