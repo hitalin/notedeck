@@ -774,14 +774,5 @@ defineExpose({
 .drawerOpen {
   transform: translateX(0);
   box-shadow: 4px 0 16px rgb(0 0 0 / 0.3);
-
-  :global(.nav-account-menu.menu-right) {
-    bottom: 100%;
-    top: auto;
-    left: 0;
-    right: 0;
-    margin-bottom: 4px;
-    margin-left: 0;
-  }
 }
 </style>

@@ -2,6 +2,8 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useNavigation } from '@/composables/useNavigation'
 
+import { useIsMobile } from '@/stores/ui'
+
 const props = defineProps<{
   show: boolean
   account: {
@@ -16,6 +18,8 @@ const props = defineProps<{
   modeError: string | null
   isAdmin: boolean
 }>()
+
+const isMobile = useIsMobile()
 
 const emit = defineEmits<{
   'toggle-mode': [key: string]
@@ -35,8 +39,8 @@ function modeLabel(key: string): string {
   <Transition name="nav-account-menu">
     <div
       v-if="show"
-      class="nav-account-menu"
-      :class="[$style.navAccountMenu, { [$style.menuRight]: navCollapsed }]"
+      class="nav-account-menu _popupMenu"
+      :class="[$style.navAccountMenu, { [$style.menuRight]: navCollapsed, [$style.mobile]: isMobile }]"
       @click.stop
     >
       <template v-if="Object.keys(modes).length > 0">
@@ -145,6 +149,15 @@ function modeLabel(key: string): string {
   word-break: break-word;
 }
 
+.mobile {
+  position: fixed;
+  bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+  left: 8px;
+  right: 8px;
+  top: auto;
+  margin: 0;
+}
+
 .navAccountLogout {
   color: var(--nd-love, #ff6b6b);
   gap: 8px;
@@ -166,11 +179,11 @@ function modeLabel(key: string): string {
 .nav-account-menu-enter-from,
 .nav-account-menu-leave-to {
   opacity: 0;
-  transform: translateY(4px) scale(0.97);
+  transform: translateY(4px);
 }
 
 .nav-account-menu.menu-right.nav-account-menu-enter-from,
 .nav-account-menu.menu-right.nav-account-menu-leave-to {
-  transform: translateX(-4px) scale(0.97);
+  transform: translateX(-4px);
 }
 </style>
