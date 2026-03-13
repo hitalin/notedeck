@@ -123,11 +123,10 @@ export async function popOutColumnToWindow(
   const windowId = genWindowId()
   deckStore.popOutColumn(columnId, windowId)
 
-  const result = await openColumnWindow(
-    deckStore.windowProfileId,
-    windowId,
-    { width: col.width + 40, height: 700 },
-  )
+  const result = await openColumnWindow(deckStore.windowProfileId, windowId, {
+    width: col.width + 40,
+    height: 700,
+  })
 
   if (!result) {
     // Failed to open — recall column back
@@ -146,12 +145,14 @@ export async function saveCurrentWindowLayout(): Promise<void> {
   if (!deckStore.currentWindowId) return
 
   try {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const { getCurrentWindow, currentMonitor } = await import(
+      '@tauri-apps/api/window'
+    )
     const win = getCurrentWindow()
     const [pos, size, monitor] = await Promise.all([
       win.outerPosition(),
       win.outerSize(),
-      win.currentMonitor(),
+      currentMonitor(),
     ])
 
     const layout: DeckWindowLayout = {
@@ -177,16 +178,16 @@ export async function listenDeckWindowEvents(): Promise<() => void> {
 
   // When a sub-window closes, its columns are recalled (handled in openColumnWindow)
   // But we also need to listen for cross-window column moves
-  const unlisten1 = await listen<{ columnId: string; targetWindowId: string | null }>(
-    'deck:move-column',
-    (event) => {
-      const deckStore = useDeckStore()
-      deckStore.moveColumnToWindow(
-        event.payload.columnId,
-        event.payload.targetWindowId,
-      )
-    },
-  )
+  const unlisten1 = await listen<{
+    columnId: string
+    targetWindowId: string | null
+  }>('deck:move-column', (event) => {
+    const deckStore = useDeckStore()
+    deckStore.moveColumnToWindow(
+      event.payload.columnId,
+      event.payload.targetWindowId,
+    )
+  })
   cleanups.push(unlisten1)
 
   const unlisten2 = await listen<{ windowId: string }>(

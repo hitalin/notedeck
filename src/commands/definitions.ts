@@ -278,9 +278,11 @@ export function refreshProfileCommands() {
       category: 'general',
       shortcuts: keybindsStore.getShortcuts(`profile-${i}`),
       execute: () => {
-        import('@/composables/useDeckWindow').then(({ switchProfileWithWindows }) => {
-          switchProfileWithWindows(profileId)
-        })
+        import('@/composables/useDeckWindow').then(
+          ({ switchProfileWithWindows }) => {
+            switchProfileWithWindows(profileId)
+          },
+        )
       },
     })
   }

@@ -51,8 +51,10 @@ function closeMenu() {
 function onMenuOutsideClick(e: PointerEvent) {
   const target = e.target as Node
   if (
-    menuEl.value && !menuEl.value.contains(target) &&
-    menuBtnEl.value && !menuBtnEl.value.contains(target)
+    menuEl.value &&
+    !menuEl.value.contains(target) &&
+    menuBtnEl.value &&
+    !menuBtnEl.value.contains(target)
   ) {
     closeMenu()
   }

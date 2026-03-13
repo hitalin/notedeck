@@ -6,14 +6,14 @@ import {
   unregisterDefaultCommands,
 } from '@/commands/definitions'
 import { useCommandStore } from '@/commands/registry'
-import { useDeckStore } from '@/stores/deck'
-import { usePluginsStore } from '@/stores/plugins'
-import { useUiStore } from '@/stores/ui'
-import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
   listenDeckWindowEvents,
   saveCurrentWindowLayout,
 } from '@/composables/useDeckWindow'
+import { useDeckStore } from '@/stores/deck'
+import { usePluginsStore } from '@/stores/plugins'
+import { useUiStore } from '@/stores/ui'
+import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
   initDesktopNotifications,
   onNotificationAction,

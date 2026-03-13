@@ -114,7 +114,9 @@ const dropInsertIndex = computed(() => {
   if (!dt || !('insertIndex' in dt)) return -1
   const dragId = props.columnDrag.dragColumnId.value
   if (dragId) {
-    const fromIdx = deckStore.windowLayout.findIndex((ids) => ids.includes(dragId))
+    const fromIdx = deckStore.windowLayout.findIndex((ids) =>
+      ids.includes(dragId),
+    )
     if (
       fromIdx >= 0 &&
       (dt.insertIndex === fromIdx || dt.insertIndex === fromIdx + 1)

@@ -736,10 +736,7 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   /** Move a column between windows */
-  function moveColumnToWindow(
-    columnId: string,
-    targetWindowId: string | null,
-  ) {
+  function moveColumnToWindow(columnId: string, targetWindowId: string | null) {
     const col = getColumn(columnId)
     if (!col) return
     col.windowId = targetWindowId || undefined
