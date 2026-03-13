@@ -373,6 +373,7 @@ defineExpose({ scrollToColumn, columnMap })
   box-shadow: 0 0 12px color-mix(in srgb, var(--nd-accent) 30%, transparent);
 }
 
+/* Small viewport: full-width swipe columns */
 @media (max-width: 500px) {
   .col-resize-handle {
     display: none !important;
@@ -393,6 +394,7 @@ defineExpose({ scrollToColumn, columnMap })
 }
 </style>
 
+<!-- Mobile platform (viewport may exceed 500px) — same swipe mode -->
 <style>
 html.nd-mobile .col-resize-handle {
   display: none !important;

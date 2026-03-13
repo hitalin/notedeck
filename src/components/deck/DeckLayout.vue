@@ -262,28 +262,51 @@ function acceptCrossWindowDrop() {
   background-position: center;
 }
 
+/* Mobile FAB — full styles defined here, toggled via display */
 .mobile-fab {
   display: none;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  right: calc(16px + env(safe-area-inset-right));
+  bottom: calc(
+    60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom))
+  );
+  z-index: 1000;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(
+    90deg,
+    var(--nd-buttonGradateA, var(--nd-accent)),
+    var(--nd-buttonGradateB, var(--nd-accentDarken))
+  );
+  color: var(--nd-fgOnAccent, #fff);
+  font-size: 20px;
+  box-shadow: 0 4px 12px var(--nd-shadow);
+  transition: transform 0.3s ease, box-shadow 0.2s ease;
 }
 
+.mobile-fab:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px
+    color-mix(in srgb, var(--nd-accent) 40%, rgba(0, 0, 0, 0.3));
+}
+
+.mobile-fab:active {
+  transform: scale(0.92);
+}
+
+/* Mobile drawer overlay — full styles defined here */
+.mobile-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1999;
+  background: rgb(0 0 0 / 0.5);
+}
+
+/* Small viewport layout mode (≤500px) — only toggles, no style duplication */
 @media (max-width: 500px) {
-  .mobile-drawer-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1999;
-    background: rgb(0 0 0 / 0.5);
-  }
-
-  .fade-enter-active,
-  .fade-leave-active {
-    transition: opacity 0.25s ease;
-  }
-
-  .fade-enter-from,
-  .fade-leave-to {
-    opacity: 0;
-  }
-
   .deck-root {
     flex-direction: column;
   }
@@ -294,36 +317,6 @@ function acceptCrossWindowDrop() {
 
   .mobile-fab {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    position: fixed;
-    right: calc(16px + env(safe-area-inset-right));
-    bottom: calc(
-      60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom))
-    );
-    z-index: 1000;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: linear-gradient(
-      90deg,
-      var(--nd-buttonGradateA, var(--nd-accent)),
-      var(--nd-buttonGradateB, var(--nd-accentDarken))
-    );
-    color: var(--nd-fgOnAccent, #fff);
-    font-size: 20px;
-    box-shadow: 0 4px 12px var(--nd-shadow);
-    transition: transform 0.3s ease, box-shadow 0.2s ease;
-  }
-
-  .mobile-fab:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 20px
-      color-mix(in srgb, var(--nd-accent) 40%, rgba(0, 0, 0, 0.3));
-  }
-
-  .mobile-fab:active {
-    transform: scale(0.92);
   }
 }
 </style>
@@ -406,7 +399,7 @@ function acceptCrossWindowDrop() {
   opacity: 0.9;
 }
 
-/* Android/iOS: viewport width may exceed 500px */
+/* Mobile platform (viewport may exceed 500px) — only toggles */
 html.nd-mobile .deck-root {
   flex-direction: column;
 }
@@ -415,42 +408,7 @@ html.nd-mobile .deck-root .main-area {
   min-height: 0;
 }
 
-html.nd-mobile .mobile-drawer-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1999;
-  background: rgb(0 0 0 / 0.5);
-}
-
 html.nd-mobile .mobile-fab {
   display: flex !important;
-  align-items: center;
-  justify-content: center;
-  position: fixed;
-  right: calc(16px + env(safe-area-inset-right));
-  bottom: calc(
-    60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom))
-  );
-  z-index: 1000;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(
-    90deg,
-    var(--nd-buttonGradateA, var(--nd-accent)),
-    var(--nd-buttonGradateB, var(--nd-accentDarken))
-  );
-  color: var(--nd-fgOnAccent, #fff);
-  font-size: 20px;
-  box-shadow: 0 4px 12px var(--nd-shadow);
-  transition: transform 0.3s ease, box-shadow 0.2s ease;
-}
-
-html.nd-mobile .mobile-fab:hover {
-  transform: scale(1.05);
-}
-
-html.nd-mobile .mobile-fab:active {
-  transform: scale(0.92);
 }
 </style>
