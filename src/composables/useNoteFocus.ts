@@ -43,10 +43,10 @@ export function useNoteFocus(
   const pinnedReactionsStore = usePinnedReactionsStore()
   const focusedIndex = ref(-1)
 
-  const focusedNoteId = computed(() => {
+  const focusedNoteId = computed<string | undefined>(() => {
     const idx = focusedIndex.value
-    if (idx < 0 || idx >= notes.value.length) return null
-    return notes.value[idx]?.id ?? null
+    if (idx < 0 || idx >= notes.value.length) return undefined
+    return notes.value[idx]?.id ?? undefined
   })
 
   const isActive = computed(() => deckStore.activeColumnId === columnId)

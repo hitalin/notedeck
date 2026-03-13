@@ -3,7 +3,8 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
-  plugins: [vue()],
+  // biome-ignore lint/suspicious/noExplicitAny: vite v7/v8 Plugin type mismatch
+  plugins: [vue() as any],
   resolve: {
     alias: {
       '@': resolve(import.meta.dirname, 'src'),
