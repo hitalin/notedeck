@@ -14,7 +14,7 @@ import { useColumnResize } from '@/composables/useColumnResize'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
-import { useUiStore } from '@/stores/ui'
+import { useIsMobile } from '@/stores/ui'
 
 const props = defineProps<{
   columnDrag: ReturnType<typeof useColumnDrag>
@@ -69,7 +69,7 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
 
 const $style = useCssModule()
 const deckStore = useDeckStore()
-const { isMobilePlatform } = useUiStore()
+const isMobile = useIsMobile()
 
 // Column lookup map — store を直接参照（将来 windowId でフィルタ可能）
 const columnMap = computed(() => {
@@ -215,7 +215,7 @@ defineExpose({ scrollToColumn, columnMap })
 <template>
   <div
     ref="columnsRef"
-    :class="[$style.columns, { [$style.swipeMode]: isMobilePlatform }]"
+    :class="[$style.columns, { [$style.swipeMode]: isMobile }]"
     @wheel="onColumnsWheel"
     @scroll="onColumnsScroll"
   >
@@ -255,7 +255,7 @@ defineExpose({ scrollToColumn, columnMap })
         </div>
       </section>
       <div
-        v-if="!isMobilePlatform"
+        v-if="!isMobile"
         :class="[$style.colResizeHandle, { [$style.active]: resizingColId === group[0] }]"
         @mousedown="startColumnResize(group[0]!, $event)"
       />
