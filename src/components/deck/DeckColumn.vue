@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed } from 'vue'
-import { popOutColumnToWindow } from '@/composables/useDeckWindow'
+import {
+  popOutColumnToWindow,
+  requestMoveColumn,
+} from '@/composables/useDeckWindow'
 import { useDeckStore } from '@/stores/deck'
 import { useUiStore } from '@/stores/ui'
 
@@ -21,6 +24,8 @@ const { isDesktop } = useUiStore()
 
 /** Whether this column can be popped out (desktop + main window only) */
 const canPopOut = computed(() => isDesktop && !deckStore.currentWindowId)
+/** Whether this column is in a sub-window and can be returned to main */
+const canRecall = computed(() => isDesktop && !!deckStore.currentWindowId)
 
 function close() {
   deckStore.removeColumn(props.columnId)
@@ -28,6 +33,10 @@ function close() {
 
 function popOut() {
   popOutColumnToWindow(props.columnId)
+}
+
+function recallToMain() {
+  requestMoveColumn(props.columnId, null)
 }
 
 const isMuted = computed(
@@ -70,6 +79,11 @@ function toggleMute() {
       <!-- Pop out to separate window -->
       <button v-if="canPopOut" class="_button header-btn" title="別ウィンドウで開く" @click.stop="popOut">
         <i class="ti ti-app-window" />
+      </button>
+
+      <!-- Return to main window -->
+      <button v-if="canRecall" class="_button header-btn" title="メインウィンドウに戻す" @click.stop="recallToMain">
+        <i class="ti ti-arrow-back-up" />
       </button>
 
       <!-- Sound mute toggle -->

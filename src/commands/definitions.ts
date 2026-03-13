@@ -277,7 +277,11 @@ export function refreshProfileCommands() {
       icon: 'layout',
       category: 'general',
       shortcuts: keybindsStore.getShortcuts(`profile-${i}`),
-      execute: () => deckStore.applyProfile(profileId),
+      execute: () => {
+        import('@/composables/useDeckWindow').then(({ switchProfileWithWindows }) => {
+          switchProfileWithWindows(profileId)
+        })
+      },
     })
   }
 }

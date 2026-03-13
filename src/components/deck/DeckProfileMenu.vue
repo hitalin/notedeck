@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { refreshProfileCommands } from '@/commands/definitions'
+import { switchProfileWithWindows } from '@/composables/useDeckWindow'
 import type { DeckProfile } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 
@@ -58,7 +59,7 @@ function createProfile() {
 
 function apply(id: string) {
   if (editingId.value === id) return
-  deckStore.applyProfile(id)
+  switchProfileWithWindows(id)
   profiles.value = deckStore.getProfiles()
 }
 

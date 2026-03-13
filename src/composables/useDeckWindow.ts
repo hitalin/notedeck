@@ -201,11 +201,66 @@ export async function listenDeckWindowEvents(): Promise<() => void> {
 
 /**
  * Request moving a column to another window via IPC.
- * Used from sub-windows to move columns to main or other windows.
+ * Updates local store immediately and notifies other windows.
  */
 export async function requestMoveColumn(
   columnId: string,
   targetWindowId: string | null,
 ): Promise<void> {
+  const deckStore = useDeckStore()
+  // Update local store immediately so the column disappears/appears in this window
+  deckStore.moveColumnToWindow(columnId, targetWindowId)
+  // Notify other windows
   await emit('deck:move-column', { columnId, targetWindowId })
+
+  // Auto-close sub-window if it has no more columns
+  if (deckStore.currentWindowId && deckStore.windowLayout.length === 0) {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    getCurrentWindow().close()
+  }
+}
+
+/**
+ * Close all sub-windows opened from the main window.
+ */
+export async function closeAllSubWindows(): Promise<void> {
+  const promises: Promise<void>[] = []
+  for (const [, win] of openWindows) {
+    promises.push(win.close())
+  }
+  await Promise.allSettled(promises)
+  openWindows.clear()
+}
+
+/**
+ * Switch profile with window layout restoration.
+ * Closes existing sub-windows, applies the profile, then opens saved windows.
+ */
+export async function switchProfileWithWindows(
+  profileId: string,
+): Promise<void> {
+  const deckStore = useDeckStore()
+
+  // 1. Close all sub-windows (this recalls columns via destroyed handler)
+  await closeAllSubWindows()
+
+  // 2. Apply the profile (loads columns with saved windowIds)
+  deckStore.applyProfile(profileId)
+
+  // 3. Restore sub-windows from saved layouts
+  const savedWindows = deckStore.getWindowLayouts()
+  if (!savedWindows.length || !deckStore.windowProfileId) return
+
+  for (const wl of savedWindows) {
+    // Check if any columns are assigned to this window
+    const hasColumns = deckStore.columns.some((c) => c.windowId === wl.id)
+    if (!hasColumns) continue
+
+    await openColumnWindow(deckStore.windowProfileId, wl.id, {
+      width: wl.width,
+      height: wl.height,
+      x: wl.x,
+      y: wl.y,
+    })
+  }
 }
