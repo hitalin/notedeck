@@ -1,5 +1,5 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { createAdapter } from '@/adapters/registry'
+import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   ChannelSubscription,
   NormalizedNote,
@@ -9,10 +9,7 @@ import { useNoteSound } from '@/composables/useNoteSound'
 import { useScrollDirection } from '@/composables/useScrollDirection'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
-import { useEmojisStore } from '@/stores/emojis'
 import { useNoteStore } from '@/stores/notes'
-import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
-import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
 import { toggleFavorite } from '@/utils/toggleFavorite'
@@ -34,9 +31,6 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
     }
   }
   const accountsStore = useAccountsStore()
-  const emojisStore = useEmojisStore()
-  const pinnedReactionsStore = usePinnedReactionsStore()
-  const serversStore = useServersStore()
   const themeStore = useThemeStore()
 
   const account = computed(() =>
@@ -60,12 +54,9 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   async function initAdapter(): Promise<ServerAdapter | null> {
     const acc = account.value
     if (!acc) return null
-    const serverInfo = await serversStore.getServerInfo(acc.host)
-    serverIconUrl.value = serverInfo.iconUrl
-    const a = createAdapter(serverInfo, acc.id)
-    adapter = a
-    emojisStore.ensureLoaded(acc.host, () => a.api.getServerEmojis())
-    pinnedReactionsStore.ensureLoaded(acc.id, () => a.api.getPinnedReactions())
+    const result = await initAdapterFor(acc.host, acc.id)
+    serverIconUrl.value = result.serverInfo.iconUrl
+    adapter = result.adapter
     return adapter
   }
 

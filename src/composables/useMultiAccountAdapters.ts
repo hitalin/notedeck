@@ -1,10 +1,7 @@
 import { onUnmounted } from 'vue'
-import { createAdapter } from '@/adapters/registry'
+import { initAdapterFor } from '@/adapters/initAdapter'
 import type { ServerAdapter } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
-import { useEmojisStore } from '@/stores/emojis'
-import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
-import { useServersStore } from '@/stores/servers'
 
 /**
  * Lazily creates and caches per-account adapters for cross-account features.
@@ -12,9 +9,6 @@ import { useServersStore } from '@/stores/servers'
  */
 export function useMultiAccountAdapters() {
   const accountsStore = useAccountsStore()
-  const serversStore = useServersStore()
-  const emojisStore = useEmojisStore()
-  const pinnedReactionsStore = usePinnedReactionsStore()
 
   const adapters = new Map<string, ServerAdapter>()
   const pending = new Map<string, Promise<ServerAdapter | null>>()
@@ -28,12 +22,7 @@ export function useMultiAccountAdapters() {
     const promise = (async () => {
       const acc = accountsStore.accounts.find((a) => a.id === accountId)
       if (!acc) return null
-      const serverInfo = await serversStore.getServerInfo(acc.host)
-      const adapter = createAdapter(serverInfo, acc.id)
-      emojisStore.ensureLoaded(acc.host, () => adapter.api.getServerEmojis())
-      pinnedReactionsStore.ensureLoaded(acc.id, () =>
-        adapter.api.getPinnedReactions(),
-      )
+      const { adapter } = await initAdapterFor(acc.host, acc.id)
       adapters.set(accountId, adapter)
       return adapter
     })()

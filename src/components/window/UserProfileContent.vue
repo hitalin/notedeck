@@ -3,7 +3,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { colord } from 'colord'
 import QRCodeStyling from 'qr-code-styling'
 import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue'
-import { createAdapter } from '@/adapters/registry'
+import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   NormalizedNote,
   NormalizedUserDetail,
@@ -14,7 +14,6 @@ import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useAccountsStore } from '@/stores/accounts'
-import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
 import {
@@ -33,7 +32,6 @@ const props = defineProps<{
 }>()
 
 const accountsStore = useAccountsStore()
-const emojisStore = useEmojisStore()
 const serversStore = useServersStore()
 
 type ProfileTab = 'highlight' | 'notes' | 'all' | 'files'
@@ -71,10 +69,10 @@ onMounted(async () => {
   }
 
   try {
-    const serverInfo = await serversStore.getServerInfo(account.host)
-    const a = createAdapter(serverInfo, account.id)
-    adapter = a
-    emojisStore.ensureLoaded(account.host, () => a.api.getServerEmojis())
+    const result = await initAdapterFor(account.host, account.id, {
+      pinnedReactions: false,
+    })
+    adapter = result.adapter
     const [userDetail, userPinnedNoteIds] = await Promise.all([
       adapter.api.getUserDetail(props.userId),
       adapter.api.getUserPinnedNoteIds(props.userId),

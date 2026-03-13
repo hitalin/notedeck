@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { onMounted, ref, watch } from 'vue'
-import { createAdapter } from '@/adapters/registry'
+import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   NormalizedNote,
   NoteReaction,
@@ -14,9 +14,7 @@ import MkPostForm from '@/components/common/MkPostForm.vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
-import { useEmojisStore } from '@/stores/emojis'
 import { useNoteStore } from '@/stores/notes'
-import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
 import { proxyUrl } from '@/utils/imageProxy'
 import { toggleReaction } from '@/utils/toggleReaction'
@@ -30,8 +28,6 @@ const emit = defineEmits<{ close: [] }>()
 
 const noteStore = useNoteStore()
 const accountsStore = useAccountsStore()
-const emojisStore = useEmojisStore()
-const serversStore = useServersStore()
 const { navigateToUser: navToUser } = useNavigation()
 const { reactionUrl: reactionUrlRaw } = useEmojiResolver()
 
@@ -63,10 +59,10 @@ onMounted(async () => {
   }
 
   try {
-    const serverInfo = await serversStore.getServerInfo(account.host)
-    const a = createAdapter(serverInfo, account.id)
-    adapter = a
-    emojisStore.ensureLoaded(account.host, () => a.api.getServerEmojis())
+    const result = await initAdapterFor(account.host, account.id, {
+      pinnedReactions: false,
+    })
+    adapter = result.adapter
     note.value = await adapter.api.getNote(props.noteId)
 
     const [conv, replies] = await Promise.all([

@@ -3,7 +3,7 @@ import { emit } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { createAdapter } from '@/adapters/registry'
+import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   ChannelSubscription,
   NormalizedNote,
@@ -14,7 +14,6 @@ import type {
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useAccountsStore } from '@/stores/accounts'
-import { useEmojisStore } from '@/stores/emojis'
 import { useNoteStore } from '@/stores/notes'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
@@ -35,7 +34,6 @@ const route = useRoute()
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const themeStore = useThemeStore()
-const emojisStore = useEmojisStore()
 
 const currentAccountId = ref(route.query.accountId as string)
 const currentTimeline = ref<TimelineType>(
@@ -84,12 +82,12 @@ async function startTimeline(tl: TimelineType) {
 
   try {
     if (!adapter) {
-      const serverInfo = await serversStore.getServerInfo(acc.host)
-      serverIconUrl.value = serverInfo.iconUrl
-      adapter = createAdapter(serverInfo, acc.id)
+      const result = await initAdapterFor(acc.host, acc.id, {
+        pinnedReactions: false,
+      })
+      serverIconUrl.value = result.serverInfo.iconUrl
+      adapter = result.adapter
     }
-    // biome-ignore lint/style/noNonNullAssertion: adapter is guaranteed to be initialized above
-    emojisStore.ensureLoaded(acc.host, () => adapter!.api.getServerEmojis())
 
     // Initial fetch
     const fetched = await adapter.api.getTimeline(tl, { limit: MAX_NOTES })

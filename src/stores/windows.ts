@@ -39,11 +39,10 @@ export const WINDOW_SIZES: Record<
   chat: { width: 500, maxHeight: 650 },
 }
 
-let windowCounter = 0
-let topZIndex = 1500
-
 export const useWindowsStore = defineStore('windows', () => {
   const windows = ref<DeckWindow[]>([])
+  let windowCounter = 0
+  let topZIndex = 1500
 
   const hasModal = computed(() => windows.value.some((w) => w.modal))
 

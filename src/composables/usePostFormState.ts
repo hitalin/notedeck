@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { computed, nextTick, type Ref, ref } from 'vue'
-import { createAdapter } from '@/adapters/registry'
+import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   NormalizedDriveFile,
   NormalizedNote,
@@ -22,9 +22,6 @@ import {
   saveDraft,
 } from '@/composables/useDrafts'
 import { useAccountsStore } from '@/stores/accounts'
-import { useEmojisStore } from '@/stores/emojis'
-import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
-import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import {
   CUSTOM_TL_ICONS,
@@ -46,9 +43,6 @@ export function usePostFormState(
   fileInput: Ref<HTMLInputElement | null>,
 ) {
   const accountsStore = useAccountsStore()
-  const emojisStore = useEmojisStore()
-  const pinnedReactionsStore = usePinnedReactionsStore()
-  const serversStore = useServersStore()
   const themeStore = useThemeStore()
 
   const text = ref('')
@@ -109,16 +103,10 @@ export function usePostFormState(
     if (!acc) return
     adapter = null
     try {
-      const serverInfo = await serversStore.getServerInfo(acc.host)
-      adapter = createAdapter(serverInfo, acc.id)
-      // biome-ignore lint/style/noNonNullAssertion: adapter is assigned above
-      emojisStore.ensureLoaded(acc.host, () => adapter!.api.getServerEmojis())
-      pinnedReactionsStore.ensureLoaded(
-        acc.id,
-        // biome-ignore lint/style/noNonNullAssertion: adapter is assigned above
-        () => adapter!.api.getPinnedReactions(),
-      )
-      supportsScheduledNotes.value = serverInfo.features.scheduledNotes === true
+      const result = await initAdapterFor(acc.host, acc.id)
+      adapter = result.adapter
+      supportsScheduledNotes.value =
+        result.serverInfo.features.scheduledNotes === true
     } catch (e) {
       error.value = AppError.from(e).message
       supportsScheduledNotes.value = false

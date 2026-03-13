@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, type Ref, ref, watch } from 'vue'
 import type { NormalizedDriveFile, NormalizedNote } from '@/adapters/types'
 import {
   getPluginHandlers,
@@ -103,15 +103,37 @@ const {
   fileInput,
 )
 
-// --- Schedule popup ---
+// --- Popup exclusive control ---
 const showSchedulePopup = ref(false)
+const showEmojiPopup = ref(false)
+const showAttachMenu = ref(false)
+
+/** All mutually-exclusive popup refs (lazy to avoid TDZ issues) */
+function allPopupRefs(): Ref<boolean>[] {
+  return [
+    showSchedulePopup,
+    showDraftMenu,
+    showMentionPopup,
+    showEmojiPopup,
+    showMfmMenu,
+    showAttachMenu,
+    showMoreMenu,
+  ]
+}
+
+function closeOtherPopups(except?: Ref<boolean>) {
+  for (const r of allPopupRefs()) {
+    if (r !== except) r.value = false
+  }
+}
+
+function togglePopup(target: Ref<boolean>) {
+  target.value = !target.value
+  closeOtherPopups(target)
+}
 
 function toggleSchedulePopup() {
-  showSchedulePopup.value = !showSchedulePopup.value
-  showDraftMenu.value = false
-  showMentionPopup.value = false
-  showEmojiPopup.value = false
-  showMfmMenu.value = false
+  togglePopup(showSchedulePopup)
 }
 
 function setSchedule(value: string | null) {
@@ -135,11 +157,7 @@ function formatScheduledDate(iso: string): string {
 
 // --- Draft menu ---
 function toggleDraftMenu() {
-  showDraftMenu.value = !showDraftMenu.value
-  showSchedulePopup.value = false
-  showMentionPopup.value = false
-  showEmojiPopup.value = false
-  showMfmMenu.value = false
+  togglePopup(showDraftMenu)
 }
 
 /** Minimum datetime for schedule picker (5 minutes from now) */
@@ -162,8 +180,7 @@ const {
 
 function toggleMentionPopup() {
   rawToggleMention()
-  showEmojiPopup.value = false
-  showMfmMenu.value = false
+  closeOtherPopups(showMentionPopup)
 }
 
 function pickMention(user: Parameters<typeof rawPickMention>[0]) {
@@ -171,12 +188,8 @@ function pickMention(user: Parameters<typeof rawPickMention>[0]) {
 }
 
 // --- Emoji popup ---
-const showEmojiPopup = ref(false)
-
 function toggleEmojiPopup() {
-  showEmojiPopup.value = !showEmojiPopup.value
-  showMentionPopup.value = false
-  showMfmMenu.value = false
+  togglePopup(showEmojiPopup)
 }
 
 function pickEmoji(reaction: string) {
@@ -214,8 +227,7 @@ const {
 
 function toggleMfmMenu() {
   rawToggleMfm()
-  showMentionPopup.value = false
-  showEmojiPopup.value = false
+  closeOtherPopups(showMfmMenu)
 }
 
 // --- Autocomplete ---
@@ -233,14 +245,10 @@ const {
 } = useAutocomplete(text, textareaRef, activeAccountId, serverHost)
 
 // --- File attach menu ---
-const showAttachMenu = ref(false)
 const showDrivePicker = ref(false)
 
 function toggleAttachMenu() {
-  showAttachMenu.value = !showAttachMenu.value
-  showMentionPopup.value = false
-  showEmojiPopup.value = false
-  showMfmMenu.value = false
+  togglePopup(showAttachMenu)
 }
 
 function attachFromLocal() {
@@ -260,19 +268,11 @@ function onDriveFilesPicked(driveFiles: NormalizedDriveFile[]) {
 
 // --- Close popups on form click ---
 function toggleMoreMenu() {
-  showMoreMenu.value = !showMoreMenu.value
-  showSchedulePopup.value = false
-  showDraftMenu.value = false
+  togglePopup(showMoreMenu)
 }
 
 function closePopups() {
-  showMentionPopup.value = false
-  showEmojiPopup.value = false
-  showMfmMenu.value = false
-  showSchedulePopup.value = false
-  showDraftMenu.value = false
-  showMoreMenu.value = false
-  showAttachMenu.value = false
+  closeOtherPopups()
   acDismiss()
 }
 
