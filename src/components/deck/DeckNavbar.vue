@@ -547,16 +547,16 @@ defineExpose({
 }
 
 .nav-online-indicator.status-connected {
-  background: #58d4c9;
+  background: var(--nd-statusOnline);
 }
 
 .nav-online-indicator.status-reconnecting,
 .nav-online-indicator.status-initializing {
-  background: #e4bc48;
+  background: var(--nd-statusActive);
 }
 
 .nav-online-indicator.status-disconnected {
-  background: #ea5353;
+  background: var(--nd-statusOffline);
 }
 
 .nav-add-account {
@@ -640,7 +640,7 @@ defineExpose({
 }
 
 .nav-toggle:hover {
-  opacity: 1 !important;
+  opacity: 1;
 }
 
 .nav-account-wrap {

@@ -683,8 +683,8 @@ fetchDrive()
 
 /* --- Selection mode --- */
 .header-btn-active {
-  color: var(--nd-accent) !important;
-  opacity: 1 !important;
+  color: var(--nd-accent);
+  opacity: 1;
 }
 
 .drive-select-check {

@@ -1092,7 +1092,7 @@ function onKeydown(e: KeyboardEvent) {
   margin-top: 4px;
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--nd-shadow-m);
   backdrop-filter: blur(16px);
 }
 
@@ -1202,7 +1202,7 @@ function onKeydown(e: KeyboardEvent) {
   margin-top: 4px;
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--nd-shadow-m);
   backdrop-filter: blur(16px);
 }
 
@@ -1252,7 +1252,7 @@ function onKeydown(e: KeyboardEvent) {
   margin-top: 4px;
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--nd-shadow-m);
   backdrop-filter: blur(16px);
 }
 
@@ -1636,7 +1636,7 @@ function onKeydown(e: KeyboardEvent) {
   margin-top: 8px;
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--nd-shadow-m);
   backdrop-filter: blur(16px);
 }
 
@@ -2097,5 +2097,40 @@ function onKeydown(e: KeyboardEvent) {
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
     padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
   }
+}
+</style>
+
+<!-- Mobile platform: always fullscreen -->
+<style>
+html.nd-mobile .post-overlay {
+  background: var(--nd-bg);
+  padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
+  padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
+  align-items: stretch;
+}
+
+html.nd-mobile .post-form {
+  max-width: none;
+  margin: 0;
+  border-radius: 0;
+  height: 100%;
+  max-height: none;
+  box-shadow: none;
+}
+
+html.nd-mobile .emoji-popup {
+  position: fixed;
+  top: auto;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 50vh;
+  border-radius: 16px 16px 0 0;
+  margin: 0;
+  z-index: 100;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+  padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
 }
 </style>
