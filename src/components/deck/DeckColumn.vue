@@ -189,7 +189,7 @@ function onOpenWebUi() {
   gap: 6px;
   height: 38px;
   line-height: 38px;
-  padding: 0 8px;
+  padding: 0 8px 0 28px;
   background: var(--nd-panelHeaderBg);
   color: var(--nd-panelHeaderFg);
   font-size: 0.9em;
@@ -216,10 +216,11 @@ function onOpenWebUi() {
 
 .color-indicator {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
+  top: 10px;
+  left: 10px;
+  width: 3px;
+  height: calc(100% - 20px);
+  border-radius: 999px;
 }
 
 .header-title {
@@ -347,7 +348,7 @@ function onOpenWebUi() {
   .column-header {
     height: 50px;
     line-height: 50px;
-    padding: 0 12px;
+    padding: 0 12px 0 32px;
   }
 
   .header-btn {
