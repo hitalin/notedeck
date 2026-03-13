@@ -778,6 +778,7 @@ onUnmounted(() => {
         <NoteScroller
           ref="noteScroller"
           :items="notes"
+          :focused-id="focusedNoteId"
           class="tl-scroller"
           @scroll="handleScroll"
         >

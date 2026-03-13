@@ -6,8 +6,10 @@ const props = withDefaults(
     items: T[]
     /** Estimated item height for content-visibility placeholder */
     estimatedHeight?: number
+    /** When set, enables v-memo to skip VNode diffing for unchanged items */
+    focusedId?: string
   }>(),
-  { estimatedHeight: 150 },
+  { estimatedHeight: 150, focusedId: undefined },
 )
 
 defineEmits<{
@@ -47,6 +49,7 @@ defineSlots<{
       <div
         v-for="(item, index) in props.items"
         :key="item.id"
+        v-memo="[item, item.id === props.focusedId]"
         class="note-item"
         :style="{ containIntrinsicSize: `0 ${props.estimatedHeight}px` }"
       >

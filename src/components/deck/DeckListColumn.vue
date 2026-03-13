@@ -110,7 +110,7 @@ const webUiUrl = computed(() =>
           <i class="ti ti-arrow-up" />{{ pendingNotes.length }}件の新しいノート
         </button>
 
-        <NoteScroller ref="noteScrollerRef" :items="notes" class="tl-scroller" @scroll="handleScroll">
+        <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" class="tl-scroller" @scroll="handleScroll">
           <template #default="{ item, index }">
             <div :data-index="index">
               <MkNote

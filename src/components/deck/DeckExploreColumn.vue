@@ -280,7 +280,7 @@ function closeUserPopup() {
           </div>
 
           <template v-else>
-            <NoteScroller ref="noteScrollerRef" :items="notes" class="tl-scroller" @scroll="handleScroll">
+            <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" class="tl-scroller" @scroll="handleScroll">
               <template #default="{ item, index }">
                 <div :data-index="index">
                   <MkNote

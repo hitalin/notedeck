@@ -432,6 +432,7 @@ onUnmounted(() => {
         v-else
         ref="noteScrollerRef"
         :items="notes"
+        :focused-id="focusedNoteId"
         class="search-scroller"
         @scroll="handleScroll"
       >
