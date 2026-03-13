@@ -10,6 +10,7 @@ import { useUpdater } from '@/composables/useUpdater'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 
+import { requestMoveColumn } from '@/composables/useDeckWindow'
 import DeckBottomBar from './DeckBottomBar.vue'
 import DeckColumnsArea from './DeckColumnsArea.vue'
 import DeckMobileNav from './DeckMobileNav.vue'
@@ -121,6 +122,15 @@ function scrollToColumn(index: number) {
 
 // columnMap for DeckMobileNav (computed from store directly)
 const columns = computed(() => deckStore.columns)
+
+// Cross-window drag & drop
+function acceptCrossWindowDrop() {
+  const columnId = deckStore.crossWindowDragColumnId
+  if (!columnId) return
+  deckStore.crossWindowDragColumnId = null
+  // Move column to this window
+  requestMoveColumn(columnId, deckStore.currentWindowId ?? null)
+}
 </script>
 
 <template>
@@ -211,6 +221,20 @@ const columns = computed(() => deckStore.columns)
         <div class="file-drop-content">
           <i class="ti ti-upload" />
           <span>ファイルをドロップしてアップロード</span>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Cross-window column drop overlay -->
+    <Transition name="fade">
+      <div
+        v-if="deckStore.crossWindowDragColumnId"
+        class="cross-window-drop-overlay"
+        @click="acceptCrossWindowDrop"
+      >
+        <div class="cross-window-drop-content">
+          <i class="ti ti-arrows-move" />
+          <span>ここにカラムを移動</span>
         </div>
       </div>
     </Transition>
@@ -335,6 +359,37 @@ const columns = computed(() => deckStore.columns)
   align-items: center;
   justify-content: center;
   pointer-events: none;
+}
+
+.cross-window-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: color-mix(in srgb, var(--nd-accent, #86b300) 20%, rgba(0, 0, 0, 0.5));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 3px dashed var(--nd-accent, #86b300);
+}
+
+.cross-window-drop-overlay:hover {
+  background: color-mix(in srgb, var(--nd-accent, #86b300) 30%, rgba(0, 0, 0, 0.5));
+}
+
+.cross-window-drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.cross-window-drop-content .ti {
+  font-size: 48px;
+  opacity: 0.9;
 }
 
 .file-drop-content {

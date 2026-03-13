@@ -102,6 +102,8 @@ export const useDeckStore = defineStore('deck', () => {
   const activeColumnId = ref<string | null>(null)
   /** This window's sub-window ID (null = main window) */
   const currentWindowId = ref<string | null>(null)
+  /** Column ID being dragged from another window (for cross-window D&D overlay) */
+  const crossWindowDragColumnId = ref<string | null>(null)
 
   function setActiveColumn(id: string) {
     activeColumnId.value = id
@@ -830,6 +832,7 @@ export const useDeckStore = defineStore('deck', () => {
     saveWindowLayout,
     removeWindowLayout,
     getWindowLayouts,
+    crossWindowDragColumnId,
     startSync,
     stopSync,
   }

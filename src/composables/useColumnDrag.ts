@@ -74,6 +74,10 @@ export function useColumnDrag(deckStore: DeckStore) {
 
     document.addEventListener('pointermove', onDragMove)
     document.addEventListener('pointerup', onDragEnd)
+    document.documentElement.addEventListener('pointerleave', onPointerLeave)
+
+    // Notify other windows about drag start
+    emitDragEvent('deck:drag-start', columnId)
   }
 
   function moveGhost(x: number, y: number) {
@@ -193,10 +197,22 @@ export function useColumnDrag(deckStore: DeckStore) {
     dropTarget.value = null
   }
 
-  function onDragEnd() {
+  function cleanupDrag() {
     document.removeEventListener('pointermove', onDragMove)
     document.removeEventListener('pointerup', onDragEnd)
+    document.documentElement.removeEventListener('pointerleave', onPointerLeave)
 
+    dragColumnId.value = null
+    dropTarget.value = null
+    if (ghost) {
+      ghost.remove()
+      ghost = null
+    }
+    document.body.style.userSelect = ''
+    document.body.style.cursor = ''
+  }
+
+  function onDragEnd() {
     if (dropTarget.value && dragColumnId.value) {
       const dragId = dragColumnId.value
 
@@ -226,15 +242,33 @@ export function useColumnDrag(deckStore: DeckStore) {
       }
     }
 
-    // Cleanup
-    dragColumnId.value = null
-    dropTarget.value = null
-    if (ghost) {
-      ghost.remove()
-      ghost = null
-    }
-    document.body.style.userSelect = ''
-    document.body.style.cursor = ''
+    // Notify other windows that drag ended
+    emitDragEvent('deck:drag-end', dragColumnId.value)
+
+    cleanupDrag()
+  }
+
+  /** When cursor leaves the window during a drag, end the local drag and let other windows handle it */
+  function onPointerLeave() {
+    if (!dragColumnId.value) return
+    // Don't apply any drop — just clean up locally
+    // The IPC deck:drag-start already notified other windows; they show the overlay
+    // When user clicks the overlay in target window, requestMoveColumn handles the actual move
+    emitDragEvent('deck:drag-end', dragColumnId.value)
+    cleanupDrag()
+  }
+
+  /** Emit a cross-window drag event via Tauri IPC (no-op in browser) */
+  function emitDragEvent(event: string, columnId: string | null) {
+    if (!columnId) return
+    import('@tauri-apps/api/event')
+      .then(({ emit }) => {
+        emit(event, {
+          columnId,
+          sourceWindowId: deckStore.currentWindowId ?? '__main__',
+        }).catch(() => {})
+      })
+      .catch(() => {})
   }
 
   return { dragColumnId, dropTarget, startDrag }

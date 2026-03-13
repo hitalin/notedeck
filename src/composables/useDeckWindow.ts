@@ -194,6 +194,33 @@ export async function listenDeckWindowEvents(): Promise<() => void> {
   )
   cleanups.push(unlisten2)
 
+  // Cross-window drag: show overlay when another window starts dragging
+  const unlisten3 = await listen<{ columnId: string; sourceWindowId: string }>(
+    'deck:drag-start',
+    (event) => {
+      const deckStore = useDeckStore()
+      const myWindowId = deckStore.currentWindowId ?? '__main__'
+      // Only show overlay if this is NOT the source window
+      if (event.payload.sourceWindowId !== myWindowId) {
+        deckStore.crossWindowDragColumnId = event.payload.columnId
+      }
+    },
+  )
+  cleanups.push(unlisten3)
+
+  // Cross-window drag: dismiss overlay when drag ends
+  const unlisten4 = await listen<{ columnId: string; sourceWindowId: string }>(
+    'deck:drag-end',
+    (event) => {
+      const deckStore = useDeckStore()
+      const myWindowId = deckStore.currentWindowId ?? '__main__'
+      if (event.payload.sourceWindowId !== myWindowId) {
+        deckStore.crossWindowDragColumnId = null
+      }
+    },
+  )
+  cleanups.push(unlisten4)
+
   return () => {
     for (const cleanup of cleanups) cleanup()
   }

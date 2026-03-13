@@ -92,12 +92,10 @@ export function useDeckInit(options: {
         })
       })
 
-      // Cross-window event listeners (main window listens for sub-window events)
-      if (!deckStore.currentWindowId) {
-        listenDeckWindowEvents().then((fn) => {
-          unlistenWindowEvents = fn
-        })
-      }
+      // Cross-window event listeners (all windows listen for IPC events)
+      listenDeckWindowEvents().then((fn) => {
+        unlistenWindowEvents = fn
+      })
 
       // Sub-windows save their layout on beforeunload
       if (deckStore.currentWindowId) {
