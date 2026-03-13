@@ -247,6 +247,7 @@ function closeMentionPopup() {
     class="note-root"
     :class="{ detailed, focused }"
     tabindex="0"
+    @contextmenu.prevent.stop="moreMenuRef?.open($event)"
   >
     <!-- Pinned indicator -->
     <div v-if="pinnedNoteIds?.includes(note.id)" class="pinned-info">

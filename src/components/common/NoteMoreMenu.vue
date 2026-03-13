@@ -50,9 +50,8 @@ const noteWebUrl = computed(() => {
 })
 
 function open(e: MouseEvent) {
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  let x = rect.left
-  let y = rect.bottom + 4
+  let x = e.clientX
+  let y = e.clientY
   // 画面外に出ないよう調整
   const menuWidth = 250
   const menuHeight = 300
@@ -60,7 +59,7 @@ function open(e: MouseEvent) {
     x = window.innerWidth - menuWidth - 8
   }
   if (y + menuHeight > window.innerHeight) {
-    y = rect.top - menuHeight - 4
+    y = Math.max(8, y - menuHeight)
   }
   x = Math.max(8, x)
   y = Math.max(8, y)
