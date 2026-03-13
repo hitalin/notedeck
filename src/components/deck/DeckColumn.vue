@@ -276,10 +276,10 @@ function onOpenWebUi() {
 .columnMenuItem {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  padding: 8px 16px;
-  font-size: 0.9em;
+  padding: 7px 22px;
+  font-size: 0.85em;
   color: var(--nd-fg);
   cursor: pointer;
   position: relative;
@@ -291,9 +291,9 @@ function onOpenWebUi() {
 
   i {
     flex-shrink: 0;
-    width: 18px;
+    width: 1em;
     text-align: center;
-    opacity: 0.7;
+    opacity: 0.8;
   }
 
   span {

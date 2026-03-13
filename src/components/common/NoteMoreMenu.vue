@@ -178,23 +178,22 @@ defineExpose({ open })
   position: fixed;
   min-width: 200px;
   max-width: 300px;
-  padding: 6px;
+  padding: 6px 0;
   z-index: calc(var(--nd-z-popup) + 1);
 }
 
 .popupItem {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  padding: 9px 12px;
-  min-height: 44px;
+  padding: 7px 22px;
   border: none;
-  border-radius: var(--nd-radius-md);
+  border-radius: 0;
   background: none;
   cursor: pointer;
   color: var(--nd-fg);
-  font-size: 0.9em;
+  font-size: 0.85em;
   text-align: left;
   transition: background var(--nd-duration-base);
 
@@ -203,8 +202,10 @@ defineExpose({ open })
   }
 
   :global(.ti) {
-    opacity: 0.7;
+    opacity: 0.8;
     flex-shrink: 0;
+    width: 1em;
+    text-align: center;
   }
 }
 
@@ -227,8 +228,8 @@ defineExpose({ open })
 }
 
 .popupConfirmText {
-  padding: 9px 12px;
-  font-size: 0.9em;
+  padding: 7px 22px;
+  font-size: 0.85em;
   font-weight: bold;
   color: var(--nd-fg);
 }
