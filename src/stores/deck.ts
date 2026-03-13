@@ -799,6 +799,7 @@ export const useDeckStore = defineStore('deck', () => {
     moveRight,
     getColumn,
     save,
+    flushSave,
     load,
     clear,
     addWidget,

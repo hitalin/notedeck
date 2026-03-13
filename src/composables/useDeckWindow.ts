@@ -120,6 +120,8 @@ export async function popOutColumnToWindow(
 
   const windowId = genWindowId()
   deckStore.popOutColumn(columnId, windowId)
+  // Flush save synchronously so the sub-window can read the updated profile
+  deckStore.flushSave()
 
   const result = await openColumnWindow(deckStore.windowProfileId, windowId, {
     width: col.width + 40,
