@@ -16,7 +16,7 @@ import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { noteStore } from '@/stores/notes'
+import { useNoteStore } from '@/stores/notes'
 import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
 import { sortByCreatedAtDesc } from '@/utils/sortNotes'
@@ -45,6 +45,7 @@ export interface NoteColumnConfig {
 }
 
 export function useNoteColumn(config: NoteColumnConfig) {
+  const noteStore = useNoteStore()
   const {
     account,
     columnThemeVars,

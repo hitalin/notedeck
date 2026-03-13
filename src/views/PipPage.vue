@@ -15,12 +15,13 @@ import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useEmojisStore } from '@/stores/emojis'
-import { noteStore } from '@/stores/notes'
+import { useNoteStore } from '@/stores/notes'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import { formatTime } from '@/utils/formatTime'
 import { sortByCreatedAtDesc } from '@/utils/sortNotes'
 
+const noteStore = useNoteStore()
 const MAX_NOTES = 30
 
 const TL_TYPES: { type: TimelineType; icon: string; label: string }[] = [

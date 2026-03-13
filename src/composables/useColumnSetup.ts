@@ -10,7 +10,7 @@ import { useScrollDirection } from '@/composables/useScrollDirection'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'
-import { noteStore } from '@/stores/notes'
+import { useNoteStore } from '@/stores/notes'
 import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
@@ -19,6 +19,7 @@ import { toggleFavorite } from '@/utils/toggleFavorite'
 import { toggleReaction } from '@/utils/toggleReaction'
 
 export function useColumnSetup(getColumn: () => DeckColumn) {
+  const noteStore = useNoteStore()
   let customMutatedFn: (() => void) | undefined
 
   function setOnNotesMutated(fn: () => void) {

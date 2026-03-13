@@ -68,14 +68,13 @@ function onHeaderMouseDown(e: MouseEvent) {
 function onMouseMove(e: MouseEvent) {
   const dx = e.clientX - dragStartX
   const dy = e.clientY - dragStartY
+  const vw = document.documentElement.clientWidth
+  const vh = document.documentElement.clientHeight
   dragX.value = Math.max(
     -size.value.width + 100,
-    Math.min(dragStartWinX + dx, window.innerWidth - 100),
+    Math.min(dragStartWinX + dx, vw - 100),
   )
-  dragY.value = Math.max(
-    0,
-    Math.min(dragStartWinY + dy, window.innerHeight - 50),
-  )
+  dragY.value = Math.max(0, Math.min(dragStartWinY + dy, vh - 50))
 }
 
 function onMouseUp() {

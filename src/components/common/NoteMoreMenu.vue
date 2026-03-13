@@ -55,10 +55,12 @@ function open(e: MouseEvent) {
   // 画面外に出ないよう調整
   const menuWidth = 250
   const menuHeight = 300
-  if (x + menuWidth > window.innerWidth) {
-    x = window.innerWidth - menuWidth - 8
+  const vw = document.documentElement.clientWidth
+  const vh = document.documentElement.clientHeight
+  if (x + menuWidth > vw) {
+    x = vw - menuWidth - 8
   }
-  if (y + menuHeight > window.innerHeight) {
+  if (y + menuHeight > vh) {
     y = Math.max(8, y - menuHeight)
   }
   x = Math.max(8, x)

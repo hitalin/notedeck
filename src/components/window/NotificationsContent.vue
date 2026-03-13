@@ -17,7 +17,7 @@ import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteActions } from '@/composables/useNoteActions'
 import { useAccountsStore } from '@/stores/accounts'
-import { noteStore } from '@/stores/notes'
+import { useNoteStore } from '@/stores/notes'
 import { formatTime } from '@/utils/formatTime'
 import { char2twemojiUrl } from '@/utils/twemoji'
 
@@ -25,6 +25,7 @@ const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
+const noteStore = useNoteStore()
 const accountsStore = useAccountsStore()
 const { getOrCreate } = useMultiAccountAdapters()
 const { navigateToUser: navToUser } = useNavigation()

@@ -101,7 +101,7 @@ function openRegexGuide() {
     const rect = regexGuideBtnRef.value.getBoundingClientRect()
     regexGuidePos.value = {
       top: rect.bottom + 4,
-      right: window.innerWidth - rect.right,
+      right: document.documentElement.clientWidth - rect.right,
     }
   }
   showRegexGuide.value = true

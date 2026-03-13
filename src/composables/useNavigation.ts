@@ -8,7 +8,7 @@ export function useNavigation() {
   const accountsStore = useAccountsStore()
 
   function isDeckActive(): boolean {
-    return window.innerWidth > 500
+    return router.currentRoute.value.name === 'deck'
   }
 
   function navigateToNote(accountId: string, noteId: string) {

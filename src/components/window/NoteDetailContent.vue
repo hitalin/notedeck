@@ -15,7 +15,7 @@ import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { useEmojisStore } from '@/stores/emojis'
-import { noteStore } from '@/stores/notes'
+import { useNoteStore } from '@/stores/notes'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
 import { proxyUrl } from '@/utils/imageProxy'
@@ -28,6 +28,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ close: [] }>()
 
+const noteStore = useNoteStore()
 const accountsStore = useAccountsStore()
 const emojisStore = useEmojisStore()
 const serversStore = useServersStore()

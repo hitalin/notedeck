@@ -8,7 +8,7 @@ import RegexGuide from '@/components/common/RegexGuide.vue'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNoteActions } from '@/composables/useNoteActions'
 import { useAccountsStore } from '@/stores/accounts'
-import { noteStore } from '@/stores/notes'
+import { useNoteStore } from '@/stores/notes'
 import {
   extractLiterals,
   filterNotesByRegex,
@@ -19,6 +19,7 @@ const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
+const noteStore = useNoteStore()
 const accountsStore = useAccountsStore()
 const { getOrCreate } = useMultiAccountAdapters()
 
@@ -67,7 +68,7 @@ function openRegexGuide() {
     const rect = regexGuideBtnRef.value.getBoundingClientRect()
     regexGuidePos.value = {
       top: rect.bottom + 4,
-      right: window.innerWidth - rect.right,
+      right: document.documentElement.clientWidth - rect.right,
     }
   }
   showRegexGuide.value = true

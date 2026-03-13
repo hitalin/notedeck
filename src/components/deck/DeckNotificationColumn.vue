@@ -14,7 +14,7 @@ import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
-import { noteStore } from '@/stores/notes'
+import { useNoteStore } from '@/stores/notes'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -35,6 +35,8 @@ import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { char2twemojiUrl } from '@/utils/twemoji'
 import DeckColumn from './DeckColumn.vue'
+
+const noteStore = useNoteStore()
 
 const props = defineProps<{
   column: DeckColumnType

@@ -79,7 +79,9 @@ const MIN_WIDTH = 68
 const COLLAPSE_THRESHOLD = 120
 const DEFAULT_WIDTH = 200
 const MAX_WIDTH = 400
-const navWidth = ref(window.innerWidth <= 1279 ? MIN_WIDTH : DEFAULT_WIDTH)
+const navWidth = ref(
+  document.documentElement.clientWidth <= 1279 ? MIN_WIDTH : DEFAULT_WIDTH,
+)
 const isResizing = ref(false)
 const navCollapsed = computed(() => navWidth.value <= MIN_WIDTH)
 watch(
@@ -185,7 +187,7 @@ function toggleFirstAccountMenu() {
 }
 
 function handleResize() {
-  if (window.innerWidth <= 1279) {
+  if (document.documentElement.clientWidth <= 1279) {
     navWidth.value = MIN_WIDTH
   } else if (navWidth.value <= MIN_WIDTH) {
     navWidth.value = DEFAULT_WIDTH

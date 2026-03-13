@@ -5,7 +5,7 @@ import type {
   NoteUpdateEvent,
   ServerAdapter,
 } from '@/adapters/types'
-import { noteStore } from '@/stores/notes'
+import { useNoteStore } from '@/stores/notes'
 
 export interface UseNoteListOptions {
   getMyUserId: () => string | undefined
@@ -16,6 +16,7 @@ export interface UseNoteListOptions {
 }
 
 export function useNoteList(options: UseNoteListOptions) {
+  const noteStore = useNoteStore()
   const orderedIds = shallowRef<string[]>([])
   const noteIds = new Set<string>()
   let onNotesChangedFn = options.onNotesChanged
