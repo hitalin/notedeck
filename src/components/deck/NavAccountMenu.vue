@@ -2,7 +2,7 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useNavigation } from '@/composables/useNavigation'
 
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 
 const props = defineProps<{
   show: boolean
@@ -19,7 +19,7 @@ const props = defineProps<{
   isAdmin: boolean
 }>()
 
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 
 const emit = defineEmits<{
   'toggle-mode': [key: string]
@@ -40,7 +40,7 @@ function modeLabel(key: string): string {
     <div
       v-if="show"
       class="nav-account-menu _popupMenu"
-      :class="[$style.navAccountMenu, { [$style.menuRight]: navCollapsed, [$style.mobile]: isMobile }]"
+      :class="[$style.navAccountMenu, { [$style.menuRight]: navCollapsed, [$style.mobile]: isCompact }]"
       @click.stop
     >
       <template v-if="Object.keys(modes).length > 0">

@@ -19,7 +19,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useNoteActions } from '@/composables/useNoteActions'
 import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 import { formatTime } from '@/utils/formatTime'
 import { char2twemojiUrl } from '@/utils/twemoji'
 
@@ -29,7 +29,7 @@ const MkPostForm = defineAsyncComponent(
 
 const noteStore = useNoteStore()
 const accountsStore = useAccountsStore()
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 const { getOrCreate } = useMultiAccountAdapters()
 const { navigateToUser: navToUser } = useNavigation()
 const { reactionUrl: reactionUrlRaw } = useEmojiResolver()
@@ -333,7 +333,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div :class="[$style.notifContent, { [$style.mobile]: isMobile }]">
+  <div :class="[$style.notifContent, { [$style.mobile]: isCompact }]">
     <!-- Per-account progress -->
     <div v-if="loadProgress.length > 0" :class="$style.notifProgress">
       <span

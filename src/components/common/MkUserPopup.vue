@@ -5,7 +5,7 @@ import { createAdapter } from '@/adapters/registry'
 import type { NormalizedUserDetail } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 import { formatCount } from '@/utils/format'
 import MkAvatar from './MkAvatar.vue'
 import MkMfm from './MkMfm.vue'
@@ -24,7 +24,7 @@ const emit = defineEmits<{
 
 const serversStore = useServersStore()
 const accountsStore = useAccountsStore()
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 
 const account = computed(() =>
   accountsStore.accounts.find((a) => a.id === props.accountId),
@@ -60,7 +60,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 <template>
   <div
-    :class="[$style.userPopup, { [$style.mobile]: isMobile }]"
+    :class="[$style.userPopup, { [$style.mobile]: isCompact }]"
     class="_popup"
     :style="{ ...themeVars, left: `${x}px`, top: `${y}px` }"
     @mouseleave="handleMouseLeave"

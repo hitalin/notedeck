@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref, shallowRef } from 'vue'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 
 interface ChatMessage {
   id: string
@@ -9,7 +9,7 @@ interface ChatMessage {
   timestamp: Date
 }
 
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 const input = ref('')
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const messages = shallowRef<ChatMessage[]>([])
@@ -83,7 +83,7 @@ setTimeout(() => inputRef.value?.focus(), 100)
 </script>
 
 <template>
-  <div :class="[$style.aiContent, { [$style.mobile]: isMobile }]">
+  <div :class="[$style.aiContent, { [$style.mobile]: isCompact }]">
     <!-- Provider status -->
     <div :class="$style.aiStatusBar">
       <span

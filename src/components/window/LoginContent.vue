@@ -7,7 +7,7 @@ import type { AuthSession } from '@/adapters/types'
 import { detectServer } from '@/core/server'
 import type { Account } from '@/stores/accounts'
 import { useAccountsStore } from '@/stores/accounts'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 import { AppError } from '@/utils/errors'
 
 const emit = defineEmits<{
@@ -16,7 +16,7 @@ const emit = defineEmits<{
 }>()
 
 const accountsStore = useAccountsStore()
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 const auth = new MisskeyAuth()
 
 const host = ref('')
@@ -67,7 +67,7 @@ function reset() {
 </script>
 
 <template>
-  <div :class="[$style.loginContent, { [$style.mobile]: isMobile }]">
+  <div :class="[$style.loginContent, { [$style.mobile]: isCompact }]">
     <Transition name="step" mode="out-in">
       <!-- Step 1: Input -->
       <div v-if="step === 'input'" key="input" :class="$style.dialogBody">

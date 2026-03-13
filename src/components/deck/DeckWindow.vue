@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 import {
   type DeckWindow,
   useWindowsStore,
@@ -15,7 +15,7 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [] }>()
 
 const windowsStore = useWindowsStore()
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 const size = computed(() => WINDOW_SIZES[props.window.type])
 
 const titles: Record<string, string> = {
@@ -94,7 +94,7 @@ function onWindowMouseDown() {
 
 <template>
   <div
-    :class="[$style.deckWindow, { [$style.dragging]: isDragging, [$style.minimized]: isMinimized, [$style.maximized]: isMaximized, [$style.mobile]: isMobile }]"
+    :class="[$style.deckWindow, { [$style.dragging]: isDragging, [$style.minimized]: isMinimized, [$style.maximized]: isMaximized, [$style.mobile]: isCompact }]"
     :style="isMaximized ? { ...themeVars, zIndex: window.zIndex } : {
       ...themeVars,
       left: (isDragging ? dragX : window.x) + 'px',

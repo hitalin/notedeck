@@ -9,7 +9,7 @@ import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNoteActions } from '@/composables/useNoteActions'
 import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 import {
   extractLiterals,
   filterNotesByRegex,
@@ -22,7 +22,7 @@ const MkPostForm = defineAsyncComponent(
 
 const noteStore = useNoteStore()
 const accountsStore = useAccountsStore()
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 const { getOrCreate } = useMultiAccountAdapters()
 
 const notes = shallowRef<NormalizedNote[]>([])
@@ -354,7 +354,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
 </script>
 
 <template>
-  <div :class="[$style.searchContent, { [$style.mobile]: isMobile }]">
+  <div :class="[$style.searchContent, { [$style.mobile]: isCompact }]">
     <div :class="$style.searchBar">
       <i :class="['ti', 'ti-search', $style.searchIcon]" />
       <input

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import { defineAsyncComponent, ref } from 'vue'
 import { useUiStore } from '@/stores/ui'
 import { extractThemeVars } from '@/utils/themeVars'
@@ -16,7 +17,7 @@ const emit = defineEmits<{
   pick: [reaction: string]
 }>()
 
-const { isMobile } = useUiStore()
+const { isCompactLayout: isCompact } = storeToRefs(useUiStore())
 const show = ref(false)
 const pos = ref({ x: 0, y: 0 })
 const theme = ref<Record<string, string>>({})
@@ -41,12 +42,12 @@ defineExpose({ open })
 
 <template>
   <Teleport to="body">
-    <Transition :name="isMobile ? 'nd-sheet' : 'nd-popup'">
-      <div v-if="show" :class="[$style.popupBackdrop, isMobile && $style.mobile]" @click="close">
+    <Transition :name="isCompact ? 'nd-sheet' : 'nd-popup'">
+      <div v-if="show" :class="[$style.popupBackdrop, isCompact && $style.mobile]" @click="close">
         <div
           :class="$style.reactionPickerPopup"
           class="nd-popup-content reaction-picker-popup"
-          :style="isMobile ? theme : { ...theme, top: pos.y + 'px', left: pos.x + 'px' }"
+          :style="isCompact ? theme : { ...theme, top: pos.y + 'px', left: pos.x + 'px' }"
           @click.stop
         >
           <MkReactionPicker

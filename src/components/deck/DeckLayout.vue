@@ -10,7 +10,7 @@ import { provideScrollDirection } from '@/composables/useScrollDirection'
 import { useUpdater } from '@/composables/useUpdater'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 import DeckBottomBar from './DeckBottomBar.vue'
 import DeckColumnsArea from './DeckColumnsArea.vue'
 import DeckMobileNav from './DeckMobileNav.vue'
@@ -31,7 +31,7 @@ const {
 } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 const columnDrag = useColumnDrag(deckStore)
 
 const navbarRef = ref<InstanceType<typeof DeckNavbar> | null>(null)
@@ -135,7 +135,7 @@ function acceptCrossWindowDrop() {
 </script>
 
 <template>
-  <div :class="[$style.root, { [$style.mobile]: isMobile }]">
+  <div :class="[$style.root, { [$style.mobile]: isCompact }]">
     <DeckNavbar
       ref="navbarRef"
       :mobile-drawer-open="mobileDrawerOpen"
@@ -163,7 +163,7 @@ function acceptCrossWindowDrop() {
       />
 
       <DeckBottomBar
-        v-if="!isMobile"
+        v-if="!isCompact"
         :show-profile-menu="showProfileMenu"
         :show-settings-menu="showSettingsMenu"
         :update-available="updateAvailable"
@@ -175,7 +175,7 @@ function acceptCrossWindowDrop() {
 
     <!-- Mobile FAB -->
     <button
-      v-if="isMobile"
+      v-if="isCompact"
       class="_button"
       :class="$style.fab"
       title="New Note"
@@ -195,7 +195,7 @@ function acceptCrossWindowDrop() {
 
     <!-- Mobile bottom nav -->
     <DeckMobileNav
-      v-if="isMobile"
+      v-if="isCompact"
       :columns="columns"
       :layout="deckStore.windowLayout"
       :active-column-index="activeColumnIndex"

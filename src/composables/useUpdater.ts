@@ -9,7 +9,7 @@ let pendingUpdate: import('@tauri-apps/plugin-updater').Update | null = null
 let checked = false
 
 async function checkForUpdate() {
-  if (checked || useUiStore().isMobile) return
+  if (checked || useUiStore().isMobilePlatform) return
   checked = true
 
   try {

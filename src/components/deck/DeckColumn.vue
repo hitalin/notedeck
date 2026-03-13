@@ -6,7 +6,7 @@ import {
   requestMoveColumn,
 } from '@/composables/useDeckWindow'
 import { useDeckStore } from '@/stores/deck'
-import { useIsMobile, useUiStore } from '@/stores/ui'
+import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 
 const props = defineProps<{
   columnId: string
@@ -21,7 +21,7 @@ const emit = defineEmits<{ 'header-click': [] }>()
 
 const deckStore = useDeckStore()
 const { isDesktop } = useUiStore()
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 
 /** Whether this column can be popped out (desktop + main window only) */
 const canPopOut = computed(() => isDesktop && !deckStore.currentWindowId)
@@ -98,7 +98,7 @@ function onOpenWebUi() {
 <template>
   <section
     class="deck-column"
-    :class="[$style.deckColumn, { [$style.mobile]: isMobile }]"
+    :class="[$style.deckColumn, { [$style.mobile]: isCompact }]"
     :style="themeVars"
   >
     <header

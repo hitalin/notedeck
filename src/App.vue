@@ -9,7 +9,8 @@ import { useTheme } from '@/composables/useTheme'
 import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 
-const { isTauri, isDesktop } = useUiStore()
+const uiStore = useUiStore()
+const { isTauri, isDesktop } = uiStore
 const route = useRoute()
 const isPipWindow = computed(() => route.meta.pip === true)
 
@@ -41,7 +42,7 @@ function dismissSplash() {
 
 onMounted(async () => {
   // Set platform attributes on html element for CSS targeting (independent of viewport width)
-  const { platformName } = useUiStore()
+  const { platformName } = uiStore
   if (platformName) {
     document.documentElement.dataset.platform = platformName
   }
@@ -50,9 +51,9 @@ onMounted(async () => {
   // Show window (visible: false in tauri.conf.json to avoid Windows titlebar flicker)
   if (isTauri) {
     const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    await getCurrentWindow()
-      .show()
-      .catch(() => {})
+    const currentWindow = getCurrentWindow()
+    await currentWindow.setDecorations(false).catch(() => {})
+    await currentWindow.show().catch(() => {})
   }
 
   // Dismiss splash screen as soon as Vue app is mounted

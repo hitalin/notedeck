@@ -6,7 +6,7 @@ import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { highlightCode } from '@/utils/highlight'
@@ -24,7 +24,7 @@ const emit = defineEmits<{
 const { updateAvailable, updateVersion, isInstalling, installUpdate } =
   useUpdater()
 
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 const deckStore = useDeckStore()
 const themeStore = useThemeStore()
 const windowsStore = useWindowsStore()
@@ -177,7 +177,7 @@ function syncScroll(e: Event) {
 <template>
   <Teleport to="body" :disabled="!anchor">
   <Transition name="settings-menu">
-    <div v-if="show" ref="menuEl" :class="[$style.settingsMenu, { [$style.mobile]: isMobile }]" :style="fixedStyle" class="_popupMenu">
+    <div v-if="show" ref="menuEl" :class="[$style.settingsMenu, { [$style.mobile]: isCompact }]" :style="fixedStyle" class="_popupMenu">
       <!-- Misskey-style day/night toggle panel -->
       <div :class="$style.themePanel">
         <div :class="$style.toggleArea">
@@ -309,7 +309,7 @@ function syncScroll(e: Event) {
 
       <div :class="$style.settingsMenuDivider" />
 
-      <div v-if="!isMobile" :class="$style.settingsMenuItem" @click="windowsStore.open('keybinds')">
+      <div v-if="!isCompact" :class="$style.settingsMenuItem" @click="windowsStore.open('keybinds')">
         <i class="ti ti-keyboard" />
         <span :class="$style.settingsMenuLabel">キーバインド設定</span>
       </div>

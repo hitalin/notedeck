@@ -5,7 +5,7 @@ import { emojiCharByCategory, unicodeEmojiCategories } from '@/data/emojilist'
 import { useEmojisStore } from '@/stores/emojis'
 import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
 import { useRecentEmojisStore } from '@/stores/recentEmojis'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 import { char2twemojiUrl } from '@/utils/twemoji'
 import MkReactionPickerSection from './MkReactionPickerSection.vue'
 
@@ -18,7 +18,7 @@ const emit = defineEmits<{
   pick: [reaction: string]
 }>()
 
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 const emojisStore = useEmojisStore()
 const pinnedReactionsStore = usePinnedReactionsStore()
 const recentEmojisStore = useRecentEmojisStore()
@@ -134,7 +134,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div :class="[$style.reactionPickerPanel, { [$style.mobile]: isMobile }]" @click.stop>
+  <div :class="[$style.reactionPickerPanel, { [$style.mobile]: isCompact }]" @click.stop>
     <!-- Search (top when has query, bottom otherwise via CSS order) -->
     <div :class="[$style.pickerSearch, searchQuery.length > 0 && $style.hasQuery]">
       <input

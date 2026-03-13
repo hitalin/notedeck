@@ -9,7 +9,7 @@ import { useAutocomplete } from '@/composables/useAutocomplete'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePostFormState } from '@/composables/usePostFormState'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
@@ -35,7 +35,7 @@ const emit = defineEmits<{
   posted: [editedNoteId?: string]
 }>()
 
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showPreview = ref(false)
@@ -325,7 +325,7 @@ function onKeydown(e: KeyboardEvent) {
 </script>
 
 <template>
-  <div :class="[inline ? $style.postInlineWrapper : $style.postOverlay, { [$style.mobile]: isMobile }]" @click="!inline && emit('close')">
+  <div :class="[inline ? $style.postInlineWrapper : $style.postOverlay, { [$style.mobile]: isCompact }]" @click="!inline && emit('close')">
     <div :class="[$style.postForm, { [$style.postFormInline]: inline }]" :style="formThemeVars" @click.stop="closePopups">
       <!-- Header -->
       <header :class="$style.header">

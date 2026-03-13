@@ -19,7 +19,7 @@ import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 import { AppError } from '@/utils/errors'
 import { proxyUrl } from '@/utils/imageProxy'
 import { toggleReaction } from '@/utils/toggleReaction'
@@ -33,7 +33,7 @@ const emit = defineEmits<{ close: [] }>()
 
 const noteStore = useNoteStore()
 const accountsStore = useAccountsStore()
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 const { navigateToUser: navToUser } = useNavigation()
 const { reactionUrl: reactionUrlRaw } = useEmojiResolver()
 
@@ -219,7 +219,7 @@ async function handlePosted(editedNoteId?: string) {
 </script>
 
 <template>
-  <div :class="[$style.noteDetailContent, { [$style.mobile]: isMobile }]">
+  <div :class="[$style.noteDetailContent, { [$style.mobile]: isCompact }]">
     <div v-if="isLoading" :class="$style.stateMessage">読み込み中...</div>
 
     <div v-else-if="error" :class="[$style.stateMessage, $style.stateError]">

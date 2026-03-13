@@ -5,7 +5,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import type { ColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 
 const emit = defineEmits<{
   close: []
@@ -14,7 +14,7 @@ const emit = defineEmits<{
 const { navigateToLogin } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 
 const addColumnType = ref<
   | 'timeline'
@@ -434,7 +434,7 @@ function close() {
 
 <template>
   <div :class="$style.addOverlay" @click="close()">
-    <div :class="[$style.addPopup, isMobile && $style.mobile]" @click.stop>
+    <div :class="[$style.addPopup, isCompact && $style.mobile]" @click.stop>
       <div :class="$style.addPopupHeader">
         <button v-if="addColumnType && !selectConfig && !addUserAccountId" class="_button" :class="$style.addBackBtn" @click="addColumnType = null">
           <i class="ti ti-chevron-left" />
@@ -567,11 +567,11 @@ function close() {
           <i class="ti ti-api" />
           <span>APIコンソール</span>
         </button>
-        <button v-if="!isMobile" class="_button" :class="$style.addTypeBtn" @click="selectColumnType('apiDocs')">
+        <button v-if="!isCompact" class="_button" :class="$style.addTypeBtn" @click="selectColumnType('apiDocs')">
           <i class="ti ti-book" />
           <span>APIドキュメント</span>
         </button>
-        <button v-if="!isMobile" class="_button" :class="$style.addTypeBtn" @click="selectColumnType('ai')">
+        <button v-if="!isCompact" class="_button" :class="$style.addTypeBtn" @click="selectColumnType('ai')">
           <i class="ti ti-sparkles" />
           <span>AI Chat</span>
         </button>

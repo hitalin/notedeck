@@ -8,10 +8,10 @@ import {
 } from '@/aiscript/plugin-api'
 import AiScriptEditor from '@/components/deck/widgets/AiScriptEditor.vue'
 import { type PluginMeta, usePluginsStore } from '@/stores/plugins'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 
 const pluginsStore = usePluginsStore()
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 
 // Views: 'list' | 'install' | 'detail'
 const view = ref<'list' | 'install' | 'detail'>('list')
@@ -113,7 +113,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
 </script>
 
 <template>
-  <div :class="[$style.pluginsContent, { [$style.mobile]: isMobile }]">
+  <div :class="[$style.pluginsContent, { [$style.mobile]: isCompact }]">
     <!-- List view -->
     <template v-if="view === 'list'">
       <div :class="$style.pluginsHeader">

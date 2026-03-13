@@ -9,7 +9,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { useStreamingStore } from '@/stores/streaming'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 import {
   clearAvailableTlCache,
   detectAvailableTimelines,
@@ -43,7 +43,7 @@ const {
   navigateToChat,
 } = useNavigation()
 const deckStore = useDeckStore()
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 const { totalUnread, markAllAsRead } = useUnreadNotifications()
 const { totalUnread: chatUnread, resetAll: resetChatUnread } = useUnreadChat()
 
@@ -239,11 +239,11 @@ defineExpose({
       :class="[
         $style.navbar,
         {
-          [$style.drawerMode]: isMobile,
+          [$style.drawerMode]: isCompact,
           [$style.drawerOpen]: props.mobileDrawerOpen,
         },
       ]"
-      :style="isMobile ? undefined : { flexBasis: navWidth + 'px' }"
+      :style="isCompact ? undefined : { flexBasis: navWidth + 'px' }"
     >
       <div :class="$style.body">
         <!-- Top section -->
@@ -291,7 +291,7 @@ defineExpose({
             <span :class="$style.label">プラグイン</span>
           </button>
           <button
-            v-if="!isMobile"
+            v-if="!isCompact"
             class="_button"
             :class="$style.item"
             title="AI アシスタント"
@@ -308,7 +308,7 @@ defineExpose({
         <!-- Bottom section: post button → accounts -->
         <div :class="$style.section">
           <!-- Mobile-only: profile & settings -->
-          <div v-if="isMobile" :class="$style.mobileOnly">
+          <div v-if="isCompact" :class="$style.mobileOnly">
             <div :class="$style.menuWrap">
               <button
                 class="_button"
@@ -410,14 +410,14 @@ defineExpose({
       </div>
 
       <!-- Collapse toggle -->
-      <button v-if="!isMobile" :class="$style.toggle" title="サイドバー切替" @click="toggleNav">
+      <button v-if="!isCompact" :class="$style.toggle" title="サイドバー切替" @click="toggleNav">
         <i :class="navCollapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left'" />
       </button>
     </nav>
 
     <!-- Resize handle -->
     <div
-      v-if="!isMobile"
+      v-if="!isCompact"
       :class="[$style.resizeHandle, { [$style.resizeActive]: isResizing }]"
       @mousedown="startResize"
     />

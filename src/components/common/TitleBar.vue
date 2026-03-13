@@ -10,7 +10,7 @@ import {
 } from '@/composables/usePipWindow'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 
 const CommandPalette = defineAsyncComponent(
   () => import('@/components/common/CommandPalette.vue'),
@@ -20,9 +20,9 @@ const appWindow = getCurrentWindow()
 const commandStore = useCommandStore()
 const accountsStore = useAccountsStore()
 const deckStore = useDeckStore()
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 const isMaximized = ref(false)
-const isMobileSize = ref(false)
+const isCompactSize = ref(false)
 
 const MOBILE_WIDTH = 420
 const MOBILE_HEIGHT = 780
@@ -37,7 +37,7 @@ async function syncMobileState() {
   const factor = await appWindow.scaleFactor()
   const size = await appWindow.innerSize()
   const logicalWidth = size.width / factor
-  isMobileSize.value = logicalWidth <= MOBILE_WIDTH + 20
+  isCompactSize.value = logicalWidth <= MOBILE_WIDTH + 20
 }
 
 let unlisten: (() => void) | null = null
@@ -68,7 +68,7 @@ async function close() {
 }
 
 async function toggleMobileSize() {
-  if (isMobileSize.value) {
+  if (isCompactSize.value) {
     if (savedDesktopSize) {
       await appWindow.setSize(
         new LogicalSize(savedDesktopSize.width, savedDesktopSize.height),
@@ -115,7 +115,7 @@ async function togglePip() {
 </script>
 
 <template>
-  <div :class="[$style.titlebar, { [$style.mobile]: isMobile }]" data-tauri-drag-region>
+  <div :class="[$style.titlebar, { [$style.mobile]: isCompact }]" data-tauri-drag-region>
     <div :class="$style.titlebarLeft" data-tauri-drag-region>
       <img src="/favicon.svg" alt="" :class="$style.titlebarIcon" draggable="false" data-tauri-drag-region />
     </div>
@@ -146,10 +146,10 @@ async function togglePip() {
       </button>
       <button
         :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
-        :title="isMobileSize ? 'デスクトップサイズ' : 'モバイルサイズ'"
+        :title="isCompactSize ? 'デスクトップサイズ' : 'モバイルサイズ'"
         @click="toggleMobileSize"
       >
-        <i :class="isMobileSize ? 'ti ti-device-desktop' : 'ti ti-device-mobile'" />
+        <i :class="isCompactSize ? 'ti ti-device-desktop' : 'ti ti-device-mobile'" />
       </button>
       <button
         :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"

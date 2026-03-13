@@ -5,7 +5,7 @@ import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
 import type { DeckProfile } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
-import { useIsMobile } from '@/stores/ui'
+import { useIsCompactLayout } from '@/stores/ui'
 
 const props = defineProps<{
   show: boolean
@@ -17,7 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const deckStore = useDeckStore()
-const isMobile = useIsMobile()
+const isCompact = useIsCompactLayout()
 
 const profiles = ref<DeckProfile[]>([])
 const editingId = ref<string | null>(null)
@@ -105,7 +105,7 @@ function remove(id: string) {
 <template>
   <Teleport to="body" :disabled="!anchor">
   <Transition name="profile-menu">
-    <div v-if="show" ref="menuEl" :class="[$style.profileMenu, { [$style.mobile]: isMobile }]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
+    <div v-if="show" ref="menuEl" :class="[$style.profileMenu, { [$style.mobile]: isCompact }]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
       <div :class="$style.list">
         <div
           v-for="p in profiles"
