@@ -26,6 +26,7 @@ const { isDesktop } = useUiStore()
 const canPopOut = computed(() => isDesktop && !deckStore.currentWindowId)
 /** Whether this column is in a sub-window and can be returned to main */
 const canRecall = computed(() => isDesktop && !!deckStore.currentWindowId)
+const hasWallpaper = computed(() => deckStore.wallpaper != null)
 
 const showMenu = ref(false)
 const menuBtnEl = ref<HTMLElement | null>(null)
@@ -100,6 +101,13 @@ function onOpenWebUi() {
       class="column-header"
       @click="emit('header-click')"
     >
+      <!-- Tab shape decoration (Misskey style, hidden with wallpaper) -->
+      <svg v-if="!hasWallpaper" class="tab-shape" viewBox="0 0 256 128">
+        <g transform="matrix(6.2431,0,0,6.2431,-677.417,-29.3839)">
+          <path d="M149.512,4.707L108.507,4.707C116.252,4.719 118.758,14.958 118.758,14.958C118.758,14.958 121.381,25.283 129.009,25.209L149.512,25.209L149.512,4.707Z" style="fill:var(--nd-deckBg)" />
+        </g>
+      </svg>
+
       <!-- Color indicator bar (Misskey style) -->
       <div
         class="color-indicator"
@@ -195,6 +203,15 @@ function onOpenWebUi() {
 
 .column-header:active {
   cursor: grabbing;
+}
+
+.tab-shape {
+  position: absolute;
+  top: 0;
+  right: -8px;
+  width: auto;
+  height: calc(100% - 6px);
+  pointer-events: none;
 }
 
 .color-indicator {
