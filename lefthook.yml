@@ -1,0 +1,9 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: biome
+      glob: "*.{ts,vue}"
+      run: npx biome check --no-errors-on-unmatched {staged_files}
+
+    - name: typecheck
+      run: npx vue-tsc --noEmit
