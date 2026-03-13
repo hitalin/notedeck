@@ -384,7 +384,7 @@ onUnmounted(() => {
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent);
   font-size: 0.85em;
-  transition: background 0.15s, opacity 0.15s;
+  transition: background var(--nd-duration-base), opacity var(--nd-duration-base);
 }
 
 .header-run-btn:hover:not(:disabled) {
@@ -437,7 +437,7 @@ onUnmounted(() => {
   height: 3px;
   border-radius: 2px;
   background: var(--nd-divider);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .resize-handle:hover .resize-grip {
@@ -468,7 +468,7 @@ onUnmounted(() => {
   color: var(--nd-fg);
   opacity: 0.5;
   border-bottom: 2px solid transparent;
-  transition: opacity 0.15s, border-color 0.15s;
+  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
 }
 
 .output-tab:hover {
@@ -530,7 +530,7 @@ onUnmounted(() => {
   padding: 6px 10px;
   font-size: 0.8em;
   text-align: left;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .inspector-item-header:hover {

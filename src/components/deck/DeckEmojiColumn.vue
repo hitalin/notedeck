@@ -297,7 +297,7 @@ onMounted(() => {
   font-weight: bold;
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--nd-duration-base), color var(--nd-duration-base);
 }
 
 .category-chip:hover {
@@ -356,7 +356,7 @@ onMounted(() => {
   justify-content: center;
   aspect-ratio: 1;
   border-radius: var(--nd-radius-sm);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
   cursor: pointer;
 }
 

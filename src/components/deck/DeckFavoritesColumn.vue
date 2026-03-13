@@ -136,10 +136,10 @@ const {
   flex-shrink: 0;
   color: var(--nd-accent);
   font-size: 1.2em;
-  transition: height 0.2s ease;
+  transition: height var(--nd-duration-slow) ease;
 }
 
 .pull-indicator .ti {
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
 }
 </style>

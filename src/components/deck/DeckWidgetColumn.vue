@@ -157,7 +157,7 @@ function removeWidget(widgetId: string) {
   cursor: pointer;
   border-radius: var(--nd-radius-sm);
   opacity: 0.35;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .widget-remove:hover {
@@ -188,7 +188,7 @@ function removeWidget(widgetId: string) {
   cursor: pointer;
   font-size: 0.85em;
   opacity: 0.5;
-  transition: opacity 0.15s, border-color 0.15s;
+  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
 }
 
 .add-widget-btn:hover {
@@ -216,7 +216,7 @@ function removeWidget(widgetId: string) {
   cursor: pointer;
   font-size: 0.85em;
   text-align: left;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .menu-item:hover {

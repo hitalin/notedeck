@@ -508,7 +508,7 @@ onMounted(() => {
   font-size: 0.9em;
   color: var(--nd-fg);
   text-decoration: none;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
   cursor: pointer;
 }
 
@@ -601,7 +601,7 @@ onMounted(() => {
 }
 
 .rules-chevron {
-  transition: transform 0.2s;
+  transition: transform var(--nd-duration-slow);
 }
 
 .rules-list {

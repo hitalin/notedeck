@@ -343,7 +343,7 @@ fetchGallery()
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .gallery-grid-cell:hover {
@@ -498,7 +498,7 @@ fetchGallery()
   background: var(--nd-modalBg);
   color: #fff;
   font-size: 16px;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .gallery-nav-btn:hover {
@@ -528,7 +528,7 @@ fetchGallery()
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.5);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .gallery-dot.active {
@@ -608,7 +608,7 @@ fetchGallery()
   color: var(--nd-fg);
   font-size: 0.85em;
   font-weight: 600;
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--nd-duration-base), color var(--nd-duration-base);
 }
 
 .gallery-like-btn:hover {

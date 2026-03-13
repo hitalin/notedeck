@@ -71,11 +71,11 @@ defineExpose({ show })
 }
 
 .toast-enter-active {
-  transition: all 0.2s ease;
+  transition: all var(--nd-duration-slow) ease;
 }
 
 .toast-leave-active {
-  transition: all 0.15s ease;
+  transition: all var(--nd-duration-base) ease;
 }
 
 .toast-enter-from {

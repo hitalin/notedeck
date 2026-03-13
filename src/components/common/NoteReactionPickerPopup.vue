@@ -103,12 +103,12 @@ defineExpose({ open })
 /* Mobile bottom-sheet transition */
 .nd-sheet-enter-active,
 .nd-sheet-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--nd-duration-slow) ease;
 }
 
 .nd-sheet-enter-active .reaction-picker-popup,
 .nd-sheet-leave-active .reaction-picker-popup {
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--nd-duration-slower) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .nd-sheet-enter-from,

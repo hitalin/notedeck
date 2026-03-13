@@ -127,7 +127,7 @@ defineExpose({ showDialog, showConfirm })
   border-radius: var(--nd-radius-sm);
   font-size: 0.85em;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .ais-dialog-btn:hover {
@@ -145,7 +145,7 @@ defineExpose({ showDialog, showConfirm })
 }
 
 .dialog-fade-enter-active {
-  transition: opacity 0.15s ease;
+  transition: opacity var(--nd-duration-base) ease;
 }
 
 .dialog-fade-leave-active {

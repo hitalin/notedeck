@@ -458,7 +458,7 @@ defineExpose({
   font-size: 0.9em;
   white-space: nowrap;
   text-decoration: none;
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--nd-duration-base), color var(--nd-duration-base);
 }
 
 .nav-item:hover {
@@ -584,7 +584,7 @@ defineExpose({
   font-weight: bold;
   font-size: 0.9em;
   white-space: nowrap;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: transform var(--nd-duration-base), box-shadow var(--nd-duration-base);
 }
 
 .nav-post-btn:hover {
@@ -600,7 +600,7 @@ defineExpose({
   flex: 0 0 6px;
   cursor: col-resize;
   background: transparent;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
   z-index: 10;
 }
 
@@ -631,7 +631,7 @@ defineExpose({
   color: var(--nd-fg);
   opacity: 0;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
   z-index: 10;
 }
 

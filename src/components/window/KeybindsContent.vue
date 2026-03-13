@@ -265,7 +265,7 @@ function resetAll() {
   opacity: 0.7;
   padding: 4px 8px;
   border-radius: 4px;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .reset-all-btn:hover {
@@ -333,7 +333,7 @@ function resetAll() {
   font-family: monospace;
   color: var(--nd-fg);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color var(--nd-duration-base), background var(--nd-duration-base);
   outline: none;
   min-height: 26px;
 }
@@ -371,7 +371,7 @@ function resetAll() {
   font-size: 0.9em;
   opacity: 0;
   color: var(--nd-fg);
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .shortcut-badge:hover .remove-shortcut {
@@ -393,7 +393,7 @@ function resetAll() {
   font-size: 0.8em;
   color: var(--nd-fg);
   opacity: 0.4;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .add-shortcut-btn:hover {
@@ -411,7 +411,7 @@ function resetAll() {
   font-size: 0.85em;
   color: var(--nd-fg);
   opacity: 0.4;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
   flex-shrink: 0;
 }
 

@@ -586,7 +586,7 @@ function syncScroll(e: Event) {
   background: var(--nd-buttonBg, rgba(0, 0, 0, 0.15));
   border-radius: 11px;
   position: relative;
-  transition: background 0.2s;
+  transition: background var(--nd-duration-slow);
 }
 
 .sync-toggle.active .sync-toggle-track {
@@ -601,7 +601,7 @@ function syncScroll(e: Event) {
   height: 18px;
   background: #fff;
   border-radius: 50%;
-  transition: transform 0.2s;
+  transition: transform var(--nd-duration-slow);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
@@ -642,7 +642,7 @@ function syncScroll(e: Event) {
   border: 2px solid var(--nd-divider);
   border-radius: var(--nd-radius-sm);
   overflow: hidden;
-  transition: border-color 0.15s;
+  transition: border-color var(--nd-duration-base);
 }
 
 .theme-item:hover {
@@ -684,7 +684,7 @@ function syncScroll(e: Event) {
   color: var(--nd-fg);
   opacity: 0.7;
   border-radius: 4px;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .install-btn:hover {
@@ -739,7 +739,7 @@ function syncScroll(e: Event) {
   border-radius: 4px;
   font-size: 0.8em;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .install-action-btn.cancel {
@@ -787,7 +787,7 @@ function syncScroll(e: Event) {
   border-radius: var(--nd-radius-sm);
   overflow: hidden;
   background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
-  transition: border-color 0.15s;
+  transition: border-color var(--nd-duration-base);
 }
 
 .css-editor:focus-within {
@@ -913,7 +913,7 @@ function syncScroll(e: Event) {
   color: var(--nd-fg);
   opacity: 0.4;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .version-info:hover {
@@ -948,7 +948,7 @@ function syncScroll(e: Event) {
   font-size: 0.8em;
   cursor: pointer;
   white-space: nowrap;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .update-btn:hover:not(:disabled) {

@@ -212,7 +212,7 @@ watch(
   font-size: 20px;
   color: var(--nd-fg);
   opacity: 0.45;
-  transition: opacity 0.2s, color 0.2s;
+  transition: opacity var(--nd-duration-slow), color var(--nd-duration-slow);
 }
 
 .mobile-tab.active {
@@ -235,7 +235,7 @@ watch(
 .mobile-tab:active {
   opacity: 0.7;
   transform: scale(0.9);
-  transition: opacity var(--nd-duration-fast), color 0.2s, transform var(--nd-duration-fast);
+  transition: opacity var(--nd-duration-fast), color var(--nd-duration-slow), transform var(--nd-duration-fast);
 }
 
 .tab-server-badge,

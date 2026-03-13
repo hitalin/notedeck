@@ -131,7 +131,7 @@ function onKeydown(e: KeyboardEvent) {
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent);
   font-size: 0.85em;
-  transition: background 0.15s, opacity 0.15s;
+  transition: background var(--nd-duration-base), opacity var(--nd-duration-base);
 }
 
 .header-run-btn:hover:not(:disabled) {
@@ -198,7 +198,7 @@ function onKeydown(e: KeyboardEvent) {
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
   font-size: 0.85em;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color var(--nd-duration-base);
 }
 
 .endpoint-input:focus {
@@ -228,7 +228,7 @@ function onKeydown(e: KeyboardEvent) {
   line-height: 1.5;
   resize: vertical;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color var(--nd-duration-base);
 }
 
 .params-textarea:focus {

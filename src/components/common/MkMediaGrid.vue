@@ -328,7 +328,7 @@ function closeLightbox() {
   object-fit: cover;
   content-visibility: auto;
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity var(--nd-duration-slower);
   position: relative;
   z-index: 1;
 }
@@ -366,7 +366,7 @@ function closeLightbox() {
   color: #fff;
   cursor: pointer;
   z-index: 2;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .sensitive-hide-btn:hover {
@@ -399,7 +399,7 @@ function closeLightbox() {
   background: rgba(255, 255, 255, 0.15);
   color: #fff;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
   z-index: 1;
 }
 

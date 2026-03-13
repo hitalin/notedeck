@@ -284,7 +284,7 @@ function acceptCrossWindowDrop() {
   color: var(--nd-fgOnAccent, #fff);
   font-size: 20px;
   box-shadow: 0 4px 12px var(--nd-shadow);
-  transition: transform 0.3s ease, box-shadow 0.2s ease;
+  transition: transform var(--nd-duration-slower) ease, box-shadow var(--nd-duration-slow) ease;
 }
 
 .mobile-fab:hover {
@@ -337,7 +337,7 @@ html.nd-mobile .mobile-fab {
 <style>
 .modal-enter-active,
 .modal-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--nd-duration-slow) ease;
 }
 
 .modal-enter-from,
@@ -347,7 +347,7 @@ html.nd-mobile .mobile-fab {
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--nd-duration-slow) ease;
 }
 
 .fade-enter-from,

@@ -99,7 +99,7 @@ defineSlots<{
 
 /* leave: quick collapse */
 .leaveActive {
-  transition: height 0.2s cubic-bezier(0, 0.5, 0.5, 1),
+  transition: height var(--nd-duration-slow) cubic-bezier(0, 0.5, 0.5, 1),
               opacity 0.2s cubic-bezier(0, 0.5, 0.5, 1);
 }
 

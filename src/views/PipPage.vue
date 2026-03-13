@@ -444,7 +444,7 @@ onUnmounted(() => {
   opacity: 0.35;
   cursor: pointer;
   font-size: 13px;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .pip-tab:hover {

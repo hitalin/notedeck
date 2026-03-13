@@ -232,7 +232,7 @@ onMounted(() => {
   cursor: pointer;
   font-size: 0.85em;
   opacity: 0.6;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .tool-btn:hover {

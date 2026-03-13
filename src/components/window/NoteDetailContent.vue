@@ -419,7 +419,7 @@ async function handlePosted(editedNoteId?: string) {
   color: var(--nd-fg);
   opacity: 0.6;
   border-bottom: 2px solid transparent;
-  transition: opacity 0.15s, border-color 0.15s;
+  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
 }
 
 .detail-tab-item:hover {
@@ -447,7 +447,7 @@ async function handlePosted(editedNoteId?: string) {
   align-items: center;
   gap: 10px;
   padding: 10px 24px;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .renote-user-item:hover {
@@ -489,7 +489,7 @@ async function handlePosted(editedNoteId?: string) {
   gap: 10px;
   flex: 1;
   min-width: 0;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .reaction-user-left:hover {

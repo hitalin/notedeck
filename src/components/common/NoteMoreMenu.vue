@@ -195,7 +195,7 @@ defineExpose({ open })
   color: var(--nd-fg);
   font-size: 0.9em;
   text-align: left;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .popup-item:hover {

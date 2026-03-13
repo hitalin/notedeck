@@ -424,11 +424,11 @@ function closeUserPopup() {
   flex-shrink: 0;
   color: var(--nd-accent);
   font-size: 1.2em;
-  transition: height 0.2s ease;
+  transition: height var(--nd-duration-slow) ease;
 }
 
 .pull-indicator .ti {
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
 }
 
 /* --- Tabs --- */
@@ -447,7 +447,7 @@ function closeUserPopup() {
   font-weight: 600;
   color: var(--nd-fg);
   opacity: 0.5;
-  transition: opacity 0.15s, border-color 0.15s;
+  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
   border-bottom: 2px solid transparent;
 }
 
@@ -479,7 +479,7 @@ function closeUserPopup() {
   padding: 12px 14px;
   text-align: left;
   border-bottom: 1px solid var(--nd-divider);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
   cursor: pointer;
 }
 
@@ -545,7 +545,7 @@ function closeUserPopup() {
   padding: 12px 14px;
   text-align: left;
   border-bottom: 1px solid var(--nd-divider);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .explore-role-card:hover {

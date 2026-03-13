@@ -290,7 +290,7 @@ function handlePostFormButton(comp: UiComponent) {
   color: var(--nd-fg);
   font-size: 0.85em;
   outline: none;
-  transition: box-shadow 0.15s;
+  transition: box-shadow var(--nd-duration-base);
 }
 
 .ais-textarea {
@@ -304,7 +304,7 @@ function handlePostFormButton(comp: UiComponent) {
   outline: none;
   resize: vertical;
   min-height: 60px;
-  transition: box-shadow 0.15s;
+  transition: box-shadow var(--nd-duration-base);
 }
 
 .ais-text-input:focus,
@@ -340,7 +340,7 @@ function handlePostFormButton(comp: UiComponent) {
   font-size: 0.85em;
   font-weight: 500;
   background: var(--nd-panelHighlight);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .ais-folder summary:hover {

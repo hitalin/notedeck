@@ -201,7 +201,7 @@ onUnmounted(() => {
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .reaction-user-row:hover {

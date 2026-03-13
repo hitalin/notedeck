@@ -264,7 +264,7 @@ onMounted(() => {
   border: none;
   border-radius: var(--nd-radius-full);
   cursor: pointer;
-  transition: filter 0.15s;
+  transition: filter var(--nd-duration-base);
 }
 
 .accept-btn {

@@ -402,7 +402,7 @@ function closeMentionPopup() {
   justify-content: center;
   cursor: pointer;
   font-size: 0.85em;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .chat-msg:not(.mine) .chat-add-reaction {

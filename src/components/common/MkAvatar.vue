@@ -111,7 +111,7 @@ const decorationStyles = computed(() =>
   flex-shrink: 0;
   border-radius: 50%;
   background: var(--nd-buttonBg);
-  transition: transform 0.2s ease;
+  transition: transform var(--nd-duration-slow) ease;
 }
 
 .mk-avatar:hover {

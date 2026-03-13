@@ -95,7 +95,7 @@ function onSuccess() {
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   opacity: 0.6;
-  transition: background 0.15s, opacity 0.15s;
+  transition: background var(--nd-duration-base), opacity var(--nd-duration-base);
 }
 
 .header-close:hover {

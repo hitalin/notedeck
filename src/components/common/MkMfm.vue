@@ -323,7 +323,7 @@ function fnStyle(
 /* Blur */
 .mfm-blur {
   filter: blur(6px);
-  transition: filter 0.3s;
+  transition: filter var(--nd-duration-slower);
 }
 .mfm-blur:hover {
   filter: none;

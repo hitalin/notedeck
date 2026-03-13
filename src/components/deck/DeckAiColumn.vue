@@ -250,7 +250,7 @@ function onKeydown(e: KeyboardEvent) {
   background: var(--nd-buttonBg);
   font-size: 0.78em;
   opacity: 0.7;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .ai-suggestion:hover {
@@ -390,7 +390,7 @@ function onKeydown(e: KeyboardEvent) {
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent, #fff);
   flex-shrink: 0;
-  transition: opacity 0.15s, transform 0.15s;
+  transition: opacity var(--nd-duration-base), transform var(--nd-duration-base);
 }
 
 .ai-send:hover:not(:disabled) {

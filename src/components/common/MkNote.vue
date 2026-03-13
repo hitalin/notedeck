@@ -588,7 +588,7 @@ function closeMentionPopup() {
 }
 
 .note-root:not(.detailed) > .article {
-  transition: background 0.2s ease;
+  transition: background var(--nd-duration-slow) ease;
 }
 
 .note-root:not(.detailed):hover > .article {
@@ -632,7 +632,7 @@ function closeMentionPopup() {
   cursor: pointer;
   overflow: hidden;
   opacity: 0.7;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .reply-to:hover {
@@ -726,7 +726,7 @@ function closeMentionPopup() {
 .avatar {
   margin: 0 14px 0 0;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .avatar:hover {
@@ -855,7 +855,7 @@ function closeMentionPopup() {
   font-size: 0.8em;
   font-weight: normal;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .cw-toggle:hover {
@@ -1034,7 +1034,7 @@ function closeMentionPopup() {
   color: color-mix(in srgb, var(--nd-panel) 30%, var(--nd-fg) 70%);
   font-size: 1em;
   border-radius: var(--nd-radius-sm);
-  transition: color 0.15s, background 0.15s, transform var(--nd-duration-fast);
+  transition: color var(--nd-duration-base), background var(--nd-duration-base), transform var(--nd-duration-fast);
 }
 
 .footer-button:active {
@@ -1082,7 +1082,7 @@ function closeMentionPopup() {
   border-radius: var(--nd-radius-sm);
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .renote-menu-item:hover {

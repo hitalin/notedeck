@@ -726,7 +726,7 @@ function close() {
   font-size: 0.85em;
   font-weight: bold;
   color: var(--nd-fgHighlighted);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .add-account-btn:hover {
@@ -751,7 +751,7 @@ function close() {
   height: 44px;
   border-radius: var(--nd-radius-sm);
   opacity: 0.7;
-  transition: background 0.15s, opacity 0.15s;
+  transition: background var(--nd-duration-base), opacity var(--nd-duration-base);
 }
 
 .add-back-btn:hover {
@@ -769,7 +769,7 @@ function close() {
   font-size: 0.9em;
   font-weight: bold;
   color: var(--nd-fgHighlighted);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .add-type-btn:hover {

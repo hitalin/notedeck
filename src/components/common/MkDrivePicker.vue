@@ -165,7 +165,7 @@ fetchDrive()
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   opacity: 0.6;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .dp-header-btn:hover {
@@ -203,7 +203,7 @@ fetchDrive()
   color: var(--nd-fgHighlighted);
   text-align: left;
   border-bottom: 1px solid var(--nd-divider);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .dp-folder:hover {
@@ -232,7 +232,7 @@ fetchDrive()
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .dp-grid-cell:hover {
@@ -276,7 +276,7 @@ fetchDrive()
   justify-content: center;
   color: transparent;
   font-size: 11px;
-  transition: all 0.15s;
+  transition: all var(--nd-duration-base);
 }
 
 .dp-check.checked {
@@ -322,7 +322,7 @@ fetchDrive()
   color: var(--nd-fgOnAccent, #fff);
   font-size: 0.85em;
   font-weight: 600;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .dp-confirm:hover {

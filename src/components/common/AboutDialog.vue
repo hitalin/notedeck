@@ -168,7 +168,7 @@ async function copyInfo() {
   color: var(--nd-accent);
   font-size: 0.85em;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .about-link:hover {
@@ -201,7 +201,7 @@ async function copyInfo() {
   color: var(--nd-fg);
   font-size: 0.8em;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .about-copy:hover {
@@ -217,7 +217,7 @@ async function copyInfo() {
   font-size: 0.85em;
   font-weight: bold;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .about-close:hover {

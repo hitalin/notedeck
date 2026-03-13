@@ -375,7 +375,7 @@ onMounted(() => {
   color: var(--nd-fgOnAccent);
   font-weight: bold;
   font-size: 0.95em;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .love-button:hover {
@@ -422,7 +422,7 @@ onMounted(() => {
   border-radius: var(--nd-radius-sm);
   font-size: 0.9em;
   color: var(--nd-fg);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .about-link:hover {
@@ -476,7 +476,7 @@ onMounted(() => {
   padding: 10px;
   background: var(--nd-buttonBg);
   border-radius: var(--nd-radius-sm);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .member-card:hover {
@@ -513,7 +513,7 @@ onMounted(() => {
   justify-content: center;
   padding: 8px;
   border-radius: var(--nd-radius-sm);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .sponsor-card:hover {

@@ -77,7 +77,7 @@ function formatExpiry(iso: string): string {
   left: 0;
   height: 100%;
   background: var(--nd-accentedBg);
-  transition: width 0.3s ease;
+  transition: width var(--nd-duration-slower) ease;
 }
 
 .poll-choice.voted .poll-bar {

@@ -415,7 +415,7 @@ async function handlePosted(editedNoteId?: string) {
   border-radius: var(--nd-radius-sm);
   flex-shrink: 0;
   opacity: 0.6;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .lookup-btn:hover:not(:disabled) {
@@ -441,7 +441,7 @@ async function handlePosted(editedNoteId?: string) {
   gap: 12px;
   width: 100%;
   padding: 16px 20px;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .lookup-user-card:hover {

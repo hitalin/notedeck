@@ -68,7 +68,7 @@ const router = useRouter()
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   text-decoration: none;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .back-btn:hover {

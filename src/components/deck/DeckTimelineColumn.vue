@@ -847,7 +847,7 @@ onUnmounted(() => {
   gap: 4px;
   padding: 8px 12px;
   opacity: 0.4;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
   position: relative;
 }
 
@@ -866,7 +866,7 @@ onUnmounted(() => {
   height: 3px;
   background: var(--nd-accent);
   border-radius: var(--nd-radius-full) var(--nd-radius-full) 0 0;
-  transition: left 0.3s cubic-bezier(0, 0, 0.2, 1), width 0.3s cubic-bezier(0, 0, 0.2, 1);
+  transition: left var(--nd-duration-slower) cubic-bezier(0, 0, 0.2, 1), width var(--nd-duration-slower) cubic-bezier(0, 0, 0.2, 1);
   pointer-events: none;
 }
 
@@ -916,10 +916,10 @@ onUnmounted(() => {
   flex-shrink: 0;
   color: var(--nd-accent);
   font-size: 1.2em;
-  transition: height 0.2s ease;
+  transition: height var(--nd-duration-slow) ease;
 }
 
 .pull-indicator .ti {
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
 }
 </style>

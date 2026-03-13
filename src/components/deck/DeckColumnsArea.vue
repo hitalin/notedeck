@@ -352,7 +352,7 @@ defineExpose({ scrollToColumn, columnMap })
   flex: 0 0 4px;
   cursor: col-resize;
   background: transparent;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .col-resize-handle:hover,

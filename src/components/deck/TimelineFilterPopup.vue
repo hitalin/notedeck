@@ -106,7 +106,7 @@ onUnmounted(() => {
   justify-content: space-between;
   padding: 8px 14px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .nd-filter-item:hover {
@@ -119,7 +119,7 @@ onUnmounted(() => {
 
 .nd-filter-popup-enter-active,
 .nd-filter-popup-leave-active {
-  transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+  transition: opacity var(--nd-duration-slow) cubic-bezier(0, 0, 0.2, 1), transform var(--nd-duration-slow) cubic-bezier(0, 0, 0.2, 1);
 }
 
 .nd-filter-popup-enter-from,

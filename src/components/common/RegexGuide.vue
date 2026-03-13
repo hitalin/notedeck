@@ -132,7 +132,7 @@ function apply() {
   color: var(--nd-fg);
   font-size: 0.8em;
   white-space: nowrap;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .condition-type:hover {
@@ -169,7 +169,7 @@ function apply() {
   border-radius: var(--nd-radius-sm);
   flex-shrink: 0;
   opacity: 0.3;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .condition-remove:hover {
@@ -192,7 +192,7 @@ function apply() {
   border-radius: var(--nd-radius-sm);
   font-size: 0.8em;
   opacity: 0.45;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .add-btn:hover {
@@ -207,7 +207,7 @@ function apply() {
   color: #fff;
   font-size: 0.8em;
   font-weight: 600;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .apply-btn:hover:not(:disabled) {

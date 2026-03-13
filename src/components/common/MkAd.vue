@@ -128,7 +128,7 @@ function reduceFrequency() {
   font-size: 0.85em;
   font-weight: bold;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .ad-menu-reduce:hover {

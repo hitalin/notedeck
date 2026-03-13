@@ -307,7 +307,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   height: 32px;
   border-radius: var(--nd-radius-md);
   color: var(--nd-fg);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .plugins-back-btn:hover {
@@ -326,7 +326,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   font-size: 0.85em;
   font-weight: bold;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
   margin-left: auto;
 }
 
@@ -362,7 +362,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   padding: 10px 12px;
   border-radius: var(--nd-radius-md);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .plugin-card:hover {
@@ -460,7 +460,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   font-size: 0.85em;
   font-weight: bold;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .detail-uninstall-btn:hover {

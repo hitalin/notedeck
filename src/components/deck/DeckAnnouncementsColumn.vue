@@ -284,7 +284,7 @@ onUnmounted(() => {
   background: var(--nd-accent);
   color: #fff;
   cursor: pointer;
-  transition: filter 0.15s;
+  transition: filter var(--nd-duration-base);
 }
 
 .announcement-read-btn:hover {

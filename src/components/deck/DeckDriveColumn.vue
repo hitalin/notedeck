@@ -409,7 +409,7 @@ fetchDrive()
   white-space: nowrap;
   padding: 2px 4px;
   border-radius: 4px;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .drive-breadcrumb-item:hover {
@@ -444,7 +444,7 @@ fetchDrive()
   padding: 10px 14px;
   text-align: left;
   border-bottom: 1px solid var(--nd-divider);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .drive-folder-item:hover {
@@ -485,7 +485,7 @@ fetchDrive()
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .drive-grid-cell:hover {
@@ -551,7 +551,7 @@ fetchDrive()
   border: 2px dashed var(--nd-accent);
   border-radius: var(--nd-radius-md);
   background: color-mix(in srgb, var(--nd-accent) 5%, transparent);
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .drive-upload-cell:hover .drive-upload-thumb {
@@ -664,7 +664,7 @@ fetchDrive()
   color: var(--nd-love);
   font-size: 0.85em;
   font-weight: 600;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .drive-delete-btn:hover {
@@ -701,7 +701,7 @@ fetchDrive()
   justify-content: center;
   color: transparent;
   font-size: 12px;
-  transition: all 0.15s;
+  transition: all var(--nd-duration-base);
 }
 
 .drive-select-check.checked {
@@ -742,7 +742,7 @@ fetchDrive()
   color: var(--nd-accent);
   padding: 4px 8px;
   border-radius: var(--nd-radius-sm);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .drive-action-select-all:hover {
@@ -759,7 +759,7 @@ fetchDrive()
   color: var(--nd-love);
   font-size: 0.8em;
   font-weight: 600;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .drive-action-delete:hover {

@@ -314,7 +314,7 @@ function onOpenWebUi() {
 
 .col-menu-enter-active,
 .col-menu-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--nd-duration-base) ease, transform var(--nd-duration-base) ease;
 }
 
 .col-menu-enter-from,

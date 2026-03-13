@@ -102,7 +102,7 @@ const deckStore = useDeckStore()
   font-size: 0.75em;
   white-space: nowrap;
   opacity: 0.7;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .profile-indicator:hover {
@@ -130,7 +130,7 @@ const deckStore = useDeckStore()
   aspect-ratio: 1;
   color: var(--nd-fg);
   opacity: 0.5;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .bottom-bar-btn:hover {

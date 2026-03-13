@@ -857,7 +857,7 @@ async function handlePosted(editedNoteId?: string) {
   color: var(--nd-fg);
   opacity: 0.6;
   border-bottom: 2px solid transparent;
-  transition: opacity 0.15s, border-color 0.15s;
+  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
 }
 
 .notes-tab-item:hover {

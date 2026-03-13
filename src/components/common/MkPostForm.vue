@@ -1042,7 +1042,7 @@ function onKeydown(e: KeyboardEvent) {
   margin: 0;
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .header-btn:hover {
@@ -1067,7 +1067,7 @@ function onKeydown(e: KeyboardEvent) {
   justify-content: center;
   padding: 8px;
   border-radius: var(--nd-radius-sm);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .account-btn:hover {
@@ -1105,7 +1105,7 @@ function onKeydown(e: KeyboardEvent) {
   padding: 8px 12px;
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .account-option:hover {
@@ -1163,7 +1163,7 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-fgOnAccent);
   background: linear-gradient(90deg, var(--nd-buttonGradateA, var(--nd-accent)), var(--nd-buttonGradateB, var(--nd-accent)));
   cursor: pointer;
-  transition: opacity 0.15s, box-shadow 0.2s ease;
+  transition: opacity var(--nd-duration-base), box-shadow var(--nd-duration-slow) ease;
 }
 
 .submit-btn:hover:not(:disabled) {
@@ -1217,7 +1217,7 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 0.85em;
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .visibility-option:hover {
@@ -1268,7 +1268,7 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 0.85em;
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .more-menu-item:hover {
@@ -1618,7 +1618,7 @@ function onKeydown(e: KeyboardEvent) {
   height: 100%;
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--nd-duration-base), color var(--nd-duration-base);
 }
 
 .footer-btn:hover {
@@ -1681,7 +1681,7 @@ function onKeydown(e: KeyboardEvent) {
   padding: 8px;
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .mention-result-item:hover {
@@ -1751,7 +1751,7 @@ function onKeydown(e: KeyboardEvent) {
   text-align: left;
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .mfm-menu-item:hover {
@@ -1868,7 +1868,7 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 0.85em;
   color: var(--nd-fg);
   border-radius: var(--nd-radius-sm);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .draft-menu-item:hover {
@@ -1897,7 +1897,7 @@ function onKeydown(e: KeyboardEvent) {
   display: flex;
   align-items: center;
   border-radius: var(--nd-radius-sm);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .draft-item:hover {
@@ -2054,7 +2054,7 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 0.85em;
   color: var(--nd-fg);
   border-radius: var(--nd-radius-sm);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
   text-align: left;
 }
 

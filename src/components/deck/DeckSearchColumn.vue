@@ -554,7 +554,7 @@ onUnmounted(() => {
   height: 26px;
   border-radius: 4px;
   opacity: 0.35;
-  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base), color var(--nd-duration-base);
 }
 
 .regex-toggle:hover {
@@ -583,7 +583,7 @@ onUnmounted(() => {
   border-radius: 4px;
   font-size: 0.8em;
   opacity: 0.35;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .regex-guide-btn:hover,
@@ -615,7 +615,7 @@ onUnmounted(() => {
   border-radius: var(--nd-radius-sm);
   flex-shrink: 0;
   opacity: 0.6;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
 .search-btn:hover:not(:disabled) {
@@ -682,7 +682,7 @@ onUnmounted(() => {
 
 .nd-regex-guide-enter-active,
 .nd-regex-guide-leave-active {
-  transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+  transition: opacity var(--nd-duration-slow) cubic-bezier(0, 0, 0.2, 1), transform var(--nd-duration-slow) cubic-bezier(0, 0, 0.2, 1);
 }
 
 .nd-regex-guide-enter-from,

@@ -202,7 +202,7 @@ function reset() {
   border: solid 1px var(--nd-inputBorder, var(--nd-divider));
   border-radius: var(--nd-radius-md);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color var(--nd-duration-base);
 }
 
 .mk-input:hover {
@@ -241,7 +241,7 @@ function reset() {
   font-weight: bold;
   font-family: inherit;
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  transition: transform var(--nd-duration-base), box-shadow var(--nd-duration-base), opacity var(--nd-duration-base);
 }
 
 .btn-login:hover:not(:disabled) {
@@ -262,7 +262,7 @@ function reset() {
   font-size: 0.85em;
   color: var(--nd-fg);
   opacity: 0.6;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .btn-cancel:hover {
@@ -319,7 +319,7 @@ function reset() {
 /* Step transition */
 .step-enter-active,
 .step-leave-active {
-  transition: opacity 0.3s cubic-bezier(0, 0, 0.35, 1), transform 0.3s cubic-bezier(0, 0, 0.35, 1);
+  transition: opacity var(--nd-duration-slower) cubic-bezier(0, 0, 0.35, 1), transform var(--nd-duration-slower) cubic-bezier(0, 0, 0.35, 1);
 }
 
 .step-enter-from {

@@ -521,7 +521,7 @@ const pageEditUrl = computed(() => {
   font-weight: 600;
   color: var(--nd-fg);
   opacity: 0.5;
-  transition: opacity 0.15s, border-color 0.15s;
+  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
   border-bottom: 2px solid transparent;
 }
 
@@ -550,7 +550,7 @@ const pageEditUrl = computed(() => {
   padding: 12px 14px;
   text-align: left;
   border-bottom: 1px solid var(--nd-divider);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .page-card:hover {
@@ -702,7 +702,7 @@ const pageEditUrl = computed(() => {
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   font-size: 0.8em;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .page-action-btn:hover {

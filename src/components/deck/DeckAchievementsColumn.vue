@@ -697,7 +697,7 @@ fetchAchievements()
   gap: 6px;
   padding: 12px 8px;
   border-radius: var(--nd-radius-md);
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .achievement-card:hover {

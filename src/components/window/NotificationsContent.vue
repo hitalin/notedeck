@@ -501,7 +501,7 @@ onUnmounted(() => {
   border-radius: 50%;
   background: var(--nd-fg);
   opacity: 0.15;
-  transition: opacity 0.3s, background 0.3s;
+  transition: opacity var(--nd-duration-slower), background var(--nd-duration-slower);
 }
 
 .progress-dot.done {

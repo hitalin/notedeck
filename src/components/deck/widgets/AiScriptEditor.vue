@@ -154,7 +154,7 @@ onUnmounted(() => {
   border-radius: var(--nd-radius-sm);
   overflow: auto;
   background: #1e1e1e;
-  transition: box-shadow 0.15s;
+  transition: box-shadow var(--nd-duration-base);
 }
 
 .ais-editor:focus-within {

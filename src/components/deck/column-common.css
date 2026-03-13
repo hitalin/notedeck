@@ -39,7 +39,7 @@
   opacity: 0.6;
   font-size: 14px;
   padding: 2px;
-  transition: opacity 0.2s;
+  transition: opacity var(--nd-duration-slow);
 }
 
 .header-refresh:hover {
@@ -118,7 +118,7 @@
   -webkit-backdrop-filter: blur(var(--nd-blur-panel));
   backdrop-filter: blur(var(--nd-blur-panel));
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
   animation: slide-down 0.3s cubic-bezier(0.23, 1, 0.32, 1);
 }
 

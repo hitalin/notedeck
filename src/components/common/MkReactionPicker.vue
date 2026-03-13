@@ -356,7 +356,7 @@ onMounted(() => {
   border-radius: var(--nd-radius-sm);
   background: none;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--nd-duration-base);
 }
 
 .picker-emoji-btn:hover {

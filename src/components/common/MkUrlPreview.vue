@@ -350,7 +350,7 @@ function hostname(url: string): string {
   color: #fff;
   cursor: pointer;
   opacity: 0.8;
-  transition: opacity 0.15s;
+  transition: opacity var(--nd-duration-base);
 }
 
 .play-indicator:hover {
