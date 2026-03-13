@@ -516,6 +516,7 @@ defineExpose({
   justify-content: center;
   padding: 16px 0;
   width: 100%;
+  font-size: 1.4em;
 }
 
 .collapsed .nav-account {
@@ -549,8 +550,8 @@ defineExpose({
 }
 
 .collapsed .nav-avatar {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
 }
 
 .nav-avatar-placeholder {
@@ -638,12 +639,13 @@ defineExpose({
 }
 
 .nav-post-btn.collapsed {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   padding: 0;
   margin: 0 auto;
   border-radius: 50%;
   justify-content: center;
+  font-size: 1.2em;
 }
 
 /* Nav resize handle */
