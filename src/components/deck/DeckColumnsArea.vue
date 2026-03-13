@@ -392,3 +392,22 @@ defineExpose({ scrollToColumn, columnMap })
   }
 }
 </style>
+
+<style>
+html.nd-mobile .col-resize-handle {
+  display: none !important;
+}
+
+html.nd-mobile .columns {
+  scroll-snap-type: x mandatory;
+  gap: 0;
+  padding: 0;
+}
+
+html.nd-mobile .column-section {
+  flex: 0 0 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  scroll-snap-align: start;
+}
+</style>

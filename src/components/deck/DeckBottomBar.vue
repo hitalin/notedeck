@@ -159,3 +159,9 @@ const deckStore = useDeckStore()
   }
 }
 </style>
+
+<style>
+html.nd-mobile .bottom-bar {
+  display: none !important;
+}
+</style>

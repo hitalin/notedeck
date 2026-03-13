@@ -796,3 +796,78 @@ defineExpose({
   }
 }
 </style>
+
+<!-- Android/iOS: viewport width may exceed 500px -->
+<style>
+html.nd-mobile .nav-mobile-only {
+  display: flex;
+  flex-direction: column;
+}
+
+html.nd-mobile .nav-resize-handle,
+html.nd-mobile .nav-toggle {
+  display: none !important;
+}
+
+html.nd-mobile .navbar {
+  display: flex !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 2000;
+  width: 250px !important;
+  flex-basis: 250px !important;
+  padding-top: max(var(--nd-safe-area-top, env(safe-area-inset-top)), 12px);
+  padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+  box-shadow: none;
+}
+
+html.nd-mobile .navbar.drawer-open {
+  transform: translateX(0);
+  box-shadow: 4px 0 16px rgb(0 0 0 / 0.3);
+}
+
+html.nd-mobile .navbar.drawer-open .nav-label {
+  display: inline !important;
+}
+
+html.nd-mobile .navbar.drawer-open .nav-body {
+  overflow: visible;
+  direction: rtl;
+}
+
+html.nd-mobile .navbar.drawer-open .nav-account-menu.menu-right {
+  bottom: 100%;
+  top: auto;
+  left: 0;
+  right: 0;
+  margin-bottom: 4px;
+  margin-left: 0;
+}
+
+html.nd-mobile .navbar.drawer-open .nav-item {
+  justify-content: flex-start;
+  padding: 10px 14px;
+  width: auto;
+  min-height: 44px;
+}
+
+html.nd-mobile .navbar.drawer-open .nav-top,
+html.nd-mobile .navbar.drawer-open .nav-bottom {
+  padding: 6px 8px;
+  gap: 2px;
+  align-items: stretch;
+}
+
+html.nd-mobile .navbar.drawer-open .nav-post-btn {
+  width: 100%;
+  height: auto;
+  padding: 10px 14px;
+  margin: 0;
+  border-radius: 999px;
+  justify-content: flex-start;
+}
+</style>

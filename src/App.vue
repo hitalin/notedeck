@@ -10,7 +10,7 @@ import { useVibrancy } from '@/composables/useVibrancy'
 import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 
-const { isTauri, isDesktop } = useUiStore()
+const { isTauri, isDesktop, isMobile } = useUiStore()
 const route = useRoute()
 const isPipWindow = computed(() => route.meta.pip === true)
 
@@ -41,6 +41,11 @@ function dismissSplash() {
 }
 
 onMounted(async () => {
+  // Set mobile class on html element for CSS targeting (independent of viewport width)
+  if (isMobile) {
+    document.documentElement.classList.add('nd-mobile')
+  }
+
   // Show window (visible: false in tauri.conf.json to avoid Windows titlebar flicker)
   if (isTauri) {
     const { getCurrentWindow } = await import('@tauri-apps/api/window')

@@ -19,6 +19,7 @@
         "minHeight": 750,
         "decorations": false,
         "transparent": true,
+        "shadow": false,
         "visible": false,
         "dragDropEnabled": true
       }

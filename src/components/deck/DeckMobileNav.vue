@@ -282,3 +282,117 @@ watch(
   }
 }
 </style>
+
+<!-- Android/iOS: viewport width may exceed 500px, use html.nd-mobile class -->
+<style>
+html.nd-mobile .mobile-nav {
+  display: flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+  height: 50px;
+  padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--nd-navBg) 80%, transparent);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border-top: 1px solid var(--nd-divider);
+}
+
+html.nd-mobile .mobile-menu-btn,
+html.nd-mobile .mobile-add-btn {
+  flex: 0 0 auto !important;
+  width: 50px;
+}
+
+html.nd-mobile .mobile-tabs-scroll {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-evenly;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+html.nd-mobile .mobile-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+html.nd-mobile .mobile-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 50px;
+  min-height: 50px;
+  padding: 0 8px;
+  font-size: 20px;
+  color: var(--nd-fg);
+  opacity: 0.45;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+html.nd-mobile .mobile-tab.active {
+  opacity: 1;
+  color: var(--nd-accent);
+}
+
+html.nd-mobile .mobile-tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--nd-accent);
+}
+
+html.nd-mobile .mobile-tab:active {
+  opacity: 0.7;
+  transform: scale(0.9);
+  transition: opacity 0.1s, color 0.2s, transform 0.1s;
+}
+
+html.nd-mobile .tab-server-badge,
+html.nd-mobile .tab-account-badge {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid var(--nd-navBg);
+  background: var(--nd-navBg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+html.nd-mobile .tab-server-badge {
+  top: 5px;
+  right: calc(50% - 16px);
+}
+
+html.nd-mobile .tab-account-badge {
+  bottom: 4px;
+  left: calc(50% - 16px);
+}
+
+html.nd-mobile .tab-badge-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+html.nd-mobile .tab-badge-initial {
+  font-size: 7px;
+  font-weight: bold;
+  line-height: 1;
+  color: var(--nd-fg);
+  opacity: 0.7;
+}
+</style>
