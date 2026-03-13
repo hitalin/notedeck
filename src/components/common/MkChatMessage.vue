@@ -421,7 +421,7 @@ function closeMentionPopup() {
 .lightbox-overlay {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--nd-z-popup);
   background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;

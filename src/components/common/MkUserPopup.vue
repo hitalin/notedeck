@@ -114,7 +114,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 <style scoped>
 .user-popup {
   position: fixed;
-  z-index: 10001;
+  z-index: calc(var(--nd-z-popup) + 1);
   width: 300px;
   overflow: hidden;
   pointer-events: auto;

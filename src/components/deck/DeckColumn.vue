@@ -271,7 +271,7 @@ function onOpenWebUi() {
   box-shadow: var(--nd-shadow-m);
   backdrop-filter: blur(16px);
   padding: 8px 0;
-  z-index: 100;
+  z-index: var(--nd-z-menu);
   min-width: 180px;
   max-width: 260px;
   cursor: default;
@@ -358,5 +358,21 @@ function onOpenWebUi() {
     width: 36px;
     height: 36px;
   }
+}
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .deck-column {
+  border-radius: 0;
+}
+
+html.nd-mobile .column-header {
+  height: 50px;
+  line-height: 50px;
+  padding: 0 12px 0 32px;
+}
+
+html.nd-mobile .header-btn {
+  width: 36px;
+  height: 36px;
 }
 </style>

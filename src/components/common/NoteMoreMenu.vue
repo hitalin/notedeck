@@ -90,7 +90,7 @@ defineExpose({ open })
     <Transition name="nd-popup">
       <div v-if="showMenu" class="popup-backdrop" @click="close">
         <div
-          class="popup-menu _popup"
+          class="popup-menu _popup nd-popup-content"
           :style="{ top: menuPos.y + 'px', left: menuPos.x + 'px' }"
           @click.stop
         >
@@ -169,7 +169,7 @@ defineExpose({ open })
 .popup-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--nd-z-popup);
   background: transparent;
 }
 
@@ -178,7 +178,7 @@ defineExpose({ open })
   min-width: 200px;
   max-width: 300px;
   padding: 6px;
-  z-index: 10001;
+  z-index: calc(var(--nd-z-popup) + 1);
 }
 
 .popup-item {
@@ -232,21 +232,7 @@ defineExpose({ open })
   color: var(--nd-fg);
 }
 
-.nd-popup-enter-active,
-.nd-popup-leave-active {
-  transition: opacity 0.15s ease;
-}
-
-.nd-popup-enter-active .popup-menu,
-.nd-popup-leave-active .popup-menu {
-  transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1);
-}
-
-.nd-popup-enter-from,
-.nd-popup-leave-to {
-  opacity: 0;
-}
-
+/* Override default nd-popup transform */
 .nd-popup-enter-from .popup-menu,
 .nd-popup-leave-to .popup-menu {
   transform: scale(0.95) translateY(-4px);

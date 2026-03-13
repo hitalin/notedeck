@@ -106,7 +106,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 .window-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1700;
+  z-index: var(--nd-z-window);
   background: var(--nd-modalBg);
 }
 

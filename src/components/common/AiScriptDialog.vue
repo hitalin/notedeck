@@ -72,7 +72,7 @@ defineExpose({ showDialog, showConfirm })
 .ais-dialog-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--nd-z-popup);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -739,7 +739,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
 /* Teleported regex guide popup — unscoped */
 .nd-regex-guide-popup {
   position: fixed;
-  z-index: 10001;
+  z-index: calc(var(--nd-z-popup) + 1);
 }
 
 .nd-regex-guide-enter-active,

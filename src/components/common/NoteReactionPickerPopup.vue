@@ -44,7 +44,7 @@ defineExpose({ open })
     <Transition :name="isMobile ? 'nd-sheet' : 'nd-popup'">
       <div v-if="show" class="popup-backdrop" :class="{ mobile: isMobile }" @click="close">
         <div
-          class="reaction-picker-popup"
+          class="reaction-picker-popup nd-popup-content"
           :style="isMobile ? theme : { ...theme, top: pos.y + 'px', left: pos.x + 'px' }"
           @click.stop
         >
@@ -63,7 +63,7 @@ defineExpose({ open })
 .popup-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--nd-z-popup);
   background: transparent;
 }
 
@@ -76,7 +76,7 @@ defineExpose({ open })
 .reaction-picker-popup {
   position: fixed;
   transform: translateX(-100%);
-  z-index: 10001;
+  z-index: calc(var(--nd-z-popup) + 1);
   background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 85%, transparent);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -94,22 +94,7 @@ defineExpose({ open })
   padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
 }
 
-/* Desktop popup transition */
-.nd-popup-enter-active,
-.nd-popup-leave-active {
-  transition: opacity 0.15s ease;
-}
-
-.nd-popup-enter-active .reaction-picker-popup,
-.nd-popup-leave-active .reaction-picker-popup {
-  transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1);
-}
-
-.nd-popup-enter-from,
-.nd-popup-leave-to {
-  opacity: 0;
-}
-
+/* Override default nd-popup transform (slides from left) */
 .nd-popup-enter-from .reaction-picker-popup,
 .nd-popup-leave-to .reaction-picker-popup {
   transform: translateX(-100%) scale(0.95);

@@ -165,7 +165,7 @@ onUnmounted(() => {
 <style scoped>
 .reaction-users-popup {
   position: fixed;
-  z-index: 10001;
+  z-index: calc(var(--nd-z-popup) + 1);
   width: 240px;
   padding: 8px 0;
   pointer-events: auto;

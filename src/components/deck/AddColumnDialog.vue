@@ -642,7 +642,7 @@ function close() {
 .add-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--nd-z-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -805,5 +805,12 @@ function close() {
     width: calc(100% - 32px);
     max-width: 480px;
   }
+}
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .add-popup {
+  min-width: auto;
+  width: calc(100% - 32px);
+  max-width: 480px;
 }
 </style>

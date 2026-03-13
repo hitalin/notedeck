@@ -78,6 +78,13 @@
   --nd-radius: 12px;
   --nd-margin: 10px;
   --nd-columnGap: 2px;
+  /* Z-index layers */
+  --nd-z-menu: 100;
+  --nd-z-overlay: 1000;
+  --nd-z-window: 1700;
+  --nd-z-navbar: 2000;
+  --nd-z-popup: 10000;
+  --nd-z-palette: 99999;
 }
 
 *,
@@ -289,4 +296,26 @@ input {
 
 .nd-toggle-switch.on .nd-toggle-switch-knob {
   transform: translateX(18px);
+}
+
+/* ---- Popup transition (Vue <Transition name="nd-popup">) ---- */
+
+.nd-popup-enter-active,
+.nd-popup-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.nd-popup-enter-active .nd-popup-content,
+.nd-popup-leave-active .nd-popup-content {
+  transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.nd-popup-enter-from,
+.nd-popup-leave-to {
+  opacity: 0;
+}
+
+.nd-popup-enter-from .nd-popup-content,
+.nd-popup-leave-to .nd-popup-content {
+  transform: scale(0.95);
 }

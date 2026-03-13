@@ -743,7 +743,7 @@ defineExpose({
     top: 0;
     left: 0;
     bottom: 0;
-    z-index: 2000;
+    z-index: var(--nd-z-navbar);
     width: 250px !important;
     flex-basis: 250px !important;
     padding-top: max(var(--nd-safe-area-top, env(safe-area-inset-top)), 12px);
@@ -771,26 +771,24 @@ defineExpose({
     margin-left: 0;
   }
 }
-</style>
 
-<!-- Mobile drawer: platform-specific layout only (size adaptation is handled by Container Query) -->
-<style>
+/* Mobile platform (viewport may exceed 500px) — drawer mode */
 html.nd-mobile .nav-mobile-only {
-  display: flex !important;
+  display: flex;
   flex-direction: column;
 }
 
 html.nd-mobile .nav-resize-handle,
 html.nd-mobile .nav-toggle {
-  display: none !important;
+  display: none;
 }
 
 html.nd-mobile .navbar {
-  position: fixed !important;
+  position: fixed;
   top: 0;
   left: 0;
   bottom: 0;
-  z-index: 2000;
+  z-index: var(--nd-z-navbar);
   width: 250px !important;
   flex-basis: 250px !important;
   padding-top: max(var(--nd-safe-area-top, env(safe-area-inset-top)), 12px);
@@ -809,7 +807,7 @@ html.nd-mobile .navbar.drawer-open {
   box-shadow: 4px 0 16px rgb(0 0 0 / 0.3);
 }
 
-html.nd-mobile .navbar.drawer-open .nav-account-menu.menu-right {
+html.nd-mobile .navbar.drawer-open :deep(.nav-account-menu.menu-right) {
   bottom: 100%;
   top: auto;
   left: 0;

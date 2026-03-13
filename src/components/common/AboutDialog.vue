@@ -41,7 +41,7 @@ async function copyInfo() {
   <Teleport to="body">
     <Transition name="nd-popup">
       <div v-if="show" class="about-backdrop" @click="emit('close')">
-        <div class="about-dialog" @click.stop>
+        <div class="about-dialog nd-popup-content" @click.stop>
           <div class="about-header">
             <img src="/favicon.svg" class="about-logo" alt="NoteDeck" />
             <div class="about-title">NoteDeck</div>
@@ -90,7 +90,7 @@ async function copyInfo() {
 .about-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--nd-z-popup);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -222,27 +222,5 @@ async function copyInfo() {
 
 .about-close:hover {
   opacity: 0.85;
-}
-
-.nd-popup-enter-active,
-.nd-popup-leave-active {
-  transition: opacity 0.15s ease;
-}
-
-.nd-popup-enter-active .about-dialog,
-.nd-popup-leave-active .about-dialog {
-  transition:
-    opacity 0.2s cubic-bezier(0, 0, 0.2, 1),
-    transform 0.2s cubic-bezier(0, 0, 0.2, 1);
-}
-
-.nd-popup-enter-from,
-.nd-popup-leave-to {
-  opacity: 0;
-}
-
-.nd-popup-enter-from .about-dialog,
-.nd-popup-leave-to .about-dialog {
-  transform: scale(0.95);
 }
 </style>

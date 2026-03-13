@@ -331,7 +331,7 @@ function syncScroll(e: Event) {
   box-shadow: var(--nd-shadow-m);
   backdrop-filter: blur(16px);
   padding: 8px 0;
-  z-index: 100;
+  z-index: var(--nd-z-menu);
   min-width: 260px;
   max-height: 80vh;
   overflow-y: auto;
@@ -995,5 +995,28 @@ function syncScroll(e: Event) {
   .settings-menu-leave-to {
     transform: translateY(8px) scale(0.97);
   }
+}
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .settings-menu {
+  position: fixed;
+  bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+  left: 8px;
+  right: 8px;
+  max-width: none;
+  min-width: 0;
+  border-radius: 12px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+  max-height: 70vh;
+}
+
+html.nd-mobile .settings-menu-item {
+  padding: 10px 16px;
+  min-height: 44px;
+}
+
+html.nd-mobile .settings-menu-enter-from,
+html.nd-mobile .settings-menu-leave-to {
+  transform: translateY(8px) scale(0.97);
 }
 </style>

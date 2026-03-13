@@ -884,7 +884,7 @@ onBeforeUnmount(() => {
   background: var(--nd-popup);
   border-radius: 12px 12px 0 0;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
-  z-index: 100;
+  z-index: var(--nd-z-menu);
 }
 
 .chat-reaction-picker {

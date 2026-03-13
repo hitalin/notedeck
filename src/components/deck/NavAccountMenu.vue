@@ -95,7 +95,7 @@ function modeLabel(key: string): string {
   right: 0;
   margin-bottom: 4px;
   padding: 8px 0;
-  z-index: 100;
+  z-index: var(--nd-z-menu);
   min-width: 180px;
 }
 

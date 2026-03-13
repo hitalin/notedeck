@@ -887,7 +887,7 @@ function onKeydown(e: KeyboardEvent) {
 .post-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: var(--nd-z-navbar);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2098,10 +2098,8 @@ function onKeydown(e: KeyboardEvent) {
     padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
   }
 }
-</style>
 
-<!-- Mobile platform: always fullscreen -->
-<style>
+/* Mobile platform: always fullscreen */
 html.nd-mobile .post-overlay {
   background: var(--nd-bg);
   padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));

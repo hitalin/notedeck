@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
 import QRCodeStyling from 'qr-code-styling'
-import tinycolor from 'tinycolor2'
+import { colord } from 'colord'
 import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type {
@@ -198,7 +198,7 @@ async function openQrCode() {
   const profileUrl = `https://${account.value.host}/@${username}${host ? `@${host}` : ''}`
 
   const themeColor = user.value.instance?.themeColor
-  const baseColor = tinycolor(themeColor || '#86b300')
+  const baseColor = colord(themeColor || '#86b300')
   const hsl = baseColor.toHsl()
 
   const serverInfo = serversStore.getServer(account.value.host)
@@ -223,7 +223,7 @@ async function openQrCode() {
     },
     dotsOptions: {
       type: 'dots',
-      color: tinycolor({ h: hsl.h, s: 1, l: 0.18 }).toRgbString(),
+      color: colord({ h: hsl.h, s: 100, l: 18 }).toRgbString(),
     },
     cornersDotOptions: {
       type: 'dot',
@@ -232,7 +232,7 @@ async function openQrCode() {
       type: 'extra-rounded',
     },
     backgroundOptions: {
-      color: tinycolor({ h: hsl.h, s: 1, l: 0.97 }).toRgbString(),
+      color: colord({ h: hsl.h, s: 100, l: 97 }).toRgbString(),
     },
   })
 
@@ -970,7 +970,7 @@ async function handlePosted(editedNoteId?: string) {
 .qr-overlay {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--nd-z-popup);
   display: flex;
   flex-direction: column;
   align-items: center;

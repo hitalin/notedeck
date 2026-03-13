@@ -41,7 +41,7 @@ defineExpose({ show })
   position: fixed;
   top: 16px;
   right: 16px;
-  z-index: 10000;
+  z-index: var(--nd-z-popup);
   display: flex;
   flex-direction: column;
   gap: 8px;

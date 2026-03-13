@@ -272,7 +272,7 @@ function acceptCrossWindowDrop() {
   bottom: calc(
     60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom))
   );
-  z-index: 1000;
+  z-index: var(--nd-z-overlay);
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -301,11 +301,11 @@ function acceptCrossWindowDrop() {
 .mobile-drawer-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1999;
+  z-index: calc(var(--nd-z-navbar) - 1);
   background: rgb(0 0 0 / 0.5);
 }
 
-/* Small viewport layout mode (≤500px) — only toggles, no style duplication */
+/* Small viewport layout mode (≤500px) */
 @media (max-width: 500px) {
   .deck-root {
     flex-direction: column;
@@ -318,6 +318,19 @@ function acceptCrossWindowDrop() {
   .mobile-fab {
     display: flex;
   }
+}
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .deck-root {
+  flex-direction: column;
+}
+
+html.nd-mobile .deck-root .main-area {
+  min-height: 0;
+}
+
+html.nd-mobile .mobile-fab {
+  display: flex;
 }
 </style>
 
@@ -345,7 +358,7 @@ function acceptCrossWindowDrop() {
 .file-drop-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: calc(var(--nd-z-popup) - 1);
   background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
@@ -356,7 +369,7 @@ function acceptCrossWindowDrop() {
 .cross-window-drop-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9998;
+  z-index: calc(var(--nd-z-popup) - 2);
   background: color-mix(in srgb, var(--nd-accent, #86b300) 20%, rgba(0, 0, 0, 0.5));
   display: flex;
   align-items: center;
@@ -399,16 +412,4 @@ function acceptCrossWindowDrop() {
   opacity: 0.9;
 }
 
-/* Mobile platform (viewport may exceed 500px) — only toggles */
-html.nd-mobile .deck-root {
-  flex-direction: column;
-}
-
-html.nd-mobile .deck-root .main-area {
-  min-height: 0;
-}
-
-html.nd-mobile .mobile-fab {
-  display: flex !important;
-}
 </style>

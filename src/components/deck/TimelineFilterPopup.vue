@@ -84,7 +84,7 @@ onUnmounted(() => {
 /* Teleported filter popup — unscoped */
 .nd-filter-popup {
   position: fixed;
-  z-index: 10001;
+  z-index: calc(var(--nd-z-popup) + 1);
   width: 220px;
   padding: 8px 0;
   color: var(--nd-fg, #fff);

@@ -279,13 +279,13 @@ function primaryShortcut(cmd: Command): string | null {
 .palette-overlay-bg {
   position: fixed;
   inset: 0;
-  z-index: 99998;
+  z-index: calc(var(--nd-z-palette) - 1);
   background: rgba(0, 0, 0, 0.08);
 }
 
 .inline-wrap {
   position: relative;
-  z-index: 99999;
+  z-index: var(--nd-z-palette);
   flex: 1;
 }
 
@@ -359,7 +359,7 @@ function primaryShortcut(cmd: Command): string | null {
 .palette-overlay {
   position: fixed;
   inset: 0;
-  z-index: 99999;
+  z-index: var(--nd-z-palette);
   display: flex;
   justify-content: center;
   align-items: flex-start;

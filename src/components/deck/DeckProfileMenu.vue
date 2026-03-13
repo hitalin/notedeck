@@ -149,7 +149,7 @@ function remove(id: string) {
   box-shadow: var(--nd-shadow-m);
   backdrop-filter: blur(16px);
   padding: 8px 0;
-  z-index: 100;
+  z-index: var(--nd-z-menu);
   min-width: 200px;
   max-width: 300px;
 }
@@ -290,5 +290,26 @@ function remove(id: string) {
   .profile-menu-leave-to {
     transform: translateY(8px) scale(0.97);
   }
+}
+
+/* Mobile platform (viewport may exceed 500px) */
+html.nd-mobile .profile-menu {
+  position: fixed;
+  bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+  left: 8px;
+  right: 8px;
+  max-width: none;
+  min-width: 0;
+  border-radius: 12px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+}
+
+html.nd-mobile .profile-menu-action {
+  display: flex;
+}
+
+html.nd-mobile .profile-menu-enter-from,
+html.nd-mobile .profile-menu-leave-to {
+  transform: translateY(8px) scale(0.97);
 }
 </style>
