@@ -639,13 +639,13 @@ defineExpose({
 }
 
 .nav-post-btn.collapsed {
-  width: 48px;
-  height: 48px;
+  width: 54px;
+  height: 54px;
   padding: 0;
   margin: 0 auto;
   border-radius: 50%;
   justify-content: center;
-  font-size: 1.2em;
+  font-size: 1.3em;
 }
 
 /* Nav resize handle */
