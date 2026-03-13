@@ -271,6 +271,9 @@ function onOpenWebUi() {
   min-width: 180px;
   max-width: 260px;
   cursor: default;
+  line-height: 1.35;
+  font-weight: normal;
+  font-size: 1rem;
 }
 
 .columnMenuItem {
