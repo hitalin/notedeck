@@ -19,6 +19,7 @@ export const useUiStore = defineStore('ui', () => {
     isTauri,
     isDesktop,
     isMobile,
+    platformName,
     sidebarOpen,
     toggleSidebar,
   }

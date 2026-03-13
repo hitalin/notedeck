@@ -229,7 +229,7 @@ defineExpose({
 
 <template>
   <div class="deck-navbar">
-    <nav class="navbar" :class="{ collapsed: navCollapsed, 'drawer-open': props.mobileDrawerOpen }" :style="{ flexBasis: navWidth + 'px' }">
+    <nav class="navbar" :class="{ 'drawer-open': props.mobileDrawerOpen }" :style="{ flexBasis: navWidth + 'px' }">
       <div class="nav-body">
         <!-- Top section -->
         <div class="nav-top">
@@ -320,7 +320,6 @@ defineExpose({
           <!-- Post button -->
           <button
             class="_button nav-post-btn"
-            :class="{ collapsed: navCollapsed }"
             title="ノート作成"
             @click="closeDrawerAndDo(() => emit('open-compose'))"
           >
@@ -414,6 +413,8 @@ defineExpose({
   border-right: 1px solid var(--nd-divider);
   position: relative;
   z-index: 1;
+  container-type: inline-size;
+  container-name: navbar;
 }
 
 .nav-body {
@@ -666,52 +667,51 @@ defineExpose({
 }
 
 /* ============================================================
-   Collapsed sidebar — desktop only (≥501px)
-   These styles NEVER apply in mobile drawer mode, avoiding
-   the need for drawer-open overrides.
+   Icon-only mode — navbar adapts to its own width via
+   Container Query. No class flags needed.
    ============================================================ */
-@media (min-width: 501px) {
-  .collapsed .nav-body {
+@container navbar (max-width: 100px) {
+  .nav-body {
     overflow: visible;
     direction: ltr;
   }
 
-  .collapsed .nav-label {
+  .nav-label {
     display: none;
   }
 
-  .collapsed .nav-item {
+  .nav-item {
     justify-content: center;
     padding: 16px 0;
     width: 100%;
     font-size: 1.4em;
   }
 
-  .collapsed .nav-account {
+  .nav-account {
     padding: 8px;
     width: auto;
     border-radius: 999px;
   }
 
-  .collapsed .nav-top,
-  .collapsed .nav-bottom {
+  .nav-top,
+  .nav-bottom {
     padding: 10px 0;
     align-items: center;
   }
 
-  .collapsed .nav-avatar {
+  .nav-avatar {
     width: 38px;
     height: 38px;
   }
 
-  .collapsed .nav-server-badge {
+  .nav-server-badge {
     width: 16px;
     height: 16px;
     top: -2px;
     right: -4px;
   }
 
-  .nav-post-btn.collapsed {
+  .nav-post-btn {
     width: 54px;
     height: 54px;
     padding: 0;
@@ -723,9 +723,9 @@ defineExpose({
 }
 
 /* ============================================================
-   Mobile drawer (≤500px)
-   Navbar becomes a slide-in drawer. Base styles apply directly
-   (no collapsed interference), so minimal overrides needed.
+   Small viewport drawer mode (≤500px)
+   Only layout/positioning — size adaptation is handled by
+   Container Query (navbar is 250px → full mode automatically).
    ============================================================ */
 @media (max-width: 500px) {
   .nav-mobile-only {
@@ -753,17 +753,6 @@ defineExpose({
     box-shadow: none;
   }
 
-  .navbar .nav-body {
-    direction: rtl;
-  }
-
-  .navbar .nav-top,
-  .navbar .nav-bottom {
-    padding: 6px 8px;
-    gap: 2px;
-    align-items: stretch;
-  }
-
   .navbar .nav-item {
     min-height: 44px;
   }
@@ -784,7 +773,7 @@ defineExpose({
 }
 </style>
 
-<!-- Android/iOS: viewport width may exceed 500px, use html.nd-mobile class -->
+<!-- Mobile drawer: platform-specific layout only (size adaptation is handled by Container Query) -->
 <style>
 html.nd-mobile .nav-mobile-only {
   display: flex !important;
@@ -811,22 +800,8 @@ html.nd-mobile .navbar {
   box-shadow: none;
 }
 
-html.nd-mobile .navbar .nav-body {
-  direction: rtl;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-}
-
-html.nd-mobile .navbar .nav-top,
-html.nd-mobile .navbar .nav-bottom {
-  padding: 6px 8px;
-  gap: 2px;
-  align-items: stretch;
-}
-
 html.nd-mobile .navbar .nav-item {
   min-height: 44px;
-  font-size: 0.9em;
 }
 
 html.nd-mobile .navbar.drawer-open {

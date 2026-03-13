@@ -40,7 +40,12 @@ function dismissSplash() {
 }
 
 onMounted(async () => {
-  // Set mobile class on html element for CSS targeting (independent of viewport width)
+  // Set platform attributes on html element for CSS targeting (independent of viewport width)
+  const { platformName } = useUiStore()
+  if (platformName) {
+    document.documentElement.dataset.platform = platformName
+  }
+  document.documentElement.dataset.env = isTauri ? 'tauri' : 'web'
   if (isMobile) {
     document.documentElement.classList.add('nd-mobile')
   }
