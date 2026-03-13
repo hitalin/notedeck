@@ -148,8 +148,11 @@ export async function saveCurrentWindowLayout(): Promise<void> {
   try {
     const { getCurrentWindow } = await import('@tauri-apps/api/window')
     const win = getCurrentWindow()
-    const pos = await win.outerPosition()
-    const size = await win.outerSize()
+    const [pos, size, monitor] = await Promise.all([
+      win.outerPosition(),
+      win.outerSize(),
+      win.currentMonitor(),
+    ])
 
     const layout: DeckWindowLayout = {
       id: deckStore.currentWindowId,
@@ -157,6 +160,7 @@ export async function saveCurrentWindowLayout(): Promise<void> {
       y: pos.y,
       width: size.width,
       height: size.height,
+      monitor: monitor?.name ?? undefined,
     }
     deckStore.saveWindowLayout(layout)
   } catch {
@@ -260,6 +264,65 @@ export async function closeAllSubWindows(): Promise<void> {
 }
 
 /**
+ * Resolve window position for a saved layout, adjusting for monitor changes.
+ * If the saved monitor is still available, use the saved coordinates.
+ * If not, fall back to the primary monitor with centered placement.
+ */
+async function resolveWindowPosition(
+  wl: DeckWindowLayout,
+): Promise<{ x: number; y: number }> {
+  try {
+    const { availableMonitors, primaryMonitor } = await import(
+      '@tauri-apps/api/window'
+    )
+    const monitors = await availableMonitors()
+    const primary = await primaryMonitor()
+
+    if (!wl.monitor || monitors.length === 0) {
+      return { x: wl.x, y: wl.y }
+    }
+
+    // Check if the saved monitor is still connected
+    const savedMonitor = monitors.find((m) => m.name === wl.monitor)
+    if (savedMonitor) {
+      // Monitor exists — verify coordinates are within its bounds
+      const mx = savedMonitor.position.x
+      const my = savedMonitor.position.y
+      const mw = savedMonitor.size.width / savedMonitor.scaleFactor
+      const mh = savedMonitor.size.height / savedMonitor.scaleFactor
+      if (
+        wl.x >= mx &&
+        wl.x + wl.width <= mx + mw &&
+        wl.y >= my &&
+        wl.y + wl.height <= my + mh
+      ) {
+        return { x: wl.x, y: wl.y }
+      }
+      // Window partially off-screen on the same monitor — clamp
+      return {
+        x: Math.max(mx, Math.min(wl.x, mx + mw - wl.width)),
+        y: Math.max(my, Math.min(wl.y, my + mh - wl.height)),
+      }
+    }
+
+    // Monitor disconnected — center on primary
+    if (primary) {
+      const px = primary.position.x
+      const py = primary.position.y
+      const pw = primary.size.width / primary.scaleFactor
+      const ph = primary.size.height / primary.scaleFactor
+      return {
+        x: px + Math.round((pw - wl.width) / 2),
+        y: py + Math.round((ph - wl.height) / 2),
+      }
+    }
+  } catch {
+    // Tauri API unavailable
+  }
+  return { x: wl.x, y: wl.y }
+}
+
+/**
  * Switch profile with window layout restoration.
  * Closes existing sub-windows, applies the profile, then opens saved windows.
  */
@@ -283,11 +346,13 @@ export async function switchProfileWithWindows(
     const hasColumns = deckStore.columns.some((c) => c.windowId === wl.id)
     if (!hasColumns) continue
 
+    const pos = await resolveWindowPosition(wl)
+
     await openColumnWindow(deckStore.windowProfileId, wl.id, {
       width: wl.width,
       height: wl.height,
-      x: wl.x,
-      y: wl.y,
+      x: pos.x,
+      y: pos.y,
     })
   }
 }
