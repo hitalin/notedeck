@@ -150,18 +150,18 @@ const decorationStyles = computed(() =>
 }
 
 .online-indicator.status-online {
-  background: #58d4c9;
+  background: var(--nd-statusOnline);
 }
 
 .online-indicator.status-active {
-  background: #e4bc48;
+  background: var(--nd-statusActive);
 }
 
 .online-indicator.status-offline {
-  background: #ea5353;
+  background: var(--nd-statusOffline);
 }
 
 .online-indicator.status-unknown {
-  background: #888;
+  background: var(--nd-statusUnknown);
 }
 </style>

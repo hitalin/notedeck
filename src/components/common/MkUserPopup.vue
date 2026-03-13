@@ -58,7 +58,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 <template>
   <div
-    class="user-popup"
+    class="user-popup _popup"
     :style="{ ...themeVars, left: `${x}px`, top: `${y}px` }"
     @mouseleave="handleMouseLeave"
   >
@@ -116,10 +116,6 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   position: fixed;
   z-index: 10001;
   width: 300px;
-  background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(16px);
   overflow: hidden;
   pointer-events: auto;
 }

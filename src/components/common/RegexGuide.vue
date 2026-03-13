@@ -45,7 +45,7 @@ function apply() {
 </script>
 
 <template>
-  <div class="filter-builder" @click.stop>
+  <div class="filter-builder _popup" @click.stop>
     <div class="builder-header">フィルタ条件</div>
 
     <div class="conditions">
@@ -95,10 +95,6 @@ function apply() {
   width: 320px;
   max-height: 400px;
   overflow-y: auto;
-  background: color-mix(in srgb, var(--nd-popup, var(--nd-panelBg)) 85%, transparent);
-  backdrop-filter: blur(16px);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   padding: 8px 0;
   font-size: 0.9em;
   color: var(--nd-fg);

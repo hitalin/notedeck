@@ -90,7 +90,7 @@ defineExpose({ open })
     <Transition name="nd-popup">
       <div v-if="showMenu" class="popup-backdrop" @click="close">
         <div
-          class="popup-menu"
+          class="popup-menu _popup"
           :style="{ top: menuPos.y + 'px', left: menuPos.x + 'px' }"
           @click.stop
         >
@@ -178,10 +178,6 @@ defineExpose({ open })
   min-width: 200px;
   max-width: 300px;
   padding: 6px;
-  background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 85%, transparent);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(16px);
   z-index: 10001;
 }
 

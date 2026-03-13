@@ -54,7 +54,7 @@ defineExpose({ show })
   font-size: 0.85em;
   color: #fff;
   background: var(--nd-accent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--nd-shadow-s);
   pointer-events: auto;
 }
 

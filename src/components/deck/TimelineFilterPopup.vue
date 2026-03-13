@@ -54,7 +54,7 @@ onUnmounted(() => {
     <Transition name="nd-filter-popup">
       <div
         v-if="show"
-        class="nd-filter-popup"
+        class="nd-filter-popup _popup"
         :style="{ ...themeVars, top: position.top + 'px', left: position.left + 'px' }"
         @click.stop
       >
@@ -87,10 +87,6 @@ onUnmounted(() => {
   z-index: 10001;
   width: 220px;
   padding: 8px 0;
-  background: color-mix(in srgb, var(--nd-popup, var(--nd-panelBg)) 85%, transparent);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(16px);
   color: var(--nd-fg, #fff);
   font-size: 0.9em;
 }

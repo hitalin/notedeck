@@ -328,7 +328,7 @@ function syncScroll(e: Event) {
   margin-bottom: 4px;
   background: var(--nd-popup, var(--nd-panelBg));
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--nd-shadow-m);
   backdrop-filter: blur(16px);
   padding: 8px 0;
   z-index: 100;

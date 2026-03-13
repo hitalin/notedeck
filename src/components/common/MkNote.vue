@@ -1046,7 +1046,7 @@ function closeMentionPopup() {
 }
 
 .reply-button:hover {
-  color: #3b97c4;
+  color: var(--nd-replyHover);
 }
 
 .renote-button:hover {
@@ -1054,7 +1054,7 @@ function closeMentionPopup() {
 }
 
 .reaction-button:hover {
-  color: #e5a400;
+  color: var(--nd-reactionHover);
 }
 
 .more-button:hover {

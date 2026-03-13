@@ -26,7 +26,7 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
 </script>
 
 <template>
-  <div class="autocomplete-popup" @click.stop>
+  <div class="autocomplete-popup _popup" @click.stop>
     <div v-if="candidates.length > 0" class="autocomplete-list">
       <button
         v-for="(candidate, i) in candidates"
@@ -80,10 +80,6 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
   right: 0;
   z-index: 20;
   margin-top: 4px;
-  background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(16px);
   max-height: 240px;
   overflow-y: auto;
   padding: 4px;

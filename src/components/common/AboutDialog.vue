@@ -102,7 +102,7 @@ async function copyInfo() {
   max-width: 90vw;
   background: var(--nd-panel, var(--nd-bg));
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--nd-shadow-l);
   overflow: hidden;
 }
 
