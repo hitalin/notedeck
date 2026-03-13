@@ -6,7 +6,7 @@ import {
   requestMoveColumn,
 } from '@/composables/useDeckWindow'
 import { useDeckStore } from '@/stores/deck'
-import { useUiStore } from '@/stores/ui'
+import { useIsMobile, useUiStore } from '@/stores/ui'
 
 const props = defineProps<{
   columnId: string
@@ -21,6 +21,7 @@ const emit = defineEmits<{ 'header-click': [] }>()
 
 const deckStore = useDeckStore()
 const { isDesktop } = useUiStore()
+const isMobile = useIsMobile()
 
 /** Whether this column can be popped out (desktop + main window only) */
 const canPopOut = computed(() => isDesktop && !deckStore.currentWindowId)
@@ -97,7 +98,7 @@ function onOpenWebUi() {
 <template>
   <section
     class="deck-column"
-    :class="$style.deckColumn"
+    :class="[$style.deckColumn, { [$style.mobile]: isMobile }]"
     :style="themeVars"
   >
     <header
@@ -327,35 +328,14 @@ function onOpenWebUi() {
   background-color: var(--nd-bg);
 }
 
-@media (max-width: 500px) {
-  .deckColumn {
-    border-radius: 0;
-  }
+.mobile {
+  border-radius: 0;
 
   .columnHeader {
     height: 50px;
     line-height: 50px;
     padding: 0 12px 0 32px;
   }
-
-  .headerBtn {
-    width: 36px;
-    height: 36px;
-  }
-}
-
-/* Mobile platform (viewport may exceed 500px) */
-:global(html.nd-mobile) {
-  .deckColumn {
-    border-radius: 0;
-  }
-
-  .columnHeader {
-    height: 50px;
-    line-height: 50px;
-    padding: 0 12px 0 32px;
-  }
-
   .headerBtn {
     width: 36px;
     height: 36px;

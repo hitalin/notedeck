@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref, shallowRef } from 'vue'
+import { useIsMobile } from '@/stores/ui'
 
 interface ChatMessage {
   id: string
@@ -8,6 +9,7 @@ interface ChatMessage {
   timestamp: Date
 }
 
+const isMobile = useIsMobile()
 const input = ref('')
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const messages = shallowRef<ChatMessage[]>([])
@@ -81,7 +83,7 @@ setTimeout(() => inputRef.value?.focus(), 100)
 </script>
 
 <template>
-  <div :class="$style.aiContent">
+  <div :class="[$style.aiContent, { [$style.mobile]: isMobile }]">
     <!-- Provider status -->
     <div :class="$style.aiStatusBar">
       <span
@@ -432,34 +434,7 @@ setTimeout(() => inputRef.value?.focus(), 100)
   }
 }
 
-@media (max-width: 500px) {
-  .aiInputArea {
-    padding: 8px;
-    padding-bottom: calc(8px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
-  }
-
-  .aiInput {
-    padding: 10px 12px;
-    font-size: 1em;
-  }
-
-  .aiSend {
-    width: 40px;
-    height: 40px;
-  }
-
-  .statusRetry {
-    width: 36px;
-    height: 36px;
-  }
-
-  .aiSuggestion {
-    padding: 10px 14px;
-    min-height: 44px;
-  }
-}
-
-:global(html.nd-mobile) {
+.mobile {
   .aiInputArea {
     padding: 8px;
     padding-bottom: calc(8px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));

@@ -178,14 +178,22 @@ input {
 }
 
 /* Mobile platform (viewport may exceed 500px) — prevents iOS auto-zoom */
-html.nd-mobile input[type="text"],
-html.nd-mobile input[type="search"],
-html.nd-mobile input[type="email"],
-html.nd-mobile input[type="url"],
-html.nd-mobile input[type="password"],
-html.nd-mobile input[type="number"],
-html.nd-mobile textarea,
-html.nd-mobile select {
+html[data-platform="ios"] input[type="text"],
+html[data-platform="ios"] input[type="search"],
+html[data-platform="ios"] input[type="email"],
+html[data-platform="ios"] input[type="url"],
+html[data-platform="ios"] input[type="password"],
+html[data-platform="ios"] input[type="number"],
+html[data-platform="ios"] textarea,
+html[data-platform="ios"] select,
+html[data-platform="android"] input[type="text"],
+html[data-platform="android"] input[type="search"],
+html[data-platform="android"] input[type="email"],
+html[data-platform="android"] input[type="url"],
+html[data-platform="android"] input[type="password"],
+html[data-platform="android"] input[type="number"],
+html[data-platform="android"] textarea,
+html[data-platform="android"] select {
   font-size: 16px;
 }
 

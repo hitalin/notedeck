@@ -9,6 +9,7 @@ import { useAutocomplete } from '@/composables/useAutocomplete'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePostFormState } from '@/composables/usePostFormState'
+import { useIsMobile } from '@/stores/ui'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
@@ -34,6 +35,7 @@ const emit = defineEmits<{
   posted: [editedNoteId?: string]
 }>()
 
+const isMobile = useIsMobile()
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showPreview = ref(false)
@@ -323,7 +325,7 @@ function onKeydown(e: KeyboardEvent) {
 </script>
 
 <template>
-  <div :class="inline ? $style.postInlineWrapper : $style.postOverlay" @click="!inline && emit('close')">
+  <div :class="[inline ? $style.postInlineWrapper : $style.postOverlay, { [$style.mobile]: isMobile }]" @click="!inline && emit('close')">
     <div :class="[$style.postForm, { [$style.postFormInline]: inline }]" :style="formThemeVars" @click.stop="closePopups">
       <!-- Header -->
       <header :class="$style.header">
@@ -2081,43 +2083,8 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* Mobile fullscreen */
-@media (max-width: 600px) {
-  .postOverlay {
-    background: var(--nd-bg);
-    padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
-    padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
-    align-items: stretch;
-  }
-
-  .postForm {
-    max-width: none;
-    margin: 0;
-    border-radius: 0;
-    height: 100%;
-    max-height: none;
-    box-shadow: none;
-  }
-
-  .emojiPopup {
-    position: fixed;
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    max-width: 100%;
-    max-height: 50vh;
-    border-radius: 16px 16px 0 0;
-    margin: 0;
-    z-index: 100;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
-    padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
-  }
-}
-
-/* Mobile platform: always fullscreen */
-:global(html.nd-mobile) {
-  .postOverlay {
+.mobile {
+  &.postOverlay {
     background: var(--nd-bg);
     padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
     padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));

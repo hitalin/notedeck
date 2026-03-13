@@ -418,21 +418,6 @@ function closeUserPopup() {
 
 <style lang="scss" module>
 @use './column-common.module.scss';
-.pullIndicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  flex-shrink: 0;
-  color: var(--nd-accent);
-  font-size: 1.2em;
-  transition: height var(--nd-duration-slow) ease;
-
-  .ti {
-    transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
-  }
-}
-
 /* --- Tabs --- */
 .exploreTabs {
   display: flex;

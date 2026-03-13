@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useIsMobile } from '@/stores/ui'
 import {
   type DeckWindow,
   useWindowsStore,
@@ -14,6 +15,7 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [] }>()
 
 const windowsStore = useWindowsStore()
+const isMobile = useIsMobile()
 const size = computed(() => WINDOW_SIZES[props.window.type])
 
 const titles: Record<string, string> = {
@@ -92,7 +94,7 @@ function onWindowMouseDown() {
 
 <template>
   <div
-    :class="[$style.deckWindow, { [$style.dragging]: isDragging, [$style.minimized]: isMinimized, [$style.maximized]: isMaximized }]"
+    :class="[$style.deckWindow, { [$style.dragging]: isDragging, [$style.minimized]: isMinimized, [$style.maximized]: isMaximized, [$style.mobile]: isMobile }]"
     :style="isMaximized ? { ...themeVars, zIndex: window.zIndex } : {
       ...themeVars,
       left: (isDragging ? dragX : window.x) + 'px',
@@ -217,42 +219,16 @@ function onWindowMouseDown() {
   overflow: auto;
 }
 
-@media (max-width: 500px) {
-  .deckWindow {
-    left: 0 !important;
-    top: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    max-height: 100% !important;
-    border-radius: 0;
-    z-index: 2100 !important;
-  }
-
-  .windowHeader {
-    min-height: 46px;
-    padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
-  }
-
-  .windowBtn {
-    width: 44px;
-    height: 44px;
-  }
-}
-
-:global(html.nd-mobile) {
-  .deckWindow {
-    left: 0 !important;
-    top: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    max-height: 100% !important;
-    border-radius: 0;
-    z-index: 2100 !important;
-  }
+.mobile {
+  left: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  border-radius: 0;
+  z-index: 2100 !important;
 
   .windowHeader {
     min-height: 46px;

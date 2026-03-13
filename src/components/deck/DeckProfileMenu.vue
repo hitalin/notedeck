@@ -4,6 +4,7 @@ import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
 import type { DeckProfile } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { useIsMobile } from '@/stores/ui'
 
 const props = defineProps<{
   show: boolean
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const deckStore = useDeckStore()
+const isMobile = useIsMobile()
 
 const profiles = ref<DeckProfile[]>([])
 const editingId = ref<string | null>(null)
@@ -89,11 +91,11 @@ function remove(id: string) {
 
 <template>
   <Transition name="profile-menu">
-    <div v-if="show" ref="menuEl" :class="$style.profileMenu" class="_popupMenu" @pointerdown.stop>
+    <div v-if="show" ref="menuEl" :class="[$style.profileMenu, { [String($style.mobile)]: isMobile }]" class="_popupMenu" @pointerdown.stop>
       <div
         v-for="p in profiles"
         :key="p.id"
-        :class="[$style.profileMenuItem, { [$style.active]: p.id === deckStore.windowProfileId }]"
+        :class="[$style.profileMenuItem, { [String($style.active)]: p.id === deckStore.windowProfileId }]"
         @click="apply(p.id)"
       >
         <input
@@ -274,36 +276,12 @@ function remove(id: string) {
     transform: translateY(8px) scale(0.97);
   }
 }
-
-html.nd-mobile {
-  .profile-menu-enter-from,
-  .profile-menu-leave-to {
-    transform: translateY(8px) scale(0.97);
-  }
-}
 </style>
 
 <style lang="scss" module>
-/* Media query overrides */
-@media (max-width: 500px) {
-  .profileMenu {
-    position: fixed;
-    bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
-    left: 8px;
-    right: 8px;
-    max-width: none;
-    min-width: 0;
-    border-radius: 12px;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
-  }
-
-  .profileMenuAction {
-    display: flex;
-  }
-}
-
-:global(html.nd-mobile) {
-  .profileMenu {
+/* Mobile overrides */
+.mobile {
+  &.profileMenu {
     position: fixed;
     bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
     left: 8px;

@@ -9,6 +9,7 @@ import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNoteActions } from '@/composables/useNoteActions'
 import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
+import { useIsMobile } from '@/stores/ui'
 import {
   extractLiterals,
   filterNotesByRegex,
@@ -21,6 +22,7 @@ const MkPostForm = defineAsyncComponent(
 
 const noteStore = useNoteStore()
 const accountsStore = useAccountsStore()
+const isMobile = useIsMobile()
 const { getOrCreate } = useMultiAccountAdapters()
 
 const notes = shallowRef<NormalizedNote[]>([])
@@ -352,7 +354,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
 </script>
 
 <template>
-  <div :class="$style.searchContent">
+  <div :class="[$style.searchContent, { [$style.mobile]: isMobile }]">
     <div :class="$style.searchBar">
       <i :class="['ti', 'ti-search', $style.searchIcon]" />
       <input
@@ -703,38 +705,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
   opacity: 0.4;
 }
 
-@media (max-width: 500px) {
-  .searchBar {
-    padding: 8px;
-  }
-
-  .searchInput {
-    padding: 8px 10px;
-    font-size: 1em;
-  }
-
-  .regexToggle {
-    width: 36px;
-    height: 36px;
-  }
-
-  .regexGuideBtn {
-    width: 36px;
-    height: 36px;
-  }
-
-  .searchClear {
-    width: 36px;
-    height: 36px;
-  }
-
-  .searchBtn {
-    width: 40px;
-    height: 40px;
-  }
-}
-
-:global(html.nd-mobile) {
+.mobile {
   .searchBar {
     padding: 8px;
   }

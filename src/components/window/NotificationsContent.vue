@@ -19,6 +19,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useNoteActions } from '@/composables/useNoteActions'
 import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
+import { useIsMobile } from '@/stores/ui'
 import { formatTime } from '@/utils/formatTime'
 import { char2twemojiUrl } from '@/utils/twemoji'
 
@@ -28,6 +29,7 @@ const MkPostForm = defineAsyncComponent(
 
 const noteStore = useNoteStore()
 const accountsStore = useAccountsStore()
+const isMobile = useIsMobile()
 const { getOrCreate } = useMultiAccountAdapters()
 const { navigateToUser: navToUser } = useNavigation()
 const { reactionUrl: reactionUrlRaw } = useEmojiResolver()
@@ -331,7 +333,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div :class="$style.notifContent">
+  <div :class="[$style.notifContent, { [$style.mobile]: isMobile }]">
     <!-- Per-account progress -->
     <div v-if="loadProgress.length > 0" :class="$style.notifProgress">
       <span
@@ -750,22 +752,7 @@ onUnmounted(() => {
   font-style: italic;
 }
 
-@media (max-width: 500px) {
-  .notifHeader {
-    padding: 10px 12px 0;
-    gap: 6px;
-  }
-
-  .notifNoteWrap {
-    padding: 0 4px 4px;
-  }
-
-  .followRequestActions {
-    padding-left: 48px;
-  }
-}
-
-:global(html.nd-mobile) {
+.mobile {
   .notifHeader {
     padding: 10px 12px 0;
     gap: 6px;

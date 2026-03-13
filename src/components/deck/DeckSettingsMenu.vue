@@ -5,7 +5,7 @@ import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
-import { useUiStore } from '@/stores/ui'
+import { useIsMobile } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { highlightCode } from '@/utils/highlight'
@@ -22,7 +22,7 @@ const emit = defineEmits<{
 const { updateAvailable, updateVersion, isInstalling, installUpdate } =
   useUpdater()
 
-const { isMobile } = useUiStore()
+const isMobile = useIsMobile()
 const deckStore = useDeckStore()
 const themeStore = useThemeStore()
 const windowsStore = useWindowsStore()
@@ -163,7 +163,7 @@ function syncScroll(e: Event) {
 
 <template>
   <Transition name="settings-menu">
-    <div v-if="show" ref="menuEl" :class="$style.settingsMenu" class="_popupMenu">
+    <div v-if="show" ref="menuEl" :class="[$style.settingsMenu, { [$style.mobile]: isMobile }]" class="_popupMenu">
       <!-- Misskey-style day/night toggle panel -->
       <div :class="$style.themePanel">
         <div :class="$style.toggleArea">
@@ -953,37 +953,16 @@ function syncScroll(e: Event) {
   }
 }
 
-@media (max-width: 500px) {
-  .settingsMenu {
-    position: fixed;
-    bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
-    left: 8px;
-    right: 8px;
-    max-width: none;
-    min-width: 0;
-    border-radius: 12px;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
-    max-height: 70vh;
-  }
-
-  .settingsMenuItem {
-    padding: 10px 16px;
-    min-height: 44px;
-  }
-}
-
-:global(html.nd-mobile) {
-  .settingsMenu {
-    position: fixed;
-    bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
-    left: 8px;
-    right: 8px;
-    max-width: none;
-    min-width: 0;
-    border-radius: 12px;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
-    max-height: 70vh;
-  }
+.mobile {
+  position: fixed;
+  bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+  left: 8px;
+  right: 8px;
+  max-width: none;
+  min-width: 0;
+  border-radius: 12px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+  max-height: 70vh;
 
   .settingsMenuItem {
     padding: 10px 16px;
@@ -1006,13 +985,6 @@ function syncScroll(e: Event) {
 }
 
 @media (max-width: 500px) {
-  .settings-menu-enter-from,
-  .settings-menu-leave-to {
-    transform: translateY(8px) scale(0.97);
-  }
-}
-
-html.nd-mobile {
   .settings-menu-enter-from,
   .settings-menu-leave-to {
     transform: translateY(8px) scale(0.97);

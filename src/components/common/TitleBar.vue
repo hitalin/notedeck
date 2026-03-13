@@ -10,6 +10,7 @@ import {
 } from '@/composables/usePipWindow'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
+import { useIsMobile } from '@/stores/ui'
 
 const CommandPalette = defineAsyncComponent(
   () => import('@/components/common/CommandPalette.vue'),
@@ -19,6 +20,7 @@ const appWindow = getCurrentWindow()
 const commandStore = useCommandStore()
 const accountsStore = useAccountsStore()
 const deckStore = useDeckStore()
+const isMobile = useIsMobile()
 const isMaximized = ref(false)
 const isMobileSize = ref(false)
 
@@ -113,7 +115,7 @@ async function togglePip() {
 </script>
 
 <template>
-  <div :class="$style.titlebar" data-tauri-drag-region>
+  <div :class="[$style.titlebar, { [$style.mobile]: isMobile }]" data-tauri-drag-region>
     <div :class="$style.titlebarLeft" data-tauri-drag-region>
       <img src="/favicon.svg" alt="" :class="$style.titlebarIcon" draggable="false" data-tauri-drag-region />
     </div>
@@ -309,14 +311,7 @@ async function togglePip() {
 .titlebarSidebarBtn {}
 .titlebarWindowBtn {}
 
-@media (max-width: 500px) {
-  .titlebarSidebarBtn,
-  .titlebarWindowBtn {
-    display: none;
-  }
-}
-
-:global(html.nd-mobile) {
+.mobile {
   .titlebarSidebarBtn,
   .titlebarWindowBtn {
     display: none;

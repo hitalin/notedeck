@@ -8,8 +8,10 @@ import {
 } from '@/aiscript/plugin-api'
 import AiScriptEditor from '@/components/deck/widgets/AiScriptEditor.vue'
 import { type PluginMeta, usePluginsStore } from '@/stores/plugins'
+import { useIsMobile } from '@/stores/ui'
 
 const pluginsStore = usePluginsStore()
+const isMobile = useIsMobile()
 
 // Views: 'list' | 'install' | 'detail'
 const view = ref<'list' | 'install' | 'detail'>('list')
@@ -111,7 +113,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
 </script>
 
 <template>
-  <div :class="$style.pluginsContent">
+  <div :class="[$style.pluginsContent, { [$style.mobile]: isMobile }]">
     <!-- List view -->
     <template v-if="view === 'list'">
       <div :class="$style.pluginsHeader">
@@ -536,42 +538,8 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   }
 }
 
-@media (max-width: 500px) {
-  .pluginsContent {
-    padding: 8px;
-  }
-
-  .pluginsBackBtn {
-    width: 44px;
-    height: 44px;
-  }
-
-  .pluginsInstallBtn {
-    padding: 10px 16px;
-    min-height: 44px;
-  }
-
-  .pluginCard {
-    padding: 12px;
-    min-height: 44px;
-  }
-
-  .detailUninstallBtn {
-    padding: 12px;
-    min-height: 44px;
-  }
-
-  .configInput {
-    padding: 10px 12px;
-    font-size: 1em;
-    min-height: 44px;
-  }
-}
-
-:global(html.nd-mobile) {
-  .pluginsContent {
-    padding: 8px;
-  }
+.mobile {
+  padding: 8px;
 
   .pluginsBackBtn {
     width: 44px;

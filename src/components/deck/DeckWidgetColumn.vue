@@ -41,7 +41,7 @@ function removeWidget(widgetId: string) {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'ウィジェット'" :theme-vars="columnThemeVars">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'ウィジェット'" :theme-vars="columnThemeVars" data-column-type="widget">
     <template #header-icon>
       <i class="ti ti-app-window" />
     </template>
@@ -228,17 +228,6 @@ function removeWidget(widgetId: string) {
   }
 }
 
-/* ウィジェットカラムのヘッダーはプレーンに（Misskey本家準拠） */
-:global(.column-header) {
-  background: var(--nd-panel);
-  box-shadow: none;
-  border-bottom: 1px solid var(--nd-divider);
-}
-
-:global(.color-indicator) {
-  display: none;
-}
-
 .menuSectionLabel {
   padding: 6px 12px 2px;
   font-size: 0.75em;
@@ -246,5 +235,20 @@ function removeWidget(widgetId: string) {
   opacity: 0.45;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+</style>
+
+<style lang="scss">
+/* ウィジェットカラムのヘッダーはプレーンに（Misskey本家準拠） */
+.deck-column[data-column-type="widget"] {
+  .column-header {
+    background: var(--nd-panel);
+    box-shadow: none;
+    border-bottom: 1px solid var(--nd-divider);
+  }
+
+  .color-indicator {
+    display: none;
+  }
 }
 </style>

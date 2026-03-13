@@ -7,6 +7,7 @@ import {
   onMounted,
   onUnmounted,
   ref,
+  useCssModule,
   watch,
 } from 'vue'
 import type {
@@ -232,13 +233,14 @@ function exitTimeMachine() {
 }
 
 // Tab slide indicator
+const $style = useCssModule()
 const tabsRef = ref<HTMLElement | null>(null)
 const tabIndicatorStyle = ref({ left: '0px', width: '0px', opacity: '0' })
 
 function updateTabIndicator() {
   if (!tabsRef.value) return
   const activeTab = tabsRef.value.querySelector(
-    '.tl-tab.active',
+    `.tl-tab.${$style.active}`,
   ) as HTMLElement | null
   if (!activeTab) {
     tabIndicatorStyle.value = { left: '0px', width: '0px', opacity: '0' }
@@ -695,7 +697,7 @@ onUnmounted(() => {
           <button class="_button tl-tab" :class="$style.tlTab" @click="tmShiftDay(-1)">
             <i class="ti ti-chevron-left" :class="$style.tlTabIcon" />
           </button>
-          <span class="tl-tab active" :class="[$style.tlTab, $style.tlTmDate]">{{ timeMachine.targetDate.value }}</span>
+          <span class="tl-tab" :class="[$style.tlTab, $style.tlTmDate, $style.active]">{{ timeMachine.targetDate.value }}</span>
           <button class="_button tl-tab" :class="$style.tlTab" @click="tmShiftDay(1)">
             <i class="ti ti-chevron-right" :class="$style.tlTabIcon" />
           </button>
@@ -709,7 +711,7 @@ onUnmounted(() => {
             v-for="opt in allTlTypes"
             :key="opt.value"
             class="_button tl-tab"
-            :class="[$style.tlTab, { active: tlType === opt.value }]"
+            :class="[$style.tlTab, { [$style.active]: tlType === opt.value }]"
             :title="opt.label"
             @click="switchTl(opt.value)"
           >
@@ -723,7 +725,7 @@ onUnmounted(() => {
             v-if="availableFilterKeys.length > 0"
             ref="filterBtnRef"
             class="_button tl-tab"
-            :class="[$style.tlTab, $style.tlFilterBtn, { active: hasActiveFilter }]"
+            :class="[$style.tlTab, $style.tlFilterBtn, { [$style.active]: hasActiveFilter }]"
             title="Filter"
             @click.stop="toggleFilterMenu"
           >
@@ -859,7 +861,7 @@ onUnmounted(() => {
     background: var(--nd-buttonHoverBg);
   }
 
-  &:global(.active) {
+  &.active {
     opacity: 1;
   }
 }
@@ -887,13 +889,13 @@ onUnmounted(() => {
 .tlFilterBtn {
   margin-left: auto;
 
-  &:global(.active) {
+  &.active {
     color: var(--nd-accent);
   }
 }
 
 .tlTimemachineBtn {
-  &:global(.active) {
+  &.active {
     color: var(--nd-accent);
   }
 }
@@ -911,20 +913,5 @@ onUnmounted(() => {
 .tlTmLive {
   margin-left: auto;
   color: var(--nd-accent);
-}
-
-.pullIndicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  flex-shrink: 0;
-  color: var(--nd-accent);
-  font-size: 1.2em;
-  transition: height var(--nd-duration-slow) ease;
-
-  :global(.ti) {
-    transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
-  }
 }
 </style>

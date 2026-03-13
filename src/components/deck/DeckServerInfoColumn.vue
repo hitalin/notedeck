@@ -57,6 +57,7 @@ const error = ref<AppError | null>(null)
 const meta = ref<ServerMeta | null>(null)
 const stats = ref<ServerStats | null>(null)
 const scrollContainer = ref<HTMLElement | null>(null)
+const rulesOpen = ref(false)
 
 function scrollToTop() {
   scrollContainer.value?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -262,8 +263,8 @@ onMounted(() => {
           </a>
 
           <!-- Server Rules -->
-          <div v-if="meta.serverRules && meta.serverRules.length > 0" :class="$style.rulesContainer">
-            <div :class="[$style.formLink, $style.rulesToggle]" @click="($event.currentTarget as HTMLElement).parentElement?.classList.toggle('open')">
+          <div v-if="meta.serverRules && meta.serverRules.length > 0" :class="[$style.rulesContainer, { [$style.rulesOpen]: rulesOpen }]">
+            <div :class="[$style.formLink, $style.rulesToggle]" @click="rulesOpen = !rulesOpen">
               <i class="ti ti-checkup-list" :class="$style.formLinkIcon" />
               <span>サーバールール</span>
               <span :class="$style.formLinkSuffix"><i class="ti ti-chevron-down" :class="$style.rulesChevron" /></span>
@@ -584,11 +585,11 @@ onMounted(() => {
     display: none;
   }
 
-  :global(&.open) .rulesList {
+  &.rulesOpen .rulesList {
     display: block;
   }
 
-  :global(&.open) .rulesChevron {
+  &.rulesOpen .rulesChevron {
     transform: rotate(180deg);
   }
 }

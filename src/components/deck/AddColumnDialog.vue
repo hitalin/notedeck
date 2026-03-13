@@ -5,7 +5,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import type { ColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
-import { useUiStore } from '@/stores/ui'
+import { useIsMobile } from '@/stores/ui'
 
 const emit = defineEmits<{
   close: []
@@ -14,7 +14,7 @@ const emit = defineEmits<{
 const { navigateToLogin } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
-const { isMobile } = useUiStore()
+const isMobile = useIsMobile()
 
 const addColumnType = ref<
   | 'timeline'
@@ -434,7 +434,7 @@ function close() {
 
 <template>
   <div :class="$style.addOverlay" @click="close()">
-    <div :class="$style.addPopup" @click.stop>
+    <div :class="[$style.addPopup, isMobile && $style.mobile]" @click.stop>
       <div :class="$style.addPopupHeader">
         <button v-if="addColumnType && !selectConfig && !addUserAccountId" class="_button" :class="$style.addBackBtn" @click="addColumnType = null">
           <i class="ti ti-chevron-left" />
@@ -802,19 +802,9 @@ function close() {
   }
 }
 
-@media (max-width: 500px) {
-  .addPopup {
-    min-width: auto;
-    width: calc(100% - 32px);
-    max-width: 480px;
-  }
-}
-
-:global(html.nd-mobile) {
-  .addPopup {
-    min-width: auto;
-    width: calc(100% - 32px);
-    max-width: 480px;
-  }
+.addPopup.mobile {
+  min-width: auto;
+  width: calc(100% - 32px);
+  max-width: 480px;
 }
 </style>

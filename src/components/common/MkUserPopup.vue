@@ -5,6 +5,7 @@ import { createAdapter } from '@/adapters/registry'
 import type { NormalizedUserDetail } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
+import { useIsMobile } from '@/stores/ui'
 import { formatCount } from '@/utils/format'
 import MkAvatar from './MkAvatar.vue'
 import MkMfm from './MkMfm.vue'
@@ -23,6 +24,7 @@ const emit = defineEmits<{
 
 const serversStore = useServersStore()
 const accountsStore = useAccountsStore()
+const isMobile = useIsMobile()
 
 const account = computed(() =>
   accountsStore.accounts.find((a) => a.id === props.accountId),
@@ -58,7 +60,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 <template>
   <div
-    :class="$style.userPopup"
+    :class="[$style.userPopup, { [$style.mobile]: isMobile }]"
     class="_popup"
     :style="{ ...themeVars, left: `${x}px`, top: `${y}px` }"
     @mouseleave="handleMouseLeave"
@@ -221,26 +223,12 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   }
 }
 
-@media (max-width: 500px) {
-  .userPopup {
-    width: auto;
-    max-width: calc(100vw - 32px);
-    left: 16px !important;
-    right: 16px;
-    top: auto !important;
-    bottom: calc(60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
-  }
-}
-
-/* Mobile platform (viewport may exceed 500px) */
-:global(html.nd-mobile) {
-  .userPopup {
-    width: auto;
-    max-width: calc(100vw - 32px);
-    left: 16px !important;
-    right: 16px;
-    top: auto !important;
-    bottom: calc(60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
-  }
+.mobile {
+  width: auto;
+  max-width: calc(100vw - 32px);
+  left: 16px !important;
+  right: 16px;
+  top: auto !important;
+  bottom: calc(60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
 }
 </style>

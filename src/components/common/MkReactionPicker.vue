@@ -5,6 +5,7 @@ import { emojiCharByCategory, unicodeEmojiCategories } from '@/data/emojilist'
 import { useEmojisStore } from '@/stores/emojis'
 import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
 import { useRecentEmojisStore } from '@/stores/recentEmojis'
+import { useIsMobile } from '@/stores/ui'
 import { char2twemojiUrl } from '@/utils/twemoji'
 import MkReactionPickerSection from './MkReactionPickerSection.vue'
 
@@ -17,6 +18,7 @@ const emit = defineEmits<{
   pick: [reaction: string]
 }>()
 
+const isMobile = useIsMobile()
 const emojisStore = useEmojisStore()
 const pinnedReactionsStore = usePinnedReactionsStore()
 const recentEmojisStore = useRecentEmojisStore()
@@ -132,7 +134,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div :class="$style.reactionPickerPanel" @click.stop>
+  <div :class="[$style.reactionPickerPanel, { [$style.mobile]: isMobile }]" @click.stop>
     <!-- Search (top when has query, bottom otherwise via CSS order) -->
     <div :class="[$style.pickerSearch, searchQuery.length > 0 && $style.hasQuery]">
       <input
@@ -387,26 +389,10 @@ onMounted(() => {
   font-size: 0.85em;
 }
 
-@media (max-width: 500px) {
-  .reactionPickerPanel {
-    width: 100%;
-    max-width: 100%;
-    max-height: 50vh;
-  }
-
-  .pickerSearchInput {
-    padding: 10px 12px;
-    font-size: 1em;
-  }
-}
-
-/* Mobile platform (viewport may exceed 500px) */
-:global(html.nd-mobile) {
-  .reactionPickerPanel {
-    width: 100%;
-    max-width: 100%;
-    max-height: 50vh;
-  }
+.mobile {
+  width: 100%;
+  max-width: 100%;
+  max-height: 50vh;
 
   .pickerSearchInput {
     padding: 10px 12px;

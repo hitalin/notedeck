@@ -752,21 +752,6 @@ onUnmounted(() => {
   font-style: italic;
 }
 
-.pullIndicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  flex-shrink: 0;
-  color: var(--nd-accent);
-  font-size: 1.2em;
-  transition: height var(--nd-duration-slow) ease;
-
-  :global(.ti) {
-    transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
-  }
-}
-
 .spin {
   animation: spin 0.8s linear infinite;
 }
