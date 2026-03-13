@@ -100,6 +100,7 @@ function onOpenWebUi() {
     <header
       class="column-header"
       @click="emit('header-click')"
+      @contextmenu.prevent.stop="toggleMenu"
     >
       <!-- Tab shape decoration (Misskey style, hidden with wallpaper) -->
       <svg v-if="!hasWallpaper" class="tab-shape" viewBox="0 0 256 128">
