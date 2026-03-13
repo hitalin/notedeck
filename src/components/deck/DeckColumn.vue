@@ -117,10 +117,10 @@ function onOpenWebUi() {
       <slot name="header-icon" />
       <span class="header-title">{{ title }}</span>
 
+      <slot name="header-meta" />
+
       <!-- Grabber (Misskey 6-dot pattern) -->
       <i class="ti ti-grip-vertical grabber" />
-
-      <slot name="header-meta" />
 
       <!-- Column menu button -->
       <button ref="menuBtnEl" class="_button header-btn" title="メニュー" @click.stop="toggleMenu">
@@ -234,7 +234,6 @@ function onOpenWebUi() {
   flex-shrink: 0;
   opacity: 0.5;
   cursor: grab;
-  margin-left: auto;
 }
 
 .grabber:hover {
