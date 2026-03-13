@@ -15,9 +15,9 @@ function onClose() {
 </script>
 
 <template>
-  <div class="note-detail-page">
-    <header class="detail-header">
-      <router-link to="/" class="back-btn _button">
+  <div :class="$style.noteDetailPage">
+    <header :class="$style.detailHeader">
+      <router-link to="/" class="_button" :class="$style.backBtn">
         <svg viewBox="0 0 24 24" width="20" height="20">
           <path
             d="M15 18l-6-6 6-6"
@@ -29,7 +29,7 @@ function onClose() {
           />
         </svg>
       </router-link>
-      <h1 class="detail-title">ノート</h1>
+      <h1 :class="$style.detailTitle">ノート</h1>
     </header>
 
     <NoteDetailContent
@@ -40,8 +40,8 @@ function onClose() {
   </div>
 </template>
 
-<style scoped>
-.note-detail-page {
+<style lang="scss" module>
+.noteDetailPage {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -49,7 +49,7 @@ function onClose() {
   background: var(--nd-bg);
 }
 
-.detail-header {
+.detailHeader {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -64,7 +64,7 @@ function onClose() {
   z-index: 10;
 }
 
-.back-btn {
+.backBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -74,14 +74,14 @@ function onClose() {
   color: var(--nd-fg);
   text-decoration: none;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    text-decoration: none;
+  }
 }
 
-.back-btn:hover {
-  background: var(--nd-buttonHoverBg);
-  text-decoration: none;
-}
-
-.detail-title {
+.detailTitle {
   font-size: 0.9em;
   font-weight: bold;
   margin: 0;

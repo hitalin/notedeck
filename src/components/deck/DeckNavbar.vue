@@ -9,7 +9,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { useStreamingStore } from '@/stores/streaming'
-import { useUiStore } from '@/stores/ui'
+import { useIsMobile } from '@/stores/ui'
 import {
   clearAvailableTlCache,
   detectAvailableTimelines,
@@ -43,7 +43,7 @@ const {
   navigateToChat,
 } = useNavigation()
 const deckStore = useDeckStore()
-const { isMobile } = useUiStore()
+const isMobile = useIsMobile()
 const { totalUnread, markAllAsRead } = useUnreadNotifications()
 const { totalUnread: chatUnread, resetAll: resetChatUnread } = useUnreadChat()
 

@@ -1,19 +1,19 @@
 /* === Column common styles === */
 
 /* Header */
-.tl-header-icon {
+.tlHeaderIcon {
   flex-shrink: 0;
   opacity: 0.7;
 }
 
-.header-account {
+.headerAccount {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
 }
 
-.header-avatar {
+.headerAvatar {
   width: 18px;
   height: 18px;
   max-width: 18px;
@@ -23,7 +23,7 @@
   object-fit: cover;
 }
 
-.header-favicon {
+.headerFavicon {
   width: 16px;
   height: 16px;
   max-width: 16px;
@@ -34,20 +34,20 @@
 }
 
 /* Refresh button */
-.header-refresh {
+.headerRefresh {
   flex-shrink: 0;
   opacity: 0.6;
   font-size: 14px;
   padding: 2px;
   transition: opacity var(--nd-duration-slow);
-}
 
-.header-refresh:hover {
-  opacity: 1;
-}
+  &:hover {
+    opacity: 1;
+  }
 
-.header-refresh:disabled {
-  opacity: 0.3;
+  &:disabled {
+    opacity: 0.3;
+  }
 }
 
 .spin {
@@ -60,7 +60,7 @@
 }
 
 /* Body & scroller */
-.tl-body {
+.tlBody {
   position: relative;
   flex: 1;
   min-height: 0;
@@ -69,21 +69,21 @@
   overflow: hidden;
 }
 
-.tl-scroller {
+.tlScroller {
   flex: 1;
   overflow-x: clip;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
   will-change: scroll-position;
   -webkit-overflow-scrolling: touch;
-}
 
-.tl-scroller :deep(.vue-recycle-scroller__item-view) {
-  will-change: transform;
+  :deep(.vue-recycle-scroller__item-view) {
+    will-change: transform;
+  }
 }
 
 /* Empty & error states */
-.column-empty {
+.columnEmpty {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -93,13 +93,13 @@
   font-size: 0.85em;
 }
 
-.column-error {
+.columnError {
   color: var(--nd-love);
   opacity: 1;
 }
 
 /* New notes banner */
-.new-notes-banner {
+.newNotesBanner {
   position: absolute;
   top: 8px;
   left: 50%;
@@ -120,6 +120,10 @@
   cursor: pointer;
   transition: opacity var(--nd-duration-base);
   animation: slide-down 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+
+  &:hover {
+    opacity: 0.85;
+  }
 }
 
 @keyframes slide-down {
@@ -127,12 +131,8 @@
   to { transform: translateX(-50%) translateY(0); opacity: 1; }
 }
 
-.new-notes-banner:hover {
-  opacity: 0.85;
-}
-
 /* Loading */
-.loading-more {
+.loadingMore {
   text-align: center;
   padding: 1rem;
   font-size: 0.8em;

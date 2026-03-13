@@ -26,20 +26,20 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
 </script>
 
 <template>
-  <div class="autocomplete-popup _popup" @click.stop>
-    <div v-if="candidates.length > 0" class="autocomplete-list">
+  <div :class="$style.autocompletePopup" class="_popup" @click.stop>
+    <div v-if="candidates.length > 0" :class="$style.autocompleteList">
       <button
         v-for="(candidate, i) in candidates"
         :key="i"
-        class="_button autocomplete-item"
-        :class="{ selected: i === selectedIndex }"
+        :class="[$style.autocompleteItem, i === selectedIndex && $style.selected]"
+        class="_button"
         @click="emit('select', i)"
         @mousedown.prevent
       >
         <!-- Emoji -->
         <template v-if="type === ':' && isEmoji(candidate)">
-          <img :src="candidate.url" :alt="candidate.name" class="ac-emoji-img" loading="lazy" />
-          <span class="ac-emoji-name">:{{ candidate.name }}:</span>
+          <img :src="candidate.url" :alt="candidate.name" :class="$style.acEmojiImg" loading="lazy" />
+          <span :class="$style.acEmojiName">:{{ candidate.name }}:</span>
         </template>
 
         <!-- Mention -->
@@ -47,33 +47,33 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
           <img
             v-if="candidate.avatarUrl"
             :src="candidate.avatarUrl"
-            class="ac-user-avatar"
+            :class="$style.acUserAvatar"
           />
-          <div class="ac-user-info">
-            <span class="ac-user-name">{{ candidate.name || candidate.username }}</span>
-            <span class="ac-user-acct">@{{ candidate.username }}<template v-if="candidate.host">@{{ candidate.host }}</template></span>
+          <div :class="$style.acUserInfo">
+            <span :class="$style.acUserName">{{ candidate.name || candidate.username }}</span>
+            <span :class="$style.acUserAcct">@{{ candidate.username }}<template v-if="candidate.host">@{{ candidate.host }}</template></span>
           </div>
         </template>
 
         <!-- Hashtag -->
         <template v-else-if="type === '#'">
-          <i class="ti ti-hash ac-hashtag-icon" />
-          <span class="ac-hashtag-name">{{ candidate }}</span>
+          <i class="ti ti-hash" :class="$style.acHashtagIcon" />
+          <span :class="$style.acHashtagName">{{ candidate }}</span>
         </template>
 
         <!-- MFM function -->
         <template v-else-if="type === '$['">
-          <i class="ti ti-sparkles ac-mfm-icon" />
-          <span class="ac-mfm-name">${{ '[' }}{{ candidate }} ]</span>
+          <i class="ti ti-sparkles" :class="$style.acMfmIcon" />
+          <span :class="$style.acMfmName">${{ '[' }}{{ candidate }} ]</span>
         </template>
       </button>
     </div>
-    <div v-else-if="isSearching" class="autocomplete-status">検索中...</div>
+    <div v-else-if="isSearching" :class="$style.autocompleteStatus">検索中...</div>
   </div>
 </template>
 
-<style scoped>
-.autocomplete-popup {
+<style lang="scss" module>
+.autocompletePopup {
   position: absolute;
   top: 100%;
   left: 0;
@@ -85,7 +85,7 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
   padding: 4px;
 }
 
-.autocomplete-item {
+.autocompleteItem {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -94,46 +94,46 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
   border-radius: var(--nd-radius-md);
   font-size: 0.85em;
   text-align: left;
+
+  &:hover,
+  &.selected {
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.1));
+  }
 }
 
-.autocomplete-item:hover,
-.autocomplete-item.selected {
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.1));
-}
-
-.ac-emoji-img {
+.acEmojiImg {
   width: 24px;
   height: 24px;
   object-fit: contain;
 }
 
-.ac-emoji-name {
+.acEmojiName {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ac-user-avatar {
+.acUserAvatar {
   width: 28px;
   height: 28px;
   border-radius: 100%;
   object-fit: cover;
 }
 
-.ac-user-info {
+.acUserInfo {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.ac-user-name {
+.acUserName {
   font-weight: bold;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ac-user-acct {
+.acUserAcct {
   font-size: 0.85em;
   opacity: 0.6;
   overflow: hidden;
@@ -141,28 +141,28 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
   white-space: nowrap;
 }
 
-.ac-hashtag-icon {
+.acHashtagIcon {
   opacity: 0.5;
 }
 
-.ac-hashtag-name {
+.acHashtagName {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ac-mfm-icon {
+.acMfmIcon {
   opacity: 0.5;
 }
 
-.ac-mfm-name {
+.acMfmName {
   font-family: monospace;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.autocomplete-status {
+.autocompleteStatus {
   padding: 12px;
   text-align: center;
   font-size: 0.8em;

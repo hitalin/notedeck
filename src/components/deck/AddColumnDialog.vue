@@ -433,16 +433,16 @@ function close() {
 </script>
 
 <template>
-  <div class="add-overlay" @click="close()">
-    <div class="add-popup" @click.stop>
-      <div class="add-popup-header">
-        <button v-if="addColumnType && !selectConfig && !addUserAccountId" class="_button add-back-btn" @click="addColumnType = null">
+  <div :class="$style.addOverlay" @click="close()">
+    <div :class="$style.addPopup" @click.stop>
+      <div :class="$style.addPopupHeader">
+        <button v-if="addColumnType && !selectConfig && !addUserAccountId" class="_button" :class="$style.addBackBtn" @click="addColumnType = null">
           <i class="ti ti-chevron-left" />
         </button>
-        <button v-else-if="selectConfig" class="_button add-back-btn" @click="selectConfig = null; selectItems = []; selectAccountId = null">
+        <button v-else-if="selectConfig" class="_button" :class="$style.addBackBtn" @click="selectConfig = null; selectItems = []; selectAccountId = null">
           <i class="ti ti-chevron-left" />
         </button>
-        <button v-else-if="addUserAccountId" class="_button add-back-btn" @click="addUserAccountId = null; userSearchInput = ''; userSearchError = null">
+        <button v-else-if="addUserAccountId" class="_button" :class="$style.addBackBtn" @click="addUserAccountId = null; userSearchInput = ''; userSearchError = null">
           <i class="ti ti-chevron-left" />
         </button>
         {{ selectConfig ? `${selectConfig.label}を選択` : addUserAccountId ? 'ユーザーを検索' : addColumnType ? 'アカウントを選択' : 'カラムを追加' }}
@@ -450,128 +450,128 @@ function close() {
 
       <!-- Step 1: Column type selection -->
       <template v-if="!addColumnType">
-        <div class="add-category-label">アカウント</div>
-        <button class="_button add-type-btn" @click="selectColumnType('timeline')">
+        <div :class="$style.addCategoryLabel">アカウント</div>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('timeline')">
           <i class="ti ti-home" />
           <span>タイムライン</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('notifications')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('notifications')">
           <i class="ti ti-bell" />
           <span>通知</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('drive')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('drive')">
           <i class="ti ti-cloud" />
           <span>ドライブ</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('followRequests')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('followRequests')">
           <i class="ti ti-user-plus" />
           <span>フォローリクエスト</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('list')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('list')">
           <i class="ti ti-list" />
           <span>リスト</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('antenna')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('antenna')">
           <i class="ti ti-antenna-bars-5" />
           <span>アンテナ</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('favorites')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('favorites')">
           <i class="ti ti-star" />
           <span>お気に入り</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('clip')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('clip')">
           <i class="ti ti-paperclip" />
           <span>クリップ</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('mentions')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('mentions')">
           <i class="ti ti-at" />
           <span>あなた宛て</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('specified')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('specified')">
           <i class="ti ti-mail" />
           <span>ダイレクト</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('chat')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('chat')">
           <i class="ti ti-messages" />
           <span>チャット</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('achievements')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('achievements')">
           <i class="ti ti-medal" />
           <span>実績</span>
         </button>
 
-        <div class="add-category-label">サーバー</div>
-        <button class="_button add-type-btn" @click="selectColumnType('serverInfo')">
+        <div :class="$style.addCategoryLabel">サーバー</div>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('serverInfo')">
           <i class="ti ti-server" />
           <span>サーバー情報</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('aboutMisskey')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('aboutMisskey')">
           <i class="ti ti-info-circle" />
           <span>Misskeyについて</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('emoji')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('emoji')">
           <i class="ti ti-mood-smile" />
           <span>カスタム絵文字</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('ads')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('ads')">
           <i class="ti ti-ad-2" />
           <span>広告</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('explore')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('explore')">
           <i class="ti ti-compass" />
           <span>みつける</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('announcements')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('announcements')">
           <i class="ti ti-speakerphone" />
           <span>お知らせ</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('search')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('search')">
           <i class="ti ti-search" />
           <span>検索</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('lookup')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('lookup')">
           <i class="ti ti-world-search" />
           <span>照会</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('channel')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('channel')">
           <i class="ti ti-device-tv" />
           <span>チャンネル</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('gallery')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('gallery')">
           <i class="ti ti-icons" />
           <span>ギャラリー</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('play')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('play')">
           <i class="ti ti-player-play" />
           <span>Play</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('page')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('page')">
           <i class="ti ti-note" />
           <span>Pages</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('user')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('user')">
           <i class="ti ti-user" />
           <span>ユーザー</span>
         </button>
 
-        <div class="add-category-label">ツール</div>
-        <button class="_button add-type-btn" @click="selectColumnType('widget')">
+        <div :class="$style.addCategoryLabel">ツール</div>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('widget')">
           <i class="ti ti-app-window" />
           <span>ウィジェット</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('aiscript')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('aiscript')">
           <i class="ti ti-terminal-2" />
           <span>スクラッチパッド</span>
         </button>
-        <button class="_button add-type-btn" @click="selectColumnType('apiConsole')">
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('apiConsole')">
           <i class="ti ti-api" />
           <span>APIコンソール</span>
         </button>
-        <button v-if="!isMobile" class="_button add-type-btn" @click="selectColumnType('apiDocs')">
+        <button v-if="!isMobile" class="_button" :class="$style.addTypeBtn" @click="selectColumnType('apiDocs')">
           <i class="ti ti-book" />
           <span>APIドキュメント</span>
         </button>
-        <button v-if="!isMobile" class="_button add-type-btn" @click="selectColumnType('ai')">
+        <button v-if="!isMobile" class="_button" :class="$style.addTypeBtn" @click="selectColumnType('ai')">
           <i class="ti ti-sparkles" />
           <span>AI Chat</span>
         </button>
@@ -579,12 +579,13 @@ function close() {
 
       <!-- Step 3a: Item selection (list/antenna/channel/clip) -->
       <template v-else-if="selectConfig">
-        <div v-if="selectLoading" class="add-popup-empty">読み込み中...</div>
-        <div v-else-if="selectItems.length === 0" class="add-popup-empty">{{ selectConfig.label }}が見つかりません</div>
+        <div v-if="selectLoading" :class="$style.addPopupEmpty">読み込み中...</div>
+        <div v-else-if="selectItems.length === 0" :class="$style.addPopupEmpty">{{ selectConfig.label }}が見つかりません</div>
         <button
           v-for="item in selectItems"
           :key="item.id"
-          class="_button add-type-btn"
+          class="_button"
+          :class="$style.addTypeBtn"
           @click="addSelectableColumn(item.id, item.name)"
         >
           <i :class="'ti ' + selectConfig.icon" />
@@ -594,30 +595,31 @@ function close() {
 
       <!-- Step 3d: User search (for user columns) -->
       <template v-else-if="addUserAccountId">
-        <div class="add-user-search">
+        <div :class="$style.addUserSearch">
           <input
             v-model="userSearchInput"
-            class="add-user-input"
+            :class="$style.addUserInput"
             type="text"
             placeholder="@ユーザー名 or @ユーザー名@ホスト"
             @keydown.enter="searchAndAddUserColumn"
           />
           <button
-            class="_button add-user-submit"
+            class="_button"
+            :class="$style.addUserSubmit"
             :disabled="searchingUser || !userSearchInput.trim()"
             @click="searchAndAddUserColumn"
           >
             {{ searchingUser ? '...' : '追加' }}
           </button>
         </div>
-        <div v-if="userSearchError" class="add-popup-empty" style="color: var(--nd-love);">
+        <div v-if="userSearchError" :class="$style.addPopupEmpty" style="color: var(--nd-love);">
           {{ userSearchError }}
         </div>
       </template>
 
       <!-- Step 2: Account selection -->
       <template v-else>
-        <div v-if="accountsStore.accounts.length === 0" class="add-popup-empty">
+        <div v-if="accountsStore.accounts.length === 0" :class="$style.addPopupEmpty">
           アカウントが登録されていません。
           <button class="_button" style="color: var(--nd-accent); text-decoration: underline;" @click="close(); navigateToLogin()">
             アカウントを追加
@@ -627,10 +629,11 @@ function close() {
         <button
           v-for="account in accountsStore.accounts"
           :key="account.id"
-          class="_button add-account-btn"
+          class="_button"
+          :class="$style.addAccountBtn"
           @click="addColumnForAccount(account.id)"
         >
-          <img v-if="account.avatarUrl" :src="account.avatarUrl" class="add-account-avatar" />
+          <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.addAccountAvatar" />
           <span>@{{ account.username }}@{{ account.host }}</span>
         </button>
       </template>
@@ -638,8 +641,8 @@ function close() {
   </div>
 </template>
 
-<style scoped>
-.add-overlay {
+<style lang="scss" module>
+.addOverlay {
   position: fixed;
   inset: 0;
   z-index: var(--nd-z-overlay);
@@ -649,7 +652,7 @@ function close() {
   background: var(--nd-modalBg);
 }
 
-.add-popup {
+.addPopup {
   background: var(--nd-popup);
   border-radius: 16px;
   box-shadow: 0 8px 32px var(--nd-shadow);
@@ -659,7 +662,7 @@ function close() {
   overflow-y: auto;
 }
 
-.add-popup-header {
+.addPopupHeader {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -669,25 +672,25 @@ function close() {
   border-bottom: 1px solid var(--nd-divider);
 }
 
-.add-popup-empty {
+.addPopupEmpty {
   padding: 2rem;
   text-align: center;
   color: var(--nd-fg);
   opacity: 0.6;
   font-size: 0.9em;
+
+  a {
+    color: var(--nd-accent);
+  }
 }
 
-.add-popup-empty a {
-  color: var(--nd-accent);
-}
-
-.add-user-search {
+.addUserSearch {
   display: flex;
   gap: 8px;
   padding: 12px 16px;
 }
 
-.add-user-input {
+.addUserInput {
   flex: 1;
   padding: 8px 12px;
   border: 1px solid var(--nd-divider);
@@ -696,13 +699,13 @@ function close() {
   color: var(--nd-fg);
   font-size: 0.85em;
   outline: none;
+
+  &:focus {
+    border-color: var(--nd-accent);
+  }
 }
 
-.add-user-input:focus {
-  border-color: var(--nd-accent);
-}
-
-.add-user-submit {
+.addUserSubmit {
   padding: 8px 16px;
   border-radius: var(--nd-radius-sm);
   background: var(--nd-accent);
@@ -710,14 +713,14 @@ function close() {
   font-size: 0.85em;
   font-weight: bold;
   cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
 }
 
-.add-user-submit:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.add-account-btn {
+.addAccountBtn {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -727,23 +730,23 @@ function close() {
   font-weight: bold;
   color: var(--nd-fgHighlighted);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  & + & {
+    border-top: 1px solid var(--nd-divider);
+  }
 }
 
-.add-account-btn:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.add-account-btn + .add-account-btn {
-  border-top: 1px solid var(--nd-divider);
-}
-
-.add-account-avatar {
+.addAccountAvatar {
   width: 28px;
   height: 28px;
   border-radius: 50%;
 }
 
-.add-back-btn {
+.addBackBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -752,14 +755,14 @@ function close() {
   border-radius: var(--nd-radius-sm);
   opacity: 0.7;
   transition: background var(--nd-duration-base), opacity var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
 }
 
-.add-back-btn:hover {
-  background: var(--nd-buttonHoverBg);
-  opacity: 1;
-}
-
-.add-type-btn {
+.addTypeBtn {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -770,17 +773,22 @@ function close() {
   font-weight: bold;
   color: var(--nd-fgHighlighted);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  & + & {
+    border-top: 1px solid var(--nd-divider);
+  }
+
+  .ti {
+    opacity: 0.7;
+    font-size: 18px;
+  }
 }
 
-.add-type-btn:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.add-type-btn + .add-type-btn {
-  border-top: 1px solid var(--nd-divider);
-}
-
-.add-category-label {
+.addCategoryLabel {
   padding: 12px 24px 4px;
   font-size: 0.75em;
   font-weight: bold;
@@ -788,29 +796,25 @@ function close() {
   opacity: 0.5;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
 
-.add-category-label + .add-type-btn {
-  border-top: none;
-}
-
-.add-type-btn .ti {
-  opacity: 0.7;
-  font-size: 18px;
+  & + .addTypeBtn {
+    border-top: none;
+  }
 }
 
 @media (max-width: 500px) {
-  .add-popup {
+  .addPopup {
     min-width: auto;
     width: calc(100% - 32px);
     max-width: 480px;
   }
 }
 
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .add-popup {
-  min-width: auto;
-  width: calc(100% - 32px);
-  max-width: 480px;
+:global(html.nd-mobile) {
+  .addPopup {
+    min-width: auto;
+    width: calc(100% - 32px);
+    max-width: 480px;
+  }
 }
 </style>

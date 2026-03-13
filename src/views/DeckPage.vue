@@ -3,13 +3,13 @@ import DeckLayout from '@/components/deck/DeckLayout.vue'
 </script>
 
 <template>
-  <div class="deck-page">
+  <div :class="$style.deckPage">
     <DeckLayout />
   </div>
 </template>
 
-<style scoped>
-.deck-page {
+<style lang="scss" module>
+.deckPage {
   display: flex;
   flex-direction: column;
   flex: 1;

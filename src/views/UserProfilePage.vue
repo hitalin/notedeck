@@ -11,9 +11,9 @@ const router = useRouter()
 </script>
 
 <template>
-  <div class="user-profile-page">
-    <header class="profile-header">
-      <router-link to="/" class="back-btn _button">
+  <div :class="$style.userProfilePage">
+    <header :class="$style.profileHeader">
+      <router-link to="/" class="_button" :class="$style.backBtn">
         <svg viewBox="0 0 24 24" width="20" height="20">
           <path
             d="M15 18l-6-6 6-6"
@@ -25,7 +25,7 @@ const router = useRouter()
           />
         </svg>
       </router-link>
-      <h1 class="profile-title">プロフィール</h1>
+      <h1 :class="$style.profileTitle">プロフィール</h1>
     </header>
 
     <UserProfileContent
@@ -35,8 +35,8 @@ const router = useRouter()
   </div>
 </template>
 
-<style scoped>
-.user-profile-page {
+<style lang="scss" module>
+.userProfilePage {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -44,7 +44,7 @@ const router = useRouter()
   background: var(--nd-bg);
 }
 
-.profile-header {
+.profileHeader {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -59,7 +59,7 @@ const router = useRouter()
   z-index: 10;
 }
 
-.back-btn {
+.backBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -69,14 +69,14 @@ const router = useRouter()
   color: var(--nd-fg);
   text-decoration: none;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    text-decoration: none;
+  }
 }
 
-.back-btn:hover {
-  background: var(--nd-buttonHoverBg);
-  text-decoration: none;
-}
-
-.profile-title {
+.profileTitle {
   font-size: 0.9em;
   font-weight: bold;
   margin: 0;

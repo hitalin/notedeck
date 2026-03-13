@@ -166,130 +166,128 @@ function primaryShortcut(cmd: Command): string | null {
   <!-- ===== INLINE MODE (Desktop TitleBar) ===== -->
   <template v-if="inline">
     <Teleport to="body">
-      <div class="palette-overlay-bg" @click="commandStore.close()" />
+      <div :class="$style.paletteOverlayBg" @click="commandStore.close()" />
     </Teleport>
-    <div class="inline-wrap" @keydown="onKeydown">
-      <div class="inline-input-wrap">
-        <i class="ti ti-search inline-search-icon" />
+    <div :class="$style.inlineWrap" @keydown="onKeydown">
+      <div :class="$style.inlineInputWrap">
+        <i class="ti ti-search" :class="$style.inlineSearchIcon" />
         <input
           ref="inputRef"
           v-model="query"
-          class="inline-input"
+          :class="$style.inlineInput"
           placeholder="コマンドを入力..."
           spellcheck="false"
         />
-        <kbd class="inline-kbd">Esc</kbd>
+        <kbd :class="$style.inlineKbd">Esc</kbd>
       </div>
-      <div class="inline-dropdown" @click.stop>
+      <div :class="$style.inlineDropdown" @click.stop>
         <!-- CLI mode -->
-        <div v-if="cliMatch && cliMeta" class="palette-cli">
-          <div class="palette-cli-row">
-            <i :class="'ti ti-' + cliMeta.icon" class="palette-item-icon" />
-            <span v-if="cliMeta.needsArgs && !cliMatch.args.trim()" class="palette-cli-hint">
+        <div v-if="cliMatch && cliMeta" :class="$style.paletteCli">
+          <div :class="$style.paletteCliRow">
+            <i :class="['ti ti-' + cliMeta.icon, $style.paletteItemIcon]" />
+            <span v-if="cliMeta.needsArgs && !cliMatch.args.trim()" :class="$style.paletteCliHint">
               {{ cliMeta.usage }}
             </span>
-            <span v-else class="palette-cli-action">
+            <span v-else :class="$style.paletteCliAction">
               ↵ Enterで実行: <strong>{{ cliMatch.name }}</strong> {{ cliMatch.args }}
             </span>
           </div>
-          <div class="palette-cli-desc">{{ cliMeta.about }}</div>
+          <div :class="$style.paletteCliDesc">{{ cliMeta.about }}</div>
         </div>
         <!-- Command list -->
-        <div v-else-if="flatList.length" class="palette-list">
+        <div v-else-if="flatList.length" :class="$style.paletteList">
           <template v-for="(group, gi) in filteredGroups" :key="group.category">
-            <div v-if="gi > 0" class="palette-separator" />
-            <div class="palette-category">{{ group.label }}</div>
+            <div v-if="gi > 0" :class="$style.paletteSeparator" />
+            <div :class="$style.paletteCategory">{{ group.label }}</div>
             <button
               v-for="cmd in group.commands"
               :key="cmd.id"
-              class="palette-item"
-              :class="{ selected: flatList[selectedIndex]?.id === cmd.id }"
+              :class="[$style.paletteItem, flatList[selectedIndex]?.id === cmd.id && $style.selected]"
               @click="runCommand(cmd)"
               @mouseenter="selectedIndex = flatList.indexOf(cmd)"
             >
-              <i :class="'ti ti-' + cmd.icon" class="palette-item-icon" />
-              <span class="palette-item-label">{{ cmd.label }}</span>
-              <kbd v-if="primaryShortcut(cmd)" class="palette-item-kbd">
+              <i :class="['ti ti-' + cmd.icon, $style.paletteItemIcon]" />
+              <span :class="$style.paletteItemLabel">{{ cmd.label }}</span>
+              <kbd v-if="primaryShortcut(cmd)" :class="$style.paletteItemKbd">
                 {{ primaryShortcut(cmd) }}
               </kbd>
             </button>
           </template>
         </div>
-        <div v-else class="palette-empty">一致するコマンドがありません</div>
+        <div v-else :class="$style.paletteEmpty">一致するコマンドがありません</div>
       </div>
     </div>
   </template>
 
   <!-- ===== DIALOG MODE (Mobile) ===== -->
-  <div v-else class="palette-overlay" @click="commandStore.close()">
-    <div class="palette" @click.stop @keydown="onKeydown">
-      <div class="palette-input-wrap">
-        <span class="palette-prefix">&gt;</span>
+  <div v-else :class="$style.paletteOverlay" @click="commandStore.close()">
+    <div :class="$style.palette" @click.stop @keydown="onKeydown">
+      <div :class="$style.paletteInputWrap">
+        <span :class="$style.palettePrefix">&gt;</span>
         <input
           ref="inputRef"
           v-model="query"
-          class="palette-input"
+          :class="$style.paletteInput"
           placeholder="コマンドを入力..."
           spellcheck="false"
         />
       </div>
       <!-- CLI mode -->
-      <div v-if="cliMatch && cliMeta" class="palette-cli">
-        <div class="palette-cli-row">
-          <i :class="'ti ti-' + cliMeta.icon" class="palette-item-icon" />
-          <span v-if="cliMeta.needsArgs && !cliMatch.args.trim()" class="palette-cli-hint">
+      <div v-if="cliMatch && cliMeta" :class="$style.paletteCli">
+        <div :class="$style.paletteCliRow">
+          <i :class="['ti ti-' + cliMeta.icon, $style.paletteItemIcon]" />
+          <span v-if="cliMeta.needsArgs && !cliMatch.args.trim()" :class="$style.paletteCliHint">
             {{ cliMeta.usage }}
           </span>
-          <span v-else class="palette-cli-action">
+          <span v-else :class="$style.paletteCliAction">
             ↵ Enterで実行: <strong>{{ cliMatch.name }}</strong> {{ cliMatch.args }}
           </span>
         </div>
-        <div class="palette-cli-desc">{{ cliMeta.about }}</div>
+        <div :class="$style.paletteCliDesc">{{ cliMeta.about }}</div>
       </div>
       <!-- Command list -->
-      <div v-else-if="flatList.length" class="palette-list">
+      <div v-else-if="flatList.length" :class="$style.paletteList">
         <template v-for="(group, gi) in filteredGroups" :key="group.category">
-          <div v-if="gi > 0" class="palette-separator" />
-          <div class="palette-category">{{ group.label }}</div>
+          <div v-if="gi > 0" :class="$style.paletteSeparator" />
+          <div :class="$style.paletteCategory">{{ group.label }}</div>
           <button
             v-for="cmd in group.commands"
             :key="cmd.id"
-            class="palette-item"
-            :class="{ selected: flatList[selectedIndex]?.id === cmd.id }"
+            :class="[$style.paletteItem, flatList[selectedIndex]?.id === cmd.id && $style.selected]"
             @click="runCommand(cmd)"
             @mouseenter="selectedIndex = flatList.indexOf(cmd)"
           >
-            <i :class="'ti ti-' + cmd.icon" class="palette-item-icon" />
-            <span class="palette-item-label">{{ cmd.label }}</span>
-            <kbd v-if="isDesktop && primaryShortcut(cmd)" class="palette-item-kbd">
+            <i :class="['ti ti-' + cmd.icon, $style.paletteItemIcon]" />
+            <span :class="$style.paletteItemLabel">{{ cmd.label }}</span>
+            <kbd v-if="isDesktop && primaryShortcut(cmd)" :class="$style.paletteItemKbd">
               {{ primaryShortcut(cmd) }}
             </kbd>
           </button>
         </template>
       </div>
-      <div v-else class="palette-empty">一致するコマンドがありません</div>
+      <div v-else :class="$style.paletteEmpty">一致するコマンドがありません</div>
     </div>
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" module>
 /* ========================================
    INLINE MODE (Desktop TitleBar dropdown)
    ======================================== */
-.palette-overlay-bg {
+.paletteOverlayBg {
   position: fixed;
   inset: 0;
   z-index: calc(var(--nd-z-palette) - 1);
   background: rgba(0, 0, 0, 0.08);
 }
 
-.inline-wrap {
+.inlineWrap {
   position: relative;
   z-index: var(--nd-z-palette);
   flex: 1;
 }
 
-.inline-input-wrap {
+.inlineInputWrap {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -301,13 +299,13 @@ function primaryShortcut(cmd: Command): string | null {
   color: var(--nd-fg);
 }
 
-.inline-search-icon {
+.inlineSearchIcon {
   font-size: 12px;
   opacity: 0.5;
   flex-shrink: 0;
 }
 
-.inline-input {
+.inlineInput {
   flex: 1;
   background: none;
   border: none;
@@ -317,14 +315,14 @@ function primaryShortcut(cmd: Command): string | null {
   font-family: inherit;
   line-height: 20px;
   min-width: 0;
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.4;
+  }
 }
 
-.inline-input::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.4;
-}
-
-.inline-kbd {
+.inlineKbd {
   font-size: 10px;
   padding: 0 4px;
   border-radius: 3px;
@@ -336,7 +334,7 @@ function primaryShortcut(cmd: Command): string | null {
   line-height: 1.5;
 }
 
-.inline-dropdown {
+.inlineDropdown {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
@@ -356,7 +354,7 @@ function primaryShortcut(cmd: Command): string | null {
 /* ========================================
    DIALOG MODE (Mobile fullscreen)
    ======================================== */
-.palette-overlay {
+.paletteOverlay {
   position: fixed;
   inset: 0;
   z-index: var(--nd-z-palette);
@@ -383,7 +381,7 @@ function primaryShortcut(cmd: Command): string | null {
   overflow: hidden;
 }
 
-.palette-input-wrap {
+.paletteInputWrap {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -391,7 +389,7 @@ function primaryShortcut(cmd: Command): string | null {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.palette-prefix {
+.palettePrefix {
   font-size: 14px;
   color: var(--nd-fg);
   opacity: 0.5;
@@ -399,7 +397,7 @@ function primaryShortcut(cmd: Command): string | null {
   user-select: none;
 }
 
-.palette-input {
+.paletteInput {
   flex: 1;
   background: none;
   border: none;
@@ -408,43 +406,43 @@ function primaryShortcut(cmd: Command): string | null {
   font-size: 14px;
   font-family: inherit;
   line-height: 22px;
-}
 
-.palette-input::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.35;
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.35;
+  }
 }
 
 /* ========================================
    SHARED (list items, CLI, etc.)
    ======================================== */
-.palette-list {
+.paletteList {
   overflow-y: auto;
   padding: 4px 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+  }
 }
 
-.palette-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.palette-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.palette-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 3px;
-}
-
-.palette-separator {
+.paletteSeparator {
   height: 1px;
   margin: 4px 0;
   background: rgba(255, 255, 255, 0.06);
 }
 
-.palette-category {
+.paletteCategory {
   padding: 6px 12px 2px;
   font-size: 11px;
   font-weight: 500;
@@ -454,7 +452,7 @@ function primaryShortcut(cmd: Command): string | null {
   opacity: 0.45;
 }
 
-.palette-item {
+.paletteItem {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -469,18 +467,24 @@ function primaryShortcut(cmd: Command): string | null {
   cursor: pointer;
   text-align: left;
   line-height: 22px;
+  min-height: 44px;
+  padding: 8px 14px;
+
+  &.selected {
+    background: var(--nd-accentedBg, rgba(134, 179, 0, 0.12));
+    border-left-color: var(--nd-accent, #86b300);
+
+    .paletteItemIcon {
+      opacity: 0.8;
+    }
+  }
+
+  &:hover:not(.selected) {
+    background: rgba(255, 255, 255, 0.04);
+  }
 }
 
-.palette-item.selected {
-  background: var(--nd-accentedBg, rgba(134, 179, 0, 0.12));
-  border-left-color: var(--nd-accent, #86b300);
-}
-
-.palette-item:hover:not(.selected) {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.palette-item-icon {
+.paletteItemIcon {
   font-size: 16px;
   opacity: 0.55;
   width: 20px;
@@ -488,18 +492,14 @@ function primaryShortcut(cmd: Command): string | null {
   flex-shrink: 0;
 }
 
-.palette-item.selected .palette-item-icon {
-  opacity: 0.8;
-}
-
-.palette-item-label {
+.paletteItemLabel {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.palette-item-kbd {
+.paletteItemKbd {
   font-size: 11px;
   padding: 1px 5px;
   border-radius: 3px;
@@ -511,7 +511,7 @@ function primaryShortcut(cmd: Command): string | null {
   line-height: 1.4;
 }
 
-.palette-empty {
+.paletteEmpty {
   padding: 20px 12px;
   text-align: center;
   color: var(--nd-fg);
@@ -519,11 +519,11 @@ function primaryShortcut(cmd: Command): string | null {
   font-size: 13px;
 }
 
-.palette-cli {
+.paletteCli {
   padding: 10px 12px;
 }
 
-.palette-cli-row {
+.paletteCliRow {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -531,17 +531,19 @@ function primaryShortcut(cmd: Command): string | null {
   color: var(--nd-fg);
 }
 
-.palette-cli-hint {
+.paletteCliHint {
   opacity: 0.5;
   font-family: monospace;
   font-size: 12px;
 }
 
-.palette-cli-action strong {
-  color: var(--nd-accent);
+.paletteCliAction {
+  strong {
+    color: var(--nd-accent);
+  }
 }
 
-.palette-cli-desc {
+.paletteCliDesc {
   margin-top: 4px;
   padding-left: 28px;
   font-size: 12px;
@@ -549,14 +551,8 @@ function primaryShortcut(cmd: Command): string | null {
   opacity: 0.4;
 }
 
-/* --- Mobile adjustments --- */
-.palette-item {
-  min-height: 44px;
-  padding: 8px 14px;
-}
-
 @media (min-width: 501px) {
-  .palette-item {
+  .paletteItem {
     min-height: unset;
     padding: 4px 12px;
   }

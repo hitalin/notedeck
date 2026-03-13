@@ -179,23 +179,23 @@ fetchGallery()
 
     <!-- Detail view -->
     <template v-if="detailPost">
-      <div class="gallery-detail-scroll">
-        <div class="gallery-detail">
+      <div :class="$style.galleryDetailScroll">
+        <div :class="$style.galleryDetail">
           <!-- Image viewer -->
-          <div class="gallery-detail-viewer">
+          <div :class="$style.galleryDetailViewer">
             <template v-if="detailPost.files.length > 0">
-              <div class="gallery-viewer-image">
+              <div :class="$style.galleryViewerImage">
                 <img
                   v-if="isImage(detailPost.files[detailImageIndex]!) && !detailPost.files[detailImageIndex]!.isSensitive"
                   :src="safeUrl(detailPost.files[detailImageIndex]!.url)"
                   :alt="detailPost.files[detailImageIndex]!.name"
-                  class="gallery-detail-img"
+                  :class="$style.galleryDetailImg"
                 />
-                <div v-else-if="detailPost.files[detailImageIndex]!.isSensitive" class="gallery-viewer-placeholder">
+                <div v-else-if="detailPost.files[detailImageIndex]!.isSensitive" :class="$style.galleryViewerPlaceholder">
                   <i class="ti ti-eye-off" />
                   <span>NSFW</span>
                 </div>
-                <div v-else class="gallery-viewer-placeholder">
+                <div v-else :class="$style.galleryViewerPlaceholder">
                   <i class="ti ti-file" />
                 </div>
               </div>
@@ -203,25 +203,26 @@ fetchGallery()
               <template v-if="detailPost.files.length > 1">
                 <button
                   v-if="detailImageIndex > 0"
-                  class="_button gallery-nav-btn gallery-nav-prev"
+                  class="_button"
+                  :class="[$style.galleryNavBtn, $style.galleryNavPrev]"
                   @click="prevImage"
                 >
                   <i class="ti ti-chevron-left" />
                 </button>
                 <button
                   v-if="detailImageIndex < detailPost.files.length - 1"
-                  class="_button gallery-nav-btn gallery-nav-next"
+                  class="_button"
+                  :class="[$style.galleryNavBtn, $style.galleryNavNext]"
                   @click="nextImage"
                 >
                   <i class="ti ti-chevron-right" />
                 </button>
                 <!-- Dots indicator -->
-                <div class="gallery-dots">
+                <div :class="$style.galleryDots">
                   <span
                     v-for="(_, i) in detailPost.files"
                     :key="i"
-                    class="gallery-dot"
-                    :class="{ active: i === detailImageIndex }"
+                    :class="[$style.galleryDot, { [$style.active]: i === detailImageIndex }]"
                     @click="detailImageIndex = i"
                   />
                 </div>
@@ -230,24 +231,24 @@ fetchGallery()
           </div>
 
           <!-- Post info -->
-          <div class="gallery-detail-info">
-            <div class="gallery-detail-title">{{ detailPost.title }}</div>
-            <div v-if="detailPost.description" class="gallery-detail-desc">{{ detailPost.description }}</div>
-            <div class="gallery-detail-meta">
-              <div class="gallery-detail-user">
+          <div :class="$style.galleryDetailInfo">
+            <div :class="$style.galleryDetailTitle">{{ detailPost.title }}</div>
+            <div v-if="detailPost.description" :class="$style.galleryDetailDesc">{{ detailPost.description }}</div>
+            <div :class="$style.galleryDetailMeta">
+              <div :class="$style.galleryDetailUser">
                 <img
                   v-if="detailPost.user.avatarUrl"
                   :src="detailPost.user.avatarUrl"
-                  class="gallery-user-avatar"
+                  :class="$style.galleryUserAvatar"
                 />
-                <span class="gallery-user-name">{{ detailPost.user.name || detailPost.user.username }}</span>
+                <span :class="$style.galleryUserName">{{ detailPost.user.name || detailPost.user.username }}</span>
               </div>
-              <span class="gallery-detail-date">{{ formatDate(detailPost.createdAt) }}</span>
+              <span :class="$style.galleryDetailDate">{{ formatDate(detailPost.createdAt) }}</span>
             </div>
-            <div class="gallery-detail-actions">
+            <div :class="$style.galleryDetailActions">
               <button
-                class="_button gallery-like-btn"
-                :class="{ liked: detailPost.isLiked }"
+                class="_button"
+                :class="[$style.galleryLikeBtn, { [$style.liked]: detailPost.isLiked }]"
                 :disabled="liking"
                 @click="toggleLike"
               >
@@ -262,51 +263,52 @@ fetchGallery()
 
     <!-- Grid view -->
     <template v-else>
-      <div class="gallery-grid-scroll" @scroll="onScroll">
+      <div :class="$style.galleryGridScroll" @scroll="onScroll">
         <div v-if="loading && posts.length === 0" class="column-empty">読み込み中...</div>
         <div v-else-if="error" class="column-empty column-error">{{ error }}</div>
         <div v-else-if="posts.length === 0" class="column-empty">
           ギャラリーの投稿がありません
         </div>
         <template v-else>
-          <div class="gallery-grid">
+          <div :class="$style.galleryGrid">
             <button
               v-for="post in posts"
               :key="post.id"
-              class="_button gallery-grid-cell"
+              class="_button"
+              :class="$style.galleryGridCell"
               @click="openDetail(post)"
             >
-              <div class="gallery-grid-thumb">
+              <div :class="$style.galleryGridThumb">
                 <img
                   v-if="post.files.length > 0 && isImage(post.files[0]!) && !post.isSensitive"
                   :src="safeUrl(post.files[0]!.thumbnailUrl) || safeUrl(post.files[0]!.url)"
                   :alt="post.title"
-                  class="gallery-grid-img"
+                  :class="$style.galleryGridImg"
                   loading="lazy"
                 />
-                <div v-else-if="post.isSensitive" class="gallery-grid-placeholder">
+                <div v-else-if="post.isSensitive" :class="$style.galleryGridPlaceholder">
                   <i class="ti ti-eye-off" />
                 </div>
-                <div v-else class="gallery-grid-placeholder">
+                <div v-else :class="$style.galleryGridPlaceholder">
                   <i class="ti ti-photo" />
                 </div>
-                <div v-if="post.files.length > 1" class="gallery-grid-badge">
+                <div v-if="post.files.length > 1" :class="$style.galleryGridBadge">
                   <i class="ti ti-stack-2" />
                   {{ post.files.length }}
                 </div>
               </div>
-              <div class="gallery-grid-info">
-                <div class="gallery-grid-title">{{ post.title }}</div>
-                <div class="gallery-grid-footer">
-                  <span class="gallery-grid-user">
+              <div :class="$style.galleryGridInfo">
+                <div :class="$style.galleryGridTitle">{{ post.title }}</div>
+                <div :class="$style.galleryGridFooter">
+                  <span :class="$style.galleryGridUser">
                     <img
                       v-if="post.user.avatarUrl"
                       :src="post.user.avatarUrl"
-                      class="gallery-grid-avatar"
+                      :class="$style.galleryGridAvatar"
                     />
                     {{ post.user.name || post.user.username }}
                   </span>
-                  <span v-if="post.likedCount > 0" class="gallery-grid-likes">
+                  <span v-if="post.likedCount > 0" :class="$style.galleryGridLikes">
                     <i class="ti ti-heart" /> {{ post.likedCount }}
                   </span>
                 </div>
@@ -321,10 +323,12 @@ fetchGallery()
 </template>
 
 <style scoped>
-@import "./column-common.css";
+@use "./column-common.module.scss";
+</style>
 
+<style lang="scss" module>
 /* --- Grid scroll --- */
-.gallery-grid-scroll {
+.galleryGridScroll {
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
@@ -332,38 +336,38 @@ fetchGallery()
 }
 
 /* --- Grid --- */
-.gallery-grid {
+.galleryGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 2px;
   padding: 2px;
 }
 
-.gallery-grid-cell {
+.galleryGridCell {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.8;
+  }
 }
 
-.gallery-grid-cell:hover {
-  opacity: 0.8;
-}
-
-.gallery-grid-thumb {
+.galleryGridThumb {
   position: relative;
   aspect-ratio: 1;
   overflow: hidden;
   background: var(--nd-bg);
 }
 
-.gallery-grid-img {
+.galleryGridImg {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.gallery-grid-placeholder {
+.galleryGridPlaceholder {
   width: 100%;
   height: 100%;
   display: flex;
@@ -373,7 +377,7 @@ fetchGallery()
   opacity: 0.3;
 }
 
-.gallery-grid-badge {
+.galleryGridBadge {
   position: absolute;
   top: 4px;
   right: 4px;
@@ -387,14 +391,14 @@ fetchGallery()
   font-size: 11px;
 }
 
-.gallery-grid-info {
+.galleryGridInfo {
   padding: 6px 8px;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.gallery-grid-title {
+.galleryGridTitle {
   font-size: 0.75em;
   font-weight: 600;
   color: var(--nd-fgHighlighted);
@@ -403,14 +407,14 @@ fetchGallery()
   white-space: nowrap;
 }
 
-.gallery-grid-footer {
+.galleryGridFooter {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 4px;
 }
 
-.gallery-grid-user {
+.galleryGridUser {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -423,14 +427,14 @@ fetchGallery()
   min-width: 0;
 }
 
-.gallery-grid-avatar {
+.galleryGridAvatar {
   width: 14px;
   height: 14px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.gallery-grid-likes {
+.galleryGridLikes {
   display: flex;
   align-items: center;
   gap: 2px;
@@ -440,36 +444,36 @@ fetchGallery()
 }
 
 /* --- Detail view --- */
-.gallery-detail-scroll {
+.galleryDetailScroll {
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
 }
 
-.gallery-detail {
+.galleryDetail {
   display: flex;
   flex-direction: column;
 }
 
-.gallery-detail-viewer {
+.galleryDetailViewer {
   position: relative;
   background: var(--nd-bg);
 }
 
-.gallery-viewer-image {
+.galleryViewerImage {
   aspect-ratio: 4 / 3;
   overflow: hidden;
 }
 
-.gallery-detail-img {
+.galleryDetailImg {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-.gallery-viewer-placeholder {
+.galleryViewerPlaceholder {
   width: 100%;
   height: 100%;
   display: flex;
@@ -479,13 +483,13 @@ fetchGallery()
   gap: 8px;
   font-size: 32px;
   opacity: 0.3;
+
+  span {
+    font-size: 14px;
+  }
 }
 
-.gallery-viewer-placeholder span {
-  font-size: 14px;
-}
-
-.gallery-nav-btn {
+.galleryNavBtn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -499,21 +503,21 @@ fetchGallery()
   color: #fff;
   font-size: 16px;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.7);
+  }
 }
 
-.gallery-nav-btn:hover {
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.gallery-nav-prev {
+.galleryNavPrev {
   left: 8px;
 }
 
-.gallery-nav-next {
+.galleryNavNext {
   right: 8px;
 }
 
-.gallery-dots {
+.galleryDots {
   position: absolute;
   bottom: 8px;
   left: 50%;
@@ -522,34 +526,34 @@ fetchGallery()
   gap: 4px;
 }
 
-.gallery-dot {
+.galleryDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.5);
   cursor: pointer;
   transition: background var(--nd-duration-base);
-}
 
-.gallery-dot.active {
-  background: #fff;
+  &.active {
+    background: #fff;
+  }
 }
 
 /* --- Detail info --- */
-.gallery-detail-info {
+.galleryDetailInfo {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 16px;
 }
 
-.gallery-detail-title {
+.galleryDetailTitle {
   font-size: 1em;
   font-weight: 700;
   color: var(--nd-fgHighlighted);
 }
 
-.gallery-detail-desc {
+.galleryDetailDesc {
   font-size: 0.85em;
   color: var(--nd-fg);
   line-height: 1.6;
@@ -557,28 +561,28 @@ fetchGallery()
   word-break: break-word;
 }
 
-.gallery-detail-meta {
+.galleryDetailMeta {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.gallery-detail-user {
+.galleryDetailUser {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
 }
 
-.gallery-user-avatar {
+.galleryUserAvatar {
   width: 24px;
   height: 24px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.gallery-user-name {
+.galleryUserName {
   font-size: 0.85em;
   font-weight: 600;
   color: var(--nd-fgHighlighted);
@@ -587,18 +591,18 @@ fetchGallery()
   white-space: nowrap;
 }
 
-.gallery-detail-date {
+.galleryDetailDate {
   font-size: 0.8em;
   opacity: 0.5;
   flex-shrink: 0;
 }
 
-.gallery-detail-actions {
+.galleryDetailActions {
   display: flex;
   gap: 8px;
 }
 
-.gallery-like-btn {
+.galleryLikeBtn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -609,19 +613,19 @@ fetchGallery()
   font-size: 0.85em;
   font-weight: 600;
   transition: background var(--nd-duration-base), color var(--nd-duration-base);
-}
 
-.gallery-like-btn:hover {
-  background: color-mix(in srgb, var(--nd-love) 20%, transparent);
-}
+  &:hover {
+    background: color-mix(in srgb, var(--nd-love) 20%, transparent);
+  }
 
-.gallery-like-btn.liked {
-  color: var(--nd-love);
-  background: var(--nd-love-hover);
-}
+  &.liked {
+    color: var(--nd-love);
+    background: var(--nd-love-hover);
+  }
 
-.gallery-like-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
 }
 </style>

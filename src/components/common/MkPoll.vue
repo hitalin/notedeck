@@ -27,41 +27,40 @@ function formatExpiry(iso: string): string {
 </script>
 
 <template>
-  <div class="mk-poll">
+  <div :class="$style.mkPoll">
     <div
       v-for="(choice, i) in poll.choices"
       :key="i"
-      class="poll-choice"
-      :class="{ voted: choice.isVoted }"
+      :class="[$style.pollChoice, { [$style.voted]: choice.isVoted }]"
     >
-      <div class="poll-bar" :style="{ width: `${percentage(choice.votes)}%` }" />
-      <div class="poll-content">
-        <span class="poll-text">{{ choice.text }}</span>
-        <span class="poll-pct">{{ percentage(choice.votes) }}%</span>
+      <div :class="$style.pollBar" :style="{ width: `${percentage(choice.votes)}%` }" />
+      <div :class="$style.pollContent">
+        <span :class="$style.pollText">{{ choice.text }}</span>
+        <span :class="$style.pollPct">{{ percentage(choice.votes) }}%</span>
       </div>
-      <svg v-if="choice.isVoted" class="poll-check" viewBox="0 0 24 24" width="14" height="14">
+      <svg v-if="choice.isVoted" :class="$style.pollCheck" viewBox="0 0 24 24" width="14" height="14">
         <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
     </div>
-    <div class="poll-footer">
-      <span class="poll-total">{{ totalVotes }}票</span>
-      <span v-if="poll.multiple" class="poll-badge">複数選択</span>
-      <span v-if="poll.expiresAt" class="poll-expiry">
+    <div :class="$style.pollFooter">
+      <span :class="$style.pollTotal">{{ totalVotes }}票</span>
+      <span v-if="poll.multiple" :class="$style.pollBadge">複数選択</span>
+      <span v-if="poll.expiresAt" :class="$style.pollExpiry">
         {{ isExpired ? '終了' : `${formatExpiry(poll.expiresAt)}まで` }}
       </span>
     </div>
   </div>
 </template>
 
-<style scoped>
-.mk-poll {
+<style lang="scss" module>
+.mkPoll {
   margin-top: 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.poll-choice {
+.pollChoice {
   position: relative;
   border-radius: var(--nd-radius-sm);
   overflow: hidden;
@@ -69,9 +68,14 @@ function formatExpiry(iso: string): string {
   min-height: 35px;
   display: flex;
   align-items: center;
+
+  &.voted .pollBar {
+    background: var(--nd-accent);
+    opacity: 0.3;
+  }
 }
 
-.poll-bar {
+.pollBar {
   position: absolute;
   top: 0;
   left: 0;
@@ -80,12 +84,7 @@ function formatExpiry(iso: string): string {
   transition: width var(--nd-duration-slower) ease;
 }
 
-.poll-choice.voted .poll-bar {
-  background: var(--nd-accent);
-  opacity: 0.3;
-}
-
-.poll-content {
+.pollContent {
   position: relative;
   z-index: 1;
   display: flex;
@@ -95,11 +94,11 @@ function formatExpiry(iso: string): string {
   padding: 4px 12px;
 }
 
-.poll-text {
+.pollText {
   font-size: 0.9em;
 }
 
-.poll-pct {
+.pollPct {
   font-size: 0.8em;
   font-weight: bold;
   opacity: 0.7;
@@ -107,14 +106,14 @@ function formatExpiry(iso: string): string {
   margin-left: 8px;
 }
 
-.poll-check {
+.pollCheck {
   position: absolute;
   right: 10px;
   color: var(--nd-accent);
   z-index: 1;
 }
 
-.poll-footer {
+.pollFooter {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -123,14 +122,14 @@ function formatExpiry(iso: string): string {
   opacity: 0.6;
 }
 
-.poll-badge {
+.pollBadge {
   padding: 1px 6px;
   border-radius: var(--nd-radius-full);
   background: var(--nd-buttonBg);
   font-weight: bold;
 }
 
-.poll-expiry {
+.pollExpiry {
   margin-left: auto;
 }
 </style>

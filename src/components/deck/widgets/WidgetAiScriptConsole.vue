@@ -55,18 +55,18 @@ async function run() {
 </script>
 
 <template>
-  <div class="widget-console">
+  <div :class="$style.widgetConsole">
     <AiScriptEditor v-model="code" placeholder="AiScript..." />
-    <div class="console-toolbar">
-      <button class="run-btn" :disabled="running" @click="run">
+    <div :class="$style.consoleToolbar">
+      <button :class="$style.runBtn" :disabled="running" @click="run">
         <i class="ti ti-player-play" />
       </button>
     </div>
-    <div v-if="output.length" class="console-output">
+    <div v-if="output.length" :class="$style.consoleOutput">
       <div
         v-for="(line, i) in output"
         :key="i"
-        :class="['output-line', { error: line.isError }]"
+        :class="[$style.outputLine, { [$style.error]: line.isError }]"
       >
         {{ line.text }}
       </div>
@@ -74,19 +74,19 @@ async function run() {
   </div>
 </template>
 
-<style scoped>
-.widget-console {
+<style lang="scss" module>
+.widgetConsole {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.console-toolbar {
+.consoleToolbar {
   display: flex;
   justify-content: flex-end;
 }
 
-.run-btn {
+.runBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -99,18 +99,18 @@ async function run() {
   cursor: pointer;
   font-size: 0.85em;
   transition: background var(--nd-duration-fast);
+
+  &:hover:not(:disabled) {
+    background: var(--nd-accentDarken);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }
 
-.run-btn:hover:not(:disabled) {
-  background: var(--nd-accentDarken);
-}
-
-.run-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.console-output {
+.consoleOutput {
   padding: 8px 10px;
   border-radius: var(--nd-radius-sm);
   background: var(--nd-bg);
@@ -121,12 +121,12 @@ async function run() {
   overflow-y: auto;
 }
 
-.output-line {
+.outputLine {
   white-space: pre-wrap;
   word-break: break-all;
-}
 
-.output-line.error {
-  color: var(--nd-love);
+  &.error {
+    color: var(--nd-love);
+  }
 }
 </style>

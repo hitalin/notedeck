@@ -58,17 +58,17 @@ function handlePostFormButton(comp: UiComponent) {
 </script>
 
 <template>
-  <div class="ais-ui-renderer">
+  <div :class="$style.aisUiRenderer">
     <template v-for="comp in components" :key="comp.id">
       <!-- text / mfm (both rendered as MFM, matching Misskey behavior) -->
-      <div v-if="comp.type === 'text' || comp.type === 'mfm'" class="ais-mfm">
+      <div v-if="comp.type === 'text' || comp.type === 'mfm'" :class="$style.aisMfm">
         <MkMfm :text="(comp.props.text as string) ?? ''" :server-host="serverHost" />
       </div>
 
       <!-- button -->
       <button
         v-else-if="comp.type === 'button'"
-        class="ais-button"
+        :class="$style.aisButton"
         :disabled="!!comp.props.disabled"
         @click="callHandler(comp.props.onClick, interpreter)"
       >
@@ -78,7 +78,7 @@ function handlePostFormButton(comp: UiComponent) {
       <!-- textInput -->
       <input
         v-else-if="comp.type === 'textInput'"
-        class="ais-text-input"
+        :class="$style.aisTextInput"
         type="text"
         :placeholder="(comp.props.placeholder as string) ?? ''"
         :value="(comp.props.default as string) ?? ''"
@@ -93,7 +93,7 @@ function handlePostFormButton(comp: UiComponent) {
       <!-- numberInput -->
       <input
         v-else-if="comp.type === 'numberInput'"
-        class="ais-number-input"
+        :class="$style.aisNumberInput"
         type="number"
         :value="(comp.props.default as number) ?? 0"
         @input="
@@ -105,7 +105,7 @@ function handlePostFormButton(comp: UiComponent) {
       />
 
       <!-- switch -->
-      <label v-else-if="comp.type === 'switch'" class="ais-switch">
+      <label v-else-if="comp.type === 'switch'" :class="$style.aisSwitch">
         <input
           type="checkbox"
           :checked="!!comp.props.default"
@@ -122,7 +122,7 @@ function handlePostFormButton(comp: UiComponent) {
       <!-- select -->
       <select
         v-else-if="comp.type === 'select'"
-        class="ais-select"
+        :class="$style.aisSelect"
         :value="(comp.props.default as string) ?? ''"
         @change="
           (e) => {
@@ -143,7 +143,7 @@ function handlePostFormButton(comp: UiComponent) {
       <!-- container -->
       <div
         v-else-if="comp.type === 'container'"
-        class="ais-container"
+        :class="$style.aisContainer"
         :style="({
           textAlign: (comp.props.align as string) ?? undefined,
           backgroundColor: (comp.props.bgColor as string) ?? undefined,
@@ -161,7 +161,7 @@ function handlePostFormButton(comp: UiComponent) {
       </div>
 
       <!-- folder -->
-      <details v-else-if="comp.type === 'folder'" class="ais-folder">
+      <details v-else-if="comp.type === 'folder'" :class="$style.aisFolder">
         <summary>{{ comp.props.title ?? 'Folder' }}</summary>
         <AiScriptUiRenderer
           v-if="comp.children?.length"
@@ -173,11 +173,11 @@ function handlePostFormButton(comp: UiComponent) {
       </details>
 
       <!-- buttons (horizontal button group) -->
-      <div v-else-if="comp.type === 'buttons'" class="ais-buttons">
+      <div v-else-if="comp.type === 'buttons'" :class="$style.aisButtons">
         <button
           v-for="(btn, idx) in (comp.props.buttons as { text: string; onClick?: unknown; disabled?: boolean }[]) ?? []"
           :key="idx"
-          class="ais-button"
+          :class="$style.aisButton"
           :disabled="!!btn.disabled"
           @click="callHandler(btn.onClick, interpreter)"
         >
@@ -188,7 +188,7 @@ function handlePostFormButton(comp: UiComponent) {
       <!-- textarea -->
       <textarea
         v-else-if="comp.type === 'textarea'"
-        class="ais-textarea"
+        :class="$style.aisTextarea"
         :placeholder="(comp.props.placeholder as string) ?? ''"
         :value="(comp.props.default as string) ?? ''"
         @input="
@@ -202,17 +202,16 @@ function handlePostFormButton(comp: UiComponent) {
       <!-- postFormButton (Play-specific: opens share page in browser) -->
       <button
         v-else-if="comp.type === 'postFormButton'"
-        class="ais-button ais-post-form-button"
-        :class="{ primary: !!comp.props.primary, rounded: !!comp.props.rounded }"
+        :class="[$style.aisButton, $style.aisPostFormButton, { [$style.primary]: !!comp.props.primary, [$style.rounded]: !!comp.props.rounded }]"
         @click="handlePostFormButton(comp)"
       >
         {{ comp.props.text ?? 'Post' }}
       </button>
 
       <!-- postForm (embedded post form) -->
-      <div v-else-if="comp.type === 'postForm'" class="ais-post-form">
+      <div v-else-if="comp.type === 'postForm'" :class="$style.aisPostForm">
         <textarea
-          class="ais-textarea"
+          :class="$style.aisTextarea"
           :placeholder="(comp.props.placeholder as string) ?? ''"
           @input="
             (e) => {
@@ -226,35 +225,35 @@ function handlePostFormButton(comp: UiComponent) {
       <!-- spacer -->
       <div
         v-else-if="comp.type === 'spacer'"
-        class="ais-spacer"
+        :class="$style.aisSpacer"
         :style="{ height: `${(comp.props.size as number) ?? 16}px` }"
       />
     </template>
   </div>
 </template>
 
-<style scoped>
-.ais-ui-renderer {
+<style lang="scss" module>
+.aisUiRenderer {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.ais-text {
+.aisText {
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 0.85em;
   line-height: 1.5;
 }
 
-.ais-mfm {
+.aisMfm {
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 0.85em;
   line-height: 1.5;
 }
 
-.ais-button {
+.aisButton {
   padding: 7px 14px;
   border: none;
   border-radius: var(--nd-radius-sm);
@@ -263,26 +262,26 @@ function handlePostFormButton(comp: UiComponent) {
   cursor: pointer;
   font-size: 0.85em;
   transition: background var(--nd-duration-fast);
+
+  &:hover:not(:disabled) {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }
 
-.ais-button:hover:not(:disabled) {
-  background: var(--nd-buttonHoverBg);
-}
-
-.ais-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.ais-buttons {
+.aisButtons {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
 }
 
-.ais-text-input,
-.ais-number-input,
-.ais-select {
+.aisTextInput,
+.aisNumberInput,
+.aisSelect {
   padding: 6px 10px;
   border: none;
   border-radius: var(--nd-radius-sm);
@@ -291,9 +290,13 @@ function handlePostFormButton(comp: UiComponent) {
   font-size: 0.85em;
   outline: none;
   transition: box-shadow var(--nd-duration-base);
+
+  &:focus {
+    box-shadow: 0 0 0 2px var(--nd-accent);
+  }
 }
 
-.ais-textarea {
+.aisTextarea {
   padding: 6px 10px;
   border: none;
   border-radius: var(--nd-radius-sm);
@@ -305,16 +308,13 @@ function handlePostFormButton(comp: UiComponent) {
   resize: vertical;
   min-height: 60px;
   transition: box-shadow var(--nd-duration-base);
+
+  &:focus {
+    box-shadow: 0 0 0 2px var(--nd-accent);
+  }
 }
 
-.ais-text-input:focus,
-.ais-number-input:focus,
-.ais-select:focus,
-.ais-textarea:focus {
-  box-shadow: 0 0 0 2px var(--nd-accent);
-}
-
-.ais-switch {
+.aisSwitch {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -322,55 +322,57 @@ function handlePostFormButton(comp: UiComponent) {
   cursor: pointer;
 }
 
-.ais-container {
+.aisContainer {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.ais-folder {
+.aisFolder {
   border: 1px solid var(--nd-divider);
   border-radius: var(--nd-radius-md);
   overflow: hidden;
+
+  summary {
+    cursor: pointer;
+    padding: 6px 10px;
+    font-size: 0.85em;
+    font-weight: 500;
+    background: var(--nd-panelHighlight);
+    transition: background var(--nd-duration-base);
+
+    &:hover {
+      background: var(--nd-buttonHoverBg);
+    }
+  }
+
+  > :deep(.aisUiRenderer) {
+    padding: 8px 10px;
+  }
 }
 
-.ais-folder summary {
-  cursor: pointer;
-  padding: 6px 10px;
-  font-size: 0.85em;
-  font-weight: 500;
-  background: var(--nd-panelHighlight);
-  transition: background var(--nd-duration-base);
+.aisPostFormButton {
+  &.primary {
+    background: var(--nd-accent);
+    color: var(--nd-fgOnAccent);
+
+    &:hover:not(:disabled) {
+      background: var(--nd-accentDarken);
+    }
+  }
+
+  &.rounded {
+    border-radius: var(--nd-radius-full);
+  }
 }
 
-.ais-folder summary:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.ais-folder > :deep(.ais-ui-renderer) {
-  padding: 8px 10px;
-}
-
-.ais-post-form-button.primary {
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
-}
-
-.ais-post-form-button.primary:hover:not(:disabled) {
-  background: var(--nd-accentDarken);
-}
-
-.ais-post-form-button.rounded {
-  border-radius: var(--nd-radius-full);
-}
-
-.ais-post-form {
+.aisPostForm {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.ais-spacer {
+.aisSpacer {
   flex-shrink: 0;
 }
 </style>

@@ -6,6 +6,7 @@ import {
   onMounted,
   onUnmounted,
   ref,
+  useCssModule,
   watch,
 } from 'vue'
 import type { useColumnDrag } from '@/composables/useColumnDrag'
@@ -13,6 +14,7 @@ import { useColumnResize } from '@/composables/useColumnResize'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { useUiStore } from '@/stores/ui'
 
 const props = defineProps<{
   columnDrag: ReturnType<typeof useColumnDrag>
@@ -65,7 +67,9 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
   emoji: defineAsyncComponent(() => import('./DeckEmojiColumn.vue')),
 }
 
+const $style = useCssModule()
 const deckStore = useDeckStore()
+const { isMobilePlatform } = useUiStore()
 
 // Column lookup map — store を直接参照（将来 windowId でフィルタ可能）
 const columnMap = computed(() => {
@@ -137,8 +141,8 @@ function sectionClass(group: string[]) {
   const first = group[0]
   const col = first ? columnMap.value.get(first) : undefined
   return {
-    stacked: group.length > 1,
-    'wide-column': col ? WIDE_COLUMN_TYPES.has(col.type) : false,
+    [$style.stacked]: group.length > 1,
+    [$style.wideColumn]: col ? WIDE_COLUMN_TYPES.has(col.type) : false,
   }
 }
 
@@ -211,13 +215,13 @@ defineExpose({ scrollToColumn, columnMap })
 <template>
   <div
     ref="columnsRef"
-    class="columns"
+    :class="[$style.columns, { [$style.swipeMode]: isMobilePlatform }]"
     @wheel="onColumnsWheel"
     @scroll="onColumnsScroll"
   >
     <div
       v-if="dropInsertIndex === 0"
-      class="drop-placeholder"
+      :class="$style.dropPlaceholder"
       :style="{ flexBasis: `${dropInsertWidth}px` }"
     />
     <template
@@ -225,17 +229,16 @@ defineExpose({ scrollToColumn, columnMap })
       :key="group.join('-')"
     >
       <section
-        class="column-section"
-        :class="sectionClass(group)"
+        :class="[$style.columnSection, sectionClass(group)]"
         :style="{ flexBasis: sectionWidth(group) }"
       >
         <div
           v-for="colId in group"
           :key="colId"
           class="stack-cell"
-          :class="{
-            'drag-source': columnDrag.dragColumnId.value === colId,
-          }"
+          :class="[$style.stackCell, {
+            [$style.dragSource]: columnDrag.dragColumnId.value === colId,
+          }]"
           :data-column-id="colId"
           :data-drop-zone="cellDropZone(colId)"
           @mousedown="deckStore.setActiveColumn(colId)"
@@ -252,20 +255,20 @@ defineExpose({ scrollToColumn, columnMap })
         </div>
       </section>
       <div
-        class="col-resize-handle"
-        :class="{ active: resizingColId === group[0] }"
+        v-if="!isMobilePlatform"
+        :class="[$style.colResizeHandle, { [$style.active]: resizingColId === group[0] }]"
         @mousedown="startColumnResize(group[0]!, $event)"
       />
       <div
         v-if="dropInsertIndex === groupIndex + 1"
-        class="drop-placeholder"
+        :class="$style.dropPlaceholder"
         :style="{ flexBasis: `${dropInsertWidth}px` }"
       />
     </template>
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" module>
 .columns {
   flex: 1;
   display: flex;
@@ -278,7 +281,7 @@ defineExpose({ scrollToColumn, columnMap })
   min-height: 0;
 }
 
-.column-section {
+.columnSection {
   flex: 0 0 auto;
   min-width: 280px;
   max-width: 600px;
@@ -287,85 +290,83 @@ defineExpose({ scrollToColumn, columnMap })
   contain: layout style;
 }
 
-.column-section.wide-column {
+.wideColumn {
   max-width: 1200px;
 }
 
-/* Stacked columns (vertical split) */
-.column-section.stacked {
+.stacked {
   display: flex;
   flex-direction: column;
   gap: var(--nd-columnGap, 6px);
+
+  .stackCell {
+    flex: 1;
+    min-height: 0;
+  }
 }
 
-.stack-cell {
+.stackCell {
   position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+
+  &[data-drop-zone]::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+    z-index: 10;
+    border-radius: 10px;
+  }
+
+  &[data-drop-zone="swap"]::after {
+    inset: 0;
+    background: color-mix(in srgb, var(--nd-accent) 20%, transparent);
+    border: 2px solid var(--nd-accent);
+  }
+
+  &[data-drop-zone="above"]::after {
+    top: 0;
+    height: 50%;
+    background: var(--nd-accent-hover);
+    border-bottom: 3px solid var(--nd-accent);
+    border-radius: 10px 10px 0 0;
+  }
+
+  &[data-drop-zone="below"]::after {
+    bottom: 0;
+    height: 50%;
+    background: var(--nd-accent-hover);
+    border-top: 3px solid var(--nd-accent);
+    border-radius: 0 0 10px 10px;
+  }
 }
 
-.column-section.stacked .stack-cell {
-  flex: 1;
-  min-height: 0;
-}
-
-/* Column drag feedback */
-.stack-cell.drag-source {
+.dragSource {
   opacity: 0.4;
 }
 
-.stack-cell[data-drop-zone]::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  pointer-events: none;
-  z-index: 10;
-  border-radius: 10px;
-}
-
-.stack-cell[data-drop-zone="swap"]::after {
-  inset: 0;
-  background: color-mix(in srgb, var(--nd-accent) 20%, transparent);
-  border: 2px solid var(--nd-accent);
-}
-
-.stack-cell[data-drop-zone="above"]::after {
-  top: 0;
-  height: 50%;
-  background: var(--nd-accent-hover);
-  border-bottom: 3px solid var(--nd-accent);
-  border-radius: 10px 10px 0 0;
-}
-
-.stack-cell[data-drop-zone="below"]::after {
-  bottom: 0;
-  height: 50%;
-  background: var(--nd-accent-hover);
-  border-top: 3px solid var(--nd-accent);
-  border-radius: 0 0 10px 10px;
-}
-
-.col-resize-handle {
+.colResizeHandle {
   flex: 0 0 4px;
   cursor: col-resize;
   background: transparent;
   transition: background var(--nd-duration-base);
+
+  &:hover,
+  &.active {
+    background: var(--nd-accent);
+    opacity: 0.4;
+  }
+
+  &.active {
+    opacity: 0.6;
+  }
 }
 
-.col-resize-handle:hover,
-.col-resize-handle.active {
-  background: var(--nd-accent);
-  opacity: 0.4;
-}
-
-.col-resize-handle.active {
-  opacity: 0.6;
-}
-
-.drop-placeholder {
+.dropPlaceholder {
   flex-shrink: 0;
   border: 2px dashed var(--nd-accent);
   border-radius: 10px;
@@ -373,41 +374,17 @@ defineExpose({ scrollToColumn, columnMap })
   box-shadow: 0 0 12px color-mix(in srgb, var(--nd-accent) 30%, transparent);
 }
 
-/* Small viewport: full-width swipe columns */
-@media (max-width: 500px) {
-  .col-resize-handle {
-    display: none;
-  }
+/* Mobile platform: full-width swipe columns */
+.swipeMode {
+  scroll-snap-type: x mandatory;
+  gap: 0;
+  padding: 0;
 
-  .columns {
-    scroll-snap-type: x mandatory;
-    gap: 0;
-    padding: 0;
-  }
-
-  .column-section {
+  .columnSection {
     flex: 0 0 100% !important;
     min-width: 100% !important;
     max-width: 100% !important;
     scroll-snap-align: start;
   }
-}
-
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .col-resize-handle {
-  display: none;
-}
-
-html.nd-mobile .columns {
-  scroll-snap-type: x mandatory;
-  gap: 0;
-  padding: 0;
-}
-
-html.nd-mobile .column-section {
-  flex: 0 0 100% !important;
-  min-width: 100% !important;
-  max-width: 100% !important;
-  scroll-snap-align: start;
 }
 </style>

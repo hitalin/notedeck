@@ -111,44 +111,43 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
 </script>
 
 <template>
-  <div class="plugins-content">
+  <div :class="$style.pluginsContent">
     <!-- List view -->
     <template v-if="view === 'list'">
-      <div class="plugins-header">
-        <button class="plugins-install-btn" @click="showInstall">
+      <div :class="$style.pluginsHeader">
+        <button :class="$style.pluginsInstallBtn" @click="showInstall">
           <i class="ti ti-plus" />
           インストール
         </button>
       </div>
 
-      <div v-if="pluginsStore.plugins.length === 0" class="plugins-empty">
+      <div v-if="pluginsStore.plugins.length === 0" :class="$style.pluginsEmpty">
         <i class="ti ti-plug" />
         <p>プラグインがインストールされていません</p>
       </div>
 
-      <div v-else class="plugins-list">
+      <div v-else :class="$style.pluginsList">
         <div
           v-for="plugin in pluginsStore.plugins"
           :key="plugin.installId"
-          class="plugin-card"
+          :class="$style.pluginCard"
           @click="showDetail(plugin)"
         >
-          <div class="plugin-card-info">
-            <div class="plugin-card-name">{{ plugin.name }}</div>
-            <div class="plugin-card-meta">
+          <div :class="$style.pluginCardInfo">
+            <div :class="$style.pluginCardName">{{ plugin.name }}</div>
+            <div :class="$style.pluginCardMeta">
               v{{ plugin.version }}
               <template v-if="plugin.author"> · {{ plugin.author }}</template>
             </div>
           </div>
           <button
-            class="nd-toggle-switch"
-            :class="{ on: plugin.active }"
+            :class="[$style.ndToggleSwitch, { [$style.on]: plugin.active }]"
             role="switch"
             :aria-checked="plugin.active"
             title="有効/無効"
             @click.stop="toggleActive(plugin)"
           >
-            <span class="nd-toggle-switch-knob" />
+            <span :class="$style.ndToggleSwitchKnob" />
           </button>
         </div>
       </div>
@@ -156,25 +155,25 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
 
     <!-- Install view -->
     <template v-if="view === 'install'">
-      <div class="plugins-header">
-        <button class="_button plugins-back-btn" @click="backToList">
+      <div :class="$style.pluginsHeader">
+        <button class="_button" :class="$style.pluginsBackBtn" @click="backToList">
           <i class="ti ti-arrow-left" />
         </button>
-        <span class="plugins-header-title">プラグインをインストール</span>
+        <span :class="$style.pluginsHeaderTitle">プラグインをインストール</span>
       </div>
 
-      <div class="install-body">
-        <p class="install-hint">AiScriptプラグインコードを貼り付けてください</p>
+      <div :class="$style.installBody">
+        <p :class="$style.installHint">AiScriptプラグインコードを貼り付けてください</p>
         <AiScriptEditor
           v-model="installCode"
           placeholder="### { name: &quot;my-plugin&quot;, version: &quot;1.0&quot; } ..."
           max-height="none"
         />
-        <div v-if="installError" class="install-error">
+        <div v-if="installError" :class="$style.installError">
           <i class="ti ti-alert-circle" />
           {{ installError }}
         </div>
-        <button class="plugins-install-btn install-submit" @click="doInstall">
+        <button :class="[$style.pluginsInstallBtn, $style.installSubmit]" @click="doInstall">
           <i class="ti ti-download" />
           インストール
         </button>
@@ -183,63 +182,61 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
 
     <!-- Detail view -->
     <template v-if="view === 'detail' && selectedPlugin">
-      <div class="plugins-header">
-        <button class="_button plugins-back-btn" @click="backToList">
+      <div :class="$style.pluginsHeader">
+        <button class="_button" :class="$style.pluginsBackBtn" @click="backToList">
           <i class="ti ti-arrow-left" />
         </button>
-        <span class="plugins-header-title">{{ selectedPlugin.name }}</span>
+        <span :class="$style.pluginsHeaderTitle">{{ selectedPlugin.name }}</span>
       </div>
 
-      <div class="detail-body">
-        <div class="detail-meta">
+      <div :class="$style.detailBody">
+        <div :class="$style.detailMeta">
           <div>バージョン: {{ selectedPlugin.version }}</div>
           <div v-if="selectedPlugin.author">作者: {{ selectedPlugin.author }}</div>
           <div v-if="selectedPlugin.description">{{ selectedPlugin.description }}</div>
         </div>
 
-        <div class="detail-row">
-          <span class="detail-row-label">有効</span>
+        <div :class="$style.detailRow">
+          <span :class="$style.detailRowLabel">有効</span>
           <button
-            class="nd-toggle-switch"
-            :class="{ on: selectedPlugin.active }"
+            :class="[$style.ndToggleSwitch, { [$style.on]: selectedPlugin.active }]"
             role="switch"
             :aria-checked="selectedPlugin.active"
             @click="toggleActive(selectedPlugin)"
           >
-            <span class="nd-toggle-switch-knob" />
+            <span :class="$style.ndToggleSwitchKnob" />
           </button>
         </div>
 
-        <button class="detail-uninstall-btn" @click="uninstall(selectedPlugin)">
+        <button :class="$style.detailUninstallBtn" @click="uninstall(selectedPlugin)">
           <i class="ti ti-trash" />
           アンインストール
         </button>
 
         <!-- Config -->
         <template v-if="selectedPlugin.config && Object.keys(selectedPlugin.config).length > 0">
-          <div class="detail-section-title">設定</div>
-          <div class="detail-config">
+          <div :class="$style.detailSectionTitle">設定</div>
+          <div :class="$style.detailConfig">
             <div
               v-for="(def, key) in selectedPlugin.config"
               :key="key"
-              class="config-item"
+              :class="$style.configItem"
             >
-              <label class="config-label">{{ def.label }}</label>
-              <p v-if="def.description" class="config-desc">{{ def.description }}</p>
+              <label :class="$style.configLabel">{{ def.label }}</label>
+              <p v-if="def.description" :class="$style.configDesc">{{ def.description }}</p>
               <template v-if="def.type === 'boolean'">
                 <button
-                  class="nd-toggle-switch"
-                  :class="{ on: !!selectedPlugin.configData[key] }"
+                  :class="[$style.ndToggleSwitch, { [$style.on]: !!selectedPlugin.configData[key] }]"
                   role="switch"
                   :aria-checked="!!selectedPlugin.configData[key]"
                   @click="updateConfig(selectedPlugin, key, !selectedPlugin.configData[key])"
                 >
-                  <span class="nd-toggle-switch-knob" />
+                  <span :class="$style.ndToggleSwitchKnob" />
                 </button>
               </template>
               <template v-else-if="def.type === 'string'">
                 <input
-                  class="config-input"
+                  :class="$style.configInput"
                   type="text"
                   :value="selectedPlugin.configData[key] as string"
                   @change="updateConfig(selectedPlugin, key, ($event.target as HTMLInputElement).value)"
@@ -247,7 +244,7 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
               </template>
               <template v-else-if="def.type === 'number'">
                 <input
-                  class="config-input"
+                  :class="$style.configInput"
                   type="number"
                   :value="selectedPlugin.configData[key] as number"
                   @change="updateConfig(selectedPlugin, key, Number(($event.target as HTMLInputElement).value))"
@@ -259,13 +256,12 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
 
         <!-- Logs -->
         <template v-if="selectedPluginLogs.length > 0">
-          <div class="detail-section-title">ログ</div>
-          <div class="detail-logs">
+          <div :class="$style.detailSectionTitle">ログ</div>
+          <div :class="$style.detailLogs">
             <div
               v-for="(log, i) in selectedPluginLogs"
               :key="i"
-              class="log-line"
-              :class="{ error: log.isError }"
+              :class="[$style.logLine, { [$style.error]: log.isError }]"
             >
               {{ log.text }}
             </div>
@@ -276,8 +272,8 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   </div>
 </template>
 
-<style scoped>
-.plugins-content {
+<style lang="scss" module>
+.pluginsContent {
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -286,20 +282,20 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   overflow-y: auto;
 }
 
-.plugins-header {
+.pluginsHeader {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
 
-.plugins-header-title {
+.pluginsHeaderTitle {
   font-weight: bold;
   font-size: 0.95em;
   color: var(--nd-fgHighlighted);
 }
 
-.plugins-back-btn {
+.pluginsBackBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -308,13 +304,13 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   border-radius: var(--nd-radius-md);
   color: var(--nd-fg);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.plugins-back-btn:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.plugins-install-btn {
+.pluginsInstallBtn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -328,13 +324,13 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   cursor: pointer;
   transition: opacity var(--nd-duration-base);
   margin-left: auto;
+
+  &:hover {
+    opacity: 0.85;
+  }
 }
 
-.plugins-install-btn:hover {
-  opacity: 0.85;
-}
-
-.plugins-empty {
+.pluginsEmpty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -343,19 +339,19 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   padding: 40px 0;
   color: var(--nd-fg);
   opacity: 0.5;
+
+  .ti {
+    font-size: 2em;
+  }
 }
 
-.plugins-empty .ti {
-  font-size: 2em;
-}
-
-.plugins-list {
+.pluginsList {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.plugin-card {
+.pluginCard {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -363,46 +359,52 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   border-radius: var(--nd-radius-md);
   cursor: pointer;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.plugin-card:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.plugin-card-info {
+.pluginCardInfo {
   flex: 1;
   min-width: 0;
 }
 
-.plugin-card-name {
+.pluginCardName {
   font-weight: bold;
   font-size: 0.9em;
   color: var(--nd-fgHighlighted);
 }
 
-.plugin-card-meta {
+.pluginCardMeta {
   font-size: 0.8em;
   color: var(--nd-fg);
   opacity: 0.6;
 }
 
-/* Install view */
-.install-body {
+.ndToggleSwitch {
+  /* placeholder for toggle switch styling - inherits from global */
+}
+
+.ndToggleSwitchKnob {
+  /* placeholder for toggle switch knob styling - inherits from global */
+}
+
+.installBody {
   display: flex;
   flex-direction: column;
   gap: 8px;
   flex: 1;
 }
 
-.install-hint {
+.installHint {
   font-size: 0.85em;
   color: var(--nd-fg);
   opacity: 0.7;
   margin: 0;
 }
 
-
-.install-error {
+.installError {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -413,18 +415,17 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   font-size: 0.85em;
 }
 
-.install-submit {
+.installSubmit {
   align-self: flex-end;
 }
 
-/* Detail view */
-.detail-body {
+.detailBody {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.detail-meta {
+.detailMeta {
   font-size: 0.85em;
   color: var(--nd-fg);
   opacity: 0.7;
@@ -433,20 +434,20 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   gap: 2px;
 }
 
-.detail-row {
+.detailRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 8px 0;
 }
 
-.detail-row-label {
+.detailRowLabel {
   font-size: 0.85em;
   font-weight: bold;
   color: var(--nd-fg);
 }
 
-.detail-uninstall-btn {
+.detailUninstallBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -461,13 +462,13 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   font-weight: bold;
   cursor: pointer;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: rgba(255, 42, 42, 0.2);
+  }
 }
 
-.detail-uninstall-btn:hover {
-  background: rgba(255, 42, 42, 0.2);
-}
-
-.detail-section-title {
+.detailSectionTitle {
   font-weight: bold;
   font-size: 0.85em;
   color: var(--nd-fg);
@@ -475,47 +476,46 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   margin-top: 4px;
 }
 
-.detail-config {
+.detailConfig {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.config-item {
+.configItem {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.config-label {
+.configLabel {
   font-size: 0.85em;
   font-weight: bold;
   color: var(--nd-fgHighlighted);
 }
 
-.config-desc {
+.configDesc {
   font-size: 0.8em;
   color: var(--nd-fg);
   opacity: 0.6;
   margin: 0;
 }
 
-.config-input {
+.configInput {
   padding: 6px 10px;
   border: 1px solid var(--nd-divider);
   border-radius: var(--nd-radius-sm);
   background: var(--nd-inputBg, var(--nd-bg));
   color: var(--nd-fg);
   font-size: 0.85em;
+
+  &:focus {
+    outline: none;
+    border-color: var(--nd-accent);
+  }
 }
 
-.config-input:focus {
-  outline: none;
-  border-color: var(--nd-accent);
-}
-
-/* Logs */
-.detail-logs {
+.detailLogs {
   background: var(--nd-codeEditorBg, #1e1e1e);
   border-radius: var(--nd-radius-md);
   padding: 8px;
@@ -525,77 +525,82 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   font-size: 0.8em;
 }
 
-.log-line {
+.logLine {
   color: var(--nd-fg);
   padding: 2px 4px;
   white-space: pre-wrap;
   word-break: break-all;
-}
 
-.log-line.error {
-  color: var(--nd-error);
+  &.error {
+    color: var(--nd-error);
+  }
 }
 
 @media (max-width: 500px) {
-  .plugins-content {
+  .pluginsContent {
     padding: 8px;
   }
 
-  .plugins-back-btn {
+  .pluginsBackBtn {
     width: 44px;
     height: 44px;
   }
 
-  .plugins-install-btn {
+  .pluginsInstallBtn {
     padding: 10px 16px;
     min-height: 44px;
   }
 
-  .plugin-card {
+  .pluginCard {
     padding: 12px;
     min-height: 44px;
   }
 
-  .detail-uninstall-btn {
+  .detailUninstallBtn {
     padding: 12px;
     min-height: 44px;
   }
 
-  .config-input {
+  .configInput {
     padding: 10px 12px;
     font-size: 1em;
     min-height: 44px;
   }
 }
 
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .plugins-content {
-  padding: 8px;
+:global(html.nd-mobile) {
+  .pluginsContent {
+    padding: 8px;
+  }
+
+  .pluginsBackBtn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .pluginsInstallBtn {
+    padding: 10px 16px;
+    min-height: 44px;
+  }
+
+  .pluginCard {
+    padding: 12px;
+    min-height: 44px;
+  }
+
+  .detailUninstallBtn {
+    padding: 12px;
+    min-height: 44px;
+  }
+
+  .configInput {
+    padding: 10px 12px;
+    font-size: 1em;
+    min-height: 44px;
+  }
 }
 
-html.nd-mobile .plugins-back-btn {
-  width: 44px;
-  height: 44px;
-}
-
-html.nd-mobile .plugins-install-btn {
-  padding: 10px 16px;
-  min-height: 44px;
-}
-
-html.nd-mobile .plugin-card {
-  padding: 12px;
-  min-height: 44px;
-}
-
-html.nd-mobile .detail-uninstall-btn {
-  padding: 12px;
-  min-height: 44px;
-}
-
-html.nd-mobile .config-input {
-  padding: 10px 12px;
-  font-size: 1em;
-  min-height: 44px;
-}
+/* Empty placeholder classes for dynamic binding */
+.on {}
+.error {}
 </style>

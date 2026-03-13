@@ -37,80 +37,82 @@ fetchDrive()
 </script>
 
 <template>
-  <div class="drive-picker" @click.stop>
+  <div :class="$style.drivePicker" @click.stop>
     <!-- Header -->
-    <div class="dp-header">
-      <button v-if="folderStack.length > 0" class="_button dp-header-btn" @click="goUp">
+    <div :class="$style.dpHeader">
+      <button v-if="folderStack.length > 0" class="_button" :class="$style.dpHeaderBtn" @click="goUp">
         <i class="ti ti-arrow-left" />
       </button>
-      <span class="dp-title">
+      <span :class="$style.dpTitle">
         <i class="ti ti-cloud" />
         {{ folderStack.length > 0 ? folderStack[folderStack.length - 1]!.name : 'ドライブ' }}
       </span>
-      <button class="_button dp-header-btn" @click="emit('close')">
+      <button class="_button" :class="$style.dpHeaderBtn" @click="emit('close')">
         <i class="ti ti-x" />
       </button>
     </div>
 
     <!-- Content -->
-    <div class="dp-content">
-      <div v-if="loading" class="dp-empty">読み込み中...</div>
-      <div v-else-if="error" class="dp-empty dp-error">{{ error }}</div>
+    <div :class="$style.dpContent">
+      <div v-if="loading" :class="$style.dpEmpty">読み込み中...</div>
+      <div v-else-if="error" :class="[$style.dpEmpty, $style.dpError]">{{ error }}</div>
       <template v-else>
         <!-- Folders -->
         <button
           v-for="folder in folders"
           :key="folder.id"
-          class="_button dp-folder"
+          class="_button"
+          :class="$style.dpFolder"
           @click="openFolder(folder)"
         >
           <i class="ti ti-folder" />
           <span>{{ folder.name }}</span>
-          <i class="ti ti-chevron-right dp-folder-arrow" />
+          <i class="ti ti-chevron-right" :class="$style.dpFolderArrow" />
         </button>
 
         <!-- Files -->
-        <div v-if="files.length > 0" class="dp-grid">
+        <div v-if="files.length > 0" :class="$style.dpGrid">
           <button
             v-for="file in files"
             :key="file.id"
-            class="_button dp-grid-cell"
-            :class="{ selected: selectedIds.has(file.id) }"
+            class="_button"
+            :class="[$style.dpGridCell, selectedIds.has(file.id) && $style.selected]"
             @click="toggleFile(file.id)"
           >
-            <div class="dp-thumb">
+            <div :class="$style.dpThumb">
               <img
                 v-if="isImage(file) && !file.isSensitive"
                 :src="safeUrl(file.thumbnailUrl) || safeUrl(file.url)"
                 :alt="file.name"
-                class="dp-thumb-img"
+                :class="$style.dpThumbImg"
                 loading="lazy"
               />
-              <div v-else-if="file.isSensitive" class="dp-thumb-placeholder">
+              <div v-else-if="file.isSensitive" :class="$style.dpThumbPlaceholder">
                 <i class="ti ti-eye-off" />
               </div>
-              <div v-else class="dp-thumb-placeholder">
+              <div v-else :class="$style.dpThumbPlaceholder">
                 <i class="ti ti-file" />
               </div>
-              <div class="dp-check" :class="{ checked: selectedIds.has(file.id) }">
+              <div :class="[$style.dpCheck, selectedIds.has(file.id) && $style.checked]">
                 <i class="ti ti-check" />
               </div>
             </div>
-            <div class="dp-label">{{ file.name }}</div>
+            <div :class="$style.dpLabel">{{ file.name }}</div>
           </button>
         </div>
 
-        <div v-if="folders.length === 0 && files.length === 0" class="dp-empty">
+        <div v-if="folders.length === 0 && files.length === 0" :class="$style.dpEmpty">
           ファイルがありません
         </div>
       </template>
     </div>
 
     <!-- Footer -->
-    <div class="dp-footer">
-      <span class="dp-count">{{ selectedCount }}件選択</span>
+    <div :class="$style.dpFooter">
+      <span :class="$style.dpCount">{{ selectedCount }}件選択</span>
       <button
-        class="_button dp-confirm"
+        class="_button"
+        :class="$style.dpConfirm"
         :disabled="selectedCount === 0"
         @click="confirm"
       >
@@ -120,8 +122,8 @@ fetchDrive()
   </div>
 </template>
 
-<style scoped>
-.drive-picker {
+<style lang="scss" module>
+.drivePicker {
   width: 100%;
   max-width: 520px;
   max-height: 50vh;
@@ -134,7 +136,7 @@ fetchDrive()
   overflow: hidden;
 }
 
-.dp-header {
+.dpHeader {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -143,7 +145,7 @@ fetchDrive()
   flex-shrink: 0;
 }
 
-.dp-title {
+.dpTitle {
   flex: 1;
   display: flex;
   align-items: center;
@@ -156,7 +158,7 @@ fetchDrive()
   white-space: nowrap;
 }
 
-.dp-header-btn {
+.dpHeaderBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -166,33 +168,33 @@ fetchDrive()
   color: var(--nd-fg);
   opacity: 0.6;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.dp-header-btn:hover {
-  opacity: 1;
-  background: var(--nd-buttonHoverBg);
-}
-
-.dp-content {
+.dpContent {
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
 }
 
-.dp-empty {
+.dpEmpty {
   padding: 32px 16px;
   text-align: center;
   font-size: 0.85em;
   opacity: 0.5;
 }
 
-.dp-error {
+.dpError {
   color: var(--nd-love);
   opacity: 1;
 }
 
-.dp-folder {
+.dpFolder {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -204,55 +206,60 @@ fetchDrive()
   text-align: left;
   border-bottom: 1px solid var(--nd-divider);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  :global(.ti-folder) {
+    color: var(--nd-accent);
+    font-size: 16px;
+  }
 }
 
-.dp-folder:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.dp-folder .ti-folder {
-  color: var(--nd-accent);
-  font-size: 16px;
-}
-
-.dp-folder-arrow {
+.dpFolderArrow {
   font-size: 12px;
   opacity: 0.3;
   margin-left: auto;
 }
 
-.dp-grid {
+.dpGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2px;
   padding: 2px;
 }
 
-.dp-grid-cell {
+.dpGridCell {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  &.selected .dpThumb {
+    outline: 3px solid var(--nd-accent);
+    outline-offset: -3px;
+  }
 }
 
-.dp-grid-cell:hover {
-  opacity: 0.85;
-}
-
-.dp-thumb {
+.dpThumb {
   position: relative;
   aspect-ratio: 1;
   overflow: hidden;
   background: var(--nd-bg);
 }
 
-.dp-thumb-img {
+.dpThumbImg {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.dp-thumb-placeholder {
+.dpThumbPlaceholder {
   width: 100%;
   height: 100%;
   display: flex;
@@ -262,7 +269,7 @@ fetchDrive()
   opacity: 0.3;
 }
 
-.dp-check {
+.dpCheck {
   position: absolute;
   top: 4px;
   left: 4px;
@@ -277,20 +284,15 @@ fetchDrive()
   color: transparent;
   font-size: 11px;
   transition: all var(--nd-duration-base);
+
+  &.checked {
+    background: var(--nd-accent);
+    border-color: var(--nd-accent);
+    color: #fff;
+  }
 }
 
-.dp-check.checked {
-  background: var(--nd-accent);
-  border-color: var(--nd-accent);
-  color: #fff;
-}
-
-.dp-grid-cell.selected .dp-thumb {
-  outline: 3px solid var(--nd-accent);
-  outline-offset: -3px;
-}
-
-.dp-label {
+.dpLabel {
   padding: 3px 4px;
   font-size: 0.6em;
   color: var(--nd-fg);
@@ -301,7 +303,7 @@ fetchDrive()
   text-align: center;
 }
 
-.dp-footer {
+.dpFooter {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -310,12 +312,12 @@ fetchDrive()
   flex-shrink: 0;
 }
 
-.dp-count {
+.dpCount {
   font-size: 0.8em;
   opacity: 0.5;
 }
 
-.dp-confirm {
+.dpConfirm {
   padding: 6px 20px;
   border-radius: var(--nd-radius-md);
   background: var(--nd-accent);
@@ -323,14 +325,14 @@ fetchDrive()
   font-size: 0.85em;
   font-weight: 600;
   transition: opacity var(--nd-duration-base);
-}
 
-.dp-confirm:hover {
-  opacity: 0.85;
-}
+  &:hover {
+    opacity: 0.85;
+  }
 
-.dp-confirm:disabled {
-  opacity: 0.4;
-  cursor: default;
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
 }
 </style>

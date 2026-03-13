@@ -323,55 +323,56 @@ function onKeydown(e: KeyboardEvent) {
 </script>
 
 <template>
-  <div :class="inline ? 'post-inline-wrapper' : 'post-overlay'" @click="!inline && emit('close')">
-    <div class="post-form" :class="{ 'post-form--inline': inline }" :style="formThemeVars" @click.stop="closePopups">
+  <div :class="inline ? $style.postInlineWrapper : $style.postOverlay" @click="!inline && emit('close')">
+    <div :class="[$style.postForm, { [$style.postFormInline]: inline }]" :style="formThemeVars" @click.stop="closePopups">
       <!-- Header -->
-      <header class="header">
-        <div v-if="!inline" class="header-left">
-          <button class="_button header-btn" title="閉じる" @click="emit('close')">
+      <header :class="$style.header">
+        <div v-if="!inline" :class="$style.headerLeft">
+          <button class="_button" :class="$style.headerBtn" title="閉じる" @click="emit('close')">
             <i class="ti ti-x" />
           </button>
-          <div v-if="account" class="account-wrapper">
+          <div v-if="account" :class="$style.accountWrapper">
             <button
-              class="_button account-btn"
+              class="_button"
+              :class="$style.accountBtn"
               :title="`@${account.username}@${account.host}`"
               @click="showAccountMenu = !showAccountMenu"
             >
               <img
                 v-if="account.avatarUrl"
                 :src="account.avatarUrl"
-                class="account-avatar"
+                :class="$style.accountAvatar"
               />
             </button>
-            <div v-if="showAccountMenu && accounts.length > 1" class="account-menu">
+            <div v-if="showAccountMenu && accounts.length > 1" :class="$style.accountMenu">
               <button
                 v-for="acc in accounts"
                 :key="acc.id"
-                class="_button account-option"
-                :class="{ active: acc.id === activeAccountId }"
+                class="_button"
+                :class="[$style.accountOption, { [$style.active]: acc.id === activeAccountId }]"
                 @click="switchAccount(acc.id)"
               >
                 <img
                   v-if="acc.avatarUrl"
                   :src="acc.avatarUrl"
-                  class="account-option-avatar"
+                  :class="$style.accountOptionAvatar"
                 />
-                <div class="account-option-info">
-                  <span class="account-option-name">{{ acc.username }}</span>
-                  <span class="account-option-host">@{{ acc.host }}</span>
+                <div :class="$style.accountOptionInfo">
+                  <span :class="$style.accountOptionName">{{ acc.username }}</span>
+                  <span :class="$style.accountOptionHost">@{{ acc.host }}</span>
                 </div>
               </button>
             </div>
           </div>
         </div>
-        <div v-else class="header-left" />
-        <div class="header-right">
+        <div v-else :class="$style.headerLeft" />
+        <div :class="$style.headerRight">
           <!-- Note mode flags -->
           <button
             v-for="(val, key) in noteModeFlags"
             :key="key"
-            class="_button header-btn note-mode-btn"
-            :class="{ active: val }"
+            class="_button"
+            :class="[$style.headerBtn, $style.noteModeBtn, { [$style.active]: val }]"
             :title="noteModeLabel(key as string)"
             @click="noteModeFlags[key as string] = !noteModeFlags[key as string]"
           >
@@ -388,9 +389,10 @@ function onKeydown(e: KeyboardEvent) {
           </button>
 
           <!-- Visibility (hidden in inline channel mode: always public) -->
-          <div v-if="!inline" class="visibility-wrapper">
+          <div v-if="!inline" :class="$style.visibilityWrapper">
             <button
-              class="_button header-btn"
+              class="_button"
+              :class="$style.headerBtn"
               :title="currentVisibility.label"
               @click="showVisibilityMenu = !showVisibilityMenu"
             >
@@ -404,14 +406,14 @@ function onKeydown(e: KeyboardEvent) {
                   fill="none"
                 />
               </svg>
-              <span class="header-btn-text">{{ currentVisibility.label }}</span>
+              <span :class="$style.headerBtnText">{{ currentVisibility.label }}</span>
             </button>
-            <div v-if="showVisibilityMenu" class="visibility-menu">
+            <div v-if="showVisibilityMenu" :class="$style.visibilityMenu">
               <button
                 v-for="opt in visibilityOptions"
                 :key="opt.value"
-                class="_button visibility-option"
-                :class="{ active: visibility === opt.value }"
+                class="_button"
+                :class="[$style.visibilityOption, { [$style.active]: visibility === opt.value }]"
                 :disabled="disabledVisibilities.has(opt.value)"
                 @click="selectVisibility(opt.value)"
               >
@@ -433,8 +435,8 @@ function onKeydown(e: KeyboardEvent) {
           <!-- Local only (hidden in inline channel mode: always local-only) -->
           <button
             v-if="!inline && visibility !== 'specified'"
-            class="_button header-btn local-only-btn"
-            :class="{ active: localOnly }"
+            class="_button"
+            :class="[$style.headerBtn, $style.localOnlyBtn, { [$style.active]: localOnly }]"
             :title="localOnly ? 'ローカルのみ (連合なし)' : '連合あり'"
             @click="localOnly = !localOnly"
           >
@@ -442,19 +444,20 @@ function onKeydown(e: KeyboardEvent) {
           </button>
 
           <!-- More menu (preview, drafts, schedule) -->
-          <div class="more-menu-wrapper">
+          <div :class="$style.moreMenuWrapper">
             <button
-              class="_button header-btn"
+              class="_button"
+              :class="$style.headerBtn"
               title="その他"
               @click.stop="toggleMoreMenu"
             >
               <i class="ti ti-dots" />
             </button>
-            <div v-if="showMoreMenu" class="more-menu" @click.stop>
+            <div v-if="showMoreMenu" :class="$style.moreMenu" @click.stop>
               <!-- Preview -->
               <button
-                class="_button more-menu-item"
-                :class="{ active: showPreview }"
+                class="_button"
+                :class="[$style.moreMenuItem, { [$style.active]: showPreview }]"
                 @click="showPreview = !showPreview; showMoreMenu = false"
               >
                 <i class="ti ti-eye" />
@@ -462,7 +465,8 @@ function onKeydown(e: KeyboardEvent) {
               </button>
               <!-- Draft save -->
               <button
-                class="_button more-menu-item"
+                class="_button"
+                :class="$style.moreMenuItem"
                 @click="saveCurrentDraft(); showMoreMenu = false"
               >
                 <i class="ti ti-device-floppy" />
@@ -470,58 +474,60 @@ function onKeydown(e: KeyboardEvent) {
               </button>
               <!-- Draft list -->
               <button
-                class="_button more-menu-item"
-                :class="{ active: showDraftMenu }"
+                class="_button"
+                :class="[$style.moreMenuItem, { [$style.active]: showDraftMenu }]"
                 @click.stop="showDraftMenu = !showDraftMenu"
               >
                 <i class="ti ti-notes" />
                 下書き
-                <span v-if="drafts.length > 0" class="more-menu-badge">{{ drafts.length }}</span>
+                <span v-if="drafts.length > 0" :class="$style.moreMenuBadge">{{ drafts.length }}</span>
               </button>
               <!-- Draft list popup (nested) -->
-              <div v-if="showDraftMenu" class="more-menu-draft-list">
+              <div v-if="showDraftMenu" :class="$style.moreMenuDraftList">
                 <div
                   v-for="d in drafts"
                   :key="d.id"
-                  class="draft-item"
+                  :class="$style.draftItem"
                 >
-                  <button class="_button draft-item-main" @click="restoreDraft(d); showMoreMenu = false">
-                    <span class="draft-item-text">{{ d.text || '(空)' }}</span>
-                    <span class="draft-item-date">{{ new Date(d.savedAt).toLocaleDateString() }}</span>
+                  <button class="_button" :class="$style.draftItemMain" @click="restoreDraft(d); showMoreMenu = false">
+                    <span :class="$style.draftItemText">{{ d.text || '(空)' }}</span>
+                    <span :class="$style.draftItemDate">{{ new Date(d.savedAt).toLocaleDateString() }}</span>
                   </button>
                   <button
-                    class="_button draft-item-delete"
+                    class="_button"
+                    :class="$style.draftItemDelete"
                     title="下書きを削除"
                     @click.stop="removeDraft(d.id)"
                   >
                     <i class="ti ti-x" />
                   </button>
                 </div>
-                <div v-if="drafts.length === 0" class="draft-empty">下書きはありません</div>
+                <div v-if="drafts.length === 0" :class="$style.draftEmpty">下書きはありません</div>
               </div>
               <!-- Schedule (only if server supports it) -->
               <template v-if="supportsScheduledNotes && !editNote">
-                <div class="more-menu-divider" />
+                <div :class="$style.moreMenuDivider" />
                 <button
-                  class="_button more-menu-item"
-                  :class="{ active: !!scheduledAt }"
+                  class="_button"
+                  :class="[$style.moreMenuItem, { [$style.active]: !!scheduledAt }]"
                   @click.stop="showSchedulePopup = !showSchedulePopup"
                 >
                   <i class="ti ti-clock" />
                   予約投稿
-                  <span v-if="scheduledAt" class="more-menu-schedule-badge">{{ formatScheduledDate(scheduledAt) }}</span>
+                  <span v-if="scheduledAt" :class="$style.moreMenuScheduleBadge">{{ formatScheduledDate(scheduledAt) }}</span>
                 </button>
-                <div v-if="showSchedulePopup" class="more-menu-schedule-picker" @click.stop>
+                <div v-if="showSchedulePopup" :class="$style.moreMenuSchedulePicker" @click.stop>
                   <input
                     type="datetime-local"
-                    class="schedule-datetime-input"
+                    :class="$style.scheduleDatetimeInput"
                     :min="minScheduleDatetime()"
                     :value="scheduledAt ? scheduledAt.slice(0, 16) : ''"
                     @change="setSchedule(($event.target as HTMLInputElement).value || null)"
                   />
                   <button
                     v-if="scheduledAt"
-                    class="_button schedule-clear-btn"
+                    class="_button"
+                    :class="$style.scheduleClearBtn"
                     @click="setSchedule(null)"
                   >
                     予約を解除
@@ -533,8 +539,7 @@ function onKeydown(e: KeyboardEvent) {
 
           <!-- Submit -->
           <button
-            class="submit-btn"
-            :class="{ posted, scheduled: !!scheduledAt }"
+            :class="[$style.submitBtn, { [$style.posted]: posted, [$style.scheduled]: !!scheduledAt }]"
             :disabled="!canPost"
             @click="post"
           >
@@ -544,17 +549,17 @@ function onKeydown(e: KeyboardEvent) {
               </svg>
             </template>
             <template v-else-if="isPosting">
-              <span class="posting-dots">...</span>
+              <span :class="$style.postingDots">...</span>
             </template>
             <template v-else-if="scheduledAt">
-              <svg viewBox="0 0 24 24" width="16" height="16" class="submit-icon">
+              <svg viewBox="0 0 24 24" width="16" height="16" :class="$style.submitIcon">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
                 <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
               </svg>
               予約投稿
             </template>
             <template v-else>
-              <svg viewBox="0 0 24 24" width="16" height="16" class="submit-icon">
+              <svg viewBox="0 0 24 24" width="16" height="16" :class="$style.submitIcon">
                 <template v-if="editNote">
                   <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
                 </template>
@@ -575,24 +580,24 @@ function onKeydown(e: KeyboardEvent) {
       </header>
 
       <!-- Reply preview -->
-      <div v-if="replyTo" class="reply-preview">
+      <div v-if="replyTo" :class="$style.replyPreview">
         <img
           v-if="replyTo.user.avatarUrl"
           :src="replyTo.user.avatarUrl"
-          class="reply-avatar"
+          :class="$style.replyAvatar"
         />
-        <div class="reply-content">
-          <span class="reply-user">
+        <div :class="$style.replyContent">
+          <span :class="$style.replyUser">
             <MkMfm v-if="replyTo.user.name" :text="replyTo.user.name" :emojis="replyTo.user.emojis" :server-host="replyTo._serverHost" />
             <template v-else>{{ replyTo.user.username }}</template>
           </span>
-          <span class="reply-handle">@{{ replyTo.user.username }}</span>
-          <p class="reply-text">{{ replyTo.text }}</p>
+          <span :class="$style.replyHandle">@{{ replyTo.user.username }}</span>
+          <p :class="$style.replyText">{{ replyTo.text }}</p>
         </div>
       </div>
 
       <!-- Quote indicator -->
-      <div v-if="renoteId && !replyTo" class="quote-indicator">
+      <div v-if="renoteId && !replyTo" :class="$style.quoteIndicator">
         <svg viewBox="0 0 24 24" width="14" height="14">
           <path d="M10 11h6m-3-3v6M3 8V6a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
         </svg>
@@ -600,32 +605,32 @@ function onKeydown(e: KeyboardEvent) {
       </div>
 
       <!-- Schedule indicator -->
-      <div v-if="scheduledAt" class="schedule-indicator">
+      <div v-if="scheduledAt" :class="$style.scheduleIndicator">
         <svg viewBox="0 0 24 24" width="14" height="14">
           <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
           <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
         </svg>
         {{ formatScheduledDate(scheduledAt) }}
-        <button class="_button schedule-clear" @click="scheduledAt = null">
+        <button class="_button" :class="$style.scheduleClear" @click="scheduledAt = null">
           <i class="ti ti-x" />
         </button>
       </div>
 
       <!-- CW input -->
-      <div v-if="showCw" class="cw-outer">
+      <div v-if="showCw" :class="$style.cwOuter">
         <input
           v-model="cw"
-          class="cw-input"
+          :class="$style.cwInput"
           placeholder="閲覧注意"
         />
       </div>
 
       <!-- Textarea -->
-      <div class="text-outer" :class="{ withCw: showCw }">
+      <div :class="[$style.textOuter, { [$style.withCw]: showCw }]">
         <textarea
           ref="textareaRef"
           v-model="text"
-          class="text-area"
+          :class="$style.textArea"
           :maxlength="MAX_TEXT_LENGTH"
           :placeholder="replyTo ? '返信...' : renoteId ? '引用...' : '今どんな気分？'"
           @keydown="onKeydown"
@@ -644,19 +649,19 @@ function onKeydown(e: KeyboardEvent) {
         />
         <span
           v-if="remainingChars <= 100"
-          class="text-count _acrylic"
-          :class="{ over: remainingChars < 0 }"
+          class="_acrylic"
+          :class="[$style.textCount, { [$style.over]: remainingChars < 0 }]"
         >{{ remainingChars }}</span>
       </div>
 
       <!-- Preview -->
-      <div v-if="showPreview" class="preview-section">
-        <div class="preview-header">
+      <div v-if="showPreview" :class="$style.previewSection">
+        <div :class="$style.previewHeader">
           <i class="ti ti-eye" />
           プレビュー
         </div>
-        <div class="preview-area">
-          <div v-if="text" class="preview-content">
+        <div :class="$style.previewArea">
+          <div v-if="text" :class="$style.previewContent">
             <MkMfm
               :text="text"
               :emojis="{}"
@@ -664,38 +669,40 @@ function onKeydown(e: KeyboardEvent) {
               :account-id="activeAccountId"
             />
           </div>
-          <div v-else class="preview-empty">テキストを入力するとプレビューが表示されます</div>
+          <div v-else :class="$style.previewEmpty">テキストを入力するとプレビューが表示されます</div>
         </div>
-        <div v-if="attachedFiles.length > 0" class="preview-files">
+        <div v-if="attachedFiles.length > 0" :class="$style.previewFiles">
           <MkMediaGrid :files="attachedFiles" />
         </div>
       </div>
 
       <!-- Poll editor -->
-      <div v-if="showPoll" class="poll-editor">
-        <div v-for="(_, i) in pollChoices" :key="i" class="poll-choice-row">
+      <div v-if="showPoll" :class="$style.pollEditor">
+        <div v-for="(_, i) in pollChoices" :key="i" :class="$style.pollChoiceRow">
           <input
             v-model="pollChoices[i]"
-            class="poll-choice-input"
+            :class="$style.pollChoiceInput"
             :placeholder="`選択肢 ${i + 1}`"
           />
           <button
             v-if="pollChoices.length > 2"
-            class="_button poll-choice-remove"
+            class="_button"
+            :class="$style.pollChoiceRemove"
             @click="removePollChoice(i)"
           >
             <i class="ti ti-x" />
           </button>
         </div>
-        <div class="poll-actions">
+        <div :class="$style.pollActions">
           <button
             v-if="pollChoices.length < 10"
-            class="_button poll-add-btn"
+            class="_button"
+            :class="$style.pollAddBtn"
             @click="addPollChoice"
           >
             <i class="ti ti-plus" /> 選択肢を追加
           </button>
-          <label class="poll-multiple-label">
+          <label :class="$style.pollMultipleLabel">
             <input v-model="pollMultiple" type="checkbox" />
             複数選択
           </label>
@@ -703,21 +710,21 @@ function onKeydown(e: KeyboardEvent) {
       </div>
 
       <!-- File previews -->
-      <div v-if="attachedFiles.length > 0 || isUploading" class="file-preview-area">
-        <div v-for="file in attachedFiles" :key="file.id" class="file-preview">
+      <div v-if="attachedFiles.length > 0 || isUploading" :class="$style.filePreviewArea">
+        <div v-for="file in attachedFiles" :key="file.id" :class="$style.filePreview">
           <img
             v-if="file.thumbnailUrl || file.type.startsWith('image/')"
             :src="file.thumbnailUrl || file.url"
-            class="file-thumb"
+            :class="$style.fileThumb"
           />
-          <div v-else class="file-icon">
+          <div v-else :class="$style.fileIcon">
             <i class="ti ti-file-text" />
           </div>
-          <button class="_button file-remove" title="削除" @click="removeFile(file.id)">
+          <button class="_button" :class="$style.fileRemove" title="削除" @click="removeFile(file.id)">
             <i class="ti ti-x" />
           </button>
         </div>
-        <div v-if="isUploading" class="file-uploading">アップロード中...</div>
+        <div v-if="isUploading" :class="$style.fileUploading">アップロード中...</div>
       </div>
 
       <!-- Hidden file input -->
@@ -731,27 +738,28 @@ function onKeydown(e: KeyboardEvent) {
       />
 
       <!-- Error -->
-      <div v-if="error" class="post-error">{{ error }}</div>
+      <div v-if="error" :class="$style.postError">{{ error }}</div>
 
       <!-- Footer -->
-      <footer class="footer">
-        <div class="footer-left">
+      <footer :class="$style.footer">
+        <div :class="$style.footerLeft">
           <!-- Attach file -->
-          <div class="footer-popup-wrapper">
+          <div :class="$style.footerPopupWrapper">
             <button
-              class="_button footer-btn"
+              class="_button"
+              :class="$style.footerBtn"
               title="ファイルを添付"
               :disabled="isUploading"
               @click.stop="toggleAttachMenu"
             >
               <i class="ti ti-photo-plus" />
             </button>
-            <div v-if="showAttachMenu" class="footer-popup attach-menu" @click.stop>
-              <button class="_button attach-menu-item" @click="attachFromLocal">
+            <div v-if="showAttachMenu" :class="[$style.footerPopup, $style.attachMenu]" @click.stop>
+              <button class="_button" :class="$style.attachMenuItem" @click="attachFromLocal">
                 <i class="ti ti-upload" />
                 <span>アップロード</span>
               </button>
-              <button class="_button attach-menu-item" @click="attachFromDrive">
+              <button class="_button" :class="$style.attachMenuItem" @click="attachFromDrive">
                 <i class="ti ti-cloud" />
                 <span>ドライブから</span>
               </button>
@@ -760,8 +768,8 @@ function onKeydown(e: KeyboardEvent) {
 
           <!-- Poll -->
           <button
-            class="_button footer-btn"
-            :class="{ active: showPoll }"
+            class="_button"
+            :class="[$style.footerBtn, { [$style.active]: showPoll }]"
             title="投票"
             @click="showPoll = !showPoll"
           >
@@ -770,8 +778,8 @@ function onKeydown(e: KeyboardEvent) {
 
           <!-- CW -->
           <button
-            class="_button footer-btn"
-            :class="{ active: showCw }"
+            class="_button"
+            :class="[$style.footerBtn, { [$style.active]: showCw }]"
             title="閲覧注意"
             @click="showCw = !showCw"
           >
@@ -779,38 +787,39 @@ function onKeydown(e: KeyboardEvent) {
           </button>
 
           <!-- Hashtag -->
-          <button class="_button footer-btn" title="ハッシュタグ" @click="insertHashtag">
+          <button class="_button" :class="$style.footerBtn" title="ハッシュタグ" @click="insertHashtag">
             <i class="ti ti-hash" />
           </button>
 
           <!-- Mention -->
-          <div class="footer-popup-wrapper">
-            <button class="_button footer-btn" title="メンション" @click.stop="toggleMentionPopup">
+          <div :class="$style.footerPopupWrapper">
+            <button class="_button" :class="$style.footerBtn" title="メンション" @click.stop="toggleMentionPopup">
               <i class="ti ti-at" />
             </button>
-            <div v-if="showMentionPopup" class="footer-popup mention-popup" @click.stop>
+            <div v-if="showMentionPopup" :class="[$style.footerPopup, $style.mentionPopup]" @click.stop>
               <input
                 v-model="mentionQuery"
-                class="mention-search-input"
+                :class="$style.mentionSearchInput"
                 type="text"
                 placeholder="ユーザーを検索..."
                 @input="onMentionInput"
               />
-              <div class="mention-results">
+              <div :class="$style.mentionResults">
                 <button
                   v-for="user in mentionResults"
                   :key="user.id"
-                  class="_button mention-result-item"
+                  class="_button"
+                  :class="$style.mentionResultItem"
                   @click="pickMention(user)"
                 >
-                  <img v-if="user.avatarUrl" :src="user.avatarUrl" class="mention-avatar" />
-                  <div class="mention-info">
-                    <span class="mention-name">{{ user.username }}</span>
-                    <span v-if="user.host" class="mention-host">@{{ user.host }}</span>
+                  <img v-if="user.avatarUrl" :src="user.avatarUrl" :class="$style.mentionAvatar" />
+                  <div :class="$style.mentionInfo">
+                    <span :class="$style.mentionName">{{ user.username }}</span>
+                    <span v-if="user.host" :class="$style.mentionHost">@{{ user.host }}</span>
                   </div>
                 </button>
-                <div v-if="mentionSearching" class="mention-status">検索中...</div>
-                <div v-else-if="mentionQuery && mentionResults.length === 0" class="mention-status">
+                <div v-if="mentionSearching" :class="$style.mentionStatus">検索中...</div>
+                <div v-else-if="mentionQuery && mentionResults.length === 0" :class="$style.mentionStatus">
                   ユーザーが見つかりません
                 </div>
               </div>
@@ -818,15 +827,16 @@ function onKeydown(e: KeyboardEvent) {
           </div>
 
           <!-- MFM -->
-          <div class="footer-popup-wrapper">
-            <button class="_button footer-btn" title="MFM" @click.stop="toggleMfmMenu">
+          <div :class="$style.footerPopupWrapper">
+            <button class="_button" :class="$style.footerBtn" title="MFM" @click.stop="toggleMfmMenu">
               <i class="ti ti-palette" />
             </button>
-            <div v-if="showMfmMenu" class="footer-popup mfm-menu" @click.stop>
+            <div v-if="showMfmMenu" :class="[$style.footerPopup, $style.mfmMenu]" @click.stop>
               <button
                 v-for="fn in mfmFunctions"
                 :key="fn.label"
-                class="_button mfm-menu-item"
+                class="_button"
+                :class="$style.mfmMenuItem"
                 @click="pickMfm(fn)"
               >
                 {{ fn.label }}
@@ -836,7 +846,8 @@ function onKeydown(e: KeyboardEvent) {
 
           <!-- Clear -->
           <button
-            class="_button footer-btn"
+            class="_button"
+            :class="$style.footerBtn"
             title="クリア"
             @click="resetForm"
           >
@@ -847,20 +858,21 @@ function onKeydown(e: KeyboardEvent) {
           <button
             v-for="action in postFormActions"
             :key="action.pluginInstallId + action.title"
-            class="_button footer-btn"
+            class="_button"
+            :class="$style.footerBtn"
             :title="action.title"
             @click="runPostFormAction(action)"
           >
             <i class="ti ti-plug" />
           </button>
         </div>
-        <div class="footer-right">
+        <div :class="$style.footerRight">
           <!-- Emoji -->
-          <div class="footer-popup-wrapper">
-            <button class="_button footer-btn" title="絵文字" @click.stop="toggleEmojiPopup">
+          <div :class="$style.footerPopupWrapper">
+            <button class="_button" :class="$style.footerBtn" title="絵文字" @click.stop="toggleEmojiPopup">
               <i class="ti ti-mood-happy" />
             </button>
-            <div v-if="showEmojiPopup && account" class="footer-popup emoji-popup" @click.stop>
+            <div v-if="showEmojiPopup && account" :class="[$style.footerPopup, $style.emojiPopup]" @click.stop>
               <MkReactionPicker
                 :server-host="account.host"
                 :account-id="activeAccountId"
@@ -883,8 +895,8 @@ function onKeydown(e: KeyboardEvent) {
   </div>
 </template>
 
-<style scoped>
-.post-overlay {
+<style lang="scss" module>
+.postOverlay {
   position: fixed;
   inset: 0;
   z-index: var(--nd-z-navbar);
@@ -896,11 +908,11 @@ function onKeydown(e: KeyboardEvent) {
   overflow-y: auto;
 }
 
-.post-inline-wrapper {
+.postInlineWrapper {
   display: contents;
 }
 
-.post-form {
+.postForm {
   background: var(--nd-popup);
   border-radius: 16px;
   box-shadow: 0 8px 32px var(--nd-shadow);
@@ -911,96 +923,99 @@ function onKeydown(e: KeyboardEvent) {
   display: flex;
   flex-direction: column;
   container-type: inline-size;
-}
 
-/* ── Inline mode ── */
-.post-form--inline {
-  background: transparent;
-  border-radius: 0;
-  box-shadow: none;
-  max-width: none;
-  margin: 0;
-  border-bottom: 1px solid var(--nd-divider);
-}
+  /* ── Inline mode ── */
+  &.postFormInline {
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    max-width: none;
+    margin: 0;
+    border-bottom: 1px solid var(--nd-divider);
 
-.post-form--inline .header {
-  min-height: 36px;
-}
+    .header {
+      min-height: 36px;
+    }
 
-.post-form--inline .header-right {
-  min-height: 36px;
-  font-size: 0.85em;
-}
+    .headerRight {
+      min-height: 36px;
+      font-size: 0.85em;
+    }
 
-.post-form--inline .header-btn {
-  padding: 5px;
-}
+    .headerBtn {
+      padding: 5px;
+    }
 
-.post-form--inline .header-btn-text {
-  display: none;
-}
+    .headerBtnText {
+      display: none;
+    }
 
-.post-form--inline .text-area {
-  min-height: 42px;
-  padding: 0 12px;
-  font-size: 0.95em;
-  field-sizing: content;
-}
+    .textArea {
+      min-height: 42px;
+      padding: 0 12px;
+      font-size: 0.95em;
+      field-sizing: content;
 
-.post-form--inline .cw-input {
-  padding: 6px 12px;
-  font-size: 0.95em;
-}
+      &::placeholder {
+        font-size: 1em;
+      }
+    }
 
-.post-form--inline .text-area::placeholder,
-.post-form--inline .cw-input::placeholder {
-  font-size: 1em;
-}
+    .cwInput {
+      padding: 6px 12px;
+      font-size: 0.95em;
 
-.post-form--inline .footer {
-  padding: 0 6px 6px;
-  font-size: 0.9em;
-}
+      &::placeholder {
+        font-size: 1em;
+      }
+    }
 
-.post-form--inline .footer-left {
-  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
-  grid-auto-rows: 32px;
-}
+    .footer {
+      padding: 0 6px 6px;
+      font-size: 0.9em;
+    }
 
-.post-form--inline .footer-right {
-  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
-  grid-auto-rows: 32px;
-}
+    .footerLeft {
+      grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+      grid-auto-rows: 32px;
+    }
 
-.post-form--inline .submit-btn {
-  margin: 6px 6px 6px 4px;
-  padding: 0 10px;
-  line-height: 30px;
-  font-size: 0.85em;
-  min-width: 70px;
-}
+    .footerRight {
+      grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+      grid-auto-rows: 32px;
+    }
 
-.post-form--inline .file-preview-area {
-  padding: 6px 12px;
-}
+    .submitBtn {
+      margin: 6px 6px 6px 4px;
+      padding: 0 10px;
+      line-height: 30px;
+      font-size: 0.85em;
+      min-width: 70px;
+    }
 
-.post-form--inline .file-preview {
-  width: 60px;
-  height: 60px;
-}
+    .filePreviewArea {
+      padding: 6px 12px;
+    }
 
-.post-form--inline .poll-editor {
-  padding: 6px 12px;
-}
+    .filePreview {
+      width: 60px;
+      height: 60px;
+    }
 
-.post-form--inline .reply-preview {
-  padding: 8px 12px;
-  font-size: 0.85em;
-}
+    .pollEditor {
+      padding: 6px 12px;
+    }
 
-.post-form--inline .post-error {
-  padding: 4px 12px;
-  font-size: 0.8em;
+    .replyPreview {
+      padding: 8px 12px;
+      font-size: 0.85em;
+    }
+
+    .postError {
+      padding: 4px 12px;
+      font-size: 0.8em;
+    }
+  }
 }
 
 /* ── Header ── */
@@ -1012,7 +1027,7 @@ function onKeydown(e: KeyboardEvent) {
   gap: 4px;
 }
 
-.header-left {
+.headerLeft {
   display: flex;
   flex: 1;
   flex-wrap: nowrap;
@@ -1021,7 +1036,7 @@ function onKeydown(e: KeyboardEvent) {
   padding-left: 12px;
 }
 
-.header-right {
+.headerRight {
   display: flex;
   min-height: 48px;
   font-size: 0.9em;
@@ -1032,7 +1047,7 @@ function onKeydown(e: KeyboardEvent) {
   padding-left: 4px;
 }
 
-.header-btn {
+.headerBtn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1043,13 +1058,13 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
 }
 
-.header-btn:hover {
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-}
-
-.header-btn-text {
+.headerBtnText {
   padding-left: 6px;
   overflow: clip;
   text-overflow: ellipsis;
@@ -1057,24 +1072,24 @@ function onKeydown(e: KeyboardEvent) {
   max-width: 210px;
 }
 
-.account-wrapper {
+.accountWrapper {
   position: relative;
 }
 
-.account-btn {
+.accountBtn {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 8px;
   border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
 }
 
-.account-btn:hover {
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-}
-
-.account-avatar {
+.accountAvatar {
   width: 28px;
   height: 28px;
   border-radius: 100%;
@@ -1082,7 +1097,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* Account menu */
-.account-menu {
+.accountMenu {
   position: absolute;
   top: 100%;
   left: 0;
@@ -1097,7 +1112,7 @@ function onKeydown(e: KeyboardEvent) {
   -webkit-backdrop-filter: blur(var(--nd-blur));
 }
 
-.account-option {
+.accountOption {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1106,17 +1121,17 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
+
+  &.active {
+    color: var(--nd-accent);
+  }
 }
 
-.account-option:hover {
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-}
-
-.account-option.active {
-  color: var(--nd-accent);
-}
-
-.account-option-avatar {
+.accountOptionAvatar {
   width: 24px;
   height: 24px;
   border-radius: 100%;
@@ -1124,13 +1139,13 @@ function onKeydown(e: KeyboardEvent) {
   flex-shrink: 0;
 }
 
-.account-option-info {
+.accountOptionInfo {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.account-option-name {
+.accountOptionName {
   font-size: 0.85em;
   font-weight: bold;
   overflow: hidden;
@@ -1138,7 +1153,7 @@ function onKeydown(e: KeyboardEvent) {
   white-space: nowrap;
 }
 
-.account-option-host {
+.accountOptionHost {
   font-size: 0.75em;
   opacity: 0.6;
   overflow: hidden;
@@ -1147,7 +1162,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* Submit button (Misskey gradient style) */
-.submit-btn {
+.submitBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1164,36 +1179,40 @@ function onKeydown(e: KeyboardEvent) {
   background: linear-gradient(90deg, var(--nd-buttonGradateA, var(--nd-accent)), var(--nd-buttonGradateB, var(--nd-accent)));
   cursor: pointer;
   transition: opacity var(--nd-duration-base), box-shadow var(--nd-duration-slow) ease;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--nd-accent) 40%, transparent);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  &.posted {
+    background: var(--nd-success);
+  }
+
+  &.scheduled {
+    background: var(--nd-accent);
+  }
 }
 
-.submit-btn:hover:not(:disabled) {
-  opacity: 0.85;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--nd-accent) 40%, transparent);
-}
-
-.submit-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.submit-btn.posted {
-  background: var(--nd-success);
-}
-
-.posting-dots {
+.postingDots {
   letter-spacing: 2px;
 }
 
-.submit-icon {
+.submitIcon {
   flex-shrink: 0;
 }
 
 /* ── Visibility menu ── */
-.visibility-wrapper {
+.visibilityWrapper {
   position: relative;
 }
 
-.visibility-menu {
+.visibilityMenu {
   position: absolute;
   top: 100%;
   right: 0;
@@ -1208,7 +1227,7 @@ function onKeydown(e: KeyboardEvent) {
   -webkit-backdrop-filter: blur(var(--nd-blur));
 }
 
-.visibility-option {
+.visibilityOption {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1218,33 +1237,35 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background var(--nd-duration-base);
-}
 
-.visibility-option:hover {
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-}
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
 
-.visibility-option.active {
-  color: var(--nd-accent);
-  font-weight: bold;
-}
+  &.active {
+    color: var(--nd-accent);
+    font-weight: bold;
+  }
 
-.visibility-option:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
 }
 
 /* ── Local only button ── */
-.local-only-btn.active {
-  color: var(--nd-error);
+.localOnlyBtn {
+  &.active {
+    color: var(--nd-error);
+  }
 }
 
 /* ── More menu ── */
-.more-menu-wrapper {
+.moreMenuWrapper {
   position: relative;
 }
 
-.more-menu {
+.moreMenu {
   position: absolute;
   top: 100%;
   right: 0;
@@ -1259,7 +1280,7 @@ function onKeydown(e: KeyboardEvent) {
   -webkit-backdrop-filter: blur(var(--nd-blur));
 }
 
-.more-menu-item {
+.moreMenuItem {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1269,17 +1290,17 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
+
+  &.active {
+    color: var(--nd-accent);
+  }
 }
 
-.more-menu-item:hover {
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-}
-
-.more-menu-item.active {
-  color: var(--nd-accent);
-}
-
-.more-menu-badge {
+.moreMenuBadge {
   margin-left: auto;
   font-size: 0.75em;
   padding: 1px 6px;
@@ -1288,26 +1309,26 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-fgOnAccent);
 }
 
-.more-menu-divider {
+.moreMenuDivider {
   height: 1px;
   margin: 2px 8px;
   background: var(--nd-divider);
 }
 
-.more-menu-schedule-badge {
+.moreMenuScheduleBadge {
   margin-left: auto;
   font-size: 0.75em;
   opacity: 0.7;
 }
 
-.more-menu-draft-list {
+.moreMenuDraftList {
   max-height: 200px;
   overflow-y: auto;
   padding: 0 4px 4px;
   scrollbar-width: none;
 }
 
-.more-menu-schedule-picker {
+.moreMenuSchedulePicker {
   padding: 8px 12px;
   display: flex;
   flex-direction: column;
@@ -1315,19 +1336,21 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* ── Note mode button ── */
-.note-mode-btn.active {
-  color: var(--nd-accent);
+.noteModeBtn {
+  &.active {
+    color: var(--nd-accent);
+  }
 }
 
 /* ── Reply preview ── */
-.reply-preview {
+.replyPreview {
   display: flex;
   padding: 12px 20px 16px;
   font-size: 0.95em;
   gap: 10px;
 }
 
-.reply-avatar {
+.replyAvatar {
   width: 36px;
   height: 36px;
   border-radius: 100%;
@@ -1335,25 +1358,25 @@ function onKeydown(e: KeyboardEvent) {
   flex-shrink: 0;
 }
 
-.reply-content {
+.replyContent {
   min-width: 0;
   max-height: 100px;
   overflow-y: auto;
 }
 
-.reply-user {
+.replyUser {
   font-weight: bold;
   font-size: 0.9em;
   color: var(--nd-fgHighlighted);
 }
 
-.reply-handle {
+.replyHandle {
   font-size: 0.8em;
   opacity: 0.5;
   margin-left: 4px;
 }
 
-.reply-text {
+.replyText {
   margin: 4px 0 0;
   white-space: pre-wrap;
   word-break: break-word;
@@ -1363,7 +1386,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* ── Quote indicator ── */
-.quote-indicator {
+.quoteIndicator {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1373,11 +1396,11 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* ── CW input ── */
-.cw-outer {
+.cwOuter {
   width: 100%;
 }
 
-.cw-input {
+.cwInput {
   display: block;
   box-sizing: border-box;
   width: 100%;
@@ -1393,16 +1416,16 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* ── Textarea ── */
-.text-outer {
+.textOuter {
   width: 100%;
   position: relative;
+
+  &.withCw {
+    padding-top: 8px;
+  }
 }
 
-.text-outer.withCw {
-  padding-top: 8px;
-}
-
-.text-area {
+.textArea {
   display: block;
   box-sizing: border-box;
   width: 100%;
@@ -1422,18 +1445,18 @@ function onKeydown(e: KeyboardEvent) {
   field-sizing: content;
 }
 
-.text-area::placeholder,
-.cw-input::placeholder {
+.textArea::placeholder,
+.cwInput::placeholder {
   color: var(--nd-fg);
   opacity: 0.35;
 }
 
 /* ── Preview ── */
-.preview-section {
+.previewSection {
   border-top: 1px solid color-mix(in srgb, var(--nd-fg) 12%, transparent);
 }
 
-.preview-header {
+.previewHeader {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1443,7 +1466,7 @@ function onKeydown(e: KeyboardEvent) {
   opacity: 0.5;
 }
 
-.preview-area {
+.previewArea {
   padding: 0 24px;
   max-height: 300px;
   overflow-y: auto;
@@ -1452,12 +1475,12 @@ function onKeydown(e: KeyboardEvent) {
   scrollbar-width: thin;
 }
 
-.preview-content {
+.previewContent {
   word-break: break-word;
   overflow-wrap: break-word;
 }
 
-.preview-empty {
+.previewEmpty {
   padding: 16px 0;
   text-align: center;
   color: var(--nd-fg);
@@ -1465,19 +1488,19 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 0.9em;
 }
 
-.preview-files {
+.previewFiles {
   padding: 8px 24px;
 }
 
 /* ── Error ── */
-.post-error {
+.postError {
   padding: 8px 24px;
   color: var(--nd-error);
   font-size: 0.85em;
 }
 
 /* ── Text count (overlaid on textarea) ── */
-.text-count {
+.textCount {
   position: absolute;
   top: 0;
   right: 2px;
@@ -1487,33 +1510,27 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: var(--nd-radius-sm);
   min-width: 1.6em;
   text-align: center;
-}
 
-.text-count.over {
-  color: var(--nd-error);
-}
-
-._acrylic {
-  background: color-mix(in srgb, var(--nd-panelBg, var(--nd-popup)) 50%, transparent);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  &.over {
+    color: var(--nd-error);
+  }
 }
 
 /* ── Poll editor ── */
-.poll-editor {
+.pollEditor {
   padding: 8px 24px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.poll-choice-row {
+.pollChoiceRow {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.poll-choice-input {
+.pollChoiceInput {
   flex: 1;
   padding: 6px 10px;
   font-size: 0.9em;
@@ -1523,14 +1540,14 @@ function onKeydown(e: KeyboardEvent) {
   border: none;
   border-radius: var(--nd-radius-sm);
   outline: none;
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.35;
+  }
 }
 
-.poll-choice-input::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.35;
-}
-
-.poll-choice-remove {
+.pollChoiceRemove {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1540,21 +1557,21 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-fg);
   opacity: 0.5;
   flex-shrink: 0;
+
+  &:hover {
+    opacity: 1;
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
 }
 
-.poll-choice-remove:hover {
-  opacity: 1;
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-}
-
-.poll-actions {
+.pollActions {
   display: flex;
   align-items: center;
   gap: 12px;
   padding-top: 2px;
 }
 
-.poll-add-btn {
+.pollAddBtn {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1562,13 +1579,13 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 0.8em;
   color: var(--nd-accent);
   border-radius: var(--nd-radius-sm);
+
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
 }
 
-.poll-add-btn:hover {
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-}
-
-.poll-multiple-label {
+.pollMultipleLabel {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1585,7 +1602,7 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 1em;
 }
 
-.footer-left {
+.footerLeft {
   flex: 1;
   display: grid;
   grid-auto-flow: row;
@@ -1593,7 +1610,7 @@ function onKeydown(e: KeyboardEvent) {
   grid-auto-rows: 40px;
 }
 
-.footer-right {
+.footerRight {
   flex: 0;
   margin-left: auto;
   display: grid;
@@ -1603,11 +1620,11 @@ function onKeydown(e: KeyboardEvent) {
   direction: rtl;
 }
 
-.footer-popup-wrapper {
+.footerPopupWrapper {
   position: relative;
 }
 
-.footer-btn {
+.footerBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1619,18 +1636,18 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background var(--nd-duration-base), color var(--nd-duration-base);
-}
 
-.footer-btn:hover {
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-}
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
 
-.footer-btn.active {
-  color: var(--nd-accent);
+  &.active {
+    color: var(--nd-accent);
+  }
 }
 
 /* ── Footer popups (shared) ── */
-.footer-popup {
+.footerPopup {
   position: absolute;
   top: 100%;
   left: 50%;
@@ -1645,7 +1662,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* ── Mention popup ── */
-.mention-popup {
+.mentionPopup {
   width: 260px;
   max-height: 300px;
   overflow: hidden;
@@ -1653,7 +1670,7 @@ function onKeydown(e: KeyboardEvent) {
   flex-direction: column;
 }
 
-.mention-search-input {
+.mentionSearchInput {
   width: 100%;
   padding: 8px 12px;
   border: none;
@@ -1666,14 +1683,14 @@ function onKeydown(e: KeyboardEvent) {
   box-sizing: border-box;
 }
 
-.mention-results {
+.mentionResults {
   flex: 1;
   overflow-y: auto;
   padding: 4px;
   scrollbar-width: none;
 }
 
-.mention-result-item {
+.mentionResultItem {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1682,13 +1699,13 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
 }
 
-.mention-result-item:hover {
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-}
-
-.mention-avatar {
+.mentionAvatar {
   width: 28px;
   height: 28px;
   border-radius: 100%;
@@ -1696,13 +1713,13 @@ function onKeydown(e: KeyboardEvent) {
   flex-shrink: 0;
 }
 
-.mention-info {
+.mentionInfo {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.mention-name {
+.mentionName {
   font-size: 0.85em;
   font-weight: bold;
   overflow: hidden;
@@ -1710,12 +1727,12 @@ function onKeydown(e: KeyboardEvent) {
   white-space: nowrap;
 }
 
-.mention-host {
+.mentionHost {
   font-size: 0.75em;
   opacity: 0.6;
 }
 
-.mention-status {
+.mentionStatus {
   padding: 12px;
   text-align: center;
   font-size: 0.8em;
@@ -1723,7 +1740,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* ── Emoji popup ── */
-.emoji-popup {
+.emojiPopup {
   width: 320px;
   max-height: 360px;
   overflow: hidden;
@@ -1735,7 +1752,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* ── MFM menu ── */
-.mfm-menu {
+.mfmMenu {
   width: 160px;
   max-height: 320px;
   overflow-y: auto;
@@ -1743,7 +1760,7 @@ function onKeydown(e: KeyboardEvent) {
   scrollbar-width: none;
 }
 
-.mfm-menu-item {
+.mfmMenuItem {
   display: block;
   width: 100%;
   padding: 6px 10px;
@@ -1752,21 +1769,21 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   transition: background var(--nd-duration-base);
-}
 
-.mfm-menu-item:hover {
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
 }
 
 /* ── File preview ── */
-.file-preview-area {
+.filePreviewArea {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   padding: 8px 24px;
 }
 
-.file-preview {
+.filePreview {
   position: relative;
   width: 80px;
   height: 80px;
@@ -1775,13 +1792,13 @@ function onKeydown(e: KeyboardEvent) {
   background: var(--nd-buttonBg);
 }
 
-.file-thumb {
+.fileThumb {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.file-icon {
+.fileIcon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1791,7 +1808,7 @@ function onKeydown(e: KeyboardEvent) {
   opacity: 0.5;
 }
 
-.file-remove {
+.fileRemove {
   position: absolute;
   top: 0;
   right: 0;
@@ -1806,7 +1823,7 @@ function onKeydown(e: KeyboardEvent) {
   cursor: pointer;
 }
 
-.file-uploading {
+.fileUploading {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1819,7 +1836,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* ── Schedule indicator ── */
-.schedule-indicator {
+.scheduleIndicator {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1828,7 +1845,7 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-accent);
 }
 
-.schedule-clear {
+.scheduleClear {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1839,19 +1856,15 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-fg);
   opacity: 0.5;
   margin-left: 2px;
-}
 
-.schedule-clear:hover {
-  opacity: 1;
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-}
-
-.submit-btn.scheduled {
-  background: var(--nd-accent);
+  &:hover {
+    opacity: 1;
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
 }
 
 /* ── Draft menu ── */
-.draft-menu {
+.draftMenu {
   width: 280px;
   max-height: 360px;
   overflow: hidden;
@@ -1859,7 +1872,7 @@ function onKeydown(e: KeyboardEvent) {
   flex-direction: column;
 }
 
-.draft-menu-item {
+.draftMenuItem {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1869,42 +1882,42 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-fg);
   border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
 }
 
-.draft-menu-item:hover {
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-}
-
-.draft-save {
+.draftSave {
   color: var(--nd-accent);
   font-weight: bold;
 }
 
-.draft-divider {
+.draftDivider {
   height: 1px;
   margin: 2px 8px;
   background: var(--nd-divider);
 }
 
-.draft-list {
+.draftList {
   flex: 1;
   overflow-y: auto;
   padding: 4px;
   scrollbar-width: none;
 }
 
-.draft-item {
+.draftItem {
   display: flex;
   align-items: center;
   border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
 }
 
-.draft-item:hover {
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-}
-
-.draft-item-main {
+.draftItemMain {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1915,19 +1928,19 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-fg);
 }
 
-.draft-item-text {
+.draftItemText {
   font-size: 0.82em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.draft-item-date {
+.draftItemDate {
   font-size: 0.72em;
   opacity: 0.5;
 }
 
-.draft-item-delete {
+.draftItemDelete {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1937,14 +1950,14 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
   opacity: 0.4;
+
+  &:hover {
+    opacity: 1;
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
 }
 
-.draft-item-delete:hover {
-  opacity: 1;
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-}
-
-.draft-empty {
+.draftEmpty {
   padding: 16px;
   text-align: center;
   font-size: 0.8em;
@@ -1952,18 +1965,18 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* ── Schedule popup ── */
-.schedule-popup {
+.schedulePopup {
   width: 240px;
   padding: 12px;
 }
 
-.schedule-popup-content {
+.schedulePopupContent {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.schedule-datetime-input {
+.scheduleDatetimeInput {
   width: 100%;
   padding: 8px;
   font-size: 0.85em;
@@ -1976,36 +1989,36 @@ function onKeydown(e: KeyboardEvent) {
   box-sizing: border-box;
 }
 
-.schedule-clear-btn {
+.scheduleClearBtn {
   padding: 6px;
   font-size: 0.8em;
   color: var(--nd-error);
   border-radius: var(--nd-radius-sm);
   text-align: center;
-}
 
-.schedule-clear-btn:hover {
-  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+  }
 }
 
 /* ── Responsive ── */
 @container (max-width: 500px) {
-  .header-btn-text {
+  .headerBtnText {
     display: none;
   }
 
-  .submit-btn {
+  .submitBtn {
     margin: 8px 8px 8px 4px;
     min-height: 44px;
   }
 
-  .cw-input,
-  .text-area {
+  .cwInput,
+  .textArea {
     padding-left: 16px;
     padding-right: 16px;
   }
 
-  .text-area {
+  .textArea {
     min-height: 80px;
   }
 
@@ -2013,12 +2026,12 @@ function onKeydown(e: KeyboardEvent) {
     padding: 0 8px 8px;
   }
 
-  .footer-left,
-  .footer-right {
+  .footerLeft,
+  .footerRight {
     grid-auto-rows: 44px;
   }
 
-  .poll-editor {
+  .pollEditor {
     padding: 8px 16px;
   }
 }
@@ -2028,24 +2041,24 @@ function onKeydown(e: KeyboardEvent) {
     font-size: 0.9em;
   }
 
-  .footer-left {
+  .footerLeft {
     grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
   }
 
-  .header-right {
+  .headerRight {
     gap: 0;
   }
 }
 
 /* ── Attach menu ── */
-.attach-menu {
+.attachMenu {
   min-width: 200px;
   padding: 4px;
   left: 0;
   transform: none;
 }
 
-.attach-menu-item {
+.attachMenuItem {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -2056,28 +2069,27 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-base);
   text-align: left;
-}
 
-.attach-menu-item:hover {
-  background: var(--nd-buttonHoverBg);
-}
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 
-.attach-menu-item .ti {
-  font-size: 16px;
-  opacity: 0.7;
+  :global(.ti) {
+    font-size: 16px;
+    opacity: 0.7;
+  }
 }
-
 
 /* Mobile fullscreen */
 @media (max-width: 600px) {
-  .post-overlay {
+  .postOverlay {
     background: var(--nd-bg);
     padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
     padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
     align-items: stretch;
   }
 
-  .post-form {
+  .postForm {
     max-width: none;
     margin: 0;
     border-radius: 0;
@@ -2086,7 +2098,7 @@ function onKeydown(e: KeyboardEvent) {
     box-shadow: none;
   }
 
-  .emoji-popup {
+  .emojiPopup {
     position: fixed;
     top: auto;
     bottom: 0;
@@ -2104,35 +2116,37 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* Mobile platform: always fullscreen */
-html.nd-mobile .post-overlay {
-  background: var(--nd-bg);
-  padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
-  padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
-  align-items: stretch;
-}
+:global(html.nd-mobile) {
+  .postOverlay {
+    background: var(--nd-bg);
+    padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
+    padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
+    align-items: stretch;
+  }
 
-html.nd-mobile .post-form {
-  max-width: none;
-  margin: 0;
-  border-radius: 0;
-  height: 100%;
-  max-height: none;
-  box-shadow: none;
-}
+  .postForm {
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
+    height: 100%;
+    max-height: none;
+    box-shadow: none;
+  }
 
-html.nd-mobile .emoji-popup {
-  position: fixed;
-  top: auto;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  max-width: 100%;
-  max-height: 50vh;
-  border-radius: 16px 16px 0 0;
-  margin: 0;
-  z-index: 100;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
-  padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
+  .emojiPopup {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 50vh;
+    border-radius: 16px 16px 0 0;
+    margin: 0;
+    z-index: 100;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+    padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
+  }
 }
 </style>

@@ -122,7 +122,7 @@ onMounted(() => {
       {{ error.message }}
     </div>
 
-    <div v-else class="fr-body">
+    <div v-else :class="$style.frBody">
       <div v-if="isLoading && requests.length === 0">
         <MkSkeleton v-for="i in 3" :key="i" />
       </div>
@@ -134,21 +134,20 @@ onMounted(() => {
         フォローリクエストはありません
       </div>
 
-      <div v-else ref="scrollContainer" class="fr-scroller">
+      <div v-else ref="scrollContainer" :class="$style.frScroller">
         <div
           v-for="req in requests"
           :key="req.id"
-          class="fr-item"
+          :class="$style.frItem"
         >
-          <div class="fr-user" @click="column.accountId && navToUser(column.accountId, req.follower.id)">
+          <div :class="$style.frUser" @click="column.accountId && navToUser(column.accountId, req.follower.id)">
             <MkAvatar
               :avatar-url="req.follower.avatarUrl"
               :decorations="req.follower.avatarDecorations"
               :size="42"
-              class="fr-avatar"
             />
-            <div class="fr-user-info">
-              <span class="fr-display-name">
+            <div :class="$style.frUserInfo">
+              <span :class="$style.frDisplayName">
                 <MkMfm
                   v-if="req.follower.name"
                   :text="req.follower.name"
@@ -158,21 +157,21 @@ onMounted(() => {
                 />
                 <template v-else>{{ req.follower.username }}</template>
               </span>
-              <span class="fr-acct">{{ displayName(req.follower) }}</span>
+              <span :class="$style.frAcct">{{ displayName(req.follower) }}</span>
             </div>
           </div>
 
-          <div class="fr-actions">
+          <div :class="$style.frActions">
             <template v-if="actionStates[req.id]">
-              <span class="fr-done">
+              <span :class="$style.frDone">
                 {{ actionStates[req.id] === 'accepted' ? '承認済み' : '拒否済み' }}
               </span>
             </template>
             <template v-else>
-              <button class="fr-btn accept-btn" @click="handleAction(req, 'accepted')">
+              <button :class="[$style.frBtn, $style.acceptBtn]" @click="handleAction(req, 'accepted')">
                 <i class="ti ti-check" /> 承認
               </button>
-              <button class="fr-btn reject-btn" @click="handleAction(req, 'rejected')">
+              <button :class="[$style.frBtn, $style.rejectBtn]" @click="handleAction(req, 'rejected')">
                 <i class="ti ti-x" /> 拒否
               </button>
             </template>
@@ -184,9 +183,11 @@ onMounted(() => {
 </template>
 
 <style scoped>
-@import "./column-common.css";
+@use "./column-common.module.scss";
+</style>
 
-.fr-body {
+<style lang="scss" module>
+.frBody {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -194,7 +195,7 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.fr-scroller {
+.frScroller {
   flex: 1;
   overflow-y: auto;
   overflow-x: clip;
@@ -203,23 +204,23 @@ onMounted(() => {
   -webkit-overflow-scrolling: touch;
 }
 
-.fr-item {
+.frItem {
   padding: 14px 16px;
   border-bottom: 1px solid var(--nd-divider);
 }
 
-.fr-user {
+.frUser {
   display: flex;
   align-items: center;
   gap: 10px;
   cursor: pointer;
+
+  &:hover .frDisplayName {
+    text-decoration: underline;
+  }
 }
 
-.fr-user:hover .fr-display-name {
-  text-decoration: underline;
-}
-
-.fr-user-info {
+.frUserInfo {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -227,7 +228,7 @@ onMounted(() => {
   gap: 2px;
 }
 
-.fr-display-name {
+.frDisplayName {
   font-weight: bold;
   font-size: 0.9em;
   color: var(--nd-fgHighlighted);
@@ -236,7 +237,7 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.fr-acct {
+.frAcct {
   font-size: 0.8em;
   opacity: 0.6;
   overflow: hidden;
@@ -244,14 +245,14 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.fr-actions {
+.frActions {
   display: flex;
   gap: 8px;
   margin-top: 10px;
   padding-left: 52px;
 }
 
-.fr-btn {
+.frBtn {
   flex: 1;
   display: inline-flex;
   align-items: center;
@@ -267,25 +268,25 @@ onMounted(() => {
   transition: filter var(--nd-duration-base);
 }
 
-.accept-btn {
+.acceptBtn {
   background: var(--nd-link);
   color: #fff;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
 }
 
-.accept-btn:hover {
-  filter: brightness(1.1);
-}
-
-.reject-btn {
+.rejectBtn {
   background: transparent;
   color: var(--nd-love);
+
+  &:hover {
+    background: var(--nd-love-subtle);
+  }
 }
 
-.reject-btn:hover {
-  background: var(--nd-love-subtle);
-}
-
-.fr-done {
+.frDone {
   font-size: 0.85em;
   opacity: 0.6;
   font-style: italic;

@@ -168,14 +168,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="widget-app">
+  <div :class="$style.widgetApp">
     <AiScriptToast ref="toastRef" />
     <AiScriptDialog ref="dialogRef" />
-    <div class="app-toolbar">
-      <button class="tool-btn" @click="showEditor = !showEditor">
+    <div :class="$style.appToolbar">
+      <button :class="$style.toolBtn" @click="showEditor = !showEditor">
         <i :class="showEditor ? 'ti ti-chevron-up' : 'ti ti-code'" />
       </button>
-      <button class="tool-btn run" :disabled="running" @click="run">
+      <button :class="[$style.toolBtn, $style.run]" :disabled="running" @click="run">
         <i class="ti ti-player-play" />
       </button>
     </div>
@@ -186,7 +186,7 @@ onMounted(() => {
       placeholder="AiScript App code..."
     />
 
-    <div v-if="error" class="app-error">{{ error }}</div>
+    <div v-if="error" :class="$style.appError">{{ error }}</div>
 
     <AiScriptUiRenderer
       v-if="uiComponents.length"
@@ -210,20 +210,20 @@ onMounted(() => {
   </Teleport>
 </template>
 
-<style scoped>
-.widget-app {
+<style lang="scss" module>
+.widgetApp {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.app-toolbar {
+.appToolbar {
   display: flex;
   justify-content: flex-end;
   gap: 4px;
 }
 
-.tool-btn {
+.toolBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -237,29 +237,29 @@ onMounted(() => {
   font-size: 0.85em;
   opacity: 0.6;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &.run {
+    background: var(--nd-accent);
+    color: var(--nd-fgOnAccent);
+    opacity: 1;
+
+    &:hover:not(:disabled) {
+      background: var(--nd-accentDarken);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
 }
 
-.tool-btn:hover {
-  opacity: 1;
-  background: var(--nd-buttonHoverBg);
-}
-
-.tool-btn.run {
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
-  opacity: 1;
-}
-
-.tool-btn.run:hover:not(:disabled) {
-  background: var(--nd-accentDarken);
-}
-
-.tool-btn.run:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.app-error {
+.appError {
   padding: 6px 8px;
   border-radius: var(--nd-radius-sm);
   background: var(--nd-love-subtle);
@@ -267,4 +267,7 @@ onMounted(() => {
   font-size: 0.8em;
   white-space: pre-wrap;
 }
+
+// Keep for dynamic binding
+.run {}
 </style>

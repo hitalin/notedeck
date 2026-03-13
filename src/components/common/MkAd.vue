@@ -28,49 +28,49 @@ function reduceFrequency() {
 </script>
 
 <template>
-  <div class="mk-ad">
-    <div class="ad-wrapper">
-      <a class="ad-link" @click.prevent="onClick">
-        <img :src="ad.imageUrl" class="ad-image" loading="lazy" />
-        <button class="ad-info-btn" @click.prevent.stop="showMenu = !showMenu">
-          <i class="ti ti-info-circle ad-info-icon" />
+  <div :class="$style.mkAd">
+    <div :class="$style.adWrapper">
+      <a :class="$style.adLink" @click.prevent="onClick">
+        <img :src="ad.imageUrl" :class="$style.adImage" loading="lazy" />
+        <button :class="$style.adInfoBtn" @click.prevent.stop="showMenu = !showMenu">
+          <i class="ti ti-info-circle" :class="$style.adInfoIcon" />
         </button>
       </a>
-      <div v-if="showMenu" class="ad-menu-overlay" @click.stop>
-        <div class="ad-menu-source">Ads by {{ serverHost }}</div>
-        <button class="ad-menu-reduce" @click="reduceFrequency">
+      <div v-if="showMenu" :class="$style.adMenuOverlay" @click.stop>
+        <div :class="$style.adMenuSource">Ads by {{ serverHost }}</div>
+        <button :class="$style.adMenuReduce" @click="reduceFrequency">
           この広告の表示頻度を下げる
         </button>
-        <button class="ad-menu-back" @click="showMenu = false">戻る</button>
+        <button :class="$style.adMenuBack" @click="showMenu = false">戻る</button>
       </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-.mk-ad {
+<style lang="scss" module>
+.mkAd {
   text-align: center;
   padding: 12px 16px;
   border-bottom: 1px solid var(--nd-divider);
 }
 
-.ad-wrapper {
+.adWrapper {
   position: relative;
   display: inline-block;
   max-width: 100%;
 }
 
-.ad-link {
+.adLink {
   display: block;
   position: relative;
   cursor: pointer;
+
+  &:hover > .adImage {
+    filter: contrast(120%);
+  }
 }
 
-.ad-link:hover > .ad-image {
-  filter: contrast(120%);
-}
-
-.ad-image {
+.adImage {
   display: block;
   object-fit: contain;
   max-width: 100%;
@@ -78,7 +78,7 @@ function reduceFrequency() {
   border-radius: 5px;
 }
 
-.ad-info-btn {
+.adInfoBtn {
   position: absolute;
   top: 1px;
   right: 1px;
@@ -91,14 +91,14 @@ function reduceFrequency() {
   cursor: pointer;
 }
 
-.ad-info-icon {
+.adInfoIcon {
   font-size: 14px;
   line-height: 17px;
   color: var(--nd-fg);
   opacity: 0.7;
 }
 
-.ad-menu-overlay {
+.adMenuOverlay {
   position: absolute;
   inset: 0;
   display: flex;
@@ -111,13 +111,13 @@ function reduceFrequency() {
   border-radius: 5px;
 }
 
-.ad-menu-source {
+.adMenuSource {
   font-size: 0.85em;
   color: var(--nd-fg);
   opacity: 0.7;
 }
 
-.ad-menu-reduce {
+.adMenuReduce {
   display: inline-block;
   margin: 4px 0;
   padding: 8px 16px;
@@ -129,22 +129,22 @@ function reduceFrequency() {
   font-weight: bold;
   cursor: pointer;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.85;
+  }
 }
 
-.ad-menu-reduce:hover {
-  opacity: 0.85;
-}
-
-.ad-menu-back {
+.adMenuBack {
   padding: 4px 8px;
   border: none;
   background: none;
   color: var(--nd-accent);
   font-size: 0.85em;
   cursor: pointer;
-}
 
-.ad-menu-back:hover {
-  text-decoration: underline;
+  &:hover {
+    text-decoration: underline;
+  }
 }
 </style>

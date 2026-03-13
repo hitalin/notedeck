@@ -35,18 +35,18 @@ function modeLabel(key: string): string {
   <Transition name="nav-account-menu">
     <div
       v-if="show"
-      class="nav-account-menu _popup"
-      :class="{ 'menu-right': navCollapsed }"
+      class="nav-account-menu"
+      :class="[$style.navAccountMenu, { [$style.menuRight]: navCollapsed }]"
       @click.stop
     >
       <template v-if="Object.keys(modes).length > 0">
         <div
           v-for="(val, key) in modes"
           :key="key"
-          class="nav-account-menu-item"
+          :class="$style.navAccountMenuItem"
           @click="emit('toggle-mode', key as string)"
         >
-          <span class="nav-account-menu-label">{{ modeLabel(key as string) }}</span>
+          <span :class="$style.navAccountMenuLabel">{{ modeLabel(key as string) }}</span>
           <button
             class="nd-toggle-switch"
             :class="{ on: val }"
@@ -58,28 +58,28 @@ function modeLabel(key: string): string {
           </button>
         </div>
       </template>
-      <div v-if="modeError" class="nav-account-menu-error">{{ modeError }}</div>
-      <div class="nav-account-menu-divider" />
-      <button class="_button nav-account-menu-item" @click="navigateToUser(account.id, account.userId)">
+      <div v-if="modeError" :class="$style.navAccountMenuError">{{ modeError }}</div>
+      <div :class="$style.navAccountMenuDivider" />
+      <button class="_button" :class="$style.navAccountMenuItem" @click="navigateToUser(account.id, account.userId)">
         <span>プロフィール</span>
         <i class="ti ti-user" />
       </button>
-      <div class="nav-account-menu-divider" />
-      <div class="nav-account-menu-divider" />
-      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/settings`)">
+      <div :class="$style.navAccountMenuDivider" />
+      <div :class="$style.navAccountMenuDivider" />
+      <button class="_button" :class="$style.navAccountMenuItem" @click="openUrl(`https://${account.host}/settings`)">
         <span>設定</span>
         <i class="ti ti-external-link" />
       </button>
-      <button class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/games`)">
+      <button class="_button" :class="$style.navAccountMenuItem" @click="openUrl(`https://${account.host}/games`)">
         <span>Misskey Games</span>
         <i class="ti ti-external-link" />
       </button>
-      <button v-if="isAdmin" class="_button nav-account-menu-item" @click="openUrl(`https://${account.host}/admin`)">
+      <button v-if="isAdmin" class="_button" :class="$style.navAccountMenuItem" @click="openUrl(`https://${account.host}/admin`)">
         <span>コントロールパネル</span>
         <i class="ti ti-external-link" />
       </button>
-      <div class="nav-account-menu-divider" />
-      <button class="_button nav-account-menu-item nav-account-logout" @click="emit('logout')">
+      <div :class="$style.navAccountMenuDivider" />
+      <button class="_button" :class="[$style.navAccountMenuItem, $style.navAccountLogout]" @click="emit('logout')">
         <span>ログアウト</span>
         <i class="ti ti-logout" />
       </button>
@@ -87,8 +87,8 @@ function modeLabel(key: string): string {
   </Transition>
 </template>
 
-<style scoped>
-.nav-account-menu {
+<style lang="scss" module>
+.navAccountMenu {
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -99,7 +99,7 @@ function modeLabel(key: string): string {
   min-width: 180px;
 }
 
-.nav-account-menu.menu-right {
+.menuRight {
   top: auto;
   bottom: 0;
   left: 100%;
@@ -108,7 +108,7 @@ function modeLabel(key: string): string {
   margin-left: 4px;
 }
 
-.nav-account-menu-item {
+.navAccountMenuItem {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -120,41 +120,44 @@ function modeLabel(key: string): string {
   color: var(--nd-fg);
   width: 100%;
   text-align: left;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.nav-account-menu-item:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.nav-account-menu-label {
+.navAccountMenuLabel {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.nav-account-menu-divider {
+.navAccountMenuDivider {
   height: 1px;
   background: var(--nd-divider);
   margin: 4px 10px;
 }
 
-.nav-account-menu-error {
+.navAccountMenuError {
   padding: 6px 14px;
   font-size: 0.75em;
   color: var(--nd-love);
   word-break: break-word;
 }
 
-.nav-account-logout {
+.navAccountLogout {
   color: var(--nd-love, #ff6b6b);
   gap: 8px;
-}
 
-.nav-account-logout .ti {
-  flex-shrink: 0;
-  opacity: 0.8;
+  .ti {
+    flex-shrink: 0;
+    opacity: 0.8;
+  }
 }
+</style>
 
+<style lang="scss">
+/* Vue transition classes (must be global) */
 .nav-account-menu-enter-active,
 .nav-account-menu-leave-active {
   transition: opacity 0.18s ease, transform 0.18s ease;

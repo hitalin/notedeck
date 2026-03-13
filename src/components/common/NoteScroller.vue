@@ -33,13 +33,13 @@ defineSlots<{
 <template>
   <div
     ref="scrollContainer"
-    class="note-scroller"
+    :class="$style.noteScroller"
     @scroll.passive="$emit('scroll', $event)"
   >
     <slot name="prepend" />
     <TransitionGroup
       tag="div"
-      class="note-list"
+      :class="$style.noteList"
       :enter-active-class="$style.enterActive"
       :leave-active-class="$style.leaveActive"
       :enter-from-class="$style.enterFrom"
@@ -50,7 +50,7 @@ defineSlots<{
         v-for="(item, index) in props.items"
         :key="item.id"
         v-memo="[item, item.id === props.focusedId]"
-        class="note-item"
+        :class="$style.noteItem"
         :style="{ containIntrinsicSize: `0 ${props.estimatedHeight}px` }"
       >
         <slot :item="item" :index="index" />
@@ -60,25 +60,23 @@ defineSlots<{
   </div>
 </template>
 
-<style scoped>
-.note-scroller {
+<style lang="scss" module>
+.noteScroller {
   overflow-y: auto;
   height: 100%;
   overscroll-behavior: contain;
 }
 
-.note-list {
+.noteList {
   position: relative;
 }
 
-.note-item {
+.noteItem {
   content-visibility: auto;
   contain-intrinsic-size: 0 150px; /* fallback, overridden by inline style */
   contain: content;
 }
-</style>
 
-<style module>
 /* Misskey-style TransitionGroup animations */
 /* enter/move: elastic easing over 0.7s */
 .move {
@@ -88,16 +86,15 @@ defineSlots<{
 .enterActive {
   transition: transform 0.7s cubic-bezier(0.23, 1, 0.32, 1),
               opacity 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+
+  :deep(.noteItem) {
+    content-visibility: visible !important;
+  }
 }
 
 .enterFrom {
   opacity: 0;
   transform: translateY(max(-64px, -100%));
-}
-
-/* Disable content-visibility during enter animation to prevent visual stutter */
-.enterActive :deep(.note-item) {
-  content-visibility: visible !important;
 }
 
 /* leave: quick collapse */

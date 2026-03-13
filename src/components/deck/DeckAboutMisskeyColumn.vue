@@ -189,101 +189,103 @@ onMounted(() => {
       {{ error.message }}
     </div>
 
-    <div v-else-if="isLoading && !meta" class="about-body">
+    <div v-else-if="isLoading && !meta" :class="$style.aboutBody">
       <MkSkeleton v-for="i in 5" :key="i" />
     </div>
 
-    <div v-else-if="meta" ref="scrollContainer" class="about-body">
+    <div v-else-if="meta" ref="scrollContainer" :class="$style.aboutBody">
       <!-- Hero -->
-      <div class="about-hero">
+      <div :class="$style.aboutHero">
         <img
           src="/misskey-icon.png"
           alt="Misskey"
-          class="about-icon"
+          :class="$style.aboutIcon"
         />
-        <div class="about-title">Misskey</div>
-        <div class="about-version">v{{ meta.version }}</div>
+        <div :class="$style.aboutTitle">Misskey</div>
+        <div :class="$style.aboutVersion">v{{ meta.version }}</div>
       </div>
 
       <!-- Description -->
-      <div class="about-desc">
+      <div :class="$style.aboutDesc">
         Misskeyはオープンソースの分散型ソーシャルネットワーキングプラットフォームです。
-        <button class="_button about-learn-more" @click="openLink('https://misskey-hub.net/docs/about-misskey/')">
+        <button class="_button" :class="$style.aboutLearnMore" @click="openLink('https://misskey-hub.net/docs/about-misskey/')">
           もっと詳しく
         </button>
       </div>
 
       <!-- I love Misskey -->
-      <div class="about-love">
-        <button class="_button love-button" @click="iLoveMisskey">
-          I <span class="love-heart">❤️</span> #Misskey
+      <div :class="$style.aboutLove">
+        <button class="_button" :class="$style.loveButton" @click="iLoveMisskey">
+          I <span :class="$style.loveHeart">&#10084;&#65039;</span> #Misskey
         </button>
       </div>
 
       <!-- Links -->
-      <div class="about-section">
-        <div class="about-links">
-          <button class="_button about-link" @click="openLink('https://github.com/misskey-dev/misskey')">
-            <i class="ti ti-code about-link-icon" />
+      <div :class="$style.aboutSection">
+        <div :class="$style.aboutLinks">
+          <button class="_button" :class="$style.aboutLink" @click="openLink('https://github.com/misskey-dev/misskey')">
+            <i class="ti ti-code" :class="$style.aboutLinkIcon" />
             <span>ソースコード (オリジナル)</span>
-            <span class="about-link-suffix">GitHub</span>
+            <span :class="$style.aboutLinkSuffix">GitHub</span>
           </button>
-          <button class="_button about-link" @click="openLink('https://crowdin.com/project/misskey')">
-            <i class="ti ti-language-hiragana about-link-icon" />
+          <button class="_button" :class="$style.aboutLink" @click="openLink('https://crowdin.com/project/misskey')">
+            <i class="ti ti-language-hiragana" :class="$style.aboutLinkIcon" />
             <span>翻訳</span>
-            <span class="about-link-suffix">Crowdin</span>
+            <span :class="$style.aboutLinkSuffix">Crowdin</span>
           </button>
-          <button class="_button about-link" @click="openLink('https://www.patreon.com/syuilo')">
-            <i class="ti ti-pig-money about-link-icon" />
+          <button class="_button" :class="$style.aboutLink" @click="openLink('https://www.patreon.com/syuilo')">
+            <i class="ti ti-pig-money" :class="$style.aboutLinkIcon" />
             <span>寄付</span>
-            <span class="about-link-suffix">Patreon</span>
+            <span :class="$style.aboutLinkSuffix">Patreon</span>
           </button>
         </div>
       </div>
 
       <!-- Modified version notice -->
-      <div v-if="isModifiedVersion" class="about-section">
-        <div class="modified-notice">
+      <div v-if="isModifiedVersion" :class="$style.aboutSection">
+        <div :class="$style.modifiedNotice">
           <i class="ti ti-info-circle" />
           <span>このサーバーはMisskeyの改変版 ({{ meta.name || account.host }}) を使用しています。</span>
         </div>
-        <div class="about-links">
-          <button v-if="meta.repositoryUrl" class="_button about-link" @click="openLink(meta.repositoryUrl!)">
-            <i class="ti ti-code about-link-icon" />
+        <div :class="$style.aboutLinks">
+          <button v-if="meta.repositoryUrl" class="_button" :class="$style.aboutLink" @click="openLink(meta.repositoryUrl!)">
+            <i class="ti ti-code" :class="$style.aboutLinkIcon" />
             <span>ソースコード</span>
-            <i class="ti ti-external-link about-link-suffix" />
+            <i class="ti ti-external-link" :class="$style.aboutLinkSuffix" />
           </button>
         </div>
       </div>
 
       <!-- Project members -->
-      <div class="about-section">
-        <div class="about-section-label">プロジェクトメンバー</div>
-        <div class="members-grid">
+      <div :class="$style.aboutSection">
+        <div :class="$style.aboutSectionLabel">プロジェクトメンバー</div>
+        <div :class="$style.membersGrid">
           <button
             v-for="m in members"
             :key="m.username"
-            class="_button member-card"
+            class="_button"
+            :class="$style.memberCard"
             @click="openLink(m.github)"
           >
-            <img :src="m.avatar" :alt="m.username" class="member-avatar" loading="lazy" />
-            <span class="member-name">@{{ m.username }}</span>
+            <img :src="m.avatar" :alt="m.username" :class="$style.memberAvatar" loading="lazy" />
+            <span :class="$style.memberName">@{{ m.username }}</span>
           </button>
         </div>
       </div>
 
       <!-- Sponsors -->
-      <div class="about-section">
-        <div class="about-section-label">Special thanks</div>
-        <div class="sponsors-grid">
+      <div :class="$style.aboutSection">
+        <div :class="$style.aboutSectionLabel">Special thanks</div>
+        <div :class="$style.sponsorsGrid">
           <button
             v-for="s in sponsors"
             :key="s.name"
-            class="_button sponsor-card"
+            class="_button"
+            :class="$style.sponsorCard"
             :title="s.name"
             @click="openLink(s.url)"
           >
-            <img :src="s.logo" :alt="s.name" class="sponsor-logo" loading="lazy" />
+            <img :src="s.logo" :alt="s.name" :class="$style.sponsorLogo" loading="lazy" />
           </button>
         </div>
       </div>
@@ -304,10 +306,10 @@ onMounted(() => {
   </Teleport>
 </template>
 
-<style scoped>
-@import "./column-common.css";
+<style lang="scss" module>
+@use "./column-common.module.scss";
 
-.about-body {
+.aboutBody {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -318,12 +320,12 @@ onMounted(() => {
 }
 
 /* Hero */
-.about-hero {
+.aboutHero {
   text-align: center;
   padding: 24px 16px 16px;
 }
 
-.about-icon {
+.aboutIcon {
   display: block;
   width: 80px;
   height: 80px;
@@ -332,21 +334,21 @@ onMounted(() => {
   object-fit: contain;
 }
 
-.about-title {
+.aboutTitle {
   margin-top: 12px;
   font-size: 1.2em;
   font-weight: bold;
   color: var(--nd-fgHighlighted);
 }
 
-.about-version {
+.aboutVersion {
   margin-top: 2px;
   font-size: 0.85em;
   opacity: 0.5;
 }
 
 /* Description */
-.about-desc {
+.aboutDesc {
   text-align: center;
   padding: 0 16px 16px;
   font-size: 0.9em;
@@ -354,22 +356,22 @@ onMounted(() => {
   color: var(--nd-fg);
 }
 
-.about-learn-more {
+.aboutLearnMore {
   color: var(--nd-accent);
   font-size: inherit;
-}
 
-.about-learn-more:hover {
-  text-decoration: underline;
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 /* I love Misskey */
-.about-love {
+.aboutLove {
   text-align: center;
   padding: 0 16px 16px;
 }
 
-.love-button {
+.loveButton {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -380,13 +382,13 @@ onMounted(() => {
   font-weight: bold;
   font-size: 0.95em;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.85;
+  }
 }
 
-.love-button:hover {
-  opacity: 0.85;
-}
-
-.love-button > .love-heart {
+.loveHeart {
   display: inline-block;
   font-size: 1.1em;
   animation: jelly 1s infinite;
@@ -400,11 +402,11 @@ onMounted(() => {
 }
 
 /* Sections */
-.about-section {
+.aboutSection {
   border-top: solid 0.5px var(--nd-divider);
 }
 
-.about-section-label {
+.aboutSectionLabel {
   font-weight: bold;
   padding: 1.5em 16px 0;
   margin-bottom: 8px;
@@ -412,11 +414,11 @@ onMounted(() => {
 }
 
 /* Links */
-.about-links {
+.aboutLinks {
   padding: 8px 16px 12px;
 }
 
-.about-link {
+.aboutLink {
   display: flex;
   align-items: center;
   width: 100%;
@@ -427,26 +429,26 @@ onMounted(() => {
   font-size: 0.9em;
   color: var(--nd-fg);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.about-link:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.about-link-icon {
+.aboutLinkIcon {
   margin-right: 0.75em;
   flex-shrink: 0;
   opacity: 0.75;
 }
 
-.about-link-suffix {
+.aboutLinkSuffix {
   margin-left: auto;
   opacity: 0.5;
   flex-shrink: 0;
 }
 
 /* Modified version notice */
-.modified-notice {
+.modifiedNotice {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -457,23 +459,23 @@ onMounted(() => {
   font-size: 0.85em;
   color: var(--nd-infoWarnFg, #ffbd3e);
   line-height: 1.5;
-}
 
-.modified-notice > .ti {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--nd-warn, #e8a530);
+  > .ti {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--nd-warn, #e8a530);
+  }
 }
 
 /* Members */
-.members-grid {
+.membersGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 8px;
   padding: 0 16px 12px;
 }
 
-.member-card {
+.memberCard {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -481,20 +483,20 @@ onMounted(() => {
   background: var(--nd-buttonBg);
   border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.member-card:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.member-avatar {
+.memberAvatar {
   width: 30px;
   height: 30px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.member-name {
+.memberName {
   font-size: 0.85em;
   color: var(--nd-fg);
   overflow: hidden;
@@ -503,7 +505,7 @@ onMounted(() => {
 }
 
 /* Sponsors */
-.sponsors-grid {
+.sponsorsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 16px;
@@ -511,20 +513,20 @@ onMounted(() => {
   align-items: center;
 }
 
-.sponsor-card {
+.sponsorCard {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 8px;
   border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.sponsor-card:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.sponsor-logo {
+.sponsorLogo {
   width: 100%;
   max-height: 40px;
   object-fit: contain;

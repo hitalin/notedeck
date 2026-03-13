@@ -205,7 +205,7 @@ fetchDrive()
       <button v-if="folderStack.length > 1" class="_button header-refresh" title="ルート" @click.stop="goRoot">
         <i class="ti ti-home" />
       </button>
-      <button v-if="!detailFile" class="_button header-refresh" :class="{ 'header-btn-active': selectMode }" title="選択" @click.stop="toggleSelectMode">
+      <button v-if="!detailFile" class="_button header-refresh" :class="{ [$style.headerBtnActive]: selectMode }" title="選択" @click.stop="toggleSelectMode">
         <i class="ti ti-checkbox" />
       </button>
       <button v-if="!detailFile && !selectMode" class="_button header-refresh" title="アップロード" :disabled="uploading" @click.stop="openFilePicker">
@@ -229,44 +229,45 @@ fetchDrive()
 
     <!-- Detail view -->
     <template v-if="detailFile">
-      <div class="drive-detail-scroll">
-        <div class="drive-detail">
-          <div class="drive-detail-preview">
+      <div :class="$style.driveDetailScroll">
+        <div :class="$style.driveDetail">
+          <div :class="$style.driveDetailPreview">
             <img
               v-if="isImage(detailFile)"
               :src="safeUrl(detailFile.url)"
               :alt="detailFile.name"
-              class="drive-detail-image"
+              :class="$style.driveDetailImage"
             />
             <video
               v-else-if="isVideo(detailFile)"
               :src="safeUrl(detailFile.url)"
-              class="drive-detail-video"
+              :class="$style.driveDetailVideo"
               controls
             />
             <audio
               v-else-if="isAudio(detailFile)"
               :src="safeUrl(detailFile.url)"
               controls
-              class="drive-detail-audio"
+              :class="$style.driveDetailAudio"
             />
-            <div v-else class="drive-detail-placeholder">
+            <div v-else :class="$style.driveDetailPlaceholder">
               <i class="ti ti-file" />
             </div>
           </div>
-          <div class="drive-detail-info">
-            <div class="drive-detail-name">{{ detailFile.name }}</div>
-            <div class="drive-detail-meta">
+          <div :class="$style.driveDetailInfo">
+            <div :class="$style.driveDetailName">{{ detailFile.name }}</div>
+            <div :class="$style.driveDetailMeta">
               <span>{{ detailFile.type }}</span>
               <span>{{ formatFileSize(detailFile.size) }}</span>
             </div>
-            <div v-if="detailFile.isSensitive" class="drive-detail-sensitive">
+            <div v-if="detailFile.isSensitive" :class="$style.driveDetailSensitive">
               <i class="ti ti-eye-off" /> NSFW
             </div>
           </div>
-          <div class="drive-detail-actions">
+          <div :class="$style.driveDetailActions">
             <button
-              class="_button drive-delete-btn"
+              class="_button"
+              :class="$style.driveDeleteBtn"
               :disabled="deleting"
               @click="deleteFile"
             >
@@ -274,7 +275,7 @@ fetchDrive()
               {{ deleting ? '削除中...' : '削除' }}
             </button>
           </div>
-          <div v-if="deleteError" class="drive-detail-error">{{ deleteError }}</div>
+          <div v-if="deleteError" :class="$style.driveDetailError">{{ deleteError }}</div>
         </div>
       </div>
     </template>
@@ -282,15 +283,15 @@ fetchDrive()
     <!-- Grid view -->
     <template v-else>
       <!-- Breadcrumb -->
-      <div v-if="folderStack.length > 0" class="drive-breadcrumb">
-        <button class="_button drive-breadcrumb-item" @click="goRoot">
+      <div v-if="folderStack.length > 0" :class="$style.driveBreadcrumb">
+        <button class="_button" :class="$style.driveBreadcrumbItem" @click="goRoot">
           <i class="ti ti-cloud" />
         </button>
         <template v-for="(folder, i) in folderStack" :key="folder.id">
-          <i class="ti ti-chevron-right drive-breadcrumb-sep" />
+          <i class="ti ti-chevron-right" :class="$style.driveBreadcrumbSep" />
           <button
-            class="_button drive-breadcrumb-item"
-            :class="{ current: i === folderStack.length - 1 }"
+            class="_button"
+            :class="[$style.driveBreadcrumbItem, { [$style.current]: i === folderStack.length - 1 }]"
             @click="i < folderStack.length - 1 ? openFolder(folder) : undefined"
           >
             {{ folder.name }}
@@ -298,7 +299,7 @@ fetchDrive()
         </template>
       </div>
 
-      <div class="drive-grid-scroll">
+      <div :class="$style.driveGridScroll">
         <div v-if="loading" class="column-empty">読み込み中...</div>
         <div v-else-if="error" class="column-empty column-error">{{ error }}</div>
         <template v-else>
@@ -306,73 +307,76 @@ fetchDrive()
           <button
             v-for="folder in folders"
             :key="folder.id"
-            class="_button drive-folder-item"
+            class="_button"
+            :class="$style.driveFolderItem"
             @click="openFolder(folder)"
           >
-            <i class="ti ti-folder drive-folder-icon" />
-            <span class="drive-folder-name">{{ folder.name }}</span>
-            <i class="ti ti-chevron-right drive-folder-arrow" />
+            <i class="ti ti-folder" :class="$style.driveFolderIcon" />
+            <span :class="$style.driveFolderName">{{ folder.name }}</span>
+            <i class="ti ti-chevron-right" :class="$style.driveFolderArrow" />
           </button>
 
           <!-- File grid -->
-          <div class="drive-grid">
+          <div :class="$style.driveGrid">
             <button
               v-if="!selectMode"
-              class="_button drive-grid-cell drive-upload-cell"
+              class="_button"
+              :class="[$style.driveGridCell, $style.driveUploadCell]"
               :disabled="uploading"
               @click="openFilePicker"
             >
-              <div class="drive-grid-thumb drive-upload-thumb">
+              <div :class="[$style.driveGridThumb, $style.driveUploadThumb]">
                 <i v-if="uploading" class="ti ti-loader-2 spin" />
                 <i v-else class="ti ti-plus" />
               </div>
-              <div class="drive-grid-label">アップロード</div>
+              <div :class="$style.driveGridLabel">アップロード</div>
             </button>
             <button
               v-for="file in files"
               :key="file.id"
-              class="_button drive-grid-cell"
-              :class="{ selected: selectMode && selectedIds.has(file.id) }"
+              class="_button"
+              :class="[$style.driveGridCell, { [$style.selected]: selectMode && selectedIds.has(file.id) }]"
               @click="onFileClick(file)"
             >
-              <div class="drive-grid-thumb">
+              <div :class="$style.driveGridThumb">
                 <img
                   v-if="isImage(file) && !file.isSensitive"
                   :src="safeUrl(file.thumbnailUrl) || safeUrl(file.url)"
                   :alt="file.name"
-                  class="drive-grid-img"
+                  :class="$style.driveGridImg"
                   loading="lazy"
                 />
-                <div v-else-if="file.isSensitive" class="drive-grid-placeholder">
+                <div v-else-if="file.isSensitive" :class="$style.driveGridPlaceholder">
                   <i class="ti ti-eye-off" />
                 </div>
-                <div v-else class="drive-grid-placeholder">
+                <div v-else :class="$style.driveGridPlaceholder">
                   <i :class="isVideo(file) ? 'ti ti-video' : isAudio(file) ? 'ti ti-music' : 'ti ti-file'" />
                 </div>
-                <div v-if="isVideo(file) && !file.isSensitive" class="drive-grid-badge">
+                <div v-if="isVideo(file) && !file.isSensitive" :class="$style.driveGridBadge">
                   <i class="ti ti-player-play" />
                 </div>
-                <div v-if="selectMode" class="drive-select-check" :class="{ checked: selectedIds.has(file.id) }">
+                <div v-if="selectMode" :class="[$style.driveSelectCheck, { [$style.checked]: selectedIds.has(file.id) }]">
                   <i class="ti ti-check" />
                 </div>
               </div>
-              <div class="drive-grid-label">{{ file.name }}</div>
+              <div :class="$style.driveGridLabel">{{ file.name }}</div>
             </button>
           </div>
         </template>
       </div>
 
       <!-- Selection action bar -->
-      <div v-if="selectMode" class="drive-action-bar">
-        <div class="drive-action-info">
-          <button class="_button drive-action-select-all" @click="selectedIds.size === files.length ? deselectAll() : selectAll()">
+      <div v-if="selectMode" :class="$style.driveActionBar">
+        <div :class="$style.driveActionInfo">
+          <button class="_button" :class="$style.driveActionSelectAll" @click="selectedIds.size === files.length ? deselectAll() : selectAll()">
             {{ selectedIds.size === files.length ? '全解除' : '全選択' }}
           </button>
-          <span class="drive-action-count">{{ selectedIds.size }}件選択</span>
+          <span :class="$style.driveActionCount">{{ selectedIds.size }}件選択</span>
         </div>
-        <div v-if="batchDeleteError" class="drive-action-error">{{ batchDeleteError }}</div>
+        <div v-if="batchDeleteError" :class="$style.driveActionError">{{ batchDeleteError }}</div>
         <button
-          class="_button drive-action-delete"
+          class="_button"
+          :class="$style.driveActionDelete"
           :disabled="selectedIds.size === 0 || batchDeleting"
           @click="batchDelete"
         >
@@ -385,10 +389,12 @@ fetchDrive()
 </template>
 
 <style scoped>
-@import "./column-common.css";
+@use "./column-common.module.scss";
+</style>
 
+<style lang="scss" module>
 /* --- Breadcrumb --- */
-.drive-breadcrumb {
+.driveBreadcrumb {
   display: flex;
   align-items: center;
   gap: 2px;
@@ -397,38 +403,38 @@ fetchDrive()
   flex-shrink: 0;
   overflow-x: auto;
   scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
-.drive-breadcrumb::-webkit-scrollbar {
-  display: none;
-}
-
-.drive-breadcrumb-item {
+.driveBreadcrumbItem {
   font-size: 0.75em;
   color: var(--nd-accent);
   white-space: nowrap;
   padding: 2px 4px;
   border-radius: 4px;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &.current {
+    color: var(--nd-fg);
+    cursor: default;
+  }
 }
 
-.drive-breadcrumb-item:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.drive-breadcrumb-item.current {
-  color: var(--nd-fg);
-  cursor: default;
-}
-
-.drive-breadcrumb-sep {
+.driveBreadcrumbSep {
   font-size: 10px;
   opacity: 0.3;
   flex-shrink: 0;
 }
 
 /* --- Grid scroll --- */
-.drive-grid-scroll {
+.driveGridScroll {
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
@@ -436,7 +442,7 @@ fetchDrive()
 }
 
 /* --- Folder items --- */
-.drive-folder-item {
+.driveFolderItem {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -445,19 +451,19 @@ fetchDrive()
   text-align: left;
   border-bottom: 1px solid var(--nd-divider);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.drive-folder-item:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.drive-folder-icon {
+.driveFolderIcon {
   font-size: 20px;
   color: var(--nd-accent);
   flex-shrink: 0;
 }
 
-.drive-folder-name {
+.driveFolderName {
   flex: 1;
   font-size: 0.85em;
   font-weight: 600;
@@ -467,45 +473,45 @@ fetchDrive()
   white-space: nowrap;
 }
 
-.drive-folder-arrow {
+.driveFolderArrow {
   font-size: 14px;
   opacity: 0.3;
   flex-shrink: 0;
 }
 
 /* --- File grid --- */
-.drive-grid {
+.driveGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 2px;
   padding: 2px;
 }
 
-.drive-grid-cell {
+.driveGridCell {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.8;
+  }
 }
 
-.drive-grid-cell:hover {
-  opacity: 0.8;
-}
-
-.drive-grid-thumb {
+.driveGridThumb {
   position: relative;
   aspect-ratio: 1;
   overflow: hidden;
   background: var(--nd-bg);
 }
 
-.drive-grid-img {
+.driveGridImg {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.drive-grid-placeholder {
+.driveGridPlaceholder {
   width: 100%;
   height: 100%;
   display: flex;
@@ -515,7 +521,7 @@ fetchDrive()
   opacity: 0.3;
 }
 
-.drive-grid-badge {
+.driveGridBadge {
   position: absolute;
   bottom: 4px;
   right: 4px;
@@ -530,7 +536,7 @@ fetchDrive()
   font-size: 12px;
 }
 
-.drive-grid-label {
+.driveGridLabel {
   padding: 4px 6px;
   font-size: 0.65em;
   color: var(--nd-fg);
@@ -541,7 +547,7 @@ fetchDrive()
   text-align: center;
 }
 
-.drive-upload-thumb {
+.driveUploadThumb {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -554,13 +560,15 @@ fetchDrive()
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
-.drive-upload-cell:hover .drive-upload-thumb {
-  opacity: 1;
-  background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
-}
+.driveUploadCell {
+  &:hover .driveUploadThumb {
+    opacity: 1;
+    background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
+  }
 
-.drive-upload-cell:disabled .drive-upload-thumb {
-  opacity: 0.3;
+  &:disabled .driveUploadThumb {
+    opacity: 0.3;
+  }
 }
 
 @keyframes spin {
@@ -568,51 +576,47 @@ fetchDrive()
   to { transform: rotate(360deg); }
 }
 
-.spin {
-  animation: spin 1s linear infinite;
-}
-
 /* --- Detail view --- */
-.drive-detail-scroll {
+.driveDetailScroll {
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
 }
 
-.drive-detail {
+.driveDetail {
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 16px;
 }
 
-.drive-detail-preview {
+.driveDetailPreview {
   border-radius: var(--nd-radius-md);
   overflow: hidden;
   background: var(--nd-bg);
 }
 
-.drive-detail-image {
+.driveDetailImage {
   display: block;
   width: 100%;
   max-height: 400px;
   object-fit: contain;
 }
 
-.drive-detail-video {
+.driveDetailVideo {
   display: block;
   width: 100%;
   max-height: 400px;
 }
 
-.drive-detail-audio {
+.driveDetailAudio {
   display: block;
   width: 100%;
   padding: 16px;
 }
 
-.drive-detail-placeholder {
+.driveDetailPlaceholder {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -621,27 +625,27 @@ fetchDrive()
   opacity: 0.2;
 }
 
-.drive-detail-info {
+.driveDetailInfo {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.drive-detail-name {
+.driveDetailName {
   font-size: 0.95em;
   font-weight: 600;
   color: var(--nd-fgHighlighted);
   word-break: break-all;
 }
 
-.drive-detail-meta {
+.driveDetailMeta {
   display: flex;
   gap: 12px;
   font-size: 0.8em;
   opacity: 0.6;
 }
 
-.drive-detail-sensitive {
+.driveDetailSensitive {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -649,12 +653,12 @@ fetchDrive()
   color: var(--nd-love);
 }
 
-.drive-detail-actions {
+.driveDetailActions {
   display: flex;
   gap: 8px;
 }
 
-.drive-delete-btn {
+.driveDeleteBtn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -665,29 +669,29 @@ fetchDrive()
   font-size: 0.85em;
   font-weight: 600;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: color-mix(in srgb, var(--nd-love) 25%, transparent);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
 }
 
-.drive-delete-btn:hover {
-  background: color-mix(in srgb, var(--nd-love) 25%, transparent);
-}
-
-.drive-delete-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.drive-detail-error {
+.driveDetailError {
   font-size: 0.8em;
   color: var(--nd-love);
 }
 
 /* --- Selection mode --- */
-.header-btn-active {
+.headerBtnActive {
   color: var(--nd-accent);
   opacity: 1;
 }
 
-.drive-select-check {
+.driveSelectCheck {
   position: absolute;
   top: 4px;
   left: 4px;
@@ -702,20 +706,20 @@ fetchDrive()
   color: transparent;
   font-size: 12px;
   transition: all var(--nd-duration-base);
+
+  &.checked {
+    background: var(--nd-accent);
+    border-color: var(--nd-accent);
+    color: #fff;
+  }
 }
 
-.drive-select-check.checked {
-  background: var(--nd-accent);
-  border-color: var(--nd-accent);
-  color: #fff;
-}
-
-.drive-grid-cell.selected .drive-grid-thumb {
+.selected .driveGridThumb {
   outline: 3px solid var(--nd-accent);
   outline-offset: -3px;
 }
 
-.drive-action-bar {
+.driveActionBar {
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -726,30 +730,30 @@ fetchDrive()
   background: var(--nd-panelBg);
 }
 
-.drive-action-info {
+.driveActionInfo {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.drive-action-count {
+.driveActionCount {
   font-size: 0.8em;
   opacity: 0.6;
 }
 
-.drive-action-select-all {
+.driveActionSelectAll {
   font-size: 0.8em;
   color: var(--nd-accent);
   padding: 4px 8px;
   border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.drive-action-select-all:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.drive-action-delete {
+.driveActionDelete {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -760,18 +764,18 @@ fetchDrive()
   font-size: 0.8em;
   font-weight: 600;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: color-mix(in srgb, var(--nd-love) 25%, transparent);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
 }
 
-.drive-action-delete:hover {
-  background: color-mix(in srgb, var(--nd-love) 25%, transparent);
-}
-
-.drive-action-delete:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.drive-action-error {
+.driveActionError {
   font-size: 0.75em;
   color: var(--nd-love);
   flex: 1;

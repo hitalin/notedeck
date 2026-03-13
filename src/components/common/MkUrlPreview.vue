@@ -118,11 +118,11 @@ function hostname(url: string): string {
 
 <template>
   <MkNoteEmbed v-if="isNoteUrl" :url="url" :account-id="accountId" />
-  <div v-else-if="shouldPreview" ref="el" class="url-preview" @click="handleClick">
-    <div v-if="loading" class="url-preview-skeleton">
-      <div class="skeleton-text">
-        <div class="skeleton-line" style="width: 60%" />
-        <div class="skeleton-line" style="width: 80%" />
+  <div v-else-if="shouldPreview" ref="el" :class="$style.urlPreview" @click="handleClick">
+    <div v-if="loading" :class="$style.urlPreviewSkeleton">
+      <div :class="$style.skeletonText">
+        <div :class="$style.skeletonLine" style="width: 60%" />
+        <div :class="$style.skeletonLine" style="width: 80%" />
       </div>
     </div>
 
@@ -130,7 +130,7 @@ function hostname(url: string): string {
       <!-- Player embed (click thumbnail to expand) -->
       <div
         v-if="playerExpanded && data.player && isPlayerAllowed"
-        class="url-preview-player"
+        :class="$style.urlPreviewPlayer"
       >
         <iframe
           :src="data.player.url"
@@ -144,24 +144,27 @@ function hostname(url: string): string {
       <!-- Multi-image gallery (2-4 images) -->
       <div
         v-else-if="galleryImages.length >= 2"
-        class="url-preview-gallery"
-        :class="{
-          'is-sensitive': data.sensitive && !sensitiveRevealed,
-          [`gallery-${galleryImages.length}`]: true,
-        }"
+        :class="[
+          $style.urlPreviewGallery,
+          {
+            [String($style.isSensitive)]: data.sensitive && !sensitiveRevealed,
+            [String($style[`gallery${galleryImages.length}`])]: true,
+          },
+        ]"
       >
         <img
           v-for="(media, i) in galleryImages"
           :key="i"
           :src="proxyUrl(media) ?? media"
-          class="gallery-image"
+          :class="$style.galleryImage"
           loading="lazy"
           decoding="async"
           @error="onGalleryError(i)"
         />
         <div
           v-if="data.sensitive && !sensitiveRevealed"
-          class="_sensitiveOverlay url-sensitive"
+          :class="$style.urlSensitive"
+          class="_sensitiveOverlay"
           @click.stop="sensitiveRevealed = true"
         >
           <svg viewBox="0 0 24 24" width="24" height="24">
@@ -177,16 +180,17 @@ function hostname(url: string): string {
       <!-- Thumbnail with sensitive overlay -->
       <div
         v-else-if="(data.thumbnail || (!data.thumbnail && data.icon)) && !imageError"
-        class="url-preview-thumb-wrap"
-        :class="{
-          'is-sensitive': data.sensitive && !sensitiveRevealed,
-          'is-icon-thumb': !data.thumbnail && data.icon,
-        }"
+        :class="[
+          $style.urlPreviewThumbWrap,
+          {
+            [$style.isSensitive]: data.sensitive && !sensitiveRevealed,
+            [$style.isIconThumb]: !data.thumbnail && data.icon,
+          },
+        ]"
       >
         <img
           :src="data.thumbnail ? (proxyUrl(data.thumbnail) ?? data.thumbnail) : data.icon!"
-          class="url-preview-image"
-          :class="{ 'is-icon': !data.thumbnail }"
+          :class="[$style.urlPreviewImage, { [$style.isIcon]: !data.thumbnail }]"
           loading="lazy"
           decoding="async"
           @error="imageError = true"
@@ -199,7 +203,8 @@ function hostname(url: string): string {
         <!-- Sensitive overlay -->
         <div
           v-if="data.sensitive && !sensitiveRevealed"
-          class="_sensitiveOverlay url-sensitive"
+          :class="$style.urlSensitive"
+          class="_sensitiveOverlay"
           @click.stop="sensitiveRevealed = true"
         >
           <svg viewBox="0 0 24 24" width="24" height="24">
@@ -213,7 +218,7 @@ function hostname(url: string): string {
         <!-- Play indicator for player-capable previews -->
         <div
           v-if="data.player && isPlayerAllowed && !data.sensitive"
-          class="play-indicator"
+          :class="$style.playIndicator"
           @click.stop="playerExpanded = true"
         >
           <svg viewBox="0 0 24 24" width="32" height="32">
@@ -222,19 +227,19 @@ function hostname(url: string): string {
         </div>
       </div>
 
-      <div class="url-preview-body">
-        <div class="url-preview-title">{{ data.title }}</div>
+      <div :class="$style.urlPreviewBody">
+        <div :class="$style.urlPreviewTitle">{{ data.title }}</div>
         <div
           v-if="data.description"
-          class="url-preview-description"
+          :class="$style.urlPreviewDescription"
         >
           {{ data.description }}
         </div>
-        <div class="url-preview-host">
+        <div :class="$style.urlPreviewHost">
           <img
             v-if="data.icon"
             :src="data.icon"
-            class="url-preview-favicon"
+            :class="$style.urlPreviewFavicon"
             @error="($event.target as HTMLImageElement).style.display = 'none'"
           />
           {{ hostname(data.url || url) }}
@@ -244,8 +249,8 @@ function hostname(url: string): string {
   </div>
 </template>
 
-<style scoped>
-.url-preview {
+<style lang="scss" module>
+.urlPreview {
   display: flex;
   font-size: 14px;
   box-shadow: 0 0 0 1px var(--nd-divider);
@@ -255,92 +260,92 @@ function hostname(url: string): string {
   cursor: pointer;
   background: var(--nd-panelHighlight);
   max-width: 100%;
+
+  &:has(.urlPreviewPlayer),
+  &:has(.urlPreviewGallery) {
+    flex-direction: column;
+  }
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.url-preview:has(.url-preview-player),
-.url-preview:has(.url-preview-gallery) {
-  flex-direction: column;
-}
-
-.url-preview:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.url-preview-thumb-wrap {
+.urlPreviewThumbWrap {
   position: relative;
   flex-shrink: 0;
   width: 100px;
   min-height: 80px;
+
+  &.isIconThumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--nd-buttonBg);
+  }
+
+  &.isSensitive .urlPreviewImage {
+    filter: blur(var(--nd-blur));
+  }
 }
 
-.url-preview-image {
+.urlPreviewImage {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
 
-.url-preview-thumb-wrap.is-icon-thumb {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--nd-buttonBg);
-}
-
-.url-preview-image.is-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
+  &.isIcon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
 }
 
 /* Gallery grid */
-.url-preview-gallery {
+.urlPreviewGallery {
   position: relative;
   display: grid;
   gap: 2px;
   max-height: 200px;
   overflow: hidden;
+
+  &.isSensitive .galleryImage {
+    filter: blur(var(--nd-blur));
+  }
 }
 
-.url-preview-gallery.gallery-2 {
+.gallery2 {
   grid-template-columns: 1fr 1fr;
 }
 
-.url-preview-gallery.gallery-3 {
+.gallery3 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+
+  .galleryImage:first-child {
+    grid-row: 1 / -1;
+  }
+}
+
+.gallery4 {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
 }
 
-.url-preview-gallery.gallery-3 .gallery-image:first-child {
-  grid-row: 1 / -1;
-}
-
-.url-preview-gallery.gallery-4 {
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-}
-
-.gallery-image {
+.galleryImage {
   width: 100%;
   height: 100%;
   object-fit: cover;
   min-height: 0;
 }
 
-.url-preview-gallery.is-sensitive .gallery-image {
-  filter: blur(var(--nd-blur));
-}
-
-.url-preview-thumb-wrap.is-sensitive .url-preview-image {
-  filter: blur(var(--nd-blur));
-}
-
-.url-sensitive {
+.urlSensitive {
   gap: 4px;
   font-size: 0.75em;
 }
 
-.play-indicator {
+.playIndicator {
   position: absolute;
   inset: 0;
   display: flex;
@@ -351,28 +356,28 @@ function hostname(url: string): string {
   cursor: pointer;
   opacity: 0.8;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
-.play-indicator:hover {
-  opacity: 1;
-}
-
-.url-preview-player {
+.urlPreviewPlayer {
   flex-shrink: 0;
   width: 100%;
+
+  iframe {
+    display: block;
+  }
 }
 
-.url-preview-player iframe {
-  display: block;
-}
-
-.url-preview-body {
+.urlPreviewBody {
   padding: 16px;
   min-width: 0;
   flex: 1;
 }
 
-.url-preview-title {
+.urlPreviewTitle {
   font-size: 1em;
   font-weight: 600;
   color: var(--nd-fg);
@@ -381,7 +386,7 @@ function hostname(url: string): string {
   white-space: nowrap;
 }
 
-.url-preview-description {
+.urlPreviewDescription {
   font-size: 0.8em;
   color: var(--nd-fg);
   opacity: 0.7;
@@ -392,7 +397,7 @@ function hostname(url: string): string {
   overflow: hidden;
 }
 
-.url-preview-host {
+.urlPreviewHost {
   font-size: 0.8em;
   color: var(--nd-fg);
   opacity: 0.5;
@@ -402,24 +407,24 @@ function hostname(url: string): string {
   gap: 4px;
 }
 
-.url-preview-favicon {
+.urlPreviewFavicon {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
 }
 
-.url-preview-skeleton {
+.urlPreviewSkeleton {
   padding: 8px 12px;
   width: 100%;
 }
 
-.skeleton-text {
+.skeletonText {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.skeleton-line {
+.skeletonLine {
   height: 10px;
   border-radius: 4px;
   background: linear-gradient(
@@ -442,30 +447,30 @@ function hostname(url: string): string {
 }
 
 @container (max-width: 400px) {
-  .url-preview {
+  .urlPreview {
     font-size: 12px;
   }
 
-  .url-preview-body {
+  .urlPreviewBody {
     padding: 12px;
   }
 
-  .url-preview-thumb-wrap {
+  .urlPreviewThumbWrap {
     width: 80px;
     min-height: 64px;
   }
 }
 
 @container (max-width: 350px) {
-  .url-preview {
+  .urlPreview {
     font-size: 10px;
   }
 
-  .url-preview-body {
+  .urlPreviewBody {
     padding: 8px;
   }
 
-  .url-preview-host {
+  .urlPreviewHost {
     margin-top: 4px;
   }
 }

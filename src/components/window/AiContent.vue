@@ -81,19 +81,19 @@ setTimeout(() => inputRef.value?.focus(), 100)
 </script>
 
 <template>
-  <div class="ai-content">
+  <div :class="$style.aiContent">
     <!-- Provider status -->
-    <div class="ai-status-bar">
+    <div :class="$style.aiStatusBar">
       <span
-        class="status-dot"
-        :class="providerStatus"
+        :class="[$style.statusDot, $style[providerStatus]]"
       />
-      <span class="status-text">
+      <span :class="$style.statusText">
         {{ providerStatus === 'connected' ? 'Ollama' : providerStatus === 'checking' ? '接続確認中...' : '未接続' }}
       </span>
       <button
         v-if="providerStatus === 'disconnected'"
-        class="_button status-retry"
+        class="_button"
+        :class="$style.statusRetry"
         @click="checkProvider"
       >
         <i class="ti ti-refresh" />
@@ -101,18 +101,18 @@ setTimeout(() => inputRef.value?.focus(), 100)
     </div>
 
     <!-- Messages area -->
-    <div class="ai-messages">
-      <div v-if="messages.length === 0" class="ai-empty">
-        <div class="ai-empty-icon">
+    <div :class="$style.aiMessages">
+      <div v-if="messages.length === 0" :class="$style.aiEmpty">
+        <div :class="$style.aiEmptyIcon">
           <i class="ti ti-sparkles" />
         </div>
-        <span class="ai-empty-title">AI アシスタント</span>
-        <span class="ai-empty-hint">質問を入力してください</span>
-        <div class="ai-suggestions">
-          <button class="_button ai-suggestion" @click="input = 'TL を要約して'; sendMessage()">
+        <span :class="$style.aiEmptyTitle">AI アシスタント</span>
+        <span :class="$style.aiEmptyHint">質問を入力してください</span>
+        <div :class="$style.aiSuggestions">
+          <button class="_button" :class="$style.aiSuggestion" @click="input = 'TL を要約して'; sendMessage()">
             TL を要約して
           </button>
-          <button class="_button ai-suggestion" @click="input = '最近の通知をまとめて'; sendMessage()">
+          <button class="_button" :class="$style.aiSuggestion" @click="input = '最近の通知をまとめて'; sendMessage()">
             最近の通知をまとめて
           </button>
         </div>
@@ -122,27 +122,26 @@ setTimeout(() => inputRef.value?.focus(), 100)
         <div
           v-for="msg in messages"
           :key="msg.id"
-          class="ai-message"
-          :class="msg.role"
+          :class="[$style.aiMessage, $style[msg.role]]"
         >
-          <div class="message-avatar">
+          <div :class="$style.messageAvatar">
             <i v-if="msg.role === 'assistant'" class="ti ti-sparkles" />
             <i v-else class="ti ti-user" />
           </div>
-          <div class="message-body">
-            <div class="message-content">{{ msg.content }}</div>
+          <div :class="$style.messageBody">
+            <div :class="$style.messageContent">{{ msg.content }}</div>
           </div>
         </div>
 
-        <div v-if="isGenerating" class="ai-message assistant">
-          <div class="message-avatar">
+        <div v-if="isGenerating" :class="[$style.aiMessage, $style.assistant]">
+          <div :class="$style.messageAvatar">
             <i class="ti ti-sparkles" />
           </div>
-          <div class="message-body">
-            <div class="message-typing">
-              <span class="typing-dot" />
-              <span class="typing-dot" />
-              <span class="typing-dot" />
+          <div :class="$style.messageBody">
+            <div :class="$style.messageTyping">
+              <span :class="$style.typingDot" />
+              <span :class="$style.typingDot" />
+              <span :class="$style.typingDot" />
             </div>
           </div>
         </div>
@@ -152,18 +151,19 @@ setTimeout(() => inputRef.value?.focus(), 100)
     </div>
 
     <!-- Input area -->
-    <div class="ai-input-area">
+    <div :class="$style.aiInputArea">
       <textarea
         ref="inputRef"
         v-model="input"
-        class="ai-input"
+        :class="$style.aiInput"
         placeholder="AI に質問..."
         rows="1"
         :disabled="providerStatus === 'disconnected'"
         @keydown="onKeydown"
       />
       <button
-        class="_button ai-send"
+        class="_button"
+        :class="$style.aiSend"
         :disabled="!input.trim() || isGenerating || providerStatus === 'disconnected'"
         @click="sendMessage"
       >
@@ -173,15 +173,15 @@ setTimeout(() => inputRef.value?.focus(), 100)
   </div>
 </template>
 
-<style scoped>
-.ai-content {
+<style lang="scss" module>
+.aiContent {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
 }
 
-.ai-status-bar {
+.aiStatusBar {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -191,30 +191,30 @@ setTimeout(() => inputRef.value?.focus(), 100)
   flex-shrink: 0;
 }
 
-.status-dot {
+.statusDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
+
+  &.connected {
+    background: var(--nd-accent);
+  }
+
+  &.checking {
+    background: var(--nd-warn, #e5a400);
+  }
+
+  &.disconnected {
+    background: var(--nd-switchOffFg, #888);
+  }
 }
 
-.status-dot.connected {
-  background: var(--nd-accent);
-}
-
-.status-dot.checking {
-  background: var(--nd-warn, #e5a400);
-}
-
-.status-dot.disconnected {
-  background: var(--nd-switchOffFg, #888);
-}
-
-.status-text {
+.statusText {
   opacity: 0.6;
 }
 
-.status-retry {
+.statusRetry {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -223,15 +223,14 @@ setTimeout(() => inputRef.value?.focus(), 100)
   border-radius: 4px;
   opacity: 0.5;
   margin-left: auto;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
 }
 
-.status-retry:hover {
-  background: var(--nd-buttonHoverBg);
-  opacity: 1;
-}
-
-/* Messages */
-.ai-messages {
+.aiMessages {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -240,7 +239,7 @@ setTimeout(() => inputRef.value?.focus(), 100)
   scrollbar-width: thin;
 }
 
-.ai-empty {
+.aiEmpty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -250,23 +249,23 @@ setTimeout(() => inputRef.value?.focus(), 100)
   color: var(--nd-fg);
 }
 
-.ai-empty-icon {
+.aiEmptyIcon {
   font-size: 2.5em;
   opacity: 0.15;
 }
 
-.ai-empty-title {
+.aiEmptyTitle {
   font-weight: bold;
   font-size: 1.1em;
   opacity: 0.6;
 }
 
-.ai-empty-hint {
+.aiEmptyHint {
   font-size: 0.8em;
   opacity: 0.35;
 }
 
-.ai-suggestions {
+.aiSuggestions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -274,32 +273,50 @@ setTimeout(() => inputRef.value?.focus(), 100)
   justify-content: center;
 }
 
-.ai-suggestion {
+.aiSuggestion {
   padding: 6px 12px;
   border-radius: var(--nd-radius-full);
   background: var(--nd-buttonBg);
   font-size: 0.8em;
   opacity: 0.7;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
 }
 
-.ai-suggestion:hover {
-  background: var(--nd-buttonHoverBg);
-  opacity: 1;
-}
-
-/* Message bubbles */
-.ai-message {
+.aiMessage {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+
+  &.user {
+    flex-direction: row-reverse;
+
+    .messageContent {
+      background: var(--nd-accent);
+      color: var(--nd-fgOnAccent, #fff);
+      border-bottom-right-radius: 4px;
+    }
+  }
+
+  &.assistant {
+    .messageAvatar {
+      background: var(--nd-accent-hover);
+      color: var(--nd-accent);
+      opacity: 1;
+    }
+
+    .messageContent {
+      background: var(--nd-buttonBg);
+      border-bottom-left-radius: 4px;
+    }
+  }
 }
 
-.ai-message.user {
-  flex-direction: row-reverse;
-}
-
-.message-avatar {
+.messageAvatar {
   flex-shrink: 0;
   width: 28px;
   height: 28px;
@@ -312,18 +329,12 @@ setTimeout(() => inputRef.value?.focus(), 100)
   opacity: 0.6;
 }
 
-.ai-message.assistant .message-avatar {
-  background: var(--nd-accent-hover);
-  color: var(--nd-accent);
-  opacity: 1;
-}
-
-.message-body {
+.messageBody {
   max-width: 85%;
   min-width: 0;
 }
 
-.message-content {
+.messageContent {
   padding: 8px 12px;
   border-radius: 12px;
   font-size: 0.85em;
@@ -332,19 +343,7 @@ setTimeout(() => inputRef.value?.focus(), 100)
   word-break: break-word;
 }
 
-.ai-message.user .message-content {
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent, #fff);
-  border-bottom-right-radius: 4px;
-}
-
-.ai-message.assistant .message-content {
-  background: var(--nd-buttonBg);
-  border-bottom-left-radius: 4px;
-}
-
-/* Typing indicator */
-.message-typing {
+.messageTyping {
   display: flex;
   gap: 4px;
   padding: 10px 14px;
@@ -353,21 +352,21 @@ setTimeout(() => inputRef.value?.focus(), 100)
   border-bottom-left-radius: 4px;
 }
 
-.typing-dot {
+.typingDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--nd-fg);
   opacity: 0.3;
   animation: typing 1.2s infinite ease-in-out;
-}
 
-.typing-dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
+  &:nth-child(2) {
+    animation-delay: 0.2s;
+  }
 
-.typing-dot:nth-child(3) {
-  animation-delay: 0.4s;
+  &:nth-child(3) {
+    animation-delay: 0.4s;
+  }
 }
 
 @keyframes typing {
@@ -375,8 +374,7 @@ setTimeout(() => inputRef.value?.focus(), 100)
   30% { opacity: 0.8; transform: translateY(-3px); }
 }
 
-/* Input */
-.ai-input-area {
+.aiInputArea {
   display: flex;
   align-items: flex-end;
   gap: 6px;
@@ -385,7 +383,7 @@ setTimeout(() => inputRef.value?.focus(), 100)
   flex-shrink: 0;
 }
 
-.ai-input {
+.aiInput {
   flex: 1;
   min-width: 0;
   background: var(--nd-buttonBg);
@@ -398,22 +396,22 @@ setTimeout(() => inputRef.value?.focus(), 100)
   resize: none;
   max-height: 100px;
   font-family: inherit;
+
+  &:focus {
+    box-shadow: 0 0 0 2px var(--nd-accent);
+  }
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.4;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+  }
 }
 
-.ai-input:focus {
-  box-shadow: 0 0 0 2px var(--nd-accent);
-}
-
-.ai-input::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.4;
-}
-
-.ai-input:disabled {
-  opacity: 0.4;
-}
-
-.ai-send {
+.aiSend {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -424,66 +422,74 @@ setTimeout(() => inputRef.value?.focus(), 100)
   color: var(--nd-fgOnAccent, #fff);
   flex-shrink: 0;
   transition: opacity var(--nd-duration-base), transform var(--nd-duration-base);
-}
 
-.ai-send:hover:not(:disabled) {
-  transform: scale(1.05);
-}
+  &:hover:not(:disabled) {
+    transform: scale(1.05);
+  }
 
-.ai-send:disabled {
-  opacity: 0.3;
+  &:disabled {
+    opacity: 0.3;
+  }
 }
 
 @media (max-width: 500px) {
-  .ai-input-area {
+  .aiInputArea {
     padding: 8px;
     padding-bottom: calc(8px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
   }
 
-  .ai-input {
+  .aiInput {
     padding: 10px 12px;
     font-size: 1em;
   }
 
-  .ai-send {
+  .aiSend {
     width: 40px;
     height: 40px;
   }
 
-  .status-retry {
+  .statusRetry {
     width: 36px;
     height: 36px;
   }
 
-  .ai-suggestion {
+  .aiSuggestion {
     padding: 10px 14px;
     min-height: 44px;
   }
 }
 
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .ai-input-area {
-  padding: 8px;
-  padding-bottom: calc(8px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+:global(html.nd-mobile) {
+  .aiInputArea {
+    padding: 8px;
+    padding-bottom: calc(8px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+  }
+
+  .aiInput {
+    padding: 10px 12px;
+    font-size: 1em;
+  }
+
+  .aiSend {
+    width: 40px;
+    height: 40px;
+  }
+
+  .statusRetry {
+    width: 36px;
+    height: 36px;
+  }
+
+  .aiSuggestion {
+    padding: 10px 14px;
+    min-height: 44px;
+  }
 }
 
-html.nd-mobile .ai-input {
-  padding: 10px 12px;
-  font-size: 1em;
-}
-
-html.nd-mobile .ai-send {
-  width: 40px;
-  height: 40px;
-}
-
-html.nd-mobile .status-retry {
-  width: 36px;
-  height: 36px;
-}
-
-html.nd-mobile .ai-suggestion {
-  padding: 10px 14px;
-  min-height: 44px;
-}
+/* Empty placeholder classes for dynamic binding */
+.connected {}
+.checking {}
+.disconnected {}
+.user {}
+.assistant {}
 </style>

@@ -46,20 +46,20 @@ function removeWidget(widgetId: string) {
       <i class="ti ti-app-window" />
     </template>
 
-    <div class="widget-column-body">
-      <div v-for="widget in widgets" :key="widget.id" class="widget-item">
-        <div class="widget-header">
-          <span class="widget-label">
+    <div :class="$style.widgetColumnBody">
+      <div v-for="widget in widgets" :key="widget.id" :class="$style.widgetItem">
+        <div :class="$style.widgetHeader">
+          <span :class="$style.widgetLabel">
             <i
               :class="'ti ' + (getWidgetComponent(widget.type)?.icon ?? 'ti-puzzle')"
             />
             {{ getWidgetComponent(widget.type)?.label ?? widget.type }}
           </span>
-          <button class="widget-remove" @click="removeWidget(widget.id)">
+          <button :class="$style.widgetRemove" @click="removeWidget(widget.id)">
             <i class="ti ti-x" />
           </button>
         </div>
-        <div class="widget-content">
+        <div :class="$style.widgetContent">
           <component
             :is="getWidgetComponent(widget.type)?.component"
             :widget="widget"
@@ -69,37 +69,37 @@ function removeWidget(widgetId: string) {
         </div>
       </div>
 
-      <div class="add-widget-area">
+      <div :class="$style.addWidgetArea">
         <button
           v-if="!showAddMenu"
-          class="add-widget-btn"
+          :class="$style.addWidgetBtn"
           @click="showAddMenu = true"
         >
           <i class="ti ti-plus" /> Add Widget
         </button>
-        <div v-else class="add-widget-menu">
-          <div class="menu-section-label">テンプレート</div>
+        <div v-else :class="$style.addWidgetMenu">
+          <div :class="$style.menuSectionLabel">テンプレート</div>
           <button
             v-for="tmpl in widgetTemplates"
             :key="tmpl.id"
-            class="menu-item"
+            :class="$style.menuItem"
             :title="tmpl.description"
             @click="addFromTemplate(tmpl.id)"
           >
             <i :class="'ti ' + tmpl.icon" />
             {{ tmpl.label }}
           </button>
-          <div class="menu-section-label">カスタム</div>
+          <div :class="$style.menuSectionLabel">カスタム</div>
           <button
             v-for="def in widgetDefinitions"
             :key="def.type"
-            class="menu-item"
+            :class="$style.menuItem"
             @click="addWidget(def.type)"
           >
             <i :class="'ti ' + def.icon" />
             {{ def.label }}
           </button>
-          <button class="menu-item cancel" @click="showAddMenu = false">
+          <button :class="[$style.menuItem, $style.cancel]" @click="showAddMenu = false">
             キャンセル
           </button>
         </div>
@@ -108,8 +108,8 @@ function removeWidget(widgetId: string) {
   </DeckColumn>
 </template>
 
-<style scoped>
-.widget-column-body {
+<style lang="scss" module>
+.widgetColumnBody {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -119,14 +119,14 @@ function removeWidget(widgetId: string) {
   min-height: 0;
 }
 
-.widget-item {
+.widgetItem {
   border: 1px solid var(--nd-divider);
   border-radius: 10px;
   background: var(--nd-panel);
   overflow: hidden;
 }
 
-.widget-header {
+.widgetHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -137,7 +137,7 @@ function removeWidget(widgetId: string) {
   color: var(--nd-panelHeaderFg);
 }
 
-.widget-label {
+.widgetLabel {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -145,7 +145,7 @@ function removeWidget(widgetId: string) {
   opacity: 0.8;
 }
 
-.widget-remove {
+.widgetRemove {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,25 +158,25 @@ function removeWidget(widgetId: string) {
   border-radius: var(--nd-radius-sm);
   opacity: 0.35;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    color: var(--nd-love);
+    background: var(--nd-love-subtle);
+  }
 }
 
-.widget-remove:hover {
-  opacity: 1;
-  color: var(--nd-love);
-  background: var(--nd-love-subtle);
-}
-
-.widget-content {
+.widgetContent {
   padding: 10px;
 }
 
-.add-widget-area {
+.addWidgetArea {
   display: flex;
   justify-content: center;
   padding: 6px;
 }
 
-.add-widget-btn {
+.addWidgetBtn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -189,22 +189,22 @@ function removeWidget(widgetId: string) {
   font-size: 0.85em;
   opacity: 0.5;
   transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    border-color: var(--nd-accent);
+    color: var(--nd-accent);
+  }
 }
 
-.add-widget-btn:hover {
-  opacity: 1;
-  border-color: var(--nd-accent);
-  color: var(--nd-accent);
-}
-
-.add-widget-menu {
+.addWidgetMenu {
   display: flex;
   flex-direction: column;
   gap: 4px;
   width: 100%;
 }
 
-.menu-item {
+.menuItem {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -217,29 +217,29 @@ function removeWidget(widgetId: string) {
   font-size: 0.85em;
   text-align: left;
   transition: background var(--nd-duration-base);
-}
 
-.menu-item:hover {
-  background: var(--nd-buttonHoverBg);
-}
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 
-.menu-item.cancel {
-  justify-content: center;
-  opacity: 0.5;
+  &.cancel {
+    justify-content: center;
+    opacity: 0.5;
+  }
 }
 
 /* ウィジェットカラムのヘッダーはプレーンに（Misskey本家準拠） */
-:deep(.column-header) {
+:global(.column-header) {
   background: var(--nd-panel);
   box-shadow: none;
   border-bottom: 1px solid var(--nd-divider);
 }
 
-:deep(.color-indicator) {
+:global(.color-indicator) {
   display: none;
 }
 
-.menu-section-label {
+.menuSectionLabel {
   padding: 6px 12px 2px;
   font-size: 0.75em;
   font-weight: 600;

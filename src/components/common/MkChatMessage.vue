@@ -144,27 +144,27 @@ function closeMentionPopup() {
 </script>
 
 <template>
-  <div class="chat-msg" :class="{ mine: isMine }">
+  <div :class="[$style.chatMsg, { [$style.mine]: isMine }]">
     <MkAvatar
       v-if="!isMine && displayUser"
-      class="chat-avatar"
+      :class="$style.chatAvatar"
       :avatar-url="displayUser.avatarUrl"
       :decorations="displayUser.avatarDecorations"
       :size="32"
     />
-    <div class="chat-bubble-wrapper">
-      <div class="chat-bubble">
-        <div v-if="!isMine && displayUser" class="chat-sender">
+    <div :class="$style.chatBubbleWrapper">
+      <div :class="$style.chatBubble">
+        <div v-if="!isMine && displayUser" :class="$style.chatSender">
           {{ displayUser.name }}
         </div>
-        <div v-if="message.text" class="chat-text">
+        <div v-if="message.text" :class="$style.chatText">
           <MkMfm :text="message.text" :account-id="accountId" :server-host="serverHost" @mention-hover="onMentionHover" @mention-leave="onMentionLeave" />
         </div>
-        <div v-if="message.file" class="chat-file">
+        <div v-if="message.file" :class="$style.chatFile">
           <img
             v-if="message.file.type.startsWith('image/')"
             :src="message.file.thumbnailUrl || message.file.url"
-            class="chat-image"
+            :class="$style.chatImage"
             loading="lazy"
             @click="openLightbox(message.file!.url)"
           />
@@ -172,25 +172,24 @@ function closeMentionPopup() {
             {{ message.file.name }}
           </a>
         </div>
-        <div class="chat-time">{{ timeStr }}</div>
+        <div :class="$style.chatTime">{{ timeStr }}</div>
       </div>
 
       <!-- Reactions -->
-      <div v-if="groupedReactions.length > 0" class="chat-reactions">
+      <div v-if="groupedReactions.length > 0" :class="$style.chatReactions">
         <button
           v-for="r in groupedReactions"
           :key="r.reaction"
-          class="chat-reaction-pill"
-          :class="{ reacted: r.reacted }"
+          :class="[$style.chatReactionPill, { [$style.reacted]: r.reacted }]"
           :title="r.users.join(', ')"
           @click="handleReactionClick(r.reaction, r.reacted)"
         >
-          <span class="reaction-avatars">
+          <span :class="$style.reactionAvatars">
             <img
               v-for="(url, i) in r.avatarUrls.slice(0, 3)"
               :key="i"
               :src="url ? proxyUrl(url) : ''"
-              class="reaction-avatar"
+              :class="$style.reactionAvatar"
               :style="{ marginLeft: i > 0 ? '-6px' : '0' }"
               decoding="async"
               loading="lazy"
@@ -200,18 +199,18 @@ function closeMentionPopup() {
             v-if="getReactionImageUrl(r.reaction)"
             :src="proxyUrl(getReactionImageUrl(r.reaction)!)"
             :alt="r.reaction"
-            class="reaction-emoji-img"
+            :class="$style.reactionEmojiImg"
             decoding="async"
             loading="lazy"
           />
-          <span v-else class="reaction-emoji-text">{{ r.reaction }}</span>
-          <span v-if="r.count > 1" class="reaction-count">{{ r.count }}</span>
+          <span v-else :class="$style.reactionEmojiText">{{ r.reaction }}</span>
+          <span v-if="r.count > 1" :class="$style.reactionCount">{{ r.count }}</span>
         </button>
       </div>
 
       <!-- Add reaction button -->
       <button
-        class="chat-add-reaction"
+        :class="$style.chatAddReaction"
         title="リアクション"
         @click.stop="emit('react', message.id, '')"
       >
@@ -232,50 +231,73 @@ function closeMentionPopup() {
   </Teleport>
 
   <Teleport to="body">
-    <div v-if="lightboxUrl" class="lightbox-overlay" @click="closeLightbox">
-      <button class="lightbox-close" @click="closeLightbox">
+    <div v-if="lightboxUrl" :class="$style.lightboxOverlay" @click="closeLightbox">
+      <button :class="$style.lightboxClose" @click="closeLightbox">
         <svg viewBox="0 0 24 24" width="24" height="24">
           <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
         </svg>
       </button>
       <img
         :src="lightboxUrl"
-        class="lightbox-image"
+        :class="$style.lightboxImage"
         @click.stop
       />
     </div>
   </Teleport>
 </template>
 
-<style scoped>
-.chat-msg {
+<style lang="scss" module>
+.chatMsg {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   padding: 4px 12px;
+
+  &.mine {
+    flex-direction: row-reverse;
+
+    .chatBubble {
+      background: var(--nd-accentedBg, rgba(134, 179, 0, 0.15));
+      border-bottom-right-radius: 4px;
+    }
+
+    .chatReactions {
+      justify-content: flex-end;
+    }
+
+    .chatAddReaction {
+      left: -28px;
+    }
+  }
+
+  &:not(.mine) {
+    .chatBubble {
+      border-bottom-left-radius: 4px;
+    }
+
+    .chatAddReaction {
+      right: -28px;
+    }
+  }
 }
 
-.chat-msg.mine {
-  flex-direction: row-reverse;
-}
-
-.chat-avatar {
+.chatAvatar {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
   margin-top: 4px;
 }
 
-.chat-bubble-wrapper {
+.chatBubbleWrapper {
   max-width: 75%;
   position: relative;
+
+  &:hover .chatAddReaction {
+    opacity: 1;
+  }
 }
 
-.chat-bubble-wrapper:hover .chat-add-reaction {
-  opacity: 1;
-}
-
-.chat-bubble {
+.chatBubble {
   padding: 8px 12px;
   border-radius: 14px;
   background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.05));
@@ -284,31 +306,22 @@ function closeMentionPopup() {
   word-break: break-word;
 }
 
-.mine .chat-bubble {
-  background: var(--nd-accentedBg, rgba(134, 179, 0, 0.15));
-  border-bottom-right-radius: 4px;
-}
-
-.chat-msg:not(.mine) .chat-bubble {
-  border-bottom-left-radius: 4px;
-}
-
-.chat-sender {
+.chatSender {
   font-size: 0.8em;
   font-weight: 600;
   opacity: 0.7;
   margin-bottom: 2px;
 }
 
-.chat-text {
+.chatText {
   white-space: pre-wrap;
 }
 
-.chat-file {
+.chatFile {
   margin-top: 4px;
 }
 
-.chat-image {
+.chatImage {
   max-width: 100%;
   max-height: 200px;
   border-radius: var(--nd-radius-md);
@@ -316,7 +329,7 @@ function closeMentionPopup() {
   cursor: pointer;
 }
 
-.chat-time {
+.chatTime {
   font-size: 0.7em;
   opacity: 0.5;
   text-align: right;
@@ -324,18 +337,14 @@ function closeMentionPopup() {
 }
 
 /* Reactions */
-.chat-reactions {
+.chatReactions {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   margin-top: 4px;
 }
 
-.mine .chat-reactions {
-  justify-content: flex-end;
-}
-
-.chat-reaction-pill {
+.chatReactionPill {
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -347,23 +356,23 @@ function closeMentionPopup() {
   font-size: 0.8em;
   cursor: pointer;
   line-height: 1.4;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg, rgba(255, 255, 255, 0.1));
+  }
+
+  &.reacted {
+    border-color: var(--nd-accent);
+    background: var(--nd-accentedBg, rgba(134, 179, 0, 0.15));
+  }
 }
 
-.chat-reaction-pill:hover {
-  background: var(--nd-buttonHoverBg, rgba(255, 255, 255, 0.1));
-}
-
-.chat-reaction-pill.reacted {
-  border-color: var(--nd-accent);
-  background: var(--nd-accentedBg, rgba(134, 179, 0, 0.15));
-}
-
-.reaction-avatars {
+.reactionAvatars {
   display: inline-flex;
   align-items: center;
 }
 
-.reaction-avatar {
+.reactionAvatar {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -371,23 +380,23 @@ function closeMentionPopup() {
   border: 1.5px solid var(--nd-panel, #1a1a1a);
 }
 
-.reaction-emoji-img {
+.reactionEmojiImg {
   width: 18px;
   height: 18px;
   object-fit: contain;
 }
 
-.reaction-emoji-text {
+.reactionEmojiText {
   font-size: 1.1em;
 }
 
-.reaction-count {
+.reactionCount {
   font-size: 0.85em;
   opacity: 0.7;
 }
 
 /* Add reaction button */
-.chat-add-reaction {
+.chatAddReaction {
   position: absolute;
   top: 2px;
   border: none;
@@ -403,22 +412,14 @@ function closeMentionPopup() {
   cursor: pointer;
   font-size: 0.85em;
   transition: opacity var(--nd-duration-base);
-}
 
-.chat-msg:not(.mine) .chat-add-reaction {
-  right: -28px;
-}
-
-.mine .chat-add-reaction {
-  left: -28px;
-}
-
-.chat-add-reaction:hover {
-  background: var(--nd-buttonHoverBg, rgba(255, 255, 255, 0.15));
+  &:hover {
+    background: var(--nd-buttonHoverBg, rgba(255, 255, 255, 0.15));
+  }
 }
 
 /* Lightbox */
-.lightbox-overlay {
+.lightboxOverlay {
   position: fixed;
   inset: 0;
   z-index: var(--nd-z-popup);
@@ -429,7 +430,7 @@ function closeMentionPopup() {
   cursor: pointer;
 }
 
-.lightbox-close {
+.lightboxClose {
   position: absolute;
   top: 16px;
   right: 16px;
@@ -444,13 +445,13 @@ function closeMentionPopup() {
   justify-content: center;
   cursor: pointer;
   z-index: 1;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
 }
 
-.lightbox-close:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.lightbox-image {
+.lightboxImage {
   max-width: 90vw;
   max-height: 90vh;
   object-fit: contain;

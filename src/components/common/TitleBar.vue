@@ -113,56 +113,55 @@ async function togglePip() {
 </script>
 
 <template>
-  <div class="titlebar" data-tauri-drag-region>
-    <div class="titlebar-left" data-tauri-drag-region>
-      <img src="/favicon.svg" alt="" class="titlebar-icon" draggable="false" data-tauri-drag-region />
+  <div :class="$style.titlebar" data-tauri-drag-region>
+    <div :class="$style.titlebarLeft" data-tauri-drag-region>
+      <img src="/favicon.svg" alt="" :class="$style.titlebarIcon" draggable="false" data-tauri-drag-region />
     </div>
-    <div class="titlebar-center" data-tauri-drag-region>
+    <div :class="$style.titlebarCenter" data-tauri-drag-region>
       <!-- Open: inline command palette -->
       <CommandPalette v-if="commandStore.isOpen" inline />
       <!-- Closed: search bar button -->
-      <button v-else class="titlebar-search-bar" @click="commandStore.toggle()">
-        <i class="ti ti-search titlebar-search-icon" />
-        <span class="titlebar-search-text" :class="{ 'has-uri': deckStore.activeColumnUri }">{{ deckStore.activeColumnUri ?? 'コマンドを検索...' }}</span>
-        <kbd class="titlebar-search-kbd">Ctrl+K</kbd>
+      <button v-else :class="$style.titlebarSearchBar" @click="commandStore.toggle()">
+        <i :class="[$style.titlebarSearchIcon, 'ti', 'ti-search']" />
+        <span :class="[$style.titlebarSearchText, { [$style.hasUri]: deckStore.activeColumnUri }]">{{ deckStore.activeColumnUri ?? 'コマンドを検索...' }}</span>
+        <kbd :class="$style.titlebarSearchKbd">Ctrl+K</kbd>
       </button>
     </div>
-    <div class="titlebar-controls">
+    <div :class="$style.titlebarControls">
       <button
-        class="titlebar-btn titlebar-window-btn"
+        :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
         title="新しいウィンドウ"
         @click="openNewWindow"
       >
         <i class="ti ti-app-window" />
       </button>
       <button
-        class="titlebar-btn titlebar-sidebar-btn"
-        :class="{ 'titlebar-btn-active': !deckStore.navCollapsed }"
+        :class="[$style.titlebarBtn, $style.titlebarSidebarBtn, { [$style.titlebarBtnActive]: !deckStore.navCollapsed }]"
         title="サイドバー切替"
         @click="commandStore.execute('toggle-sidebar')"
       >
         <i class="ti ti-layout-sidebar" />
       </button>
       <button
-        class="titlebar-btn titlebar-window-btn"
+        :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
         :title="isMobileSize ? 'デスクトップサイズ' : 'モバイルサイズ'"
         @click="toggleMobileSize"
       >
         <i :class="isMobileSize ? 'ti ti-device-desktop' : 'ti ti-device-mobile'" />
       </button>
       <button
-        class="titlebar-btn titlebar-window-btn"
+        :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
         title="ピクチャーインピクチャー"
         @click="togglePip"
       >
         <i class="ti ti-picture-in-picture" />
       </button>
-      <button class="titlebar-btn titlebar-window-btn" title="最小化" @click="minimize">
+      <button :class="[$style.titlebarBtn, $style.titlebarWindowBtn]" title="最小化" @click="minimize">
         <svg width="10" height="10" viewBox="0 0 10 10">
           <rect x="0" y="4.5" width="10" height="1" fill="currentColor" />
         </svg>
       </button>
-      <button class="titlebar-btn titlebar-window-btn" title="最大化" @click="toggleMaximize">
+      <button :class="[$style.titlebarBtn, $style.titlebarWindowBtn]" title="最大化" @click="toggleMaximize">
         <svg v-if="!isMaximized" width="10" height="10" viewBox="0 0 10 10">
           <rect x="0.5" y="0.5" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1" fill="none" />
         </svg>
@@ -171,7 +170,7 @@ async function togglePip() {
           <rect x="0.5" y="2.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1" fill="var(--nd-navBg, #1a1a2e)" />
         </svg>
       </button>
-      <button class="titlebar-btn titlebar-btn-close" title="閉じる" @click="close">
+      <button :class="[$style.titlebarBtn, $style.titlebarBtnClose]" title="閉じる" @click="close">
         <svg width="10" height="10" viewBox="0 0 10 10">
           <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
         </svg>
@@ -180,7 +179,7 @@ async function togglePip() {
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" module>
 .titlebar {
   display: flex;
   align-items: center;
@@ -192,7 +191,7 @@ async function togglePip() {
   position: relative;
 }
 
-.titlebar-left {
+.titlebarLeft {
   position: absolute;
   left: 0;
   display: flex;
@@ -200,14 +199,14 @@ async function togglePip() {
   height: 100%;
 }
 
-.titlebar-icon {
+.titlebarIcon {
   width: 18px;
   height: 18px;
   margin-left: 10px;
   border-radius: 4px;
 }
 
-.titlebar-center {
+.titlebarCenter {
   display: flex;
   width: 100%;
   max-width: 600px;
@@ -215,7 +214,7 @@ async function togglePip() {
   position: relative;
 }
 
-.titlebar-search-bar {
+.titlebarSearchBar {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -232,33 +231,33 @@ async function togglePip() {
   transition:
     background 0.15s,
     border-color 0.15s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
 }
 
-.titlebar-search-bar:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-.titlebar-search-icon {
+.titlebarSearchIcon {
   font-size: 12px;
   opacity: 0.4;
   flex-shrink: 0;
 }
 
-.titlebar-search-text {
+.titlebarSearchText {
   flex: 1;
   opacity: 0.35;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  &.hasUri {
+    opacity: 0.7;
+  }
 }
 
-.titlebar-search-text.has-uri {
-  opacity: 0.7;
-}
-
-.titlebar-search-kbd {
+.titlebarSearchKbd {
   font-size: 10px;
   padding: 1px 4px;
   border-radius: 3px;
@@ -269,14 +268,14 @@ async function togglePip() {
   flex-shrink: 0;
 }
 
-.titlebar-controls {
+.titlebarControls {
   position: absolute;
   right: 0;
   display: flex;
   height: 100%;
 }
 
-.titlebar-btn {
+.titlebarBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -288,33 +287,39 @@ async function togglePip() {
   opacity: 0.6;
   cursor: pointer;
   transition: background var(--nd-duration-fast), opacity var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.titlebar-btn:hover {
-  opacity: 1;
-  background: var(--nd-buttonHoverBg);
-}
-
-.titlebar-btn-active {
+.titlebarBtnActive {
   opacity: 0.85;
 }
 
-.titlebar-btn-close:hover {
-  background: #e81123;
-  color: #fff;
-  opacity: 1;
+.titlebarBtnClose {
+  &:hover {
+    background: #e81123;
+    color: #fff;
+    opacity: 1;
+  }
 }
 
+.titlebarSidebarBtn {}
+.titlebarWindowBtn {}
+
 @media (max-width: 500px) {
-  .titlebar-sidebar-btn,
-  .titlebar-window-btn {
+  .titlebarSidebarBtn,
+  .titlebarWindowBtn {
     display: none;
   }
 }
 
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .titlebar-sidebar-btn,
-html.nd-mobile .titlebar-window-btn {
-  display: none;
+:global(html.nd-mobile) {
+  .titlebarSidebarBtn,
+  .titlebarWindowBtn {
+    display: none;
+  }
 }
 </style>

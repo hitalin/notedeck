@@ -158,24 +158,24 @@ onMounted(() => {
       {{ error.message }}
     </div>
 
-    <div v-else class="emoji-body">
+    <div v-else :class="$style.emojiBody">
       <!-- Search -->
-      <div class="emoji-search">
-        <i class="ti ti-search emoji-search-icon" />
+      <div :class="$style.emojiSearch">
+        <i :class="$style.emojiSearchIcon" class="ti ti-search" />
         <input
           v-model="searchQuery"
-          class="emoji-search-input"
+          :class="$style.emojiSearchInput"
           type="text"
           placeholder="絵文字を検索..."
         />
-        <span v-if="searchQuery" class="emoji-search-count">{{ filteredEmojis.length }}件</span>
+        <span v-if="searchQuery" :class="$style.emojiSearchCount">{{ filteredEmojis.length }}件</span>
       </div>
 
       <!-- Category filter -->
-      <div v-if="categories.length > 0 && !searchQuery" class="category-bar">
+      <div v-if="categories.length > 0 && !searchQuery" :class="$style.categoryBar">
         <button
-          class="_button category-chip"
-          :class="{ active: !selectedCategory }"
+          class="_button"
+          :class="[$style.categoryChip, { [$style.active]: !selectedCategory }]"
           @click="selectedCategory = null"
         >
           すべて
@@ -183,8 +183,8 @@ onMounted(() => {
         <button
           v-for="cat in categories"
           :key="cat"
-          class="_button category-chip"
-          :class="{ active: selectedCategory === cat }"
+          class="_button"
+          :class="[$style.categoryChip, { [$style.active]: selectedCategory === cat }]"
           @click="selectedCategory = selectedCategory === cat ? null : cat"
         >
           {{ cat }}
@@ -192,7 +192,7 @@ onMounted(() => {
       </div>
 
       <!-- Loading -->
-      <div v-if="isLoading && allEmojis.length === 0" class="emoji-loading">
+      <div v-if="isLoading && allEmojis.length === 0" :class="$style.emojiLoading">
         <MkSkeleton v-for="i in 3" :key="i" />
       </div>
 
@@ -201,20 +201,20 @@ onMounted(() => {
       </div>
 
       <!-- Emoji grid grouped by category -->
-      <div v-else ref="scrollContainer" class="emoji-scroller">
-        <div v-for="[cat, emojis] in groupedEmojis" :key="cat" class="emoji-group">
-          <div class="emoji-group-label">{{ cat }} ({{ emojis.length }})</div>
-          <div class="emoji-grid">
+      <div v-else ref="scrollContainer" :class="$style.emojiScroller">
+        <div v-for="[cat, emojis] in groupedEmojis" :key="cat" :class="$style.emojiGroup">
+          <div :class="$style.emojiGroupLabel">{{ cat }} ({{ emojis.length }})</div>
+          <div :class="$style.emojiGrid">
             <button
               v-for="emoji in emojis"
               :key="emoji.name"
-              class="_button emoji-cell"
-              :class="{ copied: copiedName === emoji.name }"
+              class="_button"
+              :class="[$style.emojiCell, { [$style.copied]: copiedName === emoji.name }]"
               :title="`:${emoji.name}:`"
               @click="copyEmojiCode(emoji)"
             >
-              <img :src="emoji.url" :alt="emoji.name" class="emoji-img" loading="lazy" />
-              <span v-if="copiedName === emoji.name" class="emoji-copied-badge">Copied!</span>
+              <img :src="emoji.url" :alt="emoji.name" :class="$style.emojiImg" loading="lazy" />
+              <span v-if="copiedName === emoji.name" :class="$style.emojiCopiedBadge">Copied!</span>
             </button>
           </div>
         </div>
@@ -224,9 +224,11 @@ onMounted(() => {
 </template>
 
 <style scoped>
-@import "./column-common.css";
+@use "./column-common.module.scss";
+</style>
 
-.emoji-body {
+<style lang="scss" module>
+.emojiBody {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -234,14 +236,7 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.header-count {
-  font-size: 0.75em;
-  opacity: 0.5;
-  flex-shrink: 0;
-}
-
-/* Search */
-.emoji-search {
+.emojiSearch {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -249,47 +244,46 @@ onMounted(() => {
   border-bottom: 1px solid var(--nd-divider);
 }
 
-.emoji-search-icon {
+.emojiSearchIcon {
   flex-shrink: 0;
   opacity: 0.5;
   font-size: 14px;
 }
 
-.emoji-search-input {
+.emojiSearchInput {
   flex: 1;
   border: none;
   background: none;
   color: var(--nd-fg);
   font-size: 0.85em;
   outline: none;
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.4;
+  }
 }
 
-.emoji-search-input::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.4;
-}
-
-.emoji-search-count {
+.emojiSearchCount {
   flex-shrink: 0;
   font-size: 0.75em;
   opacity: 0.5;
 }
 
-/* Category bar */
-.category-bar {
+.categoryBar {
   display: flex;
   gap: 4px;
   padding: 8px 12px;
   overflow-x: auto;
   border-bottom: 1px solid var(--nd-divider);
   scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
-.category-bar::-webkit-scrollbar {
-  display: none;
-}
-
-.category-chip {
+.categoryChip {
   flex-shrink: 0;
   padding: 4px 10px;
   border-radius: var(--nd-radius-full);
@@ -298,24 +292,22 @@ onMounted(() => {
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   transition: background var(--nd-duration-base), color var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &.active {
+    background: var(--nd-accent);
+    color: var(--nd-fgOnAccent, #fff);
+  }
 }
 
-.category-chip:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.category-chip.active {
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent, #fff);
-}
-
-/* Loading */
-.emoji-loading {
+.emojiLoading {
   padding: 16px;
 }
 
-/* Scroller */
-.emoji-scroller {
+.emojiScroller {
   flex: 1;
   overflow-y: auto;
   overflow-x: clip;
@@ -324,16 +316,15 @@ onMounted(() => {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Groups */
-.emoji-group {
+.emojiGroup {
   padding-bottom: 8px;
+
+  & + & {
+    border-top: 1px solid var(--nd-divider);
+  }
 }
 
-.emoji-group + .emoji-group {
-  border-top: 1px solid var(--nd-divider);
-}
-
-.emoji-group-label {
+.emojiGroupLabel {
   padding: 10px 12px 4px;
   font-size: 0.75em;
   font-weight: bold;
@@ -341,15 +332,14 @@ onMounted(() => {
   opacity: 0.6;
 }
 
-/* Grid */
-.emoji-grid {
+.emojiGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
   gap: 2px;
   padding: 0 8px;
 }
 
-.emoji-cell {
+.emojiCell {
   position: relative;
   display: flex;
   align-items: center;
@@ -358,23 +348,23 @@ onMounted(() => {
   border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-base);
   cursor: pointer;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &.copied {
+    background: var(--nd-accentedBg);
+  }
 }
 
-.emoji-cell:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.emoji-cell.copied {
-  background: var(--nd-accentedBg);
-}
-
-.emoji-img {
+.emojiImg {
   width: 32px;
   height: 32px;
   object-fit: contain;
 }
 
-.emoji-copied-badge {
+.emojiCopiedBadge {
   position: absolute;
   bottom: -2px;
   left: 50%;

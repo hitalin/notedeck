@@ -217,15 +217,15 @@ async function handlePosted(editedNoteId?: string) {
 </script>
 
 <template>
-  <div class="note-detail-content">
-    <div v-if="isLoading" class="state-message">読み込み中...</div>
+  <div :class="$style.noteDetailContent">
+    <div v-if="isLoading" :class="$style.stateMessage">読み込み中...</div>
 
-    <div v-else-if="error" class="state-message state-error">
+    <div v-else-if="error" :class="[$style.stateMessage, $style.stateError]">
       <p>{{ error.message }}</p>
     </div>
 
-    <div v-else-if="note" class="note-detail">
-      <div v-if="ancestors.length > 0" class="ancestors">
+    <div v-else-if="note" :class="$style.noteDetail">
+      <div v-if="ancestors.length > 0" :class="$style.ancestors">
         <MkNote
           v-for="ancestor in ancestors"
           :key="ancestor.id"
@@ -239,7 +239,7 @@ async function handlePosted(editedNoteId?: string) {
         />
       </div>
 
-      <div class="focal-note">
+      <div :class="$style.focalNote">
         <MkNote
           :note="note"
           detailed
@@ -253,12 +253,12 @@ async function handlePosted(editedNoteId?: string) {
       </div>
 
       <!-- Tabs -->
-      <div class="detail-tabs">
+      <div :class="$style.detailTabs">
         <button
           v-for="tab in DETAIL_TABS"
           :key="tab.key"
-          class="detail-tab-item _button"
-          :class="{ active: activeTab === tab.key }"
+          class="_button"
+          :class="[$style.detailTabItem, { [$style.active]: activeTab === tab.key }]"
           @click="activeTab = tab.key"
         >
           <i :class="tab.icon" />
@@ -279,18 +279,19 @@ async function handlePosted(editedNoteId?: string) {
           @delete="handleDelete"
           @edit="handleEdit"
         />
-        <div v-if="children.length === 0" class="state-message">
+        <div v-if="children.length === 0" :class="$style.stateMessage">
           返信はありません
         </div>
       </div>
 
       <!-- Tab: Renotes -->
       <div v-if="activeTab === 'renotes'">
-        <div v-if="renotes.length > 0" class="renote-users">
+        <div v-if="renotes.length > 0" :class="$style.renoteUsers">
           <button
             v-for="rn in renotes"
             :key="rn.id"
-            class="renote-user-item _button"
+            class="_button"
+            :class="$style.renoteUserItem"
             @click="navToUser(accountId, rn.user.id)"
           >
             <MkAvatar
@@ -298,29 +299,30 @@ async function handlePosted(editedNoteId?: string) {
               :decorations="rn.user.avatarDecorations"
               :size="36"
             />
-            <span class="renote-user-name">
+            <span :class="$style.renoteUserName">
               {{ rn.user.name || rn.user.username }}
             </span>
-            <span class="renote-user-handle">
+            <span :class="$style.renoteUserHandle">
               @{{ rn.user.username }}
             </span>
           </button>
         </div>
-        <div v-else class="state-message">
+        <div v-else :class="$style.stateMessage">
           リノートはありません
         </div>
       </div>
 
       <!-- Tab: Reactions -->
       <div v-if="activeTab === 'reactions'">
-        <div v-if="reactions.length > 0" class="reaction-users">
+        <div v-if="reactions.length > 0" :class="$style.reactionUsers">
           <div
             v-for="r in reactions"
             :key="r.id"
-            class="reaction-user-item"
+            :class="$style.reactionUserItem"
           >
             <button
-              class="reaction-user-left _button"
+              class="_button"
+              :class="$style.reactionUserLeft"
               @click="navToUser(accountId, r.user.id)"
             >
               <MkAvatar
@@ -328,26 +330,26 @@ async function handlePosted(editedNoteId?: string) {
                 :decorations="r.user.avatarDecorations"
                 :size="36"
               />
-              <span class="reaction-user-name">
+              <span :class="$style.reactionUserName">
                 {{ r.user.name || r.user.username }}
               </span>
-              <span class="reaction-user-handle">
+              <span :class="$style.reactionUserHandle">
                 @{{ r.user.username }}
               </span>
             </button>
-            <span class="reaction-type">
+            <span :class="$style.reactionType">
               <img
                 v-if="getReactionUrl(r)"
                 :src="proxyUrl(getReactionUrl(r)!)"
                 :alt="r.type"
-                class="reaction-emoji-img"
+                :class="$style.reactionEmojiImg"
                 decoding="async"
               />
-              <MkEmoji v-else :emoji="r.type" class="reaction-emoji" />
+              <MkEmoji v-else :emoji="r.type" :class="$style.reactionEmoji" />
             </span>
           </div>
         </div>
-        <div v-else class="state-message">
+        <div v-else :class="$style.stateMessage">
           リアクションはありません
         </div>
       </div>
@@ -367,8 +369,8 @@ async function handlePosted(editedNoteId?: string) {
   </div>
 </template>
 
-<style scoped>
-.note-detail-content {
+<style lang="scss" module>
+.noteDetailContent {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -376,7 +378,7 @@ async function handlePosted(editedNoteId?: string) {
   background: var(--nd-bg);
 }
 
-.note-detail {
+.noteDetail {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -386,20 +388,19 @@ async function handlePosted(editedNoteId?: string) {
 
 .ancestors {
   opacity: 0.85;
+
+  :deep(.note-root + .note-root) {
+    border-top: none;
+  }
 }
 
-.ancestors :deep(.note-root + .note-root) {
-  border-top: none;
-}
-
-.focal-note {
+.focalNote {
   border-top: 2px solid var(--nd-accent);
   border-bottom: 1px solid var(--nd-divider);
   background: var(--nd-panelHighlight);
 }
 
-/* Tabs */
-.detail-tabs {
+.detailTabs {
   display: flex;
   border-bottom: solid 0.5px var(--nd-divider);
   position: sticky;
@@ -408,7 +409,7 @@ async function handlePosted(editedNoteId?: string) {
   z-index: 5;
 }
 
-.detail-tab-item {
+.detailTabItem {
   flex: 1;
   display: flex;
   align-items: center;
@@ -421,41 +422,40 @@ async function handlePosted(editedNoteId?: string) {
   opacity: 0.6;
   border-bottom: 2px solid transparent;
   transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.8;
+  }
+
+  &.active {
+    color: var(--nd-accent);
+    opacity: 1;
+    border-bottom-color: var(--nd-accent);
+  }
+
+  i {
+    font-size: 1em;
+  }
 }
 
-.detail-tab-item:hover {
-  opacity: 0.8;
-}
-
-.detail-tab-item.active {
-  color: var(--nd-accent);
-  opacity: 1;
-  border-bottom-color: var(--nd-accent);
-}
-
-.detail-tab-item i {
-  font-size: 1em;
-}
-
-/* Renote users list */
-.renote-users {
+.renoteUsers {
   display: flex;
   flex-direction: column;
 }
 
-.renote-user-item {
+.renoteUserItem {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 24px;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-panelHighlight);
+  }
 }
 
-.renote-user-item:hover {
-  background: var(--nd-panelHighlight);
-}
-
-.renote-user-name {
+.renoteUserName {
   font-weight: bold;
   font-size: 0.9em;
   overflow: hidden;
@@ -463,7 +463,7 @@ async function handlePosted(editedNoteId?: string) {
   white-space: nowrap;
 }
 
-.renote-user-handle {
+.renoteUserHandle {
   font-size: 0.8em;
   opacity: 0.6;
   overflow: hidden;
@@ -471,33 +471,32 @@ async function handlePosted(editedNoteId?: string) {
   white-space: nowrap;
 }
 
-/* Reaction users list */
-.reaction-users {
+.reactionUsers {
   display: flex;
   flex-direction: column;
 }
 
-.reaction-user-item {
+.reactionUserItem {
   display: flex;
   align-items: center;
   padding: 10px 24px;
   gap: 10px;
 }
 
-.reaction-user-left {
+.reactionUserLeft {
   display: flex;
   align-items: center;
   gap: 10px;
   flex: 1;
   min-width: 0;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.7;
+  }
 }
 
-.reaction-user-left:hover {
-  opacity: 0.7;
-}
-
-.reaction-user-name {
+.reactionUserName {
   font-weight: bold;
   font-size: 0.9em;
   overflow: hidden;
@@ -505,7 +504,7 @@ async function handlePosted(editedNoteId?: string) {
   white-space: nowrap;
 }
 
-.reaction-user-handle {
+.reactionUserHandle {
   font-size: 0.8em;
   opacity: 0.6;
   overflow: hidden;
@@ -513,20 +512,20 @@ async function handlePosted(editedNoteId?: string) {
   white-space: nowrap;
 }
 
-.reaction-type {
+.reactionType {
   flex-shrink: 0;
 }
 
-.reaction-emoji-img {
+.reactionEmojiImg {
   height: 1.5em;
   width: auto;
 }
 
-.reaction-emoji {
+.reactionEmoji {
   font-size: 1.5em;
 }
 
-.state-message {
+.stateMessage {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -536,29 +535,33 @@ async function handlePosted(editedNoteId?: string) {
   font-size: 0.9em;
 }
 
-.state-error {
+.stateError {
   color: var(--nd-love);
   opacity: 1;
 }
 
 @media (max-width: 500px) {
-  .detail-tab-item {
+  .detailTabItem {
     min-height: 44px;
   }
 
-  .renote-user-item,
-  .reaction-user-item {
+  .renoteUserItem,
+  .reactionUserItem {
     padding: 10px 16px;
   }
 }
 
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .detail-tab-item {
-  min-height: 44px;
+:global(html.nd-mobile) {
+  .detailTabItem {
+    min-height: 44px;
+  }
+
+  .renoteUserItem,
+  .reactionUserItem {
+    padding: 10px 16px;
+  }
 }
 
-html.nd-mobile .renote-user-item,
-html.nd-mobile .reaction-user-item {
-  padding: 10px 16px;
-}
+/* Empty placeholder classes for dynamic binding */
+.active {}
 </style>

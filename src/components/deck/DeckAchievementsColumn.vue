@@ -618,7 +618,7 @@ fetchAchievements()
     </template>
 
     <template #header-meta>
-      <span v-if="unlockedCount > 0" class="header-count">{{ unlockedCount }}/{{ ACHIEVEMENT_TYPES.length }}</span>
+      <span v-if="unlockedCount > 0" :class="$style.headerCount">{{ unlockedCount }}/{{ ACHIEVEMENT_TYPES.length }}</span>
       <button class="_button header-refresh" title="更新" :disabled="loading" @click.stop="fetchAchievements()">
         <i class="ti ti-refresh" :class="{ spin: loading }" />
       </button>
@@ -627,38 +627,36 @@ fetchAchievements()
       </div>
     </template>
 
-    <div class="achievements-scroll">
+    <div :class="$style.achievementsScroll">
       <div v-if="loading && achievements.length === 0" class="column-empty">読み込み中...</div>
       <div v-else-if="error" class="column-empty column-error">{{ error }}</div>
       <div v-else-if="achievements.length === 0 && !loading" class="column-empty">実績がありません</div>
       <template v-else>
-        <div class="achievements-grid">
+        <div :class="$style.achievementsGrid">
           <div
             v-for="item in sortedAchievements"
             :key="item.name"
-            class="achievement-card"
-            :class="{ locked: !item.unlockedAt }"
+            :class="[$style.achievementCard, { [$style.locked]: !item.unlockedAt }]"
           >
-            <div class="achievement-badge">
+            <div :class="$style.achievementBadge">
               <div
-                class="badge-frame"
-                :class="'frame-' + getBadge(item.name).frame"
+                :class="[$style.badgeFrame, $style['frame-' + getBadge(item.name).frame]]"
                 :style="{ background: FRAME_COLORS[getBadge(item.name).frame].outer }"
               >
                 <div
-                  class="badge-inner"
+                  :class="$style.badgeInner"
                   :style="{
                     background: (item.unlockedAt ? getBadge(item.name).bg : null) ?? FRAME_COLORS[getBadge(item.name).frame].inner,
                   }"
                 >
-                  <span v-if="item.unlockedAt" class="badge-emoji">{{ getBadge(item.name).emoji }}</span>
-                  <span v-else class="badge-emoji locked-emoji">?</span>
+                  <span v-if="item.unlockedAt" :class="$style.badgeEmoji">{{ getBadge(item.name).emoji }}</span>
+                  <span v-else :class="[$style.badgeEmoji, $style.lockedEmoji]">?</span>
                 </div>
               </div>
             </div>
-            <div class="achievement-info">
-              <div class="achievement-name">{{ item.unlockedAt ? (LABELS[item.name] ?? item.name) : '???' }}</div>
-              <div v-if="item.unlockedAt" class="achievement-date">{{ formatDate(item.unlockedAt) }}</div>
+            <div :class="$style.achievementInfo">
+              <div :class="$style.achievementName">{{ item.unlockedAt ? (LABELS[item.name] ?? item.name) : '???' }}</div>
+              <div v-if="item.unlockedAt" :class="$style.achievementDate">{{ formatDate(item.unlockedAt) }}</div>
             </div>
           </div>
         </div>
@@ -668,29 +666,31 @@ fetchAchievements()
 </template>
 
 <style scoped>
-@import "./column-common.css";
+@use "./column-common.module.scss";
+</style>
 
-.header-count {
+<style lang="scss" module>
+.headerCount {
   font-size: 0.75em;
   opacity: 0.6;
   margin-right: 4px;
 }
 
-.achievements-scroll {
+.achievementsScroll {
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
 }
 
-.achievements-grid {
+.achievementsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 2px;
   padding: 4px;
 }
 
-.achievement-card {
+.achievementCard {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -698,17 +698,17 @@ fetchAchievements()
   padding: 12px 8px;
   border-radius: var(--nd-radius-md);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &.locked {
+    opacity: 0.35;
+  }
 }
 
-.achievement-card:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.achievement-card.locked {
-  opacity: 0.35;
-}
-
-.achievement-badge {
+.achievementBadge {
   flex-shrink: 0;
 }
 
@@ -717,7 +717,7 @@ fetchAchievements()
   100% { translate: -130px; }
 }
 
-.badge-frame {
+.badgeFrame {
   position: relative;
   width: 52px;
   height: 52px;
@@ -727,30 +727,32 @@ fetchAchievements()
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.27));
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.53) inset;
   overflow: clip;
+
+  &.frame-gold,
+  &.frame-platinum {
+    &::before {
+      content: "";
+      display: block;
+      position: absolute;
+      top: 26px;
+      width: 200px;
+      height: 6px;
+      rotate: -45deg;
+      translate: -30px;
+      animation: shine 2s infinite;
+    }
+  }
+
+  &.frame-gold::before {
+    background: rgba(255, 255, 255, 0.53);
+  }
+
+  &.frame-platinum::before {
+    background: rgba(255, 255, 255, 0.93);
+  }
 }
 
-.frame-gold::before,
-.frame-platinum::before {
-  content: "";
-  display: block;
-  position: absolute;
-  top: 26px;
-  width: 200px;
-  height: 6px;
-  rotate: -45deg;
-  translate: -30px;
-  animation: shine 2s infinite;
-}
-
-.frame-gold::before {
-  background: rgba(255, 255, 255, 0.53);
-}
-
-.frame-platinum::before {
-  background: rgba(255, 255, 255, 0.93);
-}
-
-.badge-inner {
+.badgeInner {
   position: relative;
   width: 100%;
   height: 100%;
@@ -761,26 +763,26 @@ fetchAchievements()
   justify-content: center;
 }
 
-.badge-emoji {
+.badgeEmoji {
   font-size: 22px;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.67));
   line-height: 1;
 }
 
-.locked-emoji {
+.lockedEmoji {
   font-size: 16px;
   font-weight: bold;
   color: rgba(255, 255, 255, 0.5);
   filter: none;
 }
 
-.achievement-info {
+.achievementInfo {
   text-align: center;
   min-width: 0;
   width: 100%;
 }
 
-.achievement-name {
+.achievementName {
   font-size: 0.7em;
   font-weight: 600;
   color: var(--nd-fgHighlighted);
@@ -789,7 +791,7 @@ fetchAchievements()
   white-space: nowrap;
 }
 
-.achievement-date {
+.achievementDate {
   font-size: 0.6em;
   opacity: 0.5;
   margin-top: 2px;

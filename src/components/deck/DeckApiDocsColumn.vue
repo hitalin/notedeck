@@ -45,28 +45,28 @@ const config = computed(() => ({
       <i class="ti ti-book tl-header-icon" />
     </template>
 
-    <div class="docs-container">
-      <div v-if="error" class="docs-error">{{ error }}</div>
-      <div v-else-if="!spec" class="docs-loading">読み込み中...</div>
+    <div :class="$style.docsContainer">
+      <div v-if="error" :class="$style.docsError">{{ error }}</div>
+      <div v-else-if="!spec" :class="$style.docsLoading">読み込み中...</div>
       <ApiReference v-else :key="isDark ? 'dark' : 'light'" :configuration="config" />
     </div>
   </DeckColumn>
 </template>
 
-<style scoped>
-.docs-container {
+<style lang="scss" module>
+.docsContainer {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
 }
 
-.docs-error {
+.docsError {
   padding: 16px;
   color: var(--nd-love);
   font-size: 0.85em;
 }
 
-.docs-loading {
+.docsLoading {
   display: flex;
   align-items: center;
   justify-content: center;

@@ -17,15 +17,15 @@ function onSuccess() {
 </script>
 
 <template>
-  <div class="login-page">
-    <div class="login-dialog">
+  <div :class="$style.loginPage">
+    <div :class="$style.loginDialog">
       <!-- Misskey-style header bar -->
-      <div class="dialog-header">
-        <div class="header-title">
-          <i class="ti ti-login-2 header-icon" />
+      <div :class="$style.dialogHeader">
+        <div :class="$style.headerTitle">
+          <i class="ti ti-login-2" :class="$style.headerIcon" />
           <span>アカウントを追加</span>
         </div>
-        <button v-if="hasAccounts" class="_button header-close" @click="onClose">
+        <button v-if="hasAccounts" class="_button" :class="$style.headerClose" @click="onClose">
           <i class="ti ti-x" />
         </button>
       </div>
@@ -38,8 +38,8 @@ function onSuccess() {
   </div>
 </template>
 
-<style scoped>
-.login-page {
+<style lang="scss" module>
+.loginPage {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -47,7 +47,7 @@ function onSuccess() {
   background: var(--nd-bg);
 }
 
-.login-dialog {
+.loginDialog {
   background: var(--nd-panel);
   border-radius: var(--nd-radius, 12px);
   box-shadow: 0 8px 32px var(--nd-shadow);
@@ -57,8 +57,7 @@ function onSuccess() {
   overflow: clip;
 }
 
-/* Header bar */
-.dialog-header {
+.dialogHeader {
   position: sticky;
   top: 0;
   display: flex;
@@ -72,7 +71,7 @@ function onSuccess() {
   z-index: 1;
 }
 
-.header-title {
+.headerTitle {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -81,11 +80,11 @@ function onSuccess() {
   color: var(--nd-fgHighlighted);
 }
 
-.header-icon {
+.headerIcon {
   font-size: 1.1em;
 }
 
-.header-close {
+.headerClose {
   margin-left: auto;
   display: flex;
   align-items: center;
@@ -96,10 +95,10 @@ function onSuccess() {
   color: var(--nd-fg);
   opacity: 0.6;
   transition: background var(--nd-duration-base), opacity var(--nd-duration-base);
-}
 
-.header-close:hover {
-  background: var(--nd-buttonHoverBg);
-  opacity: 1;
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
 }
 </style>

@@ -89,33 +89,34 @@ function remove(id: string) {
 
 <template>
   <Transition name="profile-menu">
-    <div v-if="show" ref="menuEl" class="profile-menu _popupMenu" @pointerdown.stop>
+    <div v-if="show" ref="menuEl" :class="$style.profileMenu" class="_popupMenu" @pointerdown.stop>
       <div
         v-for="p in profiles"
         :key="p.id"
-        class="profile-menu-item"
-        :class="{ active: p.id === deckStore.windowProfileId }"
+        :class="[$style.profileMenuItem, { [$style.active]: p.id === deckStore.windowProfileId }]"
         @click="apply(p.id)"
       >
         <input
           v-if="editingId === p.id"
           v-model="editingName"
-          class="profile-menu-rename-input"
+          :class="$style.profileMenuRenameInput"
           @blur="commitRename"
           @click.stop
           @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
           @vue:mounted="({ el }: { el: HTMLInputElement }) => { el.focus(); el.select() }"
         />
-        <span v-else class="profile-menu-name">{{ p.name }}</span>
+        <span v-else :class="$style.profileMenuName">{{ p.name }}</span>
         <button
-          class="_button profile-menu-action"
+          class="_button"
+          :class="$style.profileMenuAction"
           title="名前変更"
           @click.stop="startRename(p.id, p.name)"
         >
           <i class="ti ti-edit" />
         </button>
         <button
-          class="_button profile-menu-action profile-menu-delete"
+          class="_button"
+          :class="[$style.profileMenuAction, $style.profileMenuDelete]"
           title="削除"
           @click.stop="remove(p.id)"
         >
@@ -123,13 +124,13 @@ function remove(id: string) {
         </button>
       </div>
 
-      <div v-if="profiles.length === 0" class="profile-menu-empty">
+      <div v-if="profiles.length === 0" :class="$style.profileMenuEmpty">
         保存されたプロファイルはありません
       </div>
 
-      <div class="profile-menu-divider" />
+      <div :class="$style.profileMenuDivider" />
 
-      <div class="profile-menu-item profile-menu-new" @click="createProfile">
+      <div :class="[$style.profileMenuItem, $style.profileMenuNew]" @click="createProfile">
         <i class="ti ti-plus" />
         <span>新しいプロファイル</span>
       </div>
@@ -138,8 +139,8 @@ function remove(id: string) {
   </Transition>
 </template>
 
-<style scoped>
-.profile-menu {
+<style lang="scss" module>
+.profileMenu {
   bottom: 100%;
   left: 0;
   margin-bottom: 4px;
@@ -147,7 +148,7 @@ function remove(id: string) {
   max-width: 300px;
 }
 
-.profile-menu-empty {
+.profileMenuEmpty {
   padding: 8px 16px;
   font-size: 0.9em;
   color: var(--nd-fg);
@@ -155,7 +156,7 @@ function remove(id: string) {
   text-align: center;
 }
 
-.profile-menu-item {
+.profileMenuItem {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -165,31 +166,31 @@ function remove(id: string) {
   line-height: 20px;
   color: var(--nd-fg);
   position: relative;
+
+  &::before {
+    content: '';
+    display: block;
+    position: absolute;
+    inset: 2px 8px;
+    border-radius: var(--nd-radius-sm);
+    transition: background var(--nd-duration-fast);
+  }
+
+  &:hover::before {
+    background: var(--nd-accent-hover);
+  }
 }
 
-.profile-menu-item::before {
-  content: '';
-  display: block;
-  position: absolute;
-  inset: 2px 8px;
-  border-radius: var(--nd-radius-sm);
-  transition: background var(--nd-duration-fast);
-}
-
-.profile-menu-item:hover::before {
-  background: var(--nd-accent-hover);
-}
-
-.profile-menu-item.active {
+.active {
   color: var(--nd-accent);
   font-weight: 600;
+
+  &::before {
+    background: var(--nd-accent-subtle);
+  }
 }
 
-.profile-menu-item.active::before {
-  background: var(--nd-accent-subtle);
-}
-
-.profile-menu-name {
+.profileMenuName {
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -197,7 +198,7 @@ function remove(id: string) {
   position: relative;
 }
 
-.profile-menu-rename-input {
+.profileMenuRenameInput {
   flex: 1;
   min-width: 0;
   font-size: inherit;
@@ -211,7 +212,7 @@ function remove(id: string) {
   outline: none;
 }
 
-.profile-menu-action {
+.profileMenuAction {
   display: none;
   flex-shrink: 0;
   color: var(--nd-fg);
@@ -219,39 +220,43 @@ function remove(id: string) {
   padding: 2px;
   position: relative;
   transition: opacity var(--nd-duration-fast);
+
+  .profileMenuItem:hover & {
+    display: flex;
+  }
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
-.profile-menu-item:hover .profile-menu-action {
-  display: flex;
+.profileMenuDelete {
+  &:hover {
+    color: var(--nd-love, #ff6b6b);
+  }
 }
 
-.profile-menu-action:hover {
-  opacity: 1;
-}
-
-.profile-menu-delete:hover {
-  color: var(--nd-love, #ff6b6b);
-}
-
-.profile-menu-divider {
+.profileMenuDivider {
   border: 0;
   border-top: 0.5px solid var(--nd-divider);
   margin: 8px 0;
 }
 
-.profile-menu-new {
+.profileMenuNew {
   opacity: 0.7;
-}
 
-.profile-menu-new:hover {
-  opacity: 1;
-}
+  &:hover {
+    opacity: 1;
+  }
 
-.profile-menu-new i,
-.profile-menu-new span {
-  position: relative;
+  i, span {
+    position: relative;
+  }
 }
+</style>
 
+<style lang="scss">
+/* Vue transition classes (must be global) */
 .profile-menu-enter-active,
 .profile-menu-leave-active {
   transition: opacity 0.18s ease, transform 0.18s ease;
@@ -264,7 +269,24 @@ function remove(id: string) {
 }
 
 @media (max-width: 500px) {
-  .profile-menu {
+  .profile-menu-enter-from,
+  .profile-menu-leave-to {
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+html.nd-mobile {
+  .profile-menu-enter-from,
+  .profile-menu-leave-to {
+    transform: translateY(8px) scale(0.97);
+  }
+}
+</style>
+
+<style lang="scss" module>
+/* Media query overrides */
+@media (max-width: 500px) {
+  .profileMenu {
     position: fixed;
     bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
     left: 8px;
@@ -275,34 +297,25 @@ function remove(id: string) {
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
   }
 
-  .profile-menu-action {
+  .profileMenuAction {
     display: flex;
   }
+}
 
-  .profile-menu-enter-from,
-  .profile-menu-leave-to {
-    transform: translateY(8px) scale(0.97);
+:global(html.nd-mobile) {
+  .profileMenu {
+    position: fixed;
+    bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    min-width: 0;
+    border-radius: 12px;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
   }
-}
 
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .profile-menu {
-  position: fixed;
-  bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
-  left: 8px;
-  right: 8px;
-  max-width: none;
-  min-width: 0;
-  border-radius: 12px;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
-}
-
-html.nd-mobile .profile-menu-action {
-  display: flex;
-}
-
-html.nd-mobile .profile-menu-enter-from,
-html.nd-mobile .profile-menu-leave-to {
-  transform: translateY(8px) scale(0.97);
+  .profileMenuAction {
+    display: flex;
+  }
 }
 </style>

@@ -261,28 +261,29 @@ async function handlePosted(editedNoteId?: string) {
     :theme-vars="columnThemeVars"
   >
     <template #header-icon>
-      <i class="ti ti-world-search lookup-header-icon" />
+      <i class="ti ti-world-search" :class="$style.lookupHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
-        <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
     <template #header-extra>
-      <div class="lookup-bar">
-        <i class="ti ti-world-search lookup-icon" />
+      <div :class="$style.lookupBar">
+        <i class="ti ti-world-search" :class="$style.lookupIcon" />
         <input
           v-model="queryInput"
-          class="lookup-input"
+          :class="$style.lookupInput"
           type="text"
           placeholder="URL or @user@host"
           @keydown="onKeydown"
         />
         <button
-          class="_button lookup-btn"
+          class="_button"
+          :class="$style.lookupBtn"
           :disabled="!queryInput.trim() || isLoading"
           @click="performLookup"
         >
@@ -291,23 +292,23 @@ async function handlePosted(editedNoteId?: string) {
       </div>
     </template>
 
-    <div v-if="!account" class="column-empty">
+    <div v-if="!account" :class="$style.columnEmpty">
       Account not found
     </div>
 
-    <div v-else-if="isLoading" class="column-empty">
+    <div v-else-if="isLoading" :class="$style.columnEmpty">
       照会中...
     </div>
 
-    <div v-else-if="error" class="column-empty column-error">
+    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
       {{ error }}
     </div>
 
-    <div v-else-if="!result" class="column-empty">
+    <div v-else-if="!result" :class="$style.columnEmpty">
       URLまたは@ユーザー名を入力して照会
     </div>
 
-    <div v-else-if="result.type === 'Note'" class="lookup-result">
+    <div v-else-if="result.type === 'Note'" :class="$style.lookupResult">
       <MkNote
         :note="result.note"
         detailed
@@ -320,16 +321,16 @@ async function handlePosted(editedNoteId?: string) {
       />
     </div>
 
-    <div v-else-if="result.type === 'User'" class="lookup-result">
-      <button class="_button lookup-user-card" @click="openUser">
-        <img v-if="result.user.avatarUrl" :src="result.user.avatarUrl" class="lookup-user-avatar" />
-        <div class="lookup-user-info">
-          <span class="lookup-user-name">{{ result.user.name || result.user.username }}</span>
-          <span class="lookup-user-handle">
+    <div v-else-if="result.type === 'User'" :class="$style.lookupResult">
+      <button class="_button" :class="$style.lookupUserCard" @click="openUser">
+        <img v-if="result.user.avatarUrl" :src="result.user.avatarUrl" :class="$style.lookupUserAvatar" />
+        <div :class="$style.lookupUserInfo">
+          <span :class="$style.lookupUserName">{{ result.user.name || result.user.username }}</span>
+          <span :class="$style.lookupUserHandle">
             @{{ result.user.username }}<template v-if="result.user.host">@{{ result.user.host }}</template>
           </span>
         </div>
-        <i class="ti ti-chevron-right lookup-user-arrow" />
+        <i class="ti ti-chevron-right" :class="$style.lookupUserArrow" />
       </button>
     </div>
   </DeckColumn>
@@ -347,13 +348,13 @@ async function handlePosted(editedNoteId?: string) {
   </Teleport>
 </template>
 
-<style scoped>
-.lookup-header-icon {
+<style lang="scss" module>
+.lookupHeaderIcon {
   flex-shrink: 0;
   opacity: 0.7;
 }
 
-.header-account {
+.headerAccount {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -361,21 +362,21 @@ async function handlePosted(editedNoteId?: string) {
   flex-shrink: 0;
 }
 
-.header-avatar {
+.headerAvatar {
   width: 18px;
   height: 18px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.header-favicon {
+.headerFavicon {
   width: 16px;
   height: 16px;
   object-fit: contain;
   opacity: 0.7;
 }
 
-.lookup-bar {
+.lookupBar {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -384,12 +385,12 @@ async function handlePosted(editedNoteId?: string) {
   background: var(--nd-bg);
 }
 
-.lookup-icon {
+.lookupIcon {
   flex-shrink: 0;
   opacity: 0.4;
 }
 
-.lookup-input {
+.lookupInput {
   flex: 1;
   min-width: 0;
   background: var(--nd-buttonBg);
@@ -399,18 +400,18 @@ async function handlePosted(editedNoteId?: string) {
   font-size: 0.85em;
   color: var(--nd-fg);
   outline: none;
+
+  &:focus {
+    box-shadow: 0 0 0 2px var(--nd-accent);
+  }
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.4;
+  }
 }
 
-.lookup-input:focus {
-  box-shadow: 0 0 0 2px var(--nd-accent);
-}
-
-.lookup-input::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.4;
-}
-
-.lookup-btn {
+.lookupBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -420,18 +421,18 @@ async function handlePosted(editedNoteId?: string) {
   flex-shrink: 0;
   opacity: 0.6;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover:not(:disabled) {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
+
+  &:disabled {
+    opacity: 0.2;
+  }
 }
 
-.lookup-btn:hover:not(:disabled) {
-  background: var(--nd-buttonHoverBg);
-  opacity: 1;
-}
-
-.lookup-btn:disabled {
-  opacity: 0.2;
-}
-
-.lookup-result {
+.lookupResult {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -439,20 +440,20 @@ async function handlePosted(editedNoteId?: string) {
   scrollbar-width: thin;
 }
 
-.lookup-user-card {
+.lookupUserCard {
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
   padding: 16px 20px;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-panelHighlight);
+  }
 }
 
-.lookup-user-card:hover {
-  background: var(--nd-panelHighlight);
-}
-
-.lookup-user-avatar {
+.lookupUserAvatar {
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -460,7 +461,7 @@ async function handlePosted(editedNoteId?: string) {
   flex-shrink: 0;
 }
 
-.lookup-user-info {
+.lookupUserInfo {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -468,7 +469,7 @@ async function handlePosted(editedNoteId?: string) {
   gap: 2px;
 }
 
-.lookup-user-name {
+.lookupUserName {
   font-weight: bold;
   font-size: 0.95em;
   overflow: hidden;
@@ -476,7 +477,7 @@ async function handlePosted(editedNoteId?: string) {
   white-space: nowrap;
 }
 
-.lookup-user-handle {
+.lookupUserHandle {
   font-size: 0.8em;
   opacity: 0.6;
   overflow: hidden;
@@ -484,12 +485,12 @@ async function handlePosted(editedNoteId?: string) {
   white-space: nowrap;
 }
 
-.lookup-user-arrow {
+.lookupUserArrow {
   flex-shrink: 0;
   opacity: 0.3;
 }
 
-.column-empty {
+.columnEmpty {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -499,7 +500,7 @@ async function handlePosted(editedNoteId?: string) {
   font-size: 0.85em;
 }
 
-.column-error {
+.columnError {
   color: var(--nd-love);
   opacity: 1;
 }

@@ -83,7 +83,7 @@ onMounted(() => {
       Account not found
     </div>
 
-    <div v-else-if="isLoading && ads.length === 0" class="ads-body">
+    <div v-else-if="isLoading && ads.length === 0" :class="$style.adsBody">
       <MkSkeleton v-for="i in 3" :key="i" />
     </div>
 
@@ -91,7 +91,7 @@ onMounted(() => {
       広告はありません
     </div>
 
-    <div v-else ref="scrollContainer" class="ads-body">
+    <div v-else ref="scrollContainer" :class="$style.adsBody">
       <MkAd
         v-for="ad in ads"
         :key="ad.id"
@@ -104,9 +104,11 @@ onMounted(() => {
 </template>
 
 <style scoped>
-@import "./column-common.css";
+@use "./column-common.module.scss";
+</style>
 
-.ads-body {
+<style lang="scss" module>
+.adsBody {
   flex: 1;
   min-height: 0;
   overflow-y: auto;

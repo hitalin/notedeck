@@ -132,13 +132,13 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="reaction-picker-panel" @click.stop>
+  <div :class="$style.reactionPickerPanel" @click.stop>
     <!-- Search (top when has query, bottom otherwise via CSS order) -->
-    <div class="picker-search" :class="{ 'has-query': searchQuery.length > 0 }">
+    <div :class="[$style.pickerSearch, searchQuery.length > 0 && $style.hasQuery]">
       <input
         ref="searchInput"
         v-model="searchQuery"
-        class="picker-search-input"
+        :class="$style.pickerSearchInput"
         type="text"
         placeholder="絵文字を検索..."
         @click.stop
@@ -146,32 +146,32 @@ onMounted(() => {
     </div>
 
     <!-- Scrollable area -->
-    <div class="picker-scroll">
+    <div :class="$style.pickerScroll">
       <!-- Search results -->
       <template v-if="searchResults">
-        <div v-if="searchResults.custom.length === 0 && searchResults.unicode.length === 0" class="picker-empty">
+        <div v-if="searchResults.custom.length === 0 && searchResults.unicode.length === 0" :class="$style.pickerEmpty">
           絵文字が見つかりません
         </div>
         <template v-else>
-          <div v-if="searchResults.custom.length > 0" class="picker-grid">
+          <div v-if="searchResults.custom.length > 0" :class="$style.pickerGrid">
             <button
               v-for="emoji in searchResults.custom"
               :key="emoji.name"
-              class="picker-emoji-btn"
+              :class="$style.pickerEmojiBtn"
               :title="`:${emoji.name}:`"
               @click="pickCustom(emoji.name)"
             >
-              <img :src="emoji.url" :alt="emoji.name" class="picker-custom-img" loading="lazy" />
+              <img :src="emoji.url" :alt="emoji.name" :class="$style.pickerCustomImg" loading="lazy" />
             </button>
           </div>
-          <div v-if="searchResults.unicode.length > 0" class="picker-grid">
+          <div v-if="searchResults.unicode.length > 0" :class="$style.pickerGrid">
             <button
               v-for="emoji in searchResults.unicode"
               :key="emoji"
-              class="picker-emoji-btn"
+              :class="$style.pickerEmojiBtn"
               @click="pickEmoji(emoji)"
             >
-              <img :src="char2twemojiUrl(emoji)" :alt="emoji" class="picker-twemoji" decoding="async" loading="lazy" />
+              <img :src="char2twemojiUrl(emoji)" :alt="emoji" :class="$style.pickerTwemoji" decoding="async" loading="lazy" />
             </button>
           </div>
         </template>
@@ -180,12 +180,12 @@ onMounted(() => {
       <!-- Normal view (no search) -->
       <template v-else>
         <!-- Pinned reactions -->
-        <div v-if="pinnedEmojis.length > 0" class="picker-pinned">
-          <div class="picker-grid">
+        <div v-if="pinnedEmojis.length > 0" :class="$style.pickerPinned">
+          <div :class="$style.pickerGrid">
             <button
               v-for="reaction in pinnedEmojis"
               :key="reaction"
-              class="picker-emoji-btn"
+              :class="$style.pickerEmojiBtn"
               :title="reaction"
               @click="pickPinnedOrRecent(reaction)"
             >
@@ -193,14 +193,14 @@ onMounted(() => {
                 v-if="isCustomEmoji(reaction)"
                 :src="resolveEmojiUrl(reaction) ?? ''"
                 :alt="reaction"
-                class="picker-custom-img"
+                :class="$style.pickerCustomImg"
                 loading="lazy"
               />
               <img
                 v-else
                 :src="char2twemojiUrl(reaction)"
                 :alt="reaction"
-                class="picker-twemoji"
+                :class="$style.pickerTwemoji"
                 decoding="async"
                 loading="lazy"
               />
@@ -214,11 +214,11 @@ onMounted(() => {
           label="最近使った絵文字"
           :count="recentEmojis.length"
         >
-          <div class="picker-grid">
+          <div :class="$style.pickerGrid">
             <button
               v-for="reaction in recentEmojis"
               :key="reaction"
-              class="picker-emoji-btn"
+              :class="$style.pickerEmojiBtn"
               :title="reaction"
               @click="pickPinnedOrRecent(reaction)"
             >
@@ -226,14 +226,14 @@ onMounted(() => {
                 v-if="isCustomEmoji(reaction)"
                 :src="resolveEmojiUrl(reaction) ?? ''"
                 :alt="reaction"
-                class="picker-custom-img"
+                :class="$style.pickerCustomImg"
                 loading="lazy"
               />
               <img
                 v-else
                 :src="char2twemojiUrl(reaction)"
                 :alt="reaction"
-                class="picker-twemoji"
+                :class="$style.pickerTwemoji"
                 decoding="async"
                 loading="lazy"
               />
@@ -250,15 +250,15 @@ onMounted(() => {
             :count="emojis.length"
             :initial-open="false"
           >
-            <div class="picker-grid">
+            <div :class="$style.pickerGrid">
               <button
                 v-for="emoji in emojis"
                 :key="emoji.name"
-                class="picker-emoji-btn"
+                :class="$style.pickerEmojiBtn"
                 :title="`:${emoji.name}:`"
                 @click="pickCustom(emoji.name)"
               >
-                <img :src="emoji.url" :alt="emoji.name" class="picker-custom-img" loading="lazy" />
+                <img :src="emoji.url" :alt="emoji.name" :class="$style.pickerCustomImg" loading="lazy" />
               </button>
             </div>
           </MkReactionPickerSection>
@@ -272,14 +272,14 @@ onMounted(() => {
           :count="emojiCharByCategory.get(category)?.length"
           :initial-open="false"
         >
-          <div class="picker-grid">
+          <div :class="$style.pickerGrid">
             <button
               v-for="emoji in emojiCharByCategory.get(category)"
               :key="emoji"
-              class="picker-emoji-btn"
+              :class="$style.pickerEmojiBtn"
               @click="pickEmoji(emoji)"
             >
-              <img :src="char2twemojiUrl(emoji)" :alt="emoji" class="picker-twemoji" decoding="async" loading="lazy" />
+              <img :src="char2twemojiUrl(emoji)" :alt="emoji" :class="$style.pickerTwemoji" decoding="async" loading="lazy" />
             </button>
           </div>
         </MkReactionPickerSection>
@@ -288,8 +288,8 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
-.reaction-picker-panel {
+<style lang="scss" module>
+.reactionPickerPanel {
   display: flex;
   flex-direction: column;
   width: 320px;
@@ -298,20 +298,20 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.picker-search {
+.pickerSearch {
   padding: 8px;
   flex-shrink: 0;
   order: 1;
   border-top: 1px solid var(--nd-divider);
+
+  &.hasQuery {
+    order: -1;
+    border-top: none;
+    border-bottom: 1px solid var(--nd-divider);
+  }
 }
 
-.picker-search.has-query {
-  order: -1;
-  border-top: none;
-  border-bottom: 1px solid var(--nd-divider);
-}
-
-.picker-search-input {
+.pickerSearchInput {
   width: 100%;
   padding: 6px 10px;
   border: 1px solid var(--nd-divider);
@@ -321,32 +321,32 @@ onMounted(() => {
   font-size: 0.85em;
   outline: none;
   box-sizing: border-box;
+
+  &:focus {
+    border-color: var(--nd-accent);
+  }
 }
 
-.picker-search-input:focus {
-  border-color: var(--nd-accent);
-}
-
-.picker-scroll {
+.pickerScroll {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
   scrollbar-width: none;
 }
 
-.picker-pinned {
+.pickerPinned {
   padding-bottom: 4px;
   margin-bottom: 4px;
   border-bottom: 1px solid var(--nd-divider);
 }
 
-.picker-grid {
+.pickerGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, 44px);
   gap: 2px;
 }
 
-.picker-emoji-btn {
+.pickerEmojiBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -357,29 +357,29 @@ onMounted(() => {
   background: none;
   cursor: pointer;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &:active {
+    background: var(--nd-accent);
+  }
 }
 
-.picker-emoji-btn:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.picker-emoji-btn:active {
-  background: var(--nd-accent);
-}
-
-.picker-twemoji {
+.pickerTwemoji {
   width: 26px;
   height: 26px;
   object-fit: contain;
 }
 
-.picker-custom-img {
+.pickerCustomImg {
   width: 32px;
   height: 32px;
   object-fit: contain;
 }
 
-.picker-empty {
+.pickerEmpty {
   padding: 2rem;
   text-align: center;
   color: var(--nd-fg);
@@ -388,27 +388,29 @@ onMounted(() => {
 }
 
 @media (max-width: 500px) {
-  .reaction-picker-panel {
+  .reactionPickerPanel {
     width: 100%;
     max-width: 100%;
     max-height: 50vh;
   }
 
-  .picker-search-input {
+  .pickerSearchInput {
     padding: 10px 12px;
     font-size: 1em;
   }
 }
 
 /* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .reaction-picker-panel {
-  width: 100%;
-  max-width: 100%;
-  max-height: 50vh;
-}
+:global(html.nd-mobile) {
+  .reactionPickerPanel {
+    width: 100%;
+    max-width: 100%;
+    max-height: 50vh;
+  }
 
-html.nd-mobile .picker-search-input {
-  padding: 10px 12px;
-  font-size: 1em;
+  .pickerSearchInput {
+    padding: 10px 12px;
+    font-size: 1em;
+  }
 }
 </style>

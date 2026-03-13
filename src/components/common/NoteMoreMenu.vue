@@ -90,51 +90,51 @@ defineExpose({ open })
 <template>
   <Teleport to="body">
     <Transition name="nd-popup">
-      <div v-if="showMenu" class="popup-backdrop" @click="close">
+      <div v-if="showMenu" :class="$style.popupBackdrop" @click="close">
         <div
-          class="popup-menu _popup nd-popup-content"
+          :class="$style.popupMenu"
+          class="_popup nd-popup-content popup-menu"
           :style="{ top: menuPos.y + 'px', left: menuPos.x + 'px' }"
           @click.stop
         >
           <template v-if="showDeleteConfirm">
-            <div class="popup-confirm-text">このノートを削除しますか？</div>
-            <button class="popup-item popup-item-danger" @click="emit('delete', note); close()">
+            <div :class="$style.popupConfirmText">このノートを削除しますか？</div>
+            <button :class="[$style.popupItem, $style.popupItemDanger]" @click="emit('delete', note); close()">
               <i class="ti ti-trash" />
               削除
             </button>
-            <button class="popup-item" @click="showDeleteConfirm = false">
+            <button :class="$style.popupItem" @click="showDeleteConfirm = false">
               <i class="ti ti-x" />
               キャンセル
             </button>
           </template>
           <template v-else>
             <button
-              class="popup-item"
-              :class="{ 'popup-item-active': localIsFavorited }"
+              :class="[$style.popupItem, localIsFavorited && $style.popupItemActive]"
               @click="localIsFavorited = !localIsFavorited; emit('bookmark', note); close()"
             >
               <i class="ti ti-star" />
               {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
             </button>
-            <button class="popup-item" @click="openInWebUI(); close()">
+            <button :class="$style.popupItem" @click="openInWebUI(); close()">
               <i class="ti ti-external-link" />
               Web UIで開く
             </button>
-            <div class="popup-divider" />
-            <button v-if="note.text" class="popup-item" @click="copyAndClose(note.text!)">
+            <div :class="$style.popupDivider" />
+            <button v-if="note.text" :class="$style.popupItem" @click="copyAndClose(note.text!)">
               <i class="ti ti-copy" />
               内容をコピー
             </button>
-            <button class="popup-item" @click="copyAndClose(noteWebUrl)">
+            <button :class="$style.popupItem" @click="copyAndClose(noteWebUrl)">
               <i class="ti ti-link" />
               リンクをコピー
             </button>
             <template v-if="noteActions.length > 0">
-              <div class="popup-divider" />
+              <div :class="$style.popupDivider" />
               <button
                 v-for="action in noteActions"
                 :key="action.pluginInstallId + action.title"
-                class="popup-item"
+                :class="$style.popupItem"
                 @click="setPluginAccountContext(action.pluginInstallId, note._accountId); action.handler(note); close()"
               >
                 <i class="ti ti-plug" />
@@ -142,20 +142,19 @@ defineExpose({ open })
               </button>
             </template>
             <template v-if="isOwnNote">
-              <div class="popup-divider" />
+              <div :class="$style.popupDivider" />
               <button
-                class="popup-item"
-                :class="{ 'popup-item-active': localIsPinned }"
+                :class="[$style.popupItem, localIsPinned && $style.popupItemActive]"
                 @click="localIsPinned = !localIsPinned; emit('pin', note); close()"
               >
                 <i :class="localIsPinned ? 'ti ti-pinned-off' : 'ti ti-pin'" />
                 {{ localIsPinned ? 'ピン留め解除' : 'ピン留め' }}
               </button>
-              <button class="popup-item" @click="emit('edit', note); close()">
+              <button :class="$style.popupItem" @click="emit('edit', note); close()">
                 <i class="ti ti-edit" />
                 編集
               </button>
-              <button class="popup-item popup-item-danger" @click="showDeleteConfirm = true">
+              <button :class="[$style.popupItem, $style.popupItemDanger]" @click="showDeleteConfirm = true">
                 <i class="ti ti-trash" />
                 削除
               </button>
@@ -167,15 +166,15 @@ defineExpose({ open })
   </Teleport>
 </template>
 
-<style scoped>
-.popup-backdrop {
+<style lang="scss" module>
+.popupBackdrop {
   position: fixed;
   inset: 0;
   z-index: var(--nd-z-popup);
   background: transparent;
 }
 
-.popup-menu {
+.popupMenu {
   position: fixed;
   min-width: 200px;
   max-width: 300px;
@@ -183,7 +182,7 @@ defineExpose({ open })
   z-index: calc(var(--nd-z-popup) + 1);
 }
 
-.popup-item {
+.popupItem {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -198,42 +197,44 @@ defineExpose({ open })
   font-size: 0.9em;
   text-align: left;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  :global(.ti) {
+    opacity: 0.7;
+    flex-shrink: 0;
+  }
 }
 
-.popup-item:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.popup-item .ti {
-  opacity: 0.7;
-  flex-shrink: 0;
-}
-
-.popup-item-active {
+.popupItemActive {
   color: var(--nd-warn, #f0a020);
+
+  :global(.ti) {
+    opacity: 1;
+  }
 }
 
-.popup-item-active .ti {
-  opacity: 1;
-}
-
-.popup-item-danger {
+.popupItemDanger {
   color: var(--nd-error);
 }
 
-.popup-divider {
+.popupDivider {
   height: 1px;
   margin: 4px 0;
   background: var(--nd-divider);
 }
 
-.popup-confirm-text {
+.popupConfirmText {
   padding: 9px 12px;
   font-size: 0.9em;
   font-weight: bold;
   color: var(--nd-fg);
 }
+</style>
 
+<style>
 /* Override default nd-popup transform */
 .nd-popup-enter-from .popup-menu,
 .nd-popup-leave-to .popup-menu {

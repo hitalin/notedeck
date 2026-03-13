@@ -45,24 +45,25 @@ function apply() {
 </script>
 
 <template>
-  <div class="filter-builder _popup" @click.stop>
-    <div class="builder-header">フィルタ条件</div>
+  <div :class="$style.filterBuilder" class="_popup" @click.stop>
+    <div :class="$style.builderHeader">フィルタ条件</div>
 
-    <div class="conditions">
-      <div v-for="(cond, i) in conditions" :key="i" class="condition-row">
-        <button class="_button condition-type" @click="cycleType(cond)">
+    <div :class="$style.conditions">
+      <div v-for="(cond, i) in conditions" :key="i" :class="$style.conditionRow">
+        <button class="_button" :class="$style.conditionType" @click="cycleType(cond)">
           {{ FILTER_CONDITION_LABELS[cond.type] }}
         </button>
         <input
           v-model="cond.words"
-          class="condition-words"
+          :class="$style.conditionWords"
           type="text"
           placeholder="カンマ区切りで単語を入力"
           @keydown.enter="apply"
         />
         <button
           v-if="conditions.length > 1"
-          class="_button condition-remove"
+          class="_button"
+          :class="$style.conditionRemove"
           @click="removeCondition(i)"
         >
           <i class="ti ti-x" />
@@ -70,13 +71,14 @@ function apply() {
       </div>
     </div>
 
-    <div class="builder-footer">
-      <button class="_button add-btn" @click="addCondition">
+    <div :class="$style.builderFooter">
+      <button class="_button" :class="$style.addBtn" @click="addCondition">
         <i class="ti ti-plus" />
         条件を追加
       </button>
       <button
-        class="_button apply-btn"
+        class="_button"
+        :class="$style.applyBtn"
         :disabled="!hasWords"
         @click="apply"
       >
@@ -84,14 +86,14 @@ function apply() {
       </button>
     </div>
 
-    <div v-if="generatedPattern" class="pattern-preview">
+    <div v-if="generatedPattern" :class="$style.patternPreview">
       <code>{{ generatedPattern }}</code>
     </div>
   </div>
 </template>
 
-<style scoped>
-.filter-builder {
+<style lang="scss" module>
+.filterBuilder {
   width: 320px;
   max-height: 400px;
   overflow-y: auto;
@@ -102,7 +104,7 @@ function apply() {
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
 }
 
-.builder-header {
+.builderHeader {
   padding: 8px 14px 4px;
   font-size: 0.75em;
   font-weight: 700;
@@ -118,13 +120,13 @@ function apply() {
   padding: 4px 10px;
 }
 
-.condition-row {
+.conditionRow {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.condition-type {
+.conditionType {
   flex-shrink: 0;
   padding: 5px 8px;
   border-radius: var(--nd-radius-sm);
@@ -133,13 +135,13 @@ function apply() {
   font-size: 0.8em;
   white-space: nowrap;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg, rgba(255, 255, 255, 0.1));
+  }
 }
 
-.condition-type:hover {
-  background: var(--nd-buttonHoverBg, rgba(255, 255, 255, 0.1));
-}
-
-.condition-words {
+.conditionWords {
   flex: 1;
   min-width: 0;
   padding: 5px 8px;
@@ -149,18 +151,18 @@ function apply() {
   color: var(--nd-fg);
   font-size: 0.85em;
   outline: none;
+
+  &:focus {
+    box-shadow: 0 0 0 2px var(--nd-accent);
+  }
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.3;
+  }
 }
 
-.condition-words:focus {
-  box-shadow: 0 0 0 2px var(--nd-accent);
-}
-
-.condition-words::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.3;
-}
-
-.condition-remove {
+.conditionRemove {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -170,21 +172,21 @@ function apply() {
   flex-shrink: 0;
   opacity: 0.3;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg, rgba(255, 255, 255, 0.1));
+    opacity: 0.7;
+  }
 }
 
-.condition-remove:hover {
-  background: var(--nd-buttonHoverBg, rgba(255, 255, 255, 0.1));
-  opacity: 0.7;
-}
-
-.builder-footer {
+.builderFooter {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px 4px;
 }
 
-.add-btn {
+.addBtn {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -193,14 +195,14 @@ function apply() {
   font-size: 0.8em;
   opacity: 0.45;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg, rgba(255, 255, 255, 0.1));
+    opacity: 0.8;
+  }
 }
 
-.add-btn:hover {
-  background: var(--nd-buttonHoverBg, rgba(255, 255, 255, 0.1));
-  opacity: 0.8;
-}
-
-.apply-btn {
+.applyBtn {
   padding: 5px 14px;
   border-radius: var(--nd-radius-sm);
   background: var(--nd-accent);
@@ -208,29 +210,29 @@ function apply() {
   font-size: 0.8em;
   font-weight: 600;
   transition: opacity var(--nd-duration-base);
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.25;
+  }
 }
 
-.apply-btn:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
-.apply-btn:disabled {
-  opacity: 0.25;
-}
-
-.pattern-preview {
+.patternPreview {
   margin: 4px 10px 4px;
   padding: 5px 8px;
   border-radius: var(--nd-radius-sm);
   background: color-mix(in srgb, var(--nd-accent) 8%, transparent);
   overflow-x: auto;
   scrollbar-width: none;
-}
 
-.pattern-preview code {
-  font-family: monospace;
-  font-size: 0.75em;
-  color: var(--nd-accent);
-  word-break: break-all;
+  code {
+    font-family: monospace;
+    font-size: 0.75em;
+    color: var(--nd-accent);
+    word-break: break-all;
+  }
 }
 </style>

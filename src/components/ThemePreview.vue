@@ -30,7 +30,7 @@ const vars = computed(() => {
 </script>
 
 <template>
-  <svg viewBox="0 0 200 150" class="theme-preview-svg">
+  <svg viewBox="0 0 200 150" :class="$style.themePreviewSvg">
     <g fill-rule="evenodd">
       <rect width="200" height="150" :fill="vars.bg" />
       <rect width="64" height="150" :fill="vars.navBg" />
@@ -58,8 +58,8 @@ const vars = computed(() => {
   </svg>
 </template>
 
-<style scoped>
-.theme-preview-svg {
+<style lang="scss" module>
+.themePreviewSvg {
   display: block;
   width: 100%;
   height: auto;

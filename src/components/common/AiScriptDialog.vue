@@ -47,19 +47,19 @@ defineExpose({ showDialog, showConfirm })
 <template>
   <Teleport to="body">
     <Transition name="dialog-fade">
-      <div v-if="visible" class="ais-dialog-backdrop" @click.self="close(false)">
-        <div class="ais-dialog" :class="dialogType">
-          <div v-if="title" class="ais-dialog-title">{{ title }}</div>
-          <div v-if="text" class="ais-dialog-text">{{ text }}</div>
-          <div class="ais-dialog-actions">
+      <div v-if="visible" :class="$style.aisDialogBackdrop" @click.self="close(false)">
+        <div :class="[$style.aisDialog, $style[dialogType]]">
+          <div v-if="title" :class="$style.aisDialogTitle">{{ title }}</div>
+          <div v-if="text" :class="$style.aisDialogText">{{ text }}</div>
+          <div :class="$style.aisDialogActions">
             <template v-if="mode === 'confirm'">
-              <button class="ais-dialog-btn cancel" @click="close(false)">
+              <button :class="[$style.aisDialogBtn, $style.cancel]" @click="close(false)">
                 キャンセル
               </button>
-              <button class="ais-dialog-btn ok" @click="close(true)">OK</button>
+              <button :class="[$style.aisDialogBtn, $style.ok]" @click="close(true)">OK</button>
             </template>
             <template v-else>
-              <button class="ais-dialog-btn ok" @click="close(true)">OK</button>
+              <button :class="[$style.aisDialogBtn, $style.ok]" @click="close(true)">OK</button>
             </template>
           </div>
         </div>
@@ -68,8 +68,8 @@ defineExpose({ showDialog, showConfirm })
   </Teleport>
 </template>
 
-<style scoped>
-.ais-dialog-backdrop {
+<style lang="scss" module>
+.aisDialogBackdrop {
   position: fixed;
   inset: 0;
   z-index: var(--nd-z-popup);
@@ -79,7 +79,7 @@ defineExpose({ showDialog, showConfirm })
   background: var(--nd-modalBg);
 }
 
-.ais-dialog {
+.aisDialog {
   min-width: 280px;
   max-width: 400px;
   padding: 20px;
@@ -87,63 +87,71 @@ defineExpose({ showDialog, showConfirm })
   background: var(--nd-panel);
   color: var(--nd-fg);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+
+  &.warning .aisDialogTitle {
+    color: var(--nd-warn);
+  }
+
+  &.error .aisDialogTitle {
+    color: var(--nd-error);
+  }
+
+  &.success .aisDialogTitle {
+    color: var(--nd-success);
+  }
 }
 
-.ais-dialog-title {
+.aisDialogTitle {
   font-size: 1em;
   font-weight: 600;
   margin-bottom: 8px;
 }
 
-.ais-dialog.warning .ais-dialog-title {
-  color: var(--nd-warn);
-}
-
-.ais-dialog.error .ais-dialog-title {
-  color: var(--nd-error);
-}
-
-.ais-dialog.success .ais-dialog-title {
-  color: var(--nd-success);
-}
-
-.ais-dialog-text {
+.aisDialogText {
   font-size: 0.9em;
   line-height: 1.5;
   opacity: 0.85;
   white-space: pre-wrap;
 }
 
-.ais-dialog-actions {
+.aisDialogActions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
 }
 
-.ais-dialog-btn {
+.aisDialogBtn {
   padding: 6px 16px;
   border: none;
   border-radius: var(--nd-radius-sm);
   font-size: 0.85em;
   cursor: pointer;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  &.ok {
+    background: var(--nd-accent);
+    color: var(--nd-fgOnAccent);
+  }
+
+  &.cancel {
+    background: var(--nd-buttonBg);
+    color: var(--nd-fg);
+  }
 }
 
-.ais-dialog-btn:hover {
-  opacity: 0.85;
-}
+// Keep dialog type classes for dynamic binding
+.info {}
+.success {}
+.warning {}
+.error {}
+</style>
 
-.ais-dialog-btn.ok {
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
-}
-
-.ais-dialog-btn.cancel {
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-}
-
+<style>
 .dialog-fade-enter-active {
   transition: opacity var(--nd-duration-base) ease;
 }

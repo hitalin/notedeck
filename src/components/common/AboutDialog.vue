@@ -40,45 +40,45 @@ async function copyInfo() {
 <template>
   <Teleport to="body">
     <Transition name="nd-popup">
-      <div v-if="show" class="about-backdrop" @click="emit('close')">
-        <div class="about-dialog nd-popup-content" @click.stop>
-          <div class="about-header">
-            <img src="/favicon.svg" class="about-logo" alt="NoteDeck" />
-            <div class="about-title">NoteDeck</div>
+      <div v-if="show" :class="$style.aboutBackdrop" @click="emit('close')">
+        <div :class="$style.aboutDialog" class="nd-popup-content" @click.stop>
+          <div :class="$style.aboutHeader">
+            <img src="/favicon.svg" :class="$style.aboutLogo" alt="NoteDeck" />
+            <div :class="$style.aboutTitle">NoteDeck</div>
           </div>
 
-          <div class="about-info">
-            <div class="about-row">
-              <span class="about-label">Version:</span>
-              <span class="about-value">{{ appVersion }}</span>
+          <div :class="$style.aboutInfo">
+            <div :class="$style.aboutRow">
+              <span :class="$style.aboutLabel">Version:</span>
+              <span :class="$style.aboutValue">{{ appVersion }}</span>
             </div>
-            <div class="about-row">
-              <span class="about-label">Tauri:</span>
-              <span class="about-value">{{ tauriVersion || '...' }}</span>
+            <div :class="$style.aboutRow">
+              <span :class="$style.aboutLabel">Tauri:</span>
+              <span :class="$style.aboutValue">{{ tauriVersion || '...' }}</span>
             </div>
           </div>
 
-          <div class="about-links">
-            <button class="about-link" @click="openUrl('https://github.com/hitalin/notedeck')">
+          <div :class="$style.aboutLinks">
+            <button :class="$style.aboutLink" @click="openUrl('https://github.com/hitalin/notedeck')">
               <i class="ti ti-brand-github" />
               GitHub
             </button>
-            <button class="about-link" @click="openUrl('https://github.com/sponsors/hitalin')">
+            <button :class="$style.aboutLink" @click="openUrl('https://github.com/sponsors/hitalin')">
               <i class="ti ti-heart" />
               開発を支援する
             </button>
-            <button class="about-link" @click="openUrl('https://github.com/hitalin/notedeck/blob/main/LICENSE')">
+            <button :class="$style.aboutLink" @click="openUrl('https://github.com/hitalin/notedeck/blob/main/LICENSE')">
               <i class="ti ti-license" />
               ライセンス
             </button>
           </div>
 
-          <div class="about-actions">
-            <button class="about-copy" @click="copyInfo">
+          <div :class="$style.aboutActions">
+            <button :class="$style.aboutCopy" @click="copyInfo">
               <i :class="copied ? 'ti ti-check' : 'ti ti-copy'" />
               {{ copied ? 'コピーしました' : '情報をコピー' }}
             </button>
-            <button class="about-close" @click="emit('close')">OK</button>
+            <button :class="$style.aboutClose" @click="emit('close')">OK</button>
           </div>
         </div>
       </div>
@@ -86,8 +86,8 @@ async function copyInfo() {
   </Teleport>
 </template>
 
-<style scoped>
-.about-backdrop {
+<style lang="scss" module>
+.aboutBackdrop {
   position: fixed;
   inset: 0;
   z-index: var(--nd-z-popup);
@@ -97,7 +97,7 @@ async function copyInfo() {
   background: rgba(0, 0, 0, 0.4);
 }
 
-.about-dialog {
+.aboutDialog {
   width: 360px;
   max-width: 90vw;
   background: var(--nd-panel, var(--nd-bg));
@@ -106,7 +106,7 @@ async function copyInfo() {
   overflow: hidden;
 }
 
-.about-header {
+.aboutHeader {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -114,18 +114,18 @@ async function copyInfo() {
   padding: 24px 24px 12px;
 }
 
-.about-logo {
+.aboutLogo {
   width: 64px;
   height: 64px;
 }
 
-.about-title {
+.aboutTitle {
   font-size: 1.2em;
   font-weight: bold;
   color: var(--nd-fg);
 }
 
-.about-info {
+.aboutInfo {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -134,30 +134,30 @@ async function copyInfo() {
   font-family: monospace;
 }
 
-.about-row {
+.aboutRow {
   display: flex;
   gap: 8px;
 }
 
-.about-label {
+.aboutLabel {
   color: var(--nd-fg);
   opacity: 0.5;
   min-width: 60px;
 }
 
-.about-value {
+.aboutValue {
   color: var(--nd-fg);
   user-select: all;
 }
 
-.about-links {
+.aboutLinks {
   display: flex;
   flex-direction: column;
   padding: 8px 16px;
   gap: 2px;
 }
 
-.about-link {
+.aboutLink {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -169,28 +169,28 @@ async function copyInfo() {
   font-size: 0.85em;
   cursor: pointer;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  :global(.ti) {
+    font-size: 1.1em;
+  }
+
+  :global(.ti-heart) {
+    color: #e05a7a;
+  }
 }
 
-.about-link:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.about-link .ti {
-  font-size: 1.1em;
-}
-
-.about-link .ti-heart {
-  color: #e05a7a;
-}
-
-.about-actions {
+.aboutActions {
   display: flex;
   gap: 8px;
   padding: 12px 16px 16px;
   justify-content: flex-end;
 }
 
-.about-copy {
+.aboutCopy {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -202,13 +202,13 @@ async function copyInfo() {
   font-size: 0.8em;
   cursor: pointer;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.about-copy:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.about-close {
+.aboutClose {
   padding: 6px 20px;
   border: none;
   border-radius: var(--nd-radius-md);
@@ -218,9 +218,9 @@ async function copyInfo() {
   font-weight: bold;
   cursor: pointer;
   transition: opacity var(--nd-duration-base);
-}
 
-.about-close:hover {
-  opacity: 0.85;
+  &:hover {
+    opacity: 0.85;
+  }
 }
 </style>

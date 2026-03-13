@@ -253,8 +253,8 @@ onUnmounted(() => {
 
     <template #header-meta>
       <button
-        class="_button header-run-btn"
-        :class="{ running }"
+        class="_button"
+        :class="[$style.headerRunBtn, { [$style.running]: running }]"
         :disabled="running"
         title="Run (Ctrl+Enter)"
         @click.stop="run"
@@ -265,9 +265,9 @@ onUnmounted(() => {
 
     <AiScriptToast ref="toastRef" />
     <AiScriptDialog ref="dialogRef" />
-    <div ref="bodyRef" class="ais-col-body" @keydown="onKeydown">
+    <div ref="bodyRef" :class="$style.aisColBody" @keydown="onKeydown">
       <div
-        class="editor-panel"
+        :class="$style.editorPanel"
         :style="{ flex: `${editorRatio} 0 0` }"
       >
         <AiScriptEditor
@@ -278,36 +278,36 @@ onUnmounted(() => {
         />
       </div>
 
-      <div class="resize-handle" @mousedown="startResize">
-        <div class="resize-grip" />
+      <div :class="$style.resizeHandle" @mousedown="startResize">
+        <div :class="$style.resizeGrip" />
       </div>
 
       <div
-        class="output-section"
+        :class="$style.outputSection"
         :style="{ flex: `${1 - editorRatio} 0 0` }"
       >
-        <div class="output-tabs">
+        <div :class="$style.outputTabs">
           <button
-            class="_button output-tab"
-            :class="{ active: outputTab === 'output' }"
+            class="_button"
+            :class="[$style.outputTab, { [$style.active]: outputTab === 'output' }]"
             @click="outputTab = 'output'"
           >
             <i class="ti ti-terminal" />
             出力
           </button>
           <button
-            class="_button output-tab"
-            :class="{ active: outputTab === 'inspector' }"
+            class="_button"
+            :class="[$style.outputTab, { [$style.active]: outputTab === 'inspector' }]"
             @click="outputTab = 'inspector'"
           >
             <i class="ti ti-eye-code" />
             UI
-            <span v-if="uiComponents.length" class="tab-badge">{{ flattenComponents(uiComponents).length }}</span>
+            <span v-if="uiComponents.length" :class="$style.tabBadge">{{ flattenComponents(uiComponents).length }}</span>
           </button>
         </div>
 
-        <div v-show="outputTab === 'output'" class="output-panel">
-          <div v-if="error" class="output-error">{{ error }}</div>
+        <div v-show="outputTab === 'output'" :class="$style.outputPanel">
+          <div v-if="error" :class="$style.outputError">{{ error }}</div>
 
           <AiScriptUiRenderer
             v-if="uiComponents.length"
@@ -317,12 +317,11 @@ onUnmounted(() => {
             @post="handlePost"
           />
 
-          <div v-if="output.length" class="console-output">
+          <div v-if="output.length" :class="$style.consoleOutput">
             <div
               v-for="(line, i) in output"
               :key="i"
-              class="output-line"
-              :class="{ error: line.isError }"
+              :class="[$style.outputLine, { [$style.error]: line.isError }]"
             >
               {{ line.text }}
             </div>
@@ -330,31 +329,31 @@ onUnmounted(() => {
 
           <div
             v-if="!error && !output.length && !uiComponents.length"
-            class="output-empty"
+            :class="$style.outputEmpty"
           >
             Ctrl+Enter to run
           </div>
         </div>
 
-        <div v-show="outputTab === 'inspector'" class="inspector-panel">
-          <div v-if="!uiComponents.length" class="output-empty">
+        <div v-show="outputTab === 'inspector'" :class="$style.inspectorPanel">
+          <div v-if="!uiComponents.length" :class="$style.outputEmpty">
             UIコンポーネントなし
           </div>
-          <div v-else class="inspector-list">
+          <div v-else :class="$style.inspectorList">
             <div
               v-for="comp in flattenComponents(uiComponents)"
               :key="comp.id"
-              class="inspector-item"
+              :class="$style.inspectorItem"
             >
-              <button class="_button inspector-item-header" @click="toggleInspectorItem(comp.id)">
+              <button class="_button" :class="$style.inspectorItemHeader" @click="toggleInspectorItem(comp.id)">
                 <i
                   class="ti"
                   :class="inspectorExpanded.has(comp.id) ? 'ti-chevron-down' : 'ti-chevron-right'"
                 />
-                <span class="inspector-type-badge">{{ comp.type }}</span>
-                <span class="inspector-id">{{ comp.id }}</span>
+                <span :class="$style.inspectorTypeBadge">{{ comp.type }}</span>
+                <span :class="$style.inspectorId">{{ comp.id }}</span>
               </button>
-              <div v-if="inspectorExpanded.has(comp.id)" class="inspector-props">
+              <div v-if="inspectorExpanded.has(comp.id)" :class="$style.inspectorProps">
                 <pre>{{ stringifyUiProps(comp.props) }}</pre>
               </div>
             </div>
@@ -377,8 +376,8 @@ onUnmounted(() => {
   </Teleport>
 </template>
 
-<style scoped>
-.header-run-btn {
+<style lang="scss" module>
+.headerRunBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -389,19 +388,23 @@ onUnmounted(() => {
   color: var(--nd-fgOnAccent);
   font-size: 0.85em;
   transition: background var(--nd-duration-base), opacity var(--nd-duration-base);
+
+  &:hover:not(:disabled) {
+    background: var(--nd-accentDarken);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  &.running i {
+    animation: spin 1s linear infinite;
+  }
 }
 
-.header-run-btn:hover:not(:disabled) {
-  background: var(--nd-accentDarken);
-}
-
-.header-run-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.header-run-btn.running i {
-  animation: spin 1s linear infinite;
+.running {
+  /* used as modifier */
 }
 
 @keyframes spin {
@@ -409,7 +412,7 @@ onUnmounted(() => {
   to { transform: rotate(360deg); }
 }
 
-.ais-col-body {
+.aisColBody {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -417,14 +420,14 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.editor-panel {
+.editorPanel {
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
 
-.resize-handle {
+.resizeHandle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -434,9 +437,13 @@ onUnmounted(() => {
   border-top: 1px solid var(--nd-divider);
   border-bottom: 1px solid var(--nd-divider);
   flex-shrink: 0;
+
+  &:hover .resizeGrip {
+    background: var(--nd-accent);
+  }
 }
 
-.resize-grip {
+.resizeGrip {
   width: 32px;
   height: 3px;
   border-radius: 2px;
@@ -444,25 +451,21 @@ onUnmounted(() => {
   transition: background var(--nd-duration-base);
 }
 
-.resize-handle:hover .resize-grip {
-  background: var(--nd-accent);
-}
-
-.output-section {
+.outputSection {
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
 
-.output-tabs {
+.outputTabs {
   display: flex;
   gap: 0;
   border-bottom: 1px solid var(--nd-divider);
   flex-shrink: 0;
 }
 
-.output-tab {
+.outputTab {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -473,19 +476,23 @@ onUnmounted(() => {
   opacity: 0.5;
   border-bottom: 2px solid transparent;
   transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.8;
+  }
+
+  &.active {
+    opacity: 1;
+    border-bottom-color: var(--nd-accent);
+    color: var(--nd-accent);
+  }
 }
 
-.output-tab:hover {
-  opacity: 0.8;
+.active {
+  /* used as modifier */
 }
 
-.output-tab.active {
-  opacity: 1;
-  border-bottom-color: var(--nd-accent);
-  color: var(--nd-accent);
-}
-
-.tab-badge {
+.tabBadge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -499,7 +506,7 @@ onUnmounted(() => {
   line-height: 1;
 }
 
-.output-panel {
+.outputPanel {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -509,7 +516,7 @@ onUnmounted(() => {
   flex: 1;
 }
 
-.inspector-panel {
+.inspectorPanel {
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -517,16 +524,16 @@ onUnmounted(() => {
   flex: 1;
 }
 
-.inspector-list {
+.inspectorList {
   display: flex;
   flex-direction: column;
 }
 
-.inspector-item {
+.inspectorItem {
   border-bottom: 1px solid var(--nd-divider);
 }
 
-.inspector-item-header {
+.inspectorItemHeader {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -535,13 +542,13 @@ onUnmounted(() => {
   font-size: 0.8em;
   text-align: left;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.inspector-item-header:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.inspector-type-badge {
+.inspectorTypeBadge {
   display: inline-block;
   padding: 1px 6px;
   border-radius: 4px;
@@ -551,30 +558,30 @@ onUnmounted(() => {
   font-weight: bold;
 }
 
-.inspector-id {
+.inspectorId {
   opacity: 0.5;
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
   font-size: 0.85em;
 }
 
-.inspector-props {
+.inspectorProps {
   padding: 4px 10px 8px 28px;
+
+  pre {
+    margin: 0;
+    padding: 6px 8px;
+    border-radius: var(--nd-radius-sm);
+    background: color-mix(in srgb, var(--nd-fg) 5%, transparent);
+    font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.75em;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-x: auto;
+  }
 }
 
-.inspector-props pre {
-  margin: 0;
-  padding: 6px 8px;
-  border-radius: var(--nd-radius-sm);
-  background: color-mix(in srgb, var(--nd-fg) 5%, transparent);
-  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 0.75em;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  word-break: break-all;
-  overflow-x: auto;
-}
-
-.output-error {
+.outputError {
   padding: 6px 8px;
   border-radius: var(--nd-radius-sm);
   background: var(--nd-love-subtle);
@@ -583,25 +590,29 @@ onUnmounted(() => {
   white-space: pre-wrap;
 }
 
-.console-output {
+.consoleOutput {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.output-line {
+.outputLine {
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
   font-size: 0.8em;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-all;
+
+  &.error {
+    color: var(--nd-love);
+  }
 }
 
-.output-line.error {
-  color: var(--nd-love);
+.error {
+  /* used as modifier */
 }
 
-.output-empty {
+.outputEmpty {
   display: flex;
   align-items: center;
   justify-content: center;

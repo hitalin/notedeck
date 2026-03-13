@@ -354,31 +354,31 @@ onUnmounted(() => {
     @header-click="scrollToTop"
   >
     <template #header-icon>
-      <i class="ti ti-bell notif-header-icon" />
+      <i :class="$style.notifHeaderIcon" class="ti ti-bell" />
     </template>
 
     <template #header-meta>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
-        <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
-    <div v-if="!account" class="column-empty">
+    <div v-if="!account" :class="$style.columnEmpty">
       Account not found
     </div>
 
-    <div v-else-if="error" class="column-empty column-error">
+    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
       {{ error.message }}
     </div>
 
-    <div v-else class="notif-body">
+    <div v-else :class="$style.notifBody">
       <div
         v-if="pullDistance > 0 || isRefreshing"
-        class="pull-indicator"
+        :class="$style.pullIndicator"
         :style="{ height: pullDistance + 'px' }"
       >
-        <i class="ti" :class="isRefreshing ? 'ti-loader-2 spin' : 'ti-arrow-down'" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
+        <i class="ti" :class="[isRefreshing ? 'ti-loader-2' : 'ti-arrow-down', { [$style.spin]: isRefreshing }]" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
       </div>
 
       <div v-if="isLoading && notifications.length === 0">
@@ -390,18 +390,17 @@ onUnmounted(() => {
         ref="noteScrollerRef"
         :items="notifications"
         :estimated-height="80"
-        class="notif-scroller"
+        :class="$style.notifScroller"
         @scroll="handleScroll"
       >
         <template #default="{ item: notif, index }">
           <div :data-index="index">
             <div
-              class="notif-item"
-              :class="`notif-type-${notif.type}`"
+              :class="[$style.notifItem, $style[`notifType_${notif.type}`]]"
             >
               <!-- Notification header -->
-              <div class="notif-header">
-                <i :class="`ti ti-${notificationIcon(notif.type)}`" class="notif-icon" />
+              <div :class="$style.notifHeader">
+                <i :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifIcon]" />
 
                 <MkAvatar
                   v-if="notif.user"
@@ -409,51 +408,51 @@ onUnmounted(() => {
                   :decorations="notif.user.avatarDecorations"
                   :size="36"
                   :alt="notif.user.username ?? undefined"
-                  class="notif-user-avatar"
+                  :class="$style.notifUserAvatar"
                   @click="onNotifAvatarClick(notif, $event)"
                   @mouseenter="onNotifAvatarMouseEnter(notif, $event)"
                   @mouseleave="onNotifAvatarMouseLeave"
                 />
 
-                <div class="notif-meta">
-                  <span v-if="notif.user" class="notif-user-name">
+                <div :class="$style.notifMeta">
+                  <span v-if="notif.user" :class="$style.notifUserName">
                     <MkMfm v-if="notif.user.name" :text="notif.user.name" :emojis="notif.user.emojis" :server-host="account?.host" />
                     <template v-else>{{ notif.user.username }}</template>
                   </span>
-                  <span class="notif-label">{{ notificationLabel(notif.type) }}</span>
-                  <span v-if="notif.type === 'reaction' && notif.reaction" class="notif-reaction">
-                    <img v-if="getCachedReactionUrl(notif.reaction, notif)" :src="getCachedReactionUrl(notif.reaction, notif)!" :alt="notif.reaction" class="notif-reaction-emoji" loading="lazy" />
-                    <img v-else-if="getCachedTwemojiUrl(notif.reaction)" :src="getCachedTwemojiUrl(notif.reaction)!" :alt="notif.reaction" class="notif-reaction-emoji" loading="lazy" />
-                    <span v-else-if="notif.reaction.startsWith(':')" class="notif-reaction-fallback">{{ notif.reaction }}</span>
-                    <MkEmoji v-else :emoji="notif.reaction" class="notif-reaction-emoji" />
+                  <span :class="$style.notifLabel">{{ notificationLabel(notif.type) }}</span>
+                  <span v-if="notif.type === 'reaction' && notif.reaction" :class="$style.notifReaction">
+                    <img v-if="getCachedReactionUrl(notif.reaction, notif)" :src="getCachedReactionUrl(notif.reaction, notif)!" :alt="notif.reaction" :class="$style.notifReactionEmoji" loading="lazy" />
+                    <img v-else-if="getCachedTwemojiUrl(notif.reaction)" :src="getCachedTwemojiUrl(notif.reaction)!" :alt="notif.reaction" :class="$style.notifReactionEmoji" loading="lazy" />
+                    <span v-else-if="notif.reaction.startsWith(':')" :class="$style.notifReactionFallback">{{ notif.reaction }}</span>
+                    <MkEmoji v-else :emoji="notif.reaction" :class="$style.notifReactionEmoji" />
                   </span>
                 </div>
 
-                <span class="notif-time">{{ formatTime(notif.createdAt) }}</span>
+                <span :class="$style.notifTime">{{ formatTime(notif.createdAt) }}</span>
               </div>
 
               <!-- Follow request actions -->
               <div
                 v-if="notif.type === 'receiveFollowRequest' && notif.user"
-                class="follow-request-actions"
+                :class="$style.followRequestActions"
               >
                 <template v-if="followRequestStates[notif.id]">
-                  <span class="follow-request-done">
+                  <span :class="$style.followRequestDone">
                     {{ followRequestStates[notif.id] === 'accepted' ? '承認済み' : '拒否済み' }}
                   </span>
                 </template>
                 <template v-else>
-                  <button class="follow-request-btn accept-btn" @click="handleFollowRequest(notif, 'accepted')">
+                  <button :class="[$style.followRequestBtn, $style.acceptBtn]" @click="handleFollowRequest(notif, 'accepted')">
                     <i class="ti ti-check" /> 承認
                   </button>
-                  <button class="follow-request-btn reject-btn" @click="handleFollowRequest(notif, 'rejected')">
+                  <button :class="[$style.followRequestBtn, $style.rejectBtn]" @click="handleFollowRequest(notif, 'rejected')">
                     <i class="ti ti-x" /> 拒否
                   </button>
                 </template>
               </div>
 
               <!-- Attached note (for reaction, reply, renote, quote, mention) -->
-              <div v-if="notif.note" class="notif-note-wrap">
+              <div v-if="notif.note" :class="$style.notifNoteWrap">
                 <MkNote
                   :note="notif.note"
                   @react="handlers.reaction"
@@ -470,7 +469,7 @@ onUnmounted(() => {
         </template>
 
         <template #append>
-          <div v-if="isLoading && notifications.length > 0" class="loading-more">
+          <div v-if="isLoading && notifications.length > 0" :class="$style.loadingMore">
             読み込み中...
           </div>
         </template>
@@ -502,13 +501,13 @@ onUnmounted(() => {
   </Teleport>
 </template>
 
-<style scoped>
-.notif-header-icon {
+<style lang="scss" module>
+.notifHeaderIcon {
   flex-shrink: 0;
   opacity: 0.7;
 }
 
-.header-account {
+.headerAccount {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -516,21 +515,21 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.header-avatar {
+.headerAvatar {
   width: 18px;
   height: 18px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.header-favicon {
+.headerFavicon {
   width: 16px;
   height: 16px;
   object-fit: contain;
   opacity: 0.7;
 }
 
-.notif-body {
+.notifBody {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -538,7 +537,7 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.notif-scroller {
+.notifScroller {
   flex: 1;
   overflow-x: clip;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
@@ -546,66 +545,77 @@ onUnmounted(() => {
   will-change: scroll-position;
 }
 
-.notif-item {
+.notifItem {
   border-bottom: 1px solid var(--nd-divider);
   border-left: 3px solid transparent;
+
+  &:not(:has(.notifNoteWrap)):not(:has(.followRequestActions)) {
+    .notifHeader {
+      padding-bottom: 12px;
+    }
+  }
 }
 
-.notif-type-reaction {
+.notifType_reaction {
   border-left-color: var(--nd-love);
+
+  .notifIcon {
+    color: var(--nd-love);
+  }
 }
 
-.notif-type-reply,
-.notif-type-mention {
+.notifType_reply,
+.notifType_mention {
   border-left-color: var(--nd-accent);
+
+  .notifIcon {
+    color: var(--nd-accent);
+  }
 }
 
-.notif-type-renote,
-.notif-type-quote {
+.notifType_renote,
+.notifType_quote {
   border-left-color: var(--nd-renote);
+
+  .notifIcon {
+    color: var(--nd-renote);
+  }
 }
 
-.notif-type-follow,
-.notif-type-followRequestAccepted {
+.notifType_follow,
+.notifType_followRequestAccepted {
   border-left-color: var(--nd-link);
+
+  .notifIcon {
+    color: var(--nd-link);
+  }
 }
 
-.notif-header {
+.notifType_receiveFollowRequest {
+  border-left-color: var(--nd-warn);
+
+  .notifIcon {
+    color: var(--nd-warn);
+  }
+}
+
+.notifHeader {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 12px 16px 0;
 }
 
-.notif-icon {
+.notifIcon {
   flex-shrink: 0;
   opacity: 0.6;
 }
 
-.notif-type-reaction .notif-icon {
-  color: var(--nd-love);
-}
-
-.notif-type-reply .notif-icon,
-.notif-type-mention .notif-icon {
-  color: var(--nd-accent);
-}
-
-.notif-type-renote .notif-icon,
-.notif-type-quote .notif-icon {
-  color: var(--nd-renote);
-}
-
-.notif-type-follow .notif-icon,
-.notif-type-followRequestAccepted .notif-icon {
-  color: var(--nd-link);
-}
-
-.notif-user-avatar {
+.notifUserAvatar {
   cursor: pointer;
 }
 
-.notif-meta {
+.notifMeta {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -614,7 +624,7 @@ onUnmounted(() => {
   flex-wrap: wrap;
 }
 
-.notif-user-name {
+.notifUserName {
   font-weight: bold;
   font-size: 0.85em;
   color: var(--nd-fgHighlighted);
@@ -623,27 +633,31 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.notif-label {
+.notifLabel {
   font-size: 0.85em;
   opacity: 0.7;
 }
 
-.notif-reaction {
+.notifReaction {
   display: inline-flex;
   align-items: center;
 }
 
-.notif-reaction-emoji {
+.notifReactionEmoji {
   height: 1.8em;
   vertical-align: middle;
   object-fit: contain;
+
+  :deep(.twemoji) {
+    height: 1.8em;
+  }
 }
 
-.notif-reaction-emoji :deep(.twemoji) {
-  height: 1.8em;
+.notifReactionFallback {
+  /* fallback text for custom emoji codes */
 }
 
-.notif-time {
+.notifTime {
   flex-shrink: 0;
   font-size: 0.8em;
   opacity: 0.5;
@@ -651,30 +665,25 @@ onUnmounted(() => {
 }
 
 /* Attached note in notification — compact style */
-.notif-note-wrap {
+.notifNoteWrap {
   padding: 0 8px 4px;
+
+  :deep(.note-root) {
+    font-size: 0.9em;
+  }
+
+  :deep(.article) {
+    padding: 8px 12px 12px;
+  }
+
+  :deep(.avatar) {
+    width: 36px;
+    height: 36px;
+    margin: 0 10px 0 0;
+  }
 }
 
-.notif-note-wrap :deep(.note-root) {
-  font-size: 0.9em;
-}
-
-.notif-note-wrap :deep(.article) {
-  padding: 8px 12px 12px;
-}
-
-.notif-note-wrap :deep(.avatar) {
-  width: 36px;
-  height: 36px;
-  margin: 0 10px 0 0;
-}
-
-/* Notifications without attached note or action buttons — add bottom padding to header */
-.notif-item:not(:has(.notif-note-wrap)):not(:has(.follow-request-actions)) .notif-header {
-  padding-bottom: 12px;
-}
-
-.column-empty {
+.columnEmpty {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -684,34 +693,26 @@ onUnmounted(() => {
   font-size: 0.85em;
 }
 
-.column-error {
+.columnError {
   color: var(--nd-love);
   opacity: 1;
 }
 
-.loading-more {
+.loadingMore {
   text-align: center;
   padding: 1rem;
   font-size: 0.8em;
   opacity: 0.4;
 }
 
-.notif-type-receiveFollowRequest {
-  border-left-color: var(--nd-warn);
-}
-
-.notif-type-receiveFollowRequest .notif-icon {
-  color: var(--nd-warn);
-}
-
-.follow-request-actions {
+.followRequestActions {
   display: flex;
   gap: 8px;
   max-width: 300px;
   padding: 8px 16px 12px 60px;
 }
 
-.follow-request-btn {
+.followRequestBtn {
   flex: 1;
   display: inline-flex;
   align-items: center;
@@ -727,31 +728,31 @@ onUnmounted(() => {
   transition: background var(--nd-duration-fast) ease;
 }
 
-.accept-btn {
+.acceptBtn {
   background: var(--nd-link);
   color: #fff;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
 }
 
-.accept-btn:hover {
-  filter: brightness(1.1);
-}
-
-.reject-btn {
+.rejectBtn {
   background: transparent;
   color: var(--nd-love);
+
+  &:hover {
+    background: var(--nd-love-subtle);
+  }
 }
 
-.reject-btn:hover {
-  background: var(--nd-love-subtle);
-}
-
-.follow-request-done {
+.followRequestDone {
   font-size: 0.85em;
   opacity: 0.6;
   font-style: italic;
 }
 
-.pull-indicator {
+.pullIndicator {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -760,10 +761,10 @@ onUnmounted(() => {
   color: var(--nd-accent);
   font-size: 1.2em;
   transition: height var(--nd-duration-slow) ease;
-}
 
-.pull-indicator .ti {
-  transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
+  :global(.ti) {
+    transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
+  }
 }
 
 .spin {

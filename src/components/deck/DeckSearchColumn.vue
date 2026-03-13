@@ -338,42 +338,41 @@ onUnmounted(() => {
     :theme-vars="columnThemeVars"
   >
     <template #header-icon>
-      <i class="ti ti-search search-header-icon" />
+      <i :class="$style.searchHeaderIcon" class="ti ti-search" />
     </template>
 
     <template #header-meta>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
-        <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
     <template #header-extra>
-      <div class="search-bar">
-        <i class="ti ti-search search-icon" />
+      <div :class="$style.searchBar">
+        <i :class="$style.searchIcon" class="ti ti-search" />
         <input
           ref="searchInput"
           v-model="searchQuery"
-          class="search-input"
-          :class="{ 'regex-input': regexMode, 'regex-invalid': regexMode && regexError }"
+          :class="[$style.searchInput, { [$style.regexInput]: regexMode, [$style.regexInvalid]: regexMode && regexError }]"
           type="text"
           :placeholder="regexMode ? '正規表現で検索...' : 'ノートを検索...'"
           @keydown="onKeydown"
         />
-        <div class="regex-controls">
+        <div :class="$style.regexControls">
           <button
-            class="_button regex-toggle"
-            :class="{ active: regexMode }"
+            :class="[$style.regexToggle, { [$style.regexToggleActive]: regexMode }]"
+            class="_button"
             title="正規表現モード"
             @click="toggleRegexMode"
           >
-            <span class="regex-icon">.*</span>
+            <span :class="$style.regexIconText">.*</span>
           </button>
           <button
             v-if="regexMode"
             ref="regexGuideBtnRef"
-            class="_button regex-guide-btn"
-            :class="{ active: showRegexGuide }"
+            :class="[$style.regexGuideBtn, { [$style.regexGuideBtnActive]: showRegexGuide }]"
+            class="_button"
             title="正規表現ガイド"
             @click.stop="openRegexGuide"
           >
@@ -381,7 +380,8 @@ onUnmounted(() => {
           </button>
         </div>
         <button
-          class="_button search-btn"
+          :class="$style.searchBtn"
+          class="_button"
           :disabled="!searchQuery.trim() || isLoading || (regexMode && !!regexError)"
           @click="performSearch"
         >
@@ -389,7 +389,7 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <div v-if="regexError" class="regex-error">
+      <div v-if="regexError" :class="$style.regexError">
         {{ regexError }}
       </div>
 
@@ -407,24 +407,24 @@ onUnmounted(() => {
       </Teleport>
     </template>
 
-    <div v-if="!account" class="column-empty">
+    <div v-if="!account" :class="$style.columnEmpty">
       Account not found
     </div>
 
-    <div v-else-if="error" class="column-empty column-error">
+    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
       {{ error.message }}
     </div>
 
-    <div v-else class="search-body">
-      <div v-if="isLoading && notes.length === 0" class="column-empty">
+    <div v-else :class="$style.searchBody">
+      <div v-if="isLoading && notes.length === 0" :class="$style.columnEmpty">
         Searching...
       </div>
 
-      <div v-else-if="!searchQuery.trim() && notes.length === 0" class="column-empty">
+      <div v-else-if="!searchQuery.trim() && notes.length === 0" :class="$style.columnEmpty">
         Enter a search query
       </div>
 
-      <div v-else-if="searchQuery.trim() && !isLoading && !isPreview && notes.length === 0" class="column-empty">
+      <div v-else-if="searchQuery.trim() && !isLoading && !isPreview && notes.length === 0" :class="$style.columnEmpty">
         No results found
       </div>
 
@@ -433,7 +433,7 @@ onUnmounted(() => {
         ref="noteScrollerRef"
         :items="notes"
         :focused-id="focusedNoteId"
-        class="search-scroller"
+        :class="$style.searchScroller"
         @scroll="handleScroll"
       >
         <template #default="{ item, index }">
@@ -453,10 +453,10 @@ onUnmounted(() => {
         </template>
 
         <template #append>
-          <div v-if="isPreview && notes.length > 0" class="search-preview-hint">
+          <div v-if="isPreview && notes.length > 0" :class="$style.searchPreviewHint">
             Press Enter to search server
           </div>
-          <div v-else-if="isLoading && notes.length > 0" class="loading-more">
+          <div v-else-if="isLoading && notes.length > 0" :class="$style.loadingMore">
             {{ hasLocalResults ? 'Searching server...' : 'Loading...' }}
           </div>
         </template>
@@ -477,13 +477,13 @@ onUnmounted(() => {
   </Teleport>
 </template>
 
-<style scoped>
-.search-header-icon {
+<style lang="scss" module>
+.searchHeaderIcon {
   flex-shrink: 0;
   opacity: 0.7;
 }
 
-.header-account {
+.headerAccount {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -491,21 +491,21 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.header-avatar {
+.headerAvatar {
   width: 18px;
   height: 18px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.header-favicon {
+.headerFavicon {
   width: 16px;
   height: 16px;
   object-fit: contain;
   opacity: 0.7;
 }
 
-.search-bar {
+.searchBar {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -514,12 +514,12 @@ onUnmounted(() => {
   background: var(--nd-bg);
 }
 
-.search-icon {
+.searchIcon {
   flex-shrink: 0;
   opacity: 0.4;
 }
 
-.search-input {
+.searchInput {
   flex: 1;
   min-width: 0;
   background: var(--nd-buttonBg);
@@ -529,25 +529,25 @@ onUnmounted(() => {
   font-size: 0.85em;
   color: var(--nd-fg);
   outline: none;
+
+  &:focus {
+    box-shadow: 0 0 0 2px var(--nd-accent);
+  }
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.4;
+  }
 }
 
-.search-input:focus {
-  box-shadow: 0 0 0 2px var(--nd-accent);
-}
-
-.search-input::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.4;
-}
-
-.regex-controls {
+.regexControls {
   display: flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
 }
 
-.regex-toggle {
+.regexToggle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -556,26 +556,26 @@ onUnmounted(() => {
   border-radius: 4px;
   opacity: 0.35;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base), color var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 0.7;
+  }
 }
 
-.regex-toggle:hover {
-  background: var(--nd-buttonHoverBg);
-  opacity: 0.7;
-}
-
-.regex-toggle.active {
+.regexToggleActive {
   opacity: 1;
   color: var(--nd-accent);
   background: var(--nd-accent-hover);
 }
 
-.regex-icon {
+.regexIconText {
   font-family: monospace;
   font-size: 0.8em;
   font-weight: 700;
 }
 
-.regex-guide-btn {
+.regexGuideBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -585,29 +585,33 @@ onUnmounted(() => {
   font-size: 0.8em;
   opacity: 0.35;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 0.7;
+  }
 }
 
-.regex-guide-btn:hover,
-.regex-guide-btn.active {
+.regexGuideBtnActive {
   background: var(--nd-buttonHoverBg);
   opacity: 0.7;
 }
 
-.regex-input {
+.regexInput {
   font-family: monospace;
 }
 
-.regex-invalid {
+.regexInvalid {
   box-shadow: 0 0 0 2px var(--nd-love) !important;
 }
 
-.regex-error {
+.regexError {
   padding: 4px 12px;
   font-size: 0.75em;
   color: var(--nd-love);
 }
 
-.search-btn {
+.searchBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -617,18 +621,18 @@ onUnmounted(() => {
   flex-shrink: 0;
   opacity: 0.6;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover:not(:disabled) {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
+
+  &:disabled {
+    opacity: 0.2;
+  }
 }
 
-.search-btn:hover:not(:disabled) {
-  background: var(--nd-buttonHoverBg);
-  opacity: 1;
-}
-
-.search-btn:disabled {
-  opacity: 0.2;
-}
-
-.search-body {
+.searchBody {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -636,14 +640,14 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.search-scroller {
+.searchScroller {
   flex: 1;
   overflow-x: clip;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
 }
 
-.column-empty {
+.columnEmpty {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -653,19 +657,19 @@ onUnmounted(() => {
   font-size: 0.85em;
 }
 
-.column-error {
+.columnError {
   color: var(--nd-love);
   opacity: 1;
 }
 
-.loading-more {
+.loadingMore {
   text-align: center;
   padding: 1rem;
   font-size: 0.8em;
   opacity: 0.4;
 }
 
-.search-preview-hint {
+.searchPreviewHint {
   text-align: center;
   padding: 0.75rem 1rem;
   font-size: 0.75em;

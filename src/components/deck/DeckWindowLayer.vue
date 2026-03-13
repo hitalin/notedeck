@@ -62,7 +62,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   <Transition name="fade">
     <div
       v-if="windowsStore.hasModal"
-      class="window-backdrop"
+      :class="$style.windowBackdrop"
       @click="windowsStore.windows.filter(w => w.modal).forEach(w => closeWindow(w.id))"
     />
   </Transition>
@@ -102,14 +102,17 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   </TransitionGroup>
 </template>
 
-<style scoped>
-.window-backdrop {
+<style lang="scss" module>
+.windowBackdrop {
   position: fixed;
   inset: 0;
   z-index: var(--nd-z-window);
   background: var(--nd-modalBg);
 }
+</style>
 
+<style lang="scss">
+/* Vue transition classes (must be global) */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.25s ease;

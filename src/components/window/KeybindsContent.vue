@@ -171,42 +171,40 @@ function resetAll() {
 </script>
 
 <template>
-  <div class="keybinds-content">
-    <div class="keybinds-header">
-      <span class="keybinds-title">キーバインド設定</span>
-      <button class="_button reset-all-btn" @click="resetAll">
+  <div :class="$style.keybindsContent">
+    <div :class="$style.keybindsHeader">
+      <span :class="$style.keybindsTitle">キーバインド設定</span>
+      <button class="_button" :class="$style.resetAllBtn" @click="resetAll">
         <i class="ti ti-restore" />
         すべてリセット
       </button>
     </div>
 
-    <div class="keybinds-list">
+    <div :class="$style.keybindsList">
       <template v-for="group in groupedCommands" :key="group.category">
-        <div class="category-header">{{ group.label }}</div>
+        <div :class="$style.categoryHeader">{{ group.label }}</div>
         <div
           v-for="cmdId in group.commands"
           :key="cmdId"
-          class="keybind-row"
-          :class="{ customized: keybindsStore.isCustomized(cmdId) }"
+          :class="[$style.keybindRow, { [$style.customized]: keybindsStore.isCustomized(cmdId) }]"
         >
-          <div class="keybind-label">
+          <div :class="$style.keybindLabel">
             {{ COMMAND_LABELS[cmdId] ?? cmdId }}
           </div>
-          <div class="keybind-shortcuts">
+          <div :class="$style.keybindShortcuts">
             <template v-for="(shortcut, idx) in keybindsStore.getShortcuts(cmdId)" :key="idx">
               <div
-                class="shortcut-badge"
-                :class="{ recording: recordingCommandId === cmdId && recordingIndex === idx }"
+                :class="[$style.shortcutBadge, { [$style.recording]: recordingCommandId === cmdId && recordingIndex === idx }]"
                 tabindex="0"
                 @click="startRecording(cmdId, idx)"
                 @keydown="onKeyDown($event, cmdId, idx)"
               >
                 <template v-if="recordingCommandId === cmdId && recordingIndex === idx">
-                  <span class="recording-text">入力待ち...</span>
+                  <span :class="$style.recordingText">入力待ち...</span>
                 </template>
                 <template v-else>
                   {{ formatShortcut(shortcut) }}
-                  <button class="_button remove-shortcut" @click.stop="removeShortcut(cmdId, idx)">
+                  <button class="_button" :class="$style.removeShortcut" @click.stop="removeShortcut(cmdId, idx)">
                     <i class="ti ti-x" />
                   </button>
                 </template>
@@ -214,19 +212,21 @@ function resetAll() {
             </template>
             <button
               v-if="recordingCommandId === cmdId && recordingIndex >= keybindsStore.getShortcuts(cmdId).length"
-              class="_button shortcut-badge recording"
+              class="_button"
+              :class="[$style.shortcutBadge, $style.recording]"
               tabindex="0"
               @keydown="onKeyDown($event, cmdId, recordingIndex)"
             >
-              <span class="recording-text">入力待ち...</span>
+              <span :class="$style.recordingText">入力待ち...</span>
             </button>
-            <button class="_button add-shortcut-btn" @click="addShortcut(cmdId)" title="ショートカットを追加">
+            <button class="_button" :class="$style.addShortcutBtn" @click="addShortcut(cmdId)" title="ショートカットを追加">
               <i class="ti ti-plus" />
             </button>
           </div>
           <button
             v-if="keybindsStore.isCustomized(cmdId)"
-            class="_button reset-btn"
+            class="_button"
+            :class="$style.resetBtn"
             title="デフォルトに戻す"
             @click="resetCommand(cmdId)"
           >
@@ -238,25 +238,25 @@ function resetAll() {
   </div>
 </template>
 
-<style scoped>
-.keybinds-content {
+<style lang="scss" module>
+.keybindsContent {
   padding: 16px;
 }
 
-.keybinds-header {
+.keybindsHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
 }
 
-.keybinds-title {
+.keybindsTitle {
   font-weight: bold;
   font-size: 0.95em;
   color: var(--nd-fgHighlighted);
 }
 
-.reset-all-btn {
+.resetAllBtn {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -266,14 +266,14 @@ function resetAll() {
   padding: 4px 8px;
   border-radius: 4px;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.reset-all-btn:hover {
-  opacity: 1;
-  background: var(--nd-buttonHoverBg);
-}
-
-.category-header {
+.categoryHeader {
   font-size: 0.75em;
   font-weight: bold;
   color: var(--nd-fg);
@@ -281,30 +281,30 @@ function resetAll() {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 12px 0 4px;
+
+  &:first-child {
+    padding-top: 0;
+  }
 }
 
-.category-header:first-child {
-  padding-top: 0;
-}
-
-.keybind-row {
+.keybindRow {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
   border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-fast);
+
+  &:hover {
+    background: color-mix(in srgb, var(--nd-accent) 8%, transparent);
+  }
+
+  &.customized {
+    background: color-mix(in srgb, var(--nd-accent) 5%, transparent);
+  }
 }
 
-.keybind-row:hover {
-  background: color-mix(in srgb, var(--nd-accent) 8%, transparent);
-}
-
-.keybind-row.customized {
-  background: color-mix(in srgb, var(--nd-accent) 5%, transparent);
-}
-
-.keybind-label {
+.keybindLabel {
   flex: 1;
   font-size: 0.85em;
   color: var(--nd-fg);
@@ -314,14 +314,14 @@ function resetAll() {
   white-space: nowrap;
 }
 
-.keybind-shortcuts {
+.keybindShortcuts {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-wrap: wrap;
 }
 
-.shortcut-badge {
+.shortcutBadge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -336,21 +336,25 @@ function resetAll() {
   transition: border-color var(--nd-duration-base), background var(--nd-duration-base);
   outline: none;
   min-height: 26px;
-}
 
-.shortcut-badge:hover {
-  border-color: var(--nd-accent);
-}
+  &:hover {
+    border-color: var(--nd-accent);
+  }
 
-.shortcut-badge:focus {
-  border-color: var(--nd-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--nd-accent) 30%, transparent);
-}
+  &:focus {
+    border-color: var(--nd-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--nd-accent) 30%, transparent);
+  }
 
-.shortcut-badge.recording {
-  border-color: var(--nd-accent);
-  background: var(--nd-accent-hover);
-  animation: pulse 1s infinite;
+  &.recording {
+    border-color: var(--nd-accent);
+    background: var(--nd-accent-hover);
+    animation: pulse 1s infinite;
+  }
+
+  &:hover .removeShortcut {
+    opacity: 0.6;
+  }
 }
 
 @keyframes pulse {
@@ -358,32 +362,28 @@ function resetAll() {
   50% { opacity: 0.7; }
 }
 
-.recording-text {
+.recordingText {
   font-style: italic;
   font-family: inherit;
   font-size: 1em;
   color: var(--nd-accent);
 }
 
-.remove-shortcut {
+.removeShortcut {
   display: flex;
   align-items: center;
   font-size: 0.9em;
   opacity: 0;
   color: var(--nd-fg);
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1 !important;
+    color: var(--nd-love, #ec4137);
+  }
 }
 
-.shortcut-badge:hover .remove-shortcut {
-  opacity: 0.6;
-}
-
-.remove-shortcut:hover {
-  opacity: 1 !important;
-  color: var(--nd-love, #ec4137);
-}
-
-.add-shortcut-btn {
+.addShortcutBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -394,14 +394,14 @@ function resetAll() {
   color: var(--nd-fg);
   opacity: 0.4;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.add-shortcut-btn:hover {
-  opacity: 1;
-  background: var(--nd-buttonHoverBg);
-}
-
-.reset-btn {
+.resetBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -413,10 +413,13 @@ function resetAll() {
   opacity: 0.4;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
   flex-shrink: 0;
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.reset-btn:hover {
-  opacity: 1;
-  background: var(--nd-buttonHoverBg);
-}
+.customized {}
+.recording {}
 </style>

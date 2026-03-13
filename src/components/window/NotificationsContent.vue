@@ -5,6 +5,7 @@ import {
   onUnmounted,
   ref,
   shallowRef,
+  useCssModule,
 } from 'vue'
 import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
@@ -303,6 +304,22 @@ async function handleFollowRequest(
   }
 }
 
+function notifTypeClass(type: string): string | undefined {
+  const map: Record<string, string> = {
+    reaction: $style.notifTypeReaction,
+    reply: $style.notifTypeReply,
+    mention: $style.notifTypeMention,
+    renote: $style.notifTypeRenote,
+    quote: $style.notifTypeQuote,
+    follow: $style.notifTypeFollow,
+    followRequestAccepted: $style.notifTypeFollowRequestAccepted,
+    receiveFollowRequest: $style.notifTypeReceiveFollowRequest,
+  }
+  return map[type]
+}
+
+const $style = useCssModule()
+
 onMounted(() => {
   loadNotifications()
 })
@@ -314,30 +331,29 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="notif-content">
+  <div :class="$style.notifContent">
     <!-- Per-account progress -->
-    <div v-if="loadProgress.length > 0" class="notif-progress">
+    <div v-if="loadProgress.length > 0" :class="$style.notifProgress">
       <span
         v-for="(p, i) in loadProgress"
         :key="i"
-        class="progress-dot"
-        :class="{ done: p.done }"
+        :class="[$style.progressDot, { [$style.done]: p.done }]"
         :title="p.host"
       />
     </div>
 
     <div
       v-if="isLoading && notifications.length === 0 && loadProgress.length === 0"
-      class="notif-empty"
+      :class="$style.notifEmpty"
     >
       Loading...
     </div>
 
     <div
       v-else-if="error && notifications.length === 0"
-      class="notif-empty"
+      :class="$style.notifEmpty"
     >
-      <div class="notif-empty-icon">
+      <div :class="$style.notifEmptyIcon">
         <i class="ti ti-bell" />
       </div>
       <span>{{ error }}</span>
@@ -348,20 +364,18 @@ onUnmounted(() => {
       ref="noteScrollerRef"
       :items="notifications"
       :estimated-height="80"
-      class="notif-scroller"
+      :class="$style.notifScroller"
       @scroll="handleScroll"
     >
       <template #default="{ item: notif, index }">
         <div :data-index="index">
           <div
-            class="notif-item"
-            :class="`notif-type-${notif.type}`"
+            :class="[$style.notifItem, notifTypeClass(notif.type)]"
           >
             <!-- Notification header -->
-            <div class="notif-header">
+            <div :class="$style.notifHeader">
               <i
-                :class="`ti ti-${notificationIcon(notif.type)}`"
-                class="notif-icon"
+                :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifIcon]"
               />
 
               <MkAvatar
@@ -370,12 +384,12 @@ onUnmounted(() => {
                 :decorations="notif.user.avatarDecorations"
                 :size="36"
                 :alt="notif.user.username ?? undefined"
-                class="notif-user-avatar"
+                :class="$style.notifUserAvatar"
                 @click="onNotifAvatarClick(notif, $event)"
               />
 
-              <div class="notif-meta">
-                <span v-if="notif.user" class="notif-user-name">
+              <div :class="$style.notifMeta">
+                <span v-if="notif.user" :class="$style.notifUserName">
                   <MkMfm
                     v-if="notif.user.name"
                     :text="notif.user.name"
@@ -384,56 +398,56 @@ onUnmounted(() => {
                   />
                   <template v-else>{{ notif.user.username }}</template>
                 </span>
-                <span class="notif-label">{{ notificationLabel(notif.type) }}</span>
+                <span :class="$style.notifLabel">{{ notificationLabel(notif.type) }}</span>
                 <span
                   v-if="notif.type === 'reaction' && notif.reaction"
-                  class="notif-reaction"
+                  :class="$style.notifReaction"
                 >
                   <img
                     v-if="getCachedReactionUrl(notif.reaction, notif)"
                     :src="getCachedReactionUrl(notif.reaction, notif)!"
                     :alt="notif.reaction"
-                    class="notif-reaction-emoji"
+                    :class="$style.notifReactionEmoji"
                     loading="lazy"
                   />
                   <img
                     v-else-if="getCachedTwemojiUrl(notif.reaction)"
                     :src="getCachedTwemojiUrl(notif.reaction)!"
                     :alt="notif.reaction"
-                    class="notif-reaction-emoji"
+                    :class="$style.notifReactionEmoji"
                     loading="lazy"
                   />
                   <span
                     v-else-if="notif.reaction.startsWith(':')"
-                    class="notif-reaction-fallback"
+                    :class="$style.notifReactionFallback"
                   >{{ notif.reaction }}</span>
-                  <MkEmoji v-else :emoji="notif.reaction" class="notif-reaction-emoji" />
+                  <MkEmoji v-else :emoji="notif.reaction" :class="$style.notifReactionEmoji" />
                 </span>
               </div>
 
-              <span class="notif-server-host">{{ notif._serverHost }}</span>
-              <span class="notif-time">{{ formatTime(notif.createdAt) }}</span>
+              <span :class="$style.notifServerHost">{{ notif._serverHost }}</span>
+              <span :class="$style.notifTime">{{ formatTime(notif.createdAt) }}</span>
             </div>
 
             <!-- Follow request actions -->
             <div
               v-if="notif.type === 'receiveFollowRequest' && notif.user"
-              class="follow-request-actions"
+              :class="$style.followRequestActions"
             >
               <template v-if="followRequestStates[notif.id]">
-                <span class="follow-request-done">
+                <span :class="$style.followRequestDone">
                   {{ followRequestStates[notif.id] === 'accepted' ? 'Accepted' : 'Rejected' }}
                 </span>
               </template>
               <template v-else>
                 <button
-                  class="follow-request-btn accept-btn"
+                  :class="[$style.followRequestBtn, $style.acceptBtn]"
                   @click="handleFollowRequest(notif, 'accepted')"
                 >
                   <i class="ti ti-check" /> Accept
                 </button>
                 <button
-                  class="follow-request-btn reject-btn"
+                  :class="[$style.followRequestBtn, $style.rejectBtn]"
                   @click="handleFollowRequest(notif, 'rejected')"
                 >
                   <i class="ti ti-x" /> Reject
@@ -442,7 +456,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Attached note -->
-            <div v-if="notif.note" class="notif-note-wrap">
+            <div v-if="notif.note" :class="$style.notifNoteWrap">
               <MkNote
                 :note="notif.note"
                 @react="handlers.reaction"
@@ -459,7 +473,7 @@ onUnmounted(() => {
       </template>
 
       <template #append>
-        <div v-if="isLoading && notifications.length > 0" class="notif-loading">
+        <div v-if="isLoading && notifications.length > 0" :class="$style.notifLoading">
           Loading more...
         </div>
       </template>
@@ -479,15 +493,15 @@ onUnmounted(() => {
   </Teleport>
 </template>
 
-<style scoped>
-.notif-content {
+<style lang="scss" module>
+.notifContent {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
 }
 
-.notif-progress {
+.notifProgress {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -496,21 +510,21 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.progress-dot {
+.progressDot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--nd-fg);
   opacity: 0.15;
   transition: opacity var(--nd-duration-slower), background var(--nd-duration-slower);
+
+  &.done {
+    background: var(--nd-accent);
+    opacity: 0.8;
+  }
 }
 
-.progress-dot.done {
-  background: var(--nd-accent);
-  opacity: 0.8;
-}
-
-.notif-empty {
+.notifEmpty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -522,12 +536,12 @@ onUnmounted(() => {
   font-size: 0.85em;
 }
 
-.notif-empty-icon {
+.notifEmptyIcon {
   font-size: 2em;
   opacity: 0.3;
 }
 
-.notif-scroller {
+.notifScroller {
   flex: 1;
   min-height: 0;
   overflow-x: clip;
@@ -535,74 +549,71 @@ onUnmounted(() => {
   scrollbar-width: thin;
 }
 
-.notif-item {
+.notifItem {
   border-bottom: 1px solid var(--nd-divider);
   border-left: 3px solid transparent;
 }
 
-.notif-type-reaction {
+.notifTypeReaction {
   border-left-color: var(--nd-love);
+
+  .notifIcon {
+    color: var(--nd-love);
+  }
 }
 
-.notif-type-reply,
-.notif-type-mention {
+.notifTypeReply,
+.notifTypeMention {
   border-left-color: var(--nd-accent);
+
+  .notifIcon {
+    color: var(--nd-accent);
+  }
 }
 
-.notif-type-renote,
-.notif-type-quote {
+.notifTypeRenote,
+.notifTypeQuote {
   border-left-color: var(--nd-renote);
+
+  .notifIcon {
+    color: var(--nd-renote);
+  }
 }
 
-.notif-type-follow,
-.notif-type-followRequestAccepted {
+.notifTypeFollow,
+.notifTypeFollowRequestAccepted {
   border-left-color: var(--nd-link);
+
+  .notifIcon {
+    color: var(--nd-link);
+  }
 }
 
-.notif-type-receiveFollowRequest {
+.notifTypeReceiveFollowRequest {
   border-left-color: var(--nd-warn);
+
+  .notifIcon {
+    color: var(--nd-warn);
+  }
 }
 
-.notif-header {
+.notifHeader {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 12px 16px 0;
 }
 
-.notif-icon {
+.notifIcon {
   flex-shrink: 0;
   opacity: 0.6;
 }
 
-.notif-type-reaction .notif-icon {
-  color: var(--nd-love);
-}
-
-.notif-type-reply .notif-icon,
-.notif-type-mention .notif-icon {
-  color: var(--nd-accent);
-}
-
-.notif-type-renote .notif-icon,
-.notif-type-quote .notif-icon {
-  color: var(--nd-renote);
-}
-
-.notif-type-follow .notif-icon,
-.notif-type-followRequestAccepted .notif-icon {
-  color: var(--nd-link);
-}
-
-.notif-type-receiveFollowRequest .notif-icon {
-  color: var(--nd-warn);
-}
-
-.notif-user-avatar {
+.notifUserAvatar {
   cursor: pointer;
 }
 
-.notif-meta {
+.notifMeta {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -611,7 +622,7 @@ onUnmounted(() => {
   flex-wrap: wrap;
 }
 
-.notif-user-name {
+.notifUserName {
   font-weight: bold;
   font-size: 0.85em;
   color: var(--nd-fgHighlighted);
@@ -620,27 +631,31 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.notif-label {
+.notifLabel {
   font-size: 0.85em;
   opacity: 0.7;
 }
 
-.notif-reaction {
+.notifReaction {
   display: inline-flex;
   align-items: center;
 }
 
-.notif-reaction-emoji {
+.notifReactionEmoji {
   height: 1.8em;
   vertical-align: middle;
   object-fit: contain;
+
+  :deep(.twemoji) {
+    height: 1.8em;
+  }
 }
 
-.notif-reaction-emoji :deep(.twemoji) {
-  height: 1.8em;
+.notifReactionFallback {
+  /* fallback text for unknown custom emoji */
 }
 
-.notif-server-host {
+.notifServerHost {
   flex-shrink: 0;
   font-size: 0.7em;
   opacity: 0.35;
@@ -650,51 +665,51 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.notif-time {
+.notifTime {
   flex-shrink: 0;
   font-size: 0.8em;
   opacity: 0.5;
   margin-left: auto;
 }
 
-.notif-note-wrap {
+.notifNoteWrap {
   padding: 0 8px 4px;
+
+  :deep(.note-root) {
+    font-size: 0.9em;
+  }
+
+  :deep(.article) {
+    padding: 8px 12px 12px;
+  }
+
+  :deep(.avatar) {
+    width: 36px;
+    height: 36px;
+    margin: 0 10px 0 0;
+  }
 }
 
-.notif-note-wrap :deep(.note-root) {
-  font-size: 0.9em;
-}
-
-.notif-note-wrap :deep(.article) {
-  padding: 8px 12px 12px;
-}
-
-.notif-note-wrap :deep(.avatar) {
-  width: 36px;
-  height: 36px;
-  margin: 0 10px 0 0;
-}
-
-/* Notifications without note or action buttons — add bottom padding */
-.notif-item:not(:has(.notif-note-wrap)):not(:has(.follow-request-actions)) .notif-header {
+/* Notifications without note or action buttons -- add bottom padding */
+.notifItem:not(:has(.notifNoteWrap)):not(:has(.followRequestActions)) .notifHeader {
   padding-bottom: 12px;
 }
 
-.notif-loading {
+.notifLoading {
   text-align: center;
   padding: 1rem;
   font-size: 0.8em;
   opacity: 0.4;
 }
 
-.follow-request-actions {
+.followRequestActions {
   display: flex;
   gap: 8px;
   max-width: 300px;
   padding: 8px 16px 12px 60px;
 }
 
-.follow-request-btn {
+.followRequestBtn {
   flex: 1;
   display: inline-flex;
   align-items: center;
@@ -711,56 +726,60 @@ onUnmounted(() => {
   transition: background var(--nd-duration-fast) ease;
 }
 
-.accept-btn {
+.acceptBtn {
   background: var(--nd-link);
   color: #fff;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
 }
 
-.accept-btn:hover {
-  filter: brightness(1.1);
-}
-
-.reject-btn {
+.rejectBtn {
   background: transparent;
   color: var(--nd-love);
+
+  &:hover {
+    background: var(--nd-love-subtle);
+  }
 }
 
-.reject-btn:hover {
-  background: var(--nd-love-subtle);
-}
-
-.follow-request-done {
+.followRequestDone {
   font-size: 0.85em;
   opacity: 0.6;
   font-style: italic;
 }
 
 @media (max-width: 500px) {
-  .notif-header {
+  .notifHeader {
     padding: 10px 12px 0;
     gap: 6px;
   }
 
-  .notif-note-wrap {
+  .notifNoteWrap {
     padding: 0 4px 4px;
   }
 
-  .follow-request-actions {
+  .followRequestActions {
     padding-left: 48px;
   }
 }
 
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .notif-header {
-  padding: 10px 12px 0;
-  gap: 6px;
+:global(html.nd-mobile) {
+  .notifHeader {
+    padding: 10px 12px 0;
+    gap: 6px;
+  }
+
+  .notifNoteWrap {
+    padding: 0 4px 4px;
+  }
+
+  .followRequestActions {
+    padding-left: 48px;
+  }
 }
 
-html.nd-mobile .notif-note-wrap {
-  padding: 0 4px 4px;
-}
-
-html.nd-mobile .follow-request-actions {
-  padding-left: 48px;
-}
+/* Empty placeholder classes for dynamic binding */
+.done {}
 </style>

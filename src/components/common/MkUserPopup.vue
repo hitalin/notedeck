@@ -58,51 +58,52 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 <template>
   <div
-    class="user-popup _popup"
+    :class="$style.userPopup"
+    class="_popup"
     :style="{ ...themeVars, left: `${x}px`, top: `${y}px` }"
     @mouseleave="handleMouseLeave"
   >
-    <div v-if="isLoading" class="popup-loading">読み込み中...</div>
+    <div v-if="isLoading" :class="$style.popupLoading">読み込み中...</div>
     <template v-else-if="user">
-      <div class="popup-banner">
+      <div :class="$style.popupBanner">
         <div
           v-if="user.bannerUrl"
-          class="popup-banner-img"
+          :class="$style.popupBannerImg"
           :style="{ backgroundImage: `url(${user.bannerUrl})` }"
         />
-        <div v-else class="popup-banner-img popup-banner-empty" />
+        <div v-else :class="[$style.popupBannerImg, $style.popupBannerEmpty]" />
       </div>
-      <div class="popup-body">
+      <div :class="$style.popupBody">
         <MkAvatar
           :avatar-url="user.avatarUrl"
           :decorations="user.avatarDecorations"
           :size="56"
           indicator
           :online-status="user.onlineStatus"
-          class="popup-avatar"
+          :class="$style.popupAvatar"
         />
 
-        <div class="popup-name-area">
-          <div class="popup-name">
+        <div :class="$style.popupNameArea">
+          <div :class="$style.popupName">
             <MkMfm v-if="user.name" :text="user.name" :emojis="user.emojis" :server-host="account?.host" />
             <template v-else>{{ user.username }}</template>
           </div>
-          <div class="popup-username">@{{ user.username }}{{ user.host ? `@${user.host}` : '' }}</div>
+          <div :class="$style.popupUsername">@{{ user.username }}{{ user.host ? `@${user.host}` : '' }}</div>
         </div>
 
-        <div v-if="user.description" class="popup-desc">
+        <div v-if="user.description" :class="$style.popupDesc">
           <MkMfm :text="user.description" :server-host="account?.host" />
         </div>
 
-        <div class="popup-stats">
+        <div :class="$style.popupStats">
           <span><b>{{ formatCount(user.notesCount) }}</b> ノート</span>
           <span><b>{{ formatCount(user.followingCount) }}</b> フォロー</span>
           <span><b>{{ formatCount(user.followersCount) }}</b> フォロワー</span>
         </div>
 
-        <div v-if="user.isFollowed" class="popup-badge">フォローされています</div>
+        <div v-if="user.isFollowed" :class="$style.popupBadge">フォローされています</div>
 
-        <button class="popup-webui-link" @click.stop="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}`)">
+        <button :class="$style.popupWebuiLink" @click.stop="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}`)">
           <i class="ti ti-external-link" />
           Web UIで開く
         </button>
@@ -111,8 +112,8 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   </div>
 </template>
 
-<style scoped>
-.user-popup {
+<style lang="scss" module>
+.userPopup {
   position: fixed;
   z-index: calc(var(--nd-z-popup) + 1);
   width: 300px;
@@ -120,7 +121,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   pointer-events: auto;
 }
 
-.popup-loading {
+.popupLoading {
   padding: 24px;
   text-align: center;
   font-size: 0.85em;
@@ -128,7 +129,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   opacity: 0.5;
 }
 
-.popup-banner-img {
+.popupBannerImg {
   width: 100%;
   height: 80px;
   background-color: #4c5e6d;
@@ -136,26 +137,26 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   background-position: center;
 }
 
-.popup-banner-empty {
+.popupBannerEmpty {
   background: linear-gradient(135deg, #4c5e6d, #6b8a9e);
 }
 
-.popup-body {
+.popupBody {
   padding: 0 16px 16px;
   position: relative;
 }
 
-.popup-avatar {
+.popupAvatar {
   border: 3px solid var(--nd-popup);
   border-radius: 50%;
   margin-top: -28px;
 }
 
-.popup-name-area {
+.popupNameArea {
   margin-top: 4px;
 }
 
-.popup-name {
+.popupName {
   font-weight: bold;
   font-size: 1em;
   color: var(--nd-fgHighlighted);
@@ -164,12 +165,12 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   white-space: nowrap;
 }
 
-.popup-username {
+.popupUsername {
   font-size: 0.8em;
   opacity: 0.6;
 }
 
-.popup-desc {
+.popupDesc {
   margin: 8px 0 0;
   font-size: 0.85em;
   line-height: 1.4;
@@ -179,19 +180,19 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   overflow: hidden;
 }
 
-.popup-stats {
+.popupStats {
   display: flex;
   gap: 12px;
   margin-top: 10px;
   font-size: 0.8em;
   opacity: 0.7;
+
+  b {
+    color: var(--nd-fgHighlighted);
+  }
 }
 
-.popup-stats b {
-  color: var(--nd-fgHighlighted);
-}
-
-.popup-badge {
+.popupBadge {
   display: inline-block;
   margin-top: 8px;
   padding: 2px 10px;
@@ -202,7 +203,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   color: var(--nd-accent);
 }
 
-.popup-webui-link {
+.popupWebuiLink {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -214,14 +215,14 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   color: var(--nd-accent);
   cursor: pointer;
   opacity: 0.8;
-}
 
-.popup-webui-link:hover {
-  opacity: 1;
+  &:hover {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 500px) {
-  .user-popup {
+  .userPopup {
     width: auto;
     max-width: calc(100vw - 32px);
     left: 16px !important;
@@ -232,12 +233,14 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 }
 
 /* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .user-popup {
-  width: auto;
-  max-width: calc(100vw - 32px);
-  left: 16px !important;
-  right: 16px;
-  top: auto !important;
-  bottom: calc(60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+:global(html.nd-mobile) {
+  .userPopup {
+    width: auto;
+    max-width: calc(100vw - 32px);
+    left: 16px !important;
+    right: 16px;
+    top: auto !important;
+    bottom: calc(60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+  }
 }
 </style>

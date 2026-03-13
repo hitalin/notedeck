@@ -42,9 +42,10 @@ defineExpose({ open })
 <template>
   <Teleport to="body">
     <Transition :name="isMobile ? 'nd-sheet' : 'nd-popup'">
-      <div v-if="show" class="popup-backdrop" :class="{ mobile: isMobile }" @click="close">
+      <div v-if="show" :class="[$style.popupBackdrop, isMobile && $style.mobile]" @click="close">
         <div
-          class="reaction-picker-popup nd-popup-content"
+          :class="$style.reactionPickerPopup"
+          class="nd-popup-content reaction-picker-popup"
           :style="isMobile ? theme : { ...theme, top: pos.y + 'px', left: pos.x + 'px' }"
           @click.stop
         >
@@ -59,21 +60,21 @@ defineExpose({ open })
   </Teleport>
 </template>
 
-<style scoped>
-.popup-backdrop {
+<style lang="scss" module>
+.popupBackdrop {
   position: fixed;
   inset: 0;
   z-index: var(--nd-z-popup);
   background: transparent;
+
+  &.mobile {
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: flex-end;
+  }
 }
 
-.popup-backdrop.mobile {
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: flex-end;
-}
-
-.reaction-picker-popup {
+.reactionPickerPopup {
   position: fixed;
   transform: translateX(-100%);
   z-index: calc(var(--nd-z-popup) + 1);
@@ -83,17 +84,19 @@ defineExpose({ open })
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   overflow: hidden;
-}
 
-.mobile .reaction-picker-popup {
-  position: static;
-  transform: none;
-  width: 100%;
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
-  padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
+  .mobile & {
+    position: static;
+    transform: none;
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+    padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
+  }
 }
+</style>
 
+<style>
 /* Override default nd-popup transform (slides from left) */
 .nd-popup-enter-from .reaction-picker-popup,
 .nd-popup-leave-to .reaction-picker-popup {

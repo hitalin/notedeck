@@ -168,55 +168,55 @@ onMounted(() => {
       {{ error.message }}
     </div>
 
-    <div v-else-if="isLoading && !meta" class="server-info-body">
+    <div v-else-if="isLoading && !meta" :class="$style.serverInfoBody">
       <MkSkeleton v-for="i in 5" :key="i" />
     </div>
 
-    <div v-else-if="meta" ref="scrollContainer" class="server-info-body">
+    <div v-else-if="meta" ref="scrollContainer" :class="$style.serverInfoBody">
       <!-- Banner (Misskey style: bg image + icon overlay + gradient name) -->
       <div
-        class="banner"
+        :class="$style.banner"
         :style="meta.bannerUrl ? { backgroundImage: `url(${meta.bannerUrl})` } : undefined"
       >
-        <div class="banner-inner">
+        <div :class="$style.bannerInner">
           <img
             :src="meta.iconUrl || serverIconUrl || `https://${account.host}/favicon.ico`"
             alt=""
-            class="banner-icon"
+            :class="$style.bannerIcon"
           />
-          <div class="banner-name">
+          <div :class="$style.bannerName">
             <b>{{ meta.name || account.host }}</b>
           </div>
         </div>
       </div>
 
       <!-- Description -->
-      <div class="form-section">
-        <div class="form-kv-row">
-          <div class="form-kv-key">概要</div>
+      <div :class="$style.formSection">
+        <div :class="$style.formKvRow">
+          <div :class="$style.formKvKey">概要</div>
           <!-- eslint-disable-next-line vue/no-v-html -->
-          <div v-if="sanitizedDescription" class="description" v-html="sanitizedDescription" />
-          <div v-else class="muted">（説明なし）</div>
+          <div v-if="sanitizedDescription" :class="$style.description" v-html="sanitizedDescription" />
+          <div v-else :class="$style.muted">（説明なし）</div>
         </div>
       </div>
 
       <!-- Server info -->
-      <div class="form-section">
-        <div class="section-content">
-          <div class="form-kv-row">
-            <div class="form-kv-key">Misskey</div>
-            <div class="form-kv-value">{{ meta.version }}</div>
+      <div :class="$style.formSection">
+        <div :class="$style.sectionContent">
+          <div :class="$style.formKvRow">
+            <div :class="$style.formKvKey">Misskey</div>
+            <div :class="$style.formKvValue">{{ meta.version }}</div>
           </div>
           <a
             v-if="meta.repositoryUrl"
             :href="meta.repositoryUrl"
             target="_blank"
             rel="noopener"
-            class="form-link"
+            :class="$style.formLink"
           >
-            <i class="ti ti-code form-link-icon" />
+            <i class="ti ti-code" :class="$style.formLinkIcon" />
             <span>ソースコード</span>
-            <span class="form-link-suffix">
+            <span :class="$style.formLinkSuffix">
               <i class="ti ti-external-link" />
             </span>
           </a>
@@ -224,28 +224,28 @@ onMounted(() => {
       </div>
 
       <!-- Administrator -->
-      <div class="form-section">
-        <div class="section-content">
-          <div class="form-split">
-            <div class="form-kv-row">
-              <div class="form-kv-key">管理者</div>
-              <div class="form-kv-value">
+      <div :class="$style.formSection">
+        <div :class="$style.sectionContent">
+          <div :class="$style.formSplit">
+            <div :class="$style.formKvRow">
+              <div :class="$style.formKvKey">管理者</div>
+              <div :class="$style.formKvValue">
                 <template v-if="meta.maintainerName">{{ meta.maintainerName }}</template>
-                <span v-else class="muted">（なし）</span>
+                <span v-else :class="$style.muted">（なし）</span>
               </div>
             </div>
-            <div class="form-kv-row">
-              <div class="form-kv-key">連絡先</div>
-              <div class="form-kv-value">
+            <div :class="$style.formKvRow">
+              <div :class="$style.formKvKey">連絡先</div>
+              <div :class="$style.formKvValue">
                 <template v-if="meta.maintainerEmail">{{ meta.maintainerEmail }}</template>
-                <span v-else class="muted">（なし）</span>
+                <span v-else :class="$style.muted">（なし）</span>
               </div>
             </div>
-            <div class="form-kv-row">
-              <div class="form-kv-key">問い合わせ</div>
-              <div class="form-kv-value">
-                <a v-if="meta.inquiryUrl" :href="meta.inquiryUrl" target="_blank" rel="noopener" class="kv-link">{{ meta.inquiryUrl }}</a>
-                <span v-else class="muted">（なし）</span>
+            <div :class="$style.formKvRow">
+              <div :class="$style.formKvKey">問い合わせ</div>
+              <div :class="$style.formKvValue">
+                <a v-if="meta.inquiryUrl" :href="meta.inquiryUrl" target="_blank" rel="noopener" :class="$style.kvLink">{{ meta.inquiryUrl }}</a>
+                <span v-else :class="$style.muted">（なし）</span>
               </div>
             </div>
           </div>
@@ -254,25 +254,25 @@ onMounted(() => {
             :href="meta.impressumUrl"
             target="_blank"
             rel="noopener"
-            class="form-link"
+            :class="$style.formLink"
           >
-            <i class="ti ti-user-shield form-link-icon" />
+            <i class="ti ti-user-shield" :class="$style.formLinkIcon" />
             <span>運営情報</span>
-            <span class="form-link-suffix"><i class="ti ti-external-link" /></span>
+            <span :class="$style.formLinkSuffix"><i class="ti ti-external-link" /></span>
           </a>
 
           <!-- Server Rules -->
-          <div v-if="meta.serverRules && meta.serverRules.length > 0" class="rules-container">
-            <div class="form-link rules-toggle" @click="($event.currentTarget as HTMLElement).parentElement?.classList.toggle('open')">
-              <i class="ti ti-checkup-list form-link-icon" />
+          <div v-if="meta.serverRules && meta.serverRules.length > 0" :class="$style.rulesContainer">
+            <div :class="[$style.formLink, $style.rulesToggle]" @click="($event.currentTarget as HTMLElement).parentElement?.classList.toggle('open')">
+              <i class="ti ti-checkup-list" :class="$style.formLinkIcon" />
               <span>サーバールール</span>
-              <span class="form-link-suffix"><i class="ti ti-chevron-down rules-chevron" /></span>
+              <span :class="$style.formLinkSuffix"><i class="ti ti-chevron-down" :class="$style.rulesChevron" /></span>
             </div>
-            <ol class="rules-list">
-              <li v-for="(rule, i) in meta.serverRules" :key="i" class="rule-item">
-                <span class="rule-number">{{ i + 1 }}</span>
+            <ol :class="$style.rulesList">
+              <li v-for="(rule, i) in meta.serverRules" :key="i" :class="$style.ruleItem">
+                <span :class="$style.ruleNumber">{{ i + 1 }}</span>
                 <!-- eslint-disable-next-line vue/no-v-html -->
-                <div class="rule-text" v-html="DOMPurify.sanitize(rule)" />
+                <div :class="$style.ruleText" v-html="DOMPurify.sanitize(rule)" />
               </li>
             </ol>
           </div>
@@ -282,77 +282,77 @@ onMounted(() => {
             :href="meta.tosUrl"
             target="_blank"
             rel="noopener"
-            class="form-link"
+            :class="$style.formLink"
           >
-            <i class="ti ti-license form-link-icon" />
+            <i class="ti ti-license" :class="$style.formLinkIcon" />
             <span>利用規約</span>
-            <span class="form-link-suffix"><i class="ti ti-external-link" /></span>
+            <span :class="$style.formLinkSuffix"><i class="ti ti-external-link" /></span>
           </a>
           <a
             v-if="meta.privacyPolicyUrl"
             :href="meta.privacyPolicyUrl"
             target="_blank"
             rel="noopener"
-            class="form-link"
+            :class="$style.formLink"
           >
-            <i class="ti ti-shield-lock form-link-icon" />
+            <i class="ti ti-shield-lock" :class="$style.formLinkIcon" />
             <span>プライバシーポリシー</span>
-            <span class="form-link-suffix"><i class="ti ti-external-link" /></span>
+            <span :class="$style.formLinkSuffix"><i class="ti ti-external-link" /></span>
           </a>
           <a
             v-if="meta.feedbackUrl"
             :href="meta.feedbackUrl"
             target="_blank"
             rel="noopener"
-            class="form-link"
+            :class="$style.formLink"
           >
-            <i class="ti ti-message form-link-icon" />
+            <i class="ti ti-message" :class="$style.formLinkIcon" />
             <span>フィードバック</span>
-            <span class="form-link-suffix"><i class="ti ti-external-link" /></span>
+            <span :class="$style.formLinkSuffix"><i class="ti ti-external-link" /></span>
           </a>
         </div>
       </div>
 
       <!-- Statistics -->
-      <div v-if="stats" class="form-section">
-        <div class="form-section-label">統計</div>
-        <div class="section-content">
-          <div class="stats-split">
-            <div class="form-kv-row">
-              <div class="form-kv-key">ユーザー</div>
-              <div class="form-kv-value">{{ formatNumber(stats.originalUsersCount) }}</div>
+      <div v-if="stats" :class="$style.formSection">
+        <div :class="$style.formSectionLabel">統計</div>
+        <div :class="$style.sectionContent">
+          <div :class="$style.statsSplit">
+            <div :class="$style.formKvRow">
+              <div :class="$style.formKvKey">ユーザー</div>
+              <div :class="$style.formKvValue">{{ formatNumber(stats.originalUsersCount) }}</div>
             </div>
-            <div class="form-kv-row">
-              <div class="form-kv-key">ノート</div>
-              <div class="form-kv-value">{{ formatNumber(stats.originalNotesCount) }}</div>
+            <div :class="$style.formKvRow">
+              <div :class="$style.formKvKey">ノート</div>
+              <div :class="$style.formKvValue">{{ formatNumber(stats.originalNotesCount) }}</div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Well-known resources -->
-      <div class="form-section">
-        <div class="form-section-label">Well-known resources</div>
-        <div class="section-content">
-          <a :href="`https://${account.host}/.well-known/host-meta`" target="_blank" rel="noopener" class="form-link">
+      <div :class="$style.formSection">
+        <div :class="$style.formSectionLabel">Well-known resources</div>
+        <div :class="$style.sectionContent">
+          <a :href="`https://${account.host}/.well-known/host-meta`" target="_blank" rel="noopener" :class="$style.formLink">
             <span>host-meta</span>
-            <span class="form-link-suffix"><i class="ti ti-external-link" /></span>
+            <span :class="$style.formLinkSuffix"><i class="ti ti-external-link" /></span>
           </a>
-          <a :href="`https://${account.host}/.well-known/host-meta.json`" target="_blank" rel="noopener" class="form-link">
+          <a :href="`https://${account.host}/.well-known/host-meta.json`" target="_blank" rel="noopener" :class="$style.formLink">
             <span>host-meta.json</span>
-            <span class="form-link-suffix"><i class="ti ti-external-link" /></span>
+            <span :class="$style.formLinkSuffix"><i class="ti ti-external-link" /></span>
           </a>
-          <a :href="`https://${account.host}/.well-known/nodeinfo`" target="_blank" rel="noopener" class="form-link">
+          <a :href="`https://${account.host}/.well-known/nodeinfo`" target="_blank" rel="noopener" :class="$style.formLink">
             <span>nodeinfo</span>
-            <span class="form-link-suffix"><i class="ti ti-external-link" /></span>
+            <span :class="$style.formLinkSuffix"><i class="ti ti-external-link" /></span>
           </a>
-          <a :href="`https://${account.host}/robots.txt`" target="_blank" rel="noopener" class="form-link">
+          <a :href="`https://${account.host}/robots.txt`" target="_blank" rel="noopener" :class="$style.formLink">
             <span>robots.txt</span>
-            <span class="form-link-suffix"><i class="ti ti-external-link" /></span>
+            <span :class="$style.formLinkSuffix"><i class="ti ti-external-link" /></span>
           </a>
-          <a :href="`https://${account.host}/manifest.json`" target="_blank" rel="noopener" class="form-link">
+          <a :href="`https://${account.host}/manifest.json`" target="_blank" rel="noopener" :class="$style.formLink">
             <span>manifest.json</span>
-            <span class="form-link-suffix"><i class="ti ti-external-link" /></span>
+            <span :class="$style.formLinkSuffix"><i class="ti ti-external-link" /></span>
           </a>
         </div>
       </div>
@@ -364,10 +364,10 @@ onMounted(() => {
   </DeckColumn>
 </template>
 
-<style scoped>
-@import "./column-common.css";
+<style lang="scss" module>
+@use "./column-common.module.scss";
 
-.server-info-body {
+.serverInfoBody {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -388,18 +388,18 @@ onMounted(() => {
   margin: 12px;
 }
 
-.banner-inner {
+.bannerInner {
   overflow: clip;
 }
 
-.banner-icon {
+.bannerIcon {
   display: block;
   margin: 16px auto 0 auto;
   height: 48px;
   border-radius: var(--nd-radius-md);
 }
 
-.banner-name {
+.bannerName {
   display: block;
   padding: 12px 16px;
   color: #fff;
@@ -409,42 +409,42 @@ onMounted(() => {
 }
 
 /* ---- Form sections (Misskey FormSection style) ---- */
-.form-section {
+.formSection {
   border-top: solid 0.5px var(--nd-divider);
+
+  &:first-child {
+    border-top: none;
+  }
 }
 
-.form-section:first-child {
-  border-top: none;
-}
-
-.form-section-label {
+.formSectionLabel {
   font-weight: bold;
   padding: 1.5em 16px 0;
   margin-bottom: 8px;
   font-size: 0.85em;
 }
 
-.section-content {
+.sectionContent {
   margin-top: 1em;
   padding-bottom: 4px;
 }
 
 /* ---- Key-Value rows (Misskey MkKeyValue style) ---- */
-.form-kv-row {
+.formKvRow {
   padding: 12px 16px;
+
+  & + & {
+    border-top: 1px solid var(--nd-divider);
+  }
 }
 
-.form-kv-row + .form-kv-row {
-  border-top: 1px solid var(--nd-divider);
-}
-
-.form-kv-key {
+.formKvKey {
   font-size: 0.85em;
   opacity: 0.75;
   padding-bottom: 0.25em;
 }
 
-.form-kv-value {
+.formKvValue {
   color: var(--nd-fgHighlighted);
   word-break: break-word;
 }
@@ -453,56 +453,55 @@ onMounted(() => {
   opacity: 0.7;
 }
 
-.kv-link {
+.kvLink {
   color: var(--nd-accent);
   text-decoration: none;
   word-break: break-all;
-}
 
-.kv-link:hover {
-  text-decoration: underline;
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 /* ---- FormSplit (Misskey style side by side grid) ---- */
-.form-split {
+.formSplit {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 12px;
   padding: 0 16px 12px;
+
+  > .formKvRow {
+    padding: 0;
+
+    & + .formKvRow {
+      border-top: none;
+    }
+  }
 }
 
-.stats-split {
+.statsSplit {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   padding: 0 16px 12px;
-}
 
-.stats-split > .form-kv-row {
-  padding: 0;
-}
+  > .formKvRow {
+    padding: 0;
 
-.stats-split > .form-kv-row + .form-kv-row {
-  border-top: none;
-}
-
-.form-split > .form-kv-row {
-  padding: 0;
-}
-
-.form-split > .form-kv-row + .form-kv-row {
-  border-top: none;
+    & + .formKvRow {
+      border-top: none;
+    }
+  }
 }
 
 /* ---- FormLink (Misskey style) ---- */
-.form-link {
+.formLink {
   display: flex;
   align-items: center;
-  width: 100%;
+  width: calc(100% - 32px);
   box-sizing: border-box;
   padding: 10px 14px;
   margin: 0 16px 8px;
-  width: calc(100% - 32px);
   background: var(--nd-buttonBg);
   border-radius: var(--nd-radius-sm);
   font-size: 0.9em;
@@ -510,20 +509,20 @@ onMounted(() => {
   text-decoration: none;
   transition: background var(--nd-duration-base);
   cursor: pointer;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    text-decoration: none;
+  }
 }
 
-.form-link:hover {
-  background: var(--nd-buttonHoverBg);
-  text-decoration: none;
-}
-
-.form-link-icon {
+.formLinkIcon {
   margin-right: 0.75em;
   flex-shrink: 0;
   opacity: 0.75;
 }
 
-.form-link-suffix {
+.formLinkSuffix {
   margin-left: auto;
   opacity: 0.7;
   white-space: nowrap;
@@ -536,88 +535,88 @@ onMounted(() => {
   line-height: 1.7;
   color: var(--nd-fg);
   word-break: break-word;
-}
 
-.description :deep(a) {
-  color: var(--nd-accent);
-  text-decoration: none;
-}
+  :deep(a) {
+    color: var(--nd-accent);
+    text-decoration: none;
 
-.description :deep(a:hover) {
-  text-decoration: underline;
-}
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 
-.description :deep(img) {
-  max-width: 100%;
-  border-radius: var(--nd-radius-md);
-}
+  :deep(img) {
+    max-width: 100%;
+    border-radius: var(--nd-radius-md);
+  }
 
-.description :deep(h1),
-.description :deep(h2),
-.description :deep(h3) {
-  color: var(--nd-fgHighlighted);
-  margin: 0.8em 0 0.4em;
-  font-size: 1.1em;
-}
+  :deep(h1),
+  :deep(h2),
+  :deep(h3) {
+    color: var(--nd-fgHighlighted);
+    margin: 0.8em 0 0.4em;
+    font-size: 1.1em;
+  }
 
-.description :deep(p) {
-  margin: 0.5em 0;
-}
+  :deep(p) {
+    margin: 0.5em 0;
+  }
 
-.description :deep(ul),
-.description :deep(ol) {
-  padding-left: 1.5em;
-  margin: 0.5em 0;
-}
+  :deep(ul),
+  :deep(ol) {
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+  }
 
-.description :deep(blockquote) {
-  border-left: 3px solid var(--nd-accent);
-  padding-left: 12px;
-  margin: 0.5em 0;
-  opacity: 0.8;
+  :deep(blockquote) {
+    border-left: 3px solid var(--nd-accent);
+    padding-left: 12px;
+    margin: 0.5em 0;
+    opacity: 0.8;
+  }
 }
 
 /* ---- Server Rules (Misskey MkFolder style) ---- */
-.rules-container {
+.rulesContainer {
   margin: 0 16px 8px;
+
+  .rulesList {
+    display: none;
+  }
+
+  :global(&.open) .rulesList {
+    display: block;
+  }
+
+  :global(&.open) .rulesChevron {
+    transform: rotate(180deg);
+  }
 }
 
-.rules-container .rules-list {
-  display: none;
-}
-
-.rules-container.open .rules-list {
-  display: block;
-}
-
-.rules-container.open .rules-chevron {
-  transform: rotate(180deg);
-}
-
-.rules-toggle {
+.rulesToggle {
   margin: 0;
   width: 100%;
   border-radius: var(--nd-radius-sm);
 }
 
-.rules-chevron {
+.rulesChevron {
   transition: transform var(--nd-duration-slow);
 }
 
-.rules-list {
+.rulesList {
   list-style: none;
   padding: 8px 0 4px;
   margin: 0;
 }
 
-.rule-item {
+.ruleItem {
   display: flex;
   gap: 8px;
   padding: 6px 0;
   word-break: break-word;
 }
 
-.rule-number {
+.ruleNumber {
   flex-shrink: 0;
   display: flex;
   position: sticky;
@@ -633,7 +632,7 @@ onMounted(() => {
   font-weight: bold;
 }
 
-.rule-text {
+.ruleText {
   padding-top: 6px;
   font-size: 0.9em;
   line-height: 1.5;

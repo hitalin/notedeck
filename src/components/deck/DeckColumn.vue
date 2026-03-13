@@ -97,15 +97,17 @@ function onOpenWebUi() {
 <template>
   <section
     class="deck-column"
+    :class="$style.deckColumn"
     :style="themeVars"
   >
     <header
       class="column-header"
+      :class="$style.columnHeader"
       @click="emit('header-click')"
       @contextmenu.prevent.stop="toggleMenu"
     >
       <!-- Tab shape decoration (Misskey style, hidden with wallpaper) -->
-      <svg v-if="!hasWallpaper" class="tab-shape" viewBox="0 0 256 128">
+      <svg v-if="!hasWallpaper" :class="$style.tabShape" viewBox="0 0 256 128">
         <g transform="matrix(6.2431,0,0,6.2431,-677.417,-29.3839)">
           <path d="M149.512,4.707L108.507,4.707C116.252,4.719 118.758,14.958 118.758,14.958C118.758,14.958 121.381,25.283 129.009,25.209L149.512,25.209L149.512,4.707Z" style="fill:var(--nd-deckBg)" />
         </g>
@@ -113,44 +115,44 @@ function onOpenWebUi() {
 
       <!-- Color indicator bar (Misskey style) -->
       <div
-        class="color-indicator"
+        :class="$style.colorIndicator"
         :style="{ background: color || 'var(--nd-accent)' }"
       />
 
       <slot name="header-icon" />
-      <span class="header-title">{{ title }}</span>
+      <span :class="$style.headerTitle">{{ title }}</span>
 
       <slot name="header-meta" />
 
       <!-- Grabber (Misskey 6-dot pattern) -->
-      <i class="ti ti-grip-vertical grabber" />
+      <i :class="$style.grabber" class="ti ti-grip-vertical" />
 
       <!-- Column menu button -->
-      <button ref="menuBtnEl" class="_button header-btn" title="メニュー" @click.stop="toggleMenu">
+      <button ref="menuBtnEl" :class="$style.headerBtn" class="_button" title="メニュー" @click.stop="toggleMenu">
         <i class="ti ti-dots" />
       </button>
 
       <!-- Column action menu -->
       <Transition name="col-menu">
-        <div v-if="showMenu" ref="menuEl" class="column-menu _popupMenu" @pointerdown.stop>
-          <button v-if="webUiUrl" class="_button column-menu-item" @click="onOpenWebUi">
+        <div v-if="showMenu" ref="menuEl" :class="$style.columnMenu" class="_popupMenu" @pointerdown.stop>
+          <button v-if="webUiUrl" :class="$style.columnMenuItem" class="_button" @click="onOpenWebUi">
             <i class="ti ti-external-link" />
             <span>Web UIで開く</span>
           </button>
-          <button v-if="canPopOut" class="_button column-menu-item" @click="popOut">
+          <button v-if="canPopOut" :class="$style.columnMenuItem" class="_button" @click="popOut">
             <i class="ti ti-app-window" />
             <span>別ウィンドウで開く</span>
           </button>
-          <button v-if="canRecall" class="_button column-menu-item" @click="recallToMain">
+          <button v-if="canRecall" :class="$style.columnMenuItem" class="_button" @click="recallToMain">
             <i class="ti ti-arrow-back-up" />
             <span>メインウィンドウに戻す</span>
           </button>
-          <button v-if="soundEnabled" class="_button column-menu-item" @click="toggleMute">
+          <button v-if="soundEnabled" :class="$style.columnMenuItem" class="_button" @click="toggleMute">
             <i :class="isMuted ? 'ti ti-volume' : 'ti ti-volume-off'" />
             <span>{{ isMuted ? 'ミュート解除' : 'ミュート' }}</span>
           </button>
-          <div class="column-menu-divider" />
-          <button class="_button column-menu-item column-menu-danger" @click="close">
+          <div :class="$style.columnMenuDivider" />
+          <button :class="[$style.columnMenuItem, $style.columnMenuDanger]" class="_button" @click="close">
             <i class="ti ti-trash" />
             <span>カラムを削除</span>
           </button>
@@ -158,19 +160,19 @@ function onOpenWebUi() {
       </Transition>
     </header>
 
-    <div class="column-sub-header">
+    <div :class="$style.columnSubHeader">
       <slot name="header-extra" />
     </div>
 
-    <div class="column-body">
+    <div :class="$style.columnBody">
       <slot />
     </div>
 
   </section>
 </template>
 
-<style scoped>
-.deck-column {
+<style lang="scss" module>
+.deckColumn {
   width: 100%;
   flex: 1;
   min-height: 0;
@@ -185,7 +187,7 @@ function onOpenWebUi() {
   position: relative;
 }
 
-.column-header {
+.columnHeader {
   position: relative;
   display: flex;
   align-items: center;
@@ -202,13 +204,13 @@ function onOpenWebUi() {
   user-select: none;
   z-index: 2;
   overflow: visible;
+
+  &:active {
+    cursor: grabbing;
+  }
 }
 
-.column-header:active {
-  cursor: grabbing;
-}
-
-.tab-shape {
+.tabShape {
   position: absolute;
   top: 0;
   right: -8px;
@@ -217,7 +219,7 @@ function onOpenWebUi() {
   pointer-events: none;
 }
 
-.color-indicator {
+.colorIndicator {
   position: absolute;
   top: 10px;
   left: 10px;
@@ -226,7 +228,7 @@ function onOpenWebUi() {
   border-radius: var(--nd-radius-full);
 }
 
-.header-title {
+.headerTitle {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -238,13 +240,13 @@ function onOpenWebUi() {
   flex-shrink: 0;
   opacity: 0.5;
   cursor: grab;
+
+  &:hover {
+    opacity: 0.6;
+  }
 }
 
-.grabber:hover {
-  opacity: 0.6;
-}
-
-.header-btn {
+.headerBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -253,15 +255,15 @@ function onOpenWebUi() {
   border-radius: var(--nd-radius-sm);
   flex-shrink: 0;
   opacity: 0.5;
-}
 
-.header-btn:hover {
-  background: var(--nd-buttonHoverBg);
-  opacity: 0.8;
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 0.8;
+  }
 }
 
 /* Column action menu */
-.column-menu {
+.columnMenu {
   top: 100%;
   right: 4px;
   margin-top: 4px;
@@ -270,7 +272,7 @@ function onOpenWebUi() {
   cursor: default;
 }
 
-.column-menu-item {
+.columnMenuItem {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -281,53 +283,42 @@ function onOpenWebUi() {
   cursor: pointer;
   position: relative;
   transition: background var(--nd-duration-fast);
+
+  &:hover {
+    background: var(--nd-accent-hover);
+  }
+
+  i {
+    flex-shrink: 0;
+    width: 18px;
+    text-align: center;
+    opacity: 0.7;
+  }
+
+  span {
+    white-space: nowrap;
+  }
 }
 
-.column-menu-item:hover {
-  background: var(--nd-accent-hover);
-}
-
-.column-menu-item i {
-  flex-shrink: 0;
-  width: 18px;
-  text-align: center;
-  opacity: 0.7;
-}
-
-.column-menu-item span {
-  white-space: nowrap;
-}
-
-.column-menu-danger {
+.columnMenuDanger {
   color: var(--nd-love, #ff6b6b);
+
+  i {
+    opacity: 1;
+  }
 }
 
-.column-menu-danger i {
-  opacity: 1;
-}
-
-.column-menu-divider {
+.columnMenuDivider {
   border: 0;
   border-top: 0.5px solid var(--nd-divider);
   margin: 4px 0;
 }
 
-.col-menu-enter-active,
-.col-menu-leave-active {
-  transition: opacity var(--nd-duration-base) ease, transform var(--nd-duration-base) ease;
-}
-
-.col-menu-enter-from,
-.col-menu-leave-to {
-  opacity: 0;
-  transform: translateY(-4px) scale(0.97);
-}
-
-.column-sub-header {
+.columnSubHeader {
   flex-shrink: 0;
 }
 
-.column-body {
+.columnBody {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -337,35 +328,51 @@ function onOpenWebUi() {
 }
 
 @media (max-width: 500px) {
-  .deck-column {
+  .deckColumn {
     border-radius: 0;
   }
 
-  .column-header {
+  .columnHeader {
     height: 50px;
     line-height: 50px;
     padding: 0 12px 0 32px;
   }
 
-  .header-btn {
+  .headerBtn {
     width: 36px;
     height: 36px;
   }
 }
 
 /* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .deck-column {
-  border-radius: 0;
+:global(html.nd-mobile) {
+  .deckColumn {
+    border-radius: 0;
+  }
+
+  .columnHeader {
+    height: 50px;
+    line-height: 50px;
+    padding: 0 12px 0 32px;
+  }
+
+  .headerBtn {
+    width: 36px;
+    height: 36px;
+  }
+}
+</style>
+
+<style lang="scss">
+/* Transition classes (unscoped, name-based) */
+.col-menu-enter-active,
+.col-menu-leave-active {
+  transition: opacity var(--nd-duration-base) ease, transform var(--nd-duration-base) ease;
 }
 
-html.nd-mobile .column-header {
-  height: 50px;
-  line-height: 50px;
-  padding: 0 12px 0 32px;
-}
-
-html.nd-mobile .header-btn {
-  width: 36px;
-  height: 36px;
+.col-menu-enter-from,
+.col-menu-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.97);
 }
 </style>

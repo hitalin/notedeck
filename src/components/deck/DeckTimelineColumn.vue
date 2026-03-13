@@ -674,34 +674,34 @@ onUnmounted(() => {
     @header-click="scrollToTop()"
   >
     <template #header-icon>
-      <span class="tl-header-icon-wrap">
-        <i v-if="isTablerIcon(currentTlIcon)" :class="'ti ti-' + currentTlIcon" class="tl-header-icon" />
-        <svg v-else class="tl-header-icon" viewBox="0 0 24 24" width="14" height="14">
+      <span :class="$style.tlHeaderIconWrap">
+        <i v-if="isTablerIcon(currentTlIcon)" :class="['ti ti-' + currentTlIcon, $style.tlHeaderIcon]" />
+        <svg v-else :class="$style.tlHeaderIcon" viewBox="0 0 24 24" width="14" height="14">
           <path :d="currentTlIcon" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
         </svg>
       </span>
     </template>
 
     <template #header-meta>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
-        <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
     <template #header-extra>
-      <div ref="tabsRef" class="tl-tabs">
+      <div ref="tabsRef" :class="$style.tlTabs">
         <template v-if="timeMachine.isActive.value">
-          <button class="_button tl-tab" @click="tmShiftDay(-1)">
-            <i class="ti ti-chevron-left tl-tab-icon" />
+          <button class="_button tl-tab" :class="$style.tlTab" @click="tmShiftDay(-1)">
+            <i class="ti ti-chevron-left" :class="$style.tlTabIcon" />
           </button>
-          <span class="tl-tab tl-tm-date active">{{ timeMachine.targetDate.value }}</span>
-          <button class="_button tl-tab" @click="tmShiftDay(1)">
-            <i class="ti ti-chevron-right tl-tab-icon" />
+          <span class="tl-tab active" :class="[$style.tlTab, $style.tlTmDate]">{{ timeMachine.targetDate.value }}</span>
+          <button class="_button tl-tab" :class="$style.tlTab" @click="tmShiftDay(1)">
+            <i class="ti ti-chevron-right" :class="$style.tlTabIcon" />
           </button>
-          <button class="_button tl-tab tl-tm-live" @click="exitTimeMachine">
-            <i class="ti ti-live-photo tl-tab-icon" />
-            <span class="tl-tab-label">ライブ</span>
+          <button class="_button tl-tab" :class="[$style.tlTab, $style.tlTmLive]" @click="exitTimeMachine">
+            <i class="ti ti-live-photo" :class="$style.tlTabIcon" />
+            <span :class="$style.tlTabLabel">ライブ</span>
           </button>
         </template>
         <template v-else>
@@ -709,53 +709,54 @@ onUnmounted(() => {
             v-for="opt in allTlTypes"
             :key="opt.value"
             class="_button tl-tab"
-            :class="{ active: tlType === opt.value }"
+            :class="[$style.tlTab, { active: tlType === opt.value }]"
             :title="opt.label"
             @click="switchTl(opt.value)"
           >
-            <i v-if="isTablerIcon(getTlIcon(opt.value))" :class="'ti ti-' + getTlIcon(opt.value)" class="tl-tab-icon" />
-            <svg v-else class="tl-tab-icon" viewBox="0 0 24 24" width="16" height="16">
+            <i v-if="isTablerIcon(getTlIcon(opt.value))" :class="['ti ti-' + getTlIcon(opt.value), $style.tlTabIcon]" />
+            <svg v-else :class="$style.tlTabIcon" viewBox="0 0 24 24" width="16" height="16">
               <path :d="getTlIcon(opt.value)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
             </svg>
-            <span v-if="tlType === opt.value" class="tl-tab-label">{{ opt.label }}</span>
+            <span v-if="tlType === opt.value" :class="$style.tlTabLabel">{{ opt.label }}</span>
           </button>
           <button
             v-if="availableFilterKeys.length > 0"
             ref="filterBtnRef"
-            class="_button tl-tab tl-filter-btn"
-            :class="{ active: hasActiveFilter }"
+            class="_button tl-tab"
+            :class="[$style.tlTab, $style.tlFilterBtn, { active: hasActiveFilter }]"
             title="Filter"
             @click.stop="toggleFilterMenu"
           >
             <i class="ti ti-filter" />
           </button>
           <button
-            class="_button tl-tab tl-timemachine-btn"
+            class="_button tl-tab"
+            :class="[$style.tlTab, $style.tlTimemachineBtn]"
             title="Time Machine"
             @click.stop="toggleTimeMachine"
           >
             <i class="ti ti-history" />
           </button>
         </template>
-        <div class="tl-tab-indicator" :style="tabIndicatorStyle" />
+        <div :class="$style.tlTabIndicator" :style="tabIndicatorStyle" />
       </div>
     </template>
 
-    <div v-if="!account" class="column-empty">
+    <div v-if="!account" :class="$style.columnEmpty">
       Account not found
     </div>
 
-    <div v-else-if="error" class="column-empty column-error">
+    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
       {{ error.message }}
     </div>
 
-    <div v-else class="tl-body">
+    <div v-else :class="$style.tlBody">
       <div
         v-if="pullDistance > 0 || isRefreshing"
-        class="pull-indicator"
+        :class="$style.pullIndicator"
         :style="{ height: pullDistance + 'px' }"
       >
-        <i class="ti" :class="isRefreshing ? 'ti-loader-2 spin' : pullDistance >= 64 ? 'ti-arrow-down' : 'ti-arrow-down'" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
+        <i class="ti" :class="[isRefreshing ? 'ti-loader-2' : 'ti-arrow-down', { [String($style.spin)]: isRefreshing }]" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
       </div>
 
       <div v-if="isLoading && notes.length === 0">
@@ -763,13 +764,14 @@ onUnmounted(() => {
       </div>
 
       <template v-else>
-        <div v-if="notes.length === 0 && timeMachine.isActive.value" class="column-empty">
+        <div v-if="notes.length === 0 && timeMachine.isActive.value" :class="$style.columnEmpty">
           No cached notes for this date
         </div>
 
         <button
           v-if="pendingNotes.length > 0"
-          class="new-notes-banner _button"
+          :class="$style.newNotesBanner"
+          class="_button"
           @click="scrollToTop()"
         >
           <i class="ti ti-arrow-up" />{{ pendingNotes.length }}件の新しいノート
@@ -779,7 +781,7 @@ onUnmounted(() => {
           ref="noteScroller"
           :items="notes"
           :focused-id="focusedNoteId"
-          class="tl-scroller"
+          :class="$style.tlScroller"
           @scroll="handleScroll"
         >
           <template #default="{ item, index }">
@@ -800,7 +802,7 @@ onUnmounted(() => {
           </template>
 
           <template #append>
-            <div v-if="isLoading && notes.length > 0" class="loading-more">
+            <div v-if="isLoading && notes.length > 0" :class="$style.loadingMore">
               Loading...
             </div>
           </template>
@@ -832,16 +834,17 @@ onUnmounted(() => {
   />
 </template>
 
-<style scoped>
-@import './column-common.css';
-.tl-tabs {
+<style lang="scss" module>
+@use './column-common.module.scss';
+
+.tlTabs {
   display: flex;
   position: relative;
   border-bottom: 1px solid var(--nd-divider);
   background: var(--nd-bg);
 }
 
-.tl-tab {
+.tlTab {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -850,18 +853,18 @@ onUnmounted(() => {
   opacity: 0.4;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
   position: relative;
+
+  &:hover {
+    opacity: 0.7;
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &:global(.active) {
+    opacity: 1;
+  }
 }
 
-.tl-tab:hover {
-  opacity: 0.7;
-  background: var(--nd-buttonHoverBg);
-}
-
-.tl-tab.active {
-  opacity: 1;
-}
-
-.tl-tab-indicator {
+.tlTabIndicator {
   position: absolute;
   bottom: 0;
   height: 3px;
@@ -871,45 +874,46 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-.tl-tab-icon {
+.tlTabIcon {
   color: currentColor;
 }
 
-.tl-tab-label {
+.tlTabLabel {
   font-size: 0.85em;
   font-weight: bold;
   white-space: nowrap;
 }
 
-.tl-filter-btn {
+.tlFilterBtn {
   margin-left: auto;
+
+  &:global(.active) {
+    color: var(--nd-accent);
+  }
 }
 
-.tl-filter-btn.active {
-  color: var(--nd-accent);
+.tlTimemachineBtn {
+  &:global(.active) {
+    color: var(--nd-accent);
+  }
 }
 
-.tl-timemachine-btn.active {
-  color: var(--nd-accent);
-}
-
-.tl-header-icon-wrap {
+.tlHeaderIconWrap {
   display: inline-flex;
   align-items: center;
 }
 
-
-.tl-tm-date {
+.tlTmDate {
   font-weight: bold;
   cursor: default;
 }
 
-.tl-tm-live {
+.tlTmLive {
   margin-left: auto;
   color: var(--nd-accent);
 }
 
-.pull-indicator {
+.pullIndicator {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -918,9 +922,9 @@ onUnmounted(() => {
   color: var(--nd-accent);
   font-size: 1.2em;
   transition: height var(--nd-duration-slow) ease;
-}
 
-.pull-indicator .ti {
-  transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
+  :global(.ti) {
+    transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
+  }
 }
 </style>

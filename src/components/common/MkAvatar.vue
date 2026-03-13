@@ -72,6 +72,7 @@ const decorationStyles = computed(() =>
   <div
     ref="targetRef"
     class="mk-avatar"
+    :class="$style.mkAvatar"
     :style="{ width: `${props.size}px`, height: `${props.size}px` }"
     @click="$emit('click', $event)"
     @mouseenter="$emit('mouseenter', $event)"
@@ -82,54 +83,53 @@ const decorationStyles = computed(() =>
       :key="props.avatarUrl ?? undefined"
       :src="lazySrc"
       :alt="props.alt"
-      class="avatar-img"
+      :class="$style.avatarImg"
       decoding="async"
       @error="onAvatarError"
     />
-    <div v-else class="avatar-img avatar-placeholder" />
+    <div v-else :class="[$style.avatarImg, $style.avatarPlaceholder]" />
     <template v-if="isVisible">
       <img
         v-for="(d, i) in props.decorations"
         :key="d.id"
         :src="proxyUrl(d.url)"
-        class="avatar-decoration"
+        :class="$style.avatarDecoration"
         :style="decorationStyles[i]"
       />
     </template>
     <div
       v-if="indicator && onlineStatus"
-      class="online-indicator"
-      :class="`status-${onlineStatus}`"
+      :class="[$style.onlineIndicator, $style[`status-${onlineStatus}`]]"
     />
   </div>
 </template>
 
-<style scoped>
-.mk-avatar {
+<style lang="scss" module>
+.mkAvatar {
   position: relative;
   display: inline-block;
   flex-shrink: 0;
   border-radius: 50%;
   background: var(--nd-buttonBg);
   transition: transform var(--nd-duration-slow) ease;
+
+  &:hover {
+    transform: scale(1.05);
+  }
 }
 
-.mk-avatar:hover {
-  transform: scale(1.05);
-}
-
-.avatar-img {
+.avatarImg {
   width: 100%;
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.avatar-placeholder {
+.avatarPlaceholder {
   background: var(--nd-buttonBg);
 }
 
-.avatar-decoration {
+.avatarDecoration {
   position: absolute;
   top: -50%;
   left: -50%;
@@ -138,7 +138,7 @@ const decorationStyles = computed(() =>
   z-index: 1;
 }
 
-.online-indicator {
+.onlineIndicator {
   position: absolute;
   z-index: 2;
   bottom: 0;
@@ -149,19 +149,19 @@ const decorationStyles = computed(() =>
   box-shadow: 0 0 0 3px var(--nd-panel, var(--nd-bg));
 }
 
-.online-indicator.status-online {
+.status-online {
   background: var(--nd-statusOnline);
 }
 
-.online-indicator.status-active {
+.status-active {
   background: var(--nd-statusActive);
 }
 
-.online-indicator.status-offline {
+.status-offline {
   background: var(--nd-statusOffline);
 }
 
-.online-indicator.status-unknown {
+.status-unknown {
   background: var(--nd-statusUnknown);
 }
 </style>

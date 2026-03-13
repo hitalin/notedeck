@@ -258,29 +258,29 @@ function closeMentionPopup() {
 <template>
   <div
     class="note-root"
-    :class="{ detailed, focused }"
+    :class="[$style.noteRoot, { [$style.detailed]: detailed, [$style.focused]: focused }]"
     tabindex="0"
     @contextmenu.prevent.stop="moreMenuRef?.open($event)"
   >
     <!-- Pinned indicator -->
-    <div v-if="pinnedNoteIds?.includes(note.id)" class="pinned-info">
-      <i class="ti ti-pin pinned-icon" />
-      <span class="pinned-label">ピン留めされたノート</span>
+    <div v-if="pinnedNoteIds?.includes(note.id)" :class="$style.pinnedInfo">
+      <i class="ti ti-pin" :class="$style.pinnedIcon" />
+      <span :class="$style.pinnedLabel">ピン留めされたノート</span>
     </div>
 
     <!-- Renote info bar -->
-    <div v-if="isPureRenote" class="renote-info">
-      <i class="ti ti-repeat renote-icon" />
+    <div v-if="isPureRenote" :class="$style.renoteInfo">
+      <i class="ti ti-repeat" :class="$style.renoteIcon" />
       <img
         v-if="note.user.avatarUrl"
         :key="note.user.avatarUrl"
         :src="proxyUrl(note.user.avatarUrl)"
-        class="renote-avatar"
+        :class="$style.renoteAvatar"
         width="28"
         height="28"
         decoding="async"
       />
-      <span class="renote-user">
+      <span :class="$style.renoteUser">
         <MkMfm
           v-if="note.user.name"
           :text="note.user.name"
@@ -290,25 +290,25 @@ function closeMentionPopup() {
         />
         <template v-else>{{ note.user.username }}</template>
       </span>
-      <span class="renote-label">リノート</span>
-      <span class="renote-time">{{ formatTime(note.createdAt) }}</span>
+      <span :class="$style.renoteLabel">リノート</span>
+      <span :class="$style.renoteTime">{{ formatTime(note.createdAt) }}</span>
     </div>
 
     <!-- Reply-to preview (Misskey style) -->
     <div
       v-if="effectiveNote.reply && !embedded"
-      class="reply-to"
+      :class="$style.replyTo"
       @click.stop="navToNote(note._accountId, effectiveNote.reply!.id)"
     >
       <img
         v-if="effectiveNote.reply!.user.avatarUrl"
         :src="proxyUrl(effectiveNote.reply!.user.avatarUrl)"
-        class="reply-to-avatar"
+        :class="$style.replyToAvatar"
         width="20"
         height="20"
         decoding="async"
       />
-      <span class="reply-to-name">
+      <span :class="$style.replyToName">
         <MkMfm
           v-if="effectiveNote.reply!.user.name"
           :text="effectiveNote.reply!.user.name"
@@ -318,7 +318,7 @@ function closeMentionPopup() {
         />
         <template v-else>{{ effectiveNote.reply!.user.username }}</template>
       </span>
-      <span class="reply-to-text">
+      <span :class="$style.replyToText">
         <MkMfm
           :text="effectiveNote.reply!.cw ?? effectiveNote.reply!.text?.slice(0, 100) ?? ''"
           :emojis="{ ...effectiveNote.reply!.emojis, ...effectiveNote.reply!.reactionEmojis }"
@@ -329,23 +329,23 @@ function closeMentionPopup() {
       </span>
     </div>
 
-    <article class="article" @click="navigateToDetail">
+    <article :class="$style.article" @click="navigateToDetail">
       <MkAvatar
         :avatar-url="effectiveNote.user.avatarUrl"
         :decorations="effectiveNote.user.avatarDecorations"
         :size="58"
         :alt="effectiveNote.user.username ?? undefined"
-        class="avatar"
+        :class="$style.avatar"
         @click="navigateToUser(effectiveNote.user.id, $event)"
         @mouseenter="onAvatarMouseEnter"
         @mouseleave="onAvatarMouseLeave"
       />
 
-      <div class="main">
+      <div :class="$style.main">
         <!-- Header -->
-        <header class="header">
-          <i v-if="effectiveNote.replyId" class="ti ti-arrow-back-up reply-icon" />
-          <span class="name">
+        <header :class="$style.header">
+          <i v-if="effectiveNote.replyId" class="ti ti-arrow-back-up" :class="$style.replyIcon" />
+          <span :class="$style.name">
             <MkMfm
               v-if="effectiveNote.user.name"
               :text="effectiveNote.user.name"
@@ -358,18 +358,18 @@ function closeMentionPopup() {
             />
             <template v-else>{{ effectiveNote.user.username }}</template>
           </span>
-          <span class="username">@{{ effectiveNote.user.username }}@{{ effectiveNote.user.host || note._serverHost }}</span>
-          <span class="info">
-            <span class="time">{{ formatTime(effectiveNote.createdAt) }}</span>
+          <span :class="$style.username">@{{ effectiveNote.user.username }}@{{ effectiveNote.user.host || note._serverHost }}</span>
+          <span :class="$style.info">
+            <span :class="$style.time">{{ formatTime(effectiveNote.createdAt) }}</span>
             <span
               v-if="effectiveNote.updatedAt"
-              class="edited"
+              :class="$style.edited"
               :title="formatTime(effectiveNote.updatedAt)"
             >(edited)</span>
             <svg
               v-for="mode in activeModeFlags"
               :key="mode.key"
-              class="visibility-icon"
+              :class="$style.visibilityIcon"
               viewBox="0 0 24 24"
               width="14"
               height="14"
@@ -379,12 +379,13 @@ function closeMentionPopup() {
             </svg>
             <i
               v-if="effectiveNote.localOnly"
-              class="ti ti-rocket-off visibility-icon"
+              class="ti ti-rocket-off"
+              :class="$style.visibilityIcon"
               title="Local only"
             />
             <svg
               v-if="effectiveNote.visibility !== 'public'"
-              class="visibility-icon"
+              :class="$style.visibilityIcon"
               viewBox="0 0 24 24"
               width="14"
               height="14"
@@ -397,24 +398,24 @@ function closeMentionPopup() {
         <!-- Server badge (remote users) -->
         <div
           v-if="effectiveNote.user.instance"
-          class="instance-ticker"
+          :class="$style.instanceTicker"
           :style="instanceTickerStyle"
         >
           <img
             v-if="instanceIconUrl"
             :src="proxyUrl(instanceIconUrl)"
-            class="instance-icon"
+            :class="$style.instanceIcon"
             width="14"
             height="14"
             loading="lazy"
             decoding="async"
           />
-          <span class="instance-name">{{ effectiveNote.user.instance.name || effectiveNote.user.host }}</span>
+          <span :class="$style.instanceName">{{ effectiveNote.user.instance.name || effectiveNote.user.host }}</span>
         </div>
 
         <!-- CW -->
-        <div v-if="effectiveNote.cw !== null" class="cw">
-          <p class="cw-text">
+        <div v-if="effectiveNote.cw !== null" :class="$style.cw">
+          <p :class="$style.cwText">
             <MkMfm
               v-if="effectiveNote.cw"
               :text="effectiveNote.cw"
@@ -426,16 +427,16 @@ function closeMentionPopup() {
               @mention-leave="onMentionLeave"
             />
           </p>
-          <button class="cw-toggle _button" @click.stop="cwExpanded = !cwExpanded">
+          <button :class="$style.cwToggle" class="_button" @click.stop="cwExpanded = !cwExpanded">
             {{ cwExpanded ? '隠す' : 'もっと見る' }}
-            <span v-if="!cwExpanded && effectiveNote.text" class="cw-chars">({{ effectiveNote.text.length }}文字)</span>
+            <span v-if="!cwExpanded && effectiveNote.text" :class="$style.cwChars">({{ effectiveNote.text.length }}文字)</span>
           </button>
         </div>
 
         <!-- Body -->
-        <div v-show="effectiveNote.cw === null || cwExpanded" class="body">
-          <div v-if="effectiveNote.text" class="text-container" :class="{ collapsed: isLongText && !longTextExpanded }">
-            <p class="text">
+        <div v-show="effectiveNote.cw === null || cwExpanded" :class="$style.body">
+          <div v-if="effectiveNote.text" :class="[$style.textContainer, { [$style.collapsed]: isLongText && !longTextExpanded }]">
+            <p :class="$style.text">
               <MkMfm
                 :text="effectiveNote.text"
                 :emojis="effectiveNote.emojis"
@@ -447,11 +448,11 @@ function closeMentionPopup() {
                 @mention-leave="onMentionLeave"
               />
             </p>
-            <div v-if="isLongText && !longTextExpanded" class="long-text-fade" />
+            <div v-if="isLongText && !longTextExpanded" :class="$style.longTextFade" />
           </div>
-          <button v-if="isLongText" class="cw-toggle _button" @click.stop="longTextExpanded = !longTextExpanded">
+          <button v-if="isLongText" :class="$style.cwToggle" class="_button" @click.stop="longTextExpanded = !longTextExpanded">
             {{ longTextExpanded ? '隠す' : 'もっと見る' }}
-            <span v-if="!longTextExpanded && effectiveNote.text" class="cw-chars">({{ effectiveNote.text.length }}文字)</span>
+            <span v-if="!longTextExpanded && effectiveNote.text" :class="$style.cwChars">({{ effectiveNote.text.length }}文字)</span>
           </button>
 
           <MkMediaGrid
@@ -465,59 +466,58 @@ function closeMentionPopup() {
           />
 
           <!-- Quote renote (when note has text + renote) -->
-          <div v-if="note.renote && note.text !== null" class="quote" @click.stop>
+          <div v-if="note.renote && note.text !== null" :class="$style.quote" @click.stop>
             <MkNote :note="note.renote" embedded />
           </div>
         </div>
 
         <!-- Reactions -->
-        <div v-if="sortedReactions.length > 0 && !embedded" ref="reactionsAreaRef" class="reactions-area">
+        <div v-if="sortedReactions.length > 0 && !embedded" ref="reactionsAreaRef" :class="$style.reactionsArea">
           <TransitionGroup
             v-if="reactionsVisible"
             tag="div"
             name="reaction-appear"
-            class="reactions"
+            :class="$style.reactions"
           >
             <button
               v-for="r in sortedReactions"
               :key="r.reaction"
               v-memo="[r.reaction, r.count, effectiveNote.myReaction === r.reaction, reactionUrls[r.reaction]]"
-              class="reaction"
-              :class="{ reacted: effectiveNote.myReaction === r.reaction }"
+              :class="[$style.reaction, { [$style.reacted]: effectiveNote.myReaction === r.reaction }]"
               @click.stop="emit('react', r.reaction, effectiveNote)"
               @mouseenter="reactionUsersRef?.show($event, r.reaction, reactionUrls[r.reaction] ?? null, effectiveNote.reactions[r.reaction] ?? 0)"
               @mouseleave="reactionUsersRef?.hide()"
             >
-              <img v-if="reactionUrls[r.reaction]" :src="proxyUrl(reactionUrls[r.reaction]!)" :alt="r.reaction" class="custom-emoji" decoding="async" loading="lazy" />
-              <span v-else-if="r.reaction.startsWith(':')" class="reaction-emoji-fallback">{{ r.reaction }}</span>
-              <MkEmoji v-else :emoji="r.reaction" class="reaction-emoji" />
-              <span class="count">{{ r.count }}</span>
+              <img v-if="reactionUrls[r.reaction]" :src="proxyUrl(reactionUrls[r.reaction]!)" :alt="r.reaction" :class="$style.customEmoji" decoding="async" loading="lazy" />
+              <span v-else-if="r.reaction.startsWith(':')" :class="$style.reactionEmojiFallback">{{ r.reaction }}</span>
+              <MkEmoji v-else :emoji="r.reaction" :class="$style.reactionEmoji" />
+              <span :class="$style.count">{{ r.count }}</span>
             </button>
         </TransitionGroup>
         </div>
 
         <!-- Footer -->
-        <footer v-if="!embedded" class="footer">
-          <button class="footer-button reply-button" @click.stop="emit('reply', effectiveNote)">
+        <footer v-if="!embedded" :class="$style.footer">
+          <button :class="[$style.footerButton, $style.replyButton]" @click.stop="emit('reply', effectiveNote)">
             <i class="ti ti-arrow-back-up" />
-            <span v-if="effectiveNote.repliesCount > 0" class="button-count">
+            <span v-if="effectiveNote.repliesCount > 0" :class="$style.buttonCount">
               {{ effectiveNote.repliesCount }}
             </span>
           </button>
-          <button class="footer-button renote-button" @click.stop="showRenoteMenu = !showRenoteMenu">
+          <button :class="[$style.footerButton, $style.renoteButton]" @click.stop="showRenoteMenu = !showRenoteMenu">
             <i class="ti ti-repeat" />
-            <span v-if="effectiveNote.renoteCount > 0" class="button-count">
+            <span v-if="effectiveNote.renoteCount > 0" :class="$style.buttonCount">
               {{ effectiveNote.renoteCount }}
             </span>
           </button>
           <button
-            class="footer-button reaction-button"
+            :class="[$style.footerButton, $style.reactionButton]"
             @click.stop="reactionPickerRef?.open($event)"
           >
             <i class="ti ti-plus" />
           </button>
           <button
-            class="footer-button more-button"
+            :class="[$style.footerButton, $style.moreButton]"
             @click.stop="moreMenuRef?.open($event)"
           >
             <i class="ti ti-dots" />
@@ -525,12 +525,12 @@ function closeMentionPopup() {
         </footer>
 
         <!-- Renote menu -->
-        <div v-if="showRenoteMenu && !embedded" class="renote-menu">
-          <button class="_button renote-menu-item" @click.stop="emit('renote', effectiveNote); showRenoteMenu = false">
+        <div v-if="showRenoteMenu && !embedded" :class="$style.renoteMenu">
+          <button class="_button" :class="$style.renoteMenuItem" @click.stop="emit('renote', effectiveNote); showRenoteMenu = false">
             <i class="ti ti-repeat" />
             Renote
           </button>
-          <button class="_button renote-menu-item" @click.stop="emit('quote', effectiveNote); showRenoteMenu = false">
+          <button class="_button" :class="$style.renoteMenuItem" @click.stop="emit('quote', effectiveNote); showRenoteMenu = false">
             <i class="ti ti-quote" />
             Quote
           </button>
@@ -591,36 +591,36 @@ function closeMentionPopup() {
   />
 </template>
 
-<style scoped>
-.note-root {
+<style lang="scss" module>
+.noteRoot {
   position: relative;
   font-size: 1.05em;
   contain: content;
   container-type: inline-size;
-}
 
-.note-root:not(.detailed) {
-  cursor: pointer;
-}
+  &:not(.detailed) {
+    cursor: pointer;
 
-.note-root:not(.detailed) > .article {
-  transition: background var(--nd-duration-slow) ease;
-}
+    > .article {
+      transition: background var(--nd-duration-slow) ease;
+    }
 
-.note-root:not(.detailed):hover > .article {
-  background: var(--nd-panelHighlight);
-}
+    &:hover > .article {
+      background: var(--nd-panelHighlight);
+    }
+  }
 
-.note-root.focused {
-  box-shadow: inset 3px 0 0 var(--nd-accent);
-}
+  &.focused {
+    box-shadow: inset 3px 0 0 var(--nd-accent);
 
-.note-root.focused > .article {
-  background: var(--nd-panelHighlight);
+    > .article {
+      background: var(--nd-panelHighlight);
+    }
+  }
 }
 
 /* Pinned indicator */
-.pinned-info {
+.pinnedInfo {
   display: flex;
   padding: 12px 32px 0 32px;
   align-items: center;
@@ -629,18 +629,18 @@ function closeMentionPopup() {
   color: var(--nd-accent);
 }
 
-.pinned-icon {
+.pinnedIcon {
   flex-shrink: 0;
   opacity: 0.8;
 }
 
-.pinned-label {
+.pinnedLabel {
   opacity: 0.8;
   font-weight: bold;
 }
 
 /* Reply-to preview */
-.reply-to {
+.replyTo {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -649,20 +649,20 @@ function closeMentionPopup() {
   overflow: hidden;
   opacity: 0.7;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
-.reply-to:hover {
-  opacity: 1;
-}
-
-.reply-to-avatar {
+.replyToAvatar {
   flex-shrink: 0;
   width: 20px;
   height: 20px;
   border-radius: 50%;
 }
 
-.reply-to-name {
+.replyToName {
   flex-shrink: 0;
   font-size: 0.8em;
   font-weight: bold;
@@ -670,14 +670,14 @@ function closeMentionPopup() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  :deep(.custom-emoji) {
+    height: 1em;
+    width: auto;
+  }
 }
 
-.reply-to-name :deep(.custom-emoji) {
-  height: 1em;
-  width: auto;
-}
-
-.reply-to-text {
+.replyToText {
   flex: 1;
   font-size: 0.8em;
   overflow: hidden;
@@ -687,14 +687,14 @@ function closeMentionPopup() {
 }
 
 /* Reply icon in header */
-.reply-icon {
+.replyIcon {
   color: var(--nd-accent);
   margin-right: 0.5em;
   flex-shrink: 0;
 }
 
 /* Renote info bar */
-.renote-info {
+.renoteInfo {
   display: flex;
   padding: 16px 32px 8px 32px;
   line-height: 28px;
@@ -704,31 +704,31 @@ function closeMentionPopup() {
   color: var(--nd-renote);
 }
 
-.renote-icon {
+.renoteIcon {
   flex-shrink: 0;
   opacity: 0.8;
 }
 
-.renote-avatar {
+.renoteAvatar {
   width: 28px;
   height: 28px;
   border-radius: 50%;
 }
 
-.renote-user {
+.renoteUser {
   font-weight: bold;
+
+  :deep(.custom-emoji) {
+    height: 1.2em;
+    width: auto;
+  }
 }
 
-.renote-user :deep(.custom-emoji) {
-  height: 1.2em;
-  width: auto;
-}
-
-.renote-label {
+.renoteLabel {
   opacity: 0.7;
 }
 
-.renote-time {
+.renoteTime {
   margin-left: auto;
   opacity: 0.6;
 }
@@ -743,12 +743,11 @@ function closeMentionPopup() {
   margin: 0 14px 0 0;
   cursor: pointer;
   transition: opacity var(--nd-duration-base);
-}
 
-.avatar:hover {
-  opacity: 0.8;
+  &:hover {
+    opacity: 0.8;
+  }
 }
-
 
 .main {
   flex: 1;
@@ -771,15 +770,15 @@ function closeMentionPopup() {
   text-overflow: ellipsis;
   overflow: hidden;
   color: var(--nd-fgHighlighted);
-}
 
-.name :deep(.mfm) {
-  white-space: nowrap;
-}
+  :deep(.mfm) {
+    white-space: nowrap;
+  }
 
-.name :deep(.custom-emoji) {
-  height: 1.2em;
-  width: auto;
+  :deep(.custom-emoji) {
+    height: 1.2em;
+    width: auto;
+  }
 }
 
 .username {
@@ -791,7 +790,7 @@ function closeMentionPopup() {
 }
 
 /* Server badge (instance ticker) */
-.instance-ticker {
+.instanceTicker {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -804,13 +803,13 @@ function closeMentionPopup() {
   overflow: hidden;
 }
 
-.instance-icon {
+.instanceIcon {
   flex-shrink: 0;
   border-radius: 2px;
   object-fit: contain;
 }
 
-.instance-name {
+.instanceName {
   color: #fff;
   font-weight: bold;
   text-overflow: ellipsis;
@@ -840,7 +839,7 @@ function closeMentionPopup() {
   opacity: 0.7;
 }
 
-.visibility-icon {
+.visibilityIcon {
   opacity: 0.5;
   font-size: 14px;
 }
@@ -850,12 +849,12 @@ function closeMentionPopup() {
   margin-bottom: 4px;
 }
 
-.cw-text {
+.cwText {
   font-weight: bold;
   margin: 0;
 }
 
-.cw-toggle {
+.cwToggle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -872,13 +871,13 @@ function closeMentionPopup() {
   font-weight: normal;
   cursor: pointer;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.cw-toggle:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.cw-chars {
+.cwChars {
   opacity: 0.7;
   font-weight: normal;
 }
@@ -888,16 +887,16 @@ function closeMentionPopup() {
   overflow-wrap: break-word;
 }
 
-.text-container {
+.textContainer {
   position: relative;
+
+  &.collapsed {
+    max-height: 200px;
+    overflow: hidden;
+  }
 }
 
-.text-container.collapsed {
-  max-height: 200px;
-  overflow: hidden;
-}
-
-.long-text-fade {
+.longTextFade {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -914,12 +913,12 @@ function closeMentionPopup() {
 /* Quote renote */
 .quote {
   padding: 8px 0;
-}
 
-.quote > .note-root {
-  padding: 16px;
-  border: dashed 1px var(--nd-renote);
-  border-radius: var(--nd-radius-md);
+  > :global(.note-root) {
+    padding: 16px;
+    border: dashed 1px var(--nd-renote);
+    border-radius: var(--nd-radius-md);
+  }
 }
 
 /* Reactions */
@@ -947,14 +946,36 @@ function closeMentionPopup() {
     background 0.15s,
     opacity 0.2s cubic-bezier(0, 0.5, 0.5, 1),
     transform 0.2s cubic-bezier(0, 0.5, 0.5, 1);
-}
 
-.reaction:hover {
-  background: rgba(0, 0, 0, 0.1);
-}
+  &:hover {
+    background: rgba(0, 0, 0, 0.1);
+  }
 
-.reaction:active {
-  animation: reaction-bounce 0.3s ease;
+  &:active {
+    animation: reaction-bounce 0.3s ease;
+  }
+
+  &.reacted,
+  &.reacted:hover {
+    background: var(--nd-accentedBg);
+    color: var(--nd-accent);
+    box-shadow: 0 0 0 1px var(--nd-accent) inset;
+  }
+
+  .customEmoji {
+    height: 1.25em;
+    min-width: 1.25em;
+  }
+
+  .count {
+    font-size: 0.7em;
+    line-height: 42px;
+    margin: 0 0 0 4px;
+  }
+
+  &.reacted .count {
+    color: var(--nd-accent);
+  }
 }
 
 @keyframes reaction-bounce {
@@ -963,14 +984,7 @@ function closeMentionPopup() {
   100% { transform: scale(1); }
 }
 
-.reaction.reacted,
-.reaction.reacted:hover {
-  background: var(--nd-accentedBg);
-  color: var(--nd-accent);
-  box-shadow: 0 0 0 1px var(--nd-accent) inset;
-}
-
-.custom-emoji {
+.customEmoji {
   height: 2em;
   min-width: 2em;
   width: auto;
@@ -978,12 +992,7 @@ function closeMentionPopup() {
   object-fit: contain;
 }
 
-.reaction .custom-emoji {
-  height: 1.25em;
-  min-width: 1.25em;
-}
-
-.reaction-emoji-fallback {
+.reactionEmojiFallback {
   font-size: 0.85em;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -991,21 +1000,148 @@ function closeMentionPopup() {
   white-space: nowrap;
 }
 
-.reaction-emoji :deep(.twemoji) {
+.reactionEmoji :deep(.twemoji) {
   height: 1.25em;
 }
 
-.reaction .count {
+.count {
   font-size: 0.7em;
   line-height: 42px;
   margin: 0 0 0 4px;
 }
 
-.reaction.reacted .count {
-  color: var(--nd-accent);
+/* Footer */
+.footer {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+  margin-bottom: -14px;
 }
 
-/* Reaction appear/leave animation (matches Misskey) */
+.footerButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  min-height: 42px;
+  min-width: 44px;
+  margin-right: 28px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: color-mix(in srgb, var(--nd-panel) 30%, var(--nd-fg) 70%);
+  font-size: 1em;
+  border-radius: var(--nd-radius-sm);
+  transition: color var(--nd-duration-base), background var(--nd-duration-base), transform var(--nd-duration-fast);
+
+  &:active {
+    transform: scale(0.9);
+  }
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.replyButton:hover {
+  color: var(--nd-replyHover);
+}
+
+.renoteButton:hover {
+  color: var(--nd-renote);
+}
+
+.reactionButton:hover {
+  color: var(--nd-reactionHover);
+}
+
+.moreButton:hover {
+  color: var(--nd-fgHighlighted);
+}
+
+.buttonCount {
+  font-size: 0.85em;
+}
+
+/* Renote menu */
+.renoteMenu {
+  display: flex;
+  gap: 4px;
+  padding: 6px 0;
+}
+
+.renoteMenuItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.85em;
+  font-weight: bold;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    color: var(--nd-renote);
+  }
+}
+
+/* Divider between notes */
+.noteRoot + .noteRoot {
+  border-top: 1px solid var(--nd-divider);
+}
+
+/* Container query responsive breakpoints */
+@container (max-width: 580px) {
+  .noteRoot { font-size: 0.95em; }
+  .article { padding: 24px 26px; }
+  .renoteInfo { padding: 12px 26px 6px 26px; }
+  .pinnedInfo { padding: 10px 26px 0 26px; }
+  .replyTo { padding: 10px 26px 0 26px; }
+}
+
+@container (max-width: 500px) {
+  .noteRoot { font-size: 0.9em; }
+  .article { padding: 20px 22px; }
+  .renoteInfo { padding: 8px 22px 4px 22px; }
+  .pinnedInfo { padding: 8px 22px 0 22px; }
+  .replyTo { padding: 8px 22px 0 22px; }
+  .footer { margin-bottom: -8px; }
+  .footerButton { margin-right: 12px; }
+  .instanceName { max-width: 120px; }
+}
+
+@container (max-width: 480px) {
+  .article { padding: 14px 16px; }
+  .renoteInfo { padding: 8px 16px 4px 16px; }
+  .pinnedInfo { padding: 8px 16px 0 16px; }
+  .replyTo { padding: 8px 16px 0 16px; }
+}
+
+@container (max-width: 450px) {
+  .avatar { margin: 0 10px 0 0; }
+}
+
+@container (max-width: 400px) {
+  .footerButton { margin-right: 18px; }
+}
+
+@container (max-width: 350px) {
+  .footerButton { margin-right: 12px; }
+}
+
+@container (max-width: 300px) {
+  .footerButton { margin-right: 8px; }
+  .reaction { height: 32px; font-size: 1em; border-radius: 4px; }
+  .reaction .count { font-size: 0.9em; line-height: 32px; }
+}
+</style>
+
+<style>
+/* Reaction appear/leave animation (TransitionGroup needs global classes) */
 .reaction-appear-enter-active,
 .reaction-appear-leave-active {
   transition:
@@ -1025,134 +1161,5 @@ function closeMentionPopup() {
 .reaction-appear-leave-to {
   opacity: 0;
   transform: scale(0.7);
-}
-
-/* Footer */
-.footer {
-  display: flex;
-  align-items: center;
-  margin-top: 4px;
-  margin-bottom: -14px;
-}
-
-.footer-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px;
-  min-height: 42px;
-  min-width: 44px;
-  margin-right: 28px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: color-mix(in srgb, var(--nd-panel) 30%, var(--nd-fg) 70%);
-  font-size: 1em;
-  border-radius: var(--nd-radius-sm);
-  transition: color var(--nd-duration-base), background var(--nd-duration-base), transform var(--nd-duration-fast);
-}
-
-.footer-button:active {
-  transform: scale(0.9);
-}
-
-.footer-button:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.reply-button:hover {
-  color: var(--nd-replyHover);
-}
-
-.renote-button:hover {
-  color: var(--nd-renote);
-}
-
-.reaction-button:hover {
-  color: var(--nd-reactionHover);
-}
-
-.more-button:hover {
-  color: var(--nd-fgHighlighted);
-}
-
-.button-count {
-  font-size: 0.85em;
-}
-
-/* Renote menu */
-.renote-menu {
-  display: flex;
-  gap: 4px;
-  padding: 6px 0;
-}
-
-.renote-menu-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  font-size: 0.85em;
-  font-weight: bold;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  transition: background var(--nd-duration-base);
-}
-
-.renote-menu-item:hover {
-  background: var(--nd-buttonHoverBg);
-  color: var(--nd-renote);
-}
-
-/* Divider between notes */
-.note-root + .note-root {
-  border-top: 1px solid var(--nd-divider);
-}
-
-/* Container query responsive breakpoints */
-@container (max-width: 580px) {
-  .note-root { font-size: 0.95em; }
-  .article { padding: 24px 26px; }
-  .renote-info { padding: 12px 26px 6px 26px; }
-  .pinned-info { padding: 10px 26px 0 26px; }
-  .reply-to { padding: 10px 26px 0 26px; }
-}
-
-@container (max-width: 500px) {
-  .note-root { font-size: 0.9em; }
-  .article { padding: 20px 22px; }
-  .renote-info { padding: 8px 22px 4px 22px; }
-  .pinned-info { padding: 8px 22px 0 22px; }
-  .reply-to { padding: 8px 22px 0 22px; }
-  .footer { margin-bottom: -8px; }
-  .footer-button { margin-right: 12px; }
-  .instance-name { max-width: 120px; }
-}
-
-@container (max-width: 480px) {
-  .article { padding: 14px 16px; }
-  .renote-info { padding: 8px 16px 4px 16px; }
-  .pinned-info { padding: 8px 16px 0 16px; }
-  .reply-to { padding: 8px 16px 0 16px; }
-}
-
-@container (max-width: 450px) {
-  .avatar { margin: 0 10px 0 0; }
-}
-
-@container (max-width: 400px) {
-  .footer-button { margin-right: 18px; }
-}
-
-@container (max-width: 350px) {
-  .footer-button { margin-right: 12px; }
-}
-
-@container (max-width: 300px) {
-  .footer-button { margin-right: 8px; }
-  .reaction { height: 32px; font-size: 1em; border-radius: 4px; }
-  .reaction .count { font-size: 0.9em; line-height: 32px; }
 }
 </style>

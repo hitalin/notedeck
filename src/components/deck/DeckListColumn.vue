@@ -71,31 +71,31 @@ const webUiUrl = computed(() =>
     @header-click="scrollToTop()"
   >
     <template #header-icon>
-      <i class="ti ti-list tl-header-icon" />
+      <i :class="$style.tlHeaderIcon" class="ti ti-list" />
     </template>
 
     <template #header-meta>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
-        <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
-    <div v-if="!account" class="column-empty">
+    <div v-if="!account" :class="$style.columnEmpty">
       Account not found
     </div>
 
-    <div v-else-if="error" class="column-empty column-error">
+    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
       {{ error.message }}
     </div>
 
-    <div v-else class="tl-body">
+    <div v-else :class="$style.tlBody">
       <div
         v-if="pullDistance > 0 || isRefreshing"
-        class="pull-indicator"
+        :class="$style.pullIndicator"
         :style="{ height: pullDistance + 'px' }"
       >
-        <i class="ti" :class="isRefreshing ? 'ti-loader-2 spin' : 'ti-arrow-down'" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
+        <i class="ti" :class="[isRefreshing ? 'ti-loader-2' : 'ti-arrow-down', { [String($style.spin)]: isRefreshing }]" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
       </div>
       <div v-if="isLoading && notes.length === 0">
         <MkSkeleton v-for="i in 5" :key="i" />
@@ -104,13 +104,14 @@ const webUiUrl = computed(() =>
       <template v-else>
         <button
           v-if="pendingNotes.length > 0"
-          class="new-notes-banner _button"
+          :class="$style.newNotesBanner"
+          class="_button"
           @click="scrollToTop()"
         >
           <i class="ti ti-arrow-up" />{{ pendingNotes.length }}件の新しいノート
         </button>
 
-        <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" class="tl-scroller" @scroll="handleScroll">
+        <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" :class="$style.tlScroller" @scroll="handleScroll">
           <template #default="{ item, index }">
             <div :data-index="index">
               <MkNote
@@ -128,7 +129,7 @@ const webUiUrl = computed(() =>
           </template>
 
           <template #append>
-            <div v-if="isLoading && notes.length > 0" class="loading-more">
+            <div v-if="isLoading && notes.length > 0" :class="$style.loadingMore">
               Loading...
             </div>
           </template>
@@ -150,10 +151,10 @@ const webUiUrl = computed(() =>
   </Teleport>
 </template>
 
-<style scoped>
-@import "./column-common.css";
+<style lang="scss" module>
+@use "./column-common.module.scss";
 
-.pull-indicator {
+.pullIndicator {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -162,9 +163,9 @@ const webUiUrl = computed(() =>
   color: var(--nd-accent);
   font-size: 1.2em;
   transition: height var(--nd-duration-slow) ease;
-}
 
-.pull-indicator .ti {
-  transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
+  :global(.ti) {
+    transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
+  }
 }
 </style>

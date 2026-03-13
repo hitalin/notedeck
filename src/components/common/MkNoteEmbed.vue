@@ -77,12 +77,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="el" class="note-embed">
-    <div v-if="loading" class="note-embed-skeleton">
-      <div class="skeleton-line" style="width: 40%" />
-      <div class="skeleton-line" style="width: 70%" />
+  <div ref="el" :class="$style.noteEmbed">
+    <div v-if="loading" :class="$style.noteEmbedSkeleton">
+      <div :class="$style.skeletonLine" style="width: 40%" />
+      <div :class="$style.skeletonLine" style="width: 70%" />
     </div>
-    <div v-else-if="note" class="note-embed-content">
+    <div v-else-if="note" :class="$style.noteEmbedContent">
       <MkNote :note="note" embedded />
     </div>
     <!-- failed: render nothing, let parent fall back to OGP -->
@@ -93,18 +93,18 @@ onUnmounted(() => {
 import MkNote from './MkNote.vue'
 </script>
 
-<style scoped>
-.note-embed {
+<style lang="scss" module>
+.noteEmbed {
   margin-top: 8px;
 }
 
-.note-embed-content > :deep(.note-root) {
+.noteEmbedContent > :global(.note-root) {
   padding: 12px 16px;
   border: dashed 1px var(--nd-renote);
   border-radius: var(--nd-radius-md);
 }
 
-.note-embed-skeleton {
+.noteEmbedSkeleton {
   padding: 12px 16px;
   border: dashed 1px var(--nd-divider);
   border-radius: var(--nd-radius-md);
@@ -113,7 +113,7 @@ import MkNote from './MkNote.vue'
   gap: 6px;
 }
 
-.skeleton-line {
+.skeletonLine {
   height: 10px;
   border-radius: 4px;
   background: linear-gradient(

@@ -196,46 +196,44 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="pip-root" :style="themeVars">
+  <div :class="$style.pipRoot" :style="themeVars">
     <!-- Column-style header -->
-    <header class="column-header" data-tauri-drag-region>
+    <header :class="$style.columnHeader" data-tauri-drag-region>
       <div
-        class="color-indicator"
+        :class="$style.colorIndicator"
         :style="{ background: 'var(--nd-accent)' }"
       />
 
       <!-- Current TL icon -->
-      <i :class="'ti ' + TL_TYPES.find(t => t.type === currentTimeline)?.icon" class="tl-header-icon" data-tauri-drag-region />
+      <i :class="['ti', TL_TYPES.find(t => t.type === currentTimeline)?.icon, $style.tlHeaderIcon]" data-tauri-drag-region />
 
-      <span class="header-title" data-tauri-drag-region>{{ TL_TYPES.find(t => t.type === currentTimeline)?.label }}</span>
+      <span :class="$style.headerTitle" data-tauri-drag-region>{{ TL_TYPES.find(t => t.type === currentTimeline)?.label }}</span>
 
       <!-- Account indicator (matches main column header-meta) -->
       <button
-        class="header-account"
-        :class="{ clickable: accountsStore.accounts.length > 1 }"
+        :class="[$style.headerAccount, { [$style.clickable]: accountsStore.accounts.length > 1 }]"
         @click="toggleAccountMenu"
       >
-        <img v-if="account?.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
+        <img v-if="account?.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
         <img
-          class="header-favicon"
+          :class="$style.headerFavicon"
           :src="serverIconUrl || `https://${account?.host}/favicon.ico`"
           :title="account?.host"
         />
       </button>
 
       <!-- Close button (column header-btn style) -->
-      <button class="header-btn" title="閉じる" @click="closeWindow">
+      <button :class="$style.headerBtn" title="閉じる" @click="closeWindow">
         <i class="ti ti-x" />
       </button>
     </header>
 
     <!-- TL type tabs -->
-    <nav class="pip-tabs">
+    <nav :class="$style.pipTabs">
       <button
         v-for="tl in TL_TYPES"
         :key="tl.type"
-        class="pip-tab"
-        :class="{ active: currentTimeline === tl.type }"
+        :class="[$style.pipTab, { [$style.active]: currentTimeline === tl.type }]"
         :title="tl.label"
         @click="startTimeline(tl.type)"
       >
@@ -244,44 +242,43 @@ onUnmounted(() => {
     </nav>
 
     <!-- Timeline (relative container for account menu overlay) -->
-    <div class="pip-body">
+    <div :class="$style.pipBody">
       <!-- Account switcher overlay -->
-      <div v-if="showAccountMenu" class="pip-account-overlay" @click.self="showAccountMenu = false">
-        <div class="pip-account-menu">
+      <div v-if="showAccountMenu" :class="$style.pipAccountOverlay" @click.self="showAccountMenu = false">
+        <div :class="$style.pipAccountMenu">
           <button
             v-for="acc in accountsStore.accounts"
             :key="acc.id"
-            class="pip-account-item"
-            :class="{ active: acc.id === currentAccountId }"
+            :class="[$style.pipAccountItem, { [$style.active]: acc.id === currentAccountId }]"
             @click="switchAccount(acc.id)"
           >
-            <img v-if="acc.avatarUrl" :src="acc.avatarUrl" class="header-avatar" />
+            <img v-if="acc.avatarUrl" :src="acc.avatarUrl" :class="$style.headerAvatar" />
             <img
-              class="header-favicon"
+              :class="$style.headerFavicon"
               :src="serverIcons.get(acc.host) || `https://${acc.host}/favicon.ico`"
             />
-            <span class="pip-account-name">{{ acc.username }}</span>
-            <span class="pip-account-host">@{{ acc.host }}</span>
+            <span :class="$style.pipAccountName">{{ acc.username }}</span>
+            <span :class="$style.pipAccountHost">@{{ acc.host }}</span>
           </button>
         </div>
       </div>
 
-      <div class="pip-content">
-        <div v-if="error" class="pip-error">{{ error }}</div>
+      <div :class="$style.pipContent">
+        <div v-if="error" :class="$style.pipError">{{ error }}</div>
         <div
           v-for="note in notes"
           :key="note.id"
-          class="pip-note"
+          :class="$style.pipNote"
           @click="onNoteClick(note)"
         >
           <MkAvatar
             :avatar-url="(note.renote && note.text === null ? note.renote.user : note.user).avatarUrl"
             :size="28"
-            class="pip-note-avatar"
+            :class="$style.pipNoteAvatar"
           />
-          <div class="pip-note-body">
-            <div class="pip-note-header">
-              <span class="pip-note-name">
+          <div :class="$style.pipNoteBody">
+            <div :class="$style.pipNoteHeader">
+              <span :class="$style.pipNoteName">
                 <MkMfm
                   v-if="(note.renote && note.text === null ? note.renote.user : note.user).name"
                   :text="(note.renote && note.text === null ? note.renote.user : note.user).name!"
@@ -291,9 +288,9 @@ onUnmounted(() => {
                 />
                 <template v-else>{{ (note.renote && note.text === null ? note.renote.user : note.user).username }}</template>
               </span>
-              <span class="pip-note-time">{{ formatTime(note.createdAt) }}</span>
+              <span :class="$style.pipNoteTime">{{ formatTime(note.createdAt) }}</span>
             </div>
-            <div class="pip-note-text">
+            <div :class="$style.pipNoteText">
               <MkMfm
                 v-if="(note.renote && note.text === null ? note.renote.text : note.text)"
                 :text="(note.renote && note.text === null ? note.renote.text : note.text)!"
@@ -301,7 +298,7 @@ onUnmounted(() => {
                 :account-id="currentAccountId"
                 :server-host="account?.host"
               />
-              <span v-else class="pip-note-empty">
+              <span v-else :class="$style.pipNoteEmpty">
                 <i class="ti ti-repeat" /> Renote
               </span>
             </div>
@@ -312,8 +309,8 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scoped>
-.pip-root {
+<style lang="scss" module>
+.pipRoot {
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -324,7 +321,7 @@ onUnmounted(() => {
 }
 
 /* === Column header (unified with DeckColumn.vue) === */
-.column-header {
+.columnHeader {
   position: relative;
   display: flex;
   align-items: center;
@@ -341,7 +338,7 @@ onUnmounted(() => {
   box-shadow: 0 0.5px 0 0 rgba(255, 255, 255, 0.07);
 }
 
-.color-indicator {
+.colorIndicator {
   position: absolute;
   top: 12px;
   left: 12px;
@@ -350,12 +347,12 @@ onUnmounted(() => {
   border-radius: var(--nd-radius-full);
 }
 
-.tl-header-icon {
+.tlHeaderIcon {
   flex-shrink: 0;
   opacity: 0.7;
 }
 
-.header-title {
+.headerTitle {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -363,7 +360,7 @@ onUnmounted(() => {
   font-size: 0.85em;
 }
 
-.header-account {
+.headerAccount {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -373,17 +370,17 @@ onUnmounted(() => {
   padding: 2px;
   border-radius: 4px;
   cursor: default;
+
+  &.clickable {
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
 }
 
-.header-account.clickable {
-  cursor: pointer;
-}
-
-.header-account.clickable:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.header-avatar {
+.headerAvatar {
   width: 18px;
   height: 18px;
   max-width: 18px;
@@ -393,7 +390,7 @@ onUnmounted(() => {
   object-fit: cover;
 }
 
-.header-favicon {
+.headerFavicon {
   width: 16px;
   height: 16px;
   max-width: 16px;
@@ -403,7 +400,7 @@ onUnmounted(() => {
   opacity: 0.7;
 }
 
-.header-btn {
+.headerBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -416,22 +413,22 @@ onUnmounted(() => {
   flex-shrink: 0;
   opacity: 0.35;
   cursor: pointer;
-}
 
-.header-btn:hover {
-  background: var(--nd-buttonHoverBg);
-  opacity: 0.8;
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 0.8;
+  }
 }
 
 /* === TL tabs === */
-.pip-tabs {
+.pipTabs {
   display: flex;
   border-bottom: 1px solid var(--nd-divider);
   background: var(--nd-panelBg);
   flex-shrink: 0;
 }
 
-.pip-tab {
+.pipTab {
   flex: 1;
   display: flex;
   align-items: center;
@@ -444,20 +441,20 @@ onUnmounted(() => {
   cursor: pointer;
   font-size: 13px;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
-}
 
-.pip-tab:hover {
-  opacity: 0.7;
-  background: var(--nd-buttonHoverBg);
-}
+  &:hover {
+    opacity: 0.7;
+    background: var(--nd-buttonHoverBg);
+  }
 
-.pip-tab.active {
-  opacity: 1;
-  border-bottom: 2px solid var(--nd-accent);
+  &.active {
+    opacity: 1;
+    border-bottom: 2px solid var(--nd-accent);
+  }
 }
 
 /* === Body (relative for overlay) === */
-.pip-body {
+.pipBody {
   position: relative;
   flex: 1;
   min-height: 0;
@@ -466,20 +463,20 @@ onUnmounted(() => {
 }
 
 /* Account switcher overlay */
-.pip-account-overlay {
+.pipAccountOverlay {
   position: absolute;
   inset: 0;
   z-index: 10;
   background: rgba(0, 0, 0, 0.3);
 }
 
-.pip-account-menu {
+.pipAccountMenu {
   background: var(--nd-panel);
   border-bottom: 1px solid var(--nd-divider);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.pip-account-item {
+.pipAccountItem {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -491,21 +488,21 @@ onUnmounted(() => {
   font-size: 0.75em;
   cursor: pointer;
   transition: background var(--nd-duration-fast);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &.active {
+    background: rgba(255, 255, 255, 0.05);
+  }
 }
 
-.pip-account-item:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.pip-account-item.active {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.pip-account-name {
+.pipAccountName {
   font-weight: 600;
 }
 
-.pip-account-host {
+.pipAccountHost {
   opacity: 0.5;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -513,53 +510,53 @@ onUnmounted(() => {
 }
 
 /* === Timeline content === */
-.pip-content {
+.pipContent {
   flex: 1;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
 }
 
-.pip-error {
+.pipError {
   padding: 16px;
   text-align: center;
   font-size: 0.8em;
   color: var(--nd-love);
 }
 
-.pip-note {
+.pipNote {
   display: flex;
   gap: 8px;
   padding: 6px 8px;
   border-bottom: 1px solid var(--nd-divider);
   cursor: pointer;
   transition: background var(--nd-duration-fast);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.pip-note:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.pip-note-avatar {
+.pipNoteAvatar {
   width: 28px;
   height: 28px;
   flex-shrink: 0;
 }
 
-.pip-note-body {
+.pipNoteBody {
   flex: 1;
   min-width: 0;
   overflow: hidden;
 }
 
-.pip-note-header {
+.pipNoteHeader {
   display: flex;
   align-items: baseline;
   gap: 4px;
   margin-bottom: 1px;
 }
 
-.pip-note-name {
+.pipNoteName {
   font-size: 0.75em;
   font-weight: 600;
   color: var(--nd-fgHighlighted);
@@ -568,14 +565,14 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.pip-note-time {
+.pipNoteTime {
   font-size: 0.65em;
   opacity: 0.4;
   flex-shrink: 0;
   margin-left: auto;
 }
 
-.pip-note-text {
+.pipNoteText {
   font-size: 0.8em;
   line-height: 1.4;
   overflow: hidden;
@@ -584,8 +581,12 @@ onUnmounted(() => {
   -webkit-box-orient: vertical;
 }
 
-.pip-note-empty {
+.pipNoteEmpty {
   opacity: 0.4;
   font-size: 0.85em;
 }
+
+// Keep for dynamic binding
+.clickable {}
+.active {}
 </style>

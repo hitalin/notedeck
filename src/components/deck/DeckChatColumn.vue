@@ -451,46 +451,47 @@ onBeforeUnmount(() => {
     <template #header-icon>
       <i
         v-if="viewMode === 'conversation'"
-        class="ti ti-arrow-left tl-header-icon clickable"
+        :class="[$style.tlHeaderIcon, $style.clickable]"
+        class="ti ti-arrow-left"
         @click.stop="goBack"
       />
-      <i v-else class="ti ti-messages tl-header-icon" />
+      <i v-else class="ti ti-messages" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
         <img
-          class="header-favicon"
+          :class="$style.headerFavicon"
           :src="serverIconUrl || `https://${account.host}/favicon.ico`"
           :title="account.host"
         />
       </div>
     </template>
 
-    <div v-if="!account" class="column-empty">
+    <div v-if="!account" :class="$style.columnEmpty">
       Account not found
     </div>
 
-    <div v-else-if="error && viewMode === 'history'" class="column-empty column-error">
+    <div v-else-if="error && viewMode === 'history'" :class="[$style.columnEmpty, $style.columnError]">
       {{ error.message }}
     </div>
 
     <!-- History View -->
-    <div v-else-if="viewMode === 'history'" class="chat-body">
+    <div v-else-if="viewMode === 'history'" :class="$style.chatBody">
       <div v-if="isLoading && chatHistory.length === 0">
         <MkSkeleton v-for="i in 5" :key="i" />
       </div>
 
-      <div v-else-if="chatHistory.length === 0" class="column-empty">
+      <div v-else-if="chatHistory.length === 0" :class="$style.columnEmpty">
         No conversations
       </div>
 
-      <div v-else class="history-list">
+      <div v-else :class="$style.historyList">
         <button
           v-for="entry in getHistoryEntries()"
           :key="entry.key"
-          class="history-item"
+          :class="$style.historyItem"
           @click="openConversation(entry)"
         >
           <MkAvatar
@@ -499,25 +500,25 @@ onBeforeUnmount(() => {
             :decorations="entry.avatarDecorations ?? []"
             :size="36"
           />
-          <div v-else class="history-avatar-placeholder">
+          <div v-else :class="$style.historyAvatarPlaceholder">
             <i :class="entry.isRoom ? 'ti ti-users' : 'ti ti-user'" />
           </div>
-          <div class="history-info">
-            <div class="history-name">{{ entry.name }}</div>
-            <div class="history-preview">{{ entry.message.text || '(file)' }}</div>
+          <div :class="$style.historyInfo">
+            <div :class="$style.historyName">{{ entry.name }}</div>
+            <div :class="$style.historyPreview">{{ entry.message.text || '(file)' }}</div>
           </div>
         </button>
       </div>
     </div>
 
     <!-- Conversation View -->
-    <div v-else class="chat-body conversation" @click="closeReactionPicker">
+    <div v-else :class="[$style.chatBody, $style.conversation]" @click="closeReactionPicker">
       <div
         ref="messagesContainer"
-        class="messages-container"
+        :class="$style.messagesContainer"
         @scroll.passive="handleScroll"
       >
-        <div v-if="isLoading" class="loading-more">読み込み中...</div>
+        <div v-if="isLoading" :class="$style.loadingMore">読み込み中...</div>
         <MkChatMessage
           v-for="msg in messages"
           :key="msg.id"
@@ -530,10 +531,10 @@ onBeforeUnmount(() => {
         />
       </div>
 
-      <div v-if="error" class="chat-error">{{ error.message }}</div>
+      <div v-if="error" :class="$style.chatError">{{ error.message }}</div>
 
       <!-- Reaction picker popup -->
-      <div v-if="showReactionPicker && account" class="chat-reaction-picker" @click.stop>
+      <div v-if="showReactionPicker && account" :class="$style.chatReactionPicker" @click.stop>
         <MkReactionPicker
           :server-host="account.host"
           :account-id="column.accountId!"
@@ -541,41 +542,41 @@ onBeforeUnmount(() => {
         />
       </div>
 
-      <div class="chat-input">
+      <div :class="$style.chatInput">
         <!-- File attachment preview -->
-        <div v-if="attachedFile" class="chat-attachment">
+        <div v-if="attachedFile" :class="$style.chatAttachment">
           <img
             v-if="attachedFile.type.startsWith('image/')"
             :src="attachedFile.thumbnailUrl || attachedFile.url"
-            class="chat-attachment-thumb"
+            :class="$style.chatAttachmentThumb"
           />
-          <span v-else class="chat-attachment-name">{{ attachedFile.name }}</span>
-          <button class="chat-attachment-remove" @click="removeAttachment">
+          <span v-else :class="$style.chatAttachmentName">{{ attachedFile.name }}</span>
+          <button :class="$style.chatAttachmentRemove" @click="removeAttachment">
             <i class="ti ti-x" />
           </button>
         </div>
-        <div v-if="isUploading" class="chat-uploading">
-          <i class="ti ti-loader-2 spin" /> アップロード中...
+        <div v-if="isUploading" :class="$style.chatUploading">
+          <i class="ti ti-loader-2" :class="$style.spin" /> アップロード中...
         </div>
-        <div class="chat-input-row">
-          <div class="chat-input-actions">
-            <button class="chat-action-btn" title="ファイル" @click="openFilePicker">
+        <div :class="$style.chatInputRow">
+          <div :class="$style.chatInputActions">
+            <button :class="$style.chatActionBtn" title="ファイル" @click="openFilePicker">
               <i class="ti ti-photo" />
             </button>
-            <button class="chat-action-btn" title="絵文字" @click.stop="showEmojiPicker = !showEmojiPicker">
+            <button :class="$style.chatActionBtn" title="絵文字" @click.stop="showEmojiPicker = !showEmojiPicker">
               <i class="ti ti-mood-happy" />
             </button>
           </div>
           <textarea
             ref="textareaRef"
             v-model="messageText"
-            class="chat-textarea"
+            :class="$style.chatTextarea"
             placeholder="メッセージ..."
             rows="1"
             @keydown="handleKeydown"
           />
           <button
-            class="chat-send"
+            :class="$style.chatSend"
             :disabled="!canSend"
             @click="sendMessage"
           >
@@ -583,7 +584,7 @@ onBeforeUnmount(() => {
           </button>
         </div>
         <!-- Emoji picker popup -->
-        <div v-if="showEmojiPicker && account" class="chat-emoji-popup" @click.stop>
+        <div v-if="showEmojiPicker && account" :class="$style.chatEmojiPopup" @click.stop>
           <MkReactionPicker
             :server-host="account.host"
             :account-id="column.accountId!"
@@ -602,62 +603,62 @@ onBeforeUnmount(() => {
   </DeckColumn>
 </template>
 
-<style scoped>
-.tl-header-icon {
+<style lang="scss" module>
+.tlHeaderIcon {
   flex-shrink: 0;
   opacity: 0.7;
+
+  &.clickable {
+    cursor: pointer;
+    opacity: 0.8;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
 }
 
-.tl-header-icon.clickable {
-  cursor: pointer;
-  opacity: 0.8;
-}
-
-.tl-header-icon.clickable:hover {
-  opacity: 1;
-}
-
-.header-account {
+.headerAccount {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
 }
 
-.header-avatar {
+.headerAvatar {
   width: 18px;
   height: 18px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.header-favicon {
+.headerFavicon {
   width: 16px;
   height: 16px;
   object-fit: contain;
   opacity: 0.7;
 }
 
-.chat-body {
+.chatBody {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  &.conversation {
+    overflow: hidden;
+  }
 }
 
-.chat-body.conversation {
-  overflow: hidden;
-}
-
-.history-list {
+.historyList {
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
 }
 
-.history-item {
+.historyItem {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -669,21 +670,21 @@ onBeforeUnmount(() => {
   text-align: left;
   cursor: pointer;
   border-bottom: 1px solid var(--nd-divider, rgba(255, 255, 255, 0.05));
+
+  &:hover {
+    background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.03));
+  }
+
+  :deep(.mk-avatar) {
+    flex-shrink: 0;
+  }
+
+  :deep(.mk-avatar:hover) {
+    transform: none;
+  }
 }
 
-.history-item:hover {
-  background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.03));
-}
-
-.history-item :deep(.mk-avatar) {
-  flex-shrink: 0;
-}
-
-.history-item :deep(.mk-avatar:hover) {
-  transform: none;
-}
-
-.history-avatar-placeholder {
+.historyAvatarPlaceholder {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -695,12 +696,12 @@ onBeforeUnmount(() => {
   opacity: 0.5;
 }
 
-.history-info {
+.historyInfo {
   flex: 1;
   min-width: 0;
 }
 
-.history-name {
+.historyName {
   font-size: 0.9em;
   font-weight: 600;
   overflow: hidden;
@@ -708,7 +709,7 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.history-preview {
+.historyPreview {
   font-size: 0.8em;
   opacity: 0.5;
   overflow: hidden;
@@ -717,7 +718,7 @@ onBeforeUnmount(() => {
   margin-top: 2px;
 }
 
-.messages-container {
+.messagesContainer {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -729,13 +730,13 @@ onBeforeUnmount(() => {
   scrollbar-width: thin;
 }
 
-.chat-error {
+.chatError {
   padding: 4px 12px;
   font-size: 0.8em;
   color: var(--nd-love);
 }
 
-.chat-input {
+.chatInput {
   display: flex;
   flex-direction: column;
   padding: 6px 8px 8px;
@@ -744,7 +745,7 @@ onBeforeUnmount(() => {
   position: relative;
 }
 
-.chat-attachment {
+.chatAttachment {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -754,14 +755,14 @@ onBeforeUnmount(() => {
   border-radius: var(--nd-radius-md);
 }
 
-.chat-attachment-thumb {
+.chatAttachmentThumb {
   width: 48px;
   height: 48px;
   border-radius: var(--nd-radius-sm);
   object-fit: cover;
 }
 
-.chat-attachment-name {
+.chatAttachmentName {
   font-size: 0.8em;
   opacity: 0.7;
   overflow: hidden;
@@ -770,7 +771,7 @@ onBeforeUnmount(() => {
   flex: 1;
 }
 
-.chat-attachment-remove {
+.chatAttachmentRemove {
   background: none;
   border: none;
   color: var(--nd-fg);
@@ -778,13 +779,13 @@ onBeforeUnmount(() => {
   cursor: pointer;
   padding: 4px;
   font-size: 0.9em;
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
-.chat-attachment-remove:hover {
-  opacity: 1;
-}
-
-.chat-uploading {
+.chatUploading {
   font-size: 0.8em;
   opacity: 0.5;
   padding: 2px 8px 4px;
@@ -798,19 +799,19 @@ onBeforeUnmount(() => {
   animation: spin 1s linear infinite;
 }
 
-.chat-input-row {
+.chatInputRow {
   display: flex;
   align-items: flex-end;
   gap: 6px;
 }
 
-.chat-input-actions {
+.chatInputActions {
   display: flex;
   gap: 2px;
   flex-shrink: 0;
 }
 
-.chat-action-btn {
+.chatActionBtn {
   width: 32px;
   height: 32px;
   border: none;
@@ -823,14 +824,14 @@ onBeforeUnmount(() => {
   justify-content: center;
   border-radius: 50%;
   font-size: 1.1em;
+
+  &:hover {
+    opacity: 0.8;
+    background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.05));
+  }
 }
 
-.chat-action-btn:hover {
-  opacity: 0.8;
-  background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.05));
-}
-
-.chat-textarea {
+.chatTextarea {
   flex: 1;
   resize: none;
   border: none;
@@ -844,13 +845,13 @@ onBeforeUnmount(() => {
   max-height: 120px;
   outline: none;
   field-sizing: content;
+
+  &::placeholder {
+    opacity: 0.4;
+  }
 }
 
-.chat-textarea::placeholder {
-  opacity: 0.4;
-}
-
-.chat-send {
+.chatSend {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -863,18 +864,18 @@ onBeforeUnmount(() => {
   justify-content: center;
   flex-shrink: 0;
   font-size: 1em;
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  &:not(:disabled):hover {
+    filter: brightness(1.1);
+  }
 }
 
-.chat-send:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-
-.chat-send:not(:disabled):hover {
-  filter: brightness(1.1);
-}
-
-.chat-emoji-popup {
+.chatEmojiPopup {
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -887,7 +888,7 @@ onBeforeUnmount(() => {
   z-index: var(--nd-z-menu);
 }
 
-.chat-reaction-picker {
+.chatReactionPicker {
   flex-shrink: 0;
   max-height: 280px;
   overflow: auto;
@@ -895,7 +896,7 @@ onBeforeUnmount(() => {
   background: var(--nd-panel);
 }
 
-.column-empty {
+.columnEmpty {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -905,12 +906,12 @@ onBeforeUnmount(() => {
   font-size: 0.85em;
 }
 
-.column-error {
+.columnError {
   color: var(--nd-love);
   opacity: 1;
 }
 
-.loading-more {
+.loadingMore {
   text-align: center;
   padding: 1rem;
   font-size: 0.8em;

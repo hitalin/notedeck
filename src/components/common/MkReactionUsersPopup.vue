@@ -108,18 +108,19 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="reaction-users-popup _popup"
+    :class="$style.reactionUsersPopup"
+    class="_popup"
     :style="{ left: `${x}px`, top: `${y}px` }"
     @mouseleave="handleMouseLeave"
   >
-    <div v-if="isLoading" class="popup-loading">読み込み中...</div>
+    <div v-if="isLoading" :class="$style.popupLoading">読み込み中...</div>
     <template v-else>
-      <div v-if="reactions.length === 0" class="popup-loading">リアクションなし</div>
+      <div v-if="reactions.length === 0" :class="$style.popupLoading">リアクションなし</div>
       <template v-else>
         <button
           v-for="r in reactions.slice(0, 10)"
           :key="r.id"
-          class="reaction-user-row"
+          :class="$style.reactionUserRow"
           @click.stop="onUserClick(r.user.id)"
           @mouseenter="onUserMouseEnter($event, r.user.id)"
           @mouseleave="onUserMouseLeave"
@@ -127,22 +128,22 @@ onUnmounted(() => {
           <img
             v-if="r.user.avatarUrl"
             :src="r.user.avatarUrl"
-            class="reaction-user-avatar"
+            :class="$style.reactionUserAvatar"
             width="24"
             height="24"
             loading="lazy"
             decoding="async"
           />
-          <div v-else class="reaction-user-avatar reaction-user-avatar-placeholder" />
-          <div class="reaction-user-info">
-            <span class="reaction-user-name">
+          <div v-else :class="[$style.reactionUserAvatar, $style.reactionUserAvatarPlaceholder]" />
+          <div :class="$style.reactionUserInfo">
+            <span :class="$style.reactionUserName">
               <MkMfm v-if="r.user.name" :text="r.user.name" :emojis="r.user.emojis" :server-host="serverHost" />
               <template v-else>{{ r.user.username }}</template>
             </span>
-            <span class="reaction-user-username">@{{ r.user.username }}</span>
+            <span :class="$style.reactionUserUsername">@{{ r.user.username }}</span>
           </div>
         </button>
-        <div v-if="totalCount > 10" class="reaction-users-more">
+        <div v-if="totalCount > 10" :class="$style.reactionUsersMore">
           and {{ totalCount - 10 }} more
         </div>
       </template>
@@ -162,26 +163,26 @@ onUnmounted(() => {
   </Teleport>
 </template>
 
-<style scoped>
-.reaction-users-popup {
+<style lang="scss" module>
+.reactionUsersPopup {
   position: fixed;
   z-index: calc(var(--nd-z-popup) + 1);
   width: 240px;
   padding: 8px 0;
   pointer-events: auto;
+
+  /* Invisible bridge to catch the mouse in the gap between badge and popup */
+  &::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 0;
+    right: 0;
+    height: 8px;
+  }
 }
 
-/* Invisible bridge to catch the mouse in the gap between badge and popup */
-.reaction-users-popup::before {
-  content: '';
-  position: absolute;
-  top: -8px;
-  left: 0;
-  right: 0;
-  height: 8px;
-}
-
-.popup-loading {
+.popupLoading {
   padding: 12px 16px;
   text-align: center;
   font-size: 0.8em;
@@ -189,7 +190,7 @@ onUnmounted(() => {
   opacity: 0.5;
 }
 
-.reaction-user-row {
+.reactionUserRow {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -202,13 +203,13 @@ onUnmounted(() => {
   text-align: left;
   cursor: pointer;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.reaction-user-row:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.reaction-user-avatar {
+.reactionUserAvatar {
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -216,16 +217,16 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.reaction-user-avatar-placeholder {
+.reactionUserAvatarPlaceholder {
   background: var(--nd-buttonBg);
 }
 
-.reaction-user-info {
+.reactionUserInfo {
   min-width: 0;
   overflow: hidden;
 }
 
-.reaction-user-name {
+.reactionUserName {
   font-size: 0.85em;
   font-weight: bold;
   color: var(--nd-fgHighlighted);
@@ -235,7 +236,7 @@ onUnmounted(() => {
   display: block;
 }
 
-.reaction-user-username {
+.reactionUserUsername {
   font-size: 0.75em;
   opacity: 0.6;
   display: block;
@@ -244,7 +245,7 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.reaction-users-more {
+.reactionUsersMore {
   padding: 6px 12px 4px;
   font-size: 0.75em;
   opacity: 0.5;

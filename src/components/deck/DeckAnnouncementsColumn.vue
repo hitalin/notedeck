@@ -147,7 +147,7 @@ onUnmounted(() => {
       {{ error.message }}
     </div>
 
-    <div v-else class="announcements-body">
+    <div v-else :class="$style.announcementsBody">
       <div v-if="isLoading && announcements.length === 0">
         <MkSkeleton v-for="i in 3" :key="i" />
       </div>
@@ -159,33 +159,31 @@ onUnmounted(() => {
         お知らせはありません
       </div>
 
-      <div v-else ref="scrollContainer" class="announcements-scroller">
+      <div v-else ref="scrollContainer" :class="$style.announcementsScroller">
         <div
           v-for="item in announcements"
           :key="item.id"
-          class="announcement-item"
-          :class="{ unread: !item.isRead }"
+          :class="[$style.announcementItem, { [$style.unread]: !item.isRead }]"
         >
-          <div class="announcement-header">
+          <div :class="$style.announcementHeader">
             <i
               :class="`ti ti-${ICON_MAP[item.icon] || 'info-circle'}`"
-              class="announcement-icon"
               :style="{ color: ICON_COLOR_MAP[item.icon] || 'var(--nd-accent)' }"
             />
-            <span class="announcement-title">{{ item.title }}</span>
-            <span class="announcement-time">{{ formatTime(item.createdAt) }}</span>
+            <span :class="$style.announcementTitle">{{ item.title }}</span>
+            <span :class="$style.announcementTime">{{ formatTime(item.createdAt) }}</span>
           </div>
 
-          <div v-if="item.imageUrl" class="announcement-image">
+          <div v-if="item.imageUrl" :class="$style.announcementImage">
             <img :src="item.imageUrl" loading="lazy" />
           </div>
 
-          <div class="announcement-text">
+          <div :class="$style.announcementText">
             <MkMfm :text="item.text" :server-host="account?.host" />
           </div>
 
-          <div v-if="!item.isRead" class="announcement-actions">
-            <button class="_button announcement-read-btn" @click="markAsRead(item)">
+          <div v-if="!item.isRead" :class="$style.announcementActions">
+            <button class="_button" :class="$style.announcementReadBtn" @click="markAsRead(item)">
               <i class="ti ti-check" /> 既読にする
             </button>
           </div>
@@ -196,9 +194,11 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-@import "./column-common.css";
+@use "./column-common.module.scss";
+</style>
 
-.announcements-body {
+<style lang="scss" module>
+.announcementsBody {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -206,7 +206,7 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.announcements-scroller {
+.announcementsScroller {
   flex: 1;
   overflow-y: auto;
   overflow-x: clip;
@@ -215,28 +215,23 @@ onUnmounted(() => {
   -webkit-overflow-scrolling: touch;
 }
 
-.announcement-item {
+.announcementItem {
   padding: 16px;
   border-bottom: 1px solid var(--nd-divider);
+
+  &.unread {
+    background: var(--nd-accentedBg);
+  }
 }
 
-.announcement-item.unread {
-  background: var(--nd-accentedBg);
-}
-
-.announcement-header {
+.announcementHeader {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
 }
 
-.announcement-icon {
-  flex-shrink: 0;
-  font-size: 1.1em;
-}
-
-.announcement-title {
+.announcementTitle {
   flex: 1;
   min-width: 0;
   font-weight: bold;
@@ -247,33 +242,33 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.announcement-time {
+.announcementTime {
   flex-shrink: 0;
   font-size: 0.8em;
   opacity: 0.5;
 }
 
-.announcement-image {
+.announcementImage {
   margin-bottom: 8px;
+
+  img {
+    max-width: 100%;
+    border-radius: var(--nd-radius-md);
+  }
 }
 
-.announcement-image img {
-  max-width: 100%;
-  border-radius: var(--nd-radius-md);
-}
-
-.announcement-text {
+.announcementText {
   font-size: 0.9em;
   line-height: 1.6;
   color: var(--nd-fg);
   word-break: break-word;
 }
 
-.announcement-actions {
+.announcementActions {
   margin-top: 10px;
 }
 
-.announcement-read-btn {
+.announcementReadBtn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -285,9 +280,9 @@ onUnmounted(() => {
   color: #fff;
   cursor: pointer;
   transition: filter var(--nd-duration-base);
-}
 
-.announcement-read-btn:hover {
-  filter: brightness(1.1);
+  &:hover {
+    filter: brightness(1.1);
+  }
 }
 </style>

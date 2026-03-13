@@ -65,76 +65,76 @@ function reset() {
 </script>
 
 <template>
-  <div class="login-content">
+  <div :class="$style.loginContent">
     <Transition name="step" mode="out-in">
       <!-- Step 1: Input -->
-      <div v-if="step === 'input'" key="input" class="dialog-body">
-        <div class="logo-area">
-          <img src="/favicon.svg" alt="NoteDeck" class="app-logo" />
-          <p class="subtitle">Misskeyサーバーに接続</p>
+      <div v-if="step === 'input'" key="input" :class="$style.dialogBody">
+        <div :class="$style.logoArea">
+          <img src="/favicon.svg" alt="NoteDeck" :class="$style.appLogo" />
+          <p :class="$style.subtitle">Misskeyサーバーに接続</p>
         </div>
 
-        <div class="form-area">
-          <label class="input-label" for="host">サーバーアドレス</label>
+        <div :class="$style.formArea">
+          <label :class="$style.inputLabel" for="host">サーバーアドレス</label>
           <input
             id="host"
             v-model="host"
             type="text"
-            class="mk-input"
+            :class="$style.mkInput"
             placeholder="misskey.io"
             autocomplete="off"
             @keyup.enter="startLogin"
           />
         </div>
 
-        <div class="actions">
+        <div :class="$style.actions">
           <button
-            class="btn-login"
+            :class="$style.btnLogin"
             :disabled="!host.trim()"
             @click="startLogin"
           >
             ログイン
           </button>
-          <button class="_button btn-cancel" @click="emit('close')">
+          <button class="_button" :class="$style.btnCancel" @click="emit('close')">
             キャンセル
           </button>
         </div>
       </div>
 
       <!-- Step 2: Waiting -->
-      <div v-else-if="step === 'waiting'" key="waiting" class="dialog-body">
-        <div class="logo-area">
-          <div class="waiting-spinner" />
-          <p class="subtitle">認証待ち...</p>
+      <div v-else-if="step === 'waiting'" key="waiting" :class="$style.dialogBody">
+        <div :class="$style.logoArea">
+          <div :class="$style.waitingSpinner" />
+          <p :class="$style.subtitle">認証待ち...</p>
         </div>
 
-        <div class="waiting-info">
+        <div :class="$style.waitingInfo">
           <p>ブラウザで認証画面が開きました。</p>
           <p>認証が完了したら、下のボタンをクリックしてください。</p>
         </div>
 
-        <div class="actions">
-          <button class="btn-login" @click="completeLogin">
+        <div :class="$style.actions">
+          <button :class="$style.btnLogin" @click="completeLogin">
             認証しました
           </button>
-          <button class="_button btn-cancel" @click="reset">
+          <button class="_button" :class="$style.btnCancel" @click="reset">
             キャンセル
           </button>
         </div>
       </div>
 
       <!-- Step 3: Error -->
-      <div v-else-if="step === 'error'" key="error" class="dialog-body">
-        <div class="logo-area">
-          <div class="error-icon-wrap">
+      <div v-else-if="step === 'error'" key="error" :class="$style.dialogBody">
+        <div :class="$style.logoArea">
+          <div :class="$style.errorIconWrap">
             <i class="ti ti-alert-triangle" />
           </div>
         </div>
 
-        <p class="error-text">{{ errorMessage }}</p>
+        <p :class="$style.errorText">{{ errorMessage }}</p>
 
-        <div class="actions">
-          <button class="btn-login" @click="reset">
+        <div :class="$style.actions">
+          <button :class="$style.btnLogin" @click="reset">
             やり直す
           </button>
         </div>
@@ -143,8 +143,8 @@ function reset() {
   </div>
 </template>
 
-<style scoped>
-.login-content {
+<style lang="scss" module>
+.loginContent {
   height: 100%;
   overflow-y: auto;
   display: flex;
@@ -152,12 +152,11 @@ function reset() {
   justify-content: center;
 }
 
-.dialog-body {
+.dialogBody {
   padding: 32px;
 }
 
-/* Logo / visual area */
-.logo-area {
+.logoArea {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -165,7 +164,7 @@ function reset() {
   margin-bottom: 28px;
 }
 
-.app-logo {
+.appLogo {
   width: 48px;
   height: 48px;
   border-radius: 10px;
@@ -177,12 +176,11 @@ function reset() {
   opacity: 0.7;
 }
 
-/* Form */
-.form-area {
+.formArea {
   margin-bottom: 24px;
 }
 
-.input-label {
+.inputLabel {
   display: block;
   font-size: 0.85em;
   font-weight: bold;
@@ -190,7 +188,7 @@ function reset() {
   color: var(--nd-fg);
 }
 
-.mk-input {
+.mkInput {
   display: block;
   width: 100%;
   height: 42px;
@@ -203,22 +201,21 @@ function reset() {
   border-radius: var(--nd-radius-md);
   outline: none;
   transition: border-color var(--nd-duration-base);
+
+  &:hover {
+    border-color: var(--nd-inputBorderHover);
+  }
+
+  &:focus {
+    border-color: var(--nd-accent);
+  }
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.35;
+  }
 }
 
-.mk-input:hover {
-  border-color: var(--nd-inputBorderHover);
-}
-
-.mk-input:focus {
-  border-color: var(--nd-accent);
-}
-
-.mk-input::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.35;
-}
-
-/* Actions */
 .actions {
   display: flex;
   flex-direction: column;
@@ -226,7 +223,7 @@ function reset() {
   gap: 12px;
 }
 
-.btn-login {
+.btnLogin {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -242,35 +239,34 @@ function reset() {
   font-family: inherit;
   cursor: pointer;
   transition: transform var(--nd-duration-base), box-shadow var(--nd-duration-base), opacity var(--nd-duration-base);
+
+  &:hover:not(:disabled) {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(134, 179, 0, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }
 
-.btn-login:hover:not(:disabled) {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(134, 179, 0, 0.3);
-}
-
-.btn-login:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.btn-login:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.btn-cancel {
+.btnCancel {
   font-size: 0.85em;
   color: var(--nd-fg);
   opacity: 0.6;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
-.btn-cancel:hover {
-  opacity: 1;
-}
-
-/* Waiting state */
-.waiting-spinner {
+.waitingSpinner {
   width: 48px;
   height: 48px;
   border: 3px solid var(--nd-divider);
@@ -283,20 +279,19 @@ function reset() {
   to { transform: rotate(360deg); }
 }
 
-.waiting-info {
+.waitingInfo {
   margin-bottom: 24px;
   text-align: center;
+
+  p {
+    font-size: 0.9em;
+    line-height: 1.6;
+    color: var(--nd-fg);
+    margin: 0;
+  }
 }
 
-.waiting-info p {
-  font-size: 0.9em;
-  line-height: 1.6;
-  color: var(--nd-fg);
-  margin: 0;
-}
-
-/* Error state */
-.error-icon-wrap {
+.errorIconWrap {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -308,7 +303,7 @@ function reset() {
   font-size: 1.4em;
 }
 
-.error-text {
+.errorText {
   margin: 0 0 24px;
   text-align: center;
   color: var(--nd-love);
@@ -316,7 +311,47 @@ function reset() {
   line-height: 1.5;
 }
 
-/* Step transition */
+@media (max-width: 500px) {
+  .dialogBody {
+    padding: 24px 16px;
+  }
+
+  .mkInput {
+    height: 44px;
+    font-size: 1em;
+  }
+
+  .btnLogin {
+    height: 44px;
+  }
+
+  .btnCancel {
+    min-height: 44px;
+  }
+}
+
+:global(html.nd-mobile) {
+  .dialogBody {
+    padding: 24px 16px;
+  }
+
+  .mkInput {
+    height: 44px;
+    font-size: 1em;
+  }
+
+  .btnLogin {
+    height: 44px;
+  }
+
+  .btnCancel {
+    min-height: 44px;
+  }
+}
+</style>
+
+<!-- Transition classes (must be unscoped for Vue transitions) -->
+<style>
 .step-enter-active,
 .step-leave-active {
   transition: opacity var(--nd-duration-slower) cubic-bezier(0, 0, 0.35, 1), transform var(--nd-duration-slower) cubic-bezier(0, 0, 0.35, 1);
@@ -330,42 +365,5 @@ function reset() {
 .step-leave-to {
   opacity: 0;
   transform: translateX(-50px);
-}
-
-@media (max-width: 500px) {
-  .dialog-body {
-    padding: 24px 16px;
-  }
-
-  .mk-input {
-    height: 44px;
-    font-size: 1em;
-  }
-
-  .btn-login {
-    height: 44px;
-  }
-
-  .btn-cancel {
-    min-height: 44px;
-  }
-}
-
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .dialog-body {
-  padding: 24px 16px;
-}
-
-html.nd-mobile .mk-input {
-  height: 44px;
-  font-size: 1em;
-}
-
-html.nd-mobile .btn-login {
-  height: 44px;
-}
-
-html.nd-mobile .btn-cancel {
-  min-height: 44px;
 }
 </style>

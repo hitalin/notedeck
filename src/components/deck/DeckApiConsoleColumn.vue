@@ -64,13 +64,13 @@ function onKeydown(e: KeyboardEvent) {
     :theme-vars="columnThemeVars"
   >
     <template #header-icon>
-      <i class="ti ti-api tl-header-icon" />
+      <i class="ti ti-api" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
       <button
-        class="_button header-run-btn"
-        :class="{ loading }"
+        class="_button"
+        :class="[$style.headerRunBtn, { [$style.loading]: loading }]"
         :disabled="loading || !endpoint.trim() || !column.accountId"
         title="Send (Ctrl+Enter)"
         @click.stop="execute"
@@ -79,24 +79,24 @@ function onKeydown(e: KeyboardEvent) {
       </button>
     </template>
 
-    <div class="api-console" @keydown="onKeydown">
-      <div class="input-section">
-        <div class="endpoint-row">
-          <span class="method-badge">POST</span>
+    <div :class="$style.apiConsole" @keydown="onKeydown">
+      <div :class="$style.inputSection">
+        <div :class="$style.endpointRow">
+          <span :class="$style.methodBadge">POST</span>
           <input
             v-model="endpoint"
-            class="endpoint-input"
+            :class="$style.endpointInput"
             type="text"
             placeholder="users/show"
             spellcheck="false"
           />
         </div>
 
-        <div class="params-section">
-          <label class="params-label">パラメータ (JSON)</label>
+        <div :class="$style.paramsSection">
+          <label :class="$style.paramsLabel">パラメータ (JSON)</label>
           <textarea
             v-model="params"
-            class="params-textarea"
+            :class="$style.paramsTextarea"
             placeholder='{ "username": "example" }'
             spellcheck="false"
             rows="6"
@@ -104,15 +104,15 @@ function onKeydown(e: KeyboardEvent) {
         </div>
       </div>
 
-      <div class="response-section">
-        <div v-if="!column.accountId" class="response-empty">
+      <div :class="$style.responseSection">
+        <div v-if="!column.accountId" :class="$style.responseEmpty">
           アカウントが設定されていません
         </div>
-        <div v-else-if="error" class="response-error">{{ error }}</div>
-        <div v-else-if="response !== null" class="response-body">
+        <div v-else-if="error" :class="$style.responseError">{{ error }}</div>
+        <div v-else-if="response !== null" :class="$style.responseBody">
           <pre>{{ response }}</pre>
         </div>
-        <div v-else class="response-empty">
+        <div v-else :class="$style.responseEmpty">
           Ctrl+Enter to send
         </div>
       </div>
@@ -120,8 +120,13 @@ function onKeydown(e: KeyboardEvent) {
   </DeckColumn>
 </template>
 
-<style scoped>
-.header-run-btn {
+<style lang="scss" module>
+.tlHeaderIcon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.headerRunBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -132,19 +137,19 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-fgOnAccent);
   font-size: 0.85em;
   transition: background var(--nd-duration-base), opacity var(--nd-duration-base);
-}
 
-.header-run-btn:hover:not(:disabled) {
-  background: var(--nd-accentDarken);
-}
+  &:hover:not(:disabled) {
+    background: var(--nd-accentDarken);
+  }
 
-.header-run-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 
-.header-run-btn.loading i {
-  animation: spin 1s linear infinite;
+  &.loading i {
+    animation: spin 1s linear infinite;
+  }
 }
 
 @keyframes spin {
@@ -152,7 +157,7 @@ function onKeydown(e: KeyboardEvent) {
   to { transform: rotate(360deg); }
 }
 
-.api-console {
+.apiConsole {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -160,7 +165,7 @@ function onKeydown(e: KeyboardEvent) {
   overflow: hidden;
 }
 
-.input-section {
+.inputSection {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -169,13 +174,13 @@ function onKeydown(e: KeyboardEvent) {
   flex-shrink: 0;
 }
 
-.endpoint-row {
+.endpointRow {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.method-badge {
+.methodBadge {
   display: inline-flex;
   align-items: center;
   padding: 4px 8px;
@@ -188,7 +193,7 @@ function onKeydown(e: KeyboardEvent) {
   flex-shrink: 0;
 }
 
-.endpoint-input {
+.endpointInput {
   flex: 1;
   padding: 6px 10px;
   border: 1px solid var(--nd-divider);
@@ -199,25 +204,25 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 0.85em;
   outline: none;
   transition: border-color var(--nd-duration-base);
+
+  &:focus {
+    border-color: var(--nd-accent);
+  }
 }
 
-.endpoint-input:focus {
-  border-color: var(--nd-accent);
-}
-
-.params-section {
+.paramsSection {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.params-label {
+.paramsLabel {
   font-size: 0.7em;
   font-weight: bold;
   opacity: 0.5;
 }
 
-.params-textarea {
+.paramsTextarea {
   padding: 8px 10px;
   border: 1px solid var(--nd-divider);
   border-radius: var(--nd-radius-sm);
@@ -229,20 +234,20 @@ function onKeydown(e: KeyboardEvent) {
   resize: vertical;
   outline: none;
   transition: border-color var(--nd-duration-base);
+
+  &:focus {
+    border-color: var(--nd-accent);
+  }
 }
 
-.params-textarea:focus {
-  border-color: var(--nd-accent);
-}
-
-.response-section {
+.responseSection {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding: 10px;
 }
 
-.response-error {
+.responseError {
   padding: 6px 8px;
   border-radius: var(--nd-radius-sm);
   background: var(--nd-love-subtle);
@@ -251,7 +256,7 @@ function onKeydown(e: KeyboardEvent) {
   white-space: pre-wrap;
 }
 
-.response-body pre {
+.responseBody pre {
   margin: 0;
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
   font-size: 0.75em;
@@ -260,7 +265,7 @@ function onKeydown(e: KeyboardEvent) {
   word-break: break-all;
 }
 
-.response-empty {
+.responseEmpty {
   display: flex;
   align-items: center;
   justify-content: center;

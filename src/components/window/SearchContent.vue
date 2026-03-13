@@ -352,32 +352,31 @@ setTimeout(() => searchInput.value?.focus(), 100)
 </script>
 
 <template>
-  <div class="search-content">
-    <div class="search-bar">
-      <i class="ti ti-search search-icon" />
+  <div :class="$style.searchContent">
+    <div :class="$style.searchBar">
+      <i :class="['ti', 'ti-search', $style.searchIcon]" />
       <input
         ref="searchInput"
         v-model="searchQuery"
-        class="search-input"
-        :class="{ 'regex-input': regexMode, 'regex-invalid': regexMode && regexError }"
+        :class="[$style.searchInput, { [$style.regexInput]: regexMode, [$style.regexInvalid]: regexMode && regexError }]"
         type="text"
         :placeholder="regexMode ? '正規表現で検索...' : '全アカウントを検索...'"
         @keydown="onKeydown"
       />
-      <div class="regex-controls">
+      <div :class="$style.regexControls">
         <button
-          class="_button regex-toggle"
-          :class="{ active: regexMode }"
+          class="_button"
+          :class="[$style.regexToggle, { [$style.active]: regexMode }]"
           title="正規表現モード"
           @click="toggleRegexMode"
         >
-          <span class="regex-icon">.*</span>
+          <span :class="$style.regexIconText">.*</span>
         </button>
         <button
           v-if="regexMode"
           ref="regexGuideBtnRef"
-          class="_button regex-guide-btn"
-          :class="{ active: showRegexGuide }"
+          class="_button"
+          :class="[$style.regexGuideBtn, { [$style.active]: showRegexGuide }]"
           title="正規表現ガイド"
           @click.stop="openRegexGuide"
         >
@@ -386,14 +385,16 @@ setTimeout(() => searchInput.value?.focus(), 100)
       </div>
       <button
         v-if="searchQuery"
-        class="_button search-clear"
+        class="_button"
+        :class="$style.searchClear"
         title="Clear"
         @click="clearSearch"
       >
         <i class="ti ti-x" />
       </button>
       <button
-        class="_button search-btn"
+        class="_button"
+        :class="$style.searchBtn"
         :disabled="!searchQuery.trim() || isLoading || (regexMode && !!regexError)"
         @click="performSearch"
       >
@@ -401,7 +402,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
       </button>
     </div>
 
-    <div v-if="regexError" class="regex-error">
+    <div v-if="regexError" :class="$style.regexError">
       {{ regexError }}
     </div>
 
@@ -419,28 +420,27 @@ setTimeout(() => searchInput.value?.focus(), 100)
     </Teleport>
 
     <!-- Per-account progress bar -->
-    <div v-if="searchProgress.length > 0" class="search-progress">
+    <div v-if="searchProgress.length > 0" :class="$style.searchProgress">
       <span
         v-for="(p, i) in searchProgress"
         :key="i"
-        class="progress-dot"
-        :class="{ done: p.done }"
+        :class="[$style.progressDot, { [$style.done]: p.done }]"
         :title="p.host"
       />
     </div>
 
-    <div v-if="isLoading && notes.length === 0 && searchProgress.length === 0" class="search-empty">
+    <div v-if="isLoading && notes.length === 0 && searchProgress.length === 0" :class="$style.searchEmpty">
       Searching...
     </div>
 
-    <div v-else-if="!searchQuery.trim() && notes.length === 0" class="search-empty">
-      <div class="search-empty-icon">
+    <div v-else-if="!searchQuery.trim() && notes.length === 0" :class="$style.searchEmpty">
+      <div :class="$style.searchEmptyIcon">
         <i class="ti ti-search" />
       </div>
       <span>検索クエリを入力</span>
     </div>
 
-    <div v-else-if="error && notes.length === 0" class="search-empty">
+    <div v-else-if="error && notes.length === 0" :class="$style.searchEmpty">
       {{ error }}
     </div>
 
@@ -448,7 +448,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
       v-else-if="notes.length > 0"
       ref="noteScrollerRef"
       :items="notes"
-      class="search-scroller"
+      :class="$style.searchScroller"
       @scroll="handleScroll"
     >
       <template #default="{ item, index }">
@@ -467,10 +467,10 @@ setTimeout(() => searchInput.value?.focus(), 100)
       </template>
 
       <template #append>
-        <div v-if="isPreview && notes.length > 0" class="search-hint">
+        <div v-if="isPreview && notes.length > 0" :class="$style.searchHint">
           Press Enter to search server
         </div>
-        <div v-else-if="isLoading && notes.length > 0" class="search-loading">
+        <div v-else-if="isLoading && notes.length > 0" :class="$style.searchLoading">
           Loading more...
         </div>
       </template>
@@ -490,15 +490,15 @@ setTimeout(() => searchInput.value?.focus(), 100)
   </Teleport>
 </template>
 
-<style scoped>
-.search-content {
+<style lang="scss" module>
+.searchContent {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
 }
 
-.search-bar {
+.searchBar {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -507,12 +507,12 @@ setTimeout(() => searchInput.value?.focus(), 100)
   flex-shrink: 0;
 }
 
-.search-icon {
+.searchIcon {
   flex-shrink: 0;
   opacity: 0.4;
 }
 
-.search-input {
+.searchInput {
   flex: 1;
   min-width: 0;
   background: var(--nd-buttonBg);
@@ -522,25 +522,33 @@ setTimeout(() => searchInput.value?.focus(), 100)
   font-size: 0.85em;
   color: var(--nd-fg);
   outline: none;
+
+  &:focus {
+    box-shadow: 0 0 0 2px var(--nd-accent);
+  }
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.4;
+  }
+
+  &.regexInput {
+    font-family: monospace;
+  }
+
+  &.regexInvalid {
+    box-shadow: 0 0 0 2px var(--nd-love) !important;
+  }
 }
 
-.search-input:focus {
-  box-shadow: 0 0 0 2px var(--nd-accent);
-}
-
-.search-input::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.4;
-}
-
-.regex-controls {
+.regexControls {
   display: flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
 }
 
-.regex-toggle {
+.regexToggle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -549,26 +557,26 @@ setTimeout(() => searchInput.value?.focus(), 100)
   border-radius: 4px;
   opacity: 0.35;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base), color var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 0.7;
+  }
+
+  &.active {
+    opacity: 1;
+    color: var(--nd-accent);
+    background: var(--nd-accent-hover);
+  }
 }
 
-.regex-toggle:hover {
-  background: var(--nd-buttonHoverBg);
-  opacity: 0.7;
-}
-
-.regex-toggle.active {
-  opacity: 1;
-  color: var(--nd-accent);
-  background: var(--nd-accent-hover);
-}
-
-.regex-icon {
+.regexIconText {
   font-family: monospace;
   font-size: 0.8em;
   font-weight: 700;
 }
 
-.regex-guide-btn {
+.regexGuideBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -578,31 +586,22 @@ setTimeout(() => searchInput.value?.focus(), 100)
   font-size: 0.8em;
   opacity: 0.35;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover,
+  &.active {
+    background: var(--nd-buttonHoverBg);
+    opacity: 0.7;
+  }
 }
 
-.regex-guide-btn:hover,
-.regex-guide-btn.active {
-  background: var(--nd-buttonHoverBg);
-  opacity: 0.7;
-}
-
-.regex-input {
-  font-family: monospace;
-}
-
-.regex-invalid {
-  box-shadow: 0 0 0 2px var(--nd-love) !important;
-}
-
-.regex-error {
+.regexError {
   padding: 4px 12px;
   font-size: 0.75em;
   color: var(--nd-love);
   flex-shrink: 0;
 }
 
-
-.search-clear {
+.searchClear {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -613,14 +612,14 @@ setTimeout(() => searchInput.value?.focus(), 100)
   opacity: 0.35;
   font-size: 0.8em;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 0.7;
+  }
 }
 
-.search-clear:hover {
-  background: var(--nd-buttonHoverBg);
-  opacity: 0.7;
-}
-
-.search-btn {
+.searchBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -630,18 +629,18 @@ setTimeout(() => searchInput.value?.focus(), 100)
   flex-shrink: 0;
   opacity: 0.6;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover:not(:disabled) {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
+
+  &:disabled {
+    opacity: 0.2;
+  }
 }
 
-.search-btn:hover:not(:disabled) {
-  background: var(--nd-buttonHoverBg);
-  opacity: 1;
-}
-
-.search-btn:disabled {
-  opacity: 0.2;
-}
-
-.search-progress {
+.searchProgress {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -650,21 +649,21 @@ setTimeout(() => searchInput.value?.focus(), 100)
   flex-shrink: 0;
 }
 
-.progress-dot {
+.progressDot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--nd-fg);
   opacity: 0.15;
   transition: opacity var(--nd-duration-slower), background var(--nd-duration-slower);
+
+  &.done {
+    background: var(--nd-accent);
+    opacity: 0.8;
+  }
 }
 
-.progress-dot.done {
-  background: var(--nd-accent);
-  opacity: 0.8;
-}
-
-.search-empty {
+.searchEmpty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -676,12 +675,12 @@ setTimeout(() => searchInput.value?.focus(), 100)
   font-size: 0.85em;
 }
 
-.search-empty-icon {
+.searchEmptyIcon {
   font-size: 2em;
   opacity: 0.3;
 }
 
-.search-scroller {
+.searchScroller {
   flex: 1;
   min-height: 0;
   overflow-x: clip;
@@ -689,7 +688,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
   scrollbar-width: thin;
 }
 
-.search-hint {
+.searchHint {
   text-align: center;
   padding: 0.75rem 1rem;
   font-size: 0.75em;
@@ -697,7 +696,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
   border-top: 1px solid var(--nd-divider);
 }
 
-.search-loading {
+.searchLoading {
   text-align: center;
   padding: 1rem;
   font-size: 0.8em;
@@ -705,65 +704,72 @@ setTimeout(() => searchInput.value?.focus(), 100)
 }
 
 @media (max-width: 500px) {
-  .search-bar {
+  .searchBar {
     padding: 8px;
   }
 
-  .search-input {
+  .searchInput {
     padding: 8px 10px;
     font-size: 1em;
   }
 
-  .regex-toggle {
+  .regexToggle {
     width: 36px;
     height: 36px;
   }
 
-  .regex-guide-btn {
+  .regexGuideBtn {
     width: 36px;
     height: 36px;
   }
 
-  .search-clear {
+  .searchClear {
     width: 36px;
     height: 36px;
   }
 
-  .search-btn {
+  .searchBtn {
     width: 40px;
     height: 40px;
   }
 }
 
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .search-bar {
-  padding: 8px;
+:global(html.nd-mobile) {
+  .searchBar {
+    padding: 8px;
+  }
+
+  .searchInput {
+    padding: 8px 10px;
+    font-size: 1em;
+  }
+
+  .regexToggle {
+    width: 36px;
+    height: 36px;
+  }
+
+  .regexGuideBtn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .searchClear {
+    width: 36px;
+    height: 36px;
+  }
+
+  .searchBtn {
+    width: 40px;
+    height: 40px;
+  }
 }
 
-html.nd-mobile .search-input {
-  padding: 8px 10px;
-  font-size: 1em;
-}
-
-html.nd-mobile .regex-toggle {
-  width: 36px;
-  height: 36px;
-}
-
-html.nd-mobile .regex-guide-btn {
-  width: 36px;
-  height: 36px;
-}
-
-html.nd-mobile .search-clear {
-  width: 36px;
-  height: 36px;
-}
-
-html.nd-mobile .search-btn {
-  width: 40px;
-  height: 40px;
-}
+/* Empty placeholder classes for dynamic binding */
+.regexInput {}
+.regexInvalid {}
+.active {}
+.done {}
 </style>
 
 <style>

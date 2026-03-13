@@ -163,127 +163,126 @@ function syncScroll(e: Event) {
 
 <template>
   <Transition name="settings-menu">
-    <div v-if="show" ref="menuEl" class="settings-menu _popupMenu">
+    <div v-if="show" ref="menuEl" :class="$style.settingsMenu" class="_popupMenu">
       <!-- Misskey-style day/night toggle panel -->
-      <div class="theme-panel">
-        <div class="toggle-area">
-          <div class="toggle-inner">
-            <div class="day-night-toggle" :class="{ checked: isDark }" @click="toggleDarkMode">
-              <span class="label-before">ライト</span>
-              <span class="label-after">ダーク</span>
-              <span class="toggle-handler">
-                <span class="crater crater-1" />
-                <span class="crater crater-2" />
-                <span class="crater crater-3" />
+      <div :class="$style.themePanel">
+        <div :class="$style.toggleArea">
+          <div :class="$style.toggleInner">
+            <div :class="[$style.dayNightToggle, { [$style.checked]: isDark }]" @click="toggleDarkMode">
+              <span :class="$style.labelBefore">ライト</span>
+              <span :class="$style.labelAfter">ダーク</span>
+              <span :class="$style.toggleHandler">
+                <span :class="[$style.crater, $style.crater1]" />
+                <span :class="[$style.crater, $style.crater2]" />
+                <span :class="[$style.crater, $style.crater3]" />
               </span>
-              <span class="star star-1" />
-              <span class="star star-2" />
-              <span class="star star-3" />
-              <span class="star star-4" />
-              <span class="star star-5" />
-              <span class="star star-6" />
+              <span :class="[$style.star, $style.star1]" />
+              <span :class="[$style.star, $style.star2]" />
+              <span :class="[$style.star, $style.star3]" />
+              <span :class="[$style.star, $style.star4]" />
+              <span :class="[$style.star, $style.star5]" />
+              <span :class="[$style.star, $style.star6]" />
             </div>
           </div>
         </div>
-        <div class="sync-area">
-          <label class="sync-label">
-            <span class="sync-toggle" :class="{ active: isFollowingSystem }">
+        <div :class="$style.syncArea">
+          <label :class="$style.syncLabel">
+            <span :class="[$style.syncToggle, { [$style.active]: isFollowingSystem }]">
               <input type="checkbox" :checked="isFollowingSystem" @change="toggleSyncDevice" />
-              <span class="sync-toggle-track">
-                <span class="sync-toggle-knob" />
+              <span :class="$style.syncToggleTrack">
+                <span :class="$style.syncToggleKnob" />
               </span>
             </span>
-            <span class="sync-text">デバイスのダークモードに同期</span>
+            <span :class="$style.syncText">デバイスのダークモードに同期</span>
           </label>
         </div>
       </div>
 
       <!-- Theme selection grid -->
-      <div class="theme-select-section">
-        <div class="theme-select-header">
+      <div :class="$style.themeSelectSection">
+        <div :class="$style.themeSelectHeader">
           <i :class="isDark ? 'ti ti-moon' : 'ti ti-sun'" />
           <span>{{ isDark ? 'ダークテーマ' : 'ライトテーマ' }}</span>
         </div>
-        <div class="theme-grid">
+        <div :class="$style.themeGrid">
           <!-- Builtin theme -->
-          <div class="theme-item" :class="{ selected: selectedId == null }" @click="selectTheme(null)">
-            <ThemePreview :theme="builtinTheme" class="theme-item-preview" />
-            <div class="theme-item-name">{{ builtinTheme.name }}</div>
+          <div :class="[$style.themeItem, { [$style.selected]: selectedId == null }]" @click="selectTheme(null)">
+            <ThemePreview :theme="builtinTheme" :class="$style.themeItemPreview" />
+            <div :class="$style.themeItemName">{{ builtinTheme.name }}</div>
           </div>
           <!-- Installed themes -->
           <div
             v-for="theme in currentModeThemes"
             :key="theme.id"
-            class="theme-item"
-            :class="{ selected: selectedId === theme.id }"
+            :class="[$style.themeItem, { [$style.selected]: selectedId === theme.id }]"
             @click="selectTheme(theme.id)"
             @contextmenu.prevent="removeTheme(theme.id)"
           >
-            <ThemePreview :theme="theme" class="theme-item-preview" />
-            <div class="theme-item-name">{{ theme.name }}</div>
+            <ThemePreview :theme="theme" :class="$style.themeItemPreview" />
+            <div :class="$style.themeItemName">{{ theme.name }}</div>
           </div>
         </div>
 
         <!-- Install theme -->
-        <div v-if="!showInstallInput" class="install-btn" @click="showInstallInput = true">
+        <div v-if="!showInstallInput" :class="$style.installBtn" @click="showInstallInput = true">
           <i class="ti ti-download" />
           <span>テーマをインストール</span>
         </div>
-        <div v-else class="install-area">
+        <div v-else :class="$style.installArea">
           <textarea
             v-model="themeCode"
-            class="install-textarea"
+            :class="$style.installTextarea"
             placeholder="MisskeyテーマのJSONコードを貼り付け..."
             rows="4"
           />
-          <div v-if="installError" class="install-error">{{ installError }}</div>
-          <div class="install-actions">
-            <button class="install-action-btn cancel" @click="showInstallInput = false">キャンセル</button>
-            <button class="install-action-btn confirm" @click="handleInstall">インストール</button>
+          <div v-if="installError" :class="$style.installError">{{ installError }}</div>
+          <div :class="$style.installActions">
+            <button :class="[$style.installActionBtn, $style.cancel]" @click="showInstallInput = false">キャンセル</button>
+            <button :class="[$style.installActionBtn, $style.confirm]" @click="handleInstall">インストール</button>
           </div>
         </div>
       </div>
 
       <!-- Custom CSS -->
-      <div class="settings-menu-divider" />
+      <div :class="$style.settingsMenuDivider" />
 
-      <div v-if="!showCustomCss" class="settings-menu-item" @click="showCustomCss = true">
+      <div v-if="!showCustomCss" :class="$style.settingsMenuItem" @click="showCustomCss = true">
         <i class="ti ti-code" />
-        <span class="settings-menu-label">カスタムCSS</span>
-        <span v-if="themeStore.customCss" class="css-active-dot" />
+        <span :class="$style.settingsMenuLabel">カスタムCSS</span>
+        <span v-if="themeStore.customCss" :class="$style.cssActiveDot" />
       </div>
-      <div v-else class="custom-css-section">
-        <div class="custom-css-header">
+      <div v-else :class="$style.customCssSection">
+        <div :class="$style.customCssHeader">
           <i class="ti ti-code" />
           <span>カスタムCSS</span>
         </div>
-        <div class="css-editor">
-          <div class="css-highlight" v-html="highlightedCss" />
+        <div :class="$style.cssEditor">
+          <div class="css-highlight" :class="$style.cssHighlight" v-html="highlightedCss" />
           <textarea
             v-model="customCssInput"
-            class="custom-css-textarea"
+            :class="$style.customCssTextarea"
             placeholder=":root { cursor: auto; }&#10;body { font-family: ... }"
             rows="6"
             spellcheck="false"
             @scroll="syncScroll"
           />
         </div>
-        <div class="custom-css-actions">
-          <button v-if="themeStore.customCss" class="install-action-btn cancel" @click="clearCustomCss">クリア</button>
-          <button class="install-action-btn cancel" @click="showCustomCss = false">閉じる</button>
-          <button class="install-action-btn confirm" @click="saveCustomCss">適用</button>
+        <div :class="$style.customCssActions">
+          <button v-if="themeStore.customCss" :class="[$style.installActionBtn, $style.cancel]" @click="clearCustomCss">クリア</button>
+          <button :class="[$style.installActionBtn, $style.cancel]" @click="showCustomCss = false">閉じる</button>
+          <button :class="[$style.installActionBtn, $style.confirm]" @click="saveCustomCss">適用</button>
         </div>
       </div>
 
-      <div class="settings-menu-divider" />
+      <div :class="$style.settingsMenuDivider" />
 
-      <div v-if="deckStore.wallpaper == null" class="settings-menu-item" @click="pickWallpaper">
+      <div v-if="deckStore.wallpaper == null" :class="$style.settingsMenuItem" @click="pickWallpaper">
         <i class="ti ti-photo" />
-        <span class="settings-menu-label">壁紙を設定</span>
+        <span :class="$style.settingsMenuLabel">壁紙を設定</span>
       </div>
-      <div v-else class="settings-menu-item" @click="removeWallpaper">
+      <div v-else :class="$style.settingsMenuItem" @click="removeWallpaper">
         <i class="ti ti-photo-off" />
-        <span class="settings-menu-label">壁紙を削除</span>
+        <span :class="$style.settingsMenuLabel">壁紙を削除</span>
       </div>
 
       <input
@@ -294,34 +293,34 @@ function syncScroll(e: Event) {
         @change="onFileSelected"
       />
 
-      <div class="settings-menu-divider" />
+      <div :class="$style.settingsMenuDivider" />
 
-      <div v-if="!isMobile" class="settings-menu-item" @click="windowsStore.open('keybinds')">
+      <div v-if="!isMobile" :class="$style.settingsMenuItem" @click="windowsStore.open('keybinds')">
         <i class="ti ti-keyboard" />
-        <span class="settings-menu-label">キーバインド設定</span>
+        <span :class="$style.settingsMenuLabel">キーバインド設定</span>
       </div>
 
-      <div class="settings-menu-divider" />
-      <div v-if="updateAvailable" class="update-section">
-        <div class="update-text">
-          <span class="update-version">v{{ appVersion }} → v{{ updateVersion }}</span>
+      <div :class="$style.settingsMenuDivider" />
+      <div v-if="updateAvailable" :class="$style.updateSection">
+        <div :class="$style.updateText">
+          <span :class="$style.updateVersion">v{{ appVersion }} → v{{ updateVersion }}</span>
         </div>
         <button
-          class="update-btn"
+          :class="$style.updateBtn"
           :disabled="isInstalling"
           @click="installUpdate"
         >
           {{ isInstalling ? 'インストール中...' : 'アップデート' }}
         </button>
       </div>
-      <button v-else class="version-info" @click="showAbout = true">v{{ appVersion }}</button>
+      <button v-else :class="$style.versionInfo" @click="showAbout = true">v{{ appVersion }}</button>
     </div>
   </Transition>
   <AboutDialog :show="showAbout" @close="showAbout = false" />
 </template>
 
-<style scoped>
-.settings-menu {
+<style lang="scss" module>
+.settingsMenu {
   bottom: 100%;
   right: 0;
   margin-bottom: 4px;
@@ -330,26 +329,26 @@ function syncScroll(e: Event) {
   overflow-y: auto;
 }
 
-/* ── Theme panel (toggle + sync in one block) ── */
+/* -- Theme panel (toggle + sync in one block) -- */
 
-.theme-panel {
+.themePanel {
   border-radius: var(--nd-radius-sm);
 }
 
-.toggle-area {
+.toggleArea {
   position: relative;
   padding: 22px 0;
   text-align: center;
 }
 
-.toggle-inner {
+.toggleInner {
   display: inline-block;
   text-align: left;
   padding: 0 66px;
   vertical-align: bottom;
 }
 
-.day-night-toggle {
+.dayNightToggle {
   cursor: pointer;
   display: inline-block;
   position: relative;
@@ -359,15 +358,15 @@ function syncScroll(e: Event) {
   background-color: #83d8ff;
   border-radius: 42px;
   transition: background-color 200ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
-}
 
-.day-night-toggle.checked {
-  background-color: #749dd6;
+  &.checked {
+    background-color: #749dd6;
+  }
 }
 
 /* Light / Dark labels */
-.label-before,
-.label-after {
+.labelBefore,
+.labelAfter {
   position: absolute;
   top: 15px;
   transition: color 1s ease;
@@ -376,26 +375,26 @@ function syncScroll(e: Event) {
   white-space: nowrap;
 }
 
-.label-before {
+.labelBefore {
   left: -56px;
   color: var(--nd-accent);
+
+  .checked & {
+    color: var(--nd-fg);
+  }
 }
 
-.label-after {
+.labelAfter {
   right: -52px;
   color: var(--nd-fg);
-}
 
-.day-night-toggle.checked .label-before {
-  color: var(--nd-fg);
-}
-
-.day-night-toggle.checked .label-after {
-  color: var(--nd-accent);
+  .checked & {
+    color: var(--nd-accent);
+  }
 }
 
 /* Sun/Moon handler */
-.toggle-handler {
+.toggleHandler {
   display: inline-block;
   position: relative;
   z-index: 1;
@@ -408,11 +407,11 @@ function syncScroll(e: Event) {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   transition: all 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
   transform: rotate(-45deg);
-}
 
-.day-night-toggle.checked .toggle-handler {
-  background-color: #ffe5b5;
-  transform: translate3d(40px, 0, 0) rotate(0);
+  .checked & {
+    background-color: #ffe5b5;
+    transform: translate3d(40px, 0, 0) rotate(0);
+  }
 }
 
 /* Moon craters */
@@ -422,31 +421,31 @@ function syncScroll(e: Event) {
   opacity: 0;
   transition: opacity 200ms ease-in-out;
   border-radius: 100%;
+
+  .checked & {
+    opacity: 1;
+  }
 }
 
-.crater-1 {
+.crater1 {
   top: 18px;
   left: 10px;
   width: 4px;
   height: 4px;
 }
 
-.crater-2 {
+.crater2 {
   top: 28px;
   left: 22px;
   width: 6px;
   height: 6px;
 }
 
-.crater-3 {
+.crater3 {
   top: 10px;
   left: 25px;
   width: 8px;
   height: 8px;
-}
-
-.day-night-toggle.checked .crater {
-  opacity: 1;
 }
 
 /* Stars / Sun rays */
@@ -457,108 +456,107 @@ function syncScroll(e: Event) {
   border-radius: 50%;
 }
 
-.star-1 {
+.star1 {
   top: 10px;
   left: 35px;
   z-index: 0;
   width: 30px;
   height: 3px;
+
+  .checked & {
+    width: 2px;
+    height: 2px;
+  }
 }
 
-.star-2 {
+.star2 {
   top: 18px;
   left: 28px;
   z-index: 1;
   width: 30px;
   height: 3px;
+
+  .checked & {
+    width: 4px;
+    height: 4px;
+    transform: translate3d(-5px, 0, 0);
+  }
 }
 
-.star-3 {
+.star3 {
   top: 27px;
   left: 40px;
   z-index: 0;
   width: 30px;
   height: 3px;
+
+  .checked & {
+    width: 2px;
+    height: 2px;
+    transform: translate3d(-7px, 0, 0);
+  }
 }
 
-.day-night-toggle.checked .star-1 {
-  width: 2px;
-  height: 2px;
-}
-
-.day-night-toggle.checked .star-2 {
-  width: 4px;
-  height: 4px;
-  transform: translate3d(-5px, 0, 0);
-}
-
-.day-night-toggle.checked .star-3 {
-  width: 2px;
-  height: 2px;
-  transform: translate3d(-7px, 0, 0);
-}
-
-.star-4,
-.star-5,
-.star-6 {
+.star4,
+.star5,
+.star6 {
   opacity: 0;
   transition: all 300ms 0ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
 }
 
-.star-4 {
+.star4 {
   top: 16px;
   left: 11px;
   z-index: 0;
   width: 2px;
   height: 2px;
   transform: translate3d(3px, 0, 0);
+
+  .checked & {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    transition: all 300ms 200ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
+  }
 }
 
-.star-5 {
+.star5 {
   top: 32px;
   left: 17px;
   z-index: 0;
   width: 3px;
   height: 3px;
   transform: translate3d(3px, 0, 0);
+
+  .checked & {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    transition: all 300ms 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
+  }
 }
 
-.star-6 {
+.star6 {
   top: 36px;
   left: 28px;
   z-index: 0;
   width: 2px;
   height: 2px;
   transform: translate3d(3px, 0, 0);
+
+  .checked & {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    transition: all 300ms 400ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
+  }
 }
 
-.day-night-toggle.checked .star-4,
-.day-night-toggle.checked .star-5,
-.day-night-toggle.checked .star-6 {
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
-}
+/* -- Sync device dark mode -- */
 
-.day-night-toggle.checked .star-4 {
-  transition: all 300ms 200ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
-}
-
-.day-night-toggle.checked .star-5 {
-  transition: all 300ms 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
-}
-
-.day-night-toggle.checked .star-6 {
-  transition: all 300ms 400ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
-}
-
-/* ── Sync device dark mode ── */
-
-.sync-area {
+.syncArea {
   padding: 12px 16px;
   border-top: solid 0.5px var(--nd-divider);
 }
 
-.sync-label {
+.syncLabel {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -567,19 +565,19 @@ function syncScroll(e: Event) {
   color: var(--nd-fg);
 }
 
-.sync-toggle {
+.syncToggle {
   position: relative;
   flex-shrink: 0;
+
+  input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
 }
 
-.sync-toggle input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.sync-toggle-track {
+.syncToggleTrack {
   display: block;
   width: 40px;
   height: 22px;
@@ -587,13 +585,13 @@ function syncScroll(e: Event) {
   border-radius: 11px;
   position: relative;
   transition: background var(--nd-duration-slow);
+
+  .active & {
+    background: var(--nd-accent);
+  }
 }
 
-.sync-toggle.active .sync-toggle-track {
-  background: var(--nd-accent);
-}
-
-.sync-toggle-knob {
+.syncToggleKnob {
   position: absolute;
   top: 2px;
   left: 2px;
@@ -603,24 +601,24 @@ function syncScroll(e: Event) {
   border-radius: 50%;
   transition: transform var(--nd-duration-slow);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+
+  .active & {
+    transform: translateX(18px);
+  }
 }
 
-.sync-toggle.active .sync-toggle-knob {
-  transform: translateX(18px);
-}
-
-.sync-text {
+.syncText {
   user-select: none;
   line-height: 1.3;
 }
 
-/* ── Theme selection grid ── */
+/* -- Theme selection grid -- */
 
-.theme-select-section {
+.themeSelectSection {
   padding: 8px 12px;
 }
 
-.theme-select-header {
+.themeSelectHeader {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -631,29 +629,29 @@ function syncScroll(e: Event) {
   padding: 0 4px;
 }
 
-.theme-grid {
+.themeGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 8px;
 }
 
-.theme-item {
+.themeItem {
   cursor: pointer;
   border: 2px solid var(--nd-divider);
   border-radius: var(--nd-radius-sm);
   overflow: hidden;
   transition: border-color var(--nd-duration-base);
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--nd-accent) 50%, var(--nd-divider));
+  }
 }
 
-.theme-item:hover {
-  border-color: color-mix(in srgb, var(--nd-accent) 50%, var(--nd-divider));
-}
-
-.theme-item.selected {
+.selected {
   border-color: var(--nd-accent);
 }
 
-.theme-item-preview {
+.themeItemPreview {
   display: block;
   width: calc(100% + 2px);
   margin-left: -1px;
@@ -661,7 +659,7 @@ function syncScroll(e: Event) {
   border-bottom: 1px solid var(--nd-divider);
 }
 
-.theme-item-name {
+.themeItemName {
   padding: 4px 6px;
   text-align: center;
   font-size: 0.75em;
@@ -671,9 +669,9 @@ function syncScroll(e: Event) {
   text-overflow: ellipsis;
 }
 
-/* ── Install theme ── */
+/* -- Install theme -- */
 
-.install-btn {
+.installBtn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -685,17 +683,17 @@ function syncScroll(e: Event) {
   opacity: 0.7;
   border-radius: 4px;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
-.install-btn:hover {
-  opacity: 1;
-}
-
-.install-area {
+.installArea {
   margin-top: 8px;
 }
 
-.install-textarea {
+.installTextarea {
   width: 100%;
   box-sizing: border-box;
   background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
@@ -707,58 +705,58 @@ function syncScroll(e: Event) {
   resize: vertical;
   font-family: monospace;
   min-height: 60px;
+
+  &:focus {
+    outline: none;
+    border-color: var(--nd-accent);
+  }
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.4;
+  }
 }
 
-.install-textarea:focus {
-  outline: none;
-  border-color: var(--nd-accent);
-}
-
-.install-textarea::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.4;
-}
-
-.install-error {
+.installError {
   font-size: 0.75em;
   color: var(--nd-error, #ec4137);
   margin-top: 4px;
   padding: 0 2px;
 }
 
-.install-actions {
+.installActions {
   display: flex;
   gap: 6px;
   margin-top: 6px;
   justify-content: flex-end;
 }
 
-.install-action-btn {
+.installActionBtn {
   padding: 4px 12px;
   border: none;
   border-radius: 4px;
   font-size: 0.8em;
   cursor: pointer;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.85;
+  }
 }
 
-.install-action-btn.cancel {
+.cancel {
   background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
   color: var(--nd-fg);
 }
 
-.install-action-btn.confirm {
+.confirm {
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent, #fff);
 }
 
-.install-action-btn:hover {
-  opacity: 0.85;
-}
+/* -- Custom CSS -- */
 
-/* ── Custom CSS ── */
-
-.css-active-dot {
+.cssActiveDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -766,11 +764,11 @@ function syncScroll(e: Event) {
   margin-left: auto;
 }
 
-.custom-css-section {
+.customCssSection {
   padding: 8px 12px;
 }
 
-.custom-css-header {
+.customCssHeader {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -781,20 +779,20 @@ function syncScroll(e: Event) {
   padding: 0 4px;
 }
 
-.css-editor {
+.cssEditor {
   position: relative;
   border: 1px solid var(--nd-divider);
   border-radius: var(--nd-radius-sm);
   overflow: hidden;
   background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
   transition: border-color var(--nd-duration-base);
+
+  &:focus-within {
+    border-color: var(--nd-accent);
+  }
 }
 
-.css-editor:focus-within {
-  border-color: var(--nd-accent);
-}
-
-.css-highlight {
+.cssHighlight {
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -806,23 +804,23 @@ function syncScroll(e: Event) {
   tab-size: 2;
   white-space: pre-wrap;
   word-wrap: break-word;
+
+  :deep(pre) {
+    margin: 0;
+    padding: 0;
+    background: transparent !important;
+    font-size: inherit;
+    font-family: inherit;
+    line-height: inherit;
+  }
+
+  :deep(code) {
+    font-family: inherit;
+    line-height: inherit;
+  }
 }
 
-.css-highlight :deep(pre) {
-  margin: 0;
-  padding: 0;
-  background: transparent !important;
-  font-size: inherit;
-  font-family: inherit;
-  line-height: inherit;
-}
-
-.css-highlight :deep(code) {
-  font-family: inherit;
-  line-height: inherit;
-}
-
-.custom-css-textarea {
+.customCssTextarea {
   position: relative;
   width: 100%;
   box-sizing: border-box;
@@ -838,27 +836,27 @@ function syncScroll(e: Event) {
   min-height: 80px;
   tab-size: 2;
   z-index: 1;
+
+  &:focus {
+    outline: none;
+  }
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.4;
+  }
 }
 
-.custom-css-textarea:focus {
-  outline: none;
-}
-
-.custom-css-textarea::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.4;
-}
-
-.custom-css-actions {
+.customCssActions {
   display: flex;
   gap: 6px;
   margin-top: 6px;
   justify-content: flex-end;
 }
 
-/* ── Menu items (wallpaper etc.) ── */
+/* -- Menu items (wallpaper etc.) -- */
 
-.settings-menu-item {
+.settingsMenuItem {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -868,41 +866,36 @@ function syncScroll(e: Event) {
   line-height: 20px;
   color: var(--nd-fg);
   position: relative;
+
+  &::before {
+    content: '';
+    display: block;
+    position: absolute;
+    inset: 2px 8px;
+    border-radius: var(--nd-radius-sm);
+    transition: background var(--nd-duration-fast);
+  }
+
+  &:hover::before {
+    background: var(--nd-accent-hover);
+  }
+
+  i {
+    position: relative;
+  }
 }
 
-.settings-menu-item::before {
-  content: '';
-  display: block;
-  position: absolute;
-  inset: 2px 8px;
-  border-radius: var(--nd-radius-sm);
-  transition: background var(--nd-duration-fast);
-}
-
-.settings-menu-item:hover::before {
-  background: var(--nd-accent-hover);
-}
-
-.settings-menu-divider {
+.settingsMenuDivider {
   height: 1px;
   background: var(--nd-divider);
   margin: 4px 12px;
 }
 
-.settings-menu-label {
+.settingsMenuLabel {
   position: relative;
 }
 
-.settings-menu-item i {
-  position: relative;
-}
-
-.settings-menu-enter-active,
-.settings-menu-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
-
-.version-info {
+.versionInfo {
   display: block;
   width: 100%;
   border: none;
@@ -914,31 +907,31 @@ function syncScroll(e: Event) {
   opacity: 0.4;
   cursor: pointer;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.7;
+  }
 }
 
-.version-info:hover {
-  opacity: 0.7;
-}
-
-.update-section {
+.updateSection {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
 }
 
-.update-text {
+.updateText {
   flex: 1;
   min-width: 0;
 }
 
-.update-version {
+.updateVersion {
   font-size: 0.8em;
   color: var(--nd-accent);
   font-weight: 500;
 }
 
-.update-btn {
+.updateBtn {
   flex-shrink: 0;
   padding: 4px 12px;
   border: none;
@@ -949,25 +942,19 @@ function syncScroll(e: Event) {
   cursor: pointer;
   white-space: nowrap;
   transition: opacity var(--nd-duration-base);
-}
 
-.update-btn:hover:not(:disabled) {
-  opacity: 0.85;
-}
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
 
-.update-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.settings-menu-enter-from,
-.settings-menu-leave-to {
-  opacity: 0;
-  transform: translateY(4px) scale(0.97);
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 }
 
 @media (max-width: 500px) {
-  .settings-menu {
+  .settingsMenu {
     position: fixed;
     bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
     left: 8px;
@@ -979,37 +966,56 @@ function syncScroll(e: Event) {
     max-height: 70vh;
   }
 
-  .settings-menu-item {
+  .settingsMenuItem {
     padding: 10px 16px;
     min-height: 44px;
   }
+}
 
+:global(html.nd-mobile) {
+  .settingsMenu {
+    position: fixed;
+    bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    min-width: 0;
+    border-radius: 12px;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+    max-height: 70vh;
+  }
+
+  .settingsMenuItem {
+    padding: 10px 16px;
+    min-height: 44px;
+  }
+}
+</style>
+
+<style lang="scss">
+/* Vue transition classes (must be global) */
+.settings-menu-enter-active,
+.settings-menu-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.settings-menu-enter-from,
+.settings-menu-leave-to {
+  opacity: 0;
+  transform: translateY(4px) scale(0.97);
+}
+
+@media (max-width: 500px) {
   .settings-menu-enter-from,
   .settings-menu-leave-to {
     transform: translateY(8px) scale(0.97);
   }
 }
 
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .settings-menu {
-  position: fixed;
-  bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
-  left: 8px;
-  right: 8px;
-  max-width: none;
-  min-width: 0;
-  border-radius: 12px;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
-  max-height: 70vh;
-}
-
-html.nd-mobile .settings-menu-item {
-  padding: 10px 16px;
-  min-height: 44px;
-}
-
-html.nd-mobile .settings-menu-enter-from,
-html.nd-mobile .settings-menu-leave-to {
-  transform: translateY(8px) scale(0.97);
+html.nd-mobile {
+  .settings-menu-enter-from,
+  .settings-menu-leave-to {
+    transform: translateY(8px) scale(0.97);
+  }
 }
 </style>

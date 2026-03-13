@@ -354,40 +354,40 @@ async function handlePosted(editedNoteId?: string) {
 </script>
 
 <template>
-  <div class="user-profile-content" @scroll="onScroll">
-    <div v-if="isLoading" class="state-message">読み込み中...</div>
+  <div :class="$style.userProfileContent" @scroll="onScroll">
+    <div v-if="isLoading" :class="$style.stateMessage">読み込み中...</div>
 
-    <div v-else-if="error" class="state-message state-error">
+    <div v-else-if="error" :class="[$style.stateMessage, $style.stateError]">
       <p>{{ error.message }}</p>
     </div>
 
     <template v-else-if="user">
-      <div class="profile-container">
+      <div :class="$style.profileContainer">
         <!-- Banner area -->
-        <div class="banner-area">
+        <div :class="$style.bannerArea">
           <div
             v-if="user.bannerUrl"
-            class="banner"
+            :class="$style.banner"
             :style="{ backgroundImage: safeCssUrl(user.bannerUrl) }"
           />
-          <div v-else class="banner banner-empty" />
+          <div v-else :class="[$style.banner, $style.bannerEmpty]" />
 
           <!-- Gradient fade -->
-          <div class="banner-fade" />
+          <div :class="$style.bannerFade" />
 
           <!-- "Follows you" badge on banner -->
-          <div v-if="user.isFollowed" class="followed-badge">フォローされています</div>
+          <div v-if="user.isFollowed" :class="$style.followedBadge">フォローされています</div>
 
           <!-- Name overlay on banner (desktop) -->
-          <div class="banner-title">
-            <div class="banner-name">
+          <div :class="$style.bannerTitle">
+            <div :class="$style.bannerName">
               <MkMfm v-if="user.name" :text="user.name" :emojis="user.emojis" :server-host="account?.host" />
               <template v-else>{{ user.username }}</template>
             </div>
-            <div class="banner-bottom">
-              <span class="banner-username">@{{ user.username }}{{ user.host ? `@${user.host}` : '' }}</span>
-              <span v-if="user.isBot" class="banner-badge">Bot</span>
-              <span v-if="user.isCat" class="banner-badge">Cat</span>
+            <div :class="$style.bannerBottom">
+              <span :class="$style.bannerUsername">@{{ user.username }}{{ user.host ? `@${user.host}` : '' }}</span>
+              <span v-if="user.isBot" :class="$style.bannerBadge">Bot</span>
+              <span v-if="user.isCat" :class="$style.bannerBadge">Cat</span>
             </div>
           </div>
 
@@ -398,21 +398,21 @@ async function handlePosted(editedNoteId?: string) {
             :size="120"
             indicator
             :online-status="user.onlineStatus"
-            class="user-avatar"
+            :class="$style.userAvatar"
           />
 
           <!-- Banner actions -->
-          <div class="banner-actions">
-            <button class="_button banner-action-btn" title="QRコード" @click="openQrCode">
+          <div :class="$style.bannerActions">
+            <button class="_button" :class="$style.bannerActionBtn" title="QRコード" @click="openQrCode">
               <i class="ti ti-qrcode" />
             </button>
-            <button class="_button banner-action-btn" :title="isOwnProfile ? 'プロフィールを編集' : 'Web UIで開く'" @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}${user.host ? `@${user.host}` : ''}`}`)">
+            <button class="_button" :class="$style.bannerActionBtn" :title="isOwnProfile ? 'プロフィールを編集' : 'Web UIで開く'" @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}${user.host ? `@${user.host}` : ''}`}`)">
               <i :class="isOwnProfile ? 'ti ti-pencil' : 'ti ti-external-link'" />
             </button>
             <button
               v-if="!isOwnProfile"
-              class="banner-follow-btn _button"
-              :class="{ following: user.isFollowing }"
+              class="_button"
+              :class="[$style.bannerFollowBtn, { [$style.following]: user.isFollowing }]"
               :disabled="isFollowLoading"
               @click="handleToggleFollow"
             >
@@ -422,87 +422,87 @@ async function handlePosted(editedNoteId?: string) {
         </div>
 
         <!-- Mobile title (shown below avatar on narrow screens) -->
-        <div class="mobile-title">
-          <div class="mobile-name">
+        <div :class="$style.mobileTitle">
+          <div :class="$style.mobileName">
             <MkMfm v-if="user.name" :text="user.name" :emojis="user.emojis" :server-host="account?.host" />
             <template v-else>{{ user.username }}</template>
           </div>
-          <div class="mobile-username">@{{ user.username }}{{ user.host ? `@${user.host}` : '' }}</div>
-          <div v-if="user.isBot || user.isCat" class="mobile-badges">
-            <span v-if="user.isBot" class="badge">Bot</span>
-            <span v-if="user.isCat" class="badge badge-cat">Cat</span>
+          <div :class="$style.mobileUsername">@{{ user.username }}{{ user.host ? `@${user.host}` : '' }}</div>
+          <div v-if="user.isBot || user.isCat" :class="$style.mobileBadges">
+            <span v-if="user.isBot" :class="$style.badge">Bot</span>
+            <span v-if="user.isCat" :class="[$style.badge, $style.badgeCat]">Cat</span>
           </div>
         </div>
 
         <!-- Roles -->
-        <div v-if="user.roles?.length" class="roles">
+        <div v-if="user.roles?.length" :class="$style.roles">
           <span
             v-for="role in user.roles"
             :key="role.id"
-            class="role"
+            :class="$style.role"
             :style="role.color ? { borderColor: role.color } : {}"
           >
-            <img v-if="role.iconUrl" :src="role.iconUrl" class="role-icon" />
+            <img v-if="role.iconUrl" :src="role.iconUrl" :class="$style.roleIcon" />
             {{ role.name }}
           </span>
         </div>
 
         <!-- Description -->
-        <div v-if="user.description" class="description">
+        <div v-if="user.description" :class="$style.description">
           <MkMfm :text="user.description" :emojis="user.emojis" :server-host="account?.host" />
         </div>
 
         <!-- Custom fields -->
-        <div v-if="user.fields?.length" class="profile-fields">
-          <div v-for="(field, i) in user.fields" :key="i" class="profile-field">
-            <div class="profile-field-name">{{ field.name }}</div>
-            <div class="profile-field-value">
+        <div v-if="user.fields?.length" :class="$style.profileFields">
+          <div v-for="(field, i) in user.fields" :key="i" :class="$style.profileField">
+            <div :class="$style.profileFieldName">{{ field.name }}</div>
+            <div :class="$style.profileFieldValue">
               <MkMfm :text="field.value" :emojis="user.emojis" :server-host="account?.host" />
             </div>
           </div>
         </div>
 
         <!-- Profile info (birthday, location, url, registration date) -->
-        <div v-if="user.birthday || user.location || user.url || user.createdAt" class="profile-info">
-          <div v-if="user.birthday" class="profile-info-item">
+        <div v-if="user.birthday || user.location || user.url || user.createdAt" :class="$style.profileInfo">
+          <div v-if="user.birthday" :class="$style.profileInfoItem">
             <i class="ti ti-cake" />
             <span>{{ formatBirthday(user.birthday) }}</span>
           </div>
-          <div v-if="user.location" class="profile-info-item">
+          <div v-if="user.location" :class="$style.profileInfoItem">
             <i class="ti ti-map-pin" />
             <span>{{ user.location }}</span>
           </div>
-          <div v-if="user.url" class="profile-info-item">
+          <div v-if="user.url" :class="$style.profileInfoItem">
             <i class="ti ti-link" />
-            <button class="_button profile-info-link" @click="openUrl(user.url!)">
+            <button class="_button" :class="$style.profileInfoLink" @click="openUrl(user.url!)">
               {{ displayUrl(user.url!) }}
             </button>
           </div>
-          <div v-if="user.createdAt" class="profile-info-item">
+          <div v-if="user.createdAt" :class="$style.profileInfoItem">
             <i class="ti ti-calendar" />
             <span>{{ formatDate(user.createdAt) }}</span>
           </div>
         </div>
 
         <!-- Stats -->
-        <div class="stats">
-          <div class="stat">
+        <div :class="$style.stats">
+          <div :class="$style.stat">
             <b>{{ formatCount(user.notesCount) }}</b>
             <span>ノート</span>
           </div>
-          <button class="stat stat-link _button" @click="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}/following`)">
+          <button :class="[$style.stat, $style.statLink]" class="_button" @click="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}/following`)">
             <b>{{ formatCount(user.followingCount) }}</b>
             <span>フォロー</span>
           </button>
-          <button class="stat stat-link _button" @click="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}/followers`)">
+          <button :class="[$style.stat, $style.statLink]" class="_button" @click="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}/followers`)">
             <b>{{ formatCount(user.followersCount) }}</b>
             <span>フォロワー</span>
           </button>
         </div>
 
         <!-- Pinned notes -->
-        <div v-if="pinnedNotes.length > 0" class="pinned-section">
-          <div class="pinned-header">
+        <div v-if="pinnedNotes.length > 0" :class="$style.pinnedSection">
+          <div :class="$style.pinnedHeader">
             <i class="ti ti-pin" />
             ピン留め
           </div>
@@ -522,13 +522,13 @@ async function handlePosted(editedNoteId?: string) {
         </div>
 
         <!-- Notes tabs -->
-        <div class="notes-section">
-          <div class="notes-tabs">
+        <div :class="$style.notesSection">
+          <div :class="$style.notesTabs">
             <button
               v-for="tab in PROFILE_TABS"
               :key="tab.key"
-              class="notes-tab-item _button"
-              :class="{ active: activeTab === tab.key }"
+              class="_button"
+              :class="[$style.notesTabItem, { [$style.active]: activeTab === tab.key }]"
               @click="activeTab = tab.key"
             >
               <i :class="tab.icon" />
@@ -550,11 +550,11 @@ async function handlePosted(editedNoteId?: string) {
             @pin="handlePin"
           />
 
-          <div v-if="isLoadingNotes" class="state-message">
+          <div v-if="isLoadingNotes" :class="$style.stateMessage">
             読み込み中...
           </div>
 
-          <div v-if="!isLoadingNotes && notes.length === 0" class="state-message">
+          <div v-if="!isLoadingNotes && notes.length === 0" :class="$style.stateMessage">
             ノートはありません
           </div>
         </div>
@@ -572,20 +572,20 @@ async function handlePosted(editedNoteId?: string) {
         @posted="handlePosted"
       />
 
-      <div v-if="showQrCode" class="qr-overlay" @click="showQrCode = false">
-        <div class="qr-modal" @click.stop>
-          <button class="_button qr-close-btn" @click="showQrCode = false">
+      <div v-if="showQrCode" :class="$style.qrOverlay" @click="showQrCode = false">
+        <div :class="$style.qrModal" @click.stop>
+          <button class="_button" :class="$style.qrCloseBtn" @click="showQrCode = false">
             <i class="ti ti-x" />
           </button>
-          <div ref="qrCodeContainerEl" class="qr-canvas" />
-          <div class="qr-user">
-            <img v-if="user?.avatarUrl" :src="user.avatarUrl" class="qr-avatar" />
-            <div class="qr-user-info">
-              <div class="qr-name">
+          <div ref="qrCodeContainerEl" :class="$style.qrCanvas" />
+          <div :class="$style.qrUser">
+            <img v-if="user?.avatarUrl" :src="user.avatarUrl" :class="$style.qrAvatar" />
+            <div :class="$style.qrUserInfo">
+              <div :class="$style.qrName">
                 <MkMfm v-if="user?.name" :text="user.name" :emojis="user?.emojis" :server-host="account?.host" />
                 <template v-else>{{ user?.username }}</template>
               </div>
-              <div class="qr-acct">@{{ user?.username }}@{{ account?.host }}</div>
+              <div :class="$style.qrAcct">@{{ user?.username }}@{{ account?.host }}</div>
             </div>
           </div>
         </div>
@@ -594,22 +594,20 @@ async function handlePosted(editedNoteId?: string) {
   </div>
 </template>
 
-<style scoped>
-.user-profile-content {
+<style lang="scss" module>
+.userProfileContent {
   height: 100%;
   overflow-y: auto;
   background: var(--nd-bg);
 }
 
-/* Profile container with container queries */
-.profile-container {
+.profileContainer {
   max-width: 800px;
   margin: 0 auto;
   container-type: inline-size;
 }
 
-/* Banner */
-.banner-area {
+.bannerArea {
   position: relative;
   --bannerHeight: 250px;
 }
@@ -622,11 +620,11 @@ async function handlePosted(editedNoteId?: string) {
   background-position: center 50%;
 }
 
-.banner-empty {
+.bannerEmpty {
   background: linear-gradient(135deg, #4c5e6d, #6b8a9e);
 }
 
-.banner-fade {
+.bannerFade {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -636,8 +634,7 @@ async function handlePosted(editedNoteId?: string) {
   pointer-events: none;
 }
 
-/* "Follows you" badge on banner */
-.followed-badge {
+.followedBadge {
   position: absolute;
   top: 12px;
   left: 12px;
@@ -651,8 +648,7 @@ async function handlePosted(editedNoteId?: string) {
   -webkit-backdrop-filter: blur(var(--nd-blur-panel));
 }
 
-/* Name overlay on banner (desktop only) */
-.banner-title {
+.bannerTitle {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -662,7 +658,7 @@ async function handlePosted(editedNoteId?: string) {
   pointer-events: none;
 }
 
-.banner-name {
+.bannerName {
   line-height: 32px;
   font-weight: bold;
   font-size: 1.8em;
@@ -672,18 +668,18 @@ async function handlePosted(editedNoteId?: string) {
   white-space: nowrap;
 }
 
-.banner-bottom {
+.bannerBottom {
   line-height: 20px;
   opacity: 0.8;
   filter: drop-shadow(0 0 4px #000);
 }
 
-.banner-username {
+.bannerUsername {
   font-weight: bold;
   margin-right: 16px;
 }
 
-.banner-badge {
+.bannerBadge {
   display: inline-block;
   margin-right: 8px;
   padding: 1px 8px;
@@ -692,8 +688,7 @@ async function handlePosted(editedNoteId?: string) {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Banner actions (top-right, Misskey style) */
-.banner-actions {
+.bannerActions {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -708,7 +703,7 @@ async function handlePosted(editedNoteId?: string) {
   z-index: 3;
 }
 
-.banner-action-btn {
+.bannerActionBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -719,7 +714,7 @@ async function handlePosted(editedNoteId?: string) {
   font-size: 16px;
 }
 
-.banner-follow-btn {
+.bannerFollowBtn {
   padding: 0 8px 0 12px;
   height: 31px;
   border-radius: 32px;
@@ -728,23 +723,22 @@ async function handlePosted(editedNoteId?: string) {
   color: #fff;
   background: var(--nd-accent);
   margin-left: 4px;
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+
+  &.following {
+    background: var(--nd-accent);
+    color: #fff;
+  }
 }
 
-.banner-follow-btn:hover {
-  opacity: 0.85;
-}
-
-.banner-follow-btn:disabled {
-  opacity: 0.5;
-}
-
-.banner-follow-btn.following {
-  background: var(--nd-accent);
-  color: #fff;
-}
-
-/* Avatar */
-.user-avatar {
+.userAvatar {
   position: absolute;
   top: 170px;
   left: 16px;
@@ -753,12 +747,10 @@ async function handlePosted(editedNoteId?: string) {
   z-index: 2;
 }
 
-/* Mobile title (hidden on desktop) */
-.mobile-title {
+.mobileTitle {
   display: none;
 }
 
-/* Description */
 .description {
   padding: 24px 24px 0 154px;
   margin: 0;
@@ -768,7 +760,6 @@ async function handlePosted(editedNoteId?: string) {
   word-break: break-word;
 }
 
-/* Roles (Misskey-style, border-based) */
 .roles {
   padding: 12px 24px 0 154px;
   display: flex;
@@ -786,7 +777,6 @@ async function handlePosted(editedNoteId?: string) {
   border-radius: var(--nd-radius-full);
 }
 
-/* Stats */
 .stats {
   display: flex;
   padding: 24px;
@@ -797,36 +787,35 @@ async function handlePosted(editedNoteId?: string) {
 .stat {
   flex: 1;
   text-align: center;
+
+  > b {
+    display: block;
+    line-height: 16px;
+    font-size: 1.1em;
+    color: var(--nd-fgHighlighted);
+  }
+
+  > span {
+    font-size: 70%;
+    opacity: 0.6;
+  }
 }
 
-.stat > b {
-  display: block;
-  line-height: 16px;
-  font-size: 1.1em;
-  color: var(--nd-fgHighlighted);
-}
-
-.stat > span {
-  font-size: 70%;
-  opacity: 0.6;
-}
-
-.stat-link {
+.statLink {
   cursor: pointer;
   border-radius: var(--nd-radius-sm);
   padding: 4px;
+
+  &:hover {
+    background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.03));
+  }
 }
 
-.stat-link:hover {
-  background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.03));
-}
-
-/* Pinned notes section */
-.pinned-section {
+.pinnedSection {
   border-top: solid 0.5px var(--nd-divider);
 }
 
-.pinned-header {
+.pinnedHeader {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -835,18 +824,17 @@ async function handlePosted(editedNoteId?: string) {
   font-weight: bold;
   color: var(--nd-fg);
   opacity: 0.7;
+
+  .ti {
+    font-size: 1em;
+  }
 }
 
-.pinned-header .ti {
-  font-size: 1em;
-}
-
-/* Notes section */
-.notes-section {
+.notesSection {
   border-top: solid 0.5px var(--nd-divider);
 }
 
-.notes-tabs {
+.notesTabs {
   display: flex;
   border-bottom: solid 0.5px var(--nd-divider);
   position: sticky;
@@ -855,7 +843,7 @@ async function handlePosted(editedNoteId?: string) {
   z-index: 5;
 }
 
-.notes-tab-item {
+.notesTabItem {
   flex: 1;
   display: flex;
   align-items: center;
@@ -868,23 +856,23 @@ async function handlePosted(editedNoteId?: string) {
   opacity: 0.6;
   border-bottom: 2px solid transparent;
   transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.8;
+  }
+
+  &.active {
+    color: var(--nd-accent);
+    opacity: 1;
+    border-bottom-color: var(--nd-accent);
+  }
+
+  i {
+    font-size: 1em;
+  }
 }
 
-.notes-tab-item:hover {
-  opacity: 0.8;
-}
-
-.notes-tab-item.active {
-  color: var(--nd-accent);
-  opacity: 1;
-  border-bottom-color: var(--nd-accent);
-}
-
-.notes-tab-item i {
-  font-size: 1em;
-}
-
-.state-message {
+.stateMessage {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -894,12 +882,11 @@ async function handlePosted(editedNoteId?: string) {
   font-size: 0.9em;
 }
 
-.state-error {
+.stateError {
   color: var(--nd-love);
   opacity: 1;
 }
 
-/* Badges */
 .badge {
   font-size: 0.75em;
   padding: 2px 8px;
@@ -908,33 +895,32 @@ async function handlePosted(editedNoteId?: string) {
   color: var(--nd-fg);
 }
 
-.badge-cat {
+.badgeCat {
   background: var(--nd-accentedBg);
   color: var(--nd-accent);
 }
 
-.role-icon {
+.roleIcon {
   width: 1.3em;
   height: 1.3em;
   object-fit: contain;
 }
 
-/* Profile fields (key-value list) */
-.profile-fields {
+.profileFields {
   padding: 16px 24px 0 154px;
 }
 
-.profile-field {
+.profileField {
   display: flex;
   border-bottom: solid 0.5px var(--nd-divider);
   padding: 10px 0;
+
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
-.profile-field:last-child {
-  border-bottom: none;
-}
-
-.profile-field-name {
+.profileFieldName {
   flex: 0 0 120px;
   font-size: 0.85em;
   font-weight: bold;
@@ -942,44 +928,42 @@ async function handlePosted(editedNoteId?: string) {
   word-break: break-word;
 }
 
-.profile-field-value {
+.profileFieldValue {
   flex: 1;
   font-size: 0.85em;
   word-break: break-word;
   min-width: 0;
 }
 
-/* Profile info (birthday, location, url) */
-.profile-info {
+.profileInfo {
   padding: 8px 24px 0 154px;
   display: flex;
   flex-wrap: wrap;
   gap: 4px 16px;
 }
 
-.profile-info-item {
+.profileInfoItem {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: 0.8em;
   opacity: 0.6;
+
+  i {
+    font-size: 1em;
+  }
 }
 
-.profile-info-item i {
-  font-size: 1em;
-}
-
-.profile-info-link {
+.profileInfoLink {
   color: var(--nd-accent);
   text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
-.profile-info-link:hover {
-  text-decoration: underline;
-}
-
-/* QR code modal */
-.qr-overlay {
+.qrOverlay {
   position: fixed;
   inset: 0;
   z-index: var(--nd-z-popup);
@@ -992,14 +976,14 @@ async function handlePosted(editedNoteId?: string) {
   -webkit-backdrop-filter: blur(var(--nd-blur-content));
 }
 
-.qr-modal {
+.qrModal {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.qr-close-btn {
+.qrCloseBtn {
   position: absolute;
   top: -40px;
   right: -40px;
@@ -1012,25 +996,25 @@ async function handlePosted(editedNoteId?: string) {
   color: #fff;
   background: rgba(255, 255, 255, 0.15);
   font-size: 16px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
 }
 
-.qr-close-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.qr-canvas {
+.qrCanvas {
   width: 230px;
   aspect-ratio: 1;
   border-radius: 12px;
   overflow: hidden;
+
+  :deep(canvas) {
+    width: 100% !important;
+    height: 100% !important;
+  }
 }
 
-.qr-canvas :deep(canvas) {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.qr-user {
+.qrUser {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1040,7 +1024,7 @@ async function handlePosted(editedNoteId?: string) {
   max-width: 230px;
 }
 
-.qr-avatar {
+.qrAvatar {
   width: 58px;
   height: 58px;
   border-radius: 50%;
@@ -1048,12 +1032,12 @@ async function handlePosted(editedNoteId?: string) {
   margin-bottom: 16px;
 }
 
-.qr-user-info {
+.qrUserInfo {
   overflow: hidden;
   max-width: 100%;
 }
 
-.qr-name {
+.qrName {
   font-weight: bold;
   font-size: 1.1em;
   overflow: hidden;
@@ -1061,7 +1045,7 @@ async function handlePosted(editedNoteId?: string) {
   white-space: nowrap;
 }
 
-.qr-acct {
+.qrAcct {
   font-size: 0.9em;
   opacity: 0.7;
   overflow: hidden;
@@ -1069,21 +1053,24 @@ async function handlePosted(editedNoteId?: string) {
   white-space: nowrap;
 }
 
-/* Mobile responsive via container query */
+.mobileName {}
+.mobileUsername {}
+.mobileBadges {}
+
 @container (max-width: 500px) {
-  .banner-area {
+  .bannerArea {
     --bannerHeight: 140px;
   }
 
-  .banner-fade {
+  .bannerFade {
     display: none;
   }
 
-  .banner-title {
+  .bannerTitle {
     display: none;
   }
 
-  .user-avatar {
+  .userAvatar {
     top: 90px;
     left: 0;
     right: 0;
@@ -1092,26 +1079,26 @@ async function handlePosted(editedNoteId?: string) {
     margin: auto;
   }
 
-  .mobile-title {
+  .mobileTitle {
     display: block;
     text-align: center;
     padding: 50px 8px 16px 8px;
     border-bottom: solid 0.5px var(--nd-divider);
   }
 
-  .mobile-name {
+  .mobileName {
     font-weight: bold;
     font-size: 1.3em;
     color: var(--nd-fgHighlighted);
   }
 
-  .mobile-username {
+  .mobileUsername {
     font-size: 0.85em;
     opacity: 0.6;
     margin-top: 2px;
   }
 
-  .mobile-badges {
+  .mobileBadges {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
@@ -1124,7 +1111,7 @@ async function handlePosted(editedNoteId?: string) {
     justify-content: center;
   }
 
-  .banner-actions {
+  .bannerActions {
     top: 8px;
     right: 8px;
     padding: 6px;
@@ -1135,20 +1122,20 @@ async function handlePosted(editedNoteId?: string) {
     text-align: center;
   }
 
-  .profile-fields {
+  .profileFields {
     padding: 16px;
   }
 
-  .profile-field {
+  .profileField {
     flex-direction: column;
     gap: 2px;
   }
 
-  .profile-field-name {
+  .profileFieldName {
     flex: none;
   }
 
-  .profile-info {
+  .profileInfo {
     padding: 8px 16px 0;
     justify-content: center;
   }
@@ -1157,8 +1144,12 @@ async function handlePosted(editedNoteId?: string) {
     padding: 16px;
   }
 
-  .notes-tab-item {
+  .notesTabItem {
     min-height: 44px;
   }
 }
+
+/* Empty placeholder classes for dynamic binding */
+.active {}
+.following {}
 </style>

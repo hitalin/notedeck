@@ -72,8 +72,8 @@ function closeLightbox() {
 
 <template>
   <!-- Banner: Audio files (outside grid, like Misskey's MkMediaBanner) -->
-  <div v-for="file in audioFiles" :key="file.id" class="media-banner">
-    <div v-if="file.isSensitive && !revealedIds.has(file.id)" class="banner-sensitive" @click="toggleSensitive(file, $event)">
+  <div v-for="file in audioFiles" :key="file.id" :class="$style.mediaBanner">
+    <div v-if="file.isSensitive && !revealedIds.has(file.id)" :class="$style.bannerSensitive" @click="toggleSensitive(file, $event)">
       <svg viewBox="0 0 24 24" width="16" height="16">
         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
             stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
@@ -82,17 +82,17 @@ function closeLightbox() {
       <b>NSFW</b>
       <span>{{ file.name }}</span>
     </div>
-    <div v-else class="banner-audio">
-      <audio controls preload="metadata" class="audio-player" @click.stop>
+    <div v-else :class="$style.bannerAudio">
+      <audio controls preload="metadata" :class="$style.audioPlayer" @click.stop>
         <source :src="safeMediaSrc(file.url)">
       </audio>
-      <span class="audio-name">{{ file.name }}</span>
+      <span :class="$style.audioName">{{ file.name }}</span>
     </div>
   </div>
 
   <!-- Banner: Other files (download link, like Misskey's MkMediaBanner) -->
-  <div v-for="file in otherFiles" :key="file.id" class="media-banner">
-    <a :href="safeMediaSrc(file.url)" :download="file.name" class="banner-download" @click.stop>
+  <div v-for="file in otherFiles" :key="file.id" :class="$style.mediaBanner">
+    <a :href="safeMediaSrc(file.url)" :download="file.name" :class="$style.bannerDownload" @click.stop>
       <svg viewBox="0 0 24 24" width="20" height="20">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
         <polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
@@ -103,20 +103,18 @@ function closeLightbox() {
   </div>
 
   <!-- Grid: Previewable files only (image + video) -->
-  <div v-if="previewableFiles.length > 0" class="media-grid" :class="`media-count-${previewableCount}`">
+  <div v-if="previewableFiles.length > 0" :class="[$style.mediaGrid, $style[`mediaCount${previewableCount}`]]">
     <div
       v-for="file in previewableFiles"
       :key="file.id"
-      class="media-cell"
-      :class="{ 'is-sensitive': file.isSensitive && !revealedIds.has(file.id), 'is-loaded': loadedIds.has(file.id) }"
+      :class="[$style.mediaCell, { [$style.isSensitive]: file.isSensitive && !revealedIds.has(file.id), [$style.isLoaded]: loadedIds.has(file.id) }]"
       @click="openLightbox(file, $event)"
     >
       <template v-if="isImage(file)">
         <img
           :src="safeMediaSrc(file.thumbnailUrl) || safeMediaSrc(file.url)"
           :alt="file.name"
-          class="media-image"
-          :class="{ 'is-loaded': loadedIds.has(file.id) }"
+          :class="[$style.mediaImage, { [$style.isLoaded]: loadedIds.has(file.id) }]"
           loading="lazy"
           decoding="async"
           @load="onImageLoaded(file.id)"
@@ -125,7 +123,7 @@ function closeLightbox() {
       <template v-else-if="isVideo(file)">
         <video
           :src="safeMediaSrc(file.url)"
-          class="media-video"
+          :class="$style.mediaVideo"
           preload="metadata"
           controls
           @click.stop
@@ -149,7 +147,7 @@ function closeLightbox() {
       <!-- Revealed: show hide button -->
       <button
         v-if="file.isSensitive && revealedIds.has(file.id)"
-        class="sensitive-hide-btn"
+        :class="$style.sensitiveHideBtn"
         @click.stop="toggleSensitive(file, $event)"
       >
         <svg viewBox="0 0 24 24" width="14" height="14">
@@ -163,8 +161,8 @@ function closeLightbox() {
 
   <!-- Lightbox -->
   <Teleport to="body">
-    <div v-if="lightboxFile" class="lightbox-overlay" @click="closeLightbox">
-      <button class="lightbox-close" @click="closeLightbox">
+    <div v-if="lightboxFile" :class="$style.lightboxOverlay" @click="closeLightbox">
+      <button :class="$style.lightboxClose" @click="closeLightbox">
         <svg viewBox="0 0 24 24" width="24" height="24">
           <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
         </svg>
@@ -173,13 +171,13 @@ function closeLightbox() {
         v-if="isImage(lightboxFile)"
         :src="safeMediaSrc(lightboxFile.url)"
         :alt="lightboxFile.name"
-        class="lightbox-image"
+        :class="$style.lightboxImage"
         @click.stop
       />
       <video
         v-else-if="isVideo(lightboxFile)"
         :src="safeMediaSrc(lightboxFile.url)"
-        class="lightbox-video"
+        :class="$style.lightboxVideo"
         controls
         autoplay
         @click.stop
@@ -188,28 +186,28 @@ function closeLightbox() {
   </Teleport>
 </template>
 
-<style scoped>
+<style lang="scss" module>
 /* Banner: Audio & Other files (like Misskey's MkMediaBanner) */
-.media-banner {
+.mediaBanner {
   margin-top: 8px;
   border-radius: var(--nd-radius-md);
   overflow: hidden;
   border: 0.5px solid var(--nd-border, rgba(128, 128, 128, 0.2));
 }
 
-.banner-audio {
+.bannerAudio {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 8px 12px;
 }
 
-.audio-player {
+.audioPlayer {
   width: 100%;
   height: 32px;
 }
 
-.audio-name {
+.audioName {
   font-size: 0.75em;
   opacity: 0.6;
   overflow: hidden;
@@ -217,7 +215,7 @@ function closeLightbox() {
   white-space: nowrap;
 }
 
-.banner-sensitive {
+.bannerSensitive {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -226,16 +224,16 @@ function closeLightbox() {
   color: #fff;
   font-size: 0.8em;
   cursor: pointer;
+
+  span {
+    opacity: 0.7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
-.banner-sensitive span {
-  opacity: 0.7;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.banner-download {
+.bannerDownload {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -245,19 +243,19 @@ function closeLightbox() {
   text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
-}
 
-.banner-download b {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+  b {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
-.banner-download:hover {
-  background: var(--nd-bg-hover, rgba(128, 128, 128, 0.1));
+  &:hover {
+    background: var(--nd-bg-hover, rgba(128, 128, 128, 0.1));
+  }
 }
 
 /* Grid: Image + Video */
-.media-grid {
+.mediaGrid {
   display: grid;
   gap: 8px;
   margin-top: 8px;
@@ -266,33 +264,37 @@ function closeLightbox() {
   contain: content;
 }
 
-.media-count-1 {
+.mediaCount1 {
   grid-template-columns: 1fr;
+
+  > .mediaCell {
+    max-height: 460px;
+  }
 }
 
-.media-count-2 {
+.mediaCount2 {
   grid-template-columns: 1fr 1fr;
 }
 
-.media-count-3 {
+.mediaCount3 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+
+  > .mediaCell:first-child {
+    grid-row: 1 / 3;
+  }
+}
+
+.mediaCount4 {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
 }
 
-.media-count-3 > .media-cell:first-child {
-  grid-row: 1 / 3;
-}
-
-.media-count-4 {
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-}
-
-.media-count-many {
+.mediaCountmany {
   grid-template-columns: 1fr 1fr;
 }
 
-.media-cell {
+.mediaCell {
   position: relative;
   overflow: hidden;
   cursor: pointer;
@@ -301,27 +303,23 @@ function closeLightbox() {
   max-height: 300px;
   aspect-ratio: 16 / 9;
   contain: layout;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 25%, rgba(255, 255, 255, 0.08) 50%, transparent 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    z-index: 0;
+  }
+
+  &.isLoaded::before {
+    display: none;
+  }
 }
 
-.media-cell::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent 25%, rgba(255, 255, 255, 0.08) 50%, transparent 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  z-index: 0;
-}
-
-.media-cell.is-loaded::before {
-  display: none;
-}
-
-.media-count-1 > .media-cell {
-  max-height: 460px;
-}
-
-.media-image {
+.mediaImage {
   display: block;
   width: 100%;
   height: 100%;
@@ -331,13 +329,13 @@ function closeLightbox() {
   transition: opacity var(--nd-duration-slower);
   position: relative;
   z-index: 1;
+
+  &.isLoaded {
+    opacity: 1;
+  }
 }
 
-.media-image.is-loaded {
-  opacity: 1;
-}
-
-.media-video {
+.mediaVideo {
   display: block;
   width: 100%;
   height: 100%;
@@ -345,13 +343,14 @@ function closeLightbox() {
 }
 
 /* NSFW overlay */
-.is-sensitive .media-image,
-.is-sensitive .media-video {
-  filter: blur(var(--nd-blur));
+.isSensitive {
+  .mediaImage,
+  .mediaVideo {
+    filter: blur(var(--nd-blur));
+  }
 }
 
-
-.sensitive-hide-btn {
+.sensitiveHideBtn {
   position: absolute;
   top: 6px;
   right: 6px;
@@ -367,14 +366,14 @@ function closeLightbox() {
   cursor: pointer;
   z-index: 2;
   transition: background var(--nd-duration-base);
-}
 
-.sensitive-hide-btn:hover {
-  background: rgba(0, 0, 0, 0.7);
+  &:hover {
+    background: rgba(0, 0, 0, 0.7);
+  }
 }
 
 /* Lightbox */
-.lightbox-overlay {
+.lightboxOverlay {
   position: fixed;
   inset: 0;
   z-index: var(--nd-z-popup);
@@ -385,7 +384,7 @@ function closeLightbox() {
   cursor: pointer;
 }
 
-.lightbox-close {
+.lightboxClose {
   position: absolute;
   top: 16px;
   right: 16px;
@@ -401,13 +400,13 @@ function closeLightbox() {
   cursor: pointer;
   transition: background var(--nd-duration-base);
   z-index: 1;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
 }
 
-.lightbox-close:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.lightbox-image {
+.lightboxImage {
   max-width: 90vw;
   max-height: 90vh;
   object-fit: contain;
@@ -415,7 +414,7 @@ function closeLightbox() {
   border-radius: 4px;
 }
 
-.lightbox-video {
+.lightboxVideo {
   max-width: 90vw;
   max-height: 90vh;
   cursor: default;
@@ -428,16 +427,16 @@ function closeLightbox() {
 }
 
 @container (max-width: 500px) {
-  .media-grid {
+  .mediaGrid {
     gap: 4px;
   }
 
-  .media-cell {
+  .mediaCell {
     min-height: 80px;
     max-height: 200px;
   }
 
-  .media-count-1 > .media-cell {
+  .mediaCount1 > .mediaCell {
     max-height: 300px;
   }
 }

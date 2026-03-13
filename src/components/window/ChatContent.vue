@@ -488,14 +488,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="chat-content" @click="closeReactionPicker">
+  <div :class="$style.chatContent" @click="closeReactionPicker">
     <!-- Per-account progress -->
-    <div v-if="loadProgress.length > 0" class="chat-progress">
+    <div v-if="loadProgress.length > 0" :class="$style.chatProgress">
       <span
         v-for="(p, i) in loadProgress"
         :key="i"
-        class="progress-dot"
-        :class="{ done: p.done }"
+        :class="[$style.progressDot, { [$style.done]: p.done }]"
         :title="p.host"
       />
     </div>
@@ -504,26 +503,26 @@ onUnmounted(() => {
     <template v-if="viewMode === 'history'">
       <div
         v-if="isLoading && historyEntries.length === 0 && loadProgress.length === 0"
-        class="chat-empty"
+        :class="$style.chatEmpty"
       >
         Loading...
       </div>
 
       <div
         v-else-if="error && historyEntries.length === 0"
-        class="chat-empty"
+        :class="$style.chatEmpty"
       >
-        <div class="chat-empty-icon">
+        <div :class="$style.chatEmptyIcon">
           <i class="ti ti-messages" />
         </div>
         <span>{{ error }}</span>
       </div>
 
-      <div v-else class="history-list">
+      <div v-else :class="$style.historyList">
         <button
           v-for="entry in historyEntries"
           :key="entry.key"
-          class="history-item"
+          :class="$style.historyItem"
           @click="openConversation(entry)"
         >
           <MkAvatar
@@ -532,16 +531,16 @@ onUnmounted(() => {
             :decorations="entry.avatarDecorations ?? []"
             :size="36"
           />
-          <div v-else class="history-avatar-placeholder">
+          <div v-else :class="$style.historyAvatarPlaceholder">
             <i :class="entry.isRoom ? 'ti ti-users' : 'ti ti-user'" />
           </div>
-          <div class="history-info">
-            <div class="history-name">{{ entry.name }}</div>
-            <div class="history-preview">{{ entry.message.text || '(file)' }}</div>
+          <div :class="$style.historyInfo">
+            <div :class="$style.historyName">{{ entry.name }}</div>
+            <div :class="$style.historyPreview">{{ entry.message.text || '(file)' }}</div>
           </div>
-          <div class="history-meta">
-            <span class="history-host">{{ entry.serverHost }}</span>
-            <span class="history-time">{{ formatTime(entry.message.createdAt) }}</span>
+          <div :class="$style.historyMeta">
+            <span :class="$style.historyHost">{{ entry.serverHost }}</span>
+            <span :class="$style.historyTime">{{ formatTime(entry.message.createdAt) }}</span>
           </div>
         </button>
       </div>
@@ -549,20 +548,20 @@ onUnmounted(() => {
 
     <!-- Conversation View -->
     <template v-else>
-      <div class="conv-header">
-        <button class="conv-back" @click="goBack">
+      <div :class="$style.convHeader">
+        <button :class="$style.convBack" @click="goBack">
           <i class="ti ti-arrow-left" />
         </button>
-        <span class="conv-title">{{ conversationTitle }}</span>
-        <span v-if="conversationServerHost" class="conv-host">{{ conversationServerHost }}</span>
+        <span :class="$style.convTitle">{{ conversationTitle }}</span>
+        <span v-if="conversationServerHost" :class="$style.convHost">{{ conversationServerHost }}</span>
       </div>
 
       <div
         ref="messagesContainer"
-        class="messages-container"
+        :class="$style.messagesContainer"
         @scroll.passive="handleScroll"
       >
-        <div v-if="isLoading" class="loading-more">Loading...</div>
+        <div v-if="isLoading" :class="$style.loadingMore">Loading...</div>
         <MkChatMessage
           v-for="msg in messages"
           :key="msg.id"
@@ -575,10 +574,10 @@ onUnmounted(() => {
         />
       </div>
 
-      <div v-if="error" class="chat-error">{{ error }}</div>
+      <div v-if="error" :class="$style.chatError">{{ error }}</div>
 
       <!-- Reaction picker popup -->
-      <div v-if="showReactionPicker && conversationAccountId && conversationServerHost" class="chat-reaction-picker" @click.stop>
+      <div v-if="showReactionPicker && conversationAccountId && conversationServerHost" :class="$style.chatReactionPicker" @click.stop>
         <MkReactionPicker
           :server-host="conversationServerHost"
           :account-id="conversationAccountId"
@@ -586,41 +585,41 @@ onUnmounted(() => {
         />
       </div>
 
-      <div class="chat-input">
+      <div :class="$style.chatInput">
         <!-- File attachment preview -->
-        <div v-if="attachedFile" class="chat-attachment">
+        <div v-if="attachedFile" :class="$style.chatAttachment">
           <img
             v-if="attachedFile.type.startsWith('image/')"
             :src="attachedFile.thumbnailUrl || attachedFile.url"
-            class="chat-attachment-thumb"
+            :class="$style.chatAttachmentThumb"
           />
-          <span v-else class="chat-attachment-name">{{ attachedFile.name }}</span>
-          <button class="chat-attachment-remove" @click="removeAttachment">
+          <span v-else :class="$style.chatAttachmentName">{{ attachedFile.name }}</span>
+          <button :class="$style.chatAttachmentRemove" @click="removeAttachment">
             <i class="ti ti-x" />
           </button>
         </div>
-        <div v-if="isUploading" class="chat-uploading">
-          <i class="ti ti-loader-2 spin" /> Uploading...
+        <div v-if="isUploading" :class="$style.chatUploading">
+          <i :class="['ti', 'ti-loader-2', $style.spin]" /> Uploading...
         </div>
-        <div class="chat-input-row">
-          <div class="chat-input-actions">
-            <button class="chat-action-btn" title="ファイル" @click="openFilePicker">
+        <div :class="$style.chatInputRow">
+          <div :class="$style.chatInputActions">
+            <button :class="$style.chatActionBtn" title="ファイル" @click="openFilePicker">
               <i class="ti ti-photo" />
             </button>
-            <button class="chat-action-btn" title="絵文字" @click.stop="showEmojiPicker = !showEmojiPicker">
+            <button :class="$style.chatActionBtn" title="絵文字" @click.stop="showEmojiPicker = !showEmojiPicker">
               <i class="ti ti-mood-happy" />
             </button>
           </div>
           <textarea
             ref="textareaRef"
             v-model="messageText"
-            class="chat-textarea"
+            :class="$style.chatTextarea"
             placeholder="メッセージ..."
             rows="1"
             @keydown="handleKeydown"
           />
           <button
-            class="chat-send"
+            :class="$style.chatSend"
             :disabled="!canSend"
             @click="sendMessage"
           >
@@ -628,7 +627,7 @@ onUnmounted(() => {
           </button>
         </div>
         <!-- Emoji picker popup -->
-        <div v-if="showEmojiPicker && conversationAccountId && conversationServerHost" class="chat-emoji-popup" @click.stop>
+        <div v-if="showEmojiPicker && conversationAccountId && conversationServerHost" :class="$style.chatEmojiPopup" @click.stop>
           <MkReactionPicker
             :server-host="conversationServerHost"
             :account-id="conversationAccountId"
@@ -647,15 +646,15 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scoped>
-.chat-content {
+<style lang="scss" module>
+.chatContent {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
 }
 
-.chat-progress {
+.chatProgress {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -664,21 +663,21 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.progress-dot {
+.progressDot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--nd-fg);
   opacity: 0.15;
   transition: opacity var(--nd-duration-slower), background var(--nd-duration-slower);
+
+  &.done {
+    background: var(--nd-accent);
+    opacity: 0.8;
+  }
 }
 
-.progress-dot.done {
-  background: var(--nd-accent);
-  opacity: 0.8;
-}
-
-.chat-empty {
+.chatEmpty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -690,20 +689,19 @@ onUnmounted(() => {
   font-size: 0.85em;
 }
 
-.chat-empty-icon {
+.chatEmptyIcon {
   font-size: 2em;
   opacity: 0.3;
 }
 
-/* History list */
-.history-list {
+.historyList {
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
 }
 
-.history-item {
+.historyItem {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -715,21 +713,21 @@ onUnmounted(() => {
   text-align: left;
   cursor: pointer;
   border-bottom: 1px solid var(--nd-divider);
+
+  &:hover {
+    background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.03));
+  }
+
+  :deep(.mk-avatar) {
+    flex-shrink: 0;
+  }
+
+  :deep(.mk-avatar:hover) {
+    transform: none;
+  }
 }
 
-.history-item:hover {
-  background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.03));
-}
-
-.history-item :deep(.mk-avatar) {
-  flex-shrink: 0;
-}
-
-.history-item :deep(.mk-avatar:hover) {
-  transform: none;
-}
-
-.history-avatar-placeholder {
+.historyAvatarPlaceholder {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -741,12 +739,12 @@ onUnmounted(() => {
   opacity: 0.5;
 }
 
-.history-info {
+.historyInfo {
   flex: 1;
   min-width: 0;
 }
 
-.history-name {
+.historyName {
   font-size: 0.9em;
   font-weight: 600;
   overflow: hidden;
@@ -754,7 +752,7 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.history-preview {
+.historyPreview {
   font-size: 0.8em;
   opacity: 0.5;
   overflow: hidden;
@@ -763,7 +761,7 @@ onUnmounted(() => {
   margin-top: 2px;
 }
 
-.history-meta {
+.historyMeta {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -771,7 +769,7 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.history-host {
+.historyHost {
   font-size: 0.7em;
   opacity: 0.35;
   max-width: 80px;
@@ -780,13 +778,12 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.history-time {
+.historyTime {
   font-size: 0.75em;
   opacity: 0.5;
 }
 
-/* Conversation header */
-.conv-header {
+.convHeader {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -795,7 +792,7 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.conv-back {
+.convBack {
   background: none;
   border: none;
   color: var(--nd-fg);
@@ -803,13 +800,13 @@ onUnmounted(() => {
   padding: 4px;
   opacity: 0.7;
   font-size: 1.1em;
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
-.conv-back:hover {
-  opacity: 1;
-}
-
-.conv-title {
+.convTitle {
   font-weight: 600;
   font-size: 0.9em;
   flex: 1;
@@ -818,13 +815,12 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.conv-host {
+.convHost {
   font-size: 0.7em;
   opacity: 0.35;
 }
 
-/* Messages */
-.messages-container {
+.messagesContainer {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -836,21 +832,20 @@ onUnmounted(() => {
   scrollbar-width: thin;
 }
 
-.loading-more {
+.loadingMore {
   text-align: center;
   padding: 1rem;
   font-size: 0.8em;
   opacity: 0.4;
 }
 
-.chat-error {
+.chatError {
   padding: 4px 12px;
   font-size: 0.8em;
   color: var(--nd-love);
 }
 
-/* Chat input */
-.chat-input {
+.chatInput {
   display: flex;
   flex-direction: column;
   padding: 6px 8px 8px;
@@ -860,7 +855,7 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.chat-attachment {
+.chatAttachment {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -870,14 +865,14 @@ onUnmounted(() => {
   border-radius: var(--nd-radius-md);
 }
 
-.chat-attachment-thumb {
+.chatAttachmentThumb {
   width: 48px;
   height: 48px;
   border-radius: var(--nd-radius-sm);
   object-fit: cover;
 }
 
-.chat-attachment-name {
+.chatAttachmentName {
   font-size: 0.8em;
   opacity: 0.7;
   overflow: hidden;
@@ -886,7 +881,7 @@ onUnmounted(() => {
   flex: 1;
 }
 
-.chat-attachment-remove {
+.chatAttachmentRemove {
   background: none;
   border: none;
   color: var(--nd-fg);
@@ -894,13 +889,13 @@ onUnmounted(() => {
   cursor: pointer;
   padding: 4px;
   font-size: 0.9em;
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
-.chat-attachment-remove:hover {
-  opacity: 1;
-}
-
-.chat-uploading {
+.chatUploading {
   font-size: 0.8em;
   opacity: 0.5;
   padding: 2px 8px 4px;
@@ -914,19 +909,19 @@ onUnmounted(() => {
   animation: spin 1s linear infinite;
 }
 
-.chat-input-row {
+.chatInputRow {
   display: flex;
   align-items: flex-end;
   gap: 6px;
 }
 
-.chat-input-actions {
+.chatInputActions {
   display: flex;
   gap: 2px;
   flex-shrink: 0;
 }
 
-.chat-action-btn {
+.chatActionBtn {
   width: 32px;
   height: 32px;
   border: none;
@@ -939,14 +934,14 @@ onUnmounted(() => {
   justify-content: center;
   border-radius: 50%;
   font-size: 1.1em;
+
+  &:hover {
+    opacity: 0.8;
+    background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.05));
+  }
 }
 
-.chat-action-btn:hover {
-  opacity: 0.8;
-  background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.05));
-}
-
-.chat-textarea {
+.chatTextarea {
   flex: 1;
   resize: none;
   border: none;
@@ -960,13 +955,13 @@ onUnmounted(() => {
   max-height: 120px;
   outline: none;
   field-sizing: content;
+
+  &::placeholder {
+    opacity: 0.4;
+  }
 }
 
-.chat-textarea::placeholder {
-  opacity: 0.4;
-}
-
-.chat-send {
+.chatSend {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -979,18 +974,18 @@ onUnmounted(() => {
   justify-content: center;
   flex-shrink: 0;
   font-size: 1em;
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  &:not(:disabled):hover {
+    filter: brightness(1.1);
+  }
 }
 
-.chat-send:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-
-.chat-send:not(:disabled):hover {
-  filter: brightness(1.1);
-}
-
-.chat-emoji-popup {
+.chatEmojiPopup {
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -1003,11 +998,14 @@ onUnmounted(() => {
   z-index: var(--nd-z-menu);
 }
 
-.chat-reaction-picker {
+.chatReactionPicker {
   flex-shrink: 0;
   max-height: 280px;
   overflow: auto;
   border-top: 1px solid var(--nd-divider);
   background: var(--nd-panel);
 }
+
+/* Empty placeholder classes for dynamic binding */
+.done {}
 </style>

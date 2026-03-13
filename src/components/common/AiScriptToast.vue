@@ -23,12 +23,11 @@ defineExpose({ show })
 
 <template>
   <Teleport to="body">
-    <TransitionGroup name="toast" tag="div" class="ais-toast-container">
+    <TransitionGroup name="toast" tag="div" :class="$style.aisToastContainer">
       <div
         v-for="toast in toasts"
         :key="toast.id"
-        class="ais-toast"
-        :class="toast.type"
+        :class="[$style.aisToast, $style[toast.type]]"
       >
         {{ toast.text }}
       </div>
@@ -36,8 +35,8 @@ defineExpose({ show })
   </Teleport>
 </template>
 
-<style scoped>
-.ais-toast-container {
+<style lang="scss" module>
+.aisToastContainer {
   position: fixed;
   top: 16px;
   right: 16px;
@@ -48,7 +47,7 @@ defineExpose({ show })
   pointer-events: none;
 }
 
-.ais-toast {
+.aisToast {
   padding: 10px 16px;
   border-radius: var(--nd-radius-md);
   font-size: 0.85em;
@@ -56,20 +55,28 @@ defineExpose({ show })
   background: var(--nd-accent);
   box-shadow: var(--nd-shadow-s);
   pointer-events: auto;
+
+  &.success {
+    background: var(--nd-success);
+  }
+
+  &.warning {
+    background: var(--nd-warn);
+  }
+
+  &.error {
+    background: var(--nd-error);
+  }
 }
 
-.ais-toast.success {
-  background: var(--nd-success);
-}
+// Keep type classes for dynamic binding
+.info {}
+.success {}
+.warning {}
+.error {}
+</style>
 
-.ais-toast.warning {
-  background: var(--nd-warn);
-}
-
-.ais-toast.error {
-  background: var(--nd-error);
-}
-
+<style>
 .toast-enter-active {
   transition: all var(--nd-duration-slow) ease;
 }

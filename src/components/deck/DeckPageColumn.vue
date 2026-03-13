@@ -368,54 +368,55 @@ const pageEditUrl = computed(() => {
 
     <!-- List mode -->
     <template v-if="mode === 'list'">
-      <div class="page-tabs">
+      <div :class="$style.pageTabs">
         <button
           v-for="tab in (['featured', 'my', 'likes'] as Tab[])"
           :key="tab"
-          class="_button page-tab"
-          :class="{ active: activeTab === tab }"
+          class="_button"
+          :class="[$style.pageTab, { [$style.active]: activeTab === tab }]"
           @click="fetchList(tab)"
         >
           {{ tab === 'featured' ? '人気' : tab === 'my' ? '自分の' : 'いいね' }}
         </button>
       </div>
 
-      <div class="page-list">
+      <div :class="$style.pageList">
         <div v-if="listLoading" class="column-empty">読み込み中...</div>
         <div v-else-if="listError" class="column-empty column-error">{{ listError }}</div>
         <div v-else-if="listItems.length === 0" class="column-empty">ページが見つかりません</div>
         <button
           v-for="item in listItems"
           :key="item.id"
-          class="_button page-card"
+          class="_button"
+          :class="$style.pageCard"
           @click="openPage(item.id)"
         >
-          <div class="page-card-title">{{ item.title }}</div>
-          <div class="page-card-meta">
-            <span class="page-card-author">@{{ item.user.username }}</span>
-            <span v-if="item.likedCount > 0" class="page-card-likes">
+          <div :class="$style.pageCardTitle">{{ item.title }}</div>
+          <div :class="$style.pageCardMeta">
+            <span :class="$style.pageCardAuthor">@{{ item.user.username }}</span>
+            <span v-if="item.likedCount > 0" :class="$style.pageCardLikes">
               <i class="ti ti-heart" /> {{ item.likedCount }}
             </span>
           </div>
-          <div v-if="item.summary" class="page-card-summary">{{ item.summary }}</div>
+          <div v-if="item.summary" :class="$style.pageCardSummary">{{ item.summary }}</div>
         </button>
       </div>
     </template>
 
     <!-- View mode -->
     <template v-else>
-      <div class="page-view-scroll">
+      <div :class="$style.pageViewScroll">
         <div v-if="fetching" class="column-empty">Loading...</div>
         <div v-else-if="fetchError" class="column-empty column-error">{{ fetchError }}</div>
         <template v-else-if="page">
           <!-- Page header -->
-          <div class="page-header">
-            <div class="page-title">{{ page.title }}</div>
-            <div v-if="page.summary" class="page-summary">{{ page.summary }}</div>
+          <div :class="$style.pageHeader">
+            <div :class="$style.pageTitle">{{ page.title }}</div>
+            <div v-if="page.summary" :class="$style.pageSummary">{{ page.summary }}</div>
           </div>
 
           <!-- AiScript UI output -->
-          <div v-if="uiComponents.length" class="page-ui">
+          <div v-if="uiComponents.length" :class="$style.pageUi">
             <AiScriptUiRenderer
               :components="uiComponents"
               :interpreter="(interpreter as Interpreter | null)"
@@ -425,7 +426,7 @@ const pageEditUrl = computed(() => {
           </div>
 
           <!-- MFM content blocks -->
-          <div v-if="contentTexts.length" class="page-content">
+          <div v-if="contentTexts.length" :class="$style.pageContent">
             <MkMfm
               v-for="(text, i) in contentTexts"
               :key="i"
@@ -436,19 +437,18 @@ const pageEditUrl = computed(() => {
           </div>
 
           <!-- Console output -->
-          <div v-if="consoleOutput.length" class="page-console">
+          <div v-if="consoleOutput.length" :class="$style.pageConsole">
             <div
               v-for="(line, i) in consoleOutput"
               :key="i"
-              class="console-line"
-              :class="{ error: line.isError }"
+              :class="[$style.consoleLine, { [$style.error]: line.isError }]"
             >
               {{ line.text }}
             </div>
           </div>
 
           <!-- Error -->
-          <div v-if="runError" class="page-error">{{ runError }}</div>
+          <div v-if="runError" :class="$style.pageError">{{ runError }}</div>
 
           <!-- Loading (script running, no UI yet) -->
           <div v-if="running && !uiComponents.length && !runError" class="column-empty">
@@ -456,12 +456,12 @@ const pageEditUrl = computed(() => {
           </div>
 
           <!-- Footer -->
-          <div class="page-footer">
-            <div class="page-footer-author">
-              <img v-if="page.user.avatarUrl" :src="page.user.avatarUrl" class="page-footer-avatar" />
+          <div :class="$style.pageFooter">
+            <div :class="$style.pageFooterAuthor">
+              <img v-if="page.user.avatarUrl" :src="page.user.avatarUrl" :class="$style.pageFooterAvatar" />
               By @{{ page.user.username }}
             </div>
-            <div class="page-footer-dates">
+            <div :class="$style.pageFooterDates">
               <div v-if="page.createdAt !== page.updatedAt">
                 <i class="ti ti-clock" /> Updated: {{ new Date(page.updatedAt).toLocaleDateString() }}
               </div>
@@ -469,10 +469,10 @@ const pageEditUrl = computed(() => {
                 <i class="ti ti-clock" /> Created: {{ new Date(page.createdAt).toLocaleDateString() }}
               </div>
             </div>
-            <div class="page-footer-actions">
+            <div :class="$style.pageFooterActions">
               <button
-                class="_button page-action-btn"
-                :class="{ liked: page.isLiked }"
+                class="_button"
+                :class="[$style.pageActionBtn, { [$style.liked]: page.isLiked }]"
                 @click="toggleLike"
               >
                 <i class="ti ti-heart" />
@@ -480,7 +480,8 @@ const pageEditUrl = computed(() => {
               </button>
               <button
                 v-if="pageEditUrl"
-                class="_button page-action-btn"
+                class="_button"
+                :class="$style.pageActionBtn"
                 @click="pageEditUrl && openUrl(pageEditUrl)"
               >
                 <i class="ti ti-pencil" />
@@ -506,18 +507,18 @@ const pageEditUrl = computed(() => {
   </Teleport>
 </template>
 
-<style scoped>
-@import "./column-common.css";
+<style lang="scss" module>
+@use "./column-common.module.scss";
 
 /* --- List mode --- */
 
-.page-tabs {
+.pageTabs {
   display: flex;
   border-bottom: 1px solid var(--nd-divider);
   flex-shrink: 0;
 }
 
-.page-tab {
+.pageTab {
   flex: 1;
   padding: 8px 0;
   text-align: center;
@@ -527,26 +528,30 @@ const pageEditUrl = computed(() => {
   opacity: 0.5;
   transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
   border-bottom: 2px solid transparent;
+
+  &:hover {
+    opacity: 0.8;
+  }
+
+  &.active {
+    opacity: 1;
+    color: var(--nd-accent);
+    border-bottom-color: var(--nd-accent);
+  }
 }
 
-.page-tab:hover {
-  opacity: 0.8;
+.active {
+  /* used as modifier */
 }
 
-.page-tab.active {
-  opacity: 1;
-  color: var(--nd-accent);
-  border-bottom-color: var(--nd-accent);
-}
-
-.page-list {
+.pageList {
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
 }
 
-.page-card {
+.pageCard {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -555,19 +560,19 @@ const pageEditUrl = computed(() => {
   text-align: left;
   border-bottom: 1px solid var(--nd-divider);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.page-card:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.page-card-title {
+.pageCardTitle {
   font-size: 0.9em;
   font-weight: 600;
   color: var(--nd-fgHighlighted);
 }
 
-.page-card-meta {
+.pageCardMeta {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -575,13 +580,17 @@ const pageEditUrl = computed(() => {
   opacity: 0.6;
 }
 
-.page-card-likes {
+.pageCardAuthor {
+  /* placeholder for specificity */
+}
+
+.pageCardLikes {
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
-.page-card-summary {
+.pageCardSummary {
   font-size: 0.8em;
   opacity: 0.7;
   display: -webkit-box;
@@ -592,7 +601,7 @@ const pageEditUrl = computed(() => {
 
 /* --- View mode --- */
 
-.page-view-scroll {
+.pageViewScroll {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -601,37 +610,37 @@ const pageEditUrl = computed(() => {
   scrollbar-width: thin;
 }
 
-.page-header {
+.pageHeader {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 20px 16px 12px;
 }
 
-.page-title {
+.pageTitle {
   font-size: 1.2em;
   font-weight: bold;
   color: var(--nd-fgHighlighted);
 }
 
-.page-summary {
+.pageSummary {
   font-size: 0.9em;
   opacity: 0.7;
   white-space: pre-wrap;
   line-height: 1.5;
 }
 
-.page-ui {
+.pageUi {
   padding: 16px 12px;
 }
 
-.page-content {
+.pageContent {
   padding: 8px 16px 16px;
   line-height: 1.7;
   word-break: break-word;
 }
 
-.page-console {
+.pageConsole {
   padding: 8px 10px;
   margin: 0 12px;
   border-radius: var(--nd-radius-sm);
@@ -641,16 +650,20 @@ const pageEditUrl = computed(() => {
   line-height: 1.6;
 }
 
-.console-line {
+.consoleLine {
   white-space: pre-wrap;
   word-break: break-all;
+
+  &.error {
+    color: var(--nd-love);
+  }
 }
 
-.console-line.error {
-  color: var(--nd-love);
+.error {
+  /* used as modifier */
 }
 
-.page-error {
+.pageError {
   padding: 8px 10px;
   margin: 0 12px;
   border-radius: var(--nd-radius-sm);
@@ -660,7 +673,7 @@ const pageEditUrl = computed(() => {
   white-space: pre-wrap;
 }
 
-.page-footer {
+.pageFooter {
   margin-top: auto;
   display: flex;
   flex-direction: column;
@@ -669,7 +682,7 @@ const pageEditUrl = computed(() => {
   border-top: 1px solid var(--nd-divider);
 }
 
-.page-footer-author {
+.pageFooterAuthor {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -677,13 +690,13 @@ const pageEditUrl = computed(() => {
   opacity: 0.7;
 }
 
-.page-footer-avatar {
+.pageFooterAvatar {
   width: 20px;
   height: 20px;
   border-radius: 50%;
 }
 
-.page-footer-dates {
+.pageFooterDates {
   font-size: 0.75em;
   opacity: 0.5;
   display: flex;
@@ -691,13 +704,13 @@ const pageEditUrl = computed(() => {
   gap: 2px;
 }
 
-.page-footer-actions {
+.pageFooterActions {
   display: flex;
   gap: 8px;
   padding-top: 4px;
 }
 
-.page-action-btn {
+.pageActionBtn {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -707,13 +720,17 @@ const pageEditUrl = computed(() => {
   color: var(--nd-fg);
   font-size: 0.8em;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &.liked {
+    color: var(--nd-love);
+  }
 }
 
-.page-action-btn:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.page-action-btn.liked {
-  color: var(--nd-love);
+.liked {
+  /* used as modifier */
 }
 </style>

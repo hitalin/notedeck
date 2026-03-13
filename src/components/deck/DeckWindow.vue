@@ -92,8 +92,7 @@ function onWindowMouseDown() {
 
 <template>
   <div
-    class="deck-window"
-    :class="{ dragging: isDragging, minimized: isMinimized, maximized: isMaximized }"
+    :class="[$style.deckWindow, { [$style.dragging]: isDragging, [$style.minimized]: isMinimized, [$style.maximized]: isMaximized }]"
     :style="isMaximized ? { ...themeVars, zIndex: window.zIndex } : {
       ...themeVars,
       left: (isDragging ? dragX : window.x) + 'px',
@@ -104,27 +103,27 @@ function onWindowMouseDown() {
     }"
     @mousedown="onWindowMouseDown"
   >
-    <div class="window-header" @mousedown="onHeaderMouseDown">
-      <i :class="icons[window.type]" class="window-icon" />
-      <span class="window-title">{{ titles[window.type] ?? '' }}</span>
-      <button class="_button window-btn" title="最小化" @click="windowsStore.toggleMinimize(window.id)">
+    <div :class="$style.windowHeader" @mousedown="onHeaderMouseDown">
+      <i :class="[icons[window.type], $style.windowIcon]" />
+      <span :class="$style.windowTitle">{{ titles[window.type] ?? '' }}</span>
+      <button class="_button" :class="$style.windowBtn" title="最小化" @click="windowsStore.toggleMinimize(window.id)">
         <i class="ti ti-minus" />
       </button>
-      <button class="_button window-btn" title="最大化" @click="windowsStore.toggleMaximize(window.id)">
+      <button class="_button" :class="$style.windowBtn" title="最大化" @click="windowsStore.toggleMaximize(window.id)">
         <i :class="isMaximized ? 'ti ti-picture-in-picture' : 'ti ti-square'" />
       </button>
-      <button class="_button window-btn window-close" title="閉じる" @click="emit('close')">
+      <button class="_button" :class="[$style.windowBtn, $style.windowClose]" title="閉じる" @click="emit('close')">
         <i class="ti ti-x" />
       </button>
     </div>
-    <div class="window-body">
+    <div :class="$style.windowBody">
       <slot />
     </div>
   </div>
 </template>
 
-<style scoped>
-.deck-window {
+<style lang="scss" module>
+.deckWindow {
   position: fixed;
   display: flex;
   flex-direction: column;
@@ -134,22 +133,24 @@ function onWindowMouseDown() {
   overflow: clip;
 }
 
-.deck-window.dragging {
+.dragging {
   opacity: 0.92;
 }
 
-.deck-window.maximized {
+.maximized {
   inset: 0;
   width: 100% !important;
   max-height: 100% !important;
   border-radius: 0;
 }
 
-.deck-window.minimized .window-body {
-  display: none;
+.minimized {
+  .windowBody {
+    display: none;
+  }
 }
 
-.window-header {
+.windowHeader {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -162,19 +163,19 @@ function onWindowMouseDown() {
   cursor: grab;
   flex-shrink: 0;
   user-select: none;
+
+  .dragging & {
+    cursor: grabbing;
+  }
 }
 
-.deck-window.dragging .window-header {
-  cursor: grabbing;
-}
-
-.window-icon {
+.windowIcon {
   font-size: 1em;
   opacity: 0.6;
   flex-shrink: 0;
 }
 
-.window-title {
+.windowTitle {
   flex: 1;
   font-weight: bold;
   font-size: 0.9em;
@@ -184,7 +185,7 @@ function onWindowMouseDown() {
   white-space: nowrap;
 }
 
-.window-btn {
+.windowBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -197,25 +198,27 @@ function onWindowMouseDown() {
   transition:
     background 0.15s,
     opacity 0.15s;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
 }
 
-.window-btn:hover {
-  background: var(--nd-buttonHoverBg);
-  opacity: 1;
+.windowClose {
+  &:hover {
+    color: var(--nd-love);
+  }
 }
 
-.window-close:hover {
-  color: var(--nd-love);
-}
-
-.window-body {
+.windowBody {
   flex: 1;
   min-height: 0;
   overflow: auto;
 }
 
 @media (max-width: 500px) {
-  .deck-window {
+  .deckWindow {
     left: 0 !important;
     top: 0 !important;
     right: 0 !important;
@@ -227,37 +230,38 @@ function onWindowMouseDown() {
     z-index: 2100 !important;
   }
 
-  .window-header {
+  .windowHeader {
     min-height: 46px;
     padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
   }
 
-  .window-btn {
+  .windowBtn {
     width: 44px;
     height: 44px;
   }
 }
 
-/* Mobile platform (viewport may exceed 500px) */
-html.nd-mobile .deck-window {
-  left: 0 !important;
-  top: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  max-height: 100% !important;
-  border-radius: 0;
-  z-index: 2100 !important;
-}
+:global(html.nd-mobile) {
+  .deckWindow {
+    left: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0;
+    z-index: 2100 !important;
+  }
 
-html.nd-mobile .window-header {
-  min-height: 46px;
-  padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
-}
+  .windowHeader {
+    min-height: 46px;
+    padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
+  }
 
-html.nd-mobile .window-btn {
-  width: 44px;
-  height: 44px;
+  .windowBtn {
+    width: 44px;
+    height: 44px;
+  }
 }
 </style>

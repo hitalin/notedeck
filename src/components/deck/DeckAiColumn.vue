@@ -90,29 +90,28 @@ function onKeydown(e: KeyboardEvent) {
 
     <template #header-meta>
       <span
-        class="provider-dot"
-        :class="providerStatus"
+        :class="[$style.providerDot, $style[providerStatus]]"
         :title="providerStatus === 'connected' ? 'Ollama 接続中' : '未接続'"
       />
     </template>
 
-    <div class="ai-column-body">
+    <div :class="$style.aiColumnBody">
       <!-- Messages -->
-      <div class="ai-messages">
-        <div v-if="messages.length === 0" class="ai-empty">
-          <div class="ai-empty-icon">
+      <div :class="$style.aiMessages">
+        <div v-if="messages.length === 0" :class="$style.aiEmpty">
+          <div :class="$style.aiEmptyIcon">
             <i class="ti ti-sparkles" />
           </div>
-          <span class="ai-empty-title">AI Chat</span>
-          <span class="ai-empty-hint">質問を入力してください</span>
-          <div class="ai-suggestions">
-            <button class="_button ai-suggestion" @click="input = 'TL を要約して'; sendMessage()">
+          <span :class="$style.aiEmptyTitle">AI Chat</span>
+          <span :class="$style.aiEmptyHint">質問を入力してください</span>
+          <div :class="$style.aiSuggestions">
+            <button class="_button" :class="$style.aiSuggestion" @click="input = 'TL を要約して'; sendMessage()">
               TL を要約して
             </button>
-            <button class="_button ai-suggestion" @click="input = '最近の通知をまとめて'; sendMessage()">
+            <button class="_button" :class="$style.aiSuggestion" @click="input = '最近の通知をまとめて'; sendMessage()">
               通知をまとめて
             </button>
-            <button class="_button ai-suggestion" @click="input = '今日の話題は？'; sendMessage()">
+            <button class="_button" :class="$style.aiSuggestion" @click="input = '今日の話題は？'; sendMessage()">
               今日の話題は？
             </button>
           </div>
@@ -122,27 +121,26 @@ function onKeydown(e: KeyboardEvent) {
           <div
             v-for="msg in messages"
             :key="msg.id"
-            class="ai-message"
-            :class="msg.role"
+            :class="[$style.aiMessage, $style[msg.role]]"
           >
-            <div class="message-avatar">
+            <div :class="$style.messageAvatar">
               <i v-if="msg.role === 'assistant'" class="ti ti-sparkles" />
               <i v-else class="ti ti-user" />
             </div>
-            <div class="message-body">
-              <div class="message-content">{{ msg.content }}</div>
+            <div :class="$style.messageBody">
+              <div :class="$style.messageContent">{{ msg.content }}</div>
             </div>
           </div>
 
-          <div v-if="isGenerating" class="ai-message assistant">
-            <div class="message-avatar">
+          <div v-if="isGenerating" :class="[$style.aiMessage, $style.assistant]">
+            <div :class="$style.messageAvatar">
               <i class="ti ti-sparkles" />
             </div>
-            <div class="message-body">
-              <div class="message-typing">
-                <span class="typing-dot" />
-                <span class="typing-dot" />
-                <span class="typing-dot" />
+            <div :class="$style.messageBody">
+              <div :class="$style.messageTyping">
+                <span :class="$style.typingDot" />
+                <span :class="$style.typingDot" />
+                <span :class="$style.typingDot" />
               </div>
             </div>
           </div>
@@ -152,18 +150,19 @@ function onKeydown(e: KeyboardEvent) {
       </div>
 
       <!-- Input -->
-      <div class="ai-input-area">
+      <div :class="$style.aiInputArea">
         <textarea
           ref="inputRef"
           v-model="input"
-          class="ai-input"
+          :class="$style.aiInput"
           placeholder="AI に質問..."
           rows="1"
           :disabled="providerStatus === 'disconnected'"
           @keydown="onKeydown"
         />
         <button
-          class="_button ai-send"
+          class="_button"
+          :class="$style.aiSend"
           :disabled="!input.trim() || isGenerating || providerStatus === 'disconnected'"
           @click="sendMessage"
         >
@@ -174,34 +173,34 @@ function onKeydown(e: KeyboardEvent) {
   </DeckColumnComponent>
 </template>
 
-<style scoped>
-.provider-dot {
+<style lang="scss" module>
+.providerDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
+
+  &.connected {
+    background: var(--nd-accent);
+  }
+
+  &.checking {
+    background: var(--nd-warn, #e5a400);
+  }
+
+  &.disconnected {
+    background: var(--nd-switchOffFg, #888);
+  }
 }
 
-.provider-dot.connected {
-  background: var(--nd-accent);
-}
-
-.provider-dot.checking {
-  background: var(--nd-warn, #e5a400);
-}
-
-.provider-dot.disconnected {
-  background: var(--nd-switchOffFg, #888);
-}
-
-.ai-column-body {
+.aiColumnBody {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
 }
 
-.ai-messages {
+.aiMessages {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -210,7 +209,7 @@ function onKeydown(e: KeyboardEvent) {
   scrollbar-width: thin;
 }
 
-.ai-empty {
+.aiEmpty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -220,23 +219,23 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-fg);
 }
 
-.ai-empty-icon {
+.aiEmptyIcon {
   font-size: 2.5em;
   opacity: 0.15;
 }
 
-.ai-empty-title {
+.aiEmptyTitle {
   font-weight: bold;
   font-size: 1.1em;
   opacity: 0.6;
 }
 
-.ai-empty-hint {
+.aiEmptyHint {
   font-size: 0.8em;
   opacity: 0.35;
 }
 
-.ai-suggestions {
+.aiSuggestions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -244,31 +243,31 @@ function onKeydown(e: KeyboardEvent) {
   justify-content: center;
 }
 
-.ai-suggestion {
+.aiSuggestion {
   padding: 6px 12px;
   border-radius: var(--nd-radius-full);
   background: var(--nd-buttonBg);
   font-size: 0.78em;
   opacity: 0.7;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
 }
 
-.ai-suggestion:hover {
-  background: var(--nd-buttonHoverBg);
-  opacity: 1;
-}
-
-.ai-message {
+.aiMessage {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+
+  &.user {
+    flex-direction: row-reverse;
+  }
 }
 
-.ai-message.user {
-  flex-direction: row-reverse;
-}
-
-.message-avatar {
+.messageAvatar {
   flex-shrink: 0;
   width: 26px;
   height: 26px;
@@ -279,40 +278,40 @@ function onKeydown(e: KeyboardEvent) {
   justify-content: center;
   font-size: 0.75em;
   opacity: 0.6;
+
+  .assistant & {
+    background: var(--nd-accent-hover);
+    color: var(--nd-accent);
+    opacity: 1;
+  }
 }
 
-.ai-message.assistant .message-avatar {
-  background: var(--nd-accent-hover);
-  color: var(--nd-accent);
-  opacity: 1;
-}
-
-.message-body {
+.messageBody {
   max-width: 85%;
   min-width: 0;
 }
 
-.message-content {
+.messageContent {
   padding: 8px 12px;
   border-radius: 12px;
   font-size: 0.83em;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+
+  .user & {
+    background: var(--nd-accent);
+    color: var(--nd-fgOnAccent, #fff);
+    border-bottom-right-radius: 4px;
+  }
+
+  .assistant & {
+    background: var(--nd-buttonBg);
+    border-bottom-left-radius: 4px;
+  }
 }
 
-.ai-message.user .message-content {
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent, #fff);
-  border-bottom-right-radius: 4px;
-}
-
-.ai-message.assistant .message-content {
-  background: var(--nd-buttonBg);
-  border-bottom-left-radius: 4px;
-}
-
-.message-typing {
+.messageTyping {
   display: flex;
   gap: 4px;
   padding: 10px 14px;
@@ -321,21 +320,21 @@ function onKeydown(e: KeyboardEvent) {
   border-bottom-left-radius: 4px;
 }
 
-.typing-dot {
+.typingDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--nd-fg);
   opacity: 0.3;
   animation: typing 1.2s infinite ease-in-out;
-}
 
-.typing-dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
+  &:nth-child(2) {
+    animation-delay: 0.2s;
+  }
 
-.typing-dot:nth-child(3) {
-  animation-delay: 0.4s;
+  &:nth-child(3) {
+    animation-delay: 0.4s;
+  }
 }
 
 @keyframes typing {
@@ -343,7 +342,7 @@ function onKeydown(e: KeyboardEvent) {
   30% { opacity: 0.8; transform: translateY(-3px); }
 }
 
-.ai-input-area {
+.aiInputArea {
   display: flex;
   align-items: flex-end;
   gap: 6px;
@@ -352,7 +351,7 @@ function onKeydown(e: KeyboardEvent) {
   flex-shrink: 0;
 }
 
-.ai-input {
+.aiInput {
   flex: 1;
   min-width: 0;
   background: var(--nd-buttonBg);
@@ -365,22 +364,22 @@ function onKeydown(e: KeyboardEvent) {
   resize: none;
   max-height: 100px;
   font-family: inherit;
+
+  &:focus {
+    box-shadow: 0 0 0 2px var(--nd-accent);
+  }
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.4;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+  }
 }
 
-.ai-input:focus {
-  box-shadow: 0 0 0 2px var(--nd-accent);
-}
-
-.ai-input::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.4;
-}
-
-.ai-input:disabled {
-  opacity: 0.4;
-}
-
-.ai-send {
+.aiSend {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -391,13 +390,13 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-fgOnAccent, #fff);
   flex-shrink: 0;
   transition: opacity var(--nd-duration-base), transform var(--nd-duration-base);
-}
 
-.ai-send:hover:not(:disabled) {
-  transform: scale(1.05);
-}
+  &:hover:not(:disabled) {
+    transform: scale(1.05);
+  }
 
-.ai-send:disabled {
-  opacity: 0.3;
+  &:disabled {
+    opacity: 0.3;
+  }
 }
 </style>

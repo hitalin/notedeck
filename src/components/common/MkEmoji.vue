@@ -7,10 +7,10 @@ const url = computed(() => char2twemojiUrl(props.emoji))
 </script>
 
 <template>
-  <img class="twemoji" :src="url" :alt="emoji" width="20" height="20" decoding="async" loading="lazy" />
+  <img class="twemoji" :class="$style.twemoji" :src="url" :alt="emoji" width="20" height="20" decoding="async" loading="lazy" />
 </template>
 
-<style scoped>
+<style lang="scss" module>
 .twemoji {
   height: 1.25em;
   vertical-align: -0.25em;

@@ -175,31 +175,31 @@ onBeforeUnmount(() => {
     @header-click="scrollToTop()"
   >
     <template #header-icon>
-      <i class="ti ti-mail tl-header-icon" />
+      <i :class="$style.tlHeaderIcon" class="ti ti-mail" />
     </template>
 
     <template #header-meta>
-      <div v-if="account" class="header-account">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" class="header-avatar" />
-        <img class="header-favicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
+      <div v-if="account" :class="$style.headerAccount">
+        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
-    <div v-if="!account" class="column-empty">
+    <div v-if="!account" :class="$style.columnEmpty">
       Account not found
     </div>
 
-    <div v-else-if="error" class="column-empty column-error">
+    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
       {{ error.message }}
     </div>
 
-    <div v-else class="tl-body">
+    <div v-else :class="$style.tlBody">
       <div v-if="isLoading && notes.length === 0">
         <MkSkeleton v-for="i in 5" :key="i" />
       </div>
 
       <template v-else>
-        <NoteScroller ref="noteScrollerRef" :items="notes" class="tl-scroller" @scroll="handleScroll">
+        <NoteScroller ref="noteScrollerRef" :items="notes" :class="$style.tlScroller" @scroll="handleScroll">
           <template #default="{ item, index }">
             <div :data-index="index">
               <MkNote
@@ -216,7 +216,7 @@ onBeforeUnmount(() => {
           </template>
 
           <template #append>
-            <div v-if="isLoading && notes.length > 0" class="loading-more">
+            <div v-if="isLoading && notes.length > 0" :class="$style.loadingMore">
               Loading...
             </div>
           </template>
@@ -238,6 +238,6 @@ onBeforeUnmount(() => {
   </Teleport>
 </template>
 
-<style scoped>
-@import "./column-common.css";
+<style lang="scss" module>
+@use "./column-common.module.scss";
 </style>

@@ -344,63 +344,64 @@ function reload() {
 
     <!-- List mode -->
     <template v-if="mode === 'list'">
-      <div class="play-tabs">
+      <div :class="$style.playTabs">
         <button
           v-for="tab in (['featured', 'my', 'likes'] as Tab[])"
           :key="tab"
-          class="_button play-tab"
-          :class="{ active: activeTab === tab }"
+          class="_button"
+          :class="[$style.playTab, { [$style.active]: activeTab === tab }]"
           @click="fetchList(tab)"
         >
           {{ tab === 'featured' ? '人気' : tab === 'my' ? '自分の' : 'いいね' }}
         </button>
       </div>
 
-      <div class="play-list">
+      <div :class="$style.playList">
         <div v-if="listLoading" class="column-empty">読み込み中...</div>
         <div v-else-if="listError" class="column-empty column-error">{{ listError }}</div>
         <div v-else-if="listItems.length === 0" class="column-empty">Playが見つかりません</div>
         <button
           v-for="item in listItems"
           :key="item.id"
-          class="_button play-card"
+          class="_button"
+          :class="$style.playCard"
           @click="openPlay(item.id)"
         >
-          <div class="play-card-title">{{ item.title }}</div>
-          <div class="play-card-meta">
-            <span class="play-card-author">@{{ item.user.username }}</span>
-            <span v-if="item.likedCount > 0" class="play-card-likes">
+          <div :class="$style.playCardTitle">{{ item.title }}</div>
+          <div :class="$style.playCardMeta">
+            <span :class="$style.playCardAuthor">@{{ item.user.username }}</span>
+            <span v-if="item.likedCount > 0" :class="$style.playCardLikes">
               <i class="ti ti-heart" /> {{ item.likedCount }}
             </span>
           </div>
-          <div v-if="item.summary" class="play-card-summary">{{ item.summary }}</div>
+          <div v-if="item.summary" :class="$style.playCardSummary">{{ item.summary }}</div>
         </button>
       </div>
     </template>
 
     <!-- Ready mode (before execution) -->
     <template v-else-if="mode === 'ready'">
-      <div class="play-ready-scroll">
+      <div :class="$style.playReadyScroll">
         <div v-if="fetching" class="column-empty">Loading...</div>
         <div v-else-if="fetchError" class="column-empty column-error">{{ fetchError }}</div>
         <template v-else-if="flash">
-          <div class="play-ready">
-            <div class="play-ready-title">{{ flash.title }}</div>
-            <div v-if="flash.summary" class="play-ready-summary">{{ flash.summary }}</div>
-            <button class="_button play-start-btn" @click="startPlay">
+          <div :class="$style.playReady">
+            <div :class="$style.playReadyTitle">{{ flash.title }}</div>
+            <div v-if="flash.summary" :class="$style.playReadySummary">{{ flash.summary }}</div>
+            <button class="_button" :class="$style.playStartBtn" @click="startPlay">
               <i class="ti ti-player-play" /> Play
             </button>
-            <div class="play-ready-info">
+            <div :class="$style.playReadyInfo">
               <i class="ti ti-heart" /> {{ flash.likedCount }}
             </div>
           </div>
 
-          <div class="play-footer">
-            <div class="play-footer-author">
-              <img v-if="flash.user.avatarUrl" :src="flash.user.avatarUrl" class="play-footer-avatar" />
+          <div :class="$style.playFooter">
+            <div :class="$style.playFooterAuthor">
+              <img v-if="flash.user.avatarUrl" :src="flash.user.avatarUrl" :class="$style.playFooterAvatar" />
               By @{{ flash.user.username }}
             </div>
-            <div class="play-footer-dates">
+            <div :class="$style.playFooterDates">
               <div v-if="flash.createdAt !== flash.updatedAt">
                 <i class="ti ti-clock" /> Updated: {{ new Date(flash.updatedAt).toLocaleDateString() }}
               </div>
@@ -415,9 +416,9 @@ function reload() {
 
     <!-- Started mode (executing / executed) -->
     <template v-else>
-      <div class="play-started-scroll">
+      <div :class="$style.playStartedScroll">
         <!-- UI output -->
-        <div v-if="uiComponents.length" class="play-ui">
+        <div v-if="uiComponents.length" :class="$style.playUi">
           <AiScriptUiRenderer
             :components="uiComponents"
             :interpreter="(interpreter as Interpreter | null)"
@@ -427,19 +428,18 @@ function reload() {
         </div>
 
         <!-- Console output -->
-        <div v-if="consoleOutput.length" class="play-console">
+        <div v-if="consoleOutput.length" :class="$style.playConsole">
           <div
             v-for="(line, i) in consoleOutput"
             :key="i"
-            class="console-line"
-            :class="{ error: line.isError }"
+            :class="[$style.consoleLine, { [$style.error]: line.isError }]"
           >
             {{ line.text }}
           </div>
         </div>
 
         <!-- Error -->
-        <div v-if="runError" class="play-error">{{ runError }}</div>
+        <div v-if="runError" :class="$style.playError">{{ runError }}</div>
 
         <!-- Loading -->
         <div v-if="running && !uiComponents.length && !runError" class="column-empty">
@@ -447,16 +447,16 @@ function reload() {
         </div>
 
         <!-- Actions -->
-        <div v-if="!running" class="play-actions">
-          <div class="play-actions-row">
-            <button class="_button play-action-btn" title="Reload" @click="reload">
+        <div v-if="!running" :class="$style.playActions">
+          <div :class="$style.playActionsRow">
+            <button class="_button" :class="$style.playActionBtn" title="Reload" @click="reload">
               <i class="ti ti-reload" />
             </button>
           </div>
-          <div v-if="flash" class="play-actions-row">
+          <div v-if="flash" :class="$style.playActionsRow">
             <button
-              class="_button play-action-btn"
-              :class="{ liked: flash.isLiked }"
+              class="_button"
+              :class="[$style.playActionBtn, { [$style.liked]: flash.isLiked }]"
               @click="toggleLike"
             >
               <i class="ti ti-heart" />
@@ -481,18 +481,18 @@ function reload() {
   </Teleport>
 </template>
 
-<style scoped>
-@import "./column-common.css";
+<style lang="scss" module>
+@use "./column-common.module.scss";
 
 /* --- List mode --- */
 
-.play-tabs {
+.playTabs {
   display: flex;
   border-bottom: 1px solid var(--nd-divider);
   flex-shrink: 0;
 }
 
-.play-tab {
+.playTab {
   flex: 1;
   padding: 8px 0;
   text-align: center;
@@ -502,26 +502,30 @@ function reload() {
   opacity: 0.5;
   transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
   border-bottom: 2px solid transparent;
+
+  &:hover {
+    opacity: 0.8;
+  }
+
+  &.active {
+    opacity: 1;
+    color: var(--nd-accent);
+    border-bottom-color: var(--nd-accent);
+  }
 }
 
-.play-tab:hover {
-  opacity: 0.8;
+.active {
+  /* used as modifier */
 }
 
-.play-tab.active {
-  opacity: 1;
-  color: var(--nd-accent);
-  border-bottom-color: var(--nd-accent);
-}
-
-.play-list {
+.playList {
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
 }
 
-.play-card {
+.playCard {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -530,19 +534,19 @@ function reload() {
   text-align: left;
   border-bottom: 1px solid var(--nd-divider);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.play-card:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.play-card-title {
+.playCardTitle {
   font-size: 0.9em;
   font-weight: 600;
   color: var(--nd-fgHighlighted);
 }
 
-.play-card-meta {
+.playCardMeta {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -550,13 +554,17 @@ function reload() {
   opacity: 0.6;
 }
 
-.play-card-likes {
+.playCardAuthor {
+  /* placeholder */
+}
+
+.playCardLikes {
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
-.play-card-summary {
+.playCardSummary {
   font-size: 0.8em;
   opacity: 0.7;
   display: -webkit-box;
@@ -567,14 +575,14 @@ function reload() {
 
 /* --- Ready mode --- */
 
-.play-ready-scroll {
+.playReadyScroll {
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
 }
 
-.play-ready {
+.playReady {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -585,14 +593,14 @@ function reload() {
   background: var(--nd-panel);
 }
 
-.play-ready-title {
+.playReadyTitle {
   font-size: 1.2em;
   font-weight: bold;
   color: var(--nd-fgHighlighted);
   text-align: center;
 }
 
-.play-ready-summary {
+.playReadySummary {
   font-size: 0.9em;
   text-align: center;
   opacity: 0.8;
@@ -600,7 +608,7 @@ function reload() {
   line-height: 1.5;
 }
 
-.play-start-btn {
+.playStartBtn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -612,18 +620,18 @@ function reload() {
   font-size: 1em;
   font-weight: bold;
   transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.85;
+  }
 }
 
-.play-start-btn:hover {
-  opacity: 0.85;
-}
-
-.play-ready-info {
+.playReadyInfo {
   font-size: 0.85em;
   opacity: 0.6;
 }
 
-.play-footer {
+.playFooter {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -631,7 +639,7 @@ function reload() {
   margin: 0 12px 12px;
 }
 
-.play-footer-author {
+.playFooterAuthor {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -639,13 +647,13 @@ function reload() {
   opacity: 0.7;
 }
 
-.play-footer-avatar {
+.playFooterAvatar {
   width: 20px;
   height: 20px;
   border-radius: 50%;
 }
 
-.play-footer-dates {
+.playFooterDates {
   font-size: 0.75em;
   opacity: 0.5;
   display: flex;
@@ -655,7 +663,7 @@ function reload() {
 
 /* --- Started mode --- */
 
-.play-started-scroll {
+.playStartedScroll {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -664,11 +672,11 @@ function reload() {
   scrollbar-width: thin;
 }
 
-.play-ui {
+.playUi {
   padding: 16px 12px;
 }
 
-.play-console {
+.playConsole {
   padding: 8px 10px;
   margin: 0 12px;
   border-radius: var(--nd-radius-sm);
@@ -678,16 +686,20 @@ function reload() {
   line-height: 1.6;
 }
 
-.console-line {
+.consoleLine {
   white-space: pre-wrap;
   word-break: break-all;
+
+  &.error {
+    color: var(--nd-love);
+  }
 }
 
-.console-line.error {
-  color: var(--nd-love);
+.error {
+  /* used as modifier */
 }
 
-.play-error {
+.playError {
   padding: 8px 10px;
   margin: 0 12px;
   border-radius: var(--nd-radius-sm);
@@ -697,25 +709,25 @@ function reload() {
   white-space: pre-wrap;
 }
 
-.play-actions {
+.playActions {
   margin-top: auto;
   border-top: 1px solid var(--nd-divider);
 }
 
-.play-actions-row {
+.playActionsRow {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 12px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--nd-divider);
+
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
-.play-actions-row:last-child {
-  border-bottom: none;
-}
-
-.play-action-btn {
+.playActionBtn {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -725,13 +737,17 @@ function reload() {
   color: var(--nd-fg);
   font-size: 0.8em;
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &.liked {
+    color: var(--nd-love);
+  }
 }
 
-.play-action-btn:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.play-action-btn.liked {
-  color: var(--nd-love);
+.liked {
+  /* used as modifier */
 }
 </style>

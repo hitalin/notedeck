@@ -146,41 +146,41 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="editorRef" class="ais-editor" :class="{ 'ais-editor-flex': isFlexMode }" :style="editorStyle" />
+  <div ref="editorRef" :class="[$style.aisEditor, { [$style.aisEditorFlex]: isFlexMode }]" :style="editorStyle" />
 </template>
 
-<style scoped>
-.ais-editor {
+<style lang="scss" module>
+.aisEditor {
   border-radius: var(--nd-radius-sm);
   overflow: auto;
   background: #1e1e1e;
   transition: box-shadow var(--nd-duration-base);
+
+  &:focus-within {
+    box-shadow: 0 0 0 2px var(--nd-accent);
+  }
+
+  :deep(.cm-editor) {
+    min-height: 80px;
+  }
+
+  :deep(.cm-scroller) {
+    font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  }
 }
 
-.ais-editor:focus-within {
-  box-shadow: 0 0 0 2px var(--nd-accent);
-}
-
-.ais-editor :deep(.cm-editor) {
-  min-height: 80px;
-}
-
-.ais-editor-flex {
+.aisEditorFlex {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
 
-.ais-editor-flex :deep(.cm-editor) {
-  height: 100%;
-  min-height: 0;
-}
+  :deep(.cm-editor) {
+    height: 100%;
+    min-height: 0;
+  }
 
-.ais-editor-flex :deep(.cm-scroller) {
-  overflow: auto;
-}
-
-.ais-editor :deep(.cm-scroller) {
-  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  :deep(.cm-scroller) {
+    overflow: auto;
+  }
 }
 </style>

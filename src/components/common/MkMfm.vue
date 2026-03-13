@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, defineAsyncComponent } from 'vue'
+import { computed, defineAsyncComponent, useCssModule } from 'vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { highlightCode, highlighterLoaded } from '@/utils/highlight'
 import { proxyUrl } from '@/utils/imageProxy'
@@ -26,6 +26,7 @@ const emit = defineEmits<{
 }>()
 
 const { resolveEmoji: resolveEmojiRaw } = useEmojiResolver()
+const style = useCssModule()
 
 const resolvedTokens = computed(() => {
   if (props.tokens) return props.tokens
@@ -71,7 +72,29 @@ const borderStyles = new Set([
   'hidden',
 ])
 
+const fnClassMap: Record<string, string> = {
+  'mfm-spin': style.mfmSpin,
+  'mfm-spin-left': style.mfmSpinLeft,
+  'mfm-spin-alternate': style.mfmSpinAlternate,
+  'mfm-spinX': style.mfmSpinX,
+  'mfm-spinX-left': style.mfmSpinXLeft,
+  'mfm-spinX-alternate': style.mfmSpinXAlternate,
+  'mfm-spinY': style.mfmSpinY,
+  'mfm-spinY-left': style.mfmSpinYLeft,
+  'mfm-spinY-alternate': style.mfmSpinYAlternate,
+  'mfm-shake': style.mfmShake,
+  'mfm-bounce': style.mfmBounce,
+  'mfm-jelly': style.mfmJelly,
+  'mfm-tada': style.mfmTada,
+  'mfm-jump': style.mfmJump,
+  'mfm-twitch': style.mfmTwitch,
+  'mfm-rainbow': style.mfmRainbow,
+  'mfm-sparkle': style.mfmSparkle,
+  'mfm-blur': style.mfmBlur,
+}
+
 function fnClass(token: MfmToken & { type: 'fn' }): string | undefined {
+  let key: string | undefined
   switch (token.name) {
     case 'spin': {
       const axis = token.args.x ? 'X' : token.args.y ? 'Y' : ''
@@ -80,29 +103,40 @@ function fnClass(token: MfmToken & { type: 'fn' }): string | undefined {
         : token.args.alternate
           ? '-alternate'
           : ''
-      return `mfm-spin${axis}${dir}`
+      key = `mfm-spin${axis}${dir}`
+      break
     }
     case 'shake':
-      return 'mfm-shake'
+      key = 'mfm-shake'
+      break
     case 'bounce':
-      return 'mfm-bounce'
+      key = 'mfm-bounce'
+      break
     case 'jelly':
-      return 'mfm-jelly'
+      key = 'mfm-jelly'
+      break
     case 'tada':
-      return 'mfm-tada'
+      key = 'mfm-tada'
+      break
     case 'jump':
-      return 'mfm-jump'
+      key = 'mfm-jump'
+      break
     case 'twitch':
-      return 'mfm-twitch'
+      key = 'mfm-twitch'
+      break
     case 'rainbow':
-      return 'mfm-rainbow'
+      key = 'mfm-rainbow'
+      break
     case 'sparkle':
-      return 'mfm-sparkle'
+      key = 'mfm-sparkle'
+      break
     case 'blur':
-      return 'mfm-blur'
+      key = 'mfm-blur'
+      break
     default:
       return undefined
   }
+  return fnClassMap[key] ?? undefined
 }
 
 function fnStyle(
@@ -204,67 +238,67 @@ function fnStyle(
 </script>
 
 <template>
-  <span class="mfm"><template v-for="(token, i) in resolvedTokens" :key="i"><!--
-    --><!-- URL --><span v-if="token.type === 'url'" class="mfm-url-block"><a :href="isSafeUrl(token.value) ? token.value : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><MkUrlPreview v-if="!compact" :url="token.value" :account-id="accountId" /></span><!--
-    --><!-- Link --><a v-else-if="token.type === 'link'" :href="isSafeUrl(token.url) ? token.url : '#'" class="mfm-url" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.url)"><MkMfm :tokens="token.label" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></a><!--
-    --><!-- Mention --><span v-else-if="token.type === 'mention'" class="mfm-mention" @click.stop="emit('mentionClick', token.username, token.host)" @mouseenter="emit('mentionHover', $event, token.username, token.host)" @mouseleave="emit('mentionLeave')">{{ token.acct }}</span><!--
-    --><!-- Hashtag --><span v-else-if="token.type === 'hashtag'" class="mfm-hashtag" @click.stop>#{{ token.value }}</span><!--
+  <span class="mfm" :class="$style.mfm"><template v-for="(token, i) in resolvedTokens" :key="i"><!--
+    --><!-- URL --><span v-if="token.type === 'url'" :class="$style.mfmUrlBlock"><a :href="isSafeUrl(token.value) ? token.value : '#'" :class="$style.mfmUrl" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><MkUrlPreview v-if="!compact" :url="token.value" :account-id="accountId" /></span><!--
+    --><!-- Link --><a v-else-if="token.type === 'link'" :href="isSafeUrl(token.url) ? token.url : '#'" :class="$style.mfmUrl" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.url)"><MkMfm :tokens="token.label" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></a><!--
+    --><!-- Mention --><span v-else-if="token.type === 'mention'" :class="$style.mfmMention" @click.stop="emit('mentionClick', token.username, token.host)" @mouseenter="emit('mentionHover', $event, token.username, token.host)" @mouseleave="emit('mentionLeave')">{{ token.acct }}</span><!--
+    --><!-- Hashtag --><span v-else-if="token.type === 'hashtag'" :class="$style.mfmHashtag" @click.stop>#{{ token.value }}</span><!--
     --><!-- Bold --><b v-else-if="token.type === 'bold'">{{ token.value }}</b><!--
     --><!-- Italic --><i v-else-if="token.type === 'italic'">{{ token.value }}</i><!--
     --><!-- Strike --><s v-else-if="token.type === 'strike'">{{ token.value }}</s><!--
-    --><!-- Code Block --><div v-else-if="token.type === 'codeBlock'" :key="`cb-${i}-${highlighterLoaded}`" class="mfm-code-block" v-html="highlightCode(token.value, token.lang)"></div><!--
-    --><!-- Inline Code --><code v-else-if="token.type === 'inlineCode'" class="mfm-code">{{ token.value }}</code><!--
-    --><!-- Custom Emoji (resolved) --><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="proxyUrl(emojiUrls[token.shortcode]!)" :alt="`:${token.shortcode}:`" class="custom-emoji" decoding="async" loading="lazy" /><!--
+    --><!-- Code Block --><div v-else-if="token.type === 'codeBlock'" :key="`cb-${i}-${highlighterLoaded}`" :class="$style.mfmCodeBlock" v-html="highlightCode(token.value, token.lang)"></div><!--
+    --><!-- Inline Code --><code v-else-if="token.type === 'inlineCode'" :class="$style.mfmCode">{{ token.value }}</code><!--
+    --><!-- Custom Emoji (resolved) --><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="proxyUrl(emojiUrls[token.shortcode]!)" :alt="`:${token.shortcode}:`" class="custom-emoji" :class="$style.customEmoji" decoding="async" loading="lazy" /><!--
     --><!-- Custom Emoji (unresolved) --><span v-else-if="token.type === 'customEmoji'">:{{ token.shortcode }}:</span><!--
-    --><!-- Unicode Emoji --><img v-else-if="token.type === 'unicodeEmoji'" :src="token.url" :alt="token.value" class="twemoji" width="20" height="20" decoding="async" loading="lazy" /><!--
+    --><!-- Unicode Emoji --><img v-else-if="token.type === 'unicodeEmoji'" :src="token.url" :alt="token.value" class="twemoji" :class="$style.twemoji" width="20" height="20" decoding="async" loading="lazy" /><!--
     --><!-- MFM Function --><span v-else-if="token.type === 'fn'" :class="fnClass(token)" :style="fnStyle(token)"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
-    --><!-- Small --><small v-else-if="token.type === 'small'" class="mfm-small"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></small><!--
-    --><!-- Center --><span v-else-if="token.type === 'center'" class="mfm-center"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
+    --><!-- Small --><small v-else-if="token.type === 'small'" :class="$style.mfmSmall"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></small><!--
+    --><!-- Center --><span v-else-if="token.type === 'center'" :class="$style.mfmCenter"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
     --><!-- Plain --><span v-else-if="token.type === 'plain'">{{ token.value }}</span><!--
     --><!-- Text --><template v-else>{{ token.value }}</template><!--
   --></template></span>
 </template>
 
-<style scoped>
+<style lang="scss" module>
 .mfm {
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.5;
 }
 
-.mfm-url-block {
+.mfmUrlBlock {
   display: inline;
 }
 
-.mfm-url {
+.mfmUrl {
   color: var(--nd-link);
   text-decoration: none;
   word-break: break-all;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
-.mfm-url:hover {
-  text-decoration: underline;
-}
-
-.mfm-mention {
+.mfmMention {
   color: var(--nd-mention);
   cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
-.mfm-mention:hover {
-  text-decoration: underline;
-}
-
-.mfm-hashtag {
+.mfmHashtag {
   color: var(--nd-hashtag, var(--nd-accent));
   cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
-.mfm-hashtag:hover {
-  text-decoration: underline;
-}
-
-.mfm-code {
+.mfmCode {
   font-family: 'Fira Code', 'Cascadia Code', monospace;
   font-size: 0.9em;
   padding: 2px 6px;
@@ -273,28 +307,28 @@ function fnStyle(
   color: var(--nd-inlineCodeFg, var(--nd-fg));
 }
 
-.mfm-code-block {
+.mfmCodeBlock {
   margin: 8px 0;
   max-width: 100%;
   overflow: hidden;
+
+  :deep(pre) {
+    font-family: 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.85em;
+    padding: 12px 16px;
+    border-radius: var(--nd-radius-md);
+    overflow-x: auto;
+    white-space: pre;
+    word-break: normal;
+    margin: 0;
+  }
+
+  :deep(pre code) {
+    font-family: inherit;
+  }
 }
 
-.mfm-code-block :deep(pre) {
-  font-family: 'Fira Code', 'Cascadia Code', monospace;
-  font-size: 0.85em;
-  padding: 12px 16px;
-  border-radius: var(--nd-radius-md);
-  overflow-x: auto;
-  white-space: pre;
-  word-break: normal;
-  margin: 0;
-}
-
-.mfm-code-block :deep(pre code) {
-  font-family: inherit;
-}
-
-.custom-emoji {
+.customEmoji {
   height: 2em;
   min-width: 2em;
   width: auto;
@@ -309,24 +343,25 @@ function fnStyle(
 }
 
 /* Small */
-.mfm-small {
+.mfmSmall {
   font-size: 0.8em;
   opacity: 0.7;
 }
 
 /* Center */
-.mfm-center {
+.mfmCenter {
   display: block;
   text-align: center;
 }
 
 /* Blur */
-.mfm-blur {
+.mfmBlur {
   filter: blur(6px);
   transition: filter var(--nd-duration-slower);
-}
-.mfm-blur:hover {
-  filter: none;
+
+  &:hover {
+    filter: none;
+  }
 }
 
 /* Spin */
@@ -342,15 +377,15 @@ function fnStyle(
   from { transform: perspective(128px) rotateY(0deg); }
   to { transform: perspective(128px) rotateY(360deg); }
 }
-.mfm-spin { display: inline-block; animation: mfm-spin 1.5s linear infinite; }
-.mfm-spin-left { display: inline-block; animation: mfm-spin 1.5s linear infinite reverse; }
-.mfm-spin-alternate { display: inline-block; animation: mfm-spin 1.5s linear infinite alternate; }
-.mfm-spinX { display: inline-block; animation: mfm-spinX 1.5s linear infinite; }
-.mfm-spinX-left { display: inline-block; animation: mfm-spinX 1.5s linear infinite reverse; }
-.mfm-spinX-alternate { display: inline-block; animation: mfm-spinX 1.5s linear infinite alternate; }
-.mfm-spinY { display: inline-block; animation: mfm-spinY 1.5s linear infinite; }
-.mfm-spinY-left { display: inline-block; animation: mfm-spinY 1.5s linear infinite reverse; }
-.mfm-spinY-alternate { display: inline-block; animation: mfm-spinY 1.5s linear infinite alternate; }
+.mfmSpin { display: inline-block; animation: mfm-spin 1.5s linear infinite; }
+.mfmSpinLeft { display: inline-block; animation: mfm-spin 1.5s linear infinite reverse; }
+.mfmSpinAlternate { display: inline-block; animation: mfm-spin 1.5s linear infinite alternate; }
+.mfmSpinX { display: inline-block; animation: mfm-spinX 1.5s linear infinite; }
+.mfmSpinXLeft { display: inline-block; animation: mfm-spinX 1.5s linear infinite reverse; }
+.mfmSpinXAlternate { display: inline-block; animation: mfm-spinX 1.5s linear infinite alternate; }
+.mfmSpinY { display: inline-block; animation: mfm-spinY 1.5s linear infinite; }
+.mfmSpinYLeft { display: inline-block; animation: mfm-spinY 1.5s linear infinite reverse; }
+.mfmSpinYAlternate { display: inline-block; animation: mfm-spinY 1.5s linear infinite alternate; }
 
 /* Shake */
 @keyframes mfm-shake {
@@ -376,7 +411,7 @@ function fnStyle(
   95% { transform: translate(-2px, 0) rotate(-3deg); }
   100% { transform: translate(2px, 1px) rotate(2deg); }
 }
-.mfm-shake { display: inline-block; animation: mfm-shake 0.5s ease infinite; }
+.mfmShake { display: inline-block; animation: mfm-shake 0.5s ease infinite; }
 
 /* Bounce */
 @keyframes mfm-bounce {
@@ -386,7 +421,7 @@ function fnStyle(
   75% { transform: translateY(0) scale(1.5, 0.75); }
   100% { transform: translateY(0) scale(1, 1); }
 }
-.mfm-bounce { display: inline-block; animation: mfm-bounce 0.75s linear infinite; transform-origin: center bottom; }
+.mfmBounce { display: inline-block; animation: mfm-bounce 0.75s linear infinite; transform-origin: center bottom; }
 
 /* Jelly */
 @keyframes mfm-jelly {
@@ -395,7 +430,7 @@ function fnStyle(
   66% { transform: scaleX(0.8) scaleY(1.2); }
   100% { transform: scaleX(1) scaleY(1); }
 }
-.mfm-jelly { display: inline-block; animation: mfm-jelly 1s ease infinite; }
+.mfmJelly { display: inline-block; animation: mfm-jelly 1s ease infinite; }
 
 /* Tada */
 @keyframes mfm-tada {
@@ -411,7 +446,7 @@ function fnStyle(
   90% { transform: rotate(3deg) scale(1.3); }
   to { transform: rotate(0deg) scale(1); }
 }
-.mfm-tada { display: inline-block; animation: mfm-tada 1s linear infinite; }
+.mfmTada { display: inline-block; animation: mfm-tada 1s linear infinite; }
 
 /* Jump */
 @keyframes mfm-jump {
@@ -421,7 +456,7 @@ function fnStyle(
   75% { transform: translateY(-8px); }
   100% { transform: translateY(0); }
 }
-.mfm-jump { display: inline-block; animation: mfm-jump 0.75s linear infinite; }
+.mfmJump { display: inline-block; animation: mfm-jump 0.75s linear infinite; }
 
 /* Twitch */
 @keyframes mfm-twitch {
@@ -447,7 +482,7 @@ function fnStyle(
   95% { transform: translate(4px, 6px); }
   100% { transform: translate(7px, -2px); }
 }
-.mfm-twitch { display: inline-block; animation: mfm-twitch 0.5s ease infinite; }
+.mfmTwitch { display: inline-block; animation: mfm-twitch 0.5s ease infinite; }
 
 /* Rainbow */
 @keyframes mfm-rainbow {
@@ -459,12 +494,12 @@ function fnStyle(
   83.3% { color: #ff00ff; }
   100% { color: #ff0000; }
 }
-.mfm-rainbow { animation: mfm-rainbow 1s linear infinite; }
+.mfmRainbow { animation: mfm-rainbow 1s linear infinite; }
 
 /* Sparkle */
 @keyframes mfm-sparkle {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
-.mfm-sparkle { animation: mfm-sparkle 1.5s ease-in-out infinite; }
+.mfmSparkle { animation: mfm-sparkle 1.5s ease-in-out infinite; }
 </style>

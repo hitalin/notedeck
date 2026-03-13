@@ -249,12 +249,12 @@ function closeUserPopup() {
 
     <template v-else>
       <!-- Tabs -->
-      <div class="explore-tabs">
+      <div :class="$style.exploreTabs">
         <button
           v-for="tab in (['notes', 'users', 'roles'] as Tab[])"
           :key="tab"
-          class="_button explore-tab"
-          :class="{ active: activeTab === tab }"
+          class="_button"
+          :class="[$style.exploreTab, { [$style.active]: activeTab === tab }]"
           @click="switchTab(tab)"
         >
           {{ tab === 'notes' ? 'ノート' : tab === 'users' ? 'ユーザー' : 'ロール' }}
@@ -270,7 +270,7 @@ function closeUserPopup() {
         <div v-else class="tl-body">
           <div
             v-if="pullDistance > 0 || isRefreshing"
-            class="pull-indicator"
+            :class="$style.pullIndicator"
             :style="{ height: pullDistance + 'px' }"
           >
             <i class="ti" :class="isRefreshing ? 'ti-loader-2 spin' : 'ti-arrow-down'" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
@@ -303,26 +303,27 @@ function closeUserPopup() {
 
       <!-- Users tab -->
       <template v-else-if="activeTab === 'users'">
-        <div class="explore-list">
+        <div :class="$style.exploreList">
           <div v-if="usersLoading" class="column-empty">読み込み中...</div>
           <div v-else-if="usersError" class="column-empty column-error">{{ usersError }}</div>
           <div v-else-if="users.length === 0" class="column-empty">ユーザーが見つかりません</div>
           <button
             v-for="user in users"
             :key="user.id"
-            class="_button explore-user-card"
+            class="_button"
+            :class="$style.exploreUserCard"
             @click="onUserClick(user.id)"
             @mouseenter="onUserMouseEnter($event, user.id)"
             @mouseleave="onUserMouseLeave"
           >
-            <img v-if="user.avatarUrl" :src="user.avatarUrl" class="explore-user-avatar" />
-            <div class="explore-user-info">
-              <div class="explore-user-name">
-                <span v-if="user.name" class="explore-user-display-name">{{ user.name }}</span>
-                <span class="explore-user-acct">@{{ user.username }}<template v-if="user.host">@{{ user.host }}</template></span>
+            <img v-if="user.avatarUrl" :src="user.avatarUrl" :class="$style.exploreUserAvatar" />
+            <div :class="$style.exploreUserInfo">
+              <div :class="$style.exploreUserName">
+                <span v-if="user.name" :class="$style.exploreUserDisplayName">{{ user.name }}</span>
+                <span :class="$style.exploreUserAcct">@{{ user.username }}<template v-if="user.host">@{{ user.host }}</template></span>
               </div>
-              <div v-if="user.description" class="explore-user-desc">{{ user.description }}</div>
-              <div class="explore-user-meta">
+              <div v-if="user.description" :class="$style.exploreUserDesc">{{ user.description }}</div>
+              <div :class="$style.exploreUserMeta">
                 <i class="ti ti-users" /> {{ user.followersCount }}
               </div>
             </div>
@@ -334,29 +335,30 @@ function closeUserPopup() {
       <template v-else>
         <!-- Role users detail -->
         <template v-if="selectedRole">
-          <div class="explore-role-header">
-            <span v-if="selectedRole.iconUrl" class="explore-role-icon">
+          <div :class="$style.exploreRoleHeader">
+            <span v-if="selectedRole.iconUrl" :class="$style.exploreRoleIcon">
               <img :src="selectedRole.iconUrl" />
             </span>
             <span>{{ selectedRole.name }}</span>
           </div>
-          <div class="explore-list">
+          <div :class="$style.exploreList">
             <div v-if="roleUsersLoading" class="column-empty">読み込み中...</div>
             <div v-else-if="roleUsersError" class="column-empty column-error">{{ roleUsersError }}</div>
             <div v-else-if="roleUsers.length === 0" class="column-empty">ユーザーがいません</div>
             <button
               v-for="user in roleUsers"
               :key="user.id"
-              class="_button explore-user-card"
+              class="_button"
+              :class="$style.exploreUserCard"
               @click="onUserClick(user.id)"
               @mouseenter="onUserMouseEnter($event, user.id)"
               @mouseleave="onUserMouseLeave"
             >
-              <img v-if="user.avatarUrl" :src="user.avatarUrl" class="explore-user-avatar" />
-              <div class="explore-user-info">
-                <div class="explore-user-name">
-                  <span v-if="user.name" class="explore-user-display-name">{{ user.name }}</span>
-                  <span class="explore-user-acct">@{{ user.username }}<template v-if="user.host">@{{ user.host }}</template></span>
+              <img v-if="user.avatarUrl" :src="user.avatarUrl" :class="$style.exploreUserAvatar" />
+              <div :class="$style.exploreUserInfo">
+                <div :class="$style.exploreUserName">
+                  <span v-if="user.name" :class="$style.exploreUserDisplayName">{{ user.name }}</span>
+                  <span :class="$style.exploreUserAcct">@{{ user.username }}<template v-if="user.host">@{{ user.host }}</template></span>
                 </div>
               </div>
             </button>
@@ -365,23 +367,24 @@ function closeUserPopup() {
 
         <!-- Roles list -->
         <template v-else>
-          <div class="explore-list">
+          <div :class="$style.exploreList">
             <div v-if="rolesLoading" class="column-empty">読み込み中...</div>
             <div v-else-if="rolesError" class="column-empty column-error">{{ rolesError }}</div>
             <div v-else-if="roles.length === 0" class="column-empty">ロールが見つかりません</div>
             <button
               v-for="role in roles"
               :key="role.id"
-              class="_button explore-role-card"
+              class="_button"
+              :class="$style.exploreRoleCard"
               @click="openRole(role)"
             >
-              <span v-if="role.iconUrl" class="explore-role-icon">
+              <span v-if="role.iconUrl" :class="$style.exploreRoleIcon">
                 <img :src="role.iconUrl" />
               </span>
-              <div class="explore-role-info">
-                <div class="explore-role-name" :style="role.color ? { color: role.color } : undefined">{{ role.name }}</div>
-                <div v-if="role.description" class="explore-role-desc">{{ role.description }}</div>
-                <div class="explore-role-meta">
+              <div :class="$style.exploreRoleInfo">
+                <div :class="$style.exploreRoleName" :style="role.color ? { color: role.color } : undefined">{{ role.name }}</div>
+                <div v-if="role.description" :class="$style.exploreRoleDesc">{{ role.description }}</div>
+                <div :class="$style.exploreRoleMeta">
                   <i class="ti ti-users" /> {{ role.usersCount }}
                 </div>
               </div>
@@ -414,9 +417,11 @@ function closeUserPopup() {
 </template>
 
 <style scoped>
-@import "./column-common.css";
+@use "./column-common.module.scss";
+</style>
 
-.pull-indicator {
+<style lang="scss" module>
+.pullIndicator {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -425,21 +430,20 @@ function closeUserPopup() {
   color: var(--nd-accent);
   font-size: 1.2em;
   transition: height var(--nd-duration-slow) ease;
-}
 
-.pull-indicator .ti {
-  transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
+  .ti {
+    transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
+  }
 }
 
 /* --- Tabs --- */
-
-.explore-tabs {
+.exploreTabs {
   display: flex;
   border-bottom: 1px solid var(--nd-divider);
   flex-shrink: 0;
 }
 
-.explore-tab {
+.exploreTab {
   flex: 1;
   padding: 8px 0;
   text-align: center;
@@ -449,21 +453,20 @@ function closeUserPopup() {
   opacity: 0.5;
   transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
   border-bottom: 2px solid transparent;
-}
 
-.explore-tab:hover {
-  opacity: 0.8;
-}
+  &:hover {
+    opacity: 0.8;
+  }
 
-.explore-tab.active {
-  opacity: 1;
-  color: var(--nd-accent);
-  border-bottom-color: var(--nd-accent);
+  &.active {
+    opacity: 1;
+    color: var(--nd-accent);
+    border-bottom-color: var(--nd-accent);
+  }
 }
 
 /* --- List --- */
-
-.explore-list {
+.exploreList {
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
@@ -471,8 +474,7 @@ function closeUserPopup() {
 }
 
 /* --- User card --- */
-
-.explore-user-card {
+.exploreUserCard {
   display: flex;
   gap: 10px;
   width: 100%;
@@ -481,43 +483,43 @@ function closeUserPopup() {
   border-bottom: 1px solid var(--nd-divider);
   transition: background var(--nd-duration-base);
   cursor: pointer;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.explore-user-card:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.explore-user-avatar {
+.exploreUserAvatar {
   width: 42px;
   height: 42px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.explore-user-info {
+.exploreUserInfo {
   flex: 1;
   min-width: 0;
 }
 
-.explore-user-name {
+.exploreUserName {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 4px;
 }
 
-.explore-user-display-name {
+.exploreUserDisplayName {
   font-size: 0.9em;
   font-weight: 600;
   color: var(--nd-fgHighlighted);
 }
 
-.explore-user-acct {
+.exploreUserAcct {
   font-size: 0.8em;
   opacity: 0.6;
 }
 
-.explore-user-desc {
+.exploreUserDesc {
   margin-top: 4px;
   font-size: 0.8em;
   opacity: 0.7;
@@ -527,7 +529,7 @@ function closeUserPopup() {
   overflow: hidden;
 }
 
-.explore-user-meta {
+.exploreUserMeta {
   margin-top: 4px;
   font-size: 0.75em;
   opacity: 0.5;
@@ -537,8 +539,7 @@ function closeUserPopup() {
 }
 
 /* --- Role card --- */
-
-.explore-role-card {
+.exploreRoleCard {
   display: flex;
   gap: 10px;
   width: 100%;
@@ -546,30 +547,30 @@ function closeUserPopup() {
   text-align: left;
   border-bottom: 1px solid var(--nd-divider);
   transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.explore-role-card:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.explore-role-icon img {
+.exploreRoleIcon img {
   width: 28px;
   height: 28px;
   border-radius: var(--nd-radius-sm);
 }
 
-.explore-role-info {
+.exploreRoleInfo {
   flex: 1;
   min-width: 0;
 }
 
-.explore-role-name {
+.exploreRoleName {
   font-size: 0.9em;
   font-weight: 600;
   color: var(--nd-fgHighlighted);
 }
 
-.explore-role-desc {
+.exploreRoleDesc {
   margin-top: 2px;
   font-size: 0.8em;
   opacity: 0.7;
@@ -579,7 +580,7 @@ function closeUserPopup() {
   overflow: hidden;
 }
 
-.explore-role-meta {
+.exploreRoleMeta {
   margin-top: 4px;
   font-size: 0.75em;
   opacity: 0.5;
@@ -588,7 +589,7 @@ function closeUserPopup() {
   gap: 3px;
 }
 
-.explore-role-header {
+.exploreRoleHeader {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -598,11 +599,11 @@ function closeUserPopup() {
   color: var(--nd-fgHighlighted);
   border-bottom: 1px solid var(--nd-divider);
   flex-shrink: 0;
-}
 
-.explore-role-header img {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
+  img {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+  }
 }
 </style>

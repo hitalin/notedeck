@@ -10,7 +10,7 @@ import { provideScrollDirection } from '@/composables/useScrollDirection'
 import { useUpdater } from '@/composables/useUpdater'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
-import { useUiStore } from '@/stores/ui'
+import { useIsMobile } from '@/stores/ui'
 import DeckBottomBar from './DeckBottomBar.vue'
 import DeckColumnsArea from './DeckColumnsArea.vue'
 import DeckMobileNav from './DeckMobileNav.vue'
@@ -31,7 +31,7 @@ const {
 } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
-const { isMobile } = useUiStore()
+const isMobile = useIsMobile()
 const columnDrag = useColumnDrag(deckStore)
 
 const navbarRef = ref<InstanceType<typeof DeckNavbar> | null>(null)

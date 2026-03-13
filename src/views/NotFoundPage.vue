@@ -5,17 +5,17 @@ const router = useRouter()
 </script>
 
 <template>
-  <div class="not-found">
+  <div :class="$style.notFound">
     <h1>404</h1>
     <p>ページが見つかりません</p>
-    <button class="_buttonPrimary back-btn" @click="router.push('/')">
+    <button class="_buttonPrimary" :class="$style.backBtn" @click="router.push('/')">
       ホームに戻る
     </button>
   </div>
 </template>
 
-<style scoped>
-.not-found {
+<style lang="scss" module>
+.notFound {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -23,20 +23,20 @@ const router = useRouter()
   height: 100vh;
   color: var(--nd-fg);
   gap: 8px;
+
+  h1 {
+    font-size: 3em;
+    margin: 0;
+    opacity: 0.3;
+  }
+
+  p {
+    margin: 0;
+    opacity: 0.5;
+  }
 }
 
-.not-found h1 {
-  font-size: 3em;
-  margin: 0;
-  opacity: 0.3;
-}
-
-.not-found p {
-  margin: 0;
-  opacity: 0.5;
-}
-
-.back-btn {
+.backBtn {
   margin-top: 16px;
   padding: 8px 24px;
   border-radius: var(--nd-radius-md);

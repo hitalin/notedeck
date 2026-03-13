@@ -18,24 +18,24 @@ function toggle() {
 </script>
 
 <template>
-  <div class="picker-section">
-    <button class="section-header" @click="toggle">
-      <span class="section-arrow">{{ isOpen ? '▼' : '▶' }}</span>
-      <span class="section-label">{{ label }}</span>
-      <span v-if="count != null" class="section-count">({{ count }})</span>
+  <div :class="$style.pickerSection">
+    <button :class="$style.sectionHeader" @click="toggle">
+      <span :class="$style.sectionArrow">{{ isOpen ? '▼' : '▶' }}</span>
+      <span :class="$style.sectionLabel">{{ label }}</span>
+      <span v-if="count != null" :class="$style.sectionCount">({{ count }})</span>
     </button>
-    <div v-if="isOpen" class="section-content">
+    <div v-if="isOpen" :class="$style.sectionContent">
       <slot />
     </div>
   </div>
 </template>
 
-<style scoped>
-.picker-section {
+<style lang="scss" module>
+.pickerSection {
   margin-bottom: 2px;
 }
 
-.section-header {
+.sectionHeader {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -55,28 +55,28 @@ function toggle() {
   backdrop-filter: blur(var(--nd-blur));
   -webkit-backdrop-filter: blur(var(--nd-blur));
   background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 70%, transparent);
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
-.section-header:hover {
-  opacity: 1;
-}
-
-.section-arrow {
+.sectionArrow {
   font-size: 0.8em;
   width: 12px;
   flex-shrink: 0;
 }
 
-.section-label {
+.sectionLabel {
   text-transform: uppercase;
 }
 
-.section-count {
+.sectionCount {
   opacity: 0.5;
   font-weight: normal;
 }
 
-.section-content {
+.sectionContent {
   padding: 2px 0;
 }
 </style>
