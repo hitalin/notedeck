@@ -8,7 +8,7 @@ Desktop-only multi-server Misskey deck client with fork support.
 |---|---|
 | Frontend | Vue 3 + TypeScript |
 | Backend | Rust (Tauri v2) + [notecli](https://github.com/hitalin/notecli) |
-| Build | Vite + Cargo |
+| Build | Vite 8 (Rolldown) + Cargo |
 | State | Pinia |
 | Local DB | SQLite (rusqlite, WAL mode, FTS5) |
 | HTTP | reqwest (Rust, via notecli) |
@@ -17,6 +17,7 @@ Desktop-only multi-server Misskey deck client with fork support.
 | Script | AiScript (@syuilo/aiscript) |
 | Editor | CodeMirror 6 |
 | Linter | Biome |
+| Style | SCSS + CSS Modules (`$style`) |
 | Test | Vitest + jsdom |
 
 ## Getting Started
@@ -80,7 +81,7 @@ src/                        # Vue 3 frontend
 ├── data/                   # Static data & constants
 ├── router/                 # Vue Router definitions
 ├── stores/                 # Pinia stores (accounts, deck, servers, emojis, theme, etc.)
-├── styles/                 # Global CSS
+├── styles/                 # Global CSS (CSS variables)
 ├── theme/                  # Misskey-compatible theme compiler & applier
 ├── utils/                  # Shared utilities
 └── views/                  # Page components (NoteDetail, UserProfile)
@@ -97,6 +98,34 @@ src-tauri/src/              # Rust backend (Tauri 固有部分)
 ```
 
 Misskey API クライアント・DB・モデル・ストリーミングコアなどの共通ロジックは全て `notecli` クレートにあり、`src-tauri/` には Tauri 固有の薄いラッパー（約 2,800 行）のみ残っています。
+
+### Styling
+
+コンポーネントのスタイリングには **CSS Modules + SCSS** を使用しています。
+
+```vue
+<template>
+  <div :class="$style.container">...</div>
+</template>
+
+<style module lang="scss">
+.container {
+  display: flex;
+}
+</style>
+```
+
+- `<style module lang="scss">` で CSS Modules として定義し、テンプレートから `$style.xxx` で参照
+- `vite.config.ts` で `localsConvention: 'camelCaseOnly'` を設定済み（`kebab-case` → `camelCase` 自動変換）
+- グローバルな CSS 変数は `src/styles/global.css` で定義
+- モバイル/デスクトップの切り替えは CSS の `display` ではなく `v-if` で制御
+
+### Build
+
+Vite 8 (Rolldown + OXC ベース) を使用。`vite.config.ts` で以下のカスタムプラグインを定義：
+
+- **stripUnusedFonts** — 未使用フォント形式（woff, ttf）をビルドから除外
+- **subsetTablerIcons** — ソースコードから使用中のアイコンを検出し、CSS ルールとフォントをサブセット化
 
 ### Adding support for a new fork
 
