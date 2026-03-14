@@ -223,12 +223,12 @@ function onWindowMouseDown() {
   left: 0 !important;
   top: 0 !important;
   right: 0 !important;
-  bottom: 0 !important;
+  bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom))) !important;
   width: 100% !important;
-  height: 100% !important;
-  max-height: 100% !important;
+  height: auto !important;
+  max-height: none !important;
   border-radius: 0;
-  z-index: 2100 !important;
+  z-index: calc(var(--nd-z-navbar) - 1) !important;
 
   .windowHeader {
     min-height: 46px;

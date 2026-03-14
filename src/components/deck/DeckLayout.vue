@@ -259,6 +259,7 @@ function acceptCrossWindowDrop() {
 
 .mobile {
   flex-direction: column;
+  padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
 }
 
 .mainArea {

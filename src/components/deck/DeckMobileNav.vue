@@ -177,6 +177,8 @@ watch(
   backdrop-filter: blur(var(--nd-blur));
   -webkit-backdrop-filter: blur(var(--nd-blur));
   border-top: 1px solid var(--nd-divider);
+  position: relative;
+  z-index: var(--nd-z-navbar);
 }
 
 .menuBtn,
