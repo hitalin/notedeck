@@ -49,7 +49,10 @@ const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i
 
 function openCompose() {
   if (accountsStore.accounts.length === 0) return
-  showCompose.value = true
+  showCompose.value = !showCompose.value
+  if (!showCompose.value) {
+    pendingFilePaths.value = []
+  }
 }
 
 function closeCompose() {
