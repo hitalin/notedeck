@@ -154,7 +154,7 @@ watch(
       >
         <i :class="'ti ti-' + columnIcon(colId)" />
         <span v-if="columnServerIcon(colId)" :class="$style.serverBadge">
-          <img :src="columnServerIcon(colId)!" :class="$style.badgeImg" />
+          <img :src="columnServerIcon(colId)!" :class="$style.badgeImg" width="14" height="14" />
         </span>
         <span v-else-if="columnAccount(colId)" :class="$style.serverBadge">
           <span :class="$style.badgeInitial">{{
@@ -166,6 +166,8 @@ watch(
             v-if="columnAccount(colId)!.avatarUrl"
             :src="columnAccount(colId)!.avatarUrl!"
             :class="$style.badgeImg"
+            width="14"
+            height="14"
           />
           <span v-else :class="$style.badgeInitial">{{
             columnAccount(colId)!.username.charAt(0).toUpperCase()
