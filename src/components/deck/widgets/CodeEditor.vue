@@ -1,7 +1,17 @@
 <script setup lang="ts">
-import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
-import { bracketMatching } from '@codemirror/language'
+import {
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+} from '@codemirror/autocomplete'
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from '@codemirror/commands'
+import { bracketMatching, indentOnInput } from '@codemirror/language'
+import { lintGutter } from '@codemirror/lint'
 import { type Extension } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers } from '@codemirror/view'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
@@ -11,6 +21,7 @@ const props = withDefaults(
   defineProps<{
     modelValue: string
     language: Extension
+    linter?: Extension
     maxHeight?: string
   }>(),
   {
@@ -42,9 +53,18 @@ onMounted(() => {
     history(),
     bracketMatching(),
     closeBrackets(),
-    keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap]),
+    indentOnInput(),
+    autocompletion(),
+    lintGutter(),
+    keymap.of([
+      indentWithTab,
+      ...closeBracketsKeymap,
+      ...defaultKeymap,
+      ...historyKeymap,
+    ]),
     updateListener,
   ]
+  if (props.linter) extensions.push(props.linter)
 
   view = new EditorView({
     doc: props.modelValue,

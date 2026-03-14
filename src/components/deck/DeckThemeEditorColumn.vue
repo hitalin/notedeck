@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
+import { type Diagnostic, linter } from '@codemirror/lint'
 import JSON5 from 'json5'
 import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
@@ -13,6 +14,34 @@ import DeckColumn from './DeckColumn.vue'
 import CodeEditor from './widgets/CodeEditor.vue'
 
 const jsonLang = json()
+
+const jsonLinter = linter(
+  (view) => {
+    const diagnostics: Diagnostic[] = []
+    const code = view.state.doc.toString()
+    if (!code.trim()) return diagnostics
+    try {
+      JSON5.parse(code)
+    } catch (e) {
+      if (e instanceof Error) {
+        const lineMatch = e.message.match(/at (\d+):(\d+)/)
+        let from = 0
+        let to = code.length
+        if (lineMatch) {
+          const lineNum = parseInt(lineMatch[1] ?? '1', 10)
+          const line = view.state.doc.line(
+            Math.min(lineNum, view.state.doc.lines),
+          )
+          from = line.from
+          to = line.to
+        }
+        diagnostics.push({ from, to, severity: 'error', message: e.message })
+      }
+    }
+    return diagnostics
+  },
+  { delay: 500 },
+)
 
 const props = defineProps<{
   column: DeckColumnType
@@ -612,6 +641,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
         <CodeEditor
           v-model="codeContent"
           :language="jsonLang"
+          :linter="jsonLinter"
           :class="$style.codeEditorWrap"
         />
         <div v-if="codeError" :class="$style.codeError">{{ codeError }}</div>

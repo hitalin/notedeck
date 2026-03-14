@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { css } from '@codemirror/lang-css'
+import { type Diagnostic, linter } from '@codemirror/lint'
 import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -8,6 +9,36 @@ import DeckColumn from './DeckColumn.vue'
 import CodeEditor from './widgets/CodeEditor.vue'
 
 const cssLang = css()
+
+const cssLinter = linter(
+  (view) => {
+    const diagnostics: Diagnostic[] = []
+    const code = view.state.doc.toString()
+    if (!code.trim()) return diagnostics
+    const testCss = code
+      .split('\n')
+      .filter((line) => {
+        const t = line.trim()
+        return !t.startsWith('@import') && !t.startsWith('@font-face')
+      })
+      .join('\n')
+    try {
+      const sheet = new CSSStyleSheet()
+      sheet.replaceSync(testCss)
+    } catch (e) {
+      if (e instanceof Error) {
+        diagnostics.push({
+          from: 0,
+          to: code.length,
+          severity: 'error',
+          message: e.message,
+        })
+      }
+    }
+    return diagnostics
+  },
+  { delay: 500 },
+)
 
 const props = defineProps<{
   column: DeckColumnType
@@ -404,6 +435,7 @@ watch(tab, (t) => {
           <CodeEditor
             v-model="userFreeformCss"
             :language="cssLang"
+            :linter="cssLinter"
             :class="[$style.editorWrap, { [$style.hasError]: cssError }]"
             max-height="300px"
           />
@@ -425,6 +457,7 @@ watch(tab, (t) => {
         <CodeEditor
           v-model="cssCode"
           :language="cssLang"
+          :linter="cssLinter"
           :class="[$style.codeEditorWrap, { [$style.hasError]: codeError }]"
         />
         <div v-if="codeError" :class="$style.errorMessage">
