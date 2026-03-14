@@ -122,6 +122,10 @@ useDeckInit({
 
 function scrollToColumn(index: number) {
   activeColumnIndex.value = index
+  // フラットインデックスからカラムIDを取得してアクティブカラムを更新
+  const flatColumns = deckStore.windowLayout.flat()
+  const colId = flatColumns[index]
+  if (colId) deckStore.setActiveColumn(colId)
   columnsAreaRef.value?.scrollToColumn(index)
 }
 
