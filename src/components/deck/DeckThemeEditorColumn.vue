@@ -214,6 +214,7 @@ const availableSecondaryProps = computed(() => {
 // Custom dropdown states
 const showLoadDropdown = ref(false)
 const showAddPropDropdown = ref(false)
+const cssModule = useCssModule()
 
 function selectInstalledTheme(theme: MisskeyTheme) {
   loadFromInstalled(theme)
@@ -236,7 +237,7 @@ function themeAccentColor(theme: MisskeyTheme): string {
 // Close dropdowns on outside click
 function handleOutsideClick(e: MouseEvent) {
   const target = e.target as HTMLElement
-  if (!target.closest(`.${useCssModule().dropdown}`)) {
+  if (!target.closest(`.${cssModule.dropdown}`)) {
     showLoadDropdown.value = false
     showAddPropDropdown.value = false
   }

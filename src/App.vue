@@ -38,6 +38,8 @@ function dismissSplash() {
   splash.addEventListener('transitionend', () => splash.remove(), {
     once: true,
   })
+  // Fallback: remove after 300ms if transitionend never fires (CSP may block inline transition)
+  setTimeout(() => splash.remove(), 300)
 }
 
 onMounted(async () => {
