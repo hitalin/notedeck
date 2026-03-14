@@ -353,3 +353,20 @@ jobs:
           commit_email: hitalin@proton.me
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: "Update to ${{ steps.version.outputs.version }}"
+
+  winget:
+    needs: publish
+    runs-on: windows-latest
+    steps:
+      - name: Get version
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Submit to winget
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: Hitalin.NoteDeck
+          installers-regex: '-windows-x64-setup\.exe$'
+          version: ${{ steps.version.outputs.version }}
+          token: ${{ secrets.WINGET_TOKEN }}
