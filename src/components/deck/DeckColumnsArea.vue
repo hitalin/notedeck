@@ -181,12 +181,36 @@ function onColumnsWheel(e: WheelEvent) {
   columnsRef.value.scrollLeft += e.deltaY
 }
 
-// Mobile: scroll position → active column index
+// Scroll position → active column index
 function onColumnsScroll() {
   if (!columnsRef.value) return
-  const w = columnsRef.value.clientWidth
-  if (w === 0) return
-  emit('active-column-index', Math.round(columnsRef.value.scrollLeft / w))
+  if (isCompact.value) {
+    // Mobile: 1 column = full viewport width
+    const w = columnsRef.value.clientWidth
+    if (w === 0) return
+    emit('active-column-index', Math.round(columnsRef.value.scrollLeft / w))
+  } else {
+    // Desktop: find the section closest to left edge
+    const scrollLeft = columnsRef.value.scrollLeft
+    const sections =
+      columnsRef.value.querySelectorAll<HTMLElement>(`:scope > section`)
+    const layout = deckStore.windowLayout
+    let bestFlatIdx = 0
+    let bestDist = Infinity
+    let flatIdx = 0
+    for (let gi = 0; gi < layout.length; gi++) {
+      const section = sections[gi]
+      if (section) {
+        const dist = Math.abs(section.offsetLeft - scrollLeft)
+        if (dist < bestDist) {
+          bestDist = dist
+          bestFlatIdx = flatIdx
+        }
+      }
+      flatIdx += layout[gi]?.length ?? 0
+    }
+    emit('active-column-index', bestFlatIdx)
+  }
 }
 
 // Column pointer drag (swap / stack)
@@ -196,7 +220,7 @@ function onColumnPointerDown(colId: string, e: PointerEvent) {
   props.columnDrag.startDrag(colId, e)
 }
 
-// Scroll to column when activeColumnId changes via keyboard navigation
+// Scroll to column when activeColumnId changes (keyboard nav, addColumn, etc.)
 watch(
   () => deckStore.activeColumnId,
   (id) => {
@@ -211,15 +235,40 @@ watch(
         inline: 'nearest',
       })
   },
+  { flush: 'post' },
 )
 
-// Expose for DeckLayout (mobile scroll-to-column)
+// Scroll to column by flat index
 function scrollToColumn(index: number) {
   if (!columnsRef.value) return
-  columnsRef.value.scrollTo({
-    left: index * columnsRef.value.clientWidth,
-    behavior: 'smooth',
-  })
+  if (isCompact.value) {
+    // Mobile: 1 column = full viewport width
+    columnsRef.value.scrollTo({
+      left: index * columnsRef.value.clientWidth,
+      behavior: 'smooth',
+    })
+  } else {
+    // Desktop: find the section containing the flat index and scroll to it
+    const sections =
+      columnsRef.value.querySelectorAll<HTMLElement>(`:scope > section`)
+    const layout = deckStore.windowLayout
+    let flatIdx = 0
+    for (let gi = 0; gi < layout.length; gi++) {
+      const group = layout[gi]
+      if (!group) continue
+      for (let ci = 0; ci < group.length; ci++) {
+        if (flatIdx === index) {
+          sections[gi]?.scrollIntoView({
+            behavior: 'smooth',
+            inline: 'start',
+            block: 'nearest',
+          })
+          return
+        }
+        flatIdx++
+      }
+    }
+  }
 }
 
 defineExpose({ scrollToColumn, columnMap })

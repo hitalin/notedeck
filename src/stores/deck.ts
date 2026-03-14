@@ -188,6 +188,7 @@ export const useDeckStore = defineStore('deck', () => {
     columns.value.push(col)
     layout.value.push([col.id])
     save()
+    activeColumnId.value = col.id
     return col
   }
 

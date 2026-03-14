@@ -121,6 +121,7 @@ useDeckInit({
 })
 
 function scrollToColumn(index: number) {
+  activeColumnIndex.value = index
   columnsAreaRef.value?.scrollToColumn(index)
 }
 
@@ -167,9 +168,13 @@ function acceptCrossWindowDrop() {
 
       <DeckBottomBar
         v-if="!isCompact"
+        :columns="columns"
+        :layout="deckStore.windowLayout"
+        :active-column-index="activeColumnIndex"
         :show-profile-menu="showProfileMenu"
         :show-settings-menu="showSettingsMenu"
         :update-available="updateAvailable"
+        @scroll-to-column="scrollToColumn"
         @toggle-add-menu="toggleAddMenu"
         @update:show-profile-menu="showProfileMenu = $event"
         @update:show-settings-menu="showSettingsMenu = $event"
