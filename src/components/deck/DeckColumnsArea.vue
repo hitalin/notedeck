@@ -9,16 +9,12 @@ import {
   useCssModule,
   watch,
 } from 'vue'
-import type { useColumnDrag } from '@/composables/useColumnDrag'
+import { useColumnDrag } from '@/composables/useColumnDrag'
 import { useColumnResize } from '@/composables/useColumnResize'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
-
-const props = defineProps<{
-  columnDrag: ReturnType<typeof useColumnDrag>
-}>()
 
 const emit = defineEmits<{
   'active-column-index': [index: number]
@@ -73,6 +69,13 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
 
 const $style = useCssModule()
 const deckStore = useDeckStore()
+
+// Column drag & drop (CSS Module class names are passed as selectors)
+const columnDrag = useColumnDrag(deckStore, {
+  columns: $style.columns,
+  columnSection: $style.columnSection,
+  colResizeHandle: $style.colResizeHandle,
+})
 const isCompact = useIsCompactLayout()
 
 // Column lookup map — store を直接参照（将来 windowId でフィルタ可能）
@@ -118,9 +121,9 @@ watch(
 
 // Drop insert placeholder
 const dropInsertIndex = computed(() => {
-  const dt = props.columnDrag.dropTarget.value
+  const dt = columnDrag.dropTarget.value
   if (!dt || !('insertIndex' in dt)) return -1
-  const dragId = props.columnDrag.dragColumnId.value
+  const dragId = columnDrag.dragColumnId.value
   if (dragId) {
     const fromIdx = deckStore.windowLayout.findIndex((ids) =>
       ids.includes(dragId),
@@ -135,7 +138,7 @@ const dropInsertIndex = computed(() => {
 })
 
 const dropInsertWidth = computed(() => {
-  const dragId = props.columnDrag.dragColumnId.value
+  const dragId = columnDrag.dragColumnId.value
   if (!dragId) return 400
   return columnMap.value.get(dragId)?.width ?? 400
 })
@@ -157,7 +160,7 @@ function sectionWidth(group: string[]): string {
 }
 
 function cellDropZone(colId: string): string | undefined {
-  const dt = props.columnDrag.dropTarget.value
+  const dt = columnDrag.dropTarget.value
   if (!dt || !('columnId' in dt) || dt.columnId !== colId) return undefined
   return dt.position
 }
@@ -228,7 +231,7 @@ function onColumnsScroll() {
 function onColumnPointerDown(colId: string, e: PointerEvent) {
   const target = e.target as HTMLElement
   if (!target.closest('.column-header')) return
-  props.columnDrag.startDrag(colId, e)
+  columnDrag.startDrag(colId, e)
 }
 
 // Scroll to column when activeColumnId changes (keyboard nav, addColumn, etc.)
@@ -288,7 +291,6 @@ defineExpose({ scrollToColumn, columnMap })
 <template>
   <div
     ref="columnsRef"
-    class="columns"
     :class="[$style.columns, { [$style.swipeMode]: isCompact }]"
     @wheel="onColumnsWheel"
     @scroll="onColumnsScroll"
@@ -303,7 +305,6 @@ defineExpose({ scrollToColumn, columnMap })
       :key="group.join('-')"
     >
       <section
-        class="column-section"
         :class="[$style.columnSection, sectionClass(group)]"
         :style="{ flexBasis: sectionWidth(group) }"
       >
@@ -331,7 +332,6 @@ defineExpose({ scrollToColumn, columnMap })
       </section>
       <div
         v-if="!isCompact"
-        class="col-resize-handle"
         :class="[$style.colResizeHandle, { [$style.active]: resizingColId === group[0] }]"
         @mousedown="startColumnResize(group[0]!, $event)"
       />

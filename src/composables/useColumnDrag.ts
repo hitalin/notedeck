@@ -9,7 +9,16 @@ type DropTarget =
   | { columnId: string; position: 'swap' | 'above' | 'below' }
   | { insertIndex: number; position: 'insert' }
 
-export function useColumnDrag(deckStore: DeckStore) {
+export interface ColumnDragSelectors {
+  columns: string
+  columnSection: string
+  colResizeHandle: string
+}
+
+export function useColumnDrag(
+  deckStore: DeckStore,
+  selectors: ColumnDragSelectors,
+) {
   const dragColumnId = ref<string | null>(null)
   const dropTarget = ref<DropTarget | null>(null)
 
@@ -147,10 +156,12 @@ export function useColumnDrag(deckStore: DeckStore) {
     }
 
     // Check if hovering over a resize handle or gap between columns
-    const handle = el.closest('.col-resize-handle') as HTMLElement | null
+    const handle = el.closest(
+      `.${selectors.colResizeHandle}`,
+    ) as HTMLElement | null
     if (handle) {
       const sections = [
-        ...document.querySelectorAll('.column-section'),
+        ...document.querySelectorAll(`.${selectors.columnSection}`),
       ] as HTMLElement[]
       const handleRect = handle.getBoundingClientRect()
       const handleCenter = handleRect.left + handleRect.width / 2
@@ -172,10 +183,14 @@ export function useColumnDrag(deckStore: DeckStore) {
     }
 
     // Check if hovering over empty area within the columns container
-    const columnsContainer = el.closest('.columns') as HTMLElement | null
+    const columnsContainer = el.closest(
+      `.${selectors.columns}`,
+    ) as HTMLElement | null
     if (columnsContainer) {
       const sections = [
-        ...columnsContainer.querySelectorAll(':scope > .column-section'),
+        ...columnsContainer.querySelectorAll(
+          `:scope > .${selectors.columnSection}`,
+        ),
       ] as HTMLElement[]
 
       // Determine insert position from cursor X

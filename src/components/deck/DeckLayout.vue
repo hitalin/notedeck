@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { computed, defineAsyncComponent, ref } from 'vue'
-import { useColumnDrag } from '@/composables/useColumnDrag'
 import { useDeckInit } from '@/composables/useDeckInit'
 import { requestMoveColumn } from '@/composables/useDeckWindow'
 import { useFileDrop } from '@/composables/useFileDrop'
@@ -32,8 +31,6 @@ const {
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 const isCompact = useIsCompactLayout()
-const columnDrag = useColumnDrag(deckStore)
-
 const navbarRef = ref<InstanceType<typeof DeckNavbar> | null>(null)
 const columnsAreaRef = ref<InstanceType<typeof DeckColumnsArea> | null>(null)
 const showAddMenu = ref(false)
@@ -166,7 +163,6 @@ function acceptCrossWindowDrop() {
     >
       <DeckColumnsArea
         ref="columnsAreaRef"
-        :column-drag="columnDrag"
         @active-column-index="activeColumnIndex = $event"
       />
 
