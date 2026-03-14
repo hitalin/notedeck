@@ -21,7 +21,17 @@ const query = ref('')
 const selectedIndex = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
 
-const cliMatch = computed(() => parseCliInput(query.value))
+/** Whether the user is in command mode (input starts with ">") */
+const isCommandMode = computed(() => query.value.startsWith('>'))
+
+/** The search text without the ">" prefix */
+const searchText = computed(() =>
+  isCommandMode.value ? query.value.slice(1).trimStart() : query.value,
+)
+
+const cliMatch = computed(() =>
+  isCommandMode.value ? parseCliInput(searchText.value) : null,
+)
 const cliMeta = computed(() =>
   cliMatch.value ? getCliMeta(cliMatch.value.name) : undefined,
 )
@@ -66,8 +76,8 @@ const filteredGroups = computed<CommandGroup[]>(() => {
     enabled = enabled.filter(commandStore.commandFilter)
   }
 
-  const matched = query.value
-    ? enabled.filter((c) => fuzzyMatch(query.value, c.label))
+  const matched = searchText.value
+    ? enabled.filter((c) => fuzzyMatch(searchText.value, c.label))
     : enabled
 
   const map = new Map<string, Command[]>()
@@ -123,6 +133,12 @@ function onKeydown(e: KeyboardEvent) {
         commandStore.close()
         cmd.execute()
       }
+    }
+  } else if (e.key === 'Backspace') {
+    // If cursor is right after ">", remove it to exit command mode
+    if (query.value === '>') {
+      e.preventDefault()
+      query.value = ''
     }
   } else if (e.key === 'Escape') {
     e.preventDefault()
@@ -183,7 +199,7 @@ function primaryShortcut(cmd: Command): string | null {
           ref="inputRef"
           v-model="query"
           :class="$style.inlineInput"
-          placeholder="コマンドを入力..."
+          :placeholder="isCommandMode ? 'コマンドを入力...' : '検索...'"
           spellcheck="false"
         />
         <kbd :class="$style.inlineKbd">Esc</kbd>
@@ -231,12 +247,12 @@ function primaryShortcut(cmd: Command): string | null {
   <div v-else :class="$style.paletteOverlay" @click="commandStore.close()">
     <div :class="$style.palette" @click.stop @keydown="onKeydown">
       <div :class="$style.paletteInputWrap">
-        <span :class="$style.palettePrefix">&gt;</span>
+        <i class="ti ti-search" :class="$style.paletteSearchIcon" />
         <input
           ref="inputRef"
           v-model="query"
           :class="$style.paletteInput"
-          placeholder="コマンドを入力..."
+          :placeholder="isCommandMode ? 'コマンドを入力...' : '検索...'"
           spellcheck="false"
         />
       </div>
@@ -397,10 +413,10 @@ function primaryShortcut(cmd: Command): string | null {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.palettePrefix {
+.paletteSearchIcon {
   font-size: 14px;
   color: var(--nd-fg);
-  opacity: 0.5;
+  opacity: 0.4;
   flex-shrink: 0;
   user-select: none;
 }

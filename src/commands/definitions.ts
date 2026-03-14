@@ -43,7 +43,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     icon: 'search',
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('command-palette'),
-    execute: () => commandStore.toggle(),
+    execute: () => commandStore.openWithInput('>'),
     visible: false,
   })
 

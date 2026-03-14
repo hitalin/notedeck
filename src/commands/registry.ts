@@ -61,6 +61,10 @@ export const useCommandStore = defineStore('commands', () => {
   }
 
   function openWithInput(text: string) {
+    if (isOpen.value) {
+      close()
+      return
+    }
     initialInput.value = text
     isOpen.value = true
   }
@@ -77,7 +81,11 @@ export const useCommandStore = defineStore('commands', () => {
   }
 
   function toggle() {
-    isOpen.value = !isOpen.value
+    if (isOpen.value) {
+      close()
+    } else {
+      open()
+    }
   }
 
   return {

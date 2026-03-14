@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
-import { defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  onUnmounted,
+  ref,
+} from 'vue'
 import { useCommandStore } from '@/commands/registry'
 import { openDeckWindow } from '@/composables/useDeckWindow'
 import {
@@ -10,7 +16,7 @@ import {
 } from '@/composables/usePipWindow'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
-import { useIsCompactLayout } from '@/stores/ui'
+import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 
 const CommandPalette = defineAsyncComponent(
   () => import('@/components/common/CommandPalette.vue'),
@@ -20,7 +26,25 @@ const appWindow = getCurrentWindow()
 const commandStore = useCommandStore()
 const accountsStore = useAccountsStore()
 const deckStore = useDeckStore()
+const { platformName } = useUiStore()
 const isCompact = useIsCompactLayout()
+
+const platformLabel: Record<string, string> = {
+  windows: 'Windows',
+  macos: 'macOS',
+  linux: 'Linux',
+  android: 'Android',
+  ios: 'iOS',
+}
+
+const titleBarText = computed(() => {
+  if (deckStore.activeColumnUri) return deckStore.activeColumnUri
+  const parts: string[] = []
+  if (platformName) parts.push(platformLabel[platformName] ?? platformName)
+  if (deckStore.currentProfileName) parts.push(deckStore.currentProfileName)
+  const suffix = parts.length ? ` [${parts.join(': ')}]` : ''
+  return `NoteDeck${suffix}`
+})
 const isMaximized = ref(false)
 const isCompactSize = ref(false)
 
@@ -123,9 +147,9 @@ async function togglePip() {
       <!-- Open: inline command palette -->
       <CommandPalette v-if="commandStore.isOpen" inline />
       <!-- Closed: search bar button -->
-      <button v-else :class="$style.titlebarSearchBar" @click="commandStore.toggle()">
+      <button v-else :class="$style.titlebarSearchBar" @click="commandStore.openWithInput('>')">
         <i :class="[$style.titlebarSearchIcon, 'ti', 'ti-search']" />
-        <span :class="[$style.titlebarSearchText, { [$style.hasUri]: deckStore.activeColumnUri }]">{{ deckStore.activeColumnUri ?? 'コマンドを検索...' }}</span>
+        <span :class="[$style.titlebarSearchText, { [$style.hasUri]: deckStore.activeColumnUri }]">{{ titleBarText }}</span>
         <kbd :class="$style.titlebarSearchKbd">Ctrl+K</kbd>
       </button>
     </div>
@@ -255,7 +279,7 @@ async function togglePip() {
 .titlebarSearchText {
   flex: 1;
   opacity: 0.35;
-  text-align: left;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
