@@ -68,6 +68,7 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
   themeEditor: defineAsyncComponent(
     () => import('./DeckThemeEditorColumn.vue'),
   ),
+  cssEditor: defineAsyncComponent(() => import('./DeckCssEditorColumn.vue')),
 }
 
 const $style = useCssModule()

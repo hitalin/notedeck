@@ -48,6 +48,7 @@ const addColumnType = ref<
   | 'aboutMisskey'
   | 'emoji'
   | 'themeEditor'
+  | 'cssEditor'
   | null
 >(null)
 
@@ -83,9 +84,21 @@ function selectColumnType(
     | 'ads'
     | 'aboutMisskey'
     | 'emoji'
-    | 'themeEditor',
+    | 'themeEditor'
+    | 'cssEditor',
 ) {
   // Account-free column types: add directly without account selection
+  if (type === 'cssEditor') {
+    deckStore.addColumn({
+      type: 'cssEditor',
+      name: 'カスタムCSS',
+      width: 360,
+      accountId: null,
+      active: true,
+    })
+    close()
+    return
+  }
   if (type === 'themeEditor') {
     deckStore.addColumn({
       type: 'themeEditor',
@@ -580,6 +593,10 @@ function close() {
         <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('themeEditor')">
           <i class="ti ti-palette" />
           <span>テーマエディタ</span>
+        </button>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('cssEditor')">
+          <i class="ti ti-code" />
+          <span>カスタムCSS</span>
         </button>
         <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('apiConsole')">
           <i class="ti ti-api" />
