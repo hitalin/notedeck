@@ -282,6 +282,7 @@ defineExpose({ scrollToColumn, columnMap })
 <template>
   <div
     ref="columnsRef"
+    class="columns"
     :class="[$style.columns, { [$style.swipeMode]: isCompact }]"
     @wheel="onColumnsWheel"
     @scroll="onColumnsScroll"
@@ -296,6 +297,7 @@ defineExpose({ scrollToColumn, columnMap })
       :key="group.join('-')"
     >
       <section
+        class="column-section"
         :class="[$style.columnSection, sectionClass(group)]"
         :style="{ flexBasis: sectionWidth(group) }"
       >
@@ -323,6 +325,7 @@ defineExpose({ scrollToColumn, columnMap })
       </section>
       <div
         v-if="!isCompact"
+        class="col-resize-handle"
         :class="[$style.colResizeHandle, { [$style.active]: resizingColId === group[0] }]"
         @mousedown="startColumnResize(group[0]!, $event)"
       />
