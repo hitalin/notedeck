@@ -75,11 +75,14 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   followRequests: 'user-plus',
   achievements: 'medal',
   apiConsole: 'api',
+  apiDocs: 'file-description',
   lookup: 'world-search',
   serverInfo: 'server',
   ads: 'ad-2',
   aboutMisskey: 'info-circle',
   emoji: 'mood-smile',
+  themeEditor: 'palette',
+  cssEditor: 'code',
 }
 
 const TL_ICONS: Record<string, string> = {
