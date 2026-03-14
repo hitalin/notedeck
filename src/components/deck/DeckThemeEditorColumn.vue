@@ -144,6 +144,17 @@ function resolvedHex(key: string): string {
   return toHex(resolvedColors.value[key] ?? '')
 }
 
+function resolvedDisplay(key: string): string {
+  const value = resolvedColors.value[key] ?? ''
+  const rgba = parseColor(value)
+  if (!rgba) return '#000000'
+  const hex = toHex(value)
+  if (rgba[3] < 1) {
+    return `${hex} (${Math.round(rgba[3] * 100)}%)`
+  }
+  return hex
+}
+
 function updateColor(key: string, hex: string) {
   overrides.value = { ...overrides.value, [key]: hex }
 }
@@ -458,7 +469,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
                 />
                 <div
                   :class="$style.colorSwatch"
-                  :style="{ background: resolvedColors[prop.key] ?? 'transparent' }"
+                  :style="{ backgroundColor: resolvedColors[prop.key] ?? 'transparent' }"
                 />
               </div>
               <input
@@ -471,7 +482,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
                 @keydown.enter="(e) => updateColor(prop.key, (e.target as HTMLInputElement).value)"
               />
               <span v-if="isExpression(displayValue(prop.key))" :class="$style.resolvedHex">
-                {{ resolvedHex(prop.key) }}
+                {{ resolvedDisplay(prop.key) }}
               </span>
               <button
                 v-if="isOverridden(prop.key)"
@@ -520,7 +531,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
                 />
                 <div
                   :class="$style.colorSwatch"
-                  :style="{ background: resolvedColors[key] ?? 'transparent' }"
+                  :style="{ backgroundColor: resolvedColors[key] ?? 'transparent' }"
                 />
               </div>
               <input
@@ -532,7 +543,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
                 @keydown.enter="(e) => updateColor(key, (e.target as HTMLInputElement).value)"
               />
               <span v-if="isExpression(displayValue(key))" :class="$style.resolvedHex">
-                {{ resolvedHex(key) }}
+                {{ resolvedDisplay(key) }}
               </span>
               <button
                 class="_button"
@@ -579,7 +590,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
               >
                 <div
                   :class="$style.themeSwatch"
-                  :style="{ background: resolvedColors[key] ?? 'transparent' }"
+                  :style="{ backgroundColor: resolvedColors[key] ?? 'transparent' }"
                 />
                 <span :class="$style.dropdownItemLabel">{{ key }}</span>
               </button>
@@ -1017,6 +1028,13 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   border-radius: 6px;
   border: 1px solid var(--nd-divider);
   pointer-events: none;
+  background-image:
+    linear-gradient(45deg, #808080 25%, transparent 25%),
+    linear-gradient(-45deg, #808080 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #808080 75%),
+    linear-gradient(-45deg, transparent 75%, #808080 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
 }
 
 .propValueInput {
