@@ -190,11 +190,25 @@ function onColumnsScroll() {
     if (w === 0) return
     emit('active-column-index', Math.round(columnsRef.value.scrollLeft / w))
   } else {
-    // Desktop: ビューポート中央に最も近いsectionをアクティブに
+    // Desktop: エッジクランプ + ビューポート中央に最も近いsectionをアクティブに
     const el = columnsRef.value
+    const layout = deckStore.windowLayout
+    const totalFlat = layout.reduce((s, g) => s + (g?.length ?? 0), 0)
+    if (totalFlat === 0) return
+
+    // 左端: 最初のカラム
+    if (el.scrollLeft <= 1) {
+      emit('active-column-index', 0)
+      return
+    }
+    // 右端: 最後のカラム
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 1) {
+      emit('active-column-index', totalFlat - 1)
+      return
+    }
+
     const viewCenter = el.scrollLeft + el.clientWidth / 2
     const sections = el.querySelectorAll<HTMLElement>(`:scope > section`)
-    const layout = deckStore.windowLayout
 
     let bestFlatIdx = 0
     let bestDist = Infinity
