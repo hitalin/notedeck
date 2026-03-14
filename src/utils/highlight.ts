@@ -40,8 +40,22 @@ function escapeHtml(text: string): string {
       engine: shikiCore.createJavaScriptRegexEngine(),
     })
     highlighterLoaded.value = true
-  } catch {
-    // Graceful degradation: code blocks render as plain text
+  } catch (e) {
+    // Debug: show error visually (remove after debugging)
+    const el = document.createElement('pre')
+    el.textContent = `[Shiki Init Error] ${e instanceof Error ? e.message : e}`
+    Object.assign(el.style, {
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      right: '0',
+      zIndex: '99999',
+      background: '#1a0000',
+      color: '#ff6b6b',
+      fontSize: '11px',
+      padding: '8px',
+    })
+    document.body.appendChild(el)
   }
 })()
 
