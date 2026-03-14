@@ -67,6 +67,7 @@ const POLICY_TIMELINE_MAP: Record<string, TimelineType[]> = {
   ltlAvailable: ['local', 'social'],
   gtlAvailable: ['global'],
 }
+const POLICY_HANDLED_KEYS = new Set(Object.keys(POLICY_TIMELINE_MAP))
 
 export interface TimelineAvailability {
   available: TimelineType[]
@@ -109,7 +110,7 @@ export async function detectAvailableTimelines(
     }
 
     // Standard TLs
-    const handledKeys = new Set(Object.keys(POLICY_TIMELINE_MAP))
+    const handledKeys = POLICY_HANDLED_KEYS
     for (const [policyKey, tlTypes] of Object.entries(POLICY_TIMELINE_MAP)) {
       if (policies[policyKey] !== false) {
         available.push(...tlTypes)

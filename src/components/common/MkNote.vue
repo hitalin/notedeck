@@ -179,17 +179,19 @@ function navigateToUser(userId: string, e: Event) {
 
 const reactionsData = computed(() => {
   const n = effectiveNote.value
-  const entries = Object.entries(n.reactions)
-  if (entries.length === 0)
+  const reactions = n.reactions
+  const keys = Object.keys(reactions)
+  if (keys.length === 0)
     return {
       sorted: [] as { reaction: string; count: number }[],
       urls: {} as Record<string, string | null>,
     }
-  entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-  const sorted: { reaction: string; count: number }[] = []
+  keys.sort()
+  const sorted: { reaction: string; count: number }[] = new Array(keys.length)
   const urls: Record<string, string | null> = {}
-  for (const [reaction, count] of entries) {
-    sorted.push({ reaction, count: count as number })
+  for (let i = 0; i < keys.length; i++) {
+    const reaction = keys[i] as string
+    sorted[i] = { reaction, count: reactions[reaction] as number }
     urls[reaction] = reactionUrlRaw(
       reaction,
       n.emojis,

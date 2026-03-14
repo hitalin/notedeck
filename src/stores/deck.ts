@@ -364,8 +364,7 @@ export const useDeckStore = defineStore('deck', () => {
     try {
       if (windowProfileId.value) {
         // Save to the profile entry
-        const profiles = loadProfiles()
-        const profile = profiles.find((p) => p.id === windowProfileId.value)
+        const { profiles, profile } = loadProfileById(windowProfileId.value)
         if (profile) {
           profile.columns = structuredClone(toRaw(columns.value))
           profile.layout = structuredClone(toRaw(layout.value))
@@ -519,8 +518,7 @@ export const useDeckStore = defineStore('deck', () => {
     // Depend on both windowProfileId and profileVersion for reactivity
     const _v = profileVersion.value
     if (!windowProfileId.value) return null
-    const profiles = loadProfiles()
-    return profiles.find((p) => p.id === windowProfileId.value)?.name ?? null
+    return loadProfileById(windowProfileId.value).profile?.name ?? null
   })
 
   function loadProfiles(): DeckProfile[] {
@@ -530,6 +528,15 @@ export const useDeckStore = defineStore('deck', () => {
     } catch {
       return []
     }
+  }
+
+  /** Load profiles and find one by ID in a single pass. */
+  function loadProfileById(id: string): {
+    profiles: DeckProfile[]
+    profile: DeckProfile | undefined
+  } {
+    const profiles = loadProfiles()
+    return { profiles, profile: profiles.find((p) => p.id === id) }
   }
 
   function saveProfiles(profiles: DeckProfile[]) {
@@ -553,8 +560,7 @@ export const useDeckStore = defineStore('deck', () => {
   /** Save current deck state into the active profile */
   function syncCurrentToActiveProfile() {
     if (!windowProfileId.value) return
-    const profiles = loadProfiles()
-    const profile = profiles.find((p) => p.id === windowProfileId.value)
+    const { profiles, profile } = loadProfileById(windowProfileId.value)
     if (!profile) return
     profile.columns = structuredClone(toRaw(columns.value))
     profile.layout = structuredClone(toRaw(layout.value))
@@ -626,8 +632,7 @@ export const useDeckStore = defineStore('deck', () => {
     // Save current state before switching
     syncCurrentToActiveProfile()
 
-    const profiles = loadProfiles()
-    const profile = profiles.find((p) => p.id === profileId)
+    const { profile } = loadProfileById(profileId)
     if (!profile) return
     columns.value = structuredClone(profile.columns)
     layout.value = structuredClone(profile.layout)
@@ -645,8 +650,7 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   function renameProfile(profileId: string, newName: string) {
-    const profiles = loadProfiles()
-    const profile = profiles.find((p) => p.id === profileId)
+    const { profiles, profile } = loadProfileById(profileId)
     if (profile) {
       profile.name = newName
       saveProfiles(profiles)
@@ -667,8 +671,7 @@ export const useDeckStore = defineStore('deck', () => {
   /** Initialize this window with an isolated profile (used by sub-windows via ?profile= query) */
   function initWindowProfile(profileId: string) {
     windowProfileId.value = profileId
-    const profiles = loadProfiles()
-    const profile = profiles.find((p) => p.id === profileId)
+    const { profile } = loadProfileById(profileId)
     if (profile) {
       columns.value = structuredClone(profile.columns)
       layout.value = structuredClone(profile.layout)
@@ -746,8 +749,7 @@ export const useDeckStore = defineStore('deck', () => {
   /** Save window layout (position/size) to the current profile */
   function saveWindowLayout(windowLayout: DeckWindowLayout) {
     if (!windowProfileId.value) return
-    const profiles = loadProfiles()
-    const profile = profiles.find((p) => p.id === windowProfileId.value)
+    const { profiles, profile } = loadProfileById(windowProfileId.value)
     if (!profile) return
     if (!profile.windows) profile.windows = []
     const existing = profile.windows.findIndex((w) => w.id === windowLayout.id)
@@ -762,8 +764,7 @@ export const useDeckStore = defineStore('deck', () => {
   /** Remove a window layout entry from the current profile */
   function removeWindowLayout(windowId: string) {
     if (!windowProfileId.value) return
-    const profiles = loadProfiles()
-    const profile = profiles.find((p) => p.id === windowProfileId.value)
+    const { profiles, profile } = loadProfileById(windowProfileId.value)
     if (!profile?.windows) return
     profile.windows = profile.windows.filter((w) => w.id !== windowId)
     saveProfiles(profiles)
@@ -772,9 +773,7 @@ export const useDeckStore = defineStore('deck', () => {
   /** Get saved window layouts for the current profile */
   function getWindowLayouts(): DeckWindowLayout[] {
     if (!windowProfileId.value) return []
-    const profiles = loadProfiles()
-    const profile = profiles.find((p) => p.id === windowProfileId.value)
-    return profile?.windows ?? []
+    return loadProfileById(windowProfileId.value).profile?.windows ?? []
   }
 
   return {
