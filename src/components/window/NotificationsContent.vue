@@ -545,7 +545,6 @@ onUnmounted(() => {
 
 .notifScroller {
   flex: 1;
-  min-height: 0;
   overflow-x: clip;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
