@@ -241,6 +241,11 @@ function resetAll() {
 <style lang="scss" module>
 .keybindsContent {
   padding: 16px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
 }
 
 .keybindsHeader {
