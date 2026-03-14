@@ -765,6 +765,9 @@ defineExpose({
   transform: translateX(-100%);
   transition: transform 0.25s ease;
   box-shadow: none;
+  background: var(--nd-navBg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 
   .item {
     min-height: 44px;
