@@ -49,10 +49,11 @@ onMounted(async () => {
   document.documentElement.dataset.env = isTauri ? 'tauri' : 'web'
 
   // Show window (visible: false in tauri.conf.json to avoid Windows titlebar flicker)
+  // NOTE: setDecorations(false) は呼ばない。config で既に false であり、
+  // Windows で再度呼ぶとウィンドウスタイル再計算で非クライアント領域が復活する。
   if (isTauri) {
     const { getCurrentWindow } = await import('@tauri-apps/api/window')
     const currentWindow = getCurrentWindow()
-    await currentWindow.setDecorations(false).catch(() => {})
     await currentWindow.show().catch(() => {})
   }
 

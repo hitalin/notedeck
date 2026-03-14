@@ -42,8 +42,6 @@ export async function openColumnWindow(
       win.once('tauri://created', () => resolve())
       win.once('tauri://error', (e) => reject(new Error(String(e.payload))))
     })
-    await win.setDecorations(false).catch(() => {})
-
     openWindows.set(windowId, win)
 
     // When sub-window closes, recall its columns back to main
@@ -90,8 +88,6 @@ export async function openDeckWindow(
       win.once('tauri://created', () => resolve())
       win.once('tauri://error', (e) => reject(new Error(String(e.payload))))
     })
-    await win.setDecorations(false).catch(() => {})
-
     openWindows.set(windowId, win)
 
     win.once('tauri://destroyed', () => {
