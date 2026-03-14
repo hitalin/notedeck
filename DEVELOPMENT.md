@@ -1,6 +1,6 @@
 # NoteDeck Development Guide
 
-Desktop-only multi-server Misskey deck client with fork support.
+Multi-server Misskey deck client with fork support.
 
 ## Tech Stack
 
@@ -62,8 +62,8 @@ Tauri に依存しない Misskey ヘッドレスクライアント。Rust ライ
 
 ### notedeck (このリポジトリ)
 
-notecli の上に Tauri v2 + Vue 3 の GUI を載せたデスクトップ専用クライアント。
-対象プラットフォームは Windows / macOS / Linux のみ。モバイルはサポートしない。
+notecli の上に Tauri v2 + Vue 3 の GUI を載せたクライアント。
+対象プラットフォームは Windows / macOS / Linux / Android。
 
 ```
 src/                        # Vue 3 frontend
@@ -75,7 +75,7 @@ src/                        # Vue 3 frontend
 ├── commands/               # Command registry, definitions, CLI handlers
 ├── components/             # Vue components
 │   ├── common/             # MkNote, MkPostForm, MkEmoji, CommandPalette, etc.
-│   └── deck/               # DeckLayout, DeckColumn, 14 column types
+│   └── deck/               # DeckLayout, DeckColumn, column types
 ├── composables/            # Vue composables (useNoteFocus, useTimeMachine, etc.)
 ├── core/                   # Business logic (server detection)
 ├── data/                   # Static data & constants
@@ -91,13 +91,13 @@ src-tauri/src/              # Rust backend (Tauri 固有部分)
 ├── commands.rs             # Tauri IPC command handlers (notecli 呼び出し)
 ├── http_server.rs          # Axum HTTP API server (localhost:19820)
 ├── image_cache.rs          # 3-tier image cache (memory → disk → network)
-├── ogp.rs                  # OGP metadata extraction & cache
+├── ogp/                    # OGP metadata extraction & cache
 ├── streaming.rs            # TauriEmitter adapter (FrontendEmitter trait impl)
 ├── query_bridge.rs         # HTTP API ↔ frontend (Pinia) bridge
 └── main.rs                 # Entry point
 ```
 
-Misskey API クライアント・DB・モデル・ストリーミングコアなどの共通ロジックは全て `notecli` クレートにあり、`src-tauri/` には Tauri 固有の薄いラッパー（約 2,800 行）のみ残っています。
+Misskey API クライアント・DB・モデル・ストリーミングコアなどの共通ロジックは全て `notecli` クレートにあり、`src-tauri/` には Tauri 固有の薄いラッパーのみ残っています。
 
 ### Styling
 
