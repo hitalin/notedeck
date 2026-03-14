@@ -1613,3 +1613,8 @@ pub async fn stream_unsub_note(
 pub fn get_cli_commands() -> Vec<notecli::cli::CliCommandInfo> {
     notecli::cli::command_metadata()
 }
+
+#[tauri::command]
+pub fn open_devtools(window: tauri::WebviewWindow) {
+    window.open_devtools();
+}

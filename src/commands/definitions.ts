@@ -315,6 +315,19 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
         })
       },
     })
+
+    commandStore.register({
+      id: 'devtools',
+      label: '開発者ツール',
+      icon: 'code',
+      category: 'general',
+      shortcuts: keybindsStore.getShortcuts('devtools'),
+      execute: () => {
+        import('@tauri-apps/api/core').then(({ invoke }) => {
+          invoke('open_devtools')
+        })
+      },
+    })
   }
 
   // Profile switching (Alt+1-9 to switch deck profiles)
@@ -371,6 +384,7 @@ const WINDOW_COMMAND_IDS = [
   'new-window',
   'close-all-windows',
   'pip-window',
+  'devtools',
 ] as const
 
 const PROFILE_IDS = Array.from(

@@ -120,6 +120,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::stream_unsub_note,
         commands::fetch_ogp,
         commands::get_cli_commands,
+        commands::open_devtools,
     ]);
 
     builder = builder.setup(|app| {
