@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
 import type { DeckProfile } from '@/stores/deck'
@@ -25,20 +25,6 @@ const editingName = ref('')
 const menuEl = ref<HTMLElement | null>(null)
 const fixedStyle = ref<CSSProperties | undefined>()
 
-function handlePointerDown(e: PointerEvent) {
-  if (menuEl.value && !menuEl.value.contains(e.target as Node)) {
-    emit('close')
-  }
-}
-
-function addOutsideClickListener() {
-  document.addEventListener('pointerdown', handlePointerDown)
-}
-
-function removeOutsideClickListener() {
-  document.removeEventListener('pointerdown', handlePointerDown)
-}
-
 watch(
   () => props.show,
   (val) => {
@@ -55,16 +41,10 @@ watch(
       }
       profiles.value = deckStore.getProfiles()
       editingId.value = null
-      addOutsideClickListener()
-    } else {
-      removeOutsideClickListener()
     }
   },
+  { immediate: true },
 )
-
-onBeforeUnmount(() => {
-  removeOutsideClickListener()
-})
 
 function createProfile() {
   deckStore.saveAsProfile()
@@ -104,6 +84,7 @@ function remove(id: string) {
 
 <template>
   <Teleport to="body" :disabled="!anchor">
+  <div v-if="show" :class="$style.menuBackdrop" @pointerdown="emit('close')" />
   <Transition name="profile-menu">
     <div v-if="show" ref="menuEl" :class="[$style.profileMenu, { [$style.mobile]: isCompact }]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
       <div :class="$style.list">
@@ -159,7 +140,14 @@ function remove(id: string) {
 </template>
 
 <style lang="scss" module>
+.menuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nd-z-popup);
+}
+
 .profileMenu {
+  z-index: calc(var(--nd-z-popup) + 1);
   bottom: 100%;
   left: 0;
   margin-bottom: 4px;

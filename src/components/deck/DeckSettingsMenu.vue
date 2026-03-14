@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AboutDialog from '@/components/common/AboutDialog.vue'
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
@@ -77,12 +77,6 @@ function removeTheme(id: string) {
 const menuEl = ref<HTMLElement | null>(null)
 const fixedStyle = ref<CSSProperties | undefined>()
 
-function handlePointerDown(e: PointerEvent) {
-  if (menuEl.value && !menuEl.value.contains(e.target as Node)) {
-    emit('close')
-  }
-}
-
 watch(
   () => props.show,
   (val) => {
@@ -97,19 +91,14 @@ watch(
       } else {
         fixedStyle.value = undefined
       }
-      document.addEventListener('pointerdown', handlePointerDown)
     } else {
-      document.removeEventListener('pointerdown', handlePointerDown)
       showInstallInput.value = false
       themeCode.value = ''
       installError.value = ''
     }
   },
+  { immediate: true },
 )
-
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', handlePointerDown)
-})
 
 function toggleDarkMode() {
   themeStore.toggleTheme()
@@ -176,8 +165,9 @@ function syncScroll(e: Event) {
 
 <template>
   <Teleport to="body" :disabled="!anchor">
+  <div v-if="show" :class="$style.menuBackdrop" @pointerdown="emit('close')" />
   <Transition name="settings-menu">
-    <div v-if="show" ref="menuEl" :class="[$style.settingsMenu, { [$style.mobile]: isCompact }]" :style="fixedStyle" class="_popupMenu">
+    <div v-if="show" ref="menuEl" :class="[$style.settingsMenu, { [$style.mobile]: isCompact }]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
       <!-- Misskey-style day/night toggle panel -->
       <div :class="$style.themePanel">
         <div :class="$style.toggleArea">
@@ -335,7 +325,14 @@ function syncScroll(e: Event) {
 </template>
 
 <style lang="scss" module>
+.menuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nd-z-popup);
+}
+
 .settingsMenu {
+  z-index: calc(var(--nd-z-popup) + 1);
   bottom: 100%;
   right: 0;
   margin-bottom: 4px;
