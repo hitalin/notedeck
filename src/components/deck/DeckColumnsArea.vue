@@ -165,9 +165,18 @@ function cellDropZone(colId: string): string | undefined {
 // Wheel deltaY → scrollLeft conversion for horizontal column scrolling
 function onColumnsWheel(e: WheelEvent) {
   if (!columnsRef.value) return
-  if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
   const target = e.target as HTMLElement | null
-  if (target?.closest('.deck-column')) return
+  const inColumn = target?.closest('.deck-column')
+  // deltaX主体（サムホイール等）: カラム上でもデッキ横スクロール
+  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+    if (inColumn) {
+      e.preventDefault()
+      columnsRef.value.scrollLeft += e.deltaX
+    }
+    return
+  }
+  // deltaY主体（通常ホイール）: カラム外のみ横スクロールに変換
+  if (inColumn) return
   e.preventDefault()
   columnsRef.value.scrollLeft += e.deltaY
 }
