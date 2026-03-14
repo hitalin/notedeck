@@ -132,69 +132,53 @@ export const useDeckStore = defineStore('deck', () => {
     if (col) activeColumnId.value = col.id
   }
 
+  const localUriBuilders: Partial<
+    Record<DeckColumn['type'], (col: DeckColumn) => string>
+  > = {
+    widget: (col) => `notedeck://widget/${col.id}`,
+    aiscript: (col) => `notedeck://aiscript/${col.id}`,
+    play: (col) => `notedeck://play/${col.id}`,
+    apiDocs: () => 'notedeck://api/docs',
+    lookup: (col) => `notedeck://lookup/${col.id}`,
+    serverInfo: (col) => `notedeck://server-info/${col.id}`,
+  }
+
+  const accountUriBuilders: Partial<
+    Record<DeckColumn['type'], (col: DeckColumn, host: string) => string>
+  > = {
+    timeline: (col, host) => `notedeck://${host}/timeline/${col.tl ?? 'home'}`,
+    notifications: (_, host) => `notedeck://${host}/notifications`,
+    search: (col, host) =>
+      `notedeck://${host}/search${col.query ? `?q=${col.query}` : ''}`,
+    list: (col, host) => `notedeck://${host}/list/${col.listId}`,
+    antenna: (col, host) => `notedeck://${host}/antenna/${col.antennaId}`,
+    favorites: (_, host) => `notedeck://${host}/favorites`,
+    clip: (col, host) => `notedeck://${host}/clip/${col.clipId}`,
+    channel: (col, host) => `notedeck://${host}/channel/${col.channelId}`,
+    user: (col, host) => `notedeck://${host}/user/${col.userId}`,
+    mentions: (_, host) => `notedeck://${host}/mentions`,
+    specified: (_, host) => `notedeck://${host}/direct`,
+    chat: (_, host) => `notedeck://${host}/chat`,
+    announcements: (_, host) => `notedeck://${host}/announcements`,
+    drive: (_, host) => `notedeck://${host}/drive`,
+    gallery: (_, host) => `notedeck://${host}/gallery`,
+  }
+
   const activeColumnUri = computed(() => {
     if (!activeColumnId.value) return null
     const col = columns.value.find((c) => c.id === activeColumnId.value)
     if (!col) return null
-    if (col.type === 'widget') {
-      return `notedeck://widget/${col.id}`
-    }
-    if (col.type === 'aiscript') {
-      return `notedeck://aiscript/${col.id}`
-    }
-    if (col.type === 'play') {
-      return `notedeck://play/${col.id}`
-    }
-    if (col.type === 'apiDocs') {
-      return 'notedeck://api/docs'
-    }
-    if (col.type === 'lookup') {
-      return `notedeck://lookup/${col.id}`
-    }
-    if (col.type === 'serverInfo') {
-      return `notedeck://server-info/${col.id}`
-    }
-    if (!col.accountId) return null
 
+    const localBuilder = localUriBuilders[col.type]
+    if (localBuilder) return localBuilder(col)
+
+    if (!col.accountId) return null
     const accountsStore = useAccountsStore()
     const account = accountsStore.accounts.find((a) => a.id === col.accountId)
     if (!account) return null
 
-    const host = account.host
-    switch (col.type) {
-      case 'timeline':
-        return `notedeck://${host}/timeline/${col.tl ?? 'home'}`
-      case 'notifications':
-        return `notedeck://${host}/notifications`
-      case 'search':
-        return `notedeck://${host}/search${col.query ? `?q=${col.query}` : ''}`
-      case 'list':
-        return `notedeck://${host}/list/${col.listId}`
-      case 'antenna':
-        return `notedeck://${host}/antenna/${col.antennaId}`
-      case 'favorites':
-        return `notedeck://${host}/favorites`
-      case 'clip':
-        return `notedeck://${host}/clip/${col.clipId}`
-      case 'channel':
-        return `notedeck://${host}/channel/${col.channelId}`
-      case 'user':
-        return `notedeck://${host}/user/${col.userId}`
-      case 'mentions':
-        return `notedeck://${host}/mentions`
-      case 'specified':
-        return `notedeck://${host}/direct`
-      case 'chat':
-        return `notedeck://${host}/chat`
-      case 'announcements':
-        return `notedeck://${host}/announcements`
-      case 'drive':
-        return `notedeck://${host}/drive`
-      case 'gallery':
-        return `notedeck://${host}/gallery`
-      default:
-        return null
-    }
+    const accountBuilder = accountUriBuilders[col.type]
+    return accountBuilder ? accountBuilder(col, account.host) : null
   })
 
   function addColumn(partial: Omit<DeckColumn, 'id'>) {
