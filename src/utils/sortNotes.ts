@@ -18,15 +18,28 @@ export function mergeSortedNotes(
   a: NormalizedNote[],
   b: NormalizedNote[],
 ): NormalizedNote[] {
-  const result: NormalizedNote[] = new Array(a.length + b.length)
+  const result: NormalizedNote[] = []
   let i = 0
   let j = 0
-  let k = 0
-  while (i < a.length && j < b.length) {
-    result[k++] = a[i].createdAt >= b[j].createdAt ? a[i++] : b[j++]
+  let ai = a[0]
+  let bj = b[0]
+  while (ai && bj) {
+    if (ai.createdAt >= bj.createdAt) {
+      result.push(ai)
+      ai = a[++i]
+    } else {
+      result.push(bj)
+      bj = b[++j]
+    }
   }
-  while (i < a.length) result[k++] = a[i++]
-  while (j < b.length) result[k++] = b[j++]
+  while (ai) {
+    result.push(ai)
+    ai = a[++i]
+  }
+  while (bj) {
+    result.push(bj)
+    bj = b[++j]
+  }
   return result
 }
 
