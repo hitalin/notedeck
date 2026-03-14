@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { colord } from 'colord'
-import QRCodeStyling from 'qr-code-styling'
 import {
   computed,
   defineAsyncComponent,
@@ -37,6 +35,11 @@ import {
 import { toggleFollow } from '@/utils/toggleFollow'
 import { toggleReaction } from '@/utils/toggleReaction'
 import { safeCssUrl } from '@/utils/url'
+
+const openUrl = async (url: string) => {
+  const { openUrl: open } = await import('@tauri-apps/plugin-opener')
+  return open(url)
+}
 
 const props = defineProps<{
   accountId: string
@@ -213,6 +216,7 @@ async function openQrCode() {
 
   const serverInfo = serversStore.getServer(account.value.host)
 
+  const { default: QRCodeStyling } = await import('qr-code-styling')
   const qr = new QRCodeStyling({
     width: 600,
     height: 600,

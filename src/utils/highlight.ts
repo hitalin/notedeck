@@ -5,13 +5,16 @@ import { shallowRef } from 'vue'
 export const highlighterLoaded = shallowRef(false)
 
 let highlighter: HighlighterCore | null = null
+let initPromise: Promise<void> | null = null
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-;(async () => {
-  try {
+function initHighlighter(): Promise<void> {
+  if (initPromise) return initPromise
+
+  initPromise = (async () => {
     const [shikiCore, themeModule, ...langModules] = await Promise.all([
       import('shiki'),
       import('shiki/dist/themes/dark-plus.mjs'),
@@ -40,27 +43,14 @@ function escapeHtml(text: string): string {
       engine: shikiCore.createJavaScriptRegexEngine(),
     })
     highlighterLoaded.value = true
-  } catch (e) {
-    // Debug: show error visually (remove after debugging)
-    const el = document.createElement('pre')
-    el.textContent = `[Shiki Init Error] ${e instanceof Error ? e.message : e}`
-    Object.assign(el.style, {
-      position: 'fixed',
-      top: '0',
-      left: '0',
-      right: '0',
-      zIndex: '99999',
-      background: '#1a0000',
-      color: '#ff6b6b',
-      fontSize: '11px',
-      padding: '8px',
-    })
-    document.body.appendChild(el)
-  }
-})()
+  })()
+
+  return initPromise
+}
 
 export function highlightCode(code: string, lang: string | null): string {
   if (!lang || !highlighter?.getLoadedLanguages().includes(lang)) {
+    if (lang && !initPromise) initHighlighter()
     return `<pre><code>${escapeHtml(code)}</code></pre>`
   }
   return DOMPurify.sanitize(

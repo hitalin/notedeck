@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { useNavigation } from '@/composables/useNavigation'
 
 import { useIsCompactLayout } from '@/stores/ui'
+
+const openUrl = async (url: string) => {
+  const { openUrl: open } = await import('@tauri-apps/plugin-opener')
+  return open(url)
+}
 
 const props = defineProps<{
   show: boolean

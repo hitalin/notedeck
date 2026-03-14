@@ -1,10 +1,3 @@
-import {
-  isPermissionGranted,
-  onAction,
-  requestPermission,
-  sendNotification,
-} from '@tauri-apps/plugin-notification'
-
 export type NotificationContext = {
   noteId?: string
   userId?: string
@@ -15,6 +8,16 @@ let granted = false
 const pendingContexts = new Map<number, NotificationContext>()
 let nextId = 1
 let actionHandler: ((ctx: NotificationContext) => void) | null = null
+let notificationModule:
+  | typeof import('@tauri-apps/plugin-notification')
+  | null = null
+
+async function loadModule() {
+  if (!notificationModule) {
+    notificationModule = await import('@tauri-apps/plugin-notification')
+  }
+  return notificationModule
+}
 
 export function onNotificationAction(
   handler: (ctx: NotificationContext) => void,
@@ -24,9 +27,10 @@ export function onNotificationAction(
 
 export async function initDesktopNotifications(): Promise<boolean> {
   try {
-    granted = await isPermissionGranted()
+    const mod = await loadModule()
+    granted = await mod.isPermissionGranted()
     if (!granted) {
-      const result = await requestPermission()
+      const result = await mod.requestPermission()
       granted = result === 'granted'
     }
   } catch {
@@ -35,7 +39,8 @@ export async function initDesktopNotifications(): Promise<boolean> {
   }
 
   try {
-    await onAction((notification) => {
+    const mod = await loadModule()
+    await mod.onAction((notification) => {
       const id = notification.id
       if (id == null) return
       const ctx = pendingContexts.get(id)
@@ -56,15 +61,15 @@ export function sendDesktopNotification(
   body: string,
   context?: NotificationContext,
 ): void {
-  if (!granted) return
+  if (!granted || !notificationModule) return
   if (document.hasFocus()) return
 
   if (context) {
     const id = nextId++
     pendingContexts.set(id, context)
-    sendNotification({ id, title, body })
+    notificationModule.sendNotification({ id, title, body })
     setTimeout(() => pendingContexts.delete(id), 300_000)
   } else {
-    sendNotification({ title, body })
+    notificationModule.sendNotification({ title, body })
   }
 }
