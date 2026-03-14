@@ -190,24 +190,13 @@ function onColumnsScroll() {
     if (w === 0) return
     emit('active-column-index', Math.round(columnsRef.value.scrollLeft / w))
   } else {
-    // Desktop: エッジクランプ + ビューポート中央に最も近いsectionをアクティブに
+    // Desktop: スクロール位置に応じて検出ポイントをビューポート内でスライド
+    // 左端→左寄り、中央→中央、右端→右寄り で両端のカラムにも自然に到達
     const el = columnsRef.value
     const layout = deckStore.windowLayout
-    const totalFlat = layout.reduce((s, g) => s + (g?.length ?? 0), 0)
-    if (totalFlat === 0) return
-
-    // 左端: 最初のカラム
-    if (el.scrollLeft <= 1) {
-      emit('active-column-index', 0)
-      return
-    }
-    // 右端: 最後のカラム
-    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 1) {
-      emit('active-column-index', totalFlat - 1)
-      return
-    }
-
-    const viewCenter = el.scrollLeft + el.clientWidth / 2
+    const maxScroll = el.scrollWidth - el.clientWidth
+    const progress = maxScroll > 0 ? el.scrollLeft / maxScroll : 0
+    const viewPoint = el.scrollLeft + el.clientWidth * progress
     const sections = el.querySelectorAll<HTMLElement>(`:scope > section`)
 
     let bestFlatIdx = 0
@@ -217,7 +206,7 @@ function onColumnsScroll() {
       const section = sections[gi]
       if (section) {
         const sectionCenter = section.offsetLeft + section.offsetWidth / 2
-        const dist = Math.abs(sectionCenter - viewCenter)
+        const dist = Math.abs(sectionCenter - viewPoint)
         if (dist < bestDist) {
           bestDist = dist
           bestFlatIdx = flatIdx
