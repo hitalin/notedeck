@@ -1,6 +1,6 @@
 import { onScopeDispose, ref, shallowRef } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
-import { sortByCreatedAtDesc } from '@/utils/sortNotes'
+import { insertIntoSorted } from '@/utils/sortNotes'
 
 export interface UseStreamingBatchOptions {
   notes: { value: NormalizedNote[] }
@@ -34,13 +34,13 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     rafBuffer = []
     if (isAtTop.value) {
       for (const n of batch) options.noteIds.add(n.id)
-      const merged = sortByCreatedAtDesc([...batch, ...options.notes.value])
+      const merged = insertIntoSorted(options.notes.value, batch)
       options.notes.value =
         merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
       if (merged.length > MAX_NOTES) syncNoteIds()
       options.onNewNotes?.(batch)
     } else {
-      const merged = sortByCreatedAtDesc([...batch, ...pendingNotes.value])
+      const merged = insertIntoSorted(pendingNotes.value, batch)
       pendingNotes.value =
         merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
     }
@@ -64,7 +64,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       return
     }
     for (const n of newNotes) options.noteIds.add(n.id)
-    const merged = sortByCreatedAtDesc([...newNotes, ...options.notes.value])
+    const merged = insertIntoSorted(options.notes.value, newNotes)
     options.notes.value =
       merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
     if (merged.length > MAX_NOTES) syncNoteIds()

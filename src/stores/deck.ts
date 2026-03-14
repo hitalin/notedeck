@@ -107,6 +107,9 @@ export const useDeckStore = defineStore('deck', () => {
   /** Column ID being dragged from another window (for cross-window D&D overlay) */
   const crossWindowDragColumnId = ref<string | null>(null)
 
+  /** O(1) column lookup by ID */
+  const columnMap = computed(() => new Map(columns.value.map((c) => [c.id, c])))
+
   function setActiveColumn(id: string) {
     activeColumnId.value = id
   }
@@ -168,7 +171,7 @@ export const useDeckStore = defineStore('deck', () => {
 
   const activeColumnUri = computed(() => {
     if (!activeColumnId.value) return null
-    const col = columns.value.find((c) => c.id === activeColumnId.value)
+    const col = getColumn(activeColumnId.value)
     if (!col) return null
 
     const localBuilder = localUriBuilders[col.type]
@@ -208,6 +211,15 @@ export const useDeckStore = defineStore('deck', () => {
     }
   }
 
+  /** Find the group index containing a column ID. O(total columns) on first call per layout snapshot. */
+  function groupIndexOf(colId: string, layoutSnapshot?: string[][]): number {
+    const l = layoutSnapshot ?? layout.value
+    for (let i = 0; i < l.length; i++) {
+      if (l[i]?.includes(colId)) return i
+    }
+    return -1
+  }
+
   function swapColumns(aIdx: number, bIdx: number) {
     if (
       aIdx < 0 ||
@@ -232,8 +244,8 @@ export const useDeckStore = defineStore('deck', () => {
     position: 'above' | 'below',
   ) {
     if (fromId === toId) return
-    const fromGroupIdx = layout.value.findIndex((ids) => ids.includes(fromId))
-    const toGroupIdx = layout.value.findIndex((ids) => ids.includes(toId))
+    const fromGroupIdx = groupIndexOf(fromId)
+    const toGroupIdx = groupIndexOf(toId)
     if (fromGroupIdx < 0 || toGroupIdx < 0) return
 
     // Remove fromId from its current group
@@ -250,7 +262,7 @@ export const useDeckStore = defineStore('deck', () => {
     }
 
     // Find target group in updated layout (index may have shifted)
-    const targetIdx = newLayout.findIndex((ids) => ids.includes(toId))
+    const targetIdx = groupIndexOf(toId, newLayout)
     if (targetIdx < 0) return
     const targetGroup = newLayout[targetIdx]
     if (!targetGroup) return
@@ -268,9 +280,7 @@ export const useDeckStore = defineStore('deck', () => {
 
   function swapInGroup(idA: string, idB: string) {
     if (idA === idB) return
-    const groupIdx = layout.value.findIndex(
-      (ids) => ids.includes(idA) && ids.includes(idB),
-    )
+    const groupIdx = groupIndexOf(idA)
     if (groupIdx < 0) return
     const group = layout.value[groupIdx]
     if (!group) return
@@ -287,7 +297,7 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   function insertColumnAt(id: string, targetIndex: number) {
-    const groupIdx = layout.value.findIndex((ids) => ids.includes(id))
+    const groupIdx = groupIndexOf(id)
     if (groupIdx < 0) return
     const group = layout.value[groupIdx]
     if (!group) return
@@ -316,7 +326,7 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   function unstackColumn(id: string) {
-    const groupIdx = layout.value.findIndex((ids) => ids.includes(id))
+    const groupIdx = groupIndexOf(id)
     if (groupIdx < 0) return
     const group = layout.value[groupIdx]
     if (!group || group.length <= 1) return
@@ -331,17 +341,17 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   function moveLeft(id: string) {
-    const idx = layout.value.findIndex((ids) => ids.includes(id))
+    const idx = groupIndexOf(id)
     if (idx > 0) swapColumns(idx, idx - 1)
   }
 
   function moveRight(id: string) {
-    const idx = layout.value.findIndex((ids) => ids.includes(id))
+    const idx = groupIndexOf(id)
     if (idx < layout.value.length - 1) swapColumns(idx, idx + 1)
   }
 
   function getColumn(id: string): DeckColumn | undefined {
-    return columns.value.find((c) => c.id === id)
+    return columnMap.value.get(id)
   }
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -679,9 +689,10 @@ export const useDeckStore = defineStore('deck', () => {
   /** Layout groups visible in the current window */
   const windowLayout = computed(() => {
     const wid = currentWindowId.value
+    const colMap = columnMap.value
     return layout.value.filter((group) =>
       group.some((colId) => {
-        const col = columns.value.find((c) => c.id === colId)
+        const col = colMap.get(colId)
         if (!col) return false
         // Main window shows columns without windowId
         if (!wid) return !col.windowId

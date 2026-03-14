@@ -11,7 +11,7 @@ import type { ChannelSubscription, NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import { useNavigation } from '@/composables/useNavigation'
-import { sortByCreatedAtDesc } from '@/utils/sortNotes'
+import { insertIntoSorted } from '@/utils/sortNotes'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -112,8 +112,7 @@ async function connect(useCache = false) {
     })
     if (sinceId && fetched.length > 0) {
       const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-      if (newNotes.length > 0)
-        setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
+      if (newNotes.length > 0) setNotes(insertIntoSorted(notes.value, newNotes))
     } else if (fetched.length > 0) {
       setNotes(fetched)
     }
@@ -150,7 +149,7 @@ async function loadMore() {
     const older = await adapter.api.getMentions({
       untilId: lastNote.id,
     })
-    setNotes(sortByCreatedAtDesc([...notes.value, ...older]))
+    setNotes(insertIntoSorted(notes.value, older))
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -198,7 +197,7 @@ async function onResume() {
       seen.add(n.id)
       return true
     })
-    setNotes(sortByCreatedAtDesc([...deduped, ...notes.value]))
+    setNotes(insertIntoSorted(notes.value, deduped))
   }
 }
 

@@ -47,7 +47,7 @@ import {
 } from '@/utils/customTimelines'
 import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
-import { sortByCreatedAtDesc } from '@/utils/sortNotes'
+import { insertIntoSorted } from '@/utils/sortNotes'
 import { matchesFilter } from '@/utils/timelineFilter'
 import DeckColumn from './DeckColumn.vue'
 import TimelineFilterPopup from './TimelineFilterPopup.vue'
@@ -145,7 +145,7 @@ watch(columnVisible, async (visible) => {
       if (fetched.length > 0) {
         const newNotes = fetched.filter((n) => !noteIds.has(n.id))
         if (newNotes.length > 0) {
-          setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
+          setNotes(insertIntoSorted(notes.value, newNotes))
         }
       }
     } catch {
@@ -454,7 +454,7 @@ async function connect(useCache = false) {
         // 初回接続時: ストリーミング受信済みノートとマージ
         const newNotes = fetched.filter((n) => !noteIds.has(n.id))
         if (newNotes.length > 0) {
-          setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
+          setNotes(insertIntoSorted(notes.value, newNotes))
         }
       }
     }
@@ -522,8 +522,7 @@ async function loadMore() {
     try {
       const older = await timeMachine.loadMoreBefore(lastNote.createdAt)
       const filtered = older.filter((n) => n.id !== lastNote.id)
-      if (filtered.length > 0)
-        setNotes(sortByCreatedAtDesc([...notes.value, ...filtered]))
+      if (filtered.length > 0) setNotes(insertIntoSorted(notes.value, filtered))
     } catch (e) {
       error.value = AppError.from(e)
     } finally {
@@ -543,7 +542,7 @@ async function loadMore() {
       untilId: lastNote.id,
       ...(hasFilters ? { filters } : {}),
     })
-    setNotes(sortByCreatedAtDesc([...notes.value, ...older]))
+    setNotes(insertIntoSorted(notes.value, older))
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -567,7 +566,7 @@ async function pullRefresh() {
   if (sinceId && fetched.length > 0) {
     const newNotes = fetched.filter((n) => !noteIds.has(n.id))
     if (newNotes.length > 0) {
-      setNotes(sortByCreatedAtDesc([...newNotes, ...notes.value]))
+      setNotes(insertIntoSorted(notes.value, newNotes))
     }
   } else if (fetched.length > 0) {
     setNotes(fetched)
@@ -624,7 +623,7 @@ async function onResume() {
       seen.add(n.id)
       return true
     })
-    setNotes(sortByCreatedAtDesc([...deduped, ...notes.value]))
+    setNotes(insertIntoSorted(notes.value, deduped))
   }
 }
 

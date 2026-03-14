@@ -18,7 +18,7 @@ import { useNoteStore } from '@/stores/notes'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import { formatTime } from '@/utils/formatTime'
-import { sortByCreatedAtDesc } from '@/utils/sortNotes'
+import { insertIntoSorted } from '@/utils/sortNotes'
 
 const noteStore = useNoteStore()
 const MAX_NOTES = 30
@@ -108,10 +108,7 @@ async function startTimeline(tl: TimelineType) {
           flushTimer = setTimeout(() => {
             flushTimer = null
             if (pendingNotes.length === 0) return
-            const merged = sortByCreatedAtDesc([
-              ...pendingNotes,
-              ...notes.value,
-            ])
+            const merged = insertIntoSorted(notes.value, pendingNotes)
             pendingNotes = []
             notes.value =
               merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
