@@ -42,6 +42,36 @@ const PRIMARY_PROPS: { key: string; label: string }[] = [
 // Working props: only user overrides (not base theme defaults)
 const overrides = ref<Record<string, string>>({})
 
+// Snapshot for reset
+let savedOverrides: Record<string, string> = {}
+let savedName = 'My Theme'
+let savedBaseMode: 'dark' | 'light' = 'dark'
+
+function saveSnapshot() {
+  savedOverrides = { ...overrides.value }
+  savedName = themeName.value
+  savedBaseMode = baseMode.value
+}
+
+function resetToSnapshot() {
+  overrides.value = { ...savedOverrides }
+  themeName.value = savedName
+  baseMode.value = savedBaseMode
+}
+
+const hasChangesFromSnapshot = computed(() => {
+  if (themeName.value !== savedName) return true
+  if (baseMode.value !== savedBaseMode) return true
+  const keys = new Set([
+    ...Object.keys(overrides.value),
+    ...Object.keys(savedOverrides),
+  ])
+  for (const k of keys) {
+    if (overrides.value[k] !== savedOverrides[k]) return true
+  }
+  return false
+})
+
 const baseTheme = computed(() =>
   baseMode.value === 'dark' ? DARK_THEME : LIGHT_THEME,
 )
@@ -58,12 +88,6 @@ const previewTheme = computed<MisskeyTheme>(() => ({
 const resolvedColors = computed(() => {
   const compiled = compileMisskeyTheme(previewTheme.value, baseTheme.value)
   return compiled
-})
-
-// All props (base + overrides) for code view
-const allResolvedProps = computed(() => {
-  const base = { ...baseTheme.value.props }
-  return { ...base, ...overrides.value }
 })
 
 // Code editor content
@@ -112,6 +136,10 @@ function toHex(value: string): string {
   return `#${r}${g}${b}`
 }
 
+function resolvedHex(key: string): string {
+  return toHex(resolvedColors.value[key] ?? '')
+}
+
 function updateColor(key: string, hex: string) {
   overrides.value = { ...overrides.value, [key]: hex }
 }
@@ -146,16 +174,19 @@ function applyPreview() {
   })
 }
 
-// Watch overrides for live preview
+// Watch overrides for live preview (50ms for responsive drag feel)
 let previewTimer: ReturnType<typeof setTimeout> | null = null
 watch(
   [overrides, baseMode],
   () => {
     if (previewTimer) clearTimeout(previewTimer)
-    previewTimer = setTimeout(applyPreview, 150)
+    previewTimer = setTimeout(applyPreview, 50)
   },
   { deep: true },
 )
+
+// Install feedback
+const installedMessage = ref(false)
 
 // Install as a permanent theme
 function installTheme() {
@@ -167,9 +198,16 @@ function installTheme() {
   }
   themeStore.installTheme(JSON.stringify(theme))
   themeStore.selectTheme(theme.id, baseMode.value)
+  saveSnapshot()
+  installedMessage.value = true
+  setTimeout(() => {
+    installedMessage.value = false
+  }, 2000)
 }
 
 // Export as JSON
+const copiedMessage = ref(false)
+
 function exportTheme() {
   const theme: MisskeyTheme = {
     id: `custom-${Date.now()}`,
@@ -185,13 +223,45 @@ function exportTheme() {
   }, 2000)
 }
 
-const copiedMessage = ref(false)
+// Import from clipboard
+async function importFromClipboard() {
+  try {
+    const text = await navigator.clipboard.readText()
+    const parsed = JSON5.parse(text)
+    if (!parsed || typeof parsed !== 'object' || !parsed.props) {
+      return
+    }
+    themeName.value = parsed.name || 'Imported Theme'
+    baseMode.value = parsed.base === 'light' ? 'light' : 'dark'
+    overrides.value = { ...parsed.props }
+    saveSnapshot()
+  } catch {
+    // ignore invalid clipboard content
+  }
+}
 
 // Load existing theme for editing
 function loadFromInstalled(theme: MisskeyTheme) {
   themeName.value = theme.name
   baseMode.value = theme.base ?? 'dark'
   overrides.value = { ...theme.props }
+  saveSnapshot()
+}
+
+// Delete installed theme
+function deleteInstalledTheme(theme: MisskeyTheme, e: Event) {
+  e.stopPropagation()
+  themeStore.removeTheme(theme.id)
+}
+
+// Section collapse states
+const collapsedSections = ref<Record<string, boolean>>({})
+
+function toggleSection(section: string) {
+  collapsedSections.value = {
+    ...collapsedSections.value,
+    [section]: !collapsedSections.value[section],
+  }
 }
 
 // All non-primary props that have overrides
@@ -202,6 +272,12 @@ const secondaryOverrides = computed(() => {
     .sort()
 })
 
+// Override count for primary
+const primaryOverrideCount = computed(() => {
+  const primaryKeys = new Set(PRIMARY_PROPS.map((p) => p.key))
+  return Object.keys(overrides.value).filter((k) => primaryKeys.has(k)).length
+})
+
 // All base theme props not in primary or already overridden
 const availableSecondaryProps = computed(() => {
   const primaryKeys = new Set(PRIMARY_PROPS.map((p) => p.key))
@@ -209,6 +285,16 @@ const availableSecondaryProps = computed(() => {
   return Object.keys(baseTheme.value.props)
     .filter((k) => !primaryKeys.has(k) && !overriddenKeys.has(k))
     .sort()
+})
+
+// Filtered props for add-prop dropdown search
+const addPropSearch = ref('')
+const filteredSecondaryProps = computed(() => {
+  const q = addPropSearch.value.toLowerCase()
+  if (!q) return availableSecondaryProps.value
+  return availableSecondaryProps.value.filter((k) =>
+    k.toLowerCase().includes(q),
+  )
 })
 
 // Custom dropdown states
@@ -225,6 +311,7 @@ function selectAddProp(key: string) {
   const baseVal = baseTheme.value.props[key] ?? ''
   overrides.value = { ...overrides.value, [key]: baseVal }
   showAddPropDropdown.value = false
+  addPropSearch.value = ''
 }
 
 // Resolve accent color from a theme for preview swatch
@@ -240,6 +327,7 @@ function handleOutsideClick(e: MouseEvent) {
   if (!target.closest(`.${cssModule.dropdown}`)) {
     showLoadDropdown.value = false
     showAddPropDropdown.value = false
+    addPropSearch.value = ''
   }
 }
 
@@ -322,10 +410,9 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
               <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
             </button>
             <div v-if="showLoadDropdown" :class="$style.dropdownPanel">
-              <button
+              <div
                 v-for="t in themeStore.installedThemes"
                 :key="t.id"
-                class="_button"
                 :class="$style.dropdownItem"
                 @click="selectInstalledTheme(t)"
               >
@@ -335,20 +422,42 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
                 />
                 <span :class="$style.dropdownItemLabel">{{ t.name }}</span>
                 <span :class="$style.dropdownItemBadge">{{ t.base }}</span>
-              </button>
+                <button
+                  class="_button"
+                  :class="$style.dropdownItemDelete"
+                  title="削除"
+                  @click="deleteInstalledTheme(t, $event)"
+                >
+                  <i class="ti ti-trash" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Primary Colors -->
-        <div :class="$style.categoryLabel">基本色</div>
-        <div :class="$style.propList">
+        <button
+          class="_button"
+          :class="$style.categoryLabel"
+          @click="toggleSection('primary')"
+        >
+          <i
+            class="ti"
+            :class="collapsedSections.primary ? 'ti-chevron-right' : 'ti-chevron-down'"
+          />
+          <span>基本色</span>
+          <span v-if="primaryOverrideCount > 0" :class="$style.categoryCount">
+            {{ primaryOverrideCount }}/{{ PRIMARY_PROPS.length }}
+          </span>
+        </button>
+        <div v-show="!collapsedSections.primary" :class="$style.propList">
           <div
             v-for="prop in PRIMARY_PROPS"
             :key="prop.key"
-            :class="$style.propRow"
+            :class="[$style.propRow, { [$style.overridden]: isOverridden(prop.key) }]"
           >
             <div :class="$style.propLabel">
+              <div v-if="isOverridden(prop.key)" :class="$style.overrideDot" />
               <span>{{ prop.label }}</span>
               <span :class="$style.propKey">{{ prop.key }}</span>
             </div>
@@ -357,7 +466,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
                 <input
                   type="color"
                   :class="$style.colorPicker"
-                  :value="toHex(resolvedColors[prop.key] ?? '')"
+                  :value="resolvedHex(prop.key)"
                   @input="(e) => updateColor(prop.key, (e.target as HTMLInputElement).value)"
                 />
                 <div
@@ -372,7 +481,11 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
                 :placeholder="baseTheme.props[prop.key] ?? ''"
                 spellcheck="false"
                 @change="(e) => updateColor(prop.key, (e.target as HTMLInputElement).value)"
+                @keydown.enter="(e) => updateColor(prop.key, (e.target as HTMLInputElement).value)"
               />
+              <span v-if="isExpression(displayValue(prop.key))" :class="$style.resolvedHex">
+                {{ resolvedHex(prop.key) }}
+              </span>
               <button
                 v-if="isOverridden(prop.key)"
                 class="_button"
@@ -387,14 +500,27 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
         </div>
 
         <!-- Secondary overrides -->
-        <div v-if="secondaryOverrides.length" :class="$style.categoryLabel">追加プロパティ</div>
-        <div v-if="secondaryOverrides.length" :class="$style.propList">
+        <button
+          v-if="secondaryOverrides.length"
+          class="_button"
+          :class="$style.categoryLabel"
+          @click="toggleSection('secondary')"
+        >
+          <i
+            class="ti"
+            :class="collapsedSections.secondary ? 'ti-chevron-right' : 'ti-chevron-down'"
+          />
+          <span>追加プロパティ</span>
+          <span :class="$style.categoryCount">{{ secondaryOverrides.length }}</span>
+        </button>
+        <div v-if="secondaryOverrides.length" v-show="!collapsedSections.secondary" :class="$style.propList">
           <div
             v-for="key in secondaryOverrides"
             :key="key"
-            :class="$style.propRow"
+            :class="[$style.propRow, $style.overridden]"
           >
             <div :class="$style.propLabel">
+              <div :class="$style.overrideDot" />
               <span :class="$style.propKey">{{ key }}</span>
             </div>
             <div :class="$style.propControls">
@@ -402,7 +528,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
                 <input
                   type="color"
                   :class="$style.colorPicker"
-                  :value="toHex(resolvedColors[key] ?? '')"
+                  :value="resolvedHex(key)"
                   @input="(e) => updateColor(key, (e.target as HTMLInputElement).value)"
                 />
                 <div
@@ -416,7 +542,11 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
                 :value="displayValue(key)"
                 spellcheck="false"
                 @change="(e) => updateColor(key, (e.target as HTMLInputElement).value)"
+                @keydown.enter="(e) => updateColor(key, (e.target as HTMLInputElement).value)"
               />
+              <span v-if="isExpression(displayValue(key))" :class="$style.resolvedHex">
+                {{ resolvedHex(key) }}
+              </span>
               <button
                 class="_button"
                 :class="$style.resetBtn"
@@ -438,12 +568,23 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
               @click="showAddPropDropdown = !showAddPropDropdown"
             >
               <i class="ti ti-plus" />
-              <span>プロパティを追加...</span>
+              <span>プロパティを追加... ({{ availableSecondaryProps.length }})</span>
               <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
             </button>
             <div v-if="showAddPropDropdown" :class="$style.dropdownPanel">
+              <div :class="$style.dropdownSearch">
+                <i class="ti ti-search" :class="$style.searchIcon" />
+                <input
+                  v-model="addPropSearch"
+                  :class="$style.searchInput"
+                  type="text"
+                  placeholder="検索..."
+                  spellcheck="false"
+                  @click.stop
+                />
+              </div>
               <button
-                v-for="key in availableSecondaryProps"
+                v-for="key in filteredSecondaryProps"
                 :key="key"
                 class="_button"
                 :class="$style.dropdownItem"
@@ -455,6 +596,9 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
                 />
                 <span :class="$style.dropdownItemLabel">{{ key }}</span>
               </button>
+              <div v-if="filteredSecondaryProps.length === 0" :class="$style.dropdownEmpty">
+                一致するプロパティがありません
+              </div>
             </div>
           </div>
         </div>
@@ -481,22 +625,43 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
       <!-- Actions -->
       <div :class="$style.actions">
-        <button
-          class="_button"
-          :class="$style.actionBtn"
-          @click="installTheme"
-        >
-          <i class="ti ti-download" />
-          インストール
-        </button>
-        <button
-          class="_button"
-          :class="[$style.actionBtn, $style.secondary]"
-          @click="exportTheme"
-        >
-          <i class="ti ti-clipboard" />
-          {{ copiedMessage ? 'コピーしました!' : 'JSONコピー' }}
-        </button>
+        <div :class="$style.actionsRow">
+          <button
+            class="_button"
+            :class="$style.actionBtn"
+            @click="installTheme"
+          >
+            <i class="ti ti-download" />
+            {{ installedMessage ? 'インストール済み!' : 'インストール' }}
+          </button>
+          <button
+            class="_button"
+            :class="[$style.actionBtn, $style.secondary]"
+            @click="exportTheme"
+          >
+            <i class="ti ti-clipboard" />
+            {{ copiedMessage ? 'コピー済み!' : 'JSONコピー' }}
+          </button>
+        </div>
+        <div :class="$style.actionsRow">
+          <button
+            class="_button"
+            :class="[$style.actionBtn, $style.secondary]"
+            @click="importFromClipboard"
+          >
+            <i class="ti ti-clipboard-text" />
+            インポート
+          </button>
+          <button
+            class="_button"
+            :class="[$style.actionBtn, $style.secondary]"
+            :disabled="!hasChangesFromSnapshot"
+            @click="resetToSnapshot"
+          >
+            <i class="ti ti-arrow-back-up" />
+            リセット
+          </button>
+        </div>
       </div>
     </div>
   </DeckColumn>
@@ -614,6 +779,10 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   /* modifier */
 }
 
+.overridden {
+  /* modifier */
+}
+
 .visualPanel {
   display: flex;
   flex-direction: column;
@@ -663,13 +832,45 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   left: 0;
   right: 0;
   z-index: 100;
-  max-height: 200px;
+  max-height: 240px;
   overflow-y: auto;
   margin-top: 2px;
   border: 1px solid var(--nd-divider);
   border-radius: var(--nd-radius-sm);
   background: var(--nd-panel);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.dropdownSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--nd-divider);
+  position: sticky;
+  top: 0;
+  background: var(--nd-panel);
+  z-index: 1;
+}
+
+.searchIcon {
+  opacity: 0.4;
+  font-size: 0.85em;
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--nd-fg);
+  font-size: 0.8em;
+  outline: none;
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.3;
+  }
 }
 
 .dropdownItem {
@@ -681,6 +882,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   font-size: 0.8em;
   color: var(--nd-fg);
   text-align: left;
+  cursor: pointer;
   transition: background var(--nd-duration-base);
 
   &:hover {
@@ -706,6 +908,31 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   flex-shrink: 0;
 }
 
+.dropdownItemDelete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  opacity: 0.3;
+  flex-shrink: 0;
+  transition: opacity var(--nd-duration-base), color var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    color: var(--nd-love);
+  }
+}
+
+.dropdownEmpty {
+  padding: 12px 10px;
+  font-size: 0.8em;
+  opacity: 0.4;
+  text-align: center;
+}
+
 .themeSwatch {
   width: 16px;
   height: 16px;
@@ -715,12 +942,33 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 }
 
 .categoryLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
   padding: 8px 10px 4px;
   font-size: 0.7em;
   font-weight: bold;
   opacity: 0.5;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--nd-fg);
+  cursor: pointer;
+  transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.categoryCount {
+  margin-left: auto;
+  font-size: 0.9em;
+  opacity: 0.7;
+  font-weight: normal;
 }
 
 .propList {
@@ -734,9 +982,15 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   gap: 2px;
   padding: 6px 10px;
   border-bottom: 1px solid color-mix(in srgb, var(--nd-divider) 50%, transparent);
+  transition: background var(--nd-duration-base);
 
   &:hover {
     background: var(--nd-buttonHoverBg);
+  }
+
+  &.overridden {
+    border-left: 2px solid var(--nd-accent);
+    padding-left: 8px;
   }
 }
 
@@ -745,6 +999,14 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   align-items: center;
   gap: 6px;
   font-size: 0.8em;
+}
+
+.overrideDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--nd-accent);
+  flex-shrink: 0;
 }
 
 .propKey {
@@ -761,8 +1023,8 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
 .colorPickerWrap {
   position: relative;
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
 }
 
@@ -776,9 +1038,9 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 }
 
 .colorSwatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
   border: 1px solid var(--nd-divider);
   pointer-events: none;
 }
@@ -803,6 +1065,14 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   &.expression {
     color: var(--nd-accent);
   }
+}
+
+.resolvedHex {
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.65em;
+  opacity: 0.4;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .resetBtn {
@@ -887,10 +1157,16 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
 .actions {
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   padding: 10px;
   border-top: 1px solid var(--nd-divider);
   flex-shrink: 0;
+}
+
+.actionsRow {
+  display: flex;
+  gap: 6px;
 }
 
 .actionBtn {
@@ -905,10 +1181,15 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   color: var(--nd-fgOnAccent);
   font-size: 0.8em;
   font-weight: bold;
-  transition: background var(--nd-duration-base);
+  transition: background var(--nd-duration-base), opacity var(--nd-duration-base);
 
   &:hover {
     background: var(--nd-accentDarken);
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    pointer-events: none;
   }
 
   &.secondary {
