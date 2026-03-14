@@ -20,12 +20,15 @@ const cssCode = ref(themeStore.customCss)
 // Preset toggles
 const presets = ref({
   customFont: '',
+  fontSize: 0, // 0 = default, otherwise px offset from 15px base
 })
 
 // Parse existing CSS to restore preset states
 function parsePresetsFromCss(css: string) {
   const fontMatch = css.match(/\/\* nd-font: (.+?) \*\//)
   presets.value.customFont = fontMatch?.[1] ?? ''
+  const sizeMatch = css.match(/\/\* nd-fontsize: (.+?) \*\//)
+  presets.value.fontSize = sizeMatch ? Number(sizeMatch[1]) : 0
 }
 parsePresetsFromCss(cssCode.value)
 
@@ -76,13 +79,25 @@ const FONT_OPTIONS: FontOption[] = [
   },
 ]
 
+const FONT_SIZE_BASE = 15
+const FONT_SIZE_MIN = -3
+const FONT_SIZE_MAX = 5
+
+const fontSizeLabel = computed(() => {
+  if (presets.value.fontSize === 0) return 'デフォルト (15px)'
+  return `${FONT_SIZE_BASE + presets.value.fontSize}px`
+})
+
 // Validate CSS by attempting to parse it with CSSStyleSheet
 function validateCss(css: string): string | null {
   if (!css.trim()) return null
-  // Strip @import lines (not supported by CSSStyleSheet.replaceSync)
+  // Strip @import and @font-face blocks (not supported by CSSStyleSheet.replaceSync)
   const testCss = css
     .split('\n')
-    .filter((line) => !line.trim().startsWith('@import'))
+    .filter((line) => {
+      const t = line.trim()
+      return !t.startsWith('@import') && !t.startsWith('@font-face')
+    })
     .join('\n')
   try {
     const sheet = new CSSStyleSheet()
@@ -112,6 +127,12 @@ function buildPresetCss(): string {
     parts.push(`html { font-family: '${font}', sans-serif; }`)
   }
 
+  if (presets.value.fontSize !== 0) {
+    const px = FONT_SIZE_BASE + presets.value.fontSize
+    parts.push(`/* nd-fontsize: ${presets.value.fontSize} */`)
+    parts.push(`html { font-size: ${px}px; }`)
+  }
+
   return parts.join('\n')
 }
 
@@ -123,9 +144,11 @@ function extractUserCss(fullCss: string): string {
       const t = line.trim()
       if (!t) return false
       if (t.startsWith('/* nd-font:')) return false
+      if (t.startsWith('/* nd-fontsize:')) return false
       if (t.startsWith('@import url(')) return false
       if (t.startsWith('@font-face')) return false
       if (t.match(/^html\s*\{\s*font-family:/)) return false
+      if (t.match(/^html\s*\{\s*font-size:/)) return false
       return true
     })
     .join('\n')
@@ -162,9 +185,9 @@ watch(fullCss, (css) => {
   }, 200)
 })
 
-// Font preset changes apply immediately (safe, no validation needed)
+// Preset changes apply immediately (safe, no validation needed)
 watch(
-  () => presets.value.customFont,
+  () => [presets.value.customFont, presets.value.fontSize],
   () => {
     const css = fullCss.value
     cssCode.value = css
@@ -172,10 +195,24 @@ watch(
   },
 )
 
-// Code tab: direct editing
+// Code tab: debounced live preview
 const codeError = ref<string | null>(null)
+let codeApplyTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(cssCode, (css) => {
+  if (tab.value !== 'code') return
+  if (codeApplyTimer) clearTimeout(codeApplyTimer)
+  codeApplyTimer = setTimeout(() => {
+    const err = validateCss(css)
+    codeError.value = err
+    if (!err) {
+      themeStore.setCustomCss(css)
+    }
+  }, 400)
+})
 
 function applyFromCode() {
+  if (codeApplyTimer) clearTimeout(codeApplyTimer)
   const css = cssCode.value
   const err = validateCss(css)
   if (err) {
@@ -189,13 +226,26 @@ function applyFromCode() {
   themeStore.setCustomCss(css)
 }
 
-function clearAll() {
-  presets.value = { customFont: '' }
-  userFreeformCss.value = ''
-  cssCode.value = ''
-  cssError.value = null
-  codeError.value = null
-  themeStore.setCustomCss('')
+// Clear all with confirmation
+const confirmingClear = ref(false)
+let clearTimer: ReturnType<typeof setTimeout> | null = null
+
+function handleClear() {
+  if (confirmingClear.value) {
+    if (clearTimer) clearTimeout(clearTimer)
+    confirmingClear.value = false
+    presets.value = { customFont: '', fontSize: 0 }
+    userFreeformCss.value = ''
+    cssCode.value = ''
+    cssError.value = null
+    codeError.value = null
+    themeStore.setCustomCss('')
+  } else {
+    confirmingClear.value = true
+    clearTimer = setTimeout(() => {
+      confirmingClear.value = false
+    }, 3000)
+  }
 }
 
 // Font dropdown
@@ -228,6 +278,10 @@ watch(tab, (t) => {
   if (t === 'code') {
     cssCode.value = fullCss.value
     codeError.value = null
+  } else {
+    // Switching back to presets: sync state from code
+    parsePresetsFromCss(cssCode.value)
+    userFreeformCss.value = extractUserCss(cssCode.value)
   }
 })
 </script>
@@ -308,6 +362,35 @@ watch(tab, (t) => {
           </div>
         </div>
 
+        <!-- Font Size -->
+        <div :class="$style.section">
+          <div :class="$style.sectionLabel">
+            <i class="ti ti-text-resize" />
+            フォントサイズ
+            <span :class="$style.sectionValue">{{ fontSizeLabel }}</span>
+          </div>
+          <div :class="$style.sliderRow">
+            <span :class="$style.sliderLabel">小</span>
+            <input
+              v-model.number="presets.fontSize"
+              type="range"
+              :min="FONT_SIZE_MIN"
+              :max="FONT_SIZE_MAX"
+              step="1"
+              :class="$style.slider"
+            />
+            <span :class="$style.sliderLabel">大</span>
+          </div>
+          <button
+            v-if="presets.fontSize !== 0"
+            class="_button"
+            :class="$style.resetBtn"
+            @click="presets.fontSize = 0"
+          >
+            リセット
+          </button>
+        </div>
+
         <!-- Freeform CSS -->
         <div :class="$style.section">
           <div :class="$style.sectionLabel">
@@ -346,13 +429,17 @@ watch(tab, (t) => {
           <i class="ti ti-alert-triangle" />
           {{ codeError }}
         </div>
+        <div v-if="!codeError && cssCode.trim()" :class="$style.codeSuccess">
+          <i class="ti ti-check" />
+          適用中
+        </div>
         <button
           class="_button"
           :class="$style.codeApplyBtn"
           @click="applyFromCode"
         >
-          <i class="ti ti-check" />
-          コードから反映
+          <i class="ti ti-refresh" />
+          プリセットに同期
         </button>
       </div>
 
@@ -360,11 +447,11 @@ watch(tab, (t) => {
       <div :class="$style.actions">
         <button
           class="_button"
-          :class="[$style.actionBtn, $style.danger]"
-          @click="clearAll"
+          :class="[$style.actionBtn, $style.danger, { [$style.confirming]: confirmingClear }]"
+          @click="handleClear"
         >
           <i class="ti ti-trash" />
-          すべてクリア
+          {{ confirmingClear ? '本当にクリア？' : 'すべてクリア' }}
         </button>
       </div>
     </div>
@@ -423,6 +510,10 @@ watch(tab, (t) => {
   /* modifier */
 }
 
+.confirming {
+  /* modifier */
+}
+
 .presetsPanel {
   display: flex;
   flex-direction: column;
@@ -446,6 +537,13 @@ watch(tab, (t) => {
   font-size: 0.8em;
   font-weight: bold;
   opacity: 0.7;
+}
+
+.sectionValue {
+  margin-left: auto;
+  font-weight: normal;
+  font-size: 0.9em;
+  opacity: 0.8;
 }
 
 .dropdown {
@@ -541,6 +639,62 @@ watch(tab, (t) => {
   text-align: center;
 }
 
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sliderLabel {
+  font-size: 0.7em;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.slider {
+  flex: 1;
+  height: 4px;
+  appearance: none;
+  background: var(--nd-divider);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--nd-accent);
+    cursor: pointer;
+  }
+
+  &::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 50%;
+    background: var(--nd-accent);
+    cursor: pointer;
+  }
+}
+
+.resetBtn {
+  align-self: flex-end;
+  padding: 2px 8px;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  font-size: 0.7em;
+  opacity: 0.6;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
 .textarea {
   padding: 8px 10px;
   border: 1px solid var(--nd-divider);
@@ -619,6 +773,15 @@ watch(tab, (t) => {
   }
 }
 
+.codeSuccess {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75em;
+  color: var(--nd-accent);
+  opacity: 0.7;
+}
+
 .codeApplyBtn {
   display: flex;
   align-items: center;
@@ -654,7 +817,7 @@ watch(tab, (t) => {
   border-radius: var(--nd-radius-sm);
   font-size: 0.8em;
   font-weight: bold;
-  transition: background var(--nd-duration-base);
+  transition: background var(--nd-duration-base), color var(--nd-duration-base);
 
   &.danger {
     background: var(--nd-buttonBg);
@@ -662,6 +825,11 @@ watch(tab, (t) => {
 
     &:hover {
       background: color-mix(in srgb, var(--nd-love) 20%, var(--nd-buttonBg));
+      color: var(--nd-love);
+    }
+
+    &.confirming {
+      background: color-mix(in srgb, var(--nd-love) 30%, var(--nd-buttonBg));
       color: var(--nd-love);
     }
   }
