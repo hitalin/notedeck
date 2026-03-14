@@ -533,6 +533,7 @@ defineExpose({
 
 .account {
   gap: 10px;
+  padding-left: 4px;
 }
 
 .avatarWrap {
