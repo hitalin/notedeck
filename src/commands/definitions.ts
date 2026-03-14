@@ -328,6 +328,23 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
         })
       },
     })
+
+    commandStore.register({
+      id: 'theme-editor',
+      label: 'テーマエディタ',
+      icon: 'palette',
+      category: 'column',
+      shortcuts: keybindsStore.getShortcuts('theme-editor'),
+      execute: () => {
+        useDeckStore().addColumn({
+          type: 'themeEditor',
+          name: 'テーマエディタ',
+          width: 360,
+          accountId: null,
+          active: true,
+        })
+      },
+    })
   }
 
   // Profile switching (Alt+1-9 to switch deck profiles)
