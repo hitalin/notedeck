@@ -155,6 +155,11 @@ function resolvedDisplay(key: string): string {
   return hex
 }
 
+function hasAlpha(key: string): boolean {
+  const rgba = parseColor(resolvedColors.value[key] ?? '')
+  return rgba !== null && rgba[3] < 1
+}
+
 function updateColor(key: string, hex: string) {
   overrides.value = { ...overrides.value, [key]: hex }
 }
@@ -468,7 +473,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
                   @input="(e) => updateColor(prop.key, (e.target as HTMLInputElement).value)"
                 />
                 <div
-                  :class="$style.colorSwatch"
+                  :class="[$style.colorSwatch, { [$style.checkerboard]: hasAlpha(prop.key) }]"
                   :style="{ backgroundColor: resolvedColors[prop.key] ?? 'transparent' }"
                 />
               </div>
@@ -530,7 +535,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
                   @input="(e) => updateColor(key, (e.target as HTMLInputElement).value)"
                 />
                 <div
-                  :class="$style.colorSwatch"
+                  :class="[$style.colorSwatch, { [$style.checkerboard]: hasAlpha(key) }]"
                   :style="{ backgroundColor: resolvedColors[key] ?? 'transparent' }"
                 />
               </div>
@@ -1028,13 +1033,20 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   border-radius: 6px;
   border: 1px solid var(--nd-divider);
   pointer-events: none;
-  background-image:
-    linear-gradient(45deg, #808080 25%, transparent 25%),
-    linear-gradient(-45deg, #808080 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #808080 75%),
-    linear-gradient(-45deg, transparent 75%, #808080 75%);
-  background-size: 8px 8px;
-  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+
+  &.checkerboard {
+    background-image:
+      linear-gradient(45deg, #808080 25%, transparent 25%),
+      linear-gradient(-45deg, #808080 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #808080 75%),
+      linear-gradient(-45deg, transparent 75%, #808080 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+  }
+}
+
+.checkerboard {
+  /* modifier */
 }
 
 .propValueInput {
