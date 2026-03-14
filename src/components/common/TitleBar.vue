@@ -156,24 +156,17 @@ async function togglePip() {
     <div :class="$style.titlebarControls">
       <button
         :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
+        title="開発者ツール"
+        @click="commandStore.execute('devtools')"
+      >
+        <i class="ti ti-code" />
+      </button>
+      <button
+        :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
         title="新しいウィンドウ"
         @click="openNewWindow"
       >
         <i class="ti ti-app-window" />
-      </button>
-      <button
-        :class="[$style.titlebarBtn, $style.titlebarSidebarBtn, { [$style.titlebarBtnActive]: !deckStore.navCollapsed }]"
-        title="サイドバー切替"
-        @click="commandStore.execute('toggle-sidebar')"
-      >
-        <i class="ti ti-layout-sidebar" />
-      </button>
-      <button
-        :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
-        :title="isCompactSize ? 'デスクトップサイズ' : 'モバイルサイズ'"
-        @click="toggleMobileSize"
-      >
-        <i :class="isCompactSize ? 'ti ti-device-desktop' : 'ti ti-device-mobile'" />
       </button>
       <button
         :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
@@ -184,10 +177,17 @@ async function togglePip() {
       </button>
       <button
         :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
-        title="開発者ツール"
-        @click="commandStore.execute('devtools')"
+        :title="isCompactSize ? 'デスクトップサイズ' : 'モバイルサイズ'"
+        @click="toggleMobileSize"
       >
-        <i class="ti ti-code" />
+        <i :class="isCompactSize ? 'ti ti-device-desktop' : 'ti ti-device-mobile'" />
+      </button>
+      <button
+        :class="[$style.titlebarBtn, $style.titlebarSidebarBtn, { [$style.titlebarBtnActive]: !deckStore.navCollapsed }]"
+        title="サイドバー切替"
+        @click="commandStore.execute('toggle-sidebar')"
+      >
+        <i class="ti ti-layout-sidebar" />
       </button>
       <button :class="[$style.titlebarBtn, $style.titlebarWindowBtn]" title="最小化" @click="minimize">
         <svg width="10" height="10" viewBox="0 0 10 10">
