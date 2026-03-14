@@ -190,18 +190,20 @@ function onColumnsScroll() {
     if (w === 0) return
     emit('active-column-index', Math.round(columnsRef.value.scrollLeft / w))
   } else {
-    // Desktop: find the section closest to left edge
-    const scrollLeft = columnsRef.value.scrollLeft
-    const sections =
-      columnsRef.value.querySelectorAll<HTMLElement>(`:scope > section`)
+    // Desktop: ビューポート中央に最も近いsectionをアクティブに
+    const el = columnsRef.value
+    const viewCenter = el.scrollLeft + el.clientWidth / 2
+    const sections = el.querySelectorAll<HTMLElement>(`:scope > section`)
     const layout = deckStore.windowLayout
+
     let bestFlatIdx = 0
     let bestDist = Infinity
     let flatIdx = 0
     for (let gi = 0; gi < layout.length; gi++) {
       const section = sections[gi]
       if (section) {
-        const dist = Math.abs(section.offsetLeft - scrollLeft)
+        const sectionCenter = section.offsetLeft + section.offsetWidth / 2
+        const dist = Math.abs(sectionCenter - viewCenter)
         if (dist < bestDist) {
           bestDist = dist
           bestFlatIdx = flatIdx
