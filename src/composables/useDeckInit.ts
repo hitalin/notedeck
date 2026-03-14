@@ -53,10 +53,10 @@ export function useDeckInit(options: {
     window.addEventListener('resize', handleResizeRef)
     document.addEventListener('visibilitychange', onVisibilityChange)
 
+    // Critical: start streaming immediately
     deckStore.startSync()
-    initApiBridge()
-    initDesktopNotifications()
-    loadCliCommands()
+
+    // Register commands synchronously (needed for keyboard shortcuts)
     registerDefaultCommands({
       openCompose: options.openCompose,
       openSearch: options.navigateToSearch,
@@ -66,12 +66,19 @@ export function useDeckInit(options: {
       toggleAccountMenu: () =>
         options.navbarRef.value?.toggleFirstAccountMenu(),
     })
-    onNotificationAction((ctx) => {
-      if (ctx.noteId) {
-        options.navigateToNote(ctx.accountId, ctx.noteId)
-      } else if (ctx.userId) {
-        options.navigateToUser(ctx.accountId, ctx.userId)
-      }
+
+    // Defer non-critical initialization to after first paint
+    requestAnimationFrame(() => {
+      initApiBridge()
+      initDesktopNotifications()
+      loadCliCommands()
+      onNotificationAction((ctx) => {
+        if (ctx.noteId) {
+          options.navigateToNote(ctx.accountId, ctx.noteId)
+        } else if (ctx.userId) {
+          options.navigateToUser(ctx.accountId, ctx.userId)
+        }
+      })
     })
 
     setTimeout(options.checkForUpdate, 5000)
