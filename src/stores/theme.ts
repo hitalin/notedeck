@@ -1,5 +1,4 @@
 import { invoke } from '@tauri-apps/api/core'
-import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
 import { applyTheme } from '@/theme/applier'
@@ -212,8 +211,9 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   /** Install a Misskey theme from JSON code. Returns true on success. */
-  function installTheme(code: string): boolean {
+  async function installTheme(code: string): Promise<boolean> {
     try {
+      const JSON5 = (await import('json5')).default
       const parsed = JSON5.parse(code)
       if (!parsed || typeof parsed !== 'object' || !parsed.props) return false
 

@@ -238,14 +238,14 @@ watch(
 const installedMessage = ref(false)
 
 // Install as a permanent theme
-function installTheme() {
+async function installTheme() {
   const theme: MisskeyTheme = {
     id: `custom-${Date.now()}`,
     name: themeName.value,
     base: baseMode.value,
     props: { ...baseTheme.value.props, ...overrides.value },
   }
-  themeStore.installTheme(JSON.stringify(theme))
+  await themeStore.installTheme(JSON.stringify(theme))
   themeStore.selectTheme(theme.id, baseMode.value)
   saveSnapshot()
   installedMessage.value = true

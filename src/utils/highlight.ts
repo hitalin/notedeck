@@ -1,4 +1,3 @@
-import DOMPurify from 'dompurify'
 import type { HighlighterCore } from 'shiki'
 import { shallowRef } from 'vue'
 
@@ -6,6 +5,7 @@ export const highlighterLoaded = shallowRef(false)
 
 let highlighter: HighlighterCore | null = null
 let initPromise: Promise<void> | null = null
+let purify: typeof import('dompurify').default | null = null
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -42,6 +42,8 @@ function initHighlighter(): Promise<void> {
       langs: langModules.map((m) => m.default),
       engine: shikiCore.createJavaScriptRegexEngine(),
     })
+    const mod = await import('dompurify')
+    purify = mod.default
     highlighterLoaded.value = true
   })()
 
@@ -49,11 +51,11 @@ function initHighlighter(): Promise<void> {
 }
 
 export function highlightCode(code: string, lang: string | null): string {
-  if (!lang || !highlighter?.getLoadedLanguages().includes(lang)) {
+  if (!lang || !highlighter?.getLoadedLanguages().includes(lang) || !purify) {
     if (lang && !initPromise) initHighlighter()
     return `<pre><code>${escapeHtml(code)}</code></pre>`
   }
-  return DOMPurify.sanitize(
+  return purify.sanitize(
     highlighter.codeToHtml(code, { lang, theme: 'dark-plus' }),
   )
 }

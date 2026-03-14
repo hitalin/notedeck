@@ -58,10 +58,10 @@ function selectTheme(id: string | null) {
   themeStore.selectTheme(id, mode)
 }
 
-function handleInstall() {
+async function handleInstall() {
   installError.value = ''
   if (!themeCode.value.trim()) return
-  const ok = themeStore.installTheme(themeCode.value.trim())
+  const ok = await themeStore.installTheme(themeCode.value.trim())
   if (ok) {
     themeCode.value = ''
     showInstallInput.value = false
