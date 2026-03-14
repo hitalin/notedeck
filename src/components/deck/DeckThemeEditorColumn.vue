@@ -227,23 +227,6 @@ function exportTheme() {
   }, 2000)
 }
 
-// Import from clipboard
-async function importFromClipboard() {
-  try {
-    const text = await navigator.clipboard.readText()
-    const parsed = JSON5.parse(text)
-    if (!parsed || typeof parsed !== 'object' || !parsed.props) {
-      return
-    }
-    themeName.value = parsed.name || 'Imported Theme'
-    baseMode.value = parsed.base === 'light' ? 'light' : 'dark'
-    overrides.value = { ...parsed.props }
-    saveSnapshot()
-  } catch {
-    // ignore invalid clipboard content
-  }
-}
-
 // Load existing theme for editing
 function loadFromInstalled(theme: MisskeyTheme) {
   themeName.value = theme.name
@@ -628,43 +611,31 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
       <!-- Actions -->
       <div :class="$style.actions">
-        <div :class="$style.actionsRow">
-          <button
-            class="_button"
-            :class="$style.actionBtn"
-            @click="installTheme"
-          >
-            <i class="ti ti-download" />
-            {{ installedMessage ? 'インストール済み!' : 'インストール' }}
-          </button>
-          <button
-            class="_button"
-            :class="[$style.actionBtn, $style.secondary]"
-            @click="exportTheme"
-          >
-            <i class="ti ti-clipboard" />
-            {{ copiedMessage ? 'コピー済み!' : 'JSONコピー' }}
-          </button>
-        </div>
-        <div :class="$style.actionsRow">
-          <button
-            class="_button"
-            :class="[$style.actionBtn, $style.secondary]"
-            @click="importFromClipboard"
-          >
-            <i class="ti ti-clipboard-text" />
-            インポート
-          </button>
-          <button
-            class="_button"
-            :class="[$style.actionBtn, $style.secondary]"
-            :disabled="!hasChangesFromSnapshot"
-            @click="resetToSnapshot"
-          >
-            <i class="ti ti-arrow-back-up" />
-            リセット
-          </button>
-        </div>
+        <button
+          class="_button"
+          :class="$style.actionBtn"
+          @click="installTheme"
+        >
+          <i class="ti ti-download" />
+          {{ installedMessage ? 'インストール済み!' : 'インストール' }}
+        </button>
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary]"
+          @click="exportTheme"
+        >
+          <i class="ti ti-clipboard" />
+          {{ copiedMessage ? 'コピー済み!' : 'JSONコピー' }}
+        </button>
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary]"
+          :disabled="!hasChangesFromSnapshot"
+          @click="resetToSnapshot"
+        >
+          <i class="ti ti-arrow-back-up" />
+          リセット
+        </button>
       </div>
     </div>
   </DeckColumn>
@@ -1145,16 +1116,10 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
 .actions {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   padding: 10px;
   border-top: 1px solid var(--nd-divider);
   flex-shrink: 0;
-}
-
-.actionsRow {
-  display: flex;
-  gap: 6px;
 }
 
 .actionBtn {
