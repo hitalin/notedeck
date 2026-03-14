@@ -158,6 +158,13 @@ async function togglePip() {
       >
         <i class="ti ti-picture-in-picture" />
       </button>
+      <button
+        :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
+        title="開発者ツール"
+        @click="commandStore.execute('devtools')"
+      >
+        <i class="ti ti-code" />
+      </button>
       <button :class="[$style.titlebarBtn, $style.titlebarWindowBtn]" title="最小化" @click="minimize">
         <svg width="10" height="10" viewBox="0 0 10 10">
           <rect x="0" y="4.5" width="10" height="1" fill="currentColor" />
