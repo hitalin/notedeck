@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { css } from '@codemirror/lang-css'
 import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import DeckColumn from './DeckColumn.vue'
+import CodeEditor from './widgets/CodeEditor.vue'
+
+const cssLang = css()
 
 const props = defineProps<{
   column: DeckColumnType
@@ -397,12 +401,11 @@ watch(tab, (t) => {
             <i class="ti ti-pencil" />
             追加CSS
           </div>
-          <textarea
+          <CodeEditor
             v-model="userFreeformCss"
-            :class="[$style.textarea, { [$style.hasError]: cssError }]"
-            placeholder="自由にCSSを記述..."
-            spellcheck="false"
-            rows="10"
+            :language="cssLang"
+            :class="[$style.editorWrap, { [$style.hasError]: cssError }]"
+            max-height="300px"
           />
           <div v-if="cssError" :class="$style.errorMessage">
             <i class="ti ti-alert-triangle" />
@@ -419,11 +422,10 @@ watch(tab, (t) => {
         <div :class="$style.codeHint">
           プリセットと追加CSSを結合した全体のCSSです
         </div>
-        <textarea
+        <CodeEditor
           v-model="cssCode"
-          :class="[$style.codeTextarea, { [$style.hasError]: codeError }]"
-          spellcheck="false"
-          rows="20"
+          :language="cssLang"
+          :class="[$style.codeEditorWrap, { [$style.hasError]: codeError }]"
         />
         <div v-if="codeError" :class="$style.errorMessage">
           <i class="ti ti-alert-triangle" />
@@ -695,25 +697,10 @@ watch(tab, (t) => {
   }
 }
 
-.textarea {
-  padding: 8px 10px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-bg);
-  color: var(--nd-fg);
-  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 0.75em;
-  line-height: 1.5;
-  resize: vertical;
-  outline: none;
-  transition: border-color var(--nd-duration-base);
-
-  &:focus {
-    border-color: var(--nd-accent);
-  }
-
+.editorWrap {
   &.hasError {
-    border-color: var(--nd-love);
+    box-shadow: 0 0 0 2px var(--nd-love);
+    border-radius: var(--nd-radius-sm);
   }
 }
 
@@ -749,27 +736,13 @@ watch(tab, (t) => {
   opacity: 0.4;
 }
 
-.codeTextarea {
+.codeEditorWrap {
   flex: 1;
   min-height: 200px;
-  padding: 8px 10px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-bg);
-  color: var(--nd-fg);
-  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 0.75em;
-  line-height: 1.5;
-  resize: vertical;
-  outline: none;
-  transition: border-color var(--nd-duration-base);
-
-  &:focus {
-    border-color: var(--nd-accent);
-  }
 
   &.hasError {
-    border-color: var(--nd-love);
+    box-shadow: 0 0 0 2px var(--nd-love);
+    border-radius: var(--nd-radius-sm);
   }
 }
 

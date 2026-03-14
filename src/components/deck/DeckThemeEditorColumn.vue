@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { json } from '@codemirror/lang-json'
 import JSON5 from 'json5'
 import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
@@ -9,6 +10,9 @@ import { parseColor, toRgba } from '@/theme/colorUtils'
 import { compileMisskeyTheme } from '@/theme/compiler'
 import type { MisskeyTheme } from '@/theme/types'
 import DeckColumn from './DeckColumn.vue'
+import CodeEditor from './widgets/CodeEditor.vue'
+
+const jsonLang = json()
 
 const props = defineProps<{
   column: DeckColumnType
@@ -606,11 +610,10 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
       <!-- Code Editor -->
       <div v-show="tab === 'code'" :class="$style.codePanel">
-        <textarea
+        <CodeEditor
           v-model="codeContent"
-          :class="$style.codeTextarea"
-          spellcheck="false"
-          rows="20"
+          :language="jsonLang"
+          :class="$style.codeEditorWrap"
         />
         <div v-if="codeError" :class="$style.codeError">{{ codeError }}</div>
         <button
@@ -1110,24 +1113,9 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   overflow-y: auto;
 }
 
-.codeTextarea {
+.codeEditorWrap {
   flex: 1;
   min-height: 200px;
-  padding: 8px 10px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-bg);
-  color: var(--nd-fg);
-  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 0.75em;
-  line-height: 1.5;
-  resize: vertical;
-  outline: none;
-  transition: border-color var(--nd-duration-base);
-
-  &:focus {
-    border-color: var(--nd-accent);
-  }
 }
 
 .codeError {
