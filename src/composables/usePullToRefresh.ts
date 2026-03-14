@@ -1,6 +1,6 @@
 import { onUnmounted, type Ref, ref, watch } from 'vue'
 
-const PULL_THRESHOLD = 64
+export const PULL_THRESHOLD = 64
 const MAX_PULL = 128
 
 export function usePullToRefresh(
