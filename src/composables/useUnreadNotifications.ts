@@ -13,6 +13,8 @@ const counts = ref<Record<string, number>>({})
 let listenerSetUp = false
 let unlistenFn: UnlistenFn | null = null
 let refCount = 0
+let pollingInterval: ReturnType<typeof setInterval> | null = null
+let isPollingActive = false
 
 async function fetchUnreadCount(accountId: string): Promise<number> {
   try {
@@ -88,8 +90,29 @@ export function useUnreadNotifications() {
     counts.value = reset
   }
 
-  // Periodic re-fetch for accuracy
-  const interval = setInterval(fetchAll, 60_000)
+  function startPolling() {
+    if (isPollingActive) return
+    isPollingActive = true
+    pollingInterval = setInterval(fetchAll, 60_000)
+  }
+
+  function stopPolling() {
+    if (!isPollingActive) return
+    isPollingActive = false
+    if (pollingInterval) {
+      clearInterval(pollingInterval)
+      pollingInterval = null
+    }
+  }
+
+  function onVisibilityChange() {
+    if (document.hidden) {
+      stopPolling()
+    } else {
+      fetchAll()
+      startPolling()
+    }
+  }
 
   refCount++
   setupListener()
@@ -100,11 +123,14 @@ export function useUnreadNotifications() {
     () => fetchAll(),
   )
 
-  // Initial fetch
+  // Initial fetch + start polling only when visible
   fetchAll()
+  if (!document.hidden) startPolling()
+  document.addEventListener('visibilitychange', onVisibilityChange)
 
   onUnmounted(() => {
-    clearInterval(interval)
+    stopPolling()
+    document.removeEventListener('visibilitychange', onVisibilityChange)
     refCount--
     if (refCount <= 0) {
       teardownListener()

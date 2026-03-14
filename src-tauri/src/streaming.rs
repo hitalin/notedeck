@@ -3,12 +3,23 @@ use serde_json::Value;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_notification::NotificationExt;
 
+#[cfg(target_os = "android")]
+const NOTIFICATION_CHANNEL_ID: &str = "notedeck_notifications";
+
 pub struct TauriEmitter {
     app: AppHandle,
 }
 
 impl TauriEmitter {
     pub fn new(app: AppHandle) -> Self {
+        #[cfg(target_os = "android")]
+        {
+            use tauri_plugin_notification::{Channel, Importance};
+            let channel = Channel::builder(NOTIFICATION_CHANNEL_ID, "通知")
+                .importance(Importance::Default)
+                .build();
+            let _ = app.notification().create_channel(channel);
+        }
         Self { app }
     }
 
@@ -59,14 +70,18 @@ impl TauriEmitter {
             label.to_string()
         };
 
-        if let Err(e) = self
+        #[allow(unused_mut)]
+        let mut builder = self
             .app
             .notification()
             .builder()
             .title(user_name)
-            .body(&body)
-            .show()
+            .body(&body);
+        #[cfg(target_os = "android")]
         {
+            builder = builder.channel_id(NOTIFICATION_CHANNEL_ID);
+        }
+        if let Err(e) = builder.show() {
             eprintln!("[notification] failed to send: {e}");
         }
     }
