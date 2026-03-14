@@ -57,6 +57,9 @@ export async function openPipWindow(
       win.once('tauri://error', (e) => reject(new Error(String(e.payload))))
     })
 
+    // Windows: constructor alwaysOnTop may not take effect; re-apply explicitly
+    await win.setAlwaysOnTop(true)
+
     pipWindow = win
 
     // Clean up reference when window is closed
