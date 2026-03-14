@@ -128,7 +128,7 @@ function isOverridden(key: string): boolean {
 
 // Get display value: override expression or base default
 function displayValue(key: string): string {
-  if (key in overrides.value) return overrides.value[key]
+  if (key in overrides.value) return overrides.value[key] ?? ''
   return baseTheme.value.props[key] ?? ''
 }
 
