@@ -223,7 +223,7 @@ function onWindowMouseDown() {
   left: 0 !important;
   top: 0 !important;
   right: 0 !important;
-  bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom))) !important;
+  bottom: var(--nd-mobileNavHeight, 0px) !important;
   width: 100% !important;
   height: auto !important;
   max-height: none !important;

@@ -260,6 +260,7 @@ function acceptCrossWindowDrop() {
 .mobile {
   flex-direction: column;
   padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
+  background: var(--nd-navBg);
 }
 
 .mainArea {
@@ -283,9 +284,7 @@ function acceptCrossWindowDrop() {
   justify-content: center;
   position: fixed;
   right: calc(16px + env(safe-area-inset-right));
-  bottom: calc(
-    60px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom))
-  );
+  bottom: calc(var(--nd-mobileNavHeight, 0px) + 12px);
   z-index: var(--nd-z-overlay);
   width: 56px;
   height: 56px;

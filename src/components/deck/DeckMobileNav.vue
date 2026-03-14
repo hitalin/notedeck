@@ -19,7 +19,22 @@ const emit = defineEmits<{
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 
+const rootEl = ref<HTMLElement | null>(null)
 const mobileNavRef = ref<HTMLElement | null>(null)
+
+// Misskey本家と同じパターン: ナビの高さをCSS変数として公開
+watch(
+  rootEl,
+  () => {
+    if (rootEl.value) {
+      const h = rootEl.value.offsetHeight
+      document.body.style.setProperty('--nd-mobileNavHeight', `${h}px`)
+    } else {
+      document.body.style.setProperty('--nd-mobileNavHeight', '0px')
+    }
+  },
+  { immediate: true },
+)
 
 const columnMap = computed(() => {
   const map = new Map<string, DeckColumn>()
@@ -118,7 +133,7 @@ watch(
 </script>
 
 <template>
-  <nav :class="$style.root">
+  <nav ref="rootEl" :class="$style.root">
     <button
       class="_button"
       :class="$style.menuBtn"
@@ -171,12 +186,10 @@ watch(
   display: flex;
   align-items: stretch;
   flex: 0 0 auto;
-  height: 50px;
-  padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
-  background: color-mix(in srgb, var(--nd-navBg) 80%, transparent);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
-  border-top: 1px solid var(--nd-divider);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--nd-navBg);
+  color: var(--nd-navFg);
+  border-top: solid 0.5px var(--nd-divider);
   position: relative;
   z-index: var(--nd-z-navbar);
 }
@@ -185,6 +198,7 @@ watch(
 .addBtn {
   flex: 0 0 auto;
   width: 50px;
+  padding: 12px 0;
 }
 
 .tabsScroll {
@@ -209,10 +223,9 @@ watch(
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  min-width: 50px;
-  min-height: 50px;
-  padding: 0 8px;
-  font-size: 20px;
+  min-width: 42px;
+  padding: 12px 8px;
+  font-size: 15px;
   color: var(--nd-fg);
   opacity: 0.45;
   transition: opacity var(--nd-duration-slow), color var(--nd-duration-slow);
