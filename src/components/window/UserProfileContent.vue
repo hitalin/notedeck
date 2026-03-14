@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { colord } from 'colord'
 import {
   computed,
   defineAsyncComponent,
@@ -210,6 +209,7 @@ async function openQrCode() {
   const host = user.value.host || ''
   const profileUrl = `https://${account.value.host}/@${username}${host ? `@${host}` : ''}`
 
+  const { colord } = await import('colord')
   const themeColor = user.value.instance?.themeColor
   const baseColor = colord(themeColor || '#86b300')
   const hsl = baseColor.toHsl()

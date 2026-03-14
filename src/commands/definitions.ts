@@ -1,4 +1,3 @@
-import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useCommandStore } from '@/commands/registry'
 import type { NoteAction } from '@/composables/useNoteFocus'
 import { useAccountsStore } from '@/stores/accounts'
@@ -99,7 +98,10 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
       icon: 'eye-off',
       category: 'general',
       shortcuts: keybindsStore.getShortcuts('boss-key'),
-      execute: () => getCurrentWindow().hide(),
+      execute: async () => {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window')
+        getCurrentWindow().hide()
+      },
     })
   }
 

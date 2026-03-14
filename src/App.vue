@@ -2,7 +2,6 @@
 import { computed, defineAsyncComponent, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCommandStore } from '@/commands/registry'
-import TitleBarComponent from '@/components/common/TitleBar.vue'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { listenPipEvents } from '@/composables/usePipWindow'
 import { useTheme } from '@/composables/useTheme'
@@ -14,7 +13,9 @@ const { isTauri, isDesktop } = uiStore
 const route = useRoute()
 const isPipWindow = computed(() => route.meta.pip === true)
 
-const TitleBar = isDesktop ? TitleBarComponent : null
+const TitleBar = isDesktop
+  ? defineAsyncComponent(() => import('@/components/common/TitleBar.vue'))
+  : null
 
 const CommandPalette = defineAsyncComponent(
   () => import('@/components/common/CommandPalette.vue'),
@@ -25,8 +26,10 @@ const DeckWindowLayer = defineAsyncComponent(
 
 const commandStore = useCommandStore()
 
-const { init: initKeyboard } = useKeyboard()
-initKeyboard()
+if (isDesktop) {
+  const { init: initKeyboard } = useKeyboard()
+  initKeyboard()
+}
 
 // Listen for PiP IPC events (main window only)
 let cleanupPipListener: (() => void) | null = null

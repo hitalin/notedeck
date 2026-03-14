@@ -154,6 +154,9 @@ export default defineConfig({
           ) {
             return 'vendor-codemirror'
           }
+          if (id.includes('node_modules/@scalar/')) {
+            return 'vendor-api-docs'
+          }
         },
         minify: {
           compress: {
