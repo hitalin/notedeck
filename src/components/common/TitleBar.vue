@@ -202,7 +202,7 @@ async function togglePip() {
   display: flex;
   align-items: center;
   height: 100%;
-  flex-shrink: 0;
+  flex: 1;
 }
 
 .titlebarIcon {
@@ -214,13 +214,12 @@ async function togglePip() {
 
 .titlebarCenter {
   display: flex;
-  flex: 1;
   min-width: 0;
   max-width: 600px;
+  width: 600px;
   padding: 0 12px;
   position: relative;
-  justify-content: center;
-  margin: 0 auto;
+  flex-shrink: 1;
 }
 
 .titlebarSearchBar {
@@ -280,7 +279,8 @@ async function togglePip() {
 .titlebarControls {
   display: flex;
   height: 100%;
-  flex-shrink: 0;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .titlebarBtn {
