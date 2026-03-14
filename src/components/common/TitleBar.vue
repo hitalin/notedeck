@@ -192,20 +192,17 @@ async function togglePip() {
 .titlebar {
   display: flex;
   align-items: center;
-  justify-content: center;
   height: 32px;
   background: var(--nd-navBg);
   user-select: none;
   flex-shrink: 0;
-  position: relative;
 }
 
 .titlebarLeft {
-  position: absolute;
-  left: 0;
   display: flex;
   align-items: center;
   height: 100%;
+  flex-shrink: 0;
 }
 
 .titlebarIcon {
@@ -217,10 +214,13 @@ async function togglePip() {
 
 .titlebarCenter {
   display: flex;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   max-width: 600px;
   padding: 0 12px;
   position: relative;
+  justify-content: center;
+  margin: 0 auto;
 }
 
 .titlebarSearchBar {
@@ -278,10 +278,9 @@ async function togglePip() {
 }
 
 .titlebarControls {
-  position: absolute;
-  right: 0;
   display: flex;
   height: 100%;
+  flex-shrink: 0;
 }
 
 .titlebarBtn {
@@ -319,8 +318,7 @@ async function togglePip() {
 .titlebarWindowBtn {}
 
 .mobile {
-  .titlebarSidebarBtn,
-  .titlebarWindowBtn {
+  .titlebarCenter {
     display: none;
   }
 }
