@@ -167,18 +167,24 @@ function onColumnsWheel(e: WheelEvent) {
   if (!columnsRef.value) return
   const target = e.target as HTMLElement | null
   const inColumn = target?.closest('.deck-column')
-  // deltaX主体（サムホイール等）: カラム上でもデッキ横スクロール
-  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+
+  // Shift+ホイール: Windows WebView2 では横スクロールが deltaX ではなく
+  // shiftKey + deltaY として送られるため、deltaX に読み替える
+  const dx = e.shiftKey && e.deltaX === 0 ? e.deltaY : e.deltaX
+  const dy = e.shiftKey && e.deltaX === 0 ? 0 : e.deltaY
+
+  // deltaX主体（サムホイール・トラックパッド横スワイプ等）: カラム上でもデッキ横スクロール
+  if (Math.abs(dx) > Math.abs(dy)) {
     if (inColumn) {
       e.preventDefault()
-      columnsRef.value.scrollLeft += e.deltaX
+      columnsRef.value.scrollLeft += dx
     }
     return
   }
   // deltaY主体（通常ホイール）: カラム外のみ横スクロールに変換
   if (inColumn) return
   e.preventDefault()
-  columnsRef.value.scrollLeft += e.deltaY
+  columnsRef.value.scrollLeft += dy
 }
 
 // Scroll position → active column index
