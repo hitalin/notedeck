@@ -191,7 +191,7 @@ watch(
   color: var(--nd-navFg);
   border-top: solid 0.5px var(--nd-divider);
   position: relative;
-  z-index: var(--nd-z-navbar);
+  z-index: calc(var(--nd-z-navbar) - 1);
 }
 
 .menuBtn,
