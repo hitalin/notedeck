@@ -29,6 +29,8 @@ class NotificationWorker(
     companion object {
         private const val TAG = "NotificationWorker"
         private const val CHANNEL_ID = "notedeck_notifications"
+        private const val NOTIFICATION_GROUP = "notedeck_notifications_group"
+        private const val GROUP_SUMMARY_ID = Int.MAX_VALUE - 1
         private const val KEYSTORE_ALIAS = "keyring-default"
         private const val PREFS_NAME = "keyring-default"
         private const val POLL_STATE_PREFS = "notedeck_poll_state"
@@ -43,6 +45,9 @@ class NotificationWorker(
         ensureNotificationChannel()
 
         val statePrefs = applicationContext.getSharedPreferences(POLL_STATE_PREFS, Context.MODE_PRIVATE)
+        var successCount = 0
+        var networkErrorOccurred = false
+        var notifiedAccountCount = 0
 
         for (account in accounts) {
             try {
@@ -51,12 +56,31 @@ class NotificationWorker(
                 val newNotifications = checkNewNotifications(account.host, token, lastSeenId)
                 if (newNotifications.isNotEmpty()) {
                     showNotification(account, newNotifications.size)
+                    notifiedAccountCount++
                     // Save the newest notification ID to avoid duplicates
                     statePrefs.edit().putString("last_notif_${account.id}", newNotifications.first()).apply()
                 }
+                successCount++
+            } catch (e: java.net.SocketException) {
+                Log.w(TAG, "Network error polling ${account.username}@${account.host}", e)
+                networkErrorOccurred = true
+            } catch (e: java.net.SocketTimeoutException) {
+                Log.w(TAG, "Timeout polling ${account.username}@${account.host}", e)
+                networkErrorOccurred = true
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to poll notifications for ${account.username}@${account.host}", e)
             }
+        }
+
+        // Show group summary when multiple accounts have notifications
+        if (notifiedAccountCount >= 2) {
+            showGroupSummary()
+        }
+
+        // Retry only when all accounts failed due to network issues
+        if (successCount == 0 && networkErrorOccurred) {
+            Log.w(TAG, "All accounts failed with network errors, requesting retry")
+            return Result.retry()
         }
 
         return Result.success()
@@ -165,12 +189,42 @@ class NotificationWorker(
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("@${account.username}@${account.host}")
             .setContentText(text)
+            .setNumber(count)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+            .setGroup(NOTIFICATION_GROUP)
             .build()
 
         manager.notify(account.id.hashCode(), notification)
+    }
+
+    private fun showGroupSummary() {
+        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
+            as NotificationManager
+
+        val intent = Intent(applicationContext, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            applicationContext,
+            GROUP_SUMMARY_ID,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val summary = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("NoteDeck")
+            .setContentText("複数のアカウントに新しい通知があります")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setGroup(NOTIFICATION_GROUP)
+            .setGroupSummary(true)
+            .build()
+
+        manager.notify(GROUP_SUMMARY_ID, summary)
     }
 
     private fun ensureNotificationChannel() {
@@ -180,9 +234,12 @@ class NotificationWorker(
             if (manager.getNotificationChannel(CHANNEL_ID) == null) {
                 val channel = NotificationChannel(
                     CHANNEL_ID,
-                    "Notifications",
+                    "Misskey通知",
                     NotificationManager.IMPORTANCE_DEFAULT,
-                )
+                ).apply {
+                    description = "フォロー、リアクション、メンションなどの通知"
+                    setShowBadge(true)
+                }
                 manager.createNotificationChannel(channel)
             }
         }

@@ -47,8 +47,20 @@ type Result<T> = std::result::Result<T, NoteDeckError>;
 
 const CREDENTIAL_CACHE_TTL: Duration = Duration::from_secs(60);
 
+struct CachedCredential {
+    host: String,
+    token: String,
+    cached_at: Instant,
+}
+
+impl Drop for CachedCredential {
+    fn drop(&mut self) {
+        self.token.zeroize();
+    }
+}
+
 pub struct CredentialCache {
-    cache: Mutex<HashMap<String, (String, String, Instant)>>,
+    cache: Mutex<HashMap<String, CachedCredential>>,
 }
 
 impl CredentialCache {
@@ -59,27 +71,33 @@ impl CredentialCache {
     }
 
     fn get(&self, account_id: &str) -> Option<(String, String)> {
-        let cache = self.cache.lock().ok()?;
-        let (host, token, at) = cache.get(account_id)?;
-        if at.elapsed() < CREDENTIAL_CACHE_TTL {
-            Some((host.clone(), token.clone()))
-        } else {
-            None
+        let mut cache = self.cache.lock().ok()?;
+        if let Some(entry) = cache.get(account_id) {
+            if entry.cached_at.elapsed() < CREDENTIAL_CACHE_TTL {
+                return Some((entry.host.clone(), entry.token.clone()));
+            }
+            // Expired: remove immediately (triggers Drop → zeroize)
+            cache.remove(account_id);
         }
+        None
     }
 
     fn insert(&self, account_id: &str, host: &str, token: &str) {
         if let Ok(mut cache) = self.cache.lock() {
             cache.insert(
                 account_id.to_string(),
-                (host.to_string(), token.to_string(), Instant::now()),
+                CachedCredential {
+                    host: host.to_string(),
+                    token: token.to_string(),
+                    cached_at: Instant::now(),
+                },
             );
         }
     }
 
     pub fn invalidate(&self, account_id: &str) {
         if let Ok(mut cache) = self.cache.lock() {
-            cache.remove(account_id);
+            cache.remove(account_id); // Drop → zeroize
         }
     }
 }
