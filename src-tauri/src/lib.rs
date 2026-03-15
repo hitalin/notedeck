@@ -154,6 +154,16 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
 
+        // Migrate tokens from SQLite to keychain if any remain unmigrated.
+        // Only runs when SQLite still holds plaintext tokens (pre-keyring-core upgrade).
+        if let Ok(accounts) = db.load_accounts() {
+            if accounts.iter().any(|a| !a.token.is_empty()) {
+                for account in &accounts {
+                    let _ = commands::get_credentials(&db, &account.id);
+                }
+            }
+        }
+
         // Export account list for background workers (non-secret metadata only)
         commands::export_account_list(app.app_handle(), &db);
 
