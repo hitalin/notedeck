@@ -6,6 +6,7 @@ import { useAccountsStore } from './stores/accounts'
 import { useThemeStore } from './stores/theme'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
 import './styles/global.css'
+import './assets/shiki-dark-plus.css'
 
 const app = createApp(App)
 const pinia = createPinia()

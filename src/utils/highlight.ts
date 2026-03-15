@@ -1,4 +1,4 @@
-import type { HighlighterCore } from 'shiki'
+import type { HighlighterCore, ThemedToken } from 'shiki'
 import { shallowRef } from 'vue'
 
 export const highlighterLoaded = shallowRef(false)
@@ -7,8 +7,56 @@ let highlighter: HighlighterCore | null = null
 let initPromise: Promise<void> | null = null
 let purify: typeof import('dompurify').default | null = null
 
+const langAliases: Record<string, string> = {
+  aiscript: 'javascript',
+  is: 'javascript',
+  json5: 'json',
+  jsonc: 'json',
+  jsx: 'javascript',
+  tsx: 'typescript',
+  sh: 'bash',
+  zsh: 'bash',
+  yml: 'yaml',
+}
+
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function colorToClass(color: string): string {
+  return `shiki-${color.replace('#', '').toLowerCase()}`
+}
+
+function tokensToHtml(tokens: ThemedToken[][], fg?: string): string {
+  const fgClass = fg ? ` ${colorToClass(fg)}` : ''
+
+  let html = `<pre class="shiki${fgClass}"><code>`
+  for (let i = 0; i < tokens.length; i++) {
+    if (i > 0) html += '\n'
+    const line = tokens[i]
+    if (!line) continue
+    for (const token of line) {
+      const content = escapeHtml(token.content)
+      const classes: string[] = []
+
+      if (token.color) {
+        classes.push(colorToClass(token.color))
+      }
+      if (token.fontStyle) {
+        if (token.fontStyle & 1) classes.push('shiki-italic')
+        if (token.fontStyle & 2) classes.push('shiki-bold')
+        if (token.fontStyle & 4) classes.push('shiki-underline')
+      }
+
+      if (classes.length > 0) {
+        html += `<span class="${classes.join(' ')}">${content}</span>`
+      } else {
+        html += content
+      }
+    }
+  }
+  html += '</code></pre>'
+  return html
 }
 
 function initHighlighter(): Promise<void> {
@@ -51,11 +99,18 @@ function initHighlighter(): Promise<void> {
 }
 
 export function highlightCode(code: string, lang: string | null): string {
-  if (!lang || !highlighter?.getLoadedLanguages().includes(lang) || !purify) {
+  const resolved = lang ? (langAliases[lang] ?? lang) : null
+  if (
+    !resolved ||
+    !highlighter?.getLoadedLanguages().includes(resolved) ||
+    !purify
+  ) {
     if (lang && !initPromise) initHighlighter()
     return `<pre><code>${escapeHtml(code)}</code></pre>`
   }
-  return purify.sanitize(
-    highlighter.codeToHtml(code, { lang, theme: 'dark-plus' }),
-  )
+  const { tokens, fg } = highlighter.codeToTokens(code, {
+    lang: resolved,
+    theme: 'dark-plus',
+  })
+  return purify.sanitize(tokensToHtml(tokens, fg))
 }

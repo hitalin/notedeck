@@ -26,8 +26,8 @@
     "enableGTKAppId": false,
     "macOSPrivateApi": false,
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data: blob: https://* http://127.0.0.1:19820; media-src 'self' https://*; font-src 'self' data:; connect-src ipc: http://ipc.localhost http://tauri.localhost http://127.0.0.1:19820 https://*; frame-src http://127.0.0.1:19820 https://*",
-      "dangerousDisableAssetCspModification": ["style"]
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self'; img-src 'self' asset: data: blob: https://* http://127.0.0.1:19820; media-src 'self' https://*; font-src 'self' data:; connect-src ipc: http://ipc.localhost http://tauri.localhost http://127.0.0.1:19820 https://*; frame-src http://127.0.0.1:19820 https://*",
+      "dangerousDisableAssetCspModification": true
     }
   },
   "bundle": {

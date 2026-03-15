@@ -5,13 +5,9 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>notedeck</title>
+    <link rel="stylesheet" href="/splash.css" />
   </head>
   <body>
-    <style>
-      #nd-splash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#232323;transition:opacity .2s}
-      @keyframes nd-pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
-      #nd-splash svg{animation:nd-pulse 1.8s ease-in-out infinite}
-    </style>
     <div id="nd-splash">
       <svg width="48" height="48" viewBox="0 0 512 512"><defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#aad635"/><stop offset="100%" stop-color="#7ab800"/></linearGradient></defs><g fill="url(#fg)"><rect x="72" y="136" width="100" height="280" rx="36"/><rect x="206" y="136" width="100" height="280" rx="36"/><rect x="340" y="136" width="100" height="280" rx="36"/><polygon points="136,136 189,224 242,136"/><polygon points="270,136 323,224 376,136"/></g></svg>
     </div>
