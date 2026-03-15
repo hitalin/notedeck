@@ -16,6 +16,7 @@ use notecli::models::{
     ServerEmoji, StoredServer, TimelineOptions, TimelineType, UserList,
 };
 use notecli::streaming::StreamingManager;
+use tauri::Manager;
 use zeroize::Zeroize;
 
 /// Regex for extracting HTTPS URLs from note text
@@ -173,6 +174,31 @@ pub fn invalidate_credentials(account_id: &str) {
     CREDENTIAL_CACHE.invalidate(account_id);
 }
 
+/// Write account list (non-secret metadata only) to a JSON file for background workers.
+/// The file contains host, account_id, and username — no tokens.
+pub fn export_account_list(app: &tauri::AppHandle, db: &Database) {
+    let Ok(app_dir) = app.path().app_data_dir() else {
+        return;
+    };
+    let Ok(accounts) = db.load_accounts() else {
+        return;
+    };
+    let list: Vec<serde_json::Value> = accounts
+        .iter()
+        .map(|a| {
+            serde_json::json!({
+                "id": a.id,
+                "host": a.host,
+                "username": a.username,
+            })
+        })
+        .collect();
+    let _ = std::fs::write(
+        app_dir.join("poll_accounts.json"),
+        serde_json::to_string(&list).unwrap_or_default(),
+    );
+}
+
 // --- DB: Accounts ---
 
 #[tauri::command]
@@ -182,10 +208,16 @@ pub fn load_accounts(db: State<'_, Arc<Database>>) -> Result<Vec<AccountPublic>>
 }
 
 #[tauri::command]
-pub fn delete_account(db: State<'_, Arc<Database>>, id: String) -> Result<()> {
+pub fn delete_account(
+    app: tauri::AppHandle,
+    db: State<'_, Arc<Database>>,
+    id: String,
+) -> Result<()> {
     invalidate_credentials(&id);
     let _ = keychain::delete_token(&id);
-    db.delete_account(&id)
+    db.delete_account(&id)?;
+    export_account_list(&app, &db);
+    Ok(())
 }
 
 // --- DB: Servers ---
@@ -1295,6 +1327,7 @@ pub async fn auth_start(
 
 #[tauri::command]
 pub async fn auth_complete_and_save(
+    app: tauri::AppHandle,
     tracker: State<'_, AuthSessionTracker>,
     client: State<'_, MisskeyClient>,
     db: State<'_, Arc<Database>>,
@@ -1336,6 +1369,8 @@ pub async fn auth_complete_and_save(
         let _ = db.clear_token(&saved.id);
     }
     token.zeroize();
+
+    export_account_list(&app, &db);
 
     Ok(AccountPublic::from(&saved))
     // account, saved が drop → token が zeroize される

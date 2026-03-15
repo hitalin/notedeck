@@ -39,6 +39,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
+name = "android-native-keyring-store"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c68e578910ed6fb7d3731069791db664cf68a02171b6df429f16dd7e409bf2b"
+dependencies = [
+ "base64 0.22.1",
+ "jni",
+ "keyring-core",
+ "log",
+ "ndk-context",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -102,6 +120,17 @@ name = "anyhow"
 version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
+
+[[package]]
+name = "apple-native-keyring-store"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6afd4ee68bf127d37d2eca62ec6ddb5871b58722273c8b6809119a51b4042111"
+dependencies = [
+ "keyring-core",
+ "log",
+ "security-framework",
+]
 
 [[package]]
 name = "arbitrary"
@@ -2229,13 +2258,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "keyring"
-version = "3.6.3"
+name = "keyring-core"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eebcc3aff044e5944a8fbaf69eb277d11986064cba30c468730e8b9909fb551c"
+checksum = "2d8286c3ab222af2fa9e57874fe419893d967f739c7bf1743f98a88678edbf08"
 dependencies = [
  "log",
- "zeroize",
 ]
 
 [[package]]
@@ -2317,6 +2345,26 @@ dependencies = [
  "cc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "linux-keyutils"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "761e49ec5fd8a5a463f9b84e877c373d888935b71c6be78f3767fe2ae6bed18e"
+dependencies = [
+ "bitflags 2.11.0",
+ "libc",
+]
+
+[[package]]
+name = "linux-keyutils-keyring-store"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07ce18cd294ff2e5de4ad61a8659a123e068859feafce12525511931f4f3d1a4"
+dependencies = [
+ "keyring-core",
+ "linux-keyutils",
 ]
 
 [[package]]
@@ -2563,13 +2611,16 @@ checksum = "72ef4a56884ca558e5ddb05a1d1e7e1bfd9a68d9ed024c21704cc98872dae1bb"
 [[package]]
 name = "notecli"
 version = "0.1.0"
-source = "git+https://github.com/hitalin/notecli.git?rev=57b4dbe#57b4dbe2fe1918ee1ee51db01e03a26ecb1d3f52"
+source = "git+https://github.com/hitalin/notecli.git?rev=2cdfab2#2cdfab2c125d95c0d5926354bbb00c0c7e959189"
 dependencies = [
+ "android-native-keyring-store",
+ "apple-native-keyring-store",
  "axum",
  "clap",
  "dirs 6.0.0",
  "futures-util",
- "keyring",
+ "keyring-core",
+ "linux-keyutils-keyring-store",
  "reqwest 0.12.28",
  "rusqlite",
  "serde",
@@ -2580,6 +2631,7 @@ dependencies = [
  "tokio-tungstenite",
  "tower-http",
  "uuid",
+ "windows-native-keyring-store",
  "zeroize",
 ]
 
@@ -6068,6 +6120,19 @@ name = "windows-link"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
+
+[[package]]
+name = "windows-native-keyring-store"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0e26ac29479a4b7f49d46afc9893122fc345430c6307d1fb7ac0d8d066c3f54"
+dependencies = [
+ "byteorder",
+ "keyring-core",
+ "regex",
+ "windows-sys 0.61.2",
+ "zeroize",
+]
 
 [[package]]
 name = "windows-numerics"

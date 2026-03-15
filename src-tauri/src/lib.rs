@@ -124,6 +124,11 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
     ]);
 
     builder = builder.setup(|app| {
+        // Initialize platform keychain
+        if let Err(e) = notecli::keychain::init_store() {
+            eprintln!("Warning: keychain unavailable ({e})");
+        }
+
         // Initialize SQLite database
         let app_dir = app.path().app_data_dir()?;
         std::fs::create_dir_all(&app_dir)?;
@@ -148,6 +153,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
+
+        // Export account list for background workers (non-secret metadata only)
+        commands::export_account_list(app.app_handle(), &db);
 
         // Initialize OGP cache (backed by shared Database)
         app.manage(ogp::OgpCache::new(db));

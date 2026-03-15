@@ -11,7 +11,7 @@ JAVA_DIR="$GEN_DIR/java/com/notedeck/desktop"
 mkdir -p "$JAVA_DIR"
 
 cp "$SCRIPT_DIR/MainActivity.kt" "$JAVA_DIR/MainActivity.kt"
-cp "$SCRIPT_DIR/StreamingService.kt" "$JAVA_DIR/StreamingService.kt"
+cp "$SCRIPT_DIR/NotificationWorker.kt" "$JAVA_DIR/NotificationWorker.kt"
 cp "$SCRIPT_DIR/AndroidManifest.xml" "$GEN_DIR/AndroidManifest.xml"
 
 echo "Android custom files synced."
