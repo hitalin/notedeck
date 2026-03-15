@@ -9,6 +9,7 @@ import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -26,6 +27,7 @@ class NotificationWorker(
 ) : CoroutineWorker(context, params) {
 
     companion object {
+        private const val TAG = "NotificationWorker"
         private const val CHANNEL_ID = "notedeck_notifications"
         private const val KEYSTORE_ALIAS = "keyring-default"
         private const val PREFS_NAME = "keyring-default"
@@ -52,8 +54,8 @@ class NotificationWorker(
                     // Save the newest notification ID to avoid duplicates
                     statePrefs.edit().putString("last_notif_${account.id}", newNotifications.first()).apply()
                 }
-            } catch (_: Exception) {
-                // Skip this account on error
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to poll notifications for ${account.username}@${account.host}", e)
             }
         }
 
@@ -75,7 +77,8 @@ class NotificationWorker(
                     username = obj.getString("username"),
                 )
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load poll_accounts.json", e)
             null
         }
     }
@@ -127,7 +130,10 @@ class NotificationWorker(
                 out.write(body.toString().toByteArray())
             }
 
-            if (conn.responseCode != 200) return emptyList()
+            if (conn.responseCode != 200) {
+                Log.w(TAG, "Notification API returned ${conn.responseCode} for $host")
+                return emptyList()
+            }
 
             val responseBody = conn.inputStream.bufferedReader().readText()
             val arr = JSONArray(responseBody)
@@ -156,7 +162,7 @@ class NotificationWorker(
         val text = if (count == 1) "新しい通知があります" else "${count}件の新しい通知があります"
 
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("@${account.username}@${account.host}")
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

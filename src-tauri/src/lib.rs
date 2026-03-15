@@ -159,7 +159,12 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         if let Ok(accounts) = db.load_accounts() {
             if accounts.iter().any(|a| !a.token.is_empty()) {
                 for account in &accounts {
-                    let _ = commands::get_credentials(&db, &account.id);
+                    if let Err(e) = commands::get_credentials(&db, &account.id) {
+                        eprintln!(
+                            "[keychain] failed to migrate token for account {}: {e}",
+                            account.id
+                        );
+                    }
                 }
             }
         }
