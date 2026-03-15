@@ -35,7 +35,7 @@ const editorTheme = EditorView.theme(
       color: '#c6c6c6',
     },
     '.cm-lineNumbers .cm-gutterElement': {
-      padding: '0 8px 0 4px',
+      padding: '0 3px 0 5px',
       minWidth: '2em',
     },
     '&.cm-focused': {
