@@ -200,7 +200,7 @@ export const useDeckStore = defineStore('deck', () => {
     layout.value = layout.value
       .map((ids) => ids.filter((_id) => _id !== id))
       .filter((ids) => ids.length > 0)
-    save()
+    flushSave()
   }
 
   function updateColumn(id: string, updates: Partial<DeckColumn>) {

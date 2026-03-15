@@ -43,7 +43,9 @@ export function useDeckInit(options: {
   let unlistenWindowEvents: (() => void) | null = null
 
   function onVisibilityChange() {
-    if (!document.hidden) {
+    if (document.hidden) {
+      deckStore.flushSave()
+    } else {
       window.dispatchEvent(new CustomEvent('deck-resume'))
     }
   }
