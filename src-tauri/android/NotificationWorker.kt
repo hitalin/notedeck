@@ -27,6 +27,7 @@ class NotificationWorker(
         private const val CHANNEL_ID = "notedeck_notifications"
         private const val KEYSTORE_ALIAS = "keyring-default"
         private const val PREFS_NAME = "keyring-default"
+        private const val POLL_STATE_PREFS = "notedeck_poll_state"
         private const val KEYRING_DIVIDER = "\uFEFF@\uFEFF"
         private const val KEYRING_SERVICE = "notedeck"
     }
@@ -37,12 +38,17 @@ class NotificationWorker(
 
         ensureNotificationChannel()
 
+        val statePrefs = applicationContext.getSharedPreferences(POLL_STATE_PREFS, Context.MODE_PRIVATE)
+
         for (account in accounts) {
             try {
                 val token = getTokenFromKeyStore(account.id) ?: continue
-                val unread = checkUnread(account.host, token)
-                if (unread > 0) {
-                    showNotification(account, unread)
+                val lastSeenId = statePrefs.getString("last_notif_${account.id}", null)
+                val newNotifications = checkNewNotifications(account.host, token, lastSeenId)
+                if (newNotifications.isNotEmpty()) {
+                    showNotification(account, newNotifications.size)
+                    // Save the newest notification ID to avoid duplicates
+                    statePrefs.edit().putString("last_notif_${account.id}", newNotifications.first()).apply()
                 }
             } catch (_: Exception) {
                 // Skip this account on error
@@ -97,7 +103,10 @@ class NotificationWorker(
         return String(decrypted, Charsets.UTF_8)
     }
 
-    private fun checkUnread(host: String, token: String): Int {
+    /**
+     * Fetch notifications newer than [sinceId]. Returns list of notification IDs (newest first).
+     */
+    private fun checkNewNotifications(host: String, token: String, sinceId: String?): List<String> {
         val url = URL("https://$host/api/i/notifications")
         val conn = url.openConnection() as HttpURLConnection
         try {
@@ -107,15 +116,22 @@ class NotificationWorker(
             conn.readTimeout = 10_000
             conn.doOutput = true
 
+            val body = JSONObject().apply {
+                put("i", token)
+                put("limit", 10)
+                if (sinceId != null) put("sinceId", sinceId)
+            }
             conn.outputStream.use { out ->
-                out.write("""{"i":"$token","limit":1}""".toByteArray())
+                out.write(body.toString().toByteArray())
             }
 
-            if (conn.responseCode != 200) return 0
+            if (conn.responseCode != 200) return emptyList()
 
-            val body = conn.inputStream.bufferedReader().readText()
-            val arr = JSONArray(body)
-            return arr.length()
+            val responseBody = conn.inputStream.bufferedReader().readText()
+            val arr = JSONArray(responseBody)
+            return (0 until arr.length()).map { i ->
+                arr.getJSONObject(i).getString("id")
+            }
         } finally {
             conn.disconnect()
         }
