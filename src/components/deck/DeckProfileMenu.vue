@@ -271,7 +271,8 @@ function remove(id: string) {
     position: fixed;
     bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
     left: 8px;
-    right: 8px;
+    right: auto;
+    width: 234px;
     max-width: none;
     min-width: 0;
     border-radius: 12px;
