@@ -335,8 +335,8 @@ function onOpenWebUi() {
   border-radius: 0;
 
   .columnHeader {
-    height: 50px;
-    line-height: 50px;
+    height: 40px;
+    line-height: 40px;
     padding: 0 12px 0 32px;
   }
   .headerBtn {
