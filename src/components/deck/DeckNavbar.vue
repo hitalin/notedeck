@@ -758,7 +758,7 @@ defineExpose({
   top: 0;
   left: 0;
   bottom: 0;
-  z-index: var(--nd-z-navbar);
+  z-index: calc(var(--nd-z-navbar) + 1);
   width: 250px !important;
   flex-basis: 250px !important;
   padding-top: max(var(--nd-safe-area-top, env(safe-area-inset-top)), 12px);

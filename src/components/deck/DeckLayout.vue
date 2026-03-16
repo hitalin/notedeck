@@ -321,6 +321,7 @@ function acceptCrossWindowDrop() {
 .drawerOverlay {
   position: fixed;
   inset: 0;
+  left: 250px;
   z-index: var(--nd-z-navbar);
   background: rgb(0 0 0 / 0.5);
 }
