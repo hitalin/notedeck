@@ -60,7 +60,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
     handlers,
     scroller,
     onScroll,
-  } = useColumnSetup(config.getColumn)
+  } = useColumnSetup(config.getColumn, {
+    isOffline: () => isOffline.value,
+  })
 
   const { navigateToNote } = useNavigation()
   const isStreaming = !!config.streaming
@@ -199,6 +201,15 @@ export function useNoteColumn(config: NoteColumnConfig) {
       // Combined commands handle connect + subscribe in a single IPC round-trip.
       if (config.streaming && streamingBatch) {
         adapter.stream.connect()
+        adapter.stream.on('disconnected', () => {
+          isOffline.value = true
+        })
+        adapter.stream.on('reconnecting', () => {
+          isOffline.value = true
+        })
+        adapter.stream.on('connected', () => {
+          isOffline.value = false
+        })
         setSubscription(
           config.streaming.subscribe(adapter, streamingBatch.enqueueNote, {
             onNoteUpdated: (event) => {

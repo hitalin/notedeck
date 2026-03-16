@@ -15,7 +15,15 @@ import { AppError } from '@/utils/errors'
 import { toggleFavorite } from '@/utils/toggleFavorite'
 import { toggleReaction } from '@/utils/toggleReaction'
 
-export function useColumnSetup(getColumn: () => DeckColumn) {
+export interface ColumnSetupOptions {
+  /** Reactive offline flag — when true, write operations are blocked */
+  isOffline?: () => boolean
+}
+
+export function useColumnSetup(
+  getColumn: () => DeckColumn,
+  options?: ColumnSetupOptions,
+) {
   const noteStore = useNoteStore()
   let customMutatedFn: (() => void) | undefined
 
@@ -93,8 +101,16 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
 
   const actionSound = useNoteSound(() => account.value?.host, 'syuilo/bubble2')
 
+  function checkOffline(): boolean {
+    if (options?.isOffline?.()) {
+      console.warn('[offline] Write operation blocked')
+      return true
+    }
+    return false
+  }
+
   async function handleReaction(reaction: string, note: NormalizedNote) {
-    if (!adapter) return
+    if (!adapter || checkOffline()) return
     try {
       await toggleReaction(adapter.api, note, reaction, notifyMutationFor(note))
       if (!getColumn().soundMuted) actionSound.play()
@@ -105,7 +121,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   }
 
   async function handleRenote(note: NormalizedNote) {
-    if (!adapter) return
+    if (!adapter || checkOffline()) return
     const notify = notifyMutationFor(note)
     note.renoteCount = (note.renoteCount ?? 0) + 1
     notify()
@@ -120,19 +136,21 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   }
 
   function handleReply(note: NormalizedNote) {
+    if (checkOffline()) return
     postFormReplyTo.value = note
     postFormRenoteId.value = undefined
     showPostForm.value = true
   }
 
   function handleQuote(note: NormalizedNote) {
+    if (checkOffline()) return
     postFormReplyTo.value = undefined
     postFormRenoteId.value = note.id
     showPostForm.value = true
   }
 
   async function handleDelete(note: NormalizedNote): Promise<boolean> {
-    if (!adapter) return false
+    if (!adapter || checkOffline()) return false
     try {
       await adapter.api.deleteNote(note.id)
       return true
@@ -144,6 +162,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   }
 
   function handleEdit(note: NormalizedNote) {
+    if (checkOffline()) return
     postFormReplyTo.value = undefined
     postFormRenoteId.value = undefined
     postFormEditNote.value = note
@@ -151,7 +170,7 @@ export function useColumnSetup(getColumn: () => DeckColumn) {
   }
 
   async function handleBookmark(note: NormalizedNote) {
-    if (!adapter) return
+    if (!adapter || checkOffline()) return
     try {
       await toggleFavorite(adapter.api, note, notifyMutationFor(note))
     } catch (e) {

@@ -74,7 +74,9 @@ const {
   handlers,
   scroller,
   onScroll,
-} = useColumnSetup(() => props.column)
+} = useColumnSetup(() => props.column, {
+  isOffline: () => isOffline.value,
+})
 
 // Sync NoteScroller's scroll container element to the scroller ref used by composables
 watch(
@@ -422,6 +424,15 @@ async function connect(useCache = false) {
     // Start streaming setup immediately (connect + subscribe in single IPC).
     // Runs in parallel with the API fetch below.
     adapter.stream.connect()
+    adapter.stream.on('disconnected', () => {
+      isOffline.value = true
+    })
+    adapter.stream.on('reconnecting', () => {
+      isOffline.value = true
+    })
+    adapter.stream.on('connected', () => {
+      isOffline.value = false
+    })
     setSubscription(
       adapter.stream.subscribeTimeline(
         tlType.value,
