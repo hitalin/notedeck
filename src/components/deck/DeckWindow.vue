@@ -233,7 +233,8 @@ function onWindowMouseDown() {
   z-index: calc(var(--nd-z-navbar) - 1) !important;
 
   .windowHeader {
-    min-height: 46px;
+    height: auto;
+    min-height: calc(46px + var(--nd-safe-area-top, env(safe-area-inset-top)));
     padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
   }
 
