@@ -127,6 +127,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
   const pendingNotes =
     streamingBatch?.pendingNotes ?? shallowRef<NormalizedNote[]>([])
 
+  /** True when API is unreachable and displaying cached notes */
+  const isOffline = ref(false)
+
   /**
    * Background-verify that cached notes still exist on the server.
    * Any note returning 404 is purged from noteStore + DB cache.
@@ -223,6 +226,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
         setNotes(fetched)
       }
 
+      isOffline.value = false
+
       // Background: verify cached notes not confirmed by fresh API fetch
       if (cachedIds.length > 0) {
         const unverified = cachedIds.filter((id) => !freshIds.has(id))
@@ -231,7 +236,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
         }
       }
     } catch (e) {
-      if (notes.value.length === 0) {
+      if (notes.value.length > 0) {
+        // Cache is displayed — mark offline instead of showing error
+        isOffline.value = true
+      } else {
         error.value = AppError.from(e)
       }
     } finally {
@@ -239,18 +247,56 @@ export function useNoteColumn(config: NoteColumnConfig) {
     }
   }
 
-  async function loadMore() {
-    const adapter = getAdapter()
-    if (!adapter || isLoading.value || notes.value.length === 0) return
+  /** Helper to load older notes from SQLite cache */
+  async function loadMoreFromCache() {
+    const column = config.getColumn()
+    const cacheKey = config.cache?.getKey()
+    if (!column.accountId || !cacheKey) return
     const lastNote = notes.value.at(-1)
     if (!lastNote) return
+    isLoading.value = true
+    try {
+      const older = await invoke<NormalizedNote[]>(
+        'api_get_cached_timeline_before',
+        {
+          accountId: column.accountId,
+          timelineType: cacheKey,
+          before: lastNote.createdAt,
+          limit: 40,
+        },
+      )
+      if (older.length > 0) {
+        setNotes(insertIntoSorted(notes.value, older))
+      }
+    } catch {
+      /* cache read failure is non-critical */
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function loadMore() {
+    if (isLoading.value || notes.value.length === 0) return
     if (config.validate && !config.validate()) return
+
+    // Offline: load from cache instead
+    if (isOffline.value) {
+      await loadMoreFromCache()
+      return
+    }
+
+    const adapter = getAdapter()
+    if (!adapter) return
+    const lastNote = notes.value.at(-1)
+    if (!lastNote) return
     isLoading.value = true
     try {
       const older = await config.fetch(adapter, { untilId: lastNote.id })
       setNotes(insertIntoSorted(notes.value, older))
-    } catch (e) {
-      error.value = AppError.from(e)
+    } catch {
+      // API failed: try cache fallback
+      isOffline.value = true
+      await loadMoreFromCache()
     } finally {
       isLoading.value = false
     }
@@ -293,8 +339,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
         setNotes(fetched)
         scrollToTop()
       }
+      isOffline.value = false
     } catch (e) {
-      error.value = AppError.from(e)
+      if (notes.value.length > 0) {
+        isOffline.value = true
+      } else {
+        error.value = AppError.from(e)
+      }
     } finally {
       isLoading.value = false
     }
@@ -305,14 +356,19 @@ export function useNoteColumn(config: NoteColumnConfig) {
     if (!adapter) return
     if (config.validate && !config.validate()) return
     const sinceId = notes.value[0]?.id
-    const fetched = await config.fetch(adapter, sinceId ? { sinceId } : {})
-    if (sinceId && fetched.length > 0) {
-      const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-      if (newNotes.length > 0) {
-        setNotes(insertIntoSorted(notes.value, newNotes))
+    try {
+      const fetched = await config.fetch(adapter, sinceId ? { sinceId } : {})
+      if (sinceId && fetched.length > 0) {
+        const newNotes = fetched.filter((n) => !noteIds.has(n.id))
+        if (newNotes.length > 0) {
+          setNotes(insertIntoSorted(notes.value, newNotes))
+        }
+      } else if (fetched.length > 0) {
+        setNotes(fetched)
       }
-    } else if (fetched.length > 0) {
-      setNotes(fetched)
+      isOffline.value = false
+    } catch {
+      isOffline.value = true
     }
     scrollToTop()
   }
@@ -352,11 +408,16 @@ export function useNoteColumn(config: NoteColumnConfig) {
           })()
         : Promise.resolve([] as NormalizedNote[])
 
+    let apiFailed = false
     const apiPromise = sinceId
-      ? config.fetch(adapter, { sinceId }).catch(() => [] as NormalizedNote[])
+      ? config.fetch(adapter, { sinceId }).catch(() => {
+          apiFailed = true
+          return [] as NormalizedNote[]
+        })
       : Promise.resolve([] as NormalizedNote[])
 
     const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
+    isOffline.value = apiFailed
 
     // Merge results: API results take priority, then cache
     const allNew = [...fetched, ...cached].filter((n) => !noteIds.has(n.id))
@@ -411,6 +472,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     columnThemeVars,
     serverIconUrl,
     isLoading,
+    isOffline,
     error,
     notes,
     focusedNoteId,

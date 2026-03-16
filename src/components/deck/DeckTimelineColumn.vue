@@ -165,6 +165,9 @@ const { focusedNoteId } = useNoteFocus(
   props.column.accountId ?? undefined,
 )
 
+/** True when API is unreachable and displaying cached notes */
+const isOffline = ref(false)
+
 const tlType = ref<TimelineType>(props.column.tl || 'home')
 
 // --- Time Machine ---
@@ -458,6 +461,7 @@ async function connect(useCache = false) {
         }
       }
     }
+    isOffline.value = false
   } catch (e) {
     const err = AppError.from(e)
     // 3. Handle "disabled" errors — always refresh policies regardless of cache
@@ -468,7 +472,9 @@ async function connect(useCache = false) {
         return
       }
     }
-    if (notes.value.length === 0) {
+    if (notes.value.length > 0) {
+      isOffline.value = true
+    } else {
       error.value = err
     }
   } finally {
@@ -531,6 +537,30 @@ async function loadMore() {
     return
   }
 
+  // Offline mode: load from cache
+  if (isOffline.value) {
+    isLoading.value = true
+    try {
+      if (props.column.accountId) {
+        const older = await invoke<NormalizedNote[]>(
+          'api_get_cached_timeline_before',
+          {
+            accountId: props.column.accountId,
+            timelineType: tlType.value,
+            before: lastNote.createdAt,
+            limit: 40,
+          },
+        )
+        if (older.length > 0) setNotes(insertIntoSorted(notes.value, older))
+      }
+    } catch {
+      /* cache read failure is non-critical */
+    } finally {
+      isLoading.value = false
+    }
+    return
+  }
+
   // Normal mode: load from server
   const adapter = getAdapter()
   if (!adapter) return
@@ -543,8 +573,25 @@ async function loadMore() {
       ...(hasFilters ? { filters } : {}),
     })
     setNotes(insertIntoSorted(notes.value, older))
-  } catch (e) {
-    error.value = AppError.from(e)
+  } catch {
+    // API failed: switch to offline cache mode
+    isOffline.value = true
+    if (props.column.accountId) {
+      try {
+        const older = await invoke<NormalizedNote[]>(
+          'api_get_cached_timeline_before',
+          {
+            accountId: props.column.accountId,
+            timelineType: tlType.value,
+            before: lastNote.createdAt,
+            limit: 40,
+          },
+        )
+        if (older.length > 0) setNotes(insertIntoSorted(notes.value, older))
+      } catch {
+        /* fallback failure */
+      }
+    }
   } finally {
     isLoading.value = false
   }
@@ -559,17 +606,22 @@ async function pullRefresh() {
   const adapter = getAdapter()
   if (!adapter || !account.value) return
   const sinceId = notes.value[0]?.id
-  const fetched = await adapter.api.getTimeline(tlType.value, {
-    ...(sinceId ? { sinceId } : {}),
-    ...buildTimelineOptions(),
-  })
-  if (sinceId && fetched.length > 0) {
-    const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-    if (newNotes.length > 0) {
-      setNotes(insertIntoSorted(notes.value, newNotes))
+  try {
+    const fetched = await adapter.api.getTimeline(tlType.value, {
+      ...(sinceId ? { sinceId } : {}),
+      ...buildTimelineOptions(),
+    })
+    if (sinceId && fetched.length > 0) {
+      const newNotes = fetched.filter((n) => !noteIds.has(n.id))
+      if (newNotes.length > 0) {
+        setNotes(insertIntoSorted(notes.value, newNotes))
+      }
+    } else if (fetched.length > 0) {
+      setNotes(fetched)
     }
-  } else if (fetched.length > 0) {
-    setNotes(fetched)
+    isOffline.value = false
+  } catch {
+    isOffline.value = true
   }
   scrollToTop()
 }
@@ -602,11 +654,16 @@ async function onResume() {
 
   // Run cache fetch and API fetch in parallel (always fetch latest)
   const cachePromise = fetchCachedNotes()
+  let apiFailed = false
   const apiPromise = adapter.api
     .getTimeline(tlType.value, buildTimelineOptions())
-    .catch(() => [] as NormalizedNote[])
+    .catch(() => {
+      apiFailed = true
+      return [] as NormalizedNote[]
+    })
 
   const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
+  isOffline.value = apiFailed
 
   // Merge results: API results take priority, then cache (with filter)
   const filteredCache = cached.filter((n) =>
@@ -758,6 +815,10 @@ onUnmounted(() => {
         :style="{ height: pullDistance + 'px' }"
       >
         <i class="ti" :class="[isRefreshing ? 'ti-loader-2' : 'ti-arrow-down', { [String($style.spin)]: isRefreshing }]" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
+      </div>
+
+      <div v-if="isOffline" :class="$style.offlineBanner">
+        <i class="ti ti-cloud-off" />オフライン — キャッシュを表示中
       </div>
 
       <div v-if="isLoading && notes.length === 0">
@@ -913,4 +974,5 @@ onUnmounted(() => {
   margin-left: auto;
   color: var(--nd-accent);
 }
+
 </style>

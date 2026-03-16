@@ -147,6 +147,18 @@
   }
 }
 
+/* Offline banner */
+.offlineBanner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.8em;
+  color: var(--nd-warn);
+  background: color-mix(in srgb, var(--nd-warn) 10%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--nd-warn) 20%, transparent);
+}
+
 /* Loading */
 .loadingMore {
   text-align: center;

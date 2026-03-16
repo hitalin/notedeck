@@ -31,6 +31,7 @@ const {
   columnThemeVars,
   serverIconUrl,
   isLoading,
+  isOffline,
   error,
   notes,
   focusedNoteId,
@@ -136,6 +137,10 @@ const pullTransform = computed(() =>
             transform: pullTransform,
           }"
         />
+      </div>
+
+      <div v-if="isOffline" :class="$style.offlineBanner">
+        <i class="ti ti-cloud-off" />オフライン — キャッシュを表示中
       </div>
 
       <!-- Inline post form slot (e.g. channel column) -->
