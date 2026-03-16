@@ -1200,7 +1200,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   }
 
   &.secondary {
-    flex: 0;
+    flex: 1;
     background: var(--nd-buttonBg);
     color: var(--nd-fg);
 
