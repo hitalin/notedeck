@@ -12,7 +12,6 @@ import {
   type NoteColumnConfig,
   useNoteColumn,
 } from '@/composables/useNoteColumn'
-import { PULL_THRESHOLD } from '@/composables/usePullToRefresh'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import DeckColumn from './DeckColumn.vue'
 
@@ -44,8 +43,11 @@ const {
   handlePosted,
   removeNote,
   refresh,
-  pullDistance,
+  isPulling,
+  isPulledEnough,
   isRefreshing,
+  pullDistance,
+  displayHeight,
 } = useNoteColumn(props.noteColumnConfig)
 
 const isStreaming = !!props.noteColumnConfig.streaming
@@ -54,16 +56,6 @@ const webUiUrl = computed(() => {
   if (!props.webUiPath || !account.value) return undefined
   return `https://${account.value.host}${props.webUiPath}`
 })
-
-const pullOpacity = computed(() =>
-  Math.min(pullDistance.value / PULL_THRESHOLD, 1),
-)
-
-const pullTransform = computed(() =>
-  pullDistance.value >= PULL_THRESHOLD && !isRefreshing.value
-    ? 'rotate(180deg)'
-    : '',
-)
 </script>
 
 <template>
@@ -122,21 +114,19 @@ const pullTransform = computed(() =>
 
     <div v-else :class="$style.tlBody">
       <div
-        v-if="pullDistance > 0 || isRefreshing"
-        :class="$style.pullIndicator"
-        :style="{ height: pullDistance + 'px' }"
+        v-if="isPulling"
+        :class="$style.pullFrame"
+        :style="`--frame-min-height: ${displayHeight()}px`"
       >
-        <i
-          class="ti"
-          :class="[
-            isRefreshing ? 'ti-loader-2' : 'ti-arrow-down',
-            { [String($style.spin)]: isRefreshing },
-          ]"
-          :style="{
-            opacity: pullOpacity,
-            transform: pullTransform,
-          }"
-        />
+        <div :class="$style.pullFrameContent">
+          <i v-if="isRefreshing" class="ti ti-loader-2" :class="$style.spin" />
+          <i v-else class="ti ti-arrow-bar-to-down" :class="{ refresh: isPulledEnough }" />
+          <div :class="$style.pullText">
+            <template v-if="isPulledEnough">離してリフレッシュ</template>
+            <template v-else-if="isRefreshing">リフレッシュ中…</template>
+            <template v-else>下に引いてリフレッシュ</template>
+          </div>
+        </div>
       </div>
 
       <div v-if="isOffline" :class="$style.offlineBanner">

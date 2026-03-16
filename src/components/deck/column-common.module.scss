@@ -131,20 +131,41 @@
   to { transform: translateX(-50%) translateY(0); opacity: 1; }
 }
 
-/* Pull-to-refresh indicator */
-.pullIndicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  flex-shrink: 0;
-  color: var(--nd-accent);
-  font-size: 1.2em;
-  transition: height var(--nd-duration-slow) ease;
+/* Pull-to-refresh indicator (Misskey-compatible) */
+.pullFrame {
+  position: relative;
+  overflow: clip;
+  width: 100%;
+  min-height: var(--frame-min-height, 0px);
+  mask-image: linear-gradient(90deg, #000 0%, #000 80%, transparent);
+  -webkit-mask-image: -webkit-linear-gradient(90deg, #000 0%, #000 80%, transparent);
+  pointer-events: none;
+}
 
-  :global(.ti) {
-    transition: transform var(--nd-duration-slow) ease, opacity var(--nd-duration-slow) ease;
+.pullFrameContent {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  margin: 5px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  > :global(.ti) {
+    margin: 6px 0;
+    transition: transform 0.25s;
   }
+
+  > :global(.refresh) {
+    transform: rotate(180deg);
+  }
+}
+
+.pullText {
+  margin: 5px 0;
+  font-size: 90%;
+  color: var(--nd-fg);
+  opacity: 0.7;
 }
 
 /* Offline banner */

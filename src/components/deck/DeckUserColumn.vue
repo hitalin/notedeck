@@ -32,8 +32,11 @@ const {
   handlePosted,
   removeNote,
   refresh,
-  pullDistance,
+  isPulling,
+  isPulledEnough,
   isRefreshing,
+  pullDistance,
+  displayHeight,
 } = useNoteColumn({
   getColumn: () => props.column,
   fetch: (adapter, opts) =>
@@ -90,11 +93,19 @@ const {
 
     <div v-else :class="$style.tlBody">
       <div
-        v-if="pullDistance > 0 || isRefreshing"
-        :class="$style.pullIndicator"
-        :style="{ height: pullDistance + 'px' }"
+        v-if="isPulling"
+        :class="$style.pullFrame"
+        :style="`--frame-min-height: ${displayHeight()}px`"
       >
-        <i class="ti" :class="[isRefreshing ? 'ti-loader-2' : 'ti-arrow-down', { [String($style.spin)]: isRefreshing }]" :style="{ opacity: Math.min(pullDistance / 64, 1), transform: pullDistance >= 64 && !isRefreshing ? 'rotate(180deg)' : '' }" />
+        <div :class="$style.pullFrameContent">
+          <i v-if="isRefreshing" class="ti ti-loader-2" :class="$style.spin" />
+          <i v-else class="ti ti-arrow-bar-to-down" :class="{ refresh: isPulledEnough }" />
+          <div :class="$style.pullText">
+            <template v-if="isPulledEnough">離してリフレッシュ</template>
+            <template v-else-if="isRefreshing">リフレッシュ中…</template>
+            <template v-else>下に引いてリフレッシュ</template>
+          </div>
+        </div>
       </div>
       <div v-if="isLoading && notes.length === 0">
         <MkSkeleton v-for="i in 5" :key="i" />

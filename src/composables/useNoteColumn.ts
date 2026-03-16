@@ -384,7 +384,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
     scrollToTop()
   }
 
-  const { pullDistance, isRefreshing } = usePullToRefresh(scroller, pullRefresh)
+  const {
+    isPulling,
+    isPulledEnough,
+    isRefreshing,
+    pullDistance,
+    displayHeight,
+  } = usePullToRefresh(scroller, pullRefresh)
 
   let lastResumeAt = 0
 
@@ -496,7 +502,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
     handlePosted,
     removeNote,
     refresh,
-    pullDistance,
+    isPulling,
+    isPulledEnough,
     isRefreshing,
+    pullDistance,
+    displayHeight,
   }
 }

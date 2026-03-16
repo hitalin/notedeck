@@ -1,64 +1,134 @@
 import { onUnmounted, type Ref, ref, watch } from 'vue'
 
-export const PULL_THRESHOLD = 64
-const MAX_PULL = 128
+// Misskey 本家と同じパラメータ
+const SCROLL_STOP = 10
+const FIRE_THRESHOLD = 200
+const MAX_PULL_DISTANCE = Infinity
+const PULL_BRAKE_BASE = 1.5
+const PULL_BRAKE_FACTOR = 170
+const RELEASE_TRANSITION_DURATION = 200
+
+export { FIRE_THRESHOLD }
 
 export function usePullToRefresh(
   scrollerRef: Ref<HTMLElement | null>,
   onRefresh: () => Promise<void>,
 ) {
-  const pullDistance = ref(0)
+  const isPulling = ref(false)
+  const isPulledEnough = ref(false)
   const isRefreshing = ref(false)
+  const pullDistance = ref(0)
 
-  let startY = 0
-  let pulling = false
+  let startScreenY: number | null = null
   let boundEl: HTMLElement | null = null
 
   function getEl(): HTMLElement | null {
     return scrollerRef.value
   }
 
+  /** 表示上の高さ（非線形ブレーキ） */
+  function displayHeight(): number {
+    return Math.round(
+      pullDistance.value /
+        (PULL_BRAKE_BASE + pullDistance.value / PULL_BRAKE_FACTOR),
+    )
+  }
+
+  function getScreenY(e: TouchEvent): number {
+    return e.touches[0]?.screenY ?? 0
+  }
+
+  function moveBySystem(to: number): Promise<void> {
+    return new Promise((resolve) => {
+      const startHeight = pullDistance.value
+      const overHeight = startHeight - to
+      if (overHeight < 1) {
+        pullDistance.value = to
+        resolve()
+        return
+      }
+      const startTime = Date.now()
+      const intervalId = window.setInterval(() => {
+        const time = Date.now() - startTime
+        if (time > RELEASE_TRANSITION_DURATION) {
+          pullDistance.value = to
+          window.clearInterval(intervalId)
+          resolve()
+          return
+        }
+        const nextHeight =
+          startHeight - (overHeight / RELEASE_TRANSITION_DURATION) * time
+        if (pullDistance.value < nextHeight) return
+        pullDistance.value = nextHeight
+      }, 1)
+    })
+  }
+
+  async function fixOverContent() {
+    if (pullDistance.value > FIRE_THRESHOLD) {
+      await moveBySystem(FIRE_THRESHOLD)
+    }
+  }
+
+  async function closeContent() {
+    if (pullDistance.value > 0) {
+      await moveBySystem(0)
+    }
+  }
+
   function onTouchStart(e: TouchEvent) {
     if (isRefreshing.value) return
     const el = getEl()
     if (!el || el.scrollTop > 0) return
-    startY = e.touches[0]?.clientY ?? 0
-    pulling = true
+
+    isPulling.value = true
+    startScreenY = getScreenY(e)
+    pullDistance.value = 0
   }
 
   function onTouchMove(e: TouchEvent) {
-    if (!pulling || isRefreshing.value) return
+    if (!isPulling.value || isRefreshing.value) return
     const el = getEl()
-    if (!el || el.scrollTop > 0) {
-      pulling = false
+    if (!el) return
+
+    if (el.scrollTop > SCROLL_STOP + pullDistance.value) {
       pullDistance.value = 0
+      isPulledEnough.value = false
+      onTouchEnd()
       return
     }
-    const dy = (e.touches[0]?.clientY ?? 0) - startY
-    if (dy <= 0) {
-      pullDistance.value = 0
-      return
+
+    if (startScreenY === null) {
+      startScreenY = getScreenY(e)
     }
-    pullDistance.value = Math.min(dy * 0.5, MAX_PULL)
+    const moveScreenY = getScreenY(e)
+    // biome-ignore lint/style/noNonNullAssertion: guaranteed by null check above
+    const moveHeight = moveScreenY - startScreenY!
+    pullDistance.value = Math.min(Math.max(moveHeight, 0), MAX_PULL_DISTANCE)
+
+    isPulledEnough.value = pullDistance.value >= FIRE_THRESHOLD
+
     if (pullDistance.value > 0) {
       e.preventDefault()
     }
   }
 
   async function onTouchEnd() {
-    if (!pulling) return
-    pulling = false
-    if (pullDistance.value >= PULL_THRESHOLD && !isRefreshing.value) {
+    startScreenY = null
+    if (isPulledEnough.value) {
+      isPulledEnough.value = false
       isRefreshing.value = true
-      pullDistance.value = PULL_THRESHOLD
+      await fixOverContent()
       try {
         await onRefresh()
       } finally {
+        await closeContent()
+        isPulling.value = false
         isRefreshing.value = false
-        pullDistance.value = 0
       }
     } else {
-      pullDistance.value = 0
+      await closeContent()
+      isPulling.value = false
     }
   }
 
@@ -90,5 +160,11 @@ export function usePullToRefresh(
 
   onUnmounted(unbind)
 
-  return { pullDistance, isRefreshing }
+  return {
+    isPulling,
+    isPulledEnough,
+    isRefreshing,
+    pullDistance,
+    displayHeight,
+  }
 }
