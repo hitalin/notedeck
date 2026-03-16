@@ -137,7 +137,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         app.manage(db.clone());
 
         // Initialize Misskey HTTP client
-        app.manage(notecli::api::MisskeyClient::new()?);
+        let client = std::sync::Arc::new(notecli::api::MisskeyClient::new()?);
+        app.manage(client.clone());
 
         // Initialize event bus (SSE broadcasting)
         let event_bus = std::sync::Arc::new(notecli::event_bus::EventBus::new());
@@ -147,7 +148,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         let emitter = std::sync::Arc::new(streaming::TauriEmitter::new(app.app_handle().clone()));
         app.manage(notecli::streaming::StreamingManager::new(
             emitter,
-            event_bus,
+            event_bus.clone(),
             db.clone(),
         ));
 
@@ -173,7 +174,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::export_account_list(app.app_handle(), &db);
 
         // Initialize OGP cache (backed by shared Database)
-        app.manage(ogp::OgpCache::new(db));
+        app.manage(ogp::OgpCache::new(db.clone()));
 
         // Generate API token and write to file
         let api_token = uuid::Uuid::new_v4().to_string();
@@ -192,7 +193,16 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Start HTTP API server
         let app_handle = app.app_handle().clone();
         tauri::async_runtime::spawn(async move {
-            http_server::start(app_handle, api_token, token_path_str, image_cache).await;
+            http_server::start(
+                app_handle,
+                db.clone(),
+                client,
+                event_bus,
+                api_token,
+                token_path_str,
+                image_cache,
+            )
+            .await;
         });
 
         // Global shortcuts (desktop only)

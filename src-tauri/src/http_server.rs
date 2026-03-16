@@ -3,31 +3,23 @@ use axum::{
     extract::{Path, Query, Request, State},
     http::{header::AUTHORIZATION, StatusCode},
     middleware::{self, Next},
-    response::{
-        sse::{Event, KeepAlive, Sse},
-        IntoResponse, Response,
-    },
+    response::{IntoResponse, Response},
     routing::{delete, get, post},
     Json, Router,
 };
-use futures_util::stream::Stream;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tauri::{AppHandle, Manager};
-use tokio_stream::wrappers::BroadcastStream;
-use tokio_stream::StreamExt;
+use tauri::AppHandle;
 use tower_http::cors::CorsLayer;
 use utoipa::{IntoParams, OpenApi, ToSchema};
 
-use crate::commands;
 use crate::image_cache::ImageCache;
 use crate::query_bridge;
 use notecli::api::MisskeyClient;
 use notecli::db::Database;
 use notecli::event_bus::EventBus;
-use notecli::models::{AccountPublic, CreateNoteParams, TimelineType};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -37,23 +29,11 @@ use notecli::models::{AccountPublic, CreateNoteParams, TimelineType};
         license(name = "MIT"),
     ),
     paths(
-        index, list_accounts, get_timeline, get_notifications,
-        create_note, search_notes, get_note, delete_note,
-        get_note_children, get_note_conversation, get_note_reactions,
-        create_reaction, delete_reaction, get_user, get_user_notes,
-        sse_events, get_deck_columns, add_deck_column, remove_deck_column,
+        get_deck_columns, add_deck_column, remove_deck_column,
         get_deck_active, list_commands, execute_command, proxy_image,
     ),
-    components(schemas(CreateNoteBody, ReactionBody, ApiErrorResponse)),
+    components(schemas(ApiErrorResponse)),
     tags(
-        (name = "general", description = "API info"),
-        (name = "accounts", description = "Account management"),
-        (name = "timeline", description = "Timeline & notifications"),
-        (name = "notes", description = "Note CRUD"),
-        (name = "reactions", description = "Reaction operations"),
-        (name = "users", description = "User info"),
-        (name = "search", description = "Full-text search"),
-        (name = "events", description = "Server-Sent Events"),
         (name = "deck", description = "Deck state"),
         (name = "commands", description = "Command execution"),
         (name = "proxy", description = "Image proxy / CDN cache"),
@@ -77,7 +57,7 @@ impl utoipa::Modify for SecurityAddon {
 }
 
 /// Error response body
-#[derive(Serialize, ToSchema)]
+#[derive(serde::Serialize, ToSchema)]
 struct ApiErrorResponse {
     /// Error code (e.g. "NOT_FOUND", "UNAUTHORIZED")
     error: String,
@@ -87,32 +67,13 @@ struct ApiErrorResponse {
 
 const PORT: u16 = 19820;
 
+// --- NoteDeck-specific state (for deck, commands, proxy routes) ---
+
 #[derive(Clone)]
-struct AppState {
+struct DeckState {
     app_handle: AppHandle,
     api_token: String,
-    token_path: String,
     image_cache: Arc<ImageCache>,
-}
-
-impl AppState {
-    fn db(&self) -> tauri::State<'_, Arc<Database>> {
-        self.app_handle.state::<Arc<Database>>()
-    }
-
-    fn client(&self) -> tauri::State<'_, MisskeyClient> {
-        self.app_handle.state::<MisskeyClient>()
-    }
-
-    /// Find the first account matching the given host.
-    fn account_id_for_host(&self, host: &str) -> Result<String, ApiError> {
-        let accounts = self.db().load_accounts()?;
-        accounts
-            .iter()
-            .find(|a| a.host == host)
-            .map(|a| a.id.clone())
-            .ok_or_else(|| ApiError::not_found(&format!("No account for host: {host}")))
-    }
 }
 
 // --- Error type ---
@@ -124,30 +85,11 @@ struct ApiError {
 }
 
 impl ApiError {
-    fn not_found(msg: &str) -> Self {
-        Self {
-            status: StatusCode::NOT_FOUND,
-            code: "NOT_FOUND".to_string(),
-            message: msg.to_string(),
-        }
-    }
-
     fn unauthorized() -> Self {
         Self {
             status: StatusCode::UNAUTHORIZED,
             code: "UNAUTHORIZED".to_string(),
             message: "Missing or invalid Bearer token".to_string(),
-        }
-    }
-}
-
-impl From<notecli::error::NoteDeckError> for ApiError {
-    fn from(e: notecli::error::NoteDeckError) -> Self {
-        let code = e.code().to_string();
-        Self {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
-            code,
-            message: e.to_string(),
         }
     }
 }
@@ -163,50 +105,76 @@ impl IntoResponse for ApiError {
 
 pub async fn start(
     app_handle: AppHandle,
+    db: Arc<Database>,
+    client: Arc<MisskeyClient>,
+    event_bus: Arc<EventBus>,
     api_token: String,
     token_path: String,
     image_cache: Arc<ImageCache>,
 ) {
-    let state = AppState {
+    // Build core Misskey API routes from notecli
+    let notecli_state = notecli::http_server::AppState::new(
+        db,
+        client,
+        event_bus,
+        api_token.clone(),
+        token_path.clone(),
+    );
+    let core_routes = notecli::http_server::build_core_routes(notecli_state);
+
+    // NoteDeck-specific state
+    let deck_state = DeckState {
         app_handle,
-        api_token,
-        token_path,
+        api_token: api_token.clone(),
         image_cache,
     };
 
-    // Authenticated API routes
-    let api_routes = Router::new()
-        .route("/api", get(index))
-        .route("/api/accounts", get(list_accounts))
-        .route("/api/{host}/timeline/{tl_type}", get(get_timeline))
-        .route("/api/{host}/notifications", get(get_notifications))
-        .route("/api/{host}/note", post(create_note))
-        .route("/api/{host}/notes/{note_id}", get(get_note))
-        .route("/api/{host}/notes/{note_id}", delete(delete_note))
-        .route(
-            "/api/{host}/notes/{note_id}/children",
-            get(get_note_children),
-        )
-        .route(
-            "/api/{host}/notes/{note_id}/conversation",
-            get(get_note_conversation),
-        )
-        .route(
-            "/api/{host}/notes/{note_id}/reactions",
-            get(get_note_reactions),
-        )
-        .route(
-            "/api/{host}/notes/{note_id}/reactions",
-            post(create_reaction),
-        )
-        .route(
-            "/api/{host}/notes/{note_id}/reactions",
-            delete(delete_reaction),
-        )
-        .route("/api/{host}/users/{user_id}", get(get_user))
-        .route("/api/{host}/users/{user_id}/notes", get(get_user_notes))
-        .route("/api/{host}/search", get(search_notes))
-        .route("/api/events", get(sse_events))
+    // NoteDeck index (public, includes all endpoints)
+    let index_route = {
+        let token_path = token_path.clone();
+        Router::new()
+            .route(
+                "/api",
+                get(move || async move {
+                    Json(json!({
+                        "name": "notedeck",
+                        "version": env!("CARGO_PKG_VERSION"),
+                        "auth": "Bearer token required. Read token from the file at tokenPath.",
+                        "tokenPath": token_path,
+                        "docs": "/api/docs",
+                        "openapi": "/api/openapi.json",
+                        "endpoints": [
+                            { "method": "GET",    "path": "/api",                                  "description": "This endpoint list" },
+                            { "method": "GET",    "path": "/api/accounts",                         "description": "List accounts (no tokens)" },
+                            { "method": "GET",    "path": "/api/{host}/timeline/{type}",           "description": "Get timeline notes" },
+                            { "method": "GET",    "path": "/api/{host}/notifications",             "description": "Get notifications" },
+                            { "method": "POST",   "path": "/api/{host}/note",                      "description": "Create a note" },
+                            { "method": "GET",    "path": "/api/{host}/search?q=...",              "description": "Search notes" },
+                            { "method": "GET",    "path": "/api/{host}/notes/{id}",                "description": "Get a note" },
+                            { "method": "DELETE", "path": "/api/{host}/notes/{id}",                "description": "Delete a note" },
+                            { "method": "GET",    "path": "/api/{host}/notes/{id}/children",       "description": "Get note replies" },
+                            { "method": "GET",    "path": "/api/{host}/notes/{id}/conversation",   "description": "Get note conversation" },
+                            { "method": "GET",    "path": "/api/{host}/notes/{id}/reactions",      "description": "Get note reactions" },
+                            { "method": "POST",   "path": "/api/{host}/notes/{id}/reactions",      "description": "Add reaction" },
+                            { "method": "DELETE", "path": "/api/{host}/notes/{id}/reactions",      "description": "Remove reaction" },
+                            { "method": "GET",    "path": "/api/{host}/users/{id}",                "description": "Get user detail" },
+                            { "method": "GET",    "path": "/api/{host}/users/{id}/notes",          "description": "Get user notes" },
+                            { "method": "GET",    "path": "/api/events",                           "description": "SSE event stream" },
+                            { "method": "GET",    "path": "/api/deck/columns",                     "description": "List deck columns" },
+                            { "method": "POST",   "path": "/api/deck/columns",                     "description": "Add deck column" },
+                            { "method": "DELETE", "path": "/api/deck/columns/{id}",                "description": "Remove deck column" },
+                            { "method": "GET",    "path": "/api/deck/active",                      "description": "Get active column" },
+                            { "method": "GET",    "path": "/api/commands",                         "description": "List commands" },
+                            { "method": "POST",   "path": "/api/commands/{id}/execute",            "description": "Execute command" },
+                        ]
+                    }))
+                }),
+            )
+            .layer(CorsLayer::permissive())
+    };
+
+    // Authenticated NoteDeck-specific routes (deck, commands)
+    let deck_routes = Router::new()
         .route("/api/deck/columns", get(get_deck_columns))
         .route("/api/deck/columns", post(add_deck_column))
         .route("/api/deck/columns/{column_id}", delete(remove_deck_column))
@@ -214,21 +182,25 @@ pub async fn start(
         .route("/api/commands", get(list_commands))
         .route("/api/commands/{command_id}/execute", post(execute_command))
         .layer(middleware::from_fn_with_state(
-            state.clone(),
-            auth_middleware,
-        ));
+            deck_state.clone(),
+            deck_auth_middleware,
+        ))
+        .layer(CorsLayer::permissive())
+        .with_state(deck_state.clone());
 
-    // Public routes (localhost-only, no auth needed)
+    // Public routes (no auth)
     let public_routes = Router::new()
         .route("/proxy/image", get(proxy_image))
         .route("/api/openapi.json", get(openapi_json))
-        .route("/api/docs", get(openapi_docs));
+        .route("/api/docs", get(openapi_docs))
+        .layer(CorsLayer::permissive())
+        .with_state(deck_state);
 
     let app = Router::new()
-        .merge(api_routes)
-        .merge(public_routes)
-        .layer(CorsLayer::permissive())
-        .with_state(state);
+        .merge(index_route)
+        .merge(core_routes)
+        .merge(deck_routes)
+        .merge(public_routes);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], PORT));
     eprintln!("[http] listening on http://{addr}");
@@ -246,18 +218,13 @@ pub async fn start(
     }
 }
 
-// --- Auth middleware ---
+// --- Auth middleware for NoteDeck-specific routes ---
 
-async fn auth_middleware(
-    State(state): State<AppState>,
+async fn deck_auth_middleware(
+    State(state): State<DeckState>,
     req: Request,
     next: Next,
 ) -> Result<Response, Response> {
-    // GET /api is public (endpoint list + token path info)
-    if req.uri().path() == "/api" {
-        return Ok(next.run(req).await);
-    }
-
     let token = req
         .headers()
         .get(AUTHORIZATION)
@@ -270,451 +237,6 @@ async fn auth_middleware(
     }
 }
 
-// --- Handlers ---
-
-#[utoipa::path(get, path = "/api", tag = "general",
-    responses((status = 200, description = "API info and endpoint list"))
-)]
-async fn index(State(state): State<AppState>) -> Json<Value> {
-    Json(json!({
-        "name": "notedeck",
-        "version": env!("CARGO_PKG_VERSION"),
-        "auth": "Bearer token required. Read token from the file at tokenPath.",
-        "tokenPath": state.token_path,
-        "docs": "/api/docs",
-        "openapi": "/api/openapi.json",
-        "endpoints": [
-            { "method": "GET",    "path": "/api",                                  "description": "This endpoint list" },
-            { "method": "GET",    "path": "/api/accounts",                         "description": "List accounts (no tokens)" },
-            { "method": "GET",    "path": "/api/{host}/timeline/{type}",           "description": "Get timeline notes" },
-            { "method": "GET",    "path": "/api/{host}/notifications",             "description": "Get notifications" },
-            { "method": "POST",   "path": "/api/{host}/note",                      "description": "Create a note" },
-            { "method": "GET",    "path": "/api/{host}/search?q=...",              "description": "Search notes" },
-            { "method": "GET",    "path": "/api/{host}/notes/{id}",                "description": "Get a note" },
-            { "method": "DELETE", "path": "/api/{host}/notes/{id}",                "description": "Delete a note" },
-            { "method": "GET",    "path": "/api/{host}/notes/{id}/children",       "description": "Get note replies" },
-            { "method": "GET",    "path": "/api/{host}/notes/{id}/conversation",   "description": "Get note conversation" },
-            { "method": "GET",    "path": "/api/{host}/notes/{id}/reactions",      "description": "Get note reactions" },
-            { "method": "POST",   "path": "/api/{host}/notes/{id}/reactions",      "description": "Add reaction" },
-            { "method": "DELETE", "path": "/api/{host}/notes/{id}/reactions",      "description": "Remove reaction" },
-            { "method": "GET",    "path": "/api/{host}/users/{id}",                "description": "Get user detail" },
-            { "method": "GET",    "path": "/api/{host}/users/{id}/notes",          "description": "Get user notes" },
-            { "method": "GET",    "path": "/api/events",                           "description": "SSE event stream" },
-            { "method": "GET",    "path": "/api/deck/columns",                     "description": "List deck columns" },
-            { "method": "POST",   "path": "/api/deck/columns",                     "description": "Add deck column" },
-            { "method": "DELETE", "path": "/api/deck/columns/{id}",                "description": "Remove deck column" },
-            { "method": "GET",    "path": "/api/deck/active",                      "description": "Get active column" },
-            { "method": "GET",    "path": "/api/commands",                         "description": "List commands" },
-            { "method": "POST",   "path": "/api/commands/{id}/execute",            "description": "Execute command" },
-        ]
-    }))
-}
-
-#[utoipa::path(get, path = "/api/accounts", tag = "accounts",
-    security(("bearer_auth" = [])),
-    responses(
-        (status = 200, description = "List of accounts (tokens excluded)"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-    )
-)]
-async fn list_accounts(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<AccountPublic>>, ApiError> {
-    let accounts = state.db().load_accounts()?;
-    Ok(Json(accounts.iter().map(AccountPublic::from).collect()))
-}
-
-#[utoipa::path(get, path = "/api/{host}/timeline/{tl_type}", tag = "timeline",
-    security(("bearer_auth" = [])),
-    params(
-        ("host" = String, Path, description = "Misskey server host"),
-        ("tl_type" = String, Path, description = "Timeline type (home, local, social, global, etc.)"),
-        TimelineQueryParams,
-    ),
-    responses(
-        (status = 200, description = "Timeline notes array"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-        (status = 404, description = "Account not found", body = ApiErrorResponse),
-    )
-)]
-async fn get_timeline(
-    State(state): State<AppState>,
-    Path((host, tl_type)): Path<(String, String)>,
-    Query(opts): Query<TimelineQueryParams>,
-) -> Result<Json<Value>, ApiError> {
-    let account_id = state.account_id_for_host(&host)?;
-    let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    let options = opts.into_timeline_options();
-    let tl = TimelineType::new(tl_type);
-    let notes = state
-        .client()
-        .get_timeline(&h, &token, &account_id, tl, options)
-        .await?;
-    Ok(Json(serde_json::to_value(notes).unwrap_or_default()))
-}
-
-#[utoipa::path(get, path = "/api/{host}/notifications", tag = "timeline",
-    security(("bearer_auth" = [])),
-    params(
-        ("host" = String, Path, description = "Misskey server host"),
-        TimelineQueryParams,
-    ),
-    responses(
-        (status = 200, description = "Notifications array"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-        (status = 404, description = "Account not found", body = ApiErrorResponse),
-    )
-)]
-async fn get_notifications(
-    State(state): State<AppState>,
-    Path(host): Path<String>,
-    Query(opts): Query<TimelineQueryParams>,
-) -> Result<Json<Value>, ApiError> {
-    let account_id = state.account_id_for_host(&host)?;
-    let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    let options = opts.into_timeline_options();
-    let notifications = state
-        .client()
-        .get_notifications(&h, &token, &account_id, options)
-        .await?;
-    Ok(Json(
-        serde_json::to_value(notifications).unwrap_or_default(),
-    ))
-}
-
-#[utoipa::path(post, path = "/api/{host}/note", tag = "notes",
-    security(("bearer_auth" = [])),
-    params(("host" = String, Path, description = "Misskey server host")),
-    request_body = CreateNoteBody,
-    responses(
-        (status = 200, description = "Created note"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-        (status = 404, description = "Account not found", body = ApiErrorResponse),
-    )
-)]
-async fn create_note(
-    State(state): State<AppState>,
-    Path(host): Path<String>,
-    Json(body): Json<CreateNoteBody>,
-) -> Result<Json<Value>, ApiError> {
-    let account_id = state.account_id_for_host(&host)?;
-    let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    let params = CreateNoteParams {
-        text: Some(body.text),
-        cw: body.cw,
-        visibility: body.visibility,
-        local_only: body.local_only,
-        mode_flags: None,
-        reply_id: body.reply_id,
-        renote_id: body.renote_id,
-        file_ids: body.file_ids,
-        poll: None,
-        scheduled_at: body.scheduled_at,
-    };
-    let note = state
-        .client()
-        .create_note(&h, &token, &account_id, params)
-        .await?;
-    Ok(Json(serde_json::to_value(note).unwrap_or_default()))
-}
-
-#[utoipa::path(get, path = "/api/{host}/search", tag = "search",
-    security(("bearer_auth" = [])),
-    params(
-        ("host" = String, Path, description = "Misskey server host"),
-        SearchQueryParams,
-    ),
-    responses(
-        (status = 200, description = "Search results"),
-        (status = 400, description = "Missing query parameter", body = ApiErrorResponse),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-    )
-)]
-async fn search_notes(
-    State(state): State<AppState>,
-    Path(host): Path<String>,
-    Query(params): Query<SearchQueryParams>,
-) -> Result<Json<Value>, ApiError> {
-    let query = params.q.unwrap_or_default();
-    if query.is_empty() {
-        return Err(ApiError {
-            status: StatusCode::BAD_REQUEST,
-            code: "BAD_REQUEST".to_string(),
-            message: "Missing query parameter: q".to_string(),
-        });
-    }
-    let account_id = state.account_id_for_host(&host)?;
-    let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    let notes = state
-        .client()
-        .search_notes(&h, &token, &account_id, &query, Default::default())
-        .await?;
-    Ok(Json(serde_json::to_value(notes).unwrap_or_default()))
-}
-
-#[utoipa::path(get, path = "/api/{host}/notes/{note_id}", tag = "notes",
-    security(("bearer_auth" = [])),
-    params(
-        ("host" = String, Path, description = "Misskey server host"),
-        ("note_id" = String, Path, description = "Note ID"),
-    ),
-    responses(
-        (status = 200, description = "Note detail"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-        (status = 404, description = "Not found", body = ApiErrorResponse),
-    )
-)]
-async fn get_note(
-    State(state): State<AppState>,
-    Path((host, note_id)): Path<(String, String)>,
-) -> Result<Json<Value>, ApiError> {
-    let account_id = state.account_id_for_host(&host)?;
-    let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    let note = state
-        .client()
-        .get_note(&h, &token, &account_id, &note_id)
-        .await?;
-    Ok(Json(serde_json::to_value(note).unwrap_or_default()))
-}
-
-#[utoipa::path(delete, path = "/api/{host}/notes/{note_id}", tag = "notes",
-    security(("bearer_auth" = [])),
-    params(
-        ("host" = String, Path, description = "Misskey server host"),
-        ("note_id" = String, Path, description = "Note ID"),
-    ),
-    responses(
-        (status = 204, description = "Deleted"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-        (status = 404, description = "Not found", body = ApiErrorResponse),
-    )
-)]
-async fn delete_note(
-    State(state): State<AppState>,
-    Path((host, note_id)): Path<(String, String)>,
-) -> Result<StatusCode, ApiError> {
-    let account_id = state.account_id_for_host(&host)?;
-    let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    state.client().delete_note(&h, &token, &note_id).await?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
-#[utoipa::path(get, path = "/api/{host}/notes/{note_id}/children", tag = "notes",
-    security(("bearer_auth" = [])),
-    params(
-        ("host" = String, Path, description = "Misskey server host"),
-        ("note_id" = String, Path, description = "Note ID"),
-        LimitQueryParams,
-    ),
-    responses(
-        (status = 200, description = "Child notes (replies)"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-    )
-)]
-async fn get_note_children(
-    State(state): State<AppState>,
-    Path((host, note_id)): Path<(String, String)>,
-    Query(opts): Query<LimitQueryParams>,
-) -> Result<Json<Value>, ApiError> {
-    let account_id = state.account_id_for_host(&host)?;
-    let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    let limit = opts.limit.unwrap_or(20);
-    let notes = state
-        .client()
-        .get_note_children(&h, &token, &account_id, &note_id, limit)
-        .await?;
-    Ok(Json(serde_json::to_value(notes).unwrap_or_default()))
-}
-
-#[utoipa::path(get, path = "/api/{host}/notes/{note_id}/conversation", tag = "notes",
-    security(("bearer_auth" = [])),
-    params(
-        ("host" = String, Path, description = "Misskey server host"),
-        ("note_id" = String, Path, description = "Note ID"),
-        LimitQueryParams,
-    ),
-    responses(
-        (status = 200, description = "Conversation thread"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-    )
-)]
-async fn get_note_conversation(
-    State(state): State<AppState>,
-    Path((host, note_id)): Path<(String, String)>,
-    Query(opts): Query<LimitQueryParams>,
-) -> Result<Json<Value>, ApiError> {
-    let account_id = state.account_id_for_host(&host)?;
-    let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    let limit = opts.limit.unwrap_or(20);
-    let notes = state
-        .client()
-        .get_note_conversation(&h, &token, &account_id, &note_id, limit)
-        .await?;
-    Ok(Json(serde_json::to_value(notes).unwrap_or_default()))
-}
-
-#[utoipa::path(get, path = "/api/{host}/notes/{note_id}/reactions", tag = "reactions",
-    security(("bearer_auth" = [])),
-    params(
-        ("host" = String, Path, description = "Misskey server host"),
-        ("note_id" = String, Path, description = "Note ID"),
-        ReactionQueryParams,
-    ),
-    responses(
-        (status = 200, description = "Reactions list"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-    )
-)]
-async fn get_note_reactions(
-    State(state): State<AppState>,
-    Path((host, note_id)): Path<(String, String)>,
-    Query(opts): Query<ReactionQueryParams>,
-) -> Result<Json<Value>, ApiError> {
-    let account_id = state.account_id_for_host(&host)?;
-    let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    let limit = opts.limit.unwrap_or(20);
-    let reactions = state
-        .client()
-        .get_note_reactions(&h, &token, &note_id, opts.r#type.as_deref(), limit)
-        .await?;
-    Ok(Json(serde_json::to_value(reactions).unwrap_or_default()))
-}
-
-#[utoipa::path(post, path = "/api/{host}/notes/{note_id}/reactions", tag = "reactions",
-    security(("bearer_auth" = [])),
-    params(
-        ("host" = String, Path, description = "Misskey server host"),
-        ("note_id" = String, Path, description = "Note ID"),
-    ),
-    request_body = ReactionBody,
-    responses(
-        (status = 204, description = "Reaction added"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-    )
-)]
-async fn create_reaction(
-    State(state): State<AppState>,
-    Path((host, note_id)): Path<(String, String)>,
-    Json(body): Json<ReactionBody>,
-) -> Result<StatusCode, ApiError> {
-    let account_id = state.account_id_for_host(&host)?;
-    let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    state
-        .client()
-        .create_reaction(&h, &token, &note_id, &body.reaction)
-        .await?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
-#[utoipa::path(delete, path = "/api/{host}/notes/{note_id}/reactions", tag = "reactions",
-    security(("bearer_auth" = [])),
-    params(
-        ("host" = String, Path, description = "Misskey server host"),
-        ("note_id" = String, Path, description = "Note ID"),
-    ),
-    responses(
-        (status = 204, description = "Reaction removed"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-    )
-)]
-async fn delete_reaction(
-    State(state): State<AppState>,
-    Path((host, note_id)): Path<(String, String)>,
-) -> Result<StatusCode, ApiError> {
-    let account_id = state.account_id_for_host(&host)?;
-    let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    state.client().delete_reaction(&h, &token, &note_id).await?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
-#[utoipa::path(get, path = "/api/{host}/users/{user_id}", tag = "users",
-    security(("bearer_auth" = [])),
-    params(
-        ("host" = String, Path, description = "Misskey server host"),
-        ("user_id" = String, Path, description = "User ID"),
-    ),
-    responses(
-        (status = 200, description = "User detail"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-        (status = 404, description = "Not found", body = ApiErrorResponse),
-    )
-)]
-async fn get_user(
-    State(state): State<AppState>,
-    Path((host, user_id)): Path<(String, String)>,
-) -> Result<Json<Value>, ApiError> {
-    let account_id = state.account_id_for_host(&host)?;
-    let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    let user = state.client().get_user_detail(&h, &token, &user_id).await?;
-    Ok(Json(serde_json::to_value(user).unwrap_or_default()))
-}
-
-#[utoipa::path(get, path = "/api/{host}/users/{user_id}/notes", tag = "users",
-    security(("bearer_auth" = [])),
-    params(
-        ("host" = String, Path, description = "Misskey server host"),
-        ("user_id" = String, Path, description = "User ID"),
-        TimelineQueryParams,
-    ),
-    responses(
-        (status = 200, description = "User's notes"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-        (status = 404, description = "Not found", body = ApiErrorResponse),
-    )
-)]
-async fn get_user_notes(
-    State(state): State<AppState>,
-    Path((host, user_id)): Path<(String, String)>,
-    Query(opts): Query<TimelineQueryParams>,
-) -> Result<Json<Value>, ApiError> {
-    let account_id = state.account_id_for_host(&host)?;
-    let (h, token) = commands::get_credentials(&state.db(), &account_id)?;
-    let options = opts.into_timeline_options();
-    let notes = state
-        .client()
-        .get_user_notes(&h, &token, &account_id, &user_id, options)
-        .await?;
-    Ok(Json(serde_json::to_value(notes).unwrap_or_default()))
-}
-
-#[utoipa::path(get, path = "/api/events", tag = "events",
-    security(("bearer_auth" = [])),
-    params(SseQueryParams),
-    responses(
-        (status = 200, description = "SSE event stream (text/event-stream)"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-    )
-)]
-async fn sse_events(
-    State(state): State<AppState>,
-    Query(params): Query<SseQueryParams>,
-) -> Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>> {
-    let event_bus = state.app_handle.state::<Arc<EventBus>>();
-    let rx = event_bus.subscribe();
-
-    let type_filter: Option<Vec<String>> = params
-        .r#type
-        .map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
-
-    let stream = BroadcastStream::new(rx).filter_map(move |result| match result {
-        Ok(sse_event) => {
-            if let Some(ref filter) = type_filter {
-                if !filter.iter().any(|f| sse_event.event_type.starts_with(f)) {
-                    return None;
-                }
-            }
-            let event = Event::default()
-                .event(&sse_event.event_type)
-                .json_data(&sse_event.data)
-                .ok()?;
-            Some(Ok(event))
-        }
-        Err(_) => None,
-    });
-
-    Sse::new(stream).keep_alive(KeepAlive::default())
-}
-
 // --- QueryBridge handlers (deck state + commands) ---
 
 #[utoipa::path(get, path = "/api/deck/columns", tag = "deck",
@@ -724,7 +246,7 @@ async fn sse_events(
         (status = 401, description = "Unauthorized", body = ApiErrorResponse),
     )
 )]
-async fn get_deck_columns(State(state): State<AppState>) -> Result<Json<Value>, ApiError> {
+async fn get_deck_columns(State(state): State<DeckState>) -> Result<Json<Value>, ApiError> {
     let data = query_bridge::query_frontend(&state.app_handle, "deck/columns", json!({}))
         .await
         .map_err(|e| ApiError {
@@ -744,7 +266,7 @@ async fn get_deck_columns(State(state): State<AppState>) -> Result<Json<Value>, 
     )
 )]
 async fn add_deck_column(
-    State(state): State<AppState>,
+    State(state): State<DeckState>,
     Json(body): Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
     let data = query_bridge::query_frontend(&state.app_handle, "deck/add-column", body)
@@ -766,7 +288,7 @@ async fn add_deck_column(
     )
 )]
 async fn remove_deck_column(
-    State(state): State<AppState>,
+    State(state): State<DeckState>,
     Path(column_id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
     query_bridge::query_frontend(
@@ -790,7 +312,7 @@ async fn remove_deck_column(
         (status = 401, description = "Unauthorized", body = ApiErrorResponse),
     )
 )]
-async fn get_deck_active(State(state): State<AppState>) -> Result<Json<Value>, ApiError> {
+async fn get_deck_active(State(state): State<DeckState>) -> Result<Json<Value>, ApiError> {
     let data = query_bridge::query_frontend(&state.app_handle, "deck/active", json!({}))
         .await
         .map_err(|e| ApiError {
@@ -808,7 +330,7 @@ async fn get_deck_active(State(state): State<AppState>) -> Result<Json<Value>, A
         (status = 401, description = "Unauthorized", body = ApiErrorResponse),
     )
 )]
-async fn list_commands(State(state): State<AppState>) -> Result<Json<Value>, ApiError> {
+async fn list_commands(State(state): State<DeckState>) -> Result<Json<Value>, ApiError> {
     let data = query_bridge::query_frontend(&state.app_handle, "commands/list", json!({}))
         .await
         .map_err(|e| ApiError {
@@ -828,7 +350,7 @@ async fn list_commands(State(state): State<AppState>) -> Result<Json<Value>, Api
     )
 )]
 async fn execute_command(
-    State(state): State<AppState>,
+    State(state): State<DeckState>,
     Path(command_id): Path<String>,
 ) -> Result<Json<Value>, ApiError> {
     let data = query_bridge::query_frontend(
@@ -843,63 +365,6 @@ async fn execute_command(
         message: e,
     })?;
     Ok(Json(data))
-}
-
-// --- Query / Body types ---
-
-#[derive(Debug, Deserialize, IntoParams)]
-struct TimelineQueryParams {
-    limit: Option<i64>,
-    since_id: Option<String>,
-    until_id: Option<String>,
-}
-
-impl TimelineQueryParams {
-    fn into_timeline_options(self) -> notecli::models::TimelineOptions {
-        notecli::models::TimelineOptions::new(
-            self.limit.unwrap_or(20),
-            self.since_id,
-            self.until_id,
-        )
-    }
-}
-
-#[derive(Debug, Deserialize, IntoParams)]
-struct SearchQueryParams {
-    q: Option<String>,
-}
-
-#[derive(Debug, Deserialize, IntoParams)]
-struct LimitQueryParams {
-    limit: Option<u32>,
-}
-
-#[derive(Debug, Deserialize, IntoParams)]
-struct ReactionQueryParams {
-    r#type: Option<String>,
-    limit: Option<u32>,
-}
-
-#[derive(Debug, Deserialize, ToSchema)]
-struct ReactionBody {
-    reaction: String,
-}
-
-#[derive(Debug, Deserialize, IntoParams)]
-struct SseQueryParams {
-    r#type: Option<String>,
-}
-
-#[derive(Debug, Deserialize, ToSchema)]
-struct CreateNoteBody {
-    text: String,
-    cw: Option<String>,
-    visibility: Option<String>,
-    local_only: Option<bool>,
-    reply_id: Option<String>,
-    renote_id: Option<String>,
-    file_ids: Option<Vec<String>>,
-    scheduled_at: Option<String>,
 }
 
 // --- OpenAPI docs ---
@@ -946,7 +411,7 @@ struct ProxyImageParams {
     )
 )]
 async fn proxy_image(
-    State(state): State<AppState>,
+    State(state): State<DeckState>,
     headers: axum::http::HeaderMap,
     Query(params): Query<ProxyImageParams>,
 ) -> Response {

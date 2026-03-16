@@ -406,13 +406,9 @@ match self {
 
 ### アーキテクチャ上の課題
 
-#### C-1. HTTP サーバーの二重定義 [重要度: 高]
+#### ~~C-1. HTTP サーバーの二重定義~~ [解決済み]
 
-notedeck は notecli の `build_router()` を**再利用せず**、独自に39ルートを全て再定義している。
-
-**問題**: API の一貫性維持にコストがかかる。notecli 側で API を追加・変更しても notedeck 側に自動反映されない。
-
-**改善案**: notecli のルーターを基盤として `nest()` や `merge()` で notedeck 固有のルート（Query Bridge、画像プロキシ、OGP 等）を追加マウントする構成にする。
+notedeck は `notecli::http_server::build_core_routes()` でコア API ルーターを再利用し、notedeck 固有のルート（deck, commands, image proxy, OpenAPI docs）のみを `.merge()` で追加する構成に変更済み。
 
 ---
 
