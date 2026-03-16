@@ -418,16 +418,13 @@ refinery を導入し、番号付き SQL マイグレーション (`migrations/V
 
 ---
 
-#### C-3. テストの不在 [重要度: 高]
+#### C-3. テストの不在 [重要度: 高] — 対応中
 
-notecli・notedeck ともにテストコードが見当たらない。`build_router()` のエクスポートはテスト意図があるが未実装。
+notecli に DB テスト 18件、notedeck に 73件のユニットテストを追加済み。
 
-**問題**: リグレッションを検出できない。API 仕様の破壊的変更に気づけない。
+**カバー済み**: DB マイグレーション・CRUD、OGP パーサー、SummaryData 変換、ImageCache LRU、SSRF 防止 (validate_host)、AuthSession リプレイ防止、OGP プラグイン URL マッチング
 
-**改善案**: 少なくとも以下をカバーするテストを追加:
-- `normalize()` のモデル変換（フォーク間の差異を含む）
-- HTTP API のエンドポイント（`build_router()` を活用）
-- `StreamingManager` の接続・再接続・サブスクリプション管理
+**未カバー**: `normalize()` モデル変換、HTTP API 統合テスト、`StreamingManager` 接続管理
 
 ---
 
@@ -529,6 +526,6 @@ graph TD
 |------|------|------|
 | ~~1~~ | ~~C-1 HTTP サーバー統合~~ | ~~解決済み~~ |
 | ~~2~~ | ~~C-2 DB マイグレーション~~ | ~~解決済み（refinery 導入）~~ |
-| 3 | C-3 テスト追加 | リグレッション防止の基盤 |
+| 3 | C-3 テスト追加 | 対応中（notecli 18件 + notedeck 73件） |
 | 3 | D-2 ディープリンク | 低コストで Web↔アプリ連携を実現 |
 | 4 | D-1 オフラインファースト | 既存 SQLite 基盤の拡張で実現可能。モバイル UX を大幅改善 |

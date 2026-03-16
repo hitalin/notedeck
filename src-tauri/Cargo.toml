@@ -38,6 +38,9 @@ tauri-plugin-os = "2"
 default = ["desktop"]
 desktop = ["tauri/tray-icon", "dep:tauri-plugin-global-shortcut", "dep:tauri-plugin-autostart", "dep:tauri-plugin-updater", "dep:tauri-plugin-process"]
 
+[dev-dependencies]
+tempfile = "3"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

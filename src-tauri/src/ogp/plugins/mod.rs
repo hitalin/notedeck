@@ -144,6 +144,130 @@ pub fn extract_iframe_src(html: &str) -> Option<String> {
         .map(|m| m.as_str().to_string())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn url(s: &str) -> url::Url {
+        url::Url::parse(s).unwrap()
+    }
+
+    // --- extract_iframe_src ---
+
+    #[test]
+    fn extract_iframe_src_found() {
+        let html = r#"<iframe width="560" height="315" src="https://www.youtube.com/embed/abc" frameborder="0"></iframe>"#;
+        assert_eq!(
+            extract_iframe_src(html).as_deref(),
+            Some("https://www.youtube.com/embed/abc")
+        );
+    }
+
+    #[test]
+    fn extract_iframe_src_missing() {
+        assert!(extract_iframe_src("<div>no iframe</div>").is_none());
+    }
+
+    // --- Plugin URL matching ---
+
+    #[test]
+    fn youtube_plugin_matches() {
+        let plugins = all();
+        let yt = plugins.iter().find(|p| p.test(&url("https://www.youtube.com/watch?v=abc"))).unwrap();
+        assert!(yt.test(&url("https://youtube.com/watch?v=abc")));
+        assert!(yt.test(&url("https://youtu.be/abc")));
+        assert!(yt.test(&url("https://m.youtube.com/watch?v=abc")));
+    }
+
+    #[test]
+    fn youtube_does_not_match_other() {
+        let plugins = all();
+        let yt = plugins.iter().find(|p| p.test(&url("https://www.youtube.com/watch?v=abc"))).unwrap();
+        assert!(!yt.test(&url("https://example.com")));
+    }
+
+    #[test]
+    fn twitter_plugin_matches() {
+        let plugins = all();
+        let tw = plugins.iter().find(|p| p.test(&url("https://x.com/user/status/123"))).unwrap();
+        assert!(tw.test(&url("https://twitter.com/user/status/123")));
+        assert!(tw.test(&url("https://x.com/user/status/123")));
+        // fxtwitter/vxtwitter are third-party services, not handled by the Twitter plugin
+    }
+
+    #[test]
+    fn spotify_plugin_matches() {
+        let plugins = all();
+        let sp = plugins.iter().find(|p| p.test(&url("https://open.spotify.com/track/abc")));
+        assert!(sp.is_some());
+    }
+
+    #[test]
+    fn niconico_plugin_matches() {
+        let plugins = all();
+        let nico = plugins.iter().find(|p| p.test(&url("https://www.nicovideo.jp/watch/sm123")));
+        assert!(nico.is_some());
+        let nico2 = plugins.iter().find(|p| p.test(&url("https://nico.ms/sm123")));
+        assert!(nico2.is_some());
+    }
+
+    #[test]
+    fn no_plugin_matches_random_url() {
+        let plugins = all();
+        assert!(!plugins.iter().any(|p| p.test(&url("https://example.com/page"))));
+    }
+
+    // --- flexible_u32 deserialization ---
+
+    #[test]
+    fn flexible_u32_from_number() {
+        let json = r#"{"width": 640, "height": 360}"#;
+        #[derive(serde::Deserialize)]
+        struct T {
+            #[serde(deserialize_with = "flexible_u32")]
+            width: Option<u32>,
+        }
+        let t: T = serde_json::from_str(json).unwrap();
+        assert_eq!(t.width, Some(640));
+    }
+
+    #[test]
+    fn flexible_u32_from_string() {
+        let json = r#"{"width": "800"}"#;
+        #[derive(serde::Deserialize)]
+        struct T {
+            #[serde(deserialize_with = "flexible_u32")]
+            width: Option<u32>,
+        }
+        let t: T = serde_json::from_str(json).unwrap();
+        assert_eq!(t.width, Some(800));
+    }
+
+    #[test]
+    fn flexible_u32_from_percentage_returns_none() {
+        let json = r#"{"width": "100%"}"#;
+        #[derive(serde::Deserialize)]
+        struct T {
+            #[serde(deserialize_with = "flexible_u32")]
+            width: Option<u32>,
+        }
+        let t: T = serde_json::from_str(json).unwrap();
+        assert_eq!(t.width, None);
+    }
+
+    #[test]
+    fn flexible_u32_from_null() {
+        let json = r#"{"width": null}"#;
+        #[derive(serde::Deserialize)]
+        struct T {
+            #[serde(deserialize_with = "flexible_u32")]
+            width: Option<u32>,
+        }
+        let t: T = serde_json::from_str(json).unwrap();
+        assert_eq!(t.width, None);
+    }
+}
+
 /// Fetch an oEmbed JSON response from the given endpoint URL.
 pub async fn fetch_oembed(
     client: &reqwest::Client,

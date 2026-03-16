@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "parser_tests.rs"]
+mod parser_tests;
+
 use scraper::{Html, Selector};
 use std::sync::LazyLock;
 
@@ -180,7 +184,7 @@ pub fn is_challenge_page(html: &str) -> bool {
 }
 
 /// Resolve a potentially relative URL against a base URL.
-fn resolve_url(href: &str, base: &str) -> String {
+pub(crate) fn resolve_url(href: &str, base: &str) -> String {
     if href.starts_with("https://") || href.starts_with("http://") {
         return href.to_string();
     }

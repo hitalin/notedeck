@@ -467,6 +467,136 @@ impl OgpCache {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use notecli::db::SummaryRow;
+
+    fn sample_row() -> SummaryRow {
+        SummaryRow {
+            url: "https://example.com".to_string(),
+            title: Some("Title".to_string()),
+            description: Some("Desc".to_string()),
+            thumbnail: Some("https://example.com/img.png".to_string()),
+            sitename: Some("Example".to_string()),
+            icon: Some("https://example.com/icon.png".to_string()),
+            player_url: Some("https://example.com/player".to_string()),
+            player_width: Some(640),
+            player_height: Some(360),
+            player_allow: Some(r#"["autoplay","fullscreen"]"#.to_string()),
+            final_url: Some("https://example.com/final".to_string()),
+            sensitive: false,
+            medias_json: Some(r#"["https://example.com/1.png","https://example.com/2.png"]"#.to_string()),
+        }
+    }
+
+    #[test]
+    fn from_row_converts_all_fields() {
+        let data = SummaryData::from_row(&sample_row());
+        assert_eq!(data.title.as_deref(), Some("Title"));
+        assert_eq!(data.description.as_deref(), Some("Desc"));
+        assert_eq!(data.icon.as_deref(), Some("https://example.com/icon.png"));
+        assert_eq!(data.url, "https://example.com/final");
+        assert_eq!(data.medias.len(), 2);
+        let player = data.player.unwrap();
+        assert_eq!(player.url, "https://example.com/player");
+        assert_eq!(player.width, Some(640));
+        assert_eq!(player.allow, vec!["autoplay", "fullscreen"]);
+    }
+
+    #[test]
+    fn from_row_uses_url_when_no_final_url() {
+        let mut row = sample_row();
+        row.final_url = None;
+        let data = SummaryData::from_row(&row);
+        assert_eq!(data.url, "https://example.com");
+    }
+
+    #[test]
+    fn from_row_no_player_when_url_none() {
+        let mut row = sample_row();
+        row.player_url = None;
+        let data = SummaryData::from_row(&row);
+        assert!(data.player.is_none());
+    }
+
+    #[test]
+    fn to_row_roundtrip() {
+        let original = SummaryData::from_row(&sample_row());
+        let row = original.to_row("https://example.com");
+        let roundtrip = SummaryData::from_row(&row);
+        assert_eq!(original.title, roundtrip.title);
+        assert_eq!(original.description, roundtrip.description);
+        assert_eq!(original.medias, roundtrip.medias);
+        assert_eq!(
+            original.player.as_ref().map(|p| &p.url),
+            roundtrip.player.as_ref().map(|p| &p.url),
+        );
+    }
+
+    #[test]
+    fn to_row_empty_medias_none_json() {
+        let data = SummaryData {
+            title: None,
+            description: None,
+            icon: None,
+            sitename: None,
+            thumbnail: None,
+            medias: Vec::new(),
+            player: None,
+            url: "https://example.com".to_string(),
+            sensitive: false,
+        };
+        let row = data.to_row("key");
+        assert!(row.medias_json.is_none());
+        assert!(row.player_url.is_none());
+    }
+
+    #[test]
+    fn sanitize_player_blocks_pixiv_embed() {
+        let mut data = SummaryData {
+            title: None,
+            description: None,
+            icon: None,
+            sitename: None,
+            thumbnail: None,
+            medias: Vec::new(),
+            player: Some(Player {
+                url: "https://embed.pixiv.net/player.html".to_string(),
+                width: None,
+                height: None,
+                allow: Vec::new(),
+            }),
+            url: "https://pixiv.net/artworks/123".to_string(),
+            sensitive: false,
+        };
+        OgpCache::sanitize_player(&mut data);
+        assert!(data.player.is_none());
+    }
+
+    #[test]
+    fn sanitize_player_keeps_allowed_host() {
+        let mut data = SummaryData {
+            title: None,
+            description: None,
+            icon: None,
+            sitename: None,
+            thumbnail: None,
+            medias: Vec::new(),
+            player: Some(Player {
+                url: "https://www.youtube.com/embed/abc".to_string(),
+                width: None,
+                height: None,
+                allow: Vec::new(),
+            }),
+            url: "https://youtube.com/watch?v=abc".to_string(),
+            sensitive: false,
+        };
+        OgpCache::sanitize_player(&mut data);
+        assert!(data.player.is_some());
+    }
+}
+
 /// Response from Misskey's POST /api/url endpoint (summaly format)
 #[derive(Debug, Deserialize)]
 struct ServerUrlResponse {

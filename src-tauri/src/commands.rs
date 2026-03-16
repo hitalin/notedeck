@@ -1671,3 +1671,171 @@ pub fn get_cli_commands() -> Vec<notecli::cli::CliCommandInfo> {
 pub fn open_devtools(window: tauri::WebviewWindow) {
     window.open_devtools();
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- extract_ogp_urls ---
+
+    #[test]
+    fn extract_urls_from_text() {
+        let text = "Check https://example.com/article and https://blog.example.com/post";
+        let urls = extract_ogp_urls(text);
+        assert_eq!(urls.len(), 2);
+        assert!(urls.contains(&"https://example.com/article".to_string()));
+    }
+
+    #[test]
+    fn skip_media_urls() {
+        let text = "Image: https://example.com/photo.jpg and https://example.com/video.mp4";
+        let urls = extract_ogp_urls(text);
+        assert!(urls.is_empty());
+    }
+
+    #[test]
+    fn skip_media_with_query_params() {
+        let text = "https://example.com/image.png?w=800";
+        let urls = extract_ogp_urls(text);
+        assert!(urls.is_empty());
+    }
+
+    #[test]
+    fn extract_non_media_urls_only() {
+        let text = "See https://example.com/page and https://example.com/photo.webp";
+        let urls = extract_ogp_urls(text);
+        assert_eq!(urls.len(), 1);
+        assert_eq!(urls[0], "https://example.com/page");
+    }
+
+    #[test]
+    fn empty_text_no_urls() {
+        assert!(extract_ogp_urls("").is_empty());
+        assert!(extract_ogp_urls("no urls here").is_empty());
+    }
+
+    // --- validate_host ---
+
+    #[test]
+    fn valid_host() {
+        assert_eq!(validate_host("Misskey.IO").unwrap(), "misskey.io");
+    }
+
+    #[test]
+    fn valid_host_trims_whitespace() {
+        assert_eq!(validate_host("  example.com  ").unwrap(), "example.com");
+    }
+
+    #[test]
+    fn reject_empty_host() {
+        assert!(validate_host("").is_err());
+        assert!(validate_host("   ").is_err());
+    }
+
+    #[test]
+    fn reject_host_with_path() {
+        assert!(validate_host("example.com/path").is_err());
+    }
+
+    #[test]
+    fn reject_localhost() {
+        assert!(validate_host("localhost").is_err());
+        assert!(validate_host("localhost:3000").is_err());
+    }
+
+    #[test]
+    fn reject_loopback_ipv4() {
+        assert!(validate_host("127.0.0.1").is_err());
+        assert!(validate_host("127.0.0.1:8080").is_err());
+    }
+
+    #[test]
+    fn reject_private_ranges() {
+        assert!(validate_host("10.0.0.1").is_err());
+        assert!(validate_host("192.168.1.1").is_err());
+        assert!(validate_host("172.16.0.1").is_err());
+        assert!(validate_host("172.31.255.255").is_err());
+    }
+
+    #[test]
+    fn allow_172_outside_private() {
+        // 172.15.x.x and 172.32.x.x are public
+        assert!(validate_host("172.15.0.1").is_ok());
+        assert!(validate_host("172.32.0.1").is_ok());
+    }
+
+    #[test]
+    fn reject_ipv6_loopback() {
+        assert!(validate_host("[::1]").is_err());
+        assert!(validate_host("::1").is_err());
+    }
+
+    #[test]
+    fn reject_reserved_tlds() {
+        assert!(validate_host("myserver.local").is_err());
+        assert!(validate_host("app.internal").is_err());
+        assert!(validate_host("test.localhost").is_err());
+    }
+
+    #[test]
+    fn reject_long_host() {
+        let long = "a".repeat(254);
+        assert!(validate_host(&long).is_err());
+    }
+
+    // --- AuthSessionTracker ---
+
+    #[test]
+    fn auth_session_register_and_consume() {
+        let tracker = AuthSessionTracker::new();
+        tracker.register("sess-1", "misskey.io");
+        assert!(tracker.consume("sess-1", "misskey.io").is_ok());
+    }
+
+    #[test]
+    fn auth_session_double_consume_fails() {
+        let tracker = AuthSessionTracker::new();
+        tracker.register("sess-1", "misskey.io");
+        tracker.consume("sess-1", "misskey.io").unwrap();
+        assert!(tracker.consume("sess-1", "misskey.io").is_err());
+    }
+
+    #[test]
+    fn auth_session_host_mismatch() {
+        let tracker = AuthSessionTracker::new();
+        tracker.register("sess-1", "misskey.io");
+        let err = tracker.consume("sess-1", "evil.com").unwrap_err();
+        assert!(err.to_string().contains("Host mismatch"));
+    }
+
+    #[test]
+    fn auth_session_unknown_id() {
+        let tracker = AuthSessionTracker::new();
+        assert!(tracker.consume("nonexistent", "misskey.io").is_err());
+    }
+
+    // --- CredentialCache ---
+
+    #[test]
+    fn credential_cache_insert_and_get() {
+        let cache = CredentialCache::new();
+        cache.insert("acc-1", "misskey.io", "token-123");
+        let (host, token) = cache.get("acc-1").unwrap();
+        assert_eq!(host, "misskey.io");
+        assert_eq!(token, "token-123");
+    }
+
+    #[test]
+    fn credential_cache_miss() {
+        let cache = CredentialCache::new();
+        assert!(cache.get("nonexistent").is_none());
+    }
+
+    #[test]
+    fn credential_cache_invalidate() {
+        let cache = CredentialCache::new();
+        cache.insert("acc-1", "misskey.io", "token");
+        cache.invalidate("acc-1");
+        assert!(cache.get("acc-1").is_none());
+    }
+}

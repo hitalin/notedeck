@@ -403,3 +403,91 @@ pub fn hex_hash(input: &str) -> String {
     hasher.update(input.as_bytes());
     format!("{:x}", hasher.finalize())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hex_hash_deterministic() {
+        let a = hex_hash("https://example.com/image.png");
+        let b = hex_hash("https://example.com/image.png");
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn hex_hash_different_inputs() {
+        let a = hex_hash("https://example.com/a.png");
+        let b = hex_hash("https://example.com/b.png");
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn hex_hash_is_64_chars() {
+        let h = hex_hash("test");
+        assert_eq!(h.len(), 64); // SHA256 = 32 bytes = 64 hex chars
+    }
+
+    #[test]
+    fn image_cache_creates_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let _cache = ImageCache::new(dir.path());
+        assert!(dir.path().join("image_cache").exists());
+    }
+
+    #[tokio::test]
+    async fn check_cache_only_returns_none_for_http() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = ImageCache::new(dir.path());
+        assert!(cache.check_cache_only("http://insecure.com/img.png").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn check_cache_only_miss() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = ImageCache::new(dir.path());
+        assert!(cache.check_cache_only("https://example.com/missing.png").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn mem_cache_insert_and_retrieve() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = ImageCache::new(dir.path());
+        let data = Arc::new(vec![1u8, 2, 3]);
+        cache.insert_mem_cache("test-hash", &data, "image/png").await;
+
+        let mut mem = cache.mem_cache.lock().await;
+        let entry = mem.entries.get("test-hash").unwrap();
+        assert_eq!(entry.content_type, "image/png");
+        assert_eq!(&**entry.data, &[1u8, 2, 3]);
+    }
+
+    #[tokio::test]
+    async fn mem_cache_lru_eviction() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = ImageCache::new(dir.path());
+
+        // Insert entries that fill the memory budget
+        let big = Arc::new(vec![0u8; MEMORY_CACHE_MAX_TOTAL / 2]);
+        cache.insert_mem_cache("a", &big, "image/png").await;
+        cache.insert_mem_cache("b", &big, "image/png").await;
+
+        // Third insert should evict "a"
+        cache.insert_mem_cache("c", &big, "image/png").await;
+
+        let mem = cache.mem_cache.lock().await;
+        assert!(mem.entries.peek("a").is_none(), "LRU entry 'a' should be evicted");
+        assert!(mem.entries.peek("b").is_some() || mem.entries.peek("c").is_some());
+    }
+
+    #[tokio::test]
+    async fn fetch_streaming_rejects_http() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = ImageCache::new(dir.path());
+        let result = cache.fetch_streaming("http://insecure.com/img.png").await;
+        match result {
+            Err(msg) => assert!(msg.contains("HTTPS")),
+            Ok(_) => panic!("Expected error for HTTP URL"),
+        }
+    }
+}
