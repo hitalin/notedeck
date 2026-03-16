@@ -30,6 +30,8 @@ export function useHoverPopup(options?: {
   }
 
   function show(pos: { x: number; y: number }) {
+    // タッチデバイスではホバーポップアップを無効化
+    if (navigator.maxTouchPoints > 0) return
     clearHideTimer()
     position.value = pos
     if (isVisible.value) return
