@@ -393,11 +393,12 @@ export const useDeckStore = defineStore('deck', () => {
     // Load from nd-deck (backward compat / initial data)
     try {
       const raw = localStorage.getItem(DECK_KEY)
-      if (!raw) return
-      const data = JSON.parse(raw)
-      if (data.columns && data.layout) {
-        columns.value = data.columns
-        layout.value = data.layout
+      if (raw) {
+        const data = JSON.parse(raw)
+        if (data.columns && data.layout) {
+          columns.value = data.columns
+          layout.value = data.layout
+        }
       }
     } catch (e) {
       console.warn('[deck] failed to load:', e)

@@ -50,10 +50,15 @@ export function useDeckInit(options: {
     }
   }
 
+  function onPageHide() {
+    deckStore.flushSave()
+  }
+
   onMounted(() => {
     handleResizeRef = () => options.navbarRef.value?.handleResize()
     window.addEventListener('resize', handleResizeRef)
     document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('pagehide', onPageHide)
 
     // Critical: start streaming immediately
     deckStore.startSync()
@@ -124,6 +129,7 @@ export function useDeckInit(options: {
     unregisterDefaultCommands()
     if (handleResizeRef) window.removeEventListener('resize', handleResizeRef)
     document.removeEventListener('visibilitychange', onVisibilityChange)
+    window.removeEventListener('pagehide', onPageHide)
     unlistenQuickNote?.()
     unlistenWindowEvents?.()
   })
