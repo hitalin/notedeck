@@ -378,35 +378,6 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
     </template>
 
     <div :class="$style.editor">
-      <!-- Theme name & base -->
-      <div :class="$style.metaSection">
-        <input
-          v-model="themeName"
-          :class="$style.nameInput"
-          type="text"
-          placeholder="テーマ名"
-          spellcheck="false"
-        />
-        <div :class="$style.baseToggle">
-          <button
-            class="_button"
-            :class="[$style.baseBtn, { [$style.active]: baseMode === 'dark' }]"
-            @click="baseMode = 'dark'"
-          >
-            <i class="ti ti-moon" />
-            Dark
-          </button>
-          <button
-            class="_button"
-            :class="[$style.baseBtn, { [$style.active]: baseMode === 'light' }]"
-            @click="baseMode = 'light'"
-          >
-            <i class="ti ti-sun" />
-            Light
-          </button>
-        </div>
-      </div>
-
       <!-- Tabs -->
       <div :class="$style.tabs">
         <button
@@ -429,16 +400,52 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
       <!-- Visual Editor -->
       <div v-show="tab === 'visual'" :class="$style.visualPanel">
+        <!-- Theme info -->
+        <div :class="$style.section">
+          <div :class="$style.sectionLabel">
+            <i class="ti ti-tag" />
+            テーマ情報
+          </div>
+          <input
+            v-model="themeName"
+            :class="$style.nameInput"
+            type="text"
+            placeholder="テーマ名"
+            spellcheck="false"
+          />
+          <div :class="$style.baseToggle">
+            <button
+              class="_button"
+              :class="[$style.baseBtn, { [$style.active]: baseMode === 'dark' }]"
+              @click="baseMode = 'dark'"
+            >
+              <i class="ti ti-moon" />
+              Dark
+            </button>
+            <button
+              class="_button"
+              :class="[$style.baseBtn, { [$style.active]: baseMode === 'light' }]"
+              @click="baseMode = 'light'"
+            >
+              <i class="ti ti-sun" />
+              Light
+            </button>
+          </div>
+        </div>
+
         <!-- Load from existing -->
-        <div v-if="themeStore.installedThemes.length" :class="$style.loadSection">
+        <div v-if="themeStore.installedThemes.length" :class="$style.section">
+          <div :class="$style.sectionLabel">
+            <i class="ti ti-folder-open" />
+            既存テーマ
+          </div>
           <div :class="$style.dropdown">
             <button
               class="_button"
               :class="$style.dropdownTrigger"
               @click="showLoadDropdown = !showLoadDropdown"
             >
-              <i class="ti ti-palette" />
-              <span>既存テーマを読み込み...</span>
+              <span>テーマを選択...</span>
               <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
             </button>
             <div v-if="showLoadDropdown" :class="$style.dropdownPanel">
@@ -468,131 +475,136 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
         </div>
 
         <!-- Primary Colors -->
-        <button
-          class="_button"
-          :class="$style.categoryLabel"
-          @click="toggleSection('primary')"
-        >
-          <i
-            class="ti"
-            :class="collapsedSections.primary ? 'ti-chevron-right' : 'ti-chevron-down'"
-          />
-          <span>基本色</span>
-          <span v-if="primaryOverrideCount > 0" :class="$style.categoryCount">
-            {{ primaryOverrideCount }}/{{ PRIMARY_PROPS.length }}
-          </span>
-        </button>
-        <div v-show="!collapsedSections.primary" :class="$style.propList">
-          <div
-            v-for="prop in PRIMARY_PROPS"
-            :key="prop.key"
-            :class="[$style.propRow, { [$style.overridden]: isOverridden(prop.key) }]"
+        <div :class="$style.section">
+          <button
+            class="_button"
+            :class="$style.sectionLabel"
+            @click="toggleSection('primary')"
           >
-            <div :class="$style.propLabel">
-              <div v-if="isOverridden(prop.key)" :class="$style.overrideDot" />
-              <span>{{ prop.label }}</span>
-              <span :class="$style.propKey">{{ prop.key }}</span>
-            </div>
-            <div :class="$style.propControls">
-              <div :class="$style.colorPickerWrap">
-                <input
-                  type="color"
-                  :class="$style.colorPicker"
-                  :value="resolvedHex(prop.key)"
-                  @input="(e) => updateColor(prop.key, (e.target as HTMLInputElement).value)"
-                />
-                <div
-                  :class="[$style.colorSwatch, { [$style.checkerboard]: hasAlpha(prop.key) }]"
-                  :style="{ backgroundColor: resolvedColors[prop.key] ?? 'transparent' }"
-                />
+            <i
+              class="ti"
+              :class="collapsedSections.primary ? 'ti-chevron-right' : 'ti-chevron-down'"
+            />
+            基本色
+            <span v-if="primaryOverrideCount > 0" :class="$style.sectionValue">
+              {{ primaryOverrideCount }}/{{ PRIMARY_PROPS.length }}
+            </span>
+          </button>
+          <div v-show="!collapsedSections.primary" :class="$style.propList">
+            <div
+              v-for="prop in PRIMARY_PROPS"
+              :key="prop.key"
+              :class="[$style.propRow, { [$style.overridden]: isOverridden(prop.key) }]"
+            >
+              <div :class="$style.propInfo">
+                <div :class="$style.colorPickerWrap">
+                  <input
+                    type="color"
+                    :class="$style.colorPicker"
+                    :value="resolvedHex(prop.key)"
+                    @input="(e) => updateColor(prop.key, (e.target as HTMLInputElement).value)"
+                  />
+                  <div
+                    :class="[$style.colorSwatch, { [$style.checkerboard]: hasAlpha(prop.key) }]"
+                    :style="{ backgroundColor: resolvedColors[prop.key] ?? 'transparent' }"
+                  />
+                </div>
+                <div :class="$style.propLabel">
+                  <span :class="$style.propLabelText">{{ prop.label }}</span>
+                  <span :class="$style.propKey">{{ prop.key }}</span>
+                </div>
+                <button
+                  v-if="isOverridden(prop.key)"
+                  class="_button"
+                  :class="$style.resetBtn"
+                  title="デフォルトに戻す"
+                  @click="resetProp(prop.key)"
+                >
+                  <i class="ti ti-x" />
+                </button>
               </div>
-              <input
-                :class="[$style.propValueInput, { [$style.expression]: isExpression(displayValue(prop.key)) }]"
-                type="text"
-                :value="displayValue(prop.key)"
-                :placeholder="baseTheme.props[prop.key] ?? ''"
-                spellcheck="false"
-                @change="(e) => updateColor(prop.key, (e.target as HTMLInputElement).value)"
-                @keydown.enter="(e) => updateColor(prop.key, (e.target as HTMLInputElement).value)"
-              />
-              <span v-if="isExpression(displayValue(prop.key))" :class="$style.resolvedHex">
-                {{ resolvedDisplay(prop.key) }}
-              </span>
-              <button
-                v-if="isOverridden(prop.key)"
-                class="_button"
-                :class="$style.resetBtn"
-                title="デフォルトに戻す"
-                @click="resetProp(prop.key)"
-              >
-                <i class="ti ti-x" />
-              </button>
+              <div :class="$style.propControls">
+                <input
+                  :class="[$style.propValueInput, { [$style.expression]: isExpression(displayValue(prop.key)) }]"
+                  type="text"
+                  :value="displayValue(prop.key)"
+                  :placeholder="baseTheme.props[prop.key] ?? ''"
+                  spellcheck="false"
+                  @change="(e) => updateColor(prop.key, (e.target as HTMLInputElement).value)"
+                  @keydown.enter="(e) => updateColor(prop.key, (e.target as HTMLInputElement).value)"
+                />
+                <span v-if="isExpression(displayValue(prop.key))" :class="$style.resolvedHex">
+                  {{ resolvedDisplay(prop.key) }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Secondary overrides -->
-        <button
-          v-if="secondaryOverrides.length"
-          class="_button"
-          :class="$style.categoryLabel"
-          @click="toggleSection('secondary')"
-        >
-          <i
-            class="ti"
-            :class="collapsedSections.secondary ? 'ti-chevron-right' : 'ti-chevron-down'"
-          />
-          <span>追加プロパティ</span>
-          <span :class="$style.categoryCount">{{ secondaryOverrides.length }}</span>
-        </button>
-        <div v-if="secondaryOverrides.length" v-show="!collapsedSections.secondary" :class="$style.propList">
-          <div
-            v-for="key in secondaryOverrides"
-            :key="key"
-            :class="[$style.propRow, $style.overridden]"
+        <div v-if="secondaryOverrides.length" :class="$style.section">
+          <button
+            class="_button"
+            :class="$style.sectionLabel"
+            @click="toggleSection('secondary')"
           >
-            <div :class="$style.propLabel">
-              <div :class="$style.overrideDot" />
-              <span :class="$style.propKey">{{ key }}</span>
-            </div>
-            <div :class="$style.propControls">
-              <div :class="$style.colorPickerWrap">
-                <input
-                  type="color"
-                  :class="$style.colorPicker"
-                  :value="resolvedHex(key)"
-                  @input="(e) => updateColor(key, (e.target as HTMLInputElement).value)"
-                />
-                <div
-                  :class="[$style.colorSwatch, { [$style.checkerboard]: hasAlpha(key) }]"
-                  :style="{ backgroundColor: resolvedColors[key] ?? 'transparent' }"
-                />
+            <i
+              class="ti"
+              :class="collapsedSections.secondary ? 'ti-chevron-right' : 'ti-chevron-down'"
+            />
+            追加プロパティ
+            <span :class="$style.sectionValue">{{ secondaryOverrides.length }}</span>
+          </button>
+          <div v-show="!collapsedSections.secondary" :class="$style.propList">
+            <div
+              v-for="key in secondaryOverrides"
+              :key="key"
+              :class="[$style.propRow, $style.overridden]"
+            >
+              <div :class="$style.propInfo">
+                <div :class="$style.colorPickerWrap">
+                  <input
+                    type="color"
+                    :class="$style.colorPicker"
+                    :value="resolvedHex(key)"
+                    @input="(e) => updateColor(key, (e.target as HTMLInputElement).value)"
+                  />
+                  <div
+                    :class="[$style.colorSwatch, { [$style.checkerboard]: hasAlpha(key) }]"
+                    :style="{ backgroundColor: resolvedColors[key] ?? 'transparent' }"
+                  />
+                </div>
+                <div :class="$style.propLabel">
+                  <span :class="$style.propKey">{{ key }}</span>
+                </div>
+                <button
+                  class="_button"
+                  :class="$style.resetBtn"
+                  title="削除"
+                  @click="resetProp(key)"
+                >
+                  <i class="ti ti-x" />
+                </button>
               </div>
-              <input
-                :class="[$style.propValueInput, { [$style.expression]: isExpression(displayValue(key)) }]"
-                type="text"
-                :value="displayValue(key)"
-                spellcheck="false"
-                @change="(e) => updateColor(key, (e.target as HTMLInputElement).value)"
-                @keydown.enter="(e) => updateColor(key, (e.target as HTMLInputElement).value)"
-              />
-              <span v-if="isExpression(displayValue(key))" :class="$style.resolvedHex">
-                {{ resolvedDisplay(key) }}
-              </span>
-              <button
-                class="_button"
-                :class="$style.resetBtn"
-                title="削除"
-                @click="resetProp(key)"
-              >
-                <i class="ti ti-x" />
-              </button>
+              <div :class="$style.propControls">
+                <input
+                  :class="[$style.propValueInput, { [$style.expression]: isExpression(displayValue(key)) }]"
+                  type="text"
+                  :value="displayValue(key)"
+                  spellcheck="false"
+                  @change="(e) => updateColor(key, (e.target as HTMLInputElement).value)"
+                  @keydown.enter="(e) => updateColor(key, (e.target as HTMLInputElement).value)"
+                />
+                <span v-if="isExpression(displayValue(key))" :class="$style.resolvedHex">
+                  {{ resolvedDisplay(key) }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Add more props -->
-        <div :class="$style.addPropSection">
+        <div :class="$style.section">
           <div :class="$style.dropdown">
             <button
               class="_button"
@@ -600,7 +612,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
               @click="showAddPropDropdown = !showAddPropDropdown"
             >
               <i class="ti ti-plus" />
-              <span>プロパティを追加... ({{ availableSecondaryProps.length }})</span>
+              <span>プロパティを追加 ({{ availableSecondaryProps.length }})</span>
               <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
             </button>
             <div v-if="showAddPropDropdown" :class="$style.dropdownPanel">
@@ -671,16 +683,15 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
           @click="exportTheme"
         >
           <i class="ti ti-clipboard" />
-          {{ copiedMessage ? 'コピー済み!' : 'JSONコピー' }}
+          {{ copiedMessage ? 'コピー済み!' : 'JSON' }}
         </button>
         <button
+          v-if="hasChangesFromSnapshot"
           class="_button"
           :class="[$style.actionBtn, $style.secondary]"
-          :disabled="!hasChangesFromSnapshot"
           @click="resetToSnapshot"
         >
           <i class="ti ti-arrow-back-up" />
-          リセット
         </button>
       </div>
     </div>
@@ -699,62 +710,6 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   flex: 1;
   min-height: 0;
   overflow: hidden;
-}
-
-.metaSection {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  border-bottom: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.nameInput {
-  padding: 6px 10px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-bg);
-  color: var(--nd-fg);
-  font-size: 0.9em;
-  font-weight: bold;
-  outline: none;
-  transition: border-color var(--nd-duration-base);
-
-  &:focus {
-    border-color: var(--nd-accent);
-  }
-}
-
-.baseToggle {
-  display: flex;
-  gap: 4px;
-}
-
-.baseBtn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-  padding: 6px 10px;
-  border-radius: var(--nd-radius-sm);
-  font-size: 0.8em;
-  font-weight: bold;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  background: var(--nd-buttonBg);
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
-  justify-content: center;
-
-  &:hover {
-    opacity: 0.7;
-  }
-
-  &.active {
-    opacity: 1;
-    background: var(--nd-accentedBg);
-    color: var(--nd-accent);
-  }
 }
 
 .tabs {
@@ -803,6 +758,10 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   /* modifier */
 }
 
+.checkerboard {
+  /* modifier */
+}
+
 .visualPanel {
   display: flex;
   flex-direction: column;
@@ -811,9 +770,81 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   overflow-y: auto;
 }
 
-.loadSection {
-  padding: 8px 10px;
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 10px;
   border-bottom: 1px solid var(--nd-divider);
+}
+
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8em;
+  font-weight: bold;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.sectionValue {
+  margin-left: auto;
+  font-weight: normal;
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+
+.nameInput {
+  padding: 6px 10px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
+  color: var(--nd-fg);
+  font-size: 0.85em;
+  font-weight: bold;
+  outline: none;
+  transition: border-color var(--nd-duration-base);
+
+  &:focus {
+    border-color: var(--nd-accent);
+  }
+}
+
+.baseToggle {
+  display: flex;
+  gap: 4px;
+}
+
+.baseBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: var(--nd-radius-sm);
+  font-size: 0.8em;
+  font-weight: bold;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  background: var(--nd-buttonBg);
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+  justify-content: center;
+
+  &:hover {
+    opacity: 0.7;
+  }
+
+  &.active {
+    opacity: 1;
+    background: var(--nd-accentedBg);
+    color: var(--nd-accent);
+  }
 }
 
 .dropdown {
@@ -961,47 +992,18 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   flex-shrink: 0;
 }
 
-.categoryLabel {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  padding: 8px 10px 4px;
-  font-size: 0.7em;
-  font-weight: bold;
-  opacity: 0.5;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  text-align: left;
-  background: none;
-  border: none;
-  color: var(--nd-fg);
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover {
-    opacity: 0.8;
-  }
-}
-
-.categoryCount {
-  margin-left: auto;
-  font-size: 0.9em;
-  opacity: 0.7;
-  font-weight: normal;
-}
-
 .propList {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
 .propRow {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 6px 10px;
-  border-bottom: 1px solid color-mix(in srgb, var(--nd-divider) 50%, transparent);
+  gap: 4px;
+  padding: 8px;
+  border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-base);
 
   &:hover {
@@ -1009,42 +1011,46 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   }
 
   &.overridden {
-    border-left: 2px solid var(--nd-accent);
-    padding-left: 8px;
+    background: color-mix(in srgb, var(--nd-accent) 5%, transparent);
   }
+}
+
+.propInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .propLabel {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 6px;
-  font-size: 0.8em;
+  flex: 1;
+  min-width: 0;
 }
 
-.overrideDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--nd-accent);
-  flex-shrink: 0;
+.propLabelText {
+  font-size: 0.8em;
+  font-weight: 500;
 }
 
 .propKey {
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 0.85em;
-  opacity: 0.5;
+  font-size: 0.7em;
+  opacity: 0.4;
 }
 
 .propControls {
   display: flex;
   align-items: center;
   gap: 4px;
+  padding-left: 34px;
 }
 
 .colorPickerWrap {
   position: relative;
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
 }
 
@@ -1058,9 +1064,9 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 }
 
 .colorSwatch {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--nd-radius-sm);
   border: 1px solid var(--nd-divider);
   pointer-events: none;
 
@@ -1073,10 +1079,6 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
     background-size: 8px 8px;
     background-position: 0 0, 0 4px, 4px -4px, -4px 0;
   }
-}
-
-.checkerboard {
-  /* modifier */
 }
 
 .propValueInput {
@@ -1113,11 +1115,11 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
-  opacity: 0.4;
+  opacity: 0.3;
   flex-shrink: 0;
   transition: opacity var(--nd-duration-base), color var(--nd-duration-base);
 
@@ -1125,13 +1127,6 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
     opacity: 1;
     color: var(--nd-love);
   }
-}
-
-.addPropSection {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 10px;
 }
 
 .codePanel {
@@ -1150,11 +1145,15 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 }
 
 .codeError {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding: 6px 8px;
   border-radius: var(--nd-radius-sm);
-  background: var(--nd-love-subtle);
+  background: color-mix(in srgb, var(--nd-love) 10%, var(--nd-bg));
   color: var(--nd-love);
-  font-size: 0.8em;
+  font-size: 0.75em;
+  word-break: break-all;
 }
 
 .codeApplyBtn {
@@ -1200,12 +1199,8 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
     background: var(--nd-accentDarken);
   }
 
-  &:disabled {
-    opacity: 0.3;
-    pointer-events: none;
-  }
-
   &.secondary {
+    flex: 0;
     background: var(--nd-buttonBg);
     color: var(--nd-fg);
 
