@@ -285,6 +285,45 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   let customSheet: CSSStyleSheet | null = null
+  let customAtRuleStyle: HTMLStyleElement | null = null
+
+  /**
+   * Split @import / @font-face rules from the rest of CSS.
+   * replaceSync() silently ignores these at-rules, so they must be
+   * injected via a regular <style> element for browsers / Android WebView
+   * to actually fetch external fonts.
+   */
+  function splitAtRules(css: string): {
+    atRules: string
+    rest: string
+  } {
+    const atRuleLines: string[] = []
+    const restLines: string[] = []
+    let inFontFace = false
+    let braceDepth = 0
+    for (const line of css.split('\n')) {
+      const trimmed = line.trim()
+      if (inFontFace) {
+        atRuleLines.push(line)
+        braceDepth += (line.match(/\{/g) || []).length
+        braceDepth -= (line.match(/\}/g) || []).length
+        if (braceDepth <= 0) inFontFace = false
+        continue
+      }
+      if (trimmed.startsWith('@import')) {
+        atRuleLines.push(line)
+      } else if (trimmed.startsWith('@font-face')) {
+        inFontFace = true
+        braceDepth =
+          (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length
+        if (braceDepth <= 0) inFontFace = false
+        atRuleLines.push(line)
+      } else {
+        restLines.push(line)
+      }
+    }
+    return { atRules: atRuleLines.join('\n'), rest: restLines.join('\n') }
+  }
 
   function applyCustomCss(css: string): void {
     if (!css) {
@@ -294,12 +333,33 @@ export const useThemeStore = defineStore('theme', () => {
         )
         customSheet = null
       }
+      if (customAtRuleStyle) {
+        customAtRuleStyle.remove()
+        customAtRuleStyle = null
+      }
       return
     }
+
+    const { atRules, rest } = splitAtRules(css)
+
+    // Inject @import / @font-face via <style> element
+    if (atRules.trim()) {
+      if (!customAtRuleStyle) {
+        customAtRuleStyle = document.createElement('style')
+        customAtRuleStyle.setAttribute('data-nd-custom-atrules', '')
+        document.head.appendChild(customAtRuleStyle)
+      }
+      customAtRuleStyle.textContent = atRules
+    } else if (customAtRuleStyle) {
+      customAtRuleStyle.remove()
+      customAtRuleStyle = null
+    }
+
+    // Apply remaining rules via adoptedStyleSheets
     if (!customSheet) {
       customSheet = new CSSStyleSheet()
     }
-    customSheet.replaceSync(css)
+    customSheet.replaceSync(rest)
     // Always re-append to ensure it's last (highest priority)
     document.adoptedStyleSheets = [
       ...document.adoptedStyleSheets.filter((s) => s !== customSheet),
