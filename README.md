@@ -14,6 +14,7 @@
 [![License](https://img.shields.io/github/license/hitalin/notedeck?style=flat-square)](https://github.com/hitalin/notedeck/blob/main/LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/hitalin/notedeck?style=flat-square)](https://github.com/hitalin/notedeck/stargazers)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](https://github.com/hitalin/notedeck/pulls)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/hitalin/notedeck)
 
 [ダウンロード](https://github.com/hitalin/notedeck/releases/latest) ·
 [Issues](https://github.com/hitalin/notedeck/issues) ·
