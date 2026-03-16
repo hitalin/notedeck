@@ -502,6 +502,8 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" module>
+@use './column-common.module.scss';
+
 .notifHeaderIcon {
   flex-shrink: 0;
   opacity: 0.7;
