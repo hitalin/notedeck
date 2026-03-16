@@ -144,6 +144,27 @@ pub fn extract_iframe_src(html: &str) -> Option<String> {
         .map(|m| m.as_str().to_string())
 }
 
+/// Fetch an oEmbed JSON response from the given endpoint URL.
+pub async fn fetch_oembed(
+    client: &reqwest::Client,
+    endpoint: &str,
+) -> Result<OEmbedResponse, PluginError> {
+    let resp = client
+        .get(endpoint)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| PluginError::FetchFailed(e.to_string()))?;
+
+    if !resp.status().is_success() {
+        return Err(PluginError::HttpStatus(resp.status().as_u16()));
+    }
+
+    resp.json()
+        .await
+        .map_err(|e| PluginError::ParseFailed(e.to_string()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -266,25 +287,4 @@ mod tests {
         let t: T = serde_json::from_str(json).unwrap();
         assert_eq!(t.width, None);
     }
-}
-
-/// Fetch an oEmbed JSON response from the given endpoint URL.
-pub async fn fetch_oembed(
-    client: &reqwest::Client,
-    endpoint: &str,
-) -> Result<OEmbedResponse, PluginError> {
-    let resp = client
-        .get(endpoint)
-        .header("Accept", "application/json")
-        .send()
-        .await
-        .map_err(|e| PluginError::FetchFailed(e.to_string()))?;
-
-    if !resp.status().is_success() {
-        return Err(PluginError::HttpStatus(resp.status().as_u16()));
-    }
-
-    resp.json()
-        .await
-        .map_err(|e| PluginError::ParseFailed(e.to_string()))
 }
