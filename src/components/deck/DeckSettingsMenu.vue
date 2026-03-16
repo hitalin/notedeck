@@ -164,7 +164,7 @@ function syncScroll(e: Event) {
 </script>
 
 <template>
-  <Teleport to="body" :disabled="!anchor">
+  <Teleport to="body">
   <div v-if="show" :class="$style.menuBackdrop" @pointerdown="emit('close')" />
   <Transition name="settings-menu">
     <div v-if="show" ref="menuEl" :class="[$style.settingsMenu, { [$style.mobile]: isCompact }]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>

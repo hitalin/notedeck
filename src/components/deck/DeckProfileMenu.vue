@@ -83,7 +83,7 @@ function remove(id: string) {
 </script>
 
 <template>
-  <Teleport to="body" :disabled="!anchor">
+  <Teleport to="body">
   <div v-if="show" :class="$style.menuBackdrop" @pointerdown="emit('close')" />
   <Transition name="profile-menu">
     <div v-if="show" ref="menuEl" :class="[$style.profileMenu, { [$style.mobile]: isCompact }]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
