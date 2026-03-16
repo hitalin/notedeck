@@ -174,6 +174,37 @@ describe('deck store', () => {
     expect(deck2.layout).toEqual([[col.id]])
   })
 
+  it('removeColumn persists across app restart (profile-aware)', () => {
+    const deck = useDeckStore()
+    deck.load() // creates default profile, sets windowProfileId
+
+    const col1 = deck.addColumn({
+      type: 'timeline',
+      name: 'A',
+      width: 400,
+      accountId: null,
+    })
+    const col2 = deck.addColumn({
+      type: 'timeline',
+      name: 'B',
+      width: 400,
+      accountId: null,
+    })
+    vi.advanceTimersByTime(100) // flush debounced save
+
+    // Remove column A
+    deck.removeColumn(col1.id)
+
+    // Simulate app restart
+    setActivePinia(createPinia())
+    const deck2 = useDeckStore()
+    deck2.load()
+
+    expect(deck2.columns).toHaveLength(1)
+    expect(deck2.columns[0]?.name).toBe('B')
+    expect(deck2.columns[0]?.id).toBe(col2.id)
+  })
+
   it('clear removes all columns and layout', () => {
     const deck = useDeckStore()
     deck.addColumn({ type: 'timeline', name: 'A', width: 400, accountId: null })
