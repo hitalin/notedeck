@@ -256,10 +256,11 @@ watch(
 function scrollToColumn(index: number) {
   if (!columnsRef.value) return
   if (isCompact.value) {
-    // Mobile: 1 column = full viewport width
+    // Mobile: タブタップ時は instant で即座に切り替え
+    // （smooth だとハイライト線とカラム表示がずれて見える）
     columnsRef.value.scrollTo({
       left: index * columnsRef.value.clientWidth,
-      behavior: 'smooth',
+      behavior: 'instant',
     })
   } else {
     // Desktop: find the section containing the flat index and scroll to it
