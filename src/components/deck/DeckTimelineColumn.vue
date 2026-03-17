@@ -649,8 +649,9 @@ useSwipeTab(
     if (timeMachine.isActive.value) return
     const types = allTlTypes.value
     const idx = types.findIndex((t) => t.value === tlType.value)
-    if (idx >= 0 && idx < types.length - 1) {
-      switchTl(types[idx + 1].value)
+    const next = idx >= 0 && idx < types.length - 1 ? types[idx + 1] : undefined
+    if (next) {
+      switchTl(next.value)
     }
   },
   () => {
@@ -658,8 +659,9 @@ useSwipeTab(
     if (timeMachine.isActive.value) return
     const types = allTlTypes.value
     const idx = types.findIndex((t) => t.value === tlType.value)
-    if (idx > 0) {
-      switchTl(types[idx - 1].value)
+    const prev = idx > 0 ? types[idx - 1] : undefined
+    if (prev) {
+      switchTl(prev.value)
     }
   },
 )
