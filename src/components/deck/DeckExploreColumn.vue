@@ -186,16 +186,18 @@ useSwipeTab(
   columnContentRef,
   () => {
     const idx = tabs.indexOf(activeTab.value)
-    if (idx < tabs.length - 1) {
-      switchTab(tabs[idx + 1])
+    const next = tabs[idx + 1]
+    if (next) {
+      switchTab(next)
       return true
     }
     return false
   },
   () => {
     const idx = tabs.indexOf(activeTab.value)
-    if (idx > 0) {
-      switchTab(tabs[idx - 1])
+    const prev = tabs[idx - 1]
+    if (prev) {
+      switchTab(prev)
       return true
     }
     return false

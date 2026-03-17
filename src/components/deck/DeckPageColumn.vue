@@ -126,8 +126,9 @@ useSwipeTab(
   () => {
     if (mode.value !== 'list') return false
     const idx = tabs.indexOf(activeTab.value)
-    if (idx < tabs.length - 1) {
-      fetchList(tabs[idx + 1])
+    const next = tabs[idx + 1]
+    if (next) {
+      fetchList(next)
       return true
     }
     return false
@@ -135,8 +136,9 @@ useSwipeTab(
   () => {
     if (mode.value !== 'list') return false
     const idx = tabs.indexOf(activeTab.value)
-    if (idx > 0) {
-      fetchList(tabs[idx - 1])
+    const prev = tabs[idx - 1]
+    if (prev) {
+      fetchList(prev)
       return true
     }
     return false
