@@ -33,6 +33,7 @@ import { useNoteList } from '@/composables/useNoteList'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTimeMachine } from '@/composables/useTimeMachine'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -639,6 +640,29 @@ async function pullRefresh() {
 
 const { isPulling, isPulledEnough, isRefreshing, pullDistance, displayHeight } =
   usePullToRefresh(scroller, pullRefresh)
+
+// Swipe to switch timeline tabs
+useSwipeTab(
+  scroller,
+  () => {
+    // swipe left → next tab
+    if (timeMachine.isActive.value) return
+    const types = allTlTypes.value
+    const idx = types.findIndex((t) => t.value === tlType.value)
+    if (idx >= 0 && idx < types.length - 1) {
+      switchTl(types[idx + 1].value)
+    }
+  },
+  () => {
+    // swipe right → previous tab
+    if (timeMachine.isActive.value) return
+    const types = allTlTypes.value
+    const idx = types.findIndex((t) => t.value === tlType.value)
+    if (idx > 0) {
+      switchTl(types[idx - 1].value)
+    }
+  },
+)
 
 watch(
   () => accountsStore.modeVersion,
