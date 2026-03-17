@@ -27,7 +27,7 @@ unsafe extern "system" fn subclass_proc(
         // High word of WPARAM = wheel delta (signed); positive = tilt right
         let delta = ((wparam.0 as u32 >> 16) & 0xFFFF) as i16 as i32;
         if let Some(w) = WEBVIEW.get() {
-            let _ = w.eval(&format!("window.__ndHWheel&&window.__ndHWheel({})", delta));
+            let _ = w.eval(format!("window.__ndHWheel&&window.__ndHWheel({})", delta));
         }
         return LRESULT(0);
     }
