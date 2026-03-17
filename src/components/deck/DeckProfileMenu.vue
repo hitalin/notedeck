@@ -52,9 +52,19 @@ function createProfile() {
   refreshProfileCommands()
 }
 
-function apply(id: string) {
+let switching = false
+
+async function apply(id: string) {
   if (editingId.value === id) return
-  switchProfileWithWindows(id)
+  if (switching) return
+  switching = true
+  try {
+    await switchProfileWithWindows(id)
+  } catch (e) {
+    console.warn('[profile] switch failed:', e)
+  } finally {
+    switching = false
+  }
   profiles.value = deckStore.getProfiles()
 }
 
@@ -143,11 +153,11 @@ function remove(id: string) {
 .menuBackdrop {
   position: fixed;
   inset: 0;
-  z-index: var(--nd-z-popup);
+  z-index: var(--nd-z-popup) !important;
 }
 
 .profileMenu {
-  z-index: calc(var(--nd-z-popup) + 1);
+  z-index: calc(var(--nd-z-popup) + 1) !important;
   bottom: 100%;
   left: 0;
   margin-bottom: 4px;
