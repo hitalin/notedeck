@@ -25,6 +25,7 @@ const MkPostForm = defineAsyncComponent(
 )
 
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
@@ -50,7 +51,9 @@ const mode = ref<Mode>('list')
 
 // --- List mode ---
 type Tab = 'featured' | 'my' | 'likes'
+const tabs: Tab[] = ['featured', 'my', 'likes']
 const activeTab = ref<Tab>('featured')
+const listContentRef = ref<HTMLElement | null>(null)
 
 interface FlashSummary {
   id: string
@@ -110,6 +113,21 @@ async function fetchList(tab?: Tab) {
 
 // Initial load
 fetchList()
+
+// Swipe / wheel to switch tabs (list mode only)
+useSwipeTab(
+  listContentRef,
+  () => {
+    if (mode.value !== 'list') return
+    const idx = tabs.indexOf(activeTab.value)
+    if (idx < tabs.length - 1) fetchList(tabs[idx + 1])
+  },
+  () => {
+    if (mode.value !== 'list') return
+    const idx = tabs.indexOf(activeTab.value)
+    if (idx > 0) fetchList(tabs[idx - 1])
+  },
+)
 
 // --- Flash detail ---
 interface FlashDetail {
@@ -344,6 +362,7 @@ function reload() {
 
     <!-- List mode -->
     <template v-if="mode === 'list'">
+      <div ref="listContentRef" :class="$style.playListContent">
       <div :class="$style.playTabs">
         <button
           v-for="tab in (['featured', 'my', 'likes'] as Tab[])"
@@ -376,6 +395,7 @@ function reload() {
           </div>
           <div v-if="item.summary" :class="$style.playCardSummary">{{ item.summary }}</div>
         </button>
+      </div>
       </div>
     </template>
 
@@ -485,6 +505,13 @@ function reload() {
 @use "./column-common.module.scss";
 
 /* --- List mode --- */
+
+.playListContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
 
 .playTabs {
   display: flex;

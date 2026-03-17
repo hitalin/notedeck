@@ -15,6 +15,7 @@ import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteColumn } from '@/composables/useNoteColumn'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
@@ -25,7 +26,9 @@ const props = defineProps<{
 
 // --- Tab ---
 type Tab = 'notes' | 'users' | 'roles'
+const tabs: Tab[] = ['notes', 'users', 'roles']
 const activeTab = ref<Tab>('notes')
+const columnContentRef = ref<HTMLElement | null>(null)
 
 // --- Notes tab (useNoteColumn) ---
 const {
@@ -178,6 +181,19 @@ function switchTab(tab: Tab) {
   if (tab === 'roles' && !rolesFetched.value) fetchRoles()
 }
 
+// Swipe / wheel to switch tabs
+useSwipeTab(
+  columnContentRef,
+  () => {
+    const idx = tabs.indexOf(activeTab.value)
+    if (idx < tabs.length - 1) switchTab(tabs[idx + 1])
+  },
+  () => {
+    const idx = tabs.indexOf(activeTab.value)
+    if (idx > 0) switchTab(tabs[idx - 1])
+  },
+)
+
 function refresh() {
   if (activeTab.value === 'notes') {
     refreshNotes()
@@ -251,6 +267,7 @@ function closeUserPopup() {
     </div>
 
     <template v-else>
+      <div ref="columnContentRef" :class="$style.exploreContent">
       <!-- Tabs -->
       <div :class="$style.exploreTabs">
         <button
@@ -403,6 +420,7 @@ function closeUserPopup() {
           </div>
         </template>
       </template>
+      </div>
     </template>
   </DeckColumn>
 
@@ -429,6 +447,13 @@ function closeUserPopup() {
 
 <style lang="scss" module>
 @use './column-common.module.scss';
+.exploreContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 /* --- Tabs --- */
 .exploreTabs {
   display: flex;
