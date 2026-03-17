@@ -2668,6 +2668,7 @@ dependencies = [
  "url",
  "utoipa",
  "uuid",
+ "windows",
  "zeroize",
 ]
 
