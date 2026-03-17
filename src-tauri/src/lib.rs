@@ -11,6 +11,8 @@ use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 mod commands;
+#[cfg(target_os = "windows")]
+mod hwheel_hook;
 mod http_server;
 mod image_cache;
 mod ogp;
@@ -291,6 +293,12 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 })
                 .build(app)?;
+        }
+
+        // Forward WM_MOUSEHWHEEL to WebView (Windows WebView2 workaround)
+        #[cfg(target_os = "windows")]
+        if let Some(w) = app.get_webview_window("main") {
+            hwheel_hook::install(&w);
         }
 
         Ok(())

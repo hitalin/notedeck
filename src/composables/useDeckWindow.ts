@@ -256,7 +256,13 @@ export async function requestMoveColumn(
 export async function closeAllSubWindows(): Promise<void> {
   const promises: Promise<void>[] = []
   for (const [, win] of openWindows) {
-    promises.push(win.close())
+    // Timeout to prevent hanging on stale window references
+    promises.push(
+      Promise.race([
+        win.close(),
+        new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+      ]),
+    )
   }
   await Promise.allSettled(promises)
   openWindows.clear()

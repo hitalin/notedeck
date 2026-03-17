@@ -1,6 +1,6 @@
 import { listen } from '@tauri-apps/api/event'
 import { defineStore } from 'pinia'
-import { computed, ref, toRaw } from 'vue'
+import { computed, ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 
@@ -96,6 +96,11 @@ function genColumnId(): string {
 }
 
 const DECK_KEY = 'nd-deck'
+
+/** Deep-clone reactive state into a plain object safe for localStorage. */
+function deepClone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value))
+}
 
 export const useDeckStore = defineStore('deck', () => {
   const columns = ref<DeckColumn[]>([])
@@ -366,8 +371,8 @@ export const useDeckStore = defineStore('deck', () => {
         // Save to the profile entry
         const { profiles, profile } = loadProfileById(windowProfileId.value)
         if (profile) {
-          profile.columns = structuredClone(toRaw(columns.value))
-          profile.layout = structuredClone(toRaw(layout.value))
+          profile.columns = deepClone(columns.value)
+          profile.layout = deepClone(layout.value)
           saveProfiles(profiles)
         }
       }
@@ -420,8 +425,8 @@ export const useDeckStore = defineStore('deck', () => {
       const profile: DeckProfile = {
         id: genProfileId(),
         name: 'プロファイル 1',
-        columns: structuredClone(toRaw(columns.value)),
-        layout: structuredClone(toRaw(layout.value)),
+        columns: deepClone(columns.value),
+        layout: deepClone(layout.value),
         createdAt: Date.now(),
       }
       profiles.push(profile)
@@ -563,8 +568,8 @@ export const useDeckStore = defineStore('deck', () => {
     if (!windowProfileId.value) return
     const { profiles, profile } = loadProfileById(windowProfileId.value)
     if (!profile) return
-    profile.columns = structuredClone(toRaw(columns.value))
-    profile.layout = structuredClone(toRaw(layout.value))
+    profile.columns = deepClone(columns.value)
+    profile.layout = deepClone(layout.value)
     saveProfiles(profiles)
   }
 

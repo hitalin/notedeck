@@ -328,11 +328,11 @@ function syncScroll(e: Event) {
 .menuBackdrop {
   position: fixed;
   inset: 0;
-  z-index: var(--nd-z-popup);
+  z-index: var(--nd-z-popup) !important;
 }
 
 .settingsMenu {
-  z-index: calc(var(--nd-z-popup) + 1);
+  z-index: calc(var(--nd-z-popup) + 1) !important;
   bottom: 100%;
   right: 0;
   margin-bottom: 4px;
@@ -969,7 +969,8 @@ function syncScroll(e: Event) {
   position: fixed;
   bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
   left: 8px;
-  right: 8px;
+  right: auto;
+  width: 234px;
   max-width: none;
   min-width: 0;
   border-radius: 12px;

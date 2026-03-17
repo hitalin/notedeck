@@ -2637,7 +2637,7 @@ dependencies = [
 
 [[package]]
 name = "notedeck"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "async-trait",
  "axum",
@@ -2668,6 +2668,7 @@ dependencies = [
  "url",
  "utoipa",
  "uuid",
+ "windows",
  "zeroize",
 ]
 
