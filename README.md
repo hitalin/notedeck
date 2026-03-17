@@ -9,6 +9,7 @@
 マルチサーバー対応 Misskey デッキクライアント
 
 [![GitHub Release](https://img.shields.io/github/v/release/hitalin/notedeck?style=flat-square)](https://github.com/hitalin/notedeck/releases/latest)
+[![winget](https://img.shields.io/badge/winget-Hitalin.NoteDeck-blue?style=flat-square&logo=windows)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/h/Hitalin/NoteDeck)
 [![AUR](https://img.shields.io/aur/version/misskey-notedeck-bin?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/misskey-notedeck-bin)
 [![Nix Flake](https://img.shields.io/badge/nix-flake-blue?style=flat-square&logo=nixos)](https://github.com/hitalin/notedeck)
 [![License](https://img.shields.io/github/license/hitalin/notedeck?style=flat-square)](https://github.com/hitalin/notedeck/blob/main/LICENSE)
@@ -31,6 +32,12 @@
 | Windows | macOS | Linux | Android |
 |---|---|---|---|
 | `.exe` | `.dmg` (Universal) | `.deb` / `.AppImage` | `.apk` |
+
+**Windows (winget)**
+
+```bash
+winget install Hitalin.NoteDeck
+```
 
 **Arch Linux (AUR)**
 
