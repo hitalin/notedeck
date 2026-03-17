@@ -2646,6 +2646,7 @@ dependencies = [
  "lru",
  "mime_guess",
  "notecli",
+ "raw-window-handle",
  "regex",
  "reqwest 0.12.28",
  "scraper",
