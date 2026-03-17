@@ -646,23 +646,27 @@ useSwipeTab(
   scroller,
   () => {
     // swipe left → next tab
-    if (timeMachine.isActive.value) return
+    if (timeMachine.isActive.value) return false
     const types = allTlTypes.value
     const idx = types.findIndex((t) => t.value === tlType.value)
     const next = idx >= 0 && idx < types.length - 1 ? types[idx + 1] : undefined
     if (next) {
       switchTl(next.value)
+      return true
     }
+    return false
   },
   () => {
     // swipe right → previous tab
-    if (timeMachine.isActive.value) return
+    if (timeMachine.isActive.value) return false
     const types = allTlTypes.value
     const idx = types.findIndex((t) => t.value === tlType.value)
     const prev = idx > 0 ? types[idx - 1] : undefined
     if (prev) {
       switchTl(prev.value)
+      return true
     }
+    return false
   },
 )
 

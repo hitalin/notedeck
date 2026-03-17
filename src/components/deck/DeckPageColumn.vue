@@ -28,6 +28,7 @@ const MkPostForm = defineAsyncComponent(
 )
 
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
@@ -53,7 +54,9 @@ const mode = ref<Mode>('list')
 
 // --- List mode ---
 type Tab = 'featured' | 'my' | 'likes'
+const tabs: Tab[] = ['featured', 'my', 'likes']
 const activeTab = ref<Tab>('featured')
+const listContentRef = ref<HTMLElement | null>(null)
 
 interface PageSummary {
   id: string
@@ -116,6 +119,29 @@ if (props.column.pageId) {
 } else {
   fetchList()
 }
+
+// Swipe / wheel to switch tabs (list mode only)
+useSwipeTab(
+  listContentRef,
+  () => {
+    if (mode.value !== 'list') return false
+    const idx = tabs.indexOf(activeTab.value)
+    if (idx < tabs.length - 1) {
+      fetchList(tabs[idx + 1])
+      return true
+    }
+    return false
+  },
+  () => {
+    if (mode.value !== 'list') return false
+    const idx = tabs.indexOf(activeTab.value)
+    if (idx > 0) {
+      fetchList(tabs[idx - 1])
+      return true
+    }
+    return false
+  },
+)
 
 // --- Page detail ---
 interface PageContent {
@@ -368,6 +394,7 @@ const pageEditUrl = computed(() => {
 
     <!-- List mode -->
     <template v-if="mode === 'list'">
+      <div ref="listContentRef" :class="$style.pageListContent">
       <div :class="$style.pageTabs">
         <button
           v-for="tab in (['featured', 'my', 'likes'] as Tab[])"
@@ -400,6 +427,7 @@ const pageEditUrl = computed(() => {
           </div>
           <div v-if="item.summary" :class="$style.pageCardSummary">{{ item.summary }}</div>
         </button>
+      </div>
       </div>
     </template>
 
@@ -511,6 +539,13 @@ const pageEditUrl = computed(() => {
 @use "./column-common.module.scss";
 
 /* --- List mode --- */
+
+.pageListContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
 
 .pageTabs {
   display: flex;
