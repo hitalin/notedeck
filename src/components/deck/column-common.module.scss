@@ -170,14 +170,24 @@
 
 /* Offline banner */
 .offlineBanner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 6px 12px;
-  font-size: 0.8em;
-  color: var(--nd-warn);
-  background: color-mix(in srgb, var(--nd-warn) 10%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--nd-warn) 20%, transparent);
+  padding: 6px 14px;
+  border-radius: var(--nd-radius-full);
+  font-size: 0.85em;
+  font-weight: bold;
+  color: var(--nd-fgOnAccent);
+  background: color-mix(in srgb, var(--nd-warn) 70%, transparent);
+  -webkit-backdrop-filter: blur(var(--nd-blur-panel));
+  backdrop-filter: blur(var(--nd-blur-panel));
+  animation: slide-down 0.3s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* Loading */
