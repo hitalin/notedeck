@@ -5,10 +5,17 @@ const ANGLE_THRESHOLD = 30 // degrees — swipe must be within this angle from h
 const WHEEL_THRESHOLD = 50
 const WHEEL_COOLDOWN = 300 // ms — prevent rapid-fire tab switches
 
+/**
+ * Swipe / horizontal wheel to switch tabs.
+ *
+ * Callbacks return `true` when the event was consumed (tab switched).
+ * When consumed, `stopPropagation()` prevents the parent DeckColumnsArea
+ * from also scrolling columns horizontally.
+ */
 export function useSwipeTab(
   targetRef: Ref<HTMLElement | null>,
-  onSwipeLeft: () => void,
-  onSwipeRight: () => void,
+  onSwipeLeft: () => boolean | undefined,
+  onSwipeRight: () => boolean | undefined,
 ) {
   let startX = 0
   let startY = 0
@@ -67,12 +74,13 @@ export function useSwipeTab(
 
     if (Math.abs(wheelAccum) >= WHEEL_THRESHOLD) {
       lastWheelAt = now
-      if (wheelAccum > 0) {
-        onSwipeLeft()
-      } else {
-        onSwipeRight()
-      }
+      const consumed = wheelAccum > 0 ? onSwipeLeft() : onSwipeRight()
       wheelAccum = 0
+
+      // Stop the event from reaching DeckColumnsArea when tab was switched
+      if (consumed) {
+        e.stopPropagation()
+      }
     }
   }
 
@@ -84,7 +92,8 @@ export function useSwipeTab(
     boundEl = el
     el.addEventListener('touchstart', onTouchStart, { passive: true })
     el.addEventListener('touchend', onTouchEnd, { passive: true })
-    el.addEventListener('wheel', onWheel, { passive: true })
+    // Not passive: stopPropagation requires non-passive on some engines
+    el.addEventListener('wheel', onWheel)
   }
 
   function unbind() {

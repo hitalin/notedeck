@@ -118,14 +118,22 @@ fetchList()
 useSwipeTab(
   listContentRef,
   () => {
-    if (mode.value !== 'list') return
+    if (mode.value !== 'list') return false
     const idx = tabs.indexOf(activeTab.value)
-    if (idx < tabs.length - 1) fetchList(tabs[idx + 1])
+    if (idx < tabs.length - 1) {
+      fetchList(tabs[idx + 1])
+      return true
+    }
+    return false
   },
   () => {
-    if (mode.value !== 'list') return
+    if (mode.value !== 'list') return false
     const idx = tabs.indexOf(activeTab.value)
-    if (idx > 0) fetchList(tabs[idx - 1])
+    if (idx > 0) {
+      fetchList(tabs[idx - 1])
+      return true
+    }
+    return false
   },
 )
 
