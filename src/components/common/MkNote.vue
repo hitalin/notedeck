@@ -100,6 +100,7 @@ const instanceTickerStyle = computed(() => {
 })
 
 const renoteMenuPos = ref<{ x: number; y: number } | null>(null)
+const renoteMenuTheme = ref<Record<string, string>>({})
 const myRenoteId = ref<string | null>(null)
 const isRenoted = ref(false)
 
@@ -109,6 +110,8 @@ function openRenoteMenu(e: MouseEvent) {
     return
   }
   const el = e.currentTarget as HTMLElement
+  const column = el.closest('.deck-column') as HTMLElement | null
+  if (column) renoteMenuTheme.value = extractThemeVars(column)
   const rect = el.getBoundingClientRect()
   let x = rect.left
   let y = rect.bottom + 4
@@ -599,7 +602,7 @@ function closeMentionPopup() {
         <div
           :class="$style.renotePopup"
           class="_popup nd-popup-content popup-menu"
-          :style="{ top: renoteMenuPos.y + 'px', left: renoteMenuPos.x + 'px' }"
+          :style="{ ...renoteMenuTheme, top: renoteMenuPos.y + 'px', left: renoteMenuPos.x + 'px' }"
           @click.stop
         >
           <button v-if="myRenoteId" :class="[$style.renotePopupItem, $style.renotePopupItemActive]" @click="handleUnrenote()">
