@@ -9,11 +9,7 @@ import {
 } from 'vue'
 import { useCommandStore } from '@/commands/registry'
 import { openDeckWindow } from '@/composables/useDeckWindow'
-import {
-  closePipWindow,
-  isPipOpen,
-  openPipWindow,
-} from '@/composables/usePipWindow'
+import { openPipWindow } from '@/composables/usePipWindow'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
@@ -122,18 +118,17 @@ function openNewWindow() {
   openDeckWindow(profile.id)
 }
 
-async function togglePip() {
-  if (await isPipOpen()) {
-    await closePipWindow()
-    return
-  }
+async function onPipClick() {
+  // If active column exists, open it as PiP directly
   const col = deckStore.activeColumnId
     ? deckStore.columns.find((c) => c.id === deckStore.activeColumnId)
     : null
-  const accountId = col?.accountId ?? accountsStore.accounts[0]?.id
-  const timeline = col?.tl ?? 'home'
-  if (accountId) {
-    await openPipWindow(accountId, timeline)
+  if (col) {
+    const { id: _, ...config } = col
+    await openPipWindow(config)
+  } else {
+    // No active column — open PiP with column selector
+    await openPipWindow()
   }
 }
 </script>
@@ -171,7 +166,7 @@ async function togglePip() {
       <button
         :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
         title="ピクチャーインピクチャー"
-        @click="togglePip"
+        @click="onPipClick"
       >
         <i class="ti ti-picture-in-picture" />
       </button>

@@ -1,43 +1,39 @@
 import { listen } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
-import type { TimelineType } from '@/adapters/types'
+import type { DeckColumn } from '@/stores/deck'
 
-const PIP_LABEL = 'pip'
-const PIP_WIDTH = 360
-const PIP_HEIGHT = 420
+const PIP_WIDTH = 375
+const PIP_HEIGHT = 700
 
-let pipWindow: WebviewWindow | null = null
-let unlistenFn: (() => void) | null = null
-let creating = false
+const pipWindows = new Map<string, WebviewWindow>()
+const creatingSet = new Set<string>()
+let pipCounter = 0
 
-async function getExistingPipWindow(): Promise<WebviewWindow | null> {
-  return await WebviewWindow.getByLabel(PIP_LABEL)
+function genPipLabel(): string {
+  return `pip-${Date.now()}-${++pipCounter}`
 }
 
+/**
+ * Open a new PiP window.
+ * - Without columnConfig: shows column selector inside the PiP window
+ * - With columnConfig: immediately renders the specified column
+ */
 export async function openPipWindow(
-  accountId: string,
-  timeline: TimelineType = 'home',
+  columnConfig?: Omit<DeckColumn, 'id'>,
 ): Promise<void> {
-  // Prevent double creation (guard before any await)
-  if (creating) return
-  creating = true
+  const label = genPipLabel()
+
+  if (creatingSet.has(label)) return
+  creatingSet.add(label)
 
   try {
-    // Check for existing window (including externally managed ones)
-    const existing = pipWindow ?? (await getExistingPipWindow())
-    if (existing) {
-      try {
-        await existing.setFocus()
-        pipWindow = existing
-        return
-      } catch {
-        pipWindow = null
-      }
+    let url = '/pip'
+    if (columnConfig) {
+      const encoded = btoa(encodeURIComponent(JSON.stringify(columnConfig)))
+      url = `/pip?col=${encoded}`
     }
 
-    const url = `/pip?accountId=${encodeURIComponent(accountId)}&timeline=${encodeURIComponent(timeline)}`
-
-    const win = new WebviewWindow(PIP_LABEL, {
+    const win = new WebviewWindow(label, {
       url,
       title: 'NoteDeck PiP',
       width: PIP_WIDTH,
@@ -60,40 +56,36 @@ export async function openPipWindow(
     // Windows: constructor alwaysOnTop may not take effect; re-apply explicitly
     await win.setAlwaysOnTop(true)
 
-    pipWindow = win
+    pipWindows.set(label, win)
 
     // Clean up reference when window is closed
     win.once('tauri://destroyed', () => {
-      pipWindow = null
-      unlistenFn?.()
-      unlistenFn = null
+      pipWindows.delete(label)
     })
   } catch {
-    pipWindow = null
+    // ignore
   } finally {
-    creating = false
+    creatingSet.delete(label)
   }
 }
 
-export async function closePipWindow(): Promise<void> {
-  const win = pipWindow ?? (await getExistingPipWindow())
-  if (win) {
+export async function closeAllPipWindows(): Promise<void> {
+  for (const [, win] of pipWindows) {
     try {
       await win.close()
     } catch {
       // Already closed
     }
-    pipWindow = null
   }
+  pipWindows.clear()
 }
 
-export async function isPipOpen(): Promise<boolean> {
-  if (pipWindow) return true
-  return (await getExistingPipWindow()) !== null
+export function isPipOpen(): boolean {
+  return pipWindows.size > 0
 }
 
 /**
- * Listen for IPC events from PiP window (call from main window).
+ * Listen for IPC events from PiP windows (call from main window).
  * Returns cleanup function.
  */
 export async function listenPipEvents(handlers: {
@@ -105,6 +97,5 @@ export async function listenPipEvents(handlers: {
       handlers.onOpenNote?.(event.payload.accountId, event.payload.noteId)
     },
   )
-  unlistenFn = unlisten
   return unlisten
 }

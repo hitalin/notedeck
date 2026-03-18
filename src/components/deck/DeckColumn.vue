@@ -17,6 +17,8 @@ const props = defineProps<{
   webUiUrl?: string
 }>()
 
+const isPipMode = window.location.pathname === '/pip'
+
 const emit = defineEmits<{ 'header-click': [] }>()
 
 const deckStore = useDeckStore()
@@ -65,8 +67,13 @@ onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', onMenuOutsideClick)
 })
 
-function close() {
+async function close() {
   closeMenu()
+  if (isPipMode) {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    await getCurrentWindow().close()
+    return
+  }
   deckStore.removeColumn(props.columnId)
 }
 
@@ -93,6 +100,18 @@ function onOpenWebUi() {
   closeMenu()
   if (props.webUiUrl) openUrl(props.webUiUrl)
 }
+
+/** Open this column as a PiP window, then remove from deck */
+function openAsPip() {
+  closeMenu()
+  const col = deckStore.getColumn(props.columnId)
+  if (!col) return
+  const { id: _, ...config } = col
+  import('@/composables/usePipWindow').then(({ openPipWindow }) => {
+    openPipWindow(config)
+    deckStore.removeColumn(props.columnId)
+  })
+}
 </script>
 
 <template>
@@ -104,11 +123,12 @@ function onOpenWebUi() {
     <header
       class="column-header"
       :class="$style.columnHeader"
+      :data-tauri-drag-region="isPipMode ? '' : undefined"
       @click="emit('header-click')"
-      @contextmenu.prevent.stop="toggleMenu"
+      @contextmenu.prevent.stop="!isPipMode && toggleMenu()"
     >
-      <!-- Tab shape decoration (Misskey style, hidden with wallpaper) -->
-      <svg v-if="!hasWallpaper" :class="$style.tabShape" viewBox="0 0 256 128">
+      <!-- Tab shape decoration (Misskey style, hidden with wallpaper / PiP) -->
+      <svg v-if="!hasWallpaper && !isPipMode" :class="$style.tabShape" viewBox="0 0 256 128">
         <g transform="matrix(6.2431,0,0,6.2431,-677.417,-29.3839)">
           <path d="M149.512,4.707L108.507,4.707C116.252,4.719 118.758,14.958 118.758,14.958C118.758,14.958 121.381,25.283 129.009,25.209L149.512,25.209L149.512,4.707Z" style="fill:var(--nd-deckBg)" />
         </g>
@@ -118,20 +138,31 @@ function onOpenWebUi() {
       <div
         :class="$style.colorIndicator"
         :style="{ background: color || 'var(--nd-accent)' }"
+        :data-tauri-drag-region="isPipMode ? '' : undefined"
       />
 
       <slot name="header-icon" />
-      <span :class="$style.headerTitle">{{ title }}</span>
+      <span :class="$style.headerTitle" :data-tauri-drag-region="isPipMode ? '' : undefined">{{ title }}</span>
 
-      <slot name="header-meta" />
+      <template v-if="!isPipMode">
+        <slot name="header-meta" />
+      </template>
 
-      <!-- Grabber (Misskey 6-dot pattern) -->
-      <i :class="$style.grabber" class="ti ti-grip-vertical" />
+      <!-- Grabber (Misskey 6-dot pattern, hidden in PiP) -->
+      <i v-if="!isPipMode" :class="$style.grabber" class="ti ti-grip-vertical" />
 
-      <!-- Column menu button -->
-      <button ref="menuBtnEl" :class="$style.headerBtn" class="_button" title="メニュー" @click.stop="toggleMenu">
-        <i class="ti ti-dots" />
-      </button>
+      <!-- PiP: close button -->
+      <template v-if="isPipMode">
+        <button :class="$style.headerBtn" class="_button" title="閉じる" @click.stop="close">
+          <i class="ti ti-x" />
+        </button>
+      </template>
+      <!-- Deck: menu button -->
+      <template v-else>
+        <button ref="menuBtnEl" :class="$style.headerBtn" class="_button" title="メニュー" @click.stop="toggleMenu">
+          <i class="ti ti-dots" />
+        </button>
+      </template>
 
       <!-- Column action menu -->
       <Transition name="col-menu">
@@ -143,6 +174,10 @@ function onOpenWebUi() {
           <button v-if="canPopOut" :class="$style.columnMenuItem" class="_button" @click="popOut">
             <i class="ti ti-app-window" />
             <span>別ウィンドウで開く</span>
+          </button>
+          <button v-if="canPopOut" :class="$style.columnMenuItem" class="_button" @click="openAsPip">
+            <i class="ti ti-picture-in-picture" />
+            <span>PiPウィンドウとして開く</span>
           </button>
           <button v-if="canRecall" :class="$style.columnMenuItem" class="_button" @click="recallToMain">
             <i class="ti ti-arrow-back-up" />
@@ -344,6 +379,7 @@ function onOpenWebUi() {
     height: 36px;
   }
 }
+
 </style>
 
 <style lang="scss">
