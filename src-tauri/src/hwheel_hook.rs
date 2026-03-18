@@ -24,7 +24,7 @@ unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPA
         let delta = mhsx.mouse_data as i16 as i32;
         if delta != 0 {
             if let Some(w) = WEBVIEW.get() {
-                let _ = w.eval(&format!("window.__ndHWheel&&window.__ndHWheel({})", delta));
+                let _ = w.eval(format!("window.__ndHWheel&&window.__ndHWheel({})", delta));
             }
         }
         // Return non-zero to prevent further processing (avoid double handling)
