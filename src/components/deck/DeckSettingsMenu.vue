@@ -168,6 +168,7 @@ function syncScroll(e: Event) {
   <div v-if="show" :class="$style.menuBackdrop" @pointerdown="emit('close')" />
   <Transition name="settings-menu">
     <div v-if="show" ref="menuEl" :class="[$style.settingsMenu, { [$style.mobile]: isCompact }]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
+      <div :class="$style.menuBody">
       <!-- Misskey-style day/night toggle panel -->
       <div :class="$style.themePanel">
         <div :class="$style.toggleArea">
@@ -304,20 +305,23 @@ function syncScroll(e: Event) {
         <span :class="$style.settingsMenuLabel">キーバインド設定</span>
       </div>
 
-      <div :class="$style.settingsMenuDivider" />
-      <div v-if="updateAvailable" :class="$style.updateSection">
-        <div :class="$style.updateText">
-          <span :class="$style.updateVersion">v{{ appVersion }} → v{{ updateVersion }}</span>
-        </div>
-        <button
-          :class="$style.updateBtn"
-          :disabled="isInstalling"
-          @click="installUpdate"
-        >
-          {{ isInstalling ? 'インストール中...' : 'アップデート' }}
-        </button>
       </div>
-      <button v-else :class="$style.versionInfo" @click="showAbout = true">v{{ appVersion }}</button>
+      <div :class="$style.menuFooter">
+        <div :class="$style.settingsMenuDivider" />
+        <div v-if="updateAvailable" :class="$style.updateSection">
+          <div :class="$style.updateText">
+            <span :class="$style.updateVersion">v{{ appVersion }} → v{{ updateVersion }}</span>
+          </div>
+          <button
+            :class="$style.updateBtn"
+            :disabled="isInstalling"
+            @click="installUpdate"
+          >
+            {{ isInstalling ? 'インストール中...' : 'アップデート' }}
+          </button>
+        </div>
+        <button v-else :class="$style.versionInfo" @click="showAbout = true">v{{ appVersion }}</button>
+      </div>
     </div>
   </Transition>
   </Teleport>
@@ -338,7 +342,19 @@ function syncScroll(e: Event) {
   margin-bottom: 4px;
   min-width: 260px;
   max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.menuBody {
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
+}
+
+.menuFooter {
+  flex-shrink: 0;
 }
 
 /* -- Theme panel (toggle + sync in one block) -- */
