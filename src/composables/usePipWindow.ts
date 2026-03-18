@@ -4,6 +4,8 @@ import type { DeckColumn } from '@/stores/deck'
 
 const PIP_WIDTH = 375
 const PIP_HEIGHT = 700
+const PIP_MIN_WIDTH = 280
+const PIP_MIN_HEIGHT = 400
 
 const pipWindows = new Map<string, WebviewWindow>()
 const creatingSet = new Set<string>()
@@ -38,6 +40,8 @@ export async function openPipWindow(
       title: 'NoteDeck PiP',
       width: PIP_WIDTH,
       height: PIP_HEIGHT,
+      minWidth: PIP_MIN_WIDTH,
+      minHeight: PIP_MIN_HEIGHT,
       decorations: false,
       alwaysOnTop: true,
       resizable: true,
