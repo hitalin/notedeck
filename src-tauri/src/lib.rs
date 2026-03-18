@@ -301,6 +301,29 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             hwheel_hook::install(&w);
         }
 
+        // Fit window to monitor if larger than available screen (e.g. low-res VMs)
+        #[cfg(not(mobile))]
+        if let Some(w) = app.get_webview_window("main") {
+            if let Ok(Some(monitor)) = w.current_monitor() {
+                let screen = monitor.size();
+                let scale = monitor.scale_factor();
+                let screen_w = (screen.width as f64 / scale) as u32;
+                let screen_h = (screen.height as f64 / scale) as u32;
+
+                if let Ok(outer) = w.outer_size() {
+                    let win_w = (outer.width as f64 / scale) as u32;
+                    let win_h = (outer.height as f64 / scale) as u32;
+
+                    if win_w > screen_w || win_h > screen_h {
+                        let new_w = win_w.min(screen_w);
+                        let new_h = win_h.min(screen_h);
+                        let _ = w.set_size(tauri::LogicalSize::new(new_w, new_h));
+                        let _ = w.center();
+                    }
+                }
+            }
+        }
+
         Ok(())
     });
 
