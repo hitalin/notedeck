@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, ref } from 'vue'
 import {
   popOutColumnToWindow,
   requestMoveColumn,
 } from '@/composables/useDeckWindow'
+import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 
@@ -18,6 +19,10 @@ const props = defineProps<{
 }>()
 
 const isPipMode = window.location.pathname === '/pip'
+const pipColumnConfig = inject<() => DeckColumnType | null>(
+  'pipColumnConfig',
+  undefined,
+)
 
 const emit = defineEmits<{ 'header-click': [] }>()
 
@@ -75,6 +80,18 @@ async function close() {
     return
   }
   deckStore.removeColumn(props.columnId)
+}
+
+/** Return this PiP column back to the main deck window */
+async function returnToDeck() {
+  closeMenu()
+  const config = pipColumnConfig?.()
+  if (!config) return
+  const { id: _, ...rest } = config
+  const { emit } = await import('@tauri-apps/api/event')
+  await emit('pip:return-to-deck', rest)
+  const { getCurrentWindow } = await import('@tauri-apps/api/window')
+  await getCurrentWindow().close()
 }
 
 function popOut() {
@@ -151,47 +168,54 @@ function openAsPip() {
       <!-- Grabber (Misskey 6-dot pattern, hidden in PiP) -->
       <i v-if="!isPipMode" :class="$style.grabber" class="ti ti-grip-vertical" />
 
-      <!-- PiP: close button -->
-      <template v-if="isPipMode">
-        <button :class="$style.headerBtn" class="_button" title="閉じる" @click.stop="close">
-          <i class="ti ti-x" />
-        </button>
-      </template>
-      <!-- Deck: menu button -->
-      <template v-else>
-        <button ref="menuBtnEl" :class="$style.headerBtn" class="_button" title="メニュー" @click.stop="toggleMenu">
-          <i class="ti ti-dots" />
-        </button>
-      </template>
+      <!-- Menu button (shared between PiP and Deck) -->
+      <button ref="menuBtnEl" :class="$style.headerBtn" class="_button" title="メニュー" @click.stop="toggleMenu">
+        <i class="ti ti-dots" />
+      </button>
 
       <!-- Column action menu -->
       <Transition name="col-menu">
         <div v-if="showMenu" ref="menuEl" :class="$style.columnMenu" class="_popupMenu" @pointerdown.stop>
-          <button v-if="webUiUrl" :class="$style.columnMenuItem" class="_button" @click="onOpenWebUi">
-            <i class="ti ti-external-link" />
-            <span>Web UIで開く</span>
-          </button>
-          <button v-if="canPopOut" :class="$style.columnMenuItem" class="_button" @click="popOut">
-            <i class="ti ti-app-window" />
-            <span>別ウィンドウで開く</span>
-          </button>
-          <button v-if="canPopOut" :class="$style.columnMenuItem" class="_button" @click="openAsPip">
-            <i class="ti ti-picture-in-picture" />
-            <span>PiPウィンドウとして開く</span>
-          </button>
-          <button v-if="canRecall" :class="$style.columnMenuItem" class="_button" @click="recallToMain">
-            <i class="ti ti-arrow-back-up" />
-            <span>メインウィンドウに戻す</span>
-          </button>
-          <button v-if="soundEnabled" :class="$style.columnMenuItem" class="_button" @click="toggleMute">
-            <i :class="isMuted ? 'ti ti-volume' : 'ti ti-volume-off'" />
-            <span>{{ isMuted ? 'ミュート解除' : 'ミュート' }}</span>
-          </button>
-          <div :class="$style.columnMenuDivider" />
-          <button :class="[$style.columnMenuItem, $style.columnMenuDanger]" class="_button" @click="close">
-            <i class="ti ti-trash" />
-            <span>カラムを削除</span>
-          </button>
+          <!-- PiP menu -->
+          <template v-if="isPipMode">
+            <button :class="$style.columnMenuItem" class="_button" @click="returnToDeck">
+              <i class="ti ti-arrow-back-up" />
+              <span>デッキに戻す</span>
+            </button>
+            <div :class="$style.columnMenuDivider" />
+            <button :class="[$style.columnMenuItem, $style.columnMenuDanger]" class="_button" @click="close">
+              <i class="ti ti-x" />
+              <span>閉じる</span>
+            </button>
+          </template>
+          <!-- Deck menu -->
+          <template v-else>
+            <button v-if="webUiUrl" :class="$style.columnMenuItem" class="_button" @click="onOpenWebUi">
+              <i class="ti ti-external-link" />
+              <span>Web UIで開く</span>
+            </button>
+            <button v-if="canPopOut" :class="$style.columnMenuItem" class="_button" @click="popOut">
+              <i class="ti ti-app-window" />
+              <span>別ウィンドウで開く</span>
+            </button>
+            <button v-if="canPopOut" :class="$style.columnMenuItem" class="_button" @click="openAsPip">
+              <i class="ti ti-picture-in-picture" />
+              <span>PiPウィンドウとして開く</span>
+            </button>
+            <button v-if="canRecall" :class="$style.columnMenuItem" class="_button" @click="recallToMain">
+              <i class="ti ti-arrow-back-up" />
+              <span>メインウィンドウに戻す</span>
+            </button>
+            <button v-if="soundEnabled" :class="$style.columnMenuItem" class="_button" @click="toggleMute">
+              <i :class="isMuted ? 'ti ti-volume' : 'ti ti-volume-off'" />
+              <span>{{ isMuted ? 'ミュート解除' : 'ミュート' }}</span>
+            </button>
+            <div :class="$style.columnMenuDivider" />
+            <button :class="[$style.columnMenuItem, $style.columnMenuDanger]" class="_button" @click="close">
+              <i class="ti ti-trash" />
+              <span>カラムを削除</span>
+            </button>
+          </template>
         </div>
       </Transition>
     </header>

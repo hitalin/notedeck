@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, provide, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AddColumnDialog from '@/components/deck/AddColumnDialog.vue'
 import { useAccountsStore } from '@/stores/accounts'
@@ -125,6 +125,9 @@ function onColumnSelected(config: Omit<DeckColumn, 'id'>) {
   const column: DeckColumn = { ...config, id: genPipColumnId() }
   selectedColumn.value = column
 }
+
+// Provide column config getter for DeckColumn's "return to deck" feature
+provide('pipColumnConfig', () => selectedColumn.value)
 
 async function closeWindow() {
   const { getCurrentWindow } = await import('@tauri-apps/api/window')
