@@ -94,12 +94,22 @@ export function isPipOpen(): boolean {
  */
 export async function listenPipEvents(handlers: {
   onOpenNote?: (accountId: string, noteId: string) => void
+  onReturnToDeck?: (columnConfig: Omit<DeckColumn, 'id'>) => void
 }): Promise<() => void> {
-  const unlisten = await listen<{ accountId: string; noteId: string }>(
+  const unlistenNote = await listen<{ accountId: string; noteId: string }>(
     'pip:open-note',
     (event) => {
       handlers.onOpenNote?.(event.payload.accountId, event.payload.noteId)
     },
   )
-  return unlisten
+  const unlistenReturn = await listen<Omit<DeckColumn, 'id'>>(
+    'pip:return-to-deck',
+    (event) => {
+      handlers.onReturnToDeck?.(event.payload)
+    },
+  )
+  return () => {
+    unlistenNote()
+    unlistenReturn()
+  }
 }

@@ -72,9 +72,16 @@ onMounted(async () => {
     // Set up PiP event listener in main window
     if (!isPipWindow.value) {
       const windowsStore = useWindowsStore()
+      const { useDeckStore } = await import('@/stores/deck')
+      const deckStore = useDeckStore()
       cleanupPipListener = await listenPipEvents({
         onOpenNote: async (accountId, noteId) => {
           windowsStore.open('note-detail', { accountId, noteId })
+          const { getCurrentWindow } = await import('@tauri-apps/api/window')
+          await getCurrentWindow().setFocus()
+        },
+        onReturnToDeck: async (columnConfig) => {
+          deckStore.addColumn(columnConfig)
           const { getCurrentWindow } = await import('@tauri-apps/api/window')
           await getCurrentWindow().setFocus()
         },
