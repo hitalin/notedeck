@@ -10,6 +10,7 @@
 use std::sync::OnceLock;
 use tauri::WebviewWindow;
 use windows::Win32::Foundation::*;
+use windows::Win32::System::Threading::GetCurrentThreadId;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 const WM_MOUSEHWHEEL: u32 = 0x020E;
