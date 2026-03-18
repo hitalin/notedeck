@@ -1,6 +1,5 @@
 import { useCommandStore } from '@/commands/registry'
 import type { NoteAction } from '@/composables/useNoteFocus'
-import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { useThemeStore } from '@/stores/theme'
@@ -308,12 +307,9 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
       icon: 'picture-in-picture',
       category: 'window',
       shortcuts: keybindsStore.getShortcuts('pip-window'),
-      enabled: () => !!useAccountsStore().activeAccountId,
       execute: () => {
-        const accountId = useAccountsStore().activeAccountId
-        if (!accountId) return
         import('@/composables/usePipWindow').then(({ openPipWindow }) => {
-          openPipWindow(accountId)
+          openPipWindow()
         })
       },
     })

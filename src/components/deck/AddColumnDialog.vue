@@ -3,18 +3,32 @@ import { invoke } from '@tauri-apps/api/core'
 import { ref } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
-import type { ColumnType } from '@/stores/deck'
+import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
 
+const props = defineProps<{
+  mode?: 'deck' | 'pip'
+}>()
+
 const emit = defineEmits<{
   close: []
+  columnSelected: [column: Omit<DeckColumn, 'id'>]
 }>()
 
 const { navigateToLogin } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 const isCompact = useIsCompactLayout()
+
+function finalizeColumn(config: Omit<DeckColumn, 'id'>) {
+  if (props.mode === 'pip') {
+    emit('columnSelected', config)
+  } else {
+    deckStore.addColumn(config)
+    close()
+  }
+}
 
 const addColumnType = ref<
   | 'timeline'
@@ -89,25 +103,23 @@ function selectColumnType(
 ) {
   // Account-free column types: add directly without account selection
   if (type === 'cssEditor') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'cssEditor',
       name: 'カスタムCSS',
       width: 360,
       accountId: null,
       active: true,
     })
-    close()
     return
   }
   if (type === 'themeEditor') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'themeEditor',
       name: 'テーマエディタ',
       width: 360,
       accountId: null,
       active: true,
     })
-    close()
     return
   }
   addColumnType.value = type
@@ -125,7 +137,7 @@ function addColumnForAccount(accountId: string) {
     return
   }
   if (type === 'widget') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'widget',
       name: 'ウィジェット',
       width: 330,
@@ -133,11 +145,10 @@ function addColumnForAccount(accountId: string) {
       active: true,
       widgets: [],
     })
-    close()
     return
   }
   if (type === 'aiscript') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'aiscript',
       name: 'スクラッチパッド',
       width: 330,
@@ -145,150 +156,136 @@ function addColumnForAccount(accountId: string) {
       active: true,
       aiscriptCode: '<: "Hello, AiScript!"',
     })
-    close()
     return
   }
   if (type === 'apiConsole') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'apiConsole',
       name: 'APIコンソール',
       width: 360,
       accountId,
       active: true,
     })
-    close()
     return
   }
   if (type === 'lookup') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'lookup',
       name: '照会',
       width: 330,
       accountId,
       active: true,
     })
-    close()
     return
   }
   if (type === 'serverInfo') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'serverInfo',
       name: 'サーバー情報',
       width: 330,
       accountId,
       active: true,
     })
-    close()
     return
   }
   if (type === 'ads') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'ads',
       name: '広告',
       width: 330,
       accountId,
       active: true,
     })
-    close()
     return
   }
   if (type === 'aboutMisskey') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'aboutMisskey',
       name: 'Misskeyについて',
       width: 330,
       accountId,
       active: true,
     })
-    close()
     return
   }
   if (type === 'emoji') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'emoji',
       name: 'カスタム絵文字',
       width: 330,
       accountId,
       active: true,
     })
-    close()
     return
   }
   if (type === 'apiDocs') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'apiDocs',
       name: 'APIドキュメント',
       width: 990,
       accountId: null,
       active: true,
     })
-    close()
     return
   }
   if (type === 'play') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'play',
       name: 'Play',
       width: 360,
       accountId,
       active: true,
     })
-    close()
     return
   }
   if (type === 'page') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'page',
       name: 'Pages',
       width: 360,
       accountId,
       active: true,
     })
-    close()
     return
   }
   if (type === 'ai') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'ai',
       name: 'AI Chat',
       width: 360,
       accountId,
       active: true,
     })
-    close()
     return
   }
   if (type === 'drive') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'drive',
       name: 'ドライブ',
       width: 360,
       accountId,
       active: true,
     })
-    close()
     return
   }
   if (type === 'gallery') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'gallery',
       name: 'ギャラリー',
       width: 360,
       accountId,
       active: true,
     })
-    close()
     return
   }
   if (type === 'explore') {
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'explore',
       name: 'みつける',
       width: 360,
       accountId,
       active: true,
     })
-    close()
     return
   }
   if (
@@ -309,17 +306,16 @@ function addColumnForAccount(accountId: string) {
       followRequests: 'フォローリクエスト',
       achievements: '実績',
     }
-    deckStore.addColumn({
+    finalizeColumn({
       type,
       name: nameMap[type] ?? type,
       width: 330,
       accountId,
       active: true,
     })
-    close()
     return
   }
-  deckStore.addColumn({
+  finalizeColumn({
     type,
     name: null,
     width: 330,
@@ -327,7 +323,6 @@ function addColumnForAccount(accountId: string) {
     tl: type === 'timeline' ? 'home' : undefined,
     active: true,
   })
-  close()
 }
 
 // Selectable column types (list, antenna, channel, clip)
@@ -398,15 +393,14 @@ async function fetchSelectItems(config: SelectableConfig, accountId: string) {
 
 function addSelectableColumn(itemId: string, itemName: string) {
   if (!selectAccountId.value || !selectConfig.value) return
-  deckStore.addColumn({
+  finalizeColumn({
     type: selectConfig.value.type,
     name: itemName,
     width: 330,
     accountId: selectAccountId.value,
     [selectConfig.value.idKey]: itemId,
     active: true,
-  })
-  close()
+  } as Omit<DeckColumn, 'id'>)
 }
 
 // User column creation
@@ -438,7 +432,7 @@ async function searchAndAddUserColumn() {
     const displayName = user.host
       ? `@${user.username}@${user.host}`
       : `@${user.username}`
-    deckStore.addColumn({
+    finalizeColumn({
       type: 'user',
       name: displayName,
       width: 330,
@@ -446,7 +440,6 @@ async function searchAndAddUserColumn() {
       userId: user.id,
       active: true,
     })
-    close()
   } catch {
     userSearchError.value = 'ユーザーが見つかりません'
   } finally {
@@ -460,9 +453,9 @@ function close() {
 </script>
 
 <template>
-  <div :class="$style.addOverlay" @click="close()">
-    <div :class="[$style.addPopup, isCompact && $style.mobile]" @click.stop>
-      <div :class="$style.addPopupHeader">
+  <div :class="[mode === 'pip' ? $style.addInline : $style.addOverlay]" @click="mode !== 'pip' && close()">
+    <div :class="[mode === 'pip' ? $style.addPopupInline : $style.addPopup, isCompact && $style.mobile]" @click.stop>
+      <div v-if="!(mode === 'pip' && !addColumnType && !selectConfig && !addUserAccountId)" :class="[$style.addPopupHeader, mode === 'pip' && $style.addPopupHeaderPip]">
         <button v-if="addColumnType && !selectConfig && !addUserAccountId" class="_button" :class="$style.addBackBtn" @click="addColumnType = null">
           <i class="ti ti-chevron-left" />
         </button>
@@ -472,7 +465,9 @@ function close() {
         <button v-else-if="addUserAccountId" class="_button" :class="$style.addBackBtn" @click="addUserAccountId = null; userSearchInput = ''; userSearchError = null">
           <i class="ti ti-chevron-left" />
         </button>
-        {{ selectConfig ? `${selectConfig.label}を選択` : addUserAccountId ? 'ユーザーを検索' : addColumnType ? 'アカウントを選択' : 'カラムを追加' }}
+        <span :class="$style.addPopupTitle">
+          {{ selectConfig ? `${selectConfig.label}を選択` : addUserAccountId ? 'ユーザーを検索' : addColumnType ? 'アカウントを選択' : 'カラムを追加' }}
+        </span>
       </div>
 
       <!-- Step 1: Column type selection -->
@@ -697,6 +692,20 @@ function close() {
   overflow-y: auto;
 }
 
+.addInline {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.addPopupInline {
+  background: var(--nd-bg);
+  width: 100%;
+  flex: 1;
+  overflow-y: auto;
+}
+
 .addPopupHeader {
   display: flex;
   align-items: center;
@@ -705,6 +714,18 @@ function close() {
   font-size: 1em;
   font-weight: bold;
   border-bottom: 1px solid var(--nd-divider);
+}
+
+.addPopupHeaderPip {
+  padding: 12px 16px;
+  font-size: 0.9em;
+}
+
+.addPopupTitle {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .addPopupEmpty {
