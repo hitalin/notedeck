@@ -12,7 +12,7 @@ const props = withDefaults(
   { estimatedHeight: 150, focusedId: undefined },
 )
 
-defineEmits<{
+const emit = defineEmits<{
   scroll: [event: Event]
 }>()
 
@@ -34,7 +34,7 @@ defineSlots<{
   <div
     ref="scrollContainer"
     :class="$style.noteScroller"
-    @scroll.passive="$emit('scroll', $event)"
+    @scroll.passive="emit('scroll', $event)"
   >
     <slot name="prepend" />
     <TransitionGroup
