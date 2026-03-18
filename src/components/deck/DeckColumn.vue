@@ -19,7 +19,7 @@ const props = defineProps<{
 }>()
 
 const isPipMode = window.location.pathname === '/pip'
-const pipColumnConfig = inject<() => DeckColumnType | null>(
+const pipColumnConfig = inject<(() => DeckColumnType | null) | undefined>(
   'pipColumnConfig',
   undefined,
 )
