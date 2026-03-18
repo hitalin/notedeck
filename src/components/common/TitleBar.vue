@@ -119,17 +119,7 @@ function openNewWindow() {
 }
 
 async function onPipClick() {
-  // If active column exists, open it as PiP directly
-  const col = deckStore.activeColumnId
-    ? deckStore.columns.find((c) => c.id === deckStore.activeColumnId)
-    : null
-  if (col) {
-    const { id: _, ...config } = col
-    await openPipWindow(config)
-  } else {
-    // No active column — open PiP with column selector
-    await openPipWindow()
-  }
+  await openPipWindow()
 }
 </script>
 
