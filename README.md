@@ -23,7 +23,7 @@
 
 </div>
 
-<img width="1919" height="1029" alt="NoteDeck スクリーンショット" src="https://github.com/user-attachments/assets/797cbd5a-f358-43ac-b4ed-50ded014f5fb" />
+<img width="1197" height="794" alt="スクリーンショット 2026-03-18 110053" src="https://github.com/user-attachments/assets/31162728-e6d0-4264-bb96-73e411252113" />
 
 ## ダウンロード
 
