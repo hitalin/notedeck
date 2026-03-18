@@ -22,7 +22,7 @@ const props = withDefaults(
   },
 )
 
-defineEmits<{
+const emit = defineEmits<{
   click: [event: MouseEvent]
   mouseenter: [event: MouseEvent]
   mouseleave: [event: MouseEvent]
@@ -74,9 +74,9 @@ const decorationStyles = computed(() =>
     class="mk-avatar"
     :class="$style.mkAvatar"
     :style="{ width: `${props.size}px`, height: `${props.size}px` }"
-    @click="$emit('click', $event)"
-    @mouseenter="$emit('mouseenter', $event)"
-    @mouseleave="$emit('mouseleave', $event)"
+    @click="emit('click', $event)"
+    @mouseenter="emit('mouseenter', $event)"
+    @mouseleave="emit('mouseleave', $event)"
   >
     <img
       v-if="lazySrc"

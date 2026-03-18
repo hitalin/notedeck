@@ -26,6 +26,17 @@ task typecheck    # vue-tsc --noEmit
 - グローバル CSS 変数: `src/styles/global.css`
 - モバイル/デスクトップ切り替えは `v-if`（CSS display ではない）
 
+## Vue Vapor モード移行準備（#52）
+
+Vue 3.6 の Vapor モード移行を予定。新規・既存コンポーネントは以下の制約を守ること：
+
+- **`<script setup>` 必須** — Options API / `export default {}` 禁止
+- **`h()` / JSX 禁止** — テンプレート構文のみ使用
+- **カスタムディレクティブ禁止** — composable で代替
+- **mixins / extends 禁止** — composable で代替
+- **`getCurrentInstance()` 禁止** — provide/inject または composable で代替
+- **`app.config.globalProperties` 禁止** — provide/inject で代替
+
 ## アーキテクチャ要点
 
 - API クライアント・DB・ストリーミングは全て **notecli** クレート側（`src-tauri/` は薄いラッパー）

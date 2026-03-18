@@ -6,7 +6,7 @@ Multi-server Misskey deck client with fork support.
 
 | | |
 |---|---|
-| Frontend | Vue 3 + TypeScript |
+| Frontend | Vue 3 + TypeScript（Vapor モード移行予定） |
 | Backend | Rust (Tauri v2) + [notecli](https://github.com/hitalin/notecli) |
 | Build | Vite 8 (Rolldown) + Cargo |
 | State | Pinia |
@@ -126,6 +126,20 @@ Misskey API クライアント・DB・モデル・ストリーミングコアな
 | `src-tauri/capabilities/*.json` | `pip-*` ワイルドカードで権限付与 |
 
 **Capabilities:** PiP ウィンドウのラベルは `pip-{timestamp}-{counter}` 形式。`capabilities/*.json` の `windows` に `"pip-*"` が必要（`allow-start-dragging`, `allow-close` 等の権限）。
+
+### Vue Vapor モード移行準備（[#52](https://github.com/hitalin/notedeck/issues/52)）
+
+Vue 3.6 の Vapor モード（仮想DOMレス・コンパイル時DOM操作）への移行を予定。
+現在のコンポーネントは **100% 互換**（全96コンポーネント確認済み）。
+
+**コーディング制約（Vapor 互換性維持）:**
+
+- `<script setup>` 必須 — Options API / `export default {}` 禁止
+- `h()` / JSX 禁止 — テンプレート構文のみ使用
+- カスタムディレクティブ禁止 — composable で代替
+- mixins / extends 禁止 — composable で代替
+- `getCurrentInstance()` 禁止 — provide/inject または composable で代替
+- `app.config.globalProperties` 禁止 — provide/inject で代替
 
 ### Styling
 
