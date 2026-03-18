@@ -1,5 +1,6 @@
 import { onScopeDispose, ref, shallowRef } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
+import { NOTE_LIST_MAX } from '@/composables/useNoteList'
 import { insertIntoSorted } from '@/utils/sortNotes'
 
 export interface UseStreamingBatchOptions {
@@ -11,7 +12,7 @@ export interface UseStreamingBatchOptions {
 }
 
 export function useStreamingBatch(options: UseStreamingBatchOptions) {
-  const MAX_NOTES = options.maxNotes ?? 300
+  const MAX_NOTES = options.maxNotes ?? NOTE_LIST_MAX
   const pendingNotes = shallowRef<NormalizedNote[]>([])
   const isAtTop = ref(true)
   let rafBuffer: NormalizedNote[] = []

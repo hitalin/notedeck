@@ -7,16 +7,21 @@ import type {
 } from '@/adapters/types'
 import { useNoteStore } from '@/stores/notes'
 
+/** Maximum number of notes to keep in DOM per column */
+export const NOTE_LIST_MAX = 300
+
 export interface UseNoteListOptions {
   getMyUserId: () => string | undefined
   getAdapter: () => ServerAdapter | null
   deleteHandler: (note: NormalizedNote) => Promise<boolean>
   closePostForm: () => void
   onNotesChanged?: (notes: NormalizedNote[]) => void
+  maxNotes?: number
 }
 
 export function useNoteList(options: UseNoteListOptions) {
   const noteStore = useNoteStore()
+  const maxNotes = options.maxNotes ?? NOTE_LIST_MAX
   const orderedIds = shallowRef<string[]>([])
   const noteIds = new Set<string>()
   let onNotesChangedFn = options.onNotesChanged
@@ -33,10 +38,12 @@ export function useNoteList(options: UseNoteListOptions) {
   const notes = computed({
     get: () => noteStore.resolve(orderedIds.value),
     set: (newNotes: NormalizedNote[]) => {
-      noteStore.put(newNotes)
-      orderedIds.value = newNotes.map((n) => n.id)
+      const trimmed =
+        newNotes.length > maxNotes ? newNotes.slice(0, maxNotes) : newNotes
+      noteStore.put(trimmed)
+      orderedIds.value = trimmed.map((n) => n.id)
       noteIds.clear()
-      for (const n of newNotes) noteIds.add(n.id)
+      for (const n of trimmed) noteIds.add(n.id)
     },
   })
 
@@ -46,7 +53,8 @@ export function useNoteList(options: UseNoteListOptions) {
 
   function setNotes(newNotes: NormalizedNote[]) {
     notes.value = newNotes
-    onNotesChangedFn?.(newNotes)
+    // Pass the trimmed result (setter may have truncated)
+    onNotesChangedFn?.(notes.value)
   }
 
   /**
