@@ -2,6 +2,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import {
   defineAsyncComponent,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   ref,
@@ -83,11 +84,12 @@ watch(
   { flush: 'post' },
 )
 
+const animateEnter = ref(false)
+
 let mentionSub: ChannelSubscription | null = null
 
 async function connect(useCache = false) {
   error.value = null
-  isLoading.value = true
 
   if (useCache && props.column.accountId) {
     try {
@@ -100,6 +102,10 @@ async function connect(useCache = false) {
     } catch {
       /* non-critical */
     }
+  }
+
+  if (notes.value.length === 0) {
+    isLoading.value = true
   }
 
   try {
@@ -120,6 +126,10 @@ async function connect(useCache = false) {
     mentionSub = adapter.stream.subscribeMentions(
       (note) => {
         if (noteIds.has(note.id)) return
+        animateEnter.value = true
+        nextTick(() => {
+          animateEnter.value = false
+        })
         noteIds.add(note.id)
         notes.value = [note, ...notes.value]
         syncCapture(notes.value)
@@ -245,7 +255,7 @@ onBeforeUnmount(() => {
       </div>
 
       <template v-else>
-        <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" :class="$style.tlScroller" @scroll="handleScroll">
+        <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" :animate="animateEnter" :class="$style.tlScroller" @scroll="handleScroll">
           <template #default="{ item, index }">
             <div :data-index="index">
               <MkNote

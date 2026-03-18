@@ -99,34 +99,6 @@ src-tauri/src/              # Rust backend (Tauri 固有部分)
 
 Misskey API クライアント・DB・モデル・ストリーミングコアなどの共通ロジックは全て `notecli` クレートにあり、`src-tauri/` には Tauri 固有の薄いラッパーのみ残っています。
 
-### PiP ウィンドウ
-
-デッキのカラムを独立したウィンドウとして切り離す機能。常に前面に表示されるスマホサイズのフローティングウィンドウ。
-
-**仕様:**
-
-- ウィンドウサイズ: 375×700px（リサイズ可能）
-- `decorations: false` + `alwaysOnTop: true`
-- 複数ウィンドウを同時に開ける（動的ラベル `pip-*`）
-- 任意のカラムタイプを表示可能（フル機能、省略なし）
-
-**開き方:**
-
-1. **コマンドパレット** → 「PiPウィンドウを開く」→ カラム選択ダイアログ
-2. **タイトルバー** の PiP ボタン → アクティブカラムをそのまま PiP 化
-3. **カラムメニュー** → 「PiPウィンドウとして開く」→ デッキから削除して PiP 化
-
-**主要ファイル:**
-
-| ファイル | 役割 |
-|---------|------|
-| `src/composables/usePipWindow.ts` | ウィンドウ作成・管理（WebviewWindow） |
-| `src/views/PipPage.vue` | PiP ページ（カラム選択 or カラム描画） |
-| `src/components/deck/AddColumnDialog.vue` | カラム選択 UI（`mode='pip'` で emit ベース動作） |
-| `src-tauri/capabilities/*.json` | `pip-*` ワイルドカードで権限付与 |
-
-**Capabilities:** PiP ウィンドウのラベルは `pip-{timestamp}-{counter}` 形式。`capabilities/*.json` の `windows` に `"pip-*"` が必要（`allow-start-dragging`, `allow-close` 等の権限）。
-
 ### Vue Vapor モード移行準備（[#52](https://github.com/hitalin/notedeck/issues/52)）
 
 Vue 3.6 の Vapor モード（仮想DOMレス・コンパイル時DOM操作）への移行を予定。

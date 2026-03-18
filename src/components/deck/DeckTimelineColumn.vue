@@ -111,6 +111,7 @@ const noteSound = useNoteSound(() => account.value?.host)
 const {
   pendingNotes,
   isAtTop,
+  animateEnter,
   enqueueNote,
   handleScroll: batchHandleScroll,
   scrollToTop,
@@ -893,6 +894,7 @@ onUnmounted(() => {
           ref="noteScroller"
           :items="notes"
           :focused-id="focusedNoteId"
+          :animate="animateEnter"
           :class="$style.tlScroller"
           @scroll="handleScroll"
         >

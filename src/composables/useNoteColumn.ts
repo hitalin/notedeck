@@ -128,6 +128,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   const pendingNotes =
     streamingBatch?.pendingNotes ?? shallowRef<NormalizedNote[]>([])
+  const animateEnter = streamingBatch?.animateEnter ?? ref(false)
 
   /** True when API is unreachable and displaying cached notes */
   const isOffline = ref(false)
@@ -161,15 +162,14 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   async function connect(useCache = false) {
     error.value = null
-    isLoading.value = true
 
     if (config.validate && !config.validate()) {
-      isLoading.value = false
       return
     }
 
     let cachedIds: string[] = []
 
+    // Load cache BEFORE setting isLoading to avoid skeleton flash
     if (useCache && config.cache) {
       const column = config.getColumn()
       const cacheKey = config.cache.getKey()
@@ -191,6 +191,11 @@ export function useNoteColumn(config: NoteColumnConfig) {
           /* non-critical */
         }
       }
+    }
+
+    // Only show skeleton if no cached notes are available
+    if (notes.value.length === 0) {
+      isLoading.value = true
     }
 
     try {
@@ -494,6 +499,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     notes,
     focusedNoteId,
     pendingNotes,
+    animateEnter,
     postForm,
     handlers,
     noteScrollerRef,
