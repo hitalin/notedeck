@@ -90,7 +90,6 @@ let mentionSub: ChannelSubscription | null = null
 
 async function connect(useCache = false) {
   error.value = null
-  isLoading.value = true
 
   if (useCache && props.column.accountId) {
     try {
@@ -103,6 +102,10 @@ async function connect(useCache = false) {
     } catch {
       /* non-critical */
     }
+  }
+
+  if (notes.value.length === 0) {
+    isLoading.value = true
   }
 
   try {
