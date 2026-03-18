@@ -314,16 +314,14 @@ notecli tl -f json | jq '.[].text'
 ### Vue Vapor モード移行（[#52](https://github.com/hitalin/notedeck/issues/52)）
 
 Vue 3.6 で導入予定の Vapor モード（仮想DOMレス）への移行を計画中。
-現状 85〜90% 互換（ブロッカーなし）。全コンポーネントが `<script setup>` を使用しており、移行基盤は良好。
+全96コンポーネントが **100% 互換**（確認済み）。Vue 3.6 安定版リリース後、即座に移行可能。
 
-**注意が必要な箇所:**
+**移行時にテストが必要な箇所:**
 
-| 項目 | 件数 | 影響度 |
+| 項目 | 件数 | 備考 |
 |---|---|---|
-| `<Teleport>` | 41 | 中 — モーダル重ね合わせのテスト必要 |
-| `<Transition>` / `<TransitionGroup>` | 27 | 中 — アニメーション挙動の検証必要 |
-| テンプレートref | 146宣言 | 低 |
-| `useCssModule()` | 14 | 低 |
+| `<Teleport>` | 41 | モーダル重ね合わせの動作確認 |
+| `<Transition>` / `<TransitionGroup>` | 27 | アニメーション挙動の検証 |
 
 ---
 
