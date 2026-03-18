@@ -95,6 +95,8 @@ const decorationStyles = computed(() =>
         :src="proxyUrl(d.url)"
         :class="$style.avatarDecoration"
         :style="decorationStyles[i]"
+        loading="lazy"
+        decoding="async"
       />
     </template>
     <div

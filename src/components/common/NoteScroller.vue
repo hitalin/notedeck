@@ -44,7 +44,6 @@ defineSlots<{
       :leave-active-class="$style.leaveActive"
       :enter-from-class="$style.enterFrom"
       :leave-to-class="$style.leaveTo"
-      :move-class="$style.move"
     >
       <div
         v-for="(item, index) in props.items"
@@ -78,10 +77,10 @@ defineSlots<{
 }
 
 /* Misskey-style TransitionGroup animations */
-/* enter/move: elastic easing over 0.7s */
-.move {
-  transition: transform 0.7s cubic-bezier(0.23, 1, 0.32, 1);
-}
+/* Note: move-class is intentionally omitted. TransitionGroup's FLIP
+   algorithm calls getBoundingClientRect() on ALL items (300×2=600 calls)
+   per insertion. The visual benefit of existing notes sliding down is
+   minimal — the user's eye follows the entering note, not the rest. */
 
 .enterActive {
   transition: transform 0.7s cubic-bezier(0.23, 1, 0.32, 1),
@@ -106,5 +105,12 @@ defineSlots<{
 .leaveTo {
   opacity: 0;
   height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enterActive,
+  .leaveActive {
+    transition: none;
+  }
 }
 </style>
