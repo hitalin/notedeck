@@ -100,6 +100,8 @@ const instanceTickerStyle = computed(() => {
 })
 
 const renoteMenuPos = ref<{ x: number; y: number } | null>(null)
+const myRenoteId = ref<string | null>(null)
+const isRenoted = ref(false)
 
 function openRenoteMenu(e: MouseEvent) {
   if (renoteMenuPos.value) {
@@ -119,10 +121,46 @@ function openRenoteMenu(e: MouseEvent) {
   x = Math.max(8, x)
   y = Math.max(8, y)
   renoteMenuPos.value = { x, y }
+
+  // Check if already renoted
+  myRenoteId.value = null
+  invoke<NormalizedNote[]>('api_get_note_renotes', {
+    accountId: props.note._accountId,
+    noteId: effectiveNote.value.id,
+    limit: 30,
+  })
+    .then((renotes) => {
+      const account = accountsStore.accountMap.get(props.note._accountId)
+      const mine = renotes.find((r) => r.user.id === account?.userId)
+      myRenoteId.value = mine?.id ?? null
+      isRenoted.value = !!mine
+    })
+    .catch(() => {})
 }
 
 function closeRenoteMenu() {
   renoteMenuPos.value = null
+}
+
+async function handleUnrenote() {
+  if (!myRenoteId.value) return
+  const renoteId = myRenoteId.value
+  closeRenoteMenu()
+  effectiveNote.value.renoteCount = Math.max(
+    0,
+    (effectiveNote.value.renoteCount ?? 1) - 1,
+  )
+  isRenoted.value = false
+  myRenoteId.value = null
+  try {
+    await invoke('api_delete_note', {
+      accountId: props.note._accountId,
+      noteId: renoteId,
+    })
+  } catch {
+    effectiveNote.value.renoteCount = (effectiveNote.value.renoteCount ?? 0) + 1
+    isRenoted.value = true
+  }
 }
 const cwExpanded = ref(false)
 const longTextExpanded = ref(false)
@@ -530,7 +568,7 @@ function closeMentionPopup() {
               {{ effectiveNote.repliesCount }}
             </span>
           </button>
-          <button :class="[$style.footerButton, $style.renoteButton]" @click.stop="openRenoteMenu($event)">
+          <button :class="[$style.footerButton, $style.renoteButton, { [$style.renoted]: isRenoted }]" @click.stop="openRenoteMenu($event)">
             <i class="ti ti-repeat" />
             <span v-if="effectiveNote.renoteCount > 0" :class="$style.buttonCount">
               {{ effectiveNote.renoteCount }}
@@ -564,7 +602,11 @@ function closeMentionPopup() {
           :style="{ top: renoteMenuPos.y + 'px', left: renoteMenuPos.x + 'px' }"
           @click.stop
         >
-          <button :class="$style.renotePopupItem" @click="emit('renote', effectiveNote); closeRenoteMenu()">
+          <button v-if="myRenoteId" :class="[$style.renotePopupItem, $style.renotePopupItemActive]" @click="handleUnrenote()">
+            <i class="ti ti-trash" />
+            リノート解除
+          </button>
+          <button v-else :class="$style.renotePopupItem" @click="emit('renote', effectiveNote); closeRenoteMenu(); isRenoted = true">
             <i class="ti ti-repeat" />
             リノート
           </button>
@@ -1085,7 +1127,8 @@ function closeMentionPopup() {
   color: var(--nd-replyHover);
 }
 
-.renoteButton:hover {
+.renoteButton:hover,
+.renoteButton.renoted {
   color: var(--nd-renote);
 }
 
@@ -1143,6 +1186,10 @@ function closeMentionPopup() {
     width: 1em;
     text-align: center;
   }
+}
+
+.renotePopupItemActive {
+  color: var(--nd-renote);
 }
 
 /* Divider between notes */
