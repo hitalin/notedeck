@@ -6,6 +6,7 @@ import {
   getPluginHandlers,
   setPluginAccountContext,
 } from '@/aiscript/plugin-api'
+import { extractThemeVars } from '@/utils/themeVars'
 import { isSafeUrl } from '@/utils/url'
 
 const props = defineProps<{
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 const showMenu = ref(false)
 const showDeleteConfirm = ref(false)
 const menuPos = ref({ x: 0, y: 0 })
+const menuTheme = ref<Record<string, string>>({})
 const localIsFavorited = ref(props.isFavorited)
 const localIsPinned = ref(props.isPinned)
 
@@ -50,6 +52,11 @@ const noteWebUrl = computed(() => {
 })
 
 function open(e: MouseEvent) {
+  const el = e.currentTarget as HTMLElement | null
+  const column = (el ?? (e.target as HTMLElement))?.closest(
+    '.deck-column',
+  ) as HTMLElement | null
+  if (column) menuTheme.value = extractThemeVars(column)
   let x = e.clientX
   let y = e.clientY
   // 画面外に出ないよう調整
@@ -94,7 +101,7 @@ defineExpose({ open })
         <div
           :class="$style.popupMenu"
           class="_popup nd-popup-content popup-menu"
-          :style="{ top: menuPos.y + 'px', left: menuPos.x + 'px' }"
+          :style="{ ...menuTheme, top: menuPos.y + 'px', left: menuPos.x + 'px' }"
           @click.stop
         >
           <template v-if="showDeleteConfirm">
