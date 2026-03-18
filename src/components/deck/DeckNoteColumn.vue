@@ -130,7 +130,7 @@ const webUiUrl = computed(() => {
       </div>
 
       <div v-if="isOffline" :class="$style.offlineBanner">
-        <i class="ti ti-cloud-off" />オフライン — キャッシュを表示中
+        <i class="ti ti-cloud-off" />オフライン
       </div>
 
       <!-- Inline post form slot (e.g. channel column) -->

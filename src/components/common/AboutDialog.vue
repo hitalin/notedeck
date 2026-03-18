@@ -90,7 +90,7 @@ async function copyInfo() {
 .aboutBackdrop {
   position: fixed;
   inset: 0;
-  z-index: var(--nd-z-popup);
+  z-index: calc(var(--nd-z-popup) + 2);
   display: flex;
   align-items: center;
   justify-content: center;

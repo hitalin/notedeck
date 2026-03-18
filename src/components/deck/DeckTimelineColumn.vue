@@ -868,7 +868,7 @@ onUnmounted(() => {
       </div>
 
       <div v-if="isOffline" :class="$style.offlineBanner">
-        <i class="ti ti-cloud-off" />オフライン — キャッシュを表示中
+        <i class="ti ti-cloud-off" />オフライン
       </div>
 
       <div v-if="isLoading && notes.length === 0">

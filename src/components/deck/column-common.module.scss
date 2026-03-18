@@ -183,6 +183,7 @@
   border-radius: var(--nd-radius-full);
   font-size: 0.85em;
   font-weight: bold;
+  white-space: nowrap;
   color: var(--nd-fgOnAccent);
   background: color-mix(in srgb, var(--nd-warn) 70%, transparent);
   -webkit-backdrop-filter: blur(var(--nd-blur-panel));
