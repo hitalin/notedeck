@@ -51,6 +51,12 @@ yay -S misskey-notedeck-bin
 nix run github:hitalin/notedeck
 ```
 
+> [!NOTE]
+> Windows / Android ではインストール時にセキュリティ警告が表示されることがあります。
+> これはアプリがコード署名されていないためで、マルウェアではありません。
+> ソースコードは公開されており、ビルドは GitHub Actions で自動化されています。
+> プロジェクトの成長に伴い、正式なコード署名の導入を予定しています。
+
 ## 貢献する
 
 - **フォーク対応の追加** — [DEVELOPMENT.md](DEVELOPMENT.md) を参照
