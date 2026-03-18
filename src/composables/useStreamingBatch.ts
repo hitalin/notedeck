@@ -1,4 +1,4 @@
-import { onScopeDispose, ref, shallowRef } from 'vue'
+import { nextTick, onScopeDispose, ref, shallowRef } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
 import { NOTE_LIST_MAX } from '@/composables/useNoteList'
 import { insertIntoSorted } from '@/utils/sortNotes'
@@ -15,9 +15,18 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   const MAX_NOTES = options.maxNotes ?? NOTE_LIST_MAX
   const pendingNotes = shallowRef<NormalizedNote[]>([])
   const isAtTop = ref(true)
+  /** True only during the render cycle when streaming notes are inserted */
+  const animateEnter = ref(false)
   let rafBuffer: NormalizedNote[] = []
   let rafId: number | null = null
   let _paused = false
+
+  function enableAnimation() {
+    animateEnter.value = true
+    nextTick(() => {
+      animateEnter.value = false
+    })
+  }
 
   function syncNoteIds() {
     options.noteIds.clear()
@@ -34,6 +43,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     const batch = rafBuffer
     rafBuffer = []
     if (isAtTop.value) {
+      enableAnimation()
       for (const n of batch) options.noteIds.add(n.id)
       const merged = insertIntoSorted(options.notes.value, batch)
       options.notes.value =
@@ -64,6 +74,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       pendingNotes.value = []
       return
     }
+    enableAnimation()
     for (const n of newNotes) options.noteIds.add(n.id)
     const merged = insertIntoSorted(options.notes.value, newNotes)
     options.notes.value =
@@ -111,6 +122,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   return {
     pendingNotes,
     isAtTop,
+    animateEnter,
     enqueueNote,
     flushPending,
     handleScroll,

@@ -8,8 +8,10 @@ const props = withDefaults(
     estimatedHeight?: number
     /** When set, enables v-memo to skip VNode diffing for unchanged items */
     focusedId?: string
+    /** Enable enter animation for newly inserted items (streaming only) */
+    animate?: boolean
   }>(),
-  { estimatedHeight: 150, focusedId: undefined },
+  { estimatedHeight: 150, focusedId: undefined, animate: false },
 )
 
 const emit = defineEmits<{
@@ -40,9 +42,9 @@ defineSlots<{
     <TransitionGroup
       tag="div"
       :class="$style.noteList"
-      :enter-active-class="$style.enterActive"
+      :enter-active-class="props.animate ? $style.enterActive : undefined"
+      :enter-from-class="props.animate ? $style.enterFrom : undefined"
       :leave-active-class="$style.leaveActive"
-      :enter-from-class="$style.enterFrom"
       :leave-to-class="$style.leaveTo"
     >
       <div

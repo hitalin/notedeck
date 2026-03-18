@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   defineAsyncComponent,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   ref,
@@ -70,6 +71,8 @@ watch(
   { flush: 'post' },
 )
 
+const animateEnter = ref(false)
+
 let mentionSub: ChannelSubscription | null = null
 
 async function connect() {
@@ -89,6 +92,10 @@ async function connect() {
       (note) => {
         if (note.visibility !== 'specified') return
         if (noteIds.has(note.id)) return
+        animateEnter.value = true
+        nextTick(() => {
+          animateEnter.value = false
+        })
         noteIds.add(note.id)
         notes.value = [note, ...notes.value]
         syncCapture(notes.value)
@@ -199,7 +206,7 @@ onBeforeUnmount(() => {
       </div>
 
       <template v-else>
-        <NoteScroller ref="noteScrollerRef" :items="notes" :class="$style.tlScroller" @scroll="handleScroll">
+        <NoteScroller ref="noteScrollerRef" :items="notes" :animate="animateEnter" :class="$style.tlScroller" @scroll="handleScroll">
           <template #default="{ item, index }">
             <div :data-index="index">
               <MkNote

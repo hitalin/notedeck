@@ -35,6 +35,7 @@ const {
   notes,
   focusedNoteId,
   pendingNotes,
+  animateEnter,
   postForm,
   handlers,
   noteScrollerRef,
@@ -155,6 +156,7 @@ const webUiUrl = computed(() => {
           ref="noteScrollerRef"
           :items="notes"
           :focused-id="focusedNoteId"
+          :animate="animateEnter"
           :class="$style.tlScroller"
           @scroll="handleScroll"
         >
