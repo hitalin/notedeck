@@ -58,7 +58,7 @@ graph TB
 
 **技術スタック:**
 - **フレームワーク**: Tauri V2
-- **フロントエンド**: Vue 3 + TypeScript + Vite
+- **フロントエンド**: Vue 3 + TypeScript + Vite（Vapor モード移行予定 [#52](https://github.com/hitalin/notedeck/issues/52)）
 - **バックエンド**: Rust (Axum, notecli)
 - **対応プラットフォーム**: Windows, macOS, Linux, Android (開発中)
 
@@ -308,6 +308,22 @@ notecli tl -f json | jq '.[].text'
 #### B-8. エラーハンドリング: safe_message() パターン
 
 内部情報（SQLite クエリ、ネットワークトレース、キーチェーン詳細）はフロントエンドに露出させない。`Serialize` 実装で `code` + `safe_message` のペアを自動生成。
+
+---
+
+### Vue Vapor モード移行（[#52](https://github.com/hitalin/notedeck/issues/52)）
+
+Vue 3.6 で導入予定の Vapor モード（仮想DOMレス）への移行を計画中。
+現状 85〜90% 互換（ブロッカーなし）。全コンポーネントが `<script setup>` を使用しており、移行基盤は良好。
+
+**注意が必要な箇所:**
+
+| 項目 | 件数 | 影響度 |
+|---|---|---|
+| `<Teleport>` | 41 | 中 — モーダル重ね合わせのテスト必要 |
+| `<Transition>` / `<TransitionGroup>` | 27 | 中 — アニメーション挙動の検証必要 |
+| テンプレートref | 146宣言 | 低 |
+| `useCssModule()` | 14 | 低 |
 
 ---
 
