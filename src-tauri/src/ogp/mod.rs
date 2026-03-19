@@ -323,8 +323,15 @@ impl OgpCache {
             })
         });
 
+        // Treat response without a title as a failure so we fall through
+        // to the direct HTML parser (e.g. note.com, zenn.dev).
+        let title = server_data
+            .title
+            .filter(|t| !t.is_empty())
+            .ok_or("Server returned no title")?;
+
         Ok(SummaryData {
-            title: server_data.title,
+            title: Some(title),
             description: server_data.description,
             icon: server_data.icon,
             sitename: server_data.sitename,
