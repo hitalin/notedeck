@@ -11,6 +11,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
 import { useThemeStore } from '@/stores/theme'
+import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
 import { toggleFavorite } from '@/utils/toggleFavorite'
 import { toggleReaction } from '@/utils/toggleReaction'
@@ -99,6 +100,7 @@ export function useColumnSetup(
   const postFormRenoteId = ref<string | undefined>()
   const postFormEditNote = ref<NormalizedNote | undefined>()
 
+  const toast = useToast()
   const actionSound = useNoteSound(() => account.value?.host, 'syuilo/bubble2')
 
   function checkOffline(): boolean {
@@ -117,6 +119,7 @@ export function useColumnSetup(
     } catch (e) {
       const err = AppError.from(e)
       console.error('[reaction]', err.code, err.message)
+      toast.show('リアクションに失敗しました', 'error')
     }
   }
 
@@ -132,6 +135,7 @@ export function useColumnSetup(
       notify()
       const err = AppError.from(e)
       console.error('[renote]', err.code, err.message)
+      toast.show('リノートに失敗しました', 'error')
     }
   }
 
@@ -157,6 +161,7 @@ export function useColumnSetup(
     } catch (e) {
       const err = AppError.from(e)
       console.error('[delete]', err.code, err.message)
+      toast.show('削除に失敗しました', 'error')
       return false
     }
   }
@@ -176,6 +181,7 @@ export function useColumnSetup(
     } catch (e) {
       const err = AppError.from(e)
       console.error('[bookmark]', err.code, err.message)
+      toast.show('ブックマークに失敗しました', 'error')
     }
   }
 

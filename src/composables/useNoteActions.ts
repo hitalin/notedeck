@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
+import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
 import { toggleFavorite } from '@/utils/toggleFavorite'
 import { toggleReaction } from '@/utils/toggleReaction'
@@ -17,6 +18,8 @@ export function useNoteActions(
   ) => ServerAdapter | null | Promise<ServerAdapter | null>,
   onMutated: (note: NormalizedNote) => void,
 ) {
+  const toast = useToast()
+
   // Post form state
   const showPostForm = ref(false)
   const postFormReplyTo = ref<NormalizedNote | undefined>()
@@ -35,6 +38,7 @@ export function useNoteActions(
       await toggleReaction(adapter.api, note, reaction, () => onMutated(note))
     } catch (e) {
       console.error('[note:reaction]', AppError.from(e).message)
+      toast.show('リアクションに失敗しました', 'error')
     }
   }
 
@@ -49,6 +53,7 @@ export function useNoteActions(
       note.renoteCount = Math.max(0, (note.renoteCount ?? 1) - 1)
       onMutated(note)
       console.error('[note:renote]', AppError.from(e).message)
+      toast.show('リノートに失敗しました', 'error')
     }
   }
 
@@ -76,6 +81,7 @@ export function useNoteActions(
       return true
     } catch (e) {
       console.error('[note:delete]', AppError.from(e).message)
+      toast.show('削除に失敗しました', 'error')
       return false
     }
   }
@@ -95,6 +101,7 @@ export function useNoteActions(
       await toggleFavorite(adapter.api, note, () => onMutated(note))
     } catch (e) {
       console.error('[note:bookmark]', AppError.from(e).message)
+      toast.show('ブックマークに失敗しました', 'error')
     }
   }
 

@@ -1034,7 +1034,7 @@ function closeMentionPopup() {
   }
 
   &:active {
-    animation: reaction-bounce 0.3s ease;
+    animation: reaction-bounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   &.reacted,
@@ -1064,7 +1064,8 @@ function closeMentionPopup() {
 
 @keyframes reaction-bounce {
   0% { transform: scale(1); }
-  40% { transform: scale(1.1); }
+  30% { transform: scale(1.25); }
+  60% { transform: scale(0.95); }
   100% { transform: scale(1); }
 }
 
@@ -1138,6 +1139,10 @@ function closeMentionPopup() {
 
 .reactionButton:hover {
   color: var(--nd-reactionHover);
+}
+
+.reactionButton:active {
+  animation: reaction-bounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .moreButton:hover {
