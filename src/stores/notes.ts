@@ -2,6 +2,11 @@ import { defineStore } from 'pinia'
 import { shallowRef, triggerRef } from 'vue'
 import type { NormalizedNote, NoteUpdateEvent } from '@/adapters/types'
 
+/** Maximum number of notes retained in the global store.
+ *  Notes exceeding this limit are evicted in insertion order (oldest first).
+ *  Keeps memory bounded during long sessions with many columns. */
+const NOTE_STORE_MAX = 5000
+
 export const useNoteStore = defineStore('notes', () => {
   const noteMap = shallowRef(new Map<string, NormalizedNote>())
   const deleteListeners = new Set<(id: string) => void>()
@@ -17,12 +22,26 @@ export const useNoteStore = defineStore('notes', () => {
     })
   }
 
+  /** Evict oldest entries when map exceeds NOTE_STORE_MAX. */
+  function evictIfNeeded() {
+    const map = noteMap.value
+    if (map.size <= NOTE_STORE_MAX) return
+    const excess = map.size - NOTE_STORE_MAX
+    const iter = map.keys()
+    for (let i = 0; i < excess; i++) {
+      const key = iter.next().value
+      if (key != null) map.delete(key)
+    }
+  }
+
   function put(notes: NormalizedNote[]) {
     const map = noteMap.value
-    // First pass: insert all notes and renotes
+    // First pass: insert all notes and renotes (delete before set to refresh insertion order)
     for (const note of notes) {
+      map.delete(note.id)
       map.set(note.id, note)
       if (note.renote) {
+        map.delete(note.renote.id)
         map.set(note.renote.id, note.renote)
       }
     }
@@ -35,6 +54,7 @@ export const useNoteStore = defineStore('notes', () => {
         }
       }
     }
+    evictIfNeeded()
     triggerRef(noteMap)
   }
 
