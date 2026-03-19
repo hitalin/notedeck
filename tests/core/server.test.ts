@@ -1,61 +1,33 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { detectServer } from '@/core/server'
 
-describe('server detection', () => {
-  beforeEach(() => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn<
-        (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-      >(),
-    )
-  })
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn(),
+}))
 
+import { invoke } from '@tauri-apps/api/core'
+
+describe('server detection', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  function mockNodeInfoFlow(softwareName: string, version = '2025.1.0') {
-    // Use URL-based matching since fetchNodeInfo and fetchIconUrl run in parallel
-    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
-      const url = String(input)
-      if (url.includes('.well-known/nodeinfo')) {
-        // Extract host from the request URL so the nodeinfo href matches (SSRF validation)
-        const host = new URL(url).hostname
+  function mockInvoke(softwareName: string, version = '2025.1.0') {
+    vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === 'fetch_nodeinfo') {
         return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              links: [
-                {
-                  rel: 'http://nodeinfo.diaspora.software/ns/schema/2.0',
-                  href: `https://${host}/nodeinfo/2.0`,
-                },
-              ],
-            }),
-        } as Response)
+          software: { name: softwareName, version },
+        })
       }
-      if (url.includes('/nodeinfo/')) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              software: { name: softwareName, version },
-            }),
-        } as Response)
+      if (cmd === 'fetch_server_meta') {
+        return Promise.resolve({ iconUrl: null })
       }
-      if (url.includes('/api/meta')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ iconUrl: null }),
-        } as Response)
-      }
-      return Promise.reject(new Error(`Unexpected fetch: ${url}`))
+      return Promise.reject(new Error(`Unexpected invoke: ${cmd}`))
     })
   }
 
   it('detects misskey server', async () => {
-    mockNodeInfoFlow('misskey')
+    mockInvoke('misskey')
     const info = await detectServer('example.com')
 
     expect(info.host).toBe('example.com')
@@ -65,35 +37,28 @@ describe('server detection', () => {
   })
 
   it('treats misskey forks as misskey', async () => {
-    mockNodeInfoFlow('yamisskey')
+    mockInvoke('yamisskey')
     const info = await detectServer('yami.example.com')
 
     expect(info.software).toBe('misskey')
   })
 
   it('returns unknown for non-misskey software', async () => {
-    mockNodeInfoFlow('mastodon')
+    mockInvoke('mastodon')
     const info = await detectServer('masto.example.com')
 
     expect(info.software).toBe('unknown')
   })
 
-  it('throws when nodeinfo link is missing', async () => {
-    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
-      const url = String(input)
-      if (url.includes('.well-known/nodeinfo')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ links: [] }),
-        } as Response)
+  it('throws when nodeinfo fetch fails', async () => {
+    vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === 'fetch_nodeinfo') {
+        return Promise.reject(new Error('No nodeinfo URL found'))
       }
-      if (url.includes('/api/meta')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ iconUrl: null }),
-        } as Response)
+      if (cmd === 'fetch_server_meta') {
+        return Promise.resolve({ iconUrl: null })
       }
-      return Promise.reject(new Error(`Unexpected fetch: ${url}`))
+      return Promise.reject(new Error(`Unexpected invoke: ${cmd}`))
     })
 
     await expect(detectServer('bad.example.com')).rejects.toThrow(

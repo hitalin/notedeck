@@ -1510,6 +1510,24 @@ pub async fn api_create_chat_message(
     }
 }
 
+// --- Server Discovery (unauthenticated, CORS-free) ---
+
+#[tauri::command]
+pub async fn fetch_nodeinfo(
+    client: State<'_, Arc<MisskeyClient>>,
+    host: String,
+) -> Result<serde_json::Value> {
+    client.fetch_nodeinfo(&host).await
+}
+
+#[tauri::command]
+pub async fn fetch_server_meta(
+    client: State<'_, Arc<MisskeyClient>>,
+    host: String,
+) -> Result<serde_json::Value> {
+    client.fetch_server_meta(&host).await
+}
+
 // --- Streaming ---
 
 /// Ensure the streaming WebSocket is connected for the given account.

@@ -2,7 +2,7 @@
 import { type CSSProperties, computed, ref, watch } from 'vue'
 import type { AvatarDecoration } from '@/adapters/types'
 import { useLazyImage } from '@/composables/useLazyImage'
-import { proxyUrl } from '@/utils/imageProxy'
+import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
 
 const props = withDefaults(
   defineProps<{
@@ -40,7 +40,8 @@ watch(
 const avatarSrc = computed(() => {
   if (!props.avatarUrl) return undefined
   if (proxyFailed.value) return props.avatarUrl
-  return proxyUrl(props.avatarUrl)
+  // Request a thumbnail sized to 2x display size for HiDPI screens
+  return proxyThumbUrl(props.avatarUrl, props.size * 2)
 })
 
 const { targetRef, lazySrc, isVisible } = useLazyImage(avatarSrc)

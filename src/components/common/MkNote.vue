@@ -14,7 +14,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
-import { proxyUrl } from '@/utils/imageProxy'
+import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
 import { extractThemeVars } from '@/utils/themeVars'
 import MkAvatar from './MkAvatar.vue'
 import MkEmoji from './MkEmoji.vue'
@@ -341,7 +341,7 @@ function closeMentionPopup() {
       <img
         v-if="note.user.avatarUrl"
         :key="note.user.avatarUrl"
-        :src="proxyUrl(note.user.avatarUrl)"
+        :src="proxyThumbUrl(note.user.avatarUrl, 56)"
         :class="$style.renoteAvatar"
         width="28"
         height="28"
@@ -470,7 +470,7 @@ function closeMentionPopup() {
         >
           <img
             v-if="instanceIconUrl"
-            :src="proxyUrl(instanceIconUrl)"
+            :src="proxyThumbUrl(instanceIconUrl, 28)"
             :class="$style.instanceIcon"
             width="14"
             height="14"
