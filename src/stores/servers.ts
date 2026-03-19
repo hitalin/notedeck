@@ -39,12 +39,12 @@ export const useServersStore = defineStore('servers', () => {
 
   async function getServerInfo(host: string): Promise<ServerInfo> {
     const cached = servers.value.get(host)
-    if (cached?.iconUrl && 'themeColor' in cached) return cached
+    if (cached) return cached
 
     const stored = await invoke<StoredServer | null>('get_server', { host })
     if (stored && Date.now() - stored.updatedAt < CACHE_TTL_MS) {
       const parsed = JSON.parse(stored.featuresJson)
-      if (parsed._iconUrl && '_themeColor' in parsed) {
+      if (parsed) {
         const { _iconUrl, _themeColor, ...features } = parsed
         const info: ServerInfo = {
           host: stored.host,
