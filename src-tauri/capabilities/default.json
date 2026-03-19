@@ -10,6 +10,9 @@
     "core:window:allow-close",
     "core:window:allow-destroy",
     "core:window:allow-is-maximized",
+    "core:window:allow-unmaximize",
+    "core:window:allow-is-fullscreen",
+    "core:window:allow-set-fullscreen",
     "core:window:allow-set-size",
     "core:window:allow-inner-size",
     "core:window:allow-scale-factor",
@@ -24,6 +27,7 @@
     "core:webview:allow-create-webview-window",
     "opener:default",
     "notification:default",
-    "os:default"
+    "os:default",
+    "haptics:default"
   ]
 }

@@ -1,6 +1,9 @@
 const PROXY_BASE = 'http://127.0.0.1:19820/proxy/image'
 const RETRY_AFTER_MS = 5 * 60 * 1000
+const IS_ANDROID = /Android/i.test(navigator.userAgent)
 const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+// --- Web Audio API (desktop / iOS) ---
 
 const bufferCache = new Map<string, AudioBuffer>()
 const failedHosts = new Map<string, number>()
@@ -14,13 +17,20 @@ function getAudioContext(): AudioContext {
 }
 
 // Mobile browsers require user interaction to activate AudioContext
-if (IS_MOBILE) {
+if (IS_MOBILE && !IS_ANDROID) {
   const activate = () => {
     const ctx = getAudioContext()
     if (ctx.state === 'suspended') ctx.resume()
   }
   document.addEventListener('touchstart', activate, { once: true })
   document.addEventListener('click', activate, { once: true })
+}
+
+function getSoundUrl(host: string, soundType: string): string {
+  const remoteUrl = `https://${host}/client-assets/sounds/${soundType}.mp3`
+  return IS_MOBILE
+    ? remoteUrl
+    : `${PROXY_BASE}?url=${encodeURIComponent(remoteUrl)}`
 }
 
 async function ensureBuffer(
@@ -35,10 +45,7 @@ async function ensureBuffer(
   if (failedAt && Date.now() - failedAt < RETRY_AFTER_MS) return null
 
   try {
-    const remoteUrl = `https://${host}/client-assets/sounds/${soundType}.mp3`
-    const url = IS_MOBILE
-      ? remoteUrl
-      : `${PROXY_BASE}?url=${encodeURIComponent(remoteUrl)}`
+    const url = getSoundUrl(host, soundType)
     const resp = await fetch(url)
     if (!resp.ok) {
       failedHosts.set(cacheKey, Date.now())
@@ -56,6 +63,26 @@ async function ensureBuffer(
   }
 }
 
+// --- HTMLAudioElement (Android) ---
+// Android WebView の AudioContext は decodeAudioData / resume が
+// 不安定なため、HTMLAudioElement で OS のメディアプレイヤーに委譲する。
+
+const audioElCache = new Map<string, HTMLAudioElement>()
+
+function ensureAudioElement(host: string, soundType: string): HTMLAudioElement {
+  const cacheKey = `${host}:${soundType}`
+  const cached = audioElCache.get(cacheKey)
+  if (cached) return cached
+
+  const el = new Audio(getSoundUrl(host, soundType))
+  el.volume = 0.3
+  el.preload = 'auto'
+  audioElCache.set(cacheKey, el)
+  return el
+}
+
+// --- Public API ---
+
 export function useNoteSound(
   getHost: () => string | undefined,
   soundType = 'syuilo/n-aec',
@@ -69,6 +96,13 @@ export function useNoteSound(
 
     const host = getHost()
     if (!host) return
+
+    if (IS_ANDROID) {
+      const el = ensureAudioElement(host, soundType)
+      el.currentTime = 0
+      el.play().catch(() => {})
+      return
+    }
 
     const ctx = getAudioContext()
     if (ctx.state === 'suspended') await ctx.resume()
@@ -88,7 +122,12 @@ export function useNoteSound(
 
   function warmup() {
     const host = getHost()
-    if (host) ensureBuffer(host, soundType)
+    if (!host) return
+    if (IS_ANDROID) {
+      ensureAudioElement(host, soundType)
+    } else {
+      ensureBuffer(host, soundType)
+    }
   }
 
   return { play, warmup }

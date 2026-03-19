@@ -9,6 +9,7 @@ import { useThemeStore } from '@/stores/theme'
 import { useIsCompactLayout } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
+import { hapticSelection } from '@/utils/haptics'
 import { highlightCode } from '@/utils/highlight'
 import { version as appVersion } from '../../../package.json'
 
@@ -105,6 +106,7 @@ function toggleDarkMode() {
 }
 
 function toggleSyncDevice(e: Event) {
+  hapticSelection()
   const checked = (e.target as HTMLInputElement).checked
   if (checked) {
     themeStore.resetToOsTheme()

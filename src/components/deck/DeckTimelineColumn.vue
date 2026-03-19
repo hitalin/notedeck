@@ -70,6 +70,7 @@ const {
   initAdapter,
   getAdapter,
   setSubscription,
+  disposeSubscription,
   disconnect,
   postForm,
   handlers,
@@ -379,11 +380,57 @@ function toggleFilter(key: keyof TimelineFilter) {
 }
 
 async function reconnectWithFilter() {
-  disconnect()
+  disposeSubscription()
   resetBatch()
   setNotes([])
   isLoading.value = true
-  await connect(false)
+
+  try {
+    const adapter = getAdapter() ?? (await initAdapter())
+    if (!adapter) return
+
+    setSubscription(
+      adapter.stream.subscribeTimeline(
+        tlType.value,
+        (note: NormalizedNote) => {
+          if (!matchesFilter(note, columnFilters.value, tlType.value)) return
+          enqueueNote(note)
+        },
+        {
+          onNoteUpdated: (event) => {
+            if (event.type === 'deleted') removePending(event.noteId)
+            onNoteUpdate(event)
+          },
+        },
+      ),
+    )
+
+    const dedupKey = `${props.column.accountId}:timeline:${tlType.value}`
+    const fetched = await dedup(dedupKey, () =>
+      adapter.api.getTimeline(tlType.value, buildTimelineOptions()),
+    )
+
+    if (fetched.length > 0) {
+      setNotes(fetched)
+    }
+    isOffline.value = false
+  } catch (e) {
+    const err = AppError.from(e)
+    if (String(err.message).includes('disabled')) {
+      await refreshPolicies()
+      if (!availableStandardTl.value.includes(tlType.value)) {
+        switchTl('home')
+        return
+      }
+    }
+    if (notes.value.length > 0) {
+      isOffline.value = true
+    } else {
+      error.value = err
+    }
+  } finally {
+    isLoading.value = false
+  }
 }
 
 async function fetchCachedNotes(): Promise<NormalizedNote[]> {
