@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
+import katex from 'katex'
 import { computed, defineAsyncComponent, useCssModule } from 'vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { highlightCode, highlighterLoaded } from '@/utils/highlight'
@@ -54,6 +55,17 @@ const emojiUrls = computed(() => {
 function handleLinkClick(e: MouseEvent, url: string) {
   e.preventDefault()
   if (isSafeUrl(url)) openUrl(url)
+}
+
+function renderKatex(formula: string, displayMode: boolean): string {
+  try {
+    return katex.renderToString(formula, {
+      displayMode,
+      throwOnError: false,
+    })
+  } catch {
+    return formula
+  }
 }
 
 const hexColorRe = /^[0-9a-fA-F]{3,8}$/
@@ -255,6 +267,10 @@ function fnStyle(
     --><!-- Small --><small v-else-if="token.type === 'small'" :class="$style.mfmSmall"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></small><!--
     --><!-- Center --><span v-else-if="token.type === 'center'" :class="$style.mfmCenter"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
     --><!-- Plain --><span v-else-if="token.type === 'plain'">{{ token.value }}</span><!--
+    --><!-- Quote --><blockquote v-else-if="token.type === 'quote'" :class="$style.mfmQuote"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></blockquote><!--
+    --><!-- Search --><div v-else-if="token.type === 'search'" :class="$style.mfmSearch"><input :class="$style.mfmSearchInput" type="text" :value="token.query" readonly /><button :class="$style.mfmSearchButton" @click.stop="openUrl(`https://www.google.com/search?q=${encodeURIComponent(token.query)}`)">検索</button></div><!--
+    --><!-- Math Inline --><span v-else-if="token.type === 'mathInline'" :class="$style.mfmMath" v-html="renderKatex(token.value, false)"></span><!--
+    --><!-- Math Block --><div v-else-if="token.type === 'mathBlock'" :class="$style.mfmMathBlock" v-html="renderKatex(token.value, true)"></div><!--
     --><!-- Text --><template v-else>{{ token.value }}</template><!--
   --></template></span>
 </template>
@@ -352,6 +368,69 @@ function fnStyle(
 .mfmCenter {
   display: block;
   text-align: center;
+}
+
+/* Quote */
+.mfmQuote {
+  display: block;
+  margin: 8px 0;
+  padding: 4px 0 4px 16px;
+  border-left: 3px solid var(--nd-divider, rgba(128, 128, 128, 0.3));
+  color: var(--nd-fg-muted, var(--nd-fg));
+  opacity: 0.85;
+}
+
+/* Search */
+.mfmSearch {
+  display: flex;
+  margin: 8px 0;
+  gap: 4px;
+}
+
+.mfmSearchInput {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--nd-divider, rgba(128, 128, 128, 0.3));
+  border-radius: var(--nd-radius-sm, 4px);
+  background: var(--nd-bg-secondary, rgba(0, 0, 0, 0.05));
+  color: var(--nd-fg);
+  font-size: 0.9em;
+}
+
+.mfmSearchButton {
+  padding: 6px 16px;
+  border: none;
+  border-radius: var(--nd-radius-sm, 4px);
+  background: var(--nd-accent);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9em;
+  white-space: nowrap;
+
+  &:hover {
+    opacity: 0.85;
+  }
+}
+
+/* Math */
+.mfmMath {
+  display: inline;
+}
+
+.mfmMathBlock {
+  display: block;
+  overflow-wrap: anywhere;
+  background: var(--nd-bg-secondary, rgba(0, 0, 0, 0.05));
+  padding: 0 1em;
+  margin: 0.5em 0;
+  overflow: auto;
+  border-radius: 8px;
+
+  :deep(.katex-display) {
+    margin: auto;
+    width: fit-content;
+    overflow: clip;
+  }
 }
 
 /* Blur */
