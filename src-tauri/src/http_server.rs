@@ -400,6 +400,53 @@ async fn openapi_docs() -> axum::response::Html<&'static str> {
 #[derive(Debug, Deserialize, IntoParams)]
 struct ProxyImageParams {
     url: String,
+    /// Optional max width for thumbnail generation (e.g. 300)
+    w: Option<u32>,
+    /// Optional output format ("webp" to convert)
+    format: Option<String>,
+}
+
+/// Apply resize and/or format conversion to raw image bytes.
+/// Returns (transformed_bytes, content_type) or None if no transform needed / failed.
+fn transform_image(
+    data: &[u8],
+    max_width: Option<u32>,
+    target_format: Option<&str>,
+) -> Option<(Vec<u8>, String)> {
+    let needs_resize = max_width.is_some();
+    let needs_webp = target_format == Some("webp");
+    if !needs_resize && !needs_webp {
+        return None;
+    }
+
+    let img = image::load_from_memory(data).ok()?;
+
+    let img = if let Some(w) = max_width {
+        if img.width() > w {
+            img.resize(w, u32::MAX, image::imageops::FilterType::Triangle)
+        } else {
+            img
+        }
+    } else {
+        img
+    };
+
+    let mut buf = Vec::new();
+    let ct = if needs_webp {
+        let encoder = image::codecs::webp::WebPEncoder::new_lossless(&mut buf);
+        img.write_with_encoder(encoder).ok()?;
+        "image/webp"
+    } else {
+        // Keep original format but resized — re-encode as PNG for lossless quality
+        img.write_to(
+            &mut std::io::Cursor::new(&mut buf),
+            image::ImageFormat::Png,
+        )
+        .ok()?;
+        "image/png"
+    };
+
+    Some((buf, ct.to_string()))
 }
 
 #[utoipa::path(get, path = "/proxy/image", tag = "proxy",
@@ -417,7 +464,17 @@ async fn proxy_image(
 ) -> Response {
     use crate::image_cache::{hex_hash, StreamingFetchResult};
 
-    let etag = format!("\"{}\"", hex_hash(&params.url));
+    // Include transform params in cache key so different sizes are cached separately
+    let cache_key = match (&params.w, &params.format) {
+        (None, None) => params.url.clone(),
+        _ => format!(
+            "{}|w={}|f={}",
+            params.url,
+            params.w.unwrap_or(0),
+            params.format.as_deref().unwrap_or("")
+        ),
+    };
+    let etag = format!("\"{}\"", hex_hash(&cache_key));
 
     // ETag conditional: return 304 if client already has this image
     if let Some(if_none_match) = headers.get("if-none-match").and_then(|v| v.to_str().ok()) {
@@ -431,6 +488,33 @@ async fn proxy_image(
         }
     }
 
+    let wants_transform = params.w.is_some() || params.format.is_some();
+
+    // Helper: apply transform to cached bytes and return response
+    let make_transformed_response =
+        |data: Vec<u8>, ct: &str, etag: &str| -> Response {
+            if wants_transform {
+                if let Some((transformed, new_ct)) =
+                    transform_image(&data, params.w, params.format.as_deref())
+                {
+                    return Response::builder()
+                        .status(StatusCode::OK)
+                        .header("Content-Type", new_ct)
+                        .header("Cache-Control", "public, max-age=86400, immutable")
+                        .header("ETag", etag)
+                        .body(Body::from(transformed))
+                        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
+                }
+            }
+            Response::builder()
+                .status(StatusCode::OK)
+                .header("Content-Type", ct)
+                .header("Cache-Control", "public, max-age=86400, immutable")
+                .header("ETag", etag)
+                .body(Body::from(data))
+                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+        };
+
     // Phase 1: Check cache (instant response)
     if let Some(entry) = state.image_cache.check_cache_only(&params.url).await {
         let body_bytes = if let Some(ref mem) = entry.mem_bytes {
@@ -441,16 +525,10 @@ async fn proxy_image(
                 Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
             }
         };
-        return Response::builder()
-            .status(StatusCode::OK)
-            .header("Content-Type", &entry.content_type)
-            .header("Cache-Control", "public, max-age=86400, immutable")
-            .header("ETag", &etag)
-            .body(Body::from(body_bytes))
-            .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
+        return make_transformed_response(body_bytes, &entry.content_type, &etag);
     }
 
-    // Phase 2: Stream from upstream (low TTFB)
+    // Phase 2: Fetch from upstream
     match state.image_cache.fetch_streaming(&params.url).await {
         Ok(StreamingFetchResult::Cached(entry)) => {
             // Inflight dedup resolved to a cached entry
@@ -462,26 +540,35 @@ async fn proxy_image(
                     Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
                 }
             };
-            Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", &entry.content_type)
-                .header("Cache-Control", "public, max-age=86400, immutable")
-                .header("ETag", &etag)
-                .body(Body::from(body_bytes))
-                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+            make_transformed_response(body_bytes, &entry.content_type, &etag)
         }
         Ok(StreamingFetchResult::Streaming {
             byte_stream,
             content_type,
         }) => {
-            let body = Body::from_stream(byte_stream);
-            Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", &content_type)
-                .header("Cache-Control", "public, max-age=86400, immutable")
-                .header("ETag", &etag)
-                .body(body)
-                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+            if wants_transform {
+                // Need full bytes for transform — collect stream first
+                use futures_util::StreamExt;
+                let mut all_bytes = Vec::new();
+                let mut stream = byte_stream;
+                while let Some(chunk) = stream.next().await {
+                    match chunk {
+                        Ok(b) => all_bytes.extend_from_slice(&b),
+                        Err(_) => return StatusCode::BAD_GATEWAY.into_response(),
+                    }
+                }
+                make_transformed_response(all_bytes, &content_type, &etag)
+            } else {
+                // No transform needed — stream directly for low TTFB
+                let body = Body::from_stream(byte_stream);
+                Response::builder()
+                    .status(StatusCode::OK)
+                    .header("Content-Type", &content_type)
+                    .header("Cache-Control", "public, max-age=86400, immutable")
+                    .header("ETag", &etag)
+                    .body(body)
+                    .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+            }
         }
         Err(msg) => (StatusCode::BAD_GATEWAY, msg).into_response(),
     }
