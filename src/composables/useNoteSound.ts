@@ -62,7 +62,7 @@ export function useNoteSound(
 ) {
   let lastPlayedAt = 0
 
-  function play() {
+  async function play() {
     const now = Date.now()
     if (now - lastPlayedAt < 300) return
     lastPlayedAt = now
@@ -71,20 +71,19 @@ export function useNoteSound(
     if (!host) return
 
     const ctx = getAudioContext()
-    if (ctx.state === 'suspended') ctx.resume()
+    if (ctx.state === 'suspended') await ctx.resume()
 
-    ensureBuffer(host, soundType).then((buffer) => {
-      if (!buffer) return
-      const source = ctx.createBufferSource()
-      source.buffer = buffer
-      const gain = ctx.createGain()
-      // Fade-in to prevent crackling/popping
-      gain.gain.setValueAtTime(0, ctx.currentTime)
-      gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.005)
-      source.connect(gain)
-      gain.connect(ctx.destination)
-      source.start()
-    })
+    const buffer = await ensureBuffer(host, soundType)
+    if (!buffer) return
+    const source = ctx.createBufferSource()
+    source.buffer = buffer
+    const gain = ctx.createGain()
+    // Fade-in to prevent crackling/popping
+    gain.gain.setValueAtTime(0, ctx.currentTime)
+    gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.005)
+    source.connect(gain)
+    gain.connect(ctx.destination)
+    source.start()
   }
 
   function warmup() {
