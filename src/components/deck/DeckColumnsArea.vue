@@ -323,6 +323,7 @@ defineExpose({ scrollToColumn, columnMap })
         >
           <component
             v-if="
+              colVisibility.isColumnMounted(colId) &&
               columnMap.get(colId) &&
               COLUMN_COMPONENTS[columnMap.get(colId)!.type]
             "
