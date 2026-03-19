@@ -19,6 +19,23 @@ const langAliases: Record<string, string> = {
   yml: 'yaml',
 }
 
+/** Languages loaded lazily on first encounter. */
+const lazyLangLoaders: Record<
+  string,
+  () => Promise<{ default: LanguageRegistration[] }>
+> = {
+  c: () => import('shiki/dist/langs/c.mjs'),
+  cpp: () => import('shiki/dist/langs/cpp.mjs'),
+  go: () => import('shiki/dist/langs/go.mjs'),
+  java: () => import('shiki/dist/langs/java.mjs'),
+  kotlin: () => import('shiki/dist/langs/kotlin.mjs'),
+  python: () => import('shiki/dist/langs/python.mjs'),
+  ruby: () => import('shiki/dist/langs/ruby.mjs'),
+}
+
+/** Track which lazy languages are currently being loaded to avoid duplicates. */
+const pendingLangs = new Set<string>()
+
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
@@ -68,19 +85,13 @@ function initHighlighter(): Promise<void> {
         import('shiki'),
         import('shiki/dist/themes/dark-plus.mjs'),
         import('@/assets/aiscript.tmLanguage.json'),
+        // Core languages — most common in Misskey posts
         import('shiki/dist/langs/bash.mjs'),
-        import('shiki/dist/langs/c.mjs'),
-        import('shiki/dist/langs/cpp.mjs'),
         import('shiki/dist/langs/css.mjs'),
-        import('shiki/dist/langs/go.mjs'),
         import('shiki/dist/langs/html.mjs'),
-        import('shiki/dist/langs/java.mjs'),
         import('shiki/dist/langs/javascript.mjs'),
         import('shiki/dist/langs/json.mjs'),
-        import('shiki/dist/langs/kotlin.mjs'),
         import('shiki/dist/langs/markdown.mjs'),
-        import('shiki/dist/langs/python.mjs'),
-        import('shiki/dist/langs/ruby.mjs'),
         import('shiki/dist/langs/rust.mjs'),
         import('shiki/dist/langs/sql.mjs'),
         import('shiki/dist/langs/typescript.mjs'),
@@ -103,6 +114,19 @@ function initHighlighter(): Promise<void> {
   return initPromise
 }
 
+/** Load a lazy language on demand and register it with the highlighter. */
+async function loadLazyLang(lang: string): Promise<void> {
+  const loader = lazyLangLoaders[lang]
+  if (!loader || !highlighter || pendingLangs.has(lang)) return
+  pendingLangs.add(lang)
+  try {
+    const mod = await loader()
+    highlighter.loadLanguageSync(mod.default)
+  } finally {
+    pendingLangs.delete(lang)
+  }
+}
+
 export function highlightCode(code: string, lang: string | null): string {
   const resolved = lang ? (langAliases[lang] ?? lang) : null
   if (
@@ -111,6 +135,10 @@ export function highlightCode(code: string, lang: string | null): string {
     !purify
   ) {
     if (lang && !initPromise) initHighlighter()
+    // Trigger lazy load if the language is available but not yet loaded
+    if (resolved && highlighter && purify && lazyLangLoaders[resolved]) {
+      loadLazyLang(resolved)
+    }
     return `<pre><code>${escapeHtml(code)}</code></pre>`
   }
   const { tokens, fg } = highlighter.codeToTokens(code, {
