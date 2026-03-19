@@ -11,6 +11,7 @@ export interface ServerInfo {
   version: string
   features: ServerFeatures
   iconUrl?: string
+  themeColor?: string | null
 }
 
 export interface ServerFeatures {
