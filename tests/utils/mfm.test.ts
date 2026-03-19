@@ -300,4 +300,108 @@ describe('parseMfm', () => {
     expect(tokens).toHaveLength(1)
     expect(tokens[0]?.type).toBe('text')
   })
+
+  // Blockquote
+  it('parses single-line blockquote', () => {
+    const tokens = parseMfm('> hello')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]?.type).toBe('quote')
+    const quote = tokens[0] as MfmToken & { type: 'quote' }
+    expect(quote.children).toEqual([{ type: 'text', value: 'hello' }])
+  })
+
+  it('parses multi-line blockquote', () => {
+    const tokens = parseMfm('> line1\n> line2')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]?.type).toBe('quote')
+    const quote = tokens[0] as MfmToken & { type: 'quote' }
+    expect(quote.children).toEqual([{ type: 'text', value: 'line1\nline2' }])
+  })
+
+  it('parses blockquote with MFM inside', () => {
+    const tokens = parseMfm('> **bold** text')
+    expect(tokens).toHaveLength(1)
+    const quote = tokens[0] as MfmToken & { type: 'quote' }
+    const types = quote.children.map((t) => t.type)
+    expect(types).toContain('bold')
+  })
+
+  it('parses blockquote with text before and after', () => {
+    const tokens = parseMfm('before\n> quoted\nafter')
+    expect(tokens).toHaveLength(3)
+    expect(tokens[0]).toEqual({ type: 'text', value: 'before\n' })
+    expect(tokens[1]?.type).toBe('quote')
+    expect(tokens[2]).toEqual({ type: 'text', value: 'after' })
+  })
+
+  it('does not parse > without space as blockquote', () => {
+    const tokens = parseMfm('>no space')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]?.type).toBe('text')
+  })
+
+  // Search
+  it('parses search syntax with 検索', () => {
+    const tokens = parseMfm('Misskey 検索')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]?.type).toBe('search')
+    const search = tokens[0] as MfmToken & { type: 'search' }
+    expect(search.query).toBe('Misskey')
+  })
+
+  it('parses search syntax with Search', () => {
+    const tokens = parseMfm('keyword Search')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]?.type).toBe('search')
+    const search = tokens[0] as MfmToken & { type: 'search' }
+    expect(search.query).toBe('keyword')
+  })
+
+  it('parses search syntax with [検索]', () => {
+    const tokens = parseMfm('テスト [検索]')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]?.type).toBe('search')
+    const search = tokens[0] as MfmToken & { type: 'search' }
+    expect(search.query).toBe('テスト')
+  })
+
+  it('parses search syntax with [Search]', () => {
+    const tokens = parseMfm('test [Search]')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]?.type).toBe('search')
+    const search = tokens[0] as MfmToken & { type: 'search' }
+    expect(search.query).toBe('test')
+  })
+
+  it('parses search on its own line with surrounding text', () => {
+    const tokens = parseMfm('before\nMisskey 検索\nafter')
+    expect(tokens).toHaveLength(3)
+    expect(tokens[0]).toEqual({ type: 'text', value: 'before\n' })
+    expect(tokens[1]?.type).toBe('search')
+    expect(tokens[2]).toEqual({ type: 'text', value: '\nafter' })
+  })
+
+  // Math inline
+  it('parses inline math \\(formula\\)', () => {
+    const tokens = parseMfm('text \\(x^2\\) end')
+    expect(tokens).toHaveLength(3)
+    expect(tokens[0]).toEqual({ type: 'text', value: 'text ' })
+    expect(tokens[1]).toEqual({ type: 'mathInline', value: 'x^2' })
+    expect(tokens[2]).toEqual({ type: 'text', value: ' end' })
+  })
+
+  // Math block
+  it('parses block math \\[formula\\]', () => {
+    const tokens = parseMfm('\\[x^2 + y^2 = z^2\\]')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]).toEqual({ type: 'mathBlock', value: 'x^2 + y^2 = z^2' })
+  })
+
+  it('parses block math with surrounding text', () => {
+    const tokens = parseMfm('before\n\\[E=mc^2\\]\nafter')
+    expect(tokens).toHaveLength(3)
+    expect(tokens[0]).toEqual({ type: 'text', value: 'before\n' })
+    expect(tokens[1]).toEqual({ type: 'mathBlock', value: 'E=mc^2' })
+    expect(tokens[2]).toEqual({ type: 'text', value: 'after' })
+  })
 })
