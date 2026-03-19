@@ -121,6 +121,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::stream_sub_note,
         commands::stream_unsub_note,
         commands::fetch_ogp,
+        commands::fetch_nodeinfo,
+        commands::fetch_server_meta,
         commands::get_cli_commands,
         commands::open_devtools,
     ]);

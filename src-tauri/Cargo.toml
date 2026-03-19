@@ -4,7 +4,7 @@ version = "0.3.2"
 edition = "2021"
 
 [dependencies]
-notecli = { git = "https://github.com/hitalin/notecli.git", rev = "b592207" }
+notecli = { git = "https://github.com/hitalin/notecli.git", rev = "1482cfe" }
 tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
@@ -30,6 +30,7 @@ lru = "0.12"
 regex = "1"
 async-trait = "0.1"
 mime_guess = "2"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
 utoipa = { version = "5", features = ["axum_extras"] }
 tauri-plugin-os = "2"
 

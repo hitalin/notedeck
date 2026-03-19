@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core'
 import type {
   ServerFeatures,
   ServerInfo,
@@ -12,13 +13,6 @@ interface NodeInfoSoftware {
 interface NodeInfo {
   software: NodeInfoSoftware
   metadata?: Record<string, unknown>
-}
-
-interface WellKnownNodeInfo {
-  links: Array<{
-    rel: string
-    href: string
-  }>
 }
 
 export async function detectServer(host: string): Promise<ServerInfo> {
@@ -37,50 +31,17 @@ export async function detectServer(host: string): Promise<ServerInfo> {
   }
 }
 
-const FETCH_TIMEOUT_MS = 10_000
-
 async function fetchNodeInfo(host: string): Promise<NodeInfo> {
-  const wellKnownRes = await fetch(`https://${host}/.well-known/nodeinfo`, {
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  })
-  const wellKnown: WellKnownNodeInfo = await wellKnownRes.json()
-
-  const nodeinfoUrl = wellKnown.links.find((link) =>
-    link.rel.includes('nodeinfo'),
-  )?.href
-  if (!nodeinfoUrl) {
-    throw new Error(`No nodeinfo URL found for ${host}`)
-  }
-
-  // Validate the URL to prevent SSRF via malicious .well-known response
-  try {
-    const u = new URL(nodeinfoUrl)
-    if (u.protocol !== 'https:') {
-      throw new Error(`Unsafe nodeinfo protocol: ${u.protocol}`)
-    }
-    if (u.hostname !== host) {
-      throw new Error(`Nodeinfo URL host mismatch: ${u.hostname} !== ${host}`)
-    }
-  } catch (e) {
-    throw new Error(`Invalid nodeinfo URL for ${host}: ${e}`)
-  }
-
-  const res = await fetch(nodeinfoUrl, {
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  })
-  return res.json()
+  const data = await invoke<NodeInfo>('fetch_nodeinfo', { host })
+  return data
 }
 
 async function fetchIconUrl(host: string): Promise<string> {
   try {
-    const res = await fetch(`https://${host}/api/meta`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}',
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    const data = await invoke<Record<string, unknown>>('fetch_server_meta', {
+      host,
     })
-    const data = await res.json()
-    const url = data.iconUrl ?? data.faviconUrl
+    const url = (data.iconUrl ?? data.faviconUrl) as string | undefined
     if (url) {
       return url.startsWith('http') ? url : `https://${host}${url}`
     }
