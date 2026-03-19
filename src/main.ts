@@ -5,6 +5,7 @@ import { router, setupAccountRedirect } from './router'
 import { useAccountsStore } from './stores/accounts'
 import { useThemeStore } from './stores/theme'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
+import 'katex/dist/katex.min.css'
 import './styles/global.css'
 import './assets/shiki-dark-plus.css'
 

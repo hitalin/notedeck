@@ -22,6 +22,10 @@ export type MfmToken =
   | { type: 'center'; children: MfmToken[] }
   | { type: 'codeBlock'; lang: string | null; value: string }
   | { type: 'plain'; value: string }
+  | { type: 'quote'; children: MfmToken[] }
+  | { type: 'search'; query: string }
+  | { type: 'mathInline'; value: string }
+  | { type: 'mathBlock'; value: string }
 
 const emojiRegex =
   /(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F)(?:\u200D(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F))*/gu
@@ -81,6 +85,10 @@ const inlinePatterns: PatternDef[] = [
     parse: (m) => ({ type: 'hashtag', value: g(m, 1) }),
   },
   {
+    regex: /\\\((.+?)\\\)/g,
+    parse: (m) => ({ type: 'mathInline', value: g(m, 1) }),
+  },
+  {
     regex: emojiRegex,
     parse: (m) => ({
       type: 'unicodeEmoji',
@@ -89,6 +97,82 @@ const inlinePatterns: PatternDef[] = [
     }),
   },
 ]
+
+function parseQuoteBlock(
+  text: string,
+  pos: number,
+): { end: number; token: MfmToken } | null {
+  if (text[pos] !== '>') return null
+  // Must be at start of text or preceded by newline
+  if (pos > 0 && text[pos - 1] !== '\n') return null
+  // Require space after >
+  if (text[pos + 1] !== ' ') return null
+
+  const lines: string[] = []
+  let i = pos
+  while (i < text.length) {
+    if (text[i] !== '>' || text[i + 1] !== ' ') break
+    const lineStart = i + 2
+    const nlIdx = text.indexOf('\n', lineStart)
+    if (nlIdx < 0) {
+      lines.push(text.slice(lineStart))
+      i = text.length
+      break
+    }
+    lines.push(text.slice(lineStart, nlIdx))
+    i = nlIdx + 1
+  }
+
+  if (lines.length === 0) return null
+
+  const inner = lines.join('\n')
+  return {
+    end: i,
+    token: { type: 'quote', children: parseTokens(inner) },
+  }
+}
+
+function parseSearchBlock(
+  text: string,
+  pos: number,
+): { end: number; token: MfmToken } | null {
+  // Must be at start of text or preceded by newline
+  if (pos > 0 && text[pos - 1] !== '\n') return null
+
+  const nlIdx = text.indexOf('\n', pos)
+  const line = nlIdx < 0 ? text.slice(pos) : text.slice(pos, nlIdx)
+  const end = nlIdx < 0 ? text.length : nlIdx
+
+  const searchMatch = /^(.+?) (検索|\[検索\]|Search|\[Search\])$/.exec(line)
+  if (!searchMatch) return null
+
+  return {
+    end,
+    token: { type: 'search', query: searchMatch[1] as string },
+  }
+}
+
+function parseMathBlock(
+  text: string,
+  pos: number,
+): { end: number; token: MfmToken } | null {
+  if (text[pos] !== '\\' || text[pos + 1] !== '[') return null
+  // Must be at start of text or preceded by newline
+  if (pos > 0 && text[pos - 1] !== '\n') return null
+
+  const closeIdx = text.indexOf('\\]', pos + 2)
+  if (closeIdx < 0) return null
+
+  const value = text.slice(pos + 2, closeIdx)
+  let end = closeIdx + 2
+  // Consume trailing newline if present
+  if (text[end] === '\n') end++
+
+  return {
+    end,
+    token: { type: 'mathBlock', value },
+  }
+}
 
 function parseCodeBlock(
   text: string,
@@ -216,6 +300,20 @@ function findFirstBlock(
   return null
 }
 
+function findFirstSearchBlock(text: string): BlockMatch | null {
+  const searchRe = /(?:^|\n)(.+?) (検索|\[検索\]|Search|\[Search\])(?:\n|$)/g
+  const m = searchRe.exec(text)
+  if (!m) return null
+  const index = m[0].startsWith('\n') ? m.index + 1 : m.index
+  const result = parseSearchBlock(text, index)
+  if (!result) return null
+  return {
+    index,
+    consumeLength: result.end - index,
+    token: result.token,
+  }
+}
+
 function parseTokens(text: string): MfmToken[] {
   if (!text) return []
 
@@ -232,6 +330,9 @@ function parseTokens(text: string): MfmToken[] {
       findFirstBlock(remaining, '<small>', parseTagBlock),
       findFirstBlock(remaining, '<center>', parseTagBlock),
       findFirstBlock(remaining, '<plain>', parseTagBlock),
+      findFirstBlock(remaining, '>', parseQuoteBlock),
+      findFirstBlock(remaining, '\\[', parseMathBlock),
+      findFirstSearchBlock(remaining),
     ]
     for (const c of blockCandidates) {
       if (c && (!earliest || c.index < earliest.index)) {
