@@ -1,4 +1,5 @@
 import type { NormalizedUserDetail } from '@/adapters/types'
+import { hapticLight } from '@/utils/haptics'
 
 interface FollowApi {
   followUser(userId: string): Promise<void>
@@ -9,6 +10,7 @@ export async function toggleFollow(
   api: FollowApi,
   user: NormalizedUserDetail,
 ): Promise<void> {
+  hapticLight()
   const prev = user.isFollowing
 
   try {

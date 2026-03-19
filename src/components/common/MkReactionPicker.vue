@@ -6,6 +6,7 @@ import { useEmojisStore } from '@/stores/emojis'
 import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
 import { useRecentEmojisStore } from '@/stores/recentEmojis'
 import { useIsCompactLayout } from '@/stores/ui'
+import { hapticLight } from '@/utils/haptics'
 import { char2twemojiUrl } from '@/utils/twemoji'
 import MkReactionPickerSection from './MkReactionPickerSection.vue'
 
@@ -113,17 +114,20 @@ function isCustomEmoji(reaction: string): boolean {
 }
 
 function pickEmoji(emoji: string) {
+  hapticLight()
   recentEmojisStore.add(emoji, pinnedEmojis.value)
   emit('pick', emoji)
 }
 
 function pickCustom(name: string) {
+  hapticLight()
   const key = `:${name}:`
   recentEmojisStore.add(key, pinnedEmojis.value)
   emit('pick', key)
 }
 
 function pickPinnedOrRecent(reaction: string) {
+  hapticLight()
   recentEmojisStore.add(reaction, pinnedEmojis.value)
   emit('pick', reaction)
 }

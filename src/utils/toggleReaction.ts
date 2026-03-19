@@ -1,4 +1,5 @@
 import type { NormalizedNote } from '@/adapters/types'
+import { hapticLight } from '@/utils/haptics'
 
 interface ReactionApi {
   createReaction(noteId: string, reaction: string): Promise<void>
@@ -11,6 +12,7 @@ export async function toggleReaction(
   reaction: string,
   onMutated?: () => void,
 ): Promise<void> {
+  hapticLight()
   const prevReaction = note.myReaction
   const prevCounts = { ...note.reactions }
 

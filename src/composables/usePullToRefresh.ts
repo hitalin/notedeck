@@ -1,4 +1,5 @@
 import { onUnmounted, type Ref, ref, watch } from 'vue'
+import { hapticMedium } from '@/utils/haptics'
 
 // Misskey 本家と同じパラメータ
 const SCROLL_STOP = 10
@@ -106,7 +107,11 @@ export function usePullToRefresh(
     const moveHeight = moveScreenY - startScreenY!
     pullDistance.value = Math.min(Math.max(moveHeight, 0), MAX_PULL_DISTANCE)
 
+    const wasEnough = isPulledEnough.value
     isPulledEnough.value = pullDistance.value >= FIRE_THRESHOLD
+    if (!wasEnough && isPulledEnough.value) {
+      hapticMedium()
+    }
 
     if (pullDistance.value > 0) {
       e.preventDefault()

@@ -24,6 +24,7 @@
     "core:webview:allow-create-webview-window",
     "opener:default",
     "notification:default",
-    "os:default"
+    "os:default",
+    "haptics:default"
   ]
 }
