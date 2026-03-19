@@ -394,3 +394,15 @@ html[data-platform="android"] select {
 .nd-popup-leave-to .nd-popup-content {
   transform: scale(0.95);
 }
+
+/* ---- Fade transition (Vue <Transition name="nd-fade">) ---- */
+
+.nd-fade-enter-active,
+.nd-fade-leave-active {
+  transition: opacity var(--nd-duration-slower) ease;
+}
+
+.nd-fade-enter-from,
+.nd-fade-leave-to {
+  opacity: 0;
+}
