@@ -98,8 +98,10 @@ async function toggleMobileSize() {
     }
     savedDesktopSize = null
   } else {
-    // Unmaximize first if maximized
-    if (isMaximized.value) {
+    // Exit fullscreen or unmaximize first
+    if (await appWindow.isFullscreen()) {
+      await appWindow.setFullscreen(false)
+    } else if (isMaximized.value) {
       await appWindow.unmaximize()
     }
     const factor = await appWindow.scaleFactor()
