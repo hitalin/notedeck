@@ -218,10 +218,10 @@ async function openQrCode() {
 
   const { default: QRCodeStyling } = await import('qr-code-styling')
   const qr = new QRCodeStyling({
-    width: 600,
-    height: 600,
-    margin: 42,
-    type: 'canvas',
+    width: 230,
+    height: 230,
+    margin: 16,
+    type: 'svg',
     data: profileUrl,
     image: serverInfo?.iconUrl || undefined,
     qrOptions: {
@@ -1012,9 +1012,9 @@ async function handlePosted(editedNoteId?: string) {
   border-radius: 12px;
   overflow: hidden;
 
-  :deep(canvas) {
-    width: 100% !important;
-    height: 100% !important;
+  :deep(svg) {
+    width: 100%;
+    height: 100%;
   }
 }
 
