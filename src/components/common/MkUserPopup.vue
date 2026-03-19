@@ -140,7 +140,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 }
 
 .popupBannerEmpty {
-  background: linear-gradient(135deg, #4c5e6d, #6b8a9e);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--nd-accent) 40%, var(--nd-panel)), color-mix(in srgb, var(--nd-accent) 20%, var(--nd-panel)));
 }
 
 .popupBody {

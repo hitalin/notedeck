@@ -973,7 +973,7 @@ function closeMentionPopup() {
   position: relative;
 
   &.collapsed {
-    max-height: 200px;
+    max-height: 9em;
     overflow: hidden;
   }
 }
@@ -1047,6 +1047,8 @@ function closeMentionPopup() {
   .customEmoji {
     height: 1.25em;
     min-width: 1.25em;
+    max-width: 70px;
+    object-fit: contain;
   }
 
   .count {

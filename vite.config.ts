@@ -1,8 +1,20 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import vue from '@vitejs/plugin-vue'
+import JSON5 from 'json5'
 import type { Plugin } from 'vite'
 import { defineConfig } from 'vite'
+
+function json5Plugin(): Plugin {
+  return {
+    name: 'json5',
+    transform(code, id) {
+      if (!id.endsWith('.json5')) return undefined
+      const parsed = JSON5.parse(code)
+      return { code: `export default ${JSON.stringify(parsed)}`, map: null }
+    },
+  }
+}
 
 function stripUnusedFonts(): Plugin {
   return {
@@ -121,7 +133,7 @@ function subsetTablerIcons(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [vue(), stripUnusedFonts(), subsetTablerIcons()],
+  plugins: [vue(), json5Plugin(), stripUnusedFonts(), subsetTablerIcons()],
   resolve: {
     alias: {
       '@': resolve(import.meta.dirname, 'src'),
