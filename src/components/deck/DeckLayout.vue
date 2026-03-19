@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { computed, defineAsyncComponent, ref } from 'vue'
+import AppToast from '@/components/common/AppToast.vue'
 import { useDeckInit } from '@/composables/useDeckInit'
 import { requestMoveColumn } from '@/composables/useDeckWindow'
 import { useFileDrop } from '@/composables/useFileDrop'
@@ -243,6 +244,8 @@ function acceptCrossWindowDrop() {
         </div>
       </div>
     </Transition>
+
+    <AppToast />
 
     <!-- Cross-window column drop overlay -->
     <Transition name="fade">

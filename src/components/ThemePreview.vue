@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
+import { DARK_BASE, LIGHT_BASE } from '@/theme/builtinThemes'
 import { compileMisskeyTheme } from '@/theme/compiler'
 import type { MisskeyTheme } from '@/theme/types'
 
@@ -9,7 +9,7 @@ const props = defineProps<{
 }>()
 
 const vars = computed(() => {
-  const base = props.theme.base === 'light' ? LIGHT_THEME : DARK_THEME
+  const base = props.theme.base === 'light' ? LIGHT_BASE : DARK_BASE
   const compiled = compileMisskeyTheme(props.theme, base)
   return {
     bg: compiled.bg ?? '#232323',

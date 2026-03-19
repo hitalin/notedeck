@@ -137,11 +137,12 @@ const webUiUrl = computed(() => {
       <!-- Inline post form slot (e.g. channel column) -->
       <slot name="before-notes" :handle-posted="handlePosted" />
 
-      <div v-if="isLoading && notes.length === 0">
-        <MkSkeleton v-for="i in 5" :key="i" />
-      </div>
+      <Transition name="nd-fade" mode="out-in">
+        <div v-if="isLoading && notes.length === 0" key="skeleton">
+          <MkSkeleton v-for="i in 5" :key="i" />
+        </div>
 
-      <template v-else>
+        <div v-else key="content">
         <button
           v-if="pendingNotes.length > 0"
           :class="$style.newNotesBanner"
@@ -185,7 +186,8 @@ const webUiUrl = computed(() => {
             </div>
           </template>
         </NoteScroller>
-      </template>
+        </div>
+      </Transition>
     </div>
   </DeckColumn>
 

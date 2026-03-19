@@ -1034,7 +1034,7 @@ function closeMentionPopup() {
   }
 
   &:active {
-    animation: reaction-bounce 0.3s ease;
+    animation: reaction-bounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   &.reacted,
@@ -1064,7 +1064,8 @@ function closeMentionPopup() {
 
 @keyframes reaction-bounce {
   0% { transform: scale(1); }
-  40% { transform: scale(1.1); }
+  30% { transform: scale(1.25); }
+  60% { transform: scale(0.95); }
   100% { transform: scale(1); }
 }
 
@@ -1116,15 +1117,14 @@ function closeMentionPopup() {
   cursor: pointer;
   color: color-mix(in srgb, var(--nd-panel) 30%, var(--nd-fg) 70%);
   font-size: 1em;
-  border-radius: var(--nd-radius-sm);
-  transition: color var(--nd-duration-base), background var(--nd-duration-base), transform var(--nd-duration-fast);
+  transition: color var(--nd-duration-base), transform var(--nd-duration-fast);
 
   &:active {
     transform: scale(0.9);
   }
 
   &:hover {
-    background: var(--nd-buttonHoverBg);
+    color: var(--nd-fgHighlighted);
   }
 }
 
@@ -1139,6 +1139,10 @@ function closeMentionPopup() {
 
 .reactionButton:hover {
   color: var(--nd-reactionHover);
+}
+
+.reactionButton:active {
+  animation: reaction-bounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .moreButton:hover {
@@ -1218,7 +1222,6 @@ function closeMentionPopup() {
   .pinnedInfo { padding: 8px 22px 0 22px; }
   .replyTo { padding: 8px 22px 0 22px; }
   .footer { margin-bottom: -8px; }
-  .footerButton { margin-right: 12px; }
   .instanceName { max-width: 120px; }
 }
 

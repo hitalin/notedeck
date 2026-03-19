@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
+import {
+  DARK_BASE,
+  DARK_THEME,
+  LIGHT_BASE,
+  LIGHT_THEME,
+} from '@/theme/builtinThemes'
 import { parseColor } from '@/theme/colorUtils'
 import { compileMisskeyTheme } from '@/theme/compiler'
 import type { MisskeyTheme } from '@/theme/types'
@@ -135,7 +140,7 @@ describe('compileMisskeyTheme', () => {
   })
 
   it('compiles the full builtin dark theme without errors', () => {
-    const compiled = compileMisskeyTheme(DARK_THEME, DARK_THEME)
+    const compiled = compileMisskeyTheme(DARK_THEME, DARK_BASE)
     expect(Object.keys(compiled).length).toBeGreaterThan(40)
     // Key props should be valid colors
     expect(parseColor(compiled.bg)).not.toBeNull()
@@ -148,7 +153,7 @@ describe('compileMisskeyTheme', () => {
   })
 
   it('compiles the full builtin light theme without errors', () => {
-    const compiled = compileMisskeyTheme(LIGHT_THEME, LIGHT_THEME)
+    const compiled = compileMisskeyTheme(LIGHT_THEME, LIGHT_BASE)
     expect(Object.keys(compiled).length).toBeGreaterThan(40)
     expect(parseColor(compiled.bg)).not.toBeNull()
     expect(parseColor(compiled.fg)).not.toBeNull()
@@ -169,11 +174,11 @@ describe('compileMisskeyTheme', () => {
         bg: '#1a1a2e', // custom background
       },
     }
-    const compiled = compileMisskeyTheme(serverTheme, DARK_THEME)
+    const compiled = compileMisskeyTheme(serverTheme, DARK_BASE)
     expect(compiled.accent).toBe('#ff6600')
     expect(compiled.bg).toBe('#1a1a2e')
-    // Should still have all dark theme props (fg from DARK_THEME base)
-    expect(compiled.fg).toBe('rgb(199, 209, 216)')
+    // Should still have all dark base theme props (fg from DARK_BASE)
+    expect(compiled.fg).toBe('#dadada')
     // accentedBg should use the custom accent
     const accentedBg = parseColor(compiled.accentedBg)
     expect(accentedBg).not.toBeNull()

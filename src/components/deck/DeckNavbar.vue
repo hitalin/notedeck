@@ -76,9 +76,9 @@ function getAccountStreamState(accountId: string): StreamConnectionState {
 }
 
 // Navbar resize
-const MIN_WIDTH = 68
-const COLLAPSE_THRESHOLD = 120
-const DEFAULT_WIDTH = 200
+const MIN_WIDTH = 80
+const COLLAPSE_THRESHOLD = 140
+const DEFAULT_WIDTH = 250
 const MAX_WIDTH = 400
 const navWidth = ref(
   document.documentElement.clientWidth <= 1279 ? MIN_WIDTH : DEFAULT_WIDTH,
@@ -435,7 +435,7 @@ defineExpose({
 .navbar {
   flex: 0 0 auto;
   display: flex;
-  background: color-mix(in srgb, var(--nd-navBg) 80%, transparent);
+  background: color(from var(--nd-navBg) srgb r g b / 0.5);
   backdrop-filter: blur(var(--nd-blur));
   -webkit-backdrop-filter: blur(var(--nd-blur));
   border-right: 1px solid var(--nd-divider);
@@ -542,8 +542,8 @@ defineExpose({
 }
 
 .avatar {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
   display: block;
@@ -740,8 +740,8 @@ defineExpose({
   }
 
   .postBtn {
-    width: 54px;
-    height: 54px;
+    width: 52px;
+    height: 52px;
     padding: 0;
     margin: 0 auto;
     border-radius: 50%;

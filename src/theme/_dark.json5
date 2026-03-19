@@ -1,23 +1,25 @@
 // Misskey base dark theme
-// Based on: misskey-dev/misskey packages/frontend-shared/themes/_dark.json5
+// Source: misskey-dev/misskey packages/frontend-shared/themes/_dark.json5
+// このテーマが直接使われることは無い（ベーステーマ）
 {
-  id: 'builtin-dark',
+  id: 'dark',
   name: 'Dark',
-  base: 'dark',
+  author: 'syuilo',
+  desc: 'Default dark theme',
+  kind: 'dark',
   props: {
     accent: '#86b300',
-    accentDarken: ':darken<10<@accent',
     accentedBg: ':alpha<0.15<@accent',
     love: '#dd2e44',
     focus: ':alpha<0.3<@accent',
-    bg: '#232323',
-    fg: 'rgb(199, 209, 216)',
-    fgHighlighted: '#fff',
+    bg: '#000',
+    fg: '#dadada',
+    fgHighlighted: ':lighten<3<@fg',
     fgOnAccent: '#fff',
     fgOnWhite: '#333',
-    divider: 'rgba(255, 255, 255, 0.14)',
+    divider: 'rgba(255, 255, 255, 0.1)',
     indicator: '@accent',
-    panel: '#2d2d2d',
+    panel: ':lighten<3<@bg',
     panelHighlight: ':lighten<3<@panel',
     panelHeaderBg: ':lighten<3<@panel',
     panelHeaderFg: '@fg',
@@ -26,7 +28,7 @@
     popup: ':lighten<3<@panel',
     shadow: 'rgba(0, 0, 0, 0.3)',
     header: ':alpha<0.7<@panel',
-    navBg: '#363636',
+    navBg: '@panel',
     navFg: '@fg',
     navActive: '@accent',
     navIndicator: '@indicator',

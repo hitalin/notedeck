@@ -381,8 +381,9 @@ function toggleFilter(key: keyof TimelineFilter) {
 async function reconnectWithFilter() {
   disconnect()
   resetBatch()
+  setNotes([])
   isLoading.value = true
-  await connect(true)
+  await connect(false)
 }
 
 async function fetchCachedNotes(): Promise<NormalizedNote[]> {
@@ -527,7 +528,7 @@ async function switchTl(type: TimelineType) {
   tlType.value = type
   deckStore.updateColumn(props.column.id, { tl: type })
   refreshFilterKeys()
-  await connect(true)
+  await connect(false)
 }
 
 async function loadMore() {

@@ -6,7 +6,7 @@ import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
-import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
+import { DARK_BASE, LIGHT_BASE } from '@/theme/builtinThemes'
 import { parseColor, toRgba } from '@/theme/colorUtils'
 import { compileMisskeyTheme } from '@/theme/compiler'
 import type { MisskeyTheme } from '@/theme/types'
@@ -106,7 +106,7 @@ const hasChangesFromSnapshot = computed(() => {
 })
 
 const baseTheme = computed(() =>
-  baseMode.value === 'dark' ? DARK_THEME : LIGHT_THEME,
+  baseMode.value === 'dark' ? DARK_BASE : LIGHT_BASE,
 )
 
 // Compiled preview of current theme
@@ -348,7 +348,7 @@ function selectAddProp(key: string) {
 
 // Resolve accent color from a theme for preview swatch
 function themeAccentColor(theme: MisskeyTheme): string {
-  const base = theme.base === 'light' ? LIGHT_THEME : DARK_THEME
+  const base = theme.base === 'light' ? LIGHT_BASE : DARK_BASE
   const compiled = compileMisskeyTheme(theme, base)
   return compiled.accent ?? '#888'
 }
