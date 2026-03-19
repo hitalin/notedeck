@@ -19,15 +19,18 @@ export const useAccountsStore = defineStore('accounts', () => {
   const isLoaded = ref(false)
   const modeVersion = ref(0)
 
-  const activeAccount = computed(
-    () => accounts.value.find((a) => a.id === activeAccountId.value) ?? null,
-  )
-
   const accountMap = computed(() => {
     const map = new Map<string, Account>()
     for (const acc of accounts.value) map.set(acc.id, acc)
     return map
   })
+
+  const activeAccount = computed(
+    () =>
+      (activeAccountId.value
+        ? accountMap.value.get(activeAccountId.value)
+        : null) ?? null,
+  )
 
   const accountsByServer = computed(() => {
     const map = new Map<string, Account[]>()

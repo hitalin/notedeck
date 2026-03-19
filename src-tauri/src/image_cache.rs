@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
-use tokio::sync::{watch, Mutex, Semaphore};
+use tokio::sync::{watch, Mutex, RwLock, Semaphore};
 
 const CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 const MAX_FILE_SIZE: u64 = 20 * 1024 * 1024; // 20MB
@@ -53,8 +53,8 @@ pub struct ImageCache {
     inflight: Arc<Mutex<InflightMap>>,
     http_client: reqwest::Client,
     fetch_semaphore: Arc<Semaphore>,
-    negative_cache: Arc<Mutex<HashMap<String, Instant>>>,
-    mem_cache: Arc<Mutex<MemCacheState>>,
+    negative_cache: Arc<RwLock<HashMap<String, Instant>>>,
+    mem_cache: Arc<RwLock<MemCacheState>>,
 }
 
 impl ImageCache {
@@ -75,8 +75,8 @@ impl ImageCache {
             inflight: Arc::new(Mutex::new(HashMap::new())),
             http_client,
             fetch_semaphore: Arc::new(Semaphore::new(MAX_CONCURRENT_FETCHES)),
-            negative_cache: Arc::new(Mutex::new(HashMap::new())),
-            mem_cache: Arc::new(Mutex::new(MemCacheState {
+            negative_cache: Arc::new(RwLock::new(HashMap::new())),
+            mem_cache: Arc::new(RwLock::new(MemCacheState {
                 entries: LruCache::new(NonZeroUsize::new(MEM_CACHE_CAPACITY).unwrap()),
                 total_size: 0,
             })),
@@ -129,7 +129,7 @@ impl ImageCache {
     }
 
     async fn insert_mem_cache(&self, hash: &str, data: &Arc<Vec<u8>>, content_type: &str) {
-        let mut state = self.mem_cache.lock().await;
+        let mut state = self.mem_cache.write().await;
         // LRU eviction: pop least-recently-used until there is room
         while state.total_size + data.len() > MEMORY_CACHE_MAX_TOTAL && !state.entries.is_empty() {
             if let Some((_key, removed)) = state.entries.pop_lru() {
@@ -163,7 +163,7 @@ impl ImageCache {
 
         // L1: Memory cache
         {
-            let mut mem = self.mem_cache.lock().await;
+            let mut mem = self.mem_cache.write().await;
             if let Some(entry) = mem.entries.get(&hash) {
                 return Some(CacheEntry {
                     path: data_path,
@@ -188,7 +188,7 @@ impl ImageCache {
 
         // Negative cache check
         {
-            let neg = self.negative_cache.lock().await;
+            let neg = self.negative_cache.read().await;
             if let Some(failed_at) = neg.get(&hash) {
                 if failed_at.elapsed() < NEGATIVE_CACHE_TTL {
                     return Err("Temporarily unavailable".to_string());
@@ -313,7 +313,7 @@ impl ImageCache {
             let meta_path = cache_dir.join(format!("{hash_clone}.meta"));
 
             if error {
-                let mut neg = negative_cache.lock().await;
+                let mut neg = negative_cache.write().await;
                 neg.insert(hash_clone.clone(), Instant::now());
                 tx.send(Some(Err("Stream failed".to_string()))).ok();
             } else {
@@ -332,7 +332,7 @@ impl ImageCache {
                 // Store in memory cache if small enough
                 let mem_bytes = if all_bytes.len() <= MEMORY_CACHE_MAX_ITEM {
                     let arc = Arc::new(all_bytes);
-                    let mut state = mem_cache.lock().await;
+                    let mut state = mem_cache.write().await;
                     while state.total_size + arc.len() > MEMORY_CACHE_MAX_TOTAL
                         && !state.entries.is_empty()
                     {
@@ -392,7 +392,7 @@ impl ImageCache {
         let tx_msg = msg.clone();
         tx.send(Some(Err(tx_msg))).ok();
         tokio::spawn(async move {
-            neg.lock().await.insert(hash.clone(), Instant::now());
+            neg.write().await.insert(hash.clone(), Instant::now());
             inflight.lock().await.remove(&hash);
         });
     }
@@ -456,7 +456,7 @@ mod tests {
         let data = Arc::new(vec![1u8, 2, 3]);
         cache.insert_mem_cache("test-hash", &data, "image/png").await;
 
-        let mut mem = cache.mem_cache.lock().await;
+        let mut mem = cache.mem_cache.write().await;
         let entry = mem.entries.get("test-hash").unwrap();
         assert_eq!(entry.content_type, "image/png");
         assert_eq!(&**entry.data, &[1u8, 2, 3]);
@@ -475,7 +475,7 @@ mod tests {
         // Third insert should evict "a"
         cache.insert_mem_cache("c", &big, "image/png").await;
 
-        let mem = cache.mem_cache.lock().await;
+        let mem = cache.mem_cache.read().await;
         assert!(mem.entries.peek("a").is_none(), "LRU entry 'a' should be evicted");
         assert!(mem.entries.peek("b").is_some() || mem.entries.peek("c").is_some());
     }

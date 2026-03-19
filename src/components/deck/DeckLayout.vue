@@ -42,6 +42,12 @@ const pendingFilePaths = ref<string[]>([])
 const activeColumnIndex = ref(0)
 const { updateAvailable, checkForUpdate } = useUpdater()
 
+const wallpaperStyle = computed(() =>
+  deckStore.wallpaper != null
+    ? { backgroundImage: `url(${deckStore.wallpaper})` }
+    : undefined,
+)
+
 const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i
 
 function openCompose() {
@@ -156,10 +162,7 @@ function acceptCrossWindowDrop() {
     <!-- Main content area -->
     <div
       :class="[$style.mainArea, { [$style.withWallpaper]: deckStore.wallpaper != null }]"
-      :style="{
-        backgroundImage:
-          deckStore.wallpaper != null ? `url(${deckStore.wallpaper})` : '',
-      }"
+      :style="wallpaperStyle"
     >
       <DeckColumnsArea
         ref="columnsAreaRef"

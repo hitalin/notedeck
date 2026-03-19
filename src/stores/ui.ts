@@ -1,6 +1,6 @@
 import { type Platform, platform } from '@tauri-apps/plugin-os'
 import { defineStore, storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, onScopeDispose, ref } from 'vue'
 
 const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
 
@@ -36,9 +36,11 @@ export const useUiStore = defineStore('ui', () => {
   const sidebarOpen = ref(true)
 
   const isNarrowViewport = ref(window.innerWidth <= MOBILE_BREAKPOINT)
-  window.addEventListener('resize', () => {
+  const onResize = () => {
     isNarrowViewport.value = window.innerWidth <= MOBILE_BREAKPOINT
-  })
+  }
+  window.addEventListener('resize', onResize)
+  onScopeDispose(() => window.removeEventListener('resize', onResize))
 
   /** ビューポート幅ベースのレイアウト判定（タブレット横持ち等では false） */
   const isCompactLayout = computed(() => isNarrowViewport.value)

@@ -24,6 +24,22 @@ export function useColumnDrag(
 
   let ghost: HTMLElement | null = null
 
+  // Pre-computed lookup: columnId → group index in layout (built once per drag)
+  let groupIndexMap: Map<string, number> | null = null
+
+  function buildGroupIndexMap() {
+    const map = new Map<string, number>()
+    for (let i = 0; i < deckStore.layout.length; i++) {
+      const group = deckStore.layout[i]
+      if (group) {
+        for (const id of group) {
+          map.set(id, i)
+        }
+      }
+    }
+    groupIndexMap = map
+  }
+
   function startDrag(columnId: string, e: PointerEvent) {
     if (e.button !== 0) return
     const target = e.target as HTMLElement
@@ -54,6 +70,7 @@ export function useColumnDrag(
 
   function beginDrag(columnId: string, e: PointerEvent) {
     dragColumnId.value = columnId
+    buildGroupIndexMap()
 
     const sourceEl = document.querySelector(
       `.stack-cell[data-column-id="${CSS.escape(columnId)}"]`,
@@ -121,9 +138,8 @@ export function useColumnDrag(
       const dragId = dragColumnId.value
       const sameGroup =
         dragId &&
-        deckStore.layout.some(
-          (ids) => ids.includes(dragId) && ids.includes(targetId),
-        )
+        groupIndexMap != null &&
+        groupIndexMap.get(dragId) === groupIndexMap.get(targetId)
 
       if (sameGroup) {
         dropTarget.value = { columnId: targetId, position: 'swap' }
@@ -148,8 +164,8 @@ export function useColumnDrag(
     // Helper: inserting at fromIdx or fromIdx+1 is a no-op (same position)
     function isInsertNoop(insertIndex: number): boolean {
       const dragId = dragColumnId.value
-      if (!dragId) return false
-      const fromIdx = deckStore.layout.findIndex((ids) => ids.includes(dragId))
+      if (!dragId || !groupIndexMap) return false
+      const fromIdx = groupIndexMap.get(dragId) ?? -1
       return (
         fromIdx >= 0 && (insertIndex === fromIdx || insertIndex === fromIdx + 1)
       )
@@ -219,6 +235,7 @@ export function useColumnDrag(
 
     dragColumnId.value = null
     dropTarget.value = null
+    groupIndexMap = null
     if (ghost) {
       ghost.remove()
       ghost = null
