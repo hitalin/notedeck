@@ -77,10 +77,10 @@
   --nd-accent-subtle: color-mix(in srgb, var(--nd-accent) 10%, transparent);
   --nd-love-hover: color-mix(in srgb, var(--nd-love) 15%, transparent);
   --nd-love-subtle: color-mix(in srgb, var(--nd-love) 10%, transparent);
-  /* Shadow depth */
-  --nd-shadow-s: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --nd-shadow-m: 0 4px 16px rgba(0, 0, 0, 0.15);
-  --nd-shadow-l: 0 8px 32px rgba(0, 0, 0, 0.2);
+  /* Shadow depth (Misskey: 0px 4px 32px var(--shadow)) */
+  --nd-shadow-s: 0 2px 8px var(--nd-shadow);
+  --nd-shadow-m: 0 4px 32px var(--nd-shadow);
+  --nd-shadow-l: 0 8px 32px var(--nd-shadow);
   /* Non-theme layout constants */
   --nd-radius: 12px;
   --nd-radius-sm: 6px;
@@ -88,7 +88,7 @@
   --nd-radius-full: 999px;
   --nd-margin: 10px;
   --nd-columnGap: 2px;
-  --nd-blur: 16px;
+  --nd-blur: 15px;
   --nd-blur-panel: 8px;
   --nd-blur-content: 4px;
   /* Transition duration */
@@ -299,7 +299,7 @@ html[data-platform="android"] select {
 }
 
 ._acrylic {
-  background: color(from var(--nd-panel) srgb r g b / 0.5);
+  background: color(from var(--nd-bg) srgb r g b / 0.5);
   backdrop-filter: blur(var(--nd-blur));
   -webkit-backdrop-filter: blur(var(--nd-blur));
 }

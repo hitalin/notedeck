@@ -1,18 +1,20 @@
 // Misskey base dark theme
-// Based on: misskey-dev/misskey packages/frontend-shared/themes/_dark.json5
+// Source: misskey-dev/misskey packages/frontend-shared/themes/_dark.json5
+// このテーマが直接使われることは無い（ベーステーマ）
 {
-  id: 'builtin-dark',
+  id: 'dark',
   name: 'Dark',
-  base: 'dark',
+  author: 'syuilo',
+  desc: 'Default dark theme',
+  kind: 'dark',
   props: {
     accent: '#86b300',
-    accentDarken: ':darken<10<@accent',
     accentedBg: ':alpha<0.15<@accent',
     love: '#dd2e44',
     focus: ':alpha<0.3<@accent',
     bg: '#000',
     fg: '#dadada',
-    fgHighlighted: '#fff',
+    fgHighlighted: ':lighten<3<@fg',
     fgOnAccent: '#fff',
     fgOnWhite: '#333',
     divider: 'rgba(255, 255, 255, 0.1)',

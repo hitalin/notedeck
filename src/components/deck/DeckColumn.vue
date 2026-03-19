@@ -254,7 +254,7 @@ function openAsPip() {
   gap: 6px;
   height: 38px;
   line-height: 38px;
-  padding: 0 8px 0 28px;
+  padding: 0 16px 0 30px;
   background: var(--nd-panelHeaderBg);
   color: var(--nd-panelHeaderFg);
   font-size: 0.9em;
@@ -281,10 +281,10 @@ function openAsPip() {
 
 .colorIndicator {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: 12px;
+  left: 12px;
   width: 3px;
-  height: calc(100% - 20px);
+  height: calc(100% - 24px);
   border-radius: var(--nd-radius-full);
 }
 

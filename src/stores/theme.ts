@@ -2,7 +2,12 @@ import { invoke } from '@tauri-apps/api/core'
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
 import { applyTheme } from '@/theme/applier'
-import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
+import {
+  DARK_BASE,
+  DARK_THEME,
+  LIGHT_BASE,
+  LIGHT_THEME,
+} from '@/theme/builtinThemes'
 import { compileMisskeyTheme } from '@/theme/compiler'
 import type { CompiledProps, MisskeyTheme, ThemeSource } from '@/theme/types'
 
@@ -368,7 +373,7 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   function applySource(source: ThemeSource): void {
-    const base = source.kind.includes('light') ? LIGHT_THEME : DARK_THEME
+    const base = source.kind.includes('light') ? LIGHT_BASE : DARK_BASE
     const compiled = compileMisskeyTheme(source.theme, base)
     applyTheme(compiled)
     compiledCache.clear()
@@ -485,7 +490,7 @@ export const useThemeStore = defineStore('theme', () => {
       : (cached.light ?? cached.dark)
     if (!theme) return null
 
-    const base = dark ? DARK_THEME : LIGHT_THEME
+    const base = dark ? DARK_BASE : LIGHT_BASE
     const compiled = compileMisskeyTheme(theme, base)
     compiledCache.set(cacheKey, compiled)
     return compiled
