@@ -196,6 +196,21 @@ const isFollowLoading = ref(false)
 const showQrCode = ref(false)
 const qrCodeContainerEl = ref<HTMLDivElement | null>(null)
 
+async function fetchImageAsDataUrl(url: string): Promise<string | undefined> {
+  try {
+    const res = await fetch(url)
+    const blob = await res.blob()
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return undefined
+  }
+}
+
 async function openQrCode() {
   if (!user.value || !account.value) return
   showQrCode.value = true
@@ -205,25 +220,26 @@ async function openQrCode() {
   if (!container) return
   container.replaceChildren()
 
-  const username = user.value.username
-  const host = user.value.host || ''
-  const profileUrl = `https://${account.value.host}/@${username}${host ? `@${host}` : ''}`
+  const profileUrl = `https://${account.value.host}/users/${user.value.id}`
+
+  const serverInfo = await serversStore.getServerInfo(account.value.host)
 
   const { colord } = await import('colord')
-  const themeColor = user.value.instance?.themeColor
-  const baseColor = colord(themeColor || '#86b300')
+  const baseColor = colord(serverInfo.themeColor || '#86b300')
   const hsl = baseColor.toHsl()
 
-  const serverInfo = serversStore.getServer(account.value.host)
+  const imageDataUrl = serverInfo.iconUrl
+    ? await fetchImageAsDataUrl(serverInfo.iconUrl)
+    : undefined
 
   const { default: QRCodeStyling } = await import('qr-code-styling')
   const qr = new QRCodeStyling({
-    width: 230,
-    height: 230,
-    margin: 16,
-    type: 'svg',
+    width: 600,
+    height: 600,
+    margin: 42,
+    type: 'canvas',
     data: profileUrl,
-    image: serverInfo?.iconUrl || undefined,
+    image: imageDataUrl,
     qrOptions: {
       typeNumber: 0,
       mode: 'Byte',
@@ -233,7 +249,6 @@ async function openQrCode() {
       hideBackgroundDots: true,
       imageSize: 0.3,
       margin: 16,
-      crossOrigin: 'anonymous',
     },
     dotsOptions: {
       type: 'dots',
@@ -251,6 +266,17 @@ async function openQrCode() {
   })
 
   qr.append(container)
+
+  const canvas = container.querySelector('canvas')
+  if (canvas) {
+    Object.assign(canvas.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      width: '100%',
+      height: '100%',
+    })
+  }
 }
 
 async function handleToggleFollow() {
@@ -592,6 +618,7 @@ async function handlePosted(editedNoteId?: string) {
               <div :class="$style.qrAcct">@{{ user?.username }}@{{ account?.host }}</div>
             </div>
           </div>
+          <img :class="$style.qrLogo" src="/misskey-logo.svg" alt="Misskey" />
         </div>
       </div>
     </Teleport>
@@ -625,7 +652,7 @@ async function handlePosted(editedNoteId?: string) {
 }
 
 .bannerEmpty {
-  background: linear-gradient(135deg, #4c5e6d, #6b8a9e);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--nd-accent) 40%, var(--nd-panel)), color-mix(in srgb, var(--nd-accent) 20%, var(--nd-panel)));
 }
 
 .bannerFade {
@@ -1007,15 +1034,11 @@ async function handlePosted(editedNoteId?: string) {
 }
 
 .qrCanvas {
-  width: 230px;
-  aspect-ratio: 1;
+  position: relative;
+  width: min(230px, 80vw);
   border-radius: 12px;
-  overflow: hidden;
-
-  :deep(svg) {
-    width: 100%;
-    height: 100%;
-  }
+  overflow: clip;
+  aspect-ratio: 1;
 }
 
 .qrUser {
@@ -1055,6 +1078,12 @@ async function handlePosted(editedNoteId?: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.qrLogo {
+  width: 100px;
+  margin-top: 28px;
+  filter: drop-shadow(0 0 6px rgb(0 0 0 / 43%));
 }
 
 .mobileName {}

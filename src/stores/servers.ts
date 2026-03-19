@@ -23,7 +23,7 @@ export const useServersStore = defineStore('servers', () => {
     const next = new Map(servers.value)
     for (const s of stored) {
       const parsed = JSON.parse(s.featuresJson)
-      const { _iconUrl, ...features } = parsed
+      const { _iconUrl, _themeColor, ...features } = parsed
       const info: ServerInfo = {
         host: s.host,
         software: s.software as ServerInfo['software'],
@@ -31,6 +31,7 @@ export const useServersStore = defineStore('servers', () => {
         features,
       }
       if ('_iconUrl' in parsed) info.iconUrl = _iconUrl
+      if ('_themeColor' in parsed) info.themeColor = _themeColor
       next.set(s.host, info)
     }
     servers.value = next
@@ -38,19 +39,20 @@ export const useServersStore = defineStore('servers', () => {
 
   async function getServerInfo(host: string): Promise<ServerInfo> {
     const cached = servers.value.get(host)
-    if (cached?.iconUrl) return cached
+    if (cached) return cached
 
     const stored = await invoke<StoredServer | null>('get_server', { host })
     if (stored && Date.now() - stored.updatedAt < CACHE_TTL_MS) {
       const parsed = JSON.parse(stored.featuresJson)
-      if (parsed._iconUrl) {
-        const { _iconUrl, ...features } = parsed
+      if (parsed) {
+        const { _iconUrl, _themeColor, ...features } = parsed
         const info: ServerInfo = {
           host: stored.host,
           software: stored.software as ServerInfo['software'],
           version: stored.version,
           features,
           iconUrl: _iconUrl,
+          themeColor: _themeColor,
         }
         const next = new Map(servers.value)
         next.set(host, info)
@@ -71,6 +73,7 @@ export const useServersStore = defineStore('servers', () => {
         featuresJson: JSON.stringify({
           ...info.features,
           _iconUrl: info.iconUrl,
+          _themeColor: info.themeColor,
         }),
         updatedAt: Date.now(),
       },

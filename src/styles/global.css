@@ -27,11 +27,11 @@
   --nd-navIndicator: #86b300;
   --nd-pageHeaderBg: #232323;
   --nd-pageHeaderFg: rgb(199, 209, 216);
-  --nd-link: #86b300;
-  --nd-hashtag: #4cb8d4;
-  --nd-mention: #da6d35;
-  --nd-mentionMe: #d44c4c;
-  --nd-renote: #86b300;
+  --nd-link: #44a4c1;
+  --nd-hashtag: #ff9156;
+  --nd-mention: #86b300;
+  --nd-mentionMe: #86b300;
+  --nd-renote: #229e82;
   --nd-modalBg: rgba(0, 0, 0, 0.5);
   --nd-overlayDark: rgba(0, 0, 0, 0.6);
   --nd-overlayLightbox: rgba(0, 0, 0, 0.85);
@@ -63,7 +63,7 @@
   --nd-codeString: #ffb675;
   --nd-codeNumber: #cfff9e;
   --nd-codeBoolean: #c59eff;
-  --nd-deckBg: #1a1a1a;
+  --nd-deckBg: #000;
   /* Status indicator */
   --nd-statusOnline: #58d4c9;
   --nd-statusActive: #e4bc48;
@@ -147,12 +147,17 @@ body {
 }
 
 a {
-  color: var(--nd-accent);
+  color: var(--nd-link);
   text-decoration: none;
 }
 
 a:hover {
   text-decoration: underline;
+}
+
+::selection {
+  color: var(--nd-fgOnAccent);
+  background-color: var(--nd-accent);
 }
 
 button {
@@ -249,7 +254,7 @@ html[data-platform="android"] select {
 
 ._button:disabled {
   opacity: 0.5;
-  cursor: not-allowed;
+  cursor: default;
 }
 
 ._button:focus-visible {

@@ -80,10 +80,10 @@ defineExpose({ showDialog, showConfirm })
 }
 
 .aisDialog {
-  min-width: 280px;
-  max-width: 400px;
-  padding: 20px;
-  border-radius: 12px;
+  min-width: 320px;
+  max-width: 480px;
+  padding: 32px;
+  border-radius: 16px;
   background: var(--nd-panel);
   color: var(--nd-fg);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
@@ -102,8 +102,8 @@ defineExpose({ showDialog, showConfirm })
 }
 
 .aisDialogTitle {
-  font-size: 1em;
-  font-weight: 600;
+  font-size: 1.1em;
+  font-weight: bold;
   margin-bottom: 8px;
 }
 

@@ -16,9 +16,9 @@ interface NodeInfo {
 }
 
 export async function detectServer(host: string): Promise<ServerInfo> {
-  const [nodeinfo, iconUrl] = await Promise.all([
+  const [nodeinfo, serverMeta] = await Promise.all([
     fetchNodeInfo(host),
-    fetchIconUrl(host),
+    fetchServerMeta(host),
   ])
   const software = detectSoftware(nodeinfo.software.name)
 
@@ -27,7 +27,8 @@ export async function detectServer(host: string): Promise<ServerInfo> {
     software,
     version: nodeinfo.software.version,
     features: detectFeatures(software, nodeinfo.software.version),
-    iconUrl,
+    iconUrl: serverMeta.iconUrl,
+    themeColor: serverMeta.themeColor,
   }
 }
 
@@ -36,19 +37,25 @@ async function fetchNodeInfo(host: string): Promise<NodeInfo> {
   return data
 }
 
-async function fetchIconUrl(host: string): Promise<string> {
+async function fetchServerMeta(
+  host: string,
+): Promise<{ iconUrl: string; themeColor: string | null }> {
   try {
     const data = await invoke<Record<string, unknown>>('fetch_server_meta', {
       host,
     })
     const url = (data.iconUrl ?? data.faviconUrl) as string | undefined
-    if (url) {
-      return url.startsWith('http') ? url : `https://${host}${url}`
-    }
+    const iconUrl = url
+      ? url.startsWith('http')
+        ? url
+        : `https://${host}${url}`
+      : `https://${host}/favicon.ico`
+    const themeColor =
+      typeof data.themeColor === 'string' ? data.themeColor : null
+    return { iconUrl, themeColor }
   } catch {
-    // fall through to favicon fallback
+    return { iconUrl: `https://${host}/favicon.ico`, themeColor: null }
   }
-  return `https://${host}/favicon.ico`
 }
 
 function detectSoftware(name: string): ServerSoftware {
