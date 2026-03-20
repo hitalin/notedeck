@@ -291,6 +291,8 @@ export class MisskeyApi implements ApiAdapter {
         limit: options.limit ?? 20,
         sinceId: options.sinceId ?? null,
         untilId: options.untilId ?? null,
+        sinceDate: options.sinceDate ?? null,
+        untilDate: options.untilDate ?? null,
       },
     })
   }

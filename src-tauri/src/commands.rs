@@ -1092,13 +1092,23 @@ pub fn api_search_notes_local(
     account_id: String,
     query: String,
     limit: Option<i64>,
+    since_date: Option<String>,
+    until_date: Option<String>,
+    ascending: Option<bool>,
 ) -> Result<Vec<NormalizedNote>> {
     if query.len() > 1000 {
         return Err(NoteDeckError::InvalidInput(
             "Search query too long".to_string(),
         ));
     }
-    db.search_cached_notes(&account_id, &query, limit.unwrap_or(30).clamp(1, 200))
+    db.search_cached_notes_advanced(
+        &account_id,
+        &query,
+        limit.unwrap_or(30).clamp(1, 200),
+        since_date.as_deref(),
+        until_date.as_deref(),
+        ascending.unwrap_or(false),
+    )
 }
 
 #[tauri::command]
