@@ -69,6 +69,21 @@ onMounted(async () => {
     return
   }
 
+  // Logged-out / offline: show cached note in read-only mode
+  if (!account.hasToken) {
+    const cached = noteStore.get(props.noteId)
+    if (cached) {
+      note.value = cached
+    } else {
+      error.value = new AppError(
+        'OFFLINE',
+        'オフラインのためノート詳細を表示できません',
+      )
+    }
+    isLoading.value = false
+    return
+  }
+
   try {
     const result = await initAdapterFor(account.host, account.id, {
       pinnedReactions: false,
@@ -87,7 +102,13 @@ onMounted(async () => {
     ancestors.value = conv.reverse()
     children.value = replies
   } catch (e) {
-    error.value = AppError.from(e)
+    // API failed: try cache fallback
+    const cached = noteStore.get(props.noteId)
+    if (cached) {
+      note.value = cached
+    } else {
+      error.value = AppError.from(e)
+    }
   } finally {
     isLoading.value = false
   }
