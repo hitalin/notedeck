@@ -33,6 +33,7 @@ import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
@@ -129,11 +130,6 @@ function updateFilterIndicator() {
     width: `${activeTab.offsetWidth}px`,
     opacity: '1',
   }
-}
-
-function onFilterBarWheel(ev: WheelEvent) {
-  if (!filterBarRef.value) return
-  filterBarRef.value.scrollLeft += ev.deltaY || ev.deltaX
 }
 
 watch(activeFilter, () => nextTick(updateFilterIndicator))
@@ -382,6 +378,38 @@ async function pullRefresh() {
 const { isPulling, isPulledEnough, isRefreshing, pullDistance, displayHeight } =
   usePullToRefresh(scroller, pullRefresh)
 
+// Swipe / wheel to switch notification filter tabs
+useSwipeTab(
+  scroller,
+  () => {
+    // swipe left → next filter
+    const idx = NOTIFICATION_FILTERS.findIndex(
+      (f) => f.key === activeFilter.value,
+    )
+    const next =
+      idx >= 0 && idx < NOTIFICATION_FILTERS.length - 1
+        ? NOTIFICATION_FILTERS[idx + 1]
+        : undefined
+    if (next) {
+      activeFilter.value = next.key
+      return true
+    }
+    return false
+  },
+  () => {
+    // swipe right → previous filter
+    const idx = NOTIFICATION_FILTERS.findIndex(
+      (f) => f.key === activeFilter.value,
+    )
+    const prev = idx > 0 ? NOTIFICATION_FILTERS[idx - 1] : undefined
+    if (prev) {
+      activeFilter.value = prev.key
+      return true
+    }
+    return false
+  },
+)
+
 onMounted(() => {
   connect(true)
 })
@@ -426,7 +454,7 @@ onUnmounted(() => {
 
     <div v-else :class="$style.notifBody">
       <!-- Notification filter tabs -->
-      <div ref="filterBarRef" :class="$style.filterBar" @wheel.prevent="onFilterBarWheel">
+      <div ref="filterBarRef" :class="$style.filterBar">
         <button
           v-for="filter in NOTIFICATION_FILTERS"
           :key="filter.key"
