@@ -80,6 +80,7 @@ const emit = defineEmits<{
   edit: [note: NormalizedNote]
   bookmark: [note: NormalizedNote]
   pin: [note: NormalizedNote]
+  deleteAndEdit: [note: NormalizedNote]
 }>()
 
 const { navigateToNote: navToNote, navigateToUser: navToUser } = useNavigation()
@@ -663,6 +664,7 @@ function closeMentionPopup() {
     @edit="emit('edit', $event)"
     @bookmark="emit('bookmark', $event)"
     @pin="emit('pin', $event)"
+    @delete-and-edit="emit('deleteAndEdit', $event)"
   />
 
   <NoteReactionPickerPopup

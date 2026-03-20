@@ -464,6 +464,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
             @delete="handleDelete"
             @edit="handlers.edit"
             @bookmark="handlers.bookmark"
+            @delete-and-edit="handlers.deleteAndEdit"
           />
         </div>
       </template>
@@ -486,6 +487,9 @@ setTimeout(() => searchInput.value?.focus(), 100)
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"
       :edit-note="postForm.editNote.value"
+      :initial-text="postForm.initialText.value"
+      :initial-cw="postForm.initialCw.value"
+      :initial-visibility="postForm.initialVisibility.value"
       @close="postForm.close"
       @posted="handlePosted"
     />

@@ -10,6 +10,9 @@ const NoteDetailContent = defineAsyncComponent(
 const UserProfileContent = defineAsyncComponent(
   () => import('@/components/window/UserProfileContent.vue'),
 )
+const FollowListContent = defineAsyncComponent(
+  () => import('@/components/window/FollowListContent.vue'),
+)
 const LoginContent = defineAsyncComponent(
   () => import('@/components/window/LoginContent.vue'),
 )
@@ -86,6 +89,12 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         v-if="win.type === 'user-profile'"
         :account-id="(win.props.accountId as string)"
         :user-id="(win.props.userId as string)"
+      />
+      <FollowListContent
+        v-if="win.type === 'follow-list'"
+        :account-id="(win.props.accountId as string)"
+        :user-id="(win.props.userId as string)"
+        :initial-tab="(win.props.initialTab as 'following' | 'followers' | undefined)"
       />
       <LoginContent
         v-if="win.type === 'login'"

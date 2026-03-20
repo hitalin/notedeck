@@ -230,6 +230,26 @@ async function handleDelete(target: NormalizedNote) {
   }
 }
 
+async function handleDeleteAndEdit(target: NormalizedNote) {
+  const accountId = props.column.accountId
+  if (!accountId) return
+  const api = new MisskeyApi(accountId)
+  try {
+    await api.deleteNote(target.id)
+    if (result.value?.type === 'Note' && result.value.note.id === target.id) {
+      result.value = null
+    }
+    postFormReplyTo.value = target.replyId
+      ? await api.getNote(target.replyId).catch(() => undefined)
+      : undefined
+    postFormRenoteId.value = undefined
+    postFormEditNote.value = undefined
+    showPostForm.value = true
+  } catch {
+    // ignore
+  }
+}
+
 function closePostForm() {
   showPostForm.value = false
   postFormReplyTo.value = undefined
@@ -318,6 +338,7 @@ async function handlePosted(editedNoteId?: string) {
         @quote="handleQuote"
         @delete="handleDelete"
         @edit="handleEdit"
+        @delete-and-edit="handleDeleteAndEdit"
       />
     </div>
 

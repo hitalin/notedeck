@@ -18,9 +18,10 @@ const windowsStore = useWindowsStore()
 const isCompact = useIsCompactLayout()
 const size = computed(() => WINDOW_SIZES[props.window.type])
 
-const titles: Record<string, string> = {
+const BASE_TITLES: Record<string, string> = {
   'note-detail': 'ノート',
   'user-profile': 'プロフィール',
+  'follow-list': 'フォロー / フォロワー',
   login: 'アカウント追加',
   search: '検索',
   notifications: '通知',
@@ -29,9 +30,18 @@ const titles: Record<string, string> = {
   ai: 'AI アシスタント',
 }
 
+const windowTitle = computed(() => {
+  const base = BASE_TITLES[props.window.type] ?? ''
+  if (props.window.type === 'follow-list' && props.window.props.username) {
+    return `@${props.window.props.username} のフォロー / フォロワー`
+  }
+  return base
+})
+
 const icons: Record<string, string> = {
   'note-detail': 'ti ti-note',
   'user-profile': 'ti ti-user',
+  'follow-list': 'ti ti-users',
   login: 'ti ti-login-2',
   search: 'ti ti-search',
   notifications: 'ti ti-bell',
@@ -107,7 +117,7 @@ function onWindowMouseDown() {
   >
     <div :class="$style.windowHeader" @mousedown="onHeaderMouseDown">
       <i :class="[icons[window.type], $style.windowIcon]" />
-      <span :class="$style.windowTitle">{{ titles[window.type] ?? '' }}</span>
+      <span :class="$style.windowTitle">{{ windowTitle }}</span>
       <button class="_button" :class="$style.windowBtn" title="最小化" @click="windowsStore.toggleMinimize(window.id)">
         <i class="ti ti-minus" />
       </button>

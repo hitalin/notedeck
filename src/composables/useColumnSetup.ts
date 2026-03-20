@@ -99,6 +99,9 @@ export function useColumnSetup(
   const postFormReplyTo = ref<NormalizedNote | undefined>()
   const postFormRenoteId = ref<string | undefined>()
   const postFormEditNote = ref<NormalizedNote | undefined>()
+  const postFormInitialText = ref<string | undefined>()
+  const postFormInitialCw = ref<string | undefined>()
+  const postFormInitialVisibility = ref<string | undefined>()
 
   const toast = useToast()
   const actionSound = useNoteSound(() => account.value?.host, 'syuilo/bubble2')
@@ -171,7 +174,30 @@ export function useColumnSetup(
     postFormReplyTo.value = undefined
     postFormRenoteId.value = undefined
     postFormEditNote.value = note
+    postFormInitialText.value = undefined
+    postFormInitialCw.value = undefined
+    postFormInitialVisibility.value = undefined
     showPostForm.value = true
+  }
+
+  async function handleDeleteAndEdit(note: NormalizedNote) {
+    if (!adapter || checkOffline()) return
+    try {
+      await adapter.api.deleteNote(note.id)
+      postFormReplyTo.value = note.replyId
+        ? await adapter.api.getNote(note.replyId).catch(() => undefined)
+        : undefined
+      postFormRenoteId.value = undefined
+      postFormEditNote.value = undefined
+      postFormInitialText.value = note.text ?? undefined
+      postFormInitialCw.value = note.cw ?? undefined
+      postFormInitialVisibility.value = note.visibility
+      showPostForm.value = true
+    } catch (e) {
+      const err = AppError.from(e)
+      console.error('[deleteAndEdit]', err.code, err.message)
+      toast.show('削除に失敗しました', 'error')
+    }
   }
 
   async function handleBookmark(note: NormalizedNote) {
@@ -190,6 +216,9 @@ export function useColumnSetup(
     postFormReplyTo.value = undefined
     postFormRenoteId.value = undefined
     postFormEditNote.value = undefined
+    postFormInitialText.value = undefined
+    postFormInitialCw.value = undefined
+    postFormInitialVisibility.value = undefined
   }
 
   // Scroll
@@ -231,6 +260,9 @@ export function useColumnSetup(
       replyTo: postFormReplyTo,
       renoteId: postFormRenoteId,
       editNote: postFormEditNote,
+      initialText: postFormInitialText,
+      initialCw: postFormInitialCw,
+      initialVisibility: postFormInitialVisibility,
       close: closePostForm,
     },
     // Note action handlers
@@ -242,6 +274,7 @@ export function useColumnSetup(
       delete: handleDelete,
       edit: handleEdit,
       bookmark: handleBookmark,
+      deleteAndEdit: handleDeleteAndEdit,
     },
     // Virtual scroller
     scroller,

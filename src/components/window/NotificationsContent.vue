@@ -468,6 +468,7 @@ onUnmounted(() => {
                 @delete="removeNote"
                 @edit="handlers.edit"
                 @bookmark="handlers.bookmark"
+                @delete-and-edit="handlers.deleteAndEdit"
               />
             </div>
           </div>
@@ -489,6 +490,9 @@ onUnmounted(() => {
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"
       :edit-note="postForm.editNote.value"
+      :initial-text="postForm.initialText.value"
+      :initial-cw="postForm.initialCw.value"
+      :initial-visibility="postForm.initialVisibility.value"
       @close="postForm.close"
       @posted="handlePosted"
     />

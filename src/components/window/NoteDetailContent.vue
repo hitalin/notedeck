@@ -182,6 +182,40 @@ async function handleDelete(target: NormalizedNote) {
   }
 }
 
+async function handleDeleteAndEdit(target: NormalizedNote) {
+  if (!adapter) return
+  try {
+    await adapter.api.deleteNote(target.id)
+    const id = target.id
+    noteStore.remove(id)
+    invoke('api_delete_cached_note', { noteId: id }).catch(() => {})
+    if (id === note.value?.id) {
+      // Reopen post form for the focal note
+      postFormReplyTo.value = target.replyId
+        ? await adapter.api.getNote(target.replyId).catch(() => undefined)
+        : undefined
+      postFormRenoteId.value = undefined
+      postFormEditNote.value = undefined
+      showPostForm.value = true
+    } else {
+      children.value = children.value.filter(
+        (n) => n.id !== id && n.renoteId !== id,
+      )
+      ancestors.value = ancestors.value.filter(
+        (n) => n.id !== id && n.renoteId !== id,
+      )
+      postFormReplyTo.value = target.replyId
+        ? await adapter.api.getNote(target.replyId).catch(() => undefined)
+        : undefined
+      postFormRenoteId.value = undefined
+      postFormEditNote.value = undefined
+      showPostForm.value = true
+    }
+  } catch (e) {
+    error.value = AppError.from(e)
+  }
+}
+
 function closePostForm() {
   showPostForm.value = false
   postFormReplyTo.value = undefined
@@ -238,6 +272,7 @@ async function handlePosted(editedNoteId?: string) {
           @quote="handleQuote"
           @delete="handleDelete"
           @edit="handleEdit"
+          @delete-and-edit="handleDeleteAndEdit"
         />
       </div>
 
@@ -251,6 +286,7 @@ async function handlePosted(editedNoteId?: string) {
           @quote="handleQuote"
           @delete="handleDelete"
           @edit="handleEdit"
+          @delete-and-edit="handleDeleteAndEdit"
         />
       </div>
 
@@ -280,6 +316,7 @@ async function handlePosted(editedNoteId?: string) {
           @quote="handleQuote"
           @delete="handleDelete"
           @edit="handleEdit"
+          @delete-and-edit="handleDeleteAndEdit"
         />
         <div v-if="children.length === 0" :class="$style.stateMessage">
           返信はありません

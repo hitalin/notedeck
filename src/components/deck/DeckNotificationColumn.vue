@@ -93,6 +93,25 @@ const MAX_NOTIFICATIONS = 500
 const notifications = shallowRef<NormalizedNotification[]>([])
 const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 
+const NOTIFICATION_FILTERS = [
+  { key: 'all', label: 'すべて', icon: 'ti ti-bell' },
+  { key: 'reaction', label: 'リアクション', icon: 'ti ti-mood-plus' },
+  { key: 'reply', label: 'リプライ', icon: 'ti ti-arrow-back-up' },
+  { key: 'renote', label: 'リノート', icon: 'ti ti-repeat' },
+  { key: 'quote', label: '引用', icon: 'ti ti-quote' },
+  { key: 'mention', label: 'メンション', icon: 'ti ti-at' },
+  { key: 'follow', label: 'フォロー', icon: 'ti ti-user-plus' },
+  { key: 'pollEnded', label: '投票', icon: 'ti ti-chart-bar' },
+] as const
+
+type NotifFilterKey = (typeof NOTIFICATION_FILTERS)[number]['key']
+const activeFilter = ref<NotifFilterKey>('all')
+
+const filteredNotifications = computed(() => {
+  if (activeFilter.value === 'all') return notifications.value
+  return notifications.value.filter((n) => n.type === activeFilter.value)
+})
+
 const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(
   null,
 )
@@ -374,6 +393,20 @@ onUnmounted(() => {
     </div>
 
     <div v-else :class="$style.notifBody">
+      <!-- Notification filter tabs -->
+      <div :class="$style.filterBar">
+        <button
+          v-for="filter in NOTIFICATION_FILTERS"
+          :key="filter.key"
+          class="_button"
+          :class="[$style.filterBtn, { [$style.filterActive]: activeFilter === filter.key }]"
+          :title="filter.label"
+          @click="activeFilter = filter.key"
+        >
+          <i :class="filter.icon" />
+        </button>
+      </div>
+
       <div
         v-if="isPulling"
         :class="$style.pullFrame"
@@ -397,7 +430,7 @@ onUnmounted(() => {
       <NoteScroller
         v-else
         ref="noteScrollerRef"
-        :items="notifications"
+        :items="filteredNotifications"
         :estimated-height="80"
         :class="$style.notifScroller"
         @scroll="handleScroll"
@@ -471,6 +504,7 @@ onUnmounted(() => {
                   @delete="removeNote"
                   @edit="handlers.edit"
                   @bookmark="handlers.bookmark"
+                  @delete-and-edit="handlers.deleteAndEdit"
                 />
               </div>
             </div>
@@ -504,6 +538,9 @@ onUnmounted(() => {
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"
       :edit-note="postForm.editNote.value"
+      :initial-text="postForm.initialText.value"
+      :initial-cw="postForm.initialCw.value"
+      :initial-visibility="postForm.initialVisibility.value"
       @close="postForm.close"
       @posted="handlePosted"
     />
@@ -546,6 +583,43 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.filterBar {
+  display: flex;
+  gap: 2px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--nd-divider);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.filterBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.filterActive {
+  opacity: 1;
+  color: var(--nd-accent);
+  background: color-mix(in srgb, var(--nd-accent) 10%, transparent);
 }
 
 .notifScroller {

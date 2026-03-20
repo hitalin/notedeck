@@ -13,6 +13,7 @@ import type {
   NormalizedNote,
   NormalizedUserDetail,
   ServerAdapter,
+  UserList,
 } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
@@ -22,8 +23,11 @@ const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
+import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
+import { useToast } from '@/stores/toast'
+import { useWindowsStore } from '@/stores/windows'
 import { AppError } from '@/utils/errors'
 import {
   displayUrl,
@@ -45,8 +49,10 @@ const props = defineProps<{
   userId: string
 }>()
 
+const { navigateToUser: navToUser } = useNavigation()
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
+const toast = useToast()
 
 type ProfileTab = 'highlight' | 'notes' | 'all' | 'files'
 const PROFILE_TABS: { key: ProfileTab; label: string; icon: string }[] = [
@@ -57,6 +63,20 @@ const PROFILE_TABS: { key: ProfileTab; label: string; icon: string }[] = [
 ]
 
 const user = ref<NormalizedUserDetail | null>(null)
+const canSeeFollowing = computed(() => {
+  if (isOwnProfile.value) return true
+  const v = user.value?.followingVisibility ?? 'public'
+  if (v === 'public') return true
+  if (v === 'followers' && user.value?.isFollowed) return true
+  return false
+})
+const canSeeFollowers = computed(() => {
+  if (isOwnProfile.value) return true
+  const v = user.value?.followersVisibility ?? 'public'
+  if (v === 'public') return true
+  if (v === 'followers' && user.value?.isFollowed) return true
+  return false
+})
 const MAX_PROFILE_NOTES = 500
 const activeTab = ref<ProfileTab>('highlight')
 const notes = shallowRef<NormalizedNote[]>([])
@@ -291,6 +311,116 @@ async function handleToggleFollow() {
   }
 }
 
+// User action menu state
+const showUserMenu = ref(false)
+const showMuteConfirm = ref(false)
+const showBlockConfirm = ref(false)
+const showReportForm = ref(false)
+const showListPicker = ref(false)
+const reportComment = ref('')
+const userLists = ref<UserList[]>([])
+
+type UserMenuView =
+  | 'main'
+  | 'muteConfirm'
+  | 'blockConfirm'
+  | 'reportForm'
+  | 'listPicker'
+const userMenuView = computed<UserMenuView>(() => {
+  if (showMuteConfirm.value) return 'muteConfirm'
+  if (showBlockConfirm.value) return 'blockConfirm'
+  if (showReportForm.value) return 'reportForm'
+  if (showListPicker.value) return 'listPicker'
+  return 'main'
+})
+
+function openUserMenu() {
+  showUserMenu.value = true
+}
+
+function closeUserMenu() {
+  showUserMenu.value = false
+  showMuteConfirm.value = false
+  showBlockConfirm.value = false
+  showReportForm.value = false
+  showListPicker.value = false
+  reportComment.value = ''
+}
+
+function userMenuBack() {
+  showMuteConfirm.value = false
+  showBlockConfirm.value = false
+  showReportForm.value = false
+  showListPicker.value = false
+  reportComment.value = ''
+}
+
+async function handleMuteUser() {
+  if (!adapter || !user.value) return
+  try {
+    await adapter.api.muteUser(user.value.id)
+    toast.show('ミュートしました')
+    closeUserMenu()
+  } catch {
+    toast.show('ミュートに失敗しました', 'error')
+  }
+}
+
+async function handleBlockUser() {
+  if (!adapter || !user.value) return
+  try {
+    await adapter.api.blockUser(user.value.id)
+    toast.show('ブロックしました')
+    closeUserMenu()
+  } catch {
+    toast.show('ブロックに失敗しました', 'error')
+  }
+}
+
+async function handleReportUser() {
+  if (!adapter || !user.value || !reportComment.value.trim()) return
+  try {
+    await adapter.api.reportUser(user.value.id, reportComment.value)
+    toast.show('通報しました')
+    closeUserMenu()
+  } catch {
+    toast.show('通報に失敗しました', 'error')
+  }
+}
+
+async function openListPicker() {
+  if (!adapter) return
+  try {
+    userLists.value = await adapter.api.getUserLists()
+    showListPicker.value = true
+  } catch {
+    toast.show('リストの取得に失敗しました', 'error')
+  }
+}
+
+async function addToList(listId: string) {
+  if (!adapter || !user.value) return
+  try {
+    await adapter.api.addUserToList(listId, user.value.id)
+    toast.show('リストに追加しました')
+    closeUserMenu()
+  } catch {
+    toast.show('リストへの追加に失敗しました', 'error')
+  }
+}
+
+const windowsStore = useWindowsStore()
+
+function openFollowList(type: 'following' | 'followers') {
+  if (!user.value) return
+  windowsStore.open('follow-list', {
+    accountId: props.accountId,
+    userId: user.value.id,
+    username: user.value.username,
+    initialTab: type,
+  })
+}
+
 async function handleReaction(reaction: string, note: NormalizedNote) {
   if (!adapter) return
   try {
@@ -352,6 +482,23 @@ async function handleDelete(target: NormalizedNote) {
     await adapter.api.deleteNote(target.id)
     const id = target.id
     notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
+  } catch (e) {
+    error.value = AppError.from(e)
+  }
+}
+
+async function handleDeleteAndEdit(target: NormalizedNote) {
+  if (!adapter) return
+  try {
+    await adapter.api.deleteNote(target.id)
+    const id = target.id
+    notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
+    postFormReplyTo.value = target.replyId
+      ? await adapter.api.getNote(target.replyId).catch(() => undefined)
+      : undefined
+    postFormRenoteId.value = undefined
+    postFormEditNote.value = undefined
+    showPostForm.value = true
   } catch (e) {
     error.value = AppError.from(e)
   }
@@ -448,6 +595,15 @@ async function handlePosted(editedNoteId?: string) {
             >
               {{ user.isFollowing ? 'フォロー中' : 'フォロー' }}
             </button>
+            <button
+              v-if="!isOwnProfile"
+              class="_button"
+              :class="$style.bannerActionBtn"
+              title="その他"
+              @click="openUserMenu"
+            >
+              <i class="ti ti-dots" />
+            </button>
           </div>
         </div>
 
@@ -520,11 +676,11 @@ async function handlePosted(editedNoteId?: string) {
             <b>{{ formatCount(user.notesCount) }}</b>
             <span>ノート</span>
           </div>
-          <button :class="[$style.stat, $style.statLink]" class="_button" @click="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}/following`)">
+          <button v-if="canSeeFollowing" :class="[$style.stat, $style.statLink]" class="_button" @click="openFollowList('following')">
             <b>{{ formatCount(user.followingCount) }}</b>
             <span>フォロー</span>
           </button>
-          <button :class="[$style.stat, $style.statLink]" class="_button" @click="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}/followers`)">
+          <button v-if="canSeeFollowers" :class="[$style.stat, $style.statLink]" class="_button" @click="openFollowList('followers')">
             <b>{{ formatCount(user.followersCount) }}</b>
             <span>フォロワー</span>
           </button>
@@ -547,6 +703,7 @@ async function handlePosted(editedNoteId?: string) {
             @quote="handleQuote"
             @delete="handleDelete"
             @edit="handleEdit"
+            @delete-and-edit="handleDeleteAndEdit"
             @pin="handlePin"
           />
         </div>
@@ -577,6 +734,7 @@ async function handlePosted(editedNoteId?: string) {
             @quote="handleQuote"
             @delete="handleDelete"
             @edit="handleEdit"
+            @delete-and-edit="handleDeleteAndEdit"
             @pin="handlePin"
           />
 
@@ -601,6 +759,103 @@ async function handlePosted(editedNoteId?: string) {
         @close="closePostForm"
         @posted="handlePosted"
       />
+
+      <!-- User action menu -->
+      <Transition name="nd-popup">
+        <div v-if="showUserMenu" :class="$style.userMenuBackdrop" @click="closeUserMenu">
+          <div :class="$style.userMenuPopup" class="_popup nd-popup-content popup-menu" @click.stop>
+            <!-- Main -->
+            <template v-if="userMenuView === 'main'">
+              <button :class="$style.userMenuItem" @click="openListPicker">
+                <i class="ti ti-list" />
+                リストに追加
+              </button>
+              <div :class="$style.userMenuDivider" />
+              <button :class="$style.userMenuItem" @click="showMuteConfirm = true">
+                <i class="ti ti-eye-off" />
+                ミュート
+              </button>
+              <button :class="[$style.userMenuItem, $style.userMenuDanger]" @click="showBlockConfirm = true">
+                <i class="ti ti-ban" />
+                ブロック
+              </button>
+              <div :class="$style.userMenuDivider" />
+              <button :class="[$style.userMenuItem, $style.userMenuDanger]" @click="showReportForm = true">
+                <i class="ti ti-alert-triangle" />
+                通報
+              </button>
+            </template>
+            <!-- Mute confirm -->
+            <template v-else-if="userMenuView === 'muteConfirm'">
+              <div :class="$style.userMenuConfirmText">@{{ user?.username }} をミュートしますか？</div>
+              <button :class="[$style.userMenuItem, $style.userMenuDanger]" @click="handleMuteUser">
+                <i class="ti ti-eye-off" />
+                ミュート
+              </button>
+              <button :class="$style.userMenuItem" @click="userMenuBack">
+                <i class="ti ti-x" />
+                キャンセル
+              </button>
+            </template>
+            <!-- Block confirm -->
+            <template v-else-if="userMenuView === 'blockConfirm'">
+              <div :class="$style.userMenuConfirmText">@{{ user?.username }} をブロックしますか？</div>
+              <button :class="[$style.userMenuItem, $style.userMenuDanger]" @click="handleBlockUser">
+                <i class="ti ti-ban" />
+                ブロック
+              </button>
+              <button :class="$style.userMenuItem" @click="userMenuBack">
+                <i class="ti ti-x" />
+                キャンセル
+              </button>
+            </template>
+            <!-- Report form -->
+            <template v-else-if="userMenuView === 'reportForm'">
+              <div :class="$style.userMenuConfirmText">@{{ user?.username }} を通報</div>
+              <div :class="$style.reportInputWrap">
+                <textarea
+                  v-model="reportComment"
+                  :class="$style.reportInput"
+                  placeholder="通報理由を入力..."
+                  rows="3"
+                />
+              </div>
+              <button
+                :class="[$style.userMenuItem, $style.userMenuDanger]"
+                :disabled="!reportComment.trim()"
+                @click="handleReportUser"
+              >
+                <i class="ti ti-alert-triangle" />
+                送信
+              </button>
+              <button :class="$style.userMenuItem" @click="userMenuBack">
+                <i class="ti ti-x" />
+                キャンセル
+              </button>
+            </template>
+            <!-- List picker -->
+            <template v-else-if="userMenuView === 'listPicker'">
+              <button :class="$style.userMenuItem" @click="userMenuBack">
+                <i class="ti ti-arrow-left" />
+                戻る
+              </button>
+              <div :class="$style.userMenuDivider" />
+              <template v-if="userLists.length > 0">
+                <button
+                  v-for="list in userLists"
+                  :key="list.id"
+                  :class="$style.userMenuItem"
+                  @click="addToList(list.id)"
+                >
+                  <i class="ti ti-list" />
+                  {{ list.name }}
+                </button>
+              </template>
+              <div v-else :class="$style.userMenuConfirmText">リストがありません</div>
+            </template>
+          </div>
+        </div>
+      </Transition>
 
       <div v-if="showQrCode" :class="$style.qrOverlay" @click="showQrCode = false">
         <div :class="$style.qrModal" @click.stop>
@@ -1185,4 +1440,90 @@ async function handlePosted(editedNoteId?: string) {
 /* Empty placeholder classes for dynamic binding */
 .active {}
 .following {}
+
+.userMenuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nd-z-popup);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.userMenuPopup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 240px;
+  max-width: 320px;
+  padding: 6px 0;
+  z-index: calc(var(--nd-z-popup) + 1);
+}
+
+.userMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 22px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--nd-fg);
+  font-size: 0.85em;
+  text-align: left;
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  :global(.ti) {
+    opacity: 0.8;
+    flex-shrink: 0;
+    width: 1em;
+    text-align: center;
+  }
+}
+
+.userMenuDanger {
+  color: var(--nd-error);
+}
+
+.userMenuDivider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--nd-divider);
+}
+
+.userMenuConfirmText {
+  padding: 7px 22px;
+  font-size: 0.85em;
+  font-weight: bold;
+  color: var(--nd-fg);
+}
+
+.reportInputWrap {
+  padding: 4px 16px;
+}
+
+.reportInput {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--nd-divider);
+  border-radius: 6px;
+  background: var(--nd-bg);
+  color: var(--nd-fg);
+  font-size: 0.85em;
+  resize: vertical;
+
+  &::placeholder {
+    color: var(--nd-fgTransparent);
+  }
+}
 </style>
