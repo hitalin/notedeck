@@ -216,6 +216,7 @@ function navigateUser(userId: string) {
 
 .listBody {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
