@@ -133,6 +133,35 @@ export function useNoteColumn(config: NoteColumnConfig) {
   /** True when API is unreachable and displaying cached notes */
   const isOffline = ref(false)
 
+  // When account loses token (logout with keep-data), switch to cache display
+  watch(
+    () => account.value?.hasToken,
+    async (hasToken, prev) => {
+      if (prev && hasToken === false) {
+        disconnect()
+        const column = config.getColumn()
+        const cacheKey = config.cache?.getKey()
+        if (column.accountId && cacheKey) {
+          try {
+            const cached = await invoke<NormalizedNote[]>(
+              'api_get_cached_timeline',
+              {
+                accountId: column.accountId,
+                timelineType: cacheKey,
+                limit: 40,
+              },
+            )
+            if (cached.length > 0) setNotes(cached)
+          } catch {
+            /* non-critical */
+          }
+        }
+        isOffline.value = true
+        isLoading.value = false
+      }
+    },
+  )
+
   /**
    * Background-verify that cached notes still exist on the server.
    * Any note returning 404 is purged from noteStore + DB cache.

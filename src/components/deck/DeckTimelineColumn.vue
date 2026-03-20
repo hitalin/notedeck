@@ -264,6 +264,24 @@ function updateTabIndicator() {
 watch(tlType, () => nextTick(updateTabIndicator))
 onMounted(() => nextTick(updateTabIndicator))
 
+// When account loses token (logout with keep-data), switch to cache display
+watch(
+  () => account.value?.hasToken,
+  async (hasToken, prev) => {
+    if (prev && hasToken === false) {
+      disposeSubscription()
+      resetBatch()
+      const cached = await fetchCachedNotes()
+      const filtered = cached.filter((n) =>
+        matchesFilter(n, columnFilters.value, tlType.value),
+      )
+      if (filtered.length > 0) setNotes(filtered)
+      isOffline.value = true
+      isLoading.value = false
+    }
+  },
+)
+
 const TL_TYPES: { value: TimelineType; label: string }[] = [
   { value: 'home', label: 'ホーム' },
   { value: 'local', label: 'ローカル' },
