@@ -27,6 +27,9 @@ dist-ssr
 # Tauri
 src-tauri/target/
 src-tauri/gen/
+*.db
+*.db-wal
+*.db-shm
 
 # Nix
 result
