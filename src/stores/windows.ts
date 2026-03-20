@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 export type WindowType =
   | 'note-detail'
   | 'user-profile'
+  | 'follow-list'
   | 'login'
   | 'search'
   | 'notifications'
@@ -30,6 +31,7 @@ export const WINDOW_SIZES: Record<
 > = {
   'note-detail': { width: 500, maxHeight: 600 },
   'user-profile': { width: 500, maxHeight: 650 },
+  'follow-list': { width: 400, maxHeight: 550 },
   login: { width: 420, maxHeight: 480 },
   search: { width: 500, maxHeight: 650 },
   notifications: { width: 500, maxHeight: 650 },
@@ -56,6 +58,11 @@ export const useWindowsStore = defineStore('windows', () => {
           w.props.accountId === props.accountId
         )
       if (type === 'user-profile')
+        return (
+          w.props.userId === props.userId &&
+          w.props.accountId === props.accountId
+        )
+      if (type === 'follow-list')
         return (
           w.props.userId === props.userId &&
           w.props.accountId === props.accountId
