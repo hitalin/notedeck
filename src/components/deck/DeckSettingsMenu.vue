@@ -134,7 +134,7 @@ function removeWallpaper() {
 
 const windowsStore = useWindowsStore()
 
-function openToolWindow(type: 'cssEditor' | 'keybinds') {
+function openToolWindow(type: 'cssEditor' | 'keybinds' | 'themeEditor') {
   windowsStore.open(type)
   emit('close')
 }
@@ -225,9 +225,13 @@ function openToolWindow(type: 'cssEditor' | 'keybinds') {
         </div>
       </div>
 
-      <!-- Editor columns -->
+      <!-- Editor windows -->
       <div :class="$style.settingsMenuDivider" />
 
+      <div :class="$style.settingsMenuItem" @click="openToolWindow('themeEditor')">
+        <i class="ti ti-palette" />
+        <span :class="$style.settingsMenuLabel">テーマエディタ</span>
+      </div>
       <div :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
         <i class="ti ti-code" />
         <span :class="$style.settingsMenuLabel">カスタムCSS</span>

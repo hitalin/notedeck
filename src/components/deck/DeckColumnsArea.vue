@@ -61,9 +61,6 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
     () => import('./DeckAboutMisskeyColumn.vue'),
   ),
   emoji: defineAsyncComponent(() => import('./DeckEmojiColumn.vue')),
-  themeEditor: defineAsyncComponent(
-    () => import('./DeckThemeEditorColumn.vue'),
-  ),
 }
 
 const $style = useCssModule()

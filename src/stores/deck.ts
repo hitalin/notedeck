@@ -35,7 +35,6 @@ export type ColumnType =
   | 'ads'
   | 'aboutMisskey'
   | 'emoji'
-  | 'themeEditor'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
