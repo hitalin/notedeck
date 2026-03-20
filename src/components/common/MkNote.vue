@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { useIntersectionObserver } from '@vueuse/core'
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, onUnmounted, ref, watch } from 'vue'
 import type {
   NormalizedNote,
   NormalizedUser,
@@ -60,6 +60,30 @@ const reactionUsersRef = ref<InstanceType<
 > | null>(null)
 const reactionsAreaRef = ref<HTMLElement | null>(null)
 const reactionsVisible = ref(false)
+
+// Horizontal wheel scroll for reactions
+function onReactionsWheel(ev: WheelEvent) {
+  const el = reactionsAreaRef.value
+  if (!el) return
+  const dx = ev.deltaX || ev.deltaY
+  if (dx === 0) return
+  // Only hijack if content overflows horizontally
+  const scrollable = el.querySelector(
+    '[class*="reactions"]',
+  ) as HTMLElement | null
+  const target = scrollable ?? el
+  if (target.scrollWidth <= target.clientWidth) return
+  ev.preventDefault()
+  target.scrollLeft += dx
+}
+
+watch(reactionsAreaRef, (el, oldEl) => {
+  oldEl?.removeEventListener('wheel', onReactionsWheel)
+  el?.addEventListener('wheel', onReactionsWheel, { passive: false })
+})
+onUnmounted(() => {
+  reactionsAreaRef.value?.removeEventListener('wheel', onReactionsWheel)
+})
 const { stop: stopReactionsObserver } = useIntersectionObserver(
   reactionsAreaRef,
   ([entry]) => {
@@ -1008,14 +1032,20 @@ function closeMentionPopup() {
 /* Reactions */
 .reactions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
   margin-top: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .reaction {
   display: inline-flex;
+  flex-shrink: 0;
   height: 42px;
   padding: 0 6px;
   font-size: 1.5em;

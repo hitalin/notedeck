@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ServerEmoji } from '@/adapters/types'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
@@ -32,6 +32,24 @@ const scrollContainer = ref<HTMLElement | null>(null)
 const searchQuery = ref('')
 const selectedCategory = ref<string | null>(null)
 const copiedName = ref<string | null>(null)
+const categoryBarRef = ref<HTMLElement | null>(null)
+
+function onCategoryBarWheel(ev: WheelEvent) {
+  if (!categoryBarRef.value) return
+  const dx = ev.deltaX || ev.deltaY
+  if (dx === 0) return
+  ev.preventDefault()
+  categoryBarRef.value.scrollLeft += dx
+}
+
+// Bind wheel as non-passive (needed for preventDefault)
+watch(categoryBarRef, (el, oldEl) => {
+  oldEl?.removeEventListener('wheel', onCategoryBarWheel)
+  el?.addEventListener('wheel', onCategoryBarWheel, { passive: false })
+})
+onUnmounted(() => {
+  categoryBarRef.value?.removeEventListener('wheel', onCategoryBarWheel)
+})
 
 const allEmojis = computed(() => {
   const acc = account.value
@@ -172,7 +190,7 @@ onMounted(() => {
       </div>
 
       <!-- Category filter -->
-      <div v-if="categories.length > 0 && !searchQuery" :class="$style.categoryBar">
+      <div v-if="categories.length > 0 && !searchQuery" ref="categoryBarRef" :class="$style.categoryBar">
         <button
           class="_button"
           :class="[$style.categoryChip, { [$style.active]: !selectedCategory }]"
