@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, ref, watch } from 'vue'
-import type { NormalizedNote } from '@/adapters/types'
+import type { Clip, NormalizedNote } from '@/adapters/types'
 import {
   getPluginHandlers,
   setPluginAccountContext,
 } from '@/aiscript/plugin-api'
+import { useToast } from '@/stores/toast'
 import { extractThemeVars } from '@/utils/themeVars'
 import { isSafeUrl } from '@/utils/url'
 
@@ -21,14 +23,40 @@ const emit = defineEmits<{
   edit: [note: NormalizedNote]
   bookmark: [note: NormalizedNote]
   pin: [note: NormalizedNote]
+  deleteAndEdit: [note: NormalizedNote]
 }>()
+
+const toast = useToast()
 
 const showMenu = ref(false)
 const showDeleteConfirm = ref(false)
+const showDeleteAndEditConfirm = ref(false)
+const showClipList = ref(false)
+const showMuteConfirm = ref(false)
+const showReportForm = ref(false)
+const reportComment = ref('')
+const clips = ref<Clip[]>([])
 const menuPos = ref({ x: 0, y: 0 })
 const menuTheme = ref<Record<string, string>>({})
 const localIsFavorited = ref(props.isFavorited)
 const localIsPinned = ref(props.isPinned)
+
+type MenuView =
+  | 'main'
+  | 'deleteConfirm'
+  | 'deleteAndEditConfirm'
+  | 'clipList'
+  | 'muteConfirm'
+  | 'reportForm'
+
+const currentView = computed<MenuView>(() => {
+  if (showDeleteConfirm.value) return 'deleteConfirm'
+  if (showDeleteAndEditConfirm.value) return 'deleteAndEditConfirm'
+  if (showClipList.value) return 'clipList'
+  if (showMuteConfirm.value) return 'muteConfirm'
+  if (showReportForm.value) return 'reportForm'
+  return 'main'
+})
 
 watch(
   () => props.isFavorited,
@@ -59,9 +87,8 @@ function open(e: MouseEvent) {
   if (column) menuTheme.value = extractThemeVars(column)
   let x = e.clientX
   let y = e.clientY
-  // 画面外に出ないよう調整
   const menuWidth = 250
-  const menuHeight = 300
+  const menuHeight = 400
   const vw = document.documentElement.clientWidth
   const vh = document.documentElement.clientHeight
   if (x + menuWidth > vw) {
@@ -78,7 +105,20 @@ function open(e: MouseEvent) {
 
 function close() {
   showMenu.value = false
+  resetSubViews()
+}
+
+function resetSubViews() {
   showDeleteConfirm.value = false
+  showDeleteAndEditConfirm.value = false
+  showClipList.value = false
+  showMuteConfirm.value = false
+  showReportForm.value = false
+  reportComment.value = ''
+}
+
+function backToMain() {
+  resetSubViews()
 }
 
 function openInWebUI() {
@@ -89,6 +129,63 @@ function openInWebUI() {
 async function copyAndClose(text: string) {
   await navigator.clipboard.writeText(text)
   close()
+}
+
+async function openClipList() {
+  try {
+    clips.value = await invoke<Clip[]>('api_get_clips', {
+      accountId: props.note._accountId,
+    })
+    showClipList.value = true
+  } catch {
+    toast.show('クリップの取得に失敗しました', 'error')
+  }
+}
+
+async function addToClip(clipId: string) {
+  try {
+    await invoke('api_request', {
+      accountId: props.note._accountId,
+      endpoint: 'clips/add-note',
+      params: { clipId, noteId: props.note.id },
+    })
+    toast.show('クリップに追加しました')
+    close()
+  } catch {
+    toast.show('クリップへの追加に失敗しました', 'error')
+  }
+}
+
+async function muteUser() {
+  try {
+    await invoke('api_request', {
+      accountId: props.note._accountId,
+      endpoint: 'mute/create',
+      params: { userId: props.note.user.id },
+    })
+    toast.show('ミュートしました')
+    close()
+  } catch {
+    toast.show('ミュートに失敗しました', 'error')
+  }
+}
+
+async function submitReport() {
+  if (!reportComment.value.trim()) return
+  try {
+    await invoke('api_request', {
+      accountId: props.note._accountId,
+      endpoint: 'users/report-abuse',
+      params: {
+        userId: props.note.user.id,
+        comment: reportComment.value,
+      },
+    })
+    toast.show('通報しました')
+    close()
+  } catch {
+    toast.show('通報に失敗しました', 'error')
+  }
 }
 
 defineExpose({ open })
@@ -104,17 +201,92 @@ defineExpose({ open })
           :style="{ ...menuTheme, top: menuPos.y + 'px', left: menuPos.x + 'px' }"
           @click.stop
         >
-          <template v-if="showDeleteConfirm">
+          <!-- Delete confirm -->
+          <template v-if="currentView === 'deleteConfirm'">
             <div :class="$style.popupConfirmText">このノートを削除しますか？</div>
             <button :class="[$style.popupItem, $style.popupItemDanger]" @click="emit('delete', note); close()">
               <i class="ti ti-trash" />
               削除
             </button>
-            <button :class="$style.popupItem" @click="showDeleteConfirm = false">
+            <button :class="$style.popupItem" @click="backToMain">
               <i class="ti ti-x" />
               キャンセル
             </button>
           </template>
+
+          <!-- Delete and edit confirm -->
+          <template v-else-if="currentView === 'deleteAndEditConfirm'">
+            <div :class="$style.popupConfirmText">このノートを削除して再編集しますか？</div>
+            <button :class="[$style.popupItem, $style.popupItemDanger]" @click="emit('deleteAndEdit', note); close()">
+              <i class="ti ti-trash" />
+              削除して編集
+            </button>
+            <button :class="$style.popupItem" @click="backToMain">
+              <i class="ti ti-x" />
+              キャンセル
+            </button>
+          </template>
+
+          <!-- Clip list -->
+          <template v-else-if="currentView === 'clipList'">
+            <button :class="$style.popupItem" @click="backToMain">
+              <i class="ti ti-arrow-left" />
+              戻る
+            </button>
+            <div :class="$style.popupDivider" />
+            <template v-if="clips.length > 0">
+              <button
+                v-for="clip in clips"
+                :key="clip.id"
+                :class="$style.popupItem"
+                @click="addToClip(clip.id)"
+              >
+                <i class="ti ti-paperclip" />
+                {{ clip.name }}
+              </button>
+            </template>
+            <div v-else :class="$style.popupConfirmText">クリップがありません</div>
+          </template>
+
+          <!-- Mute confirm -->
+          <template v-else-if="currentView === 'muteConfirm'">
+            <div :class="$style.popupConfirmText">@{{ note.user.username }} をミュートしますか？</div>
+            <button :class="[$style.popupItem, $style.popupItemDanger]" @click="muteUser">
+              <i class="ti ti-eye-off" />
+              ミュート
+            </button>
+            <button :class="$style.popupItem" @click="backToMain">
+              <i class="ti ti-x" />
+              キャンセル
+            </button>
+          </template>
+
+          <!-- Report form -->
+          <template v-else-if="currentView === 'reportForm'">
+            <div :class="$style.popupConfirmText">@{{ note.user.username }} を通報</div>
+            <div :class="$style.reportInputWrap">
+              <textarea
+                v-model="reportComment"
+                :class="$style.reportInput"
+                placeholder="通報理由を入力..."
+                rows="3"
+              />
+            </div>
+            <button
+              :class="[$style.popupItem, $style.popupItemDanger]"
+              :disabled="!reportComment.trim()"
+              @click="submitReport"
+            >
+              <i class="ti ti-alert-triangle" />
+              送信
+            </button>
+            <button :class="$style.popupItem" @click="backToMain">
+              <i class="ti ti-x" />
+              キャンセル
+            </button>
+          </template>
+
+          <!-- Main menu -->
           <template v-else>
             <button
               :class="[$style.popupItem, localIsFavorited && $style.popupItemActive]"
@@ -122,6 +294,10 @@ defineExpose({ open })
             >
               <i class="ti ti-star" />
               {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
+            </button>
+            <button :class="$style.popupItem" @click="openClipList">
+              <i class="ti ti-paperclip" />
+              クリップに追加
             </button>
             <button :class="$style.popupItem" @click="openInWebUI(); close()">
               <i class="ti ti-external-link" />
@@ -161,9 +337,24 @@ defineExpose({ open })
                 <i class="ti ti-edit" />
                 編集
               </button>
+              <button :class="$style.popupItem" @click="showDeleteAndEditConfirm = true">
+                <i class="ti ti-eraser" />
+                削除して編集
+              </button>
               <button :class="[$style.popupItem, $style.popupItemDanger]" @click="showDeleteConfirm = true">
                 <i class="ti ti-trash" />
                 削除
+              </button>
+            </template>
+            <template v-if="!isOwnNote">
+              <div :class="$style.popupDivider" />
+              <button :class="$style.popupItem" @click="showMuteConfirm = true">
+                <i class="ti ti-eye-off" />
+                このユーザーをミュート
+              </button>
+              <button :class="[$style.popupItem, $style.popupItemDanger]" @click="showReportForm = true">
+                <i class="ti ti-alert-triangle" />
+                通報
               </button>
             </template>
           </template>
@@ -208,6 +399,11 @@ defineExpose({ open })
     background: var(--nd-buttonHoverBg);
   }
 
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
   :global(.ti) {
     opacity: 0.8;
     flex-shrink: 0;
@@ -239,6 +435,25 @@ defineExpose({ open })
   font-size: 0.85em;
   font-weight: bold;
   color: var(--nd-fg);
+}
+
+.reportInputWrap {
+  padding: 4px 16px;
+}
+
+.reportInput {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--nd-divider);
+  border-radius: 6px;
+  background: var(--nd-bg);
+  color: var(--nd-fg);
+  font-size: 0.85em;
+  resize: vertical;
+
+  &::placeholder {
+    color: var(--nd-fgTransparent);
+  }
 }
 </style>
 

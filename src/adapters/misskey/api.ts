@@ -507,4 +507,68 @@ export class MisskeyApi implements ApiAdapter {
       text: params.text,
     })
   }
+
+  async muteUser(userId: string): Promise<void> {
+    await invoke('api_request', {
+      accountId: this.accountId,
+      endpoint: 'mute/create',
+      params: { userId },
+    })
+  }
+
+  async unmuteUser(userId: string): Promise<void> {
+    await invoke('api_request', {
+      accountId: this.accountId,
+      endpoint: 'mute/delete',
+      params: { userId },
+    })
+  }
+
+  async blockUser(userId: string): Promise<void> {
+    await invoke('api_request', {
+      accountId: this.accountId,
+      endpoint: 'blocking/create',
+      params: { userId },
+    })
+  }
+
+  async unblockUser(userId: string): Promise<void> {
+    await invoke('api_request', {
+      accountId: this.accountId,
+      endpoint: 'blocking/delete',
+      params: { userId },
+    })
+  }
+
+  async reportUser(userId: string, comment: string): Promise<void> {
+    await invoke('api_request', {
+      accountId: this.accountId,
+      endpoint: 'users/report-abuse',
+      params: { userId, comment },
+    })
+  }
+
+  async addNoteToClip(clipId: string, noteId: string): Promise<void> {
+    await invoke('api_request', {
+      accountId: this.accountId,
+      endpoint: 'clips/add-note',
+      params: { clipId, noteId },
+    })
+  }
+
+  async addUserToList(listId: string, userId: string): Promise<void> {
+    await invoke('api_request', {
+      accountId: this.accountId,
+      endpoint: 'users/lists/push',
+      params: { listId, userId },
+    })
+  }
+
+  async removeUserFromList(listId: string, userId: string): Promise<void> {
+    await invoke('api_request', {
+      accountId: this.accountId,
+      endpoint: 'users/lists/pull',
+      params: { listId, userId },
+    })
+  }
 }

@@ -26,6 +26,9 @@ export function useNoteActions(
   const postFormRenoteId = ref<string | undefined>()
   const postFormEditNote = ref<NormalizedNote | undefined>()
   const postFormAccountId = ref<string | undefined>()
+  const postFormInitialText = ref<string | undefined>()
+  const postFormInitialCw = ref<string | undefined>()
+  const postFormInitialVisibility = ref<string | undefined>()
 
   async function resolve(note: NormalizedNote): Promise<ServerAdapter | null> {
     return getAdapter(note)
@@ -105,12 +108,36 @@ export function useNoteActions(
     }
   }
 
+  async function handleDeleteAndEdit(note: NormalizedNote) {
+    const adapter = await resolve(note)
+    if (!adapter) return
+    try {
+      await adapter.api.deleteNote(note.id)
+      postFormAccountId.value = note._accountId
+      postFormReplyTo.value = note.replyId
+        ? await adapter.api.getNote(note.replyId).catch(() => undefined)
+        : undefined
+      postFormRenoteId.value = undefined
+      postFormEditNote.value = undefined
+      postFormInitialText.value = note.text ?? undefined
+      postFormInitialCw.value = note.cw ?? undefined
+      postFormInitialVisibility.value = note.visibility
+      showPostForm.value = true
+    } catch (e) {
+      console.error('[note:deleteAndEdit]', AppError.from(e).message)
+      toast.show('削除に失敗しました', 'error')
+    }
+  }
+
   function closePostForm() {
     showPostForm.value = false
     postFormReplyTo.value = undefined
     postFormRenoteId.value = undefined
     postFormEditNote.value = undefined
     postFormAccountId.value = undefined
+    postFormInitialText.value = undefined
+    postFormInitialCw.value = undefined
+    postFormInitialVisibility.value = undefined
   }
 
   return {
@@ -120,6 +147,9 @@ export function useNoteActions(
       renoteId: postFormRenoteId,
       editNote: postFormEditNote,
       accountId: postFormAccountId,
+      initialText: postFormInitialText,
+      initialCw: postFormInitialCw,
+      initialVisibility: postFormInitialVisibility,
       close: closePostForm,
     },
     handlers: {
@@ -130,6 +160,7 @@ export function useNoteActions(
       delete: handleDelete,
       edit: handleEdit,
       bookmark: handleBookmark,
+      deleteAndEdit: handleDeleteAndEdit,
     },
   }
 }

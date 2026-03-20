@@ -447,6 +447,14 @@ export interface ApiAdapter {
     roomId?: string
     text: string
   }): Promise<ChatMessage>
+  muteUser(userId: string): Promise<void>
+  unmuteUser(userId: string): Promise<void>
+  blockUser(userId: string): Promise<void>
+  unblockUser(userId: string): Promise<void>
+  reportUser(userId: string, comment: string): Promise<void>
+  addNoteToClip(clipId: string, noteId: string): Promise<void>
+  addUserToList(listId: string, userId: string): Promise<void>
+  removeUserFromList(listId: string, userId: string): Promise<void>
 }
 
 export type StreamConnectionState =

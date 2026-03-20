@@ -173,6 +173,7 @@ const webUiUrl = computed(() => {
                 @delete="removeNote"
                 @edit="handlers.edit"
                 @bookmark="handlers.bookmark"
+                @delete-and-edit="handlers.deleteAndEdit"
               />
             </div>
           </template>
@@ -198,6 +199,9 @@ const webUiUrl = computed(() => {
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"
       :edit-note="postForm.editNote.value"
+      :initial-text="postForm.initialText.value"
+      :initial-cw="postForm.initialCw.value"
+      :initial-visibility="postForm.initialVisibility.value"
       :channel-id="column.channelId"
       @close="postForm.close"
       @posted="handlePosted"
