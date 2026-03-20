@@ -34,7 +34,6 @@ import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import { useSwipeTab } from '@/composables/useSwipeTab'
-import { useTimeMachine } from '@/composables/useTimeMachine'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -140,8 +139,7 @@ watch(columnVisible, async (visible) => {
     if (now - _lastCatchUpAt < 10_000) return
     _lastCatchUpAt = now
     const adapter = getAdapter()
-    if (!adapter || timeMachine.isActive.value || notes.value.length === 0)
-      return
+    if (!adapter || notes.value.length === 0) return
     try {
       const fetched = await adapter.api.getTimeline(
         tlType.value,
@@ -174,71 +172,6 @@ const { focusedNoteId } = useNoteFocus(
 const isOffline = ref(false)
 
 const tlType = ref<TimelineType>(props.column.tl || 'home')
-
-// --- Time Machine ---
-const timeMachine = useTimeMachine(
-  () => props.column.accountId ?? undefined,
-  () => tlType.value,
-)
-
-async function toggleTimeMachine() {
-  if (timeMachine.isActive.value) {
-    exitTimeMachine()
-    return
-  }
-  setPaused(true)
-  disconnect()
-  try {
-    await timeMachine.loadDateRange()
-    if (timeMachine.dateRange.value) {
-      const cached = await timeMachine.jumpToDate(
-        timeMachine.dateRange.value.max.slice(0, 10),
-      )
-      setNotes(cached)
-    } else {
-      // No cache available — revert
-      setPaused(false)
-      connect(true)
-    }
-  } catch (e) {
-    console.error('[time-machine] failed to activate:', e)
-    setPaused(false)
-    connect(true)
-  }
-}
-
-async function onTimeMachineDateChange(date: string) {
-  try {
-    const cached = await timeMachine.jumpToDate(date)
-    setNotes(cached)
-    scrollToTop()
-  } catch (e) {
-    console.error('[time-machine] jumpToDate failed:', e)
-  }
-}
-
-function tmShiftDay(delta: number) {
-  const current = timeMachine.targetDate.value
-  if (!current) return
-  const d = new Date(current)
-  d.setDate(d.getDate() + delta)
-  const range = timeMachine.dateRange.value
-  if (range) {
-    const min = range.min.slice(0, 10)
-    const max = range.max.slice(0, 10)
-    const iso = d.toISOString().slice(0, 10)
-    if (iso < min || iso > max) return
-  }
-  onTimeMachineDateChange(d.toISOString().slice(0, 10))
-}
-
-function exitTimeMachine() {
-  timeMachine.deactivate()
-  setPaused(false)
-  resetBatch()
-  setNotes([])
-  connect(true)
-}
 
 // Tab slide indicator
 const $style = useCssModule()
@@ -586,7 +519,6 @@ async function refreshPolicies() {
 
 async function switchTl(type: TimelineType) {
   if (type === tlType.value) return
-  if (timeMachine.isActive.value) timeMachine.deactivate()
   setPaused(false)
   disconnect()
   resetBatch()
@@ -602,21 +534,6 @@ async function loadMore() {
   if (isLoading.value || notes.value.length === 0) return
   const lastNote = notes.value.at(-1)
   if (!lastNote) return
-
-  // Time machine mode: load from local cache
-  if (timeMachine.isActive.value) {
-    isLoading.value = true
-    try {
-      const older = await timeMachine.loadMoreBefore(lastNote.createdAt)
-      const filtered = older.filter((n) => n.id !== lastNote.id)
-      if (filtered.length > 0) setNotes(insertIntoSorted(notes.value, filtered))
-    } catch (e) {
-      error.value = AppError.from(e)
-    } finally {
-      isLoading.value = false
-    }
-    return
-  }
 
   // Offline mode: load from cache
   if (isOffline.value) {
@@ -715,7 +632,6 @@ useSwipeTab(
   scroller,
   () => {
     // swipe left → next tab
-    if (timeMachine.isActive.value) return false
     const types = allTlTypes.value
     const idx = types.findIndex((t) => t.value === tlType.value)
     const next = idx >= 0 && idx < types.length - 1 ? types[idx + 1] : undefined
@@ -727,7 +643,6 @@ useSwipeTab(
   },
   () => {
     // swipe right → previous tab
-    if (timeMachine.isActive.value) return false
     const types = allTlTypes.value
     const idx = types.findIndex((t) => t.value === tlType.value)
     const prev = idx > 0 ? types[idx - 1] : undefined
@@ -757,8 +672,6 @@ async function onResume() {
   const now = Date.now()
   if (now - lastResumeAt < 3000) return
   lastResumeAt = now
-
-  if (timeMachine.isActive.value) return
 
   // Logged-out: skip API, no-op (cache is already loaded)
   if (account.value && !account.value.hasToken) return
@@ -860,20 +773,6 @@ onUnmounted(() => {
 
     <template #header-extra>
       <div ref="tabsRef" :class="$style.tlTabs">
-        <template v-if="timeMachine.isActive.value">
-          <button class="_button tl-tab" :class="$style.tlTab" @click="tmShiftDay(-1)">
-            <i class="ti ti-chevron-left" :class="$style.tlTabIcon" />
-          </button>
-          <span class="tl-tab" :class="[$style.tlTab, $style.tlTmDate, $style.active]">{{ timeMachine.targetDate.value }}</span>
-          <button class="_button tl-tab" :class="$style.tlTab" @click="tmShiftDay(1)">
-            <i class="ti ti-chevron-right" :class="$style.tlTabIcon" />
-          </button>
-          <button class="_button tl-tab" :class="[$style.tlTab, $style.tlTmLive]" @click="exitTimeMachine">
-            <i class="ti ti-live-photo" :class="$style.tlTabIcon" />
-            <span :class="$style.tlTabLabel">ライブ</span>
-          </button>
-        </template>
-        <template v-else>
           <button
             v-for="opt in allTlTypes"
             :key="opt.value"
@@ -898,15 +797,6 @@ onUnmounted(() => {
           >
             <i class="ti ti-filter" />
           </button>
-          <button
-            class="_button tl-tab"
-            :class="[$style.tlTab, $style.tlTimemachineBtn]"
-            title="Time Machine"
-            @click.stop="toggleTimeMachine"
-          >
-            <i class="ti ti-history" />
-          </button>
-        </template>
         <div :class="$style.tlTabIndicator" :style="tabIndicatorStyle" />
       </div>
     </template>
@@ -945,10 +835,6 @@ onUnmounted(() => {
       </div>
 
       <template v-else>
-        <div v-if="notes.length === 0 && timeMachine.isActive.value" :class="$style.columnEmpty">
-          No cached notes for this date
-        </div>
-
         <button
           v-if="pendingNotes.length > 0"
           :class="$style.newNotesBanner"
@@ -1078,25 +964,9 @@ onUnmounted(() => {
   }
 }
 
-.tlTimemachineBtn {
-  &.active {
-    color: var(--nd-accent);
-  }
-}
-
 .tlHeaderIconWrap {
   display: inline-flex;
   align-items: center;
-}
-
-.tlTmDate {
-  font-weight: bold;
-  cursor: default;
-}
-
-.tlTmLive {
-  margin-left: auto;
-  color: var(--nd-accent);
 }
 
 </style>
