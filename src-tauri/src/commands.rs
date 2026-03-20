@@ -1432,6 +1432,7 @@ pub async fn api_get_follow_requests(
 // --- Explore (users/roles) ---
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn api_search_users(
     db: State<'_, Arc<Database>>,
     client: State<'_, Arc<MisskeyClient>>,
