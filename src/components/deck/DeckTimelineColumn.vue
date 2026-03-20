@@ -271,10 +271,7 @@ watch(
     if (prev && hasToken === false) {
       disposeSubscription()
       resetBatch()
-      const cached = await fetchCachedNotes()
-      const filtered = cached.filter((n) =>
-        matchesFilter(n, columnFilters.value, tlType.value),
-      )
+      const filtered = await loadFilteredCache()
       if (filtered.length > 0) setNotes(filtered)
       isOffline.value = true
       isLoading.value = false
@@ -393,84 +390,11 @@ function toggleFilter(key: keyof TimelineFilter) {
   deckStore.updateColumn(props.column.id, {
     filters: Object.keys(next).length > 0 ? next : undefined,
   })
-  // Reconnect to apply filter
-  reconnectWithFilter()
+  // Re-subscribe to apply filter
+  resubscribe()
 }
 
-async function reconnectWithFilter() {
-  disposeSubscription()
-  resetBatch()
-  setNotes([])
-  isLoading.value = true
-
-  // Logged-out or unresolved account: reload from cache with new filter
-  if (!account.value || !account.value.hasToken) {
-    const cached = await fetchCachedNotes()
-    const filtered = cached.filter((n) =>
-      matchesFilter(n, columnFilters.value, tlType.value),
-    )
-    if (filtered.length > 0) setNotes(filtered)
-    isOffline.value = true
-    isLoading.value = false
-    return
-  }
-
-  try {
-    const adapter = getAdapter() ?? (await initAdapter())
-    if (!adapter) return
-
-    setSubscription(
-      adapter.stream.subscribeTimeline(
-        tlType.value,
-        (note: NormalizedNote) => {
-          if (!matchesFilter(note, columnFilters.value, tlType.value)) return
-          enqueueNote(note)
-        },
-        {
-          onNoteUpdated: (event) => {
-            if (event.type === 'deleted') removePending(event.noteId)
-            onNoteUpdate(event)
-          },
-        },
-      ),
-    )
-
-    const dedupKey = `${props.column.accountId}:timeline:${tlType.value}`
-    const fetched = await dedup(dedupKey, () =>
-      adapter.api.getTimeline(tlType.value, buildTimelineOptions()),
-    )
-
-    if (fetched.length > 0) {
-      setNotes(fetched)
-    }
-    isOffline.value = false
-  } catch (e) {
-    const err = AppError.from(e)
-    if (String(err.message).includes('disabled')) {
-      await refreshPolicies()
-      if (!availableStandardTl.value.includes(tlType.value)) {
-        switchTl('home')
-        return
-      }
-    }
-    if (notes.value.length > 0) {
-      isOffline.value = true
-    } else {
-      const cached = await fetchCachedNotes()
-      const filtered = cached.filter((n) =>
-        matchesFilter(n, columnFilters.value, tlType.value),
-      )
-      if (filtered.length > 0) {
-        setNotes(filtered)
-        isOffline.value = true
-      } else {
-        error.value = err
-      }
-    }
-  } finally {
-    isLoading.value = false
-  }
-}
+// --- Shared helpers ---
 
 async function fetchCachedNotes(): Promise<NormalizedNote[]> {
   if (!props.column.accountId) return []
@@ -485,6 +409,14 @@ async function fetchCachedNotes(): Promise<NormalizedNote[]> {
   }
 }
 
+/** Load cache and apply current column filters */
+async function loadFilteredCache(): Promise<NormalizedNote[]> {
+  const cached = await fetchCachedNotes()
+  return cached.filter((n) =>
+    matchesFilter(n, columnFilters.value, tlType.value),
+  )
+}
+
 function buildTimelineOptions() {
   const filters = columnFilters.value
   const hasFilters = Object.keys(filters).length > 0
@@ -493,19 +425,60 @@ function buildTimelineOptions() {
   }
 }
 
+/** Subscribe to streaming timeline with current filter */
+function subscribeToTimeline(
+  adapter: NonNullable<ReturnType<typeof getAdapter>>,
+) {
+  setSubscription(
+    adapter.stream.subscribeTimeline(
+      tlType.value,
+      (note: NormalizedNote) => {
+        if (!matchesFilter(note, columnFilters.value, tlType.value)) return
+        enqueueNote(note)
+      },
+      {
+        onNoteUpdated: (event) => {
+          if (event.type === 'deleted') removePending(event.noteId)
+          onNoteUpdate(event)
+        },
+      },
+    ),
+  )
+}
+
+/** Shared error handling for connect/resubscribe */
+async function handleConnectError(e: unknown) {
+  const err = AppError.from(e)
+  if (String(err.message).includes('disabled')) {
+    await refreshPolicies()
+    if (!availableStandardTl.value.includes(tlType.value)) {
+      switchTl('home')
+      return
+    }
+  }
+  if (notes.value.length > 0) {
+    isOffline.value = true
+  } else {
+    const filtered = await loadFilteredCache()
+    if (filtered.length > 0) {
+      setNotes(filtered)
+      isOffline.value = true
+    } else {
+      error.value = err
+    }
+  }
+}
+
+// --- Connection lifecycle ---
+
 async function connect(useCache = false) {
   error.value = null
-
   isLoading.value = true
 
-  // Always try to load cache first (regardless of useCache flag) when account
-  // has no token, so that logged-out or offline columns always show cached notes.
+  // Load cache first when explicitly requested or when account has no token
   const shouldLoadCache = useCache || !account.value || !account.value.hasToken
   if (shouldLoadCache) {
-    const cached = await fetchCachedNotes()
-    const filtered = cached.filter((n) =>
-      matchesFilter(n, columnFilters.value, tlType.value),
-    )
+    const filtered = await loadFilteredCache()
     if (filtered.length > 0) setNotes(filtered)
   }
 
@@ -520,8 +493,7 @@ async function connect(useCache = false) {
     const adapter = await initAdapter()
     if (!adapter) return
 
-    // Start streaming setup immediately (connect + subscribe in single IPC).
-    // Runs in parallel with the API fetch below.
+    // Start streaming (connect + subscribe in single IPC round-trip)
     adapter.stream.connect()
     adapter.stream.on('disconnected', () => {
       isOffline.value = true
@@ -532,26 +504,9 @@ async function connect(useCache = false) {
     adapter.stream.on('connected', () => {
       isOffline.value = false
     })
-    setSubscription(
-      adapter.stream.subscribeTimeline(
-        tlType.value,
-        (note: NormalizedNote) => {
-          if (!matchesFilter(note, columnFilters.value, tlType.value)) return
-          enqueueNote(note)
-        },
-        {
-          onNoteUpdated: (event) => {
-            if (event.type === 'deleted') removePending(event.noteId)
-            onNoteUpdate(event)
-          },
-        },
-      ),
-    )
+    subscribeToTimeline(adapter)
     noteSound.warmup()
 
-    // Always fetch latest notes (no sinceId) to ensure newest notes are shown.
-    // Misskey API with sinceId returns ascending order, so only the oldest
-    // "new" notes would be returned, missing the actual latest notes.
     const dedupKey = `${props.column.accountId}:timeline:${tlType.value}`
     const fetched = await dedup(dedupKey, () =>
       adapter.api.getTimeline(tlType.value, buildTimelineOptions()),
@@ -559,44 +514,50 @@ async function connect(useCache = false) {
 
     if (fetched.length > 0) {
       if (useCache || notes.value.length === 0) {
-        // 再接続時: キャッシュと同じ構成ならノート内容だけ更新（レイアウトシフト防止）
-        if (!mergeIfSameList(fetched)) {
-          setNotes(fetched)
-        }
+        if (!mergeIfSameList(fetched)) setNotes(fetched)
       } else {
-        // 初回接続時: ストリーミング受信済みノートとマージ
         const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-        if (newNotes.length > 0) {
+        if (newNotes.length > 0)
           setNotes(insertIntoSorted(notes.value, newNotes))
-        }
       }
     }
     isOffline.value = false
   } catch (e) {
-    const err = AppError.from(e)
-    // 3. Handle "disabled" errors — always refresh policies regardless of cache
-    if (String(err.message).includes('disabled')) {
-      await refreshPolicies()
-      if (!availableStandardTl.value.includes(tlType.value)) {
-        switchTl('home')
-        return
-      }
-    }
-    if (notes.value.length > 0) {
-      isOffline.value = true
-    } else {
-      // No notes loaded yet — try cache before showing error
-      const cached = await fetchCachedNotes()
-      const filtered = cached.filter((n) =>
-        matchesFilter(n, columnFilters.value, tlType.value),
-      )
-      if (filtered.length > 0) {
-        setNotes(filtered)
-        isOffline.value = true
-      } else {
-        error.value = err
-      }
-    }
+    await handleConnectError(e)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+/** Re-subscribe and refetch without full stream reconnect (for filter/policy changes) */
+async function resubscribe() {
+  disposeSubscription()
+  resetBatch()
+  setNotes([])
+  isLoading.value = true
+
+  if (!account.value || !account.value.hasToken) {
+    const filtered = await loadFilteredCache()
+    if (filtered.length > 0) setNotes(filtered)
+    isOffline.value = true
+    isLoading.value = false
+    return
+  }
+
+  try {
+    const adapter = getAdapter() ?? (await initAdapter())
+    if (!adapter) return
+
+    subscribeToTimeline(adapter)
+
+    const dedupKey = `${props.column.accountId}:timeline:${tlType.value}`
+    const fetched = await dedup(dedupKey, () =>
+      adapter.api.getTimeline(tlType.value, buildTimelineOptions()),
+    )
+    if (fetched.length > 0) setNotes(fetched)
+    isOffline.value = false
+  } catch (e) {
+    await handleConnectError(e)
   } finally {
     isLoading.value = false
   }
@@ -785,7 +746,7 @@ watch(
     if (!availableStandardTl.value.includes(tlType.value)) {
       switchTl('home')
     } else {
-      await reconnectWithFilter()
+      await resubscribe()
     }
   },
 )
@@ -806,7 +767,7 @@ async function onResume() {
   if (!adapter || !account.value) return
 
   // Run cache fetch and API fetch in parallel (always fetch latest)
-  const cachePromise = fetchCachedNotes()
+  const cachePromise = loadFilteredCache()
   let apiFailed = false
   const apiPromise = adapter.api
     .getTimeline(tlType.value, buildTimelineOptions())
@@ -815,13 +776,10 @@ async function onResume() {
       return [] as NormalizedNote[]
     })
 
-  const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
+  const [filteredCache, fetched] = await Promise.all([cachePromise, apiPromise])
   isOffline.value = apiFailed
 
-  // Merge results: API results take priority, then cache (with filter)
-  const filteredCache = cached.filter((n) =>
-    matchesFilter(n, columnFilters.value, tlType.value),
-  )
+  // Merge results: API results take priority, then cache
   const allNew = [...fetched, ...filteredCache].filter(
     (n) => !noteIds.has(n.id),
   )
