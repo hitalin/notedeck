@@ -91,7 +91,7 @@ const columnThemeVars = computed(
   () => noteColumnRef.value?.columnThemeVars ?? {},
 )
 const swipeTarget = computed<HTMLElement | null>(
-  () => noteColumnRef.value?.scroller?.value ?? null,
+  () => noteColumnRef.value?.scroller ?? null,
 )
 
 async function reconnect() {
