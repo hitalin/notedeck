@@ -1,30 +1,13 @@
 <script setup lang="ts">
-import {
-  computed,
-  defineAsyncComponent,
-  nextTick,
-  onMounted,
-  ref,
-  useCssModule,
-  watch,
-} from 'vue'
+import { computed, nextTick, onMounted, ref, useCssModule, watch } from 'vue'
 import type {
   NormalizedNote,
   TimelineFilter,
   TimelineType,
 } from '@/adapters/types'
 import MkAd from '@/components/common/MkAd.vue'
-import MkNote from '@/components/common/MkNote.vue'
-import NoteScroller from '@/components/common/NoteScroller.vue'
 import { useAds } from '@/composables/useAds'
-
-const MkPostForm = defineAsyncComponent(
-  () => import('@/components/common/MkPostForm.vue'),
-)
-
-import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
-import { useNoteColumn } from '@/composables/useNoteColumn'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -38,7 +21,7 @@ import {
   findModeKeyForTimeline,
 } from '@/utils/customTimelines'
 import { matchesFilter } from '@/utils/timelineFilter'
-import DeckColumn from './DeckColumn.vue'
+import DeckNoteColumn from './DeckNoteColumn.vue'
 import TimelineFilterPopup from './TimelineFilterPopup.vue'
 
 const props = defineProps<{
@@ -61,7 +44,7 @@ function buildTimelineOptions() {
   }
 }
 
-// --- useNoteColumn (core data management) ---
+// --- NoteColumnConfig ---
 
 const noteColumnConfig: NoteColumnConfig = {
   getColumn: () => props.column,
@@ -101,32 +84,19 @@ const noteColumnConfig: NoteColumnConfig = {
     cached.filter((n) => matchesFilter(n, columnFilters.value, tlType.value)),
 }
 
-const {
-  account,
-  columnThemeVars,
-  serverIconUrl,
-  isLoading,
-  isOffline,
-  error,
-  notes,
-  focusedNoteId,
-  pendingNotes,
-  animateEnter,
-  postForm,
-  handlers,
-  noteScrollerRef,
-  scroller,
-  scrollToTop,
-  handleScroll,
-  handlePosted,
-  removeNote,
-  isPulling,
-  isPulledEnough,
-  isRefreshing,
-  pullDistance,
-  displayHeight,
-  reconnect,
-} = useNoteColumn(noteColumnConfig)
+// --- DeckNoteColumn ref (expose: account, scroller, reconnect, columnThemeVars) ---
+const noteColumnRef = ref<InstanceType<typeof DeckNoteColumn> | null>(null)
+const account = computed(() => noteColumnRef.value?.account)
+const columnThemeVars = computed(
+  () => noteColumnRef.value?.columnThemeVars ?? {},
+)
+const swipeTarget = computed<HTMLElement | null>(
+  () => noteColumnRef.value?.scroller?.value ?? null,
+)
+
+async function reconnect() {
+  await noteColumnRef.value?.reconnect()
+}
 
 // --- Ads ---
 const { fetchAds, pickAd, shouldShowAd, muteAd, serverHost } = useAds(
@@ -300,7 +270,7 @@ async function refreshPolicies() {
 
 // --- Swipe to switch timeline tabs ---
 useSwipeTab(
-  scroller,
+  swipeTarget,
   () => {
     const types = allTlTypes.value
     const idx = types.findIndex((t) => t.value === tlType.value)
@@ -367,12 +337,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <DeckColumn
-    :column-id="column.id"
+  <DeckNoteColumn
+    ref="noteColumnRef"
+    :column="column"
     title="タイムライン"
-    :theme-vars="columnThemeVars"
+    icon="ti-home"
     sound-enabled
-    @header-click="scrollToTop()"
+    :note-column-config="noteColumnConfig"
   >
     <template #header-icon>
       <span :class="$style.tlHeaderIconWrap">
@@ -381,13 +352,6 @@ onMounted(async () => {
           <path :d="currentTlIcon" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
         </svg>
       </span>
-    </template>
-
-    <template #header-meta>
-      <div v-if="account" :class="$style.headerAccount">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
-        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
-      </div>
     </template>
 
     <template #header-extra>
@@ -420,99 +384,10 @@ onMounted(async () => {
       </div>
     </template>
 
-    <div v-if="!account" :class="$style.columnEmpty">
-      Account not found
-    </div>
-
-    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error.message }}
-    </div>
-
-    <div v-else :class="$style.tlBody">
-      <div
-        v-if="isPulling"
-        :class="$style.pullFrame"
-        :style="`--frame-min-height: ${displayHeight()}px`"
-      >
-        <div :class="$style.pullFrameContent">
-          <i v-if="isRefreshing" class="ti ti-loader-2" :class="$style.spin" />
-          <i v-else class="ti ti-arrow-bar-to-down" :class="{ refresh: isPulledEnough }" />
-          <div :class="$style.pullText">
-            <template v-if="isPulledEnough">離してリフレッシュ</template>
-            <template v-else-if="isRefreshing">リフレッシュ中…</template>
-            <template v-else>下に引いてリフレッシュ</template>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="isOffline" :class="$style.offlineBanner">
-        <i class="ti ti-cloud-off" />オフライン
-      </div>
-
-      <div v-if="isLoading && notes.length === 0">
-        <MkSkeleton v-for="i in 5" :key="i" />
-      </div>
-
-      <template v-else>
-        <button
-          v-if="pendingNotes.length > 0"
-          :class="$style.newNotesBanner"
-          class="_button"
-          @click="scrollToTop()"
-        >
-          <i class="ti ti-arrow-up" />{{ pendingNotes.length }}件の新しいノート
-        </button>
-
-        <NoteScroller
-          ref="noteScrollerRef"
-          :items="notes"
-          :focused-id="focusedNoteId"
-          :animate="animateEnter"
-          :class="$style.tlScroller"
-          @scroll="handleScroll"
-        >
-          <template #default="{ item, index }">
-            <div :data-index="index">
-              <MkNote
-                :note="item"
-                :focused="item.id === focusedNoteId"
-                @react="handlers.reaction"
-                @reply="handlers.reply"
-                @renote="handlers.renote"
-                @quote="handlers.quote"
-                @delete="removeNote"
-                @edit="handlers.edit"
-                @bookmark="handlers.bookmark"
-                @delete-and-edit="handlers.deleteAndEdit"
-              />
-              <MkAd v-if="shouldShowAd(index)" :ad="pickAd(index)!" :server-host="serverHost" @mute="muteAd" />
-            </div>
-          </template>
-
-          <template #append>
-            <div v-if="isLoading && notes.length > 0" :class="$style.loadingMore">
-              Loading...
-            </div>
-          </template>
-        </NoteScroller>
-      </template>
-    </div>
-  </DeckColumn>
-
-  <Teleport to="body">
-    <MkPostForm
-      v-if="postForm.show.value && column.accountId && account?.hasToken"
-      :account-id="column.accountId"
-      :reply-to="postForm.replyTo.value"
-      :renote-id="postForm.renoteId.value"
-      :edit-note="postForm.editNote.value"
-      :initial-text="postForm.initialText.value"
-      :initial-cw="postForm.initialCw.value"
-      :initial-visibility="postForm.initialVisibility.value"
-      @close="postForm.close"
-      @posted="handlePosted"
-    />
-  </Teleport>
+    <template #note-item="{ index }">
+      <MkAd v-if="shouldShowAd(index)" :ad="pickAd(index)!" :server-host="serverHost" @mute="muteAd" />
+    </template>
+  </DeckNoteColumn>
 
   <TimelineFilterPopup
     :show="showFilterMenu"
@@ -526,8 +401,6 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-@use './column-common.module.scss';
-
 .tlTabs {
   display: flex;
   position: relative;
@@ -588,4 +461,7 @@ onMounted(async () => {
   align-items: center;
 }
 
+.tlHeaderIcon {
+  font-size: 14px;
+}
 </style>
