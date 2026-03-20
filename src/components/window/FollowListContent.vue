@@ -162,8 +162,12 @@ function navigateUser(userId: string) {
           :disabled="followLoadingIds.has(u.id)"
           @click.stop="toggleFollow(u)"
         >
-          <i v-if="followLoadingIds.has(u.id)" class="ti ti-loader-2" :class="$style.spin" />
-          <i v-else class="ti ti-user-plus" />
+          <template v-if="followLoadingIds.has(u.id)">
+            <i class="ti ti-loader-2" :class="$style.spin" />
+          </template>
+          <template v-else>
+            フォロー
+          </template>
         </button>
       </div>
 
@@ -277,13 +281,16 @@ function navigateUser(userId: string) {
 
 .followBtn {
   flex-shrink: 0;
-  padding: 6px 8px;
-  border-radius: 6px;
-  color: var(--nd-accent);
-  transition: background var(--nd-duration-base);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.8em;
+  font-weight: bold;
+  color: var(--nd-fgOnAccent, #fff);
+  background: var(--nd-accent);
+  transition: opacity var(--nd-duration-base);
 
   &:hover {
-    background: color-mix(in srgb, var(--nd-accent) 10%, transparent);
+    opacity: 0.85;
   }
 
   &:disabled {

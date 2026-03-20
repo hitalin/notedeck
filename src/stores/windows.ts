@@ -31,7 +31,7 @@ export const WINDOW_SIZES: Record<
 > = {
   'note-detail': { width: 500, maxHeight: 600 },
   'user-profile': { width: 500, maxHeight: 650 },
-  'follow-list': { width: 400, maxHeight: 550 },
+  'follow-list': { width: 500, maxHeight: 650 },
   login: { width: 420, maxHeight: 480 },
   search: { width: 500, maxHeight: 650 },
   notifications: { width: 500, maxHeight: 650 },
