@@ -3,10 +3,12 @@ import { invoke } from '@tauri-apps/api/core'
 import {
   computed,
   defineAsyncComponent,
+  nextTick,
   onMounted,
   onUnmounted,
   ref,
   shallowRef,
+  useCssModule,
   watch,
 } from 'vue'
 import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
@@ -107,6 +109,30 @@ const NOTIFICATION_FILTERS = [
 
 type NotifFilterKey = (typeof NOTIFICATION_FILTERS)[number]['key']
 const activeFilter = ref<NotifFilterKey>('all')
+
+// Tab slide indicator
+const $style = useCssModule()
+const filterBarRef = ref<HTMLElement | null>(null)
+const filterIndicatorStyle = ref({ left: '0px', width: '0px', opacity: '0' })
+
+function updateFilterIndicator() {
+  if (!filterBarRef.value) return
+  const activeTab = filterBarRef.value.querySelector(
+    `.notif-tab.${$style.filterActive}`,
+  ) as HTMLElement | null
+  if (!activeTab) {
+    filterIndicatorStyle.value = { left: '0px', width: '0px', opacity: '0' }
+    return
+  }
+  filterIndicatorStyle.value = {
+    left: `${activeTab.offsetLeft}px`,
+    width: `${activeTab.offsetWidth}px`,
+    opacity: '1',
+  }
+}
+
+watch(activeFilter, () => nextTick(updateFilterIndicator))
+onMounted(() => nextTick(updateFilterIndicator))
 
 const filteredNotifications = computed(() => {
   if (activeFilter.value === 'all') return notifications.value
@@ -395,17 +421,19 @@ onUnmounted(() => {
 
     <div v-else :class="$style.notifBody">
       <!-- Notification filter tabs -->
-      <div :class="$style.filterBar">
+      <div ref="filterBarRef" :class="$style.filterBar">
         <button
           v-for="filter in NOTIFICATION_FILTERS"
           :key="filter.key"
-          class="_button"
+          class="_button notif-tab"
           :class="[$style.filterBtn, { [$style.filterActive]: activeFilter === filter.key }]"
           :title="filter.label"
           @click="activeFilter = filter.key"
         >
           <i :class="filter.icon" />
+          <span v-if="activeFilter === filter.key" :class="$style.filterLabel">{{ filter.label }}</span>
         </button>
+        <div :class="$style.filterIndicator" :style="filterIndicatorStyle" />
       </div>
 
       <div
@@ -588,9 +616,9 @@ onUnmounted(() => {
 
 .filterBar {
   display: flex;
-  gap: 2px;
-  padding: 4px 8px;
+  position: relative;
   border-bottom: 1px solid var(--nd-divider);
+  background: var(--nd-bg);
   flex-shrink: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -604,23 +632,38 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 8px;
-  border-radius: 6px;
+  gap: 4px;
+  padding: 8px 12px;
   font-size: 0.85em;
   color: var(--nd-fg);
-  opacity: 0.6;
+  opacity: 0.4;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+  position: relative;
 
   &:hover {
-    opacity: 1;
+    opacity: 0.7;
     background: var(--nd-buttonHoverBg);
   }
 }
 
 .filterActive {
   opacity: 1;
-  color: var(--nd-accent);
-  background: color-mix(in srgb, var(--nd-accent) 10%, transparent);
+}
+
+.filterLabel {
+  font-size: 0.85em;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.filterIndicator {
+  position: absolute;
+  bottom: 0;
+  height: 3px;
+  background: var(--nd-accent);
+  border-radius: var(--nd-radius-full) var(--nd-radius-full) 0 0;
+  transition: left var(--nd-duration-slower) cubic-bezier(0, 0, 0.2, 1), width var(--nd-duration-slower) cubic-bezier(0, 0, 0.2, 1);
+  pointer-events: none;
 }
 
 .notifScroller {
