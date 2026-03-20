@@ -33,7 +33,7 @@ const BASE_TITLES: Record<string, string> = {
 const windowTitle = computed(() => {
   const base = BASE_TITLES[props.window.type] ?? ''
   if (props.window.type === 'follow-list' && props.window.props.username) {
-    return `${base} — @${props.window.props.username}`
+    return `@${props.window.props.username} のフォロー / フォロワー`
   }
   return base
 })
