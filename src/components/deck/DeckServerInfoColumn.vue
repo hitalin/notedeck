@@ -114,15 +114,11 @@ async function fetchServerInfo() {
     serverIconUrl.value = info.iconUrl
 
     const [metaResult, statsResult] = await Promise.all([
-      invoke<ServerMeta>('api_request', {
+      invoke<ServerMeta>('api_get_meta_detail', {
         accountId: acc.id,
-        endpoint: 'meta',
-        params: { detail: true },
       }),
-      invoke<ServerStats>('api_request', {
+      invoke<ServerStats>('api_get_server_stats', {
         accountId: acc.id,
-        endpoint: 'stats',
-        params: {},
       }),
     ])
 

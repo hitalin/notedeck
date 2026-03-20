@@ -75,10 +75,9 @@ async function deleteFile() {
   deleting.value = true
   deleteError.value = null
   try {
-    await invoke('api_request', {
+    await invoke('api_delete_drive_file', {
       accountId: props.column.accountId,
-      endpoint: 'drive/files/delete',
-      params: { fileId: detailFile.value.id },
+      fileId: detailFile.value.id,
     })
     files.value = files.value.filter((f) => f.id !== detailFile.value?.id)
     detailFile.value = null
@@ -118,10 +117,9 @@ async function batchDelete() {
   const idsToDelete = [...selectedIds.value]
   try {
     for (const fileId of idsToDelete) {
-      await invoke('api_request', {
+      await invoke('api_delete_drive_file', {
         accountId: props.column.accountId,
-        endpoint: 'drive/files/delete',
-        params: { fileId },
+        fileId,
       })
       files.value = files.value.filter((f) => f.id !== fileId)
     }

@@ -79,11 +79,14 @@ async function fetchAnnouncements() {
     const info = await serversStore.getServerInfo(acc.host)
     serverIconUrl.value = info.iconUrl
 
-    announcements.value = await invoke<Announcement[]>('api_request', {
-      accountId: acc.id,
-      endpoint: 'announcements',
-      params: { limit: 20, isActive: true },
-    })
+    announcements.value = await invoke<Announcement[]>(
+      'api_get_announcements',
+      {
+        accountId: acc.id,
+        limit: 20,
+        isActive: true,
+      },
+    )
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -97,10 +100,9 @@ async function markAsRead(announcement: Announcement) {
   if (!acc) return
 
   try {
-    await invoke('api_request', {
+    await invoke('api_read_announcement', {
       accountId: acc.id,
-      endpoint: 'i/read-announcement',
-      params: { announcementId: announcement.id },
+      announcementId: announcement.id,
     })
     announcement.isRead = true
     announcements.value = [...announcements.value]

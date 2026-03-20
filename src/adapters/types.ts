@@ -457,6 +457,27 @@ export interface ApiAdapter {
   addNoteToClip(clipId: string, noteId: string): Promise<void>
   addUserToList(listId: string, userId: string): Promise<void>
   removeUserFromList(listId: string, userId: string): Promise<void>
+  getFollowing(
+    userId: string,
+    options?: { limit?: number; untilId?: string },
+  ): Promise<FollowRelation[]>
+  getFollowers(
+    userId: string,
+    options?: { limit?: number; untilId?: string },
+  ): Promise<FollowRelation[]>
+  getUserRelations(userIds: string[]): Promise<UserRelation[]>
+}
+
+export interface FollowRelation {
+  id: string
+  followee?: NormalizedUser
+  follower?: NormalizedUser
+}
+
+export interface UserRelation {
+  id: string
+  isFollowing: boolean
+  isFollowed: boolean
 }
 
 export type StreamConnectionState =

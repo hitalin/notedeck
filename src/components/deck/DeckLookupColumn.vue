@@ -130,10 +130,9 @@ async function performLookup() {
         name?: string | null
         avatarUrl?: string | null
       }
-    }>('api_request', {
+    }>('api_ap_show', {
       accountId,
-      endpoint: 'ap/show',
-      params: { uri: q },
+      uri: q,
     })
 
     if (res.type === 'Note' && res.object?.id) {

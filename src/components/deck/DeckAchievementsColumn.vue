@@ -595,10 +595,9 @@ async function fetchAchievements() {
   error.value = null
 
   try {
-    const result = await invoke<Achievement[]>('api_request', {
+    const result = await invoke<Achievement[]>('api_get_user_achievements', {
       accountId: props.column.accountId,
-      endpoint: 'users/achievements',
-      params: { userId: acc.userId },
+      userId: acc.userId,
     })
     achievements.value = result
   } catch (e) {

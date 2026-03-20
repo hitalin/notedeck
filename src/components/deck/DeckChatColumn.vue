@@ -73,10 +73,10 @@ async function connect() {
 
     let roomHistory: ChatMessage[] = []
     if (props.column.accountId) {
-      roomHistory = await invoke<ChatMessage[]>('api_request', {
+      roomHistory = await invoke<ChatMessage[]>('api_get_chat_history', {
         accountId: props.column.accountId,
-        endpoint: 'chat/history',
-        params: { limit: 100, room: true },
+        limit: 100,
+        room: true,
       })
     }
 
@@ -218,9 +218,8 @@ async function sendMessage() {
     if (currentRoomId.value) params.roomId = currentRoomId.value
     if (attachedFile.value) params.fileId = attachedFile.value.id
 
-    const sent = await invoke<ChatMessage>('api_request', {
+    const sent = await invoke<ChatMessage>('api_create_messaging_message', {
       accountId: props.column.accountId,
-      endpoint: 'messaging/messages/create',
       params,
     })
     messageText.value = ''
@@ -310,10 +309,10 @@ async function handleReact(messageId: string, reaction: string) {
   }
 
   try {
-    await invoke('api_request', {
+    await invoke('api_react_chat_message', {
       accountId: props.column.accountId,
-      endpoint: 'chat/messages/react',
-      params: { messageId, reaction },
+      messageId,
+      reaction,
     })
     // Optimistically add reaction to local state
     updateMessageReaction(messageId, reaction, true)
@@ -326,10 +325,10 @@ async function handleUnreact(messageId: string, reaction: string) {
   if (!props.column.accountId) return
 
   try {
-    await invoke('api_request', {
+    await invoke('api_unreact_chat_message', {
       accountId: props.column.accountId,
-      endpoint: 'chat/messages/unreact',
-      params: { messageId, reaction },
+      messageId,
+      reaction,
     })
     updateMessageReaction(messageId, reaction, false)
   } catch (e) {

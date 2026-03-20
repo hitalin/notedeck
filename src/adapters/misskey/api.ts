@@ -8,6 +8,7 @@ import type {
   ChatMessage,
   Clip,
   CreateNoteParams,
+  FollowRelation,
   NormalizedDriveFile,
   NormalizedNote,
   NormalizedNotification,
@@ -21,6 +22,7 @@ import type {
   TimelineType,
   UserList,
   UserNotesOptions,
+  UserRelation,
 } from '../types'
 
 interface TimelineEnriched {
@@ -147,28 +149,24 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async pinNote(noteId: string): Promise<void> {
-    await invoke('api_request', {
+    return invoke('api_pin_note', {
       accountId: this.accountId,
-      endpoint: 'i/pin',
-      params: { noteId },
+      noteId,
     })
   }
 
   async unpinNote(noteId: string): Promise<void> {
-    await invoke('api_request', {
+    return invoke('api_unpin_note', {
       accountId: this.accountId,
-      endpoint: 'i/unpin',
-      params: { noteId },
+      noteId,
     })
   }
 
   async getUserPinnedNoteIds(userId: string): Promise<string[]> {
-    const result = await invoke<{ pinnedNoteIds?: string[] }>('api_request', {
+    return invoke('api_get_user_pinned_note_ids', {
       accountId: this.accountId,
-      endpoint: 'users/show',
-      params: { userId },
+      userId,
     })
-    return result.pinnedNoteIds ?? []
   }
 
   async getUser(userId: string): Promise<NormalizedUser> {
@@ -204,11 +202,13 @@ export class MisskeyApi implements ApiAdapter {
       if (withFiles != null) params.withFiles = withFiles
       if (withChannelNotes != null) params.withChannelNotes = withChannelNotes
 
-      const raw = await invoke<{ id: string }[]>('api_request', {
-        accountId: this.accountId,
-        endpoint: 'users/notes',
-        params,
-      })
+      const raw = await invoke<{ id: string }[]>(
+        'api_get_user_notes_filtered',
+        {
+          accountId: this.accountId,
+          params,
+        },
+      )
       if (!raw.length) return []
       return Promise.all(raw.map((n) => this.getNote(n.id)))
     }
@@ -230,15 +230,15 @@ export class MisskeyApi implements ApiAdapter {
     options: PaginationOptions = {},
   ): Promise<NormalizedNote[]> {
     try {
-      const raw = await invoke<{ id: string }[]>('api_request', {
-        accountId: this.accountId,
-        endpoint: 'users/featured-notes',
-        params: {
+      const raw = await invoke<{ id: string }[]>(
+        'api_get_user_featured_notes',
+        {
+          accountId: this.accountId,
           userId,
           limit: options.limit ?? 30,
-          untilId: options.untilId ?? undefined,
+          untilId: options.untilId ?? null,
         },
-      })
+      )
       if (!raw.length) return []
       return Promise.all(raw.map((n) => this.getNote(n.id)))
     } catch {
@@ -509,66 +509,93 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async muteUser(userId: string): Promise<void> {
-    await invoke('api_request', {
+    return invoke('api_mute_user', {
       accountId: this.accountId,
-      endpoint: 'mute/create',
-      params: { userId },
+      userId,
     })
   }
 
   async unmuteUser(userId: string): Promise<void> {
-    await invoke('api_request', {
+    return invoke('api_unmute_user', {
       accountId: this.accountId,
-      endpoint: 'mute/delete',
-      params: { userId },
+      userId,
     })
   }
 
   async blockUser(userId: string): Promise<void> {
-    await invoke('api_request', {
+    return invoke('api_block_user', {
       accountId: this.accountId,
-      endpoint: 'blocking/create',
-      params: { userId },
+      userId,
     })
   }
 
   async unblockUser(userId: string): Promise<void> {
-    await invoke('api_request', {
+    return invoke('api_unblock_user', {
       accountId: this.accountId,
-      endpoint: 'blocking/delete',
-      params: { userId },
+      userId,
     })
   }
 
   async reportUser(userId: string, comment: string): Promise<void> {
-    await invoke('api_request', {
+    return invoke('api_report_user', {
       accountId: this.accountId,
-      endpoint: 'users/report-abuse',
-      params: { userId, comment },
+      userId,
+      comment,
     })
   }
 
   async addNoteToClip(clipId: string, noteId: string): Promise<void> {
-    await invoke('api_request', {
+    return invoke('api_add_note_to_clip', {
       accountId: this.accountId,
-      endpoint: 'clips/add-note',
-      params: { clipId, noteId },
+      clipId,
+      noteId,
     })
   }
 
   async addUserToList(listId: string, userId: string): Promise<void> {
-    await invoke('api_request', {
+    return invoke('api_add_user_to_list', {
       accountId: this.accountId,
-      endpoint: 'users/lists/push',
-      params: { listId, userId },
+      listId,
+      userId,
     })
   }
 
   async removeUserFromList(listId: string, userId: string): Promise<void> {
-    await invoke('api_request', {
+    return invoke('api_remove_user_from_list', {
       accountId: this.accountId,
-      endpoint: 'users/lists/pull',
-      params: { listId, userId },
+      listId,
+      userId,
+    })
+  }
+
+  async getFollowing(
+    userId: string,
+    options: { limit?: number; untilId?: string } = {},
+  ): Promise<FollowRelation[]> {
+    return invoke('api_get_following', {
+      accountId: this.accountId,
+      userId,
+      limit: options.limit ?? 30,
+      untilId: options.untilId ?? null,
+    })
+  }
+
+  async getFollowers(
+    userId: string,
+    options: { limit?: number; untilId?: string } = {},
+  ): Promise<FollowRelation[]> {
+    return invoke('api_get_followers', {
+      accountId: this.accountId,
+      userId,
+      limit: options.limit ?? 30,
+      untilId: options.untilId ?? null,
+    })
+  }
+
+  async getUserRelations(userIds: string[]): Promise<UserRelation[]> {
+    return invoke('api_get_user_relations', {
+      accountId: this.accountId,
+      userIds,
     })
   }
 }

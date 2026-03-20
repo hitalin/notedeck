@@ -143,10 +143,8 @@ async function fetchMeta() {
     const info = await serversStore.getServerInfo(acc.host)
     serverIconUrl.value = info.iconUrl
 
-    meta.value = await invoke<ServerMeta>('api_request', {
+    meta.value = await invoke<ServerMeta>('api_get_meta_detail', {
       accountId: acc.id,
-      endpoint: 'meta',
-      params: { detail: true },
     })
   } catch (e) {
     error.value = AppError.from(e)

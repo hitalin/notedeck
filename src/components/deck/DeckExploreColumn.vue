@@ -84,15 +84,12 @@ async function fetchUsers() {
   usersLoading.value = true
   usersError.value = null
   try {
-    users.value = await invoke<UserSummary[]>('api_request', {
+    users.value = await invoke<UserSummary[]>('api_search_users', {
       accountId: props.column.accountId,
-      endpoint: 'users',
-      params: {
-        limit: 30,
-        sort: '+follower',
-        state: 'alive',
-        origin: 'combined',
-      },
+      sort: '+follower',
+      state: 'alive',
+      origin: 'combined',
+      limit: 30,
     })
     usersFetched.value = true
   } catch (e) {
@@ -130,10 +127,8 @@ async function fetchRoles() {
   rolesLoading.value = true
   rolesError.value = null
   try {
-    const allRoles = await invoke<RoleSummary[]>('api_request', {
+    const allRoles = await invoke<RoleSummary[]>('api_get_roles', {
       accountId: props.column.accountId,
-      endpoint: 'roles/list',
-      params: {},
     })
     roles.value = allRoles
       .filter((r) => r.target === 'manual')
@@ -154,11 +149,11 @@ async function openRole(role: RoleSummary) {
   roleUsers.value = []
   try {
     const result = await invoke<{ id: string; user: UserSummary }[]>(
-      'api_request',
+      'api_get_role_users',
       {
         accountId: props.column.accountId,
-        endpoint: 'roles/users',
-        params: { roleId: role.id, limit: 30 },
+        roleId: role.id,
+        limit: 30,
       },
     )
     roleUsers.value = result.map((entry) => entry.user)

@@ -146,10 +146,10 @@ export function useAutocomplete(
   async function searchMention(query: string) {
     if (!activeAccountId.value) return []
     try {
-      return await invoke<NormalizedUser[]>('api_request', {
+      return await invoke<NormalizedUser[]>('api_search_users_by_query', {
         accountId: activeAccountId.value,
-        endpoint: 'users/search',
-        params: { query, limit: 10 },
+        query,
+        limit: 10,
       })
     } catch {
       return []
@@ -159,10 +159,10 @@ export function useAutocomplete(
   async function searchHashtag(query: string) {
     if (!activeAccountId.value) return []
     try {
-      return await invoke<string[]>('api_request', {
+      return await invoke<string[]>('api_search_hashtags', {
         accountId: activeAccountId.value,
-        endpoint: 'hashtags/search',
-        params: { query, limit: 10 },
+        query,
+        limit: 10,
       })
     } catch {
       return []

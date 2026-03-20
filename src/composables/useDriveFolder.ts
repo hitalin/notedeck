@@ -26,15 +26,15 @@ export function useDriveFolder(options: UseDriveFolderOptions) {
 
     try {
       const [folderResult, fileResult] = await Promise.all([
-        invoke<DriveFolder[]>('api_request', {
+        invoke<DriveFolder[]>('api_get_drive_folders', {
           accountId,
-          endpoint: 'drive/folders',
-          params: { folderId: targetFolderId, limit: 50 },
+          folderId: targetFolderId,
+          limit: 50,
         }),
-        invoke<NormalizedDriveFile[]>('api_request', {
+        invoke<NormalizedDriveFile[]>('api_get_drive_files', {
           accountId,
-          endpoint: 'drive/files',
-          params: { folderId: targetFolderId, limit: 50 },
+          folderId: targetFolderId,
+          limit: 50,
         }),
       ])
       folders.value = folderResult

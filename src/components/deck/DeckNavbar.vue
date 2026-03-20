@@ -136,9 +136,8 @@ async function loadAccountModes(id: string) {
     // non-critical
   }
   try {
-    const me = await invoke<Record<string, unknown>>('api_request', {
+    const me = await invoke<Record<string, unknown>>('api_get_self', {
       accountId: id,
-      endpoint: 'i',
     })
     accountIsAdmin.value = {
       ...accountIsAdmin.value,

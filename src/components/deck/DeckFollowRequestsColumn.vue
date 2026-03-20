@@ -48,10 +48,9 @@ async function fetchRequests() {
     const info = await serversStore.getServerInfo(acc.host)
     serverIconUrl.value = info.iconUrl
 
-    requests.value = await invoke<FollowRequest[]>('api_request', {
+    requests.value = await invoke<FollowRequest[]>('api_get_follow_requests', {
       accountId: acc.id,
-      endpoint: 'following/requests/list',
-      params: { limit: 30 },
+      limit: 30,
     })
   } catch (e) {
     error.value = AppError.from(e)
@@ -68,14 +67,13 @@ async function handleAction(
   if (!acc) return
 
   try {
-    const endpoint =
+    const command =
       action === 'accepted'
-        ? 'following/requests/accept'
-        : 'following/requests/reject'
-    await invoke('api_request', {
+        ? 'api_accept_follow_request'
+        : 'api_reject_follow_request'
+    await invoke(command, {
       accountId: acc.id,
-      endpoint,
-      params: { userId: req.follower.id },
+      userId: req.follower.id,
     })
     actionStates.value = { ...actionStates.value, [req.id]: action }
   } catch (e) {

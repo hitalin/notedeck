@@ -18,11 +18,9 @@ let isPollingActive = false
 
 async function fetchUnreadCount(accountId: string): Promise<number> {
   try {
-    const result = await invoke<{ count: number }>('api_request', {
+    return await invoke<number>('api_get_unread_notification_count', {
       accountId,
-      endpoint: 'notifications/unread-count',
     })
-    return result.count
   } catch {
     return 0
   }
@@ -75,9 +73,8 @@ export function useUnreadNotifications() {
   async function markAllAsRead() {
     for (const acc of accountsStore.accounts) {
       try {
-        await invoke('api_request', {
+        await invoke('api_mark_all_notifications_as_read', {
           accountId: acc.id,
-          endpoint: 'notifications/mark-all-as-read',
         })
       } catch {
         // non-critical
