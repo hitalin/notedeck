@@ -147,8 +147,6 @@ export const useDeckStore = defineStore('deck', () => {
     apiDocs: () => 'notedeck://api/docs',
     lookup: (col) => `notedeck://lookup/${col.id}`,
     serverInfo: (col) => `notedeck://server-info/${col.id}`,
-    themeEditor: (col) => `notedeck://theme-editor/${col.id}`,
-    cssEditor: (col) => `notedeck://css-editor/${col.id}`,
   }
 
   const accountUriBuilders: Partial<
