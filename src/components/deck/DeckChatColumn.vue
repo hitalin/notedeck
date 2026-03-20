@@ -65,6 +65,12 @@ async function connect() {
   error.value = null
   isLoading.value = true
 
+  // Logged-out or unresolved account: nothing to show (no cache)
+  if (!account.value || !account.value.hasToken) {
+    isLoading.value = false
+    return
+  }
+
   try {
     const adapter = await initAdapter()
     if (!adapter) return
