@@ -222,7 +222,14 @@ pub fn export_account_list(app: &tauri::AppHandle, db: &Database) {
 #[tauri::command]
 pub fn load_accounts(db: State<'_, Arc<Database>>) -> Result<Vec<AccountPublic>> {
     let accounts = db.load_accounts()?;
-    Ok(accounts.iter().map(AccountPublic::from).collect())
+    Ok(accounts
+        .iter()
+        .map(|a| {
+            let has_token =
+                !a.token.is_empty() || keychain::get_token(&a.id).ok().flatten().is_some();
+            AccountPublic::new(a, has_token)
+        })
+        .collect())
 }
 
 #[tauri::command]
@@ -234,6 +241,20 @@ pub fn delete_account(
     invalidate_credentials(&id);
     let _ = keychain::delete_token(&id);
     db.delete_account(&id)?;
+    export_account_list(&app, &db);
+    Ok(())
+}
+
+/// Logout: delete token only, keep account record and columns
+#[tauri::command]
+pub fn logout_account(
+    app: tauri::AppHandle,
+    db: State<'_, Arc<Database>>,
+    id: String,
+) -> Result<()> {
+    invalidate_credentials(&id);
+    let _ = keychain::delete_token(&id);
+    db.clear_token(&id)?;
     export_account_list(&app, &db);
     Ok(())
 }
@@ -2116,7 +2137,7 @@ pub async fn auth_complete_and_save(
 
     export_account_list(&app, &db);
 
-    Ok(AccountPublic::from(&saved))
+    Ok(AccountPublic::new(&saved, true))
     // account, saved が drop → token が zeroize される
 }
 

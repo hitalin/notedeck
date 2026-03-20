@@ -8,6 +8,7 @@ import type {
   NoteVisibility,
 } from '@/adapters/types'
 import { applyNoteViewInterruptors } from '@/aiscript/plugin-api'
+import { useAccountMode } from '@/composables/useAccountMode'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
@@ -50,6 +51,8 @@ const allEmojis = computed(() => ({
 const isPureRenote = computed(
   () => props.note.renote && props.note.text === null,
 )
+
+const { canInteract } = useAccountMode(() => props.note._accountId)
 
 const moreMenuRef = ref<InstanceType<typeof NoteMoreMenu> | null>(null)
 const reactionPickerRef = ref<InstanceType<
@@ -553,7 +556,7 @@ function closeMentionPopup() {
               :key="r.reaction"
               v-memo="[r.reaction, r.count, effectiveNote.myReaction === r.reaction, reactionUrls[r.reaction]]"
               :class="[$style.reaction, { [$style.reacted]: effectiveNote.myReaction === r.reaction }]"
-              @click.stop="emit('react', r.reaction, effectiveNote)"
+              @click.stop="canInteract && emit('react', r.reaction, effectiveNote)"
               @mouseenter="reactionUsersRef?.show($event, r.reaction, reactionUrls[r.reaction] ?? null, effectiveNote.reactions[r.reaction] ?? 0)"
               @mouseleave="reactionUsersRef?.hide()"
             >
@@ -573,13 +576,14 @@ function closeMentionPopup() {
               {{ effectiveNote.repliesCount }}
             </span>
           </button>
-          <button :class="[$style.footerButton, $style.renoteButton, { [$style.renoted]: isRenoted }]" @click.stop="openRenoteMenu($event)">
+          <button v-if="canInteract" :class="[$style.footerButton, $style.renoteButton, { [$style.renoted]: isRenoted }]" @click.stop="openRenoteMenu($event)">
             <i class="ti ti-repeat" />
             <span v-if="effectiveNote.renoteCount > 0" :class="$style.buttonCount">
               {{ effectiveNote.renoteCount }}
             </span>
           </button>
           <button
+            v-if="canInteract"
             :class="[$style.footerButton, $style.reactionButton]"
             @click.stop="reactionPickerRef?.open($event)"
           >

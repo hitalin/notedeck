@@ -17,6 +17,7 @@ import {
 import { AppError } from '@/utils/errors'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
+import LogoutDialog from './LogoutDialog.vue'
 import NavAccountMenu from './NavAccountMenu.vue'
 
 const props = defineProps<{
@@ -174,14 +175,31 @@ async function toggleAccountMode(accountId: string, key: string) {
   }
 }
 
-function logout(id: string) {
+const logoutTargetId = ref<string | null>(null)
+
+function showLogoutDialog(id: string) {
+  logoutTargetId.value = id
+  accountMenuId.value = null
+}
+
+function logoutKeepData() {
+  if (!logoutTargetId.value) return
+  const id = logoutTargetId.value
+  streamingStore.disconnect(id)
+  accountsStore.logoutAccount(id)
+  logoutTargetId.value = null
+}
+
+function logoutDeleteAll() {
+  if (!logoutTargetId.value) return
+  const id = logoutTargetId.value
   for (const col of deckStore.columns) {
     if (col.accountId === id) {
       deckStore.removeColumn(col.id)
     }
   }
   accountsStore.removeAccount(id)
-  accountMenuId.value = null
+  logoutTargetId.value = null
 }
 
 function toggleFirstAccountMenu() {
@@ -391,7 +409,8 @@ defineExpose({
               :mode-error="modeError"
               :is-admin="accountIsAdmin[acc.id] ?? false"
               @toggle-mode="toggleAccountMode(acc.id, $event)"
-              @logout="logout(acc.id)"
+              @logout="showLogoutDialog(acc.id)"
+              @relogin="closeDrawerAndDo(navigateToLogin)"
             />
           </div>
 
@@ -419,6 +438,13 @@ defineExpose({
       v-if="!isCompact"
       :class="[$style.resizeHandle, { [$style.resizeActive]: isResizing }]"
       @mousedown="startResize"
+    />
+
+    <LogoutDialog
+      :show="logoutTargetId != null"
+      @keep-data="logoutKeepData"
+      @delete-all="logoutDeleteAll"
+      @cancel="logoutTargetId = null"
     />
   </div>
 </template>
