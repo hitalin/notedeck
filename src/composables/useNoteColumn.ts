@@ -73,6 +73,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     notes,
     noteIds,
     setNotes,
+    mergeIfSameList,
     setOnNotesChanged,
     onNoteUpdate,
     handlePosted,
@@ -274,19 +275,28 @@ export function useNoteColumn(config: NoteColumnConfig) {
         noteSound?.warmup()
       }
 
-      const sinceId = notes.value.length > 0 ? notes.value[0]?.id : undefined
+      // When displaying cached notes, fetch full list to refresh stale data
+      // (cache may lack avatarUrl, reactionEmojis, etc.)
+      const hasCached = cachedIds.length > 0
+      const sinceId =
+        !hasCached && notes.value.length > 0 ? notes.value[0]?.id : undefined
       const dedupKey = `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
       const fetched = await dedup(dedupKey, () =>
         config.fetch(adapter, sinceId ? { sinceId } : {}),
       )
       const freshIds = new Set(fetched.map((n) => n.id))
 
-      if (sinceId && fetched.length > 0) {
-        const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-        if (newNotes.length > 0)
-          setNotes(insertIntoSorted(notes.value, newNotes))
-      } else if (fetched.length > 0) {
-        setNotes(fetched)
+      if (fetched.length > 0) {
+        if (hasCached) {
+          // Refresh cached note data with fresh API response
+          if (!mergeIfSameList(fetched)) setNotes(fetched)
+        } else if (sinceId) {
+          const newNotes = fetched.filter((n) => !noteIds.has(n.id))
+          if (newNotes.length > 0)
+            setNotes(insertIntoSorted(notes.value, newNotes))
+        } else {
+          setNotes(fetched)
+        }
       }
 
       isOffline.value = false
@@ -585,6 +595,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     postForm,
     handlers,
     noteScrollerRef,
+    scroller,
     scrollToTop,
     handleScroll,
     handlePosted,

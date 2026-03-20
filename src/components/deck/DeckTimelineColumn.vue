@@ -115,6 +115,7 @@ const {
   postForm,
   handlers,
   noteScrollerRef,
+  scroller,
   scrollToTop,
   handleScroll,
   handlePosted,
@@ -299,7 +300,7 @@ async function refreshPolicies() {
 
 // --- Swipe to switch timeline tabs ---
 useSwipeTab(
-  noteScrollerRef,
+  scroller,
   () => {
     const types = allTlTypes.value
     const idx = types.findIndex((t) => t.value === tlType.value)
