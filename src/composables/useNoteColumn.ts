@@ -198,6 +198,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
       isLoading.value = true
     }
 
+    // Logged-out account: show cached notes in read-only mode
+    if (account.value && !account.value.hasToken) {
+      isOffline.value = true
+      isLoading.value = false
+      return
+    }
+
     try {
       const adapter = await initAdapter()
       if (!adapter) return

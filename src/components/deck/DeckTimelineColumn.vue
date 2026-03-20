@@ -467,6 +467,13 @@ async function connect(useCache = false) {
     setNotes(filtered)
   }
 
+  // Logged-out account: show cached notes in read-only mode
+  if (account.value && !account.value.hasToken) {
+    isOffline.value = true
+    isLoading.value = false
+    return
+  }
+
   try {
     const adapter = await initAdapter()
     if (!adapter) return
@@ -976,7 +983,7 @@ onUnmounted(() => {
 
   <Teleport to="body">
     <MkPostForm
-      v-if="postForm.show.value && column.accountId"
+      v-if="postForm.show.value && column.accountId && account?.hasToken"
       :account-id="column.accountId"
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"

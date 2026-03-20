@@ -7,6 +7,7 @@ import { highlightCode, highlighterLoaded } from '@/utils/highlight'
 import { proxyUrl } from '@/utils/imageProxy'
 import { type MfmToken, parseMfm } from '@/utils/mfm'
 import { isSafeUrl } from '@/utils/url'
+import MkEmoji from './MkEmoji.vue'
 
 const MkUrlPreview = defineAsyncComponent(() => import('./MkUrlPreview.vue'))
 
@@ -260,9 +261,9 @@ function fnStyle(
     --><!-- Strike --><s v-else-if="token.type === 'strike'">{{ token.value }}</s><!--
     --><!-- Code Block --><div v-else-if="token.type === 'codeBlock'" :key="`cb-${i}-${highlighterLoaded}`" :class="$style.mfmCodeBlock" v-html="highlightCode(token.value, token.lang)"></div><!--
     --><!-- Inline Code --><code v-else-if="token.type === 'inlineCode'" :class="$style.mfmCode">{{ token.value }}</code><!--
-    --><!-- Custom Emoji (resolved) --><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="proxyUrl(emojiUrls[token.shortcode]!)" :alt="`:${token.shortcode}:`" class="custom-emoji" :class="$style.customEmoji" decoding="async" loading="lazy" /><!--
+    --><!-- Custom Emoji (resolved) --><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="proxyUrl(emojiUrls[token.shortcode]!)" :alt="`:${token.shortcode}:`" class="custom-emoji" :class="$style.customEmoji" decoding="async" loading="lazy" @error="(e: Event) => (e.target as HTMLImageElement).src = '/emoji-unknown.svg'" /><!--
     --><!-- Custom Emoji (unresolved) --><span v-else-if="token.type === 'customEmoji'">:{{ token.shortcode }}:</span><!--
-    --><!-- Unicode Emoji --><img v-else-if="token.type === 'unicodeEmoji'" :src="token.url" :alt="token.value" class="twemoji" :class="$style.twemoji" width="20" height="20" decoding="async" loading="lazy" /><!--
+    --><!-- Unicode Emoji --><MkEmoji v-else-if="token.type === 'unicodeEmoji'" :emoji="token.value" class="twemoji" :class="$style.twemoji" /><!--
     --><!-- MFM Function --><span v-else-if="token.type === 'fn'" :class="fnClass(token)" :style="fnStyle(token)"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
     --><!-- Small --><small v-else-if="token.type === 'small'" :class="$style.mfmSmall"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></small><!--
     --><!-- Center --><span v-else-if="token.type === 'center'" :class="$style.mfmCenter"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :account-id="accountId" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
