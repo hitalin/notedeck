@@ -114,7 +114,7 @@ function closeLightbox() {
     <div
       v-for="file in previewableFiles"
       :key="file.id"
-      :class="[$style.mediaCell, { [$style.isSensitive]: file.isSensitive && !revealedIds.has(file.id), [$style.isLoaded]: loadedIds.has(file.id) }]"
+      :class="[$style.mediaCell, { [$style.isSensitive]: file.isSensitive && !revealedIds.has(file.id), [$style.isLoaded]: loadedIds.has(file.id) || erroredIds.has(file.id) }]"
       @click="openLightbox(file, $event)"
     >
       <template v-if="isImage(file)">
@@ -134,12 +134,17 @@ function closeLightbox() {
       </template>
       <template v-else-if="isVideo(file)">
         <video
+          v-if="!erroredIds.has(file.id)"
           :src="safeMediaSrc(file.url)"
           :class="$style.mediaVideo"
           preload="metadata"
           controls
           @click.stop
+          @error="onImageError(file.id)"
         />
+        <div v-else :class="$style.mediaPlaceholder">
+          <i class="ti ti-video" />
+        </div>
       </template>
 
       <!-- NSFW overlay -->
