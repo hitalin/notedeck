@@ -187,6 +187,12 @@ watch(searchQuery, (val) => {
   debounceTimer = setTimeout(() => searchLocalAll(q), 200)
 })
 
+// Re-search when date filters or sort order change
+watch([sinceDate, untilDate, ascending], () => {
+  const q = confirmedQuery.value || searchQuery.value.trim()
+  if (q) performSearch()
+})
+
 // Per-account oldest note tracking for pagination
 const lastNoteIds = new Map<string, string>()
 const lastNoteCreatedAts = new Map<string, string>()

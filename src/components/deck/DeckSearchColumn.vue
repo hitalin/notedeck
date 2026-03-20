@@ -207,6 +207,12 @@ watch(searchQuery, (val) => {
   debounceTimer = setTimeout(() => searchLocal(q), 200)
 })
 
+// Re-search when date filters or sort order change
+watch([sinceDate, untilDate, ascending], () => {
+  const q = confirmedQuery.value || searchQuery.value.trim()
+  if (q) performSearch()
+})
+
 async function performSearch() {
   const q = searchQuery.value.trim()
   if (!q) return
@@ -251,21 +257,22 @@ async function performSearch() {
   }
 
   // Server search
-  if (hint) {
+  if (hint && account.value?.hasToken) {
     try {
       const adapter = await initAdapter()
-      if (!adapter) return
-
-      let results = await adapter.api.searchNotes(hint, {
-        sinceDate: getSinceDateMs(),
-        untilDate: getUntilDateMs(),
-      })
-      if (regexMode.value) {
-        results = filterNotesByRegex(results, q)
+      if (adapter) {
+        let results = await adapter.api.searchNotes(hint, {
+          sinceDate: getSinceDateMs(),
+          untilDate: getUntilDateMs(),
+        })
+        if (regexMode.value) {
+          results = filterNotesByRegex(results, q)
+        }
+        notes.value = mergeNotes(
+          hasLocalResults.value ? notes.value : [],
+          results,
+        )
       }
-      notes.value = hasLocalResults.value
-        ? mergeNotes(notes.value, results)
-        : results
     } catch (e) {
       if (!hasLocalResults.value) {
         error.value = AppError.from(e)
@@ -296,7 +303,7 @@ async function loadMore() {
     if (regexMode.value) {
       older = filterNotesByRegex(older, q)
     }
-    notes.value = [...notes.value, ...older]
+    notes.value = mergeNotes(notes.value, older)
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
