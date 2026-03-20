@@ -54,8 +54,7 @@ tempfile = "3"
 tauri-build = { version = "2", features = [] }
 
 [profile.release]
-lto = true
-codegen-units = 1
+lto = "thin"
 strip = true
 
 [lib]
