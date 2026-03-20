@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   NormalizedNote,
@@ -10,6 +10,11 @@ import type {
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import type {
+  NoteTreeHandlers,
+  NoteTreeNode,
+} from '@/components/common/MkNoteTree.vue'
+import MkNoteTree from '@/components/common/MkNoteTree.vue'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -223,6 +228,43 @@ function closePostForm() {
   postFormEditNote.value = undefined
 }
 
+function buildTree(
+  notes: NormalizedNote[],
+  rootNoteId: string,
+): NoteTreeNode[] {
+  const childrenMap = new Map<string, NoteTreeNode[]>()
+  for (const n of notes) {
+    const parentId = n.replyId ?? rootNoteId
+    if (!childrenMap.has(parentId)) childrenMap.set(parentId, [])
+    childrenMap.get(parentId)?.push({ note: n, children: [] })
+  }
+
+  function attachChildren(node: NoteTreeNode): NoteTreeNode {
+    node.children = childrenMap.get(node.note.id) ?? []
+    for (const child of node.children) attachChildren(child)
+    return node
+  }
+
+  const roots = childrenMap.get(rootNoteId) ?? []
+  for (const root of roots) attachChildren(root)
+  return roots
+}
+
+const childrenTree = computed<NoteTreeNode[]>(() => {
+  if (!note.value) return []
+  return buildTree(children.value, note.value.id)
+})
+
+const treeHandlers = computed<NoteTreeHandlers>(() => ({
+  react: handleReaction,
+  reply: handleReply,
+  renote: handleRenote,
+  quote: handleQuote,
+  deleteFn: handleDelete,
+  edit: handleEdit,
+  deleteAndEdit: handleDeleteAndEdit,
+}))
+
 async function handlePosted(editedNoteId?: string) {
   closePostForm()
   if (editedNoteId && adapter) {
@@ -306,17 +348,11 @@ async function handlePosted(editedNoteId?: string) {
 
       <!-- Tab: Replies -->
       <div v-if="activeTab === 'replies'">
-        <MkNote
-          v-for="child in children"
-          :key="child.id"
-          :note="child"
-          @react="handleReaction"
-          @reply="handleReply"
-          @renote="handleRenote"
-          @quote="handleQuote"
-          @delete="handleDelete"
-          @edit="handleEdit"
-          @delete-and-edit="handleDeleteAndEdit"
+        <MkNoteTree
+          v-if="childrenTree.length > 0"
+          :nodes="childrenTree"
+          :account-id="accountId"
+          :handlers="treeHandlers"
         />
         <div v-if="children.length === 0" :class="$style.stateMessage">
           返信はありません
