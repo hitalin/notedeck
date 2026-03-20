@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use tauri::State;
 
-use notecli::api::MisskeyClient;
+use notecli::api::{MisskeyClient, SearchUsersOptions};
 use notecli::db::Database;
 use notecli::error::NoteDeckError;
 use notecli::keychain;
@@ -1448,12 +1448,14 @@ pub async fn api_search_users(
         .search_users(
             &host,
             &token,
-            query.as_deref(),
-            origin.as_deref(),
-            sort.as_deref(),
-            state.as_deref(),
-            limit.unwrap_or(30).clamp(1, 100),
-            offset,
+            SearchUsersOptions {
+                query: query.as_deref(),
+                origin: origin.as_deref(),
+                sort: sort.as_deref(),
+                state: state.as_deref(),
+                limit: limit.unwrap_or(30).clamp(1, 100),
+                offset,
+            },
         )
         .await
 }
