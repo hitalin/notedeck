@@ -351,7 +351,7 @@ defineExpose({
                 <span :class="$style.label">設定</span>
                 <span v-if="props.updateAvailable" :class="$style.updateDot" />
               </button>
-              <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" />
+              <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" @close-all="emit('update:showSettingsMenu', false); emit('update:mobileDrawerOpen', false)" />
             </div>
             <div :class="$style.divider" />
           </div>
