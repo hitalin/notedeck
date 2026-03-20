@@ -65,9 +65,6 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
     () => import('./DeckThemeEditorColumn.vue'),
   ),
   cssEditor: defineAsyncComponent(() => import('./DeckCssEditorColumn.vue')),
-  keybindsEditor: defineAsyncComponent(
-    () => import('./DeckKeybindsEditorColumn.vue'),
-  ),
 }
 
 const $style = useCssModule()

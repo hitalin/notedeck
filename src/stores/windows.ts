@@ -36,7 +36,7 @@ export const WINDOW_SIZES: Record<
   search: { width: 500, maxHeight: 650 },
   notifications: { width: 500, maxHeight: 650 },
   plugins: { width: 500, maxHeight: 650 },
-  keybinds: { width: 520, maxHeight: 600 },
+  keybinds: { width: 560, maxHeight: 650 },
   ai: { width: 480, maxHeight: 650 },
   chat: { width: 500, maxHeight: 650 },
 }

@@ -7,6 +7,7 @@ import { useUpdater } from '@/composables/useUpdater'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { useIsCompactLayout } from '@/stores/ui'
+import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { hapticSelection } from '@/utils/haptics'
 import { version as appVersion } from '../../../package.json'
@@ -131,8 +132,8 @@ function removeWallpaper() {
   deckStore.clearWallpaper()
 }
 
-// Open editor column (CSS / keybinds)
-function openEditorColumn(type: 'cssEditor' | 'keybindsEditor', name: string) {
+// Open editor column (CSS)
+function openEditorColumn(type: 'cssEditor', name: string) {
   const existing = deckStore.columns.find((c) => c.type === type)
   if (!existing) {
     deckStore.addColumn({
@@ -143,6 +144,13 @@ function openEditorColumn(type: 'cssEditor' | 'keybindsEditor', name: string) {
       active: true,
     })
   }
+  emit('close')
+}
+
+const windowsStore = useWindowsStore()
+
+function openKeybindsWindow() {
+  windowsStore.open('keybinds')
   emit('close')
 }
 </script>
@@ -262,7 +270,7 @@ function openEditorColumn(type: 'cssEditor' | 'keybindsEditor', name: string) {
 
       <div :class="$style.settingsMenuDivider" />
 
-      <div :class="$style.settingsMenuItem" @click="openEditorColumn('keybindsEditor', 'キーバインド')">
+      <div :class="$style.settingsMenuItem" @click="openKeybindsWindow">
         <i class="ti ti-keyboard" />
         <span :class="$style.settingsMenuLabel">キーバインド設定</span>
       </div>

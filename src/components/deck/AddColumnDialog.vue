@@ -99,8 +99,7 @@ function selectColumnType(
     | 'aboutMisskey'
     | 'emoji'
     | 'themeEditor'
-    | 'cssEditor'
-    | 'keybindsEditor',
+    | 'cssEditor',
 ) {
   // Account-free column types: add directly without account selection
   if (type === 'cssEditor') {
@@ -117,16 +116,6 @@ function selectColumnType(
     finalizeColumn({
       type: 'themeEditor',
       name: 'テーマエディタ',
-      width: 360,
-      accountId: null,
-      active: true,
-    })
-    return
-  }
-  if (type === 'keybindsEditor') {
-    finalizeColumn({
-      type: 'keybindsEditor',
-      name: 'キーバインド',
       width: 360,
       accountId: null,
       active: true,
@@ -603,10 +592,6 @@ function close() {
         <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('cssEditor')">
           <i class="ti ti-code" />
           <span>カスタムCSS</span>
-        </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('keybindsEditor')">
-          <i class="ti ti-keyboard" />
-          <span>キーバインド</span>
         </button>
         <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('apiConsole')">
           <i class="ti ti-api" />

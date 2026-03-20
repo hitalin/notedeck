@@ -1,9 +1,41 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { json } from '@codemirror/lang-json'
+import { type Diagnostic, linter } from '@codemirror/lint'
+import { computed, ref, watch } from 'vue'
 import type { Shortcut } from '@/commands/registry'
+import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useKeybindsStore } from '@/stores/keybinds'
 
+const jsonLang = json()
+
+const jsonLinter = linter(
+  (view) => {
+    const diagnostics: Diagnostic[] = []
+    const code = view.state.doc.toString()
+    if (!code.trim()) return diagnostics
+    try {
+      JSON.parse(code)
+    } catch (e) {
+      if (e instanceof Error) {
+        diagnostics.push({
+          from: 0,
+          to: code.length,
+          severity: 'error',
+          message: e.message,
+        })
+      }
+    }
+    return diagnostics
+  },
+  { delay: 500 },
+)
+
 const keybindsStore = useKeybindsStore()
+
+// ── Tab management ──
+const tab = ref<'visual' | 'code'>('visual')
+
+// ── Visual tab: category-based GUI ──
 const commandIds = keybindsStore.getAllCommandIds()
 
 const COMMAND_LABELS: Record<string, string> = {
@@ -15,6 +47,7 @@ const COMMAND_LABELS: Record<string, string> = {
   'toggle-sidebar': 'サイドバー切替',
   'boss-key': 'ウィンドウを隠す',
   'account-menu': 'アカウントメニュー',
+  'toggle-dark-mode': 'ダークモード切替',
   'note-next': '次のノート',
   'note-prev': '前のノート',
   'note-reply': '返信',
@@ -25,6 +58,10 @@ const COMMAND_LABELS: Record<string, string> = {
   'note-cw': 'CW切替',
   'column-next': '次のカラム',
   'column-prev': '前のカラム',
+  'pop-out-column': 'カラムを別ウィンドウ',
+  'new-window': '新規ウィンドウ',
+  'close-all-windows': '全ウィンドウを閉じる',
+  'pip-window': 'PiPウィンドウ',
   ...Object.fromEntries(
     Array.from({ length: 9 }, (_, i) => [
       `column-${i + 1}`,
@@ -37,6 +74,12 @@ const COMMAND_LABELS: Record<string, string> = {
       `クイックリアクション ${i + 1}`,
     ]),
   ),
+  ...Object.fromEntries(
+    Array.from({ length: 9 }, (_, i) => [
+      `profile-${i + 1}`,
+      `プロファイル ${i + 1}`,
+    ]),
+  ),
 }
 
 const CATEGORY_ORDER = [
@@ -45,6 +88,8 @@ const CATEGORY_ORDER = [
   'account',
   'column',
   'note',
+  'window',
+  'profile',
 ] as const
 
 const COMMAND_CATEGORIES: Record<string, string> = {
@@ -56,6 +101,7 @@ const COMMAND_CATEGORIES: Record<string, string> = {
   'toggle-sidebar': 'navigation',
   'boss-key': 'general',
   'account-menu': 'account',
+  'toggle-dark-mode': 'general',
   'note-next': 'note',
   'note-prev': 'note',
   'note-reply': 'note',
@@ -66,11 +112,18 @@ const COMMAND_CATEGORIES: Record<string, string> = {
   'note-cw': 'note',
   'column-next': 'column',
   'column-prev': 'column',
+  'pop-out-column': 'window',
+  'new-window': 'window',
+  'close-all-windows': 'window',
+  'pip-window': 'window',
   ...Object.fromEntries(
     Array.from({ length: 9 }, (_, i) => [`column-${i + 1}`, 'column']),
   ),
   ...Object.fromEntries(
     Array.from({ length: 9 }, (_, i) => [`quick-react-${i + 1}`, 'note']),
+  ),
+  ...Object.fromEntries(
+    Array.from({ length: 9 }, (_, i) => [`profile-${i + 1}`, 'profile']),
   ),
 }
 
@@ -80,6 +133,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   account: 'アカウント',
   column: 'カラム',
   note: 'ノート',
+  window: 'ウィンドウ',
+  profile: 'プロファイル',
 }
 
 const groupedCommands = computed(() => {
@@ -126,7 +181,6 @@ function onKeyDown(e: KeyboardEvent, commandId: string, index: number) {
     return
   }
 
-  // Ignore lone modifier keys
   if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return
 
   const hasModifier = e.ctrlKey || e.metaKey || e.shiftKey || e.altKey
@@ -165,22 +219,108 @@ function resetCommand(commandId: string) {
   keybindsStore.resetToDefault(commandId)
 }
 
-function resetAll() {
-  keybindsStore.resetAll()
+// ── Code tab ──
+function overridesToJson(): string {
+  const overrides = keybindsStore.overrides
+  if (Object.keys(overrides).length === 0) return '{}'
+  return JSON.stringify(overrides, null, 2)
+}
+
+const jsonCode = ref(overridesToJson())
+
+watch(tab, (t) => {
+  if (t === 'code') {
+    jsonCode.value = overridesToJson()
+    codeError.value = null
+  }
+})
+
+watch(
+  () => keybindsStore.overrides,
+  () => {
+    if (tab.value === 'code') {
+      const storeJson = overridesToJson()
+      if (storeJson !== jsonCode.value) {
+        jsonCode.value = storeJson
+      }
+    }
+  },
+  { deep: true },
+)
+
+const codeError = ref<string | null>(null)
+let codeApplyTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(jsonCode, (code) => {
+  if (tab.value !== 'code') return
+  if (codeApplyTimer) clearTimeout(codeApplyTimer)
+  codeApplyTimer = setTimeout(() => {
+    try {
+      JSON.parse(code)
+      codeError.value = null
+    } catch (e) {
+      codeError.value = e instanceof Error ? e.message : 'JSONパースエラー'
+    }
+  }, 400)
+})
+
+function applyFromCode() {
+  if (codeApplyTimer) clearTimeout(codeApplyTimer)
+  const code = jsonCode.value
+  try {
+    const parsed = JSON.parse(code)
+    codeError.value = null
+    keybindsStore.overrides = parsed
+    localStorage.setItem('nd-keybinds', JSON.stringify(parsed))
+  } catch (e) {
+    codeError.value = e instanceof Error ? e.message : 'JSONパースエラー'
+  }
+}
+
+// ── Reset all with confirmation ──
+const confirmingReset = ref(false)
+let resetTimer: ReturnType<typeof setTimeout> | null = null
+
+function handleReset() {
+  if (confirmingReset.value) {
+    if (resetTimer) clearTimeout(resetTimer)
+    confirmingReset.value = false
+    keybindsStore.resetAll()
+    jsonCode.value = '{}'
+    codeError.value = null
+  } else {
+    confirmingReset.value = true
+    resetTimer = setTimeout(() => {
+      confirmingReset.value = false
+    }, 3000)
+  }
 }
 </script>
 
 <template>
   <div :class="$style.keybindsContent">
-    <div :class="$style.keybindsHeader">
-      <span :class="$style.keybindsTitle">キーバインド設定</span>
-      <button class="_button" :class="$style.resetAllBtn" @click="resetAll">
-        <i class="ti ti-restore" />
-        すべてリセット
+    <!-- Tabs -->
+    <div :class="$style.tabs">
+      <button
+        class="_button"
+        :class="[$style.tab, { [$style.active]: tab === 'visual' }]"
+        @click="tab = 'visual'"
+      >
+        <i class="ti ti-adjustments" />
+        ビジュアル
+      </button>
+      <button
+        class="_button"
+        :class="[$style.tab, { [$style.active]: tab === 'code' }]"
+        @click="tab = 'code'"
+      >
+        <i class="ti ti-code" />
+        コード
       </button>
     </div>
 
-    <div :class="$style.keybindsList">
+    <!-- Visual tab -->
+    <div v-show="tab === 'visual'" :class="$style.visualPanel">
       <template v-for="group in groupedCommands" :key="group.category">
         <div :class="$style.categoryHeader">{{ group.label }}</div>
         <div
@@ -219,7 +359,7 @@ function resetAll() {
             >
               <span :class="$style.recordingText">入力待ち...</span>
             </button>
-            <button class="_button" :class="$style.addShortcutBtn" @click="addShortcut(cmdId)" title="ショートカットを追加">
+            <button class="_button" :class="$style.addShortcutBtn" title="ショートカットを追加" @click="addShortcut(cmdId)">
               <i class="ti ti-plus" />
             </button>
           </div>
@@ -235,47 +375,112 @@ function resetAll() {
         </div>
       </template>
     </div>
+
+    <!-- Code tab -->
+    <div v-show="tab === 'code'" :class="$style.codePanel">
+      <div :class="$style.codeHint">
+        ユーザーカスタマイズの JSON（デフォルトからの差分のみ）
+      </div>
+      <CodeEditor
+        v-model="jsonCode"
+        :language="jsonLang"
+        :linter="jsonLinter"
+        :class="[$style.codeEditorWrap, { [$style.hasError]: codeError }]"
+      />
+      <div v-if="codeError" :class="$style.errorMessage">
+        <i class="ti ti-alert-triangle" />
+        {{ codeError }}
+      </div>
+      <div v-if="!codeError && jsonCode.trim() && jsonCode.trim() !== '{}'" :class="$style.codeSuccess">
+        <i class="ti ti-check" />
+        適用中
+      </div>
+      <button
+        class="_button"
+        :class="$style.codeApplyBtn"
+        @click="applyFromCode"
+      >
+        <i class="ti ti-refresh" />
+        ビジュアルに同期
+      </button>
+    </div>
+
+    <!-- Actions -->
+    <div :class="$style.actions">
+      <button
+        class="_button"
+        :class="[$style.actionBtn, $style.danger, { [$style.confirming]: confirmingReset }]"
+        @click="handleReset"
+      >
+        <i class="ti ti-trash" />
+        {{ confirmingReset ? '本当にリセット？' : 'すべてリセット' }}
+      </button>
+    </div>
   </div>
 </template>
 
 <style lang="scss" module>
 .keybindsContent {
-  padding: 16px;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
+  overflow: hidden;
 }
 
-.keybindsHeader {
+.tabs {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+  gap: 0;
+  border-bottom: 1px solid var(--nd-divider);
+  flex-shrink: 0;
 }
 
-.keybindsTitle {
-  font-weight: bold;
-  font-size: 0.95em;
-  color: var(--nd-fgHighlighted);
-}
-
-.resetAllBtn {
+.tab {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.8em;
+  padding: 6px 12px;
+  font-size: 0.75em;
+  font-weight: bold;
   color: var(--nd-fg);
-  opacity: 0.7;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: opacity var(--nd-duration-base);
+  opacity: 0.5;
+  border-bottom: 2px solid transparent;
+  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
 
   &:hover {
-    opacity: 1;
-    background: var(--nd-buttonHoverBg);
+    opacity: 0.8;
   }
+
+  &.active {
+    opacity: 1;
+    border-bottom-color: var(--nd-accent);
+    color: var(--nd-accent);
+  }
+}
+
+.active {
+  /* modifier */
+}
+
+.hasError {
+  /* modifier */
+}
+
+.confirming {
+  /* modifier */
+}
+
+// ── Visual tab ──
+
+.visualPanel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
 }
 
 .categoryHeader {
@@ -307,6 +512,10 @@ function resetAll() {
   &.customized {
     background: color-mix(in srgb, var(--nd-accent) 5%, transparent);
   }
+}
+
+.customized {
+  /* modifier */
 }
 
 .keybindLabel {
@@ -360,6 +569,10 @@ function resetAll() {
   &:hover .removeShortcut {
     opacity: 0.6;
   }
+}
+
+.recording {
+  /* modifier */
 }
 
 @keyframes pulse {
@@ -425,6 +638,110 @@ function resetAll() {
   }
 }
 
-.customized {}
-.recording {}
+// ── Code tab ──
+
+.codePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.codeHint {
+  font-size: 0.75em;
+  opacity: 0.4;
+}
+
+.codeEditorWrap {
+  flex: 1;
+  min-height: 200px;
+
+  &.hasError {
+    box-shadow: 0 0 0 2px var(--nd-love);
+    border-radius: var(--nd-radius-sm);
+  }
+}
+
+.errorMessage {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: var(--nd-radius-sm);
+  background: color-mix(in srgb, var(--nd-love) 10%, var(--nd-bg));
+  color: var(--nd-love);
+  font-size: 0.75em;
+  word-break: break-all;
+}
+
+.codeSuccess {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75em;
+  color: var(--nd-accent);
+  opacity: 0.7;
+}
+
+.codeApplyBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  font-size: 0.8em;
+  font-weight: bold;
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+// ── Actions ──
+
+.actions {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  border-top: 1px solid var(--nd-divider);
+  flex-shrink: 0;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: var(--nd-radius-sm);
+  font-size: 0.8em;
+  font-weight: bold;
+  transition: background var(--nd-duration-base), color var(--nd-duration-base);
+
+  &.danger {
+    background: var(--nd-buttonBg);
+    color: var(--nd-fg);
+
+    &:hover {
+      background: color-mix(in srgb, var(--nd-love) 20%, var(--nd-buttonBg));
+      color: var(--nd-love);
+    }
+
+    &.confirming {
+      background: color-mix(in srgb, var(--nd-love) 30%, var(--nd-buttonBg));
+      color: var(--nd-love);
+    }
+  }
+}
+
+.danger {
+  /* modifier */
+}
 </style>
