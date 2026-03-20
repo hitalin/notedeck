@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type { NormalizedUser, ServerAdapter } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
@@ -24,15 +24,24 @@ const activeTab = ref<TabType>(props.initialTab ?? 'following')
 const users = ref<NormalizedUser[]>([])
 const isLoading = ref(false)
 const hasMore = ref(true)
+const followingIds = ref<Set<string>>(new Set())
+const followedByIds = ref<Set<string>>(new Set())
 const followLoadingIds = ref<Set<string>>(new Set())
 
 const account = accountsStore.accounts.find((a) => a.id === props.accountId)
+const isOwnProfile = computed(() => account?.userId === props.userId)
 let adapter: ServerAdapter | null = null
 
 interface FollowRelation {
   id: string
   followee?: NormalizedUser
   follower?: NormalizedUser
+}
+
+interface UserRelation {
+  id: string
+  isFollowing: boolean
+  isFollowed: boolean
 }
 
 onMounted(async () => {
@@ -51,6 +60,8 @@ onMounted(async () => {
 watch(activeTab, () => {
   users.value = []
   hasMore.value = true
+  followingIds.value = new Set()
+  followedByIds.value = new Set()
   loadUsers()
 })
 
@@ -77,7 +88,15 @@ async function loadUsers(untilId?: string) {
       hasMore.value = false
     } else {
       users.value = [...users.value, ...fetched]
-      fetchFollowStates(fetched)
+      if (isOwnProfile.value && activeTab.value === 'following') {
+        // Own following list: all are followed by me
+        followingIds.value = new Set([
+          ...followingIds.value,
+          ...fetched.map((u) => u.id),
+        ])
+      } else {
+        fetchRelations(fetched)
+      }
     }
   } catch {
     toast.show('取得に失敗しました', 'error')
@@ -86,18 +105,24 @@ async function loadUsers(untilId?: string) {
   }
 }
 
-async function fetchFollowStates(batch: NormalizedUser[]) {
-  if (!adapter) return
-  for (const u of batch) {
-    if (followingIds.value.has(u.id)) continue
-    adapter.api
-      .getUserDetail(u.id)
-      .then((detail) => {
-        if (detail.isFollowing) {
-          followingIds.value = new Set([...followingIds.value, u.id])
-        }
-      })
-      .catch(() => {})
+async function fetchRelations(batch: NormalizedUser[]) {
+  try {
+    const ids = batch.map((u) => u.id)
+    const relations = await invoke<UserRelation[]>('api_request', {
+      accountId: props.accountId,
+      endpoint: 'users/relation',
+      params: { userId: ids },
+    })
+    const newFollowing = new Set(followingIds.value)
+    const newFollowed = new Set(followedByIds.value)
+    for (const r of relations) {
+      if (r.isFollowing) newFollowing.add(r.id)
+      if (r.isFollowed) newFollowed.add(r.id)
+    }
+    followingIds.value = newFollowing
+    followedByIds.value = newFollowed
+  } catch {
+    // Non-critical
   }
 }
 
@@ -174,6 +199,7 @@ function navigateUser(userId: string) {
             <span v-if="u.isBot" :class="$style.cardBadge">Bot</span>
           </div>
           <span :class="$style.cardAcct">@{{ u.username }}{{ u.host ? `@${u.host}` : '' }}</span>
+          <span v-if="followedByIds.has(u.id)" :class="$style.followedBadge">フォローされています</span>
         </div>
         <button
           v-if="account?.userId !== u.id"
@@ -302,6 +328,17 @@ function navigateUser(userId: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.followedBadge {
+  display: inline-block;
+  font-size: 0.65em;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  opacity: 0.7;
+  margin-top: 2px;
 }
 
 .followBtn {
