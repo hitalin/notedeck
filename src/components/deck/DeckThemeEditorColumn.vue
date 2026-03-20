@@ -4,6 +4,7 @@ import { type Diagnostic, linter } from '@codemirror/lint'
 import JSON5 from 'json5'
 import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { DARK_BASE, LIGHT_BASE } from '@/theme/builtinThemes'
@@ -51,6 +52,31 @@ const { columnThemeVars } = useColumnTheme(() => props.column)
 const themeStore = useThemeStore()
 
 const tab = ref<'visual' | 'code'>('visual')
+const editorRef = ref<HTMLElement | null>(null)
+const THEME_TABS = ['visual', 'code'] as const
+
+useSwipeTab(
+  editorRef,
+  () => {
+    const idx = THEME_TABS.indexOf(tab.value)
+    const next = THEME_TABS[idx + 1]
+    if (next) {
+      tab.value = next
+      return true
+    }
+    return false
+  },
+  () => {
+    const idx = THEME_TABS.indexOf(tab.value)
+    const prev = THEME_TABS[idx - 1]
+    if (prev) {
+      tab.value = prev
+      return true
+    }
+    return false
+  },
+)
+
 const themeName = ref('My Theme')
 const baseMode = ref<'dark' | 'light'>('dark')
 
@@ -377,7 +403,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
       <i class="ti ti-palette" :class="$style.tlHeaderIcon" />
     </template>
 
-    <div :class="$style.editor">
+    <div ref="editorRef" :class="$style.editor">
       <!-- Tabs -->
       <div :class="$style.tabs">
         <button

@@ -3,6 +3,7 @@ import { css } from '@codemirror/lang-css'
 import { type Diagnostic, linter } from '@codemirror/lint'
 import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import DeckColumn from './DeckColumn.vue'
@@ -48,6 +49,30 @@ const { columnThemeVars } = useColumnTheme(() => props.column)
 const themeStore = useThemeStore()
 
 const tab = ref<'presets' | 'code'>('presets')
+const editorRef = ref<HTMLElement | null>(null)
+const CSS_TABS = ['presets', 'code'] as const
+
+useSwipeTab(
+  editorRef,
+  () => {
+    const idx = CSS_TABS.indexOf(tab.value)
+    const next = CSS_TABS[idx + 1]
+    if (next) {
+      tab.value = next
+      return true
+    }
+    return false
+  },
+  () => {
+    const idx = CSS_TABS.indexOf(tab.value)
+    const prev = CSS_TABS[idx - 1]
+    if (prev) {
+      tab.value = prev
+      return true
+    }
+    return false
+  },
+)
 
 // Local CSS mirror (synced from store on mount)
 const cssCode = ref(themeStore.customCss)
@@ -331,7 +356,7 @@ watch(tab, (t) => {
       <i class="ti ti-code" :class="$style.headerIcon" />
     </template>
 
-    <div :class="$style.editor">
+    <div ref="editorRef" :class="$style.editor">
       <!-- Tabs -->
       <div :class="$style.tabs">
         <button

@@ -14,6 +14,7 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import AiScriptToast from '@/components/common/AiScriptToast.vue'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -49,6 +50,30 @@ const interpreter = ref<Interpreter | null>(null)
 
 // Output panel tab: 'output' | 'inspector'
 const outputTab = ref<'output' | 'inspector'>('output')
+const outputSectionRef = ref<HTMLElement | null>(null)
+const OUTPUT_TABS = ['output', 'inspector'] as const
+
+useSwipeTab(
+  outputSectionRef,
+  () => {
+    const idx = OUTPUT_TABS.indexOf(outputTab.value)
+    const next = OUTPUT_TABS[idx + 1]
+    if (next) {
+      outputTab.value = next
+      return true
+    }
+    return false
+  },
+  () => {
+    const idx = OUTPUT_TABS.indexOf(outputTab.value)
+    const prev = OUTPUT_TABS[idx - 1]
+    if (prev) {
+      outputTab.value = prev
+      return true
+    }
+    return false
+  },
+)
 
 // Inspector: track which components are expanded
 const inspectorExpanded = ref(new Set<string>())
@@ -283,6 +308,7 @@ onUnmounted(() => {
       </div>
 
       <div
+        ref="outputSectionRef"
         :class="$style.outputSection"
         :style="{ flex: `${1 - editorRatio} 0 0` }"
       >
