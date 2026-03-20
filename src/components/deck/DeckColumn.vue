@@ -254,7 +254,7 @@ function openAsPip() {
   gap: 6px;
   height: 38px;
   line-height: 38px;
-  padding: 0 16px 0 30px;
+  padding: 0 8px 0 30px;
   background: var(--nd-panelHeaderBg);
   color: var(--nd-panelHeaderFg);
   font-size: 0.9em;

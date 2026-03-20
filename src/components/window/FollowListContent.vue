@@ -24,7 +24,6 @@ const activeTab = ref<TabType>(props.initialTab ?? 'following')
 const users = ref<NormalizedUser[]>([])
 const isLoading = ref(false)
 const hasMore = ref(true)
-const followingIds = ref<Set<string>>(new Set())
 const followLoadingIds = ref<Set<string>>(new Set())
 
 const account = accountsStore.accounts.find((a) => a.id === props.accountId)
@@ -52,7 +51,6 @@ onMounted(async () => {
 watch(activeTab, () => {
   users.value = []
   hasMore.value = true
-  followingIds.value = new Set()
   loadUsers()
 })
 
@@ -100,15 +98,11 @@ async function toggleFollow(targetUser: NormalizedUser) {
   if (!adapter || followLoadingIds.value.has(targetUser.id)) return
   followLoadingIds.value = new Set([...followLoadingIds.value, targetUser.id])
   try {
-    const isFollowing = followingIds.value.has(targetUser.id)
-    if (isFollowing) {
+    const detail = await adapter.api.getUserDetail(targetUser.id)
+    if (detail.isFollowing) {
       await adapter.api.unfollowUser(targetUser.id)
-      const next = new Set(followingIds.value)
-      next.delete(targetUser.id)
-      followingIds.value = next
     } else {
       await adapter.api.followUser(targetUser.id)
-      followingIds.value = new Set([...followingIds.value, targetUser.id])
     }
   } catch {
     toast.show('操作に失敗しました', 'error')
@@ -144,32 +138,34 @@ function navigateUser(userId: string) {
     </div>
 
     <div :class="$style.listBody" @scroll="onScroll">
-      <button
+      <div
         v-for="u in users"
         :key="u.id"
-        :class="$style.userRow"
+        :class="$style.userCard"
         @click="navigateUser(u.id)"
       >
-        <MkAvatar :avatar-url="u.avatarUrl" :decorations="u.avatarDecorations" :size="40" />
-        <div :class="$style.userInfo">
-          <span :class="$style.userName">
-            <MkMfm v-if="u.name" :text="u.name" :emojis="u.emojis" :server-host="account?.host" />
-            <template v-else>{{ u.username }}</template>
-          </span>
-          <span :class="$style.userAcct">@{{ u.username }}{{ u.host ? `@${u.host}` : '' }}</span>
+        <MkAvatar :avatar-url="u.avatarUrl" :decorations="u.avatarDecorations" :size="48" />
+        <div :class="$style.cardInfo">
+          <div :class="$style.cardNameRow">
+            <span :class="$style.cardName">
+              <MkMfm v-if="u.name" :text="u.name" :emojis="u.emojis" :server-host="account?.host" />
+              <template v-else>{{ u.username }}</template>
+            </span>
+            <span v-if="u.isBot" :class="$style.cardBadge">Bot</span>
+          </div>
+          <span :class="$style.cardAcct">@{{ u.username }}{{ u.host ? `@${u.host}` : '' }}</span>
         </div>
         <button
           v-if="account?.userId !== u.id"
           class="_button"
-          :class="[$style.followBtn, { [$style.followBtnActive]: followingIds.has(u.id) }]"
+          :class="$style.followBtn"
           :disabled="followLoadingIds.has(u.id)"
           @click.stop="toggleFollow(u)"
         >
           <i v-if="followLoadingIds.has(u.id)" class="ti ti-loader-2" :class="$style.spin" />
-          <i v-else-if="followingIds.has(u.id)" class="ti ti-user-check" />
           <i v-else class="ti ti-user-plus" />
         </button>
-      </button>
+      </div>
 
       <div v-if="isLoading" :class="$style.stateMsg">読み込み中...</div>
       <div v-else-if="users.length === 0" :class="$style.stateMsg">
@@ -221,34 +217,38 @@ function navigateUser(userId: string) {
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
 }
 
-.userRow {
+.userCard {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 14px;
-  width: 100%;
-  border: none;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--nd-divider);
   cursor: pointer;
   transition: background var(--nd-duration-base);
 
   &:hover {
     background: var(--nd-buttonHoverBg);
   }
+
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
-.userInfo {
+.cardInfo {
   flex: 1;
   min-width: 0;
   overflow: hidden;
 }
 
-.userName {
-  display: block;
-  font-size: 0.85em;
+.cardNameRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cardName {
+  font-size: 0.9em;
   font-weight: bold;
   color: var(--nd-fgHighlighted);
   overflow: hidden;
@@ -256,7 +256,17 @@ function navigateUser(userId: string) {
   white-space: nowrap;
 }
 
-.userAcct {
+.cardBadge {
+  flex-shrink: 0;
+  font-size: 0.65em;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  opacity: 0.7;
+}
+
+.cardAcct {
   display: block;
   font-size: 0.75em;
   opacity: 0.6;
@@ -279,10 +289,6 @@ function navigateUser(userId: string) {
   &:disabled {
     opacity: 0.5;
   }
-}
-
-.followBtnActive {
-  color: var(--nd-success, #4caf50);
 }
 
 .stateMsg {
