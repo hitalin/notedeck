@@ -147,12 +147,11 @@ defineExpose({ account, scroller, reconnect, columnThemeVars })
       <!-- Inline post form slot (e.g. channel column) -->
       <slot name="before-notes" :handle-posted="handlePosted" />
 
-      <Transition name="nd-fade" mode="out-in">
-        <div v-if="isLoading && notes.length === 0" key="skeleton">
-          <MkSkeleton v-for="i in 5" :key="i" />
-        </div>
+      <div v-if="isLoading && notes.length === 0">
+        <MkSkeleton v-for="i in 5" :key="i" />
+      </div>
 
-        <div v-else key="content">
+      <template v-else>
         <button
           v-if="pendingNotes.length > 0"
           :class="$style.newNotesBanner"
@@ -198,8 +197,7 @@ defineExpose({ account, scroller, reconnect, columnThemeVars })
             </div>
           </template>
         </NoteScroller>
-        </div>
-      </Transition>
+      </template>
     </div>
   </DeckColumn>
 
