@@ -27,6 +27,7 @@ const BASE_TITLES: Record<string, string> = {
   notifications: '通知',
   plugins: 'プラグイン',
   keybinds: 'キーバインド',
+  cssEditor: 'カスタムCSS',
   ai: 'AI アシスタント',
 }
 
@@ -47,6 +48,7 @@ const icons: Record<string, string> = {
   notifications: 'ti ti-bell',
   plugins: 'ti ti-plug',
   keybinds: 'ti ti-keyboard',
+  cssEditor: 'ti ti-code',
   ai: 'ti ti-sparkles',
 }
 

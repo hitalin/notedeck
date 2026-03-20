@@ -82,7 +82,6 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   aboutMisskey: 'info-circle',
   emoji: 'mood-smile',
   themeEditor: 'palette',
-  cssEditor: 'code',
 }
 
 const TL_ICONS: Record<string, string> = {

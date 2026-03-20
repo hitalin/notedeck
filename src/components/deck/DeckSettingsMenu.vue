@@ -132,25 +132,10 @@ function removeWallpaper() {
   deckStore.clearWallpaper()
 }
 
-// Open editor column (CSS)
-function openEditorColumn(type: 'cssEditor', name: string) {
-  const existing = deckStore.columns.find((c) => c.type === type)
-  if (!existing) {
-    deckStore.addColumn({
-      type,
-      name,
-      width: 360,
-      accountId: null,
-      active: true,
-    })
-  }
-  emit('close')
-}
-
 const windowsStore = useWindowsStore()
 
-function openKeybindsWindow() {
-  windowsStore.open('keybinds')
+function openToolWindow(type: 'cssEditor' | 'keybinds') {
+  windowsStore.open(type)
   emit('close')
 }
 </script>
@@ -243,7 +228,7 @@ function openKeybindsWindow() {
       <!-- Editor columns -->
       <div :class="$style.settingsMenuDivider" />
 
-      <div :class="$style.settingsMenuItem" @click="openEditorColumn('cssEditor', 'カスタムCSS')">
+      <div :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
         <i class="ti ti-code" />
         <span :class="$style.settingsMenuLabel">カスタムCSS</span>
         <span v-if="themeStore.customCss" :class="$style.cssActiveDot" />
@@ -270,7 +255,7 @@ function openKeybindsWindow() {
 
       <div :class="$style.settingsMenuDivider" />
 
-      <div :class="$style.settingsMenuItem" @click="openKeybindsWindow">
+      <div :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
         <i class="ti ti-keyboard" />
         <span :class="$style.settingsMenuLabel">キーバインド設定</span>
       </div>

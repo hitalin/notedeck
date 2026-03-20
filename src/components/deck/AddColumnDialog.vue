@@ -62,7 +62,6 @@ const addColumnType = ref<
   | 'aboutMisskey'
   | 'emoji'
   | 'themeEditor'
-  | 'cssEditor'
   | null
 >(null)
 
@@ -98,20 +97,9 @@ function selectColumnType(
     | 'ads'
     | 'aboutMisskey'
     | 'emoji'
-    | 'themeEditor'
-    | 'cssEditor',
+    | 'themeEditor',
 ) {
   // Account-free column types: add directly without account selection
-  if (type === 'cssEditor') {
-    finalizeColumn({
-      type: 'cssEditor',
-      name: 'カスタムCSS',
-      width: 360,
-      accountId: null,
-      active: true,
-    })
-    return
-  }
   if (type === 'themeEditor') {
     finalizeColumn({
       type: 'themeEditor',
@@ -588,10 +576,6 @@ function close() {
         <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('themeEditor')">
           <i class="ti ti-palette" />
           <span>テーマエディタ</span>
-        </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('cssEditor')">
-          <i class="ti ti-code" />
-          <span>カスタムCSS</span>
         </button>
         <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('apiConsole')">
           <i class="ti ti-api" />
