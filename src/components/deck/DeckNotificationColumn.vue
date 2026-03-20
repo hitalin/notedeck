@@ -131,6 +131,11 @@ function updateFilterIndicator() {
   }
 }
 
+function onFilterBarWheel(ev: WheelEvent) {
+  if (!filterBarRef.value) return
+  filterBarRef.value.scrollLeft += ev.deltaY || ev.deltaX
+}
+
 watch(activeFilter, () => nextTick(updateFilterIndicator))
 onMounted(() => nextTick(updateFilterIndicator))
 
@@ -421,7 +426,7 @@ onUnmounted(() => {
 
     <div v-else :class="$style.notifBody">
       <!-- Notification filter tabs -->
-      <div ref="filterBarRef" :class="$style.filterBar">
+      <div ref="filterBarRef" :class="$style.filterBar" @wheel.prevent="onFilterBarWheel">
         <button
           v-for="filter in NOTIFICATION_FILTERS"
           :key="filter.key"
@@ -632,6 +637,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   gap: 4px;
   padding: 8px 12px;
   font-size: 0.85em;
