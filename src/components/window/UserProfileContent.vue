@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
 import {
   computed,
   defineAsyncComponent,
@@ -11,6 +12,7 @@ import {
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   NormalizedNote,
+  NormalizedUser,
   NormalizedUserDetail,
   ServerAdapter,
   UserList,
@@ -23,6 +25,7 @@ const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
+import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
@@ -47,6 +50,7 @@ const props = defineProps<{
   userId: string
 }>()
 
+const { navigateToUser: navToUser } = useNavigation()
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const toast = useToast()
@@ -392,6 +396,104 @@ async function addToList(listId: string) {
   }
 }
 
+// Follow/Follower list modal
+type FollowListType = 'following' | 'followers'
+const showFollowList = ref(false)
+const followListType = ref<FollowListType>('following')
+const followListUsers = ref<NormalizedUser[]>([])
+const isLoadingFollowList = ref(false)
+const hasMoreFollowList = ref(true)
+const followLoadingIds = ref<Set<string>>(new Set())
+
+interface FollowRelation {
+  id: string
+  followee?: NormalizedUser
+  follower?: NormalizedUser
+}
+
+async function openFollowList(type: FollowListType) {
+  if (!user.value) return
+  followListType.value = type
+  followListUsers.value = []
+  hasMoreFollowList.value = true
+  showFollowList.value = true
+  await loadFollowList()
+}
+
+async function loadFollowList(untilId?: string) {
+  if (!user.value || isLoadingFollowList.value) return
+  isLoadingFollowList.value = true
+  try {
+    const endpoint =
+      followListType.value === 'following'
+        ? 'users/following'
+        : 'users/followers'
+    const params: Record<string, unknown> = {
+      userId: user.value.id,
+      limit: 30,
+    }
+    if (untilId) params.untilId = untilId
+    const result = await invoke<FollowRelation[]>('api_request', {
+      accountId: props.accountId,
+      endpoint,
+      params,
+    })
+    const users = result
+      .map((r) =>
+        followListType.value === 'following' ? r.followee : r.follower,
+      )
+      .filter((u): u is NormalizedUser => u != null)
+    if (users.length === 0) {
+      hasMoreFollowList.value = false
+    } else {
+      followListUsers.value = [...followListUsers.value, ...users]
+    }
+  } catch {
+    toast.show('取得に失敗しました', 'error')
+  } finally {
+    isLoadingFollowList.value = false
+  }
+}
+
+function loadMoreFollowList() {
+  if (!hasMoreFollowList.value || isLoadingFollowList.value) return
+  const last = followListUsers.value.at(-1)
+  if (!last) return
+  loadFollowList(last.id)
+}
+
+function onFollowListScroll(e: Event) {
+  const el = e.target as HTMLElement
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
+    loadMoreFollowList()
+  }
+}
+
+async function toggleFollowInList(targetUser: NormalizedUser) {
+  if (!adapter || followLoadingIds.value.has(targetUser.id)) return
+  followLoadingIds.value = new Set([...followLoadingIds.value, targetUser.id])
+  try {
+    // Check current follow state via user detail
+    const detail = await adapter.api.getUserDetail(targetUser.id)
+    if (detail.isFollowing) {
+      await adapter.api.unfollowUser(targetUser.id)
+    } else {
+      await adapter.api.followUser(targetUser.id)
+    }
+  } catch {
+    toast.show('操作に失敗しました', 'error')
+  } finally {
+    const next = new Set(followLoadingIds.value)
+    next.delete(targetUser.id)
+    followLoadingIds.value = next
+  }
+}
+
+function closeFollowList() {
+  showFollowList.value = false
+  followListUsers.value = []
+}
+
 async function handleReaction(reaction: string, note: NormalizedNote) {
   if (!adapter) return
   try {
@@ -647,11 +749,11 @@ async function handlePosted(editedNoteId?: string) {
             <b>{{ formatCount(user.notesCount) }}</b>
             <span>ノート</span>
           </div>
-          <button :class="[$style.stat, $style.statLink]" class="_button" @click="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}/following`)">
+          <button :class="[$style.stat, $style.statLink]" class="_button" @click="openFollowList('following')">
             <b>{{ formatCount(user.followingCount) }}</b>
             <span>フォロー</span>
           </button>
-          <button :class="[$style.stat, $style.statLink]" class="_button" @click="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}/followers`)">
+          <button :class="[$style.stat, $style.statLink]" class="_button" @click="openFollowList('followers')">
             <b>{{ formatCount(user.followersCount) }}</b>
             <span>フォロワー</span>
           </button>
@@ -730,6 +832,64 @@ async function handlePosted(editedNoteId?: string) {
         @close="closePostForm"
         @posted="handlePosted"
       />
+
+      <!-- Follow/Follower list modal -->
+      <Transition name="nd-popup">
+        <div v-if="showFollowList" :class="$style.followListBackdrop" @click="closeFollowList">
+          <div :class="$style.followListModal" class="_popup" @click.stop>
+            <div :class="$style.followListHeader">
+              <button
+                class="_button"
+                :class="[$style.followListTab, { [$style.followListTabActive]: followListType === 'following' }]"
+                @click="followListType = 'following'; followListUsers = []; hasMoreFollowList = true; loadFollowList()"
+              >
+                フォロー
+              </button>
+              <button
+                class="_button"
+                :class="[$style.followListTab, { [$style.followListTabActive]: followListType === 'followers' }]"
+                @click="followListType = 'followers'; followListUsers = []; hasMoreFollowList = true; loadFollowList()"
+              >
+                フォロワー
+              </button>
+              <button class="_button" :class="$style.followListCloseBtn" @click="closeFollowList">
+                <i class="ti ti-x" />
+              </button>
+            </div>
+            <div :class="$style.followListBody" @scroll="onFollowListScroll">
+              <button
+                v-for="u in followListUsers"
+                :key="u.id"
+                :class="$style.followListUser"
+                @click="closeFollowList(); navToUser(accountId, u.id)"
+              >
+                <MkAvatar :avatar-url="u.avatarUrl" :decorations="u.avatarDecorations" :size="40" />
+                <div :class="$style.followListUserInfo">
+                  <span :class="$style.followListUserName">
+                    <MkMfm v-if="u.name" :text="u.name" :emojis="u.emojis" :server-host="account?.host" />
+                    <template v-else>{{ u.username }}</template>
+                  </span>
+                  <span :class="$style.followListUserAcct">@{{ u.username }}{{ u.host ? `@${u.host}` : '' }}</span>
+                </div>
+                <button
+                  v-if="account?.userId !== u.id"
+                  class="_button"
+                  :class="$style.followListFollowBtn"
+                  :disabled="followLoadingIds.has(u.id)"
+                  @click.stop="toggleFollowInList(u)"
+                >
+                  <i v-if="followLoadingIds.has(u.id)" class="ti ti-loader-2" />
+                  <i v-else class="ti ti-user-plus" />
+                </button>
+              </button>
+              <div v-if="isLoadingFollowList" :class="$style.followListLoading">読み込み中...</div>
+              <div v-if="!isLoadingFollowList && followListUsers.length === 0" :class="$style.followListLoading">
+                {{ followListType === 'following' ? 'フォローしているユーザーはいません' : 'フォロワーはいません' }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
 
       <!-- User action menu -->
       <Transition name="nd-popup">
@@ -1411,6 +1571,137 @@ async function handlePosted(editedNoteId?: string) {
 /* Empty placeholder classes for dynamic binding */
 .active {}
 .following {}
+
+.followListBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nd-z-popup);
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.followListModal {
+  width: 380px;
+  max-width: 90vw;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  z-index: calc(var(--nd-z-popup) + 1);
+}
+
+.followListHeader {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--nd-divider);
+  flex-shrink: 0;
+}
+
+.followListTab {
+  flex: 1;
+  padding: 10px;
+  font-size: 0.85em;
+  font-weight: bold;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  border-bottom: 2px solid transparent;
+  transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.followListTabActive {
+  opacity: 1;
+  color: var(--nd-accent);
+  border-bottom-color: var(--nd-accent);
+}
+
+.followListCloseBtn {
+  padding: 10px 12px;
+  color: var(--nd-fg);
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.followListBody {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+}
+
+.followListUser {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  width: 100%;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.followListUserInfo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.followListUserName {
+  display: block;
+  font-size: 0.85em;
+  font-weight: bold;
+  color: var(--nd-fgHighlighted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.followListUserAcct {
+  display: block;
+  font-size: 0.75em;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.followListFollowBtn {
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--nd-accent);
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: color-mix(in srgb, var(--nd-accent) 10%, transparent);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.followListLoading {
+  padding: 16px;
+  text-align: center;
+  font-size: 0.85em;
+  opacity: 0.5;
+}
 
 .userMenuBackdrop {
   position: fixed;
