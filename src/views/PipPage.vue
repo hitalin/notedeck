@@ -98,12 +98,6 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
   emoji: defineAsyncComponent(
     () => import('@/components/deck/DeckEmojiColumn.vue'),
   ),
-  themeEditor: defineAsyncComponent(
-    () => import('@/components/deck/DeckThemeEditorColumn.vue'),
-  ),
-  cssEditor: defineAsyncComponent(
-    () => import('@/components/deck/DeckCssEditorColumn.vue'),
-  ),
 }
 
 let pipColumnCounter = 0

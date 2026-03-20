@@ -4,6 +4,7 @@ import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { useThemeStore } from '@/stores/theme'
 import { useUiStore } from '@/stores/ui'
+import { useWindowsStore } from '@/stores/windows'
 
 export interface CommandHandlers {
   openCompose: () => void
@@ -334,13 +335,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
       category: 'column',
       shortcuts: keybindsStore.getShortcuts('theme-editor'),
       execute: () => {
-        useDeckStore().addColumn({
-          type: 'themeEditor',
-          name: 'テーマエディタ',
-          width: 360,
-          accountId: null,
-          active: true,
-        })
+        useWindowsStore().open('themeEditor')
       },
     })
   }
