@@ -7,10 +7,8 @@ import { useUpdater } from '@/composables/useUpdater'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { useIsCompactLayout } from '@/stores/ui'
-import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { hapticSelection } from '@/utils/haptics'
-import { highlightCode } from '@/utils/highlight'
 import { version as appVersion } from '../../../package.json'
 
 const props = defineProps<{
@@ -28,7 +26,6 @@ const { updateAvailable, updateVersion, isInstalling, installUpdate } =
 const isCompact = useIsCompactLayout()
 const deckStore = useDeckStore()
 const themeStore = useThemeStore()
-const windowsStore = useWindowsStore()
 const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -134,34 +131,19 @@ function removeWallpaper() {
   deckStore.clearWallpaper()
 }
 
-// Custom CSS
-const showCustomCss = ref(false)
-const customCssInput = ref(themeStore.customCss)
-
-function saveCustomCss() {
-  themeStore.setCustomCss(customCssInput.value)
-}
-
-function clearCustomCss() {
-  customCssInput.value = ''
-  themeStore.setCustomCss('')
-}
-
-const highlightedCss = computed(() => {
-  const code = customCssInput.value
-  if (!code) return ''
-  return highlightCode(code, 'css')
-})
-
-function syncScroll(e: Event) {
-  const textarea = e.target as HTMLTextAreaElement
-  const highlight = textarea.parentElement?.querySelector(
-    '.css-highlight',
-  ) as HTMLElement | null
-  if (highlight) {
-    highlight.scrollTop = textarea.scrollTop
-    highlight.scrollLeft = textarea.scrollLeft
+// Open editor column (CSS / keybinds)
+function openEditorColumn(type: 'cssEditor' | 'keybindsEditor', name: string) {
+  const existing = deckStore.columns.find((c) => c.type === type)
+  if (!existing) {
+    deckStore.addColumn({
+      type,
+      name,
+      width: 360,
+      accountId: null,
+      active: true,
+    })
   }
+  emit('close')
 }
 </script>
 
@@ -250,35 +232,13 @@ function syncScroll(e: Event) {
         </div>
       </div>
 
-      <!-- Custom CSS -->
+      <!-- Editor columns -->
       <div :class="$style.settingsMenuDivider" />
 
-      <div v-if="!showCustomCss" :class="$style.settingsMenuItem" @click="showCustomCss = true">
+      <div :class="$style.settingsMenuItem" @click="openEditorColumn('cssEditor', 'カスタムCSS')">
         <i class="ti ti-code" />
         <span :class="$style.settingsMenuLabel">カスタムCSS</span>
         <span v-if="themeStore.customCss" :class="$style.cssActiveDot" />
-      </div>
-      <div v-else :class="$style.customCssSection">
-        <div :class="$style.customCssHeader">
-          <i class="ti ti-code" />
-          <span>カスタムCSS</span>
-        </div>
-        <div :class="$style.cssEditor">
-          <div class="css-highlight" :class="$style.cssHighlight" v-html="highlightedCss" />
-          <textarea
-            v-model="customCssInput"
-            :class="$style.customCssTextarea"
-            placeholder=":root { cursor: auto; }&#10;body { font-family: ... }"
-            rows="6"
-            spellcheck="false"
-            @scroll="syncScroll"
-          />
-        </div>
-        <div :class="$style.customCssActions">
-          <button v-if="themeStore.customCss" :class="[$style.installActionBtn, $style.cancel]" @click="clearCustomCss">クリア</button>
-          <button :class="[$style.installActionBtn, $style.cancel]" @click="showCustomCss = false">閉じる</button>
-          <button :class="[$style.installActionBtn, $style.confirm]" @click="saveCustomCss">適用</button>
-        </div>
       </div>
 
       <div :class="$style.settingsMenuDivider" />
@@ -302,7 +262,7 @@ function syncScroll(e: Event) {
 
       <div :class="$style.settingsMenuDivider" />
 
-      <div v-if="!isCompact" :class="$style.settingsMenuItem" @click="windowsStore.open('keybinds')">
+      <div :class="$style.settingsMenuItem" @click="openEditorColumn('keybindsEditor', 'キーバインド')">
         <i class="ti ti-keyboard" />
         <span :class="$style.settingsMenuLabel">キーバインド設定</span>
       </div>
@@ -792,96 +752,6 @@ function syncScroll(e: Event) {
   border-radius: 50%;
   background: var(--nd-accent);
   margin-left: auto;
-}
-
-.customCssSection {
-  padding: 8px 12px;
-}
-
-.customCssHeader {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  opacity: 0.7;
-  margin-bottom: 8px;
-  padding: 0 4px;
-}
-
-.cssEditor {
-  position: relative;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  overflow: hidden;
-  background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
-  transition: border-color var(--nd-duration-base);
-
-  &:focus-within {
-    border-color: var(--nd-accent);
-  }
-}
-
-.cssHighlight {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  padding: 8px;
-  font-size: 0.8em;
-  font-family: monospace;
-  line-height: 1.4;
-  tab-size: 2;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-
-  :deep(pre) {
-    margin: 0;
-    padding: 0;
-    background: transparent !important;
-    font-size: inherit;
-    font-family: inherit;
-    line-height: inherit;
-  }
-
-  :deep(code) {
-    font-family: inherit;
-    line-height: inherit;
-  }
-}
-
-.customCssTextarea {
-  position: relative;
-  width: 100%;
-  box-sizing: border-box;
-  background: transparent;
-  border: none;
-  padding: 8px;
-  font-size: 0.8em;
-  color: transparent;
-  caret-color: var(--nd-fg);
-  resize: vertical;
-  font-family: monospace;
-  line-height: 1.4;
-  min-height: 80px;
-  tab-size: 2;
-  z-index: 1;
-
-  &:focus {
-    outline: none;
-  }
-
-  &::placeholder {
-    color: var(--nd-fg);
-    opacity: 0.4;
-  }
-}
-
-.customCssActions {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-  justify-content: flex-end;
 }
 
 /* -- Menu items (wallpaper etc.) -- */
