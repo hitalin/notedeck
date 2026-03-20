@@ -32,7 +32,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_haptics::init());
+        .plugin(tauri_plugin_haptics::init())
+        .plugin(tauri_plugin_dialog::init());
 
     #[cfg(not(mobile))]
     {
@@ -177,6 +178,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::get_cli_commands,
         commands::get_notecli_version,
         commands::open_devtools,
+        commands::export_db,
     ]);
 
     builder = builder.setup(|app| {

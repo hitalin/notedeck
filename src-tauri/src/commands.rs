@@ -2445,6 +2445,38 @@ pub fn open_devtools(window: tauri::WebviewWindow) {
     window.open_devtools();
 }
 
+/// Export notecli.db to a user-chosen location via save dialog.
+#[tauri::command]
+pub async fn export_db(app: tauri::AppHandle) -> Result<bool> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let app_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+    let db_path = app_dir.join("notecli.db");
+    if !db_path.exists() {
+        return Err(NoteDeckError::InvalidInput(
+            "notecli.db not found".to_string(),
+        ));
+    }
+
+    let dest = app
+        .dialog()
+        .file()
+        .set_file_name("notecli.db")
+        .add_filter("SQLite Database", &["db"])
+        .blocking_save_file();
+
+    let Some(dest) = dest else {
+        return Ok(false); // user cancelled
+    };
+
+    std::fs::copy(&db_path, dest.as_path().unwrap())
+        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+    Ok(true)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

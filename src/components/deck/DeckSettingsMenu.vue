@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
 import type { CSSProperties } from 'vue'
 import { computed, ref, watch } from 'vue'
 import AboutDialog from '@/components/common/AboutDialog.vue'
@@ -138,6 +139,19 @@ function openToolWindow(type: 'cssEditor' | 'keybinds' | 'themeEditor') {
   windowsStore.open(type)
   emit('close')
 }
+
+const isExporting = ref(false)
+
+async function exportDb() {
+  isExporting.value = true
+  try {
+    await invoke('export_db')
+  } catch {
+    /* user cancelled or error */
+  } finally {
+    isExporting.value = false
+  }
+}
 </script>
 
 <template>
@@ -262,6 +276,13 @@ function openToolWindow(type: 'cssEditor' | 'keybinds' | 'themeEditor') {
       <div :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
         <i class="ti ti-keyboard" />
         <span :class="$style.settingsMenuLabel">キーバインド設定</span>
+      </div>
+
+      <div :class="$style.settingsMenuDivider" />
+
+      <div :class="$style.settingsMenuItem" @click="exportDb">
+        <i class="ti ti-database-export" />
+        <span :class="$style.settingsMenuLabel">{{ isExporting ? 'エクスポート中...' : 'DBバックアップ' }}</span>
       </div>
 
       </div>
