@@ -174,6 +174,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::fetch_nodeinfo,
         commands::fetch_server_meta,
         commands::get_cli_commands,
+        commands::get_notecli_version,
         commands::open_devtools,
     ]);
 

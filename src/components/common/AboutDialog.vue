@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getTauriVersion } from '@tauri-apps/api/app'
+import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { onMounted, ref } from 'vue'
 import { version as appVersion } from '../../../package.json'
@@ -13,11 +14,17 @@ const emit = defineEmits<{
 }>()
 
 const tauriVersion = ref('')
+const notecliVersion = ref('')
 const copied = ref(false)
 
 onMounted(async () => {
   try {
     tauriVersion.value = await getTauriVersion()
+  } catch {
+    // Fallback for environments where Tauri API is unavailable
+  }
+  try {
+    notecliVersion.value = await invoke<string>('get_notecli_version')
   } catch {
     // Fallback for environments where Tauri API is unavailable
   }
@@ -27,6 +34,7 @@ async function copyInfo() {
   const lines = [
     `NoteDeck v${appVersion}`,
     `Tauri: ${tauriVersion.value || 'N/A'}`,
+    `notecli: ${notecliVersion.value ? notecliVersion.value.slice(0, 7) : 'N/A'}`,
     `UA: ${navigator.userAgent}`,
   ]
   await navigator.clipboard.writeText(lines.join('\n'))
@@ -55,6 +63,10 @@ async function copyInfo() {
             <div :class="$style.aboutRow">
               <span :class="$style.aboutLabel">Tauri:</span>
               <span :class="$style.aboutValue">{{ tauriVersion || '...' }}</span>
+            </div>
+            <div :class="$style.aboutRow">
+              <span :class="$style.aboutLabel">notecli:</span>
+              <span :class="$style.aboutValue">{{ notecliVersion ? notecliVersion.slice(0, 7) : '...' }}</span>
             </div>
           </div>
 
@@ -142,7 +154,7 @@ async function copyInfo() {
 .aboutLabel {
   color: var(--nd-fg);
   opacity: 0.5;
-  min-width: 60px;
+  min-width: 64px;
 }
 
 .aboutValue {
