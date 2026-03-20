@@ -83,6 +83,7 @@ const MOBILE_TAB_ICONS: Record<string, string> = {
   emoji: 'mood-smile',
   themeEditor: 'palette',
   cssEditor: 'code',
+  keybindsEditor: 'keyboard',
 }
 
 const TL_ICONS: Record<string, string> = {

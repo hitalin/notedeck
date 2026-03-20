@@ -37,6 +37,7 @@ export type ColumnType =
   | 'emoji'
   | 'themeEditor'
   | 'cssEditor'
+  | 'keybindsEditor'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
