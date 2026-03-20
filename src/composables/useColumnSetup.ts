@@ -10,6 +10,7 @@ import { useScrollDirection } from '@/composables/useScrollDirection'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
+import { useStreamingStore } from '@/stores/streaming'
 import { useThemeStore } from '@/stores/theme'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
@@ -40,6 +41,7 @@ export function useColumnSetup(
     }
   }
   const accountsStore = useAccountsStore()
+  const streamingStore = useStreamingStore()
   const themeStore = useThemeStore()
 
   const account = computed(() =>
@@ -66,6 +68,12 @@ export function useColumnSetup(
     const result = await initAdapterFor(acc.host, acc.id)
     serverIconUrl.value = result.serverInfo.iconUrl
     adapter = result.adapter
+
+    // Bridge adapter stream events → streaming store for navbar indicator
+    streamingStore.startListening()
+    adapter.stream.on('connected', () => streamingStore.setConnected(acc.id))
+    adapter.stream.on('disconnected', () => streamingStore.disconnect(acc.id))
+
     return adapter
   }
 
