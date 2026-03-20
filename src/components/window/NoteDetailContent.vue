@@ -76,7 +76,7 @@ onMounted(async () => {
       note.value = cached
     } else {
       error.value = new AppError(
-        'OFFLINE',
+        'NETWORK',
         'オフラインのためノート詳細を表示できません',
       )
     }
