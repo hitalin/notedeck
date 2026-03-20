@@ -260,6 +260,12 @@ async function connect(useCache = false) {
     }
   }
 
+  // Logged-out: show cached notifications in read-only mode
+  if (account.value && !account.value.hasToken) {
+    isLoading.value = false
+    return
+  }
+
   try {
     const adapter = await initAdapter()
     if (!adapter) return

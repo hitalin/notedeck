@@ -385,6 +385,18 @@ async function reconnectWithFilter() {
   setNotes([])
   isLoading.value = true
 
+  // Logged-out: reload from cache with new filter
+  if (account.value && !account.value.hasToken) {
+    const cached = await fetchCachedNotes()
+    const filtered = cached.filter((n) =>
+      matchesFilter(n, columnFilters.value, tlType.value),
+    )
+    if (filtered.length > 0) setNotes(filtered)
+    isOffline.value = true
+    isLoading.value = false
+    return
+  }
+
   try {
     const adapter = getAdapter() ?? (await initAdapter())
     if (!adapter) return
@@ -746,6 +758,9 @@ async function onResume() {
   lastResumeAt = now
 
   if (timeMachine.isActive.value) return
+
+  // Logged-out: skip API, no-op (cache is already loaded)
+  if (account.value && !account.value.hasToken) return
 
   const adapter = getAdapter()
   if (!adapter || !account.value) return
