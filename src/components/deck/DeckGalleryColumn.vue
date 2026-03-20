@@ -57,14 +57,14 @@ async function fetchGallery(older = false) {
   error.value = null
 
   try {
-    const params: Record<string, unknown> = { limit: 20 }
-    if (older && posts.value.length > 0) {
-      params.untilId = posts.value[posts.value.length - 1]?.id
-    }
-    const result = await invoke<GalleryPost[]>('api_request', {
+    const untilId =
+      older && posts.value.length > 0
+        ? posts.value[posts.value.length - 1]?.id
+        : undefined
+    const result = await invoke<GalleryPost[]>('api_get_gallery_posts', {
       accountId: props.column.accountId,
-      endpoint: 'gallery/posts',
-      params,
+      limit: 20,
+      untilId: untilId ?? null,
     })
     if (older) {
       posts.value.push(...result)
@@ -108,13 +108,12 @@ async function toggleLike() {
   if (!detailPost.value || !props.column.accountId || liking.value) return
   liking.value = true
   try {
-    const endpoint = detailPost.value.isLiked
-      ? 'gallery/posts/unlike'
-      : 'gallery/posts/like'
-    await invoke('api_request', {
+    const command = detailPost.value.isLiked
+      ? 'api_unlike_gallery_post'
+      : 'api_like_gallery_post'
+    await invoke(command, {
       accountId: props.column.accountId,
-      endpoint,
-      params: { postId: detailPost.value.id },
+      postId: detailPost.value.id,
     })
     detailPost.value.isLiked = !detailPost.value.isLiked
     detailPost.value.likedCount += detailPost.value.isLiked ? 1 : -1

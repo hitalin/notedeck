@@ -1566,6 +1566,276 @@ pub async fn api_create_messaging_message(
     client.create_messaging_message(&host, &token, params).await
 }
 
+// --- Search ---
+
+#[tauri::command]
+pub async fn api_search_users_by_query(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    query: String,
+    limit: Option<i64>,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .search_users_by_query(&host, &token, &query, limit.unwrap_or(10).clamp(1, 100))
+        .await
+}
+
+#[tauri::command]
+pub async fn api_search_hashtags(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    query: String,
+    limit: Option<i64>,
+) -> Result<Vec<String>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .search_hashtags(&host, &token, &query, limit.unwrap_or(10).clamp(1, 100))
+        .await
+}
+
+// --- ActivityPub resolve ---
+
+#[tauri::command]
+pub async fn api_ap_show(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    uri: String,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.ap_show(&host, &token, &uri).await
+}
+
+// --- Server stats ---
+
+#[tauri::command]
+pub async fn api_get_server_stats(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_server_stats(&host, &token).await
+}
+
+#[tauri::command]
+pub async fn api_get_meta_detail(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_meta_detail(&host, &token).await
+}
+
+// --- User achievements ---
+
+#[tauri::command]
+pub async fn api_get_user_achievements(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_id: String,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_user_achievements(&host, &token, &user_id)
+        .await
+}
+
+// --- User notes (with filters) ---
+
+#[tauri::command]
+pub async fn api_get_user_notes_filtered(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_user_notes_filtered(&host, &token, params)
+        .await
+}
+
+#[tauri::command]
+pub async fn api_get_user_featured_notes(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_id: String,
+    limit: Option<i64>,
+    until_id: Option<String>,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_user_featured_notes(
+            &host,
+            &token,
+            &user_id,
+            limit.unwrap_or(30).clamp(1, 100),
+            until_id.as_deref(),
+        )
+        .await
+}
+
+// --- Pages ---
+
+#[tauri::command]
+pub async fn api_get_pages(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    endpoint: String,
+    limit: Option<i64>,
+) -> Result<serde_json::Value> {
+    // Validate endpoint to only allow page-related endpoints
+    let allowed = ["pages/featured", "i/pages", "i/page-likes"];
+    if !allowed.contains(&endpoint.as_str()) {
+        return Err(NoteDeckError::InvalidInput(
+            "Invalid page endpoint".to_string(),
+        ));
+    }
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_pages(&host, &token, &endpoint, limit.unwrap_or(30).clamp(1, 100))
+        .await
+}
+
+#[tauri::command]
+pub async fn api_get_page(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    page_id: String,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_page(&host, &token, &page_id).await
+}
+
+#[tauri::command]
+pub async fn api_like_page(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    page_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.like_page(&host, &token, &page_id).await
+}
+
+#[tauri::command]
+pub async fn api_unlike_page(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    page_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.unlike_page(&host, &token, &page_id).await
+}
+
+// --- Gallery ---
+
+#[tauri::command]
+pub async fn api_get_gallery_posts(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    limit: Option<i64>,
+    until_id: Option<String>,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_gallery_posts(
+            &host,
+            &token,
+            limit.unwrap_or(20).clamp(1, 100),
+            until_id.as_deref(),
+        )
+        .await
+}
+
+#[tauri::command]
+pub async fn api_like_gallery_post(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    post_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.like_gallery_post(&host, &token, &post_id).await
+}
+
+#[tauri::command]
+pub async fn api_unlike_gallery_post(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    post_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.unlike_gallery_post(&host, &token, &post_id).await
+}
+
+// --- Flash (Play) ---
+
+#[tauri::command]
+pub async fn api_get_flashes(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    endpoint: String,
+    limit: Option<i64>,
+) -> Result<serde_json::Value> {
+    let allowed = ["flash/featured", "flash/my", "flash/my-likes"];
+    if !allowed.contains(&endpoint.as_str()) {
+        return Err(NoteDeckError::InvalidInput(
+            "Invalid flash endpoint".to_string(),
+        ));
+    }
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_flashes(&host, &token, &endpoint, limit.unwrap_or(30).clamp(1, 100))
+        .await
+}
+
+#[tauri::command]
+pub async fn api_get_flash(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    flash_id: String,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_flash(&host, &token, &flash_id).await
+}
+
+#[tauri::command]
+pub async fn api_like_flash(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    flash_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.like_flash(&host, &token, &flash_id).await
+}
+
+#[tauri::command]
+pub async fn api_unlike_flash(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    flash_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.unlike_flash(&host, &token, &flash_id).await
+}
+
 // --- Generic API proxy ---
 
 #[tauri::command]

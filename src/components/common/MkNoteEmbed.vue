@@ -36,11 +36,10 @@ async function fetchNote() {
     } else {
       // Remote server: resolve via ap/show
       const result = await invoke<{ type: string; object?: { id: string } }>(
-        'api_request',
+        'api_ap_show',
         {
           accountId: props.accountId,
-          endpoint: 'ap/show',
-          params: { uri: props.url },
+          uri: props.url,
         },
       )
       if (result.type === 'Note' && result.object?.id) {

@@ -96,10 +96,10 @@ async function fetchList(tab?: Tab) {
   try {
     const raw = await invoke<
       PageSummary[] | { id: string; page: PageSummary }[]
-    >('api_request', {
+    >('api_get_pages', {
       accountId: props.column.accountId,
       endpoint: endpointMap[t],
-      params: { limit: 30 },
+      limit: 30,
     })
     // i/page-likes returns { id, page } wrapper objects
     listItems.value =
@@ -211,10 +211,9 @@ async function openPage(pageId: string) {
   resetRunState()
 
   try {
-    const detail = await invoke<PageDetail>('api_request', {
+    const detail = await invoke<PageDetail>('api_get_page', {
       accountId: props.column.accountId,
-      endpoint: 'pages/show',
-      params: { pageId },
+      pageId,
     })
     page.value = applyPageViewInterruptors(detail)
     // If the page has a script, execute it
@@ -326,12 +325,11 @@ async function executePage(detail: PageDetail) {
 
 async function toggleLike() {
   if (!page.value || !props.column.accountId) return
-  const endpoint = page.value.isLiked ? 'pages/unlike' : 'pages/like'
+  const command = page.value.isLiked ? 'api_unlike_page' : 'api_like_page'
   try {
-    await invoke('api_request', {
+    await invoke(command, {
       accountId: props.column.accountId,
-      endpoint,
-      params: { pageId: page.value.id },
+      pageId: page.value.id,
     })
     page.value.isLiked = !page.value.isLiked
     page.value.likedCount += page.value.isLiked ? 1 : -1

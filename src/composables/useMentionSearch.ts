@@ -28,11 +28,14 @@ export function useMentionSearch(activeAccountId: Ref<string>) {
       if (!activeAccountId.value) return
       mentionSearching.value = true
       try {
-        mentionResults.value = await invoke<NormalizedUser[]>('api_request', {
-          accountId: activeAccountId.value,
-          endpoint: 'users/search',
-          params: { query: q, limit: 10 },
-        })
+        mentionResults.value = await invoke<NormalizedUser[]>(
+          'api_search_users_by_query',
+          {
+            accountId: activeAccountId.value,
+            query: q,
+            limit: 10,
+          },
+        )
       } catch {
         mentionResults.value = []
       } finally {

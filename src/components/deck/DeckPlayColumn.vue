@@ -92,10 +92,10 @@ async function fetchList(tab?: Tab) {
   try {
     const raw = await invoke<
       FlashSummary[] | { id: string; flash: FlashSummary }[]
-    >('api_request', {
+    >('api_get_flashes', {
       accountId: props.column.accountId,
       endpoint: endpointMap[t],
-      params: { limit: 30 },
+      limit: 30,
     })
     // flash/my-likes returns { id, flash } wrapper objects
     listItems.value =
@@ -196,10 +196,9 @@ async function openPlay(flashId: string) {
   resetRunState()
 
   try {
-    flash.value = await invoke<FlashDetail>('api_request', {
+    flash.value = await invoke<FlashDetail>('api_get_flash', {
       accountId: props.column.accountId,
-      endpoint: 'flash/show',
-      params: { flashId },
+      flashId,
     })
   } catch (e) {
     fetchError.value = AppError.from(e).message
@@ -314,12 +313,11 @@ async function executePlay(detail: FlashDetail) {
 
 async function toggleLike() {
   if (!flash.value || !props.column.accountId) return
-  const endpoint = flash.value.isLiked ? 'flash/unlike' : 'flash/like'
+  const command = flash.value.isLiked ? 'api_unlike_flash' : 'api_like_flash'
   try {
-    await invoke('api_request', {
+    await invoke(command, {
       accountId: props.column.accountId,
-      endpoint,
-      params: { flashId: flash.value.id },
+      flashId: flash.value.id,
     })
     flash.value.isLiked = !flash.value.isLiked
     flash.value.likedCount += flash.value.isLiked ? 1 : -1

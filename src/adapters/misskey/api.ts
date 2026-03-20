@@ -202,11 +202,13 @@ export class MisskeyApi implements ApiAdapter {
       if (withFiles != null) params.withFiles = withFiles
       if (withChannelNotes != null) params.withChannelNotes = withChannelNotes
 
-      const raw = await invoke<{ id: string }[]>('api_request', {
-        accountId: this.accountId,
-        endpoint: 'users/notes',
-        params,
-      })
+      const raw = await invoke<{ id: string }[]>(
+        'api_get_user_notes_filtered',
+        {
+          accountId: this.accountId,
+          params,
+        },
+      )
       if (!raw.length) return []
       return Promise.all(raw.map((n) => this.getNote(n.id)))
     }
@@ -228,15 +230,15 @@ export class MisskeyApi implements ApiAdapter {
     options: PaginationOptions = {},
   ): Promise<NormalizedNote[]> {
     try {
-      const raw = await invoke<{ id: string }[]>('api_request', {
-        accountId: this.accountId,
-        endpoint: 'users/featured-notes',
-        params: {
+      const raw = await invoke<{ id: string }[]>(
+        'api_get_user_featured_notes',
+        {
+          accountId: this.accountId,
           userId,
           limit: options.limit ?? 30,
-          untilId: options.untilId ?? undefined,
+          untilId: options.untilId ?? null,
         },
-      })
+      )
       if (!raw.length) return []
       return Promise.all(raw.map((n) => this.getNote(n.id)))
     } catch {
