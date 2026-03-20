@@ -77,11 +77,27 @@ async function loadUsers(untilId?: string) {
       hasMore.value = false
     } else {
       users.value = [...users.value, ...fetched]
+      fetchFollowStates(fetched)
     }
   } catch {
     toast.show('取得に失敗しました', 'error')
   } finally {
     isLoading.value = false
+  }
+}
+
+async function fetchFollowStates(batch: NormalizedUser[]) {
+  if (!adapter) return
+  for (const u of batch) {
+    if (followingIds.value.has(u.id)) continue
+    adapter.api
+      .getUserDetail(u.id)
+      .then((detail) => {
+        if (detail.isFollowing) {
+          followingIds.value = new Set([...followingIds.value, u.id])
+        }
+      })
+      .catch(() => {})
   }
 }
 
@@ -98,11 +114,15 @@ async function toggleFollow(targetUser: NormalizedUser) {
   if (!adapter || followLoadingIds.value.has(targetUser.id)) return
   followLoadingIds.value = new Set([...followLoadingIds.value, targetUser.id])
   try {
-    const detail = await adapter.api.getUserDetail(targetUser.id)
-    if (detail.isFollowing) {
+    const isCurrentlyFollowing = followingIds.value.has(targetUser.id)
+    if (isCurrentlyFollowing) {
       await adapter.api.unfollowUser(targetUser.id)
+      const next = new Set(followingIds.value)
+      next.delete(targetUser.id)
+      followingIds.value = next
     } else {
       await adapter.api.followUser(targetUser.id)
+      followingIds.value = new Set([...followingIds.value, targetUser.id])
     }
   } catch {
     toast.show('操作に失敗しました', 'error')
@@ -158,12 +178,15 @@ function navigateUser(userId: string) {
         <button
           v-if="account?.userId !== u.id"
           class="_button"
-          :class="$style.followBtn"
+          :class="[$style.followBtn, { [$style.followBtnFollowing]: followingIds.has(u.id) }]"
           :disabled="followLoadingIds.has(u.id)"
           @click.stop="toggleFollow(u)"
         >
           <template v-if="followLoadingIds.has(u.id)">
             <i class="ti ti-loader-2" :class="$style.spin" />
+          </template>
+          <template v-else-if="followingIds.has(u.id)">
+            フォロー中
           </template>
           <template v-else>
             フォロー
@@ -298,6 +321,11 @@ function navigateUser(userId: string) {
   &:disabled {
     opacity: 0.5;
   }
+}
+
+.followBtnFollowing {
+  color: var(--nd-fg);
+  background: var(--nd-buttonBg);
 }
 
 .stateMsg {
