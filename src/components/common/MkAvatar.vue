@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type CSSProperties, computed, ref, watch } from 'vue'
+import { type CSSProperties, computed, ref, useCssModule, watch } from 'vue'
 import type { AvatarDecoration } from '@/adapters/types'
 import { useLazyImage } from '@/composables/useLazyImage'
 import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
@@ -75,6 +75,17 @@ function computeDecorationStyle(d: AvatarDecoration): CSSProperties {
 const decorationStyles = computed(() =>
   props.decorations.map((d) => computeDecorationStyle(d)),
 )
+
+const $style = useCssModule()
+const statusClassMap: Record<string, string> = {
+  online: $style.statusOnline,
+  active: $style.statusActive,
+  offline: $style.statusOffline,
+  unknown: $style.statusUnknown,
+}
+const statusClass = computed(() =>
+  props.onlineStatus ? statusClassMap[props.onlineStatus] : undefined,
+)
 </script>
 
 <template>
@@ -110,7 +121,7 @@ const decorationStyles = computed(() =>
     </template>
     <div
       v-if="indicator && onlineStatus"
-      :class="[$style.onlineIndicator, $style[`status-${onlineStatus}`]]"
+      :class="[$style.onlineIndicator, statusClass]"
     />
   </div>
 </template>
@@ -160,19 +171,19 @@ const decorationStyles = computed(() =>
   box-shadow: 0 0 0 3px var(--nd-panel, var(--nd-bg));
 }
 
-.status-online {
+.statusOnline {
   background: var(--nd-statusOnline);
 }
 
-.status-active {
+.statusActive {
   background: var(--nd-statusActive);
 }
 
-.status-offline {
+.statusOffline {
   background: var(--nd-statusOffline);
 }
 
-.status-unknown {
+.statusUnknown {
   background: var(--nd-statusUnknown);
 }
 </style>

@@ -2,7 +2,6 @@ import { onUnmounted } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type { ServerAdapter } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
-import { useStreamingStore } from '@/stores/streaming'
 
 /**
  * Lazily creates and caches per-account adapters for cross-account features.
@@ -10,7 +9,6 @@ import { useStreamingStore } from '@/stores/streaming'
  */
 export function useMultiAccountAdapters() {
   const accountsStore = useAccountsStore()
-  const streamingStore = useStreamingStore()
 
   const adapters = new Map<string, ServerAdapter>()
   const pending = new Map<string, Promise<ServerAdapter | null>>()
@@ -26,12 +24,6 @@ export function useMultiAccountAdapters() {
       if (!acc) return null
       const { adapter } = await initAdapterFor(acc.host, acc.id)
       adapters.set(accountId, adapter)
-
-      // Bridge adapter stream events → streaming store for navbar indicator
-      streamingStore.startListening()
-      adapter.stream.on('connected', () => streamingStore.setConnected(acc.id))
-      adapter.stream.on('disconnected', () => streamingStore.disconnect(acc.id))
-
       return adapter
     })()
 
