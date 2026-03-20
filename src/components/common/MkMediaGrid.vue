@@ -14,6 +14,7 @@ const props = defineProps<{
 
 const revealedIds = ref(new Set<string>())
 const loadedIds = ref(new Set<string>())
+const erroredIds = ref(new Set<string>())
 const lightboxFile = ref<NormalizedDriveFile | null>(null)
 
 function isImage(file: NormalizedDriveFile): boolean {
@@ -46,6 +47,12 @@ function onImageLoaded(fileId: string) {
   const next = new Set(loadedIds.value)
   next.add(fileId)
   loadedIds.value = next
+}
+
+function onImageError(fileId: string) {
+  const next = new Set(erroredIds.value)
+  next.add(fileId)
+  erroredIds.value = next
 }
 
 function toggleSensitive(file: NormalizedDriveFile, e: Event) {
@@ -112,13 +119,18 @@ function closeLightbox() {
     >
       <template v-if="isImage(file)">
         <img
+          v-if="!erroredIds.has(file.id)"
           :src="safeMediaSrc(file.thumbnailUrl) || safeMediaSrc(file.url)"
           :alt="file.name"
           :class="[$style.mediaImage, { [$style.isLoaded]: loadedIds.has(file.id) }]"
           loading="lazy"
           decoding="async"
           @load="onImageLoaded(file.id)"
+          @error="onImageError(file.id)"
         />
+        <div v-else :class="$style.mediaPlaceholder">
+          <i class="ti ti-photo" />
+        </div>
       </template>
       <template v-else-if="isVideo(file)">
         <video
@@ -340,6 +352,18 @@ function closeLightbox() {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.mediaPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  opacity: 0.3;
+  font-size: 2em;
 }
 
 /* NSFW overlay */

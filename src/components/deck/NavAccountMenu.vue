@@ -15,6 +15,7 @@ const props = defineProps<{
     username: string
     host: string
     userId: string
+    hasToken: boolean
   }
   navCollapsed: boolean
   modes: Record<string, boolean>
@@ -28,6 +29,7 @@ const isCompact = useIsCompactLayout()
 const emit = defineEmits<{
   'toggle-mode': [key: string]
   logout: []
+  relogin: []
 }>()
 
 const { navigateToUser } = useNavigation()
@@ -47,50 +49,68 @@ function modeLabel(key: string): string {
       :class="[$style.navAccountMenu, { [$style.menuRight]: navCollapsed, [$style.mobile]: isCompact }]"
       @click.stop
     >
-      <template v-if="Object.keys(modes).length > 0">
-        <div
-          v-for="(val, key) in modes"
-          :key="key"
-          :class="$style.navAccountMenuItem"
-          @click="emit('toggle-mode', key as string)"
-        >
-          <span :class="$style.navAccountMenuLabel">{{ modeLabel(key as string) }}</span>
-          <button
-            class="nd-toggle-switch"
-            :class="{ on: val }"
-            :disabled="togglingMode"
-            role="switch"
-            :aria-checked="val"
+      <template v-if="account.hasToken">
+        <template v-if="Object.keys(modes).length > 0">
+          <div
+            v-for="(val, key) in modes"
+            :key="key"
+            :class="$style.navAccountMenuItem"
+            @click="emit('toggle-mode', key as string)"
           >
-            <span class="nd-toggle-switch-knob" />
-          </button>
-        </div>
+            <span :class="$style.navAccountMenuLabel">{{ modeLabel(key as string) }}</span>
+            <button
+              class="nd-toggle-switch"
+              :class="{ on: val }"
+              :disabled="togglingMode"
+              role="switch"
+              :aria-checked="val"
+            >
+              <span class="nd-toggle-switch-knob" />
+            </button>
+          </div>
+        </template>
+        <div v-if="modeError" :class="$style.navAccountMenuError">{{ modeError }}</div>
+        <div :class="$style.navAccountMenuDivider" />
+        <button class="_button" :class="$style.navAccountMenuItem" @click="navigateToUser(account.id, account.userId)">
+          <span>プロフィール</span>
+          <i class="ti ti-user" />
+        </button>
+        <div :class="$style.navAccountMenuDivider" />
+        <div :class="$style.navAccountMenuDivider" />
+        <button class="_button" :class="$style.navAccountMenuItem" @click="openUrl(`https://${account.host}/settings`)">
+          <span>設定</span>
+          <i class="ti ti-external-link" />
+        </button>
+        <button class="_button" :class="$style.navAccountMenuItem" @click="openUrl(`https://${account.host}/games`)">
+          <span>Misskey Games</span>
+          <i class="ti ti-external-link" />
+        </button>
+        <button v-if="isAdmin" class="_button" :class="$style.navAccountMenuItem" @click="openUrl(`https://${account.host}/admin`)">
+          <span>コントロールパネル</span>
+          <i class="ti ti-external-link" />
+        </button>
+        <div :class="$style.navAccountMenuDivider" />
+        <button class="_button" :class="[$style.navAccountMenuItem, $style.navAccountLogout]" @click="emit('logout')">
+          <span>ログアウト</span>
+          <i class="ti ti-logout" />
+        </button>
       </template>
-      <div v-if="modeError" :class="$style.navAccountMenuError">{{ modeError }}</div>
-      <div :class="$style.navAccountMenuDivider" />
-      <button class="_button" :class="$style.navAccountMenuItem" @click="navigateToUser(account.id, account.userId)">
-        <span>プロフィール</span>
-        <i class="ti ti-user" />
-      </button>
-      <div :class="$style.navAccountMenuDivider" />
-      <div :class="$style.navAccountMenuDivider" />
-      <button class="_button" :class="$style.navAccountMenuItem" @click="openUrl(`https://${account.host}/settings`)">
-        <span>設定</span>
-        <i class="ti ti-external-link" />
-      </button>
-      <button class="_button" :class="$style.navAccountMenuItem" @click="openUrl(`https://${account.host}/games`)">
-        <span>Misskey Games</span>
-        <i class="ti ti-external-link" />
-      </button>
-      <button v-if="isAdmin" class="_button" :class="$style.navAccountMenuItem" @click="openUrl(`https://${account.host}/admin`)">
-        <span>コントロールパネル</span>
-        <i class="ti ti-external-link" />
-      </button>
-      <div :class="$style.navAccountMenuDivider" />
-      <button class="_button" :class="[$style.navAccountMenuItem, $style.navAccountLogout]" @click="emit('logout')">
-        <span>ログアウト</span>
-        <i class="ti ti-logout" />
-      </button>
+
+      <template v-else>
+        <div :class="$style.navAccountMenuOffline">
+          <i class="ti ti-wifi-off" />
+          <span>ログアウト中</span>
+        </div>
+        <div :class="$style.navAccountMenuDivider" />
+        <button class="_button" :class="[$style.navAccountMenuItem, $style.navAccountRelogin]" @click="emit('relogin')">
+          <span>再ログイン</span>
+          <i class="ti ti-login" />
+        </button>
+        <button class="_button" :class="[$style.navAccountMenuItem, $style.navAccountLogout]" @click="emit('logout')">
+          <span>データを削除</span>
+          <i class="ti ti-trash" />
+        </button>
+      </template>
     </div>
   </Transition>
 </template>
@@ -170,6 +190,25 @@ function modeLabel(key: string): string {
     flex-shrink: 0;
     opacity: 0.8;
   }
+}
+
+.navAccountRelogin {
+  color: var(--nd-accent);
+  gap: 8px;
+
+  .ti {
+    flex-shrink: 0;
+  }
+}
+
+.navAccountMenuOffline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  opacity: 0.5;
 }
 </style>
 

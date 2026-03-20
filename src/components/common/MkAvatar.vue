@@ -28,17 +28,21 @@ const emit = defineEmits<{
   mouseleave: [event: MouseEvent]
 }>()
 
+const AVATAR_DEFAULT = '/avatar-default.svg'
+
 const proxyFailed = ref(false)
+const allFailed = ref(false)
 
 watch(
   () => props.avatarUrl,
   () => {
     proxyFailed.value = false
+    allFailed.value = false
   },
 )
 
 const avatarSrc = computed(() => {
-  if (!props.avatarUrl) return undefined
+  if (!props.avatarUrl || allFailed.value) return AVATAR_DEFAULT
   if (proxyFailed.value) return props.avatarUrl
   // Request a thumbnail sized to 2x display size for HiDPI screens
   return proxyThumbUrl(props.avatarUrl, props.size * 2)
@@ -49,7 +53,11 @@ const { targetRef, lazySrc, isVisible } = useLazyImage(avatarSrc)
 function onAvatarError(e: Event) {
   const img = e.target as HTMLImageElement
   if (!proxyFailed.value && img.src !== props.avatarUrl) {
+    // Proxy failed → try direct URL
     proxyFailed.value = true
+  } else if (!allFailed.value) {
+    // Direct URL also failed → show default avatar
+    allFailed.value = true
   }
 }
 

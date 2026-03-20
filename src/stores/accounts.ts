@@ -11,6 +11,7 @@ export interface Account {
   displayName: string | null
   avatarUrl: string | null
   software: ServerSoftware
+  hasToken: boolean
 }
 
 export const useAccountsStore = defineStore('accounts', () => {
@@ -80,6 +81,12 @@ export const useAccountsStore = defineStore('accounts', () => {
     }
   }
 
+  async function logoutAccount(id: string): Promise<void> {
+    await invoke('logout_account', { id })
+    const account = accounts.value.find((a) => a.id === id)
+    if (account) account.hasToken = false
+  }
+
   function switchAccount(id: string): void {
     if (accounts.value.some((a) => a.id === id)) {
       activeAccountId.value = id
@@ -100,6 +107,7 @@ export const useAccountsStore = defineStore('accounts', () => {
     loadAccounts,
     addAccount,
     removeAccount,
+    logoutAccount,
     switchAccount,
     modeVersion,
     bumpModeVersion,

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <clipPath id="c"><rect width="128" height="128" rx="8"/></clipPath>
+  </defs>
+  <rect width="128" height="128" rx="8" fill="#191919"/>
+  <g clip-path="url(#c)">
+    <!-- Top: 7 color bars (67%) -->
+    <rect x="0"   y="0" width="18.3" height="86" fill="#c0c0c0"/>
+    <rect x="18.3" y="0" width="18.3" height="86" fill="#c0c000"/>
+    <rect x="36.6" y="0" width="18.3" height="86" fill="#00c0c0"/>
+    <rect x="54.9" y="0" width="18.3" height="86" fill="#00c000"/>
+    <rect x="73.1" y="0" width="18.3" height="86" fill="#c000c0"/>
+    <rect x="91.4" y="0" width="18.3" height="86" fill="#c00000"/>
+    <rect x="109.7" y="0" width="18.3" height="86" fill="#0000c0"/>
+    <!-- Middle: reverse mini bars (8%) -->
+    <rect x="0"    y="86" width="18.3" height="10" fill="#0000c0"/>
+    <rect x="18.3" y="86" width="18.3" height="10" fill="#191919"/>
+    <rect x="36.6" y="86" width="18.3" height="10" fill="#c000c0"/>
+    <rect x="54.9" y="86" width="18.3" height="10" fill="#191919"/>
+    <rect x="73.1" y="86" width="18.3" height="10" fill="#00c0c0"/>
+    <rect x="91.4" y="86" width="18.3" height="10" fill="#191919"/>
+    <rect x="109.7" y="86" width="18.3" height="10" fill="#c0c0c0"/>
+    <!-- Bottom: pluge + gradient blacks (25%) -->
+    <rect x="0"    y="96" width="23.4" height="32" fill="#00214c"/>
+    <rect x="23.4" y="96" width="23.4" height="32" fill="#fff"/>
+    <rect x="46.9" y="96" width="23.4" height="32" fill="#320064"/>
+    <rect x="70.3" y="96" width="14.4" height="32" fill="#191919"/>
+    <rect x="84.7" y="96" width="7.2"  height="32" fill="#0a0a0a"/>
+    <rect x="91.9" y="96" width="7.2"  height="32" fill="#191919"/>
+    <rect x="99.1" y="96" width="7.2"  height="32" fill="#292929"/>
+    <rect x="106.3" y="96" width="21.7" height="32" fill="#191919"/>
+  </g>
+</svg>

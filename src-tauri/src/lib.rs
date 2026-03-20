@@ -49,6 +49,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
     builder = builder.invoke_handler(tauri::generate_handler![
         commands::load_accounts,
         commands::delete_account,
+        commands::logout_account,
         commands::load_servers,
         commands::get_server,
         commands::upsert_server,
