@@ -63,6 +63,20 @@ const PROFILE_TABS: { key: ProfileTab; label: string; icon: string }[] = [
 ]
 
 const user = ref<NormalizedUserDetail | null>(null)
+const canSeeFollowing = computed(() => {
+  if (isOwnProfile.value) return true
+  const v = user.value?.followingVisibility ?? 'public'
+  if (v === 'public') return true
+  if (v === 'followers' && user.value?.isFollowed) return true
+  return false
+})
+const canSeeFollowers = computed(() => {
+  if (isOwnProfile.value) return true
+  const v = user.value?.followersVisibility ?? 'public'
+  if (v === 'public') return true
+  if (v === 'followers' && user.value?.isFollowed) return true
+  return false
+})
 const MAX_PROFILE_NOTES = 500
 const activeTab = ref<ProfileTab>('highlight')
 const notes = shallowRef<NormalizedNote[]>([])
@@ -662,11 +676,11 @@ async function handlePosted(editedNoteId?: string) {
             <b>{{ formatCount(user.notesCount) }}</b>
             <span>ノート</span>
           </div>
-          <button :class="[$style.stat, $style.statLink]" class="_button" @click="openFollowList('following')">
+          <button v-if="canSeeFollowing" :class="[$style.stat, $style.statLink]" class="_button" @click="openFollowList('following')">
             <b>{{ formatCount(user.followingCount) }}</b>
             <span>フォロー</span>
           </button>
-          <button :class="[$style.stat, $style.statLink]" class="_button" @click="openFollowList('followers')">
+          <button v-if="canSeeFollowers" :class="[$style.stat, $style.statLink]" class="_button" @click="openFollowList('followers')">
             <b>{{ formatCount(user.followersCount) }}</b>
             <span>フォロワー</span>
           </button>

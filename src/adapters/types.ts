@@ -257,6 +257,8 @@ export interface NormalizedUserDetail extends NormalizedUser {
   location?: string | null
   onlineStatus?: 'online' | 'active' | 'offline' | 'unknown' | null
   pinnedNoteIds?: string[]
+  followingVisibility?: 'public' | 'followers' | 'private'
+  followersVisibility?: 'public' | 'followers' | 'private'
 }
 
 export interface NormalizedPoll {
