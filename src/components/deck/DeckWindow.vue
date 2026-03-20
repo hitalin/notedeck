@@ -21,6 +21,7 @@ const size = computed(() => WINDOW_SIZES[props.window.type])
 const titles: Record<string, string> = {
   'note-detail': 'ノート',
   'user-profile': 'プロフィール',
+  'follow-list': 'フォロー / フォロワー',
   login: 'アカウント追加',
   search: '検索',
   notifications: '通知',
@@ -32,6 +33,7 @@ const titles: Record<string, string> = {
 const icons: Record<string, string> = {
   'note-detail': 'ti ti-note',
   'user-profile': 'ti ti-user',
+  'follow-list': 'ti ti-users',
   login: 'ti ti-login-2',
   search: 'ti ti-search',
   notifications: 'ti ti-bell',
