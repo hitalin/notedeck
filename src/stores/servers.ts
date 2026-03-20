@@ -18,53 +18,28 @@ export const useServersStore = defineStore('servers', () => {
   // shallowRef + full Map replacement avoids deep reactivity on server info objects
   const servers = shallowRef(new Map<string, ServerInfo>())
 
-  async function loadCachedServers(): Promise<void> {
-    const stored = await invoke<StoredServer[]>('load_servers')
-    const next = new Map(servers.value)
-    for (const s of stored) {
-      const parsed = JSON.parse(s.featuresJson)
-      const { _iconUrl, _themeColor, ...features } = parsed
-      const info: ServerInfo = {
-        host: s.host,
-        software: s.software as ServerInfo['software'],
-        version: s.version,
-        features,
-      }
-      if ('_iconUrl' in parsed) info.iconUrl = _iconUrl
-      if ('_themeColor' in parsed) info.themeColor = _themeColor
-      next.set(s.host, info)
+  function parseStoredServer(stored: StoredServer): ServerInfo | null {
+    const parsed = JSON.parse(stored.featuresJson)
+    if (!parsed) return null
+    const { _iconUrl, _themeColor, ...features } = parsed
+    const info: ServerInfo = {
+      host: stored.host,
+      software: stored.software as ServerInfo['software'],
+      version: stored.version,
+      features,
     }
-    servers.value = next
+    if ('_iconUrl' in parsed) info.iconUrl = _iconUrl
+    if ('_themeColor' in parsed) info.themeColor = _themeColor
+    return info
   }
 
-  async function getServerInfo(host: string): Promise<ServerInfo> {
-    const cached = servers.value.get(host)
-    if (cached) return cached
-
-    const stored = await invoke<StoredServer | null>('get_server', { host })
-    if (stored && Date.now() - stored.updatedAt < CACHE_TTL_MS) {
-      const parsed = JSON.parse(stored.featuresJson)
-      if (parsed) {
-        const { _iconUrl, _themeColor, ...features } = parsed
-        const info: ServerInfo = {
-          host: stored.host,
-          software: stored.software as ServerInfo['software'],
-          version: stored.version,
-          features,
-          iconUrl: _iconUrl,
-          themeColor: _themeColor,
-        }
-        const next = new Map(servers.value)
-        next.set(host, info)
-        servers.value = next
-        return info
-      }
-    }
-
-    const info = await detectServer(host)
+  function setServer(host: string, info: ServerInfo) {
     const next = new Map(servers.value)
     next.set(host, info)
     servers.value = next
+  }
+
+  async function persistServer(info: ServerInfo): Promise<void> {
     await invoke('upsert_server', {
       server: {
         host: info.host,
@@ -78,6 +53,50 @@ export const useServersStore = defineStore('servers', () => {
         updatedAt: Date.now(),
       },
     })
+  }
+
+  function revalidateInBackground(host: string) {
+    detectServer(host)
+      .then((fresh) => {
+        setServer(host, fresh)
+        persistServer(fresh)
+      })
+      .catch(() => {
+        /* offline — keep stale cache */
+      })
+  }
+
+  async function loadCachedServers(): Promise<void> {
+    const stored = await invoke<StoredServer[]>('load_servers')
+    const next = new Map(servers.value)
+    for (const s of stored) {
+      const info = parseStoredServer(s)
+      if (info) next.set(s.host, info)
+    }
+    servers.value = next
+  }
+
+  async function getServerInfo(host: string): Promise<ServerInfo> {
+    const cached = servers.value.get(host)
+    if (cached) return cached
+
+    // Return DB cache immediately if available (SWR: stale-while-revalidate)
+    const stored = await invoke<StoredServer | null>('get_server', { host })
+    if (stored) {
+      const info = parseStoredServer(stored)
+      if (info) {
+        setServer(host, info)
+        if (Date.now() - stored.updatedAt >= CACHE_TTL_MS) {
+          revalidateInBackground(host)
+        }
+        return info
+      }
+    }
+
+    // No DB cache (first login) — network required
+    const info = await detectServer(host)
+    setServer(host, info)
+    await persistServer(info)
     return info
   }
 
