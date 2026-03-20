@@ -207,10 +207,14 @@ watch(searchQuery, (val) => {
   debounceTimer = setTimeout(() => searchLocal(q), 200)
 })
 
-// Re-search when date filters or sort order change
+// Re-search when date filters or sort order change (debounced)
+let filterTimer: ReturnType<typeof setTimeout> | null = null
 watch([sinceDate, untilDate, ascending], () => {
-  const q = confirmedQuery.value || searchQuery.value.trim()
-  if (q) performSearch()
+  if (filterTimer) clearTimeout(filterTimer)
+  filterTimer = setTimeout(() => {
+    const q = confirmedQuery.value || searchQuery.value.trim()
+    if (q) performSearch()
+  }, 400)
 })
 
 async function performSearch() {
@@ -362,6 +366,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
+  if (filterTimer) clearTimeout(filterTimer)
   document.removeEventListener('click', closeRegexGuide)
   disconnect()
 })
