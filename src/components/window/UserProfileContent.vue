@@ -402,6 +402,7 @@ function openFollowList(type: 'following' | 'followers') {
   windowsStore.open('follow-list', {
     accountId: props.accountId,
     userId: user.value.id,
+    username: user.value.username,
     initialTab: type,
   })
 }
