@@ -70,10 +70,10 @@ async function loadHistory() {
         const userHistory = await adapter.api.getChatHistory()
         let roomHistory: ChatMessage[] = []
         try {
-          roomHistory = await invoke<ChatMessage[]>('api_request', {
+          roomHistory = await invoke<ChatMessage[]>('api_get_chat_history', {
             accountId: acc.id,
-            endpoint: 'chat/history',
-            params: { limit: 100, room: true },
+            limit: 100,
+            room: true,
           })
         } catch {
           // room chat not supported
@@ -258,9 +258,8 @@ async function sendMessage() {
     if (currentRoomId.value) params.roomId = currentRoomId.value
     if (attachedFile.value) params.fileId = attachedFile.value.id
 
-    const sent = await invoke<ChatMessage>('api_request', {
+    const sent = await invoke<ChatMessage>('api_create_messaging_message', {
       accountId: conversationAccountId.value,
-      endpoint: 'messaging/messages/create',
       params,
     })
     messageText.value = ''
@@ -353,10 +352,10 @@ async function handleReact(messageId: string, reaction: string) {
   }
 
   try {
-    await invoke('api_request', {
+    await invoke('api_react_chat_message', {
       accountId: conversationAccountId.value,
-      endpoint: 'chat/messages/react',
-      params: { messageId, reaction },
+      messageId,
+      reaction,
     })
     updateMessageReaction(messageId, reaction, true)
   } catch (e) {
@@ -368,10 +367,10 @@ async function handleUnreact(messageId: string, reaction: string) {
   if (!conversationAccountId.value) return
 
   try {
-    await invoke('api_request', {
+    await invoke('api_unreact_chat_message', {
       accountId: conversationAccountId.value,
-      endpoint: 'chat/messages/unreact',
-      params: { messageId, reaction },
+      messageId,
+      reaction,
     })
     updateMessageReaction(messageId, reaction, false)
   } catch (e) {

@@ -171,7 +171,7 @@ export function usePostFormState(
       const userInfo = await invoke<{
         defaultNoteVisibility?: string
         defaultNoteLocalOnly?: boolean
-      }>('api_request', { accountId: acc.id, endpoint: 'i', params: {} })
+      }>('api_get_self', { accountId: acc.id })
       const v = userInfo.defaultNoteVisibility
       if (v && visibilityOptions.some((o) => o.value === v)) {
         visibility.value = v as NoteVisibility

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, ref, watch } from 'vue'
 import type { Clip, NormalizedNote } from '@/adapters/types'
@@ -7,6 +6,7 @@ import {
   getPluginHandlers,
   setPluginAccountContext,
 } from '@/aiscript/plugin-api'
+import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useToast } from '@/stores/toast'
 import { extractThemeVars } from '@/utils/themeVars'
 import { isSafeUrl } from '@/utils/url'
@@ -27,6 +27,7 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const { getOrCreate } = useMultiAccountAdapters()
 
 const showMenu = ref(false)
 const showDeleteConfirm = ref(false)
@@ -133,9 +134,9 @@ async function copyAndClose(text: string) {
 
 async function openClipList() {
   try {
-    clips.value = await invoke<Clip[]>('api_get_clips', {
-      accountId: props.note._accountId,
-    })
+    const adapter = await getOrCreate(props.note._accountId)
+    if (!adapter) return
+    clips.value = await adapter.api.getClips()
     showClipList.value = true
   } catch {
     toast.show('クリップの取得に失敗しました', 'error')
@@ -144,11 +145,9 @@ async function openClipList() {
 
 async function addToClip(clipId: string) {
   try {
-    await invoke('api_request', {
-      accountId: props.note._accountId,
-      endpoint: 'clips/add-note',
-      params: { clipId, noteId: props.note.id },
-    })
+    const adapter = await getOrCreate(props.note._accountId)
+    if (!adapter) return
+    await adapter.api.addNoteToClip(clipId, props.note.id)
     toast.show('クリップに追加しました')
     close()
   } catch {
@@ -158,11 +157,9 @@ async function addToClip(clipId: string) {
 
 async function muteUser() {
   try {
-    await invoke('api_request', {
-      accountId: props.note._accountId,
-      endpoint: 'mute/create',
-      params: { userId: props.note.user.id },
-    })
+    const adapter = await getOrCreate(props.note._accountId)
+    if (!adapter) return
+    await adapter.api.muteUser(props.note.user.id)
     toast.show('ミュートしました')
     close()
   } catch {
@@ -173,14 +170,9 @@ async function muteUser() {
 async function submitReport() {
   if (!reportComment.value.trim()) return
   try {
-    await invoke('api_request', {
-      accountId: props.note._accountId,
-      endpoint: 'users/report-abuse',
-      params: {
-        userId: props.note.user.id,
-        comment: reportComment.value,
-      },
-    })
+    const adapter = await getOrCreate(props.note._accountId)
+    if (!adapter) return
+    await adapter.api.reportUser(props.note.user.id, reportComment.value)
     toast.show('通報しました')
     close()
   } catch {

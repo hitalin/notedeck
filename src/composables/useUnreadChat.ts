@@ -16,11 +16,10 @@ let refCount = 0
 
 async function fetchUnreadCount(accountId: string): Promise<number> {
   try {
-    const result = await invoke<{ count: number }>('api_request', {
+    const result = await invoke<boolean>('api_get_unread_chat', {
       accountId,
-      endpoint: 'messaging/unread',
     })
-    return result.count
+    return result ? 1 : 0
   } catch {
     return 0
   }

@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { computed, onMounted, ref, watch } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
-import type { NormalizedUser, ServerAdapter } from '@/adapters/types'
+import type {
+  FollowRelation,
+  NormalizedUser,
+  ServerAdapter,
+} from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useNavigation } from '@/composables/useNavigation'
@@ -32,18 +35,6 @@ const account = accountsStore.accounts.find((a) => a.id === props.accountId)
 const isOwnProfile = computed(() => account?.userId === props.userId)
 let adapter: ServerAdapter | null = null
 
-interface FollowRelation {
-  id: string
-  followee?: NormalizedUser
-  follower?: NormalizedUser
-}
-
-interface UserRelation {
-  id: string
-  isFollowing: boolean
-  isFollowed: boolean
-}
-
 onMounted(async () => {
   if (!account) return
   try {
@@ -66,23 +57,18 @@ watch(activeTab, () => {
 })
 
 async function loadUsers(untilId?: string) {
-  if (isLoading.value) return
+  if (isLoading.value || !adapter) return
   isLoading.value = true
   try {
-    const endpoint =
-      activeTab.value === 'following' ? 'users/following' : 'users/followers'
-    const params: Record<string, unknown> = {
-      userId: props.userId,
-      limit: 30,
-    }
-    if (untilId) params.untilId = untilId
-    const result = await invoke<FollowRelation[]>('api_request', {
-      accountId: props.accountId,
-      endpoint,
-      params,
-    })
+    const fetchFn =
+      activeTab.value === 'following'
+        ? adapter.api.getFollowing.bind(adapter.api)
+        : adapter.api.getFollowers.bind(adapter.api)
+    const result = await fetchFn(props.userId, { limit: 30, untilId })
     const fetched = result
-      .map((r) => (activeTab.value === 'following' ? r.followee : r.follower))
+      .map((r: FollowRelation) =>
+        activeTab.value === 'following' ? r.followee : r.follower,
+      )
       .filter((u): u is NormalizedUser => u != null)
     if (fetched.length === 0) {
       hasMore.value = false
@@ -106,13 +92,10 @@ async function loadUsers(untilId?: string) {
 }
 
 async function fetchRelations(batch: NormalizedUser[]) {
+  if (!adapter) return
   try {
     const ids = batch.map((u) => u.id)
-    const relations = await invoke<UserRelation[]>('api_request', {
-      accountId: props.accountId,
-      endpoint: 'users/relation',
-      params: { userId: ids },
-    })
+    const relations = await adapter.api.getUserRelations(ids)
     const newFollowing = new Set(followingIds.value)
     const newFollowed = new Set(followedByIds.value)
     for (const r of relations) {

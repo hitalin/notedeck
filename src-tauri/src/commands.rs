@@ -1113,6 +1113,459 @@ pub fn api_get_cache_date_range(
     db.get_cache_date_range(&account_id, &timeline_type)
 }
 
+// --- Pin/Unpin ---
+
+#[tauri::command]
+pub async fn api_pin_note(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    note_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.pin_note(&host, &token, &note_id).await
+}
+
+#[tauri::command]
+pub async fn api_unpin_note(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    note_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.unpin_note(&host, &token, &note_id).await
+}
+
+#[tauri::command]
+pub async fn api_get_user_pinned_note_ids(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_id: String,
+) -> Result<Vec<String>> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_user_pinned_note_ids(&host, &token, &user_id)
+        .await
+}
+
+// --- Mute/Block ---
+
+#[tauri::command]
+pub async fn api_mute_user(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.mute_user(&host, &token, &user_id).await
+}
+
+#[tauri::command]
+pub async fn api_unmute_user(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.unmute_user(&host, &token, &user_id).await
+}
+
+#[tauri::command]
+pub async fn api_block_user(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.block_user(&host, &token, &user_id).await
+}
+
+#[tauri::command]
+pub async fn api_unblock_user(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.unblock_user(&host, &token, &user_id).await
+}
+
+// --- Report ---
+
+#[tauri::command]
+pub async fn api_report_user(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_id: String,
+    comment: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.report_user(&host, &token, &user_id, &comment).await
+}
+
+// --- Clip operations ---
+
+#[tauri::command]
+pub async fn api_add_note_to_clip(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    clip_id: String,
+    note_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .add_note_to_clip(&host, &token, &clip_id, &note_id)
+        .await
+}
+
+// --- User list operations ---
+
+#[tauri::command]
+pub async fn api_add_user_to_list(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    list_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .add_user_to_list(&host, &token, &list_id, &user_id)
+        .await
+}
+
+#[tauri::command]
+pub async fn api_remove_user_from_list(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    list_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .remove_user_from_list(&host, &token, &list_id, &user_id)
+        .await
+}
+
+// --- Follow list & relations ---
+
+#[tauri::command]
+pub async fn api_get_following(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_id: String,
+    limit: Option<i64>,
+    until_id: Option<String>,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_following(
+            &host,
+            &token,
+            &user_id,
+            limit.unwrap_or(30).clamp(1, 100),
+            until_id.as_deref(),
+        )
+        .await
+}
+
+#[tauri::command]
+pub async fn api_get_followers(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_id: String,
+    limit: Option<i64>,
+    until_id: Option<String>,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_followers(
+            &host,
+            &token,
+            &user_id,
+            limit.unwrap_or(30).clamp(1, 100),
+            until_id.as_deref(),
+        )
+        .await
+}
+
+#[tauri::command]
+pub async fn api_get_user_relations(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_ids: Vec<String>,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_user_relations(&host, &token, &user_ids).await
+}
+
+// --- Notifications ---
+
+#[tauri::command]
+pub async fn api_get_unread_notification_count(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+) -> Result<i64> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_unread_notification_count(&host, &token)
+        .await
+}
+
+#[tauri::command]
+pub async fn api_mark_all_notifications_as_read(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .mark_all_notifications_as_read(&host, &token)
+        .await
+}
+
+// --- Unread chat ---
+
+#[tauri::command]
+pub async fn api_get_unread_chat(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+) -> Result<bool> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_unread_chat(&host, &token).await
+}
+
+// --- Self (current user) ---
+
+#[tauri::command]
+pub async fn api_get_self(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_self(&host, &token).await
+}
+
+// --- Drive ---
+
+#[tauri::command]
+pub async fn api_get_drive_folders(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    folder_id: Option<String>,
+    limit: Option<i64>,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_drive_folders(
+            &host,
+            &token,
+            folder_id.as_deref(),
+            limit.unwrap_or(30).clamp(1, 100),
+        )
+        .await
+}
+
+#[tauri::command]
+pub async fn api_get_drive_files(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    folder_id: Option<String>,
+    limit: Option<i64>,
+    file_type: Option<String>,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_drive_files(
+            &host,
+            &token,
+            folder_id.as_deref(),
+            limit.unwrap_or(30).clamp(1, 100),
+            file_type.as_deref(),
+        )
+        .await
+}
+
+#[tauri::command]
+pub async fn api_delete_drive_file(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    file_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.delete_drive_file(&host, &token, &file_id).await
+}
+
+// --- Follow requests ---
+
+#[tauri::command]
+pub async fn api_get_follow_requests(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    limit: Option<i64>,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_follow_requests(&host, &token, limit.unwrap_or(30).clamp(1, 100))
+        .await
+}
+
+// --- Explore (users/roles) ---
+
+#[tauri::command]
+pub async fn api_search_users(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    query: Option<String>,
+    origin: Option<String>,
+    sort: Option<String>,
+    state: Option<String>,
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .search_users(
+            &host,
+            &token,
+            query.as_deref(),
+            origin.as_deref(),
+            sort.as_deref(),
+            state.as_deref(),
+            limit.unwrap_or(30).clamp(1, 100),
+            offset,
+        )
+        .await
+}
+
+#[tauri::command]
+pub async fn api_get_roles(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_roles(&host, &token).await
+}
+
+#[tauri::command]
+pub async fn api_get_role_users(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    role_id: String,
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_role_users(
+            &host,
+            &token,
+            &role_id,
+            limit.unwrap_or(30).clamp(1, 100),
+            offset,
+        )
+        .await
+}
+
+// --- Announcements ---
+
+#[tauri::command]
+pub async fn api_get_announcements(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    limit: Option<i64>,
+    is_active: Option<bool>,
+) -> Result<serde_json::Value> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_announcements(
+            &host,
+            &token,
+            limit.unwrap_or(30).clamp(1, 100),
+            is_active.unwrap_or(true),
+        )
+        .await
+}
+
+#[tauri::command]
+pub async fn api_read_announcement(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    announcement_id: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .read_announcement(&host, &token, &announcement_id)
+        .await
+}
+
+// --- Chat reactions ---
+
+#[tauri::command]
+pub async fn api_react_chat_message(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    message_id: String,
+    reaction: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .react_chat_message(&host, &token, &message_id, &reaction)
+        .await
+}
+
+#[tauri::command]
+pub async fn api_unreact_chat_message(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    message_id: String,
+    reaction: String,
+) -> Result<()> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .unreact_chat_message(&host, &token, &message_id, &reaction)
+        .await
+}
+
+// --- Legacy messaging ---
+
+#[tauri::command]
+pub async fn api_create_messaging_message(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<ChatMessage> {
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.create_messaging_message(&host, &token, params).await
+}
+
 // --- Generic API proxy ---
 
 #[tauri::command]
@@ -1430,10 +1883,11 @@ pub async fn api_get_chat_history(
     client: State<'_, Arc<MisskeyClient>>,
     account_id: String,
     limit: Option<i64>,
+    room: Option<bool>,
 ) -> Result<Vec<ChatMessage>> {
     let (host, token) = get_credentials(&db, &account_id)?;
     client
-        .get_chat_history(&host, &token, limit.unwrap_or(100))
+        .get_chat_history(&host, &token, limit.unwrap_or(100), room.unwrap_or(false))
         .await
 }
 
