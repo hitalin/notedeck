@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import {
   computed,
   defineAsyncComponent,
   nextTick,
   onMounted,
-  onUnmounted,
   ref,
   useCssModule,
   watch,
@@ -19,20 +17,14 @@ import MkAd from '@/components/common/MkAd.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import { useAds } from '@/composables/useAds'
-import { useNavigation } from '@/composables/useNavigation'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
-import { useColumnSetup } from '@/composables/useColumnSetup'
-import { useColumnVisible } from '@/composables/useColumnVisibility'
-import { useNoteFocus } from '@/composables/useNoteFocus'
-import { useNoteList } from '@/composables/useNoteList'
-import { useNoteSound } from '@/composables/useNoteSound'
-import { usePullToRefresh } from '@/composables/usePullToRefresh'
-import { useStreamingBatch } from '@/composables/useStreamingBatch'
+import type { NoteColumnConfig } from '@/composables/useNoteColumn'
+import { useNoteColumn } from '@/composables/useNoteColumn'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -45,9 +37,6 @@ import {
   detectFilterKeys,
   findModeKeyForTimeline,
 } from '@/utils/customTimelines'
-import { dedup } from '@/utils/dedup'
-import { AppError } from '@/utils/errors'
-import { insertIntoSorted } from '@/utils/sortNotes'
 import { matchesFilter } from '@/utils/timelineFilter'
 import DeckColumn from './DeckColumn.vue'
 import TimelineFilterPopup from './TimelineFilterPopup.vue'
@@ -56,162 +45,94 @@ const props = defineProps<{
   column: DeckColumnType
 }>()
 
-const noteScroller = ref<{ getElement: () => HTMLElement | null } | null>(null)
-
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
+
+const tlType = ref<TimelineType>(props.column.tl || 'home')
+
+// --- Filter ---
+const columnFilters = computed<TimelineFilter>(() => props.column.filters ?? {})
+
+function buildTimelineOptions() {
+  const filters = columnFilters.value
+  const hasFilters = Object.keys(filters).length > 0
+  return {
+    ...(hasFilters ? { filters } : {}),
+  }
+}
+
+// --- useNoteColumn (core data management) ---
+
+const noteColumnConfig: NoteColumnConfig = {
+  getColumn: () => props.column,
+  fetch: async (adapter, opts) => {
+    try {
+      return await adapter.api.getTimeline(tlType.value, {
+        ...opts,
+        ...buildTimelineOptions(),
+      })
+    } catch (e) {
+      // Handle "disabled" timeline errors: refresh policies and switch TL
+      if (String(e).includes('disabled')) {
+        await refreshPolicies()
+        if (!availableStandardTl.value.includes(tlType.value)) {
+          switchTl('home')
+          return []
+        }
+      }
+      throw e
+    }
+  },
+  cache: {
+    getKey: () => tlType.value,
+  },
+  streaming: {
+    subscribe: (adapter, enqueue, callbacks) =>
+      adapter.stream.subscribeTimeline(
+        tlType.value,
+        (note: NormalizedNote) => {
+          if (!matchesFilter(note, columnFilters.value, tlType.value)) return
+          enqueue(note)
+        },
+        callbacks,
+      ),
+  },
+  filterCachedNotes: (cached) =>
+    cached.filter((n) => matchesFilter(n, columnFilters.value, tlType.value)),
+}
+
 const {
   account,
   columnThemeVars,
   serverIconUrl,
   isLoading,
+  isOffline,
   error,
-  initAdapter,
-  getAdapter,
-  setSubscription,
-  disposeSubscription,
-  disconnect,
+  notes,
+  focusedNoteId,
+  pendingNotes,
+  animateEnter,
   postForm,
   handlers,
-  scroller,
-  onScroll,
-} = useColumnSetup(() => props.column, {
-  isOffline: () => isOffline.value,
-})
+  noteScrollerRef,
+  scrollToTop,
+  handleScroll,
+  handlePosted,
+  removeNote,
+  isPulling,
+  isPulledEnough,
+  isRefreshing,
+  pullDistance,
+  displayHeight,
+  reconnect,
+} = useNoteColumn(noteColumnConfig)
 
-// Sync NoteScroller's scroll container element to the scroller ref used by composables
-watch(
-  noteScroller,
-  () => {
-    scroller.value = noteScroller.value?.getElement() ?? null
-  },
-  { flush: 'post' },
-)
-
-const { navigateToNote } = useNavigation()
+// --- Ads ---
 const { fetchAds, pickAd, shouldShowAd, muteAd, serverHost } = useAds(
   () => props.column.accountId ?? undefined,
 )
-const {
-  notes,
-  noteIds,
-  setNotes,
-  mergeIfSameList,
-  onNoteUpdate,
-  handlePosted,
-  removeNote,
-} = useNoteList({
-  getMyUserId: () => account.value?.userId,
-  getAdapter,
-  deleteHandler: handlers.delete,
-  closePostForm: postForm.close,
-})
 
-const noteSound = useNoteSound(() => account.value?.host)
-const {
-  pendingNotes,
-  isAtTop,
-  animateEnter,
-  enqueueNote,
-  handleScroll: batchHandleScroll,
-  scrollToTop,
-  removePending,
-  resetBatch,
-  setPaused,
-} = useStreamingBatch({
-  notes,
-  noteIds,
-  scroller,
-  onNewNotes: () => {
-    if (!props.column.soundMuted) noteSound.play()
-  },
-})
-
-// Pause streaming batch when column scrolls off-screen; catch up when visible again
-const { isVisible: columnVisible } = useColumnVisible(props.column.id)
-let _wasHidden = false
-let _lastCatchUpAt = 0
-watch(columnVisible, async (visible) => {
-  setPaused(!visible)
-  if (visible && _wasHidden) {
-    _wasHidden = false
-    const now = Date.now()
-    if (now - _lastCatchUpAt < 10_000) return
-    _lastCatchUpAt = now
-    const adapter = getAdapter()
-    if (!adapter || notes.value.length === 0) return
-    try {
-      const fetched = await adapter.api.getTimeline(
-        tlType.value,
-        buildTimelineOptions(),
-      )
-      if (fetched.length > 0) {
-        const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-        if (newNotes.length > 0) {
-          setNotes(insertIntoSorted(notes.value, newNotes))
-        }
-      }
-    } catch {
-      // ignore catch-up errors
-    }
-  } else if (!visible) {
-    _wasHidden = true
-  }
-})
-
-const { focusedNoteId } = useNoteFocus(
-  props.column.id,
-  notes,
-  scroller,
-  handlers,
-  (note) => navigateToNote(note._accountId, note.id),
-  props.column.accountId ?? undefined,
-)
-
-/** True when API is unreachable and displaying cached notes */
-const isOffline = ref(false)
-
-const tlType = ref<TimelineType>(props.column.tl || 'home')
-
-// Tab slide indicator
-const $style = useCssModule()
-const tabsRef = ref<HTMLElement | null>(null)
-const tabIndicatorStyle = ref({ left: '0px', width: '0px', opacity: '0' })
-
-function updateTabIndicator() {
-  if (!tabsRef.value) return
-  const activeTab = tabsRef.value.querySelector(
-    `.tl-tab.${$style.active}`,
-  ) as HTMLElement | null
-  if (!activeTab) {
-    tabIndicatorStyle.value = { left: '0px', width: '0px', opacity: '0' }
-    return
-  }
-  tabIndicatorStyle.value = {
-    left: `${activeTab.offsetLeft}px`,
-    width: `${activeTab.offsetWidth}px`,
-    opacity: '1',
-  }
-}
-
-watch(tlType, () => nextTick(updateTabIndicator))
-onMounted(() => nextTick(updateTabIndicator))
-
-// When account loses token (logout with keep-data), switch to cache display
-watch(
-  () => account.value?.hasToken,
-  async (hasToken, prev) => {
-    if (prev && hasToken === false) {
-      disposeSubscription()
-      resetBatch()
-      const filtered = await loadFilteredCache()
-      if (filtered.length > 0) setNotes(filtered)
-      isOffline.value = true
-      isLoading.value = false
-    }
-  },
-)
-
+// --- TL type definitions ---
 const TL_TYPES: { value: TimelineType; label: string }[] = [
   { value: 'home', label: 'ホーム' },
   { value: 'local', label: 'ローカル' },
@@ -266,11 +187,10 @@ function getTlIcon(type: string): string {
   return ct?.icon ?? TL_ICONS.home ?? ''
 }
 
-// --- Filter ---
+// --- Filter UI ---
 const showFilterMenu = ref(false)
 const filterBtnRef = ref<HTMLButtonElement | null>(null)
 const filterPopupPos = ref({ top: 0, left: 0 })
-
 const availableFilterKeys = ref<(keyof TimelineFilter)[]>([])
 
 async function refreshFilterKeys() {
@@ -281,8 +201,6 @@ async function refreshFilterKeys() {
   }
   availableFilterKeys.value = await detectFilterKeys(host, tlType.value)
 }
-
-const columnFilters = computed<TimelineFilter>(() => props.column.filters ?? {})
 
 const hasActiveFilter = computed(() => {
   const f = columnFilters.value
@@ -309,192 +227,54 @@ function toggleFilter(key: keyof TimelineFilter) {
   const current = columnFilters.value[key]
   const next = { ...columnFilters.value }
   if (key === 'withFiles') {
-    // withFiles: undefined (off) → true (files only) → undefined
     next[key] = current === true ? undefined : true
   } else {
-    // withRenotes, withReplies, withBots, withSensitive:
-    // undefined (include) → false (exclude) → undefined
     next[key] = current === false ? undefined : false
   }
-  // Clean up undefined keys
   for (const k of Object.keys(next) as (keyof TimelineFilter)[]) {
     if (next[k] === undefined) delete next[k]
   }
   deckStore.updateColumn(props.column.id, {
     filters: Object.keys(next).length > 0 ? next : undefined,
   })
-  // Re-subscribe to apply filter
-  resubscribe()
+  reconnect()
 }
 
-// --- Shared helpers ---
+// --- Tab slide indicator ---
+const $style = useCssModule()
+const tabsRef = ref<HTMLElement | null>(null)
+const tabIndicatorStyle = ref({ left: '0px', width: '0px', opacity: '0' })
 
-async function fetchCachedNotes(): Promise<NormalizedNote[]> {
-  if (!props.column.accountId) return []
-  try {
-    return await invoke<NormalizedNote[]>('api_get_cached_timeline', {
-      accountId: props.column.accountId,
-      timelineType: tlType.value,
-      limit: 40,
-    })
-  } catch {
-    return []
-  }
-}
-
-/** Load cache and apply current column filters */
-async function loadFilteredCache(): Promise<NormalizedNote[]> {
-  const cached = await fetchCachedNotes()
-  return cached.filter((n) =>
-    matchesFilter(n, columnFilters.value, tlType.value),
-  )
-}
-
-function buildTimelineOptions() {
-  const filters = columnFilters.value
-  const hasFilters = Object.keys(filters).length > 0
-  return {
-    ...(hasFilters ? { filters } : {}),
-  }
-}
-
-/** Subscribe to streaming timeline with current filter */
-function subscribeToTimeline(
-  adapter: NonNullable<ReturnType<typeof getAdapter>>,
-) {
-  setSubscription(
-    adapter.stream.subscribeTimeline(
-      tlType.value,
-      (note: NormalizedNote) => {
-        if (!matchesFilter(note, columnFilters.value, tlType.value)) return
-        enqueueNote(note)
-      },
-      {
-        onNoteUpdated: (event) => {
-          if (event.type === 'deleted') removePending(event.noteId)
-          onNoteUpdate(event)
-        },
-      },
-    ),
-  )
-}
-
-/** Shared error handling for connect/resubscribe */
-async function handleConnectError(e: unknown) {
-  const err = AppError.from(e)
-  if (String(err.message).includes('disabled')) {
-    await refreshPolicies()
-    if (!availableStandardTl.value.includes(tlType.value)) {
-      switchTl('home')
-      return
-    }
-  }
-  if (notes.value.length > 0) {
-    isOffline.value = true
-  } else {
-    const filtered = await loadFilteredCache()
-    if (filtered.length > 0) {
-      setNotes(filtered)
-      isOffline.value = true
-    } else {
-      error.value = err
-    }
-  }
-}
-
-// --- Connection lifecycle ---
-
-async function connect(useCache = false) {
-  error.value = null
-  isLoading.value = true
-
-  // Load cache first when explicitly requested or when account has no token
-  const shouldLoadCache = useCache || !account.value || !account.value.hasToken
-  if (shouldLoadCache) {
-    const filtered = await loadFilteredCache()
-    if (filtered.length > 0) setNotes(filtered)
-  }
-
-  // Logged-out or unresolved account: show cached notes in read-only mode
-  if (!account.value || !account.value.hasToken) {
-    isOffline.value = true
-    isLoading.value = false
+function updateTabIndicator() {
+  if (!tabsRef.value) return
+  const activeTab = tabsRef.value.querySelector(
+    `.tl-tab.${$style.active}`,
+  ) as HTMLElement | null
+  if (!activeTab) {
+    tabIndicatorStyle.value = { left: '0px', width: '0px', opacity: '0' }
     return
   }
-
-  try {
-    const adapter = await initAdapter()
-    if (!adapter) return
-
-    // Start streaming (connect + subscribe in single IPC round-trip)
-    adapter.stream.connect()
-    adapter.stream.on('disconnected', () => {
-      isOffline.value = true
-    })
-    adapter.stream.on('reconnecting', () => {
-      isOffline.value = true
-    })
-    adapter.stream.on('connected', () => {
-      isOffline.value = false
-    })
-    subscribeToTimeline(adapter)
-    noteSound.warmup()
-
-    const dedupKey = `${props.column.accountId}:timeline:${tlType.value}`
-    const fetched = await dedup(dedupKey, () =>
-      adapter.api.getTimeline(tlType.value, buildTimelineOptions()),
-    )
-
-    if (fetched.length > 0) {
-      if (useCache || notes.value.length === 0) {
-        if (!mergeIfSameList(fetched)) setNotes(fetched)
-      } else {
-        const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-        if (newNotes.length > 0)
-          setNotes(insertIntoSorted(notes.value, newNotes))
-      }
-    }
-    isOffline.value = false
-  } catch (e) {
-    await handleConnectError(e)
-  } finally {
-    isLoading.value = false
+  tabIndicatorStyle.value = {
+    left: `${activeTab.offsetLeft}px`,
+    width: `${activeTab.offsetWidth}px`,
+    opacity: '1',
   }
 }
 
-/** Re-subscribe and refetch without full stream reconnect (for filter/policy changes) */
-async function resubscribe() {
-  disposeSubscription()
-  resetBatch()
-  setNotes([])
-  isLoading.value = true
+watch(tlType, () => nextTick(updateTabIndicator))
+onMounted(() => nextTick(updateTabIndicator))
 
-  if (!account.value || !account.value.hasToken) {
-    const filtered = await loadFilteredCache()
-    if (filtered.length > 0) setNotes(filtered)
-    isOffline.value = true
-    isLoading.value = false
-    return
-  }
+// --- TL switching ---
 
-  try {
-    const adapter = getAdapter() ?? (await initAdapter())
-    if (!adapter) return
-
-    subscribeToTimeline(adapter)
-
-    const dedupKey = `${props.column.accountId}:timeline:${tlType.value}`
-    const fetched = await dedup(dedupKey, () =>
-      adapter.api.getTimeline(tlType.value, buildTimelineOptions()),
-    )
-    if (fetched.length > 0) setNotes(fetched)
-    isOffline.value = false
-  } catch (e) {
-    await handleConnectError(e)
-  } finally {
-    isLoading.value = false
-  }
+async function switchTl(type: TimelineType) {
+  if (type === tlType.value) return
+  tlType.value = type
+  deckStore.updateColumn(props.column.id, { tl: type })
+  refreshFilterKeys()
+  await reconnect()
 }
+
+// --- Policies ---
 
 async function refreshPolicies() {
   const accountId = props.column.accountId
@@ -517,121 +297,10 @@ async function refreshPolicies() {
   tlModes.value = availability.modes
 }
 
-async function switchTl(type: TimelineType) {
-  if (type === tlType.value) return
-  setPaused(false)
-  disconnect()
-  resetBatch()
-  isLoading.value = true
-  setNotes([])
-  tlType.value = type
-  deckStore.updateColumn(props.column.id, { tl: type })
-  refreshFilterKeys()
-  await connect(false)
-}
-
-async function loadMore() {
-  if (isLoading.value || notes.value.length === 0) return
-  const lastNote = notes.value.at(-1)
-  if (!lastNote) return
-
-  // Offline mode: load from cache
-  if (isOffline.value) {
-    isLoading.value = true
-    try {
-      if (props.column.accountId) {
-        const older = await invoke<NormalizedNote[]>(
-          'api_get_cached_timeline_before',
-          {
-            accountId: props.column.accountId,
-            timelineType: tlType.value,
-            before: lastNote.createdAt,
-            limit: 40,
-          },
-        )
-        if (older.length > 0) setNotes(insertIntoSorted(notes.value, older))
-      }
-    } catch {
-      /* cache read failure is non-critical */
-    } finally {
-      isLoading.value = false
-    }
-    return
-  }
-
-  // Normal mode: load from server
-  const adapter = getAdapter()
-  if (!adapter) return
-  isLoading.value = true
-  try {
-    const filters = columnFilters.value
-    const hasFilters = Object.keys(filters).length > 0
-    const older = await adapter.api.getTimeline(tlType.value, {
-      untilId: lastNote.id,
-      ...(hasFilters ? { filters } : {}),
-    })
-    setNotes(insertIntoSorted(notes.value, older))
-  } catch {
-    // API failed: switch to offline cache mode
-    isOffline.value = true
-    if (props.column.accountId) {
-      try {
-        const older = await invoke<NormalizedNote[]>(
-          'api_get_cached_timeline_before',
-          {
-            accountId: props.column.accountId,
-            timelineType: tlType.value,
-            before: lastNote.createdAt,
-            limit: 40,
-          },
-        )
-        if (older.length > 0) setNotes(insertIntoSorted(notes.value, older))
-      } catch {
-        /* fallback failure */
-      }
-    }
-  } finally {
-    isLoading.value = false
-  }
-}
-
-function handleScroll() {
-  batchHandleScroll()
-  onScroll(loadMore)
-}
-
-async function pullRefresh() {
-  const adapter = getAdapter()
-  if (!adapter || !account.value) return
-  const sinceId = notes.value[0]?.id
-  try {
-    const fetched = await adapter.api.getTimeline(tlType.value, {
-      ...(sinceId ? { sinceId } : {}),
-      ...buildTimelineOptions(),
-    })
-    if (sinceId && fetched.length > 0) {
-      const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-      if (newNotes.length > 0) {
-        setNotes(insertIntoSorted(notes.value, newNotes))
-      }
-    } else if (fetched.length > 0) {
-      setNotes(fetched)
-    }
-    isOffline.value = false
-  } catch {
-    isOffline.value = true
-  }
-  scrollToTop()
-}
-
-const { isPulling, isPulledEnough, isRefreshing, pullDistance, displayHeight } =
-  usePullToRefresh(scroller, pullRefresh)
-
-// Swipe to switch timeline tabs
+// --- Swipe to switch timeline tabs ---
 useSwipeTab(
-  scroller,
+  noteScrollerRef,
   () => {
-    // swipe left → next tab
     const types = allTlTypes.value
     const idx = types.findIndex((t) => t.value === tlType.value)
     const next = idx >= 0 && idx < types.length - 1 ? types[idx + 1] : undefined
@@ -642,7 +311,6 @@ useSwipeTab(
     return false
   },
   () => {
-    // swipe right → previous tab
     const types = allTlTypes.value
     const idx = types.findIndex((t) => t.value === tlType.value)
     const prev = idx > 0 ? types[idx - 1] : undefined
@@ -654,6 +322,7 @@ useSwipeTab(
   },
 )
 
+// --- Mode version watch ---
 watch(
   () => accountsStore.modeVersion,
   async () => {
@@ -661,68 +330,23 @@ watch(
     if (!availableStandardTl.value.includes(tlType.value)) {
       switchTl('home')
     } else {
-      await resubscribe()
+      await reconnect()
     }
   },
 )
 
-let lastResumeAt = 0
-
-async function onResume() {
-  const now = Date.now()
-  if (now - lastResumeAt < 3000) return
-  lastResumeAt = now
-
-  // Logged-out: skip API, no-op (cache is already loaded)
-  if (account.value && !account.value.hasToken) return
-
-  const adapter = getAdapter()
-  if (!adapter || !account.value) return
-
-  // Run cache fetch and API fetch in parallel (always fetch latest)
-  const cachePromise = loadFilteredCache()
-  let apiFailed = false
-  const apiPromise = adapter.api
-    .getTimeline(tlType.value, buildTimelineOptions())
-    .catch(() => {
-      apiFailed = true
-      return [] as NormalizedNote[]
-    })
-
-  const [filteredCache, fetched] = await Promise.all([cachePromise, apiPromise])
-  isOffline.value = apiFailed
-
-  // Merge results: API results take priority, then cache
-  const allNew = [...fetched, ...filteredCache].filter(
-    (n) => !noteIds.has(n.id),
-  )
-  if (allNew.length > 0) {
-    // Deduplicate by id (API results first)
-    const seen = new Set<string>()
-    const deduped = allNew.filter((n) => {
-      if (seen.has(n.id)) return false
-      seen.add(n.id)
-      return true
-    })
-    setNotes(insertIntoSorted(notes.value, deduped))
-  }
-}
-
+// --- Startup: detect policies and custom TLs ---
 onMounted(async () => {
-  window.addEventListener('deck-resume', onResume)
   const host = account.value?.host
   const accountId = props.column.accountId
-  // Clear stale policy cache so external mode changes are reflected
   if (accountId) clearAvailableTlCache(accountId)
   fetchAds()
-  connect(true)
   if (host && accountId) {
     const [ct, , availability] = await Promise.all([
       detectCustomTimelines(host),
       refreshFilterKeys(),
       detectAvailableTimelines(accountId),
     ])
-    // Only show mode-gated custom TLs when their mode is ON
     customTimelines.value = ct.filter((c) => {
       if (!availability.denied.has(c.type)) return true
       const modeKey = findModeKeyForTimeline(c.type, availability.modes)
@@ -738,12 +362,6 @@ onMounted(async () => {
       switchTl('home')
     }
   }
-})
-
-onUnmounted(() => {
-  window.removeEventListener('deck-resume', onResume)
-  disconnect()
-  resetBatch()
 })
 </script>
 
@@ -845,7 +463,7 @@ onUnmounted(() => {
         </button>
 
         <NoteScroller
-          ref="noteScroller"
+          ref="noteScrollerRef"
           :items="notes"
           :focused-id="focusedNoteId"
           :animate="animateEnter"
