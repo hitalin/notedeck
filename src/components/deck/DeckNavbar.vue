@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { computed, onUnmounted, ref, useCssModule, watch } from 'vue'
-import type { StreamConnectionState } from '@/adapters/types'
 import { useNavigation } from '@/composables/useNavigation'
 import { useUnreadChat } from '@/composables/useUnreadChat'
 import { useUnreadNotifications } from '@/composables/useUnreadNotifications'
@@ -66,14 +65,33 @@ const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const streamingStore = useStreamingStore()
 
-// Per-account server icon URL
 function getServerIconUrl(host: string): string {
   return serversStore.getServer(host)?.iconUrl || `https://${host}/favicon.ico`
 }
 
-// Per-account streaming connection state
-function getAccountStreamState(accountId: string): StreamConnectionState {
-  return streamingStore.getState(accountId) ?? 'initializing'
+watch(
+  () => accountsStore.accounts.length,
+  () => {
+    for (const acc of accountsStore.accounts) {
+      if (acc.hasToken) {
+        streamingStore.fetchOnlineStatus(acc.id, acc.userId)
+      } else {
+        streamingStore.disconnect(acc.id)
+      }
+    }
+  },
+  { immediate: true },
+)
+
+const statusClassMap: Record<string, string> = {
+  online: $style.statusOnline,
+  active: $style.statusActive,
+  offline: $style.statusOffline,
+  unknown: $style.statusUnknown,
+}
+
+function onlineStatusClass(accountId: string): string | undefined {
+  return statusClassMap[streamingStore.getState(accountId)]
 }
 
 // Navbar resize
@@ -351,7 +369,7 @@ defineExpose({
                 <span :class="$style.label">設定</span>
                 <span v-if="props.updateAvailable" :class="$style.updateDot" />
               </button>
-              <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" />
+              <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" @close-all="emit('update:showSettingsMenu', false); emit('update:mobileDrawerOpen', false)" />
             </div>
             <div :class="$style.divider" />
           </div>
@@ -394,7 +412,7 @@ defineExpose({
                   :title="acc.host"
                 />
                 <span
-                  :class="[$style.onlineIndicator, $style[`status_${getAccountStreamState(acc.id)}`]]"
+                  :class="[$style.onlineIndicator, onlineStatusClass(acc.id)]"
                 />
               </div>
               <span :class="$style.label">@{{ acc.username }}@{{ acc.host }}</span>
@@ -599,17 +617,20 @@ defineExpose({
   box-shadow: 0 0 0 2px var(--nd-navBg);
 }
 
-.status_connected {
+.statusOnline {
   background: var(--nd-statusOnline);
 }
 
-.status_reconnecting,
-.status_initializing {
+.statusActive {
   background: var(--nd-statusActive);
 }
 
-.status_disconnected {
+.statusOffline {
   background: var(--nd-statusOffline);
+}
+
+.statusUnknown {
+  background: var(--nd-statusUnknown);
 }
 
 .addAccount {

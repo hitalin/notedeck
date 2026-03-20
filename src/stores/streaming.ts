@@ -1,86 +1,49 @@
+import { invoke } from '@tauri-apps/api/core'
 import { defineStore } from 'pinia'
-import { type Ref, ref, shallowRef } from 'vue'
-import type {
-  ChannelSubscription,
-  ServerAdapter,
-  StreamConnectionState,
-  TimelineType,
-} from '@/adapters/types'
+import { ref } from 'vue'
+import type { NormalizedUserDetail } from '@/adapters/types'
 
-interface ConnectionEntry {
-  accountId: string
-  adapter: ServerAdapter
-  state: Ref<StreamConnectionState>
-  subscriptions: ChannelSubscription[]
-}
+export type OnlineStatus = 'online' | 'active' | 'offline' | 'unknown'
 
 export const useStreamingStore = defineStore('streaming', () => {
-  const connections = shallowRef(new Map<string, ConnectionEntry>())
+  /** accountId → OnlineStatus */
+  const states = ref<Record<string, OnlineStatus>>({})
 
-  function connect(accountId: string, adapter: ServerAdapter): void {
-    if (connections.value.has(accountId)) return
-
-    const entry: ConnectionEntry = {
-      accountId,
-      adapter,
-      state: ref<StreamConnectionState>('initializing'),
-      subscriptions: [],
-    }
-
-    adapter.stream.on('connected', () => {
-      entry.state.value = 'connected'
-    })
-    adapter.stream.on('disconnected', () => {
-      entry.state.value = 'disconnected'
-    })
-    adapter.stream.on('reconnecting', () => {
-      entry.state.value = 'reconnecting'
-    })
-
-    adapter.stream.connect()
-    connections.value.set(accountId, entry)
-  }
-
-  function disconnect(accountId: string): void {
-    const entry = connections.value.get(accountId)
-    if (!entry) return
-
-    for (const sub of entry.subscriptions) {
-      sub.dispose()
-    }
-    entry.adapter.stream.disconnect()
-    connections.value.delete(accountId)
-  }
-
-  function disconnectAll(): void {
-    for (const accountId of connections.value.keys()) {
-      disconnect(accountId)
-    }
-  }
-
-  function subscribe(
+  /** Fetch onlineStatus from users/show API for a given account */
+  async function fetchOnlineStatus(
     accountId: string,
-    type: TimelineType,
-    onNote: Parameters<ServerAdapter['stream']['subscribeTimeline']>[1],
-  ): ChannelSubscription | null {
-    const entry = connections.value.get(accountId)
-    if (!entry) return null
-
-    const sub = entry.adapter.stream.subscribeTimeline(type, onNote)
-    entry.subscriptions.push(sub)
-    return sub
+    userId: string,
+  ): Promise<void> {
+    try {
+      const detail = await invoke<NormalizedUserDetail>('api_get_user_detail', {
+        accountId,
+        userId,
+      })
+      const status = detail.onlineStatus
+      // API success = server reachable.
+      // 'unknown' means hidden status — for own account, treat as 'online'
+      states.value = {
+        ...states.value,
+        [accountId]: status && status !== 'unknown' ? status : 'online',
+      }
+    } catch {
+      states.value = { ...states.value, [accountId]: 'unknown' }
+    }
   }
 
-  function getState(accountId: string): StreamConnectionState | null {
-    return connections.value.get(accountId)?.state.value ?? null
+  function getState(accountId: string): OnlineStatus {
+    return states.value[accountId] ?? 'unknown'
+  }
+
+  /** Mark an account as disconnected (e.g. on logout) */
+  function disconnect(accountId: string): void {
+    states.value = { ...states.value, [accountId]: 'offline' }
   }
 
   return {
-    connections,
-    connect,
-    disconnect,
-    disconnectAll,
-    subscribe,
+    states,
+    fetchOnlineStatus,
     getState,
+    disconnect,
   }
 })

@@ -1,10 +1,10 @@
 [package]
 name = "notedeck"
-version = "0.4.6"
+version = "0.5.0"
 edition = "2021"
 
 [dependencies]
-notecli = { git = "https://github.com/hitalin/notecli.git", rev = "9e1f462" }
+notecli = { git = "https://github.com/hitalin/notecli.git", rev = "1fc4097" }
 tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"

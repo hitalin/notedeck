@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, inject, onBeforeUnmount, ref } from 'vue'
-import { useAccountMode } from '@/composables/useAccountMode'
 import {
   popOutColumnToWindow,
   requestMoveColumn,
@@ -36,17 +35,6 @@ const canPopOut = computed(() => isDesktop && !deckStore.currentWindowId)
 /** Whether this column is in a sub-window and can be returned to main */
 const canRecall = computed(() => isDesktop && !!deckStore.currentWindowId)
 const hasWallpaper = computed(() => deckStore.wallpaper != null)
-
-const columnAccountId = computed(() => {
-  const col = deckStore.columns.find((c) => c.id === props.columnId)
-  return col?.accountId ?? null
-})
-const { canInteract } = useAccountMode(
-  computed(() => columnAccountId.value ?? ''),
-)
-const isReadOnly = computed(
-  () => columnAccountId.value != null && !canInteract.value,
-)
 
 const showMenu = ref(false)
 const menuBtnEl = ref<HTMLElement | null>(null)
@@ -175,9 +163,6 @@ function openAsPip() {
 
       <template v-if="!isPipMode">
         <slot name="header-meta" />
-        <span v-if="isReadOnly" :class="$style.readOnlyBadge" title="ログアウト中（読み取り専用）">
-          <i class="ti ti-eye" />
-        </span>
       </template>
 
       <!-- Grabber (Misskey 6-dot pattern, hidden in PiP) -->
@@ -309,13 +294,6 @@ function openAsPip() {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.85em;
-}
-
-.readOnlyBadge {
-  flex-shrink: 0;
-  font-size: 0.8em;
-  opacity: 0.5;
-  margin-left: 2px;
 }
 
 .grabber {

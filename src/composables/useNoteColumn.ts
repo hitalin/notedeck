@@ -42,6 +42,8 @@ export interface NoteColumnConfig {
     adapter: ServerAdapter,
     currentNotes: NormalizedNote[],
   ) => Promise<{ notes: NormalizedNote[]; mode: 'replace' | 'prepend' }>
+  /** Filter cached notes after loading from SQLite (e.g. timeline column filters) */
+  filterCachedNotes?: (notes: NormalizedNote[]) => NormalizedNote[]
 }
 
 export function useNoteColumn(config: NoteColumnConfig) {
@@ -71,6 +73,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     notes,
     noteIds,
     setNotes,
+    mergeIfSameList,
     setOnNotesChanged,
     onNoteUpdate,
     handlePosted,
@@ -133,6 +136,11 @@ export function useNoteColumn(config: NoteColumnConfig) {
   /** True when API is unreachable and displaying cached notes */
   const isOffline = ref(false)
 
+  /** Apply filterCachedNotes if configured */
+  function applyFilter(cached: NormalizedNote[]): NormalizedNote[] {
+    return config.filterCachedNotes ? config.filterCachedNotes(cached) : cached
+  }
+
   // When account loses token (logout with keep-data), switch to cache display
   watch(
     () => account.value?.hasToken,
@@ -151,7 +159,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
                 limit: 40,
               },
             )
-            if (cached.length > 0) setNotes(cached)
+            const filtered = applyFilter(cached)
+            if (filtered.length > 0) setNotes(filtered)
           } catch {
             /* non-critical */
           }
@@ -214,9 +223,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
               limit: 40,
             },
           )
-          if (cached.length > 0) {
-            setNotes(cached)
-            cachedIds = cached.map((n) => n.id)
+          const filtered = applyFilter(cached)
+          if (filtered.length > 0) {
+            setNotes(filtered)
+            cachedIds = filtered.map((n) => n.id)
           }
         } catch {
           /* non-critical */
@@ -265,19 +275,28 @@ export function useNoteColumn(config: NoteColumnConfig) {
         noteSound?.warmup()
       }
 
-      const sinceId = notes.value.length > 0 ? notes.value[0]?.id : undefined
+      // When displaying cached notes, fetch full list to refresh stale data
+      // (cache may lack avatarUrl, reactionEmojis, etc.)
+      const hasCached = cachedIds.length > 0
+      const sinceId =
+        !hasCached && notes.value.length > 0 ? notes.value[0]?.id : undefined
       const dedupKey = `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
       const fetched = await dedup(dedupKey, () =>
         config.fetch(adapter, sinceId ? { sinceId } : {}),
       )
       const freshIds = new Set(fetched.map((n) => n.id))
 
-      if (sinceId && fetched.length > 0) {
-        const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-        if (newNotes.length > 0)
-          setNotes(insertIntoSorted(notes.value, newNotes))
-      } else if (fetched.length > 0) {
-        setNotes(fetched)
+      if (fetched.length > 0) {
+        if (hasCached) {
+          // Refresh cached note data with fresh API response
+          if (!mergeIfSameList(fetched)) setNotes(fetched)
+        } else if (sinceId) {
+          const newNotes = fetched.filter((n) => !noteIds.has(n.id))
+          if (newNotes.length > 0)
+            setNotes(insertIntoSorted(notes.value, newNotes))
+        } else {
+          setNotes(fetched)
+        }
       }
 
       isOffline.value = false
@@ -307,8 +326,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
                 limit: 40,
               },
             )
-            if (cached.length > 0) {
-              setNotes(cached)
+            const filtered = applyFilter(cached)
+            if (filtered.length > 0) {
+              setNotes(filtered)
               isOffline.value = true
             } else {
               error.value = AppError.from(e)
@@ -343,8 +363,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
           limit: 40,
         },
       )
-      if (older.length > 0) {
-        setNotes(insertIntoSorted(notes.value, older))
+      const filtered = applyFilter(older)
+      if (filtered.length > 0) {
+        setNotes(insertIntoSorted(notes.value, filtered))
       }
     } catch {
       /* cache read failure is non-critical */
@@ -500,10 +521,11 @@ export function useNoteColumn(config: NoteColumnConfig) {
         })
       : Promise.resolve([] as NormalizedNote[])
 
-    const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
+    const [rawCached, fetched] = await Promise.all([cachePromise, apiPromise])
     isOffline.value = apiFailed
 
-    // Merge results: API results take priority, then cache
+    // Merge results: API results take priority, then filtered cache
+    const cached = applyFilter(rawCached)
     const allNew = [...fetched, ...cached].filter((n) => !noteIds.has(n.id))
     if (allNew.length > 0) {
       // Deduplicate by id (API results first)
@@ -526,6 +548,14 @@ export function useNoteColumn(config: NoteColumnConfig) {
         purgeStaleCachedNotes(adapter, unverified)
       }
     }
+  }
+
+  /** Disconnect, reset, and reconnect with fresh config state */
+  async function reconnect(useCache = false) {
+    disconnect()
+    streamingBatch?.resetBatch()
+    setNotes([])
+    await connect(useCache)
   }
 
   onMounted(() => {
@@ -565,6 +595,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     postForm,
     handlers,
     noteScrollerRef,
+    scroller,
     scrollToTop,
     handleScroll,
     handlePosted,
@@ -575,5 +606,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
     isRefreshing,
     pullDistance,
     displayHeight,
+    // Low-level API for columns needing direct control (e.g. timeline type switching, time machine)
+    connect,
+    disconnect,
+    reconnect,
+    setNotes,
   }
 }

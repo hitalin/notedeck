@@ -206,6 +206,7 @@ watch(
           :show="showSettingsMenu"
           :anchor="settingsWrapRef"
           @close="emit('update:show-settings-menu', false)"
+          @close-all="emit('update:show-settings-menu', false)"
         />
       </div>
     </div>

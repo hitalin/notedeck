@@ -20,6 +20,7 @@ const MkPostForm = defineAsyncComponent(
 
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useNoteFocus } from '@/composables/useNoteFocus'
+import { useSearchFilters } from '@/composables/useSearchFilters'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
@@ -86,6 +87,22 @@ const regexError = ref<string | null>(null)
 const regexGuidePos = ref({ top: 0, right: 0 })
 const regexGuideBtnRef = ref<HTMLElement | null>(null)
 
+// Date filter & sort
+const {
+  sinceDate,
+  untilDate,
+  ascending,
+  showFilters,
+  toggleFilters,
+  clearDateFilters,
+  toggleSort,
+  getSinceDateMs,
+  getUntilDateMs,
+  getSinceDateISO,
+  getUntilDateISO,
+  hasDateFilter,
+} = useSearchFilters()
+
 function toggleRegexMode() {
   regexMode.value = !regexMode.value
   showRegexGuide.value = false
@@ -137,7 +154,8 @@ function mergeNotes(
       seen.add(note.id)
     }
   }
-  return merged.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  const dir = ascending.value ? 1 : -1
+  return merged.sort((a, b) => dir * a.createdAt.localeCompare(b.createdAt))
 }
 
 // Incremental local search (typeahead)
@@ -152,6 +170,9 @@ async function searchLocal(q: string) {
       accountId: props.column.accountId,
       query: hint,
       limit: regexMode.value ? 50 : 10,
+      sinceDate: getSinceDateISO() ?? null,
+      untilDate: getUntilDateISO() ?? null,
+      ascending: ascending.value,
     })
     // Only update if query hasn't changed since we started
     if (searchQuery.value.trim() === q) {
@@ -186,6 +207,16 @@ watch(searchQuery, (val) => {
   debounceTimer = setTimeout(() => searchLocal(q), 200)
 })
 
+// Re-search when date filters or sort order change (debounced)
+let filterTimer: ReturnType<typeof setTimeout> | null = null
+watch([sinceDate, untilDate, ascending], () => {
+  if (filterTimer) clearTimeout(filterTimer)
+  filterTimer = setTimeout(() => {
+    const q = confirmedQuery.value || searchQuery.value.trim()
+    if (q) performSearch()
+  }, 400)
+})
+
 async function performSearch() {
   const q = searchQuery.value.trim()
   if (!q) return
@@ -213,6 +244,9 @@ async function performSearch() {
         accountId: props.column.accountId,
         query: hint,
         limit: regexMode.value ? 100 : undefined,
+        sinceDate: getSinceDateISO() ?? null,
+        untilDate: getUntilDateISO() ?? null,
+        ascending: ascending.value,
       })
       if (regexMode.value) {
         local = filterNotesByRegex(local, q)
@@ -227,18 +261,22 @@ async function performSearch() {
   }
 
   // Server search
-  if (hint) {
+  if (hint && account.value?.hasToken) {
     try {
       const adapter = await initAdapter()
-      if (!adapter) return
-
-      let results = await adapter.api.searchNotes(hint)
-      if (regexMode.value) {
-        results = filterNotesByRegex(results, q)
+      if (adapter) {
+        let results = await adapter.api.searchNotes(hint, {
+          sinceDate: getSinceDateMs(),
+          untilDate: getUntilDateMs(),
+        })
+        if (regexMode.value) {
+          results = filterNotesByRegex(results, q)
+        }
+        notes.value = mergeNotes(
+          hasLocalResults.value ? notes.value : [],
+          results,
+        )
       }
-      notes.value = hasLocalResults.value
-        ? mergeNotes(notes.value, results)
-        : results
     } catch (e) {
       if (!hasLocalResults.value) {
         error.value = AppError.from(e)
@@ -263,11 +301,13 @@ async function loadMore() {
   try {
     let older = await adapter.api.searchNotes(hint, {
       untilId: lastNote.id,
+      sinceDate: getSinceDateMs(),
+      untilDate: getUntilDateMs(),
     })
     if (regexMode.value) {
       older = filterNotesByRegex(older, q)
     }
-    notes.value = [...notes.value, ...older]
+    notes.value = mergeNotes(notes.value, older)
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -326,6 +366,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
+  if (filterTimer) clearTimeout(filterTimer)
   document.removeEventListener('click', closeRegexGuide)
   disconnect()
 })
@@ -378,6 +419,22 @@ onUnmounted(() => {
           >
             <i class="ti ti-help" />
           </button>
+          <button
+            :class="[$style.filterToggle, { [$style.filterToggleActive]: showFilters || hasDateFilter() }]"
+            class="_button"
+            title="日付フィルター"
+            @click="toggleFilters"
+          >
+            <i class="ti ti-calendar" />
+          </button>
+          <button
+            :class="[$style.sortToggle, { [$style.sortToggleActive]: ascending }]"
+            class="_button"
+            :title="ascending ? '古い順' : '新しい順'"
+            @click="toggleSort"
+          >
+            <i :class="ascending ? 'ti ti-sort-ascending' : 'ti ti-sort-descending'" />
+          </button>
         </div>
         <button
           :class="$style.searchBtn"
@@ -386,6 +443,31 @@ onUnmounted(() => {
           @click="performSearch"
         >
           <i class="ti ti-arrow-right" />
+        </button>
+      </div>
+
+      <div v-if="showFilters" :class="$style.dateFilters">
+        <input
+          v-model="sinceDate"
+          type="date"
+          :class="$style.dateInput"
+          title="開始日"
+        />
+        <i :class="$style.dateSeparator" class="ti ti-minus" />
+        <input
+          v-model="untilDate"
+          type="date"
+          :class="$style.dateInput"
+          title="終了日"
+        />
+        <button
+          v-if="hasDateFilter()"
+          :class="$style.dateClear"
+          class="_button"
+          title="日付クリア"
+          @click="clearDateFilters"
+        >
+          <i class="ti ti-x" />
         </button>
       </div>
 
@@ -607,6 +689,78 @@ onUnmounted(() => {
 
 .regexInvalid {
   box-shadow: 0 0 0 2px var(--nd-love) !important;
+}
+
+.filterToggle,
+.sortToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  opacity: 0.35;
+  font-size: 0.9em;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base), color var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 0.7;
+  }
+}
+
+.filterToggleActive,
+.sortToggleActive {
+  opacity: 1;
+  color: var(--nd-accent);
+}
+
+.dateFilters {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+}
+
+.dateInput {
+  flex: 1;
+  min-width: 0;
+  background: var(--nd-buttonBg);
+  border: none;
+  border-radius: var(--nd-radius-sm);
+  padding: 4px 6px;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  color-scheme: dark;
+  outline: none;
+
+  &:focus {
+    box-shadow: 0 0 0 2px var(--nd-accent);
+  }
+}
+
+.dateSeparator {
+  flex-shrink: 0;
+  opacity: 0.25;
+  font-size: 0.7em;
+}
+
+.dateClear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  opacity: 0.35;
+  font-size: 0.75em;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 0.7;
+  }
 }
 
 .regexError {

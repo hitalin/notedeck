@@ -560,8 +560,8 @@ function closeMentionPopup() {
               @mouseenter="reactionUsersRef?.show($event, r.reaction, reactionUrls[r.reaction] ?? null, effectiveNote.reactions[r.reaction] ?? 0)"
               @mouseleave="reactionUsersRef?.hide()"
             >
-              <img v-if="reactionUrls[r.reaction]" :src="proxyUrl(reactionUrls[r.reaction]!)" :alt="r.reaction" :class="$style.customEmoji" decoding="async" loading="lazy" @error="(e: Event) => (e.target as HTMLImageElement).src = '/emoji-unknown.svg'" />
-              <span v-else-if="r.reaction.startsWith(':')" :class="$style.reactionEmojiFallback">{{ r.reaction }}</span>
+              <img v-if="reactionUrls[r.reaction]" :src="proxyUrl(reactionUrls[r.reaction]!)" :alt="r.reaction" :class="$style.customEmoji" decoding="async" loading="lazy" @error="(e: Event) => { const img = e.target as HTMLImageElement; if (!img.src.endsWith('/emoji-unknown.svg')) img.src = '/emoji-unknown.svg' }" />
+              <img v-else-if="r.reaction.startsWith(':')" src="/emoji-unknown.svg" :alt="r.reaction" :title="r.reaction" :class="$style.customEmoji" />
               <MkEmoji v-else :emoji="r.reaction" :class="$style.reactionEmoji" />
               <span :class="$style.count">{{ r.count }}</span>
             </button>

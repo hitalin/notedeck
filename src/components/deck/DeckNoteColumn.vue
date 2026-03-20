@@ -39,11 +39,13 @@ const {
   postForm,
   handlers,
   noteScrollerRef,
+  scroller,
   scrollToTop,
   handleScroll,
   handlePosted,
   removeNote,
   refresh,
+  reconnect,
   isPulling,
   isPulledEnough,
   isRefreshing,
@@ -57,6 +59,8 @@ const webUiUrl = computed(() => {
   if (!props.webUiPath || !account.value) return undefined
   return `https://${account.value.host}${props.webUiPath}`
 })
+
+defineExpose({ account, scroller, reconnect, columnThemeVars })
 </script>
 
 <template>
@@ -69,7 +73,9 @@ const webUiUrl = computed(() => {
     @header-click="scrollToTop()"
   >
     <template #header-icon>
-      <i :class="[$style.tlHeaderIcon, 'ti ' + icon]" />
+      <slot name="header-icon">
+        <i :class="[$style.tlHeaderIcon, 'ti ' + icon]" />
+      </slot>
     </template>
 
     <template #header-meta>
@@ -100,6 +106,10 @@ const webUiUrl = computed(() => {
           :title="account.host"
         />
       </div>
+    </template>
+
+    <template #header-extra>
+      <slot name="header-extra" />
     </template>
 
     <div v-if="!account" :class="$style.columnEmpty">
@@ -137,12 +147,11 @@ const webUiUrl = computed(() => {
       <!-- Inline post form slot (e.g. channel column) -->
       <slot name="before-notes" :handle-posted="handlePosted" />
 
-      <Transition name="nd-fade" mode="out-in">
-        <div v-if="isLoading && notes.length === 0" key="skeleton">
-          <MkSkeleton v-for="i in 5" :key="i" />
-        </div>
+      <div v-if="isLoading && notes.length === 0">
+        <MkSkeleton v-for="i in 5" :key="i" />
+      </div>
 
-        <div v-else key="content">
+      <template v-else>
         <button
           v-if="pendingNotes.length > 0"
           :class="$style.newNotesBanner"
@@ -175,6 +184,7 @@ const webUiUrl = computed(() => {
                 @bookmark="handlers.bookmark"
                 @delete-and-edit="handlers.deleteAndEdit"
               />
+              <slot name="note-item" :item="item" :index="index" />
             </div>
           </template>
 
@@ -187,8 +197,7 @@ const webUiUrl = computed(() => {
             </div>
           </template>
         </NoteScroller>
-        </div>
-      </Transition>
+      </template>
     </div>
   </DeckColumn>
 

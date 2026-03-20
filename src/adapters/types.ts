@@ -87,6 +87,8 @@ export interface SearchOptions {
   limit?: number
   sinceId?: string
   untilId?: string
+  sinceDate?: number
+  untilDate?: number
 }
 
 export interface UserList {

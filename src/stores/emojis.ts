@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
 import type { ServerEmoji } from '@/adapters/types'
 
+const STORAGE_KEY = 'emojis_cache'
+
 export const useEmojisStore = defineStore('emojis', () => {
   // host → (shortcode → url) — for fast emoji resolution in notes
   const cache = shallowRef(new Map<string, Record<string, string>>())
@@ -11,6 +13,37 @@ export const useEmojisStore = defineStore('emojis', () => {
 
   // In-flight dedup: avoid parallel fetches for the same host
   const pending = new Map<string, Promise<void>>()
+
+  // Load shortcode→url cache from localStorage (for offline emoji resolution)
+  function loadFromStorage() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const obj = JSON.parse(raw) as Record<string, Record<string, string>>
+      const map = new Map<string, Record<string, string>>()
+      for (const [host, lookup] of Object.entries(obj)) {
+        map.set(host, lookup)
+      }
+      cache.value = map
+    } catch {
+      // corrupt data, ignore
+    }
+  }
+
+  function persistToStorage() {
+    try {
+      const obj: Record<string, Record<string, string>> = {}
+      for (const [host, lookup] of cache.value) {
+        obj[host] = lookup
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(obj))
+    } catch {
+      // storage full, ignore
+    }
+  }
+
+  // Initialize from localStorage
+  loadFromStorage()
 
   function set(host: string, emojis: ServerEmoji[]) {
     // Build shortcode→url lookup for resolution
@@ -28,6 +61,9 @@ export const useEmojisStore = defineStore('emojis', () => {
     emojiList.value = nextList
 
     pending.delete(host)
+
+    // Persist shortcode→url cache for offline use
+    persistToStorage()
   }
 
   function ensureLoaded(

@@ -7,7 +7,7 @@ import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
-import { useIsCompactLayout } from '@/stores/ui'
+import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { hapticSelection } from '@/utils/haptics'
@@ -20,12 +20,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
+  'close-all': []
 }>()
 
 const { updateAvailable, updateVersion, isInstalling, installUpdate } =
   useUpdater()
 
 const isCompact = useIsCompactLayout()
+const { isMobilePlatform } = useUiStore()
 const deckStore = useDeckStore()
 const themeStore = useThemeStore()
 const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
@@ -137,7 +139,7 @@ const windowsStore = useWindowsStore()
 
 function openToolWindow(type: 'cssEditor' | 'keybinds' | 'themeEditor') {
   windowsStore.open(type)
-  emit('close')
+  emit('close-all')
 }
 
 const isExporting = ref(false)
@@ -269,7 +271,7 @@ async function exportDb() {
       <!-- Controls -->
       <div :class="$style.settingsMenuDivider" />
 
-      <div :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
+      <div v-if="!isMobilePlatform" :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
         <i class="ti ti-keyboard" />
         <span :class="$style.settingsMenuLabel">キーバインド設定</span>
       </div>
@@ -874,7 +876,7 @@ async function exportDb() {
   left: 8px;
   right: auto;
   width: 234px;
-  max-width: none;
+  max-width: calc(100vw - 16px);
   min-width: 0;
   border-radius: 12px;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
