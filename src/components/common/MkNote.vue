@@ -60,6 +60,7 @@ const reactionUsersRef = ref<InstanceType<
 > | null>(null)
 const reactionsAreaRef = ref<HTMLElement | null>(null)
 const reactionsVisible = ref(false)
+
 const { stop: stopReactionsObserver } = useIntersectionObserver(
   reactionsAreaRef,
   ([entry]) => {
