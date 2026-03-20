@@ -438,7 +438,16 @@ async function reconnectWithFilter() {
     if (notes.value.length > 0) {
       isOffline.value = true
     } else {
-      error.value = err
+      const cached = await fetchCachedNotes()
+      const filtered = cached.filter((n) =>
+        matchesFilter(n, columnFilters.value, tlType.value),
+      )
+      if (filtered.length > 0) {
+        setNotes(filtered)
+        isOffline.value = true
+      } else {
+        error.value = err
+      }
     }
   } finally {
     isLoading.value = false
@@ -555,7 +564,17 @@ async function connect(useCache = false) {
     if (notes.value.length > 0) {
       isOffline.value = true
     } else {
-      error.value = err
+      // No notes loaded yet — try cache before showing error
+      const cached = await fetchCachedNotes()
+      const filtered = cached.filter((n) =>
+        matchesFilter(n, columnFilters.value, tlType.value),
+      )
+      if (filtered.length > 0) {
+        setNotes(filtered)
+        isOffline.value = true
+      } else {
+        error.value = err
+      }
     }
   } finally {
     isLoading.value = false

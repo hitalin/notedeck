@@ -263,7 +263,31 @@ export function useNoteColumn(config: NoteColumnConfig) {
         // Cache is displayed — mark offline instead of showing error
         isOffline.value = true
       } else {
-        error.value = AppError.from(e)
+        // No notes loaded yet — try cache before showing error
+        const column = config.getColumn()
+        const cacheKey = config.cache?.getKey()
+        if (column.accountId && cacheKey) {
+          try {
+            const cached = await invoke<NormalizedNote[]>(
+              'api_get_cached_timeline',
+              {
+                accountId: column.accountId,
+                timelineType: cacheKey,
+                limit: 40,
+              },
+            )
+            if (cached.length > 0) {
+              setNotes(cached)
+              isOffline.value = true
+            } else {
+              error.value = AppError.from(e)
+            }
+          } catch {
+            error.value = AppError.from(e)
+          }
+        } else {
+          error.value = AppError.from(e)
+        }
       }
     } finally {
       isLoading.value = false

@@ -296,7 +296,22 @@ async function connect(useCache = false) {
     )
   } catch (e) {
     if (notifications.value.length === 0) {
-      error.value = AppError.from(e)
+      // Try loading from localStorage cache before showing error
+      try {
+        const raw = localStorage.getItem(getCacheKey())
+        if (raw) {
+          const cached = JSON.parse(raw) as NormalizedNotification[]
+          if (cached.length > 0) {
+            notifications.value = cached
+          } else {
+            error.value = AppError.from(e)
+          }
+        } else {
+          error.value = AppError.from(e)
+        }
+      } catch {
+        error.value = AppError.from(e)
+      }
     }
   } finally {
     isLoading.value = false
