@@ -3,16 +3,12 @@ import { json } from '@codemirror/lang-json'
 import { type Diagnostic, linter } from '@codemirror/lint'
 import JSON5 from 'json5'
 import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
-import { useColumnTheme } from '@/composables/useColumnTheme'
-import { useSwipeTab } from '@/composables/useSwipeTab'
-import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useThemeStore } from '@/stores/theme'
 import { DARK_BASE, LIGHT_BASE } from '@/theme/builtinThemes'
 import { parseColor, toRgba } from '@/theme/colorUtils'
 import { compileMisskeyTheme } from '@/theme/compiler'
 import type { MisskeyTheme } from '@/theme/types'
-import DeckColumn from './DeckColumn.vue'
-import CodeEditor from './widgets/CodeEditor.vue'
 
 const jsonLang = json()
 
@@ -44,38 +40,9 @@ const jsonLinter = linter(
   { delay: 500 },
 )
 
-const props = defineProps<{
-  column: DeckColumnType
-}>()
-
-const { columnThemeVars } = useColumnTheme(() => props.column)
 const themeStore = useThemeStore()
 
 const tab = ref<'visual' | 'code'>('visual')
-const editorRef = ref<HTMLElement | null>(null)
-const THEME_TABS = ['visual', 'code'] as const
-
-useSwipeTab(
-  editorRef,
-  () => {
-    const idx = THEME_TABS.indexOf(tab.value)
-    const next = THEME_TABS[idx + 1]
-    if (next) {
-      tab.value = next
-      return true
-    }
-    return false
-  },
-  () => {
-    const idx = THEME_TABS.indexOf(tab.value)
-    const prev = THEME_TABS[idx - 1]
-    if (prev) {
-      tab.value = prev
-      return true
-    }
-    return false
-  },
-)
 
 const themeName = ref('My Theme')
 const baseMode = ref<'dark' | 'light'>('dark')
@@ -394,16 +361,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 </script>
 
 <template>
-  <DeckColumn
-    :column-id="column.id"
-    :title="column.name ?? 'テーマエディタ'"
-    :theme-vars="columnThemeVars"
-  >
-    <template #header-icon>
-      <i class="ti ti-palette" :class="$style.tlHeaderIcon" />
-    </template>
-
-    <div ref="editorRef" :class="$style.editor">
+  <div :class="$style.editor">
       <!-- Tabs -->
       <div :class="$style.tabs">
         <button
@@ -720,16 +678,10 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
           <i class="ti ti-arrow-back-up" />
         </button>
       </div>
-    </div>
-  </DeckColumn>
+  </div>
 </template>
 
 <style lang="scss" module>
-.tlHeaderIcon {
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-
 .editor {
   display: flex;
   flex-direction: column;

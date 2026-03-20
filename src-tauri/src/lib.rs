@@ -32,7 +32,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_haptics::init());
+        .plugin(tauri_plugin_haptics::init())
+        .plugin(tauri_plugin_dialog::init());
 
     #[cfg(not(mobile))]
     {
@@ -177,6 +178,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::get_cli_commands,
         commands::get_notecli_version,
         commands::open_devtools,
+        commands::export_db,
     ]);
 
     builder = builder.setup(|app| {
@@ -188,7 +190,12 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize SQLite database
         let app_dir = app.path().app_data_dir()?;
         std::fs::create_dir_all(&app_dir)?;
-        let db_path = app_dir.join("notedeck.db");
+        let db_path = app_dir.join("notecli.db");
+        // Migrate legacy filename (notedeck.db → notecli.db)
+        let legacy_db = app_dir.join("notedeck.db");
+        if legacy_db.exists() && !db_path.exists() {
+            std::fs::rename(&legacy_db, &db_path)?;
+        }
         let db = std::sync::Arc::new(notecli::db::Database::open(&db_path)?);
         app.manage(db.clone());
 

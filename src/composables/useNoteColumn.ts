@@ -198,10 +198,12 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     let cachedIds: string[] = []
 
-    // Load cache BEFORE setting isLoading to avoid skeleton flash
-    if (useCache && config.cache) {
+    // Load cache when explicitly requested OR when account has no token
+    const shouldLoadCache =
+      (useCache || !account.value || !account.value.hasToken) && config.cache
+    if (shouldLoadCache) {
       const column = config.getColumn()
-      const cacheKey = config.cache.getKey()
+      const cacheKey = config.cache?.getKey()
       if (column.accountId && cacheKey) {
         try {
           const cached = await invoke<NormalizedNote[]>(
@@ -227,8 +229,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
       isLoading.value = true
     }
 
-    // Logged-out account: show cached notes in read-only mode
-    if (account.value && !account.value.hasToken) {
+    // Logged-out or unresolved account: show cached notes in read-only mode
+    if (!account.value || !account.value.hasToken) {
       isOffline.value = true
       isLoading.value = false
       return

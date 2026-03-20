@@ -91,7 +91,8 @@ let mentionSub: ChannelSubscription | null = null
 async function connect(useCache = false) {
   error.value = null
 
-  if (useCache && props.column.accountId) {
+  const shouldLoadCache = useCache || !account.value || !account.value.hasToken
+  if (shouldLoadCache && props.column.accountId) {
     try {
       const cached = await invoke<NormalizedNote[]>('api_get_cached_timeline', {
         accountId: props.column.accountId,
@@ -102,6 +103,12 @@ async function connect(useCache = false) {
     } catch {
       /* non-critical */
     }
+  }
+
+  // Logged-out or unresolved account: show cached notes in read-only mode
+  if (!account.value || !account.value.hasToken) {
+    isLoading.value = false
+    return
   }
 
   if (notes.value.length === 0) {

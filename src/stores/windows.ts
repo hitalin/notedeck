@@ -10,6 +10,8 @@ export type WindowType =
   | 'notifications'
   | 'plugins'
   | 'keybinds'
+  | 'cssEditor'
+  | 'themeEditor'
   | 'ai'
   | 'chat'
 
@@ -36,7 +38,9 @@ export const WINDOW_SIZES: Record<
   search: { width: 500, maxHeight: 650 },
   notifications: { width: 500, maxHeight: 650 },
   plugins: { width: 500, maxHeight: 650 },
-  keybinds: { width: 520, maxHeight: 600 },
+  keybinds: { width: 560, maxHeight: 650 },
+  cssEditor: { width: 480, maxHeight: 650 },
+  themeEditor: { width: 480, maxHeight: 700 },
   ai: { width: 480, maxHeight: 650 },
   chat: { width: 500, maxHeight: 650 },
 }
@@ -72,6 +76,8 @@ export const useWindowsStore = defineStore('windows', () => {
       if (type === 'notifications') return true
       if (type === 'plugins') return true
       if (type === 'keybinds') return true
+      if (type === 'cssEditor') return true
+      if (type === 'themeEditor') return true
       if (type === 'ai') return true
       if (type === 'chat') return true
       return false

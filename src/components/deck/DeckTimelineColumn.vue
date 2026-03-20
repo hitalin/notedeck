@@ -403,8 +403,8 @@ async function reconnectWithFilter() {
   setNotes([])
   isLoading.value = true
 
-  // Logged-out: reload from cache with new filter
-  if (account.value && !account.value.hasToken) {
+  // Logged-out or unresolved account: reload from cache with new filter
+  if (!account.value || !account.value.hasToken) {
     const cached = await fetchCachedNotes()
     const filtered = cached.filter((n) =>
       matchesFilter(n, columnFilters.value, tlType.value),
@@ -498,16 +498,19 @@ async function connect(useCache = false) {
 
   isLoading.value = true
 
-  if (useCache) {
+  // Always try to load cache first (regardless of useCache flag) when account
+  // has no token, so that logged-out or offline columns always show cached notes.
+  const shouldLoadCache = useCache || !account.value || !account.value.hasToken
+  if (shouldLoadCache) {
     const cached = await fetchCachedNotes()
     const filtered = cached.filter((n) =>
       matchesFilter(n, columnFilters.value, tlType.value),
     )
-    setNotes(filtered)
+    if (filtered.length > 0) setNotes(filtered)
   }
 
-  // Logged-out account: show cached notes in read-only mode
-  if (account.value && !account.value.hasToken) {
+  // Logged-out or unresolved account: show cached notes in read-only mode
+  if (!account.value || !account.value.hasToken) {
     isOffline.value = true
     isLoading.value = false
     return

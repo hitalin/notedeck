@@ -28,6 +28,7 @@
     "opener:default",
     "notification:default",
     "os:default",
-    "haptics:default"
+    "haptics:default",
+    "dialog:default"
   ]
 }

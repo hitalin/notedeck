@@ -28,6 +28,12 @@ const PluginsContent = defineAsyncComponent(
 const KeybindsContent = defineAsyncComponent(
   () => import('@/components/window/KeybindsContent.vue'),
 )
+const CssEditorContent = defineAsyncComponent(
+  () => import('@/components/window/CssEditorContent.vue'),
+)
+const ThemeEditorContent = defineAsyncComponent(
+  () => import('@/components/window/ThemeEditorContent.vue'),
+)
 const AiContent = defineAsyncComponent(
   () => import('@/components/window/AiContent.vue'),
 )
@@ -105,6 +111,8 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       <NotificationsContent v-if="win.type === 'notifications'" />
       <PluginsContent v-if="win.type === 'plugins'" />
       <KeybindsContent v-if="win.type === 'keybinds'" />
+      <CssEditorContent v-if="win.type === 'cssEditor'" />
+      <ThemeEditorContent v-if="win.type === 'themeEditor'" />
       <AiContent v-if="win.type === 'ai'" />
       <ChatContent v-if="win.type === 'chat'" />
     </DeckWindow>
