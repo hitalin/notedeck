@@ -239,9 +239,7 @@ async function exportDb() {
         </div>
       </div>
 
-      <!-- Editor windows -->
-      <div :class="$style.settingsMenuDivider" />
-
+      <!-- Appearance -->
       <div :class="$style.settingsMenuItem" @click="openToolWindow('themeEditor')">
         <i class="ti ti-palette" />
         <span :class="$style.settingsMenuLabel">テーマエディタ</span>
@@ -251,9 +249,6 @@ async function exportDb() {
         <span :class="$style.settingsMenuLabel">カスタムCSS</span>
         <span v-if="themeStore.customCss" :class="$style.cssActiveDot" />
       </div>
-
-      <div :class="$style.settingsMenuDivider" />
-
       <div v-if="deckStore.wallpaper == null" :class="$style.settingsMenuItem" @click="pickWallpaper">
         <i class="ti ti-photo" />
         <span :class="$style.settingsMenuLabel">壁紙を設定</span>
@@ -271,6 +266,7 @@ async function exportDb() {
         @change="onFileSelected"
       />
 
+      <!-- Controls -->
       <div :class="$style.settingsMenuDivider" />
 
       <div :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
@@ -278,6 +274,7 @@ async function exportDb() {
         <span :class="$style.settingsMenuLabel">キーバインド設定</span>
       </div>
 
+      <!-- Data -->
       <div :class="$style.settingsMenuDivider" />
 
       <div :class="$style.settingsMenuItem" @click="exportDb">
