@@ -430,7 +430,7 @@ function closeMentionPopup() {
             />
             <template v-else>{{ effectiveNote.user.username }}</template>
           </span>
-          <span :class="$style.username">@{{ effectiveNote.user.username }}@{{ effectiveNote.user.host || note._serverHost }}</span>
+          <span :class="$style.username">@{{ effectiveNote.user.username }}{{ effectiveNote.user.host ? `@${effectiveNote.user.host}` : '' }}</span>
           <span :class="$style.info">
             <span :class="$style.time">{{ formatTime(effectiveNote.createdAt) }}</span>
             <span

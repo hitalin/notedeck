@@ -10,12 +10,25 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::{watch, Mutex, RwLock, Semaphore};
 
-const CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
+const CACHE_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60); // 7 days
 const MAX_FILE_SIZE: u64 = 20 * 1024 * 1024; // 20MB
-const MAX_CONCURRENT_FETCHES: usize = 20;
-const NEGATIVE_CACHE_TTL: Duration = Duration::from_secs(5 * 60); // 5min
+const MAX_CONCURRENT_FETCHES: usize = 50;
+// Negative cache TTLs by error class
+const NEGATIVE_TTL_CLIENT: Duration = Duration::from_secs(24 * 60 * 60); // 4xx: 24h
+const NEGATIVE_TTL_SERVER: Duration = Duration::from_secs(5 * 60); // 5xx: 5min
+const NEGATIVE_TTL_NETWORK: Duration = Duration::from_secs(60); // timeout/conn: 1min
 const MEMORY_CACHE_MAX_ITEM: usize = 64 * 1024; // 64KB
 const MEMORY_CACHE_MAX_TOTAL: usize = 32 * 1024 * 1024; // 32MB
+
+/// Circuit breaker: block an entire host after this many consecutive failures.
+const CIRCUIT_BREAKER_THRESHOLD: u32 = 3;
+/// How long a tripped circuit breaker blocks the host.
+const CIRCUIT_BREAKER_DURATION: Duration = Duration::from_secs(60);
+
+struct HostCircuitState {
+    consecutive_failures: u32,
+    tripped_at: Option<Instant>,
+}
 
 type InflightMap = HashMap<String, watch::Receiver<Option<Result<CacheEntry, String>>>>;
 
@@ -53,8 +66,9 @@ pub struct ImageCache {
     inflight: Arc<Mutex<InflightMap>>,
     http_client: reqwest::Client,
     fetch_semaphore: Arc<Semaphore>,
-    negative_cache: Arc<RwLock<HashMap<String, Instant>>>,
+    negative_cache: Arc<RwLock<HashMap<String, (Instant, Duration)>>>,
     mem_cache: Arc<RwLock<MemCacheState>>,
+    host_circuits: Arc<RwLock<HashMap<String, HostCircuitState>>>,
 }
 
 impl ImageCache {
@@ -63,7 +77,7 @@ impl ImageCache {
         std::fs::create_dir_all(&cache_dir).ok();
 
         let http_client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(5))
             .pool_max_idle_per_host(8)
             .pool_idle_timeout(Duration::from_secs(60))
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
@@ -80,6 +94,7 @@ impl ImageCache {
                 entries: LruCache::new(NonZeroUsize::new(MEM_CACHE_CAPACITY).unwrap()),
                 total_size: 0,
             })),
+            host_circuits: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -177,6 +192,24 @@ impl ImageCache {
         self.check_cache(&hash, &meta_path, &data_path).await
     }
 
+    /// Extract host from a URL for circuit breaker keying.
+    fn extract_host(url: &str) -> Option<String> {
+        url::Url::parse(url).ok().and_then(|u| u.host_str().map(|h| h.to_string()))
+    }
+
+    /// Check if a host's circuit breaker is tripped.
+    async fn is_host_blocked(&self, host: &str) -> bool {
+        let circuits = self.host_circuits.read().await;
+        if let Some(state) = circuits.get(host) {
+            if let Some(tripped_at) = state.tripped_at {
+                if tripped_at.elapsed() < CIRCUIT_BREAKER_DURATION {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     /// Fetch with streaming for cache misses. First requester gets a byte stream;
     /// inflight waiters get the cached result after the first fetch completes.
     pub async fn fetch_streaming(&self, url: &str) -> Result<StreamingFetchResult, String> {
@@ -184,13 +217,34 @@ impl ImageCache {
             return Err("Only HTTPS URLs are allowed".to_string());
         }
 
+        // SSRF protection: block private/loopback IPs
+        if let Ok(parsed) = url::Url::parse(url) {
+            if let Some(host) = parsed.host_str() {
+                if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+                    if ip.is_loopback()
+                        || matches!(ip, std::net::IpAddr::V4(v4) if v4.is_private()
+                            || v4.is_link_local())
+                    {
+                        return Err("Private/loopback addresses are not allowed".to_string());
+                    }
+                }
+            }
+        }
+
+        // Circuit breaker: reject early if host is known-down
+        if let Some(host) = Self::extract_host(url) {
+            if self.is_host_blocked(&host).await {
+                return Err(format!("Host {host} temporarily blocked (circuit breaker)"));
+            }
+        }
+
         let hash = hex_hash(url);
 
         // Negative cache check
         {
             let neg = self.negative_cache.read().await;
-            if let Some(failed_at) = neg.get(&hash) {
-                if failed_at.elapsed() < NEGATIVE_CACHE_TTL {
+            if let Some((failed_at, ttl)) = neg.get(&hash) {
+                if failed_at.elapsed() < *ttl {
                     return Err("Temporarily unavailable".to_string());
                 }
             }
@@ -234,20 +288,26 @@ impl ImageCache {
         }
         let resp = req.send().await.map_err(|e| {
             let msg = format!("Fetch failed: {e}");
-            self.record_negative_and_notify(&hash, &tx, &msg);
+            self.record_negative_and_notify(url, &hash, &tx, &msg, NEGATIVE_TTL_NETWORK);
             msg
         })?;
 
         if !resp.status().is_success() {
-            let msg = format!("HTTP {}", resp.status());
-            self.record_negative_and_notify(&hash, &tx, &msg);
+            let status = resp.status().as_u16();
+            let ttl = if (400..500).contains(&status) {
+                NEGATIVE_TTL_CLIENT
+            } else {
+                NEGATIVE_TTL_SERVER
+            };
+            let msg = format!("HTTP {status}");
+            self.record_negative_and_notify(url, &hash, &tx, &msg, ttl);
             return Err(msg);
         }
 
         if let Some(cl) = resp.content_length() {
             if cl > MAX_FILE_SIZE {
                 let msg = "File too large".to_string();
-                self.record_negative_and_notify(&hash, &tx, &msg);
+                self.record_negative_and_notify(url, &hash, &tx, &msg, NEGATIVE_TTL_CLIENT);
                 return Err(msg);
             }
         }
@@ -269,6 +329,8 @@ impl ImageCache {
         let inflight_ref = self.inflight.clone();
         let negative_cache = self.negative_cache.clone();
         let mem_cache = self.mem_cache.clone();
+        let host_circuits = self.host_circuits.clone();
+        let url_host = Self::extract_host(url).unwrap_or_default();
 
         tokio::spawn(async move {
             let _permit = _permit; // move permit into task to hold it
@@ -314,26 +376,40 @@ impl ImageCache {
 
             if error {
                 let mut neg = negative_cache.write().await;
-                neg.insert(hash_clone.clone(), Instant::now());
+                neg.insert(hash_clone.clone(), (Instant::now(), NEGATIVE_TTL_NETWORK));
                 tx.send(Some(Err("Stream failed".to_string()))).ok();
+                // Update host circuit breaker on stream failure
+                if !url_host.is_empty() {
+                    let mut circuits = host_circuits.write().await;
+                    let state = circuits.entry(url_host.clone()).or_insert(HostCircuitState {
+                        consecutive_failures: 0,
+                        tripped_at: None,
+                    });
+                    state.consecutive_failures += 1;
+                    if state.consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD {
+                        state.tripped_at = Some(Instant::now());
+                    }
+                }
             } else {
-                // Write to disk cache
-                let bytes_for_disk = all_bytes.clone();
+                // Wrap in Arc first to avoid cloning the full buffer for disk I/O
+                let bytes_arc = Arc::new(all_bytes);
+
+                // Write to disk cache (Arc clone = ref-count bump only)
+                let bytes_for_disk = bytes_arc.clone();
                 let ct_for_disk = ct_clone.clone();
                 let dp = data_path.clone();
                 let mp = meta_path.clone();
                 tokio::task::spawn_blocking(move || {
-                    std::fs::write(&dp, &bytes_for_disk).ok();
+                    std::fs::write(&dp, &*bytes_for_disk).ok();
                     std::fs::write(&mp, &ct_for_disk).ok();
                 })
                 .await
                 .ok();
 
                 // Store in memory cache if small enough
-                let mem_bytes = if all_bytes.len() <= MEMORY_CACHE_MAX_ITEM {
-                    let arc = Arc::new(all_bytes);
+                let mem_bytes = if bytes_arc.len() <= MEMORY_CACHE_MAX_ITEM {
                     let mut state = mem_cache.write().await;
-                    while state.total_size + arc.len() > MEMORY_CACHE_MAX_TOTAL
+                    while state.total_size + bytes_arc.len() > MEMORY_CACHE_MAX_TOTAL
                         && !state.entries.is_empty()
                     {
                         if let Some((_key, removed)) = state.entries.pop_lru() {
@@ -345,15 +421,15 @@ impl ImageCache {
                     if let Some(old) = state.entries.pop(&hash_clone) {
                         state.total_size = state.total_size.saturating_sub(old.data.len());
                     }
-                    state.total_size += arc.len();
+                    state.total_size += bytes_arc.len();
                     state.entries.push(
                         hash_clone.clone(),
                         MemEntry {
-                            data: arc.clone(),
+                            data: bytes_arc.clone(),
                             content_type: ct_clone.clone(),
                         },
                     );
-                    Some(arc)
+                    Some(bytes_arc)
                 } else {
                     None
                 };
@@ -365,6 +441,11 @@ impl ImageCache {
                     mem_bytes,
                 })))
                 .ok();
+
+                // Reset host circuit breaker on success
+                if !url_host.is_empty() {
+                    host_circuits.write().await.remove(&url_host);
+                }
             }
 
             inflight_ref.lock().await.remove(&hash_clone);
@@ -381,19 +462,37 @@ impl ImageCache {
 
     fn record_negative_and_notify(
         &self,
+        url: &str,
         hash: &str,
         tx: &watch::Sender<Option<Result<CacheEntry, String>>>,
         msg: &str,
+        ttl: Duration,
     ) {
         let neg = self.negative_cache.clone();
         let inflight = self.inflight.clone();
+        let host_circuits = self.host_circuits.clone();
+        let host = Self::extract_host(url).unwrap_or_default();
         let hash = hash.to_string();
         let msg = msg.to_string();
         let tx_msg = msg.clone();
         tx.send(Some(Err(tx_msg))).ok();
         tokio::spawn(async move {
-            neg.write().await.insert(hash.clone(), Instant::now());
+            neg.write()
+                .await
+                .insert(hash.clone(), (Instant::now(), ttl));
             inflight.lock().await.remove(&hash);
+            // Update host circuit breaker
+            if !host.is_empty() {
+                let mut circuits = host_circuits.write().await;
+                let state = circuits.entry(host).or_insert(HostCircuitState {
+                    consecutive_failures: 0,
+                    tripped_at: None,
+                });
+                state.consecutive_failures += 1;
+                if state.consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD {
+                    state.tripped_at = Some(Instant::now());
+                }
+            }
         });
     }
 }

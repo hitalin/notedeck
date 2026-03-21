@@ -8,11 +8,24 @@ const ogpCache = new Map<string, OgpData | null>()
 const pendingRequests = new Map<string, Promise<OgpData | null>>()
 
 function setOgpCache(url: string, value: OgpData | null) {
-  if (ogpCache.size >= OGP_CACHE_MAX) {
-    const oldest = ogpCache.keys().next().value
-    if (oldest !== undefined) ogpCache.delete(oldest)
+  if (ogpCache.has(url)) {
+    // LRU: delete and re-insert to move to end (most recently used)
+    ogpCache.delete(url)
+  } else if (ogpCache.size >= OGP_CACHE_MAX) {
+    // Evict least recently used (first entry in Map iteration order)
+    const lru = ogpCache.keys().next().value
+    if (lru !== undefined) ogpCache.delete(lru)
   }
   ogpCache.set(url, value)
+}
+
+function getOgpCache(url: string): OgpData | null | undefined {
+  if (!ogpCache.has(url)) return undefined
+  const value = ogpCache.get(url) ?? null
+  // LRU: move to end by re-inserting
+  ogpCache.delete(url)
+  ogpCache.set(url, value)
+  return value
 }
 
 /** Pre-populate the OGP cache from batch IPC results (e.g. timeline enriched) */
@@ -32,8 +45,9 @@ export function useOgpPreview(initialUrl: string, accountId?: string) {
     loading.value = true
     data.value = null
 
-    if (ogpCache.has(targetUrl)) {
-      data.value = ogpCache.get(targetUrl) ?? null
+    const cached = getOgpCache(targetUrl)
+    if (cached !== undefined) {
+      data.value = cached
       loading.value = false
       return
     }

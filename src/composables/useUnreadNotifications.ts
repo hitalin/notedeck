@@ -64,10 +64,15 @@ export function useUnreadNotifications() {
   )
 
   async function fetchAll() {
-    for (const acc of accountsStore.accounts) {
-      const count = await fetchUnreadCount(acc.id)
-      counts.value = { ...counts.value, [acc.id]: count }
-    }
+    const results = await Promise.all(
+      accountsStore.accounts.map(async (acc) => ({
+        id: acc.id,
+        count: await fetchUnreadCount(acc.id),
+      })),
+    )
+    const updated: Record<string, number> = {}
+    for (const r of results) updated[r.id] = r.count
+    counts.value = updated
   }
 
   async function markAllAsRead() {
@@ -90,7 +95,7 @@ export function useUnreadNotifications() {
   function startPolling() {
     if (isPollingActive) return
     isPollingActive = true
-    pollingInterval = setInterval(fetchAll, 60_000)
+    pollingInterval = setInterval(fetchAll, 120_000)
   }
 
   function stopPolling() {
