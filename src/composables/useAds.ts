@@ -53,8 +53,8 @@ export function useAds(
           'api_get_meta_detail',
           { accountId },
         )
-        interval = meta.notesPerOneAd ?? 0
-        rawAds = meta.ads ?? []
+        interval = (meta.notesPerOneAd as number) ?? 0
+        rawAds = (meta.ads as ServerAd[]) ?? []
 
         adsCache.set(accountId, {
           rawAds,
