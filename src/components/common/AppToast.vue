@@ -30,7 +30,7 @@ const { toasts } = useToast()
 <style lang="scss" module>
 .container {
   position: fixed;
-  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  top: 15%;
   left: 50%;
   transform: translateX(-50%);
   z-index: var(--nd-z-popup);
@@ -83,7 +83,10 @@ const { toasts } = useToast()
   background: color-mix(in srgb, var(--nd-warn) 85%, transparent);
 }
 
-.info {}
+.info {
+  color: #fff;
+  background: color-mix(in srgb, var(--nd-accent) 85%, transparent);
+}
 </style>
 
 <style>
@@ -101,11 +104,11 @@ const { toasts } = useToast()
 
 .app-toast-enter-from {
   opacity: 0;
-  transform: translateY(12px) scale(0.95);
+  transform: translateY(-12px) scale(0.95);
 }
 
 .app-toast-leave-to {
   opacity: 0;
-  transform: translateY(-8px) scale(0.95);
+  transform: translateY(8px) scale(0.95);
 }
 </style>

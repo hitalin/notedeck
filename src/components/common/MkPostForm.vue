@@ -357,6 +357,8 @@ function onKeydown(e: KeyboardEvent) {
                 <img
                   :src="acc.avatarUrl || '/avatar-default.svg'"
                   :class="$style.accountOptionAvatar"
+                  width="24"
+                  height="24"
                 />
                 <div :class="$style.accountOptionInfo">
                   <span :class="$style.accountOptionName">{{ acc.username }}</span>
@@ -1139,6 +1141,7 @@ function onKeydown(e: KeyboardEvent) {
 
 .accountOptionAvatar {
   width: 24px;
+  min-width: 24px;
   height: 24px;
   border-radius: 100%;
   object-fit: cover;
