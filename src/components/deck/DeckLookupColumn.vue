@@ -11,7 +11,7 @@ const MkPostForm = defineAsyncComponent(
 
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNavigation } from '@/composables/useNavigation'
-import { useAccountsStore } from '@/stores/accounts'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { parseNoteUrl } from '@/utils/noteUrl'
@@ -58,7 +58,10 @@ if (account.value) {
     .then((info) => {
       serverIconUrl.value = info.iconUrl ?? null
     })
-    .catch(() => {})
+    .catch((e) => {
+      if (import.meta.env.DEV)
+        console.debug('[lookup] server icon fetch failed:', e)
+    })
 }
 
 async function performLookup() {
@@ -184,6 +187,7 @@ async function handleReaction(_reaction: string, target: NormalizedNote) {
 }
 
 function handleReply(target: NormalizedNote) {
+  if (!account.value?.hasToken) return
   postFormReplyTo.value = target
   postFormRenoteId.value = undefined
   postFormEditNote.value = undefined
@@ -285,7 +289,7 @@ async function handlePosted(editedNoteId?: string) {
 
     <template #header-meta>
       <div v-if="account" :class="$style.headerAccount">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>

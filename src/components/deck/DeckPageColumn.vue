@@ -22,6 +22,7 @@ import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
+import { getAccountAvatarUrl } from '@/stores/accounts'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -388,7 +389,7 @@ const pageEditUrl = computed(() => {
         <i class="ti ti-refresh" :class="{ [String($style.spin)]: listLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
       </div>
     </template>
 
@@ -486,7 +487,7 @@ const pageEditUrl = computed(() => {
           <!-- Footer -->
           <div :class="$style.pageFooter">
             <div :class="$style.pageFooterAuthor">
-              <img v-if="page.user.avatarUrl" :src="page.user.avatarUrl" :class="$style.pageFooterAvatar" />
+              <img :src="page.user.avatarUrl || '/avatar-default.svg'" :class="$style.pageFooterAvatar" />
               By @{{ page.user.username }}
             </div>
             <div :class="$style.pageFooterDates">

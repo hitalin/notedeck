@@ -298,9 +298,14 @@ export function useColumnDrag(
         emit(event, {
           columnId,
           sourceWindowId: deckStore.currentWindowId ?? '__main__',
-        }).catch(() => {})
+        }).catch((e) => {
+          if (import.meta.env.DEV)
+            console.debug('[column-drag] emit failed:', e)
+        })
       })
-      .catch(() => {})
+      .catch(() => {
+        // Not running in Tauri (browser dev mode) — expected
+      })
   }
 
   return { dragColumnId, dropTarget, startDrag }

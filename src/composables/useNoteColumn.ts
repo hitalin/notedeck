@@ -1,5 +1,13 @@
 import { invoke } from '@tauri-apps/api/core'
-import { nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  shallowRef,
+  watch,
+} from 'vue'
 import type {
   ChannelSubscription,
   NormalizedNote,
@@ -19,6 +27,7 @@ import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
 import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
+import { catchLog, logWarn } from '@/utils/logger'
 import { insertIntoSorted } from '@/utils/sortNotes'
 
 export interface NoteColumnConfig {
@@ -136,37 +145,25 @@ export function useNoteColumn(config: NoteColumnConfig) {
   /** True when API is unreachable and displaying cached notes */
   const isOffline = ref(false)
 
+  /** True when the account exists but has no auth token */
+  const isLoggedOut = computed(() => account.value?.hasToken === false)
+
   /** Apply filterCachedNotes if configured */
   function applyFilter(cached: NormalizedNote[]): NormalizedNote[] {
     return config.filterCachedNotes ? config.filterCachedNotes(cached) : cached
   }
 
-  // When account loses token (logout with keep-data), switch to cache display
+  // Handle token state transitions (logout / re-login)
   watch(
     () => account.value?.hasToken,
     async (hasToken, prev) => {
-      if (prev && hasToken === false) {
+      if (prev === true && hasToken === false) {
+        // Logout: switch to anonymous API for public timelines
         disconnect()
-        const column = config.getColumn()
-        const cacheKey = config.cache?.getKey()
-        if (column.accountId && cacheKey) {
-          try {
-            const cached = await invoke<NormalizedNote[]>(
-              'api_get_cached_timeline',
-              {
-                accountId: column.accountId,
-                timelineType: cacheKey,
-                limit: 40,
-              },
-            )
-            const filtered = applyFilter(cached)
-            if (filtered.length > 0) setNotes(filtered)
-          } catch {
-            /* non-critical */
-          }
-        }
-        isOffline.value = true
-        isLoading.value = false
+        connect(true)
+      } else if (prev === false && hasToken === true) {
+        // Re-login: reconnect with full authentication
+        reconnect()
       }
     },
   )
@@ -191,7 +188,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
             noteStore.update(id, fresh)
           } catch {
             noteStore.remove(id)
-            invoke('api_delete_cached_note', { noteId: id }).catch(() => {})
+            invoke('api_delete_cached_note', { noteId: id }).catch(
+              catchLog('delete-cached-note'),
+            )
           }
         }),
       )
@@ -228,8 +227,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
             setNotes(filtered)
             cachedIds = filtered.map((n) => n.id)
           }
-        } catch {
-          /* non-critical */
+        } catch (e) {
+          logWarn('load-cache', e)
         }
       }
     }
@@ -239,20 +238,21 @@ export function useNoteColumn(config: NoteColumnConfig) {
       isLoading.value = true
     }
 
-    // Logged-out or unresolved account: show cached notes in read-only mode
-    if (!account.value || !account.value.hasToken) {
+    // Unresolved account: show cached notes in read-only mode
+    if (!account.value) {
       isOffline.value = true
       isLoading.value = false
       return
     }
 
     try {
-      const adapter = await initAdapter()
+      const adapter = await initAdapter({ hasToken: account.value.hasToken })
       if (!adapter) return
 
       // Start streaming setup early (runs in parallel with API fetch below).
       // Combined commands handle connect + subscribe in a single IPC round-trip.
-      if (config.streaming && streamingBatch) {
+      // Skip streaming for logged-out/guest accounts.
+      if (account.value.hasToken && config.streaming && streamingBatch) {
         adapter.stream.connect()
         adapter.stream.on('disconnected', () => {
           isOffline.value = true
@@ -333,7 +333,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
             } else {
               error.value = AppError.from(e)
             }
-          } catch {
+          } catch (cacheErr) {
+            logWarn('fallback-cache', cacheErr)
             error.value = AppError.from(e)
           }
         } else {
@@ -367,8 +368,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
       if (filtered.length > 0) {
         setNotes(insertIntoSorted(notes.value, filtered))
       }
-    } catch {
-      /* cache read failure is non-critical */
+    } catch (e) {
+      logWarn('load-more-cache', e)
     } finally {
       isLoading.value = false
     }
@@ -392,8 +393,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
     try {
       const older = await config.fetch(adapter, { untilId: lastNote.id })
       setNotes(insertIntoSorted(notes.value, older))
-    } catch {
-      // API failed: try cache fallback
+    } catch (e) {
+      logWarn('load-more', e)
       isOffline.value = true
       await loadMoreFromCache()
     } finally {
@@ -466,7 +467,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
         setNotes(fetched)
       }
       isOffline.value = false
-    } catch {
+    } catch (e) {
+      logWarn('pull-refresh', e)
       isOffline.value = true
     }
     scrollToTop()
@@ -507,7 +509,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
                 timelineType: cacheKey,
                 limit: 40,
               })
-            } catch {
+            } catch (e) {
+              logWarn('resume-cache', e)
               return []
             }
           })()
@@ -515,7 +518,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     let apiFailed = false
     const apiPromise = sinceId
-      ? config.fetch(adapter, { sinceId }).catch(() => {
+      ? config.fetch(adapter, { sinceId }).catch((e) => {
+          logWarn('resume-api', e)
           apiFailed = true
           return [] as NormalizedNote[]
         })
@@ -587,6 +591,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     serverIconUrl,
     isLoading,
     isOffline,
+    isLoggedOut,
     error,
     notes,
     focusedNoteId,

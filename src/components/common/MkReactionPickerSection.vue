@@ -68,7 +68,7 @@ function toggle() {
 }
 
 .sectionLabel {
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .sectionCount {

@@ -8,6 +8,7 @@
 
 マルチサーバー対応 Misskey デッキクライアント
 
+[![CI](https://github.com/hitalin/notedeck/actions/workflows/ci.yml/badge.svg)](https://github.com/hitalin/notedeck/actions/workflows/ci.yml)
 [![GitHub Release](https://img.shields.io/github/v/release/hitalin/notedeck?style=flat-square)](https://github.com/hitalin/notedeck/releases/latest)
 [![winget](https://img.shields.io/badge/winget-Hitalin.NoteDeck-blue?style=flat-square&logo=windows)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/h/Hitalin/NoteDeck)
 [![AUR](https://img.shields.io/aur/version/misskey-notedeck-bin?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/misskey-notedeck-bin)
@@ -59,8 +60,11 @@ nix run github:hitalin/notedeck
 
 ## 貢献する
 
-- **フォーク対応の追加** — [DEVELOPMENT.md](DEVELOPMENT.md) を参照
-- **バグ報告・機能提案** — [Issues](https://github.com/hitalin/notedeck/issues)
+PR を歓迎します。詳しくは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
+
+- **開発を始める** — [DEVELOPMENT.md](DEVELOPMENT.md) に環境構築からアーキテクチャまで記載
+- **フォーク対応の追加** — [DEVELOPMENT.md](DEVELOPMENT.md#adding-support-for-a-new-fork) の手順に沿って PR
+- **バグ報告・機能提案** — [Issues](https://github.com/hitalin/notedeck/issues)（テンプレートあり）
 
 ## 支援する
 

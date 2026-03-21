@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
+import { useAccountsStore } from '@/stores/accounts'
 
 export interface CustomTimelineInfo {
   type: string
@@ -89,9 +90,19 @@ export async function detectAvailableTimelines(
   const cached = availableTlCache.get(accountId)
   if (cached) return cached
 
-  const available: TimelineType[] = ['home']
   const denied = new Set<string>()
   const modes: Record<string, boolean> = {}
+
+  // Guest / logged-out: only public timelines (local, global)
+  const account = useAccountsStore().accountMap.get(accountId)
+  if (account && !account.hasToken) {
+    const available: TimelineType[] = ['local', 'global']
+    const result = { available, denied, modes }
+    availableTlCache.set(accountId, result)
+    return result
+  }
+
+  const available: TimelineType[] = ['home']
 
   try {
     const data = await invoke<Record<string, boolean>>(

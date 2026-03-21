@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "vue.volar",
+    "biomejs.biome",
+    "tauri-apps.tauri-vscode",
+    "vitest.explorer"
+  ]
+}

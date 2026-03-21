@@ -13,6 +13,7 @@ import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import RegexGuide from '@/components/common/RegexGuide.vue'
 import { useNavigation } from '@/composables/useNavigation'
+import { getAccountAvatarUrl } from '@/stores/accounts'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -122,6 +123,8 @@ function openRegexGuide() {
     }
   }
   showRegexGuide.value = true
+  // Remove any stale listener before adding a new one
+  document.removeEventListener('click', closeRegexGuide)
   setTimeout(() => {
     document.addEventListener('click', closeRegexGuide, { once: true })
   }, 0)
@@ -261,7 +264,7 @@ async function performSearch() {
   }
 
   // Server search
-  if (hint && account.value?.hasToken) {
+  if (hint && account.value) {
     try {
       const adapter = await initAdapter()
       if (adapter) {
@@ -384,7 +387,7 @@ onUnmounted(() => {
 
     <template #header-meta>
       <div v-if="account" :class="$style.headerAccount">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
@@ -549,7 +552,7 @@ onUnmounted(() => {
 
   <Teleport to="body">
     <MkPostForm
-      v-if="postForm.show.value && column.accountId"
+      v-if="postForm.show.value && column.accountId && account?.hasToken"
       :account-id="column.accountId"
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"

@@ -24,7 +24,7 @@ const isCompact = useIsCompactLayout()
 const auth = new MisskeyAuth()
 
 const host = ref(props.initialHost ?? '')
-const step = ref<'input' | 'waiting' | 'error'>('input')
+const step = ref<'input' | 'waiting' | 'guestLoading' | 'error'>('input')
 const errorMessage = ref('')
 let currentSession: AuthSession | null = null
 
@@ -55,6 +55,28 @@ async function completeLogin() {
       software: serverInfo.software,
     })
 
+    accountsStore.addAccount(account)
+    emit('success')
+  } catch (e) {
+    step.value = 'error'
+    errorMessage.value = AppError.from(e).message
+  }
+}
+
+async function startGuest() {
+  const trimmedHost = host.value
+    .trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '')
+  if (!trimmedHost) return
+
+  try {
+    step.value = 'guestLoading'
+    const serverInfo = await detectServer(trimmedHost)
+    const account = await invoke<Account>('create_guest_account', {
+      host: trimmedHost,
+      software: serverInfo.software,
+    })
     accountsStore.addAccount(account)
     emit('success')
   } catch (e) {
@@ -107,9 +129,24 @@ onMounted(() => {
           >
             ログイン
           </button>
+          <button
+            :class="$style.btnGuest"
+            :disabled="!host.trim()"
+            @click="startGuest"
+          >
+            ゲストとして閲覧
+          </button>
           <button class="_button" :class="$style.btnCancel" @click="emit('close')">
             キャンセル
           </button>
+        </div>
+      </div>
+
+      <!-- Step 2a: Guest loading -->
+      <div v-else-if="step === 'guestLoading'" key="guestLoading" :class="$style.dialogBody">
+        <div :class="$style.logoArea">
+          <div :class="$style.waitingSpinner" />
+          <p :class="$style.subtitle">サーバーに接続中...</p>
         </div>
       </div>
 
@@ -255,6 +292,38 @@ onMounted(() => {
   &:hover:not(:disabled) {
     transform: scale(1.02);
     box-shadow: 0 4px 12px rgba(134, 179, 0, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.btnGuest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 42px;
+  padding: 0 20px;
+  border: 1px solid var(--nd-accent);
+  border-radius: var(--nd-radius-full);
+  background: transparent;
+  color: var(--nd-accent);
+  font-size: 0.95em;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform var(--nd-duration-base), background var(--nd-duration-base), opacity var(--nd-duration-base);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--nd-accent) 10%, transparent);
+    transform: scale(1.02);
   }
 
   &:active:not(:disabled) {

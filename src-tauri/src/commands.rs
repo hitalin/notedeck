@@ -118,14 +118,19 @@ impl AuthSessionTracker {
     }
 
     fn register(&self, session_id: &str, host: &str) {
-        let mut sessions = self.sessions.lock().unwrap();
+        let Ok(mut sessions) = self.sessions.lock() else {
+            tracing::error!("AuthSessionTracker mutex poisoned in register");
+            return;
+        };
         // Purge expired entries while we have the lock
         sessions.retain(|_, (_, created)| created.elapsed().as_secs() < AUTH_SESSION_TTL_SECS);
         sessions.insert(session_id.to_string(), (host.to_string(), Instant::now()));
     }
 
     fn consume(&self, session_id: &str, host: &str) -> std::result::Result<(), NoteDeckError> {
-        let mut sessions = self.sessions.lock().unwrap();
+        let mut sessions = self.sessions.lock().map_err(|_| {
+            NoteDeckError::Auth("Internal error: session lock poisoned".to_string())
+        })?;
         match sessions.remove(session_id) {
             Some((stored_host, created)) => {
                 if created.elapsed().as_secs() >= AUTH_SESSION_TTL_SECS {
@@ -190,6 +195,24 @@ pub fn get_credentials(db: &Database, account_id: &str) -> Result<(String, Strin
 /// Invalidate cached credentials (call on logout/token change)
 pub fn invalidate_credentials(account_id: &str) {
     CREDENTIAL_CACHE.invalidate(account_id);
+}
+
+/// Get host only from account_id (no token required).
+fn get_host(db: &Database, account_id: &str) -> Result<String> {
+    let account = db
+        .get_account(account_id)?
+        .ok_or_else(|| NoteDeckError::AccountNotFound(account_id.to_string()))?;
+    Ok(account.host.clone())
+}
+
+/// Get credentials with anonymous fallback.
+/// Returns (host, token) where token is empty if not authenticated.
+/// Public Misskey endpoints work with empty token (skipped by notecli).
+fn get_credentials_or_anon(db: &Database, account_id: &str) -> Result<(String, String)> {
+    match get_credentials(db, account_id) {
+        Ok(creds) => Ok(creds),
+        Err(_) => Ok((get_host(db, account_id)?, String::new())),
+    }
 }
 
 /// Write account list (non-secret metadata only) to a JSON file for background workers.
@@ -257,6 +280,34 @@ pub fn logout_account(
     db.clear_token(&id)?;
     export_account_list(&app, &db);
     Ok(())
+}
+
+// --- Guest / Anonymous API ---
+
+/// Create a guest (unauthenticated) account for browsing public timelines.
+#[tauri::command]
+pub async fn create_guest_account(
+    app: tauri::AppHandle,
+    db: State<'_, Arc<Database>>,
+    host: String,
+    software: String,
+) -> Result<AccountPublic> {
+    let host = validate_host(&host)?;
+    let id = uuid::Uuid::new_v4().to_string();
+    let username = format!("guest_{}", &id[..8]);
+    let account = Account {
+        id,
+        host,
+        token: String::new(),
+        user_id: "__guest__".to_string(),
+        username,
+        display_name: None,
+        avatar_url: None,
+        software,
+    };
+    db.upsert_account(&account)?;
+    export_account_list(&app, &db);
+    Ok(AccountPublic::new(&account, false))
 }
 
 // --- DB: Servers ---
@@ -342,7 +393,7 @@ pub async fn api_get_timeline(
     timeline_type: TimelineType,
     options: Option<TimelineOptions>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let opts = options.unwrap_or_default();
     let cache_key = if timeline_type.as_str() == "user-list" {
         if let Some(ref list_id) = opts.list_id {
@@ -371,7 +422,7 @@ pub async fn api_get_timeline_enriched(
     timeline_type: TimelineType,
     options: Option<TimelineOptions>,
 ) -> Result<TimelineEnriched> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let opts = options.unwrap_or_default();
     let cache_key = if timeline_type.as_str() == "user-list" {
         if let Some(ref list_id) = opts.list_id {
@@ -511,7 +562,7 @@ pub async fn api_get_featured_notes(
     account_id: String,
     limit: Option<i64>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let notes = client
         .get_featured_notes(&host, &token, &account_id, limit.unwrap_or(30))
         .await?;
@@ -590,7 +641,7 @@ pub async fn api_get_channels(
     client: State<'_, Arc<MisskeyClient>>,
     account_id: String,
 ) -> Result<Vec<Channel>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_channels(&host, &token).await
 }
 
@@ -604,7 +655,7 @@ pub async fn api_get_channel_notes(
     since_id: Option<String>,
     until_id: Option<String>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let notes = client
         .get_channel_notes(
             &host,
@@ -629,7 +680,7 @@ pub async fn api_get_note(
     account_id: String,
     note_id: String,
 ) -> Result<NormalizedNote> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_note(&host, &token, &account_id, &note_id).await
 }
 
@@ -722,7 +773,7 @@ pub async fn api_get_note_reactions(
     reaction_type: Option<String>,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNoteReaction>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_note_reactions(
             &host,
@@ -849,7 +900,7 @@ pub async fn api_get_user(
     account_id: String,
     user_id: String,
 ) -> Result<NormalizedUser> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_user(&host, &token, &user_id).await
 }
 
@@ -860,7 +911,7 @@ pub async fn api_get_user_detail(
     account_id: String,
     user_id: String,
 ) -> Result<NormalizedUserDetail> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_user_detail(&host, &token, &user_id).await
 }
 
@@ -872,7 +923,7 @@ pub async fn api_get_user_notes(
     user_id: String,
     options: Option<TimelineOptions>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let notes = client
         .get_user_notes(
             &host,
@@ -894,7 +945,7 @@ pub async fn api_get_server_emojis(
     client: State<'_, Arc<MisskeyClient>>,
     account_id: String,
 ) -> Result<Vec<ServerEmoji>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_server_emojis(&host, &token).await
 }
 
@@ -934,7 +985,7 @@ pub async fn api_search_notes(
             "Search query too long".to_string(),
         ));
     }
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .search_notes(
             &host,
@@ -954,7 +1005,7 @@ pub async fn api_get_note_children(
     note_id: String,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_note_children(
             &host,
@@ -974,7 +1025,7 @@ pub async fn api_get_note_renotes(
     note_id: String,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let data = client
         .request(
             &host,
@@ -998,7 +1049,7 @@ pub async fn api_get_note_conversation(
     note_id: String,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_note_conversation(
             &host,
@@ -1022,7 +1073,7 @@ pub async fn api_lookup_user(
         return Err(NoteDeckError::InvalidInput("Invalid username".to_string()));
     }
     let validated_host = host.map(|h| validate_host(&h)).transpose()?;
-    let (server_host, token) = get_credentials(&db, &account_id)?;
+    let (server_host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .lookup_user(&server_host, &token, &username, validated_host.as_deref())
         .await
@@ -1475,7 +1526,7 @@ pub async fn api_search_users(
     limit: Option<i64>,
     offset: Option<i64>,
 ) -> Result<serde_json::Value> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .search_users(
             &host,
@@ -1498,7 +1549,7 @@ pub async fn api_get_roles(
     client: State<'_, Arc<MisskeyClient>>,
     account_id: String,
 ) -> Result<serde_json::Value> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_roles(&host, &token).await
 }
 
@@ -1511,7 +1562,7 @@ pub async fn api_get_role_users(
     limit: Option<i64>,
     offset: Option<i64>,
 ) -> Result<serde_json::Value> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_role_users(
             &host,
@@ -1533,7 +1584,7 @@ pub async fn api_get_announcements(
     limit: Option<i64>,
     is_active: Option<bool>,
 ) -> Result<serde_json::Value> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_announcements(
             &host,
@@ -1610,7 +1661,7 @@ pub async fn api_search_users_by_query(
     query: String,
     limit: Option<i64>,
 ) -> Result<serde_json::Value> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .search_users_by_query(&host, &token, &query, limit.unwrap_or(10).clamp(1, 100))
         .await
@@ -1624,7 +1675,7 @@ pub async fn api_search_hashtags(
     query: String,
     limit: Option<i64>,
 ) -> Result<Vec<String>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .search_hashtags(&host, &token, &query, limit.unwrap_or(10).clamp(1, 100))
         .await
@@ -2482,7 +2533,10 @@ pub async fn export_db(app: tauri::AppHandle) -> Result<bool> {
         return Ok(false); // user cancelled
     };
 
-    std::fs::copy(&db_path, dest.as_path().unwrap())
+    let dest_path = dest
+        .as_path()
+        .ok_or_else(|| NoteDeckError::InvalidInput("Invalid destination path".to_string()))?;
+    std::fs::copy(&db_path, dest_path)
         .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
     Ok(true)
 }

@@ -106,19 +106,24 @@ onMounted(async () => {
   try {
     const result = await initAdapterFor(account.host, account.id, {
       pinnedReactions: false,
+      hasToken: account.hasToken,
     })
     adapter = result.adapter
-    const [userDetail, userPinnedNoteIds] = await Promise.all([
-      adapter.api.getUserDetail(props.userId),
-      adapter.api.getUserPinnedNoteIds(props.userId),
-    ])
+    const userDetail = await adapter.api.getUserDetail(props.userId)
     user.value = userDetail
-    pinnedNoteIds.value = userPinnedNoteIds
-    if (userPinnedNoteIds.length > 0) {
-      const pinned = await Promise.all(
-        userPinnedNoteIds.map((id) => adapter?.api.getNote(id)),
+
+    // Pinned notes require auth — skip for logged-out/guest accounts
+    if (account.hasToken) {
+      const userPinnedNoteIds = await adapter.api.getUserPinnedNoteIds(
+        props.userId,
       )
-      pinnedNotes.value = pinned.filter((n): n is NormalizedNote => n != null)
+      pinnedNoteIds.value = userPinnedNoteIds
+      if (userPinnedNoteIds.length > 0) {
+        const pinned = await Promise.all(
+          userPinnedNoteIds.map((id) => adapter?.api.getNote(id)),
+        )
+        pinnedNotes.value = pinned.filter((n): n is NormalizedNote => n != null)
+      }
     }
     await loadTabNotes()
   } catch (e) {

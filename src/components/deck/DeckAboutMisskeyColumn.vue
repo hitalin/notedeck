@@ -9,7 +9,7 @@ const MkPostForm = defineAsyncComponent(
 
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
-import { useAccountsStore } from '@/stores/accounts'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
@@ -53,6 +53,7 @@ function scrollToTop() {
 }
 
 function iLoveMisskey() {
+  if (!account.value?.hasToken) return
   showPostForm.value = true
 }
 
@@ -174,7 +175,7 @@ onMounted(() => {
         <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>

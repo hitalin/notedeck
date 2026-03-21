@@ -9,6 +9,7 @@ const MkPostForm = defineAsyncComponent(
 
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useNoteColumn } from '@/composables/useNoteColumn'
+import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import DeckColumn from './DeckColumn.vue'
 
@@ -78,7 +79,7 @@ const {
         <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
@@ -142,7 +143,7 @@ const {
 
   <Teleport to="body">
     <MkPostForm
-      v-if="postForm.show.value && column.accountId"
+      v-if="postForm.show.value && column.accountId && account?.hasToken"
       :account-id="column.accountId"
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"

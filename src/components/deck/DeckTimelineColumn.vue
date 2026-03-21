@@ -9,6 +9,7 @@ import MkAd from '@/components/common/MkAd.vue'
 import { useAds } from '@/composables/useAds'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { useTabIndicator } from '@/composables/useTabIndicator'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -214,26 +215,11 @@ function toggleFilter(key: keyof TimelineFilter) {
 // --- Tab slide indicator ---
 const $style = useCssModule()
 const tabsRef = ref<HTMLElement | null>(null)
-const tabIndicatorStyle = ref({ left: '0px', width: '0px', opacity: '0' })
-
-function updateTabIndicator() {
-  if (!tabsRef.value) return
-  const activeTab = tabsRef.value.querySelector(
-    `.tl-tab.${$style.active}`,
-  ) as HTMLElement | null
-  if (!activeTab) {
-    tabIndicatorStyle.value = { left: '0px', width: '0px', opacity: '0' }
-    return
-  }
-  tabIndicatorStyle.value = {
-    left: `${activeTab.offsetLeft}px`,
-    width: `${activeTab.offsetWidth}px`,
-    opacity: '1',
-  }
-}
-
-watch(tlType, () => nextTick(updateTabIndicator))
-onMounted(() => nextTick(updateTabIndicator))
+const { indicatorStyle: tabIndicatorStyle } = useTabIndicator(
+  tabsRef,
+  `.tl-tab.${$style.active}`,
+  () => tlType.value,
+)
 
 // --- TL switching ---
 

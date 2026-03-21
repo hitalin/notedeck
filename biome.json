@@ -24,6 +24,9 @@
       },
       "complexity": {
         "useOptionalChain": "warn"
+      },
+      "suspicious": {
+        "noEmptyBlockStatements": "warn"
       }
     }
   },

@@ -9,7 +9,9 @@ import { useAutocomplete } from '@/composables/useAutocomplete'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePostFormState } from '@/composables/usePostFormState'
+import { getAccountAvatarUrl, isGuestAccount } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
+import { showLoginPrompt } from '@/utils/loginPrompt'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
@@ -341,8 +343,7 @@ function onKeydown(e: KeyboardEvent) {
               @click="showAccountMenu = !showAccountMenu"
             >
               <img
-                v-if="account.avatarUrl"
-                :src="account.avatarUrl"
+                :src="getAccountAvatarUrl(account)"
                 :class="$style.accountAvatar"
               />
             </button>
@@ -351,13 +352,15 @@ function onKeydown(e: KeyboardEvent) {
                 v-for="acc in accounts"
                 :key="acc.id"
                 class="_button"
-                :class="[$style.accountOption, { [$style.active]: acc.id === activeAccountId }]"
-                @click="switchAccount(acc.id)"
+                :class="[$style.accountOption, { [$style.active]: acc.id === activeAccountId, [$style.accountDisabled]: isGuestAccount(acc) }]"
+                :disabled="isGuestAccount(acc)"
+                @click="acc.hasToken ? switchAccount(acc.id) : showLoginPrompt()"
               >
                 <img
-                  v-if="acc.avatarUrl"
-                  :src="acc.avatarUrl"
+                  :src="getAccountAvatarUrl(acc)"
                   :class="$style.accountOptionAvatar"
+                  width="24"
+                  height="24"
                 />
                 <div :class="$style.accountOptionInfo">
                   <span :class="$style.accountOptionName">{{ acc.username }}</span>
@@ -1104,7 +1107,6 @@ function onKeydown(e: KeyboardEvent) {
   top: 100%;
   left: 0;
   z-index: 10;
-  min-width: 200px;
   padding: 4px;
   margin-top: 4px;
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
@@ -1133,17 +1135,23 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
+.accountDisabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .accountOptionAvatar {
+  flex: 0 0 24px;
   width: 24px;
   height: 24px;
   border-radius: 100%;
   object-fit: cover;
-  flex-shrink: 0;
 }
 
 .accountOptionInfo {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   min-width: 0;
 }
 

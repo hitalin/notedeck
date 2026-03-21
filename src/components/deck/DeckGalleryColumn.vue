@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { computed, ref } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { safeUrl } from '@/composables/useDriveFolder'
+import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
@@ -172,7 +173,7 @@ fetchGallery()
         <i class="ti ti-refresh" :class="{ [String($style.spin)]: loading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
       </div>
     </template>
 
@@ -236,8 +237,7 @@ fetchGallery()
             <div :class="$style.galleryDetailMeta">
               <div :class="$style.galleryDetailUser">
                 <img
-                  v-if="detailPost.user.avatarUrl"
-                  :src="detailPost.user.avatarUrl"
+                  :src="detailPost.user.avatarUrl || '/avatar-default.svg'"
                   :class="$style.galleryUserAvatar"
                 />
                 <span :class="$style.galleryUserName">{{ detailPost.user.name || detailPost.user.username }}</span>
@@ -301,8 +301,7 @@ fetchGallery()
                 <div :class="$style.galleryGridFooter">
                   <span :class="$style.galleryGridUser">
                     <img
-                      v-if="post.user.avatarUrl"
-                      :src="post.user.avatarUrl"
+                      :src="post.user.avatarUrl || '/avatar-default.svg'"
                       :class="$style.galleryGridAvatar"
                     />
                     {{ post.user.name || post.user.username }}

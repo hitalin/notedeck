@@ -100,7 +100,9 @@ export function useNoteSound(
     if (IS_ANDROID) {
       const el = ensureAudioElement(host, soundType)
       el.currentTime = 0
-      el.play().catch(() => {})
+      el.play().catch(() => {
+        // Autoplay blocked by browser policy — expected on mobile
+      })
       return
     }
 

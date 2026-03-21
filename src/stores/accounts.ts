@@ -14,6 +14,17 @@ export interface Account {
   hasToken: boolean
 }
 
+const GUEST_USER_ID = '__guest__'
+
+export function isGuestAccount(account: Account): boolean {
+  return account.userId === GUEST_USER_ID && !account.hasToken
+}
+
+export function getAccountAvatarUrl(account: Account): string {
+  if (isGuestAccount(account)) return '/avatar-guest.svg'
+  return account.avatarUrl || '/avatar-default.svg'
+}
+
 export const useAccountsStore = defineStore('accounts', () => {
   const accounts = ref<Account[]>([])
   const activeAccountId = ref<string | null>(null)
@@ -79,6 +90,9 @@ export const useAccountsStore = defineStore('accounts', () => {
     if (activeAccountId.value === id) {
       activeAccountId.value = accounts.value[0]?.id ?? null
     }
+    // Clean up localStorage caches associated with this account
+    localStorage.removeItem(`nd-drafts-${id}`)
+    localStorage.removeItem(`nd-cache-notifications-${id}`)
   }
 
   async function logoutAccount(id: string): Promise<void> {

@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
-import { useAccountsStore } from '@/stores/accounts'
+import {
+  getAccountAvatarUrl,
+  isGuestAccount,
+  useAccountsStore,
+} from '@/stores/accounts'
 import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
+import { showLoginPrompt } from '@/utils/loginPrompt'
 
 const props = defineProps<{
   mode?: 'deck' | 'pip'
@@ -63,6 +68,22 @@ const addColumnType = ref<
   | 'emoji'
   | null
 >(null)
+
+/** Column types that work without authentication */
+const GUEST_ALLOWED_TYPES = new Set([
+  'timeline',
+  'user',
+  'search',
+  'channel',
+  'explore',
+  'emoji',
+])
+
+/** Whether the selected column type requires authentication */
+const requiresAuth = computed(() => {
+  if (!addColumnType.value) return false
+  return !GUEST_ALLOWED_TYPES.has(addColumnType.value)
+})
 
 function selectColumnType(
   type:
@@ -627,10 +648,11 @@ function close() {
           v-for="account in accountsStore.accounts"
           :key="account.id"
           class="_button"
-          :class="$style.addAccountBtn"
-          @click="addColumnForAccount(account.id)"
+          :class="[$style.addAccountBtn, { [$style.addAccountDisabled]: isGuestAccount(account) && requiresAuth }]"
+          :disabled="isGuestAccount(account) && requiresAuth"
+          @click="(!account.hasToken && requiresAuth) ? showLoginPrompt() : addColumnForAccount(account.id)"
         >
-          <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.addAccountAvatar" />
+          <img :src="getAccountAvatarUrl(account)" :class="$style.addAccountAvatar" />
           <span>@{{ account.username }}@{{ account.host }}</span>
         </button>
       </template>
@@ -761,6 +783,11 @@ function close() {
   & + & {
     border-top: 1px solid var(--nd-divider);
   }
+}
+
+.addAccountDisabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 .addAccountAvatar {

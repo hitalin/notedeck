@@ -32,7 +32,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "notedeck=info,notecli=info,warn".parse().unwrap()),
+                .unwrap_or_else(|_| "notedeck=info,notecli=info,warn".parse().expect("default tracing filter must parse")),
         )
         .init();
 
@@ -59,6 +59,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::load_accounts,
         commands::delete_account,
         commands::logout_account,
+        commands::create_guest_account,
         commands::load_servers,
         commands::get_server,
         commands::upsert_server,

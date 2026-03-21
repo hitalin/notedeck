@@ -5,7 +5,10 @@ import { useAccountsStore } from '@/stores/accounts'
 
 interface StreamEventEnvelope {
   kind: string
-  payload: Record<string, unknown>
+  payload: {
+    accountId: string
+    eventType?: string
+  }
 }
 
 const counts = ref<Record<string, number>>({})
@@ -31,8 +34,7 @@ async function setupListener() {
   listenerSetUp = true
   unlistenFn = await listen<StreamEventEnvelope>('stream-event', (event) => {
     const { kind, payload } = event.payload
-    const p = payload as Record<string, unknown>
-    const accountId = p.accountId as string
+    const { accountId } = payload
 
     if (kind === 'stream-notification') {
       counts.value = {
@@ -41,7 +43,7 @@ async function setupListener() {
       }
     } else if (
       kind === 'stream-main-event' &&
-      p.eventType === 'readAllNotifications'
+      payload.eventType === 'readAllNotifications'
     ) {
       counts.value = { ...counts.value, [accountId]: 0 }
     }
@@ -64,8 +66,9 @@ export function useUnreadNotifications() {
   )
 
   async function fetchAll() {
+    const authed = accountsStore.accounts.filter((acc) => acc.hasToken)
     const results = await Promise.all(
-      accountsStore.accounts.map(async (acc) => ({
+      authed.map(async (acc) => ({
         id: acc.id,
         count: await fetchUnreadCount(acc.id),
       })),
@@ -77,6 +80,7 @@ export function useUnreadNotifications() {
 
   async function markAllAsRead() {
     for (const acc of accountsStore.accounts) {
+      if (!acc.hasToken) continue
       try {
         await invoke('api_mark_all_notifications_as_read', {
           accountId: acc.id,

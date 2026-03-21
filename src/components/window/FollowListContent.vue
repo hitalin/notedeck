@@ -9,8 +9,9 @@ import type {
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useNavigation } from '@/composables/useNavigation'
-import { useAccountsStore } from '@/stores/accounts'
+import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 import { useToast } from '@/stores/toast'
+import { showLoginPrompt } from '@/utils/loginPrompt'
 
 const props = defineProps<{
   accountId: string
@@ -33,6 +34,7 @@ const followLoadingIds = ref<Set<string>>(new Set())
 
 const account = accountsStore.accounts.find((a) => a.id === props.accountId)
 const isOwnProfile = computed(() => account?.userId === props.userId)
+const isGuest = account ? isGuestAccount(account) : false
 let adapter: ServerAdapter | null = null
 
 onMounted(async () => {
@@ -40,6 +42,7 @@ onMounted(async () => {
   try {
     const result = await initAdapterFor(account.host, account.id, {
       pinnedReactions: false,
+      hasToken: account.hasToken,
     })
     adapter = result.adapter
     await loadUsers()
@@ -187,9 +190,9 @@ function navigateUser(userId: string) {
         <button
           v-if="account?.userId !== u.id"
           class="_button"
-          :class="[$style.followBtn, { [$style.followBtnFollowing]: followingIds.has(u.id) }]"
-          :disabled="followLoadingIds.has(u.id)"
-          @click.stop="toggleFollow(u)"
+          :class="[$style.followBtn, { [$style.followBtnFollowing]: followingIds.has(u.id), [$style.followBtnDisabled]: !account?.hasToken }]"
+          :disabled="followLoadingIds.has(u.id) || isGuest"
+          @click.stop="account?.hasToken ? toggleFollow(u) : showLoginPrompt()"
         >
           <template v-if="followLoadingIds.has(u.id)">
             <i class="ti ti-loader-2" :class="$style.spin" />
@@ -346,6 +349,11 @@ function navigateUser(userId: string) {
 .followBtnFollowing {
   color: var(--nd-fg);
   background: var(--nd-buttonBg);
+}
+
+.followBtnDisabled {
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .stateMsg {

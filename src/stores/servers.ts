@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
-import type { ServerInfo } from '@/adapters/types'
+import type { ServerInfo, ServerSoftware } from '@/adapters/types'
 import { detectServer } from '@/core/server'
 
 interface StoredServer {
@@ -18,13 +18,25 @@ export const useServersStore = defineStore('servers', () => {
   // shallowRef + full Map replacement avoids deep reactivity on server info objects
   const servers = shallowRef(new Map<string, ServerInfo>())
 
+  const KNOWN_SOFTWARE = new Set<string>([
+    'misskey',
+    'firefish',
+    'sharkey',
+    'iceshrimp',
+    'unknown',
+  ])
+
+  function toServerSoftware(value: string): ServerSoftware {
+    return KNOWN_SOFTWARE.has(value) ? (value as ServerSoftware) : 'unknown'
+  }
+
   function parseStoredServer(stored: StoredServer): ServerInfo | null {
     const parsed = JSON.parse(stored.featuresJson)
     if (!parsed) return null
     const { _iconUrl, _themeColor, ...features } = parsed
     const info: ServerInfo = {
       host: stored.host,
-      software: stored.software as ServerInfo['software'],
+      software: toServerSoftware(stored.software),
       version: stored.version,
       features,
     }

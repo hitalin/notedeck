@@ -260,6 +260,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           draft: true
+          generate_release_notes: true
           files: NoteDeck-*
 
   publish:
@@ -311,6 +312,8 @@ jobs:
             --clobber
 
       - name: Generate latest.json
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=${{ steps.version.outputs.version }}
           REPO="${{ github.repository }}"
@@ -322,10 +325,15 @@ jobs:
           LINUX_SIG=$(cat assets/*-linux-x64.AppImage.tar.gz.sig 2>/dev/null || echo "")
           MACOS_SIG=$(cat assets/*-macos-universal.app.tar.gz.sig 2>/dev/null || echo "")
 
+          # Fetch auto-generated release notes for updater dialog
+          NOTES=$(gh release view "v${VERSION}" --repo "${{ github.repository }}" --json body -q '.body' 2>/dev/null | head -c 500 || echo "NoteDeck v${VERSION}")
+          # Escape for JSON
+          NOTES_ESCAPED=$(echo "$NOTES" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
+
           cat > latest.json << MANIFEST
           {
             "version": "${VERSION}",
-            "notes": "NoteDeck v${VERSION}",
+            "notes": ${NOTES_ESCAPED},
             "pub_date": "${DATE}",
             "platforms": {
               "windows-x86_64": {

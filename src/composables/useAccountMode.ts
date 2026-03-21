@@ -1,5 +1,5 @@
 import { computed, type MaybeRefOrGetter, toValue } from 'vue'
-import { useAccountsStore } from '@/stores/accounts'
+import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 
 export function useAccountMode(accountId: MaybeRefOrGetter<string>) {
   const accountsStore = useAccountsStore()
@@ -9,5 +9,10 @@ export function useAccountMode(accountId: MaybeRefOrGetter<string>) {
     return account?.hasToken ?? false
   })
 
-  return { canInteract }
+  const isGuest = computed(() => {
+    const account = accountsStore.accountMap.get(toValue(accountId))
+    return account ? isGuestAccount(account) : false
+  })
+
+  return { canInteract, isGuest }
 }

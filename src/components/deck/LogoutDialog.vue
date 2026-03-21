@@ -1,6 +1,7 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   show: boolean
+  isGuest?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -16,15 +17,15 @@ const emit = defineEmits<{
       <div v-if="show" :class="$style.backdrop" @click="emit('cancel')">
         <div :class="$style.dialog" class="nd-popup-content" @click.stop>
           <div :class="$style.header">
-            <i class="ti ti-logout" :class="$style.icon" />
-            <div :class="$style.title">ログアウト</div>
+            <i :class="[$style.icon, isGuest ? 'ti ti-user-off' : 'ti ti-logout']" />
+            <div :class="$style.title">{{ isGuest ? 'ゲストを削除' : 'ログアウト' }}</div>
           </div>
 
           <div :class="$style.body">
             <p :class="$style.message">
-              ローカルデータをこのデバイスに残しますか？
+              {{ isGuest ? 'このゲストアカウントを削除しますか？' : 'ローカルデータをこのデバイスに残しますか？' }}
             </p>
-            <p :class="$style.hint">
+            <p v-if="!isGuest" :class="$style.hint">
               残したデータはオフラインで閲覧できます。
             </p>
           </div>
@@ -34,9 +35,9 @@ const emit = defineEmits<{
               キャンセル
             </button>
             <button :class="$style.btnDelete" @click="emit('delete-all')">
-              すべて削除
+              {{ isGuest ? '削除' : 'すべて削除' }}
             </button>
-            <button :class="$style.btnKeep" @click="emit('keep-data')">
+            <button v-if="!isGuest" :class="$style.btnKeep" @click="emit('keep-data')">
               データを残す
             </button>
           </div>

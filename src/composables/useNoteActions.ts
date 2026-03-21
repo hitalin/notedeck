@@ -1,7 +1,9 @@
 import { ref } from 'vue'
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
+import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
+import { showLoginPrompt } from '@/utils/loginPrompt'
 import { toggleFavorite } from '@/utils/toggleFavorite'
 import { toggleReaction } from '@/utils/toggleReaction'
 
@@ -19,6 +21,16 @@ export function useNoteActions(
   onMutated: (note: NormalizedNote) => void,
 ) {
   const toast = useToast()
+  const accountsStore = useAccountsStore()
+
+  /** Check if the account can perform write operations */
+  function canWrite(accountId: string): boolean {
+    const account = accountsStore.accountMap.get(accountId)
+    if (!account) return false
+    if (account.hasToken) return true
+    if (!isGuestAccount(account)) showLoginPrompt()
+    return false
+  }
 
   // Post form state
   const showPostForm = ref(false)
@@ -61,6 +73,7 @@ export function useNoteActions(
   }
 
   function handleReply(note: NormalizedNote) {
+    if (!canWrite(note._accountId)) return
     postFormAccountId.value = note._accountId
     postFormReplyTo.value = note
     postFormRenoteId.value = undefined
@@ -69,6 +82,7 @@ export function useNoteActions(
   }
 
   function handleQuote(note: NormalizedNote) {
+    if (!canWrite(note._accountId)) return
     postFormAccountId.value = note._accountId
     postFormReplyTo.value = undefined
     postFormRenoteId.value = note.id
@@ -90,6 +104,7 @@ export function useNoteActions(
   }
 
   function handleEdit(note: NormalizedNote) {
+    if (!canWrite(note._accountId)) return
     postFormAccountId.value = note._accountId
     postFormReplyTo.value = undefined
     postFormRenoteId.value = undefined

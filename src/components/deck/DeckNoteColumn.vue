@@ -12,6 +12,7 @@ import {
   type NoteColumnConfig,
   useNoteColumn,
 } from '@/composables/useNoteColumn'
+import { getAccountAvatarUrl, isGuestAccount } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import DeckColumn from './DeckColumn.vue'
 
@@ -31,6 +32,7 @@ const {
   serverIconUrl,
   isLoading,
   isOffline,
+  isLoggedOut,
   error,
   notes,
   focusedNoteId,
@@ -94,8 +96,7 @@ defineExpose({ account, scroller, reconnect, columnThemeVars })
       </button>
       <div v-if="account" :class="$style.headerAccount">
         <img
-          v-if="account.avatarUrl"
-          :src="account.avatarUrl"
+          :src="getAccountAvatarUrl(account)"
           :class="$style.headerAvatar"
         />
         <img
@@ -140,7 +141,10 @@ defineExpose({ account, scroller, reconnect, columnThemeVars })
         </div>
       </div>
 
-      <div v-if="isOffline" :class="$style.offlineBanner">
+      <div v-if="isLoggedOut && account && !isGuestAccount(account)" :class="$style.loggedOutBanner">
+        <i class="ti ti-logout" />ログアウト中
+      </div>
+      <div v-else-if="isOffline && !isLoggedOut" :class="$style.offlineBanner">
         <i class="ti ti-cloud-off" />オフライン
       </div>
 
@@ -203,7 +207,7 @@ defineExpose({ account, scroller, reconnect, columnThemeVars })
 
   <Teleport to="body">
     <MkPostForm
-      v-if="postForm.show.value && column.accountId"
+      v-if="postForm.show.value && column.accountId && account?.hasToken"
       :account-id="column.accountId"
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"

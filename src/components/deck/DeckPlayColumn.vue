@@ -26,6 +26,7 @@ const MkPostForm = defineAsyncComponent(
 
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
@@ -364,7 +365,7 @@ function reload() {
         <i class="ti ti-refresh" :class="{ [String($style.spin)]: listLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
       </div>
     </template>
 
@@ -426,7 +427,7 @@ function reload() {
 
           <div :class="$style.playFooter">
             <div :class="$style.playFooterAuthor">
-              <img v-if="flash.user.avatarUrl" :src="flash.user.avatarUrl" :class="$style.playFooterAvatar" />
+              <img :src="flash.user.avatarUrl || '/avatar-default.svg'" :class="$style.playFooterAvatar" />
               By @{{ flash.user.username }}
             </div>
             <div :class="$style.playFooterDates">

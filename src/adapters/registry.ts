@@ -1,7 +1,11 @@
 import { createMisskeyAdapter } from './misskey'
 import type { ServerAdapter, ServerInfo, ServerSoftware } from './types'
 
-type AdapterFactory = (info: ServerInfo, accountId: string) => ServerAdapter
+type AdapterFactory = (
+  info: ServerInfo,
+  accountId: string,
+  hasToken?: boolean,
+) => ServerAdapter
 
 const registry = new Map<ServerSoftware, AdapterFactory>()
 
@@ -15,6 +19,7 @@ export function registerAdapter(
 export function createAdapter(
   info: ServerInfo,
   accountId: string,
+  hasToken = true,
 ): ServerAdapter {
   const factory = registry.get(info.software) ?? registry.get('misskey')
   if (!factory) {
@@ -22,7 +27,7 @@ export function createAdapter(
       `No adapter registered for "${info.software}" and no fallback "misskey" adapter found`,
     )
   }
-  return factory(info, accountId)
+  return factory(info, accountId, hasToken)
 }
 
 export function getRegisteredSoftware(): ServerSoftware[] {
