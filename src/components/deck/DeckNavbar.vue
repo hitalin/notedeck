@@ -402,7 +402,7 @@ defineExpose({
               <div :class="$style.avatarWrap">
                 <img
                   v-if="isGuestAccount(acc)"
-                  src="/avatar-default.svg"
+                  src="/avatar-guest.svg"
                   :class="$style.avatar"
                 />
                 <img

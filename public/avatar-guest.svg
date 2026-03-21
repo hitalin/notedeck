@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="20" fill="url(#bg)"/>
+  <!-- hat brim -->
+  <ellipse cx="64" cy="38" rx="38" ry="8" fill="#fff"/>
+  <!-- hat top -->
+  <path d="M34 38 Q34 16 64 16 Q94 16 94 38" fill="#fff"/>
+  <!-- left lens -->
+  <circle cx="46" cy="62" r="16" fill="none" stroke="#fff" stroke-width="5"/>
+  <!-- right lens -->
+  <circle cx="82" cy="62" r="16" fill="none" stroke="#fff" stroke-width="5"/>
+  <!-- bridge -->
+  <path d="M62 62 Q64 56 66 62" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+  <!-- left temple -->
+  <line x1="30" y1="60" x2="24" y2="56" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+  <!-- right temple -->
+  <line x1="98" y1="60" x2="104" y2="56" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+  <!-- mouth -->
+  <line x1="52" y1="90" x2="76" y2="90" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+</svg>
