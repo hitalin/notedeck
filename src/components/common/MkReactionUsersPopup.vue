@@ -109,7 +109,7 @@ onUnmounted(() => {
 <template>
   <div
     :class="$style.reactionUsersPopup"
-    class="_popup"
+    class="_popup reaction-users-popup"
     :style="{ left: `${x}px`, top: `${y}px` }"
     @mouseleave="handleMouseLeave"
   >
