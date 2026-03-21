@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
+import DOMPurify from 'dompurify'
 import katex from 'katex'
 import { computed, defineAsyncComponent, useCssModule } from 'vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
@@ -58,14 +59,70 @@ function handleLinkClick(e: MouseEvent, url: string) {
   if (isSafeUrl(url)) openUrl(url)
 }
 
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 function renderKatex(formula: string, displayMode: boolean): string {
   try {
-    return katex.renderToString(formula, {
+    const html = katex.renderToString(formula, {
       displayMode,
       throwOnError: false,
+      trust: false,
+      strict: 'error',
+    })
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: [
+        'span',
+        'div',
+        'math',
+        'semantics',
+        'mrow',
+        'mi',
+        'mo',
+        'mn',
+        'msup',
+        'msub',
+        'mfrac',
+        'munder',
+        'mover',
+        'munderover',
+        'msqrt',
+        'mroot',
+        'mtable',
+        'mtr',
+        'mtd',
+        'mtext',
+        'mspace',
+        'annotation',
+        'svg',
+        'line',
+        'path',
+        'rect',
+        'g',
+      ],
+      ALLOWED_ATTR: [
+        'class',
+        'style',
+        'mathvariant',
+        'encoding',
+        'xmlns',
+        'width',
+        'height',
+        'viewBox',
+        'preserveAspectRatio',
+        'd',
+        'x1',
+        'x2',
+        'y1',
+        'y2',
+        'fill',
+        'stroke',
+        'stroke-width',
+      ],
     })
   } catch {
-    return formula
+    return escapeHtml(formula)
   }
 }
 
