@@ -388,7 +388,7 @@ onUnmounted(() => {
                   :class="$style.notifUserAvatar"
                   @click="onNotifAvatarClick(notif, $event)"
                 />
-                <img v-else :src="accountsStore.accounts.find(a => a.id === notif._accountId)?.avatarUrl" :class="$style.notifFallbackAvatar" />
+                <img v-else :src="accountsStore.accounts.find(a => a.id === notif._accountId)?.avatarUrl ?? undefined" :class="$style.notifFallbackAvatar" />
                 <i :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" />
               </div>
 
