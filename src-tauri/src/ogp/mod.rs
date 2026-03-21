@@ -398,10 +398,15 @@ impl OgpCache {
     }
 
     async fn fetch_and_parse(&self, url: &str) -> Result<SummaryData, String> {
-        let resp = self
-            .http_client
-            .get(url)
-            .header("Accept", "text/html")
+        let referer = url::Url::parse(url)
+            .ok()
+            .map(|u| format!("{}://{}/", u.scheme(), u.host_str().unwrap_or_default()));
+
+        let mut req = self.http_client.get(url).header("Accept", "text/html");
+        if let Some(ref referer) = referer {
+            req = req.header(reqwest::header::REFERER, referer);
+        }
+        let resp = req
             .send()
             .await
             .map_err(|e| format!("Fetch failed: {e}"))?;
