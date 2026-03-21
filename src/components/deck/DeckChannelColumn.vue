@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
+import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import DeckNoteColumn from './DeckNoteColumn.vue'
 
@@ -11,6 +12,13 @@ const MkPostForm = defineAsyncComponent(
 const props = defineProps<{
   column: DeckColumnType
 }>()
+
+const accountsStore = useAccountsStore()
+const account = computed(() =>
+  props.column.accountId
+    ? accountsStore.accountMap.get(props.column.accountId)
+    : null,
+)
 
 const noteColumnConfig: NoteColumnConfig = {
   getColumn: () => props.column,
@@ -45,7 +53,7 @@ const noteColumnConfig: NoteColumnConfig = {
   >
     <template #before-notes="{ handlePosted }">
       <MkPostForm
-        v-if="column.channelId && column.accountId"
+        v-if="column.channelId && column.accountId && account?.hasToken"
         :account-id="column.accountId"
         :channel-id="column.channelId"
         inline

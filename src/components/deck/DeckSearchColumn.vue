@@ -261,7 +261,7 @@ async function performSearch() {
   }
 
   // Server search
-  if (hint && account.value?.hasToken) {
+  if (hint && account.value) {
     try {
       const adapter = await initAdapter()
       if (adapter) {

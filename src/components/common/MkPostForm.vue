@@ -1120,6 +1120,7 @@ function onKeydown(e: KeyboardEvent) {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   padding: 8px 12px;
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);

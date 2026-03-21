@@ -142,7 +142,7 @@ const {
 
   <Teleport to="body">
     <MkPostForm
-      v-if="postForm.show.value && column.accountId"
+      v-if="postForm.show.value && column.accountId && account?.hasToken"
       :account-id="column.accountId"
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"

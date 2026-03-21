@@ -466,6 +466,7 @@ defineExpose({
 
     <LogoutDialog
       :show="logoutTargetId != null"
+      :is-guest="logoutTargetId ? isGuestAccount(accountsStore.accountMap.get(logoutTargetId) ?? { userId: '', hasToken: true }) : false"
       @keep-data="logoutKeepData"
       @delete-all="logoutDeleteAll"
       @cancel="logoutTargetId = null"
