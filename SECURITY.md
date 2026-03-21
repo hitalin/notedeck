@@ -162,32 +162,59 @@ flowchart LR
 ### トークンライフサイクル
 
 ```mermaid
-stateDiagram-v2
-    [*] --> OAuth認証: ユーザーログイン
+flowchart TB
+    START(("ユーザー<br/>ログイン"))
 
-    state "認証フロー" as auth {
-        OAuth認証 --> SessionTracker: セッション発行 (TTL 15min)
-        SessionTracker --> TokenReceive: ワンタイム消費
-    }
+    subgraph AUTH ["認証フロー"]
+        direction LR
+        OA["MiAuth<br/>OAuth 開始"]
+        ST["SessionTracker<br/>TTL 15min"]
+        TR["トークン受信<br/>ワンタイム消費"]
+        OA --> ST --> TR
+    end
 
-    state "トークン保存" as store {
-        TokenReceive --> OSKeychain: 永続化
-        OSKeychain --> MemoryCache: 読み出し (TTL 60s)
-        TokenReceive --> DB: Keychain失敗時のみ
-        DB --> OSKeychain: 次回起動時に自動移行
-        DB --> DBCleared: 移行成功後に削除
-    }
+    subgraph STORE ["トークン保存"]
+        KC["OS Keychain<br/>永続化"]
+        DB[(DB<br/>フォールバック)]
+        TR -->|成功| KC
+        TR -->|"Keychain 失敗"| DB
+        DB -->|"次回起動で自動移行"| KC
+        DB -->|"移行成功"| CLEAR["DB から削除"]
+    end
 
-    state "トークン利用" as use {
-        MemoryCache --> APICall: Bearer Token
-        APICall --> MemoryCache: キャッシュヒット
-        APICall --> OSKeychain: キャッシュミス
-    }
+    subgraph USE ["トークン利用"]
+        direction LR
+        MC["Memory Cache<br/>TTL 60s"]
+        API["API 呼び出し<br/>Bearer Token"]
+        KC -->|読み出し| MC
+        MC -->|"ヒット"| API
+        API -->|"ミス"| KC
+    end
 
-    state "トークン破棄" as destroy {
-        MemoryCache --> Zeroize: TTL 期限切れ / Drop
-        Zeroize --> [*]: メモリゼロ化完了
-    }
+    subgraph DESTROY ["トークン破棄"]
+        ZR["Zeroize<br/>メモリゼロ化"]
+        DONE(("完了"))
+        MC -->|"TTL 期限切れ / Drop"| ZR
+        ZR --> DONE
+    end
+
+    START --> OA
+
+    style START fill:#264653,stroke:#1d3557,color:#fff
+    style OA fill:#9d4edd,stroke:#7b2cbf,color:#fff
+    style ST fill:#9d4edd,stroke:#7b2cbf,color:#fff
+    style TR fill:#9d4edd,stroke:#7b2cbf,color:#fff
+    style KC fill:#2d6a4f,stroke:#1b4332,color:#fff
+    style DB fill:#e9c46a,stroke:#f4a261,color:#333
+    style CLEAR fill:#e9c46a,stroke:#f4a261,color:#333
+    style MC fill:#457b9d,stroke:#1d3557,color:#fff
+    style API fill:#457b9d,stroke:#1d3557,color:#fff
+    style ZR fill:#e63946,stroke:#c1121f,color:#fff
+    style DONE fill:#264653,stroke:#1d3557,color:#fff
+    style AUTH fill:#f3e8ff,stroke:#9d4edd,color:#333
+    style STORE fill:#e8f5e9,stroke:#2d6a4f,color:#333
+    style USE fill:#e3f2fd,stroke:#457b9d,color:#333
+    style DESTROY fill:#fce4ec,stroke:#e63946,color:#333
 ```
 
 ### 多層トークン保護
