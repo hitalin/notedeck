@@ -13,6 +13,8 @@ export const useEmojisStore = defineStore('emojis', () => {
 
   // In-flight dedup: avoid parallel fetches for the same host
   const pending = new Map<string, Promise<void>>()
+  // Backoff: track failed hosts to avoid immediate retry
+  const failedHosts = new Map<string, number>()
 
   // Load shortcode→url cache from localStorage (for offline emoji resolution)
   function loadFromStorage() {
@@ -66,15 +68,27 @@ export const useEmojisStore = defineStore('emojis', () => {
     persistToStorage()
   }
 
+  const RETRY_BACKOFF_MS = 30_000
+
   function ensureLoaded(
     host: string,
     fetcher: () => Promise<ServerEmoji[]>,
   ): void {
-    if (cache.value.has(host) || pending.has(host)) return
+    if (
+      (cache.value.has(host) && emojiList.value.has(host)) ||
+      pending.has(host)
+    )
+      return
+    const failedAt = failedHosts.get(host)
+    if (failedAt && Date.now() - failedAt < RETRY_BACKOFF_MS) return
     const p = fetcher()
-      .then((emojis) => set(host, emojis))
+      .then((emojis) => {
+        failedHosts.delete(host)
+        set(host, emojis)
+      })
       .catch((e) => {
         console.warn('[emojis] failed to fetch:', host, e)
+        failedHosts.set(host, Date.now())
         pending.delete(host)
       })
     pending.set(host, p)
