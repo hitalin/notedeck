@@ -1107,7 +1107,6 @@ function onKeydown(e: KeyboardEvent) {
   top: 100%;
   left: 0;
   z-index: 10;
-  min-width: 200px;
   padding: 4px;
   margin-top: 4px;
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
@@ -1121,7 +1120,6 @@ function onKeydown(e: KeyboardEvent) {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
   padding: 8px 12px;
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
@@ -1150,10 +1148,8 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .accountOptionInfo {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 0;
 }
 
 .accountOptionName {
