@@ -51,6 +51,10 @@ tasks:
     desc: TypeScript type check
     cmd: pnpm vue-tsc --noEmit
 
+  changelog:
+    desc: Generate changelog from git log (since last tag)
+    cmd: git log $(git describe --tags --abbrev=0 2>/dev/null || echo "")..HEAD --pretty=format:"- %s" --no-merges
+
   clean:
     desc: Clean build artifacts
     cmds:
