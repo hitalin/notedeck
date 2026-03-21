@@ -603,6 +603,11 @@ onUnmounted(() => {
                     </template>
                   </div>
 
+                  <!-- followRequestAccepted message -->
+                  <div v-if="notif.type === 'followRequestAccepted' && notif.message" :class="$style.notifMessage">
+                    {{ notif.message }}
+                  </div>
+
                   <!-- createToken warning -->
                   <div v-if="notif.type === 'createToken'" :class="$style.notifMessage">
                     心当たりがない場合は<a :href="`https://${notif._serverHost}/settings/connect`" target="_blank" rel="noopener noreferrer" :class="$style.notifMessageLink">アクセストークンの管理</a>を通じてアクセストークンを削除してください。
