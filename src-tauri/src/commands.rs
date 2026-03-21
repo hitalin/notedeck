@@ -193,12 +193,21 @@ pub fn invalidate_credentials(account_id: &str) {
 }
 
 /// Get host only from account_id (no token required).
-/// Used for anonymous/public API calls on logged-out accounts.
 fn get_host(db: &Database, account_id: &str) -> Result<String> {
     let account = db
         .get_account(account_id)?
         .ok_or_else(|| NoteDeckError::AccountNotFound(account_id.to_string()))?;
     Ok(account.host.clone())
+}
+
+/// Get credentials with anonymous fallback.
+/// Returns (host, token) where token is empty if not authenticated.
+/// Public Misskey endpoints work with empty token (skipped by notecli).
+fn get_credentials_or_anon(db: &Database, account_id: &str) -> Result<(String, String)> {
+    match get_credentials(db, account_id) {
+        Ok(creds) => Ok(creds),
+        Err(_) => Ok((get_host(db, account_id)?, String::new())),
+    }
 }
 
 /// Write account list (non-secret metadata only) to a JSON file for background workers.
@@ -295,79 +304,6 @@ pub async fn create_guest_account(
     Ok(AccountPublic::new(&account, false))
 }
 
-/// Get timeline without authentication (for guest/logged-out accounts).
-#[tauri::command]
-pub async fn api_get_guest_timeline(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
-    account_id: String,
-    timeline_type: TimelineType,
-    options: Option<TimelineOptions>,
-) -> Result<Vec<NormalizedNote>> {
-    let host = get_host(&db, &account_id)?;
-    let host = validate_host(&host)?;
-    client
-        .get_timeline_anonymous(&host, &account_id, timeline_type, options.unwrap_or_default())
-        .await
-}
-
-/// Get user profile without authentication.
-#[tauri::command]
-pub async fn api_get_user_public(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
-    account_id: String,
-    user_id: String,
-) -> Result<NormalizedUser> {
-    let host = get_host(&db, &account_id)?;
-    let host = validate_host(&host)?;
-    client.get_user_anonymous(&host, &user_id).await
-}
-
-/// Get user detail without authentication.
-#[tauri::command]
-pub async fn api_get_user_detail_public(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
-    account_id: String,
-    user_id: String,
-) -> Result<NormalizedUserDetail> {
-    let host = get_host(&db, &account_id)?;
-    let host = validate_host(&host)?;
-    client.get_user_detail_anonymous(&host, &user_id).await
-}
-
-/// Get user notes without authentication.
-#[tauri::command]
-pub async fn api_get_user_notes_public(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
-    account_id: String,
-    user_id: String,
-    options: Option<TimelineOptions>,
-) -> Result<Vec<NormalizedNote>> {
-    let host = get_host(&db, &account_id)?;
-    let host = validate_host(&host)?;
-    client
-        .get_user_notes_anonymous(&host, &account_id, &user_id, options.unwrap_or_default())
-        .await
-}
-
-/// Get a single note without authentication.
-#[tauri::command]
-pub async fn api_get_note_public(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
-    account_id: String,
-    note_id: String,
-) -> Result<NormalizedNote> {
-    let host = get_host(&db, &account_id)?;
-    let host = validate_host(&host)?;
-    client
-        .get_note_anonymous(&host, &account_id, &note_id)
-        .await
-}
-
 // --- DB: Servers ---
 
 #[tauri::command]
@@ -451,7 +387,7 @@ pub async fn api_get_timeline(
     timeline_type: TimelineType,
     options: Option<TimelineOptions>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let opts = options.unwrap_or_default();
     let cache_key = if timeline_type.as_str() == "user-list" {
         if let Some(ref list_id) = opts.list_id {
@@ -480,7 +416,7 @@ pub async fn api_get_timeline_enriched(
     timeline_type: TimelineType,
     options: Option<TimelineOptions>,
 ) -> Result<TimelineEnriched> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let opts = options.unwrap_or_default();
     let cache_key = if timeline_type.as_str() == "user-list" {
         if let Some(ref list_id) = opts.list_id {
@@ -620,7 +556,7 @@ pub async fn api_get_featured_notes(
     account_id: String,
     limit: Option<i64>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let notes = client
         .get_featured_notes(&host, &token, &account_id, limit.unwrap_or(30))
         .await?;
@@ -713,7 +649,7 @@ pub async fn api_get_channel_notes(
     since_id: Option<String>,
     until_id: Option<String>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let notes = client
         .get_channel_notes(
             &host,
@@ -738,7 +674,7 @@ pub async fn api_get_note(
     account_id: String,
     note_id: String,
 ) -> Result<NormalizedNote> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_note(&host, &token, &account_id, &note_id).await
 }
 
@@ -958,7 +894,7 @@ pub async fn api_get_user(
     account_id: String,
     user_id: String,
 ) -> Result<NormalizedUser> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_user(&host, &token, &user_id).await
 }
 
@@ -969,7 +905,7 @@ pub async fn api_get_user_detail(
     account_id: String,
     user_id: String,
 ) -> Result<NormalizedUserDetail> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_user_detail(&host, &token, &user_id).await
 }
 
@@ -981,7 +917,7 @@ pub async fn api_get_user_notes(
     user_id: String,
     options: Option<TimelineOptions>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let notes = client
         .get_user_notes(
             &host,
@@ -1003,7 +939,7 @@ pub async fn api_get_server_emojis(
     client: State<'_, Arc<MisskeyClient>>,
     account_id: String,
 ) -> Result<Vec<ServerEmoji>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_server_emojis(&host, &token).await
 }
 
@@ -1043,7 +979,7 @@ pub async fn api_search_notes(
             "Search query too long".to_string(),
         ));
     }
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .search_notes(
             &host,

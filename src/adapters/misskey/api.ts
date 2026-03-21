@@ -49,7 +49,7 @@ export class MisskeyApi implements ApiAdapter {
     options: TimelineOptions = {},
   ): Promise<NormalizedNote[]> {
     if (!this.hasToken) {
-      return invoke('api_get_guest_timeline', {
+      return invoke('api_get_timeline', {
         accountId: this.accountId,
         timelineType: type,
         options: {
@@ -79,8 +79,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async getNote(noteId: string): Promise<NormalizedNote> {
-    const cmd = this.hasToken ? 'api_get_note' : 'api_get_note_public'
-    return invoke(cmd, {
+    return invoke('api_get_note', {
       accountId: this.accountId,
       noteId,
     })
@@ -201,18 +200,14 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async getUser(userId: string): Promise<NormalizedUser> {
-    const cmd = this.hasToken ? 'api_get_user' : 'api_get_user_public'
-    return invoke(cmd, {
+    return invoke('api_get_user', {
       accountId: this.accountId,
       userId,
     })
   }
 
   async getUserDetail(userId: string): Promise<NormalizedUserDetail> {
-    const cmd = this.hasToken
-      ? 'api_get_user_detail'
-      : 'api_get_user_detail_public'
-    return invoke(cmd, {
+    return invoke('api_get_user_detail', {
       accountId: this.accountId,
       userId,
     })
@@ -248,10 +243,7 @@ export class MisskeyApi implements ApiAdapter {
       return Promise.all(raw.map((n) => this.getNote(n.id)))
     }
 
-    const cmd = this.hasToken
-      ? 'api_get_user_notes'
-      : 'api_get_user_notes_public'
-    return invoke(cmd, {
+    return invoke('api_get_user_notes', {
       accountId: this.accountId,
       userId,
       options: {

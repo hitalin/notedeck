@@ -66,7 +66,14 @@ const addColumnType = ref<
 >(null)
 
 /** Column types that work without authentication */
-const GUEST_ALLOWED_TYPES = new Set(['timeline'])
+const GUEST_ALLOWED_TYPES = new Set([
+  'timeline',
+  'user',
+  'search',
+  'channel',
+  'explore',
+  'emoji',
+])
 
 /** Whether the selected column type requires authentication */
 const requiresAuth = computed(() => {
