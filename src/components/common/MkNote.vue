@@ -144,7 +144,9 @@ function openRenoteMenu(e: MouseEvent) {
       myRenoteId.value = mine?.id ?? null
       isRenoted.value = !!mine
     })
-    .catch(() => {})
+    .catch((e) => {
+      if (import.meta.env.DEV) console.debug('[renote-check] failed:', e)
+    })
 }
 
 function closeRenoteMenu() {

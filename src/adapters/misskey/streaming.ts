@@ -94,8 +94,9 @@ export class MisskeyStream implements StreamAdapter {
         this._state = 'connected'
         this.emit('connected')
       })
-      .catch(() => {
+      .catch((e) => {
         // Connection might be reconnecting on Rust side — that's fine
+        if (import.meta.env.DEV) console.debug('[stream] reconnect ignored:', e)
       })
   }
 
@@ -210,7 +211,10 @@ export class MisskeyStream implements StreamAdapter {
           invoke('stream_unsubscribe', {
             accountId: this.accountId,
             subscriptionId: id,
-          }).catch(() => {})
+          }).catch((e) => {
+            if (import.meta.env.DEV)
+              console.debug('[stream] late unsubscribe ignored:', e)
+          })
           return null
         }
         subscriptionId = id

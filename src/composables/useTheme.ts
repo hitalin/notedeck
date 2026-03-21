@@ -1,6 +1,7 @@
 import { watch } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useThemeStore } from '@/stores/theme'
+import { catchLog } from '@/utils/logger'
 
 export function useTheme(): void {
   const accountsStore = useAccountsStore()
@@ -11,7 +12,7 @@ export function useTheme(): void {
     (accounts) => {
       Promise.all(
         accounts.map((acc) => themeStore.fetchAccountTheme(acc.id)),
-      ).catch(() => {})
+      ).catch(catchLog('theme-fetch'))
     },
     { immediate: true },
   )

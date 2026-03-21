@@ -349,7 +349,9 @@ async function removeNote(note: NormalizedNote) {
       (x) => x.note?.id !== id && x.note?.renoteId !== id,
     )
     noteStore.remove(id)
-    invoke('api_delete_cached_note', { noteId: id }).catch(() => {})
+    invoke('api_delete_cached_note', { noteId: id }).catch((e) => {
+      if (import.meta.env.DEV) console.debug('[delete-cached-note] ignored:', e)
+    })
   }
 }
 

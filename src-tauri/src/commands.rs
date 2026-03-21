@@ -118,14 +118,19 @@ impl AuthSessionTracker {
     }
 
     fn register(&self, session_id: &str, host: &str) {
-        let mut sessions = self.sessions.lock().unwrap();
+        let Ok(mut sessions) = self.sessions.lock() else {
+            tracing::error!("AuthSessionTracker mutex poisoned in register");
+            return;
+        };
         // Purge expired entries while we have the lock
         sessions.retain(|_, (_, created)| created.elapsed().as_secs() < AUTH_SESSION_TTL_SECS);
         sessions.insert(session_id.to_string(), (host.to_string(), Instant::now()));
     }
 
     fn consume(&self, session_id: &str, host: &str) -> std::result::Result<(), NoteDeckError> {
-        let mut sessions = self.sessions.lock().unwrap();
+        let mut sessions = self.sessions.lock().map_err(|_| {
+            NoteDeckError::Auth("Internal error: session lock poisoned".to_string())
+        })?;
         match sessions.remove(session_id) {
             Some((stored_host, created)) => {
                 if created.elapsed().as_secs() >= AUTH_SESSION_TTL_SECS {

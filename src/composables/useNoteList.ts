@@ -80,7 +80,10 @@ export function useNoteList(options: UseNoteListOptions) {
       // noteStore.remove() triggers global onDelete listeners,
       // which clean up orderedIds/noteIds in ALL columns
       noteStore.remove(event.noteId)
-      invoke('api_delete_cached_note', { noteId: event.noteId }).catch(() => {})
+      invoke('api_delete_cached_note', { noteId: event.noteId }).catch((e) => {
+        if (import.meta.env.DEV)
+          console.debug('[delete-cached-note] ignored:', e)
+      })
       return
     }
     noteStore.applyUpdate(event, options.getMyUserId())
@@ -94,8 +97,10 @@ export function useNoteList(options: UseNoteListOptions) {
       try {
         const updated = await adapter.api.getNote(editedNoteId)
         noteStore.put([updated])
-      } catch {
+      } catch (e) {
         // note may have been deleted
+        if (import.meta.env.DEV)
+          console.debug('[handlePosted] note fetch failed:', e)
       }
     }
   }
@@ -107,7 +112,10 @@ export function useNoteList(options: UseNoteListOptions) {
 
     if (await options.deleteHandler(note)) {
       noteStore.remove(id)
-      invoke('api_delete_cached_note', { noteId: id }).catch(() => {})
+      invoke('api_delete_cached_note', { noteId: id }).catch((e) => {
+        if (import.meta.env.DEV)
+          console.debug('[delete-cached-note] ignored:', e)
+      })
     } else {
       orderedIds.value = prevIds
       noteIds.clear()

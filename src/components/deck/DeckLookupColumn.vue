@@ -58,7 +58,10 @@ if (account.value) {
     .then((info) => {
       serverIconUrl.value = info.iconUrl ?? null
     })
-    .catch(() => {})
+    .catch((e) => {
+      if (import.meta.env.DEV)
+        console.debug('[lookup] server icon fetch failed:', e)
+    })
 }
 
 async function performLookup() {

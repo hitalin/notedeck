@@ -51,7 +51,9 @@ export async function openColumnWindow(
       deckStore.recallColumnsFromWindow(windowId)
       deckStore.removeWindowLayout(windowId)
       // Notify other windows
-      emit('deck:window-closed', { windowId }).catch(() => {})
+      emit('deck:window-closed', { windowId }).catch((e) => {
+        if (import.meta.env.DEV) console.debug('[deck-window] emit failed:', e)
+      })
     })
 
     return windowId
