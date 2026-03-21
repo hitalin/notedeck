@@ -412,7 +412,6 @@ defineExpose({
                 />
                 <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
                 <img
-                  v-if="!isGuestAccount(acc)"
                   :src="getServerIconUrl(acc.host)"
                   :class="$style.serverBadge"
                   :title="acc.host"
