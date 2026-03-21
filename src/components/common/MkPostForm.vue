@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, type Ref, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { NormalizedDriveFile, NormalizedNote } from '@/adapters/types'
 import {
   getPluginHandlers,
@@ -8,6 +8,7 @@ import {
 import { useAutocomplete } from '@/composables/useAutocomplete'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
+import { usePopupControl } from '@/composables/usePopupControl'
 import { usePostFormState } from '@/composables/usePostFormState'
 import {
   getAccountAvatarUrl,
@@ -45,7 +46,6 @@ const isCompact = useIsCompactLayout()
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showPreview = ref(false)
-const showMoreMenu = ref(false)
 
 const {
   text,
@@ -112,36 +112,16 @@ const {
 )
 
 // --- Popup exclusive control ---
-const showSchedulePopup = ref(false)
-const showEmojiPopup = ref(false)
-const showAttachMenu = ref(false)
+const popups = usePopupControl()
+popups.track(showDraftMenu)
+const showSchedulePopup = popups.register()
+const showEmojiPopup = popups.register()
+const showAttachMenu = popups.register()
 
-/** All mutually-exclusive popup refs (lazy to avoid TDZ issues) */
-function allPopupRefs(): Ref<boolean>[] {
-  return [
-    showSchedulePopup,
-    showDraftMenu,
-    showMentionPopup,
-    showEmojiPopup,
-    showMfmMenu,
-    showAttachMenu,
-    showMoreMenu,
-  ]
-}
-
-function closeOtherPopups(except?: Ref<boolean>) {
-  for (const r of allPopupRefs()) {
-    if (r !== except) r.value = false
-  }
-}
-
-function togglePopup(target: Ref<boolean>) {
-  target.value = !target.value
-  closeOtherPopups(target)
-}
+const showMoreMenu = popups.register()
 
 function toggleSchedulePopup() {
-  togglePopup(showSchedulePopup)
+  popups.toggle(showSchedulePopup)
 }
 
 function setSchedule(value: string | null) {
@@ -165,7 +145,7 @@ function formatScheduledDate(iso: string): string {
 
 // --- Draft menu ---
 function toggleDraftMenu() {
-  togglePopup(showDraftMenu)
+  popups.toggle(showDraftMenu)
 }
 
 /** Minimum datetime for schedule picker (5 minutes from now) */
@@ -185,10 +165,11 @@ const {
   onMentionInput,
   pickMention: rawPickMention,
 } = useMentionSearch(activeAccountId)
+popups.track(showMentionPopup)
 
 function toggleMentionPopup() {
   rawToggleMention()
-  closeOtherPopups(showMentionPopup)
+  popups.closeOthers(showMentionPopup)
 }
 
 function pickMention(user: Parameters<typeof rawPickMention>[0]) {
@@ -197,7 +178,7 @@ function pickMention(user: Parameters<typeof rawPickMention>[0]) {
 
 // --- Emoji popup ---
 function toggleEmojiPopup() {
-  togglePopup(showEmojiPopup)
+  popups.toggle(showEmojiPopup)
 }
 
 function pickEmoji(reaction: string) {
@@ -232,10 +213,11 @@ const {
   toggleMfmMenu: rawToggleMfm,
   pickMfm,
 } = useMfmInsert(textareaRef, text)
+popups.track(showMfmMenu)
 
 function toggleMfmMenu() {
   rawToggleMfm()
-  closeOtherPopups(showMfmMenu)
+  popups.closeOthers(showMfmMenu)
 }
 
 // --- Autocomplete ---
@@ -256,7 +238,7 @@ const {
 const showDrivePicker = ref(false)
 
 function toggleAttachMenu() {
-  togglePopup(showAttachMenu)
+  popups.toggle(showAttachMenu)
 }
 
 function attachFromLocal() {
@@ -276,11 +258,11 @@ function onDriveFilesPicked(driveFiles: NormalizedDriveFile[]) {
 
 // --- Close popups on form click ---
 function toggleMoreMenu() {
-  togglePopup(showMoreMenu)
+  popups.toggle(showMoreMenu)
 }
 
 function closePopups() {
-  closeOtherPopups()
+  popups.closeAll()
   acDismiss()
 }
 

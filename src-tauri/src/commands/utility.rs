@@ -1,0 +1,56 @@
+use notecli::error::NoteDeckError;
+use tauri::Manager;
+
+use super::Result;
+
+#[tauri::command]
+pub fn get_cli_commands() -> Vec<notecli::cli::CliCommandInfo> {
+    notecli::cli::command_metadata()
+}
+
+#[tauri::command]
+pub fn get_notecli_version() -> String {
+    option_env!("NOTECLI_GIT_HASH")
+        .unwrap_or("unknown")
+        .to_string()
+}
+
+#[tauri::command]
+pub fn open_devtools(window: tauri::WebviewWindow) {
+    window.open_devtools();
+}
+
+/// Export notecli.db to a user-chosen location via save dialog.
+#[tauri::command]
+pub async fn export_db(app: tauri::AppHandle) -> Result<bool> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let app_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+    let db_path = app_dir.join("notecli.db");
+    if !db_path.exists() {
+        return Err(NoteDeckError::InvalidInput(
+            "notecli.db not found".to_string(),
+        ));
+    }
+
+    let dest = app
+        .dialog()
+        .file()
+        .set_file_name("notecli.db")
+        .add_filter("SQLite Database", &["db"])
+        .blocking_save_file();
+
+    let Some(dest) = dest else {
+        return Ok(false); // user cancelled
+    };
+
+    let dest_path = dest
+        .as_path()
+        .ok_or_else(|| NoteDeckError::InvalidInput("Invalid destination path".to_string()))?;
+    std::fs::copy(&db_path, dest_path)
+        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+    Ok(true)
+}
