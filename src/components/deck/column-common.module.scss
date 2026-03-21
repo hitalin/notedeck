@@ -168,8 +168,8 @@
   opacity: 0.7;
 }
 
-/* Offline banner */
-.offlineBanner {
+/* Offline / Logged-out banners */
+%statusBanner {
   position: absolute;
   top: 8px;
   left: 50%;
@@ -185,10 +185,19 @@
   font-weight: bold;
   white-space: nowrap;
   color: var(--nd-fgOnAccent);
-  background: color-mix(in srgb, var(--nd-warn) 70%, transparent);
   -webkit-backdrop-filter: blur(var(--nd-blur-panel));
   backdrop-filter: blur(var(--nd-blur-panel));
   animation: slide-down 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.offlineBanner {
+  @extend %statusBanner;
+  background: color-mix(in srgb, var(--nd-warn) 70%, transparent);
+}
+
+.loggedOutBanner {
+  @extend %statusBanner;
+  background: color-mix(in srgb, var(--nd-error) 70%, transparent);
 }
 
 /* Loading */

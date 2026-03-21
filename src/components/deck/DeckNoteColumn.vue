@@ -141,7 +141,7 @@ defineExpose({ account, scroller, reconnect, columnThemeVars })
         </div>
       </div>
 
-      <div v-if="isOffline" :class="$style.offlineBanner">
+      <div v-if="isOffline" :class="[isLoggedOut ? $style.loggedOutBanner : $style.offlineBanner]">
         <template v-if="isLoggedOut">
           <i class="ti ti-logout" />ログアウト中
         </template>
