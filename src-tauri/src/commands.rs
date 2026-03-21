@@ -767,7 +767,7 @@ pub async fn api_get_note_reactions(
     reaction_type: Option<String>,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNoteReaction>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_note_reactions(
             &host,
@@ -999,7 +999,7 @@ pub async fn api_get_note_children(
     note_id: String,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_note_children(
             &host,
@@ -1019,7 +1019,7 @@ pub async fn api_get_note_renotes(
     note_id: String,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let data = client
         .request(
             &host,
@@ -1043,7 +1043,7 @@ pub async fn api_get_note_conversation(
     note_id: String,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_note_conversation(
             &host,
@@ -1067,7 +1067,7 @@ pub async fn api_lookup_user(
         return Err(NoteDeckError::InvalidInput("Invalid username".to_string()));
     }
     let validated_host = host.map(|h| validate_host(&h)).transpose()?;
-    let (server_host, token) = get_credentials(&db, &account_id)?;
+    let (server_host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .lookup_user(&server_host, &token, &username, validated_host.as_deref())
         .await
@@ -1520,7 +1520,7 @@ pub async fn api_search_users(
     limit: Option<i64>,
     offset: Option<i64>,
 ) -> Result<serde_json::Value> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .search_users(
             &host,
@@ -1543,7 +1543,7 @@ pub async fn api_get_roles(
     client: State<'_, Arc<MisskeyClient>>,
     account_id: String,
 ) -> Result<serde_json::Value> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_roles(&host, &token).await
 }
 
@@ -1556,7 +1556,7 @@ pub async fn api_get_role_users(
     limit: Option<i64>,
     offset: Option<i64>,
 ) -> Result<serde_json::Value> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_role_users(
             &host,
@@ -1578,7 +1578,7 @@ pub async fn api_get_announcements(
     limit: Option<i64>,
     is_active: Option<bool>,
 ) -> Result<serde_json::Value> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_announcements(
             &host,
@@ -1655,7 +1655,7 @@ pub async fn api_search_users_by_query(
     query: String,
     limit: Option<i64>,
 ) -> Result<serde_json::Value> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .search_users_by_query(&host, &token, &query, limit.unwrap_or(10).clamp(1, 100))
         .await
