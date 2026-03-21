@@ -8,6 +8,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
+import { proxyUrl } from '@/utils/imageProxy'
 import DeckColumn from './DeckColumn.vue'
 
 interface ServerMeta {
@@ -152,7 +153,7 @@ onMounted(() => {
         <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img v-if="account.avatarUrl" :src="proxyUrl(account.avatarUrl)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
@@ -173,7 +174,7 @@ onMounted(() => {
       <!-- Banner (Misskey style: bg image + icon overlay + gradient name) -->
       <div
         :class="$style.banner"
-        :style="meta.bannerUrl ? { backgroundImage: `url(${meta.bannerUrl})` } : undefined"
+        :style="meta.bannerUrl ? { backgroundImage: `url(${proxyUrl(meta.bannerUrl)})` } : undefined"
       >
         <div :class="$style.bannerInner">
           <img

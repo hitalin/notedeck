@@ -7,8 +7,16 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useIsCompactLayout } from '@/stores/ui'
 import { formatCount } from '@/utils/format'
+import { proxyUrl } from '@/utils/imageProxy'
 import MkAvatar from './MkAvatar.vue'
 import MkMfm from './MkMfm.vue'
+
+const USER_DETAIL_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+const userDetailCache = new Map<
+  string,
+  { data: NormalizedUserDetail; at: number }
+>()
+const pendingUserDetails = new Map<string, Promise<NormalizedUserDetail>>()
 
 const props = defineProps<{
   userId: string
@@ -33,13 +41,31 @@ const user = ref<NormalizedUserDetail | null>(null)
 const isLoading = ref(true)
 
 onMounted(async () => {
+  const cacheKey = `${props.accountId}:${props.userId}`
   try {
-    const account = accountsStore.accounts.find((a) => a.id === props.accountId)
-    if (!account) return
-    const serverInfo = await serversStore.getServerInfo(account.host)
-    const adapter = createAdapter(serverInfo, account.id)
-    user.value = await adapter.api.getUserDetail(props.userId)
+    const cached = userDetailCache.get(cacheKey)
+    if (cached && Date.now() - cached.at < USER_DETAIL_CACHE_TTL) {
+      user.value = cached.data
+      isLoading.value = false
+      return
+    }
+
+    let promise = pendingUserDetails.get(cacheKey)
+    if (!promise) {
+      const acc = accountsStore.accounts.find((a) => a.id === props.accountId)
+      if (!acc) return
+      const serverInfo = await serversStore.getServerInfo(acc.host)
+      const adapter = createAdapter(serverInfo, acc.id)
+      promise = adapter.api.getUserDetail(props.userId)
+      pendingUserDetails.set(cacheKey, promise)
+    }
+
+    const result = await promise
+    userDetailCache.set(cacheKey, { data: result, at: Date.now() })
+    pendingUserDetails.delete(cacheKey)
+    user.value = result
   } catch {
+    pendingUserDetails.delete(cacheKey)
     // Silently fail — popup is non-critical
   } finally {
     isLoading.value = false
@@ -71,7 +97,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         <div
           v-if="user.bannerUrl"
           :class="$style.popupBannerImg"
-          :style="{ backgroundImage: `url(${user.bannerUrl})` }"
+          :style="{ backgroundImage: `url(${proxyUrl(user.bannerUrl)})` }"
         />
         <div v-else :class="[$style.popupBannerImg, $style.popupBannerEmpty]" />
       </div>

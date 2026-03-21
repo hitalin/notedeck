@@ -35,6 +35,7 @@ import {
   formatCount,
   formatDate,
 } from '@/utils/format'
+import { proxyUrl } from '@/utils/imageProxy'
 import { toggleFollow } from '@/utils/toggleFollow'
 import { toggleReaction } from '@/utils/toggleReaction'
 import { safeCssUrl } from '@/utils/url'
@@ -545,7 +546,7 @@ async function handlePosted(editedNoteId?: string) {
           <div
             v-if="user.bannerUrl"
             :class="$style.banner"
-            :style="{ backgroundImage: safeCssUrl(user.bannerUrl) }"
+            :style="{ backgroundImage: safeCssUrl(proxyUrl(user.bannerUrl)) }"
           />
           <div v-else :class="[$style.banner, $style.bannerEmpty]" />
 
@@ -864,7 +865,7 @@ async function handlePosted(editedNoteId?: string) {
           </button>
           <div ref="qrCodeContainerEl" :class="$style.qrCanvas" />
           <div :class="$style.qrUser">
-            <img v-if="user?.avatarUrl" :src="user.avatarUrl" :class="$style.qrAvatar" />
+            <img v-if="user?.avatarUrl" :src="proxyUrl(user.avatarUrl)" :class="$style.qrAvatar" />
             <div :class="$style.qrUserInfo">
               <div :class="$style.qrName">
                 <MkMfm v-if="user?.name" :text="user.name" :emojis="user?.emojis" :server-host="account?.host" />

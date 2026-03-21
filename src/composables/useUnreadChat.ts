@@ -13,6 +13,8 @@ const counts = ref<Record<string, number>>({})
 let listenerSetUp = false
 let unlistenFn: UnlistenFn | null = null
 let refCount = 0
+let pollingInterval: ReturnType<typeof setInterval> | null = null
+let isPollingActive = false
 
 async function fetchUnreadCount(accountId: string): Promise<number> {
   try {
@@ -58,10 +60,15 @@ export function useUnreadChat() {
   )
 
   async function fetchAll() {
-    for (const acc of accountsStore.accounts) {
-      const count = await fetchUnreadCount(acc.id)
-      counts.value = { ...counts.value, [acc.id]: count }
-    }
+    const results = await Promise.all(
+      accountsStore.accounts.map(async (acc) => ({
+        id: acc.id,
+        count: await fetchUnreadCount(acc.id),
+      })),
+    )
+    const updated: Record<string, number> = {}
+    for (const r of results) updated[r.id] = r.count
+    counts.value = updated
   }
 
   function resetAll() {
@@ -72,7 +79,29 @@ export function useUnreadChat() {
     counts.value = reset
   }
 
-  const interval = setInterval(fetchAll, 60_000)
+  function startPolling() {
+    if (isPollingActive) return
+    isPollingActive = true
+    pollingInterval = setInterval(fetchAll, 120_000)
+  }
+
+  function stopPolling() {
+    if (!isPollingActive) return
+    isPollingActive = false
+    if (pollingInterval) {
+      clearInterval(pollingInterval)
+      pollingInterval = null
+    }
+  }
+
+  function onVisibilityChange() {
+    if (document.hidden) {
+      stopPolling()
+    } else {
+      fetchAll()
+      startPolling()
+    }
+  }
 
   refCount++
   setupListener()
@@ -83,9 +112,12 @@ export function useUnreadChat() {
   )
 
   fetchAll()
+  if (!document.hidden) startPolling()
+  document.addEventListener('visibilitychange', onVisibilityChange)
 
   onUnmounted(() => {
-    clearInterval(interval)
+    stopPolling()
+    document.removeEventListener('visibilitychange', onVisibilityChange)
     refCount--
     if (refCount <= 0) {
       teardownListener()
