@@ -58,7 +58,7 @@
     "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/cli": "^2.5.0",
     "@types/katex": "^0.16.8",
-    "@types/node": "^24.10.1",
+    "@types/node": "^25.5.0",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vue/tsconfig": "^0.8.1",
     "jsdom": "^28.1.0",
