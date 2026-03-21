@@ -203,15 +203,41 @@ pub async fn start(
         .merge(public_routes);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], PORT));
-    eprintln!("[http] listening on http://{addr}");
 
-    let listener = match tokio::net::TcpListener::bind(addr).await {
-        Ok(l) => l,
-        Err(e) => {
-            eprintln!("[http] failed to bind {addr}: {e}");
-            return;
+    // Retry binding up to 5 times (covers port held by a previous instance shutting down)
+    let listener = {
+        const MAX_RETRIES: u32 = 5;
+        const RETRY_DELAY: std::time::Duration = std::time::Duration::from_secs(1);
+        let mut last_err = None;
+        let mut bound = None;
+        for attempt in 1..=MAX_RETRIES {
+            match tokio::net::TcpListener::bind(addr).await {
+                Ok(l) => {
+                    bound = Some(l);
+                    break;
+                }
+                Err(e) => {
+                    eprintln!("[http] bind attempt {attempt}/{MAX_RETRIES} failed: {e}");
+                    last_err = Some(e);
+                    if attempt < MAX_RETRIES {
+                        tokio::time::sleep(RETRY_DELAY).await;
+                    }
+                }
+            }
+        }
+        match bound {
+            Some(l) => l,
+            None => {
+                eprintln!(
+                    "[http] giving up on binding {addr} after {MAX_RETRIES} attempts: {}",
+                    last_err.map(|e| e.to_string()).unwrap_or_default()
+                );
+                return;
+            }
         }
     };
+
+    eprintln!("[http] listening on http://{addr}");
 
     if let Err(e) = axum::serve(listener, app).await {
         eprintln!("[http] server error: {e}");
