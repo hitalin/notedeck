@@ -106,6 +106,7 @@ const NOTIFICATION_FILTERS = [
   { key: 'mention', label: 'メンション', icon: 'ti ti-at' },
   { key: 'follow', label: 'フォロー', icon: 'ti ti-user-plus' },
   { key: 'pollEnded', label: '投票', icon: 'ti ti-chart-bar' },
+  { key: 'createToken', label: 'トークン', icon: 'ti ti-key' },
 ] as const
 
 type NotifFilterKey = (typeof NOTIFICATION_FILTERS)[number]['key']
@@ -214,6 +215,7 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   followRequestAccepted: 'user-check',
   receiveFollowRequest: 'user-question',
   pollEnded: 'chart-bar',
+  createToken: 'key',
 }
 
 const NOTIFICATION_LABELS: Record<string, string> = {
@@ -229,6 +231,7 @@ const NOTIFICATION_LABELS: Record<string, string> = {
   achievementEarned: '実績獲得',
   app: '通知',
   login: 'ログイン検知',
+  createToken: 'トークン作成',
   test: 'テスト通知',
 }
 
@@ -543,72 +546,79 @@ onUnmounted(() => {
             <div
               :class="[$style.notifItem, $style[`notifType_${notif.type}`]]"
             >
-              <!-- Notification header -->
-              <div :class="$style.notifHeader">
-                <i :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifIcon]" />
-
-                <MkAvatar
-                  v-if="notif.user"
-                  :avatar-url="notif.user.avatarUrl"
-                  :decorations="notif.user.avatarDecorations"
-                  :size="36"
-                  :alt="notif.user.username ?? undefined"
-                  :class="$style.notifUserAvatar"
-                  @click="onNotifAvatarClick(notif, $event)"
-                  @mouseenter="onNotifAvatarMouseEnter(notif, $event)"
-                  @mouseleave="onNotifAvatarMouseLeave"
-                />
-
-                <div :class="$style.notifMeta">
-                  <span v-if="notif.user" :class="$style.notifUserName">
-                    <MkMfm v-if="notif.user.name" :text="notif.user.name" :emojis="notif.user.emojis" :server-host="account?.host" />
-                    <template v-else>{{ notif.user.username }}</template>
-                  </span>
-                  <span :class="$style.notifLabel">{{ notificationLabel(notif.type) }}</span>
-                  <span v-if="notif.type === 'reaction' && notif.reaction" :class="$style.notifReaction">
-                    <img v-if="getCachedReactionUrl(notif.reaction, notif)" :src="getCachedReactionUrl(notif.reaction, notif)!" :alt="notif.reaction" :class="$style.notifReactionEmoji" loading="lazy" />
-                    <img v-else-if="getCachedTwemojiUrl(notif.reaction)" :src="getCachedTwemojiUrl(notif.reaction)!" :alt="notif.reaction" :class="$style.notifReactionEmoji" loading="lazy" />
-                    <span v-else-if="notif.reaction.startsWith(':')" :class="$style.notifReactionFallback">{{ notif.reaction }}</span>
-                    <MkEmoji v-else :emoji="notif.reaction" :class="$style.notifReactionEmoji" />
-                  </span>
+              <div :class="$style.notifLayout">
+                <!-- Head: Avatar with sub-icon overlay -->
+                <div :class="$style.notifHead">
+                  <MkAvatar
+                    v-if="notif.user"
+                    :avatar-url="notif.user.avatarUrl"
+                    :decorations="notif.user.avatarDecorations"
+                    :size="42"
+                    :alt="notif.user.username ?? undefined"
+                    :class="$style.notifUserAvatar"
+                    @click="onNotifAvatarClick(notif, $event)"
+                    @mouseenter="onNotifAvatarMouseEnter(notif, $event)"
+                    @mouseleave="onNotifAvatarMouseLeave"
+                  />
+                  <img v-else-if="account?.avatarUrl" :src="account.avatarUrl" :class="$style.notifFallbackAvatar" />
+                  <i :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" />
                 </div>
 
-                <span :class="$style.notifTime">{{ formatTime(notif.createdAt) }}</span>
-              </div>
+                <!-- Tail: Header + body -->
+                <div :class="$style.notifTail">
+                  <div :class="$style.notifHeader">
+                    <div :class="$style.notifMeta">
+                      <span v-if="notif.user" :class="$style.notifUserName">
+                        <MkMfm v-if="notif.user.name" :text="notif.user.name" :emojis="notif.user.emojis" :server-host="account?.host" />
+                        <template v-else>{{ notif.user.username }}</template>
+                      </span>
+                      <span :class="$style.notifLabel">{{ notificationLabel(notif.type) }}</span>
+                      <span v-if="notif.type === 'reaction' && notif.reaction" :class="$style.notifReaction">
+                        <img v-if="getCachedReactionUrl(notif.reaction, notif)" :src="getCachedReactionUrl(notif.reaction, notif)!" :alt="notif.reaction" :class="$style.notifReactionEmoji" loading="lazy" />
+                        <img v-else-if="getCachedTwemojiUrl(notif.reaction)" :src="getCachedTwemojiUrl(notif.reaction)!" :alt="notif.reaction" :class="$style.notifReactionEmoji" loading="lazy" />
+                        <span v-else-if="notif.reaction.startsWith(':')" :class="$style.notifReactionFallback">{{ notif.reaction }}</span>
+                        <MkEmoji v-else :emoji="notif.reaction" :class="$style.notifReactionEmoji" />
+                      </span>
+                    </div>
+                    <span :class="$style.notifTime">{{ formatTime(notif.createdAt) }}</span>
+                  </div>
 
-              <!-- Follow request actions -->
-              <div
-                v-if="notif.type === 'receiveFollowRequest' && notif.user"
-                :class="$style.followRequestActions"
-              >
-                <template v-if="followRequestStates[notif.id]">
-                  <span :class="$style.followRequestDone">
-                    {{ followRequestStates[notif.id] === 'accepted' ? '承認済み' : '拒否済み' }}
-                  </span>
-                </template>
-                <template v-else>
-                  <button :class="[$style.followRequestBtn, $style.acceptBtn]" @click="handleFollowRequest(notif, 'accepted')">
-                    <i class="ti ti-check" /> 承認
-                  </button>
-                  <button :class="[$style.followRequestBtn, $style.rejectBtn]" @click="handleFollowRequest(notif, 'rejected')">
-                    <i class="ti ti-x" /> 拒否
-                  </button>
-                </template>
-              </div>
+                  <!-- Follow request actions -->
+                  <div
+                    v-if="notif.type === 'receiveFollowRequest' && notif.user"
+                    :class="$style.followRequestActions"
+                  >
+                    <template v-if="followRequestStates[notif.id]">
+                      <span :class="$style.followRequestDone">
+                        {{ followRequestStates[notif.id] === 'accepted' ? '承認済み' : '拒否済み' }}
+                      </span>
+                    </template>
+                    <template v-else>
+                      <button :class="[$style.followRequestBtn, $style.acceptBtn]" @click="handleFollowRequest(notif, 'accepted')">
+                        <i class="ti ti-check" /> 承認
+                      </button>
+                      <button :class="[$style.followRequestBtn, $style.rejectBtn]" @click="handleFollowRequest(notif, 'rejected')">
+                        <i class="ti ti-x" /> 拒否
+                      </button>
+                    </template>
+                  </div>
 
-              <!-- Attached note (for reaction, reply, renote, quote, mention) -->
-              <div v-if="notif.note" :class="$style.notifNoteWrap">
-                <MkNote
-                  :note="notif.note"
-                  @react="handlers.reaction"
-                  @reply="handlers.reply"
-                  @renote="handlers.renote"
-                  @quote="handlers.quote"
-                  @delete="removeNote"
-                  @edit="handlers.edit"
-                  @bookmark="handlers.bookmark"
-                  @delete-and-edit="handlers.deleteAndEdit"
-                />
+                  <!-- Attached note (for reaction, reply, renote, quote, mention) -->
+                  <div v-if="notif.note" :class="$style.notifNoteWrap">
+                    <MkNote
+                      :note="notif.note"
+                      embedded
+                      @react="handlers.reaction"
+                      @reply="handlers.reply"
+                      @renote="handlers.renote"
+                      @quote="handlers.quote"
+                      @delete="removeNote"
+                      @edit="handlers.edit"
+                      @bookmark="handlers.bookmark"
+                      @delete-and-edit="handlers.deleteAndEdit"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -751,72 +761,94 @@ onUnmounted(() => {
 
 .notifItem {
   border-bottom: 1px solid var(--nd-divider);
-  border-left: 3px solid transparent;
-
-  &:not(:has(.notifNoteWrap)):not(:has(.followRequestActions)) {
-    .notifHeader {
-      padding-bottom: 12px;
-    }
-  }
 }
 
 .notifType_reaction {
-  border-left-color: var(--nd-love);
-
-  .notifIcon {
+  .notifSubIcon {
     color: var(--nd-love);
+    background: color-mix(in srgb, var(--nd-love) 15%, var(--nd-bg));
   }
 }
 
 .notifType_reply,
 .notifType_mention {
-  border-left-color: var(--nd-accent);
-
-  .notifIcon {
+  .notifSubIcon {
     color: var(--nd-accent);
+    background: color-mix(in srgb, var(--nd-accent) 15%, var(--nd-bg));
   }
 }
 
 .notifType_renote,
 .notifType_quote {
-  border-left-color: var(--nd-renote);
-
-  .notifIcon {
+  .notifSubIcon {
     color: var(--nd-renote);
+    background: color-mix(in srgb, var(--nd-renote) 15%, var(--nd-bg));
   }
 }
 
 .notifType_follow,
 .notifType_followRequestAccepted {
-  border-left-color: var(--nd-link);
-
-  .notifIcon {
+  .notifSubIcon {
     color: var(--nd-link);
+    background: color-mix(in srgb, var(--nd-link) 15%, var(--nd-bg));
   }
 }
 
 .notifType_receiveFollowRequest {
-  border-left-color: var(--nd-warn);
-
-  .notifIcon {
+  .notifSubIcon {
     color: var(--nd-warn);
+    background: color-mix(in srgb, var(--nd-warn) 15%, var(--nd-bg));
   }
+}
+
+.notifLayout {
+  display: flex;
+  padding: 12px 16px;
+  gap: 12px;
+}
+
+.notifHead {
+  position: relative;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+}
+
+.notifUserAvatar {
+  cursor: pointer;
+}
+
+.notifFallbackAvatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.notifSubIcon {
+  position: absolute;
+  bottom: -2px;
+  right: -4px;
+  font-size: 11px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--nd-bg);
+  border: 2px solid var(--nd-bg);
+}
+
+.notifTail {
+  flex: 1;
+  min-width: 0;
 }
 
 .notifHeader {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 16px 0;
-}
-
-.notifIcon {
-  flex-shrink: 0;
-  opacity: 0.6;
-}
-
-.notifUserAvatar {
-  cursor: pointer;
 }
 
 .notifMeta {
@@ -870,7 +902,7 @@ onUnmounted(() => {
 
 /* Attached note in notification — compact style */
 .notifNoteWrap {
-  padding: 0 8px 4px;
+  margin-top: 4px;
 
   :deep(.note-root) {
     font-size: 0.9em;
@@ -881,9 +913,7 @@ onUnmounted(() => {
   }
 
   :deep(.avatar) {
-    width: 36px;
-    height: 36px;
-    margin: 0 10px 0 0;
+    display: none;
   }
 }
 
@@ -913,7 +943,7 @@ onUnmounted(() => {
   display: flex;
   gap: 8px;
   max-width: 300px;
-  padding: 8px 16px 12px 60px;
+  padding: 8px 0 0;
 }
 
 .followRequestBtn {
