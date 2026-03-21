@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#a855f7"/>
-      <stop offset="100%" stop-color="#6d28d9"/>
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
     </linearGradient>
   </defs>
   <rect width="128" height="128" rx="20" fill="url(#bg)"/>
@@ -14,12 +14,10 @@
   <circle cx="46" cy="68" r="17" fill="none" stroke="#fff" stroke-width="4.5"/>
   <!-- right lens -->
   <circle cx="82" cy="68" r="17" fill="none" stroke="#fff" stroke-width="4.5"/>
-  <!-- left eye -->
-  <circle cx="46" cy="68" r="4" fill="#fff"/>
-  <!-- right eye -->
-  <circle cx="82" cy="68" r="4" fill="#fff"/>
-  <!-- bridge -->
-  <path d="M63 66 Q64 61 65 66" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
-  <!-- mouth -->
-  <line x1="52" y1="96" x2="76" y2="96" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+  <!-- left eye (half-closed crescent) -->
+  <path d="M42 66 Q46 62 50 66" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+  <!-- right eye (half-closed crescent) -->
+  <path d="M78 66 Q82 62 86 66" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+  <!-- mouth (yawning ふぁ～) -->
+  <ellipse cx="64" cy="96" rx="6" ry="5" fill="#fff"/>
 </svg>
