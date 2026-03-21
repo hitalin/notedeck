@@ -45,8 +45,7 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
         <!-- Mention -->
         <template v-else-if="type === '@' && isUser(candidate)">
           <img
-            v-if="candidate.avatarUrl"
-            :src="candidate.avatarUrl"
+            :src="candidate.avatarUrl || '/avatar-default.svg'"
             :class="$style.acUserAvatar"
           />
           <div :class="$style.acUserInfo">

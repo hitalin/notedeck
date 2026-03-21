@@ -486,7 +486,7 @@ const pageEditUrl = computed(() => {
           <!-- Footer -->
           <div :class="$style.pageFooter">
             <div :class="$style.pageFooterAuthor">
-              <img v-if="page.user.avatarUrl" :src="page.user.avatarUrl" :class="$style.pageFooterAvatar" />
+              <img :src="page.user.avatarUrl || '/avatar-default.svg'" :class="$style.pageFooterAvatar" />
               By @{{ page.user.username }}
             </div>
             <div :class="$style.pageFooterDates">

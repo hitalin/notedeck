@@ -236,8 +236,7 @@ fetchGallery()
             <div :class="$style.galleryDetailMeta">
               <div :class="$style.galleryDetailUser">
                 <img
-                  v-if="detailPost.user.avatarUrl"
-                  :src="detailPost.user.avatarUrl"
+                  :src="detailPost.user.avatarUrl || '/avatar-default.svg'"
                   :class="$style.galleryUserAvatar"
                 />
                 <span :class="$style.galleryUserName">{{ detailPost.user.name || detailPost.user.username }}</span>
@@ -301,8 +300,7 @@ fetchGallery()
                 <div :class="$style.galleryGridFooter">
                   <span :class="$style.galleryGridUser">
                     <img
-                      v-if="post.user.avatarUrl"
-                      :src="post.user.avatarUrl"
+                      :src="post.user.avatarUrl || '/avatar-default.svg'"
                       :class="$style.galleryGridAvatar"
                     />
                     {{ post.user.name || post.user.username }}

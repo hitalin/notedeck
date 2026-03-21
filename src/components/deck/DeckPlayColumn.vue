@@ -426,7 +426,7 @@ function reload() {
 
           <div :class="$style.playFooter">
             <div :class="$style.playFooterAuthor">
-              <img v-if="flash.user.avatarUrl" :src="flash.user.avatarUrl" :class="$style.playFooterAvatar" />
+              <img :src="flash.user.avatarUrl || '/avatar-default.svg'" :class="$style.playFooterAvatar" />
               By @{{ flash.user.username }}
             </div>
             <div :class="$style.playFooterDates">

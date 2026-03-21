@@ -1669,7 +1669,7 @@ pub async fn api_search_hashtags(
     query: String,
     limit: Option<i64>,
 ) -> Result<Vec<String>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .search_hashtags(&host, &token, &query, limit.unwrap_or(10).clamp(1, 100))
         .await
