@@ -53,7 +53,7 @@ const isPureRenote = computed(
   () => props.note.renote && props.note.text === null,
 )
 
-const { canInteract } = useAccountMode(() => props.note._accountId)
+const { canInteract, isGuest } = useAccountMode(() => props.note._accountId)
 
 const moreMenuRef = ref<InstanceType<typeof NoteMoreMenu> | null>(null)
 const reactionPickerRef = ref<InstanceType<
@@ -557,7 +557,8 @@ function closeMentionPopup() {
               :key="r.reaction"
               v-memo="[r.reaction, r.count, effectiveNote.myReaction === r.reaction, reactionUrls[r.reaction]]"
               :class="[$style.reaction, { [$style.reacted]: effectiveNote.myReaction === r.reaction }]"
-              @click.stop="canInteract ? emit('react', r.reaction, effectiveNote) : showLoginPrompt(props.note._accountId)"
+              :disabled="isGuest"
+              @click.stop="canInteract ? emit('react', r.reaction, effectiveNote) : showLoginPrompt()"
               @mouseenter="reactionUsersRef?.show($event, r.reaction, reactionUrls[r.reaction] ?? null, effectiveNote.reactions[r.reaction] ?? 0)"
               @mouseleave="reactionUsersRef?.hide()"
             >
@@ -571,21 +572,22 @@ function closeMentionPopup() {
 
         <!-- Footer -->
         <footer v-if="!embedded" :class="$style.footer">
-          <button :class="[$style.footerButton, $style.replyButton]" @click.stop="canInteract ? emit('reply', effectiveNote) : showLoginPrompt(props.note._accountId)">
+          <button :class="[$style.footerButton, $style.replyButton, { [$style.footerDisabled]: isGuest }]" :disabled="isGuest" @click.stop="canInteract ? emit('reply', effectiveNote) : showLoginPrompt()">
             <i class="ti ti-arrow-back-up" />
             <span v-if="effectiveNote.repliesCount > 0" :class="$style.buttonCount">
               {{ effectiveNote.repliesCount }}
             </span>
           </button>
-          <button :class="[$style.footerButton, $style.renoteButton, { [$style.renoted]: isRenoted }]" @click.stop="canInteract ? openRenoteMenu($event) : showLoginPrompt(props.note._accountId)">
+          <button :class="[$style.footerButton, $style.renoteButton, { [$style.renoted]: isRenoted, [$style.footerDisabled]: isGuest }]" :disabled="isGuest" @click.stop="canInteract ? openRenoteMenu($event) : showLoginPrompt()">
             <i class="ti ti-repeat" />
             <span v-if="effectiveNote.renoteCount > 0" :class="$style.buttonCount">
               {{ effectiveNote.renoteCount }}
             </span>
           </button>
           <button
-            :class="[$style.footerButton, $style.reactionButton]"
-            @click.stop="canInteract ? reactionPickerRef?.open($event) : showLoginPrompt(props.note._accountId)"
+            :class="[$style.footerButton, $style.reactionButton, { [$style.footerDisabled]: isGuest }]"
+            :disabled="isGuest"
+            @click.stop="canInteract ? reactionPickerRef?.open($event) : showLoginPrompt()"
           >
             <i class="ti ti-plus" />
           </button>
@@ -1133,6 +1135,11 @@ function closeMentionPopup() {
   &:hover {
     color: var(--nd-fgHighlighted);
   }
+}
+
+.footerDisabled {
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .replyButton:hover {

@@ -6,8 +6,10 @@ import {
   getPluginHandlers,
   setPluginAccountContext,
 } from '@/aiscript/plugin-api'
+import { useAccountMode } from '@/composables/useAccountMode'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useToast } from '@/stores/toast'
+import { showLoginPrompt } from '@/utils/loginPrompt'
 import { extractThemeVars } from '@/utils/themeVars'
 import { isSafeUrl } from '@/utils/url'
 
@@ -28,6 +30,7 @@ const emit = defineEmits<{
 
 const toast = useToast()
 const { getOrCreate } = useMultiAccountAdapters()
+const { canInteract, isGuest } = useAccountMode(() => props.note._accountId)
 
 const showMenu = ref(false)
 const showDeleteConfirm = ref(false)
@@ -281,13 +284,14 @@ defineExpose({ open })
           <!-- Main menu -->
           <template v-else>
             <button
-              :class="[$style.popupItem, localIsFavorited && $style.popupItemActive]"
-              @click="localIsFavorited = !localIsFavorited; emit('bookmark', note); close()"
+              :class="[$style.popupItem, localIsFavorited && $style.popupItemActive, { [$style.popupItemDisabled]: isGuest }]"
+              :disabled="isGuest"
+              @click="canInteract ? (localIsFavorited = !localIsFavorited, emit('bookmark', note), close()) : (showLoginPrompt(), close())"
             >
               <i class="ti ti-star" />
               {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
             </button>
-            <button :class="$style.popupItem" @click="openClipList">
+            <button :class="[$style.popupItem, { [$style.popupItemDisabled]: isGuest }]" :disabled="isGuest" @click="canInteract ? openClipList() : (showLoginPrompt(), close())">
               <i class="ti ti-paperclip" />
               クリップに追加
             </button>
@@ -340,11 +344,11 @@ defineExpose({ open })
             </template>
             <template v-if="!isOwnNote">
               <div :class="$style.popupDivider" />
-              <button :class="$style.popupItem" @click="showMuteConfirm = true">
+              <button :class="[$style.popupItem, { [$style.popupItemDisabled]: isGuest }]" :disabled="isGuest" @click="canInteract ? (showMuteConfirm = true) : (showLoginPrompt(), close())">
                 <i class="ti ti-eye-off" />
                 このユーザーをミュート
               </button>
-              <button :class="[$style.popupItem, $style.popupItemDanger]" @click="showReportForm = true">
+              <button :class="[$style.popupItem, $style.popupItemDanger, { [$style.popupItemDisabled]: isGuest }]" :disabled="isGuest" @click="canInteract ? (showReportForm = true) : (showLoginPrompt(), close())">
                 <i class="ti ti-alert-triangle" />
                 通報
               </button>
@@ -414,6 +418,10 @@ defineExpose({ open })
 
 .popupItemDanger {
   color: var(--nd-error);
+}
+
+.popupItemDisabled {
+  opacity: 0.4;
 }
 
 .popupDivider {

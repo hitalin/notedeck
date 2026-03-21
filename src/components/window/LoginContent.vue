@@ -130,7 +130,6 @@ onMounted(() => {
             ログイン
           </button>
           <button
-            class="_button"
             :class="$style.btnGuest"
             :disabled="!host.trim()"
             @click="startGuest"
@@ -306,16 +305,34 @@ onMounted(() => {
 }
 
 .btnGuest {
-  font-size: 0.85em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 42px;
+  padding: 0 20px;
+  border: 1px solid var(--nd-accent);
+  border-radius: var(--nd-radius-full);
+  background: transparent;
   color: var(--nd-accent);
-  transition: opacity var(--nd-duration-base);
+  font-size: 0.95em;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform var(--nd-duration-base), background var(--nd-duration-base), opacity var(--nd-duration-base);
 
   &:hover:not(:disabled) {
-    opacity: 0.8;
+    background: color-mix(in srgb, var(--nd-accent) 10%, transparent);
+    transform: scale(1.02);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
   }
 
   &:disabled {
-    opacity: 0.3;
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 }
 
