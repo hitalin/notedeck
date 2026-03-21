@@ -457,22 +457,13 @@ fn transform_image(
         img
     };
 
+    // Always encode as WebP (lossless) — smaller than PNG and avoids
+    // format-mismatch issues (e.g. resized JPEG re-encoded as PNG).
     let mut buf = Vec::new();
-    let ct = if needs_webp {
-        let encoder = image::codecs::webp::WebPEncoder::new_lossless(&mut buf);
-        img.write_with_encoder(encoder).ok()?;
-        "image/webp"
-    } else {
-        // Keep original format but resized — re-encode as PNG for lossless quality
-        img.write_to(
-            &mut std::io::Cursor::new(&mut buf),
-            image::ImageFormat::Png,
-        )
-        .ok()?;
-        "image/png"
-    };
+    let encoder = image::codecs::webp::WebPEncoder::new_lossless(&mut buf);
+    img.write_with_encoder(encoder).ok()?;
 
-    Some((buf, ct.to_string()))
+    Some((buf, "image/webp".to_string()))
 }
 
 #[utoipa::path(get, path = "/proxy/image", tag = "proxy",
@@ -516,58 +507,54 @@ async fn proxy_image(
 
     let wants_transform = params.w.is_some() || params.format.is_some();
 
-    // Helper: apply transform to cached bytes and return response
-    let make_transformed_response =
-        |data: Vec<u8>, ct: &str, etag: &str| -> Response {
-            if wants_transform {
-                if let Some((transformed, new_ct)) =
-                    transform_image(&data, params.w, params.format.as_deref())
-                {
-                    return Response::builder()
-                        .status(StatusCode::OK)
-                        .header("Content-Type", new_ct)
-                        .header("Cache-Control", "public, max-age=86400, immutable")
-                        .header("ETag", etag)
-                        .body(Body::from(transformed))
-                        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
+    // Helper: build a cached-image response, applying transform if requested.
+    // Accepts &[u8] to avoid cloning Arc<Vec<u8>> when no transform is needed.
+    let make_response = |data: &[u8], ct: &str, etag: &str| -> Response {
+        if wants_transform {
+            if let Some((transformed, new_ct)) =
+                transform_image(data, params.w, params.format.as_deref())
+            {
+                return Response::builder()
+                    .status(StatusCode::OK)
+                    .header("Content-Type", new_ct)
+                    .header("Cache-Control", "public, max-age=86400, immutable")
+                    .header("ETag", etag)
+                    .body(Body::from(transformed))
+                    .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
+            }
+        }
+        Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", ct)
+            .header("Cache-Control", "public, max-age=86400, immutable")
+            .header("ETag", etag)
+            .body(Body::from(data.to_vec()))
+            .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+    };
+
+    // Helper macro: resolve CacheEntry → bytes (mem or disk) and build response
+    macro_rules! respond_from_cache {
+        ($entry:expr, $etag:expr) => {{
+            let entry = $entry;
+            if let Some(ref mem) = entry.mem_bytes {
+                make_response(mem, &entry.content_type, $etag)
+            } else {
+                match tokio::fs::read(&entry.path).await {
+                    Ok(b) => make_response(&b, &entry.content_type, $etag),
+                    Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
                 }
             }
-            Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", ct)
-                .header("Cache-Control", "public, max-age=86400, immutable")
-                .header("ETag", etag)
-                .body(Body::from(data))
-                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
-        };
+        }};
+    }
 
     // Phase 1: Check cache (instant response)
     if let Some(entry) = state.image_cache.check_cache_only(&params.url).await {
-        let body_bytes = if let Some(ref mem) = entry.mem_bytes {
-            (**mem).clone()
-        } else {
-            match tokio::fs::read(&entry.path).await {
-                Ok(b) => b,
-                Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-            }
-        };
-        return make_transformed_response(body_bytes, &entry.content_type, &etag);
+        return respond_from_cache!(entry, &etag);
     }
 
     // Phase 2: Fetch from upstream
     match state.image_cache.fetch_streaming(&params.url).await {
-        Ok(StreamingFetchResult::Cached(entry)) => {
-            // Inflight dedup resolved to a cached entry
-            let body_bytes = if let Some(ref mem) = entry.mem_bytes {
-                (**mem).clone()
-            } else {
-                match tokio::fs::read(&entry.path).await {
-                    Ok(b) => b,
-                    Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-                }
-            };
-            make_transformed_response(body_bytes, &entry.content_type, &etag)
-        }
+        Ok(StreamingFetchResult::Cached(entry)) => respond_from_cache!(entry, &etag),
         Ok(StreamingFetchResult::Streaming {
             byte_stream,
             content_type,
@@ -583,7 +570,7 @@ async fn proxy_image(
                         Err(_) => return StatusCode::BAD_GATEWAY.into_response(),
                     }
                 }
-                make_transformed_response(all_bytes, &content_type, &etag)
+                make_response(&all_bytes, &content_type, &etag)
             } else {
                 // No transform needed — stream directly for low TTFB
                 let body = Body::from_stream(byte_stream);
