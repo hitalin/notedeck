@@ -192,6 +192,15 @@ pub fn invalidate_credentials(account_id: &str) {
     CREDENTIAL_CACHE.invalidate(account_id);
 }
 
+/// Get host only from account_id (no token required).
+/// Used for anonymous/public API calls on logged-out accounts.
+fn get_host(db: &Database, account_id: &str) -> Result<String> {
+    let account = db
+        .get_account(account_id)?
+        .ok_or_else(|| NoteDeckError::AccountNotFound(account_id.to_string()))?;
+    Ok(account.host.clone())
+}
+
 /// Write account list (non-secret metadata only) to a JSON file for background workers.
 /// The file contains host, account_id, and username — no tokens.
 pub fn export_account_list(app: &tauri::AppHandle, db: &Database) {
@@ -257,6 +266,106 @@ pub fn logout_account(
     db.clear_token(&id)?;
     export_account_list(&app, &db);
     Ok(())
+}
+
+// --- Guest / Anonymous API ---
+
+/// Create a guest (unauthenticated) account for browsing public timelines.
+#[tauri::command]
+pub async fn create_guest_account(
+    app: tauri::AppHandle,
+    db: State<'_, Arc<Database>>,
+    host: String,
+    software: String,
+) -> Result<AccountPublic> {
+    let host = validate_host(&host)?;
+    let id = uuid::Uuid::new_v4().to_string();
+    let account = Account {
+        id,
+        host,
+        token: String::new(),
+        user_id: "__guest__".to_string(),
+        username: "guest".to_string(),
+        display_name: None,
+        avatar_url: None,
+        software,
+    };
+    db.upsert_account(&account)?;
+    export_account_list(&app, &db);
+    Ok(AccountPublic::new(&account, false))
+}
+
+/// Get timeline without authentication (for guest/logged-out accounts).
+#[tauri::command]
+pub async fn api_get_guest_timeline(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    timeline_type: TimelineType,
+    options: Option<TimelineOptions>,
+) -> Result<Vec<NormalizedNote>> {
+    let host = get_host(&db, &account_id)?;
+    let host = validate_host(&host)?;
+    client
+        .get_timeline_anonymous(&host, &account_id, timeline_type, options.unwrap_or_default())
+        .await
+}
+
+/// Get user profile without authentication.
+#[tauri::command]
+pub async fn api_get_user_public(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_id: String,
+) -> Result<NormalizedUser> {
+    let host = get_host(&db, &account_id)?;
+    let host = validate_host(&host)?;
+    client.get_user_anonymous(&host, &user_id).await
+}
+
+/// Get user detail without authentication.
+#[tauri::command]
+pub async fn api_get_user_detail_public(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_id: String,
+) -> Result<NormalizedUserDetail> {
+    let host = get_host(&db, &account_id)?;
+    let host = validate_host(&host)?;
+    client.get_user_detail_anonymous(&host, &user_id).await
+}
+
+/// Get user notes without authentication.
+#[tauri::command]
+pub async fn api_get_user_notes_public(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    user_id: String,
+    options: Option<TimelineOptions>,
+) -> Result<Vec<NormalizedNote>> {
+    let host = get_host(&db, &account_id)?;
+    let host = validate_host(&host)?;
+    client
+        .get_user_notes_anonymous(&host, &account_id, &user_id, options.unwrap_or_default())
+        .await
+}
+
+/// Get a single note without authentication.
+#[tauri::command]
+pub async fn api_get_note_public(
+    db: State<'_, Arc<Database>>,
+    client: State<'_, Arc<MisskeyClient>>,
+    account_id: String,
+    note_id: String,
+) -> Result<NormalizedNote> {
+    let host = get_host(&db, &account_id)?;
+    let host = validate_host(&host)?;
+    client
+        .get_note_anonymous(&host, &account_id, &note_id)
+        .await
 }
 
 // --- DB: Servers ---

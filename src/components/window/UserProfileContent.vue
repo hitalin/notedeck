@@ -106,6 +106,7 @@ onMounted(async () => {
   try {
     const result = await initAdapterFor(account.host, account.id, {
       pinnedReactions: false,
+      hasToken: account.hasToken,
     })
     adapter = result.adapter
     const [userDetail, userPinnedNoteIds] = await Promise.all([

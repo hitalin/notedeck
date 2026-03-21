@@ -6,11 +6,12 @@ import { MisskeyStream } from './streaming'
 export function createMisskeyAdapter(
   serverInfo: ServerInfo,
   accountId: string,
+  hasToken = true,
 ): ServerAdapter {
   return {
     serverInfo,
     auth: new MisskeyAuth(),
-    api: new MisskeyApi(accountId),
+    api: new MisskeyApi(accountId, serverInfo.host, hasToken),
     stream: new MisskeyStream(accountId),
   }
 }

@@ -14,6 +14,12 @@ export interface Account {
   hasToken: boolean
 }
 
+const GUEST_USER_ID = '__guest__'
+
+export function isGuestAccount(account: Account): boolean {
+  return account.userId === GUEST_USER_ID && !account.hasToken
+}
+
 export const useAccountsStore = defineStore('accounts', () => {
   const accounts = ref<Account[]>([])
   const activeAccountId = ref<string | null>(null)

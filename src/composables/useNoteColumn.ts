@@ -152,32 +152,15 @@ export function useNoteColumn(config: NoteColumnConfig) {
     return config.filterCachedNotes ? config.filterCachedNotes(cached) : cached
   }
 
-  // When account loses token (logout with keep-data), switch to cache display
+  // When account loses token (logout with keep-data), disconnect streaming
+  // and reconnect with anonymous API for public timelines
   watch(
     () => account.value?.hasToken,
     async (hasToken, prev) => {
       if (prev && hasToken === false) {
         disconnect()
-        const column = config.getColumn()
-        const cacheKey = config.cache?.getKey()
-        if (column.accountId && cacheKey) {
-          try {
-            const cached = await invoke<NormalizedNote[]>(
-              'api_get_cached_timeline',
-              {
-                accountId: column.accountId,
-                timelineType: cacheKey,
-                limit: 40,
-              },
-            )
-            const filtered = applyFilter(cached)
-            if (filtered.length > 0) setNotes(filtered)
-          } catch {
-            /* non-critical */
-          }
-        }
-        isOffline.value = true
-        isLoading.value = false
+        // Re-connect with anonymous adapter to fetch public data
+        connect(true)
       }
     },
   )
@@ -250,20 +233,21 @@ export function useNoteColumn(config: NoteColumnConfig) {
       isLoading.value = true
     }
 
-    // Logged-out or unresolved account: show cached notes in read-only mode
-    if (!account.value || !account.value.hasToken) {
+    // Unresolved account: show cached notes in read-only mode
+    if (!account.value) {
       isOffline.value = true
       isLoading.value = false
       return
     }
 
     try {
-      const adapter = await initAdapter()
+      const adapter = await initAdapter({ hasToken: account.value.hasToken })
       if (!adapter) return
 
       // Start streaming setup early (runs in parallel with API fetch below).
       // Combined commands handle connect + subscribe in a single IPC round-trip.
-      if (config.streaming && streamingBatch) {
+      // Skip streaming for logged-out/guest accounts.
+      if (account.value.hasToken && config.streaming && streamingBatch) {
         adapter.stream.connect()
         adapter.stream.on('disconnected', () => {
           isOffline.value = true

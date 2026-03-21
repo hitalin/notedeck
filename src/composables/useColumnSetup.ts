@@ -60,10 +60,14 @@ export function useColumnSetup(
   let adapter: ServerAdapter | null = null
   let subscription: ChannelSubscription | null = null
 
-  async function initAdapter(): Promise<ServerAdapter | null> {
+  async function initAdapter(opts?: {
+    hasToken?: boolean
+  }): Promise<ServerAdapter | null> {
     const acc = account.value
     if (!acc) return null
-    const result = await initAdapterFor(acc.host, acc.id)
+    const result = await initAdapterFor(acc.host, acc.id, {
+      hasToken: opts?.hasToken ?? acc.hasToken,
+    })
     serverIconUrl.value = result.serverInfo.iconUrl
     adapter = result.adapter
     return adapter

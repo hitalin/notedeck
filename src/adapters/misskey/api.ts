@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { populateOgpCache } from '@/composables/useOgpPreview'
+import { AppError } from '@/utils/errors'
 import type { OgpData } from '@/utils/ogp'
 import type {
   Antenna,
@@ -32,15 +33,34 @@ interface TimelineEnriched {
 
 export class MisskeyApi implements ApiAdapter {
   private accountId: string
+  private hasToken: boolean
 
-  constructor(accountId: string) {
+  constructor(accountId: string, _host: string, hasToken = true) {
     this.accountId = accountId
+    this.hasToken = hasToken
+  }
+
+  private requireAuth(): void {
+    if (!this.hasToken) throw new AppError('AUTH', 'ログインが必要です')
   }
 
   async getTimeline(
     type: TimelineType,
     options: TimelineOptions = {},
   ): Promise<NormalizedNote[]> {
+    if (!this.hasToken) {
+      return invoke('api_get_guest_timeline', {
+        accountId: this.accountId,
+        timelineType: type,
+        options: {
+          limit: options.limit ?? 20,
+          sinceId: options.sinceId ?? null,
+          untilId: options.untilId ?? null,
+          filters: options.filters ?? null,
+          listId: options.listId ?? null,
+        },
+      })
+    }
     const result = await invoke<TimelineEnriched>('api_get_timeline_enriched', {
       accountId: this.accountId,
       timelineType: type,
@@ -59,13 +79,15 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async getNote(noteId: string): Promise<NormalizedNote> {
-    return invoke('api_get_note', {
+    const cmd = this.hasToken ? 'api_get_note' : 'api_get_note_public'
+    return invoke(cmd, {
       accountId: this.accountId,
       noteId,
     })
   }
 
   async createReaction(noteId: string, reaction: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_create_reaction', {
       accountId: this.accountId,
       noteId,
@@ -74,6 +96,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async deleteReaction(noteId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_delete_reaction', {
       accountId: this.accountId,
       noteId,
@@ -94,6 +117,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async updateNote(noteId: string, params: CreateNoteParams): Promise<void> {
+    this.requireAuth()
     return invoke('api_update_note', {
       accountId: this.accountId,
       noteId,
@@ -102,6 +126,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async deleteNote(noteId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_delete_note', {
       accountId: this.accountId,
       noteId,
@@ -114,6 +139,7 @@ export class MisskeyApi implements ApiAdapter {
     contentType: string,
     isSensitive = false,
   ): Promise<NormalizedDriveFile> {
+    this.requireAuth()
     return invoke('api_upload_file', {
       accountId: this.accountId,
       fileName,
@@ -127,6 +153,7 @@ export class MisskeyApi implements ApiAdapter {
     filePath: string,
     isSensitive = false,
   ): Promise<NormalizedDriveFile> {
+    this.requireAuth()
     return invoke('api_upload_file_from_path', {
       accountId: this.accountId,
       filePath,
@@ -135,6 +162,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async createFavorite(noteId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_create_favorite', {
       accountId: this.accountId,
       noteId,
@@ -142,6 +170,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async deleteFavorite(noteId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_delete_favorite', {
       accountId: this.accountId,
       noteId,
@@ -149,6 +178,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async pinNote(noteId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_pin_note', {
       accountId: this.accountId,
       noteId,
@@ -156,6 +186,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async unpinNote(noteId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_unpin_note', {
       accountId: this.accountId,
       noteId,
@@ -170,14 +201,18 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async getUser(userId: string): Promise<NormalizedUser> {
-    return invoke('api_get_user', {
+    const cmd = this.hasToken ? 'api_get_user' : 'api_get_user_public'
+    return invoke(cmd, {
       accountId: this.accountId,
       userId,
     })
   }
 
   async getUserDetail(userId: string): Promise<NormalizedUserDetail> {
-    return invoke('api_get_user_detail', {
+    const cmd = this.hasToken
+      ? 'api_get_user_detail'
+      : 'api_get_user_detail_public'
+    return invoke(cmd, {
       accountId: this.accountId,
       userId,
     })
@@ -191,7 +226,7 @@ export class MisskeyApi implements ApiAdapter {
     const hasFilters =
       withReplies != null || withFiles != null || withChannelNotes != null
 
-    if (hasFilters) {
+    if (hasFilters && this.hasToken) {
       const params: Record<string, unknown> = {
         userId,
         limit: pagination.limit ?? 20,
@@ -213,7 +248,10 @@ export class MisskeyApi implements ApiAdapter {
       return Promise.all(raw.map((n) => this.getNote(n.id)))
     }
 
-    return invoke('api_get_user_notes', {
+    const cmd = this.hasToken
+      ? 'api_get_user_notes'
+      : 'api_get_user_notes_public'
+    return invoke(cmd, {
       accountId: this.accountId,
       userId,
       options: {
@@ -247,6 +285,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async createNote(params: CreateNoteParams): Promise<NormalizedNote> {
+    this.requireAuth()
     const { channelId, ...noteParams } = params
     return invoke('api_create_note', {
       accountId: this.accountId,
@@ -342,6 +381,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async followUser(userId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_follow_user', {
       accountId: this.accountId,
       userId,
@@ -349,6 +389,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async unfollowUser(userId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_unfollow_user', {
       accountId: this.accountId,
       userId,
@@ -356,6 +397,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async acceptFollowRequest(userId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_accept_follow_request', {
       accountId: this.accountId,
       userId,
@@ -363,6 +405,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async rejectFollowRequest(userId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_reject_follow_request', {
       accountId: this.accountId,
       userId,
@@ -502,6 +545,7 @@ export class MisskeyApi implements ApiAdapter {
     roomId?: string
     text: string
   }): Promise<ChatMessage> {
+    this.requireAuth()
     return invoke('api_create_chat_message', {
       accountId: this.accountId,
       userId: params.userId ?? null,
@@ -511,6 +555,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async muteUser(userId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_mute_user', {
       accountId: this.accountId,
       userId,
@@ -518,6 +563,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async unmuteUser(userId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_unmute_user', {
       accountId: this.accountId,
       userId,
@@ -525,6 +571,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async blockUser(userId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_block_user', {
       accountId: this.accountId,
       userId,
@@ -532,6 +579,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async unblockUser(userId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_unblock_user', {
       accountId: this.accountId,
       userId,
@@ -539,6 +587,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async reportUser(userId: string, comment: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_report_user', {
       accountId: this.accountId,
       userId,
@@ -547,6 +596,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async addNoteToClip(clipId: string, noteId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_add_note_to_clip', {
       accountId: this.accountId,
       clipId,
@@ -555,6 +605,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async addUserToList(listId: string, userId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_add_user_to_list', {
       accountId: this.accountId,
       listId,
@@ -563,6 +614,7 @@ export class MisskeyApi implements ApiAdapter {
   }
 
   async removeUserFromList(listId: string, userId: string): Promise<void> {
+    this.requireAuth()
     return invoke('api_remove_user_from_list', {
       accountId: this.accountId,
       listId,
