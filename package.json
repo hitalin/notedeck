@@ -51,7 +51,7 @@
     "shiki": "^4.0.0",
     "vscode-languageserver-protocol": "^3.17.5",
     "vue": "^3.5.25",
-    "vue-router": "^4.5.1"
+    "vue-router": "^5.0.4"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.4",
