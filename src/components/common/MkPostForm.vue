@@ -1142,15 +1142,15 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .accountOptionAvatar {
+  flex: 0 0 24px;
   width: 24px;
-  min-width: 24px;
   height: 24px;
   border-radius: 100%;
   object-fit: cover;
-  flex-shrink: 0;
 }
 
 .accountOptionInfo {
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
