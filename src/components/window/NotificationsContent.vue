@@ -137,7 +137,7 @@ const NOTIFICATION_LABELS: Record<string, string> = {
   achievementEarned: 'Achievement earned',
   app: 'Notification',
   login: 'Login detected',
-  createToken: 'Token created',
+  createToken: 'Access token created',
   test: 'Test notification',
 }
 
@@ -461,6 +461,16 @@ onUnmounted(() => {
                   </template>
                 </div>
 
+                <!-- followRequestAccepted message -->
+                <div v-if="notif.type === 'followRequestAccepted' && notif.message" :class="$style.notifMessage">
+                  {{ notif.message }}
+                </div>
+
+                <!-- createToken warning -->
+                <div v-if="notif.type === 'createToken'" :class="$style.notifMessage">
+                  心当たりがない場合は<a :href="`https://${notif._serverHost}/settings/connect`" target="_blank" rel="noopener noreferrer" :class="$style.notifMessageLink">アクセストークンの管理</a>を通じてアクセストークンを削除してください。
+                </div>
+
                 <!-- Attached note -->
                 <div v-if="notif.note" :class="$style.notifNoteWrap">
                   <MkNote
@@ -710,6 +720,22 @@ onUnmounted(() => {
   font-size: 0.8em;
   opacity: 0.5;
   margin-left: auto;
+}
+
+.notifMessage {
+  margin-top: 4px;
+  font-size: 0.85em;
+  opacity: 0.7;
+  line-height: 1.5;
+}
+
+.notifMessageLink {
+  color: var(--nd-link);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 .notifNoteWrap {

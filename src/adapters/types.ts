@@ -319,6 +319,7 @@ export interface NormalizedNotification {
   user?: NormalizedUser
   note?: NormalizedNote
   reaction?: string
+  message?: string
 }
 
 export interface CreateNoteParams {
