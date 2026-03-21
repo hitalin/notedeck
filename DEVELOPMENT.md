@@ -20,6 +20,22 @@ Multi-server Misskey deck client with fork support.
 | Style | SCSS + CSS Modules (`$style`) |
 | Test | Vitest + jsdom |
 
+## Prerequisites
+
+| ツール | インストール |
+|--------|-------------|
+| [Node.js](https://nodejs.org/) (LTS) | 公式サイト or `nvm install --lts` |
+| [pnpm](https://pnpm.io/) | `corepack enable && corepack prepare pnpm@latest --activate` |
+| [Rust](https://www.rust-lang.org/) (stable) | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| [Task](https://taskfile.dev/) | `sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin` |
+
+**Linux のみ**: Tauri のビルドに追加パッケージが必要です。
+
+```bash
+# Ubuntu / Debian
+sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+```
+
 ## Getting Started
 
 ```bash

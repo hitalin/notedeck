@@ -60,8 +60,11 @@ nix run github:hitalin/notedeck
 
 ## 貢献する
 
-- **フォーク対応の追加** — [DEVELOPMENT.md](DEVELOPMENT.md) を参照
-- **バグ報告・機能提案** — [Issues](https://github.com/hitalin/notedeck/issues)
+PR を歓迎します。詳しくは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
+
+- **開発を始める** — [DEVELOPMENT.md](DEVELOPMENT.md) に環境構築からアーキテクチャまで記載
+- **フォーク対応の追加** — [DEVELOPMENT.md](DEVELOPMENT.md#adding-support-for-a-new-fork) の手順に沿って PR
+- **バグ報告・機能提案** — [Issues](https://github.com/hitalin/notedeck/issues)（テンプレートあり）
 
 ## 支援する
 
