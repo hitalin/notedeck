@@ -20,6 +20,11 @@ export function isGuestAccount(account: Account): boolean {
   return account.userId === GUEST_USER_ID && !account.hasToken
 }
 
+export function getAccountAvatarUrl(account: Account): string {
+  if (isGuestAccount(account)) return '/avatar-guest.svg'
+  return account.avatarUrl || '/avatar-default.svg'
+}
+
 export const useAccountsStore = defineStore('accounts', () => {
   const accounts = ref<Account[]>([])
   const activeAccountId = ref<string | null>(null)

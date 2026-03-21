@@ -9,7 +9,7 @@ import { useAutocomplete } from '@/composables/useAutocomplete'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePostFormState } from '@/composables/usePostFormState'
-import { isGuestAccount } from '@/stores/accounts'
+import { getAccountAvatarUrl, isGuestAccount } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
@@ -343,7 +343,7 @@ function onKeydown(e: KeyboardEvent) {
               @click="showAccountMenu = !showAccountMenu"
             >
               <img
-                :src="account.avatarUrl || '/avatar-default.svg'"
+                :src="getAccountAvatarUrl(account)"
                 :class="$style.accountAvatar"
               />
             </button>
@@ -357,7 +357,7 @@ function onKeydown(e: KeyboardEvent) {
                 @click="acc.hasToken ? switchAccount(acc.id) : showLoginPrompt()"
               >
                 <img
-                  :src="acc.avatarUrl || '/avatar-default.svg'"
+                  :src="getAccountAvatarUrl(acc)"
                   :class="$style.accountOptionAvatar"
                   width="24"
                   height="24"

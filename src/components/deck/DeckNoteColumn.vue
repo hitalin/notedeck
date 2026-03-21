@@ -12,7 +12,7 @@ import {
   type NoteColumnConfig,
   useNoteColumn,
 } from '@/composables/useNoteColumn'
-import { isGuestAccount } from '@/stores/accounts'
+import { getAccountAvatarUrl, isGuestAccount } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import DeckColumn from './DeckColumn.vue'
 
@@ -96,7 +96,7 @@ defineExpose({ account, scroller, reconnect, columnThemeVars })
       </button>
       <div v-if="account" :class="$style.headerAccount">
         <img
-          :src="account.avatarUrl || '/avatar-default.svg'"
+          :src="getAccountAvatarUrl(account)"
           :class="$style.headerAvatar"
         />
         <img

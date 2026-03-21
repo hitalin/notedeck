@@ -2,7 +2,11 @@
 import { invoke } from '@tauri-apps/api/core'
 import { computed, ref } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
-import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
+import {
+  getAccountAvatarUrl,
+  isGuestAccount,
+  useAccountsStore,
+} from '@/stores/accounts'
 import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -648,7 +652,7 @@ function close() {
           :disabled="isGuestAccount(account) && requiresAuth"
           @click="(!account.hasToken && requiresAuth) ? showLoginPrompt() : addColumnForAccount(account.id)"
         >
-          <img :src="account.avatarUrl || '/avatar-default.svg'" :class="$style.addAccountAvatar" />
+          <img :src="getAccountAvatarUrl(account)" :class="$style.addAccountAvatar" />
           <span>@{{ account.username }}@{{ account.host }}</span>
         </button>
       </template>

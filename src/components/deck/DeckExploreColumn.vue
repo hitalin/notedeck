@@ -16,6 +16,7 @@ import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteColumn } from '@/composables/useNoteColumn'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
@@ -262,7 +263,7 @@ function closeUserPopup() {
         <i class="ti ti-refresh" :class="{ [String($style.spin)]: currentLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
-        <img :src="account.avatarUrl || '/avatar-default.svg'" :class="$style.headerAvatar" />
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>

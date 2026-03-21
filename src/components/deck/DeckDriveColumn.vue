@@ -11,6 +11,7 @@ import {
   safeUrl,
   useDriveFolder,
 } from '@/composables/useDriveFolder'
+import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
@@ -213,7 +214,7 @@ fetchDrive()
         <i class="ti ti-refresh" :class="{ [String($style.spin)]: loading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
-        <img :src="account.avatarUrl || '/avatar-default.svg'" :class="$style.headerAvatar" />
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
       </div>
     </template>
 

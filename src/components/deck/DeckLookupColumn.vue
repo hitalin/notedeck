@@ -11,7 +11,7 @@ const MkPostForm = defineAsyncComponent(
 
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNavigation } from '@/composables/useNavigation'
-import { useAccountsStore } from '@/stores/accounts'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { parseNoteUrl } from '@/utils/noteUrl'
@@ -289,7 +289,7 @@ async function handlePosted(editedNoteId?: string) {
 
     <template #header-meta>
       <div v-if="account" :class="$style.headerAccount">
-        <img :src="account.avatarUrl || '/avatar-default.svg'" :class="$style.headerAvatar" />
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>

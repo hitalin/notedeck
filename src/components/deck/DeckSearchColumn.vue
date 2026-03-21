@@ -13,6 +13,7 @@ import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import RegexGuide from '@/components/common/RegexGuide.vue'
 import { useNavigation } from '@/composables/useNavigation'
+import { getAccountAvatarUrl } from '@/stores/accounts'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -386,7 +387,7 @@ onUnmounted(() => {
 
     <template #header-meta>
       <div v-if="account" :class="$style.headerAccount">
-        <img :src="account.avatarUrl || '/avatar-default.svg'" :class="$style.headerAvatar" />
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
