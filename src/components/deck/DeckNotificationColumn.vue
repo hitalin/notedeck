@@ -3,7 +3,6 @@ import { invoke } from '@tauri-apps/api/core'
 import {
   computed,
   defineAsyncComponent,
-  nextTick,
   onMounted,
   onUnmounted,
   ref,
@@ -34,6 +33,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { useTabIndicator } from '@/composables/useTabIndicator'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
@@ -115,26 +115,11 @@ const activeFilter = ref<NotifFilterKey>('all')
 // Tab slide indicator
 const $style = useCssModule()
 const filterBarRef = ref<HTMLElement | null>(null)
-const filterIndicatorStyle = ref({ left: '0px', width: '0px', opacity: '0' })
-
-function updateFilterIndicator() {
-  if (!filterBarRef.value) return
-  const activeTab = filterBarRef.value.querySelector(
-    `.notif-tab.${$style.filterActive}`,
-  ) as HTMLElement | null
-  if (!activeTab) {
-    filterIndicatorStyle.value = { left: '0px', width: '0px', opacity: '0' }
-    return
-  }
-  filterIndicatorStyle.value = {
-    left: `${activeTab.offsetLeft}px`,
-    width: `${activeTab.offsetWidth}px`,
-    opacity: '1',
-  }
-}
-
-watch(activeFilter, () => nextTick(updateFilterIndicator))
-onMounted(() => nextTick(updateFilterIndicator))
+const { indicatorStyle: filterIndicatorStyle } = useTabIndicator(
+  filterBarRef,
+  `.notif-tab.${$style.filterActive}`,
+  () => activeFilter.value,
+)
 
 const filteredNotifications = computed(() => {
   if (activeFilter.value === 'all') return notifications.value

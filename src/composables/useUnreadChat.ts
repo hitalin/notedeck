@@ -5,7 +5,9 @@ import { useAccountsStore } from '@/stores/accounts'
 
 interface StreamEventEnvelope {
   kind: string
-  payload: Record<string, unknown>
+  payload: {
+    accountId: string
+  }
 }
 
 const counts = ref<Record<string, number>>({})
@@ -32,8 +34,7 @@ async function setupListener() {
   listenerSetUp = true
   unlistenFn = await listen<StreamEventEnvelope>('stream-event', (event) => {
     const { kind, payload } = event.payload
-    const p = payload as Record<string, unknown>
-    const accountId = p.accountId as string
+    const { accountId } = payload
 
     if (kind === 'stream-chat-message') {
       counts.value = {

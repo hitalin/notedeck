@@ -22,12 +22,13 @@ let observer: IntersectionObserver | null = null
 
 async function fetchNote() {
   const parsed = parseNoteUrl(props.url)
-  if (!parsed || !props.accountId) {
+  const accountId = props.accountId
+  if (!parsed || !accountId) {
     failed.value = true
     return
   }
 
-  const cacheKey = `${props.accountId}:${props.url}`
+  const cacheKey = `${accountId}:${props.url}`
 
   if (embedCache.has(cacheKey)) {
     const cached = embedCache.get(cacheKey) ?? null
@@ -45,15 +46,15 @@ async function fetchNote() {
     if (!promise) {
       promise = (async () => {
         const accountsStore = useAccountsStore()
-        const account = accountsStore.accountMap.get(props.accountId as string)
-        const api = new MisskeyApi(props.accountId as string)
+        const account = accountsStore.accountMap.get(accountId)
+        const api = new MisskeyApi(accountId)
 
         if (account && account.host === parsed.host) {
           return await api.getNote(parsed.noteId)
         }
         const result = await invoke<{ type: string; object?: { id: string } }>(
           'api_ap_show',
-          { accountId: props.accountId, uri: props.url },
+          { accountId, uri: props.url },
         )
         if (result.type === 'Note' && result.object?.id) {
           return await api.getNote(result.object.id)

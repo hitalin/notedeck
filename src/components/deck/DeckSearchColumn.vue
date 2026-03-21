@@ -122,6 +122,8 @@ function openRegexGuide() {
     }
   }
   showRegexGuide.value = true
+  // Remove any stale listener before adding a new one
+  document.removeEventListener('click', closeRegexGuide)
   setTimeout(() => {
     document.addEventListener('click', closeRegexGuide, { once: true })
   }, 0)

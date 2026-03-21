@@ -289,12 +289,13 @@ pub async fn create_guest_account(
 ) -> Result<AccountPublic> {
     let host = validate_host(&host)?;
     let id = uuid::Uuid::new_v4().to_string();
+    let username = format!("guest_{}", &id[..8]);
     let account = Account {
         id,
         host,
         token: String::new(),
         user_id: "__guest__".to_string(),
-        username: "dummy".to_string(),
+        username,
         display_name: None,
         avatar_url: None,
         software,
@@ -2527,7 +2528,10 @@ pub async fn export_db(app: tauri::AppHandle) -> Result<bool> {
         return Ok(false); // user cancelled
     };
 
-    std::fs::copy(&db_path, dest.as_path().unwrap())
+    let dest_path = dest
+        .as_path()
+        .ok_or_else(|| NoteDeckError::InvalidInput("Invalid destination path".to_string()))?;
+    std::fs::copy(&db_path, dest_path)
         .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
     Ok(true)
 }

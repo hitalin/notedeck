@@ -15,7 +15,22 @@ import type {
 /** Consolidated stream event from Rust TauriEmitter */
 interface StreamEventEnvelope {
   kind: string
-  payload: Record<string, unknown>
+  payload: StreamEventPayload
+}
+
+/** Union of known payload shapes keyed by `kind` */
+interface StreamEventPayload {
+  accountId: string
+  subscriptionId?: string
+  state?: StreamConnectionState
+  note?: NormalizedNote
+  noteId?: string
+  updateType?: NoteUpdateEvent['type']
+  body?: NoteUpdateEvent['body']
+  notification?: NormalizedNotification
+  eventType?: string
+  message?: ChatMessage
+  messageId?: string
 }
 
 export class MisskeyStream implements StreamAdapter {
@@ -86,60 +101,69 @@ export class MisskeyStream implements StreamAdapter {
 
   private registerListeners(): void {
     listen<StreamEventEnvelope>('stream-event', (event) => {
-      const { kind, payload } = event.payload
-      const p = payload as Record<string, unknown>
+      const { kind, payload: p } = event.payload
       if (p.accountId !== this.accountId) return
 
       switch (kind) {
         case 'stream-status':
-          this._state = p.state as StreamConnectionState
-          this.emit(p.state as string)
+          if (p.state) {
+            this._state = p.state
+            this.emit(p.state)
+          }
           break
         case 'stream-note':
-          this.noteHandlers.get(p.subscriptionId as string)?.(
-            p.note as NormalizedNote,
-          )
+          if (p.subscriptionId && p.note) {
+            this.noteHandlers.get(p.subscriptionId)?.(p.note)
+          }
           break
         case 'stream-note-updated':
-          this.noteUpdateHandlers.get(p.subscriptionId as string)?.({
-            noteId: p.noteId as string,
-            type: p.updateType as NoteUpdateEvent['type'],
-            body: p.body as NoteUpdateEvent['body'],
-          })
+          if (p.subscriptionId && p.noteId && p.updateType) {
+            this.noteUpdateHandlers.get(p.subscriptionId)?.({
+              noteId: p.noteId,
+              type: p.updateType,
+              body: p.body,
+            })
+          }
           break
         case 'stream-notification':
-          this.notifHandlers.get(p.subscriptionId as string)?.({
-            type: 'notification',
-            body: p.notification as NormalizedNotification,
-          })
+          if (p.subscriptionId && p.notification) {
+            this.notifHandlers.get(p.subscriptionId)?.({
+              type: 'notification',
+              body: p.notification,
+            })
+          }
           break
         case 'stream-mention':
-          this.mentionHandlers.get(p.subscriptionId as string)?.(
-            p.note as NormalizedNote,
-          )
+          if (p.subscriptionId && p.note) {
+            this.mentionHandlers.get(p.subscriptionId)?.(p.note)
+          }
           break
         case 'stream-main-event':
-          this.mainHandlers.get(p.subscriptionId as string)?.({
-            type: p.eventType as string,
-            body: p.body,
-          })
+          if (p.subscriptionId && p.eventType) {
+            this.mainHandlers.get(p.subscriptionId)?.({
+              type: p.eventType,
+              body: p.body,
+            })
+          }
           break
         case 'stream-note-capture-updated':
-          this.noteCaptureHandlers.get(p.noteId as string)?.({
-            noteId: p.noteId as string,
-            type: p.updateType as NoteUpdateEvent['type'],
-            body: p.body as NoteUpdateEvent['body'],
-          })
+          if (p.noteId && p.updateType) {
+            this.noteCaptureHandlers.get(p.noteId)?.({
+              noteId: p.noteId,
+              type: p.updateType,
+              body: p.body,
+            })
+          }
           break
         case 'stream-chat-message':
-          this.chatMessageHandlers.get(p.subscriptionId as string)?.(
-            p.message as ChatMessage,
-          )
+          if (p.subscriptionId && p.message) {
+            this.chatMessageHandlers.get(p.subscriptionId)?.(p.message)
+          }
           break
         case 'stream-chat-message-deleted':
-          this.chatDeletedHandlers.get(p.subscriptionId as string)?.(
-            p.messageId as string,
-          )
+          if (p.subscriptionId && p.messageId) {
+            this.chatDeletedHandlers.get(p.subscriptionId)?.(p.messageId)
+          }
           break
       }
     })
