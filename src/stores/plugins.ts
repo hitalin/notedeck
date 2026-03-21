@@ -93,6 +93,15 @@ export const usePluginsStore = defineStore('plugins', () => {
     }
   }
 
+  function updateSrc(installId: string, src: string) {
+    ensureLoaded()
+    const plugin = plugins.value.find((p) => p.installId === installId)
+    if (plugin) {
+      plugin.src = src
+      persist()
+    }
+  }
+
   function getPlugin(installId: string): PluginMeta | undefined {
     ensureLoaded()
     return plugins.value.find((p) => p.installId === installId)
@@ -111,6 +120,7 @@ export const usePluginsStore = defineStore('plugins', () => {
     removePlugin,
     setActive,
     updateConfigData,
+    updateSrc,
     getPlugin,
     isDuplicate,
   }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   abortPlugin,
   getPluginLogs,
@@ -7,6 +7,7 @@ import {
   parsePluginMeta,
 } from '@/aiscript/plugin-api'
 import AiScriptEditor from '@/components/deck/widgets/AiScriptEditor.vue'
+import { type PluginTemplate, pluginTemplates } from '@/plugins/templates'
 import { type PluginMeta, usePluginsStore } from '@/stores/plugins'
 import { useIsCompactLayout } from '@/stores/ui'
 
@@ -29,14 +30,25 @@ const selectedPluginLogs = computed(() =>
   selectedPluginId.value ? getPluginLogs(selectedPluginId.value) : [],
 )
 
+const availableTemplates = computed(() =>
+  pluginTemplates.filter((t) => !pluginsStore.isDuplicate(t.label)),
+)
+
 function showInstall() {
   installCode.value = ''
   installError.value = null
   view.value = 'install'
 }
 
+const showCode = ref(false)
+const editingCode = ref('')
+const codeModified = ref(false)
+
 function showDetail(plugin: PluginMeta) {
   selectedPluginId.value = plugin.installId
+  showCode.value = false
+  editingCode.value = plugin.src
+  codeModified.value = false
   view.value = 'detail'
 }
 
@@ -90,6 +102,11 @@ async function doInstall() {
   backToList()
 }
 
+async function installFromTemplate(tmpl: PluginTemplate) {
+  installCode.value = tmpl.code
+  await doInstall()
+}
+
 async function toggleActive(plugin: PluginMeta) {
   const newActive = !plugin.active
   pluginsStore.setActive(plugin.installId, newActive)
@@ -109,6 +126,32 @@ function uninstall(plugin: PluginMeta) {
 function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
   const newData = { ...plugin.configData, [key]: value }
   pluginsStore.updateConfigData(plugin.installId, newData)
+}
+
+watch(editingCode, (val) => {
+  if (selectedPlugin.value) {
+    codeModified.value = val !== selectedPlugin.value.src
+  }
+})
+
+function toggleCode() {
+  if (!showCode.value && selectedPlugin.value) {
+    editingCode.value = selectedPlugin.value.src
+    codeModified.value = false
+  }
+  showCode.value = !showCode.value
+}
+
+async function saveCode() {
+  if (!selectedPlugin.value) return
+  pluginsStore.updateSrc(selectedPlugin.value.installId, editingCode.value)
+  codeModified.value = false
+
+  // 有効なプラグインは再起動して変更を反映
+  if (selectedPlugin.value.active) {
+    abortPlugin(selectedPlugin.value.installId)
+    await launchPlugin({ ...selectedPlugin.value, src: editingCode.value })
+  }
 }
 </script>
 
@@ -165,6 +208,28 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
       </div>
 
       <div :class="$style.installBody">
+        <!-- テンプレート -->
+        <template v-if="availableTemplates.length > 0">
+          <div :class="$style.sectionLabel">テンプレート</div>
+          <div :class="$style.templateList">
+            <button
+              v-for="tmpl in availableTemplates"
+              :key="tmpl.id"
+              :class="$style.templateCard"
+              @click="installFromTemplate(tmpl)"
+            >
+              <i :class="['ti', tmpl.icon]" :style="{ fontSize: '1.2em' }" />
+              <div :class="$style.templateCardInfo">
+                <div :class="$style.templateCardName">{{ tmpl.label }}</div>
+                <div :class="$style.templateCardDesc">{{ tmpl.description }}</div>
+              </div>
+              <i class="ti ti-download" :class="$style.templateCardAction" />
+            </button>
+          </div>
+        </template>
+
+        <!-- カスタムコード -->
+        <div :class="$style.sectionLabel">カスタム</div>
         <p :class="$style.installHint">AiScriptプラグインコードを貼り付けてください</p>
         <AiScriptEditor
           v-model="installCode"
@@ -214,6 +279,30 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
           <i class="ti ti-trash" />
           アンインストール
         </button>
+
+        <!-- Code -->
+        <div :class="$style.detailSectionTitle">
+          <button class="_button" :class="$style.codeSectionToggle" @click="toggleCode">
+            <i :class="showCode ? 'ti ti-chevron-down' : 'ti ti-chevron-right'" />
+            ソースコード
+          </button>
+        </div>
+        <template v-if="showCode">
+          <AiScriptEditor
+            v-model="editingCode"
+            max-height="none"
+          />
+          <div :class="$style.codeActions">
+            <button
+              v-if="codeModified"
+              :class="$style.pluginsInstallBtn"
+              @click="saveCode"
+            >
+              <i class="ti ti-device-floppy" />
+              保存して再起動
+            </button>
+          </div>
+        </template>
 
         <!-- Config -->
         <template v-if="selectedPlugin.config && Object.keys(selectedPlugin.config).length > 0">
@@ -565,6 +654,91 @@ function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
     padding: 10px 12px;
     font-size: 1em;
     min-height: 44px;
+  }
+
+  .templateCard {
+    padding: 12px;
+    min-height: 44px;
+  }
+}
+
+.codeSectionToggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: bold;
+  font-size: 1em;
+  color: inherit;
+  opacity: inherit;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.codeActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sectionLabel {
+  padding: 4px 0 2px;
+  font-size: 0.75em;
+  font-weight: 600;
+  opacity: 0.45;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.templateList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.templateCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-md);
+  background: var(--nd-panel);
+  cursor: pointer;
+  text-align: left;
+  color: var(--nd-fg);
+  transition: background var(--nd-duration-base), border-color var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    border-color: var(--nd-accent);
+  }
+}
+
+.templateCardInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.templateCardName {
+  font-weight: bold;
+  font-size: 0.9em;
+  color: var(--nd-fgHighlighted);
+}
+
+.templateCardDesc {
+  font-size: 0.8em;
+  opacity: 0.6;
+  margin-top: 2px;
+}
+
+.templateCardAction {
+  opacity: 0.3;
+  transition: opacity var(--nd-duration-base);
+
+  .templateCard:hover & {
+    opacity: 0.8;
+    color: var(--nd-accent);
   }
 }
 
