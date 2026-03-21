@@ -4,7 +4,11 @@ import { computed, onUnmounted, ref, useCssModule, watch } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
 import { useUnreadChat } from '@/composables/useUnreadChat'
 import { useUnreadNotifications } from '@/composables/useUnreadNotifications'
-import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
+import {
+  type Account,
+  isGuestAccount,
+  useAccountsStore,
+} from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { useStreamingStore } from '@/stores/streaming'
@@ -465,7 +469,7 @@ defineExpose({
 
     <LogoutDialog
       :show="logoutTargetId != null"
-      :is-guest="logoutTargetId ? isGuestAccount(accountsStore.accountMap.get(logoutTargetId) ?? { userId: '', hasToken: true }) : false"
+      :is-guest="logoutTargetId ? isGuestAccount(accountsStore.accountMap.get(logoutTargetId) as Account) : false"
       @keep-data="logoutKeepData"
       @delete-all="logoutDeleteAll"
       @cancel="logoutTargetId = null"

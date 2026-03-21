@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useNavigation } from '@/composables/useNavigation'
-import { isGuestAccount } from '@/stores/accounts'
+import { type Account, isGuestAccount } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 
@@ -11,13 +11,7 @@ const openUrl = async (url: string) => {
 
 const props = defineProps<{
   show: boolean
-  account: {
-    id: string
-    username: string
-    host: string
-    userId: string
-    hasToken: boolean
-  }
+  account: Account
   navCollapsed: boolean
   modes: Record<string, boolean>
   togglingMode: boolean

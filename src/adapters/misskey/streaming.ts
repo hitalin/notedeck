@@ -118,7 +118,7 @@ export class MisskeyStream implements StreamAdapter {
           }
           break
         case 'stream-note-updated':
-          if (p.subscriptionId && p.noteId && p.updateType) {
+          if (p.subscriptionId && p.noteId && p.updateType && p.body) {
             this.noteUpdateHandlers.get(p.subscriptionId)?.({
               noteId: p.noteId,
               type: p.updateType,
@@ -148,7 +148,7 @@ export class MisskeyStream implements StreamAdapter {
           }
           break
         case 'stream-note-capture-updated':
-          if (p.noteId && p.updateType) {
+          if (p.noteId && p.updateType && p.body) {
             this.noteCaptureHandlers.get(p.noteId)?.({
               noteId: p.noteId,
               type: p.updateType,
