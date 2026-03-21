@@ -184,6 +184,7 @@ async function handleReaction(_reaction: string, target: NormalizedNote) {
 }
 
 function handleReply(target: NormalizedNote) {
+  if (!account.value?.hasToken) return
   postFormReplyTo.value = target
   postFormRenoteId.value = undefined
   postFormEditNote.value = undefined

@@ -53,6 +53,7 @@ function scrollToTop() {
 }
 
 function iLoveMisskey() {
+  if (!account.value?.hasToken) return
   showPostForm.value = true
 }
 
