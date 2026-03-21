@@ -15,8 +15,11 @@ use tauri::AppHandle;
 use tower_http::cors::CorsLayer;
 use utoipa::{IntoParams, OpenApi, ToSchema};
 
+use subtle::ConstantTimeEq;
+
 use crate::image_cache::ImageCache;
 use crate::query_bridge;
+use crate::rate_limit::{self, RateLimiter};
 use notecli::api::MisskeyClient;
 use notecli::db::Database;
 use notecli::event_bus::EventBus;
@@ -196,11 +199,31 @@ pub async fn start(
         .layer(CorsLayer::permissive())
         .with_state(deck_state);
 
+    // Rate limiter for upstream Misskey API requests
+    let rate_limiter = RateLimiter::new();
+
     let app = Router::new()
         .merge(index_route)
         .merge(core_routes)
         .merge(deck_routes)
-        .merge(public_routes);
+        .merge(public_routes)
+        .layer(middleware::from_fn_with_state(
+            rate_limiter.clone(),
+            rate_limit::rate_limit_middleware,
+        ))
+        .layer(middleware::from_fn(host_guard_middleware));
+
+    // Background cleanup of stale rate-limit entries
+    {
+        let limiter = rate_limiter.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(120));
+            loop {
+                interval.tick().await;
+                limiter.cleanup().await;
+            }
+        });
+    }
 
     let addr = SocketAddr::from(([127, 0, 0, 1], PORT));
 
@@ -217,7 +240,7 @@ pub async fn start(
                     break;
                 }
                 Err(e) => {
-                    eprintln!("[http] bind attempt {attempt}/{MAX_RETRIES} failed: {e}");
+                    tracing::warn!(attempt, max = MAX_RETRIES, %e, "HTTP bind failed");
                     last_err = Some(e);
                     if attempt < MAX_RETRIES {
                         tokio::time::sleep(RETRY_DELAY).await;
@@ -228,19 +251,44 @@ pub async fn start(
         match bound {
             Some(l) => l,
             None => {
-                eprintln!(
-                    "[http] giving up on binding {addr} after {MAX_RETRIES} attempts: {}",
-                    last_err.map(|e| e.to_string()).unwrap_or_default()
+                tracing::error!(
+                    %addr,
+                    error = %last_err.map(|e| e.to_string()).unwrap_or_default(),
+                    "giving up on HTTP bind after {MAX_RETRIES} attempts",
                 );
                 return;
             }
         }
     };
 
-    eprintln!("[http] listening on http://{addr}");
+    tracing::info!(%addr, "HTTP server listening");
 
     if let Err(e) = axum::serve(listener, app).await {
-        eprintln!("[http] server error: {e}");
+        tracing::error!(%e, "HTTP server error");
+    }
+}
+
+// --- DNS rebinding guard (applied to all routes) ---
+
+/// Reject requests where the Host header does not point to localhost.
+/// Prevents DNS rebinding attacks against the internal HTTP API.
+async fn host_guard_middleware(req: Request, next: Next) -> Result<Response, Response> {
+    let host = req
+        .headers()
+        .get(axum::http::header::HOST)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let host_without_port = host.split(':').next().unwrap_or("");
+
+    if matches!(host_without_port, "127.0.0.1" | "localhost" | "[::1]") || host.is_empty() {
+        Ok(next.run(req).await)
+    } else {
+        tracing::warn!(host, "DNS rebinding attempt blocked");
+        Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "FORBIDDEN", "message": "Invalid Host header" })),
+        )
+            .into_response())
     }
 }
 
@@ -258,8 +306,13 @@ async fn deck_auth_middleware(
         .and_then(|v| v.strip_prefix("Bearer "));
 
     match token {
-        Some(t) if t == state.api_token => Ok(next.run(req).await),
-        _ => Err(ApiError::unauthorized().into_response()),
+        Some(t) if bool::from(t.as_bytes().ct_eq(state.api_token.as_bytes())) => {
+            Ok(next.run(req).await)
+        }
+        _ => {
+            tracing::warn!(uri = %req.uri(), "unauthorized API access attempt");
+            Err(ApiError::unauthorized().into_response())
+        }
     }
 }
 

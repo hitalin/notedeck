@@ -17,6 +17,7 @@ mod http_server;
 mod image_cache;
 mod ogp;
 mod query_bridge;
+mod rate_limit;
 mod streaming;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -28,6 +29,13 @@ pub fn run() {
 }
 
 fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "notedeck=info,notecli=info,warn".parse().unwrap()),
+        )
+        .init();
+
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_opener::init())
@@ -239,8 +247,11 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize OGP cache (backed by shared Database)
         app.manage(ogp::OgpCache::new(db.clone()));
 
-        // Generate API token and write to file
-        let api_token = uuid::Uuid::new_v4().to_string();
+        // Generate API token (256-bit CSPRNG) and write to file
+        let api_token: String = rand::random::<[u8; 32]>()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
         let token_path = app_dir.join("api-token");
         std::fs::write(&token_path, &api_token)?;
         #[cfg(unix)]

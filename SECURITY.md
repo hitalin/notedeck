@@ -239,8 +239,9 @@ flowchart TB
 
 - **ファイル**: `src-tauri/src/http_server.rs`
 - localhost (`127.0.0.1:19820`) のみバインド
-- Bearer Token で全エンドポイントを保護
-- 不正トークンには 401 Unauthorized を返却
+- Bearer Token で全エンドポイントを保護（定数時間比較: `subtle` クレート）
+- API トークンは CSPRNG で 256-bit 生成（`rand` クレート）
+- 不正トークンには 401 Unauthorized を返却 + tracing でログ記録
 
 ---
 
@@ -336,6 +337,7 @@ flowchart TB
 
 - 内部 HTTP サーバーは `127.0.0.1:19820` にバインド
 - 外部ネットワークからアクセス不可
+- DNS Rebinding 防御: `Host` ヘッダーが `127.0.0.1` / `localhost` / `[::1]` でなければ 403 拒否
 - `CorsLayer::permissive()` — localhost 限定のため許容
 
 ---
@@ -389,8 +391,11 @@ graph LR
 | クレート | 用途 |
 |---------|------|
 | `zeroize` | 機密メモリのゼロ化 |
+| `subtle` | 定数時間トークン比較 (timing attack 防止) |
+| `rand` | CSPRNG による API トークン生成 (256-bit) |
 | `reqwest` + `rustls-tls` | HTTPS 通信 |
 | `axum` | HTTP サーバーフレームワーク |
+| `tracing` | 構造化セキュリティイベントログ |
 | `scraper` | OGP HTML パース |
 | `sha2` | キャッシュキーのハッシュ化 |
 | `lru` | キャッシュ LRU 管理 |
@@ -436,6 +441,10 @@ graph TB
 
 | 項目 | 状態 | 備考 |
 |------|------|------|
-| CSP ヘッダー | 未設定 | Tauri WebView のデフォルト CSP に依存 |
-| セキュリティイベントログ | 未実装 | 認証失敗等のログ記録 |
-| ユーザー単位レート制限 | 未実装 | 現在はグローバル制限のみ |
+| CSP `unsafe-eval` | 許容 | AiScript エンジンが必要とするため除去不可 |
+| セキュリティイベントログ | **実装済み** | `tracing` による構造化ログ（認証失敗・レート超過・DNS rebinding） |
+| ホスト単位レート制限 | **実装済み** | スライディングウィンドウ 300 req/min/host |
+| API トークン比較 | **修正済み** | 定数時間比較で timing attack を防止 (`subtle`) |
+| API トークン生成 | **修正済み** | CSPRNG 256-bit hex (`rand`) |
+| DNS Rebinding 防御 | **実装済み** | Host ヘッダー検証ミドルウェア |
+| notecli トークン比較 | 既知の制限 | notecli 側の `auth_middleware` は `==` 比較。別途対応予定 |
