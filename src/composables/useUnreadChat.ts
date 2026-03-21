@@ -60,8 +60,9 @@ export function useUnreadChat() {
   )
 
   async function fetchAll() {
+    const authed = accountsStore.accounts.filter((acc) => acc.hasToken)
     const results = await Promise.all(
-      accountsStore.accounts.map(async (acc) => ({
+      authed.map(async (acc) => ({
         id: acc.id,
         count: await fetchUnreadCount(acc.id),
       })),

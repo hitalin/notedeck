@@ -85,6 +85,9 @@ export const useAccountsStore = defineStore('accounts', () => {
     if (activeAccountId.value === id) {
       activeAccountId.value = accounts.value[0]?.id ?? null
     }
+    // Clean up localStorage caches associated with this account
+    localStorage.removeItem(`nd-drafts-${id}`)
+    localStorage.removeItem(`nd-cache-notifications-${id}`)
   }
 
   async function logoutAccount(id: string): Promise<void> {

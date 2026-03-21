@@ -152,15 +152,17 @@ export function useNoteColumn(config: NoteColumnConfig) {
     return config.filterCachedNotes ? config.filterCachedNotes(cached) : cached
   }
 
-  // When account loses token (logout with keep-data), disconnect streaming
-  // and reconnect with anonymous API for public timelines
+  // Handle token state transitions (logout / re-login)
   watch(
     () => account.value?.hasToken,
     async (hasToken, prev) => {
-      if (prev && hasToken === false) {
+      if (prev === true && hasToken === false) {
+        // Logout: switch to anonymous API for public timelines
         disconnect()
-        // Re-connect with anonymous adapter to fetch public data
         connect(true)
+      } else if (prev === false && hasToken === true) {
+        // Re-login: reconnect with full authentication
+        reconnect()
       }
     },
   )

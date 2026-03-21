@@ -64,8 +64,9 @@ export function useUnreadNotifications() {
   )
 
   async function fetchAll() {
+    const authed = accountsStore.accounts.filter((acc) => acc.hasToken)
     const results = await Promise.all(
-      accountsStore.accounts.map(async (acc) => ({
+      authed.map(async (acc) => ({
         id: acc.id,
         count: await fetchUnreadCount(acc.id),
       })),
@@ -77,6 +78,7 @@ export function useUnreadNotifications() {
 
   async function markAllAsRead() {
     for (const acc of accountsStore.accounts) {
+      if (!acc.hasToken) continue
       try {
         await invoke('api_mark_all_notifications_as_read', {
           accountId: acc.id,
