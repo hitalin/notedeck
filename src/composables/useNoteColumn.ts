@@ -1,5 +1,13 @@
 import { invoke } from '@tauri-apps/api/core'
-import { nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  shallowRef,
+  watch,
+} from 'vue'
 import type {
   ChannelSubscription,
   NormalizedNote,
@@ -135,6 +143,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   /** True when API is unreachable and displaying cached notes */
   const isOffline = ref(false)
+
+  /** True when the account exists but has no auth token */
+  const isLoggedOut = computed(() => account.value?.hasToken === false)
 
   /** Apply filterCachedNotes if configured */
   function applyFilter(cached: NormalizedNote[]): NormalizedNote[] {
@@ -587,6 +598,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     serverIconUrl,
     isLoading,
     isOffline,
+    isLoggedOut,
     error,
     notes,
     focusedNoteId,

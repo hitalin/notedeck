@@ -31,6 +31,7 @@ const {
   serverIconUrl,
   isLoading,
   isOffline,
+  isLoggedOut,
   error,
   notes,
   focusedNoteId,
@@ -141,7 +142,12 @@ defineExpose({ account, scroller, reconnect, columnThemeVars })
       </div>
 
       <div v-if="isOffline" :class="$style.offlineBanner">
-        <i class="ti ti-cloud-off" />オフライン
+        <template v-if="isLoggedOut">
+          <i class="ti ti-logout" />ログアウト中
+        </template>
+        <template v-else>
+          <i class="ti ti-cloud-off" />オフライン
+        </template>
       </div>
 
       <!-- Inline post form slot (e.g. channel column) -->
