@@ -14,10 +14,12 @@
   <circle cx="46" cy="68" r="17" fill="none" stroke="#fff" stroke-width="4.5"/>
   <!-- right lens -->
   <circle cx="82" cy="68" r="17" fill="none" stroke="#fff" stroke-width="4.5"/>
-  <!-- left eye (half-closed crescent) -->
-  <path d="M42 66 Q46 62 50 66" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-  <!-- right eye (half-closed crescent) -->
-  <path d="M78 66 Q82 62 86 66" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-  <!-- mouth (yawning ふぁ～) -->
-  <ellipse cx="64" cy="96" rx="6" ry="5" fill="#fff"/>
+  <!-- left eye (scheming ニヤリ) -->
+  <path d="M42 68 Q46 72 50 68" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+  <!-- right eye (scheming ニヤリ) -->
+  <path d="M78 68 Q82 72 86 68" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+  <!-- nose (round dot) -->
+  <circle cx="64" cy="84" r="3" fill="#fff"/>
+  <!-- mouth (にへっ smirk) -->
+  <path d="M52 102 Q60 106 68 101 Q73 99 76 101" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
 </svg>
