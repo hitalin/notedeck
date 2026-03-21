@@ -27,15 +27,15 @@ export function useNavigation() {
     }
   }
 
-  function navigateToLogin() {
+  function navigateToLogin(host?: string) {
     if (accountsStore.accounts.length === 0) {
-      router.push('/login')
+      router.push(host ? { path: '/login', query: { host } } : '/login')
       return
     }
     if (isDeckActive()) {
-      windowsStore.open('login')
+      windowsStore.open('login', host ? { initialHost: host } : {})
     } else {
-      router.push('/login')
+      router.push(host ? { path: '/login', query: { host } } : '/login')
     }
   }
 

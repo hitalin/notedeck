@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core'
 import { ref } from 'vue'
 import type { ServerAd } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
@@ -48,13 +49,10 @@ export function useAds(
         if (!account) return
 
         // Ads are included in /api/meta response (not a separate endpoint)
-        const res = await fetch(`https://${account.host}/api/meta`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ detail: true }),
-          signal: AbortSignal.timeout(5000),
-        })
-        const meta = await res.json()
+        const meta = await invoke<Record<string, unknown>>(
+          'api_get_meta_detail',
+          { accountId },
+        )
         interval = meta.notesPerOneAd ?? 0
         rawAds = meta.ads ?? []
 

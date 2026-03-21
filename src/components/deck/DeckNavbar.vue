@@ -428,7 +428,7 @@ defineExpose({
               :is-admin="accountIsAdmin[acc.id] ?? false"
               @toggle-mode="toggleAccountMode(acc.id, $event)"
               @logout="showLogoutDialog(acc.id)"
-              @relogin="closeDrawerAndDo(navigateToLogin)"
+              @relogin="(host: string) => closeDrawerAndDo(() => navigateToLogin(host))"
             />
           </div>
 

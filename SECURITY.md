@@ -70,10 +70,11 @@ graph TB
 |------|------|------|
 | XSS 対策 | **A** | DOMPurify + ホワイトリストで全 v-html を保護 |
 | SSRF 対策 | **A** | プライベート IP / ループバック完全ブロック |
-| 認証・トークン管理 | **A** | OS キーチェーン + メモリ zeroize |
-| 入力検証 | **A-** | URL・ホスト・CSS パラメータを厳密に検証 |
-| ネットワーク | **A** | HTTPS 強制 + localhost 限定サーバー |
-| 耐障害性 | **A-** | サーキットブレーカー + ネガティブキャッシュ |
+| 認証・トークン管理 | **A+** | OS キーチェーン + メモリ zeroize + 定数時間比較 + CSPRNG 256-bit トークン |
+| 入力検証 | **A** | URL・ホスト・CSS パラメータを厳密に検証 + ホスト単位レート制限 |
+| ネットワーク | **A+** | HTTPS 強制 + localhost 限定サーバー + DNS Rebinding 防御 |
+| 耐障害性 | **A** | サーキットブレーカー + ネガティブキャッシュ + ホスト単位レート制限 |
+| 可観測性 | **A** | tracing による構造化セキュリティイベントログ |
 
 ---
 
@@ -239,8 +240,9 @@ flowchart TB
 
 - **ファイル**: `src-tauri/src/http_server.rs`
 - localhost (`127.0.0.1:19820`) のみバインド
-- Bearer Token で全エンドポイントを保護
-- 不正トークンには 401 Unauthorized を返却
+- Bearer Token で全エンドポイントを保護（定数時間比較: `subtle` クレート）
+- API トークンは CSPRNG で 256-bit 生成（`rand` クレート）
+- 不正トークンには 401 Unauthorized を返却 + tracing でログ記録
 
 ---
 
@@ -336,6 +338,7 @@ flowchart TB
 
 - 内部 HTTP サーバーは `127.0.0.1:19820` にバインド
 - 外部ネットワークからアクセス不可
+- DNS Rebinding 防御: `Host` ヘッダーが `127.0.0.1` / `localhost` / `[::1]` でなければ 403 拒否
 - `CorsLayer::permissive()` — localhost 限定のため許容
 
 ---
@@ -389,8 +392,11 @@ graph LR
 | クレート | 用途 |
 |---------|------|
 | `zeroize` | 機密メモリのゼロ化 |
+| `subtle` | 定数時間トークン比較 (timing attack 防止) |
+| `rand` | CSPRNG による API トークン生成 (256-bit) |
 | `reqwest` + `rustls-tls` | HTTPS 通信 |
 | `axum` | HTTP サーバーフレームワーク |
+| `tracing` | 構造化セキュリティイベントログ |
 | `scraper` | OGP HTML パース |
 | `sha2` | キャッシュキーのハッシュ化 |
 | `lru` | キャッシュ LRU 管理 |
@@ -436,6 +442,6 @@ graph TB
 
 | 項目 | 状態 | 備考 |
 |------|------|------|
-| CSP ヘッダー | 未設定 | Tauri WebView のデフォルト CSP に依存 |
-| セキュリティイベントログ | 未実装 | 認証失敗等のログ記録 |
-| ユーザー単位レート制限 | 未実装 | 現在はグローバル制限のみ |
+| CSP `unsafe-eval` | 受容 | AiScript エンジンが必要とするため除去不可 |
+| SSRF DNS TOCTOU | 受容 | デスクトップアプリでは脅威が限定的。DNS 解決後の IP 再検証は VPN / 社内 Misskey ユーザーをブロックするため実装しない |
+| Tor (.onion) 非対応 | 受容 | HTTPS 強制の緩和はセキュリティ劣化を招き、SOCKS5 対応も VPN には不要。`.onion` Misskey インスタンスの需要もないため対応しない |

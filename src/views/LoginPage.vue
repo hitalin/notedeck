@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import LoginContent from '@/components/window/LoginContent.vue'
 import { useAccountsStore } from '@/stores/accounts'
 
+const route = useRoute()
 const router = useRouter()
 const accountsStore = useAccountsStore()
 const hasAccounts = accountsStore.accounts.length > 0
+const initialHost = computed(() => {
+  const h = route.query.host
+  return typeof h === 'string' ? h : undefined
+})
 
 function onClose() {
   router.push('/')
@@ -31,6 +37,7 @@ function onSuccess() {
       </div>
 
       <LoginContent
+        :initial-host="initialHost"
         @close="onClose"
         @success="onSuccess"
       />

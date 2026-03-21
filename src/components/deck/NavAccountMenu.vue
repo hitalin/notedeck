@@ -29,7 +29,7 @@ const isCompact = useIsCompactLayout()
 const emit = defineEmits<{
   'toggle-mode': [key: string]
   logout: []
-  relogin: []
+  relogin: [host: string]
 }>()
 
 const { navigateToUser } = useNavigation()
@@ -102,7 +102,7 @@ function modeLabel(key: string): string {
           <span>ログアウト中</span>
         </div>
         <div :class="$style.navAccountMenuDivider" />
-        <button class="_button" :class="[$style.navAccountMenuItem, $style.navAccountRelogin]" @click="emit('relogin')">
+        <button class="_button" :class="[$style.navAccountMenuItem, $style.navAccountRelogin]" @click="emit('relogin', account.host)">
           <span>再ログイン</span>
           <i class="ti ti-login" />
         </button>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { MisskeyAuth } from '@/adapters/misskey/auth'
 import type { AuthSession } from '@/adapters/types'
 import { detectServer } from '@/core/server'
@@ -9,6 +9,10 @@ import type { Account } from '@/stores/accounts'
 import { useAccountsStore } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
 import { AppError } from '@/utils/errors'
+
+const props = defineProps<{
+  initialHost?: string
+}>()
 
 const emit = defineEmits<{
   close: []
@@ -19,7 +23,7 @@ const accountsStore = useAccountsStore()
 const isCompact = useIsCompactLayout()
 const auth = new MisskeyAuth()
 
-const host = ref('')
+const host = ref(props.initialHost ?? '')
 const step = ref<'input' | 'waiting' | 'error'>('input')
 const errorMessage = ref('')
 let currentSession: AuthSession | null = null
@@ -64,6 +68,12 @@ function reset() {
   errorMessage.value = ''
   currentSession = null
 }
+
+onMounted(() => {
+  if (props.initialHost) {
+    startLogin()
+  }
+})
 </script>
 
 <template>
