@@ -447,4 +447,4 @@ graph TB
 | API トークン比較 | **修正済み** | 定数時間比較で timing attack を防止 (`subtle`) |
 | API トークン生成 | **修正済み** | CSPRNG 256-bit hex (`rand`) |
 | DNS Rebinding 防御 | **実装済み** | Host ヘッダー検証ミドルウェア |
-| notecli トークン比較 | 既知の制限 | notecli 側の `auth_middleware` は `==` 比較。別途対応予定 |
+| notecli トークン比較 | **修正済み** | 定数時間比較 + CSPRNG トークン生成 (`6e2d0f4`) |
