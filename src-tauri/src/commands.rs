@@ -635,7 +635,7 @@ pub async fn api_get_channels(
     client: State<'_, Arc<MisskeyClient>>,
     account_id: String,
 ) -> Result<Vec<Channel>> {
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_channels(&host, &token).await
 }
 
