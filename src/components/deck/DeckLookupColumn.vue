@@ -80,7 +80,7 @@ async function performLookup() {
   }
 
   const accountId = props.column.accountId
-  const api = new MisskeyApi(accountId)
+  const api = new MisskeyApi(accountId, acc.host, acc.hasToken)
 
   try {
     // Check if input is @user or @user@host format
@@ -177,7 +177,9 @@ function openUser() {
 async function handleReaction(_reaction: string, target: NormalizedNote) {
   const accountId = props.column.accountId
   if (!accountId) return
-  const api = new MisskeyApi(accountId)
+  const acc = accountsStore.accountMap.get(accountId)
+  if (!acc) return
+  const api = new MisskeyApi(accountId, acc.host, acc.hasToken)
   const { toggleReaction } = await import('@/utils/toggleReaction')
   try {
     await toggleReaction(api, target, _reaction)
@@ -197,7 +199,9 @@ function handleReply(target: NormalizedNote) {
 async function handleRenote(target: NormalizedNote) {
   const accountId = props.column.accountId
   if (!accountId) return
-  const api = new MisskeyApi(accountId)
+  const acc = accountsStore.accountMap.get(accountId)
+  if (!acc) return
+  const api = new MisskeyApi(accountId, acc.host, acc.hasToken)
   try {
     await api.createNote({ renoteId: target.id })
   } catch {
@@ -222,7 +226,9 @@ function handleEdit(target: NormalizedNote) {
 async function handleDelete(target: NormalizedNote) {
   const accountId = props.column.accountId
   if (!accountId) return
-  const api = new MisskeyApi(accountId)
+  const acc = accountsStore.accountMap.get(accountId)
+  if (!acc) return
+  const api = new MisskeyApi(accountId, acc.host, acc.hasToken)
   try {
     await api.deleteNote(target.id)
     if (result.value?.type === 'Note' && result.value.note.id === target.id) {
@@ -236,7 +242,9 @@ async function handleDelete(target: NormalizedNote) {
 async function handleDeleteAndEdit(target: NormalizedNote) {
   const accountId = props.column.accountId
   if (!accountId) return
-  const api = new MisskeyApi(accountId)
+  const acc = accountsStore.accountMap.get(accountId)
+  if (!acc) return
+  const api = new MisskeyApi(accountId, acc.host, acc.hasToken)
   try {
     await api.deleteNote(target.id)
     if (result.value?.type === 'Note' && result.value.note.id === target.id) {
@@ -263,8 +271,9 @@ function closePostForm() {
 async function handlePosted(editedNoteId?: string) {
   closePostForm()
   const accountId = props.column.accountId
-  if (editedNoteId && accountId && result.value?.type === 'Note') {
-    const api = new MisskeyApi(accountId)
+  const acc = accountId ? accountsStore.accountMap.get(accountId) : undefined
+  if (editedNoteId && accountId && acc && result.value?.type === 'Note') {
+    const api = new MisskeyApi(accountId, acc.host, acc.hasToken)
     try {
       const updated = await api.getNote(editedNoteId)
       if (result.value.note.id === editedNoteId) {

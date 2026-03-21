@@ -53,8 +53,9 @@ export function useAds(
           'api_get_meta_detail',
           { accountId },
         )
-        interval = (meta.notesPerOneAd as number) ?? 0
-        rawAds = (meta.ads as ServerAd[]) ?? []
+        interval =
+          typeof meta.notesPerOneAd === 'number' ? meta.notesPerOneAd : 0
+        rawAds = Array.isArray(meta.ads) ? (meta.ads as ServerAd[]) : []
 
         adsCache.set(accountId, {
           rawAds,

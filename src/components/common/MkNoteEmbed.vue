@@ -47,7 +47,11 @@ async function fetchNote() {
       promise = (async () => {
         const accountsStore = useAccountsStore()
         const account = accountsStore.accountMap.get(accountId)
-        const api = new MisskeyApi(accountId)
+        const api = new MisskeyApi(
+          accountId,
+          account?.host ?? parsed.host,
+          account?.hasToken ?? true,
+        )
 
         if (account && account.host === parsed.host) {
           return await api.getNote(parsed.noteId)
