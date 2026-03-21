@@ -213,7 +213,7 @@ graph LR
 
 | Store | 役割 |
 |-------|------|
-| `accounts` | マルチアカウント管理 |
+| `accounts` | マルチアカウント管理（ゲスト・ログアウト済みアカウント含む） |
 | `deck` | デッキ・カラム・レイアウト・プロファイル管理（40+カラム種別） |
 | `streaming` | WebSocket接続状態・購読管理 |
 | `notes` | ノートのキャッシュ・正規化 |
@@ -321,6 +321,8 @@ CJK（日本語・中国語・韓国語）の部分文字列検索に対応。CW
 - Linux → `LinuxKeyutilsPersistentStore`
 
 クレデンシャル解決: キーチェーン → DB フォールバック → 遅延移行（既存ユーザーの自動移行）。
+
+**ゲスト・ログアウト対応**: `get_credentials_or_anon()` でトークンがなければ `(host, "")` を返し、notecli が公開 API にフォールバック。認証必須 API は従来の `get_credentials()` を使用。
 
 ---
 
