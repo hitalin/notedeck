@@ -442,5 +442,6 @@ graph TB
 
 | 項目 | 状態 | 備考 |
 |------|------|------|
-| CSP `unsafe-eval` | 許容 | AiScript エンジンが必要とするため除去不可 |
-| SSRF DNS TOCTOU | 未対応 | `validate_host()` は文字列ベース。DNS 解決後の IP 再検証は未実装 |
+| CSP `unsafe-eval` | 受容 | AiScript エンジンが必要とするため除去不可 |
+| SSRF DNS TOCTOU | 受容 | デスクトップアプリでは脅威が限定的。DNS 解決後の IP 再検証は VPN / 社内 Misskey ユーザーをブロックするため実装しない |
+| Tor (.onion) 非対応 | 受容 | HTTPS 強制の緩和はセキュリティ劣化を招き、SOCKS5 対応も VPN には不要。`.onion` Misskey インスタンスの需要もないため対応しない |
