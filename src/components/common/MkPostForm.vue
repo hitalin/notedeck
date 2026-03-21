@@ -9,7 +9,11 @@ import { useAutocomplete } from '@/composables/useAutocomplete'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePostFormState } from '@/composables/usePostFormState'
-import { getAccountAvatarUrl, isGuestAccount } from '@/stores/accounts'
+import {
+  getAccountAvatarUrl,
+  getAccountLabel,
+  isGuestAccount,
+} from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
@@ -339,7 +343,7 @@ function onKeydown(e: KeyboardEvent) {
             <button
               class="_button"
               :class="$style.accountBtn"
-              :title="`@${account.username}@${account.host}`"
+              :title="getAccountLabel(account)"
               @click="showAccountMenu = !showAccountMenu"
             >
               <img
@@ -363,7 +367,7 @@ function onKeydown(e: KeyboardEvent) {
                   height="24"
                 />
                 <div :class="$style.accountOptionInfo">
-                  <span :class="$style.accountOptionName">{{ acc.username }}</span>
+                  <span :class="$style.accountOptionName">{{ isGuestAccount(acc) ? (acc.displayName || 'ゲスト') : acc.username }}</span>
                   <span :class="$style.accountOptionHost">@{{ acc.host }}</span>
                 </div>
               </button>

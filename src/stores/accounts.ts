@@ -25,6 +25,14 @@ export function getAccountAvatarUrl(account: Account): string {
   return account.avatarUrl || '/avatar-default.svg'
 }
 
+export function getAccountLabel(account: Account): string {
+  if (isGuestAccount(account)) {
+    const name = account.displayName || 'ゲスト'
+    return `${name}@${account.host}`
+  }
+  return `@${account.username}@${account.host}`
+}
+
 export const useAccountsStore = defineStore('accounts', () => {
   const accounts = ref<Account[]>([])
   const activeAccountId = ref<string | null>(null)

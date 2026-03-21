@@ -295,13 +295,21 @@ pub async fn create_guest_account(
     let host = validate_host(&host)?;
     let id = uuid::Uuid::new_v4().to_string();
     let username = format!("guest_{}", &id[..8]);
+    // Count existing guest accounts to assign a sequential display name
+    let guest_count = db
+        .load_accounts()
+        .unwrap_or_default()
+        .iter()
+        .filter(|a| a.user_id == "__guest__")
+        .count();
+    let display_name = Some(format!("ゲスト{}", guest_count + 1));
     let account = Account {
         id,
         host,
         token: String::new(),
         user_id: "__guest__".to_string(),
         username,
-        display_name: None,
+        display_name,
         avatar_url: None,
         software,
     };
