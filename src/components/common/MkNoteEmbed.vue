@@ -6,6 +6,9 @@ import type { NormalizedNote } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { parseNoteUrl } from '@/utils/noteUrl'
 
+const embedCache = new Map<string, NormalizedNote | null>()
+const pendingEmbeds = new Map<string, Promise<NormalizedNote | null>>()
+
 const props = defineProps<{
   url: string
   accountId?: string
@@ -24,31 +27,54 @@ async function fetchNote() {
     return
   }
 
+  const cacheKey = `${props.accountId}:${props.url}`
+
+  if (embedCache.has(cacheKey)) {
+    const cached = embedCache.get(cacheKey) ?? null
+    if (cached) {
+      note.value = cached
+    } else {
+      failed.value = true
+    }
+    return
+  }
+
   loading.value = true
   try {
-    const accountsStore = useAccountsStore()
-    const account = accountsStore.accountMap.get(props.accountId)
-    const api = new MisskeyApi(props.accountId)
+    let promise = pendingEmbeds.get(cacheKey)
+    if (!promise) {
+      promise = (async () => {
+        const accountsStore = useAccountsStore()
+        const account = accountsStore.accountMap.get(props.accountId as string)
+        const api = new MisskeyApi(props.accountId as string)
 
-    if (account && account.host === parsed.host) {
-      // Same server: direct fetch
-      note.value = await api.getNote(parsed.noteId)
+        if (account && account.host === parsed.host) {
+          return await api.getNote(parsed.noteId)
+        }
+        const result = await invoke<{ type: string; object?: { id: string } }>(
+          'api_ap_show',
+          { accountId: props.accountId, uri: props.url },
+        )
+        if (result.type === 'Note' && result.object?.id) {
+          return await api.getNote(result.object.id)
+        }
+        return null
+      })()
+      pendingEmbeds.set(cacheKey, promise)
+    }
+
+    const result = await promise
+    embedCache.set(cacheKey, result)
+    pendingEmbeds.delete(cacheKey)
+
+    if (result) {
+      note.value = result
     } else {
-      // Remote server: resolve via ap/show
-      const result = await invoke<{ type: string; object?: { id: string } }>(
-        'api_ap_show',
-        {
-          accountId: props.accountId,
-          uri: props.url,
-        },
-      )
-      if (result.type === 'Note' && result.object?.id) {
-        note.value = await api.getNote(result.object.id)
-      } else {
-        failed.value = true
-      }
+      failed.value = true
     }
   } catch {
+    pendingEmbeds.delete(cacheKey)
+    embedCache.set(cacheKey, null)
     failed.value = true
   } finally {
     loading.value = false

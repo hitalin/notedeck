@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::{watch, Mutex, RwLock, Semaphore};
 
-const CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
+const CACHE_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60); // 7 days
 const MAX_FILE_SIZE: u64 = 20 * 1024 * 1024; // 20MB
 const MAX_CONCURRENT_FETCHES: usize = 50;
 // Negative cache TTLs by error class
