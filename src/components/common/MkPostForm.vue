@@ -1151,6 +1151,7 @@ function onKeydown(e: KeyboardEvent) {
 .accountOptionInfo {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .accountOptionName {
