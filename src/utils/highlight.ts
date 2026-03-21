@@ -145,5 +145,8 @@ export function highlightCode(code: string, lang: string | null): string {
     lang: resolved,
     theme: 'dark-plus',
   })
-  return purify.sanitize(tokensToHtml(tokens, fg))
+  return purify.sanitize(tokensToHtml(tokens, fg), {
+    ALLOWED_TAGS: ['pre', 'code', 'span'],
+    ALLOWED_ATTR: ['class'],
+  })
 }

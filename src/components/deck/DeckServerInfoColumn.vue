@@ -270,7 +270,10 @@ onMounted(() => {
               <li v-for="(rule, i) in meta.serverRules" :key="i" :class="$style.ruleItem">
                 <span :class="$style.ruleNumber">{{ i + 1 }}</span>
                 <!-- eslint-disable-next-line vue/no-v-html -->
-                <div :class="$style.ruleText" v-html="DOMPurify.sanitize(rule)" />
+                <div :class="$style.ruleText" v-html="DOMPurify.sanitize(rule, {
+                  ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'br', 'p', 'ul', 'ol', 'li', 'code'],
+                  ALLOWED_ATTR: ['href', 'target', 'rel'],
+                })" />
               </li>
             </ol>
           </div>
