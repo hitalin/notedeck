@@ -104,6 +104,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       />
       <LoginContent
         v-if="win.type === 'login'"
+        :initial-host="(win.props.initialHost as string | undefined)"
         @close="closeWindow(win.id)"
         @success="closeWindow(win.id)"
       />
