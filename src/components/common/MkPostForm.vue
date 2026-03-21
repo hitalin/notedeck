@@ -9,7 +9,9 @@ import { useAutocomplete } from '@/composables/useAutocomplete'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePostFormState } from '@/composables/usePostFormState'
+import { isGuestAccount } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
+import { showLoginPrompt } from '@/utils/loginPrompt'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
@@ -350,9 +352,9 @@ function onKeydown(e: KeyboardEvent) {
                 v-for="acc in accounts"
                 :key="acc.id"
                 class="_button"
-                :class="[$style.accountOption, { [$style.active]: acc.id === activeAccountId, [$style.accountDisabled]: !acc.hasToken }]"
-                :disabled="!acc.hasToken"
-                @click="switchAccount(acc.id)"
+                :class="[$style.accountOption, { [$style.active]: acc.id === activeAccountId, [$style.accountDisabled]: isGuestAccount(acc) }]"
+                :disabled="isGuestAccount(acc)"
+                @click="acc.hasToken ? switchAccount(acc.id) : showLoginPrompt()"
               >
                 <img
                   :src="acc.avatarUrl || '/avatar-default.svg'"

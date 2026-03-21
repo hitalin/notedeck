@@ -2,6 +2,7 @@
 import { useNavigation } from '@/composables/useNavigation'
 import { isGuestAccount } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
+import { showLoginPrompt } from '@/utils/loginPrompt'
 
 const openUrl = async (url: string) => {
   const { openUrl: open } = await import('@tauri-apps/plugin-opener')
@@ -78,13 +79,13 @@ function modeLabel(key: string): string {
         <i class="ti ti-user" />
       </button>
 
-      <!-- External links (auth required — greyed out when logged out) -->
+      <!-- External links (auth required — greyed out for guests, login prompt for logged-out) -->
       <div :class="$style.navAccountMenuDivider" />
-      <button class="_button" :class="[$style.navAccountMenuItem, { [$style.disabled]: !account.hasToken }]" :disabled="!account.hasToken" @click="openUrl(`https://${account.host}/settings`)">
+      <button class="_button" :class="[$style.navAccountMenuItem, { [$style.disabled]: isGuestAccount(account) }]" :disabled="isGuestAccount(account)" @click="account.hasToken ? openUrl(`https://${account.host}/settings`) : showLoginPrompt()">
         <span>設定</span>
         <i class="ti ti-external-link" />
       </button>
-      <button class="_button" :class="[$style.navAccountMenuItem, { [$style.disabled]: !account.hasToken }]" :disabled="!account.hasToken" @click="openUrl(`https://${account.host}/games`)">
+      <button class="_button" :class="[$style.navAccountMenuItem, { [$style.disabled]: isGuestAccount(account) }]" :disabled="isGuestAccount(account)" @click="account.hasToken ? openUrl(`https://${account.host}/games`) : showLoginPrompt()">
         <span>Misskey Games</span>
         <i class="ti ti-external-link" />
       </button>

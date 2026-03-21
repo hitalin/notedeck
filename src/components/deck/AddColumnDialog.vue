@@ -2,10 +2,11 @@
 import { invoke } from '@tauri-apps/api/core'
 import { computed, ref } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
-import { useAccountsStore } from '@/stores/accounts'
+import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
+import { showLoginPrompt } from '@/utils/loginPrompt'
 
 const props = defineProps<{
   mode?: 'deck' | 'pip'
@@ -636,9 +637,9 @@ function close() {
           v-for="account in accountsStore.accounts"
           :key="account.id"
           class="_button"
-          :class="[$style.addAccountBtn, { [$style.addAccountDisabled]: !account.hasToken && requiresAuth }]"
-          :disabled="!account.hasToken && requiresAuth"
-          @click="addColumnForAccount(account.id)"
+          :class="[$style.addAccountBtn, { [$style.addAccountDisabled]: isGuestAccount(account) && requiresAuth }]"
+          :disabled="isGuestAccount(account) && requiresAuth"
+          @click="(!account.hasToken && requiresAuth) ? showLoginPrompt() : addColumnForAccount(account.id)"
         >
           <img :src="account.avatarUrl || '/avatar-default.svg'" :class="$style.addAccountAvatar" />
           <span>@{{ account.username }}@{{ account.host }}</span>
