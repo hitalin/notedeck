@@ -232,10 +232,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             if accounts.iter().any(|a| !a.token.is_empty()) {
                 for account in &accounts {
                     if let Err(e) = commands::get_credentials(&db, &account.id) {
-                        eprintln!(
-                            "[keychain] failed to migrate token for account {}: {e}",
-                            account.id
-                        );
+                        tracing::warn!(account_id = %account.id, %e, "keychain migration failed");
                     }
                 }
             }
