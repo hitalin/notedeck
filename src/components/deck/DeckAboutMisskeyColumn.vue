@@ -174,7 +174,7 @@ onMounted(() => {
         <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :src="account.avatarUrl || '/avatar-default.svg'" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>

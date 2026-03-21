@@ -388,7 +388,7 @@ const pageEditUrl = computed(() => {
         <i class="ti ti-refresh" :class="{ [String($style.spin)]: listLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :src="account.avatarUrl || '/avatar-default.svg'" :class="$style.headerAvatar" />
       </div>
     </template>
 

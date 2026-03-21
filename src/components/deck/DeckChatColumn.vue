@@ -465,7 +465,7 @@ onBeforeUnmount(() => {
 
     <template #header-meta>
       <div v-if="account" :class="$style.headerAccount">
-        <img v-if="account.avatarUrl" :src="account.avatarUrl" :class="$style.headerAvatar" />
+        <img :src="account.avatarUrl || '/avatar-default.svg'" :class="$style.headerAvatar" />
         <img
           :class="$style.headerFavicon"
           :src="serverIconUrl || `https://${account.host}/favicon.ico`"

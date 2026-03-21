@@ -12,6 +12,7 @@ import {
   type NoteColumnConfig,
   useNoteColumn,
 } from '@/composables/useNoteColumn'
+import { isGuestAccount } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import DeckColumn from './DeckColumn.vue'
 
@@ -95,8 +96,7 @@ defineExpose({ account, scroller, reconnect, columnThemeVars })
       </button>
       <div v-if="account" :class="$style.headerAccount">
         <img
-          v-if="account.avatarUrl"
-          :src="account.avatarUrl"
+          :src="account.avatarUrl || '/avatar-default.svg'"
           :class="$style.headerAvatar"
         />
         <img
@@ -141,13 +141,11 @@ defineExpose({ account, scroller, reconnect, columnThemeVars })
         </div>
       </div>
 
-      <div v-if="isOffline" :class="[isLoggedOut ? $style.loggedOutBanner : $style.offlineBanner]">
-        <template v-if="isLoggedOut">
-          <i class="ti ti-logout" />ログアウト中
-        </template>
-        <template v-else>
-          <i class="ti ti-cloud-off" />オフライン
-        </template>
+      <div v-if="isLoggedOut && account && !isGuestAccount(account)" :class="$style.loggedOutBanner">
+        <i class="ti ti-logout" />ログアウト中
+      </div>
+      <div v-else-if="isOffline && !isLoggedOut" :class="$style.offlineBanner">
+        <i class="ti ti-cloud-off" />オフライン
       </div>
 
       <!-- Inline post form slot (e.g. channel column) -->
@@ -209,7 +207,7 @@ defineExpose({ account, scroller, reconnect, columnThemeVars })
 
   <Teleport to="body">
     <MkPostForm
-      v-if="postForm.show.value && column.accountId"
+      v-if="postForm.show.value && column.accountId && account?.hasToken"
       :account-id="column.accountId"
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"

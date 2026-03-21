@@ -16,6 +16,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
 import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
+import { showLoginPrompt } from '@/utils/loginPrompt'
 import { extractThemeVars } from '@/utils/themeVars'
 import MkAvatar from './MkAvatar.vue'
 import MkEmoji from './MkEmoji.vue'
@@ -556,7 +557,7 @@ function closeMentionPopup() {
               :key="r.reaction"
               v-memo="[r.reaction, r.count, effectiveNote.myReaction === r.reaction, reactionUrls[r.reaction]]"
               :class="[$style.reaction, { [$style.reacted]: effectiveNote.myReaction === r.reaction }]"
-              @click.stop="canInteract && emit('react', r.reaction, effectiveNote)"
+              @click.stop="canInteract ? emit('react', r.reaction, effectiveNote) : showLoginPrompt(props.note._accountId)"
               @mouseenter="reactionUsersRef?.show($event, r.reaction, reactionUrls[r.reaction] ?? null, effectiveNote.reactions[r.reaction] ?? 0)"
               @mouseleave="reactionUsersRef?.hide()"
             >
@@ -570,22 +571,21 @@ function closeMentionPopup() {
 
         <!-- Footer -->
         <footer v-if="!embedded" :class="$style.footer">
-          <button :class="[$style.footerButton, $style.replyButton]" @click.stop="emit('reply', effectiveNote)">
+          <button :class="[$style.footerButton, $style.replyButton]" @click.stop="canInteract ? emit('reply', effectiveNote) : showLoginPrompt(props.note._accountId)">
             <i class="ti ti-arrow-back-up" />
             <span v-if="effectiveNote.repliesCount > 0" :class="$style.buttonCount">
               {{ effectiveNote.repliesCount }}
             </span>
           </button>
-          <button v-if="canInteract" :class="[$style.footerButton, $style.renoteButton, { [$style.renoted]: isRenoted }]" @click.stop="openRenoteMenu($event)">
+          <button :class="[$style.footerButton, $style.renoteButton, { [$style.renoted]: isRenoted }]" @click.stop="canInteract ? openRenoteMenu($event) : showLoginPrompt(props.note._accountId)">
             <i class="ti ti-repeat" />
             <span v-if="effectiveNote.renoteCount > 0" :class="$style.buttonCount">
               {{ effectiveNote.renoteCount }}
             </span>
           </button>
           <button
-            v-if="canInteract"
             :class="[$style.footerButton, $style.reactionButton]"
-            @click.stop="reactionPickerRef?.open($event)"
+            @click.stop="canInteract ? reactionPickerRef?.open($event) : showLoginPrompt(props.note._accountId)"
           >
             <i class="ti ti-plus" />
           </button>

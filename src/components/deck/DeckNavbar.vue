@@ -4,7 +4,7 @@ import { computed, onUnmounted, ref, useCssModule, watch } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
 import { useUnreadChat } from '@/composables/useUnreadChat'
 import { useUnreadNotifications } from '@/composables/useUnreadNotifications'
-import { useAccountsStore } from '@/stores/accounts'
+import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { useStreamingStore } from '@/stores/streaming'
@@ -401,12 +401,18 @@ defineExpose({
             >
               <div :class="$style.avatarWrap">
                 <img
-                  v-if="acc.avatarUrl"
+                  v-if="isGuestAccount(acc)"
+                  src="/avatar-default.svg"
+                  :class="$style.avatar"
+                />
+                <img
+                  v-else-if="acc.avatarUrl"
                   :src="acc.avatarUrl"
                   :class="$style.avatar"
                 />
                 <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
                 <img
+                  v-if="!isGuestAccount(acc)"
                   :src="getServerIconUrl(acc.host)"
                   :class="$style.serverBadge"
                   :title="acc.host"

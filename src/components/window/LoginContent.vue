@@ -24,7 +24,7 @@ const isCompact = useIsCompactLayout()
 const auth = new MisskeyAuth()
 
 const host = ref(props.initialHost ?? '')
-const step = ref<'input' | 'waiting' | 'error'>('input')
+const step = ref<'input' | 'waiting' | 'guestLoading' | 'error'>('input')
 const errorMessage = ref('')
 let currentSession: AuthSession | null = null
 
@@ -55,6 +55,28 @@ async function completeLogin() {
       software: serverInfo.software,
     })
 
+    accountsStore.addAccount(account)
+    emit('success')
+  } catch (e) {
+    step.value = 'error'
+    errorMessage.value = AppError.from(e).message
+  }
+}
+
+async function startGuest() {
+  const trimmedHost = host.value
+    .trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '')
+  if (!trimmedHost) return
+
+  try {
+    step.value = 'guestLoading'
+    const serverInfo = await detectServer(trimmedHost)
+    const account = await invoke<Account>('create_guest_account', {
+      host: trimmedHost,
+      software: serverInfo.software,
+    })
     accountsStore.addAccount(account)
     emit('success')
   } catch (e) {
@@ -107,9 +129,25 @@ onMounted(() => {
           >
             ログイン
           </button>
+          <button
+            class="_button"
+            :class="$style.btnGuest"
+            :disabled="!host.trim()"
+            @click="startGuest"
+          >
+            ゲストとして閲覧
+          </button>
           <button class="_button" :class="$style.btnCancel" @click="emit('close')">
             キャンセル
           </button>
+        </div>
+      </div>
+
+      <!-- Step 2a: Guest loading -->
+      <div v-else-if="step === 'guestLoading'" key="guestLoading" :class="$style.dialogBody">
+        <div :class="$style.logoArea">
+          <div :class="$style.waitingSpinner" />
+          <p :class="$style.subtitle">サーバーに接続中...</p>
         </div>
       </div>
 
@@ -264,6 +302,20 @@ onMounted(() => {
   &:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+  }
+}
+
+.btnGuest {
+  font-size: 0.85em;
+  color: var(--nd-accent);
+  transition: opacity var(--nd-duration-base);
+
+  &:hover:not(:disabled) {
+    opacity: 0.8;
+  }
+
+  &:disabled {
+    opacity: 0.3;
   }
 }
 

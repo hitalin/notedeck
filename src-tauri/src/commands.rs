@@ -285,7 +285,7 @@ pub async fn create_guest_account(
         host,
         token: String::new(),
         user_id: "__guest__".to_string(),
-        username: "guest".to_string(),
+        username: "dummy".to_string(),
         display_name: None,
         avatar_url: None,
         software,

@@ -341,8 +341,7 @@ function onKeydown(e: KeyboardEvent) {
               @click="showAccountMenu = !showAccountMenu"
             >
               <img
-                v-if="account.avatarUrl"
-                :src="account.avatarUrl"
+                :src="account.avatarUrl || '/avatar-default.svg'"
                 :class="$style.accountAvatar"
               />
             </button>
@@ -351,12 +350,12 @@ function onKeydown(e: KeyboardEvent) {
                 v-for="acc in accounts"
                 :key="acc.id"
                 class="_button"
-                :class="[$style.accountOption, { [$style.active]: acc.id === activeAccountId }]"
+                :class="[$style.accountOption, { [$style.active]: acc.id === activeAccountId, [$style.accountDisabled]: !acc.hasToken }]"
+                :disabled="!acc.hasToken"
                 @click="switchAccount(acc.id)"
               >
                 <img
-                  v-if="acc.avatarUrl"
-                  :src="acc.avatarUrl"
+                  :src="acc.avatarUrl || '/avatar-default.svg'"
                   :class="$style.accountOptionAvatar"
                 />
                 <div :class="$style.accountOptionInfo">
@@ -1131,6 +1130,11 @@ function onKeydown(e: KeyboardEvent) {
   &.active {
     color: var(--nd-accent);
   }
+}
+
+.accountDisabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 .accountOptionAvatar {
