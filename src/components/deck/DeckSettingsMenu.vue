@@ -173,9 +173,9 @@ const importDb = () =>
     relaunch: true,
   })
 const exportSettings = () =>
-  backupAction(isExportingSettings, 'export_settings_zip')
+  backupAction(isExportingSettings, 'export_settings_json')
 const importSettings = () =>
-  backupAction(isImportingSettings, 'import_settings_zip', {
+  backupAction(isImportingSettings, 'import_settings_json', {
     confirmOpts: {
       title: '設定インポート',
       message: '現在の設定が上書きされます。',
@@ -943,6 +943,10 @@ const importSettings = () =>
   border-radius: 12px;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
   max-height: 70vh;
+
+  .themeGrid {
+    grid-template-columns: 1fr;
+  }
 
   .settingsMenuItem {
     padding: 10px 16px;
