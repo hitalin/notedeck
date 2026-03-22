@@ -502,6 +502,8 @@ function handleReset() {
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
+
 .keybindsContent {
   display: flex;
   flex-direction: column;
@@ -768,82 +770,20 @@ function handleReset() {
   opacity: 0.7;
 }
 
-.codeApplyBtn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
+.codeApplyBtn { @include btn-secondary; }
 
 // ── Actions ──
 
-.actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  border-top: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.actionGroup {
-  display: flex;
-  gap: 6px;
-}
+.actions { @include action-bar; }
+.actionGroup { @include action-group; }
 
 .actionBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px 12px;
-  border-radius: var(--nd-radius-sm);
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base), color var(--nd-duration-base);
-
-  &.secondary {
-    flex: 1;
-    background: var(--nd-buttonBg);
-    color: var(--nd-fg);
-
-    &:hover {
-      background: var(--nd-buttonHoverBg);
-    }
-
-    &.feedback {
-      color: var(--nd-accent);
-    }
-  }
-
-  &.danger {
-    width: 100%;
-    background: var(--nd-buttonBg);
-    color: var(--nd-fg);
-
-    &:hover {
-      background: color-mix(in srgb, var(--nd-love) 20%, var(--nd-buttonBg));
-      color: var(--nd-love);
-    }
-
-    &.confirming {
-      background: color-mix(in srgb, var(--nd-love) 30%, var(--nd-buttonBg));
-      color: var(--nd-love);
-    }
-  }
+  &.secondary { @include btn-action; }
+  &.danger { @include btn-danger-ghost; }
 }
 
 .secondary { /* modifier */ }
 .feedback { /* modifier */ }
 .danger { /* modifier */ }
+.confirming { /* modifier */ }
 </style>

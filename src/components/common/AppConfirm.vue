@@ -34,6 +34,8 @@ const { visible, options, resolve } = useConfirm()
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
+
 .header {
   padding: 16px 20px 4px;
   text-align: center;
@@ -65,45 +67,7 @@ const { visible, options, resolve } = useConfirm()
   justify-content: center;
 }
 
-.btnCancel {
-  padding: 8px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.btnOk {
-  padding: 8px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-accentDarken);
-  }
-}
-
-.btnDanger {
-  padding: 8px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-love);
-  color: #fff;
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base), color var(--nd-duration-base);
-
-  &:hover {
-    background: color-mix(in srgb, var(--nd-love) 80%, black);
-  }
-}
+.btnCancel { @include btn-secondary; }
+.btnOk { @include btn-primary; }
+.btnDanger { @include btn-danger; }
 </style>

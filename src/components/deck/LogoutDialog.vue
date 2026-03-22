@@ -48,6 +48,8 @@ const emit = defineEmits<{
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
+
 .header {
   display: flex;
   align-items: center;
@@ -95,45 +97,7 @@ const emit = defineEmits<{
   justify-content: center;
 }
 
-.btnCancel {
-  padding: 8px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.btnDelete {
-  padding: 8px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-love);
-  color: #fff;
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base), color var(--nd-duration-base);
-
-  &:hover {
-    background: color-mix(in srgb, var(--nd-love) 80%, black);
-  }
-}
-
-.btnKeep {
-  padding: 8px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-accentDarken);
-  }
-}
+.btnCancel { @include btn-secondary; }
+.btnDelete { @include btn-danger; }
+.btnKeep { @include btn-primary; }
 </style>

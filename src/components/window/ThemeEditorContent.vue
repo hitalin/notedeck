@@ -774,6 +774,8 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
+
 .editor {
   display: flex;
   flex-direction: column;
@@ -1226,81 +1228,24 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   word-break: break-all;
 }
 
-.codeApplyBtn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base);
+.codeApplyBtn { @include btn-secondary; }
 
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  border-top: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.actionGroup {
-  display: flex;
-  gap: 6px;
-}
+.actions { @include action-bar; }
+.actionGroup { @include action-group; }
 
 .actionBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px 12px;
-  border-radius: var(--nd-radius-sm);
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base), color var(--nd-duration-base);
-
-  &.primary {
-    width: 100%;
-    background: var(--nd-accent);
-    color: var(--nd-fgOnAccent);
-
-    &:hover {
-      background: var(--nd-accentDarken);
-    }
-  }
-
-  &.secondary {
-    flex: 1;
-    background: var(--nd-buttonBg);
-    color: var(--nd-fg);
-
-    &:hover {
-      background: var(--nd-buttonHoverBg);
-    }
-
-    &.feedback {
-      color: var(--nd-accent);
-    }
-  }
+  &.primary { @include btn-primary; width: 100%; }
+  &.secondary { @include btn-action; }
 
   &.iconOnly {
+    @include btn-secondary;
     flex: 0;
     padding: 8px;
-    background: var(--nd-buttonBg);
-    color: var(--nd-fg);
-
-    &:hover {
-      background: var(--nd-buttonHoverBg);
-    }
   }
 }
+
+.primary { /* modifier */ }
+.secondary { /* modifier */ }
+.feedback { /* modifier */ }
+.iconOnly { /* modifier */ }
 </style>
