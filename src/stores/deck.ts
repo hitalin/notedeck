@@ -227,6 +227,16 @@ export const useDeckStore = defineStore('deck', () => {
     save()
   }
 
+  /** Replace only the current window's portion of the layout, preserving other windows' groups. */
+  function applyWindowLayout(newWindowLayout: string[][]) {
+    const windowColIds = new Set(windowLayout.value.flat())
+    const otherGroups = layout.value.filter(
+      (group) => !group.some((id) => windowColIds.has(id)),
+    )
+    layout.value = [...otherGroups, ...newWindowLayout]
+    save()
+  }
+
   function swapColumns(aIdx: number, bIdx: number) {
     if (
       aIdx < 0 ||
@@ -592,6 +602,7 @@ export const useDeckStore = defineStore('deck', () => {
     stackColumn,
     insertColumnAt,
     applyLayout,
+    applyWindowLayout,
     unstackColumn,
     moveLeft,
     moveRight,
