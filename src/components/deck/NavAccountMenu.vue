@@ -75,7 +75,7 @@ function modeLabel(key: string): string {
       <div v-if="modeError" :class="$style.navAccountMenuError">{{ modeError }}</div>
       <!-- Profile & external links (hidden for guests) -->
       <template v-if="!isGuestAccount(account)">
-        <div :class="$style.navAccountMenuDivider" />
+        <div v-if="account.hasToken && Object.keys(modes).length > 0" :class="$style.navAccountMenuDivider" />
         <button class="_button" :class="$style.navAccountMenuItem" @click="navigateToUser(account.id, account.userId)">
           <span>プロフィール</span>
           <i class="ti ti-user" />
