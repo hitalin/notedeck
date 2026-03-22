@@ -44,8 +44,8 @@ export const useEmojisStore = defineStore('emojis', () => {
         } else {
           // Persist only the first N entries (most commonly used come first from API)
           const subset: Record<string, string> = {}
-          for (let i = 0; i < MAX_PERSIST_PER_HOST; i++) {
-            subset[keys[i]] = lookup[keys[i]]
+          for (const key of keys.slice(0, MAX_PERSIST_PER_HOST)) {
+            subset[key] = lookup[key] ?? ''
           }
           obj[host] = subset
         }
