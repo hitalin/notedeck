@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
-import type { DeckProfile } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useIsCompactLayout } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 
@@ -18,10 +18,11 @@ const emit = defineEmits<{
 }>()
 
 const deckStore = useDeckStore()
+const profileStore = useDeckProfileStore()
 const windowsStore = useWindowsStore()
 const isCompact = useIsCompactLayout()
 
-const profiles = ref<DeckProfile[]>([])
+const profiles = computed(() => profileStore.getProfiles())
 const menuEl = ref<HTMLElement | null>(null)
 const fixedStyle = ref<CSSProperties | undefined>()
 
@@ -39,7 +40,6 @@ watch(
       } else {
         fixedStyle.value = undefined
       }
-      profiles.value = deckStore.getProfiles()
     }
   },
   { immediate: true },
@@ -47,7 +47,6 @@ watch(
 
 function createProfile() {
   deckStore.saveAsProfile()
-  profiles.value = deckStore.getProfiles()
   refreshProfileCommands()
 }
 
@@ -63,12 +62,10 @@ async function apply(id: string) {
   } finally {
     switching = false
   }
-  profiles.value = deckStore.getProfiles()
 }
 
 function remove(id: string) {
   deckStore.deleteProfile(id)
-  profiles.value = deckStore.getProfiles()
   refreshProfileCommands()
 }
 
