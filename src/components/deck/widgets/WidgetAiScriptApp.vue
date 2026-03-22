@@ -129,7 +129,9 @@ async function run() {
   })
 
   const ioOpts = createInterpreterOptions({
-    onOutput: () => {},
+    onOutput: () => {
+      /* noop */
+    },
     onError: (err) => {
       error.value = err.message
     },
