@@ -86,11 +86,11 @@ async function copyInfo() {
           </div>
 
           <div :class="$style.aboutActions">
-            <button :class="$style.aboutCopy" @click="copyInfo">
+            <button class="_button" :class="$style.aboutCopy" @click="copyInfo">
               <i :class="copied ? 'ti ti-check' : 'ti ti-copy'" />
               {{ copied ? 'コピーしました' : '情報をコピー' }}
             </button>
-            <button :class="$style.aboutClose" @click="emit('close')">OK</button>
+            <button class="_button" :class="$style.aboutClose" @click="emit('close')">OK</button>
           </div>
         </div>
       </div>
@@ -156,7 +156,7 @@ async function copyInfo() {
   gap: 8px;
   padding: 8px 12px;
   border: none;
-  border-radius: var(--nd-radius-md);
+  border-radius: var(--nd-radius-sm);
   background: none;
   color: var(--nd-accent);
   font-size: 0.85em;
@@ -178,22 +178,21 @@ async function copyInfo() {
 
 .aboutActions {
   display: flex;
-  gap: 8px;
-  padding: 12px 16px 16px;
-  justify-content: flex-end;
+  gap: 6px;
+  padding: 8px 16px 16px;
+  justify-content: center;
 }
 
 .aboutCopy {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-md);
-  background: none;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-buttonBg);
   color: var(--nd-fg);
   font-size: 0.8em;
-  cursor: pointer;
+  font-weight: bold;
   transition: background var(--nd-duration-base);
 
   &:hover {
@@ -202,18 +201,16 @@ async function copyInfo() {
 }
 
 .aboutClose {
-  padding: 6px 20px;
-  border: none;
-  border-radius: var(--nd-radius-md);
+  padding: 8px 12px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-accent);
-  color: #fff;
-  font-size: 0.85em;
+  color: var(--nd-fgOnAccent);
+  font-size: 0.8em;
   font-weight: bold;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
+  transition: background var(--nd-duration-base);
 
   &:hover {
-    opacity: 0.85;
+    background: var(--nd-accentDarken);
   }
 }
 </style>
