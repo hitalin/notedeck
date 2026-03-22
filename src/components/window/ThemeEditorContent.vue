@@ -4,6 +4,7 @@ import { type Diagnostic, linter } from '@codemirror/lint'
 import JSON5 from 'json5'
 import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useThemeStore } from '@/stores/theme'
 import { DARK_BASE, LIGHT_BASE } from '@/theme/builtinThemes'
 import { parseColor, toRgba } from '@/theme/colorUtils'
@@ -43,6 +44,26 @@ const jsonLinter = linter(
 const themeStore = useThemeStore()
 
 const tab = ref<'visual' | 'code'>('visual')
+const editorRef = ref<HTMLElement | null>(null)
+
+const TABS = ['visual', 'code'] as const
+useSwipeTab(
+  editorRef,
+  () => {
+    const next = TABS[TABS.indexOf(tab.value) + 1]
+    if (next) {
+      tab.value = next
+      return true
+    }
+  },
+  () => {
+    const prev = TABS[TABS.indexOf(tab.value) - 1]
+    if (prev) {
+      tab.value = prev
+      return true
+    }
+  },
+)
 
 const themeName = ref('My Theme')
 const baseMode = ref<'dark' | 'light'>('dark')
@@ -361,7 +382,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 </script>
 
 <template>
-  <div :class="$style.editor">
+  <div ref="editorRef" :class="$style.editor">
       <!-- Tabs -->
       <div :class="$style.tabs">
         <button

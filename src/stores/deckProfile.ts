@@ -1,6 +1,9 @@
+import JSON5 from 'json5'
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
+
 import type { DeckColumn, DeckProfile, DeckWindowLayout } from '@/stores/deck'
+import * as settingsFs from '@/utils/settingsFs'
 import {
   getStorageJson,
   getStorageString,
@@ -9,14 +12,30 @@ import {
   setStorageString,
 } from '@/utils/storage'
 
-let profileCounter = 0
-function genProfileId(): string {
-  return `profile-${Date.now()}-${++profileCounter}`
-}
-
-/** Deep-clone reactive state into a plain object safe for localStorage. */
+/** Deep-clone reactive state into a plain object safe for serialization. */
 function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value))
+}
+
+/** Strip internal-only fields before writing to file. */
+function toFileFormat(profile: DeckProfile): Record<string, unknown> {
+  const { id: _id, ...rest } = profile
+  return rest
+}
+
+/** Parse a profile file and assign an ID based on filename. */
+function fromFileFormat(
+  filename: string,
+  data: Record<string, unknown>,
+): DeckProfile {
+  return {
+    id: filename,
+    name: (data.name as string) || filename,
+    columns: (data.columns as DeckColumn[]) || [],
+    layout: (data.layout as string[][]) || [],
+    createdAt: (data.createdAt as number) || Date.now(),
+    windows: data.windows as DeckWindowLayout[] | undefined,
+  }
 }
 
 export const useDeckProfileStore = defineStore('deckProfile', () => {
@@ -25,13 +44,23 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   const windowProfileId = ref<string | null>(null)
   /** Bumped on every saveProfiles() to make profile-derived computeds reactive */
   const profileVersion = ref(0)
+  /** Whether file-based storage has been initialized */
+  const initialized = ref(false)
 
-  const currentProfileName = computed(() => {
-    // Depend on both windowProfileId and profileVersion for reactivity
-    const _v = profileVersion.value
-    if (!windowProfileId.value) return null
-    return loadProfileById(windowProfileId.value).profile?.name ?? null
-  })
+  /** Cached profile name, kept in sync imperatively to avoid localStorage dependency. */
+  const currentProfileName = ref<string | null>(null)
+
+  /** Update currentProfileName from current windowProfileId. */
+  function refreshProfileName() {
+    if (!windowProfileId.value) {
+      currentProfileName.value = null
+      return
+    }
+    const { profile } = loadProfileById(windowProfileId.value)
+    currentProfileName.value = profile?.name ?? null
+  }
+
+  // --- localStorage cache (sync access) ---
 
   function loadProfiles(): DeckProfile[] {
     return getStorageJson<DeckProfile[]>(STORAGE_KEYS.deckProfiles, [])
@@ -47,8 +76,32 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   }
 
   function saveProfiles(profiles: DeckProfile[]) {
+    // Sync: localStorage cache
     setStorageJson(STORAGE_KEYS.deckProfiles, profiles)
     profileVersion.value++
+
+    // Async: write each profile to file (fire-and-forget)
+    if (initialized.value) {
+      persistProfilesToFiles(profiles).catch((e) =>
+        console.warn('[deckProfile] failed to persist to files:', e),
+      )
+    }
+  }
+
+  /** Write only the given profile to its file. */
+  async function persistSingleProfile(profile: DeckProfile): Promise<void> {
+    const filename = settingsFs.profileFilename(profile.name)
+    const content = JSON5.stringify(toFileFormat(profile), null, 2)
+    await settingsFs.writeProfile(filename, content)
+  }
+
+  /** Write all profiles to files (used for initial migration / full sync). */
+  async function persistProfilesToFiles(
+    profiles: DeckProfile[],
+  ): Promise<void> {
+    for (const profile of profiles) {
+      await persistSingleProfile(profile)
+    }
   }
 
   function saveActiveProfileId(id: string | null) {
@@ -79,7 +132,15 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     if (!profile) return
     profile.columns = deepClone(columns)
     profile.layout = deepClone(layout)
-    saveProfiles(profiles)
+    // Sync: update localStorage cache
+    setStorageJson(STORAGE_KEYS.deckProfiles, profiles)
+    profileVersion.value++
+    // Async: write only this profile to file
+    if (initialized.value) {
+      persistSingleProfile(profile).catch((e) =>
+        console.warn('[deckProfile] failed to persist profile:', e),
+      )
+    }
   }
 
   function saveAsProfile(
@@ -96,7 +157,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     const autoName = name || nextProfileName(profiles)
 
     const profile: DeckProfile = {
-      id: genProfileId(),
+      id: settingsFs.profileFilename(autoName),
       name: autoName,
       columns: [],
       layout: [],
@@ -106,6 +167,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     saveProfiles(profiles)
     saveActiveProfileId(profile.id)
     windowProfileId.value = profile.id
+    refreshProfileName()
 
     return profile
   }
@@ -115,7 +177,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     const profiles = loadProfiles()
     const autoName = name || nextProfileName(profiles)
     const profile: DeckProfile = {
-      id: genProfileId(),
+      id: settingsFs.profileFilename(autoName),
       name: autoName,
       columns: [],
       layout: [],
@@ -145,6 +207,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     if (!profile) return null
     windowProfileId.value = profileId
     saveActiveProfileId(profileId)
+    refreshProfileName()
     return {
       columns: structuredClone(profile.columns),
       layout: structuredClone(profile.layout),
@@ -157,13 +220,41 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     if (activeProfileId.value === profileId) {
       saveActiveProfileId(profiles[0]?.id ?? null)
     }
+
+    // Also delete the file directly
+    if (initialized.value) {
+      settingsFs
+        .deleteProfile(profileId)
+        .catch((e) => console.warn('[deckProfile] failed to delete file:', e))
+    }
   }
 
   function renameProfile(profileId: string, newName: string) {
     const { profiles, profile } = loadProfileById(profileId)
-    if (profile) {
-      profile.name = newName
-      saveProfiles(profiles)
+    if (!profile) return
+
+    const oldFilename = profile.id
+    const newFilename = settingsFs.profileFilename(newName)
+
+    profile.name = newName
+    profile.id = newFilename
+
+    // Update activeProfileId if it was pointing to the old ID
+    if (activeProfileId.value === oldFilename) {
+      saveActiveProfileId(newFilename)
+    }
+    if (windowProfileId.value === oldFilename) {
+      windowProfileId.value = newFilename
+    }
+
+    saveProfiles(profiles)
+    refreshProfileName()
+
+    // Rename file on disk
+    if (initialized.value && oldFilename !== newFilename) {
+      settingsFs
+        .renameProfile(oldFilename, newFilename)
+        .catch((e) => console.warn('[deckProfile] failed to rename file:', e))
     }
   }
 
@@ -173,6 +264,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     layout: string[][]
   } {
     windowProfileId.value = profileId
+    refreshProfileName()
     const { profile } = loadProfileById(profileId)
     if (profile) {
       return {
@@ -213,9 +305,44 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     return loadProfileById(windowProfileId.value).profile?.windows ?? []
   }
 
-  /** Ensure profiles exist on first load, fix blank names */
+  // --- File-based initialization ---
+
+  /** Check if a profile ID is in the new filename-based format. */
+  function isNewFormatId(id: string): boolean {
+    return id.endsWith('.ndprofile.json5')
+  }
+
+  /** Load profiles from files (Tauri only). */
+  async function loadProfilesFromFiles(): Promise<DeckProfile[]> {
+    const filenames = await settingsFs.listProfiles()
+    if (filenames.length === 0) return []
+
+    const profiles: DeckProfile[] = []
+    for (const filename of filenames) {
+      try {
+        const content = await settingsFs.readProfile(filename)
+        const data = JSON5.parse(content)
+        profiles.push(fromFileFormat(filename, data))
+      } catch (e) {
+        console.warn(`[deckProfile] failed to parse ${filename}:`, e)
+      }
+    }
+    return profiles
+  }
+
+  /** Ensure profiles exist on first load. Discards legacy format profiles. */
   function ensureDefaults(columns: DeckColumn[], layout: string[][]) {
-    const profiles = loadProfiles()
+    let profiles = loadProfiles()
+
+    // Discard legacy profiles (old ID format like "profile-xxx")
+    const legacyCount = profiles.filter((p) => !isNewFormatId(p.id)).length
+    if (legacyCount > 0) {
+      console.info(`[deckProfile] Discarding ${legacyCount} legacy profile(s).`)
+      profiles = profiles.filter((p) => isNewFormatId(p.id))
+      saveProfiles(profiles)
+    }
+
+    // Fix blank names
     let needsSave = false
     for (const [i, profile] of profiles.entries()) {
       if (!profile.name || profile.name.trim() === '') {
@@ -227,7 +354,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
 
     if (profiles.length === 0) {
       const profile: DeckProfile = {
-        id: genProfileId(),
+        id: settingsFs.profileFilename('プロファイル 1'),
         name: 'プロファイル 1',
         columns: deepClone(columns),
         layout: deepClone(layout),
@@ -238,7 +365,34 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
       saveActiveProfileId(profile.id)
     } else {
       loadActiveProfileId()
+      // If activeProfileId points to a non-existent profile, reset to first
+      const first = profiles[0]
+      if (first && !profiles.find((p) => p.id === activeProfileId.value)) {
+        saveActiveProfileId(first.id)
+      }
     }
+
+    // Kick off async file sync in background (Tauri only)
+    const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
+    if (isTauri) {
+      initFileStorage().catch((e) =>
+        console.warn('[deckProfile] file storage init failed:', e),
+      )
+    } else {
+      initialized.value = true
+    }
+  }
+
+  /** Initialize file-based storage: load from files and sync localStorage cache. */
+  async function initFileStorage(): Promise<void> {
+    const fileProfiles = await loadProfilesFromFiles()
+
+    if (fileProfiles.length > 0) {
+      // Files are source of truth — update localStorage cache
+      setStorageJson(STORAGE_KEYS.deckProfiles, fileProfiles)
+      profileVersion.value++
+    }
+    initialized.value = true
   }
 
   return {
@@ -246,6 +400,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     windowProfileId,
     profileVersion,
     currentProfileName,
+    initialized,
     loadProfiles,
     loadProfileById,
     saveProfiles,

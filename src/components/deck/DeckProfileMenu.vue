@@ -6,6 +6,7 @@ import { switchProfileWithWindows } from '@/composables/useDeckWindow'
 import type { DeckProfile } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
+import { useWindowsStore } from '@/stores/windows'
 
 const props = defineProps<{
   show: boolean
@@ -17,11 +18,10 @@ const emit = defineEmits<{
 }>()
 
 const deckStore = useDeckStore()
+const windowsStore = useWindowsStore()
 const isCompact = useIsCompactLayout()
 
 const profiles = ref<DeckProfile[]>([])
-const editingId = ref<string | null>(null)
-const editingName = ref('')
 const menuEl = ref<HTMLElement | null>(null)
 const fixedStyle = ref<CSSProperties | undefined>()
 
@@ -40,7 +40,6 @@ watch(
         fixedStyle.value = undefined
       }
       profiles.value = deckStore.getProfiles()
-      editingId.value = null
     }
   },
   { immediate: true },
@@ -55,7 +54,6 @@ function createProfile() {
 let switching = false
 
 async function apply(id: string) {
-  if (editingId.value === id) return
   if (switching) return
   switching = true
   try {
@@ -68,27 +66,15 @@ async function apply(id: string) {
   profiles.value = deckStore.getProfiles()
 }
 
-function startRename(id: string, name: string) {
-  editingId.value = id
-  editingName.value = name
-}
-
-function commitRename() {
-  if (editingId.value) {
-    const trimmed = editingName.value.trim()
-    if (trimmed) {
-      deckStore.renameProfile(editingId.value, trimmed)
-      profiles.value = deckStore.getProfiles()
-      refreshProfileCommands()
-    }
-    editingId.value = null
-  }
-}
-
 function remove(id: string) {
   deckStore.deleteProfile(id)
   profiles.value = deckStore.getProfiles()
   refreshProfileCommands()
+}
+
+function openEditor(id: string) {
+  windowsStore.open('profileEditor', { profileId: id })
+  emit('close')
 }
 </script>
 
@@ -104,23 +90,14 @@ function remove(id: string) {
           :class="[$style.item, { [$style.active]: p.id === deckStore.windowProfileId }]"
           @click="apply(p.id)"
         >
-          <input
-            v-if="editingId === p.id"
-            v-model="editingName"
-            :class="$style.renameInput"
-            @blur="commitRename"
-            @click.stop
-            @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
-            @vue:mounted="({ el }: { el: HTMLInputElement }) => { el.focus(); el.select() }"
-          />
-          <span v-else :class="$style.name">{{ p.name }}</span>
+          <span :class="$style.name">{{ p.name }}</span>
           <button
             class="_button"
             :class="$style.action"
-            title="名前変更"
-            @click.stop="startRename(p.id, p.name)"
+            title="エディタで開く"
+            @click.stop="openEditor(p.id)"
           >
-            <i class="ti ti-edit" />
+            <i class="ti ti-settings" />
           </button>
           <button
             class="_button"
@@ -209,20 +186,6 @@ function remove(id: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   position: relative;
-}
-
-.renameInput {
-  flex: 1;
-  min-width: 0;
-  font-size: inherit;
-  line-height: inherit;
-  color: var(--nd-fg);
-  background: var(--nd-accent-subtle);
-  border: 1px solid var(--nd-accent);
-  border-radius: 4px;
-  padding: 2px 6px;
-  position: relative;
-  outline: none;
 }
 
 .action {

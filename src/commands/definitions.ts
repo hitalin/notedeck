@@ -338,6 +338,20 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
         useWindowsStore().open('themeEditor')
       },
     })
+
+    commandStore.register({
+      id: 'profile-editor',
+      label: 'プロファイルエディタ',
+      icon: 'layout-columns',
+      category: 'column',
+      shortcuts: keybindsStore.getShortcuts('profile-editor'),
+      execute: () => {
+        const profileId = useDeckStore().windowProfileId
+        if (profileId) {
+          useWindowsStore().open('profileEditor', { profileId })
+        }
+      },
+    })
   }
 
   // Profile switching (Alt+1-9 to switch deck profiles)

@@ -34,6 +34,12 @@ const CssEditorContent = defineAsyncComponent(
 const ThemeEditorContent = defineAsyncComponent(
   () => import('@/components/window/ThemeEditorContent.vue'),
 )
+const ProfileEditorContent = defineAsyncComponent({
+  loader: () => import('@/components/window/ProfileEditorContent.vue'),
+  onError(err) {
+    console.error('[ProfileEditorContent] load error:', err)
+  },
+})
 const AiContent = defineAsyncComponent(
   () => import('@/components/window/AiContent.vue'),
 )
@@ -114,6 +120,10 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       <KeybindsContent v-if="win.type === 'keybinds'" />
       <CssEditorContent v-if="win.type === 'cssEditor'" />
       <ThemeEditorContent v-if="win.type === 'themeEditor'" />
+      <ProfileEditorContent
+        v-if="win.type === 'profileEditor'"
+        :profile-id="(win.props.profileId as string)"
+      />
       <AiContent v-if="win.type === 'ai'" />
       <ChatContent v-if="win.type === 'chat'" />
     </DeckWindow>
