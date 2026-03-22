@@ -56,7 +56,8 @@ pub async fn export_db(app: tauri::AppHandle) -> Result<bool> {
 }
 
 /// Import notecli.db from a user-chosen file via open dialog.
-/// Replaces the current database file. Caller should reload the app afterwards.
+/// Replaces the current database file. Caller should relaunch the app afterwards
+/// so that Rust re-opens the new DB with a fresh connection.
 #[tauri::command]
 pub async fn import_db(app: tauri::AppHandle) -> Result<bool> {
     use tauri_plugin_dialog::DialogExt;
@@ -92,5 +93,10 @@ pub async fn import_db(app: tauri::AppHandle) -> Result<bool> {
 
     std::fs::copy(src_path, &db_path)
         .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to import database: {e}")))?;
+
+    // Remove WAL/SHM files so the new DB starts clean after relaunch
+    let _ = std::fs::remove_file(app_dir.join("notecli.db-wal"));
+    let _ = std::fs::remove_file(app_dir.join("notecli.db-shm"));
+
     Ok(true)
 }

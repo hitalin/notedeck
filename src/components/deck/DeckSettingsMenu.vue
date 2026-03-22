@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
+import { relaunch } from '@tauri-apps/plugin-process'
 import type { CSSProperties } from 'vue'
 import { computed, ref, watch } from 'vue'
 import AboutDialog from '@/components/common/AboutDialog.vue'
@@ -163,7 +164,7 @@ async function importDb() {
   try {
     const imported = await invoke<boolean>('import_db')
     if (imported) {
-      window.location.reload()
+      await relaunch()
     }
   } catch {
     /* user cancelled or error */
@@ -188,7 +189,7 @@ async function importSettings() {
   try {
     const imported = await invoke<boolean>('import_settings_zip')
     if (imported) {
-      window.location.reload()
+      await relaunch()
     }
   } catch {
     /* user cancelled or error */
