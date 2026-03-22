@@ -265,6 +265,45 @@ function applyFromCode() {
   themeStore.setCustomCss(cssStr)
 }
 
+// Import/Export
+const copiedMessage = ref(false)
+const importedMessage = ref(false)
+const importError = ref(false)
+
+function exportCss() {
+  navigator.clipboard.writeText(cssCode.value)
+  copiedMessage.value = true
+  setTimeout(() => {
+    copiedMessage.value = false
+  }, 2000)
+}
+
+async function importCss() {
+  try {
+    const text = await navigator.clipboard.readText()
+    if (!text.trim()) {
+      importError.value = true
+      setTimeout(() => {
+        importError.value = false
+      }, 2000)
+      return
+    }
+    cssCode.value = text
+    parsePresetsFromCss(text)
+    userFreeformCss.value = extractUserCss(text)
+    themeStore.setCustomCss(text)
+    importedMessage.value = true
+    setTimeout(() => {
+      importedMessage.value = false
+    }, 2000)
+  } catch {
+    importError.value = true
+    setTimeout(() => {
+      importError.value = false
+    }, 2000)
+  }
+}
+
 const confirmingClear = ref(false)
 let clearTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -471,6 +510,24 @@ watch(tab, (t) => {
 
     <!-- Actions -->
     <div :class="$style.actions">
+      <div :class="$style.actionGroup">
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: importedMessage || importError }]"
+          @click="importCss"
+        >
+          <i class="ti" :class="importError ? 'ti-alert-circle' : 'ti-clipboard-text'" />
+          {{ importError ? '無効' : importedMessage ? '読込済み' : 'インポート' }}
+        </button>
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: copiedMessage }]"
+          @click="exportCss"
+        >
+          <i class="ti ti-clipboard-copy" />
+          {{ copiedMessage ? 'コピー済み' : 'エクスポート' }}
+        </button>
+      </div>
       <button
         class="_button"
         :class="[$style.actionBtn, $style.danger, { [$style.confirming]: confirmingClear }]"
@@ -738,10 +795,16 @@ watch(tab, (t) => {
 
 .actions {
   display: flex;
+  flex-direction: column;
   gap: 6px;
   padding: 10px;
   border-top: 1px solid var(--nd-divider);
   flex-shrink: 0;
+}
+
+.actionGroup {
+  display: flex;
+  gap: 6px;
 }
 
 .actionBtn {
@@ -749,14 +812,28 @@ watch(tab, (t) => {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  flex: 1;
   padding: 8px 12px;
   border-radius: var(--nd-radius-sm);
   font-size: 0.8em;
   font-weight: bold;
   transition: background var(--nd-duration-base), color var(--nd-duration-base);
 
+  &.secondary {
+    flex: 1;
+    background: var(--nd-buttonBg);
+    color: var(--nd-fg);
+
+    &:hover {
+      background: var(--nd-buttonHoverBg);
+    }
+
+    &.feedback {
+      color: var(--nd-accent);
+    }
+  }
+
   &.danger {
+    width: 100%;
     background: var(--nd-buttonBg);
     color: var(--nd-fg);
 
@@ -772,5 +849,7 @@ watch(tab, (t) => {
   }
 }
 
+.secondary { /* modifier */ }
+.feedback { /* modifier */ }
 .danger { /* modifier */ }
 </style>

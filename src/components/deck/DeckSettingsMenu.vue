@@ -302,26 +302,26 @@ const importSettings = () =>
       <div :class="$style.dataGroup">
         <span :class="$style.dataGroupLabel"><i class="ti ti-database" /> DBバックアップ</span>
         <div :class="$style.dataBtnRow">
-          <button class="_button" :class="$style.dataBtn" :disabled="isExporting" @click="exportDb">
-            <i class="ti ti-upload" />
-            {{ isExporting ? '処理中...' : 'エクスポート' }}
-          </button>
           <button class="_button" :class="$style.dataBtn" :disabled="isImportingDb" @click="importDb">
-            <i class="ti ti-download" />
+            <i class="ti ti-clipboard-text" />
             {{ isImportingDb ? '処理中...' : 'インポート' }}
+          </button>
+          <button class="_button" :class="$style.dataBtn" :disabled="isExporting" @click="exportDb">
+            <i class="ti ti-clipboard-copy" />
+            {{ isExporting ? '処理中...' : 'エクスポート' }}
           </button>
         </div>
       </div>
       <div :class="$style.dataGroup">
         <span :class="$style.dataGroupLabel"><i class="ti ti-settings" /> 設定バックアップ</span>
         <div :class="$style.dataBtnRow">
-          <button class="_button" :class="$style.dataBtn" :disabled="isExportingSettings" @click="exportSettings">
-            <i class="ti ti-upload" />
-            {{ isExportingSettings ? '処理中...' : 'エクスポート' }}
-          </button>
           <button class="_button" :class="$style.dataBtn" :disabled="isImportingSettings" @click="importSettings">
-            <i class="ti ti-download" />
+            <i class="ti ti-clipboard-text" />
             {{ isImportingSettings ? '処理中...' : 'インポート' }}
+          </button>
+          <button class="_button" :class="$style.dataBtn" :disabled="isExportingSettings" @click="exportSettings">
+            <i class="ti ti-clipboard-copy" />
+            {{ isExportingSettings ? '処理中...' : 'エクスポート' }}
           </button>
         </div>
       </div>
@@ -851,14 +851,15 @@ const importSettings = () =>
 .dataBtn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 6px 10px;
   border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
-  border: 1px solid var(--nd-accent);
+  background: var(--nd-buttonBg);
   font-size: 0.75em;
+  font-weight: bold;
   color: var(--nd-fg);
-  transition: background var(--nd-duration-base), border-color var(--nd-duration-base);
+  transition: background var(--nd-duration-base), color var(--nd-duration-base);
   white-space: nowrap;
 
   &:hover:not(:disabled) {

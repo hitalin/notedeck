@@ -290,6 +290,38 @@ function exportTheme() {
   }, 2000)
 }
 
+// Import from clipboard
+const importedMessage = ref(false)
+const importError = ref(false)
+
+async function importTheme() {
+  try {
+    const text = await navigator.clipboard.readText()
+    const parsed = JSON5.parse(text)
+    if (!parsed || typeof parsed !== 'object' || !parsed.props) {
+      importError.value = true
+      setTimeout(() => {
+        importError.value = false
+      }, 2000)
+      return
+    }
+    themeName.value = parsed.name || 'Untitled'
+    baseMode.value = parsed.base === 'light' ? 'light' : 'dark'
+    overrides.value = { ...parsed.props }
+    codeError.value = null
+    saveSnapshot()
+    importedMessage.value = true
+    setTimeout(() => {
+      importedMessage.value = false
+    }, 2000)
+  } catch {
+    importError.value = true
+    setTimeout(() => {
+      importError.value = false
+    }, 2000)
+  }
+}
+
 // Load existing theme for editing
 function loadFromInstalled(theme: MisskeyTheme) {
   themeName.value = theme.name
@@ -680,28 +712,39 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
       <div :class="$style.actions">
         <button
           class="_button"
-          :class="$style.actionBtn"
+          :class="[$style.actionBtn, $style.primary]"
           @click="installTheme"
         >
-          <i class="ti ti-download" />
+          <i class="ti ti-check" />
           {{ installedMessage ? 'インストール済み!' : 'インストール' }}
         </button>
-        <button
-          class="_button"
-          :class="[$style.actionBtn, $style.secondary]"
-          @click="exportTheme"
-        >
-          <i class="ti ti-clipboard" />
-          {{ copiedMessage ? 'コピー済み!' : 'JSON' }}
-        </button>
-        <button
-          v-if="hasChangesFromSnapshot"
-          class="_button"
-          :class="[$style.actionBtn, $style.secondary]"
-          @click="resetToSnapshot"
-        >
-          <i class="ti ti-arrow-back-up" />
-        </button>
+        <div :class="$style.actionGroup">
+          <button
+            class="_button"
+            :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: importedMessage || importError }]"
+            @click="importTheme"
+          >
+            <i class="ti" :class="importError ? 'ti-alert-circle' : 'ti-clipboard-text'" />
+            {{ importError ? '無効' : importedMessage ? '読込済み' : 'インポート' }}
+          </button>
+          <button
+            class="_button"
+            :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: copiedMessage }]"
+            @click="exportTheme"
+          >
+            <i class="ti ti-clipboard-copy" />
+            {{ copiedMessage ? 'コピー済み' : 'エクスポート' }}
+          </button>
+          <button
+            v-if="hasChangesFromSnapshot"
+            class="_button"
+            :class="[$style.actionBtn, $style.iconOnly]"
+            title="元に戻す"
+            @click="resetToSnapshot"
+          >
+            <i class="ti ti-arrow-back-up" />
+          </button>
+        </div>
       </div>
   </div>
 </template>
@@ -1178,10 +1221,16 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
 .actions {
   display: flex;
+  flex-direction: column;
   gap: 6px;
   padding: 10px;
   border-top: 1px solid var(--nd-divider);
   flex-shrink: 0;
+}
+
+.actionGroup {
+  display: flex;
+  gap: 6px;
 }
 
 .actionBtn {
@@ -1189,21 +1238,39 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   align-items: center;
   justify-content: center;
   gap: 4px;
-  flex: 1;
   padding: 8px 12px;
   border-radius: var(--nd-radius-sm);
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
   font-size: 0.8em;
   font-weight: bold;
-  transition: background var(--nd-duration-base), opacity var(--nd-duration-base);
+  transition: background var(--nd-duration-base), color var(--nd-duration-base);
 
-  &:hover {
-    background: var(--nd-accentDarken);
+  &.primary {
+    width: 100%;
+    background: var(--nd-accent);
+    color: var(--nd-fgOnAccent);
+
+    &:hover {
+      background: var(--nd-accentDarken);
+    }
   }
 
   &.secondary {
     flex: 1;
+    background: var(--nd-buttonBg);
+    color: var(--nd-fg);
+
+    &:hover {
+      background: var(--nd-buttonHoverBg);
+    }
+
+    &.feedback {
+      color: var(--nd-accent);
+    }
+  }
+
+  &.iconOnly {
+    flex: 0;
+    padding: 8px;
     background: var(--nd-buttonBg);
     color: var(--nd-fg);
 
