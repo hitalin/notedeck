@@ -1,6 +1,6 @@
-import { invoke } from '@tauri-apps/api/core'
 import { ref } from 'vue'
 import type { OgpData } from '@/utils/ogp'
+import { invoke } from '@/utils/tauriInvoke'
 
 const OGP_CACHE_MAX = 1024
 

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { type Ast, type Interpreter } from '@syuilo/aiscript'
-import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, defineAsyncComponent, ref } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
@@ -23,6 +22,7 @@ import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { getAccountAvatarUrl } from '@/stores/accounts'
+import { invoke } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),

@@ -5,6 +5,7 @@ import {
   popOutColumnToWindow,
   requestMoveColumn,
 } from '@/composables/useDeckWindow'
+import { useConfirm } from '@/stores/confirm'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
@@ -26,6 +27,7 @@ const pipColumnConfig = inject<(() => DeckColumnType | null) | undefined>(
 
 const emit = defineEmits<{ 'header-click': [] }>()
 
+const { confirm } = useConfirm()
 const deckStore = useDeckStore()
 const { isDesktop } = useUiStore()
 const isCompact = useIsCompactLayout()
@@ -79,7 +81,13 @@ async function close() {
     await getCurrentWindow().close()
     return
   }
-  deckStore.removeColumn(props.columnId)
+  const ok = await confirm({
+    title: 'カラムを削除',
+    message: 'このカラムを削除しますか？',
+    okLabel: '削除',
+    type: 'danger',
+  })
+  if (ok) deckStore.removeColumn(props.columnId)
 }
 
 /** Return this PiP column back to the main deck window */

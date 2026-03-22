@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { defineAsyncComponent, onUnmounted, ref, shallowRef, watch } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
 import MkNote from '@/components/common/MkNote.vue'
@@ -16,6 +15,7 @@ import {
   filterNotesByRegex,
   isValidRegex,
 } from '@/utils/regexSearch'
+import { invoke } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),

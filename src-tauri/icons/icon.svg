@@ -6,8 +6,8 @@
     </linearGradient>
   </defs>
 
-  <!-- Green M logo centered with ~15% padding for circle-safe display -->
-  <g fill="url(#fg)" transform="translate(256,256) scale(0.88) translate(-256,-276)">
+  <!-- Green M logo centered with moderate padding (~78% occupancy) -->
+  <g fill="url(#fg)" transform="translate(256,256) scale(0.78) translate(-256,-276)">
     <rect x="72" y="136" width="100" height="280" rx="36"/>
     <rect x="206" y="136" width="100" height="280" rx="36"/>
     <rect x="340" y="136" width="100" height="280" rx="36"/>

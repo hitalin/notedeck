@@ -4,6 +4,7 @@ import { type Diagnostic, linter } from '@codemirror/lint'
 import { computed, ref, watch } from 'vue'
 import type { Shortcut } from '@/commands/registry'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
@@ -35,6 +36,28 @@ const keybindsStore = useKeybindsStore()
 
 // ── Tab management ──
 const tab = ref<'visual' | 'code'>('visual')
+const contentRef = ref<HTMLElement | null>(null)
+
+const TABS = ['visual', 'code'] as const
+useSwipeTab(
+  contentRef,
+  () => {
+    const next = TABS[TABS.indexOf(tab.value) + 1]
+    if (next) {
+      tab.value = next
+      return true
+    }
+    return false
+  },
+  () => {
+    const prev = TABS[TABS.indexOf(tab.value) - 1]
+    if (prev) {
+      tab.value = prev
+      return true
+    }
+    return false
+  },
+)
 
 // ── Visual tab: category-based GUI ──
 const commandIds = keybindsStore.getAllCommandIds()
@@ -299,7 +322,7 @@ function handleReset() {
 </script>
 
 <template>
-  <div :class="$style.keybindsContent">
+  <div ref="contentRef" :class="$style.keybindsContent">
     <!-- Tabs -->
     <div :class="$style.tabs">
       <button

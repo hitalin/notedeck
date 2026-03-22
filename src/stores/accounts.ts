@@ -1,8 +1,8 @@
-import { invoke } from '@tauri-apps/api/core'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { ServerSoftware } from '@/adapters/types'
 import { removeStorage, STORAGE_KEYS } from '@/utils/storage'
+import { invoke } from '@/utils/tauriInvoke'
 
 export interface Account {
   id: string

@@ -32,7 +32,11 @@ const props = defineProps<{
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 
-const tlType = ref<TimelineType>(props.column.tl || 'home')
+// Guest accounts can only access public timelines (local/global), not home
+const accountData = accountsStore.accountMap.get(props.column.accountId ?? '')
+const defaultTl: TimelineType =
+  accountData?.hasToken === false ? 'local' : 'home'
+const tlType = ref<TimelineType>(props.column.tl || defaultTl)
 
 // --- Filter ---
 const columnFilters = computed<TimelineFilter>(() => props.column.filters ?? {})
@@ -285,7 +289,7 @@ watch(
   async () => {
     await refreshPolicies()
     if (!availableStandardTl.value.includes(tlType.value)) {
-      switchTl('home')
+      switchTl(availableStandardTl.value[0] ?? 'local')
     } else {
       await reconnect()
     }
@@ -316,7 +320,7 @@ onMounted(async () => {
     tlModes.value = availability.modes
 
     if (!availableStandardTl.value.includes(tlType.value)) {
-      switchTl('home')
+      switchTl(availableStandardTl.value[0] ?? 'local')
     }
   }
 })

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ServerEmoji } from '@/adapters/types'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
@@ -9,6 +8,7 @@ import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
+import { invoke } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{

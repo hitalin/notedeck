@@ -1,44 +1,29 @@
 <script setup lang="ts">
-const props = defineProps<{
-  show: boolean
-  isGuest?: boolean
-}>()
+import { useConfirm } from '@/stores/confirm'
 
-const emit = defineEmits<{
-  'keep-data': []
-  'delete-all': []
-  cancel: []
-}>()
+const { visible, options, resolve } = useConfirm()
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="nd-popup">
-      <div v-if="show" class="_dialogBackdrop" @click="emit('cancel')">
+      <div v-if="visible" class="_dialogBackdrop" @click.self="resolve(false)">
         <div class="_dialog nd-popup-content" @click.stop>
           <div :class="$style.header">
-            <i :class="[$style.icon, isGuest ? 'ti ti-user-off' : 'ti ti-logout']" />
-            <div :class="$style.title">{{ isGuest ? 'ゲストを削除' : 'ログアウト' }}</div>
+            <div :class="$style.title">{{ options.title }}</div>
           </div>
-
           <div :class="$style.body">
-            <p :class="$style.message">
-              {{ isGuest ? 'このゲストアカウントを削除しますか？' : 'ローカルデータをこのデバイスに残しますか？' }}
-            </p>
-            <p v-if="!isGuest" :class="$style.hint">
-              残したデータはオフラインで閲覧できます。
-            </p>
+            <p :class="$style.message">{{ options.message }}</p>
           </div>
-
           <div :class="$style.actions">
-            <button :class="$style.btnCancel" @click="emit('cancel')">
-              キャンセル
+            <button v-if="!options.hideCancel" :class="$style.btnCancel" @click="resolve(false)">
+              {{ options.cancelLabel || 'キャンセル' }}
             </button>
-            <button :class="$style.btnDelete" @click="emit('delete-all')">
-              {{ isGuest ? '削除' : 'すべて削除' }}
-            </button>
-            <button v-if="!isGuest" :class="$style.btnKeep" @click="emit('keep-data')">
-              データを残す
+            <button
+              :class="options.type === 'danger' ? $style.btnDanger : $style.btnOk"
+              @click="resolve(true)"
+            >
+              {{ options.okLabel || 'OK' }}
             </button>
           </div>
         </div>
@@ -49,16 +34,7 @@ const emit = defineEmits<{
 
 <style lang="scss" module>
 .header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   padding: 20px 24px 8px;
-}
-
-.icon {
-  font-size: 1.3em;
-  color: var(--nd-fg);
-  opacity: 0.7;
 }
 
 .title {
@@ -76,13 +52,6 @@ const emit = defineEmits<{
   color: var(--nd-fg);
   font-size: 0.9em;
   line-height: 1.5;
-}
-
-.hint {
-  margin: 6px 0 0;
-  color: var(--nd-fg);
-  font-size: 0.8em;
-  opacity: 0.6;
 }
 
 .actions {
@@ -107,11 +76,11 @@ const emit = defineEmits<{
   }
 }
 
-.btnDelete {
-  padding: 6px 14px;
+.btnOk {
+  padding: 6px 20px;
   border: none;
   border-radius: var(--nd-radius-md);
-  background: var(--nd-love);
+  background: var(--nd-accent);
   color: #fff;
   font-size: 0.85em;
   font-weight: bold;
@@ -123,11 +92,11 @@ const emit = defineEmits<{
   }
 }
 
-.btnKeep {
+.btnDanger {
   padding: 6px 20px;
   border: none;
   border-radius: var(--nd-radius-md);
-  background: var(--nd-accent);
+  background: var(--nd-love);
   color: #fff;
   font-size: 0.85em;
   font-weight: bold;

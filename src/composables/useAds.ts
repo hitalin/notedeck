@@ -1,8 +1,8 @@
-import { invoke } from '@tauri-apps/api/core'
 import { ref } from 'vue'
 import type { ServerAd } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
+import { invoke } from '@/utils/tauriInvoke'
 
 const REFRESH_INTERVAL = 10 * 60 * 1000 // 10 minutes
 

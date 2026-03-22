@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { computed, ref } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { safeUrl } from '@/composables/useDriveFolder'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
+import { invoke } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{

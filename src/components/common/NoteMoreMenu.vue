@@ -284,14 +284,14 @@ defineExpose({ open })
           <!-- Main menu -->
           <template v-else>
             <button
-              :class="[$style.popupItem, localIsFavorited && $style.popupItemActive, { [$style.popupItemDisabled]: isGuest }]"
-              :disabled="isGuest"
+              v-if="!isGuest"
+              :class="[$style.popupItem, localIsFavorited && $style.popupItemActive]"
               @click="canInteract ? (localIsFavorited = !localIsFavorited, emit('bookmark', note), close()) : (showLoginPrompt(), close())"
             >
               <i class="ti ti-star" />
               {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
             </button>
-            <button :class="[$style.popupItem, { [$style.popupItemDisabled]: isGuest }]" :disabled="isGuest" @click="canInteract ? openClipList() : (showLoginPrompt(), close())">
+            <button v-if="!isGuest" :class="$style.popupItem" @click="canInteract ? openClipList() : (showLoginPrompt(), close())">
               <i class="ti ti-paperclip" />
               クリップに追加
             </button>
@@ -342,13 +342,13 @@ defineExpose({ open })
                 削除
               </button>
             </template>
-            <template v-if="!isOwnNote">
+            <template v-if="!isOwnNote && !isGuest">
               <div :class="$style.popupDivider" />
-              <button :class="[$style.popupItem, { [$style.popupItemDisabled]: isGuest }]" :disabled="isGuest" @click="canInteract ? (showMuteConfirm = true) : (showLoginPrompt(), close())">
+              <button :class="$style.popupItem" @click="canInteract ? (showMuteConfirm = true) : (showLoginPrompt(), close())">
                 <i class="ti ti-eye-off" />
                 このユーザーをミュート
               </button>
-              <button :class="[$style.popupItem, $style.popupItemDanger, { [$style.popupItemDisabled]: isGuest }]" :disabled="isGuest" @click="canInteract ? (showReportForm = true) : (showLoginPrompt(), close())">
+              <button :class="[$style.popupItem, $style.popupItemDanger]" @click="canInteract ? (showReportForm = true) : (showLoginPrompt(), close())">
                 <i class="ti ti-alert-triangle" />
                 通報
               </button>
@@ -418,10 +418,6 @@ defineExpose({ open })
 
 .popupItemDanger {
   color: var(--nd-error);
-}
-
-.popupItemDisabled {
-  opacity: 0.4;
 }
 
 .popupDivider {

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { useIntersectionObserver } from '@vueuse/core'
 import { computed, defineAsyncComponent, ref } from 'vue'
 import type {
@@ -17,6 +16,7 @@ import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
 import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
 import { showLoginPrompt } from '@/utils/loginPrompt'
+import { invoke } from '@/utils/tauriInvoke'
 import { extractThemeVars } from '@/utils/themeVars'
 import MkAvatar from './MkAvatar.vue'
 import MkEmoji from './MkEmoji.vue'

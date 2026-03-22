@@ -223,6 +223,27 @@ html[data-platform="android"] select {
   z-index: var(--nd-z-menu);
 }
 
+/* ---- Dialog (shared modal shell) ---- */
+
+._dialogBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--nd-z-popup) + 2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+._dialog {
+  width: 360px;
+  max-width: 90vw;
+  background: var(--nd-panel, var(--nd-bg));
+  border-radius: 12px;
+  box-shadow: var(--nd-shadow-l);
+  overflow: hidden;
+}
+
 /* ---- Shadow depth (Misskey style) ---- */
 ._shadow-s { box-shadow: var(--nd-shadow-s); }
 ._shadow-m { box-shadow: var(--nd-shadow-m); }

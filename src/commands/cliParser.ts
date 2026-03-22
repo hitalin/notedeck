@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@/utils/tauriInvoke'
 import { getCliIcon } from './cliIcons'
 
 /** Raw metadata returned by the Rust backend (matches notecli::cli::CliCommandInfo). */

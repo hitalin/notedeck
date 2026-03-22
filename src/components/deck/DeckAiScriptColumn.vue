@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { type Ast, Interpreter, Parser } from '@syuilo/aiscript'
-import { invoke } from '@tauri-apps/api/core'
 import { computed, defineAsyncComponent, onUnmounted, ref, watch } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
 import { createInterpreterOptions } from '@/aiscript/common'
@@ -15,6 +14,7 @@ import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { invoke } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),

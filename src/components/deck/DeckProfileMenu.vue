@@ -97,7 +97,7 @@ function openEditor(id: string) {
             title="エディタで開く"
             @click.stop="openEditor(p.id)"
           >
-            <i class="ti ti-settings" />
+            <i class="ti ti-pencil" />
           </button>
           <button
             class="_button"

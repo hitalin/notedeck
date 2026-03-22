@@ -1,8 +1,8 @@
-import { invoke } from '@tauri-apps/api/core'
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
 import type { ServerInfo, ServerSoftware } from '@/adapters/types'
 import { detectServer } from '@/core/server'
+import { invoke } from '@/utils/tauriInvoke'
 
 interface StoredServer {
   host: string

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { getTauriVersion } from '@tauri-apps/api/app'
-import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { onMounted, ref } from 'vue'
+import { invoke } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../../package.json'
 
 defineProps<{
@@ -48,8 +48,8 @@ async function copyInfo() {
 <template>
   <Teleport to="body">
     <Transition name="nd-popup">
-      <div v-if="show" :class="$style.aboutBackdrop" @click="emit('close')">
-        <div :class="$style.aboutDialog" class="nd-popup-content" @click.stop>
+      <div v-if="show" class="_dialogBackdrop" @click="emit('close')">
+        <div class="_dialog nd-popup-content" @click.stop>
           <div :class="$style.aboutHeader">
             <img src="/favicon.svg" :class="$style.aboutLogo" alt="NoteDeck" />
             <div :class="$style.aboutTitle">NoteDeck</div>
@@ -99,25 +99,6 @@ async function copyInfo() {
 </template>
 
 <style lang="scss" module>
-.aboutBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: calc(var(--nd-z-popup) + 2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.aboutDialog {
-  width: 360px;
-  max-width: 90vw;
-  background: var(--nd-panel, var(--nd-bg));
-  border-radius: 12px;
-  box-shadow: var(--nd-shadow-l);
-  overflow: hidden;
-}
-
 .aboutHeader {
   display: flex;
   flex-direction: column;

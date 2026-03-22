@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { ref } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { invoke } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{

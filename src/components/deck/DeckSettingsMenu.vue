@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
+import { relaunch } from '@tauri-apps/plugin-process'
 import type { CSSProperties } from 'vue'
-import { computed, ref, watch } from 'vue'
+import { computed, type Ref, ref, watch } from 'vue'
 import AboutDialog from '@/components/common/AboutDialog.vue'
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
+import { type ConfirmOptions, useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { hapticSelection } from '@/utils/haptics'
+import { invoke } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../../package.json'
 
 const props = defineProps<{
@@ -72,8 +74,14 @@ async function handleInstall() {
   }
 }
 
-function removeTheme(id: string) {
-  themeStore.removeTheme(id)
+async function removeTheme(id: string) {
+  const ok = await confirm({
+    title: 'テーマを削除',
+    message: 'このテーマを削除しますか？',
+    okLabel: '削除',
+    type: 'danger',
+  })
+  if (ok) themeStore.removeTheme(id)
 }
 
 const menuEl = ref<HTMLElement | null>(null)
@@ -142,18 +150,57 @@ function openToolWindow(type: 'cssEditor' | 'keybinds' | 'themeEditor') {
   emit('close-all')
 }
 
-const isExporting = ref(false)
+const { confirm } = useConfirm()
 
-async function exportDb() {
-  isExporting.value = true
+const isExporting = ref(false)
+const isImportingDb = ref(false)
+const isExportingSettings = ref(false)
+const isImportingSettings = ref(false)
+const backupError = ref('')
+
+async function backupAction(
+  loading: Ref<boolean>,
+  command: string,
+  opts?: { confirmOpts?: ConfirmOptions; relaunch?: boolean },
+) {
+  if (opts?.confirmOpts && !(await confirm(opts.confirmOpts))) return
+  loading.value = true
+  backupError.value = ''
   try {
-    await invoke('export_db')
-  } catch {
-    /* user cancelled or error */
+    const result = await invoke<boolean>(command)
+    if (result && opts?.relaunch) {
+      await relaunch()
+    }
+  } catch (e) {
+    backupError.value = e instanceof Error ? e.message : String(e)
   } finally {
-    isExporting.value = false
+    loading.value = false
   }
 }
+
+const exportDb = () => backupAction(isExporting, 'export_db')
+const importDb = () =>
+  backupAction(isImportingDb, 'import_db', {
+    confirmOpts: {
+      title: 'DBインポート',
+      message: '現在のDBが上書きされます。',
+      okLabel: 'インポート',
+      type: 'danger',
+    },
+    relaunch: true,
+  })
+const exportSettings = () =>
+  backupAction(isExportingSettings, 'export_settings_zip')
+const importSettings = () =>
+  backupAction(isImportingSettings, 'import_settings_zip', {
+    confirmOpts: {
+      title: '設定インポート',
+      message: '現在の設定が上書きされます。',
+      okLabel: 'インポート',
+      type: 'danger',
+    },
+    relaunch: true,
+  })
 </script>
 
 <template>
@@ -200,7 +247,11 @@ async function exportDb() {
       <div :class="$style.themeSelectSection">
         <div :class="$style.themeSelectHeader">
           <i :class="isDark ? 'ti ti-moon' : 'ti ti-sun'" />
-          <span>{{ isDark ? 'ダークテーマ' : 'ライトテーマ' }}</span>
+          <span>{{ isDark ? 'ダークテーマで使うテーマ' : 'ライトテーマで使うテーマ' }}</span>
+          <button v-if="!showInstallInput" class="_button" :class="[$style.dataBtn, $style.themeInstallBtn]" @click="showInstallInput = true">
+            <i class="ti ti-download" />
+            インストール
+          </button>
         </div>
         <div :class="$style.themeGrid">
           <!-- Builtin theme -->
@@ -220,13 +271,7 @@ async function exportDb() {
             <div :class="$style.themeItemName">{{ theme.name }}</div>
           </div>
         </div>
-
-        <!-- Install theme -->
-        <div v-if="!showInstallInput" :class="$style.installBtn" @click="showInstallInput = true">
-          <i class="ti ti-download" />
-          <span>テーマをインストール</span>
-        </div>
-        <div v-else :class="$style.installArea">
+        <div v-if="showInstallInput" :class="$style.installArea">
           <textarea
             v-model="themeCode"
             :class="$style.installTextarea"
@@ -279,10 +324,29 @@ async function exportDb() {
       <!-- Data -->
       <div :class="$style.settingsMenuDivider" />
 
-      <div :class="$style.settingsMenuItem" @click="exportDb">
-        <i class="ti ti-database-export" />
-        <span :class="$style.settingsMenuLabel">{{ isExporting ? 'エクスポート中...' : 'DBバックアップ' }}</span>
+      <div :class="$style.dataRow">
+        <span :class="$style.dataRowLabel"><i class="ti ti-database" /> DBバックアップ</span>
+        <button class="_button" :class="$style.dataBtn" :disabled="isExporting" @click="exportDb">
+          <i class="ti ti-upload" />
+          {{ isExporting ? '処理中...' : 'エクスポート' }}
+        </button>
+        <button class="_button" :class="$style.dataBtn" :disabled="isImportingDb" @click="importDb">
+          <i class="ti ti-download" />
+          {{ isImportingDb ? '処理中...' : 'インポート' }}
+        </button>
       </div>
+      <div :class="$style.dataRow">
+        <span :class="$style.dataRowLabel"><i class="ti ti-settings" /> 設定バックアップ</span>
+        <button class="_button" :class="$style.dataBtn" :disabled="isExportingSettings" @click="exportSettings">
+          <i class="ti ti-upload" />
+          {{ isExportingSettings ? '処理中...' : 'エクスポート' }}
+        </button>
+        <button class="_button" :class="$style.dataBtn" :disabled="isImportingSettings" @click="importSettings">
+          <i class="ti ti-download" />
+          {{ isImportingSettings ? '処理中...' : 'インポート' }}
+        </button>
+      </div>
+      <div v-if="backupError" :class="$style.backupError">{{ backupError }}</div>
 
       </div>
       <div :class="$style.menuFooter">
@@ -676,25 +740,12 @@ async function exportDb() {
   text-overflow: ellipsis;
 }
 
+.themeInstallBtn {
+  margin-left: auto;
+}
+
 /* -- Install theme -- */
 
-.installBtn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 4px;
-  margin-top: 8px;
-  cursor: pointer;
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  opacity: 0.7;
-  border-radius: 4px;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover {
-    opacity: 1;
-  }
-}
 
 .installArea {
   margin-top: 8px;
@@ -806,6 +857,51 @@ async function exportDb() {
   height: 1px;
   background: var(--nd-divider);
   margin: 4px 12px;
+}
+
+.dataRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 16px;
+}
+
+.dataRowLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  min-width: 48px;
+  flex-shrink: 0;
+}
+
+.backupError {
+  padding: 2px 16px;
+  font-size: 0.75em;
+  color: var(--nd-error, #ec4137);
+}
+
+.dataBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
+  font-size: 0.75em;
+  color: var(--nd-fg);
+  transition: background var(--nd-duration-base);
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .settingsMenuLabel {

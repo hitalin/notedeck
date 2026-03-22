@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkSkeleton from '@/components/common/MkSkeleton.vue'
@@ -9,6 +8,7 @@ import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
+import { invoke } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 interface Announcement {

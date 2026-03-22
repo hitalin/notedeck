@@ -1,7 +1,7 @@
-import { invoke } from '@tauri-apps/api/core'
 import { nextTick, type Ref, ref } from 'vue'
 import type { NormalizedUser, ServerEmoji } from '@/adapters/types'
 import { useEmojisStore } from '@/stores/emojis'
+import { invoke } from '@/utils/tauriInvoke'
 
 /** MFM function names supported by the renderer */
 const mfmFunctionNames = [

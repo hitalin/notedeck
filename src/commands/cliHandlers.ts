@@ -1,6 +1,6 @@
-import { invoke } from '@tauri-apps/api/core'
 import type { useAccountsStore } from '@/stores/accounts'
 import type { useDeckStore } from '@/stores/deck'
+import { invoke } from '@/utils/tauriInvoke'
 
 export interface CliHandlerDeps {
   deckStore: ReturnType<typeof useDeckStore>

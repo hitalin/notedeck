@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@/utils/tauriInvoke'
 import type { AuthAdapter, AuthSession } from '../types'
 
 export class MisskeyAuth implements AuthAdapter {

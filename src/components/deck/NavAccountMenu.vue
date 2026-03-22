@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
 import { type Account, isGuestAccount } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -28,6 +29,13 @@ const emit = defineEmits<{
 }>()
 
 const { navigateToUser } = useNavigation()
+
+const hasUpperSection = computed(
+  () =>
+    (props.account.hasToken && Object.keys(props.modes).length > 0) ||
+    !isGuestAccount(props.account) ||
+    props.isAdmin,
+)
 
 function modeLabel(key: string): string {
   const match = key.match(/^isIn(.+)Mode$/)
@@ -65,31 +73,30 @@ function modeLabel(key: string): string {
         </div>
       </template>
       <div v-if="modeError" :class="$style.navAccountMenuError">{{ modeError }}</div>
-      <div :class="$style.navAccountMenuDivider" />
-
-      <!-- Profile (always available via public API) -->
-      <button v-if="!isGuestAccount(account)" class="_button" :class="$style.navAccountMenuItem" @click="navigateToUser(account.id, account.userId)">
-        <span>プロフィール</span>
-        <i class="ti ti-user" />
-      </button>
-
-      <!-- External links (auth required — greyed out for guests, login prompt for logged-out) -->
-      <div :class="$style.navAccountMenuDivider" />
-      <button class="_button" :class="[$style.navAccountMenuItem, { [$style.disabled]: isGuestAccount(account) }]" :disabled="isGuestAccount(account)" @click="account.hasToken ? openUrl(`https://${account.host}/settings`) : showLoginPrompt()">
-        <span>設定</span>
-        <i class="ti ti-external-link" />
-      </button>
-      <button class="_button" :class="[$style.navAccountMenuItem, { [$style.disabled]: isGuestAccount(account) }]" :disabled="isGuestAccount(account)" @click="account.hasToken ? openUrl(`https://${account.host}/games`) : showLoginPrompt()">
-        <span>Misskey Games</span>
-        <i class="ti ti-external-link" />
-      </button>
+      <!-- Profile & external links (hidden for guests) -->
+      <template v-if="!isGuestAccount(account)">
+        <div v-if="account.hasToken && Object.keys(modes).length > 0" :class="$style.navAccountMenuDivider" />
+        <button class="_button" :class="$style.navAccountMenuItem" @click="navigateToUser(account.id, account.userId)">
+          <span>プロフィール</span>
+          <i class="ti ti-user" />
+        </button>
+        <div :class="$style.navAccountMenuDivider" />
+        <button class="_button" :class="$style.navAccountMenuItem" @click="account.hasToken ? openUrl(`https://${account.host}/settings`) : showLoginPrompt()">
+          <span>設定</span>
+          <i class="ti ti-external-link" />
+        </button>
+        <button class="_button" :class="$style.navAccountMenuItem" @click="account.hasToken ? openUrl(`https://${account.host}/games`) : showLoginPrompt()">
+          <span>Misskey Games</span>
+          <i class="ti ti-external-link" />
+        </button>
+      </template>
       <button v-if="isAdmin" class="_button" :class="$style.navAccountMenuItem" @click="openUrl(`https://${account.host}/admin`)">
         <span>コントロールパネル</span>
         <i class="ti ti-external-link" />
       </button>
 
       <!-- Account actions -->
-      <div :class="$style.navAccountMenuDivider" />
+      <div v-if="hasUpperSection" :class="$style.navAccountMenuDivider" />
       <template v-if="account.hasToken">
         <button class="_button" :class="[$style.navAccountMenuItem, $style.navAccountLogout]" @click="emit('logout')">
           <span>ログアウト</span>
@@ -202,10 +209,6 @@ function modeLabel(key: string): string {
   }
 }
 
-.disabled {
-  opacity: 0.4;
-  pointer-events: none;
-}
 </style>
 
 <style lang="scss">

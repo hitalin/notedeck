@@ -1,6 +1,7 @@
 import { utils, values } from '@syuilo/aiscript'
 import type { Value } from '@syuilo/aiscript/interpreter/value.js'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { useConfirm } from '@/stores/confirm'
 
 // Misskey 本家の nyaize 実装 (misskey-js/src/nyaize.ts)
 const enRegex1 = /(?<=n)a/gi
@@ -85,7 +86,8 @@ export function createAiScriptEnv(
       if (options.onDialog) {
         await options.onDialog(title, text, type)
       } else {
-        window.alert(`${title}\n${text}`)
+        const { confirm } = useConfirm()
+        await confirm({ title, message: text, okLabel: 'OK', hideCancel: true })
       }
       return values.NULL
     },
@@ -99,7 +101,8 @@ export function createAiScriptEnv(
       const result = await options.onConfirm(title, text)
       return values.BOOL(result)
     }
-    const result = window.confirm(`${title}\n${text}`)
+    const { confirm } = useConfirm()
+    const result = await confirm({ title, message: text })
     return values.BOOL(result)
   })
 

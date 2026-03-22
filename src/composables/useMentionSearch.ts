@@ -1,6 +1,6 @@
-import { invoke } from '@tauri-apps/api/core'
 import { type Ref, ref } from 'vue'
 import type { NormalizedUser } from '@/adapters/types'
+import { invoke } from '@/utils/tauriInvoke'
 
 export function useMentionSearch(activeAccountId: Ref<string>) {
   const showMentionPopup = ref(false)

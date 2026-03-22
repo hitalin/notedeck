@@ -589,7 +589,7 @@ function exportToClipboard() {
 
 .columnCard {
   flex: 0 0 auto;
-  width: 56px;
+  width: 44px;
   display: flex;
   flex-direction: column;
   background: var(--nd-panel);
@@ -641,7 +641,7 @@ function exportToClipboard() {
 }
 
 .columnCellIcon {
-  font-size: 14px;
+  font-size: 20px;
   color: var(--nd-panelHeaderFg);
   opacity: 0.7;
 }

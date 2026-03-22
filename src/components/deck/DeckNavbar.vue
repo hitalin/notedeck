@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { computed, onUnmounted, ref, useCssModule, watch } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
 import { useUnreadChat } from '@/composables/useUnreadChat'
@@ -19,6 +18,7 @@ import {
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
+import { invoke } from '@/utils/tauriInvoke'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
 import LogoutDialog from './LogoutDialog.vue'

@@ -1,6 +1,6 @@
-import { invoke } from '@tauri-apps/api/core'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
+import { invoke } from '@/utils/tauriInvoke'
 
 export interface CustomTimelineInfo {
   type: string
