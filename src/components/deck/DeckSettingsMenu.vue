@@ -736,8 +736,8 @@ const importSettings = () =>
 }
 
 .themeGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
