@@ -38,6 +38,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const showAbout = ref(false)
 // Theme install UI
 const showInstallInput = ref(false)
+const themeGridOpen = ref(false)
 const themeCode = ref('')
 const installError = ref('')
 
@@ -243,49 +244,52 @@ const importSettings = () =>
         </div>
       </div>
 
-      <!-- Theme selection grid -->
+      <!-- Theme selection folder -->
       <div :class="$style.themeSelectSection">
-        <div :class="$style.themeSelectHeader">
+        <button :class="$style.themeSelectHeader" @click="themeGridOpen = !themeGridOpen">
           <i :class="isDark ? 'ti ti-moon' : 'ti ti-sun'" />
           <span>{{ isDark ? 'ダークテーマで使うテーマ' : 'ライトテーマで使うテーマ' }}</span>
-        </div>
-        <div :class="$style.themeGrid">
-          <!-- Builtin theme -->
-          <div :class="[$style.themeItem, { [$style.selected]: selectedId == null }]" @click="selectTheme(null)">
-            <ThemePreview :theme="builtinTheme" :class="$style.themeItemPreview" />
-            <div :class="$style.themeItemName">{{ builtinTheme.name }}</div>
-          </div>
-          <!-- Installed themes -->
-          <div
-            v-for="theme in currentModeThemes"
-            :key="theme.id"
-            :class="[$style.themeItem, { [$style.selected]: selectedId === theme.id }]"
-            @click="selectTheme(theme.id)"
-          >
-            <div :class="$style.themeItemPreviewWrap">
-              <ThemePreview :theme="theme" :class="$style.themeItemPreview" />
-              <button class="_button" :class="$style.themeRemoveBtn" @click.stop="removeTheme(theme.id)">
-                <i class="ti ti-x" />
-              </button>
-            </div>
-            <div :class="$style.themeItemName">{{ theme.name }}</div>
-          </div>
-        </div>
-        <button v-if="!showInstallInput" class="_button" :class="[$style.dataBtn, $style.themeInstallBtn]" @click="showInstallInput = true">
-          <i class="ti ti-download" />
-          インストール
+          <i :class="[$style.chevron, { [$style.open]: themeGridOpen }]" class="ti ti-chevron-down" />
         </button>
-        <div v-if="showInstallInput" :class="$style.installArea">
-          <textarea
-            v-model="themeCode"
-            :class="$style.installTextarea"
-            placeholder="MisskeyテーマのJSONコードを貼り付け..."
-            rows="4"
-          />
-          <div v-if="installError" :class="$style.installError">{{ installError }}</div>
-          <div :class="$style.installActions">
-            <button :class="[$style.installActionBtn, $style.cancel]" @click="showInstallInput = false">キャンセル</button>
-            <button :class="[$style.installActionBtn, $style.confirm]" @click="handleInstall">インストール</button>
+        <div v-if="themeGridOpen" :class="$style.themeSelectBody">
+          <div :class="$style.themeGrid">
+            <!-- Builtin theme -->
+            <div :class="[$style.themeItem, { [$style.selected]: selectedId == null }]" @click="selectTheme(null)">
+              <ThemePreview :theme="builtinTheme" :class="$style.themeItemPreview" />
+              <div :class="$style.themeItemName">{{ builtinTheme.name }}</div>
+            </div>
+            <!-- Installed themes -->
+            <div
+              v-for="theme in currentModeThemes"
+              :key="theme.id"
+              :class="[$style.themeItem, { [$style.selected]: selectedId === theme.id }]"
+              @click="selectTheme(theme.id)"
+            >
+              <div :class="$style.themeItemPreviewWrap">
+                <ThemePreview :theme="theme" :class="$style.themeItemPreview" />
+                <button class="_button" :class="$style.themeRemoveBtn" @click.stop="removeTheme(theme.id)">
+                  <i class="ti ti-x" />
+                </button>
+              </div>
+              <div :class="$style.themeItemName">{{ theme.name }}</div>
+            </div>
+          </div>
+          <button v-if="!showInstallInput" class="_button" :class="[$style.dataBtn, $style.themeInstallBtn]" @click="showInstallInput = true">
+            <i class="ti ti-download" />
+            インストール
+          </button>
+          <div v-if="showInstallInput" :class="$style.installArea">
+            <textarea
+              v-model="themeCode"
+              :class="$style.installTextarea"
+              placeholder="MisskeyテーマのJSONコードを貼り付け..."
+              rows="4"
+            />
+            <div v-if="installError" :class="$style.installError">{{ installError }}</div>
+            <div :class="$style.installActions">
+              <button :class="[$style.installActionBtn, $style.cancel]" @click="showInstallInput = false">キャンセル</button>
+              <button :class="[$style.installActionBtn, $style.confirm]" @click="handleInstall">インストール</button>
+            </div>
           </div>
         </div>
       </div>
@@ -697,11 +701,32 @@ const importSettings = () =>
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
   font-size: 0.8em;
   color: var(--nd-fg);
   opacity: 0.7;
-  margin-bottom: 8px;
   padding: 0 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: opacity var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.chevron {
+  margin-left: auto;
+  transition: transform var(--nd-duration-base);
+
+  &.open {
+    transform: rotate(180deg);
+  }
+}
+
+.themeSelectBody {
+  margin-top: 8px;
 }
 
 .themeGrid {
