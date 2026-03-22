@@ -217,7 +217,7 @@ pub async fn export_settings_json(app: tauri::AppHandle) -> Result<bool> {
     let dest = app
         .dialog()
         .file()
-        .set_file_name("notedeck-settings.json")
+        .set_file_name("notedeck.json")
         .add_filter("JSON", &["json"])
         .blocking_save_file();
 
