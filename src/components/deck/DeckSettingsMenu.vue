@@ -292,7 +292,7 @@ const importSettings = () =>
 
       <div v-if="!isMobilePlatform" :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
         <i class="ti ti-keyboard" />
-        <span :class="$style.settingsMenuLabel">キーバインド設定</span>
+        <span :class="$style.settingsMenuLabel">キーバインド</span>
         <span v-if="Object.keys(keybindsStore.overrides).length > 0" :class="$style.activeDot" />
       </div>
 
