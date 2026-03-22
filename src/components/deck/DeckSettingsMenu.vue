@@ -956,9 +956,10 @@ const importSettings = () =>
   padding: 4px 10px;
   border-radius: var(--nd-radius-sm);
   background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--nd-accent);
   font-size: 0.75em;
   color: var(--nd-fg);
-  transition: background var(--nd-duration-base);
+  transition: background var(--nd-duration-base), border-color var(--nd-duration-base);
   white-space: nowrap;
 
   &:hover:not(:disabled) {
