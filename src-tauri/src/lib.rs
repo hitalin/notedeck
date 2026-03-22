@@ -211,7 +211,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize app data directory and run migrations
         let app_dir = app.path().app_data_dir()?;
         std::fs::create_dir_all(&app_dir)?;
-        migrations::run_all(&app_dir)?;
+        migrations::run_fs(&app_dir)?;
 
         // Initialize SQLite database
         let db_path = app_dir.join("notecli.db");
@@ -237,17 +237,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
 
-        // Migrate tokens from SQLite to keychain if any remain unmigrated.
-        // Only runs when SQLite still holds plaintext tokens (pre-keyring-core upgrade).
-        if let Ok(accounts) = db.load_accounts() {
-            if accounts.iter().any(|a| !a.token.is_empty()) {
-                for account in &accounts {
-                    if let Err(e) = commands::get_credentials(&db, &account.id) {
-                        tracing::warn!(account_id = %account.id, %e, "keychain migration failed");
-                    }
-                }
-            }
-        }
+        migrations::run_db(&db);
 
         // Export account list for background workers (non-secret metadata only)
         commands::export_account_list(app.app_handle(), &db);

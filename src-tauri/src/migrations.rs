@@ -6,11 +6,19 @@
 use std::fs;
 use std::path::Path;
 
+use notecli::db::Database;
+
 /// Run all migrations in order. Called once during app setup.
-pub fn run_all(app_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+/// Filesystem migrations run before DB is opened; DB migrations run after.
+pub fn run_fs(app_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     rename_db(app_dir)?;
     move_settings_to_subdir(app_dir)?;
     Ok(())
+}
+
+/// Run DB-dependent migrations. Called after DB and keychain are initialized.
+pub fn run_db(db: &Database) {
+    migrate_tokens_to_keychain(db);
 }
 
 /// v0.5 → v0.6: Rename `notedeck.db` → `notecli.db`.
@@ -21,6 +29,24 @@ fn rename_db(app_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
         fs::rename(&old, &new)?;
     }
     Ok(())
+}
+
+/// v0.6: Migrate plaintext tokens from SQLite to OS keychain.
+/// `get_credentials()` does lazy per-account migration, but this pre-migrates
+/// all accounts at startup so the DB tokens are cleared as early as possible.
+fn migrate_tokens_to_keychain(db: &Database) {
+    let accounts = match db.load_accounts() {
+        Ok(a) => a,
+        Err(_) => return,
+    };
+    if !accounts.iter().any(|a| !a.token.is_empty()) {
+        return;
+    }
+    for account in &accounts {
+        if let Err(e) = crate::commands::get_credentials(db, &account.id) {
+            tracing::warn!(account_id = %account.id, %e, "keychain migration failed");
+        }
+    }
 }
 
 /// v0.7 → v0.8: Move settings files into `notedeck/` subdirectory.
