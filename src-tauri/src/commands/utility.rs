@@ -20,6 +20,18 @@ pub fn open_devtools(window: tauri::WebviewWindow) {
     window.open_devtools();
 }
 
+/// Validate that a file has a valid SQLite header.
+fn validate_sqlite_file(path: &std::path::Path) -> Result<()> {
+    let header = std::fs::read(path)
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to read file: {e}")))?;
+    if header.len() < 16 || &header[..16] != b"SQLite format 3\0" {
+        return Err(NoteDeckError::InvalidInput(
+            "Not a valid SQLite database file".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 /// Export notecli.db to a user-chosen location via save dialog.
 #[tauri::command]
 pub async fn export_db(app: tauri::AppHandle) -> Result<bool> {
@@ -82,14 +94,7 @@ pub async fn import_db(app: tauri::AppHandle) -> Result<bool> {
         .as_path()
         .ok_or_else(|| NoteDeckError::InvalidInput("Invalid source path".to_string()))?;
 
-    // Basic SQLite validation: check magic bytes
-    let header = std::fs::read(src_path)
-        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to read file: {e}")))?;
-    if header.len() < 16 || &header[..16] != b"SQLite format 3\0" {
-        return Err(NoteDeckError::InvalidInput(
-            "Not a valid SQLite database file".to_string(),
-        ));
-    }
+    validate_sqlite_file(src_path)?;
 
     std::fs::copy(src_path, &db_path)
         .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to import database: {e}")))?;
@@ -99,4 +104,44 @@ pub async fn import_db(app: tauri::AppHandle) -> Result<bool> {
     let _ = std::fs::remove_file(app_dir.join("notecli.db-shm"));
 
     Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_sqlite_valid() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("test.db");
+        // Write valid SQLite header + padding
+        let mut data = b"SQLite format 3\0".to_vec();
+        data.resize(100, 0);
+        std::fs::write(&path, &data).unwrap();
+        assert!(validate_sqlite_file(&path).is_ok());
+    }
+
+    #[test]
+    fn validate_sqlite_invalid_header() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("not-a-db.txt");
+        std::fs::write(&path, "this is not a database").unwrap();
+        assert!(validate_sqlite_file(&path).is_err());
+    }
+
+    #[test]
+    fn validate_sqlite_too_small() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("tiny.db");
+        std::fs::write(&path, "small").unwrap();
+        assert!(validate_sqlite_file(&path).is_err());
+    }
+
+    #[test]
+    fn validate_sqlite_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("empty.db");
+        std::fs::write(&path, "").unwrap();
+        assert!(validate_sqlite_file(&path).is_err());
+    }
 }

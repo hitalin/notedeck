@@ -350,3 +350,285 @@ pub async fn import_settings_zip(app: tauri::AppHandle) -> Result<bool> {
 
     Ok(true)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn validate_subdir_allowed() {
+        assert!(validate_subdir("profiles").is_ok());
+        assert!(validate_subdir("themes").is_ok());
+        assert!(validate_subdir("plugins").is_ok());
+    }
+
+    #[test]
+    fn validate_subdir_rejected() {
+        assert!(validate_subdir("").is_err());
+        assert!(validate_subdir("secrets").is_err());
+        assert!(validate_subdir("../etc").is_err());
+    }
+
+    #[test]
+    fn validate_filename_ok() {
+        assert!(validate_filename("test.json5").is_ok());
+        assert!(validate_filename("my-theme.ndtheme.json5").is_ok());
+        assert!(validate_filename("plugin.is").is_ok());
+    }
+
+    #[test]
+    fn validate_filename_path_traversal() {
+        assert!(validate_filename("..").is_err());
+        assert!(validate_filename("../secret").is_err());
+        assert!(validate_filename("foo/bar").is_err());
+        assert!(validate_filename("foo\\bar").is_err());
+    }
+
+    #[test]
+    fn validate_filename_reserved_chars() {
+        assert!(validate_filename("file<name").is_err());
+        assert!(validate_filename("file>name").is_err());
+        assert!(validate_filename("file:name").is_err());
+        assert!(validate_filename("file\"name").is_err());
+        assert!(validate_filename("file|name").is_err());
+        assert!(validate_filename("file?name").is_err());
+        assert!(validate_filename("file*name").is_err());
+    }
+
+    #[test]
+    fn validate_filename_empty() {
+        assert!(validate_filename("").is_err());
+    }
+
+    #[test]
+    fn validate_filename_too_long() {
+        let long = "a".repeat(129);
+        assert!(validate_filename(&long).is_err());
+        let ok = "a".repeat(128);
+        assert!(validate_filename(&ok).is_ok());
+    }
+
+    #[test]
+    fn zip_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path();
+
+        // Create test settings structure
+        let profiles_dir = base.join("profiles");
+        fs::create_dir_all(&profiles_dir).unwrap();
+        fs::write(profiles_dir.join("test.ndprofile.json5"), r#"{ name: "test" }"#).unwrap();
+
+        let themes_dir = base.join("themes");
+        fs::create_dir_all(&themes_dir).unwrap();
+        fs::write(themes_dir.join("dark.ndtheme.json5"), r#"{ name: "dark" }"#).unwrap();
+
+        fs::write(base.join("custom.css"), "body { color: red; }").unwrap();
+        fs::write(base.join("keybinds.json5"), r#"{ "search": [] }"#).unwrap();
+
+        // Export to zip
+        let zip_path = base.join("backup.zip");
+        {
+            let file = fs::File::create(&zip_path).unwrap();
+            let mut zip = zip::ZipWriter::new(file);
+            let options = zip::write::SimpleFileOptions::default();
+
+            for subdir in BACKUP_SUBDIRS {
+                let d = base.join(subdir);
+                if !d.exists() {
+                    continue;
+                }
+                for entry in fs::read_dir(&d).unwrap() {
+                    let entry = entry.unwrap();
+                    if entry.file_type().unwrap().is_file() {
+                        let name = entry.file_name();
+                        let zip_path_str = format!("{subdir}/{}", name.to_string_lossy());
+                        let content = fs::read(entry.path()).unwrap();
+                        zip.start_file(&zip_path_str, options).unwrap();
+                        zip.write_all(&content).unwrap();
+                    }
+                }
+            }
+            for root_file in ALLOWED_ROOT_FILES {
+                let p = base.join(root_file);
+                if p.exists() {
+                    let content = fs::read(&p).unwrap();
+                    zip.start_file(*root_file, options).unwrap();
+                    zip.write_all(&content).unwrap();
+                }
+            }
+            zip.finish().unwrap();
+        }
+
+        // Clear original files
+        fs::remove_dir_all(&profiles_dir).unwrap();
+        fs::remove_dir_all(&themes_dir).unwrap();
+        fs::remove_file(base.join("custom.css")).unwrap();
+        fs::remove_file(base.join("keybinds.json5")).unwrap();
+
+        // Import from zip (same logic as import_settings_zip)
+        {
+            let file = fs::File::open(&zip_path).unwrap();
+            let mut archive = zip::ZipArchive::new(file).unwrap();
+            for i in 0..archive.len() {
+                let mut entry = archive.by_index(i).unwrap();
+                if entry.is_dir() {
+                    continue;
+                }
+                let entry_name = entry.name().to_string();
+                if entry_name.contains("..")
+                    || entry_name.starts_with('/')
+                    || entry_name.starts_with('\\')
+                {
+                    continue;
+                }
+                let allowed = BACKUP_SUBDIRS
+                    .iter()
+                    .any(|d| entry_name.starts_with(&format!("{d}/")))
+                    || ALLOWED_ROOT_FILES.contains(&entry_name.as_str());
+                if !allowed {
+                    continue;
+                }
+                let dest = base.join(&entry_name);
+                if let Some(parent) = dest.parent() {
+                    fs::create_dir_all(parent).unwrap();
+                }
+                let mut content = Vec::new();
+                std::io::Read::read_to_end(&mut entry, &mut content).unwrap();
+                fs::write(&dest, &content).unwrap();
+            }
+        }
+
+        // Verify restored files
+        assert_eq!(
+            fs::read_to_string(profiles_dir.join("test.ndprofile.json5")).unwrap(),
+            r#"{ name: "test" }"#
+        );
+        assert_eq!(
+            fs::read_to_string(themes_dir.join("dark.ndtheme.json5")).unwrap(),
+            r#"{ name: "dark" }"#
+        );
+        assert_eq!(
+            fs::read_to_string(base.join("custom.css")).unwrap(),
+            "body { color: red; }"
+        );
+        assert_eq!(
+            fs::read_to_string(base.join("keybinds.json5")).unwrap(),
+            r#"{ "search": [] }"#
+        );
+    }
+
+    #[test]
+    fn zip_import_rejects_path_traversal() {
+        let dir = tempfile::tempdir().unwrap();
+        let zip_path = dir.path().join("evil.zip");
+
+        {
+            let file = fs::File::create(&zip_path).unwrap();
+            let mut zip = zip::ZipWriter::new(file);
+            let options = zip::write::SimpleFileOptions::default();
+            zip.start_file("../../../etc/passwd", options).unwrap();
+            zip.write_all(b"evil").unwrap();
+            zip.start_file("profiles/good.json5", options).unwrap();
+            zip.write_all(b"ok").unwrap();
+            zip.finish().unwrap();
+        }
+
+        let base = dir.path().join("app");
+        fs::create_dir_all(&base).unwrap();
+        {
+            let file = fs::File::open(&zip_path).unwrap();
+            let mut archive = zip::ZipArchive::new(file).unwrap();
+            for i in 0..archive.len() {
+                let mut entry = archive.by_index(i).unwrap();
+                if entry.is_dir() {
+                    continue;
+                }
+                let entry_name = entry.name().to_string();
+                if entry_name.contains("..")
+                    || entry_name.starts_with('/')
+                    || entry_name.starts_with('\\')
+                {
+                    continue;
+                }
+                let allowed = BACKUP_SUBDIRS
+                    .iter()
+                    .any(|d| entry_name.starts_with(&format!("{d}/")))
+                    || ALLOWED_ROOT_FILES.contains(&entry_name.as_str());
+                if !allowed {
+                    continue;
+                }
+                let dest = base.join(&entry_name);
+                if let Some(parent) = dest.parent() {
+                    fs::create_dir_all(parent).unwrap();
+                }
+                let mut content = Vec::new();
+                std::io::Read::read_to_end(&mut entry, &mut content).unwrap();
+                fs::write(&dest, &content).unwrap();
+            }
+        }
+
+        assert!(!dir.path().join("etc/passwd").exists());
+        assert_eq!(
+            fs::read_to_string(base.join("profiles/good.json5")).unwrap(),
+            "ok"
+        );
+    }
+
+    #[test]
+    fn zip_import_rejects_unknown_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let zip_path = dir.path().join("mixed.zip");
+
+        {
+            let file = fs::File::create(&zip_path).unwrap();
+            let mut zip = zip::ZipWriter::new(file);
+            let options = zip::write::SimpleFileOptions::default();
+            zip.start_file("custom.css", options).unwrap();
+            zip.write_all(b"body{}").unwrap();
+            zip.start_file("secret.txt", options).unwrap();
+            zip.write_all(b"secret").unwrap();
+            zip.start_file("config/bad.json", options).unwrap();
+            zip.write_all(b"bad").unwrap();
+            zip.finish().unwrap();
+        }
+
+        let base = dir.path().join("app");
+        fs::create_dir_all(&base).unwrap();
+        {
+            let file = fs::File::open(&zip_path).unwrap();
+            let mut archive = zip::ZipArchive::new(file).unwrap();
+            for i in 0..archive.len() {
+                let mut entry = archive.by_index(i).unwrap();
+                if entry.is_dir() {
+                    continue;
+                }
+                let entry_name = entry.name().to_string();
+                if entry_name.contains("..")
+                    || entry_name.starts_with('/')
+                    || entry_name.starts_with('\\')
+                {
+                    continue;
+                }
+                let allowed = BACKUP_SUBDIRS
+                    .iter()
+                    .any(|d| entry_name.starts_with(&format!("{d}/")))
+                    || ALLOWED_ROOT_FILES.contains(&entry_name.as_str());
+                if !allowed {
+                    continue;
+                }
+                let dest = base.join(&entry_name);
+                if let Some(parent) = dest.parent() {
+                    fs::create_dir_all(parent).unwrap();
+                }
+                let mut content = Vec::new();
+                std::io::Read::read_to_end(&mut entry, &mut content).unwrap();
+                fs::write(&dest, &content).unwrap();
+            }
+        }
+
+        assert!(base.join("custom.css").exists());
+        assert!(!base.join("secret.txt").exists());
+        assert!(!base.join("config/bad.json").exists());
+    }
+}
