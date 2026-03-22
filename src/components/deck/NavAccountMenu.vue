@@ -73,16 +73,18 @@ function modeLabel(key: string): string {
         <i class="ti ti-user" />
       </button>
 
-      <!-- External links (auth required — greyed out for guests, login prompt for logged-out) -->
-      <div :class="$style.navAccountMenuDivider" />
-      <button class="_button" :class="[$style.navAccountMenuItem, { [$style.disabled]: isGuestAccount(account) }]" :disabled="isGuestAccount(account)" @click="account.hasToken ? openUrl(`https://${account.host}/settings`) : showLoginPrompt()">
-        <span>設定</span>
-        <i class="ti ti-external-link" />
-      </button>
-      <button class="_button" :class="[$style.navAccountMenuItem, { [$style.disabled]: isGuestAccount(account) }]" :disabled="isGuestAccount(account)" @click="account.hasToken ? openUrl(`https://${account.host}/games`) : showLoginPrompt()">
-        <span>Misskey Games</span>
-        <i class="ti ti-external-link" />
-      </button>
+      <!-- External links (auth required — hidden for guests, login prompt for logged-out) -->
+      <template v-if="!isGuestAccount(account)">
+        <div :class="$style.navAccountMenuDivider" />
+        <button class="_button" :class="$style.navAccountMenuItem" @click="account.hasToken ? openUrl(`https://${account.host}/settings`) : showLoginPrompt()">
+          <span>設定</span>
+          <i class="ti ti-external-link" />
+        </button>
+        <button class="_button" :class="$style.navAccountMenuItem" @click="account.hasToken ? openUrl(`https://${account.host}/games`) : showLoginPrompt()">
+          <span>Misskey Games</span>
+          <i class="ti ti-external-link" />
+        </button>
+      </template>
       <button v-if="isAdmin" class="_button" :class="$style.navAccountMenuItem" @click="openUrl(`https://${account.host}/admin`)">
         <span>コントロールパネル</span>
         <i class="ti ti-external-link" />
@@ -202,10 +204,6 @@ function modeLabel(key: string): string {
   }
 }
 
-.disabled {
-  opacity: 0.4;
-  pointer-events: none;
-}
 </style>
 
 <style lang="scss">
