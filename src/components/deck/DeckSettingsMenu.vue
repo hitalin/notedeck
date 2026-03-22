@@ -848,7 +848,7 @@ const importSettings = () =>
 .dataRowLabel {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   font-size: 0.8em;
   color: var(--nd-fg);
   min-width: 48px;
