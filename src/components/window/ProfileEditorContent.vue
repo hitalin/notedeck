@@ -296,7 +296,7 @@ function syncVisualFromCode() {
       profileStore.renameProfile(profileStore.windowProfileId, parsed.name)
     }
     if (Array.isArray(parsed.columns)) deckStore.columns = parsed.columns
-    if (Array.isArray(parsed.layout)) deckStore.applyLayout(parsed.layout)
+    if (Array.isArray(parsed.layout)) deckStore.applyWindowLayout(parsed.layout)
     deckStore.flushSave()
     codeError.value = null
   } catch (e) {
