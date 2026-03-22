@@ -43,7 +43,7 @@ static ICON_LINK_RE: LazyLock<Regex> = LazyLock::new(|| {
 
 // --- Helpers to collect meta values ---
 
-fn collect_meta_property<'a>(html: &'a str) -> Vec<(&'a str, &'a str)> {
+fn collect_meta_property(html: &str) -> Vec<(&str, &str)> {
     META_PROPERTY
         .captures_iter(html)
         .map(|c| {
@@ -59,7 +59,7 @@ fn collect_meta_property<'a>(html: &'a str) -> Vec<(&'a str, &'a str)> {
         .collect()
 }
 
-fn collect_meta_name<'a>(html: &'a str) -> Vec<(&'a str, &'a str)> {
+fn collect_meta_name(html: &str) -> Vec<(&str, &str)> {
     META_NAME
         .captures_iter(html)
         .map(|c| {
@@ -75,7 +75,7 @@ fn collect_meta_name<'a>(html: &'a str) -> Vec<(&'a str, &'a str)> {
         .collect()
 }
 
-fn find_property<'a>(props: &[(&str, &'a str)], key: &str) -> Option<String> {
+fn find_property(props: &[(&str, &str)], key: &str) -> Option<String> {
     props
         .iter()
         .find(|(k, _)| k.eq_ignore_ascii_case(key))
@@ -83,7 +83,7 @@ fn find_property<'a>(props: &[(&str, &'a str)], key: &str) -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
-fn find_all_property<'a>(props: &[(&str, &'a str)], key: &str) -> Vec<String> {
+fn find_all_property(props: &[(&str, &str)], key: &str) -> Vec<String> {
     props
         .iter()
         .filter(|(k, _)| k.eq_ignore_ascii_case(key))
@@ -92,7 +92,7 @@ fn find_all_property<'a>(props: &[(&str, &'a str)], key: &str) -> Vec<String> {
         .collect()
 }
 
-fn find_name<'a>(names: &[(&str, &'a str)], key: &str) -> Option<String> {
+fn find_name(names: &[(&str, &str)], key: &str) -> Option<String> {
     names
         .iter()
         .find(|(k, _)| k.eq_ignore_ascii_case(key))
