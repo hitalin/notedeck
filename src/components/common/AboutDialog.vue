@@ -49,7 +49,7 @@ async function copyInfo() {
   <Teleport to="body">
     <Transition name="nd-popup">
       <div v-if="show" class="_dialogBackdrop" @click="emit('close')">
-        <div class="_dialog nd-popup-content" @click.stop>
+        <div class="_dialog nd-popup-content" :class="$style.aboutDialog" @click.stop>
           <div :class="$style.aboutHeader">
             <img src="/favicon.svg" :class="$style.aboutLogo" alt="NoteDeck" />
             <div :class="$style.aboutTitle">NoteDeck</div>
@@ -99,12 +99,16 @@ async function copyInfo() {
 </template>
 
 <style lang="scss" module>
+.aboutDialog {
+  width: 250px;
+}
+
 .aboutHeader {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 24px 24px 12px;
+  padding: 20px 16px 8px;
 }
 
 .aboutLogo {
@@ -122,7 +126,7 @@ async function copyInfo() {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 8px 24px;
+  padding: 8px 16px;
   font-size: 0.85em;
   font-family: monospace;
 }
