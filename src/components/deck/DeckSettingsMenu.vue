@@ -321,21 +321,27 @@ async function importSettings() {
       <!-- Data -->
       <div :class="$style.settingsMenuDivider" />
 
-      <div :class="$style.settingsMenuItem" @click="exportDb">
-        <i class="ti ti-database-export" />
-        <span :class="$style.settingsMenuLabel">{{ isExporting ? 'エクスポート中...' : 'DBエクスポート' }}</span>
+      <div :class="$style.dataRow">
+        <span :class="$style.dataRowLabel"><i class="ti ti-database" /> DB</span>
+        <button class="_button" :class="$style.dataBtn" :disabled="isExporting" @click="exportDb">
+          <i class="ti ti-upload" />
+          {{ isExporting ? '処理中...' : 'エクスポート' }}
+        </button>
+        <button class="_button" :class="$style.dataBtn" :disabled="isImportingDb" @click="importDb">
+          <i class="ti ti-download" />
+          {{ isImportingDb ? '処理中...' : 'インポート' }}
+        </button>
       </div>
-      <div :class="$style.settingsMenuItem" @click="importDb">
-        <i class="ti ti-database-import" />
-        <span :class="$style.settingsMenuLabel">{{ isImportingDb ? 'インポート中...' : 'DBインポート' }}</span>
-      </div>
-      <div :class="$style.settingsMenuItem" @click="exportSettings">
-        <i class="ti ti-file-export" />
-        <span :class="$style.settingsMenuLabel">{{ isExportingSettings ? 'エクスポート中...' : '設定エクスポート' }}</span>
-      </div>
-      <div :class="$style.settingsMenuItem" @click="importSettings">
-        <i class="ti ti-file-import" />
-        <span :class="$style.settingsMenuLabel">{{ isImportingSettings ? 'インポート中...' : '設定インポート' }}</span>
+      <div :class="$style.dataRow">
+        <span :class="$style.dataRowLabel"><i class="ti ti-settings" /> 設定</span>
+        <button class="_button" :class="$style.dataBtn" :disabled="isExportingSettings" @click="exportSettings">
+          <i class="ti ti-upload" />
+          {{ isExportingSettings ? '処理中...' : 'エクスポート' }}
+        </button>
+        <button class="_button" :class="$style.dataBtn" :disabled="isImportingSettings" @click="importSettings">
+          <i class="ti ti-download" />
+          {{ isImportingSettings ? '処理中...' : 'インポート' }}
+        </button>
       </div>
 
       </div>
@@ -860,6 +866,46 @@ async function importSettings() {
   height: 1px;
   background: var(--nd-divider);
   margin: 4px 12px;
+}
+
+.dataRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 16px;
+}
+
+.dataRowLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  opacity: 0.7;
+  min-width: 48px;
+  flex-shrink: 0;
+}
+
+.dataBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
+  font-size: 0.75em;
+  color: var(--nd-fg);
+  transition: background var(--nd-duration-base);
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .settingsMenuLabel {
