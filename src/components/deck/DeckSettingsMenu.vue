@@ -143,6 +143,8 @@ function openToolWindow(type: 'cssEditor' | 'keybinds' | 'themeEditor') {
 }
 
 const isExporting = ref(false)
+const isExportingSettings = ref(false)
+const isImportingSettings = ref(false)
 
 async function exportDb() {
   isExporting.value = true
@@ -152,6 +154,31 @@ async function exportDb() {
     /* user cancelled or error */
   } finally {
     isExporting.value = false
+  }
+}
+
+async function exportSettings() {
+  isExportingSettings.value = true
+  try {
+    await invoke('export_settings_zip')
+  } catch {
+    /* user cancelled or error */
+  } finally {
+    isExportingSettings.value = false
+  }
+}
+
+async function importSettings() {
+  isImportingSettings.value = true
+  try {
+    const imported = await invoke<boolean>('import_settings_zip')
+    if (imported) {
+      window.location.reload()
+    }
+  } catch {
+    /* user cancelled or error */
+  } finally {
+    isImportingSettings.value = false
   }
 }
 </script>
@@ -282,6 +309,14 @@ async function exportDb() {
       <div :class="$style.settingsMenuItem" @click="exportDb">
         <i class="ti ti-database-export" />
         <span :class="$style.settingsMenuLabel">{{ isExporting ? 'エクスポート中...' : 'DBバックアップ' }}</span>
+      </div>
+      <div :class="$style.settingsMenuItem" @click="exportSettings">
+        <i class="ti ti-file-export" />
+        <span :class="$style.settingsMenuLabel">{{ isExportingSettings ? 'エクスポート中...' : '設定エクスポート' }}</span>
+      </div>
+      <div :class="$style.settingsMenuItem" @click="importSettings">
+        <i class="ti ti-file-import" />
+        <span :class="$style.settingsMenuLabel">{{ isImportingSettings ? 'インポート中...' : '設定インポート' }}</span>
       </div>
 
       </div>
