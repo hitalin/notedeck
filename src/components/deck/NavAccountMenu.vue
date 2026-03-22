@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
 import { type Account, isGuestAccount } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -28,6 +29,13 @@ const emit = defineEmits<{
 }>()
 
 const { navigateToUser } = useNavigation()
+
+const hasUpperSection = computed(
+  () =>
+    (props.account.hasToken && Object.keys(props.modes).length > 0) ||
+    !isGuestAccount(props.account) ||
+    props.isAdmin,
+)
 
 function modeLabel(key: string): string {
   const match = key.match(/^isIn(.+)Mode$/)
@@ -88,7 +96,7 @@ function modeLabel(key: string): string {
       </button>
 
       <!-- Account actions -->
-      <div :class="$style.navAccountMenuDivider" />
+      <div v-if="hasUpperSection" :class="$style.navAccountMenuDivider" />
       <template v-if="account.hasToken">
         <button class="_button" :class="[$style.navAccountMenuItem, $style.navAccountLogout]" @click="emit('logout')">
           <span>ログアウト</span>
