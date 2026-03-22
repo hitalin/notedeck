@@ -42,6 +42,10 @@ export function provideScrollDirection() {
 export function useScrollDirection() {
   const ctx = inject(SCROLL_DIR_KEY, null)
   return {
-    reportScroll: ctx?.reportScroll ?? (() => {}),
+    reportScroll:
+      ctx?.reportScroll ??
+      (() => {
+        /* noop */
+      }),
   }
 }

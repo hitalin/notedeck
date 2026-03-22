@@ -228,7 +228,9 @@ describe('MisskeyStream', () => {
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-123')
-      const sub = stream.subscribeTimeline('home', () => {})
+      const sub = stream.subscribeTimeline('home', () => {
+        /* noop */
+      })
       await vi.waitFor(() => {
         expect(invoke).toHaveBeenCalledWith(
           'stream_connect_and_subscribe_timeline',
@@ -328,7 +330,9 @@ describe('MisskeyStream', () => {
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-456')
-      const sub = stream.subscribeMain(() => {})
+      const sub = stream.subscribeMain(() => {
+        /* noop */
+      })
       await vi.waitFor(() => {
         expect(invoke).toHaveBeenCalledWith(
           'stream_subscribe_main',
@@ -408,7 +412,9 @@ describe('MisskeyStream', () => {
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-ant-1')
-      const sub = stream.subscribeAntenna('antenna-1', () => {})
+      const sub = stream.subscribeAntenna('antenna-1', () => {
+        /* noop */
+      })
       await vi.waitFor(() => {
         expect(invoke).toHaveBeenCalledWith(
           'stream_connect_and_subscribe_antenna',
@@ -464,7 +470,9 @@ describe('MisskeyStream', () => {
       })
 
       vi.mocked(invoke).mockResolvedValue('sub-chat-1')
-      const sub = stream.subscribeChatUser('other-user-1', () => {})
+      const sub = stream.subscribeChatUser('other-user-1', () => {
+        /* noop */
+      })
       await vi.waitFor(() => {
         expect(invoke).toHaveBeenCalledWith(
           'stream_subscribe_chat_user',

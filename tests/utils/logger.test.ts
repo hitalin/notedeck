@@ -9,14 +9,18 @@ import {
 
 describe('logger', () => {
   it('logWarn outputs to console.warn in dev', () => {
-    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {
+      /* noop */
+    })
     logWarn('test-context', new Error('boom'))
     expect(spy).toHaveBeenCalledWith('[test-context]', 'UNKNOWN', 'boom')
     spy.mockRestore()
   })
 
   it('logError outputs to console.error in dev', () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {
+      /* noop */
+    })
     logError('test-context', 'string error')
     expect(spy).toHaveBeenCalledWith(
       '[test-context]',
@@ -27,7 +31,9 @@ describe('logger', () => {
   })
 
   it('logIgnored outputs to console.debug in dev', () => {
-    const spy = vi.spyOn(console, 'debug').mockImplementation(() => {})
+    const spy = vi.spyOn(console, 'debug').mockImplementation(() => {
+      /* noop */
+    })
     logIgnored('test-context', { code: 'NETWORK', message: 'offline' })
     expect(spy).toHaveBeenCalledWith(
       '[test-context] ignored:',
@@ -38,7 +44,9 @@ describe('logger', () => {
   })
 
   it('catchLog returns a function that calls logWarn', () => {
-    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {
+      /* noop */
+    })
     const handler = catchLog('my-op')
     handler(new Error('fail'))
     expect(spy).toHaveBeenCalledWith('[my-op]', 'UNKNOWN', 'fail')
@@ -46,7 +54,9 @@ describe('logger', () => {
   })
 
   it('catchIgnore returns a function that calls logIgnored', () => {
-    const spy = vi.spyOn(console, 'debug').mockImplementation(() => {})
+    const spy = vi.spyOn(console, 'debug').mockImplementation(() => {
+      /* noop */
+    })
     const handler = catchIgnore('my-op')
     handler('ignored error')
     expect(spy).toHaveBeenCalledWith(

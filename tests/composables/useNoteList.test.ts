@@ -22,7 +22,9 @@ function createNoteList(maxNotes?: number) {
     getMyUserId: () => 'u1',
     getAdapter: () => null,
     deleteHandler: async () => true,
-    closePostForm: () => {},
+    closePostForm: () => {
+      /* noop */
+    },
     maxNotes,
   })
 }
@@ -83,7 +85,9 @@ describe('useNoteList', () => {
       getMyUserId: () => 'u1',
       getAdapter: () => null,
       deleteHandler: async () => true,
-      closePostForm: () => {},
+      closePostForm: () => {
+        /* noop */
+      },
       onNotesChanged: callback,
       maxNotes: 5,
     })

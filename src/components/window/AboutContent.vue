@@ -22,7 +22,7 @@ function parseOS(ua: string): string {
   const win = ua.match(/Windows NT ([\d.]+)/)
   if (win) return `Windows NT ${win[1]}`
   const mac = ua.match(/Mac OS X ([\d_]+)/)
-  if (mac) return `macOS ${mac[1].replace(/_/g, '.')}`
+  if (mac?.[1]) return `macOS ${mac[1].replace(/_/g, '.')}`
   return navigator.platform || 'N/A'
 }
 
