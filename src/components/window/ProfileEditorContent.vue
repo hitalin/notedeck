@@ -589,7 +589,7 @@ function exportToClipboard() {
 
 .columnCard {
   flex: 0 0 auto;
-  width: 56px;
+  width: 44px;
   display: flex;
   flex-direction: column;
   background: var(--nd-panel);
@@ -679,15 +679,15 @@ function exportToClipboard() {
 }
 
 .columnAvatar {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   object-fit: cover;
 }
 
 .columnServerIcon {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-radius: 4px;
   object-fit: contain;
   opacity: 0.5;
