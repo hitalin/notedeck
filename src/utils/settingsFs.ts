@@ -171,3 +171,43 @@ export async function readKeybinds(): Promise<string> {
 export async function writeKeybinds(content: string): Promise<void> {
   return writeRootSettingsFile('keybinds.json5', content)
 }
+
+// --- Plugin helpers ---
+
+const PLUGINS_DIR = 'plugins'
+const PLUGIN_SRC_EXT = '.is'
+const PLUGIN_META_EXT = '.meta.json5'
+
+export function pluginSrcFilename(name: string): string {
+  return sanitizeFilename(name) + PLUGIN_SRC_EXT
+}
+
+export function pluginMetaFilename(name: string): string {
+  return sanitizeFilename(name) + PLUGIN_META_EXT
+}
+
+export async function listPluginFiles(): Promise<string[]> {
+  return listSettingsFiles(PLUGINS_DIR)
+}
+
+export async function readPluginFile(filename: string): Promise<string> {
+  return readSettingsFile(PLUGINS_DIR, filename)
+}
+
+export async function writePluginFile(
+  filename: string,
+  content: string,
+): Promise<void> {
+  return writeSettingsFile(PLUGINS_DIR, filename, content)
+}
+
+export async function deletePluginFile(filename: string): Promise<void> {
+  return deleteSettingsFile(PLUGINS_DIR, filename)
+}
+
+export async function renamePluginFile(
+  oldFilename: string,
+  newFilename: string,
+): Promise<void> {
+  return renameSettingsFile(PLUGINS_DIR, oldFilename, newFilename)
+}
