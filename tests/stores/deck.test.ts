@@ -15,6 +15,8 @@ describe('deck store', () => {
     vi.useFakeTimers()
     setActivePinia(createPinia())
     storage.clear()
+    // Initialize profile store (creates default profile)
+    useDeckStore().load()
   })
 
   afterEach(() => {
@@ -276,16 +278,19 @@ describe('deck store', () => {
 
     it('deleteProfile removes a profile', () => {
       const deck = useDeckStore()
+      const initialCount = deck.getProfiles().length
       const profile = deck.saveAsProfile('Temp')
+      expect(deck.getProfiles()).toHaveLength(initialCount + 1)
       deck.deleteProfile(profile.id)
-      expect(deck.getProfiles()).toHaveLength(0)
+      expect(deck.getProfiles()).toHaveLength(initialCount)
     })
 
     it('renameProfile updates profile name', () => {
       const deck = useDeckStore()
       const profile = deck.saveAsProfile('Old Name')
       deck.renameProfile(profile.id, 'New Name')
-      expect(deck.getProfiles()[0]?.name).toBe('New Name')
+      const renamed = deck.getProfiles().find((p) => p.name === 'New Name')
+      expect(renamed).toBeDefined()
     })
 
     it('applyProfile does not mutate the other profile', () => {
@@ -424,14 +429,17 @@ describe('deck store', () => {
       expect(savedP1?.columns).toHaveLength(2)
     })
 
-    it('deleteProfile clears activeProfileId when deleting active profile', () => {
+    it('deleteProfile falls back to first profile when deleting active profile', () => {
       const deck = useDeckStore()
+      const defaultProfiles = deck.getProfiles()
+      const firstId = defaultProfiles[0]?.id
       const profile = deck.saveAsProfile('Temp')
       expect(deck.activeProfileId).toBe(profile.id)
 
       deck.deleteProfile(profile.id)
 
-      expect(deck.activeProfileId).toBeNull()
+      // Falls back to the default profile
+      expect(deck.activeProfileId).toBe(firstId)
     })
   })
 
