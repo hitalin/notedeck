@@ -243,8 +243,9 @@ export const useThemeStore = defineStore('theme', () => {
       } else {
         installedThemes.value = [...installedThemes.value, theme]
       }
-      persistInstalledThemes()
-      // Optimized: write only the changed theme
+      // Sync: localStorage cache
+      setStorageJson(STORAGE_KEYS.themeInstalledThemes, installedThemes.value)
+      // Async: write only the changed theme to file
       if (initialized.value) {
         persistSingleTheme(theme).catch((e) =>
           console.warn('[theme] failed to persist theme:', e),
@@ -301,11 +302,9 @@ export const useThemeStore = defineStore('theme', () => {
 
   /** Write all installed themes to individual files. */
   async function persistThemesToFiles(): Promise<void> {
-    for (const theme of installedThemes.value) {
-      const filename = settingsFs.themeFilename(theme.name || theme.id)
-      const content = JSON5.stringify(theme, null, 2)
-      await settingsFs.writeTheme(filename, content)
-    }
+    await Promise.all(
+      installedThemes.value.map((theme) => persistSingleTheme(theme)),
+    )
   }
 
   /** Write a single theme to file. */
@@ -413,23 +412,26 @@ export const useThemeStore = defineStore('theme', () => {
     // Load installed themes from files
     const filenames = await settingsFs.listThemes()
     if (filenames.length > 0) {
-      const themes: MisskeyTheme[] = []
-      for (const filename of filenames) {
-        try {
-          const content = await settingsFs.readTheme(filename)
-          const parsed = JSON5.parse(content)
-          if (parsed?.props) {
-            themes.push({
-              id: parsed.id || `custom-${filename}`,
-              name: parsed.name || filename,
-              base: parsed.base === 'light' ? 'light' : 'dark',
-              props: parsed.props,
-            })
+      const results = await Promise.all(
+        filenames.map(async (filename) => {
+          try {
+            const content = await settingsFs.readTheme(filename)
+            const parsed = JSON5.parse(content)
+            if (parsed?.props) {
+              return {
+                id: parsed.id || `custom-${filename}`,
+                name: parsed.name || filename,
+                base: parsed.base === 'light' ? 'light' : 'dark',
+                props: parsed.props,
+              } as MisskeyTheme
+            }
+          } catch (e) {
+            console.warn(`[theme] failed to parse ${filename}:`, e)
           }
-        } catch (e) {
-          console.warn(`[theme] failed to parse ${filename}:`, e)
-        }
-      }
+          return null
+        }),
+      )
+      const themes = results.filter((t): t is MisskeyTheme => t !== null)
       if (themes.length > 0) {
         installedThemes.value = themes
         setStorageJson(STORAGE_KEYS.themeInstalledThemes, themes)

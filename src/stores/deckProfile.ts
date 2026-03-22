@@ -100,9 +100,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   async function persistProfilesToFiles(
     profiles: DeckProfile[],
   ): Promise<void> {
-    for (const profile of profiles) {
-      await persistSingleProfile(profile)
-    }
+    await Promise.all(profiles.map((p) => persistSingleProfile(p)))
   }
 
   function saveActiveProfileId(id: string | null) {
@@ -373,17 +371,19 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     const filenames = await settingsFs.listProfiles()
     if (filenames.length === 0) return []
 
-    const profiles: DeckProfile[] = []
-    for (const filename of filenames) {
-      try {
-        const content = await settingsFs.readProfile(filename)
-        const data = JSON5.parse(content)
-        profiles.push(fromFileFormat(filename, data))
-      } catch (e) {
-        console.warn(`[deckProfile] failed to parse ${filename}:`, e)
-      }
-    }
-    return profiles
+    const results = await Promise.all(
+      filenames.map(async (filename) => {
+        try {
+          const content = await settingsFs.readProfile(filename)
+          const data = JSON5.parse(content)
+          return fromFileFormat(filename, data)
+        } catch (e) {
+          console.warn(`[deckProfile] failed to parse ${filename}:`, e)
+          return null
+        }
+      }),
+    )
+    return results.filter((p): p is DeckProfile => p !== null)
   }
 
   /** Ensure profiles exist on first load. Discards legacy format profiles. */

@@ -76,10 +76,11 @@ export const usePluginsStore = defineStore('plugins', () => {
     return plugins.value.filter((p) => p.active)
   })
 
-  function persist() {
+  function persist(plugin?: PluginMeta) {
     savePluginsToStorage(plugins.value)
     if (initialized.value) {
-      persistAllToFiles().catch((e) =>
+      const task = plugin ? persistSinglePlugin(plugin) : persistAllToFiles()
+      task.catch((e) =>
         console.warn('[plugins] failed to persist to files:', e),
       )
     }
@@ -90,8 +91,6 @@ export const usePluginsStore = defineStore('plugins', () => {
     const baseName = plugin.name || plugin.installId
     const srcFilename = settingsFs.pluginSrcFilename(baseName)
     const metaFilename = settingsFs.pluginMetaFilename(baseName)
-
-    await settingsFs.writePluginFile(srcFilename, plugin.src)
 
     const meta: PluginFileMeta = {
       installId: plugin.installId,
@@ -106,24 +105,24 @@ export const usePluginsStore = defineStore('plugins', () => {
       configData: plugin.configData,
       active: plugin.active,
     }
-    await settingsFs.writePluginFile(
-      metaFilename,
-      JSON5.stringify(meta, null, 2),
-    )
+    await Promise.all([
+      settingsFs.writePluginFile(srcFilename, plugin.src),
+      settingsFs.writePluginFile(metaFilename, JSON5.stringify(meta, null, 2)),
+    ])
   }
 
   /** Write all plugins to files. */
   async function persistAllToFiles(): Promise<void> {
-    for (const plugin of plugins.value) {
-      await persistSinglePlugin(plugin)
-    }
+    await Promise.all(plugins.value.map((p) => persistSinglePlugin(p)))
   }
 
   /** Delete a plugin's files. */
   async function deletePluginFiles(plugin: PluginMeta): Promise<void> {
     const baseName = plugin.name || plugin.installId
-    await settingsFs.deletePluginFile(settingsFs.pluginSrcFilename(baseName))
-    await settingsFs.deletePluginFile(settingsFs.pluginMetaFilename(baseName))
+    await Promise.all([
+      settingsFs.deletePluginFile(settingsFs.pluginSrcFilename(baseName)),
+      settingsFs.deletePluginFile(settingsFs.pluginMetaFilename(baseName)),
+    ])
   }
 
   /** Load plugins from files. Files are source of truth. */
@@ -132,35 +131,36 @@ export const usePluginsStore = defineStore('plugins', () => {
     const metaFiles = allFiles.filter((f) => f.endsWith('.meta.json5'))
 
     if (metaFiles.length > 0) {
-      const filePlugins: PluginMeta[] = []
-      for (const metaFile of metaFiles) {
-        try {
-          const metaContent = await settingsFs.readPluginFile(metaFile)
-          const meta = JSON5.parse(metaContent) as PluginFileMeta
-
-          // Derive .is filename from .meta.json5 filename
-          const srcFile = metaFile.replace(/\.meta\.json5$/, '.is')
-          let src = ''
-          if (allFiles.includes(srcFile)) {
-            src = await settingsFs.readPluginFile(srcFile)
+      const results = await Promise.all(
+        metaFiles.map(async (metaFile) => {
+          try {
+            const srcFile = metaFile.replace(/\.meta\.json5$/, '.is')
+            const [metaContent, src] = await Promise.all([
+              settingsFs.readPluginFile(metaFile),
+              allFiles.includes(srcFile)
+                ? settingsFs.readPluginFile(srcFile)
+                : Promise.resolve(''),
+            ])
+            const meta = JSON5.parse(metaContent) as PluginFileMeta
+            return {
+              installId: meta.installId || metaFile,
+              name: meta.name || metaFile,
+              version: meta.version || '0.0.0',
+              author: meta.author,
+              description: meta.description,
+              permissions: meta.permissions,
+              config: meta.config,
+              configData: meta.configData || {},
+              src,
+              active: meta.active ?? false,
+            } as PluginMeta
+          } catch (e) {
+            console.warn(`[plugins] failed to parse ${metaFile}:`, e)
+            return null
           }
-
-          filePlugins.push({
-            installId: meta.installId || metaFile,
-            name: meta.name || metaFile,
-            version: meta.version || '0.0.0',
-            author: meta.author,
-            description: meta.description,
-            permissions: meta.permissions,
-            config: meta.config,
-            configData: meta.configData || {},
-            src,
-            active: meta.active ?? false,
-          })
-        } catch (e) {
-          console.warn(`[plugins] failed to parse ${metaFile}:`, e)
-        }
-      }
+        }),
+      )
+      const filePlugins = results.filter((p): p is PluginMeta => p !== null)
 
       if (filePlugins.length > 0) {
         plugins.value = filePlugins
@@ -204,7 +204,7 @@ export const usePluginsStore = defineStore('plugins', () => {
     const plugin = plugins.value.find((p) => p.installId === installId)
     if (plugin) {
       plugin.active = active
-      persist()
+      persist(plugin)
     }
   }
 
@@ -213,7 +213,7 @@ export const usePluginsStore = defineStore('plugins', () => {
     const plugin = plugins.value.find((p) => p.installId === installId)
     if (plugin) {
       plugin.configData = data
-      persist()
+      persist(plugin)
     }
   }
 
@@ -222,7 +222,7 @@ export const usePluginsStore = defineStore('plugins', () => {
     const plugin = plugins.value.find((p) => p.installId === installId)
     if (plugin) {
       plugin.src = src
-      persist()
+      persist(plugin)
     }
   }
 
