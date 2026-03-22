@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { ServerSoftware } from '@/adapters/types'
+import { removeStorage } from '@/utils/storage'
 
 export interface Account {
   id: string
@@ -99,8 +100,8 @@ export const useAccountsStore = defineStore('accounts', () => {
       activeAccountId.value = accounts.value[0]?.id ?? null
     }
     // Clean up localStorage caches associated with this account
-    localStorage.removeItem(`nd-drafts-${id}`)
-    localStorage.removeItem(`nd-cache-notifications-${id}`)
+    removeStorage(`nd-drafts-${id}`)
+    removeStorage(`nd-cache-notifications-${id}`)
   }
 
   async function logoutAccount(id: string): Promise<void> {

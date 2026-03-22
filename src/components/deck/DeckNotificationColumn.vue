@@ -38,6 +38,7 @@ import { useTabIndicator } from '@/composables/useTabIndicator'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
+import { getStorageJson, setStorageJson } from '@/utils/storage'
 import { char2twemojiUrl } from '@/utils/twemoji'
 import DeckColumn from './DeckColumn.vue'
 
@@ -240,11 +241,11 @@ watch(
     if (prev && hasToken === false) {
       disconnect()
       try {
-        const raw = localStorage.getItem(getCacheKey())
-        if (raw) {
-          const cached = JSON.parse(raw) as NormalizedNotification[]
-          if (cached.length > 0) notifications.value = cached
-        }
+        const cached = getStorageJson<NormalizedNotification[]>(
+          getCacheKey(),
+          [],
+        )
+        if (cached.length > 0) notifications.value = cached
       } catch {
         /* non-critical */
       }
@@ -258,15 +259,8 @@ async function connect(useCache = false) {
   isLoading.value = true
 
   if (useCache && props.column.accountId) {
-    try {
-      const raw = localStorage.getItem(getCacheKey())
-      if (raw) {
-        const cached = JSON.parse(raw) as NormalizedNotification[]
-        if (cached.length > 0) notifications.value = cached
-      }
-    } catch {
-      /* non-critical */
-    }
+    const cached = getStorageJson<NormalizedNotification[]>(getCacheKey(), [])
+    if (cached.length > 0) notifications.value = cached
   }
 
   // Logged-out: show cached notifications in read-only mode
@@ -282,11 +276,7 @@ async function connect(useCache = false) {
     const fetched = await adapter.api.getNotifications()
     notifications.value = fetched
 
-    try {
-      localStorage.setItem(getCacheKey(), JSON.stringify(fetched))
-    } catch {
-      /* storage full */
-    }
+    setStorageJson(getCacheKey(), fetched)
 
     adapter.stream.connect()
     noteSound.warmup()
@@ -306,19 +296,10 @@ async function connect(useCache = false) {
   } catch (e) {
     if (notifications.value.length === 0) {
       // Try loading from localStorage cache before showing error
-      try {
-        const raw = localStorage.getItem(getCacheKey())
-        if (raw) {
-          const cached = JSON.parse(raw) as NormalizedNotification[]
-          if (cached.length > 0) {
-            notifications.value = cached
-          } else {
-            error.value = AppError.from(e)
-          }
-        } else {
-          error.value = AppError.from(e)
-        }
-      } catch {
+      const cached = getStorageJson<NormalizedNotification[]>(getCacheKey(), [])
+      if (cached.length > 0) {
+        notifications.value = cached
+      } else {
         error.value = AppError.from(e)
       }
     }
