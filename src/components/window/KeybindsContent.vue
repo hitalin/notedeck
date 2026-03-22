@@ -5,7 +5,6 @@ import { computed, ref, watch } from 'vue'
 import type { Shortcut } from '@/commands/registry'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useSwipeTab } from '@/composables/useSwipeTab'
-import { useTabSlide } from '@/composables/useTabSlide'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
@@ -40,8 +39,6 @@ const tab = ref<'visual' | 'code'>('visual')
 const contentRef = ref<HTMLElement | null>(null)
 
 const TABS = ['visual', 'code'] as const
-const keybindTabIndex = computed(() => TABS.indexOf(tab.value))
-useTabSlide(keybindTabIndex, contentRef)
 useSwipeTab(
   contentRef,
   () => {

@@ -30,7 +30,6 @@ const MkPostForm = defineAsyncComponent(
 
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useSwipeTab } from '@/composables/useSwipeTab'
-import { useTabSlide } from '@/composables/useTabSlide'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
@@ -121,10 +120,6 @@ if (props.column.pageId) {
 } else {
   fetchList()
 }
-
-// Tab slide animation
-const pageTabIndex = computed(() => tabs.indexOf(activeTab.value))
-useTabSlide(pageTabIndex, listContentRef)
 
 // Swipe / wheel to switch tabs (list mode only)
 useSwipeTab(
