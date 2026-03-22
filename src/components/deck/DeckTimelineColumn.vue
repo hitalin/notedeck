@@ -10,6 +10,7 @@ import { useAds } from '@/composables/useAds'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabIndicator } from '@/composables/useTabIndicator'
+import { useTabSlide } from '@/composables/useTabSlide'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -156,6 +157,13 @@ const allTlTypes = computed(() => {
   }
   return standard
 })
+
+// Tab slide animation
+const tlTabIndex = computed(() => {
+  const types = allTlTypes.value
+  return types.findIndex((t) => t.value === tlType.value)
+})
+useTabSlide(tlTabIndex, swipeTarget)
 
 function getTlIcon(type: string): string {
   if (TL_ICONS[type]) return TL_ICONS[type]

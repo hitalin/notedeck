@@ -66,6 +66,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     initAdapter,
     getAdapter,
     setSubscription,
+    disposeSubscription,
     disconnect,
     postForm,
     handlers,
@@ -554,29 +555,116 @@ export function useNoteColumn(config: NoteColumnConfig) {
     }
   }
 
-  /** Disconnect, reset, and reconnect with fresh config state */
-  async function reconnect(useCache = false) {
-    disconnect()
-    // Suppress offline banner during intentional reconnect
-    isOffline.value = false
-    streamingBatch?.resetBatch()
-    setNotes([])
-    await connect(useCache)
+  /**
+   * Re-subscribe to streaming channel without destroying the adapter/stream.
+   * Reuses the existing WebSocket connection — only the channel subscription changes.
+   */
+  function resubscribe(adapter: ServerAdapter) {
+    if (!config.streaming || !streamingBatch) return
+    disposeSubscription()
+    streamingBatch.resetBatch()
+    setSubscription(
+      config.streaming.subscribe(adapter, streamingBatch.enqueueNote, {
+        onNoteUpdated: (event) => {
+          if (event.type === 'deleted')
+            streamingBatch.removePending(event.noteId)
+          onNoteUpdate(event)
+        },
+      }),
+    )
   }
 
-  /** Switch with pre-loaded snapshot to avoid skeleton/offline flash */
+  /** Disconnect, reset, and reconnect with fresh config state */
+  async function reconnect(useCache = false) {
+    const adapter = getAdapter()
+    if (adapter && config.streaming && streamingBatch) {
+      // Stream-preserving path: reuse adapter/WebSocket, swap subscription only
+      resubscribe(adapter)
+      setNotes([])
+      isLoading.value = true
+      try {
+        // Load cache if requested
+        if (useCache && config.cache) {
+          const column = config.getColumn()
+          const cacheKey = config.cache.getKey()
+          if (column.accountId && cacheKey) {
+            try {
+              const cached = await invoke<NormalizedNote[]>(
+                'api_get_cached_timeline',
+                {
+                  accountId: column.accountId,
+                  timelineType: cacheKey,
+                  limit: 40,
+                },
+              )
+              const filtered = applyFilter(cached)
+              if (filtered.length > 0) setNotes(filtered)
+            } catch (e) {
+              logWarn('reconnect-cache', e)
+            }
+          }
+        }
+        // Fetch latest from API
+        const dedupKey = `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
+        const fetched = await dedup(dedupKey, () => config.fetch(adapter, {}))
+        if (fetched.length > 0) {
+          if (!mergeIfSameList(fetched)) setNotes(fetched)
+        }
+        isOffline.value = false
+      } catch (e) {
+        if (notes.value.length > 0) {
+          isOffline.value = true
+        } else {
+          error.value = AppError.from(e)
+        }
+      } finally {
+        isLoading.value = false
+      }
+    } else {
+      // Full reconnect: no adapter yet (initial connection, logged-out, etc.)
+      disconnect()
+      streamingBatch?.resetBatch()
+      setNotes([])
+      await connect(useCache)
+    }
+  }
+
+  /** Switch tab with pre-loaded snapshot — swaps subscription without touching stream */
   async function switchWithSnapshot(
     snapshotNotes: NormalizedNote[],
     scrollTop: number,
   ) {
-    disconnect()
-    // Suppress offline banner — snapshot provides content during reconnect
-    isOffline.value = false
-    streamingBatch?.resetBatch()
+    const adapter = getAdapter()
+    if (!adapter || !config.streaming || !streamingBatch) {
+      // Fallback to full reconnect if no adapter
+      await reconnect()
+      return
+    }
+
+    // Swap subscription (stream/WebSocket stays connected)
+    resubscribe(adapter)
     setNotes(snapshotNotes)
     await nextTick()
     if (scroller.value) scroller.value.scrollTop = scrollTop
-    await connect(true)
+
+    // Fetch diff from API to update snapshot with latest data
+    const sinceId = snapshotNotes[0]?.id
+    try {
+      const dedupKey = `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
+      const fetched = await dedup(dedupKey, () =>
+        config.fetch(adapter, sinceId ? { sinceId } : {}),
+      )
+      if (fetched.length > 0) {
+        const newNotes = fetched.filter((n) => !noteIds.has(n.id))
+        if (newNotes.length > 0) {
+          setNotes(insertIntoSorted(notes.value, newNotes))
+        }
+      }
+      isOffline.value = false
+    } catch {
+      // API failure with snapshot displayed — mark offline
+      isOffline.value = true
+    }
   }
 
   onMounted(() => {
