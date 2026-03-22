@@ -1,4 +1,4 @@
-import { listen } from '@tauri-apps/api/event'
+import { emit, listen } from '@tauri-apps/api/event'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
@@ -376,6 +376,15 @@ export const useDeckStore = defineStore('deck', () => {
         columns: columns.value,
         layout: layout.value,
       })
+      // Notify other windows viewing the same profile
+      if (profileStore.windowProfileId) {
+        emit('deck:profile-updated', {
+          profileId: profileStore.windowProfileId,
+          sourceWindowId: currentWindowId.value ?? '__main__',
+        }).catch(() => {
+          // Not running in Tauri (browser dev mode)
+        })
+      }
     } catch (e) {
       console.warn('[deck] failed to save:', e)
     }
@@ -564,8 +573,18 @@ export const useDeckStore = defineStore('deck', () => {
 
   async function startSync() {
     unlistenSync?.()
-    unlistenSync = await listen('deck:sync', () => {
-      // Noop — each window manages its own profile now.
+    unlistenSync = await listen<{
+      profileId: string
+      sourceWindowId: string
+    }>('deck:profile-updated', (event) => {
+      const { profileId, sourceWindowId } = event.payload
+      const myWindowId = currentWindowId.value ?? '__main__'
+      // Ignore events from this window; only reload if same profile
+      if (sourceWindowId === myWindowId) return
+      if (profileId !== profileStore.windowProfileId) return
+      const data = profileStore.initWindowProfile(profileId)
+      columns.value = data.columns
+      layout.value = data.layout
     })
   }
 
