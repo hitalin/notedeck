@@ -15,6 +15,7 @@ mod commands;
 mod hwheel_hook;
 mod http_server;
 mod image_cache;
+mod migrations;
 mod ogp;
 mod query_bridge;
 mod rate_limit;
@@ -207,15 +208,13 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("Warning: keychain unavailable ({e})");
         }
 
-        // Initialize SQLite database
+        // Initialize app data directory and run migrations
         let app_dir = app.path().app_data_dir()?;
         std::fs::create_dir_all(&app_dir)?;
+        migrations::run_all(&app_dir)?;
+
+        // Initialize SQLite database
         let db_path = app_dir.join("notecli.db");
-        // Migrate legacy filename (notedeck.db → notecli.db)
-        let legacy_db = app_dir.join("notedeck.db");
-        if legacy_db.exists() && !db_path.exists() {
-            std::fs::rename(&legacy_db, &db_path)?;
-        }
         let db = std::sync::Arc::new(notecli::db::Database::open(&db_path)?);
         app.manage(db.clone());
 

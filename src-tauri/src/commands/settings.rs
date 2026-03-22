@@ -6,6 +6,9 @@ use tauri::Manager;
 
 use super::Result;
 
+/// Settings subdirectory name under app_data_dir.
+const SETTINGS_DIR: &str = "notedeck";
+
 /// Allowed subdirectory names for settings files.
 const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins"];
 
@@ -46,26 +49,27 @@ fn validate_filename(name: &str) -> Result<()> {
     Ok(())
 }
 
-/// Resolve the full path for a settings file.
-fn resolve_path(app: &tauri::AppHandle, subdir: &str, name: &str) -> Result<PathBuf> {
-    validate_subdir(subdir)?;
-    validate_filename(name)?;
+/// Resolve the settings base directory: `app_data_dir/notedeck/`.
+fn settings_base_dir(app: &tauri::AppHandle) -> Result<PathBuf> {
     let app_dir = app
         .path()
         .app_data_dir()
         .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-    Ok(app_dir.join(subdir).join(name))
+    Ok(app_dir.join(SETTINGS_DIR))
+}
+
+/// Resolve the full path for a settings file.
+fn resolve_path(app: &tauri::AppHandle, subdir: &str, name: &str) -> Result<PathBuf> {
+    validate_subdir(subdir)?;
+    validate_filename(name)?;
+    Ok(settings_base_dir(app)?.join(subdir).join(name))
 }
 
 /// List files in a settings subdirectory.
 #[tauri::command]
 pub fn list_settings_files(app: tauri::AppHandle, subdir: &str) -> Result<Vec<String>> {
     validate_subdir(subdir)?;
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-    let dir = app_dir.join(subdir);
+    let dir = settings_base_dir(&app)?.join(subdir);
     if !dir.exists() {
         return Ok(vec![]);
     }
@@ -154,7 +158,7 @@ pub fn rename_settings_file(
 /// Allowed root-level filenames (no subdirectory).
 const ALLOWED_ROOT_FILES: &[&str] = &["custom.css", "keybinds.json5"];
 
-/// Resolve the full path for a root-level settings file (no subdirectory).
+/// Resolve the full path for a root-level settings file (under notedeck/).
 fn resolve_root_path(app: &tauri::AppHandle, name: &str) -> Result<PathBuf> {
     if !ALLOWED_ROOT_FILES.contains(&name) {
         return Err(NoteDeckError::InvalidInput(format!(
@@ -163,11 +167,7 @@ fn resolve_root_path(app: &tauri::AppHandle, name: &str) -> Result<PathBuf> {
         )));
     }
     validate_filename(name)?;
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-    Ok(app_dir.join(name))
+    Ok(settings_base_dir(app)?.join(name))
 }
 
 /// Read a root-level settings file as a UTF-8 string.
@@ -190,14 +190,10 @@ pub fn write_root_settings_file(app: tauri::AppHandle, name: &str, content: &str
     })
 }
 
-/// Get the app data directory path (so users can open it in file manager).
+/// Get the settings directory path (so users can open it in file manager).
 #[tauri::command]
 pub fn get_settings_dir(app: tauri::AppHandle) -> Result<String> {
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-    Ok(app_dir.to_string_lossy().to_string())
+    Ok(settings_base_dir(&app)?.to_string_lossy().to_string())
 }
 
 /// Directories and root files to include in settings backup.
@@ -209,10 +205,7 @@ pub async fn export_settings_json(app: tauri::AppHandle) -> Result<bool> {
     use std::collections::BTreeMap;
     use tauri_plugin_dialog::DialogExt;
 
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+    let base_dir = settings_base_dir(&app)?;
 
     let dest = app
         .dialog()
@@ -233,7 +226,7 @@ pub async fn export_settings_json(app: tauri::AppHandle) -> Result<bool> {
 
     // Add subdirectory files (profiles/, themes/, plugins/)
     for subdir in BACKUP_SUBDIRS {
-        let dir = app_dir.join(subdir);
+        let dir = base_dir.join(subdir);
         if !dir.exists() {
             continue;
         }
@@ -255,7 +248,7 @@ pub async fn export_settings_json(app: tauri::AppHandle) -> Result<bool> {
 
     // Add root-level settings files
     for root_file in ALLOWED_ROOT_FILES {
-        let path = app_dir.join(root_file);
+        let path = base_dir.join(root_file);
         if path.exists() {
             let content = fs::read_to_string(&path)
                 .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
@@ -277,10 +270,7 @@ pub async fn import_settings_json(app: tauri::AppHandle) -> Result<bool> {
     use std::collections::BTreeMap;
     use tauri_plugin_dialog::DialogExt;
 
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+    let base_dir = settings_base_dir(&app)?;
 
     let src = app
         .dialog()
@@ -318,7 +308,7 @@ pub async fn import_settings_json(app: tauri::AppHandle) -> Result<bool> {
             continue;
         }
 
-        let dest_path = app_dir.join(key);
+        let dest_path = base_dir.join(key);
 
         // Ensure parent directory exists
         if let Some(parent) = dest_path.parent() {
