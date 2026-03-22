@@ -2,7 +2,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { relaunch } from '@tauri-apps/plugin-process'
 import type { CSSProperties } from 'vue'
-import { computed, ref, watch } from 'vue'
+import { computed, type Ref, ref, watch } from 'vue'
 import AboutDialog from '@/components/common/AboutDialog.vue'
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
@@ -147,56 +147,41 @@ const isExporting = ref(false)
 const isImportingDb = ref(false)
 const isExportingSettings = ref(false)
 const isImportingSettings = ref(false)
+const backupError = ref('')
 
-async function exportDb() {
-  isExporting.value = true
+async function backupAction(
+  loading: Ref<boolean>,
+  command: string,
+  opts?: { confirm?: string; relaunch?: boolean },
+) {
+  if (opts?.confirm && !window.confirm(opts.confirm)) return
+  loading.value = true
+  backupError.value = ''
   try {
-    await invoke('export_db')
-  } catch {
-    /* user cancelled or error */
-  } finally {
-    isExporting.value = false
-  }
-}
-
-async function importDb() {
-  isImportingDb.value = true
-  try {
-    const imported = await invoke<boolean>('import_db')
-    if (imported) {
+    const result = await invoke<boolean>(command)
+    if (result && opts?.relaunch) {
       await relaunch()
     }
-  } catch {
-    /* user cancelled or error */
+  } catch (e) {
+    backupError.value = e instanceof Error ? e.message : String(e)
   } finally {
-    isImportingDb.value = false
+    loading.value = false
   }
 }
 
-async function exportSettings() {
-  isExportingSettings.value = true
-  try {
-    await invoke('export_settings_zip')
-  } catch {
-    /* user cancelled or error */
-  } finally {
-    isExportingSettings.value = false
-  }
-}
-
-async function importSettings() {
-  isImportingSettings.value = true
-  try {
-    const imported = await invoke<boolean>('import_settings_zip')
-    if (imported) {
-      await relaunch()
-    }
-  } catch {
-    /* user cancelled or error */
-  } finally {
-    isImportingSettings.value = false
-  }
-}
+const exportDb = () => backupAction(isExporting, 'export_db')
+const importDb = () =>
+  backupAction(isImportingDb, 'import_db', {
+    confirm: '現在のDBが上書きされます。よろしいですか？',
+    relaunch: true,
+  })
+const exportSettings = () =>
+  backupAction(isExportingSettings, 'export_settings_zip')
+const importSettings = () =>
+  backupAction(isImportingSettings, 'import_settings_zip', {
+    confirm: '現在の設定が上書きされます。よろしいですか？',
+    relaunch: true,
+  })
 </script>
 
 <template>
@@ -344,6 +329,7 @@ async function importSettings() {
           {{ isImportingSettings ? '処理中...' : 'インポート' }}
         </button>
       </div>
+      <div v-if="backupError" :class="$style.backupError">{{ backupError }}</div>
 
       </div>
       <div :class="$style.menuFooter">
@@ -867,6 +853,12 @@ async function importSettings() {
   color: var(--nd-fg);
   min-width: 48px;
   flex-shrink: 0;
+}
+
+.backupError {
+  padding: 2px 16px;
+  font-size: 0.75em;
+  color: var(--nd-error, #ec4137);
 }
 
 .dataBtn {
