@@ -296,7 +296,7 @@ function syncVisualFromCode() {
       profileStore.renameProfile(profileStore.windowProfileId, parsed.name)
     }
     if (Array.isArray(parsed.columns)) deckStore.columns = parsed.columns
-    if (Array.isArray(parsed.layout)) deckStore.windowLayout = parsed.layout
+    if (Array.isArray(parsed.layout)) deckStore.applyLayout(parsed.layout)
     deckStore.flushSave()
     codeError.value = null
   } catch (e) {
@@ -398,12 +398,12 @@ function exportToClipboard() {
               <div :class="$style.columnCellBody">
                 <img
                   v-if="columnAvatarUrl(deckStore.getColumn(colId)!)"
-                  :src="columnAvatarUrl(deckStore.getColumn(colId)!)"
+                  :src="columnAvatarUrl(deckStore.getColumn(colId)!) ?? undefined"
                   :class="$style.columnAvatar"
                 />
                 <img
                   v-if="columnServerIconUrl(deckStore.getColumn(colId)!)"
-                  :src="columnServerIconUrl(deckStore.getColumn(colId)!)!"
+                  :src="columnServerIconUrl(deckStore.getColumn(colId)!) ?? undefined"
                   :class="$style.columnServerIcon"
                 />
               </div>

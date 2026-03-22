@@ -30,7 +30,7 @@ const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 
 const config = computed(() => ({
   content: spec.value,
-  forceDarkModeState: isDark.value ? 'dark' : 'light',
+  forceDarkModeState: (isDark.value ? 'dark' : 'light') as 'dark' | 'light',
   hideDarkModeToggle: true,
   documentDownloadType: 'none' as const,
 }))

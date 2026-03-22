@@ -61,8 +61,8 @@ function selectColumnType(type: ColumnType) {
   const accounts = accountsStore.accounts.filter(
     (a) => !(authRequired && isGuestAccount(a)),
   )
-  if (accounts.length === 1) {
-    const account = accounts[0]
+  const account = accounts[0]
+  if (accounts.length === 1 && account) {
     if (!account.hasToken && authRequired) {
       showLoginPrompt()
     } else {
