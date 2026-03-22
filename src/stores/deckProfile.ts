@@ -142,15 +142,9 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
       }
       // Notify other windows
       if (windowProfileId.value) {
-        import('@tauri-apps/api/event')
-          .then(({ emit }) =>
-            emit('deck:profile-updated', {
-              profileId: windowProfileId.value,
-            }),
-          )
-          .catch(() => {
-            // Not running in Tauri (browser dev mode)
-          })
+        emitSync('deck:profile-updated', {
+          profileId: windowProfileId.value,
+        })
       }
     } catch (e) {
       console.warn('[deckProfile] failed to persist:', e)
@@ -159,29 +153,48 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
 
   // --- Cross-window sync ---
 
-  let unlistenSync: (() => void) | null = null
+  function emitSync(event: string, payload?: Record<string, unknown>) {
+    import('@tauri-apps/api/event')
+      .then(({ emit }) => emit(event, payload))
+      .catch(() => {
+        // Not running in Tauri (browser dev mode)
+      })
+  }
+
+  function reloadFromStorage() {
+    profilesData.value = getStorageJson<DeckProfile[]>(
+      STORAGE_KEYS.deckProfiles,
+      [],
+    )
+    profileVersion.value++
+    refreshProfileName()
+  }
+
+  const unlistenFns: (() => void)[] = []
 
   async function startSync() {
-    unlistenSync?.()
+    stopSync()
     const { listen } = await import('@tauri-apps/api/event')
-    unlistenSync = await listen<{ profileId: string }>(
-      'deck:profile-updated',
-      (event) => {
-        const { profileId } = event.payload
-        if (profileId !== windowProfileId.value) return
-        // Reload from localStorage to pick up changes from the other window
-        profilesData.value = getStorageJson<DeckProfile[]>(
-          STORAGE_KEYS.deckProfiles,
-          [],
-        )
-        profileVersion.value++
-      },
+
+    // Profile content changed (columns/layout)
+    unlistenFns.push(
+      await listen<{ profileId: string }>('deck:profile-updated', (event) => {
+        if (event.payload.profileId !== windowProfileId.value) return
+        reloadFromStorage()
+      }),
+    )
+
+    // Profile list changed (add/delete/rename)
+    unlistenFns.push(
+      await listen('deck:profiles-changed', () => {
+        reloadFromStorage()
+      }),
     )
   }
 
   function stopSync() {
-    unlistenSync?.()
-    unlistenSync = null
+    for (const fn of unlistenFns) fn()
+    unlistenFns.length = 0
   }
 
   // --- Internal helpers ---
@@ -195,7 +208,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     return getStorageJson<DeckProfile[]>(STORAGE_KEYS.deckProfiles, [])
   }
 
-  /** Persist profiles: write profilesData to localStorage + files. */
+  /** Persist profiles: write profilesData to localStorage + files + notify other windows. */
   function saveProfiles(profiles: DeckProfile[]) {
     profilesData.value = profiles
     setStorageJson(STORAGE_KEYS.deckProfiles, profiles)
@@ -205,6 +218,8 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
         console.warn('[deckProfile] failed to persist to files:', e),
       )
     }
+    // Notify all windows that the profile list changed
+    emitSync('deck:profiles-changed')
   }
 
   /** Write only the given profile to its file. */
