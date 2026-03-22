@@ -740,8 +740,8 @@ const importSettings = () =>
 
 .themeRemoveBtn {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: 2px;
+  right: 2px;
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -752,6 +752,12 @@ const importSettings = () =>
   align-items: center;
   justify-content: center;
   z-index: 1;
+  opacity: 0;
+  transition: opacity var(--nd-duration-fast);
+
+  .themeItem:hover & {
+    opacity: 1;
+  }
 
   &:hover {
     filter: brightness(0.85);
