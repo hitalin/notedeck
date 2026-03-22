@@ -10,13 +10,13 @@ export function useTabSlide(
   tabIndex: Ref<number>,
   contentRef: Ref<HTMLElement | null>,
 ) {
-  let prev = tabIndex.value
+  let prev: number | undefined
 
   watch(
     tabIndex,
     (cur) => {
       const el = contentRef.value
-      if (!el || cur === prev) {
+      if (!el || prev === undefined || cur === prev) {
         prev = cur
         return
       }
