@@ -262,7 +262,7 @@ const importSettings = () =>
       <!-- Appearance -->
       <div :class="$style.settingsMenuItem" @click="openToolWindow('themeEditor')">
         <i class="ti ti-palette" />
-        <span :class="$style.settingsMenuLabel">テーマエディタ</span>
+        <span :class="$style.settingsMenuLabel">テーマ</span>
         <span v-if="selectedId != null" :class="$style.activeDot" />
       </div>
       <div :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
