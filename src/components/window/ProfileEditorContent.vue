@@ -641,7 +641,7 @@ function exportToClipboard() {
 }
 
 .columnCellIcon {
-  font-size: 14px;
+  font-size: 20px;
   color: var(--nd-panelHeaderFg);
   opacity: 0.7;
 }
