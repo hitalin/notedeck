@@ -2,7 +2,15 @@
 import { json } from '@codemirror/lang-json'
 import { type Diagnostic, linter } from '@codemirror/lint'
 import JSON5 from 'json5'
-import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  useCssModule,
+  watch,
+} from 'vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useThemeStore } from '@/stores/theme'
@@ -161,17 +169,32 @@ function syncVisualFromCode() {
     }
     themeName.value = parsed.name || 'Untitled'
     baseMode.value = parsed.base === 'light' ? 'light' : 'dark'
-    overrides.value = { ...parsed.props }
+    // Filter out props that match the base theme defaults
+    const base = parsed.base === 'light' ? LIGHT_BASE : DARK_BASE
+    const filtered: Record<string, string> = {}
+    for (const [key, value] of Object.entries(parsed.props)) {
+      if (base.props[key] !== value) {
+        filtered[key] = value as string
+      }
+    }
+    overrides.value = filtered
     codeError.value = null
   } catch (e) {
     codeError.value = e instanceof Error ? e.message : 'JSONパースエラー'
   }
 }
 
+// Suppress preview during tab-switch syncs
+let suppressPreview = false
+
 // Sync between tabs when switching
 watch(tab, (newTab) => {
+  suppressPreview = true
   if (newTab === 'code') syncCodeFromVisual()
   if (newTab === 'visual' && codeContent.value.trim()) syncVisualFromCode()
+  nextTick(() => {
+    suppressPreview = false
+  })
 })
 
 // Convert resolved color to hex for input[type=color]
@@ -243,6 +266,7 @@ let previewTimer: ReturnType<typeof setTimeout> | null = null
 watch(
   [overrides, baseMode],
   () => {
+    if (suppressPreview) return
     if (previewTimer) clearTimeout(previewTimer)
     previewTimer = setTimeout(applyPreview, 50)
   },
