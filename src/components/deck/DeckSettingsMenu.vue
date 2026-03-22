@@ -666,6 +666,8 @@ const importSettings = () =>
 
 .themeSelectSection {
   padding: 8px 12px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .themeSelectHeader {
@@ -713,6 +715,7 @@ const importSettings = () =>
   border: 2px solid var(--nd-divider);
   border-radius: var(--nd-radius-sm);
   overflow: hidden;
+  min-width: 0;
   transition: border-color var(--nd-duration-base);
 
   &:hover {
