@@ -269,9 +269,10 @@ export const useThemeStore = defineStore('theme', () => {
       selectedLightThemeId.value = null
       removeStorage(STORAGE_KEYS.themeSelectedLight)
     }
-    persistInstalledThemes()
+    // Sync: update localStorage cache only (no need to rewrite remaining theme files)
+    setStorageJson(STORAGE_KEYS.themeInstalledThemes, installedThemes.value)
     applyCurrentTheme()
-    // Delete file
+    // Async: delete the removed theme file
     if (initialized.value && removed) {
       const filename = settingsFs.themeFilename(removed.name || removed.id)
       settingsFs
@@ -289,15 +290,6 @@ export const useThemeStore = defineStore('theme', () => {
       setStorageString(STORAGE_KEYS.themeSelectedLight, id)
     }
     applyCurrentTheme()
-  }
-
-  function persistInstalledThemes(): void {
-    setStorageJson(STORAGE_KEYS.themeInstalledThemes, installedThemes.value)
-    if (initialized.value) {
-      persistThemesToFiles().catch((e) =>
-        console.warn('[theme] failed to persist themes to files:', e),
-      )
-    }
   }
 
   /** Write all installed themes to individual files. */

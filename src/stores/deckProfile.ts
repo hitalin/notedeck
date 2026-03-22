@@ -51,6 +51,9 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   /** Cached profile name, kept in sync imperatively to avoid localStorage dependency. */
   const currentProfileName = ref<string | null>(null)
 
+  /** In-memory cache of profiles to avoid repeated localStorage JSON.parse. */
+  let profilesCache: DeckProfile[] | null = null
+
   /** Update currentProfileName from current windowProfileId. */
   function refreshProfileName() {
     if (!windowProfileId.value) {
@@ -64,7 +67,9 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   // --- localStorage cache (sync access) ---
 
   function loadProfiles(): DeckProfile[] {
-    return getStorageJson<DeckProfile[]>(STORAGE_KEYS.deckProfiles, [])
+    if (profilesCache) return profilesCache
+    profilesCache = getStorageJson<DeckProfile[]>(STORAGE_KEYS.deckProfiles, [])
+    return profilesCache
   }
 
   /** Load profiles and find one by ID in a single pass. */
@@ -76,9 +81,11 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     return { profiles, profile: profiles.find((p) => p.id === id) }
   }
 
+  /** Persist profiles and invalidate in-memory cache. */
   function saveProfiles(profiles: DeckProfile[]) {
-    // Sync: localStorage cache
+    // Sync: localStorage + in-memory cache
     setStorageJson(STORAGE_KEYS.deckProfiles, profiles)
+    profilesCache = profiles
     profileVersion.value++
 
     // Async: write each profile to file (fire-and-forget)
@@ -131,8 +138,9 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     if (!profile) return
     profile.columns = deepClone(columns)
     profile.layout = deepClone(layout)
-    // Sync: update localStorage cache
+    // Sync: update localStorage + in-memory cache
     setStorageJson(STORAGE_KEYS.deckProfiles, profiles)
+    profilesCache = profiles
     profileVersion.value++
     // Async: write only this profile to file
     if (initialized.value) {
@@ -169,6 +177,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
 
     // 3. Single localStorage write for both changes
     setStorageJson(STORAGE_KEYS.deckProfiles, profiles)
+    profilesCache = profiles
     profileVersion.value++
 
     // 4. Capture old profile ID before updating state
@@ -341,7 +350,16 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     } else {
       profile.windows.push(windowLayout)
     }
-    saveProfiles(profiles)
+    // Sync: update localStorage + in-memory cache
+    setStorageJson(STORAGE_KEYS.deckProfiles, profiles)
+    profilesCache = profiles
+    profileVersion.value++
+    // Async: write only this profile to file
+    if (initialized.value) {
+      persistSingleProfile(profile).catch((e) =>
+        console.warn('[deckProfile] failed to persist profile:', e),
+      )
+    }
   }
 
   /** Remove a window layout entry from the current profile */
@@ -350,7 +368,16 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     const { profiles, profile } = loadProfileById(windowProfileId.value)
     if (!profile?.windows) return
     profile.windows = profile.windows.filter((w) => w.id !== windowId)
-    saveProfiles(profiles)
+    // Sync: update localStorage + in-memory cache
+    setStorageJson(STORAGE_KEYS.deckProfiles, profiles)
+    profilesCache = profiles
+    profileVersion.value++
+    // Async: write only this profile to file
+    if (initialized.value) {
+      persistSingleProfile(profile).catch((e) =>
+        console.warn('[deckProfile] failed to persist profile:', e),
+      )
+    }
   }
 
   /** Get saved window layouts for the current profile */
@@ -443,8 +470,9 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     const fileProfiles = await loadProfilesFromFiles()
 
     if (fileProfiles.length > 0) {
-      // Files are source of truth — update localStorage cache
+      // Files are source of truth — update localStorage + in-memory cache
       setStorageJson(STORAGE_KEYS.deckProfiles, fileProfiles)
+      profilesCache = fileProfiles
       profileVersion.value++
     }
     initialized.value = true
