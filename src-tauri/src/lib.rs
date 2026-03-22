@@ -197,8 +197,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::get_settings_dir,
         commands::read_root_settings_file,
         commands::write_root_settings_file,
-        commands::export_settings_zip,
-        commands::import_settings_zip,
+        commands::export_settings_json,
+        commands::import_settings_json,
     ]);
 
     builder = builder.setup(|app| {
