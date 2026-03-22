@@ -143,6 +143,7 @@ function openToolWindow(type: 'cssEditor' | 'keybinds' | 'themeEditor') {
 }
 
 const isExporting = ref(false)
+const isImportingDb = ref(false)
 const isExportingSettings = ref(false)
 const isImportingSettings = ref(false)
 
@@ -154,6 +155,20 @@ async function exportDb() {
     /* user cancelled or error */
   } finally {
     isExporting.value = false
+  }
+}
+
+async function importDb() {
+  isImportingDb.value = true
+  try {
+    const imported = await invoke<boolean>('import_db')
+    if (imported) {
+      window.location.reload()
+    }
+  } catch {
+    /* user cancelled or error */
+  } finally {
+    isImportingDb.value = false
   }
 }
 
@@ -308,7 +323,11 @@ async function importSettings() {
 
       <div :class="$style.settingsMenuItem" @click="exportDb">
         <i class="ti ti-database-export" />
-        <span :class="$style.settingsMenuLabel">{{ isExporting ? 'エクスポート中...' : 'DBバックアップ' }}</span>
+        <span :class="$style.settingsMenuLabel">{{ isExporting ? 'エクスポート中...' : 'DBエクスポート' }}</span>
+      </div>
+      <div :class="$style.settingsMenuItem" @click="importDb">
+        <i class="ti ti-database-import" />
+        <span :class="$style.settingsMenuLabel">{{ isImportingDb ? 'インポート中...' : 'DBインポート' }}</span>
       </div>
       <div :class="$style.settingsMenuItem" @click="exportSettings">
         <i class="ti ti-file-export" />
