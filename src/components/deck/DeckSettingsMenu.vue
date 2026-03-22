@@ -737,7 +737,7 @@ const importSettings = () =>
 
 .themeGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  grid-template-columns: 1fr;
   gap: 6px;
 }
 
