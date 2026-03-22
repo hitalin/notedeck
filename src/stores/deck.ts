@@ -5,7 +5,7 @@ import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useDeckWallpaperStore } from '@/stores/deckWallpaper'
-import { getStorageJson, setStorageJson } from '@/utils/storage'
+import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 export type ColumnType =
   | 'timeline'
@@ -95,8 +95,6 @@ let columnCounter = 0
 function genColumnId(): string {
   return `col-${Date.now()}-${++columnCounter}`
 }
-
-const DECK_KEY = 'nd-deck'
 
 export const useDeckStore = defineStore('deck', () => {
   const profileStore = useDeckProfileStore()
@@ -372,7 +370,7 @@ export const useDeckStore = defineStore('deck', () => {
         )
       }
       // Always keep nd-deck in sync for backward compatibility
-      setStorageJson(DECK_KEY, {
+      setStorageJson(STORAGE_KEYS.deck, {
         columns: columns.value,
         layout: layout.value,
       })
@@ -394,7 +392,7 @@ export const useDeckStore = defineStore('deck', () => {
     const data = getStorageJson<{
       columns?: DeckColumn[]
       layout?: string[][]
-    } | null>(DECK_KEY, null)
+    } | null>(STORAGE_KEYS.deck, null)
     if (data?.columns && data?.layout) {
       columns.value = data.columns
       layout.value = data.layout

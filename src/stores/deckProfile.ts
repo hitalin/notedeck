@@ -4,12 +4,10 @@ import type { DeckColumn, DeckProfile, DeckWindowLayout } from '@/stores/deck'
 import {
   getStorageJson,
   getStorageString,
+  STORAGE_KEYS,
   setStorageJson,
   setStorageString,
 } from '@/utils/storage'
-
-const PROFILES_KEY = 'nd-deck-profiles'
-const ACTIVE_PROFILE_KEY = 'nd-deck-active-profile'
 
 let profileCounter = 0
 function genProfileId(): string {
@@ -36,7 +34,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   })
 
   function loadProfiles(): DeckProfile[] {
-    return getStorageJson<DeckProfile[]>(PROFILES_KEY, [])
+    return getStorageJson<DeckProfile[]>(STORAGE_KEYS.deckProfiles, [])
   }
 
   /** Load profiles and find one by ID in a single pass. */
@@ -49,17 +47,17 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   }
 
   function saveProfiles(profiles: DeckProfile[]) {
-    setStorageJson(PROFILES_KEY, profiles)
+    setStorageJson(STORAGE_KEYS.deckProfiles, profiles)
     profileVersion.value++
   }
 
   function saveActiveProfileId(id: string | null) {
     activeProfileId.value = id
-    setStorageString(ACTIVE_PROFILE_KEY, id)
+    setStorageString(STORAGE_KEYS.deckActiveProfile, id)
   }
 
   function loadActiveProfileId() {
-    activeProfileId.value = getStorageString(ACTIVE_PROFILE_KEY)
+    activeProfileId.value = getStorageString(STORAGE_KEYS.deckActiveProfile)
   }
 
   /** Find the next available "プロファイル N" name */

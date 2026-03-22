@@ -2,10 +2,9 @@ import { invoke } from '@tauri-apps/api/core'
 import { ref } from 'vue'
 import type { ServerAd } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
-import { getStorageJson, setStorageJson } from '@/utils/storage'
+import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 const REFRESH_INTERVAL = 10 * 60 * 1000 // 10 minutes
-const MUTED_ADS_KEY = 'nd-muted-ads'
 
 // Per-account raw ad cache (unfiltered)
 const adsCache = new Map<
@@ -14,7 +13,7 @@ const adsCache = new Map<
 >()
 
 function getMutedAds(): string[] {
-  return getStorageJson<string[]>(MUTED_ADS_KEY, [])
+  return getStorageJson<string[]>(STORAGE_KEYS.mutedAds, [])
 }
 
 export function useAds(
@@ -103,7 +102,7 @@ export function useAds(
     const muted = getMutedAds()
     if (!muted.includes(adId)) {
       muted.push(adId)
-      setStorageJson(MUTED_ADS_KEY, muted)
+      setStorageJson(STORAGE_KEYS.mutedAds, muted)
     }
     ads.value = ads.value.filter((ad) => ad.id !== adId)
     // Invalidate cache

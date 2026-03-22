@@ -38,7 +38,7 @@ import { useTabIndicator } from '@/composables/useTabIndicator'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
-import { getStorageJson, setStorageJson } from '@/utils/storage'
+import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 import { char2twemojiUrl } from '@/utils/twemoji'
 import DeckColumn from './DeckColumn.vue'
 
@@ -231,7 +231,7 @@ function notificationLabel(type: string): string {
 }
 
 function getCacheKey() {
-  return `nd-cache-notifications-${props.column.accountId}`
+  return STORAGE_KEYS.notificationCache(props.column.accountId ?? '')
 }
 
 // When account loses token (logout with keep-data), switch to cache display

@@ -1,5 +1,5 @@
 import type { NoteVisibility } from '@/adapters/types'
-import { getStorageJson, setStorageJson } from '@/utils/storage'
+import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 export interface Draft {
   id: string
@@ -17,18 +17,13 @@ export interface Draft {
 }
 
 const MAX_DRAFTS = 10
-const STORAGE_PREFIX = 'nd-drafts-'
-
-function storageKey(accountId: string): string {
-  return `${STORAGE_PREFIX}${accountId}`
-}
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
 }
 
 export function loadDrafts(accountId: string): Draft[] {
-  return getStorageJson<Draft[]>(storageKey(accountId), [])
+  return getStorageJson<Draft[]>(STORAGE_KEYS.drafts(accountId), [])
 }
 
 export function saveDraft(
@@ -44,11 +39,11 @@ export function saveDraft(
   drafts.unshift(newDraft)
   // Keep only the latest entries
   const trimmed = drafts.slice(0, MAX_DRAFTS)
-  setStorageJson(storageKey(accountId), trimmed)
+  setStorageJson(STORAGE_KEYS.drafts(accountId), trimmed)
   return newDraft
 }
 
 export function deleteDraft(accountId: string, draftId: string): void {
   const drafts = loadDrafts(accountId).filter((d) => d.id !== draftId)
-  setStorageJson(storageKey(accountId), drafts)
+  setStorageJson(STORAGE_KEYS.drafts(accountId), drafts)
 }
