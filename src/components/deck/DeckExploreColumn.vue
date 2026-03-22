@@ -16,6 +16,7 @@ import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteColumn } from '@/composables/useNoteColumn'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
@@ -169,6 +170,10 @@ function closeRole() {
   selectedRole.value = null
   roleUsers.value = []
 }
+
+// Tab slide animation
+const exploreTabIndex = computed(() => tabs.indexOf(activeTab.value))
+useTabSlide(exploreTabIndex, columnContentRef)
 
 // --- Tab switching ---
 function switchTab(tab: Tab) {

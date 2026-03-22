@@ -48,6 +48,7 @@ const {
   removeNote,
   refresh,
   reconnect,
+  switchWithSnapshot,
   isPulling,
   isPulledEnough,
   isRefreshing,
@@ -62,7 +63,14 @@ const webUiUrl = computed(() => {
   return `https://${account.value.host}${props.webUiPath}`
 })
 
-defineExpose({ account, scroller, reconnect, columnThemeVars })
+defineExpose({
+  account,
+  scroller,
+  reconnect,
+  switchWithSnapshot,
+  notes,
+  columnThemeVars,
+})
 </script>
 
 <template>
