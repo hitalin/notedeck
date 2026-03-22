@@ -1,16 +1,18 @@
 pub mod parser;
 pub mod plugins;
 
+use lru::LruCache;
 use notecli::db::SummaryRow;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{watch, Mutex};
 
 const CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 const CACHE_TTL_SECS: i64 = 24 * 60 * 60;
-const MAX_ENTRIES: usize = 2048;
+const MAX_ENTRIES: usize = 512;
 const MAX_HTML_SIZE: usize = 2 * 1024 * 1024;
 const FETCH_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -116,7 +118,7 @@ struct CacheEntry {
 type InflightMap = HashMap<String, watch::Receiver<Option<Result<SummaryData, String>>>>;
 
 pub struct OgpCache {
-    cache: Arc<Mutex<HashMap<String, CacheEntry>>>,
+    cache: Arc<Mutex<LruCache<String, CacheEntry>>>,
     inflight: Arc<Mutex<InflightMap>>,
     http_client: reqwest::Client,
     db: Arc<notecli::db::Database>,
@@ -133,7 +135,9 @@ impl OgpCache {
             .unwrap_or_default();
 
         Self {
-            cache: Arc::new(Mutex::new(HashMap::new())),
+            cache: Arc::new(Mutex::new(LruCache::new(
+                NonZeroUsize::new(MAX_ENTRIES).unwrap(),
+            ))),
             inflight: Arc::new(Mutex::new(HashMap::new())),
             http_client,
             db,
@@ -153,8 +157,9 @@ impl OgpCache {
 
         if let Ok(rows) = self.db.load_summary_cache(MAX_ENTRIES) {
             let mut cache = self.cache.lock().await;
-            for row in &rows {
-                cache.insert(
+            // Insert in reverse so the most recent entries are promoted to MRU
+            for row in rows.iter().rev() {
+                cache.push(
                     row.url.clone(),
                     CacheEntry {
                         data: SummaryData::from_row(row),
@@ -205,7 +210,7 @@ impl OgpCache {
 
         // Memory cache
         {
-            let cache = self.cache.lock().await;
+            let mut cache = self.cache.lock().await;
             if let Some(entry) = cache.get(url) {
                 if entry.fetched_at.elapsed() < CACHE_TTL {
                     let mut data = entry.data.clone();
@@ -266,16 +271,7 @@ impl OgpCache {
 
     async fn store_mem_cache(&self, url: &str, data: &SummaryData) {
         let mut cache = self.cache.lock().await;
-        if cache.len() >= MAX_ENTRIES {
-            if let Some(oldest) = cache
-                .iter()
-                .min_by_key(|(_, v)| v.fetched_at)
-                .map(|(k, _)| k.clone())
-            {
-                cache.remove(&oldest);
-            }
-        }
-        cache.insert(
+        cache.push(
             url.to_string(),
             CacheEntry {
                 data: data.clone(),
