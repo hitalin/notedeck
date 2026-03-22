@@ -335,23 +335,25 @@ const importSettings = () =>
       </div>
       <div :class="$style.menuFooter">
         <div :class="$style.settingsMenuDivider" />
-        <div v-if="updateAvailable" :class="$style.updateSection">
-          <div :class="$style.updateInfo">
-            <span :class="$style.updateVersion">v{{ appVersion }} → v{{ updateVersion }}</span>
+        <template v-if="!isMobilePlatform">
+          <div v-if="updateAvailable" :class="$style.updateSection">
+            <div :class="$style.updateInfo">
+              <span :class="$style.updateVersion">v{{ appVersion }} → v{{ updateVersion }}</span>
+            </div>
+            <button :class="$style.updateBtn" :disabled="isInstalling" @click="installUpdate">
+              {{ isInstalling ? 'インストール中...' : 'アップデート' }}
+            </button>
           </div>
-          <button :class="$style.updateBtn" :disabled="isInstalling" @click="installUpdate">
-            {{ isInstalling ? 'インストール中...' : 'アップデート' }}
-          </button>
-        </div>
-        <div v-else-if="isChecking" :class="$style.updateSection">
-          <span :class="$style.updateChecking">アップデートを確認中...</span>
-        </div>
-        <div v-else :class="$style.settingsMenuItem" @click="checkForUpdate(true)">
-          <i class="ti ti-refresh" />
-          <span :class="$style.settingsMenuLabel">アップデートを確認</span>
-          <span v-if="isUpToDate" :class="$style.upToDateLabel">v{{ appVersion }} 最新</span>
-          <span v-else :class="$style.upToDateLabel">v{{ appVersion }}</span>
-        </div>
+          <div v-else-if="isChecking" :class="$style.updateSection">
+            <span :class="$style.updateChecking">アップデートを確認中...</span>
+          </div>
+          <div v-else :class="$style.settingsMenuItem" @click="checkForUpdate(true)">
+            <i class="ti ti-refresh" />
+            <span :class="$style.settingsMenuLabel">アップデートを確認</span>
+            <span v-if="isUpToDate" :class="$style.upToDateLabel">v{{ appVersion }} 最新</span>
+            <span v-else :class="$style.upToDateLabel">v{{ appVersion }}</span>
+          </div>
+        </template>
         <div :class="$style.settingsMenuItem" @click="windowsStore.open('about')">
           <i class="ti ti-info-circle" />
           <span :class="$style.settingsMenuLabel">NoteDeck について</span>
