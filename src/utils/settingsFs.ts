@@ -100,3 +100,74 @@ export async function renameProfile(
 ): Promise<void> {
   return renameSettingsFile(PROFILES_DIR, oldFilename, newFilename)
 }
+
+// --- Root-level file operations ---
+
+async function readRootSettingsFile(name: string): Promise<string> {
+  if (!isTauri) return ''
+  return invoke<string>('read_root_settings_file', { name })
+}
+
+async function writeRootSettingsFile(
+  name: string,
+  content: string,
+): Promise<void> {
+  if (!isTauri) return
+  return invoke('write_root_settings_file', { name, content })
+}
+
+// --- Theme-specific helpers ---
+
+const THEMES_DIR = 'themes'
+const THEME_EXT = '.ndtheme.json5'
+
+export function themeFilename(name: string): string {
+  return sanitizeFilename(name) + THEME_EXT
+}
+
+export async function listThemes(): Promise<string[]> {
+  const files = await listSettingsFiles(THEMES_DIR)
+  return files.filter((f) => f.endsWith(THEME_EXT))
+}
+
+export async function readTheme(filename: string): Promise<string> {
+  return readSettingsFile(THEMES_DIR, filename)
+}
+
+export async function writeTheme(
+  filename: string,
+  content: string,
+): Promise<void> {
+  return writeSettingsFile(THEMES_DIR, filename, content)
+}
+
+export async function deleteTheme(filename: string): Promise<void> {
+  return deleteSettingsFile(THEMES_DIR, filename)
+}
+
+export async function renameTheme(
+  oldFilename: string,
+  newFilename: string,
+): Promise<void> {
+  return renameSettingsFile(THEMES_DIR, oldFilename, newFilename)
+}
+
+// --- Custom CSS helpers ---
+
+export async function readCustomCss(): Promise<string> {
+  return readRootSettingsFile('custom.css')
+}
+
+export async function writeCustomCss(css: string): Promise<void> {
+  return writeRootSettingsFile('custom.css', css)
+}
+
+// --- Keybinds helpers ---
+
+export async function readKeybinds(): Promise<string> {
+  return readRootSettingsFile('keybinds.json5')
+}
+
+export async function writeKeybinds(content: string): Promise<void> {
+  return writeRootSettingsFile('keybinds.json5', content)
+}

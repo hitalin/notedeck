@@ -3,6 +3,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import { router, setupAccountRedirect } from './router'
 import { useAccountsStore } from './stores/accounts'
+import { useKeybindsStore } from './stores/keybinds'
 import { useThemeStore } from './stores/theme'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
 import 'katex/dist/katex.min.css'
@@ -28,6 +29,9 @@ window.addEventListener('unhandledrejection', (event) => {
 // Apply cached theme before mount to prevent FOUC
 const themeStore = useThemeStore()
 themeStore.init()
+
+// Initialize keybinds file-based storage
+useKeybindsStore().init()
 
 // Start loading accounts early (runs in parallel with mount)
 useAccountsStore().loadAccounts()

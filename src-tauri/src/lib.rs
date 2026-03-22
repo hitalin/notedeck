@@ -194,6 +194,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::delete_settings_file,
         commands::rename_settings_file,
         commands::get_settings_dir,
+        commands::read_root_settings_file,
+        commands::write_root_settings_file,
     ]);
 
     builder = builder.setup(|app| {

@@ -1,6 +1,8 @@
 import { invoke } from '@tauri-apps/api/core'
+import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
+
 import { applyTheme } from '@/theme/applier'
 import {
   DARK_BASE,
@@ -11,6 +13,7 @@ import {
 import { compileMisskeyTheme } from '@/theme/compiler'
 import { CustomCssManager } from '@/theme/cssApplier'
 import type { CompiledProps, MisskeyTheme, ThemeSource } from '@/theme/types'
+import * as settingsFs from '@/utils/settingsFs'
 import {
   getStorageJson,
   getStorageString,
@@ -99,6 +102,8 @@ export const useThemeStore = defineStore('theme', () => {
   const selectedLightThemeId = ref<string | null>(null)
   // Custom CSS
   const customCss = ref('')
+  // Whether file-based storage has been initialized
+  const initialized = ref(false)
 
   function init(): void {
     // Restore compiled CSS from localStorage first (sync, FOUC prevention)
@@ -156,6 +161,16 @@ export const useThemeStore = defineStore('theme', () => {
       .addEventListener('change', () => {
         if (manualMode.value == null) applyCurrentTheme()
       })
+
+    // Kick off async file sync in background (Tauri only)
+    const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
+    if (isTauri) {
+      initFileStorage().catch((e) =>
+        console.warn('[theme] file storage init failed:', e),
+      )
+    } else {
+      initialized.value = true
+    }
   }
 
   function wantsDark(): boolean {
@@ -230,6 +245,12 @@ export const useThemeStore = defineStore('theme', () => {
         installedThemes.value = [...installedThemes.value, theme]
       }
       persistInstalledThemes()
+      // Optimized: write only the changed theme
+      if (initialized.value) {
+        persistSingleTheme(theme).catch((e) =>
+          console.warn('[theme] failed to persist theme:', e),
+        )
+      }
       return true
     } catch {
       return false
@@ -237,6 +258,7 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   function removeTheme(id: string): void {
+    const removed = installedThemes.value.find((t) => t.id === id)
     installedThemes.value = installedThemes.value.filter((t) => t.id !== id)
     // Clear selection if removed
     if (selectedDarkThemeId.value === id) {
@@ -249,6 +271,13 @@ export const useThemeStore = defineStore('theme', () => {
     }
     persistInstalledThemes()
     applyCurrentTheme()
+    // Delete file
+    if (initialized.value && removed) {
+      const filename = settingsFs.themeFilename(removed.name || removed.id)
+      settingsFs
+        .deleteTheme(filename)
+        .catch((e) => console.warn('[theme] failed to delete theme file:', e))
+    }
   }
 
   function selectTheme(id: string | null, mode: 'dark' | 'light'): void {
@@ -264,12 +293,38 @@ export const useThemeStore = defineStore('theme', () => {
 
   function persistInstalledThemes(): void {
     setStorageJson(STORAGE_KEYS.themeInstalledThemes, installedThemes.value)
+    if (initialized.value) {
+      persistThemesToFiles().catch((e) =>
+        console.warn('[theme] failed to persist themes to files:', e),
+      )
+    }
+  }
+
+  /** Write all installed themes to individual files. */
+  async function persistThemesToFiles(): Promise<void> {
+    for (const theme of installedThemes.value) {
+      const filename = settingsFs.themeFilename(theme.name || theme.id)
+      const content = JSON5.stringify(theme, null, 2)
+      await settingsFs.writeTheme(filename, content)
+    }
+  }
+
+  /** Write a single theme to file. */
+  async function persistSingleTheme(theme: MisskeyTheme): Promise<void> {
+    const filename = settingsFs.themeFilename(theme.name || theme.id)
+    const content = JSON5.stringify(theme, null, 2)
+    await settingsFs.writeTheme(filename, content)
   }
 
   function setCustomCss(css: string): void {
     customCss.value = css
     setStorageString(STORAGE_KEYS.themeCustomCss, css || null)
     applyCustomCss(css)
+    if (initialized.value) {
+      settingsFs
+        .writeCustomCss(css)
+        .catch((e) => console.warn('[theme] failed to write custom.css:', e))
+    }
   }
 
   const cssManager = new CustomCssManager()
@@ -352,6 +407,59 @@ export const useThemeStore = defineStore('theme', () => {
   function persistAccountThemes(): void {
     const entries = Array.from(accountThemeCache.value.entries())
     setStorageJson(STORAGE_KEYS.themeAccountThemes, entries)
+  }
+
+  /** Load themes from files and custom CSS. Files are source of truth. */
+  async function initFileStorage(): Promise<void> {
+    // Load installed themes from files
+    const filenames = await settingsFs.listThemes()
+    if (filenames.length > 0) {
+      const themes: MisskeyTheme[] = []
+      for (const filename of filenames) {
+        try {
+          const content = await settingsFs.readTheme(filename)
+          const parsed = JSON5.parse(content)
+          if (parsed?.props) {
+            themes.push({
+              id: parsed.id || `custom-${filename}`,
+              name: parsed.name || filename,
+              base: parsed.base === 'light' ? 'light' : 'dark',
+              props: parsed.props,
+            })
+          }
+        } catch (e) {
+          console.warn(`[theme] failed to parse ${filename}:`, e)
+        }
+      }
+      if (themes.length > 0) {
+        installedThemes.value = themes
+        setStorageJson(STORAGE_KEYS.themeInstalledThemes, themes)
+        applyCurrentTheme()
+      }
+    }
+
+    // Load custom CSS from file
+    const fileCss = await settingsFs.readCustomCss()
+    if (fileCss) {
+      customCss.value = fileCss
+      setStorageString(STORAGE_KEYS.themeCustomCss, fileCss)
+      applyCustomCss(fileCss)
+    }
+
+    initialized.value = true
+
+    // Migrate: if localStorage has themes but no files exist, write them
+    if (filenames.length === 0 && installedThemes.value.length > 0) {
+      persistThemesToFiles().catch((e) =>
+        console.warn('[theme] migration to files failed:', e),
+      )
+    }
+    // Migrate custom CSS to file if not yet written
+    if (!fileCss && customCss.value) {
+      settingsFs
+        .writeCustomCss(customCss.value)
+        .catch((e) => console.warn('[theme] CSS migration failed:', e))
+    }
   }
 
   function getAccountThemes(accountId: string) {

@@ -151,6 +151,45 @@ pub fn rename_settings_file(
         .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to rename: {e}")))
 }
 
+/// Allowed root-level filenames (no subdirectory).
+const ALLOWED_ROOT_FILES: &[&str] = &["custom.css", "keybinds.json5"];
+
+/// Resolve the full path for a root-level settings file (no subdirectory).
+fn resolve_root_path(app: &tauri::AppHandle, name: &str) -> Result<PathBuf> {
+    if !ALLOWED_ROOT_FILES.contains(&name) {
+        return Err(NoteDeckError::InvalidInput(format!(
+            "Invalid root file: {name}. Allowed: {}",
+            ALLOWED_ROOT_FILES.join(", ")
+        )));
+    }
+    validate_filename(name)?;
+    let app_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+    Ok(app_dir.join(name))
+}
+
+/// Read a root-level settings file as a UTF-8 string.
+#[tauri::command]
+pub fn read_root_settings_file(app: tauri::AppHandle, name: &str) -> Result<String> {
+    let path = resolve_root_path(&app, name)?;
+    if !path.exists() {
+        return Ok(String::new());
+    }
+    fs::read_to_string(&path)
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to read {}: {e}", path.display())))
+}
+
+/// Write a root-level settings file.
+#[tauri::command]
+pub fn write_root_settings_file(app: tauri::AppHandle, name: &str, content: &str) -> Result<()> {
+    let path = resolve_root_path(&app, name)?;
+    fs::write(&path, content).map_err(|e| {
+        NoteDeckError::InvalidInput(format!("Failed to write {}: {e}", path.display()))
+    })
+}
+
 /// Get the app data directory path (so users can open it in file manager).
 #[tauri::command]
 pub fn get_settings_dir(app: tauri::AppHandle) -> Result<String> {
