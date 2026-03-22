@@ -168,9 +168,10 @@ function syncVisualFromCode() {
   }
 }
 
-// Sync code when switching to code tab
+// Sync between tabs when switching
 watch(tab, (newTab) => {
   if (newTab === 'code') syncCodeFromVisual()
+  if (newTab === 'visual' && codeContent.value.trim()) syncVisualFromCode()
 })
 
 // Convert resolved color to hex for input[type=color]
@@ -253,6 +254,8 @@ const installedMessage = ref(false)
 
 // Install as a permanent theme
 async function installTheme() {
+  if (tab.value === 'code') syncVisualFromCode()
+  if (codeError.value) return
   const theme: MisskeyTheme = {
     id: `custom-${Date.now()}`,
     name: themeName.value,
@@ -272,6 +275,7 @@ async function installTheme() {
 const copiedMessage = ref(false)
 
 function exportTheme() {
+  if (tab.value === 'code') syncVisualFromCode()
   const theme: MisskeyTheme = {
     id: `custom-${Date.now()}`,
     name: themeName.value,
