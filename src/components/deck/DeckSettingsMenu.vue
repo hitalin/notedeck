@@ -36,11 +36,7 @@ const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showAbout = ref(false)
-// Theme install UI
-const showInstallInput = ref(false)
 const themeGridOpen = ref(false)
-const themeCode = ref('')
-const installError = ref('')
 
 // Current mode's builtin theme
 const builtinTheme = computed(() => (isDark.value ? DARK_THEME : LIGHT_THEME))
@@ -61,18 +57,6 @@ const selectedId = computed(() =>
 function selectTheme(id: string | null) {
   const mode = isDark.value ? 'dark' : 'light'
   themeStore.selectTheme(id, mode)
-}
-
-async function handleInstall() {
-  installError.value = ''
-  if (!themeCode.value.trim()) return
-  const ok = await themeStore.installTheme(themeCode.value.trim())
-  if (ok) {
-    themeCode.value = ''
-    showInstallInput.value = false
-  } else {
-    installError.value = '無効なテーマJSONです'
-  }
 }
 
 async function removeTheme(id: string) {
@@ -102,10 +86,6 @@ watch(
       } else {
         fixedStyle.value = undefined
       }
-    } else {
-      showInstallInput.value = false
-      themeCode.value = ''
-      installError.value = ''
     }
   },
   { immediate: true },
@@ -272,23 +252,6 @@ const importSettings = () =>
                 </button>
               </div>
               <div :class="$style.themeItemName">{{ theme.name }}</div>
-            </div>
-          </div>
-          <button v-if="!showInstallInput" class="_button" :class="[$style.dataBtn, $style.themeInstallBtn]" @click="showInstallInput = true">
-            <i class="ti ti-download" />
-            インストール
-          </button>
-          <div v-if="showInstallInput" :class="$style.installArea">
-            <textarea
-              v-model="themeCode"
-              :class="$style.installTextarea"
-              placeholder="MisskeyテーマのJSONコードを貼り付け..."
-              rows="4"
-            />
-            <div v-if="installError" :class="$style.installError">{{ installError }}</div>
-            <div :class="$style.installActions">
-              <button :class="[$style.installActionBtn, $style.cancel]" @click="showInstallInput = false">キャンセル</button>
-              <button :class="[$style.installActionBtn, $style.confirm]" @click="handleInstall">インストール</button>
             </div>
           </div>
         </div>
@@ -803,78 +766,6 @@ const importSettings = () =>
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.themeInstallBtn {
-  margin-top: 8px;
-}
-
-/* -- Install theme -- */
-
-
-.installArea {
-  margin-top: 8px;
-}
-
-.installTextarea {
-  width: 100%;
-  box-sizing: border-box;
-  background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  padding: 8px;
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  resize: vertical;
-  font-family: monospace;
-  min-height: 60px;
-
-  &:focus {
-    outline: none;
-    border-color: var(--nd-accent);
-  }
-
-  &::placeholder {
-    color: var(--nd-fg);
-    opacity: 0.4;
-  }
-}
-
-.installError {
-  font-size: 0.75em;
-  color: var(--nd-error, #ec4137);
-  margin-top: 4px;
-  padding: 0 2px;
-}
-
-.installActions {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-  justify-content: flex-end;
-}
-
-.installActionBtn {
-  padding: 4px 12px;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.8em;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover {
-    opacity: 0.85;
-  }
-}
-
-.cancel {
-  background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
-  color: var(--nd-fg);
-}
-
-.confirm {
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent, #fff);
 }
 
 /* -- Custom CSS -- */
