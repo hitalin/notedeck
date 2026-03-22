@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getTauriVersion } from '@tauri-apps/api/app'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { onMounted, ref } from 'vue'
 import { invoke } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../../package.json'
@@ -82,6 +83,10 @@ async function copyInfo() {
         <button class="_button" :class="[$style.actionBtn, { [$style.feedback]: copied }]" @click="copyInfo">
           <i :class="copied ? 'ti ti-check' : 'ti ti-copy'" />
           {{ copied ? 'コピーしました' : '情報をコピー' }}
+        </button>
+        <button class="_button" :class="$style.actionBtn" @click="openUrl('https://github.com/hitalin/notedeck/issues/new')">
+          <i class="ti ti-bug" />
+          バグを報告
         </button>
       </div>
     </div>

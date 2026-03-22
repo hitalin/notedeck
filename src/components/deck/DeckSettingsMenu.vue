@@ -25,8 +25,15 @@ const emit = defineEmits<{
   'close-all': []
 }>()
 
-const { updateAvailable, updateVersion, isInstalling, installUpdate } =
-  useUpdater()
+const {
+  isChecking,
+  isUpToDate,
+  updateAvailable,
+  updateVersion,
+  isInstalling,
+  checkForUpdate,
+  installUpdate,
+} = useUpdater()
 
 const isCompact = useIsCompactLayout()
 const { isMobilePlatform } = useUiStore()
@@ -329,18 +336,26 @@ const importSettings = () =>
       <div :class="$style.menuFooter">
         <div :class="$style.settingsMenuDivider" />
         <div v-if="updateAvailable" :class="$style.updateSection">
-          <div :class="$style.updateText">
+          <div :class="$style.updateInfo">
             <span :class="$style.updateVersion">v{{ appVersion }} → v{{ updateVersion }}</span>
           </div>
-          <button
-            :class="$style.updateBtn"
-            :disabled="isInstalling"
-            @click="installUpdate"
-          >
+          <button :class="$style.updateBtn" :disabled="isInstalling" @click="installUpdate">
             {{ isInstalling ? 'インストール中...' : 'アップデート' }}
           </button>
         </div>
-        <button v-else :class="$style.versionInfo" @click="windowsStore.open('about')">v{{ appVersion }}</button>
+        <div v-else-if="isChecking" :class="$style.updateSection">
+          <span :class="$style.updateChecking">アップデートを確認中...</span>
+        </div>
+        <div v-else :class="$style.settingsMenuItem" @click="checkForUpdate(true)">
+          <i class="ti ti-refresh" />
+          <span :class="$style.settingsMenuLabel">アップデートを確認</span>
+          <span v-if="isUpToDate" :class="$style.upToDateLabel">v{{ appVersion }} 最新</span>
+          <span v-else :class="$style.upToDateLabel">v{{ appVersion }}</span>
+        </div>
+        <div :class="$style.settingsMenuItem" @click="windowsStore.open('about')">
+          <i class="ti ti-info-circle" />
+          <span :class="$style.settingsMenuLabel">NoteDeck について</span>
+        </div>
       </div>
     </div>
   </Transition>
@@ -873,24 +888,6 @@ const importSettings = () =>
   position: relative;
 }
 
-.versionInfo {
-  display: block;
-  width: 100%;
-  border: none;
-  background: none;
-  text-align: center;
-  padding: 4px 16px 8px;
-  font-size: 0.75em;
-  color: var(--nd-fg);
-  opacity: 0.4;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover {
-    opacity: 0.7;
-  }
-}
-
 .updateSection {
   display: flex;
   align-items: center;
@@ -898,7 +895,7 @@ const importSettings = () =>
   padding: 8px 16px;
 }
 
-.updateText {
+.updateInfo {
   flex: 1;
   min-width: 0;
 }
@@ -907,6 +904,12 @@ const importSettings = () =>
   font-size: 0.8em;
   color: var(--nd-accent);
   font-weight: 500;
+}
+
+.updateChecking {
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  opacity: 0.5;
 }
 
 .updateBtn {
@@ -929,6 +932,12 @@ const importSettings = () =>
     opacity: 0.6;
     cursor: not-allowed;
   }
+}
+
+.upToDateLabel {
+  font-size: 0.75em;
+  color: var(--nd-accent);
+  margin-left: auto;
 }
 
 .mobile {
