@@ -1,4 +1,3 @@
-import { emit, listen } from '@tauri-apps/api/event'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
@@ -102,8 +101,10 @@ export const useDeckStore = defineStore('deck', () => {
   const profileStore = useDeckProfileStore()
   const wallpaperStore = useDeckWallpaperStore()
 
-  const columns = ref<DeckColumn[]>([])
-  const layout = ref<string[][]>([])
+  // columns and layout are derived from the profile store (single source of truth)
+  const columns = computed(() => profileStore.columns)
+  const layout = computed(() => profileStore.layout)
+
   const navCollapsed = ref(false)
   const activeColumnId = ref<string | null>(null)
   /** This window's sub-window ID (null = main window) */
@@ -190,26 +191,29 @@ export const useDeckStore = defineStore('deck', () => {
 
   function addColumn(partial: Omit<DeckColumn, 'id'>) {
     const col: DeckColumn = { ...partial, id: genColumnId() }
-    columns.value.push(col)
-    layout.value.push([col.id])
-    save()
+    profileStore.mutateProfile((p) => {
+      p.columns.push(col)
+      p.layout.push([col.id])
+    })
     activeColumnId.value = col.id
     return col
   }
 
   function removeColumn(id: string) {
-    columns.value = columns.value.filter((c) => c.id !== id)
-    layout.value = layout.value
-      .map((ids) => ids.filter((_id) => _id !== id))
-      .filter((ids) => ids.length > 0)
-    flushSave()
+    profileStore.mutateProfile((p) => {
+      p.columns = p.columns.filter((c) => c.id !== id)
+      p.layout = p.layout
+        .map((ids) => ids.filter((_id) => _id !== id))
+        .filter((ids) => ids.length > 0)
+    })
+    profileStore.flushPersist()
   }
 
   function updateColumn(id: string, updates: Partial<DeckColumn>) {
     const col = getColumn(id)
     if (col) {
       Object.assign(col, updates)
-      save()
+      profileStore.schedulePersist()
     }
   }
 
@@ -223,8 +227,7 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   function applyLayout(newLayout: string[][]) {
-    layout.value = newLayout
-    save()
+    profileStore.setLayout(newLayout)
   }
 
   function swapColumns(aIdx: number, bIdx: number) {
@@ -254,26 +257,22 @@ export const useDeckStore = defineStore('deck', () => {
     const toGroupIdx = groupIndexOf(toId)
     if (fromGroupIdx < 0 || toGroupIdx < 0) return
 
-    // Remove fromId from its current group
     const fromGroup = layout.value[fromGroupIdx]
     if (!fromGroup) return
     const newFromGroup = fromGroup.filter((id) => id !== fromId)
 
     const newLayout = [...layout.value]
-    // Update or remove the source group
     if (newFromGroup.length === 0) {
       newLayout.splice(fromGroupIdx, 1)
     } else {
       newLayout[fromGroupIdx] = newFromGroup
     }
 
-    // Find target group in updated layout (index may have shifted)
     const targetIdx = groupIndexOf(toId, newLayout)
     if (targetIdx < 0) return
     const targetGroup = newLayout[targetIdx]
     if (!targetGroup) return
 
-    // Insert into target group
     const toPos = targetGroup.indexOf(toId)
     const insertAt = position === 'above' ? toPos : toPos + 1
     const newTargetGroup = [...targetGroup]
@@ -306,10 +305,8 @@ export const useDeckStore = defineStore('deck', () => {
     const group = layout.value[groupIdx]
     if (!group) return
 
-    // Solo column already at this position — nothing to do
     if (group.length === 1 && groupIdx === targetIndex) return
 
-    // Remove from current group
     const newGroup = group.filter((colId) => colId !== id)
     const newLayout = [...layout.value]
     if (newGroup.length === 0) {
@@ -318,7 +315,6 @@ export const useDeckStore = defineStore('deck', () => {
       newLayout[groupIdx] = newGroup
     }
 
-    // Adjust target index if removal shifted it
     const adjustedIndex =
       newGroup.length === 0 && targetIndex > groupIdx
         ? targetIndex - 1
@@ -337,7 +333,6 @@ export const useDeckStore = defineStore('deck', () => {
     const newGroup = group.filter((colId) => colId !== id)
     const newLayout = [...layout.value]
     newLayout[groupIdx] = newGroup
-    // Insert as new solo group right after
     newLayout.splice(groupIdx + 1, 0, [id])
     applyLayout(newLayout)
   }
@@ -356,46 +351,14 @@ export const useDeckStore = defineStore('deck', () => {
     return columnMap.value.get(id)
   }
 
-  let saveTimer: ReturnType<typeof setTimeout> | null = null
-
-  function flushSave() {
-    if (saveTimer) {
-      clearTimeout(saveTimer)
-      saveTimer = null
-    }
-    try {
-      if (profileStore.windowProfileId) {
-        profileStore.syncColumnsToProfile(
-          profileStore.windowProfileId,
-          columns.value,
-          layout.value,
-        )
-      }
-      // Always keep nd-deck in sync for backward compatibility
-      setStorageJson(STORAGE_KEYS.deck, {
-        columns: columns.value,
-        layout: layout.value,
-      })
-      // Notify other windows viewing the same profile
-      if (profileStore.windowProfileId) {
-        emit('deck:profile-updated', {
-          profileId: profileStore.windowProfileId,
-          sourceWindowId: currentWindowId.value ?? '__main__',
-        }).catch(() => {
-          // Not running in Tauri (browser dev mode)
-        })
-      }
-    } catch (e) {
-      console.warn('[deck] failed to save:', e)
-    }
-  }
+  // --- save / flushSave facades (backward compat for external callers) ---
 
   function save() {
-    if (saveTimer) clearTimeout(saveTimer)
-    saveTimer = setTimeout(() => {
-      saveTimer = null
-      flushSave()
-    }, 100)
+    profileStore.schedulePersist()
+  }
+
+  function flushSave() {
+    profileStore.flushPersist()
   }
 
   function load() {
@@ -404,28 +367,24 @@ export const useDeckStore = defineStore('deck', () => {
       columns?: DeckColumn[]
       layout?: string[][]
     } | null>(STORAGE_KEYS.deck, null)
-    if (data?.columns && data?.layout) {
-      columns.value = data.columns
-      layout.value = data.layout
-    }
 
-    profileStore.ensureDefaults(columns.value, layout.value)
+    const fallbackColumns = data?.columns ?? []
+    const fallbackLayout = data?.layout ?? []
 
-    // All windows use windowProfileId — set it from query or activeProfileId
+    profileStore.ensureDefaults(fallbackColumns, fallbackLayout)
+
+    // Set window identity from query params
     const params = new URLSearchParams(window.location.search)
     const profileId = params.get('profile')
     const windowId = params.get('window')
     if (windowId) {
       currentWindowId.value = windowId
     }
-    if (profileId) {
-      const data = profileStore.initWindowProfile(profileId)
-      columns.value = data.columns
-      layout.value = data.layout
-    } else if (profileStore.activeProfileId) {
-      const data = profileStore.initWindowProfile(profileStore.activeProfileId)
-      columns.value = data.columns
-      layout.value = data.layout
+
+    // Initialize this window's profile view
+    const targetProfileId = profileId ?? profileStore.activeProfileId
+    if (targetProfileId) {
+      profileStore.initWindowProfile(targetProfileId)
     }
   }
 
@@ -467,47 +426,31 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   function clear() {
-    columns.value = []
-    layout.value = []
-    save()
+    profileStore.setColumnsAndLayout([], [])
   }
 
   // --- Profile facade (delegates to profileStore) ---
 
   function syncCurrentToActiveProfile() {
-    if (!profileStore.windowProfileId) return
-    profileStore.syncColumnsToProfile(
-      profileStore.windowProfileId,
-      columns.value,
-      layout.value,
-    )
+    // No-op: profileStore is already the source of truth
+    profileStore.flushPersist()
   }
 
   function saveAsProfile(name?: string) {
-    const profile = profileStore.saveAsProfile(
-      name,
-      columns.value,
-      layout.value,
-    )
-    columns.value = []
-    layout.value = []
-    flushSave()
+    // Flush current state first
+    profileStore.flushPersist()
+    const profile = profileStore.saveAsProfile(name)
     return profile
   }
 
   function applyProfile(profileId: string) {
-    const result = profileStore.switchProfile(
-      profileId,
-      columns.value,
-      layout.value,
-    )
+    profileStore.flushPersist()
+    const result = profileStore.switchProfile(profileId)
     if (!result) return
-    columns.value = result.columns
-    layout.value = result.layout
-    // Only sync nd-deck localStorage for backward compat (skip profile re-save)
+    // Backward compat: keep nd-deck in sync
     setStorageJson(STORAGE_KEYS.deck, {
-      columns: columns.value,
-      layout: layout.value,
+      columns: result.columns,
+      layout: result.layout,
     })
   }
 
@@ -521,15 +464,12 @@ export const useDeckStore = defineStore('deck', () => {
       group.some((colId) => {
         const col = colMap.get(colId)
         if (!col) return false
-        // Main window shows columns without windowId
         if (!wid) return !col.windowId
-        // Sub-windows show their assigned columns
         return col.windowId === wid
       }),
     )
   })
 
-  /** Pop out a column to a sub-window. Unstacks first if needed. */
   function popOutColumn(columnId: string, windowId: string) {
     unstackColumn(columnId)
     const col = getColumn(columnId)
@@ -539,7 +479,6 @@ export const useDeckStore = defineStore('deck', () => {
     }
   }
 
-  /** Recall a column from a sub-window back to main */
   function recallColumn(columnId: string) {
     const col = getColumn(columnId)
     if (col) {
@@ -548,7 +487,6 @@ export const useDeckStore = defineStore('deck', () => {
     }
   }
 
-  /** Recall all columns from a specific sub-window (e.g. when window closes) */
   function recallColumnsFromWindow(windowId: string) {
     let changed = false
     for (const col of columns.value) {
@@ -560,7 +498,6 @@ export const useDeckStore = defineStore('deck', () => {
     if (changed) save()
   }
 
-  /** Move a column between windows */
   function moveColumnToWindow(columnId: string, targetWindowId: string | null) {
     const col = getColumn(columnId)
     if (!col) return
@@ -568,29 +505,14 @@ export const useDeckStore = defineStore('deck', () => {
     save()
   }
 
-  /** Listen for sync events from other windows */
-  let unlistenSync: (() => void) | null = null
+  // --- Sync (delegates to profileStore) ---
 
-  async function startSync() {
-    unlistenSync?.()
-    unlistenSync = await listen<{
-      profileId: string
-      sourceWindowId: string
-    }>('deck:profile-updated', (event) => {
-      const { profileId, sourceWindowId } = event.payload
-      const myWindowId = currentWindowId.value ?? '__main__'
-      // Ignore events from this window; only reload if same profile
-      if (sourceWindowId === myWindowId) return
-      if (profileId !== profileStore.windowProfileId) return
-      const data = profileStore.reloadProfile(profileId)
-      columns.value = data.columns
-      layout.value = data.layout
-    })
+  function startSync() {
+    return profileStore.startSync()
   }
 
   function stopSync() {
-    unlistenSync?.()
-    unlistenSync = null
+    profileStore.stopSync()
   }
 
   return {

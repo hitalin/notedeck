@@ -295,9 +295,18 @@ function syncVisualFromCode() {
     if (parsed.name && profileStore.windowProfileId) {
       profileStore.renameProfile(profileStore.windowProfileId, parsed.name)
     }
-    if (Array.isArray(parsed.columns)) deckStore.columns = parsed.columns
-    if (Array.isArray(parsed.layout)) deckStore.applyLayout(parsed.layout)
-    deckStore.flushSave()
+    const newColumns = Array.isArray(parsed.columns)
+      ? parsed.columns
+      : undefined
+    const newLayout = Array.isArray(parsed.layout) ? parsed.layout : undefined
+    if (newColumns && newLayout) {
+      profileStore.setColumnsAndLayout(newColumns, newLayout)
+    } else if (newColumns) {
+      profileStore.setColumns(newColumns)
+    } else if (newLayout) {
+      profileStore.setLayout(newLayout)
+    }
+    profileStore.flushPersist()
     codeError.value = null
   } catch (e) {
     codeError.value = e instanceof Error ? e.message : 'JSON5パースエラー'
