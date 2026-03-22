@@ -2,7 +2,6 @@
 import { relaunch } from '@tauri-apps/plugin-process'
 import type { CSSProperties } from 'vue'
 import { computed, type Ref, ref, watch } from 'vue'
-import AboutDialog from '@/components/common/AboutDialog.vue'
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
 import { type ConfirmOptions, useConfirm } from '@/stores/confirm'
@@ -37,7 +36,6 @@ const themeStore = useThemeStore()
 const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
 const fileInput = ref<HTMLInputElement | null>(null)
-const showAbout = ref(false)
 const themeGridOpen = ref(false)
 
 // Current mode's builtin theme
@@ -342,12 +340,11 @@ const importSettings = () =>
             {{ isInstalling ? 'インストール中...' : 'アップデート' }}
           </button>
         </div>
-        <button v-else :class="$style.versionInfo" @click="showAbout = true">v{{ appVersion }}</button>
+        <button v-else :class="$style.versionInfo" @click="windowsStore.open('about')">v{{ appVersion }}</button>
       </div>
     </div>
   </Transition>
   </Teleport>
-  <AboutDialog :show="showAbout" @close="showAbout = false" />
 </template>
 
 <style lang="scss" module>

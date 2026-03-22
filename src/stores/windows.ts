@@ -15,6 +15,7 @@ export type WindowType =
   | 'profileEditor'
   | 'ai'
   | 'chat'
+  | 'about'
 
 export interface DeckWindow {
   id: string
@@ -49,6 +50,8 @@ export const WINDOW_SIZES: Record<
   profileEditor: { width: 400, maxHeight: 700 },
   // Login
   login: { width: 380, maxHeight: 480 },
+  // About
+  about: { width: 380, maxHeight: 480 },
 }
 
 export const useWindowsStore = defineStore('windows', () => {
@@ -86,6 +89,7 @@ export const useWindowsStore = defineStore('windows', () => {
       if (type === 'themeEditor') return true
       if (type === 'ai') return true
       if (type === 'chat') return true
+      if (type === 'about') return true
       return false
     })
     if (duplicate) {
