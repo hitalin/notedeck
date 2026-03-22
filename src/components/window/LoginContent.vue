@@ -4,6 +4,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { onMounted, ref } from 'vue'
 import { MisskeyAuth } from '@/adapters/misskey/auth'
 import type { AuthSession } from '@/adapters/types'
+import { useServerPreview } from '@/composables/useServerPreview'
 import { detectServer } from '@/core/server'
 import type { Account } from '@/stores/accounts'
 import { useAccountsStore } from '@/stores/accounts'
@@ -24,6 +25,11 @@ const isCompact = useIsCompactLayout()
 const auth = new MisskeyAuth()
 
 const host = ref(props.initialHost ?? '')
+const {
+  status: serverStatus,
+  serverInfo,
+  errorMessage: previewError,
+} = useServerPreview(host)
 const step = ref<'input' | 'waiting' | 'guestLoading' | 'error'>('input')
 const errorMessage = ref('')
 let currentSession: AuthSession | null = null
@@ -104,8 +110,23 @@ onMounted(() => {
       <!-- Step 1: Input -->
       <div v-if="step === 'input'" key="input" :class="$style.dialogBody">
         <div :class="$style.logoArea">
-          <img src="/favicon.svg" alt="NoteDeck" :class="$style.appLogo" />
-          <p :class="$style.subtitle">Misskeyサーバーに接続</p>
+          <Transition name="logo" mode="out-in">
+            <img v-if="serverStatus === 'ok' && serverInfo?.iconUrl" :key="serverInfo.iconUrl" :src="serverInfo.iconUrl" alt="" :class="$style.appLogo" @error="($event.target as HTMLImageElement).src = '/favicon.svg'" />
+            <img v-else key="default" src="/favicon.svg" alt="NoteDeck" :class="$style.appLogo" />
+          </Transition>
+          <Transition name="logo" mode="out-in">
+            <p v-if="serverStatus === 'checking'" key="checking" :class="$style.subtitle">確認中...</p>
+            <p v-else-if="serverStatus === 'ok'" key="ok" :class="[$style.subtitle, $style.subtitleOk]">
+              サーバーに接続できます
+            </p>
+            <p v-else-if="serverStatus === 'unsupported'" key="unsupported" :class="[$style.subtitle, $style.subtitleWarn]">
+              {{ previewError }}
+            </p>
+            <p v-else-if="serverStatus === 'error'" key="error" :class="[$style.subtitle, $style.subtitleError]">
+              {{ previewError }}
+            </p>
+            <p v-else key="idle" :class="$style.subtitle">Misskeyサーバーに接続</p>
+          </Transition>
         </div>
 
         <div :class="$style.formArea">
@@ -223,6 +244,21 @@ onMounted(() => {
   font-size: 0.85em;
   color: var(--nd-fg);
   opacity: 0.7;
+}
+
+.subtitleOk {
+  color: var(--nd-accent);
+  opacity: 1;
+}
+
+.subtitleWarn {
+  color: var(--nd-warn, #f0a020);
+  opacity: 1;
+}
+
+.subtitleError {
+  color: var(--nd-love);
+  opacity: 1;
 }
 
 .formArea {
@@ -427,5 +463,20 @@ onMounted(() => {
 .step-leave-to {
   opacity: 0;
   transform: translateX(-50px);
+}
+
+.logo-enter-active,
+.logo-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.logo-enter-from {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.logo-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
 }
 </style>
