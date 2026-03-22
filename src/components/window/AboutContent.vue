@@ -1,13 +1,32 @@
 <script setup lang="ts">
 import { getTauriVersion } from '@tauri-apps/api/app'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { onMounted, ref } from 'vue'
 import { invoke } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../../package.json'
 
 const tauriVersion = ref('')
-const notecliVersion = ref('')
+const notecliCommit = ref('')
 const copied = ref(false)
+
+const buildDate = __BUILD_DATE__
+
+function parseWebView(ua: string): string {
+  const webkit = ua.match(/AppleWebKit\/([\d.]+)/)
+  return webkit ? `WebKit ${webkit[1]}` : 'N/A'
+}
+
+function parseOS(ua: string): string {
+  const linux = ua.match(/Linux ([^\s;)]+)/)
+  if (linux) return `Linux ${linux[1]}`
+  const win = ua.match(/Windows NT ([\d.]+)/)
+  if (win) return `Windows NT ${win[1]}`
+  const mac = ua.match(/Mac OS X ([\d_]+)/)
+  if (mac) return `macOS ${mac[1].replace(/_/g, '.')}`
+  return navigator.platform || 'N/A'
+}
+
+const webView = parseWebView(navigator.userAgent)
+const os = parseOS(navigator.userAgent)
 
 onMounted(async () => {
   try {
@@ -16,19 +35,26 @@ onMounted(async () => {
     // Fallback for environments where Tauri API is unavailable
   }
   try {
-    notecliVersion.value = await invoke<string>('get_notecli_version')
+    notecliCommit.value = await invoke<string>('get_notecli_version')
   } catch {
     // Fallback for environments where Tauri API is unavailable
   }
 })
 
+const infoRows = [
+  { label: 'Version', get: () => appVersion },
+  {
+    label: 'Commit',
+    get: () => (notecliCommit.value ? notecliCommit.value.slice(0, 7) : '...'),
+  },
+  { label: 'Date', get: () => buildDate },
+  { label: 'Tauri', get: () => tauriVersion.value || '...' },
+  { label: 'WebView', get: () => webView },
+  { label: 'OS', get: () => os },
+]
+
 async function copyInfo() {
-  const lines = [
-    `NoteDeck v${appVersion}`,
-    `Tauri: ${tauriVersion.value || 'N/A'}`,
-    `notecli: ${notecliVersion.value ? notecliVersion.value.slice(0, 7) : 'N/A'}`,
-    `UA: ${navigator.userAgent}`,
-  ]
+  const lines = infoRows.map((r) => `${r.label}: ${r.get()}`)
   await navigator.clipboard.writeText(lines.join('\n'))
   copied.value = true
   setTimeout(() => {
@@ -45,33 +71,10 @@ async function copyInfo() {
     </div>
 
     <div :class="$style.aboutInfo">
-      <div :class="$style.aboutRow">
-        <span :class="$style.aboutLabel">Version:</span>
-        <span :class="$style.aboutValue">{{ appVersion }}</span>
+      <div v-for="row in infoRows" :key="row.label" :class="$style.aboutRow">
+        <span :class="$style.aboutLabel">{{ row.label }}:</span>
+        <span :class="$style.aboutValue">{{ row.get() }}</span>
       </div>
-      <div :class="$style.aboutRow">
-        <span :class="$style.aboutLabel">Tauri:</span>
-        <span :class="$style.aboutValue">{{ tauriVersion || '...' }}</span>
-      </div>
-      <div :class="$style.aboutRow">
-        <span :class="$style.aboutLabel">notecli:</span>
-        <span :class="$style.aboutValue">{{ notecliVersion ? notecliVersion.slice(0, 7) : '...' }}</span>
-      </div>
-    </div>
-
-    <div :class="$style.aboutLinks">
-      <button :class="$style.aboutLink" @click="openUrl('https://github.com/hitalin/notedeck')">
-        <i class="ti ti-brand-github" />
-        GitHub
-      </button>
-      <button :class="$style.aboutLink" @click="openUrl('https://github.com/sponsors/hitalin')">
-        <i class="ti ti-heart" />
-        開発を支援する
-      </button>
-      <button :class="$style.aboutLink" @click="openUrl('https://github.com/hitalin/notedeck/blob/main/LICENSE')">
-        <i class="ti ti-license" />
-        ライセンス
-      </button>
     </div>
 
     <div :class="$style.actions">
@@ -129,45 +132,12 @@ async function copyInfo() {
 .aboutLabel {
   color: var(--nd-fg);
   opacity: 0.5;
-  min-width: 64px;
+  min-width: 72px;
 }
 
 .aboutValue {
   color: var(--nd-fg);
   user-select: all;
-}
-
-.aboutLinks {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 16px;
-  gap: 2px;
-}
-
-.aboutLink {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: none;
-  border-radius: var(--nd-radius-sm);
-  background: none;
-  color: var(--nd-accent);
-  font-size: 0.85em;
-  cursor: pointer;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-
-  :global(.ti) {
-    font-size: 1.1em;
-  }
-
-  :global(.ti-heart) {
-    color: #e05a7a;
-  }
 }
 
 .actions { @include action-bar; }
