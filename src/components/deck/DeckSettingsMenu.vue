@@ -736,9 +736,9 @@ const importSettings = () =>
 }
 
 .themeGrid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  gap: 6px;
 }
 
 .themeItem {
