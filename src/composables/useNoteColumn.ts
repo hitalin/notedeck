@@ -562,6 +562,19 @@ export function useNoteColumn(config: NoteColumnConfig) {
     await connect(useCache)
   }
 
+  /** Switch with pre-loaded snapshot to avoid skeleton flash */
+  async function switchWithSnapshot(
+    snapshotNotes: NormalizedNote[],
+    scrollTop: number,
+  ) {
+    disconnect()
+    streamingBatch?.resetBatch()
+    setNotes(snapshotNotes)
+    await nextTick()
+    if (scroller.value) scroller.value.scrollTop = scrollTop
+    await connect(true)
+  }
+
   onMounted(() => {
     window.addEventListener('deck-resume', onResume)
     connect(true)
@@ -615,6 +628,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     connect,
     disconnect,
     reconnect,
+    switchWithSnapshot,
     setNotes,
   }
 }

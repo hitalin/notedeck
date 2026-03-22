@@ -14,6 +14,7 @@ import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { useTabSlide } from '@/composables/useTabSlide'
 import { invoke } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
@@ -52,6 +53,10 @@ const interpreter = ref<Interpreter | null>(null)
 const outputTab = ref<'output' | 'inspector'>('output')
 const outputSectionRef = ref<HTMLElement | null>(null)
 const OUTPUT_TABS = ['output', 'inspector'] as const
+
+// Tab slide animation
+const aiTabIndex = computed(() => OUTPUT_TABS.indexOf(outputTab.value))
+useTabSlide(aiTabIndex, outputSectionRef)
 
 useSwipeTab(
   outputSectionRef,

@@ -2688,7 +2688,7 @@ dependencies = [
 
 [[package]]
 name = "notedeck"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "async-trait",
  "axum",
@@ -4736,9 +4736,9 @@ dependencies = [
 
 [[package]]
 name = "tao"
-version = "0.34.6"
+version = "0.34.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e06d52c379e63da659a483a958110bbde891695a0ecb53e48cc7786d5eda7bb"
+checksum = "89ad37db4a177d0a6f02c6895c9dc412b1eaaa2a7b8702fa04aa3f78544691a1"
 dependencies = [
  "bitflags 2.11.0",
  "block2",

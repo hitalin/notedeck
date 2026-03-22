@@ -13,6 +13,7 @@ import {
 } from 'vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { useTabSlide } from '@/composables/useTabSlide'
 import { useThemeStore } from '@/stores/theme'
 import { DARK_BASE, LIGHT_BASE } from '@/theme/builtinThemes'
 import { parseColor, toRgba } from '@/theme/colorUtils'
@@ -55,6 +56,8 @@ const tab = ref<'visual' | 'code'>('visual')
 const editorRef = ref<HTMLElement | null>(null)
 
 const TABS = ['visual', 'code'] as const
+const themeTabIndex = computed(() => TABS.indexOf(tab.value))
+useTabSlide(themeTabIndex, editorRef)
 useSwipeTab(
   editorRef,
   () => {

@@ -10,6 +10,7 @@ import { useAds } from '@/composables/useAds'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabIndicator } from '@/composables/useTabIndicator'
+import { useTabSlide } from '@/composables/useTabSlide'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -89,7 +90,7 @@ const noteColumnConfig: NoteColumnConfig = {
     cached.filter((n) => matchesFilter(n, columnFilters.value, tlType.value)),
 }
 
-// --- DeckNoteColumn ref (expose: account, scroller, reconnect, columnThemeVars) ---
+// --- DeckNoteColumn ref (expose: account, scroller, reconnect, switchWithSnapshot, notes, columnThemeVars) ---
 const noteColumnRef = ref<InstanceType<typeof DeckNoteColumn> | null>(null)
 const account = computed(() => noteColumnRef.value?.account)
 const columnThemeVars = computed(
@@ -227,12 +228,43 @@ const { indicatorStyle: tabIndicatorStyle } = useTabIndicator(
 
 // --- TL switching ---
 
+interface TlSnapshot {
+  notes: NormalizedNote[]
+  scrollTop: number
+}
+const tlSnapshots = new Map<TimelineType, TlSnapshot>()
+
+// Tab slide animation
+const tlTabIndex = computed(() => {
+  const types = allTlTypes.value
+  const idx = types.findIndex((t) => t.value === tlType.value)
+  return idx >= 0 ? idx : 0
+})
+useTabSlide(tlTabIndex, swipeTarget)
+
 async function switchTl(type: TimelineType) {
   if (type === tlType.value) return
+
+  // Save current tab snapshot
+  const col = noteColumnRef.value
+  if (col) {
+    tlSnapshots.set(tlType.value, {
+      notes: [...(col.notes ?? [])],
+      scrollTop: (col.scroller as HTMLElement | undefined)?.scrollTop ?? 0,
+    })
+  }
+
   tlType.value = type
   deckStore.updateColumn(props.column.id, { tl: type })
   refreshFilterKeys()
-  await reconnect()
+
+  // Restore snapshot if available, otherwise full reconnect
+  const snapshot = tlSnapshots.get(type)
+  if (snapshot && snapshot.notes.length > 0) {
+    await col?.switchWithSnapshot(snapshot.notes, snapshot.scrollTop)
+  } else {
+    await reconnect()
+  }
 }
 
 // --- Policies ---
