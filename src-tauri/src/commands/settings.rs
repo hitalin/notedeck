@@ -199,3 +199,154 @@ pub fn get_settings_dir(app: tauri::AppHandle) -> Result<String> {
         .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
     Ok(app_dir.to_string_lossy().to_string())
 }
+
+/// Directories and root files to include in settings backup.
+const BACKUP_SUBDIRS: &[&str] = &["profiles", "themes", "plugins"];
+
+/// Export all settings files to a zip archive via save dialog.
+#[tauri::command]
+pub async fn export_settings_zip(app: tauri::AppHandle) -> Result<bool> {
+    use tauri_plugin_dialog::DialogExt;
+    use zip::write::SimpleFileOptions;
+
+    let app_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+
+    let dest = app
+        .dialog()
+        .file()
+        .set_file_name("notedeck-settings.zip")
+        .add_filter("Zip Archive", &["zip"])
+        .blocking_save_file();
+
+    let Some(dest) = dest else {
+        return Ok(false); // user cancelled
+    };
+
+    let dest_path = dest
+        .as_path()
+        .ok_or_else(|| NoteDeckError::InvalidInput("Invalid destination path".to_string()))?;
+
+    let file = fs::File::create(dest_path)
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to create zip: {e}")))?;
+    let mut zip = zip::ZipWriter::new(file);
+    let options = SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+
+    // Add subdirectory files (profiles/, themes/, plugins/)
+    for subdir in BACKUP_SUBDIRS {
+        let dir = app_dir.join(subdir);
+        if !dir.exists() {
+            continue;
+        }
+        let entries = fs::read_dir(&dir)
+            .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+        for entry in entries {
+            let entry = entry.map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+            if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                continue;
+            }
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            let zip_path = format!("{subdir}/{name_str}");
+            let content = fs::read(entry.path())
+                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+            zip.start_file(&zip_path, options)
+                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+            std::io::Write::write_all(&mut zip, &content)
+                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+        }
+    }
+
+    // Add root-level settings files
+    for root_file in ALLOWED_ROOT_FILES {
+        let path = app_dir.join(root_file);
+        if path.exists() {
+            let content = fs::read(&path)
+                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+            zip.start_file(*root_file, options)
+                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+            std::io::Write::write_all(&mut zip, &content)
+                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+        }
+    }
+
+    zip.finish()
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to finalize zip: {e}")))?;
+
+    Ok(true)
+}
+
+/// Import settings from a zip archive via open dialog.
+#[tauri::command]
+pub async fn import_settings_zip(app: tauri::AppHandle) -> Result<bool> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let app_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+
+    let src = app
+        .dialog()
+        .file()
+        .add_filter("Zip Archive", &["zip"])
+        .blocking_pick_file();
+
+    let Some(src) = src else {
+        return Ok(false); // user cancelled
+    };
+
+    let src_path = src
+        .as_path()
+        .ok_or_else(|| NoteDeckError::InvalidInput("Invalid source path".to_string()))?;
+
+    let file = fs::File::open(src_path)
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to open zip: {e}")))?;
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Invalid zip file: {e}")))?;
+
+    for i in 0..archive.len() {
+        let mut entry = archive
+            .by_index(i)
+            .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+
+        if entry.is_dir() {
+            continue;
+        }
+
+        let entry_name = entry.name().to_string();
+
+        // Path traversal prevention
+        if entry_name.contains("..") || entry_name.starts_with('/') || entry_name.starts_with('\\') {
+            tracing::warn!("Skipping suspicious zip entry: {entry_name}");
+            continue;
+        }
+
+        // Validate: must be in allowed subdirs or allowed root files
+        let allowed = BACKUP_SUBDIRS.iter().any(|d| entry_name.starts_with(&format!("{d}/")))
+            || ALLOWED_ROOT_FILES.contains(&entry_name.as_str());
+        if !allowed {
+            tracing::warn!("Skipping unknown zip entry: {entry_name}");
+            continue;
+        }
+
+        let dest_path = app_dir.join(&entry_name);
+
+        // Ensure parent directory exists
+        if let Some(parent) = dest_path.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+        }
+
+        let mut content = Vec::new();
+        std::io::Read::read_to_end(&mut entry, &mut content)
+            .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+        fs::write(&dest_path, &content)
+            .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to write {entry_name}: {e}")))?;
+    }
+
+    Ok(true)
+}

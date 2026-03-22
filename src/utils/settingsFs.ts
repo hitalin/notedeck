@@ -211,3 +211,17 @@ export async function renamePluginFile(
 ): Promise<void> {
   return renameSettingsFile(PLUGINS_DIR, oldFilename, newFilename)
 }
+
+// --- Backup (zip export/import) ---
+
+/** Export all settings to a zip file via save dialog. Returns true if exported. */
+export async function exportSettingsZip(): Promise<boolean> {
+  if (!isTauri) return false
+  return invoke<boolean>('export_settings_zip')
+}
+
+/** Import settings from a zip file via open dialog. Returns true if imported. */
+export async function importSettingsZip(): Promise<boolean> {
+  if (!isTauri) return false
+  return invoke<boolean>('import_settings_zip')
+}
