@@ -5,6 +5,7 @@ import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useDeckWallpaperStore } from '@/stores/deckWallpaper'
+import { getStorageJson, setStorageJson } from '@/utils/storage'
 
 export type ColumnType =
   | 'timeline'
@@ -371,10 +372,10 @@ export const useDeckStore = defineStore('deck', () => {
         )
       }
       // Always keep nd-deck in sync for backward compatibility
-      localStorage.setItem(
-        DECK_KEY,
-        JSON.stringify({ columns: columns.value, layout: layout.value }),
-      )
+      setStorageJson(DECK_KEY, {
+        columns: columns.value,
+        layout: layout.value,
+      })
     } catch (e) {
       console.warn('[deck] failed to save:', e)
     }
@@ -390,17 +391,13 @@ export const useDeckStore = defineStore('deck', () => {
 
   function load() {
     // Load from nd-deck (backward compat / initial data)
-    try {
-      const raw = localStorage.getItem(DECK_KEY)
-      if (raw) {
-        const data = JSON.parse(raw)
-        if (data.columns && data.layout) {
-          columns.value = data.columns
-          layout.value = data.layout
-        }
-      }
-    } catch (e) {
-      console.warn('[deck] failed to load:', e)
+    const data = getStorageJson<{
+      columns?: DeckColumn[]
+      layout?: string[][]
+    } | null>(DECK_KEY, null)
+    if (data?.columns && data?.layout) {
+      columns.value = data.columns
+      layout.value = data.layout
     }
 
     profileStore.ensureDefaults(columns.value, layout.value)

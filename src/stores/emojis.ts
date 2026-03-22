@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
 import type { ServerEmoji } from '@/adapters/types'
+import { setStorageJson } from '@/utils/storage'
 
 const STORAGE_KEY = 'emojis_cache'
 
@@ -38,7 +39,7 @@ export const useEmojisStore = defineStore('emojis', () => {
       for (const [host, lookup] of cache.value) {
         obj[host] = lookup
       }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(obj))
+      setStorageJson(STORAGE_KEY, obj)
     } catch {
       // storage full, ignore
     }

@@ -21,19 +21,16 @@ export interface PluginMeta {
   active: boolean
 }
 
+import { getStorageJson, setStorageJson } from '@/utils/storage'
+
 const STORAGE_KEY = 'nd-plugins'
 
 function loadPluginsFromStorage(): PluginMeta[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as PluginMeta[]) : []
-  } catch {
-    return []
-  }
+  return getStorageJson<PluginMeta[]>(STORAGE_KEY, [])
 }
 
 function savePlugins(plugins: PluginMeta[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(plugins))
+  setStorageJson(STORAGE_KEY, plugins)
 }
 
 export const usePluginsStore = defineStore('plugins', () => {

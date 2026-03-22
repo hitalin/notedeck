@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Shortcut } from '@/commands/registry'
 import defaultKeybindsJson5 from '@/defaults/keybindings.json5?raw'
+import { getStorageJson, setStorageJson } from '@/utils/storage'
 
 export interface KeybindEntry {
   commandId: string
@@ -16,20 +17,12 @@ const STORAGE_KEY = 'nd-keybinds'
 export const useKeybindsStore = defineStore('keybinds', () => {
   // ユーザーカスタマイズ: commandId → shortcuts の上書き
   // null = デフォルトを使用、空配列 = キーバインドを無効化
-  const overrides = ref<Record<string, Shortcut[]>>(loadOverrides())
-
-  function loadOverrides(): Record<string, Shortcut[]> {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) return JSON.parse(raw) as Record<string, Shortcut[]>
-    } catch {
-      // ignore
-    }
-    return {}
-  }
+  const overrides = ref<Record<string, Shortcut[]>>(
+    getStorageJson<Record<string, Shortcut[]>>(STORAGE_KEY, {}),
+  )
 
   function saveOverrides() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides.value))
+    setStorageJson(STORAGE_KEY, overrides.value)
   }
 
   function getShortcuts(commandId: string): Shortcut[] {

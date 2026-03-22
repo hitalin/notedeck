@@ -11,6 +11,13 @@ import {
 import { compileMisskeyTheme } from '@/theme/compiler'
 import { CustomCssManager } from '@/theme/cssApplier'
 import type { CompiledProps, MisskeyTheme, ThemeSource } from '@/theme/types'
+import {
+  getStorageJson,
+  getStorageString,
+  removeStorage,
+  setStorageJson,
+  setStorageString,
+} from '@/utils/storage'
 
 const STORAGE_COMPILED_KEY = 'nd-theme-compiled'
 const STORAGE_ACCOUNT_THEMES_KEY = 'nd-account-themes'
@@ -102,37 +109,30 @@ export const useThemeStore = defineStore('theme', () => {
 
   function init(): void {
     // Restore compiled CSS from localStorage first (sync, FOUC prevention)
-    const storedCompiled = localStorage.getItem(STORAGE_COMPILED_KEY)
+    const storedCompiled = getStorageJson<CompiledProps | null>(
+      STORAGE_COMPILED_KEY,
+      null,
+    )
     if (storedCompiled) {
-      try {
-        applyTheme(JSON.parse(storedCompiled) as CompiledProps)
-      } catch {
-        /* ignore corrupt data */
-      }
+      applyTheme(storedCompiled)
     }
 
     // Restore manual theme preference
-    const storedManual = localStorage.getItem(STORAGE_MANUAL_THEME_KEY)
+    const storedManual = getStorageString(STORAGE_MANUAL_THEME_KEY)
     if (storedManual === 'dark' || storedManual === 'light') {
       manualMode.value = storedManual
     }
 
     // Restore installed themes & selections
-    const storedThemes = localStorage.getItem(STORAGE_INSTALLED_THEMES_KEY)
-    if (storedThemes) {
-      try {
-        installedThemes.value = JSON.parse(storedThemes) as MisskeyTheme[]
-      } catch {
-        /* ignore */
-      }
-    }
-    selectedDarkThemeId.value = localStorage.getItem(STORAGE_SELECTED_DARK_KEY)
-    selectedLightThemeId.value = localStorage.getItem(
-      STORAGE_SELECTED_LIGHT_KEY,
+    installedThemes.value = getStorageJson<MisskeyTheme[]>(
+      STORAGE_INSTALLED_THEMES_KEY,
+      [],
     )
+    selectedDarkThemeId.value = getStorageString(STORAGE_SELECTED_DARK_KEY)
+    selectedLightThemeId.value = getStorageString(STORAGE_SELECTED_LIGHT_KEY)
 
     // Restore custom CSS
-    const storedCss = localStorage.getItem(STORAGE_CUSTOM_CSS_KEY)
+    const storedCss = getStorageString(STORAGE_CUSTOM_CSS_KEY)
     if (storedCss) {
       customCss.value = storedCss
       applyCustomCss(storedCss)
@@ -143,15 +143,11 @@ export const useThemeStore = defineStore('theme', () => {
 
     // Defer account theme cache restoration (not needed for initial render)
     queueMicrotask(() => {
-      const storedAccountThemes = localStorage.getItem(
-        STORAGE_ACCOUNT_THEMES_KEY,
-      )
-      if (storedAccountThemes) {
+      const entries = getStorageJson<
+        [string, { dark?: MisskeyTheme; light?: MisskeyTheme }][]
+      >(STORAGE_ACCOUNT_THEMES_KEY, [])
+      if (entries.length > 0) {
         try {
-          const entries = JSON.parse(storedAccountThemes) as [
-            string,
-            { dark?: MisskeyTheme; light?: MisskeyTheme },
-          ][]
           accountThemeCache.value = new Map(entries)
         } catch {
           /* ignore corrupt data */
@@ -200,20 +196,20 @@ export const useThemeStore = defineStore('theme', () => {
 
   function toggleTheme(): void {
     manualMode.value = isCurrentDark() ? 'light' : 'dark'
-    localStorage.setItem(STORAGE_MANUAL_THEME_KEY, manualMode.value)
+    setStorageString(STORAGE_MANUAL_THEME_KEY, manualMode.value)
     applyCurrentTheme()
   }
 
   function resetToOsTheme(): void {
     manualMode.value = null
-    localStorage.removeItem(STORAGE_MANUAL_THEME_KEY)
+    removeStorage(STORAGE_MANUAL_THEME_KEY)
     applyCurrentTheme()
   }
 
   /** Lock current appearance as manual mode (stop following OS) */
   function pinCurrentMode(): void {
     manualMode.value = isCurrentDark() ? 'dark' : 'light'
-    localStorage.setItem(STORAGE_MANUAL_THEME_KEY, manualMode.value)
+    setStorageString(STORAGE_MANUAL_THEME_KEY, manualMode.value)
   }
 
   /** Install a Misskey theme from JSON code. Returns true on success. */
@@ -250,11 +246,11 @@ export const useThemeStore = defineStore('theme', () => {
     // Clear selection if removed
     if (selectedDarkThemeId.value === id) {
       selectedDarkThemeId.value = null
-      localStorage.removeItem(STORAGE_SELECTED_DARK_KEY)
+      removeStorage(STORAGE_SELECTED_DARK_KEY)
     }
     if (selectedLightThemeId.value === id) {
       selectedLightThemeId.value = null
-      localStorage.removeItem(STORAGE_SELECTED_LIGHT_KEY)
+      removeStorage(STORAGE_SELECTED_LIGHT_KEY)
     }
     persistInstalledThemes()
     applyCurrentTheme()
@@ -263,30 +259,21 @@ export const useThemeStore = defineStore('theme', () => {
   function selectTheme(id: string | null, mode: 'dark' | 'light'): void {
     if (mode === 'dark') {
       selectedDarkThemeId.value = id
-      if (id) localStorage.setItem(STORAGE_SELECTED_DARK_KEY, id)
-      else localStorage.removeItem(STORAGE_SELECTED_DARK_KEY)
+      setStorageString(STORAGE_SELECTED_DARK_KEY, id)
     } else {
       selectedLightThemeId.value = id
-      if (id) localStorage.setItem(STORAGE_SELECTED_LIGHT_KEY, id)
-      else localStorage.removeItem(STORAGE_SELECTED_LIGHT_KEY)
+      setStorageString(STORAGE_SELECTED_LIGHT_KEY, id)
     }
     applyCurrentTheme()
   }
 
   function persistInstalledThemes(): void {
-    localStorage.setItem(
-      STORAGE_INSTALLED_THEMES_KEY,
-      JSON.stringify(installedThemes.value),
-    )
+    setStorageJson(STORAGE_INSTALLED_THEMES_KEY, installedThemes.value)
   }
 
   function setCustomCss(css: string): void {
     customCss.value = css
-    if (css) {
-      localStorage.setItem(STORAGE_CUSTOM_CSS_KEY, css)
-    } else {
-      localStorage.removeItem(STORAGE_CUSTOM_CSS_KEY)
-    }
+    setStorageString(STORAGE_CUSTOM_CSS_KEY, css || null)
     applyCustomCss(css)
   }
 
@@ -303,7 +290,7 @@ export const useThemeStore = defineStore('theme', () => {
     compiledCache.clear()
     styleVarsCache.clear()
     currentSource.value = source
-    localStorage.setItem(STORAGE_COMPILED_KEY, JSON.stringify(compiled))
+    setStorageJson(STORAGE_COMPILED_KEY, compiled)
   }
 
   async function fetchAccountTheme(accountId: string): Promise<void> {
@@ -369,7 +356,7 @@ export const useThemeStore = defineStore('theme', () => {
 
   function persistAccountThemes(): void {
     const entries = Array.from(accountThemeCache.value.entries())
-    localStorage.setItem(STORAGE_ACCOUNT_THEMES_KEY, JSON.stringify(entries))
+    setStorageJson(STORAGE_ACCOUNT_THEMES_KEY, entries)
   }
 
   function getAccountThemes(accountId: string) {

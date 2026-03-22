@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { DeckColumn, DeckProfile, DeckWindowLayout } from '@/stores/deck'
+import {
+  getStorageJson,
+  getStorageString,
+  setStorageJson,
+  setStorageString,
+} from '@/utils/storage'
 
 const PROFILES_KEY = 'nd-deck-profiles'
 const ACTIVE_PROFILE_KEY = 'nd-deck-active-profile'
@@ -30,12 +36,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   })
 
   function loadProfiles(): DeckProfile[] {
-    try {
-      const raw = localStorage.getItem(PROFILES_KEY)
-      return raw ? JSON.parse(raw) : []
-    } catch {
-      return []
-    }
+    return getStorageJson<DeckProfile[]>(PROFILES_KEY, [])
   }
 
   /** Load profiles and find one by ID in a single pass. */
@@ -48,21 +49,17 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   }
 
   function saveProfiles(profiles: DeckProfile[]) {
-    localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles))
+    setStorageJson(PROFILES_KEY, profiles)
     profileVersion.value++
   }
 
   function saveActiveProfileId(id: string | null) {
     activeProfileId.value = id
-    if (id) {
-      localStorage.setItem(ACTIVE_PROFILE_KEY, id)
-    } else {
-      localStorage.removeItem(ACTIVE_PROFILE_KEY)
-    }
+    setStorageString(ACTIVE_PROFILE_KEY, id)
   }
 
   function loadActiveProfileId() {
-    activeProfileId.value = localStorage.getItem(ACTIVE_PROFILE_KEY)
+    activeProfileId.value = getStorageString(ACTIVE_PROFILE_KEY)
   }
 
   /** Find the next available "プロファイル N" name */
