@@ -14,7 +14,6 @@ const CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 const CACHE_TTL_SECS: i64 = 24 * 60 * 60;
 const MAX_ENTRIES: usize = 512;
 const MAX_HTML_SIZE: usize = 2 * 1024 * 1024;
-const FETCH_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Player {
@@ -117,6 +116,7 @@ struct CacheEntry {
 
 type InflightMap = HashMap<String, watch::Receiver<Option<Result<SummaryData, String>>>>;
 
+#[derive(Clone)]
 pub struct OgpCache {
     cache: Arc<Mutex<LruCache<String, CacheEntry>>>,
     inflight: Arc<Mutex<InflightMap>>,
@@ -126,14 +126,19 @@ pub struct OgpCache {
 }
 
 impl OgpCache {
-    pub fn new(db: Arc<notecli::db::Database>) -> Self {
-        let http_client = reqwest::Client::builder()
-            .timeout(FETCH_TIMEOUT)
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-            .redirect(reqwest::redirect::Policy::limited(5))
-            .build()
-            .unwrap_or_default();
+    /// Pre-warm the in-memory cache from disk.
+    /// Call from app setup to avoid blocking the first API request.
+    pub async fn pre_warm(&self) {
+        self.ensure_loaded().await;
+    }
 
+    /// Create with a default HTTP client (used in tests).
+    #[allow(dead_code)]
+    pub fn new(db: Arc<notecli::db::Database>) -> Self {
+        Self::with_client(db, reqwest::Client::default())
+    }
+
+    pub fn with_client(db: Arc<notecli::db::Database>, http_client: reqwest::Client) -> Self {
         Self {
             cache: Arc::new(Mutex::new(LruCache::new(
                 NonZeroUsize::new(MAX_ENTRIES).unwrap(),

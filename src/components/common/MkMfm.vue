@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
 import DOMPurify from 'dompurify'
-import katex from 'katex'
 import { computed, defineAsyncComponent, useCssModule } from 'vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { highlightCode, highlighterLoaded } from '@/utils/highlight'
@@ -63,63 +62,77 @@ function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+// KaTeX is loaded on demand — most notes don't contain math
+let katexModule: typeof import('katex') | null = null
+const katexReady = import('katex').then((m) => {
+  katexModule = m
+})
+
+const KATEX_ALLOWED_TAGS = [
+  'span',
+  'div',
+  'math',
+  'semantics',
+  'mrow',
+  'mi',
+  'mo',
+  'mn',
+  'msup',
+  'msub',
+  'mfrac',
+  'munder',
+  'mover',
+  'munderover',
+  'msqrt',
+  'mroot',
+  'mtable',
+  'mtr',
+  'mtd',
+  'mtext',
+  'mspace',
+  'annotation',
+  'svg',
+  'line',
+  'path',
+  'rect',
+  'g',
+]
+const KATEX_ALLOWED_ATTR = [
+  'class',
+  'style',
+  'mathvariant',
+  'encoding',
+  'xmlns',
+  'width',
+  'height',
+  'viewBox',
+  'preserveAspectRatio',
+  'd',
+  'x1',
+  'x2',
+  'y1',
+  'y2',
+  'fill',
+  'stroke',
+  'stroke-width',
+]
+
 function renderKatex(formula: string, displayMode: boolean): string {
+  if (!katexModule) {
+    // Trigger load (will re-render on next update)
+    katexReady.then()
+    return escapeHtml(formula)
+  }
   try {
-    const html = katex.renderToString(formula, {
+    const html = katexModule.default.renderToString(formula, {
       displayMode,
       throwOnError: false,
       trust: false,
       strict: 'error',
     })
     return DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: [
-        'span',
-        'div',
-        'math',
-        'semantics',
-        'mrow',
-        'mi',
-        'mo',
-        'mn',
-        'msup',
-        'msub',
-        'mfrac',
-        'munder',
-        'mover',
-        'munderover',
-        'msqrt',
-        'mroot',
-        'mtable',
-        'mtr',
-        'mtd',
-        'mtext',
-        'mspace',
-        'annotation',
-        'svg',
-        'line',
-        'path',
-        'rect',
-        'g',
-      ],
-      ALLOWED_ATTR: [
-        'class',
-        'style',
-        'mathvariant',
-        'encoding',
-        'xmlns',
-        'width',
-        'height',
-        'viewBox',
-        'preserveAspectRatio',
-        'd',
-        'x1',
-        'x2',
-        'y1',
-        'y2',
-        'fill',
-        'stroke',
-        'stroke-width',
-      ],
+      ALLOWED_TAGS: KATEX_ALLOWED_TAGS,
+      ALLOWED_ATTR: KATEX_ALLOWED_ATTR,
     })
   } catch {
     return escapeHtml(formula)

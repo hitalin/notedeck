@@ -72,17 +72,15 @@ pub struct ImageCache {
 }
 
 impl ImageCache {
+    /// Create with a default HTTP client (used in tests).
+    #[cfg(test)]
     pub fn new(app_dir: &Path) -> Self {
+        Self::with_client(app_dir, reqwest::Client::default())
+    }
+
+    pub fn with_client(app_dir: &Path, http_client: reqwest::Client) -> Self {
         let cache_dir = app_dir.join("image_cache");
         std::fs::create_dir_all(&cache_dir).ok();
-
-        let http_client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(5))
-            .pool_max_idle_per_host(8)
-            .pool_idle_timeout(Duration::from_secs(60))
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-            .build()
-            .unwrap_or_default();
 
         Self {
             cache_dir,

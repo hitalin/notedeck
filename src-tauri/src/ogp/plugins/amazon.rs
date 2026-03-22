@@ -1,14 +1,6 @@
 use async_trait::async_trait;
-use scraper::{Html, Selector};
-use std::sync::LazyLock;
 
 use super::{Plugin, PluginError, SummaryData};
-
-static LANDING_IMAGE: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("#landingImage, #imgBlkFront, #ebooksImgBlkFront").unwrap());
-
-static JSON_LD: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("script[type='application/ld+json']").unwrap());
 
 pub struct AmazonPlugin;
 pub const PLUGIN: AmazonPlugin = AmazonPlugin;
@@ -78,7 +70,8 @@ impl Plugin for AmazonPlugin {
         let mut data = crate::ogp::parser::parse_html(&html, &final_url);
 
         if data.thumbnail.is_none() {
-            data.thumbnail = extract_product_image(&html);
+            data.thumbnail = crate::ogp::parser::extract_amazon_product_image(&html)
+                .or_else(|| crate::ogp::parser::extract_amazon_jsonld_image(&html));
         }
         if let Some(ref title) = data.title {
             data.title = Some(clean_title(title));
@@ -130,77 +123,6 @@ fn extract_asin(path: &str) -> Option<&str> {
             if candidate.len() == 10 && candidate.chars().all(|c| c.is_ascii_alphanumeric()) {
                 return Some(candidate);
             }
-        }
-    }
-    None
-}
-
-// --- Image extraction ---
-
-fn extract_product_image(html: &str) -> Option<String> {
-    let document = Html::parse_document(html);
-
-    image_from_landing(&document).or_else(|| image_from_jsonld(&document))
-}
-
-fn image_from_landing(doc: &Html) -> Option<String> {
-    let img = doc.select(&LANDING_IMAGE).next()?;
-    let el = img.value();
-
-    // data-old-hires (high-res) → src → data-a-dynamic-image (JSON)
-    el.attr("data-old-hires")
-        .filter(|s| !s.is_empty())
-        .or_else(|| el.attr("src"))
-        .map(|s| s.trim().to_string())
-        .filter(|u| u.starts_with("https://"))
-        .or_else(|| {
-            let json_str = el.attr("data-a-dynamic-image")?;
-            let map: serde_json::Map<String, serde_json::Value> =
-                serde_json::from_str(json_str).ok()?;
-            map.into_iter()
-                .filter(|(url, _)| url.starts_with("https://"))
-                .max_by_key(|(_, dims)| {
-                    dims.as_array()
-                        .and_then(|a| a.first())
-                        .and_then(|w| w.as_u64())
-                        .unwrap_or(0)
-                })
-                .map(|(url, _)| url)
-        })
-}
-
-fn image_from_jsonld(doc: &Html) -> Option<String> {
-    for el in doc.select(&JSON_LD) {
-        let text: String = el.text().collect();
-        let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) else {
-            continue;
-        };
-
-        let is_product =
-            |v: &serde_json::Value| v.get("@type").and_then(|t| t.as_str()) == Some("Product");
-
-        let product = if is_product(&json) {
-            &json
-        } else if let Some(p) = json
-            .get("@graph")
-            .and_then(|g| g.as_array())
-            .and_then(|arr| arr.iter().find(|v| is_product(v)))
-        {
-            p
-        } else {
-            continue;
-        };
-
-        let img = match product.get("image") {
-            Some(v) => v,
-            None => continue,
-        };
-        let url = img
-            .as_str()
-            .map(String::from)
-            .or_else(|| img.as_array()?.first()?.as_str().map(String::from));
-        if let Some(url) = url.filter(|u| u.starts_with("https://")) {
-            return Some(url);
         }
     }
     None

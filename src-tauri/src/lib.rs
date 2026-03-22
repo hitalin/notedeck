@@ -30,6 +30,17 @@ pub fn run() {
 }
 
 fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
+    // Limit tokio worker threads to reduce idle memory (~2MB stack per thread).
+    // Default is num_cpus which is excessive for a desktop app.
+    // Leak the runtime so the handle remains valid for the app's lifetime.
+    let runtime = Box::leak(Box::new(
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(4)
+            .enable_all()
+            .build()?,
+    ));
+    tauri::async_runtime::set(runtime.handle().clone());
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -239,11 +250,35 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
         migrations::run_db(&db);
 
+        // Periodic credential cache cleanup (every 5 minutes)
+        tauri::async_runtime::spawn(async {
+            let interval = std::time::Duration::from_secs(5 * 60);
+            loop {
+                tokio::time::sleep(interval).await;
+                commands::cleanup_expired_credentials();
+            }
+        });
+
         // Export account list for background workers (non-secret metadata only)
         commands::export_account_list(app.app_handle(), &db);
 
-        // Initialize OGP cache (backed by shared Database)
-        app.manage(ogp::OgpCache::new(db.clone()));
+        // Shared HTTP client for OGP / image-cache (single connection pool)
+        let shared_http = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(5))
+            .pool_max_idle_per_host(8)
+            .pool_idle_timeout(std::time::Duration::from_secs(60))
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+            .redirect(reqwest::redirect::Policy::limited(5))
+            .build()
+            .unwrap_or_default();
+
+        // Initialize OGP cache (backed by shared Database) and pre-warm from disk
+        let ogp_cache = ogp::OgpCache::with_client(db.clone(), shared_http.clone());
+        let ogp_warmup = ogp_cache.clone();
+        app.manage(ogp_cache);
+        tauri::async_runtime::spawn(async move {
+            ogp_warmup.pre_warm().await;
+        });
 
         // Generate API token (256-bit CSPRNG) and write to file
         let api_token: String = rand::random::<[u8; 32]>()
@@ -259,8 +294,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         }
         let token_path_str = token_path.to_string_lossy().to_string();
 
-        // Initialize image cache
-        let image_cache = std::sync::Arc::new(image_cache::ImageCache::new(&app_dir));
+        // Initialize image cache (shares HTTP client with OGP cache)
+        let image_cache = std::sync::Arc::new(image_cache::ImageCache::with_client(&app_dir, shared_http));
 
         // Start HTTP API server
         let app_handle = app.app_handle().clone();
