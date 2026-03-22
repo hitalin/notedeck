@@ -29,6 +29,7 @@ const BASE_TITLES: Record<string, string> = {
   keybinds: 'キーバインド',
   cssEditor: 'カスタムCSS',
   themeEditor: 'テーマエディタ',
+  profileEditor: 'プロファイルエディタ',
   ai: 'AI アシスタント',
 }
 
@@ -51,6 +52,7 @@ const icons: Record<string, string> = {
   keybinds: 'ti ti-keyboard',
   cssEditor: 'ti ti-code',
   themeEditor: 'ti ti-palette',
+  profileEditor: 'ti ti-layout-columns',
   ai: 'ti ti-sparkles',
 }
 

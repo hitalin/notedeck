@@ -188,6 +188,12 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::get_notecli_version,
         commands::open_devtools,
         commands::export_db,
+        commands::list_settings_files,
+        commands::read_settings_file,
+        commands::write_settings_file,
+        commands::delete_settings_file,
+        commands::rename_settings_file,
+        commands::get_settings_dir,
     ]);
 
     builder = builder.setup(|app| {

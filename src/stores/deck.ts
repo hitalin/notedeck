@@ -89,6 +89,8 @@ export interface DeckColumn {
   folderId?: string | null
   /** Window assignment: undefined/null = main window */
   windowId?: string
+  /** Portable account identifier ("user@host") for cross-device profile sharing */
+  account?: string
 }
 
 let columnCounter = 0
@@ -585,6 +587,7 @@ export const useDeckStore = defineStore('deck', () => {
     swapInGroup,
     stackColumn,
     insertColumnAt,
+    applyLayout,
     unstackColumn,
     moveLeft,
     moveRight,
@@ -611,7 +614,7 @@ export const useDeckStore = defineStore('deck', () => {
     deleteProfile: profileStore.deleteProfile,
     renameProfile: profileStore.renameProfile,
     windowProfileId: computed(() => profileStore.windowProfileId),
-    currentProfileName: profileStore.currentProfileName,
+    currentProfileName: computed(() => profileStore.currentProfileName),
     initWindowProfile: profileStore.initWindowProfile,
     createEmptyProfile: profileStore.createEmptyProfile,
     currentWindowId,

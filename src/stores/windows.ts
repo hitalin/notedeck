@@ -12,6 +12,7 @@ export type WindowType =
   | 'keybinds'
   | 'cssEditor'
   | 'themeEditor'
+  | 'profileEditor'
   | 'ai'
   | 'chat'
 
@@ -41,6 +42,7 @@ export const WINDOW_SIZES: Record<
   keybinds: { width: 560, maxHeight: 650 },
   cssEditor: { width: 480, maxHeight: 650 },
   themeEditor: { width: 480, maxHeight: 700 },
+  profileEditor: { width: 480, maxHeight: 700 },
   ai: { width: 480, maxHeight: 650 },
   chat: { width: 500, maxHeight: 650 },
 }
