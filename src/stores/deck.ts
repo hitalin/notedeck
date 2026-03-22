@@ -582,7 +582,7 @@ export const useDeckStore = defineStore('deck', () => {
       // Ignore events from this window; only reload if same profile
       if (sourceWindowId === myWindowId) return
       if (profileId !== profileStore.windowProfileId) return
-      const data = profileStore.initWindowProfile(profileId)
+      const data = profileStore.reloadProfile(profileId)
       columns.value = data.columns
       layout.value = data.layout
     })
