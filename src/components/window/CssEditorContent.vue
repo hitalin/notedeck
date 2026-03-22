@@ -3,6 +3,7 @@ import { css } from '@codemirror/lang-css'
 import { type Diagnostic, linter } from '@codemirror/lint'
 import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useThemeStore } from '@/stores/theme'
 
 const cssLang = css()
@@ -40,6 +41,26 @@ const cssLinter = linter(
 const themeStore = useThemeStore()
 
 const tab = ref<'presets' | 'code'>('presets')
+const editorRef = ref<HTMLElement | null>(null)
+
+const CSS_TABS = ['presets', 'code'] as const
+useSwipeTab(
+  editorRef,
+  () => {
+    const next = CSS_TABS[CSS_TABS.indexOf(tab.value) + 1]
+    if (next) {
+      tab.value = next
+      return true
+    }
+  },
+  () => {
+    const prev = CSS_TABS[CSS_TABS.indexOf(tab.value) - 1]
+    if (prev) {
+      tab.value = prev
+      return true
+    }
+  },
+)
 
 // Local CSS mirror (synced from store on mount)
 const cssCode = ref(themeStore.customCss)
@@ -301,7 +322,7 @@ watch(tab, (t) => {
 </script>
 
 <template>
-  <div :class="$style.cssContent">
+  <div ref="editorRef" :class="$style.cssContent">
     <!-- Tabs -->
     <div :class="$style.tabs">
       <button

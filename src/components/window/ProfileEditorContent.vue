@@ -3,6 +3,7 @@ import { json } from '@codemirror/lang-json'
 import { type Diagnostic, linter } from '@codemirror/lint'
 import JSON5 from 'json5'
 import { defineAsyncComponent, ref, watch } from 'vue'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -121,6 +122,28 @@ const profileStore = useDeckProfileStore()
 const tab = ref<'visual' | 'code'>('visual')
 const codeContent = ref('')
 const codeError = ref<string | null>(null)
+const editorRef = ref<HTMLElement | null>(null)
+
+const TABS = ['visual', 'code'] as const
+useSwipeTab(
+  editorRef,
+  () => {
+    const idx = TABS.indexOf(tab.value)
+    const next = TABS[idx + 1]
+    if (next) {
+      tab.value = next
+      return true
+    }
+  },
+  () => {
+    const idx = TABS.indexOf(tab.value)
+    const prev = TABS[idx - 1]
+    if (prev) {
+      tab.value = prev
+      return true
+    }
+  },
+)
 
 function columnLabel(col: DeckColumn): string {
   if (col.name) return col.name
@@ -296,7 +319,7 @@ function exportToClipboard() {
 </script>
 
 <template>
-  <div :class="$style.editor">
+  <div ref="editorRef" :class="$style.editor">
     <!-- Tabs -->
     <div :class="$style.tabs">
       <button
