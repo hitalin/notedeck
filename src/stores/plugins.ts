@@ -43,8 +43,6 @@ interface PluginFileMeta {
   active: boolean
 }
 
-const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
-
 function loadPluginsFromStorage(): PluginMeta[] {
   return getStorageJson<PluginMeta[]>(STORAGE_KEYS.plugins, [])
 }
@@ -64,7 +62,7 @@ export const usePluginsStore = defineStore('plugins', () => {
     plugins.value = loadPluginsFromStorage()
 
     // Kick off file-based init (Tauri only)
-    if (isTauri) {
+    if (settingsFs.isTauri) {
       initFileStorage().catch((e) =>
         console.warn('[plugins] file storage init failed:', e),
       )

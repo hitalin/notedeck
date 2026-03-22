@@ -429,8 +429,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     }
 
     // Kick off async file sync in background (Tauri only)
-    const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
-    if (isTauri) {
+    if (settingsFs.isTauri) {
       initFileStorage().catch((e) =>
         console.warn('[deckProfile] file storage init failed:', e),
       )

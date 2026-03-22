@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 
-const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
+export const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
 
 /** Characters not allowed in filenames (Windows + Unix safety). */
 const INVALID_CHARS = /[<>:"/\\|?*]/g

@@ -163,8 +163,7 @@ export const useThemeStore = defineStore('theme', () => {
       })
 
     // Kick off async file sync in background (Tauri only)
-    const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
-    if (isTauri) {
+    if (settingsFs.isTauri) {
       initFileStorage().catch((e) =>
         console.warn('[theme] file storage init failed:', e),
       )

@@ -4,7 +4,7 @@ import { ref } from 'vue'
 
 import type { Shortcut } from '@/commands/registry'
 import defaultKeybindsJson5 from '@/defaults/keybindings.json5?raw'
-import { readKeybinds, writeKeybinds } from '@/utils/settingsFs'
+import { isTauri, readKeybinds, writeKeybinds } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 export interface KeybindEntry {
@@ -13,8 +13,6 @@ export interface KeybindEntry {
 }
 
 const DEFAULT_KEYBINDS: KeybindEntry[] = JSON5.parse(defaultKeybindsJson5)
-
-const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
 
 export const useKeybindsStore = defineStore('keybinds', () => {
   // ユーザーカスタマイズ: commandId → shortcuts の上書き
