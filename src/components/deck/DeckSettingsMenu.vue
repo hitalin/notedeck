@@ -6,6 +6,7 @@ import { computed, type Ref, ref, watch } from 'vue'
 import AboutDialog from '@/components/common/AboutDialog.vue'
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
+import { type ConfirmOptions, useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
@@ -143,6 +144,8 @@ function openToolWindow(type: 'cssEditor' | 'keybinds' | 'themeEditor') {
   emit('close-all')
 }
 
+const { confirm } = useConfirm()
+
 const isExporting = ref(false)
 const isImportingDb = ref(false)
 const isExportingSettings = ref(false)
@@ -152,9 +155,9 @@ const backupError = ref('')
 async function backupAction(
   loading: Ref<boolean>,
   command: string,
-  opts?: { confirm?: string; relaunch?: boolean },
+  opts?: { confirmOpts?: ConfirmOptions; relaunch?: boolean },
 ) {
-  if (opts?.confirm && !window.confirm(opts.confirm)) return
+  if (opts?.confirmOpts && !(await confirm(opts.confirmOpts))) return
   loading.value = true
   backupError.value = ''
   try {
@@ -172,14 +175,24 @@ async function backupAction(
 const exportDb = () => backupAction(isExporting, 'export_db')
 const importDb = () =>
   backupAction(isImportingDb, 'import_db', {
-    confirm: '現在のDBが上書きされます。よろしいですか？',
+    confirmOpts: {
+      title: 'DBインポート',
+      message: '現在のDBが上書きされます。',
+      okLabel: 'インポート',
+      type: 'danger',
+    },
     relaunch: true,
   })
 const exportSettings = () =>
   backupAction(isExportingSettings, 'export_settings_zip')
 const importSettings = () =>
   backupAction(isImportingSettings, 'import_settings_zip', {
-    confirm: '現在の設定が上書きされます。よろしいですか？',
+    confirmOpts: {
+      title: '設定インポート',
+      message: '現在の設定が上書きされます。',
+      okLabel: 'インポート',
+      type: 'danger',
+    },
     relaunch: true,
   })
 </script>

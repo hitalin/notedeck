@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { computed, defineAsyncComponent, ref } from 'vue'
+import AppConfirm from '@/components/common/AppConfirm.vue'
 import AppToast from '@/components/common/AppToast.vue'
 import { useDeckInit } from '@/composables/useDeckInit'
 import { requestMoveColumn } from '@/composables/useDeckWindow'
@@ -246,6 +247,7 @@ function acceptCrossWindowDrop() {
     </Transition>
 
     <AppToast />
+    <AppConfirm />
 
     <!-- Cross-window column drop overlay -->
     <Transition name="fade">
