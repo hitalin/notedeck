@@ -16,10 +16,11 @@ const { visible, options, resolve } = useConfirm()
             <p :class="$style.message">{{ options.message }}</p>
           </div>
           <div :class="$style.actions">
-            <button v-if="!options.hideCancel" :class="$style.btnCancel" @click="resolve(false)">
+            <button v-if="!options.hideCancel" class="_button" :class="$style.btnCancel" @click="resolve(false)">
               {{ options.cancelLabel || 'キャンセル' }}
             </button>
             <button
+              class="_button"
               :class="options.type === 'danger' ? $style.btnDanger : $style.btnOk"
               @click="resolve(true)"
             >
@@ -56,19 +57,18 @@ const { visible, options, resolve } = useConfirm()
 
 .actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   padding: 8px 16px 16px;
   justify-content: flex-end;
 }
 
 .btnCancel {
-  padding: 6px 14px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-md);
-  background: none;
+  padding: 8px 12px;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-buttonBg);
   color: var(--nd-fg);
-  font-size: 0.85em;
-  cursor: pointer;
+  font-size: 0.8em;
+  font-weight: bold;
   transition: background var(--nd-duration-base);
 
   &:hover {
@@ -77,34 +77,30 @@ const { visible, options, resolve } = useConfirm()
 }
 
 .btnOk {
-  padding: 6px 20px;
-  border: none;
-  border-radius: var(--nd-radius-md);
+  padding: 8px 12px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-accent);
-  color: #fff;
-  font-size: 0.85em;
+  color: var(--nd-fgOnAccent);
+  font-size: 0.8em;
   font-weight: bold;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
+  transition: background var(--nd-duration-base);
 
   &:hover {
-    opacity: 0.85;
+    background: var(--nd-accentDarken);
   }
 }
 
 .btnDanger {
-  padding: 6px 20px;
-  border: none;
-  border-radius: var(--nd-radius-md);
+  padding: 8px 12px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-love);
   color: #fff;
-  font-size: 0.85em;
+  font-size: 0.8em;
   font-weight: bold;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
+  transition: background var(--nd-duration-base), color var(--nd-duration-base);
 
   &:hover {
-    opacity: 0.85;
+    background: color-mix(in srgb, var(--nd-love) 80%, black);
   }
 }
 </style>
