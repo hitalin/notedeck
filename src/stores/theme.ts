@@ -324,11 +324,20 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   function applySource(source: ThemeSource): void {
+    const wasDark = isCurrentDark()
     const base = source.kind.includes('light') ? LIGHT_BASE : DARK_BASE
     const compiled = compileMisskeyTheme(source.theme, base)
     applyTheme(compiled)
-    compiledCache.clear()
-    styleVarsCache.clear()
+
+    // Invalidate account theme caches only when dark/light mode changes,
+    // since the base theme used for compilation differs between modes.
+    // Same-mode switches (e.g. dark A → dark B) keep account caches valid.
+    const nowDark = !source.kind.includes('light')
+    if (wasDark !== nowDark) {
+      compiledCache.clear()
+      styleVarsCache.clear()
+    }
+
     currentSource.value = source
     setStorageJson(STORAGE_KEYS.themeCompiled, compiled)
   }

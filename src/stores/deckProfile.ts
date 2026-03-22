@@ -1,6 +1,6 @@
 import JSON5 from 'json5'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, toRaw } from 'vue'
 
 import type { DeckColumn, DeckProfile, DeckWindowLayout } from '@/stores/deck'
 import * as settingsFs from '@/utils/settingsFs'
@@ -13,9 +13,9 @@ import {
 } from '@/utils/storage'
 
 /** Deep-clone reactive state into a plain object safe for serialization.
- *  JSON round-trip is required because structuredClone cannot handle Vue reactive Proxies. */
+ *  toRaw() strips the Vue Proxy before cloning. */
 function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value))
+  return structuredClone(toRaw(value))
 }
 
 /** Strip internal-only fields before writing to file. */
@@ -279,12 +279,16 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
 
   function deleteProfile(profileId: string) {
     const profiles = loadProfiles().filter((p) => p.id !== profileId)
-    saveProfiles(profiles)
+    // Sync: localStorage + in-memory cache only (no file write for remaining profiles)
+    setStorageJson(STORAGE_KEYS.deckProfiles, profiles)
+    profilesCache = profiles
+    profileVersion.value++
+
     if (activeProfileId.value === profileId) {
       saveActiveProfileId(profiles[0]?.id ?? null)
     }
 
-    // Also delete the file directly
+    // Async: delete only the removed profile's file
     if (initialized.value) {
       settingsFs
         .deleteProfile(profileId)

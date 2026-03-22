@@ -181,7 +181,7 @@ export const usePluginsStore = defineStore('plugins', () => {
   function addPlugin(plugin: PluginMeta) {
     ensureLoaded()
     plugins.value.push(plugin)
-    persist()
+    persist(plugin)
   }
 
   function removePlugin(installId: string) {
@@ -190,7 +190,8 @@ export const usePluginsStore = defineStore('plugins', () => {
     // Clean up plugin localStorage entries
     removeStorageByPrefix(STORAGE_KEYS.aiscriptPlugin(installId))
     plugins.value = plugins.value.filter((p) => p.installId !== installId)
-    persist()
+    // Sync: localStorage only (file deletion handles the rest)
+    savePluginsToStorage(plugins.value)
     // Delete files
     if (initialized.value && removed) {
       deletePluginFiles(removed).catch((e) =>
