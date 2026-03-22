@@ -261,9 +261,13 @@ const importSettings = () =>
             :key="theme.id"
             :class="[$style.themeItem, { [$style.selected]: selectedId === theme.id }]"
             @click="selectTheme(theme.id)"
-            @contextmenu.prevent="removeTheme(theme.id)"
           >
-            <ThemePreview :theme="theme" :class="$style.themeItemPreview" />
+            <div :class="$style.themeItemPreviewWrap">
+              <ThemePreview :theme="theme" :class="$style.themeItemPreview" />
+              <button class="_button" :class="$style.themeRemoveBtn" @click.stop="removeTheme(theme.id)">
+                <i class="ti ti-x" />
+              </button>
+            </div>
             <div :class="$style.themeItemName">{{ theme.name }}</div>
           </div>
         </div>
@@ -722,12 +726,36 @@ const importSettings = () =>
   border-color: var(--nd-accent);
 }
 
+.themeItemPreviewWrap {
+  position: relative;
+}
+
 .themeItemPreview {
   display: block;
   width: calc(100% + 2px);
   margin-left: -1px;
   height: auto;
   border-bottom: 1px solid var(--nd-divider);
+}
+
+.themeRemoveBtn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--nd-error, #ec4137);
+  color: #fff;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+
+  &:hover {
+    filter: brightness(0.85);
+  }
 }
 
 .themeItemName {
