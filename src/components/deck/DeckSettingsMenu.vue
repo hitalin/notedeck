@@ -332,27 +332,31 @@ const importSettings = () =>
       <!-- Data -->
       <div :class="$style.settingsMenuDivider" />
 
-      <div :class="$style.dataRow">
-        <span :class="$style.dataRowLabel"><i class="ti ti-database" /> DBバックアップ</span>
-        <button class="_button" :class="$style.dataBtn" :disabled="isExporting" @click="exportDb">
-          <i class="ti ti-upload" />
-          {{ isExporting ? '処理中...' : 'エクスポート' }}
-        </button>
-        <button class="_button" :class="$style.dataBtn" :disabled="isImportingDb" @click="importDb">
-          <i class="ti ti-download" />
-          {{ isImportingDb ? '処理中...' : 'インポート' }}
-        </button>
+      <div :class="$style.dataGroup">
+        <span :class="$style.dataGroupLabel"><i class="ti ti-database" /> DBバックアップ</span>
+        <div :class="$style.dataBtnRow">
+          <button class="_button" :class="$style.dataBtn" :disabled="isExporting" @click="exportDb">
+            <i class="ti ti-upload" />
+            {{ isExporting ? '処理中...' : 'エクスポート' }}
+          </button>
+          <button class="_button" :class="$style.dataBtn" :disabled="isImportingDb" @click="importDb">
+            <i class="ti ti-download" />
+            {{ isImportingDb ? '処理中...' : 'インポート' }}
+          </button>
+        </div>
       </div>
-      <div :class="$style.dataRow">
-        <span :class="$style.dataRowLabel"><i class="ti ti-settings" /> 設定バックアップ</span>
-        <button class="_button" :class="$style.dataBtn" :disabled="isExportingSettings" @click="exportSettings">
-          <i class="ti ti-upload" />
-          {{ isExportingSettings ? '処理中...' : 'エクスポート' }}
-        </button>
-        <button class="_button" :class="$style.dataBtn" :disabled="isImportingSettings" @click="importSettings">
-          <i class="ti ti-download" />
-          {{ isImportingSettings ? '処理中...' : 'インポート' }}
-        </button>
+      <div :class="$style.dataGroup">
+        <span :class="$style.dataGroupLabel"><i class="ti ti-settings" /> 設定バックアップ</span>
+        <div :class="$style.dataBtnRow">
+          <button class="_button" :class="$style.dataBtn" :disabled="isExportingSettings" @click="exportSettings">
+            <i class="ti ti-upload" />
+            {{ isExportingSettings ? '処理中...' : 'エクスポート' }}
+          </button>
+          <button class="_button" :class="$style.dataBtn" :disabled="isImportingSettings" @click="importSettings">
+            <i class="ti ti-download" />
+            {{ isImportingSettings ? '処理中...' : 'インポート' }}
+          </button>
+        </div>
       </div>
       <div v-if="backupError" :class="$style.backupError">{{ backupError }}</div>
 
@@ -727,6 +731,8 @@ const importSettings = () =>
 
 .themeSelectBody {
   margin-top: 8px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .themeGrid {
@@ -918,21 +924,23 @@ const importSettings = () =>
   margin: 4px 12px;
 }
 
-.dataRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.dataGroup {
   padding: 4px 16px;
 }
 
-.dataRowLabel {
+.dataGroupLabel {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 0.8em;
   color: var(--nd-fg);
-  min-width: 48px;
-  flex-shrink: 0;
+  margin-bottom: 4px;
+}
+
+.dataBtnRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .backupError {
