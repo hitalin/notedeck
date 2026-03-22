@@ -100,7 +100,7 @@ async function copyInfo() {
 
 <style lang="scss" module>
 .aboutDialog {
-  width: 250px;
+  width: 380px;
 }
 
 .aboutHeader {
