@@ -16,6 +16,7 @@ import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteColumn } from '@/composables/useNoteColumn'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
@@ -176,6 +177,10 @@ function switchTab(tab: Tab) {
   if (tab === 'users' && !usersFetched.value) fetchUsers()
   if (tab === 'roles' && !rolesFetched.value) fetchRoles()
 }
+
+// Tab slide animation
+const exploreTabIndex = computed(() => tabs.indexOf(activeTab.value))
+useTabSlide(exploreTabIndex, columnContentRef)
 
 // Swipe / wheel to switch tabs
 useSwipeTab(

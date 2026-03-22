@@ -2,8 +2,9 @@
 import { json } from '@codemirror/lang-json'
 import { type Diagnostic, linter } from '@codemirror/lint'
 import JSON5 from 'json5'
-import { defineAsyncComponent, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -125,6 +126,9 @@ const codeError = ref<string | null>(null)
 const editorRef = ref<HTMLElement | null>(null)
 
 const TABS = ['visual', 'code'] as const
+const profileTabIndex = computed(() => TABS.indexOf(tab.value))
+useTabSlide(profileTabIndex, editorRef)
+
 useSwipeTab(
   editorRef,
   () => {

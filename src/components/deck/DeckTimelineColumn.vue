@@ -10,6 +10,7 @@ import { useAds } from '@/composables/useAds'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabIndicator } from '@/composables/useTabIndicator'
+import { useTabSlide } from '@/composables/useTabSlide'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -102,6 +103,13 @@ const swipeTarget = computed<HTMLElement | null>(
 async function reconnect() {
   await noteColumnRef.value?.reconnect()
 }
+
+// Tab slide animation
+const tlTabIndex = computed(() => {
+  const types = allTlTypes.value
+  return types.findIndex((t) => t.value === tlType.value)
+})
+useTabSlide(tlTabIndex, swipeTarget)
 
 // --- Ads ---
 const { fetchAds, pickAd, shouldShowAd, muteAd, serverHost } = useAds(
