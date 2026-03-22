@@ -7,6 +7,7 @@ import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
 import { type ConfirmOptions, useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
+import { useKeybindsStore } from '@/stores/keybinds'
 import { useThemeStore } from '@/stores/theme'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
@@ -31,6 +32,7 @@ const { updateAvailable, updateVersion, isInstalling, installUpdate } =
 const isCompact = useIsCompactLayout()
 const { isMobilePlatform } = useUiStore()
 const deckStore = useDeckStore()
+const keybindsStore = useKeybindsStore()
 const themeStore = useThemeStore()
 const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
@@ -261,11 +263,12 @@ const importSettings = () =>
       <div :class="$style.settingsMenuItem" @click="openToolWindow('themeEditor')">
         <i class="ti ti-palette" />
         <span :class="$style.settingsMenuLabel">テーマエディタ</span>
+        <span v-if="selectedId != null" :class="$style.activeDot" />
       </div>
       <div :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
         <i class="ti ti-code" />
         <span :class="$style.settingsMenuLabel">カスタムCSS</span>
-        <span v-if="themeStore.customCss" :class="$style.cssActiveDot" />
+        <span v-if="themeStore.customCss" :class="$style.activeDot" />
       </div>
       <div v-if="deckStore.wallpaper == null" :class="$style.settingsMenuItem" @click="pickWallpaper">
         <i class="ti ti-photo" />
@@ -290,6 +293,7 @@ const importSettings = () =>
       <div v-if="!isMobilePlatform" :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
         <i class="ti ti-keyboard" />
         <span :class="$style.settingsMenuLabel">キーバインド設定</span>
+        <span v-if="Object.keys(keybindsStore.overrides).length > 0" :class="$style.activeDot" />
       </div>
 
       <!-- Data -->
@@ -770,7 +774,7 @@ const importSettings = () =>
 
 /* -- Custom CSS -- */
 
-.cssActiveDot {
+.activeDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
