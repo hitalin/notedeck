@@ -323,13 +323,15 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
-            let icon = app
-                .default_window_icon()
-                .ok_or("Default window icon not found")?
-                .clone();
+            let tray_png = image::load_from_memory(include_bytes!("../icons/tray-icon.png"))
+                .map_err(|e| e.to_string())?
+                .into_rgba8();
+            let (w, h) = tray_png.dimensions();
+            let tray_icon =
+                tauri::image::Image::new_owned(tray_png.into_raw(), w, h);
 
             TrayIconBuilder::new()
-                .icon(icon)
+                .icon(tray_icon)
                 .tooltip("NoteDeck")
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id.as_ref() {
