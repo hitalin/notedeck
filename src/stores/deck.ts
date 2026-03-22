@@ -487,7 +487,7 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   function applyProfile(profileId: string) {
-    const result = profileStore.applyProfile(
+    const result = profileStore.switchProfile(
       profileId,
       columns.value,
       layout.value,
@@ -495,7 +495,11 @@ export const useDeckStore = defineStore('deck', () => {
     if (!result) return
     columns.value = result.columns
     layout.value = result.layout
-    flushSave()
+    // Only sync nd-deck localStorage for backward compat (skip profile re-save)
+    setStorageJson(STORAGE_KEYS.deck, {
+      columns: columns.value,
+      layout: layout.value,
+    })
   }
 
   // --- Multi-window column management ---

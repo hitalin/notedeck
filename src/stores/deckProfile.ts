@@ -14,7 +14,7 @@ import {
 
 /** Deep-clone reactive state into a plain object safe for serialization. */
 function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value))
+  return structuredClone(value)
 }
 
 /** Strip internal-only fields before writing to file. */
@@ -140,6 +140,60 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
       persistSingleProfile(profile).catch((e) =>
         console.warn('[deckProfile] failed to persist profile:', e),
       )
+    }
+  }
+
+  /**
+   * Save current deck state and apply a new profile in one pass.
+   * Avoids redundant localStorage round-trips compared to separate
+   * syncColumnsToProfile() + applyProfile() calls.
+   */
+  function switchProfile(
+    newProfileId: string,
+    currentColumns: DeckColumn[],
+    currentLayout: string[][],
+  ): { columns: DeckColumn[]; layout: string[][] } | null {
+    const profiles = loadProfiles()
+
+    // 1. Save current state to old profile (in-memory)
+    if (windowProfileId.value) {
+      const oldProfile = profiles.find((p) => p.id === windowProfileId.value)
+      if (oldProfile) {
+        oldProfile.columns = deepClone(currentColumns)
+        oldProfile.layout = deepClone(currentLayout)
+      }
+    }
+
+    // 2. Find new profile
+    const newProfile = profiles.find((p) => p.id === newProfileId)
+    if (!newProfile) return null
+
+    // 3. Single localStorage write for both changes
+    setStorageJson(STORAGE_KEYS.deckProfiles, profiles)
+    profileVersion.value++
+
+    // 4. Update active state
+    windowProfileId.value = newProfileId
+    saveActiveProfileId(newProfileId)
+    refreshProfileName()
+
+    // 5. Async: persist only the changed profiles to files
+    if (initialized.value) {
+      const toWrite = windowProfileId.value
+        ? profiles.filter(
+            (p) => p.id === windowProfileId.value || p.id === newProfileId,
+          )
+        : [newProfile]
+      // Deduplicate if same profile
+      const unique = [...new Map(toWrite.map((p) => [p.id, p])).values()]
+      Promise.all(unique.map((p) => persistSingleProfile(p))).catch((e) =>
+        console.warn('[deckProfile] failed to persist profiles:', e),
+      )
+    }
+
+    return {
+      columns: structuredClone(newProfile.columns),
+      layout: structuredClone(newProfile.layout),
     }
   }
 
@@ -417,6 +471,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     saveWindowLayout,
     removeWindowLayout,
     getWindowLayouts,
+    switchProfile,
     ensureDefaults,
   }
 })
