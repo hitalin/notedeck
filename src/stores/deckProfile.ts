@@ -12,9 +12,10 @@ import {
   setStorageString,
 } from '@/utils/storage'
 
-/** Deep-clone reactive state into a plain object safe for serialization. */
+/** Deep-clone reactive state into a plain object safe for serialization.
+ *  JSON round-trip is required because structuredClone cannot handle Vue reactive Proxies. */
 function deepClone<T>(value: T): T {
-  return structuredClone(value)
+  return JSON.parse(JSON.stringify(value))
 }
 
 /** Strip internal-only fields before writing to file. */
@@ -172,17 +173,18 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     setStorageJson(STORAGE_KEYS.deckProfiles, profiles)
     profileVersion.value++
 
-    // 4. Update active state
+    // 4. Capture old profile ID before updating state
+    const oldProfileId = windowProfileId.value
+
+    // 5. Update active state
     windowProfileId.value = newProfileId
     saveActiveProfileId(newProfileId)
     refreshProfileName()
 
-    // 5. Async: persist only the changed profiles to files
+    // 6. Async: persist only the changed profiles to files
     if (initialized.value) {
-      const toWrite = windowProfileId.value
-        ? profiles.filter(
-            (p) => p.id === windowProfileId.value || p.id === newProfileId,
-          )
+      const toWrite = oldProfileId
+        ? profiles.filter((p) => p.id === oldProfileId || p.id === newProfileId)
         : [newProfile]
       // Deduplicate if same profile
       const unique = [...new Map(toWrite.map((p) => [p.id, p])).values()]
