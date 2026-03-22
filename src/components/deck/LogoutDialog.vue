@@ -14,8 +14,8 @@ const emit = defineEmits<{
 <template>
   <Teleport to="body">
     <Transition name="nd-popup">
-      <div v-if="show" :class="$style.backdrop" @click="emit('cancel')">
-        <div :class="$style.dialog" class="nd-popup-content" @click.stop>
+      <div v-if="show" class="_dialogBackdrop" @click="emit('cancel')">
+        <div class="_dialog nd-popup-content" @click.stop>
           <div :class="$style.header">
             <i :class="[$style.icon, isGuest ? 'ti ti-user-off' : 'ti ti-logout']" />
             <div :class="$style.title">{{ isGuest ? 'ゲストを削除' : 'ログアウト' }}</div>
@@ -48,25 +48,6 @@ const emit = defineEmits<{
 </template>
 
 <style lang="scss" module>
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: calc(var(--nd-z-popup) + 2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.dialog {
-  width: 360px;
-  max-width: 90vw;
-  background: var(--nd-panel, var(--nd-bg));
-  border-radius: 12px;
-  box-shadow: var(--nd-shadow-l);
-  overflow: hidden;
-}
-
 .header {
   display: flex;
   align-items: center;

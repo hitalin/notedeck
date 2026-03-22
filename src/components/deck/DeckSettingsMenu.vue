@@ -74,8 +74,14 @@ async function handleInstall() {
   }
 }
 
-function removeTheme(id: string) {
-  themeStore.removeTheme(id)
+async function removeTheme(id: string) {
+  const ok = await confirm({
+    title: 'テーマを削除',
+    message: 'このテーマを削除しますか？',
+    okLabel: '削除',
+    type: 'danger',
+  })
+  if (ok) themeStore.removeTheme(id)
 }
 
 const menuEl = ref<HTMLElement | null>(null)

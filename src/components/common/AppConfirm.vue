@@ -16,7 +16,7 @@ const { visible, options, resolve } = useConfirm()
             <p :class="$style.message">{{ options.message }}</p>
           </div>
           <div :class="$style.actions">
-            <button :class="$style.btnCancel" @click="resolve(false)">
+            <button v-if="!options.hideCancel" :class="$style.btnCancel" @click="resolve(false)">
               {{ options.cancelLabel || 'キャンセル' }}
             </button>
             <button

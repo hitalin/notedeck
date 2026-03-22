@@ -6,6 +6,7 @@ export interface ConfirmOptions {
   okLabel?: string
   cancelLabel?: string
   type?: 'normal' | 'danger'
+  hideCancel?: boolean
 }
 
 const visible = ref(false)

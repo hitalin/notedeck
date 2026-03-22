@@ -46,9 +46,9 @@ defineExpose({ showDialog, showConfirm })
 
 <template>
   <Teleport to="body">
-    <Transition name="dialog-fade">
-      <div v-if="visible" :class="$style.aisDialogBackdrop" @click.self="close(false)">
-        <div :class="[$style.aisDialog, $style[dialogType]]">
+    <Transition name="nd-popup">
+      <div v-if="visible" class="_dialogBackdrop" :class="$style.aisBackdrop" @click.self="close(false)">
+        <div :class="[$style.aisDialog, $style[dialogType]]" class="nd-popup-content">
           <div v-if="title" :class="$style.aisDialogTitle">{{ title }}</div>
           <div v-if="text" :class="$style.aisDialogText">{{ text }}</div>
           <div :class="$style.aisDialogActions">
@@ -69,13 +69,8 @@ defineExpose({ showDialog, showConfirm })
 </template>
 
 <style lang="scss" module>
-.aisDialogBackdrop {
-  position: fixed;
-  inset: 0;
+.aisBackdrop {
   z-index: var(--nd-z-popup);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: var(--nd-modalBg);
 }
 
@@ -151,17 +146,3 @@ defineExpose({ showDialog, showConfirm })
 .error {}
 </style>
 
-<style>
-.dialog-fade-enter-active {
-  transition: opacity var(--nd-duration-base) ease;
-}
-
-.dialog-fade-leave-active {
-  transition: opacity var(--nd-duration-fast) ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-  opacity: 0;
-}
-</style>
