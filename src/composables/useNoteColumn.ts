@@ -144,6 +144,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   /** True when API is unreachable and displaying cached notes */
   const isOffline = ref(false)
+  /** Suppress isOffline changes during intentional tab switching */
+  let _suppressOffline = false
 
   /** True when the account exists but has no auth token */
   const isLoggedOut = computed(() => account.value?.hasToken === false)
@@ -255,12 +257,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
       if (account.value.hasToken && config.streaming && streamingBatch) {
         adapter.stream.connect()
         adapter.stream.on('disconnected', () => {
-          isOffline.value = true
+          if (!_suppressOffline) isOffline.value = true
         })
         adapter.stream.on('reconnecting', () => {
-          isOffline.value = true
+          if (!_suppressOffline) isOffline.value = true
         })
         adapter.stream.on('connected', () => {
+          _suppressOffline = false
           isOffline.value = false
         })
         setSubscription(
@@ -299,6 +302,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
         }
       }
 
+      _suppressOffline = false
       isOffline.value = false
 
       // Background: verify cached notes not confirmed by fresh API fetch
@@ -309,6 +313,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
         }
       }
     } catch (e) {
+      // API actually failed — allow offline indicator
+      _suppressOffline = false
       if (notes.value.length > 0) {
         // Cache is displayed — mark offline instead of showing error
         isOffline.value = true
@@ -556,8 +562,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   /** Disconnect, reset, and reconnect with fresh config state */
   async function reconnect(useCache = false) {
+    _suppressOffline = true
     disconnect()
-    // Suppress offline banner during intentional reconnect
     isOffline.value = false
     streamingBatch?.resetBatch()
     setNotes([])
@@ -569,8 +575,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
     snapshotNotes: NormalizedNote[],
     scrollTop: number,
   ) {
+    _suppressOffline = true
     disconnect()
-    // Suppress offline banner — snapshot provides content during reconnect
     isOffline.value = false
     streamingBatch?.resetBatch()
     setNotes(snapshotNotes)
