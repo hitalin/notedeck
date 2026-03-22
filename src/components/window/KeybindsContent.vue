@@ -5,6 +5,7 @@ import { computed, ref, watch } from 'vue'
 import type { Shortcut } from '@/commands/registry'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useKeybindsStore } from '@/stores/keybinds'
+import { STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 const jsonLang = json()
 
@@ -271,7 +272,7 @@ function applyFromCode() {
     const parsed = JSON.parse(code)
     codeError.value = null
     keybindsStore.overrides = parsed
-    localStorage.setItem('nd-keybinds', JSON.stringify(parsed))
+    setStorageJson(STORAGE_KEYS.keybinds, parsed)
   } catch (e) {
     codeError.value = e instanceof Error ? e.message : 'JSONパースエラー'
   }

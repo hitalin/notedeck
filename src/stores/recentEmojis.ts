@@ -1,24 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
-const STORAGE_KEY = 'nd-recent-emojis'
 const MAX_RECENT = 32
 
 export const useRecentEmojisStore = defineStore('recentEmojis', () => {
-  const list = ref<string[]>(load())
-
-  function load(): string[] {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) return JSON.parse(raw)
-    } catch {
-      /* ignore */
-    }
-    return []
-  }
+  const list = ref<string[]>(
+    getStorageJson<string[]>(STORAGE_KEYS.recentEmojis, []),
+  )
 
   function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
+    setStorageJson(STORAGE_KEYS.recentEmojis, list.value)
   }
 
   function add(emoji: string, pinnedList: string[]) {

@@ -21,19 +21,19 @@ export interface PluginMeta {
   active: boolean
 }
 
-const STORAGE_KEY = 'nd-plugins'
+import {
+  getStorageJson,
+  removeStorageByPrefix,
+  STORAGE_KEYS,
+  setStorageJson,
+} from '@/utils/storage'
 
 function loadPluginsFromStorage(): PluginMeta[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as PluginMeta[]) : []
-  } catch {
-    return []
-  }
+  return getStorageJson<PluginMeta[]>(STORAGE_KEYS.plugins, [])
 }
 
 function savePlugins(plugins: PluginMeta[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(plugins))
+  setStorageJson(STORAGE_KEYS.plugins, plugins)
 }
 
 export const usePluginsStore = defineStore('plugins', () => {
@@ -64,13 +64,7 @@ export const usePluginsStore = defineStore('plugins', () => {
   function removePlugin(installId: string) {
     ensureLoaded()
     // Clean up plugin localStorage entries
-    const prefix = `nd-aiscript-plugin:${installId}:`
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const key = localStorage.key(i)
-      if (key?.startsWith(prefix)) {
-        localStorage.removeItem(key)
-      }
-    }
+    removeStorageByPrefix(STORAGE_KEYS.aiscriptPlugin(installId))
     plugins.value = plugins.value.filter((p) => p.installId !== installId)
     persist()
   }

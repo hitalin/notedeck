@@ -6,6 +6,7 @@ import { useUnreadChat } from '@/composables/useUnreadChat'
 import { useUnreadNotifications } from '@/composables/useUnreadNotifications'
 import {
   type Account,
+  getAccountLabel,
   isGuestAccount,
   useAccountsStore,
 } from '@/stores/accounts'
@@ -400,7 +401,7 @@ defineExpose({
             <button
               class="_button"
               :class="[$style.item, $style.account]"
-              :title="`@${acc.username}@${acc.host}`"
+              :title="getAccountLabel(acc)"
               @click.stop="toggleAccountMenu(acc.id)"
             >
               <div :class="$style.avatarWrap">
@@ -424,7 +425,7 @@ defineExpose({
                   :class="[$style.onlineIndicator, onlineStatusClass(acc.id)]"
                 />
               </div>
-              <span :class="$style.label">@{{ acc.username }}@{{ acc.host }}</span>
+              <span :class="$style.label">{{ getAccountLabel(acc) }}</span>
             </button>
 
             <NavAccountMenu

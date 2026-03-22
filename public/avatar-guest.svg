@@ -1,25 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#c084fc"/>
-      <stop offset="100%" stop-color="#7c3aed"/>
+      <stop offset="0%" stop-color="#9ca3af"/>
+      <stop offset="100%" stop-color="#6b7280"/>
     </linearGradient>
   </defs>
   <rect width="128" height="128" rx="20" fill="url(#bg)"/>
-  <!-- hat top -->
-  <path d="M36 42 Q36 18 64 18 Q92 18 92 42" fill="#fff"/>
-  <!-- hat brim -->
-  <ellipse cx="64" cy="42" rx="36" ry="7" fill="#fff"/>
-  <!-- left lens -->
-  <circle cx="46" cy="68" r="17" fill="none" stroke="#fff" stroke-width="4.5"/>
-  <!-- right lens -->
-  <circle cx="82" cy="68" r="17" fill="none" stroke="#fff" stroke-width="4.5"/>
-  <!-- left eye (scheming ニヤリ) -->
-  <path d="M42 68 Q46 72 50 68" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-  <!-- right eye (scheming ニヤリ) -->
-  <path d="M78 68 Q82 72 86 68" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-  <!-- nose (round dot) -->
-  <circle cx="64" cy="84" r="3" fill="#fff"/>
-  <!-- mouth (にへっ smirk) -->
-  <path d="M52 102 Q60 106 68 101 Q73 99 76 101" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- eyes -->
+  <circle cx="42" cy="52" r="8" fill="#fff"/>
+  <circle cx="86" cy="52" r="8" fill="#fff"/>
+  <!-- mouth (flat line — neutral) -->
+  <line x1="48" y1="80" x2="80" y2="80" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
 </svg>

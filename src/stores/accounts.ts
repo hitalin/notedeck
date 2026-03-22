@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { ServerSoftware } from '@/adapters/types'
+import { removeStorage, STORAGE_KEYS } from '@/utils/storage'
 
 export interface Account {
   id: string
@@ -23,6 +24,14 @@ export function isGuestAccount(account: Account): boolean {
 export function getAccountAvatarUrl(account: Account): string {
   if (isGuestAccount(account)) return '/avatar-guest.svg'
   return account.avatarUrl || '/avatar-default.svg'
+}
+
+export function getAccountLabel(account: Account): string {
+  if (isGuestAccount(account)) {
+    const name = account.displayName || 'ゲスト'
+    return `${name}@${account.host}`
+  }
+  return `@${account.username}@${account.host}`
 }
 
 export const useAccountsStore = defineStore('accounts', () => {
@@ -91,8 +100,8 @@ export const useAccountsStore = defineStore('accounts', () => {
       activeAccountId.value = accounts.value[0]?.id ?? null
     }
     // Clean up localStorage caches associated with this account
-    localStorage.removeItem(`nd-drafts-${id}`)
-    localStorage.removeItem(`nd-cache-notifications-${id}`)
+    removeStorage(STORAGE_KEYS.drafts(id))
+    removeStorage(STORAGE_KEYS.notificationCache(id))
   }
 
   async function logoutAccount(id: string): Promise<void> {

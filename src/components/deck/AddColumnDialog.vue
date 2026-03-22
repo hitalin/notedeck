@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
 import {
   getAccountAvatarUrl,
+  getAccountLabel,
   isGuestAccount,
   useAccountsStore,
 } from '@/stores/accounts'
@@ -653,7 +654,7 @@ function close() {
           @click="(!account.hasToken && requiresAuth) ? showLoginPrompt() : addColumnForAccount(account.id)"
         >
           <img :src="getAccountAvatarUrl(account)" :class="$style.addAccountAvatar" />
-          <span>@{{ account.username }}@{{ account.host }}</span>
+          <span>{{ getAccountLabel(account) }}</span>
         </button>
       </template>
     </div>

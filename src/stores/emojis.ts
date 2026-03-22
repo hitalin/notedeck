@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
 import type { ServerEmoji } from '@/adapters/types'
-
-const STORAGE_KEY = 'emojis_cache'
+import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 export const useEmojisStore = defineStore('emojis', () => {
   // host → (shortcode → url) — for fast emoji resolution in notes
@@ -18,18 +17,16 @@ export const useEmojisStore = defineStore('emojis', () => {
 
   // Load shortcode→url cache from localStorage (for offline emoji resolution)
   function loadFromStorage() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return
-      const obj = JSON.parse(raw) as Record<string, Record<string, string>>
-      const map = new Map<string, Record<string, string>>()
-      for (const [host, lookup] of Object.entries(obj)) {
-        map.set(host, lookup)
-      }
-      cache.value = map
-    } catch {
-      // corrupt data, ignore
+    const obj = getStorageJson<Record<string, Record<string, string>> | null>(
+      STORAGE_KEYS.emojisCache,
+      null,
+    )
+    if (!obj) return
+    const map = new Map<string, Record<string, string>>()
+    for (const [host, lookup] of Object.entries(obj)) {
+      map.set(host, lookup)
     }
+    cache.value = map
   }
 
   function persistToStorage() {
@@ -38,7 +35,7 @@ export const useEmojisStore = defineStore('emojis', () => {
       for (const [host, lookup] of cache.value) {
         obj[host] = lookup
       }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(obj))
+      setStorageJson(STORAGE_KEYS.emojisCache, obj)
     } catch {
       // storage full, ignore
     }
