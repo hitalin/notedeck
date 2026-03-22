@@ -116,8 +116,8 @@ async function toggleMobileSize() {
 }
 
 function openNewWindow() {
-  const profile = deckStore.createEmptyProfile()
-  openDeckWindow(profile.id)
+  if (!deckStore.windowProfileId) return
+  openDeckWindow(deckStore.windowProfileId)
 }
 
 async function onPipClick() {
