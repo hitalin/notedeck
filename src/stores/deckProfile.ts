@@ -1,6 +1,6 @@
 import JSON5 from 'json5'
 import { defineStore } from 'pinia'
-import { ref, toRaw } from 'vue'
+import { ref } from 'vue'
 
 import type { DeckColumn, DeckProfile, DeckWindowLayout } from '@/stores/deck'
 import * as settingsFs from '@/utils/settingsFs'
@@ -13,9 +13,9 @@ import {
 } from '@/utils/storage'
 
 /** Deep-clone reactive state into a plain object safe for serialization.
- *  toRaw() strips the Vue Proxy before cloning. */
+ *  JSON round-trip strips Vue Proxy wrappers at all nesting levels. */
 function deepClone<T>(value: T): T {
-  return structuredClone(toRaw(value))
+  return JSON.parse(JSON.stringify(value))
 }
 
 /** Strip internal-only fields before writing to file. */
