@@ -1,9 +1,9 @@
-import { invoke } from '@tauri-apps/api/core'
 import type {
   ServerFeatures,
   ServerInfo,
   ServerSoftware,
 } from '@/adapters/types'
+import { invoke } from '@/utils/tauriInvoke'
 
 interface NodeInfoSoftware {
   name: string

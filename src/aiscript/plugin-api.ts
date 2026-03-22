@@ -1,7 +1,7 @@
 import { type Ast, type Interpreter, utils, values } from '@syuilo/aiscript'
 import type { Value, VFn } from '@syuilo/aiscript/interpreter/value.js'
-import { invoke } from '@tauri-apps/api/core'
 import type { PluginConfigDef, PluginMeta } from '@/stores/plugins'
+import { invoke } from '@/utils/tauriInvoke'
 import { createAiScriptEnv } from './api'
 import {
   createAiScriptInterpreter,

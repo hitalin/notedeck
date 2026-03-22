@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import {
   computed,
   nextTick,
@@ -19,6 +18,7 @@ import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useAccountsStore } from '@/stores/accounts'
 import { formatTime } from '@/utils/formatTime'
+import { invoke } from '@/utils/tauriInvoke'
 
 const accountsStore = useAccountsStore()
 const { getOrCreate } = useMultiAccountAdapters()

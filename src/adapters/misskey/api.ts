@@ -1,7 +1,7 @@
-import { invoke } from '@tauri-apps/api/core'
 import { populateOgpCache } from '@/composables/useOgpPreview'
 import { AppError } from '@/utils/errors'
 import type { OgpData } from '@/utils/ogp'
+import { invoke } from '@/utils/tauriInvoke'
 import type {
   Antenna,
   ApiAdapter,

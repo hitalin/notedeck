@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { getTauriVersion } from '@tauri-apps/api/app'
-import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { onMounted, ref } from 'vue'
+import { invoke } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../../package.json'
 
 defineProps<{

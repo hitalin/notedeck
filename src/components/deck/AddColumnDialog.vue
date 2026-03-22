@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { computed, ref } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
 import {
@@ -12,6 +11,7 @@ import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
+import { invoke } from '@/utils/tauriInvoke'
 
 const props = defineProps<{
   mode?: 'deck' | 'pip'

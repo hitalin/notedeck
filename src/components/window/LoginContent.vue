@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { onMounted, ref } from 'vue'
 import { MisskeyAuth } from '@/adapters/misskey/auth'
@@ -10,6 +9,7 @@ import type { Account } from '@/stores/accounts'
 import { useAccountsStore } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
 import { AppError } from '@/utils/errors'
+import { invoke } from '@/utils/tauriInvoke'
 
 const props = defineProps<{
   initialHost?: string

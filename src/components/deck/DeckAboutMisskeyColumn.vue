@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { invoke } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),

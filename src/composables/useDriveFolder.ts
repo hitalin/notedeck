@@ -1,7 +1,7 @@
-import { invoke } from '@tauri-apps/api/core'
 import { computed, ref } from 'vue'
 import type { DriveFolder, NormalizedDriveFile } from '@/adapters/types'
 import { AppError } from '@/utils/errors'
+import { invoke } from '@/utils/tauriInvoke'
 import { isSafeUrl } from '@/utils/url'
 
 export interface UseDriveFolderOptions {

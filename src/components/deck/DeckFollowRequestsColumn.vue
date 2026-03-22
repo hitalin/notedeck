@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { onMounted, ref } from 'vue'
 import type { NormalizedUser } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
@@ -11,6 +10,7 @@ import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
+import { invoke } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 interface FollowRequest {

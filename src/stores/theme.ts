@@ -1,8 +1,6 @@
-import { invoke } from '@tauri-apps/api/core'
 import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
-
 import { applyTheme } from '@/theme/applier'
 import {
   DARK_BASE,
@@ -22,6 +20,7 @@ import {
   setStorageJson,
   setStorageString,
 } from '@/utils/storage'
+import { invoke } from '@/utils/tauriInvoke'
 
 // Keyed by "accountId:dark" / "accountId:light"
 const compiledCache = new Map<string, CompiledProps>()
@@ -397,7 +396,9 @@ export const useThemeStore = defineStore('theme', () => {
       // Persist to localStorage for instant restore on next launch
       persistAccountThemes()
     } catch (e) {
-      console.warn('[theme] Failed to fetch account theme:', accountId, e)
+      if (import.meta.env.DEV) {
+        console.debug('[theme] Failed to fetch account theme:', accountId, e)
+      }
     } finally {
       fetchingAccounts.delete(accountId)
     }

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import {
   computed,
   defineAsyncComponent,
@@ -18,6 +17,7 @@ import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
+import { invoke } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),

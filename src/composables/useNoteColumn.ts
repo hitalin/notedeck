@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core'
 import {
   computed,
   nextTick,
@@ -29,6 +28,7 @@ import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
 import { catchLog, logWarn } from '@/utils/logger'
 import { insertIntoSorted } from '@/utils/sortNotes'
+import { invoke } from '@/utils/tauriInvoke'
 
 export interface NoteColumnConfig {
   getColumn: () => DeckColumnType

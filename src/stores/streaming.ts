@@ -1,7 +1,7 @@
-import { invoke } from '@tauri-apps/api/core'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { NormalizedUserDetail } from '@/adapters/types'
+import { invoke } from '@/utils/tauriInvoke'
 
 export type OnlineStatus = 'online' | 'active' | 'offline' | 'unknown'
 

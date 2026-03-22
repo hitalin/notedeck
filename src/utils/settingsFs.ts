@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@/utils/tauriInvoke'
 
 export const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
 

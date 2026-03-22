@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core'
 import { computed, onScopeDispose, shallowRef } from 'vue'
 import type {
   NormalizedNote,
@@ -6,6 +5,7 @@ import type {
   ServerAdapter,
 } from '@/adapters/types'
 import { useNoteStore } from '@/stores/notes'
+import { invoke } from '@/utils/tauriInvoke'
 
 /** Maximum number of notes to keep in DOM per column */
 export const NOTE_LIST_MAX = 300

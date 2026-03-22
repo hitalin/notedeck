@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core'
 import { computed, nextTick, type Ref, ref } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
@@ -28,6 +27,7 @@ import {
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
+import { invoke } from '@/utils/tauriInvoke'
 
 export function usePostFormState(
   props: {

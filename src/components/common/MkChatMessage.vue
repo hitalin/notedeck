@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { computed, defineAsyncComponent, ref } from 'vue'
 import type { ChatMessage, NormalizedUser } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
@@ -7,6 +6,7 @@ import MkMfm from '@/components/common/MkMfm.vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { proxyUrl } from '@/utils/imageProxy'
+import { invoke } from '@/utils/tauriInvoke'
 
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
 

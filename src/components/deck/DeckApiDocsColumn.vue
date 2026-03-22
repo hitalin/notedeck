@@ -29,10 +29,10 @@ onMounted(async () => {
 const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 
 const config = computed(() => ({
-  spec: { content: spec.value },
+  content: spec.value,
   forceDarkModeState: isDark.value ? 'dark' : 'light',
   hideDarkModeToggle: true,
-  hideDownloadButton: true,
+  documentDownloadType: 'none' as const,
 }))
 </script>
 

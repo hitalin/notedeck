@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { relaunch } from '@tauri-apps/plugin-process'
 import type { CSSProperties } from 'vue'
 import { computed, type Ref, ref, watch } from 'vue'
@@ -13,6 +12,7 @@ import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { hapticSelection } from '@/utils/haptics'
+import { invoke } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../../package.json'
 
 const props = defineProps<{

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
@@ -15,6 +14,7 @@ import type {
   NoteTreeNode,
 } from '@/components/common/MkNoteTree.vue'
 import MkNoteTree from '@/components/common/MkNoteTree.vue'
+import { invoke } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
