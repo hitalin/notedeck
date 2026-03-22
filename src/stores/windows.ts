@@ -32,19 +32,22 @@ export const WINDOW_SIZES: Record<
   WindowType,
   { width: number; maxHeight: number }
 > = {
+  // Content windows
   'note-detail': { width: 500, maxHeight: 600 },
   'user-profile': { width: 500, maxHeight: 650 },
   'follow-list': { width: 500, maxHeight: 650 },
-  login: { width: 420, maxHeight: 480 },
   search: { width: 500, maxHeight: 650 },
   notifications: { width: 500, maxHeight: 650 },
-  plugins: { width: 500, maxHeight: 650 },
-  keybinds: { width: 560, maxHeight: 650 },
-  cssEditor: { width: 480, maxHeight: 650 },
-  themeEditor: { width: 480, maxHeight: 700 },
-  profileEditor: { width: 480, maxHeight: 700 },
-  ai: { width: 480, maxHeight: 650 },
   chat: { width: 500, maxHeight: 650 },
+  // Tool windows
+  plugins: { width: 400, maxHeight: 650 },
+  keybinds: { width: 400, maxHeight: 650 },
+  cssEditor: { width: 400, maxHeight: 650 },
+  themeEditor: { width: 400, maxHeight: 700 },
+  profileEditor: { width: 400, maxHeight: 700 },
+  ai: { width: 400, maxHeight: 650 },
+  // Login
+  login: { width: 380, maxHeight: 480 },
 }
 
 export const useWindowsStore = defineStore('windows', () => {
