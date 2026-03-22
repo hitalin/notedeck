@@ -252,7 +252,7 @@ const importSettings = () =>
             <div :class="$style.themeItemName">{{ theme.name }}</div>
           </div>
         </div>
-        <div v-else :class="$style.installArea">
+        <div v-if="showInstallInput" :class="$style.installArea">
           <textarea
             v-model="themeCode"
             :class="$style.installTextarea"
