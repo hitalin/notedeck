@@ -265,10 +265,10 @@ async function importSettings() {
         </div>
 
         <!-- Install theme -->
-        <div v-if="!showInstallInput" :class="$style.installBtn" @click="showInstallInput = true">
+        <button v-if="!showInstallInput" class="_button" :class="$style.dataBtn" @click="showInstallInput = true">
           <i class="ti ti-download" />
-          <span>テーマをインストール</span>
-        </div>
+          インストール
+        </button>
         <div v-else :class="$style.installArea">
           <textarea
             v-model="themeCode"
@@ -739,23 +739,6 @@ async function importSettings() {
 
 /* -- Install theme -- */
 
-.installBtn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 4px;
-  margin-top: 8px;
-  cursor: pointer;
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  opacity: 0.7;
-  border-radius: 4px;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover {
-    opacity: 1;
-  }
-}
 
 .installArea {
   margin-top: 8px;
@@ -882,7 +865,6 @@ async function importSettings() {
   gap: 4px;
   font-size: 0.8em;
   color: var(--nd-fg);
-  opacity: 0.7;
   min-width: 48px;
   flex-shrink: 0;
 }
