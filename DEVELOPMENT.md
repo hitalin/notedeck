@@ -115,6 +115,28 @@ src-tauri/src/              # Rust backend (Tauri 固有部分)
 
 Misskey API クライアント・DB・モデル・ストリーミングコアなどの共通ロジックは全て `notecli` クレートにあり、`src-tauri/` には Tauri 固有の薄いラッパーのみ残っています。
 
+### Multi-Window & Profile Architecture
+
+ウィンドウとプロファイルは**直交する概念**です。
+
+- **プロファイル**: カラム構成・レイアウトの保存単位。データの所有者
+- **ウィンドウ**: プロファイルの表示先。同じプロファイルを複数ウィンドウで開ける
+
+```
+Profile A ──→ Main Window（windowId なしのカラムを表示）
+         └──→ Sub Window 1（windowId = "w1" のカラムを表示）
+
+Profile B ──→ Main Window（プロファイル切り替え時）
+```
+
+**設計原則:**
+
+1. プロファイルが変更されたら、そのプロファイルを開いている**全ウィンドウ**がリアクティブに追従する
+2. 各ウィンドウは `windowLayout`（computed）で自分に属するカラムだけをフィルタして表示する
+3. ウィンドウの作成・破棄はプロファイルのデータに影響しない
+
+**同期方式:** localStorage（全 webview 共有）を SSoT とし、Tauri イベント（`deck:profile-updated`）でキャッシュ無効化を通知。Rust 側に SSoT を移す案も検討したが、localStorage が既に全 webview で共有されており、本質的に同じ構造になるため不採用（[PR #172](https://github.com/hitalin/notedeck/pull/172) で議論）。
+
 ### Vue Vapor モード移行準備（[#52](https://github.com/hitalin/notedeck/issues/52)）
 
 Vue 3.6 の Vapor モード（仮想DOMレス・コンパイル時DOM操作）への移行を予定。
