@@ -330,7 +330,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
     commandStore.register({
       id: 'theme-editor',
-      label: 'テーマエディタ',
+      label: 'テーマ',
       icon: 'palette',
       category: 'column',
       shortcuts: keybindsStore.getShortcuts('theme-editor'),

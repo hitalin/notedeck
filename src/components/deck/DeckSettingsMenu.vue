@@ -2,7 +2,6 @@
 import { relaunch } from '@tauri-apps/plugin-process'
 import type { CSSProperties } from 'vue'
 import { computed, type Ref, ref, watch } from 'vue'
-import AboutDialog from '@/components/common/AboutDialog.vue'
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
 import { type ConfirmOptions, useConfirm } from '@/stores/confirm'
@@ -26,8 +25,15 @@ const emit = defineEmits<{
   'close-all': []
 }>()
 
-const { updateAvailable, updateVersion, isInstalling, installUpdate } =
-  useUpdater()
+const {
+  isChecking,
+  isUpToDate,
+  updateAvailable,
+  updateVersion,
+  isInstalling,
+  checkForUpdate,
+  installUpdate,
+} = useUpdater()
 
 const isCompact = useIsCompactLayout()
 const { isMobilePlatform } = useUiStore()
@@ -37,7 +43,6 @@ const themeStore = useThemeStore()
 const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
 const fileInput = ref<HTMLInputElement | null>(null)
-const showAbout = ref(false)
 const themeGridOpen = ref(false)
 
 // Current mode's builtin theme
@@ -262,7 +267,7 @@ const importSettings = () =>
       <!-- Appearance -->
       <div :class="$style.settingsMenuItem" @click="openToolWindow('themeEditor')">
         <i class="ti ti-palette" />
-        <span :class="$style.settingsMenuLabel">テーマエディタ</span>
+        <span :class="$style.settingsMenuLabel">テーマ</span>
         <span v-if="selectedId != null" :class="$style.activeDot" />
       </div>
       <div :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
@@ -292,7 +297,7 @@ const importSettings = () =>
 
       <div v-if="!isMobilePlatform" :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
         <i class="ti ti-keyboard" />
-        <span :class="$style.settingsMenuLabel">キーバインド設定</span>
+        <span :class="$style.settingsMenuLabel">キーバインド</span>
         <span v-if="Object.keys(keybindsStore.overrides).length > 0" :class="$style.activeDot" />
       </div>
 
@@ -302,26 +307,26 @@ const importSettings = () =>
       <div :class="$style.dataGroup">
         <span :class="$style.dataGroupLabel"><i class="ti ti-database" /> DBバックアップ</span>
         <div :class="$style.dataBtnRow">
-          <button class="_button" :class="$style.dataBtn" :disabled="isExporting" @click="exportDb">
-            <i class="ti ti-upload" />
-            {{ isExporting ? '処理中...' : 'エクスポート' }}
-          </button>
           <button class="_button" :class="$style.dataBtn" :disabled="isImportingDb" @click="importDb">
-            <i class="ti ti-download" />
+            <i class="ti ti-clipboard-text" />
             {{ isImportingDb ? '処理中...' : 'インポート' }}
+          </button>
+          <button class="_button" :class="$style.dataBtn" :disabled="isExporting" @click="exportDb">
+            <i class="ti ti-clipboard-copy" />
+            {{ isExporting ? '処理中...' : 'エクスポート' }}
           </button>
         </div>
       </div>
       <div :class="$style.dataGroup">
         <span :class="$style.dataGroupLabel"><i class="ti ti-settings" /> 設定バックアップ</span>
         <div :class="$style.dataBtnRow">
-          <button class="_button" :class="$style.dataBtn" :disabled="isExportingSettings" @click="exportSettings">
-            <i class="ti ti-upload" />
-            {{ isExportingSettings ? '処理中...' : 'エクスポート' }}
-          </button>
           <button class="_button" :class="$style.dataBtn" :disabled="isImportingSettings" @click="importSettings">
-            <i class="ti ti-download" />
+            <i class="ti ti-clipboard-text" />
             {{ isImportingSettings ? '処理中...' : 'インポート' }}
+          </button>
+          <button class="_button" :class="$style.dataBtn" :disabled="isExportingSettings" @click="exportSettings">
+            <i class="ti ti-clipboard-copy" />
+            {{ isExportingSettings ? '処理中...' : 'エクスポート' }}
           </button>
         </div>
       </div>
@@ -330,24 +335,33 @@ const importSettings = () =>
       </div>
       <div :class="$style.menuFooter">
         <div :class="$style.settingsMenuDivider" />
-        <div v-if="updateAvailable" :class="$style.updateSection">
-          <div :class="$style.updateText">
-            <span :class="$style.updateVersion">v{{ appVersion }} → v{{ updateVersion }}</span>
+        <template v-if="!isMobilePlatform">
+          <div v-if="updateAvailable" :class="$style.updateSection">
+            <div :class="$style.updateInfo">
+              <span :class="$style.updateVersion">v{{ appVersion }} → v{{ updateVersion }}</span>
+            </div>
+            <button :class="$style.updateBtn" :disabled="isInstalling" @click="installUpdate">
+              {{ isInstalling ? 'インストール中...' : 'アップデート' }}
+            </button>
           </div>
-          <button
-            :class="$style.updateBtn"
-            :disabled="isInstalling"
-            @click="installUpdate"
-          >
-            {{ isInstalling ? 'インストール中...' : 'アップデート' }}
-          </button>
+          <div v-else-if="isChecking" :class="$style.updateSection">
+            <span :class="$style.updateChecking">アップデートを確認中...</span>
+          </div>
+          <div v-else :class="$style.settingsMenuItem" @click="checkForUpdate(true)">
+            <i class="ti ti-refresh" />
+            <span :class="$style.settingsMenuLabel">アップデートを確認</span>
+            <span v-if="isUpToDate" :class="$style.upToDateLabel">v{{ appVersion }} 最新</span>
+            <span v-else :class="$style.upToDateLabel">v{{ appVersion }}</span>
+          </div>
+        </template>
+        <div :class="$style.settingsMenuItem" @click="windowsStore.open('about')">
+          <i class="ti ti-info-circle" />
+          <span :class="$style.settingsMenuLabel">NoteDeck について</span>
         </div>
-        <button v-else :class="$style.versionInfo" @click="showAbout = true">v{{ appVersion }}</button>
       </div>
     </div>
   </Transition>
   </Teleport>
-  <AboutDialog :show="showAbout" @close="showAbout = false" />
 </template>
 
 <style lang="scss" module>
@@ -851,14 +865,15 @@ const importSettings = () =>
 .dataBtn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 6px 10px;
   border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
-  border: 1px solid var(--nd-accent);
+  background: var(--nd-buttonBg);
   font-size: 0.75em;
+  font-weight: bold;
   color: var(--nd-fg);
-  transition: background var(--nd-duration-base), border-color var(--nd-duration-base);
+  transition: background var(--nd-duration-base), color var(--nd-duration-base);
   white-space: nowrap;
 
   &:hover:not(:disabled) {
@@ -875,24 +890,6 @@ const importSettings = () =>
   position: relative;
 }
 
-.versionInfo {
-  display: block;
-  width: 100%;
-  border: none;
-  background: none;
-  text-align: center;
-  padding: 4px 16px 8px;
-  font-size: 0.75em;
-  color: var(--nd-fg);
-  opacity: 0.4;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover {
-    opacity: 0.7;
-  }
-}
-
 .updateSection {
   display: flex;
   align-items: center;
@@ -900,7 +897,7 @@ const importSettings = () =>
   padding: 8px 16px;
 }
 
-.updateText {
+.updateInfo {
   flex: 1;
   min-width: 0;
 }
@@ -909,6 +906,12 @@ const importSettings = () =>
   font-size: 0.8em;
   color: var(--nd-accent);
   font-weight: 500;
+}
+
+.updateChecking {
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  opacity: 0.5;
 }
 
 .updateBtn {
@@ -931,6 +934,12 @@ const importSettings = () =>
     opacity: 0.6;
     cursor: not-allowed;
   }
+}
+
+.upToDateLabel {
+  font-size: 0.75em;
+  color: var(--nd-accent);
+  margin-left: auto;
 }
 
 .mobile {

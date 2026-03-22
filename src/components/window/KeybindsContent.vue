@@ -301,6 +301,46 @@ function applyFromCode() {
   }
 }
 
+// ── Import/Export ──
+const copiedMessage = ref(false)
+const importedMessage = ref(false)
+const importError = ref(false)
+
+function exportKeybinds() {
+  navigator.clipboard.writeText(overridesToJson())
+  copiedMessage.value = true
+  setTimeout(() => {
+    copiedMessage.value = false
+  }, 2000)
+}
+
+async function importKeybinds() {
+  try {
+    const text = await navigator.clipboard.readText()
+    const parsed = JSON.parse(text)
+    if (!parsed || typeof parsed !== 'object') {
+      importError.value = true
+      setTimeout(() => {
+        importError.value = false
+      }, 2000)
+      return
+    }
+    keybindsStore.overrides = parsed
+    setStorageJson(STORAGE_KEYS.keybinds, parsed)
+    jsonCode.value = overridesToJson()
+    codeError.value = null
+    importedMessage.value = true
+    setTimeout(() => {
+      importedMessage.value = false
+    }, 2000)
+  } catch {
+    importError.value = true
+    setTimeout(() => {
+      importError.value = false
+    }, 2000)
+  }
+}
+
 // ── Reset all with confirmation ──
 const confirmingReset = ref(false)
 let resetTimer: ReturnType<typeof setTimeout> | null = null
@@ -431,6 +471,24 @@ function handleReset() {
 
     <!-- Actions -->
     <div :class="$style.actions">
+      <div :class="$style.actionGroup">
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: importedMessage || importError }]"
+          @click="importKeybinds"
+        >
+          <i class="ti" :class="importError ? 'ti-alert-circle' : 'ti-clipboard-text'" />
+          {{ importError ? '無効' : importedMessage ? '読込済み' : 'インポート' }}
+        </button>
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: copiedMessage }]"
+          @click="exportKeybinds"
+        >
+          <i class="ti ti-clipboard-copy" />
+          {{ copiedMessage ? 'コピー済み' : 'エクスポート' }}
+        </button>
+      </div>
       <button
         class="_button"
         :class="[$style.actionBtn, $style.danger, { [$style.confirming]: confirmingReset }]"
@@ -444,6 +502,8 @@ function handleReset() {
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
+
 .keybindsContent {
   display: flex;
   flex-direction: column;
@@ -710,62 +770,20 @@ function handleReset() {
   opacity: 0.7;
 }
 
-.codeApplyBtn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
+.codeApplyBtn { @include btn-secondary; }
 
 // ── Actions ──
 
-.actions {
-  display: flex;
-  gap: 6px;
-  padding: 10px;
-  border-top: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
+.actions { @include action-bar; }
+.actionGroup { @include action-group; }
 
 .actionBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  flex: 1;
-  padding: 8px 12px;
-  border-radius: var(--nd-radius-sm);
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base), color var(--nd-duration-base);
-
-  &.danger {
-    background: var(--nd-buttonBg);
-    color: var(--nd-fg);
-
-    &:hover {
-      background: color-mix(in srgb, var(--nd-love) 20%, var(--nd-buttonBg));
-      color: var(--nd-love);
-    }
-
-    &.confirming {
-      background: color-mix(in srgb, var(--nd-love) 30%, var(--nd-buttonBg));
-      color: var(--nd-love);
-    }
-  }
+  &.secondary { @include btn-action; }
+  &.danger { @include btn-danger-ghost; }
 }
 
-.danger {
-  /* modifier */
-}
+.secondary { /* modifier */ }
+.feedback { /* modifier */ }
+.danger { /* modifier */ }
+.confirming { /* modifier */ }
 </style>

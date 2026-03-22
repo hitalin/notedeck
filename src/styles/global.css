@@ -236,7 +236,7 @@ html[data-platform="android"] select {
 }
 
 ._dialog {
-  width: 360px;
+  width: 300px;
   max-width: 90vw;
   background: var(--nd-panel, var(--nd-bg));
   border-radius: 12px;

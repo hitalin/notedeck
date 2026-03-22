@@ -31,13 +31,13 @@ const emit = defineEmits<{
           </div>
 
           <div :class="$style.actions">
-            <button :class="$style.btnCancel" @click="emit('cancel')">
+            <button class="_button" :class="$style.btnCancel" @click="emit('cancel')">
               キャンセル
             </button>
-            <button :class="$style.btnDelete" @click="emit('delete-all')">
+            <button class="_button" :class="$style.btnDelete" @click="emit('delete-all')">
               {{ isGuest ? '削除' : 'すべて削除' }}
             </button>
-            <button v-if="!isGuest" :class="$style.btnKeep" @click="emit('keep-data')">
+            <button v-if="!isGuest" class="_button" :class="$style.btnKeep" @click="emit('keep-data')">
               データを残す
             </button>
           </div>
@@ -48,94 +48,56 @@ const emit = defineEmits<{
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
+
 .header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 20px 24px 8px;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 20px 4px;
 }
 
 .icon {
-  font-size: 1.3em;
+  font-size: 1.2em;
   color: var(--nd-fg);
   opacity: 0.7;
 }
 
 .title {
-  font-size: 1.1em;
+  font-size: 1em;
   font-weight: bold;
   color: var(--nd-fg);
 }
 
 .body {
-  padding: 8px 24px 16px;
+  padding: 4px 20px 12px;
+  text-align: center;
 }
 
 .message {
   margin: 0;
   color: var(--nd-fg);
-  font-size: 0.9em;
+  font-size: 0.85em;
   line-height: 1.5;
+  opacity: 0.8;
 }
 
 .hint {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--nd-fg);
   font-size: 0.8em;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .actions {
   display: flex;
-  gap: 8px;
-  padding: 8px 16px 16px;
-  justify-content: flex-end;
+  gap: 6px;
+  padding: 0 16px 16px;
+  justify-content: center;
 }
 
-.btnCancel {
-  padding: 6px 14px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-md);
-  background: none;
-  color: var(--nd-fg);
-  font-size: 0.85em;
-  cursor: pointer;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.btnDelete {
-  padding: 6px 14px;
-  border: none;
-  border-radius: var(--nd-radius-md);
-  background: var(--nd-love);
-  color: #fff;
-  font-size: 0.85em;
-  font-weight: bold;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover {
-    opacity: 0.85;
-  }
-}
-
-.btnKeep {
-  padding: 6px 20px;
-  border: none;
-  border-radius: var(--nd-radius-md);
-  background: var(--nd-accent);
-  color: #fff;
-  font-size: 0.85em;
-  font-weight: bold;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover {
-    opacity: 0.85;
-  }
-}
+.btnCancel { @include btn-secondary; }
+.btnDelete { @include btn-danger; }
+.btnKeep { @include btn-primary; }
 </style>

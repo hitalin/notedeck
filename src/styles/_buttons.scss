@@ -1,0 +1,86 @@
+// Shared button mixins for dialogs and editor windows.
+// Usage: @use '@/styles/buttons' as *;
+
+@mixin btn-base {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: var(--nd-radius-sm);
+  font-size: 0.8em;
+  font-weight: bold;
+  transition: background var(--nd-duration-base), color var(--nd-duration-base);
+}
+
+@mixin btn-secondary {
+  @include btn-base;
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+@mixin btn-primary {
+  @include btn-base;
+  background: var(--nd-accent);
+  color: var(--nd-fgOnAccent);
+
+  &:hover {
+    background: var(--nd-accentDarken);
+  }
+}
+
+@mixin btn-danger {
+  @include btn-base;
+  background: var(--nd-love);
+  color: #fff;
+
+  &:hover {
+    background: color-mix(in srgb, var(--nd-love) 80%, black);
+  }
+}
+
+@mixin btn-danger-ghost {
+  @include btn-base;
+  width: 100%;
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+
+  &:hover {
+    background: color-mix(in srgb, var(--nd-love) 20%, var(--nd-buttonBg));
+    color: var(--nd-love);
+  }
+
+  &.confirming {
+    background: color-mix(in srgb, var(--nd-love) 30%, var(--nd-buttonBg));
+    color: var(--nd-love);
+  }
+}
+
+// Action bar at the bottom of editor windows
+@mixin action-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-top: 1px solid var(--nd-divider);
+  flex-shrink: 0;
+}
+
+@mixin action-group {
+  display: flex;
+  gap: 6px;
+}
+
+// Import/export button (flex: 1 inside action-group)
+@mixin btn-action {
+  @include btn-secondary;
+  flex: 1;
+
+  &.feedback {
+    color: var(--nd-accent);
+  }
+}

@@ -2,7 +2,15 @@
 import { json } from '@codemirror/lang-json'
 import { type Diagnostic, linter } from '@codemirror/lint'
 import JSON5 from 'json5'
-import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  useCssModule,
+  watch,
+} from 'vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useThemeStore } from '@/stores/theme'
@@ -161,16 +169,32 @@ function syncVisualFromCode() {
     }
     themeName.value = parsed.name || 'Untitled'
     baseMode.value = parsed.base === 'light' ? 'light' : 'dark'
-    overrides.value = { ...parsed.props }
+    // Filter out props that match the base theme defaults
+    const base = parsed.base === 'light' ? LIGHT_BASE : DARK_BASE
+    const filtered: Record<string, string> = {}
+    for (const [key, value] of Object.entries(parsed.props)) {
+      if (base.props[key] !== value) {
+        filtered[key] = value as string
+      }
+    }
+    overrides.value = filtered
     codeError.value = null
   } catch (e) {
     codeError.value = e instanceof Error ? e.message : 'JSONパースエラー'
   }
 }
 
-// Sync code when switching to code tab
+// Suppress preview during tab-switch syncs
+let suppressPreview = false
+
+// Sync between tabs when switching
 watch(tab, (newTab) => {
+  suppressPreview = true
   if (newTab === 'code') syncCodeFromVisual()
+  if (newTab === 'visual' && codeContent.value.trim()) syncVisualFromCode()
+  nextTick(() => {
+    suppressPreview = false
+  })
 })
 
 // Convert resolved color to hex for input[type=color]
@@ -242,6 +266,7 @@ let previewTimer: ReturnType<typeof setTimeout> | null = null
 watch(
   [overrides, baseMode],
   () => {
+    if (suppressPreview) return
     if (previewTimer) clearTimeout(previewTimer)
     previewTimer = setTimeout(applyPreview, 50)
   },
@@ -253,6 +278,8 @@ const installedMessage = ref(false)
 
 // Install as a permanent theme
 async function installTheme() {
+  if (tab.value === 'code') syncVisualFromCode()
+  if (codeError.value) return
   const theme: MisskeyTheme = {
     id: `custom-${Date.now()}`,
     name: themeName.value,
@@ -272,6 +299,7 @@ async function installTheme() {
 const copiedMessage = ref(false)
 
 function exportTheme() {
+  if (tab.value === 'code') syncVisualFromCode()
   const theme: MisskeyTheme = {
     id: `custom-${Date.now()}`,
     name: themeName.value,
@@ -284,6 +312,38 @@ function exportTheme() {
   setTimeout(() => {
     copiedMessage.value = false
   }, 2000)
+}
+
+// Import from clipboard
+const importedMessage = ref(false)
+const importError = ref(false)
+
+async function importTheme() {
+  try {
+    const text = await navigator.clipboard.readText()
+    const parsed = JSON5.parse(text)
+    if (!parsed || typeof parsed !== 'object' || !parsed.props) {
+      importError.value = true
+      setTimeout(() => {
+        importError.value = false
+      }, 2000)
+      return
+    }
+    themeName.value = parsed.name || 'Untitled'
+    baseMode.value = parsed.base === 'light' ? 'light' : 'dark'
+    overrides.value = { ...parsed.props }
+    codeError.value = null
+    saveSnapshot()
+    importedMessage.value = true
+    setTimeout(() => {
+      importedMessage.value = false
+    }, 2000)
+  } catch {
+    importError.value = true
+    setTimeout(() => {
+      importError.value = false
+    }, 2000)
+  }
 }
 
 // Load existing theme for editing
@@ -676,33 +736,46 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
       <div :class="$style.actions">
         <button
           class="_button"
-          :class="$style.actionBtn"
+          :class="[$style.actionBtn, $style.primary]"
           @click="installTheme"
         >
-          <i class="ti ti-download" />
+          <i class="ti ti-check" />
           {{ installedMessage ? 'インストール済み!' : 'インストール' }}
         </button>
-        <button
-          class="_button"
-          :class="[$style.actionBtn, $style.secondary]"
-          @click="exportTheme"
-        >
-          <i class="ti ti-clipboard" />
-          {{ copiedMessage ? 'コピー済み!' : 'JSON' }}
-        </button>
-        <button
-          v-if="hasChangesFromSnapshot"
-          class="_button"
-          :class="[$style.actionBtn, $style.secondary]"
-          @click="resetToSnapshot"
-        >
-          <i class="ti ti-arrow-back-up" />
-        </button>
+        <div :class="$style.actionGroup">
+          <button
+            class="_button"
+            :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: importedMessage || importError }]"
+            @click="importTheme"
+          >
+            <i class="ti" :class="importError ? 'ti-alert-circle' : 'ti-clipboard-text'" />
+            {{ importError ? '無効' : importedMessage ? '読込済み' : 'インポート' }}
+          </button>
+          <button
+            class="_button"
+            :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: copiedMessage }]"
+            @click="exportTheme"
+          >
+            <i class="ti ti-clipboard-copy" />
+            {{ copiedMessage ? 'コピー済み' : 'エクスポート' }}
+          </button>
+          <button
+            v-if="hasChangesFromSnapshot"
+            class="_button"
+            :class="[$style.actionBtn, $style.iconOnly]"
+            title="元に戻す"
+            @click="resetToSnapshot"
+          >
+            <i class="ti ti-arrow-back-up" />
+          </button>
+        </div>
       </div>
   </div>
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
+
 .editor {
   display: flex;
   flex-direction: column;
@@ -1155,57 +1228,24 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   word-break: break-all;
 }
 
-.codeApplyBtn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base);
+.codeApplyBtn { @include btn-secondary; }
 
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.actions {
-  display: flex;
-  gap: 6px;
-  padding: 10px;
-  border-top: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
+.actions { @include action-bar; }
+.actionGroup { @include action-group; }
 
 .actionBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  flex: 1;
-  padding: 8px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
-  font-size: 0.8em;
-  font-weight: bold;
-  transition: background var(--nd-duration-base), opacity var(--nd-duration-base);
+  &.primary { @include btn-primary; width: 100%; }
+  &.secondary { @include btn-action; }
 
-  &:hover {
-    background: var(--nd-accentDarken);
-  }
-
-  &.secondary {
-    flex: 1;
-    background: var(--nd-buttonBg);
-    color: var(--nd-fg);
-
-    &:hover {
-      background: var(--nd-buttonHoverBg);
-    }
+  &.iconOnly {
+    @include btn-secondary;
+    flex: 0;
+    padding: 8px;
   }
 }
+
+.primary { /* modifier */ }
+.secondary { /* modifier */ }
+.feedback { /* modifier */ }
+.iconOnly { /* modifier */ }
 </style>

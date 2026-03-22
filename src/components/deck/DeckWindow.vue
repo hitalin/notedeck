@@ -28,7 +28,7 @@ const BASE_TITLES: Record<string, string> = {
   plugins: 'プラグイン',
   keybinds: 'キーバインド',
   cssEditor: 'カスタムCSS',
-  themeEditor: 'テーマエディタ',
+  themeEditor: 'テーマ',
   profileEditor: 'プロファイルエディタ',
   ai: 'AI アシスタント',
 }

@@ -46,6 +46,9 @@ const AiContent = defineAsyncComponent(
 const ChatContent = defineAsyncComponent(
   () => import('@/components/window/ChatContent.vue'),
 )
+const AboutContent = defineAsyncComponent(
+  () => import('@/components/window/AboutContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -126,6 +129,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       />
       <AiContent v-if="win.type === 'ai'" />
       <ChatContent v-if="win.type === 'chat'" />
+      <AboutContent v-if="win.type === 'about'" />
     </DeckWindow>
   </TransitionGroup>
 </template>

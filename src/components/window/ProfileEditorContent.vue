@@ -317,6 +317,11 @@ watch(tab, (newTab) => {
   if (newTab === 'code') syncCodeFromVisual()
 })
 
+// Import/Export
+const copiedMessage = ref(false)
+const importedMessage = ref(false)
+const importError = ref(false)
+
 function exportToClipboard() {
   const data = {
     name: profileStore.currentProfileName,
@@ -324,6 +329,49 @@ function exportToClipboard() {
     layout: deckStore.windowLayout,
   }
   navigator.clipboard.writeText(JSON5.stringify(data, null, 2))
+  copiedMessage.value = true
+  setTimeout(() => {
+    copiedMessage.value = false
+  }, 2000)
+}
+
+async function importFromClipboard() {
+  try {
+    const text = await navigator.clipboard.readText()
+    const parsed = JSON5.parse(text)
+    if (!parsed || typeof parsed !== 'object') {
+      importError.value = true
+      setTimeout(() => {
+        importError.value = false
+      }, 2000)
+      return
+    }
+    if (parsed.name && profileStore.windowProfileId) {
+      profileStore.renameProfile(profileStore.windowProfileId, parsed.name)
+    }
+    const newColumns = Array.isArray(parsed.columns)
+      ? parsed.columns
+      : undefined
+    const newLayout = Array.isArray(parsed.layout) ? parsed.layout : undefined
+    if (newColumns && newLayout) {
+      profileStore.setColumnsAndLayout(newColumns, newLayout)
+    } else if (newColumns) {
+      profileStore.setColumns(newColumns)
+    } else if (newLayout) {
+      profileStore.setLayout(newLayout)
+    }
+    profileStore.flushPersist()
+    codeError.value = null
+    importedMessage.value = true
+    setTimeout(() => {
+      importedMessage.value = false
+    }, 2000)
+  } catch {
+    importError.value = true
+    setTimeout(() => {
+      importError.value = false
+    }, 2000)
+  }
 }
 </script>
 
@@ -437,22 +485,34 @@ function exportToClipboard() {
       <div v-if="codeError" :class="$style.codeError">
         {{ codeError }}
       </div>
-      <div :class="$style.codeActions">
+      <button
+        class="_button"
+        :class="$style.codeApplyBtn"
+        @click="syncVisualFromCode"
+      >
+        <i class="ti ti-refresh" />
+        ビジュアルに同期
+      </button>
+    </div>
+
+    <!-- Actions -->
+    <div :class="$style.actions">
+      <div :class="$style.actionGroup">
         <button
           class="_button"
-          :class="$style.actionBtn"
-          @click="syncVisualFromCode"
+          :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: importedMessage || importError }]"
+          @click="importFromClipboard"
         >
-          <i class="ti ti-check" />
-          コードから反映
+          <i class="ti" :class="importError ? 'ti-alert-circle' : 'ti-clipboard-text'" />
+          {{ importError ? '無効' : importedMessage ? '読込済み' : 'インポート' }}
         </button>
         <button
           class="_button"
-          :class="$style.actionBtn"
+          :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: copiedMessage }]"
           @click="exportToClipboard"
         >
           <i class="ti ti-clipboard-copy" />
-          JSON5コピー
+          {{ copiedMessage ? 'コピー済み' : 'エクスポート' }}
         </button>
       </div>
     </div>
@@ -460,6 +520,8 @@ function exportToClipboard() {
 </template>
 
 <style module lang="scss">
+@use '@/styles/buttons' as *;
+
 .editor {
   display: flex;
   flex-direction: column;
@@ -727,30 +789,15 @@ function exportToClipboard() {
   background: color-mix(in srgb, var(--nd-error) 10%, transparent);
 }
 
-.codeActions {
-  display: flex;
-  gap: 6px;
-  padding: 10px;
-  border-top: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
+.codeApplyBtn { @include btn-secondary; }
+
+.actions { @include action-bar; }
+.actionGroup { @include action-group; }
 
 .actionBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  flex: 1;
-  padding: 8px 12px;
-  border-radius: var(--nd-radius-sm);
-  font-size: 0.8em;
-  font-weight: bold;
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
+  &.secondary { @include btn-action; }
 }
+
+.secondary { /* modifier */ }
+.feedback { /* modifier */ }
 </style>
