@@ -342,6 +342,16 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     return { columns: [], layout: [] }
   }
 
+  /** Invalidate in-memory cache and reload profile from localStorage.
+   *  Used by cross-window sync to pick up changes written by another window. */
+  function reloadProfile(profileId: string): {
+    columns: DeckColumn[]
+    layout: string[][]
+  } {
+    profilesCache = null
+    return initWindowProfile(profileId)
+  }
+
   /** Save window layout (position/size) to the current profile */
   function saveWindowLayout(windowLayout: DeckWindowLayout) {
     if (!windowProfileId.value) return
@@ -501,6 +511,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     deleteProfile,
     renameProfile,
     initWindowProfile,
+    reloadProfile,
     saveWindowLayout,
     removeWindowLayout,
     getWindowLayouts,
