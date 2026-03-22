@@ -96,9 +96,15 @@ function modeLabel(key: string): string {
           <i class="ti ti-logout" />
         </button>
       </template>
+      <template v-else-if="isGuestAccount(account)">
+        <button class="_button" :class="[$style.navAccountMenuItem, $style.navAccountLogout]" @click="emit('logout')">
+          <span>データを削除</span>
+          <i class="ti ti-trash" />
+        </button>
+      </template>
       <template v-else>
         <button class="_button" :class="[$style.navAccountMenuItem, $style.navAccountRelogin]" @click="emit('relogin', account.host)">
-          <span>{{ isGuestAccount(account) ? 'ログイン' : '再ログイン' }}</span>
+          <span>再ログイン</span>
           <i class="ti ti-login" />
         </button>
         <button class="_button" :class="[$style.navAccountMenuItem, $style.navAccountLogout]" @click="emit('logout')">
