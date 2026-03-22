@@ -395,7 +395,7 @@ const importSettings = () =>
   bottom: 100%;
   right: 0;
   margin-bottom: 4px;
-  min-width: 260px;
+  width: 260px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
