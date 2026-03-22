@@ -188,6 +188,12 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::get_notecli_version,
         commands::open_devtools,
         commands::export_db,
+        commands::list_settings_files,
+        commands::read_settings_file,
+        commands::write_settings_file,
+        commands::delete_settings_file,
+        commands::rename_settings_file,
+        commands::get_settings_dir,
     ]);
 
     builder = builder.setup(|app| {
@@ -323,15 +329,13 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
-            let tray_png = image::load_from_memory(include_bytes!("../icons/tray-icon.png"))
-                .map_err(|e| e.to_string())?
-                .into_rgba8();
-            let (w, h) = tray_png.dimensions();
-            let tray_icon =
-                tauri::image::Image::new_owned(tray_png.into_raw(), w, h);
+            let icon = app
+                .default_window_icon()
+                .ok_or("Default window icon not found")?
+                .clone();
 
             TrayIconBuilder::new()
-                .icon(tray_icon)
+                .icon(icon)
                 .tooltip("NoteDeck")
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id.as_ref() {
