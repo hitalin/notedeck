@@ -35,31 +35,34 @@ const { visible, options, resolve } = useConfirm()
 
 <style lang="scss" module>
 .header {
-  padding: 20px 24px 8px;
+  padding: 16px 20px 4px;
+  text-align: center;
 }
 
 .title {
-  font-size: 1.1em;
+  font-size: 1em;
   font-weight: bold;
   color: var(--nd-fg);
 }
 
 .body {
-  padding: 8px 24px 16px;
+  padding: 4px 20px 12px;
+  text-align: center;
 }
 
 .message {
   margin: 0;
   color: var(--nd-fg);
-  font-size: 0.9em;
+  font-size: 0.85em;
   line-height: 1.5;
+  opacity: 0.8;
 }
 
 .actions {
   display: flex;
   gap: 6px;
-  padding: 8px 16px 16px;
-  justify-content: flex-end;
+  padding: 0 16px 16px;
+  justify-content: center;
 }
 
 .btnCancel {
