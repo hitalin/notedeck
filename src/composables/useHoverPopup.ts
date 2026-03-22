@@ -1,4 +1,28 @@
-import { onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, shallowRef } from 'vue'
+
+const IS_TOUCH = navigator.maxTouchPoints > 0
+
+// Global singleton state — only one hover popup is active at a time
+let activeSlotId: number | null = null
+let slotCounter = 0
+let showTimer: ReturnType<typeof setTimeout> | null = null
+let hideTimer: ReturnType<typeof setTimeout> | null = null
+const globalVisible = shallowRef(false)
+const globalPosition = shallowRef({ x: 0, y: 0 })
+
+function clearShowTimer() {
+  if (showTimer) {
+    clearTimeout(showTimer)
+    showTimer = null
+  }
+}
+
+function clearHideTimer() {
+  if (hideTimer) {
+    clearTimeout(hideTimer)
+    hideTimer = null
+  }
+}
 
 export function useHoverPopup(options?: {
   showDelay?: number
@@ -9,41 +33,37 @@ export function useHoverPopup(options?: {
   const hideDelay = options?.hideDelay ?? 0
   const hideGuardSelector = options?.hideGuardSelector
 
-  const isVisible = ref(false)
-  const position = ref({ x: 0, y: 0 })
+  const slotId = ++slotCounter
 
-  let showTimer: ReturnType<typeof setTimeout> | null = null
-  let hideTimer: ReturnType<typeof setTimeout> | null = null
-
-  function clearShowTimer() {
-    if (showTimer) {
-      clearTimeout(showTimer)
-      showTimer = null
-    }
-  }
-
-  function clearHideTimer() {
-    if (hideTimer) {
-      clearTimeout(hideTimer)
-      hideTimer = null
-    }
-  }
+  const isVisible = computed(
+    () => globalVisible.value && activeSlotId === slotId,
+  )
+  const position = computed(() =>
+    activeSlotId === slotId ? globalPosition.value : { x: 0, y: 0 },
+  )
 
   function show(pos: { x: number; y: number }) {
-    // タッチデバイスではホバーポップアップを無効化
-    if (navigator.maxTouchPoints > 0) return
+    if (IS_TOUCH) return
+    // Preempt any pending hide/show from a different slot
+    if (activeSlotId !== slotId) {
+      clearShowTimer()
+      clearHideTimer()
+      globalVisible.value = false
+    }
+    activeSlotId = slotId
     clearHideTimer()
-    position.value = pos
-    if (isVisible.value) return
+    globalPosition.value = pos
+    if (globalVisible.value && activeSlotId === slotId) return
     clearShowTimer()
     showTimer = setTimeout(() => {
-      isVisible.value = true
+      globalVisible.value = true
     }, showDelay)
   }
 
   function hide() {
+    if (activeSlotId !== slotId) return
     clearShowTimer()
-    if (!isVisible.value) return
+    if (!globalVisible.value) return
     if (hideDelay > 0) {
       clearHideTimer()
       hideTimer = setTimeout(() => {
@@ -51,26 +71,34 @@ export function useHoverPopup(options?: {
           const el = document.querySelector(hideGuardSelector)
           if (el?.matches(':hover')) return
         }
-        isVisible.value = false
+        globalVisible.value = false
+        activeSlotId = null
       }, hideDelay)
     } else {
-      isVisible.value = false
+      globalVisible.value = false
+      activeSlotId = null
     }
   }
 
   function cancelHide() {
-    clearHideTimer()
+    if (activeSlotId === slotId) clearHideTimer()
   }
 
   function forceClose() {
+    if (activeSlotId !== slotId) return
     clearShowTimer()
     clearHideTimer()
-    isVisible.value = false
+    globalVisible.value = false
+    activeSlotId = null
   }
 
   onUnmounted(() => {
-    clearShowTimer()
-    clearHideTimer()
+    if (activeSlotId === slotId) {
+      clearShowTimer()
+      clearHideTimer()
+      globalVisible.value = false
+      activeSlotId = null
+    }
   })
 
   return { isVisible, position, show, hide, cancelHide, forceClose }

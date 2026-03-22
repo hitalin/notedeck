@@ -44,8 +44,15 @@ watch(
 const avatarSrc = computed(() => {
   if (!props.avatarUrl || allFailed.value) return AVATAR_DEFAULT
   if (proxyFailed.value) return props.avatarUrl
-  // Request a thumbnail sized to 2x display size for HiDPI screens
-  return proxyThumbUrl(props.avatarUrl, props.size * 2)
+  return proxyThumbUrl(props.avatarUrl, props.size)
+})
+
+const avatarSrcset = computed(() => {
+  if (!props.avatarUrl || allFailed.value || proxyFailed.value) return undefined
+  const x1 = proxyThumbUrl(props.avatarUrl, props.size)
+  const x2 = proxyThumbUrl(props.avatarUrl, props.size * 2)
+  if (!x1 || !x2) return undefined
+  return `${x1} 1x, ${x2} 2x`
 })
 
 const { targetRef, lazySrc, isVisible } = useLazyImage(avatarSrc)
@@ -102,6 +109,8 @@ const statusClass = computed(() =>
       v-if="lazySrc"
       :key="props.avatarUrl ?? undefined"
       :src="lazySrc"
+      :srcset="avatarSrcset"
+      :sizes="`${props.size}px`"
       :alt="props.alt"
       :class="$style.avatarImg"
       decoding="async"
