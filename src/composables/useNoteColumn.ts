@@ -557,17 +557,21 @@ export function useNoteColumn(config: NoteColumnConfig) {
   /** Disconnect, reset, and reconnect with fresh config state */
   async function reconnect(useCache = false) {
     disconnect()
+    // Suppress offline banner during intentional reconnect
+    isOffline.value = false
     streamingBatch?.resetBatch()
     setNotes([])
     await connect(useCache)
   }
 
-  /** Switch with pre-loaded snapshot to avoid skeleton flash */
+  /** Switch with pre-loaded snapshot to avoid skeleton/offline flash */
   async function switchWithSnapshot(
     snapshotNotes: NormalizedNote[],
     scrollTop: number,
   ) {
     disconnect()
+    // Suppress offline banner — snapshot provides content during reconnect
+    isOffline.value = false
     streamingBatch?.resetBatch()
     setNotes(snapshotNotes)
     await nextTick()

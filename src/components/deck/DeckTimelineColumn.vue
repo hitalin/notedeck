@@ -10,7 +10,6 @@ import { useAds } from '@/composables/useAds'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabIndicator } from '@/composables/useTabIndicator'
-import { useTabSlide } from '@/composables/useTabSlide'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -233,14 +232,6 @@ interface TlSnapshot {
   scrollTop: number
 }
 const tlSnapshots = new Map<TimelineType, TlSnapshot>()
-
-// Tab slide animation
-const tlTabIndex = computed(() => {
-  const types = allTlTypes.value
-  const idx = types.findIndex((t) => t.value === tlType.value)
-  return idx >= 0 ? idx : 0
-})
-useTabSlide(tlTabIndex, swipeTarget)
 
 async function switchTl(type: TimelineType) {
   if (type === tlType.value) return

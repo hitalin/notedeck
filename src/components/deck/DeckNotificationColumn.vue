@@ -35,7 +35,6 @@ import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabIndicator } from '@/composables/useTabIndicator'
-import { useTabSlide } from '@/composables/useTabSlide'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
@@ -391,12 +390,6 @@ async function pullRefresh() {
 
 const { isPulling, isPulledEnough, isRefreshing, pullDistance, displayHeight } =
   usePullToRefresh(scroller, pullRefresh)
-
-// Tab slide animation
-const notifTabIndex = computed(() =>
-  NOTIFICATION_FILTERS.findIndex((f) => f.key === activeFilter.value),
-)
-useTabSlide(notifTabIndex, scroller)
 
 // Swipe / wheel to switch notification filter tabs
 useSwipeTab(

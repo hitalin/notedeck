@@ -4,7 +4,6 @@ import { type Diagnostic, linter } from '@codemirror/lint'
 import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useSwipeTab } from '@/composables/useSwipeTab'
-import { useTabSlide } from '@/composables/useTabSlide'
 import { useThemeStore } from '@/stores/theme'
 
 const cssLang = css()
@@ -45,8 +44,6 @@ const tab = ref<'presets' | 'code'>('presets')
 const editorRef = ref<HTMLElement | null>(null)
 
 const CSS_TABS = ['presets', 'code'] as const
-const cssTabIndex = computed(() => CSS_TABS.indexOf(tab.value))
-useTabSlide(cssTabIndex, editorRef)
 useSwipeTab(
   editorRef,
   () => {

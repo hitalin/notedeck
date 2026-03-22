@@ -427,23 +427,3 @@ html[data-platform="android"] select {
 .nd-fade-leave-to {
   opacity: 0;
 }
-
-/* ---- Tab slide animation (useTabSlide) ---- */
-
-@keyframes nd-slide-in-left-kf {
-  from { transform: translateX(40px); opacity: 0; }
-  to   { transform: translateX(0);    opacity: 1; }
-}
-
-@keyframes nd-slide-in-right-kf {
-  from { transform: translateX(-40px); opacity: 0; }
-  to   { transform: translateX(0);     opacity: 1; }
-}
-
-.nd-slide-in-left {
-  animation: nd-slide-in-left-kf var(--nd-duration-slow) var(--nd-ease-pop);
-}
-
-.nd-slide-in-right {
-  animation: nd-slide-in-right-kf var(--nd-duration-slow) var(--nd-ease-pop);
-}
