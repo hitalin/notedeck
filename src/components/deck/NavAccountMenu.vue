@@ -65,16 +65,13 @@ function modeLabel(key: string): string {
         </div>
       </template>
       <div v-if="modeError" :class="$style.navAccountMenuError">{{ modeError }}</div>
-      <div :class="$style.navAccountMenuDivider" />
-
-      <!-- Profile (always available via public API) -->
-      <button v-if="!isGuestAccount(account)" class="_button" :class="$style.navAccountMenuItem" @click="navigateToUser(account.id, account.userId)">
-        <span>プロフィール</span>
-        <i class="ti ti-user" />
-      </button>
-
-      <!-- External links (auth required — hidden for guests, login prompt for logged-out) -->
+      <!-- Profile & external links (hidden for guests) -->
       <template v-if="!isGuestAccount(account)">
+        <div :class="$style.navAccountMenuDivider" />
+        <button class="_button" :class="$style.navAccountMenuItem" @click="navigateToUser(account.id, account.userId)">
+          <span>プロフィール</span>
+          <i class="ti ti-user" />
+        </button>
         <div :class="$style.navAccountMenuDivider" />
         <button class="_button" :class="$style.navAccountMenuItem" @click="account.hasToken ? openUrl(`https://${account.host}/settings`) : showLoginPrompt()">
           <span>設定</span>
