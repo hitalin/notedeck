@@ -54,13 +54,23 @@ const infoRows = [
   { label: 'OS', get: () => os },
 ]
 
+function getInfoText() {
+  return infoRows.map((r) => `${r.label}: ${r.get()}`).join('\n')
+}
+
 async function copyInfo() {
-  const lines = infoRows.map((r) => `${r.label}: ${r.get()}`)
-  await navigator.clipboard.writeText(lines.join('\n'))
+  await navigator.clipboard.writeText(getInfoText())
   copied.value = true
   setTimeout(() => {
     copied.value = false
   }, 2000)
+}
+
+function reportBug() {
+  const env = infoRows.map((r) => `- **${r.label}**: ${r.get()}`).join('\n')
+  const body = `## 現象\n\n<!-- 何が起きたか -->\n\n## 再現手順\n\n1.\n2.\n3.\n\n## 期待する動作\n\n<!-- 本来どうなるべきか -->\n\n## 環境\n\n${env}\n\n## スクリーンショット\n\n<!-- あれば添付 -->`
+  const url = `https://github.com/hitalin/notedeck/issues/new?labels=bug&body=${encodeURIComponent(body)}`
+  openUrl(url)
 }
 </script>
 
@@ -84,7 +94,7 @@ async function copyInfo() {
           <i :class="copied ? 'ti ti-check' : 'ti ti-copy'" />
           {{ copied ? 'コピーしました' : '情報をコピー' }}
         </button>
-        <button class="_button" :class="$style.actionBtn" @click="openUrl('https://github.com/hitalin/notedeck/issues/new')">
+        <button class="_button" :class="$style.actionBtn" @click="reportBug">
           <i class="ti ti-bug" />
           バグを報告
         </button>
