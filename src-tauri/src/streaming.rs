@@ -1,7 +1,15 @@
 use notecli::streaming::FrontendEmitter;
+use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_notification::NotificationExt;
+
+/// Typed wrapper for stream events — avoids repeated `serde_json::json!` allocation.
+#[derive(Serialize, Clone)]
+struct StreamEventWrapper<'a> {
+    kind: &'a str,
+    payload: &'a Value,
+}
 
 #[cfg(target_os = "android")]
 const NOTIFICATION_CHANNEL_ID: &str = "notedeck_notifications";
@@ -94,11 +102,11 @@ impl FrontendEmitter for TauriEmitter {
         }
 
         // Consolidate all stream-* events into a single "stream-event" with kind discriminator
-        let wrapped = serde_json::json!({
-            "kind": event,
-            "payload": payload,
-        });
-        if let Err(e) = self.app.emit("stream-event", wrapped) {
+        let wrapped = StreamEventWrapper {
+            kind: event,
+            payload: &payload,
+        };
+        if let Err(e) = self.app.emit("stream-event", &wrapped) {
             eprintln!("[stream] emit {event} failed: {e}");
         }
     }

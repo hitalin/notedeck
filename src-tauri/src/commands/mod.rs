@@ -117,6 +117,13 @@ impl CredentialCache {
             cache.remove(account_id); // Drop → zeroize
         }
     }
+
+    /// Remove all expired entries (triggers Drop → zeroize on each).
+    pub fn cleanup_expired(&self) {
+        if let Ok(mut cache) = self.cache.lock() {
+            cache.retain(|_, entry| entry.cached_at.elapsed() < CREDENTIAL_CACHE_TTL);
+        }
+    }
 }
 
 /// Tracks MiAuth sessions to prevent replay attacks.
@@ -216,6 +223,11 @@ pub fn get_credentials(db: &Database, account_id: &str) -> Result<(String, Strin
 /// Invalidate cached credentials (call on logout/token change)
 pub fn invalidate_credentials(account_id: &str) {
     CREDENTIAL_CACHE.invalidate(account_id);
+}
+
+/// Remove expired credential cache entries (call periodically)
+pub fn cleanup_expired_credentials() {
+    CREDENTIAL_CACHE.cleanup_expired();
 }
 
 /// Get host only from account_id (no token required).

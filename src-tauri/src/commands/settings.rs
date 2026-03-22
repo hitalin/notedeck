@@ -6,6 +6,9 @@ use tauri::Manager;
 
 use super::Result;
 
+/// Settings subdirectory name under app_data_dir.
+const SETTINGS_DIR: &str = "notedeck";
+
 /// Allowed subdirectory names for settings files.
 const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins"];
 
@@ -46,26 +49,27 @@ fn validate_filename(name: &str) -> Result<()> {
     Ok(())
 }
 
-/// Resolve the full path for a settings file.
-fn resolve_path(app: &tauri::AppHandle, subdir: &str, name: &str) -> Result<PathBuf> {
-    validate_subdir(subdir)?;
-    validate_filename(name)?;
+/// Resolve the settings base directory: `app_data_dir/notedeck/`.
+fn settings_base_dir(app: &tauri::AppHandle) -> Result<PathBuf> {
     let app_dir = app
         .path()
         .app_data_dir()
         .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-    Ok(app_dir.join(subdir).join(name))
+    Ok(app_dir.join(SETTINGS_DIR))
+}
+
+/// Resolve the full path for a settings file.
+fn resolve_path(app: &tauri::AppHandle, subdir: &str, name: &str) -> Result<PathBuf> {
+    validate_subdir(subdir)?;
+    validate_filename(name)?;
+    Ok(settings_base_dir(app)?.join(subdir).join(name))
 }
 
 /// List files in a settings subdirectory.
 #[tauri::command]
 pub fn list_settings_files(app: tauri::AppHandle, subdir: &str) -> Result<Vec<String>> {
     validate_subdir(subdir)?;
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-    let dir = app_dir.join(subdir);
+    let dir = settings_base_dir(&app)?.join(subdir);
     if !dir.exists() {
         return Ok(vec![]);
     }
@@ -154,7 +158,7 @@ pub fn rename_settings_file(
 /// Allowed root-level filenames (no subdirectory).
 const ALLOWED_ROOT_FILES: &[&str] = &["custom.css", "keybinds.json5"];
 
-/// Resolve the full path for a root-level settings file (no subdirectory).
+/// Resolve the full path for a root-level settings file (under notedeck/).
 fn resolve_root_path(app: &tauri::AppHandle, name: &str) -> Result<PathBuf> {
     if !ALLOWED_ROOT_FILES.contains(&name) {
         return Err(NoteDeckError::InvalidInput(format!(
@@ -163,11 +167,7 @@ fn resolve_root_path(app: &tauri::AppHandle, name: &str) -> Result<PathBuf> {
         )));
     }
     validate_filename(name)?;
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-    Ok(app_dir.join(name))
+    Ok(settings_base_dir(app)?.join(name))
 }
 
 /// Read a root-level settings file as a UTF-8 string.
@@ -190,35 +190,28 @@ pub fn write_root_settings_file(app: tauri::AppHandle, name: &str, content: &str
     })
 }
 
-/// Get the app data directory path (so users can open it in file manager).
+/// Get the settings directory path (so users can open it in file manager).
 #[tauri::command]
 pub fn get_settings_dir(app: tauri::AppHandle) -> Result<String> {
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-    Ok(app_dir.to_string_lossy().to_string())
+    Ok(settings_base_dir(&app)?.to_string_lossy().to_string())
 }
 
 /// Directories and root files to include in settings backup.
 const BACKUP_SUBDIRS: &[&str] = &["profiles", "themes", "plugins"];
 
-/// Export all settings files to a zip archive via save dialog.
+/// Export all settings files to a JSON bundle via save dialog.
 #[tauri::command]
-pub async fn export_settings_zip(app: tauri::AppHandle) -> Result<bool> {
+pub async fn export_settings_json(app: tauri::AppHandle) -> Result<bool> {
+    use std::collections::BTreeMap;
     use tauri_plugin_dialog::DialogExt;
-    use zip::write::SimpleFileOptions;
 
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+    let base_dir = settings_base_dir(&app)?;
 
     let dest = app
         .dialog()
         .file()
-        .set_file_name("notedeck-settings.zip")
-        .add_filter("Zip Archive", &["zip"])
+        .set_file_name("notedeck.json")
+        .add_filter("JSON", &["json"])
         .blocking_save_file();
 
     let Some(dest) = dest else {
@@ -229,15 +222,11 @@ pub async fn export_settings_zip(app: tauri::AppHandle) -> Result<bool> {
         .as_path()
         .ok_or_else(|| NoteDeckError::InvalidInput("Invalid destination path".to_string()))?;
 
-    let file = fs::File::create(dest_path)
-        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to create zip: {e}")))?;
-    let mut zip = zip::ZipWriter::new(file);
-    let options = SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated);
+    let mut bundle: BTreeMap<String, String> = BTreeMap::new();
 
     // Add subdirectory files (profiles/, themes/, plugins/)
     for subdir in BACKUP_SUBDIRS {
-        let dir = app_dir.join(subdir);
+        let dir = base_dir.join(subdir);
         if !dir.exists() {
             continue;
         }
@@ -250,49 +239,43 @@ pub async fn export_settings_zip(app: tauri::AppHandle) -> Result<bool> {
             }
             let name = entry.file_name();
             let name_str = name.to_string_lossy();
-            let zip_path = format!("{subdir}/{name_str}");
-            let content = fs::read(entry.path())
+            let key = format!("{subdir}/{name_str}");
+            let content = fs::read_to_string(entry.path())
                 .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-            zip.start_file(&zip_path, options)
-                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-            std::io::Write::write_all(&mut zip, &content)
-                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+            bundle.insert(key, content);
         }
     }
 
     // Add root-level settings files
     for root_file in ALLOWED_ROOT_FILES {
-        let path = app_dir.join(root_file);
+        let path = base_dir.join(root_file);
         if path.exists() {
-            let content = fs::read(&path)
+            let content = fs::read_to_string(&path)
                 .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-            zip.start_file(*root_file, options)
-                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-            std::io::Write::write_all(&mut zip, &content)
-                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+            bundle.insert(root_file.to_string(), content);
         }
     }
 
-    zip.finish()
-        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to finalize zip: {e}")))?;
+    let json = serde_json::to_string_pretty(&bundle)
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to serialize: {e}")))?;
+    fs::write(dest_path, json)
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to write: {e}")))?;
 
     Ok(true)
 }
 
-/// Import settings from a zip archive via open dialog.
+/// Import settings from a JSON bundle via open dialog.
 #[tauri::command]
-pub async fn import_settings_zip(app: tauri::AppHandle) -> Result<bool> {
+pub async fn import_settings_json(app: tauri::AppHandle) -> Result<bool> {
+    use std::collections::BTreeMap;
     use tauri_plugin_dialog::DialogExt;
 
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
+    let base_dir = settings_base_dir(&app)?;
 
     let src = app
         .dialog()
         .file()
-        .add_filter("Zip Archive", &["zip"])
+        .add_filter("JSON", &["json"])
         .blocking_pick_file();
 
     let Some(src) = src else {
@@ -303,37 +286,29 @@ pub async fn import_settings_zip(app: tauri::AppHandle) -> Result<bool> {
         .as_path()
         .ok_or_else(|| NoteDeckError::InvalidInput("Invalid source path".to_string()))?;
 
-    let file = fs::File::open(src_path)
-        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to open zip: {e}")))?;
-    let mut archive = zip::ZipArchive::new(file)
-        .map_err(|e| NoteDeckError::InvalidInput(format!("Invalid zip file: {e}")))?;
+    let raw = fs::read_to_string(src_path)
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to read file: {e}")))?;
+    let bundle: BTreeMap<String, String> = serde_json::from_str(&raw)
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Invalid JSON: {e}")))?;
 
-    for i in 0..archive.len() {
-        let mut entry = archive
-            .by_index(i)
-            .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-
-        if entry.is_dir() {
-            continue;
-        }
-
-        let entry_name = entry.name().to_string();
-
+    for (key, content) in &bundle {
         // Path traversal prevention
-        if entry_name.contains("..") || entry_name.starts_with('/') || entry_name.starts_with('\\') {
-            tracing::warn!("Skipping suspicious zip entry: {entry_name}");
+        if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
+            tracing::warn!("Skipping suspicious entry: {key}");
             continue;
         }
 
         // Validate: must be in allowed subdirs or allowed root files
-        let allowed = BACKUP_SUBDIRS.iter().any(|d| entry_name.starts_with(&format!("{d}/")))
-            || ALLOWED_ROOT_FILES.contains(&entry_name.as_str());
+        let allowed = BACKUP_SUBDIRS
+            .iter()
+            .any(|d| key.starts_with(&format!("{d}/")))
+            || ALLOWED_ROOT_FILES.contains(&key.as_str());
         if !allowed {
-            tracing::warn!("Skipping unknown zip entry: {entry_name}");
+            tracing::warn!("Skipping unknown entry: {key}");
             continue;
         }
 
-        let dest_path = app_dir.join(&entry_name);
+        let dest_path = base_dir.join(key);
 
         // Ensure parent directory exists
         if let Some(parent) = dest_path.parent() {
@@ -341,11 +316,8 @@ pub async fn import_settings_zip(app: tauri::AppHandle) -> Result<bool> {
                 .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
         }
 
-        let mut content = Vec::new();
-        std::io::Read::read_to_end(&mut entry, &mut content)
-            .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-        fs::write(&dest_path, &content)
-            .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to write {entry_name}: {e}")))?;
+        fs::write(&dest_path, content)
+            .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to write {key}: {e}")))?;
     }
 
     Ok(true)
@@ -354,7 +326,7 @@ pub async fn import_settings_zip(app: tauri::AppHandle) -> Result<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
+    use std::collections::BTreeMap;
 
     #[test]
     fn validate_subdir_allowed() {
@@ -410,29 +382,34 @@ mod tests {
     }
 
     #[test]
-    fn zip_roundtrip() {
+    fn json_roundtrip() {
         let dir = tempfile::tempdir().unwrap();
         let base = dir.path();
 
         // Create test settings structure
         let profiles_dir = base.join("profiles");
         fs::create_dir_all(&profiles_dir).unwrap();
-        fs::write(profiles_dir.join("test.ndprofile.json5"), r#"{ name: "test" }"#).unwrap();
+        fs::write(
+            profiles_dir.join("test.ndprofile.json5"),
+            r#"{ name: "test" }"#,
+        )
+        .unwrap();
 
         let themes_dir = base.join("themes");
         fs::create_dir_all(&themes_dir).unwrap();
-        fs::write(themes_dir.join("dark.ndtheme.json5"), r#"{ name: "dark" }"#).unwrap();
+        fs::write(
+            themes_dir.join("dark.ndtheme.json5"),
+            r#"{ name: "dark" }"#,
+        )
+        .unwrap();
 
         fs::write(base.join("custom.css"), "body { color: red; }").unwrap();
         fs::write(base.join("keybinds.json5"), r#"{ "search": [] }"#).unwrap();
 
-        // Export to zip
-        let zip_path = base.join("backup.zip");
+        // Export to JSON bundle (same logic as export_settings_json)
+        let json_path = base.join("backup.json");
         {
-            let file = fs::File::create(&zip_path).unwrap();
-            let mut zip = zip::ZipWriter::new(file);
-            let options = zip::write::SimpleFileOptions::default();
-
+            let mut bundle: BTreeMap<String, String> = BTreeMap::new();
             for subdir in BACKUP_SUBDIRS {
                 let d = base.join(subdir);
                 if !d.exists() {
@@ -442,22 +419,21 @@ mod tests {
                     let entry = entry.unwrap();
                     if entry.file_type().unwrap().is_file() {
                         let name = entry.file_name();
-                        let zip_path_str = format!("{subdir}/{}", name.to_string_lossy());
-                        let content = fs::read(entry.path()).unwrap();
-                        zip.start_file(&zip_path_str, options).unwrap();
-                        zip.write_all(&content).unwrap();
+                        let key = format!("{subdir}/{}", name.to_string_lossy());
+                        let content = fs::read_to_string(entry.path()).unwrap();
+                        bundle.insert(key, content);
                     }
                 }
             }
             for root_file in ALLOWED_ROOT_FILES {
                 let p = base.join(root_file);
                 if p.exists() {
-                    let content = fs::read(&p).unwrap();
-                    zip.start_file(*root_file, options).unwrap();
-                    zip.write_all(&content).unwrap();
+                    let content = fs::read_to_string(&p).unwrap();
+                    bundle.insert(root_file.to_string(), content);
                 }
             }
-            zip.finish().unwrap();
+            let json = serde_json::to_string_pretty(&bundle).unwrap();
+            fs::write(&json_path, json).unwrap();
         }
 
         // Clear original files
@@ -466,36 +442,26 @@ mod tests {
         fs::remove_file(base.join("custom.css")).unwrap();
         fs::remove_file(base.join("keybinds.json5")).unwrap();
 
-        // Import from zip (same logic as import_settings_zip)
+        // Import from JSON bundle (same logic as import_settings_json)
         {
-            let file = fs::File::open(&zip_path).unwrap();
-            let mut archive = zip::ZipArchive::new(file).unwrap();
-            for i in 0..archive.len() {
-                let mut entry = archive.by_index(i).unwrap();
-                if entry.is_dir() {
-                    continue;
-                }
-                let entry_name = entry.name().to_string();
-                if entry_name.contains("..")
-                    || entry_name.starts_with('/')
-                    || entry_name.starts_with('\\')
-                {
+            let raw = fs::read_to_string(&json_path).unwrap();
+            let bundle: BTreeMap<String, String> = serde_json::from_str(&raw).unwrap();
+            for (key, content) in &bundle {
+                if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
                     continue;
                 }
                 let allowed = BACKUP_SUBDIRS
                     .iter()
-                    .any(|d| entry_name.starts_with(&format!("{d}/")))
-                    || ALLOWED_ROOT_FILES.contains(&entry_name.as_str());
+                    .any(|d| key.starts_with(&format!("{d}/")))
+                    || ALLOWED_ROOT_FILES.contains(&key.as_str());
                 if !allowed {
                     continue;
                 }
-                let dest = base.join(&entry_name);
+                let dest = base.join(key);
                 if let Some(parent) = dest.parent() {
                     fs::create_dir_all(parent).unwrap();
                 }
-                let mut content = Vec::new();
-                std::io::Read::read_to_end(&mut entry, &mut content).unwrap();
-                fs::write(&dest, &content).unwrap();
+                fs::write(&dest, content).unwrap();
             }
         }
 
@@ -519,53 +485,37 @@ mod tests {
     }
 
     #[test]
-    fn zip_import_rejects_path_traversal() {
+    fn json_import_rejects_path_traversal() {
         let dir = tempfile::tempdir().unwrap();
-        let zip_path = dir.path().join("evil.zip");
-
-        {
-            let file = fs::File::create(&zip_path).unwrap();
-            let mut zip = zip::ZipWriter::new(file);
-            let options = zip::write::SimpleFileOptions::default();
-            zip.start_file("../../../etc/passwd", options).unwrap();
-            zip.write_all(b"evil").unwrap();
-            zip.start_file("profiles/good.json5", options).unwrap();
-            zip.write_all(b"ok").unwrap();
-            zip.finish().unwrap();
-        }
-
         let base = dir.path().join("app");
         fs::create_dir_all(&base).unwrap();
-        {
-            let file = fs::File::open(&zip_path).unwrap();
-            let mut archive = zip::ZipArchive::new(file).unwrap();
-            for i in 0..archive.len() {
-                let mut entry = archive.by_index(i).unwrap();
-                if entry.is_dir() {
-                    continue;
-                }
-                let entry_name = entry.name().to_string();
-                if entry_name.contains("..")
-                    || entry_name.starts_with('/')
-                    || entry_name.starts_with('\\')
-                {
-                    continue;
-                }
-                let allowed = BACKUP_SUBDIRS
-                    .iter()
-                    .any(|d| entry_name.starts_with(&format!("{d}/")))
-                    || ALLOWED_ROOT_FILES.contains(&entry_name.as_str());
-                if !allowed {
-                    continue;
-                }
-                let dest = base.join(&entry_name);
-                if let Some(parent) = dest.parent() {
-                    fs::create_dir_all(parent).unwrap();
-                }
-                let mut content = Vec::new();
-                std::io::Read::read_to_end(&mut entry, &mut content).unwrap();
-                fs::write(&dest, &content).unwrap();
+
+        let mut bundle: BTreeMap<String, String> = BTreeMap::new();
+        bundle.insert("../../../etc/passwd".to_string(), "evil".to_string());
+        bundle.insert("profiles/good.json5".to_string(), "ok".to_string());
+
+        let json_path = dir.path().join("evil.json");
+        fs::write(&json_path, serde_json::to_string(&bundle).unwrap()).unwrap();
+
+        // Import with validation
+        let raw = fs::read_to_string(&json_path).unwrap();
+        let imported: BTreeMap<String, String> = serde_json::from_str(&raw).unwrap();
+        for (key, content) in &imported {
+            if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
+                continue;
             }
+            let allowed = BACKUP_SUBDIRS
+                .iter()
+                .any(|d| key.starts_with(&format!("{d}/")))
+                || ALLOWED_ROOT_FILES.contains(&key.as_str());
+            if !allowed {
+                continue;
+            }
+            let dest = base.join(key);
+            if let Some(parent) = dest.parent() {
+                fs::create_dir_all(parent).unwrap();
+            }
+            fs::write(&dest, content).unwrap();
         }
 
         assert!(!dir.path().join("etc/passwd").exists());
@@ -576,55 +526,37 @@ mod tests {
     }
 
     #[test]
-    fn zip_import_rejects_unknown_entries() {
+    fn json_import_rejects_unknown_entries() {
         let dir = tempfile::tempdir().unwrap();
-        let zip_path = dir.path().join("mixed.zip");
-
-        {
-            let file = fs::File::create(&zip_path).unwrap();
-            let mut zip = zip::ZipWriter::new(file);
-            let options = zip::write::SimpleFileOptions::default();
-            zip.start_file("custom.css", options).unwrap();
-            zip.write_all(b"body{}").unwrap();
-            zip.start_file("secret.txt", options).unwrap();
-            zip.write_all(b"secret").unwrap();
-            zip.start_file("config/bad.json", options).unwrap();
-            zip.write_all(b"bad").unwrap();
-            zip.finish().unwrap();
-        }
-
         let base = dir.path().join("app");
         fs::create_dir_all(&base).unwrap();
-        {
-            let file = fs::File::open(&zip_path).unwrap();
-            let mut archive = zip::ZipArchive::new(file).unwrap();
-            for i in 0..archive.len() {
-                let mut entry = archive.by_index(i).unwrap();
-                if entry.is_dir() {
-                    continue;
-                }
-                let entry_name = entry.name().to_string();
-                if entry_name.contains("..")
-                    || entry_name.starts_with('/')
-                    || entry_name.starts_with('\\')
-                {
-                    continue;
-                }
-                let allowed = BACKUP_SUBDIRS
-                    .iter()
-                    .any(|d| entry_name.starts_with(&format!("{d}/")))
-                    || ALLOWED_ROOT_FILES.contains(&entry_name.as_str());
-                if !allowed {
-                    continue;
-                }
-                let dest = base.join(&entry_name);
-                if let Some(parent) = dest.parent() {
-                    fs::create_dir_all(parent).unwrap();
-                }
-                let mut content = Vec::new();
-                std::io::Read::read_to_end(&mut entry, &mut content).unwrap();
-                fs::write(&dest, &content).unwrap();
+
+        let mut bundle: BTreeMap<String, String> = BTreeMap::new();
+        bundle.insert("custom.css".to_string(), "body{}".to_string());
+        bundle.insert("secret.txt".to_string(), "secret".to_string());
+        bundle.insert("config/bad.json".to_string(), "bad".to_string());
+
+        let json_path = dir.path().join("mixed.json");
+        fs::write(&json_path, serde_json::to_string(&bundle).unwrap()).unwrap();
+
+        let raw = fs::read_to_string(&json_path).unwrap();
+        let imported: BTreeMap<String, String> = serde_json::from_str(&raw).unwrap();
+        for (key, content) in &imported {
+            if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
+                continue;
             }
+            let allowed = BACKUP_SUBDIRS
+                .iter()
+                .any(|d| key.starts_with(&format!("{d}/")))
+                || ALLOWED_ROOT_FILES.contains(&key.as_str());
+            if !allowed {
+                continue;
+            }
+            let dest = base.join(key);
+            if let Some(parent) = dest.parent() {
+                fs::create_dir_all(parent).unwrap();
+            }
+            fs::write(&dest, content).unwrap();
         }
 
         assert!(base.join("custom.css").exists());

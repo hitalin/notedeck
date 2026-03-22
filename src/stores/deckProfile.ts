@@ -13,9 +13,10 @@ import {
 } from '@/utils/storage'
 
 /** Deep-clone reactive state into a plain object safe for serialization.
- *  JSON round-trip strips Vue Proxy wrappers at all nesting levels. */
+ *  structuredClone strips Vue Proxy wrappers without the overhead of
+ *  JSON serialization round-trips. */
 function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value))
+  return structuredClone(value)
 }
 
 /** Strip internal-only fields before writing to file. */

@@ -6,8 +6,10 @@ import { useAccountsStore } from './stores/accounts'
 import { useKeybindsStore } from './stores/keybinds'
 import { useThemeStore } from './stores/theme'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
-import 'katex/dist/katex.min.css'
 import './styles/global.css'
+
+// Lazy-load KaTeX CSS — only needed when math formulas appear in notes
+import('katex/dist/katex.min.css')
 import './assets/shiki-dark-plus.css'
 
 const app = createApp(App)

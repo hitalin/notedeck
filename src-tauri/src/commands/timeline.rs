@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use futures_util::stream::{self, StreamExt};
 use tauri::State;
 
 use notecli::api::MisskeyClient;
@@ -16,6 +17,9 @@ use super::{
     extract_ogp_urls, get_credentials, get_credentials_or_anon, Result, TimelineEnriched,
     MAX_UPLOAD_BYTES,
 };
+
+/// Maximum number of concurrent OGP prefetch requests per timeline load
+const MAX_OGP_CONCURRENT: usize = 10;
 
 // --- Timelines ---
 
@@ -89,13 +93,12 @@ pub async fn api_get_timeline_enriched(
     urls.sort_unstable();
     urls.dedup();
 
-    // Parallel OGP prefetch (best-effort, errors are silently skipped)
+    // Parallel OGP prefetch with concurrency limit (best-effort, errors are silently skipped)
     let ogp_hints = if urls.is_empty() {
         HashMap::new()
     } else {
         let ogp = &*ogp_cache;
-        let futs: Vec<_> = urls
-            .into_iter()
+        stream::iter(urls)
             .map(|url| {
                 let host = host.clone();
                 let token = token.clone();
@@ -104,12 +107,10 @@ pub async fn api_get_timeline_enriched(
                     (url, result.ok())
                 }
             })
-            .collect();
-        let results = futures_util::future::join_all(futs).await;
-        results
-            .into_iter()
-            .filter_map(|(url, data)| data.map(|d| (url, d)))
+            .buffer_unordered(MAX_OGP_CONCURRENT)
+            .filter_map(|(url, data)| async move { data.map(|d| (url, d)) })
             .collect()
+            .await
     };
 
     Ok(TimelineEnriched { notes, ogp_hints })

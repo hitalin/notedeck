@@ -101,9 +101,6 @@ importers:
       shiki:
         specifier: ^4.0.0
         version: 4.0.0
-      vscode-languageserver-protocol:
-        specifier: ^3.17.5
-        version: 3.17.5
       vue:
         specifier: ^3.5.25
         version: 3.5.28(typescript@5.9.3)

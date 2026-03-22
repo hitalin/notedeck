@@ -18,7 +18,7 @@ const NEGATIVE_TTL_CLIENT: Duration = Duration::from_secs(24 * 60 * 60); // 4xx:
 const NEGATIVE_TTL_SERVER: Duration = Duration::from_secs(5 * 60); // 5xx: 5min
 const NEGATIVE_TTL_NETWORK: Duration = Duration::from_secs(60); // timeout/conn: 1min
 const MEMORY_CACHE_MAX_ITEM: usize = 64 * 1024; // 64KB
-const MEMORY_CACHE_MAX_TOTAL: usize = 32 * 1024 * 1024; // 32MB
+const MEMORY_CACHE_MAX_TOTAL: usize = 16 * 1024 * 1024; // 16MB
 
 /// Circuit breaker: block an entire host after this many consecutive failures.
 const CIRCUIT_BREAKER_THRESHOLD: u32 = 3;
@@ -72,17 +72,15 @@ pub struct ImageCache {
 }
 
 impl ImageCache {
+    /// Create with a default HTTP client (used in tests).
+    #[cfg(test)]
     pub fn new(app_dir: &Path) -> Self {
+        Self::with_client(app_dir, reqwest::Client::default())
+    }
+
+    pub fn with_client(app_dir: &Path, http_client: reqwest::Client) -> Self {
         let cache_dir = app_dir.join("image_cache");
         std::fs::create_dir_all(&cache_dir).ok();
-
-        let http_client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(5))
-            .pool_max_idle_per_host(8)
-            .pool_idle_timeout(Duration::from_secs(60))
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-            .build()
-            .unwrap_or_default();
 
         Self {
             cache_dir,

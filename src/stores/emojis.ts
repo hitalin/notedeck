@@ -29,11 +29,26 @@ export const useEmojisStore = defineStore('emojis', () => {
     cache.value = map
   }
 
+  /** Max emoji entries to persist per host.
+   *  Full lists are kept in memory; only a subset is persisted to localStorage
+   *  to avoid quota issues with large servers (some have 5000+ custom emoji). */
+  const MAX_PERSIST_PER_HOST = 500
+
   function persistToStorage() {
     try {
       const obj: Record<string, Record<string, string>> = {}
       for (const [host, lookup] of cache.value) {
-        obj[host] = lookup
+        const keys = Object.keys(lookup)
+        if (keys.length <= MAX_PERSIST_PER_HOST) {
+          obj[host] = lookup
+        } else {
+          // Persist only the first N entries (most commonly used come first from API)
+          const subset: Record<string, string> = {}
+          for (let i = 0; i < MAX_PERSIST_PER_HOST; i++) {
+            subset[keys[i]] = lookup[keys[i]]
+          }
+          obj[host] = subset
+        }
       }
       setStorageJson(STORAGE_KEYS.emojisCache, obj)
     } catch {

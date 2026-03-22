@@ -7,6 +7,7 @@ import ThemePreview from '@/components/ThemePreview.vue'
 import { useUpdater } from '@/composables/useUpdater'
 import { type ConfirmOptions, useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
+import { useKeybindsStore } from '@/stores/keybinds'
 import { useThemeStore } from '@/stores/theme'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
@@ -31,15 +32,13 @@ const { updateAvailable, updateVersion, isInstalling, installUpdate } =
 const isCompact = useIsCompactLayout()
 const { isMobilePlatform } = useUiStore()
 const deckStore = useDeckStore()
+const keybindsStore = useKeybindsStore()
 const themeStore = useThemeStore()
 const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showAbout = ref(false)
-// Theme install UI
-const showInstallInput = ref(false)
-const themeCode = ref('')
-const installError = ref('')
+const themeGridOpen = ref(false)
 
 // Current mode's builtin theme
 const builtinTheme = computed(() => (isDark.value ? DARK_THEME : LIGHT_THEME))
@@ -60,18 +59,6 @@ const selectedId = computed(() =>
 function selectTheme(id: string | null) {
   const mode = isDark.value ? 'dark' : 'light'
   themeStore.selectTheme(id, mode)
-}
-
-async function handleInstall() {
-  installError.value = ''
-  if (!themeCode.value.trim()) return
-  const ok = await themeStore.installTheme(themeCode.value.trim())
-  if (ok) {
-    themeCode.value = ''
-    showInstallInput.value = false
-  } else {
-    installError.value = '無効なテーマJSONです'
-  }
 }
 
 async function removeTheme(id: string) {
@@ -101,10 +88,6 @@ watch(
       } else {
         fixedStyle.value = undefined
       }
-    } else {
-      showInstallInput.value = false
-      themeCode.value = ''
-      installError.value = ''
     }
   },
   { immediate: true },
@@ -190,9 +173,9 @@ const importDb = () =>
     relaunch: true,
   })
 const exportSettings = () =>
-  backupAction(isExportingSettings, 'export_settings_zip')
+  backupAction(isExportingSettings, 'export_settings_json')
 const importSettings = () =>
-  backupAction(isImportingSettings, 'import_settings_zip', {
+  backupAction(isImportingSettings, 'import_settings_json', {
     confirmOpts: {
       title: '設定インポート',
       message: '現在の設定が上書きされます。',
@@ -243,45 +226,35 @@ const importSettings = () =>
         </div>
       </div>
 
-      <!-- Theme selection grid -->
+      <!-- Theme selection folder -->
       <div :class="$style.themeSelectSection">
-        <div :class="$style.themeSelectHeader">
+        <button :class="$style.themeSelectHeader" @click="themeGridOpen = !themeGridOpen">
           <i :class="isDark ? 'ti ti-moon' : 'ti ti-sun'" />
           <span>{{ isDark ? 'ダークテーマで使うテーマ' : 'ライトテーマで使うテーマ' }}</span>
-          <button v-if="!showInstallInput" class="_button" :class="[$style.dataBtn, $style.themeInstallBtn]" @click="showInstallInput = true">
-            <i class="ti ti-download" />
-            インストール
-          </button>
-        </div>
-        <div :class="$style.themeGrid">
-          <!-- Builtin theme -->
-          <div :class="[$style.themeItem, { [$style.selected]: selectedId == null }]" @click="selectTheme(null)">
-            <ThemePreview :theme="builtinTheme" :class="$style.themeItemPreview" />
-            <div :class="$style.themeItemName">{{ builtinTheme.name }}</div>
-          </div>
-          <!-- Installed themes -->
-          <div
-            v-for="theme in currentModeThemes"
-            :key="theme.id"
-            :class="[$style.themeItem, { [$style.selected]: selectedId === theme.id }]"
-            @click="selectTheme(theme.id)"
-            @contextmenu.prevent="removeTheme(theme.id)"
-          >
-            <ThemePreview :theme="theme" :class="$style.themeItemPreview" />
-            <div :class="$style.themeItemName">{{ theme.name }}</div>
-          </div>
-        </div>
-        <div v-if="showInstallInput" :class="$style.installArea">
-          <textarea
-            v-model="themeCode"
-            :class="$style.installTextarea"
-            placeholder="MisskeyテーマのJSONコードを貼り付け..."
-            rows="4"
-          />
-          <div v-if="installError" :class="$style.installError">{{ installError }}</div>
-          <div :class="$style.installActions">
-            <button :class="[$style.installActionBtn, $style.cancel]" @click="showInstallInput = false">キャンセル</button>
-            <button :class="[$style.installActionBtn, $style.confirm]" @click="handleInstall">インストール</button>
+          <i :class="[$style.chevron, { [$style.open]: themeGridOpen }]" class="ti ti-chevron-down" />
+        </button>
+        <div v-if="themeGridOpen" :class="$style.themeSelectBody">
+          <div :class="$style.themeGrid">
+            <!-- Builtin theme -->
+            <div :class="[$style.themeItem, { [$style.selected]: selectedId == null }]" @click="selectTheme(null)">
+              <ThemePreview :theme="builtinTheme" :class="$style.themeItemPreview" />
+              <div :class="$style.themeItemName">{{ builtinTheme.name }}</div>
+            </div>
+            <!-- Installed themes -->
+            <div
+              v-for="theme in currentModeThemes"
+              :key="theme.id"
+              :class="[$style.themeItem, { [$style.selected]: selectedId === theme.id }]"
+              @click="selectTheme(theme.id)"
+            >
+              <div :class="$style.themeItemPreviewWrap">
+                <ThemePreview :theme="theme" :class="$style.themeItemPreview" />
+                <button class="_button" :class="$style.themeRemoveBtn" @click.stop="removeTheme(theme.id)">
+                  <i class="ti ti-x" />
+                </button>
+              </div>
+              <div :class="$style.themeItemName">{{ theme.name }}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -290,11 +263,12 @@ const importSettings = () =>
       <div :class="$style.settingsMenuItem" @click="openToolWindow('themeEditor')">
         <i class="ti ti-palette" />
         <span :class="$style.settingsMenuLabel">テーマエディタ</span>
+        <span v-if="selectedId != null" :class="$style.activeDot" />
       </div>
       <div :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
         <i class="ti ti-code" />
         <span :class="$style.settingsMenuLabel">カスタムCSS</span>
-        <span v-if="themeStore.customCss" :class="$style.cssActiveDot" />
+        <span v-if="themeStore.customCss" :class="$style.activeDot" />
       </div>
       <div v-if="deckStore.wallpaper == null" :class="$style.settingsMenuItem" @click="pickWallpaper">
         <i class="ti ti-photo" />
@@ -319,32 +293,37 @@ const importSettings = () =>
       <div v-if="!isMobilePlatform" :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
         <i class="ti ti-keyboard" />
         <span :class="$style.settingsMenuLabel">キーバインド設定</span>
+        <span v-if="Object.keys(keybindsStore.overrides).length > 0" :class="$style.activeDot" />
       </div>
 
       <!-- Data -->
       <div :class="$style.settingsMenuDivider" />
 
-      <div :class="$style.dataRow">
-        <span :class="$style.dataRowLabel"><i class="ti ti-database" /> DBバックアップ</span>
-        <button class="_button" :class="$style.dataBtn" :disabled="isExporting" @click="exportDb">
-          <i class="ti ti-upload" />
-          {{ isExporting ? '処理中...' : 'エクスポート' }}
-        </button>
-        <button class="_button" :class="$style.dataBtn" :disabled="isImportingDb" @click="importDb">
-          <i class="ti ti-download" />
-          {{ isImportingDb ? '処理中...' : 'インポート' }}
-        </button>
+      <div :class="$style.dataGroup">
+        <span :class="$style.dataGroupLabel"><i class="ti ti-database" /> DBバックアップ</span>
+        <div :class="$style.dataBtnRow">
+          <button class="_button" :class="$style.dataBtn" :disabled="isExporting" @click="exportDb">
+            <i class="ti ti-upload" />
+            {{ isExporting ? '処理中...' : 'エクスポート' }}
+          </button>
+          <button class="_button" :class="$style.dataBtn" :disabled="isImportingDb" @click="importDb">
+            <i class="ti ti-download" />
+            {{ isImportingDb ? '処理中...' : 'インポート' }}
+          </button>
+        </div>
       </div>
-      <div :class="$style.dataRow">
-        <span :class="$style.dataRowLabel"><i class="ti ti-settings" /> 設定バックアップ</span>
-        <button class="_button" :class="$style.dataBtn" :disabled="isExportingSettings" @click="exportSettings">
-          <i class="ti ti-upload" />
-          {{ isExportingSettings ? '処理中...' : 'エクスポート' }}
-        </button>
-        <button class="_button" :class="$style.dataBtn" :disabled="isImportingSettings" @click="importSettings">
-          <i class="ti ti-download" />
-          {{ isImportingSettings ? '処理中...' : 'インポート' }}
-        </button>
+      <div :class="$style.dataGroup">
+        <span :class="$style.dataGroupLabel"><i class="ti ti-settings" /> 設定バックアップ</span>
+        <div :class="$style.dataBtnRow">
+          <button class="_button" :class="$style.dataBtn" :disabled="isExportingSettings" @click="exportSettings">
+            <i class="ti ti-upload" />
+            {{ isExportingSettings ? '処理中...' : 'エクスポート' }}
+          </button>
+          <button class="_button" :class="$style.dataBtn" :disabled="isImportingSettings" @click="importSettings">
+            <i class="ti ti-download" />
+            {{ isImportingSettings ? '処理中...' : 'インポート' }}
+          </button>
+        </div>
       </div>
       <div v-if="backupError" :class="$style.backupError">{{ backupError }}</div>
 
@@ -383,7 +362,7 @@ const importSettings = () =>
   bottom: 100%;
   right: 0;
   margin-bottom: 4px;
-  min-width: 260px;
+  width: 260px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -392,6 +371,7 @@ const importSettings = () =>
 
 .menuBody {
   flex: 1;
+  overflow-x: hidden;
   overflow-y: auto;
   min-height: 0;
 }
@@ -687,23 +667,48 @@ const importSettings = () =>
 
 .themeSelectSection {
   padding: 8px 12px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .themeSelectHeader {
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
   font-size: 0.8em;
   color: var(--nd-fg);
   opacity: 0.7;
-  margin-bottom: 8px;
   padding: 0 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: opacity var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.chevron {
+  margin-left: auto;
+  transition: transform var(--nd-duration-base);
+
+  &.open {
+    transform: rotate(180deg);
+  }
+}
+
+.themeSelectBody {
+  margin-top: 8px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .themeGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
 }
 
 .themeItem {
@@ -711,6 +716,7 @@ const importSettings = () =>
   border: 2px solid var(--nd-divider);
   border-radius: var(--nd-radius-sm);
   overflow: hidden;
+  min-width: 0;
   transition: border-color var(--nd-duration-base);
 
   &:hover {
@@ -722,12 +728,42 @@ const importSettings = () =>
   border-color: var(--nd-accent);
 }
 
+.themeItemPreviewWrap {
+  position: relative;
+}
+
 .themeItemPreview {
   display: block;
   width: calc(100% + 2px);
   margin-left: -1px;
   height: auto;
   border-bottom: 1px solid var(--nd-divider);
+}
+
+.themeRemoveBtn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--nd-error, #ec4137);
+  color: #fff;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity var(--nd-duration-fast);
+
+  .themeItem:hover & {
+    opacity: 1;
+  }
+
+  &:hover {
+    filter: brightness(0.85);
+  }
 }
 
 .themeItemName {
@@ -740,81 +776,9 @@ const importSettings = () =>
   text-overflow: ellipsis;
 }
 
-.themeInstallBtn {
-  margin-left: auto;
-}
-
-/* -- Install theme -- */
-
-
-.installArea {
-  margin-top: 8px;
-}
-
-.installTextarea {
-  width: 100%;
-  box-sizing: border-box;
-  background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  padding: 8px;
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  resize: vertical;
-  font-family: monospace;
-  min-height: 60px;
-
-  &:focus {
-    outline: none;
-    border-color: var(--nd-accent);
-  }
-
-  &::placeholder {
-    color: var(--nd-fg);
-    opacity: 0.4;
-  }
-}
-
-.installError {
-  font-size: 0.75em;
-  color: var(--nd-error, #ec4137);
-  margin-top: 4px;
-  padding: 0 2px;
-}
-
-.installActions {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-  justify-content: flex-end;
-}
-
-.installActionBtn {
-  padding: 4px 12px;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.8em;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover {
-    opacity: 0.85;
-  }
-}
-
-.cancel {
-  background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
-  color: var(--nd-fg);
-}
-
-.confirm {
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent, #fff);
-}
-
 /* -- Custom CSS -- */
 
-.cssActiveDot {
+.activeDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -859,21 +823,23 @@ const importSettings = () =>
   margin: 4px 12px;
 }
 
-.dataRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.dataGroup {
   padding: 4px 16px;
 }
 
-.dataRowLabel {
+.dataGroupLabel {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 0.8em;
   color: var(--nd-fg);
-  min-width: 48px;
-  flex-shrink: 0;
+  margin-bottom: 4px;
+}
+
+.dataBtnRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
 }
 
 .backupError {
@@ -889,9 +855,10 @@ const importSettings = () =>
   padding: 4px 10px;
   border-radius: var(--nd-radius-sm);
   background: var(--nd-buttonBg, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--nd-accent);
   font-size: 0.75em;
   color: var(--nd-fg);
-  transition: background var(--nd-duration-base);
+  transition: background var(--nd-duration-base), border-color var(--nd-duration-base);
   white-space: nowrap;
 
   &:hover:not(:disabled) {
@@ -977,6 +944,10 @@ const importSettings = () =>
   border-radius: 12px;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
   max-height: 70vh;
+
+  .themeGrid {
+    grid-template-columns: 1fr;
+  }
 
   .settingsMenuItem {
     padding: 10px 16px;

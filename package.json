@@ -1,7 +1,7 @@
 {
   "name": "notedeck",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.7.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -49,7 +49,6 @@
     "pinia": "^3.0.3",
     "qr-code-styling": "^1.9.2",
     "shiki": "^4.0.0",
-    "vscode-languageserver-protocol": "^3.17.5",
     "vue": "^3.5.25",
     "vue-router": "^4.5.1"
   },
