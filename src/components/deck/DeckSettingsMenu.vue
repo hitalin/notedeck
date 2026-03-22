@@ -938,8 +938,8 @@ const importSettings = () =>
 }
 
 .dataBtnRow {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 4px;
 }
 
