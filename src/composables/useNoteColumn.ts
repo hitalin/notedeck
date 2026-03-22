@@ -208,9 +208,12 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     let cachedIds: string[] = []
 
-    // Load cache when explicitly requested OR when account has no token
+    // Load cache when explicitly requested OR when account has no token.
+    // Skip if notes are already present (e.g. restored from snapshot).
     const shouldLoadCache =
-      (useCache || !account.value || !account.value.hasToken) && config.cache
+      notes.value.length === 0 &&
+      (useCache || !account.value || !account.value.hasToken) &&
+      config.cache
     if (shouldLoadCache) {
       const column = config.getColumn()
       const cacheKey = config.cache?.getKey()
