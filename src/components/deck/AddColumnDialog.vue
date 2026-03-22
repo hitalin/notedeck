@@ -418,7 +418,7 @@ function close() {
 
       <!-- Step 1: Column type selection -->
       <template v-if="!addColumnType">
-        <div :class="$style.addCategoryLabel">フィード</div>
+        <div :class="$style.addCategoryLabel">アカウント</div>
         <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('timeline')">
           <i class="ti ti-home" />
           <span>タイムライン</span>
@@ -426,6 +426,30 @@ function close() {
         <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('notifications')">
           <i class="ti ti-bell" />
           <span>通知</span>
+        </button>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('drive')">
+          <i class="ti ti-cloud" />
+          <span>ドライブ</span>
+        </button>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('followRequests')">
+          <i class="ti ti-user-plus" />
+          <span>フォローリクエスト</span>
+        </button>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('list')">
+          <i class="ti ti-list" />
+          <span>リスト</span>
+        </button>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('antenna')">
+          <i class="ti ti-antenna-bars-5" />
+          <span>アンテナ</span>
+        </button>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('favorites')">
+          <i class="ti ti-star" />
+          <span>お気に入り</span>
+        </button>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('clip')">
+          <i class="ti ti-paperclip" />
+          <span>クリップ</span>
         </button>
         <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('mentions')">
           <i class="ti ti-at" />
@@ -439,33 +463,35 @@ function close() {
           <i class="ti ti-messages" />
           <span>チャット</span>
         </button>
-
-        <div :class="$style.addCategoryLabel">コレクション</div>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('favorites')">
-          <i class="ti ti-star" />
-          <span>お気に入り</span>
-        </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('list')">
-          <i class="ti ti-list" />
-          <span>リスト</span>
-        </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('antenna')">
-          <i class="ti ti-antenna-bars-5" />
-          <span>アンテナ</span>
-        </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('clip')">
-          <i class="ti ti-paperclip" />
-          <span>クリップ</span>
-        </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('channel')">
-          <i class="ti ti-device-tv" />
-          <span>チャンネル</span>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('achievements')">
+          <i class="ti ti-medal" />
+          <span>実績</span>
         </button>
 
-        <div :class="$style.addCategoryLabel">探索</div>
+        <div :class="$style.addCategoryLabel">サーバー</div>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('serverInfo')">
+          <i class="ti ti-server" />
+          <span>サーバー情報</span>
+        </button>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('aboutMisskey')">
+          <i class="ti ti-info-circle" />
+          <span>Misskeyについて</span>
+        </button>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('emoji')">
+          <i class="ti ti-mood-smile" />
+          <span>カスタム絵文字</span>
+        </button>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('ads')">
+          <i class="ti ti-ad-2" />
+          <span>広告</span>
+        </button>
         <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('explore')">
           <i class="ti ti-compass" />
           <span>みつける</span>
+        </button>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('announcements')">
+          <i class="ti ti-speakerphone" />
+          <span>お知らせ</span>
         </button>
         <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('search')">
           <i class="ti ti-search" />
@@ -475,9 +501,9 @@ function close() {
           <i class="ti ti-world-search" />
           <span>URI照会</span>
         </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('user')">
-          <i class="ti ti-user" />
-          <span>ユーザー</span>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('channel')">
+          <i class="ti ti-device-tv" />
+          <span>チャンネル</span>
         </button>
         <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('gallery')">
           <i class="ti ti-icons" />
@@ -491,39 +517,9 @@ function close() {
           <i class="ti ti-note" />
           <span>ページ</span>
         </button>
-
-        <div :class="$style.addCategoryLabel">サーバー</div>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('announcements')">
-          <i class="ti ti-speakerphone" />
-          <span>お知らせ</span>
-        </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('emoji')">
-          <i class="ti ti-mood-smile" />
-          <span>カスタム絵文字</span>
-        </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('serverInfo')">
-          <i class="ti ti-server" />
-          <span>サーバー情報</span>
-        </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('aboutMisskey')">
-          <i class="ti ti-info-circle" />
-          <span>Misskeyについて</span>
-        </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('ads')">
-          <i class="ti ti-ad-2" />
-          <span>広告</span>
-        </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('drive')">
-          <i class="ti ti-cloud" />
-          <span>ドライブ</span>
-        </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('followRequests')">
-          <i class="ti ti-user-plus" />
-          <span>フォローリクエスト</span>
-        </button>
-        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('achievements')">
-          <i class="ti ti-medal" />
-          <span>実績</span>
+        <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('user')">
+          <i class="ti ti-user" />
+          <span>ユーザー</span>
         </button>
 
         <div :class="$style.addCategoryLabel">ツール</div>
