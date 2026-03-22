@@ -323,7 +323,7 @@ async function importSettings() {
       <div :class="$style.settingsMenuDivider" />
 
       <div :class="$style.dataRow">
-        <span :class="$style.dataRowLabel"><i class="ti ti-database" /> DB</span>
+        <span :class="$style.dataRowLabel"><i class="ti ti-database" /> DBバックアップ</span>
         <button class="_button" :class="$style.dataBtn" :disabled="isExporting" @click="exportDb">
           <i class="ti ti-upload" />
           {{ isExporting ? '処理中...' : 'エクスポート' }}
@@ -334,7 +334,7 @@ async function importSettings() {
         </button>
       </div>
       <div :class="$style.dataRow">
-        <span :class="$style.dataRowLabel"><i class="ti ti-settings" /> 設定</span>
+        <span :class="$style.dataRowLabel"><i class="ti ti-settings" /> 設定バックアップ</span>
         <button class="_button" :class="$style.dataBtn" :disabled="isExportingSettings" @click="exportSettings">
           <i class="ti ti-upload" />
           {{ isExportingSettings ? '処理中...' : 'エクスポート' }}
