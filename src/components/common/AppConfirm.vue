@@ -8,7 +8,7 @@ const { visible, options, resolve } = useConfirm()
   <Teleport to="body">
     <Transition name="nd-popup">
       <div v-if="visible" class="_dialogBackdrop" @click.self="resolve(false)">
-        <div class="_dialog nd-popup-content" @click.stop>
+        <div class="_dialog nd-popup-content" :class="$style.dialog" @click.stop>
           <div :class="$style.header">
             <div :class="$style.title">{{ options.title }}</div>
           </div>
@@ -34,6 +34,12 @@ const { visible, options, resolve } = useConfirm()
 </template>
 
 <style lang="scss" module>
+.dialog {
+  width: auto;
+  min-width: 240px;
+  max-width: 320px;
+}
+
 .header {
   padding: 16px 20px 4px;
   text-align: center;
