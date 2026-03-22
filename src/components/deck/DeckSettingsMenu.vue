@@ -248,10 +248,6 @@ const importSettings = () =>
         <div :class="$style.themeSelectHeader">
           <i :class="isDark ? 'ti ti-moon' : 'ti ti-sun'" />
           <span>{{ isDark ? 'ダークテーマで使うテーマ' : 'ライトテーマで使うテーマ' }}</span>
-          <button v-if="!showInstallInput" class="_button" :class="[$style.dataBtn, $style.themeInstallBtn]" @click="showInstallInput = true">
-            <i class="ti ti-download" />
-            インストール
-          </button>
         </div>
         <div :class="$style.themeGrid">
           <!-- Builtin theme -->
@@ -271,6 +267,10 @@ const importSettings = () =>
             <div :class="$style.themeItemName">{{ theme.name }}</div>
           </div>
         </div>
+        <button v-if="!showInstallInput" class="_button" :class="[$style.dataBtn, $style.themeInstallBtn]" @click="showInstallInput = true">
+          <i class="ti ti-download" />
+          インストール
+        </button>
         <div v-if="showInstallInput" :class="$style.installArea">
           <textarea
             v-model="themeCode"
@@ -741,7 +741,7 @@ const importSettings = () =>
 }
 
 .themeInstallBtn {
-  margin-left: auto;
+  margin-top: 8px;
 }
 
 /* -- Install theme -- */
