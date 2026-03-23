@@ -39,9 +39,14 @@ const columnMap = computed(() => {
   return map
 })
 
-const visibleColumns = computed(() =>
-  props.layout.flat().filter((id) => columnMap.value.has(id)),
+// グループ単位: 各グループの先頭カラムIDを代表として使う
+const visibleGroups = computed(() =>
+  props.layout.filter((group) => group.some((id) => columnMap.value.has(id))),
 )
+
+function groupPrimaryId(group: string[]): string {
+  return group.find((id) => columnMap.value.has(id)) ?? group[0] ?? ''
+}
 
 const hasMultipleAccounts = computed(() => accountsStore.accounts.length > 1)
 
@@ -152,31 +157,32 @@ watch(
 
     <div ref="tabsScrollRef" :class="$style.tabsScroll">
       <button
-        v-for="(colId, i) in visibleColumns"
-        :key="colId"
+        v-for="(group, gi) in visibleGroups"
+        :key="groupPrimaryId(group)"
         class="_button"
-        :class="[$style.tab, { [$style.tabActive]: activeColumnIndex === i }]"
-        @click="emit('scroll-to-column', i)"
+        :class="[$style.tab, { [$style.tabActive]: activeColumnIndex === gi }]"
+        @click="emit('scroll-to-column', gi)"
       >
-        <i :class="'ti ti-' + columnIcon(colId)" />
-        <span v-if="columnServerIcon(colId)" :class="$style.serverBadge">
-          <img :src="columnServerIcon(colId)!" :class="$style.badgeImg" width="10" height="10" />
+        <i :class="'ti ti-' + columnIcon(groupPrimaryId(group))" />
+        <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
+        <span v-if="columnServerIcon(groupPrimaryId(group))" :class="$style.serverBadge">
+          <img :src="columnServerIcon(groupPrimaryId(group))!" :class="$style.badgeImg" width="10" height="10" />
         </span>
-        <span v-else-if="columnAccount(colId)" :class="$style.serverBadge">
+        <span v-else-if="columnAccount(groupPrimaryId(group))" :class="$style.serverBadge">
           <span :class="$style.badgeInitial">{{
-            columnAccount(colId)!.host.charAt(0).toUpperCase()
+            columnAccount(groupPrimaryId(group))!.host.charAt(0).toUpperCase()
           }}</span>
         </span>
-        <span v-if="columnAccount(colId)" :class="$style.accountBadge">
+        <span v-if="columnAccount(groupPrimaryId(group))" :class="$style.accountBadge">
           <img
-            v-if="columnAccount(colId)!.avatarUrl"
-            :src="columnAccount(colId)!.avatarUrl!"
+            v-if="columnAccount(groupPrimaryId(group))!.avatarUrl"
+            :src="columnAccount(groupPrimaryId(group))!.avatarUrl!"
             :class="$style.badgeImg"
             width="10"
             height="10"
           />
           <span v-else :class="$style.badgeInitial">{{
-            columnAccount(colId)!.username.charAt(0).toUpperCase()
+            columnAccount(groupPrimaryId(group))!.username.charAt(0).toUpperCase()
           }}</span>
         </span>
       </button>
@@ -215,7 +221,7 @@ watch(
 
 <style lang="scss" module>
 .root {
-  flex: 0 0 32px;
+  flex: 0 0 40px;
   display: flex;
   align-items: center;
   background: var(--nd-navBg);
@@ -243,11 +249,11 @@ watch(
 .profileIndicator {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   height: 100%;
-  padding: 0 8px;
+  padding: 0 10px;
   color: var(--nd-fg);
-  font-size: 0.75em;
+  font-size: 0.8em;
   white-space: nowrap;
   opacity: 0.7;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
@@ -258,7 +264,7 @@ watch(
   }
 
   .ti {
-    font-size: 12px;
+    font-size: 14px;
     flex-shrink: 0;
     color: var(--nd-accent);
   }
@@ -292,9 +298,9 @@ watch(
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  min-width: 28px;
-  padding: 0 6px;
-  font-size: 12px;
+  min-width: 36px;
+  padding: 0 8px;
+  font-size: 15px;
   color: var(--nd-fg);
   opacity: 0.4;
   transition: opacity var(--nd-duration-base), color var(--nd-duration-base),
@@ -323,11 +329,27 @@ watch(
   }
 }
 
+.stackBadge {
+  position: absolute;
+  top: 3px;
+  left: calc(50% - 14px);
+  min-width: 12px;
+  height: 12px;
+  padding: 0 2px;
+  border-radius: 6px;
+  background: var(--nd-accent);
+  color: var(--nd-bg);
+  font-size: 8px;
+  font-weight: bold;
+  line-height: 12px;
+  text-align: center;
+}
+
 .serverBadge,
 .accountBadge {
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid var(--nd-navBg);

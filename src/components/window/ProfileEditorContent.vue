@@ -174,6 +174,34 @@ function columnServerIconUrl(col: DeckColumn): string | null {
   return server?.iconUrl ?? `https://${account.host}/favicon.ico`
 }
 
+// --- Group helpers (1 group = 1 button) ---
+
+function groupPrimaryColumn(group: string[]): DeckColumn | null {
+  for (const id of group) {
+    const col = deckStore.getColumn(id)
+    if (col) return col
+  }
+  return null
+}
+
+function groupLabel(group: string[]): string {
+  const labels = group
+    .map((id) => deckStore.getColumn(id))
+    .filter((col): col is DeckColumn => col != null)
+    .map((col) => columnLabel(col))
+  return labels.join(' / ')
+}
+
+function groupAvatarUrl(group: string[]): string | null {
+  const col = groupPrimaryColumn(group)
+  return col ? columnAvatarUrl(col) : null
+}
+
+function groupServerIconUrl(group: string[]): string | null {
+  const col = groupPrimaryColumn(group)
+  return col ? columnServerIconUrl(col) : null
+}
+
 // --- Drag and drop (reorder layout groups, pointer-based like DeckColumnsArea) ---
 
 const dragFromIndex = ref<number | null>(null)
@@ -260,8 +288,12 @@ function onDragEnd() {
   }
 }
 
-function removeColumn(id: string) {
-  deckStore.removeColumn(id)
+function removeGroup(groupIdx: number) {
+  const group = deckStore.windowLayout[groupIdx]
+  if (!group) return
+  for (const colId of group) {
+    deckStore.removeColumn(colId)
+  }
 }
 
 // --- Profile name editing ---
@@ -429,28 +461,27 @@ async function importFromClipboard() {
             :key="`${groupIdx}:${group.join(',')}`"
             :data-group-idx="groupIdx"
             :class="[
-              $style.columnGroup,
-              { [$style.stacked]: group.length > 1 },
+              $style.columnTab,
               { [$style.dragging]: dragFromIndex === groupIdx },
               { [$style.dragOver]: dragOverIndex === groupIdx },
             ]"
+            :title="groupLabel(group)"
             @pointerdown="startDrag(groupIdx, $event)"
           >
+            <i v-if="groupPrimaryColumn(group)" :class="'ti ' + columnIcon(groupPrimaryColumn(group)!)" />
+            <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
+            <span v-if="groupServerIconUrl(group)" :class="$style.serverBadge">
+              <img :src="groupServerIconUrl(group)!" :class="$style.badgeImg" />
+            </span>
+            <span v-if="groupAvatarUrl(group)" :class="$style.accountBadge">
+              <img :src="groupAvatarUrl(group)!" :class="$style.badgeImg" />
+            </span>
             <button
-              v-for="colId in group"
-              :key="colId"
               class="_button"
-              :class="$style.columnTab"
-              :title="deckStore.getColumn(colId) ? columnLabel(deckStore.getColumn(colId)!) : colId"
-              @click="removeColumn(colId)"
+              :class="$style.removeBtn"
+              @click.stop="removeGroup(groupIdx)"
             >
-              <i v-if="deckStore.getColumn(colId)" :class="'ti ' + columnIcon(deckStore.getColumn(colId)!)" />
-              <span v-if="columnServerIconUrl(deckStore.getColumn(colId)!)" :class="$style.serverBadge">
-                <img :src="columnServerIconUrl(deckStore.getColumn(colId)!)!" :class="$style.badgeImg" />
-              </span>
-              <span v-if="columnAvatarUrl(deckStore.getColumn(colId)!)" :class="$style.accountBadge">
-                <img :src="columnAvatarUrl(deckStore.getColumn(colId)!)!" :class="$style.badgeImg" />
-              </span>
+              <i class="ti ti-x" />
             </button>
           </div>
 
@@ -628,33 +659,6 @@ async function importFromClipboard() {
   border-radius: var(--nd-radius-sm);
 }
 
-// Group of columns (stacked columns share a group)
-.columnGroup {
-  display: flex;
-  flex: 0 0 auto;
-  cursor: grab;
-  user-select: none;
-  transition: opacity 0.15s;
-
-  &.stacked {
-    gap: 1px;
-    padding: 2px;
-    background: var(--nd-divider);
-    border-radius: var(--nd-radius-sm);
-  }
-
-  &.dragging {
-    opacity: 0.3;
-    cursor: grabbing;
-  }
-
-  &.dragOver {
-    outline: 2px solid var(--nd-accent);
-    outline-offset: 1px;
-    border-radius: var(--nd-radius-sm);
-  }
-}
-
 // Mirrors .tab in DeckBottomBar
 .columnTab {
   position: relative;
@@ -667,11 +671,65 @@ async function importFromClipboard() {
   color: var(--nd-fg);
   opacity: 0.6;
   border-radius: var(--nd-radius-sm);
+  cursor: grab;
+  user-select: none;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 
   &:hover {
     opacity: 1;
     background: var(--nd-buttonHoverBg);
+  }
+
+  &.dragging {
+    opacity: 0.3;
+    cursor: grabbing;
+  }
+
+  &.dragOver {
+    outline: 2px solid var(--nd-accent);
+    outline-offset: 1px;
+  }
+}
+
+.stackBadge {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  min-width: 10px;
+  height: 10px;
+  padding: 0 2px;
+  border-radius: 5px;
+  background: var(--nd-accent);
+  color: var(--nd-bg);
+  font-size: 7px;
+  font-weight: bold;
+  line-height: 10px;
+  text-align: center;
+}
+
+.removeBtn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--nd-error, #ec4137);
+  color: #fff;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity var(--nd-duration-fast);
+
+  .columnTab:hover & {
+    opacity: 1;
+  }
+
+  &:hover {
+    filter: brightness(0.85);
   }
 }
 
@@ -691,13 +749,13 @@ async function importFromClipboard() {
 }
 
 .serverBadge {
-  top: 2px;
-  right: 2px;
+  top: 1px;
+  right: 1px;
 }
 
 .accountBadge {
-  bottom: 2px;
-  left: 2px;
+  bottom: 1px;
+  left: 1px;
 }
 
 .badgeImg {
