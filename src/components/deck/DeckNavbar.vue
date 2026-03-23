@@ -622,15 +622,13 @@ defineExpose({
 }
 
 .addAccountIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
-  // .avatar の display: block を打ち消してグリッド中央配置
-  display: grid;
-  place-items: center;
-
-  .ti {
-    font-size: 14px;
-  }
+  font-size: 14px;
 }
 
 .avatarWrap {
