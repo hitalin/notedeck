@@ -221,9 +221,9 @@ watch(
 
 <style lang="scss" module>
 .root {
-  flex: 0 0 40px;
+  flex: 0 0 auto;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   background: var(--nd-navBg);
   border-top: 1px solid var(--nd-divider);
 }
@@ -251,9 +251,9 @@ watch(
   align-items: center;
   gap: 6px;
   height: 100%;
-  padding: 0 10px;
+  padding: 0 12px;
   color: var(--nd-fg);
-  font-size: 0.8em;
+  font-size: 0.85em;
   white-space: nowrap;
   opacity: 0.7;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
@@ -264,7 +264,7 @@ watch(
   }
 
   .ti {
-    font-size: 14px;
+    font-size: 16px;
     flex-shrink: 0;
     color: var(--nd-accent);
   }
@@ -298,9 +298,9 @@ watch(
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  min-width: 36px;
-  padding: 0 8px;
-  font-size: 15px;
+  min-width: 42px;
+  padding: 10px 8px;
+  font-size: 16px;
   color: var(--nd-fg);
   opacity: 0.4;
   transition: opacity var(--nd-duration-base), color var(--nd-duration-base),
@@ -322,37 +322,37 @@ watch(
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 16px;
-    height: 2px;
-    border-radius: 2px 2px 0 0;
+    width: 20px;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
     background: var(--nd-accent);
   }
 }
 
 .stackBadge {
   position: absolute;
-  top: 3px;
-  left: calc(50% - 14px);
-  min-width: 12px;
-  height: 12px;
-  padding: 0 2px;
-  border-radius: 6px;
+  top: 4px;
+  left: calc(50% - 16px);
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
   background: var(--nd-accent);
   color: var(--nd-bg);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: bold;
-  line-height: 12px;
+  line-height: 14px;
   text-align: center;
 }
 
 .serverBadge,
 .accountBadge {
   position: absolute;
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   overflow: hidden;
-  border: 1px solid var(--nd-navBg);
+  border: 1.5px solid var(--nd-navBg);
   background: var(--nd-navBg);
   display: flex;
   align-items: center;
@@ -361,12 +361,12 @@ watch(
 
 .serverBadge {
   top: 3px;
-  right: calc(50% - 12px);
+  right: calc(50% - 16px);
 }
 
 .accountBadge {
-  bottom: 2px;
-  left: calc(50% - 12px);
+  bottom: 3px;
+  left: calc(50% - 16px);
 }
 
 .badgeImg {
@@ -377,7 +377,7 @@ watch(
 }
 
 .badgeInitial {
-  font-size: 6px;
+  font-size: 7px;
   font-weight: bold;
   line-height: 1;
   color: var(--nd-fg);
