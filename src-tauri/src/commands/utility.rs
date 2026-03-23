@@ -9,6 +9,11 @@ pub fn get_cli_commands() -> Vec<notecli::cli::CliCommandInfo> {
 }
 
 #[tauri::command]
+pub fn get_openapi_spec() -> serde_json::Value {
+    serde_json::to_value(crate::http_server::openapi_spec()).unwrap_or_default()
+}
+
+#[tauri::command]
 pub fn get_notecli_version() -> String {
     option_env!("NOTECLI_GIT_HASH")
         .unwrap_or("unknown")
