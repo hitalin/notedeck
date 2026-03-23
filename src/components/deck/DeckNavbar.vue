@@ -608,8 +608,9 @@ defineExpose({
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  padding: 8px 6px;
+  padding: 8px 8px;
   border-radius: var(--nd-radius-sm);
+  overflow: visible;
   opacity: 0.6;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 
