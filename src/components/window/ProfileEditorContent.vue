@@ -433,7 +433,7 @@ async function importFromClipboard() {
             :key="`${groupIdx}:${group.join(',')}`"
             :data-group-idx="groupIdx"
             :class="[
-              $style.columnCard,
+              $style.columnGroup,
               { [$style.dragging]: dragFromIndex === groupIdx },
               { [$style.dragOver]: dragOverIndex === groupIdx },
             ]"
@@ -447,16 +447,17 @@ async function importFromClipboard() {
               <template v-if="deckStore.getColumn(colId)">
                 <div :class="$style.columnCellHeader" :title="columnLabel(deckStore.getColumn(colId)!)">
                   <i :class="[columnIcon(deckStore.getColumn(colId)!), $style.columnCellIcon]" />
-                  <img
-                    v-if="columnServerIconUrl(deckStore.getColumn(colId)!)"
-                    :src="columnServerIconUrl(deckStore.getColumn(colId)!) ?? undefined"
-                    :class="$style.columnServerIcon"
-                  />
-                  <img
-                    v-if="columnAvatarUrl(deckStore.getColumn(colId)!)"
-                    :src="columnAvatarUrl(deckStore.getColumn(colId)!) ?? undefined"
-                    :class="$style.columnAvatar"
-                  />
+                  <div v-if="columnAvatarUrl(deckStore.getColumn(colId)!)" :class="$style.columnCellAccount">
+                    <img
+                      :src="columnAvatarUrl(deckStore.getColumn(colId)!) ?? undefined"
+                      :class="$style.columnAvatar"
+                    />
+                    <img
+                      v-if="columnServerIconUrl(deckStore.getColumn(colId)!)"
+                      :src="columnServerIconUrl(deckStore.getColumn(colId)!) ?? undefined"
+                      :class="$style.columnFavicon"
+                    />
+                  </div>
                   <button
                     class="_button"
                     :class="$style.columnCellClose"
@@ -635,34 +636,28 @@ async function importFromClipboard() {
   text-align: center;
 }
 
-// --- Column preview (minimap) ---
+// --- Column preview (minimap — mirrors DeckColumnsArea) ---
 
 .columnPreview {
   display: flex;
-  gap: 4px;
-  padding: 4px 0 8px;
+  gap: var(--nd-columnGap, 2px);
+  padding: var(--nd-columnGap, 2px);
   flex: 1;
   min-height: 120px;
   background: var(--nd-deckBg, var(--nd-bg));
   border-radius: var(--nd-radius-sm);
 }
 
-.columnCard {
+// Mirrors .columnSection in DeckColumnsArea
+.columnGroup {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: var(--nd-panel);
-  border-radius: 6px;
-  overflow: clip;
+  gap: var(--nd-columnGap, 2px);
   cursor: grab;
   user-select: none;
-  box-shadow: 0 0 0 1px var(--nd-divider);
-  transition: opacity 0.15s, box-shadow 0.15s;
-
-  &:hover {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--nd-accent) 50%, var(--nd-divider));
-  }
+  transition: opacity 0.15s, outline 0.15s;
 
   &.dragging {
     opacity: 0.3;
@@ -670,33 +665,34 @@ async function importFromClipboard() {
   }
 
   &.dragOver {
-    box-shadow: 0 0 0 2px var(--nd-accent);
+    outline: 2px solid var(--nd-accent);
+    outline-offset: -1px;
+    border-radius: 10px;
   }
 }
 
-// --- Column cell (mimics DeckColumn) ---
-
+// Mirrors .deckColumn in DeckColumn
 .columnCell {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
-
-  & + .columnCell {
-    border-top: 2px solid var(--nd-deckBg, var(--nd-bg));
-  }
+  background: var(--nd-panel);
+  border-radius: 10px;
+  overflow: clip;
 }
 
+// Miniature of .columnHeader in DeckColumn
 .columnCellHeader {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 3px;
   height: 22px;
   padding: 0 4px;
   background: var(--nd-panelHeaderBg);
   color: var(--nd-panelHeaderFg);
   flex-shrink: 0;
-  position: relative;
   overflow: hidden;
 }
 
@@ -705,6 +701,27 @@ async function importFromClipboard() {
   color: var(--nd-panelHeaderFg);
   opacity: 0.7;
   flex-shrink: 0;
+}
+
+.columnCellAccount {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.columnAvatar {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.columnFavicon {
+  width: 12px;
+  height: 12px;
+  object-fit: contain;
+  opacity: 0.7;
 }
 
 .columnCellClose {
@@ -716,7 +733,7 @@ async function importFromClipboard() {
   flex-shrink: 0;
   transition: opacity 0.1s;
 
-  .columnCard:hover & {
+  .columnGroup:hover & {
     opacity: 0.4;
   }
 
@@ -727,26 +744,10 @@ async function importFromClipboard() {
   }
 }
 
+// Mirrors panel body area
 .columnCellBody {
   flex: 1;
   background: var(--nd-panel);
-}
-
-.columnAvatar {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.columnServerIcon {
-  width: 14px;
-  height: 14px;
-  border-radius: 2px;
-  object-fit: contain;
-  opacity: 0.5;
-  flex-shrink: 0;
 }
 
 .emptyMessage {
