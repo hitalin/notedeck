@@ -160,10 +160,6 @@ function columnIcon(col: DeckColumn): string {
   return `ti ${COLUMN_TYPE_ICONS[col.type] ?? 'ti-layout-columns'}`
 }
 
-function columnAccount(col: DeckColumn): string {
-  return col.account ?? col.accountId ?? ''
-}
-
 function columnAvatarUrl(col: DeckColumn): string | null {
   if (!col.accountId) return null
   const account = accountsStore.accounts.find((a) => a.id === col.accountId)
@@ -614,8 +610,6 @@ async function importFromClipboard() {
   flex-direction: column;
   gap: 8px;
   padding: 12px 10px;
-  flex: 1;
-  min-height: 0;
 }
 
 .sectionLabel {
@@ -643,7 +637,6 @@ async function importFromClipboard() {
   justify-content: center;
   gap: var(--nd-columnGap, 2px);
   padding: var(--nd-columnGap, 2px);
-  flex: 1;
   min-height: 120px;
   overflow-x: auto;
   overflow-y: hidden;
