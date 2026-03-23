@@ -593,7 +593,6 @@ defineExpose({
   display: flex;
   align-items: stretch;
   justify-content: center;
-  flex-wrap: wrap;
 }
 
 .accountBtn {
