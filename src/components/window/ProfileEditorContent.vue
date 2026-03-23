@@ -443,17 +443,6 @@ async function importFromClipboard() {
               <template v-if="deckStore.getColumn(colId)">
                 <div :class="$style.columnCellHeader" :title="columnLabel(deckStore.getColumn(colId)!)">
                   <i :class="[columnIcon(deckStore.getColumn(colId)!), $style.columnCellIcon]" />
-                  <div v-if="columnAvatarUrl(deckStore.getColumn(colId)!)" :class="$style.columnCellAccount">
-                    <img
-                      :src="columnAvatarUrl(deckStore.getColumn(colId)!) ?? undefined"
-                      :class="$style.columnAvatar"
-                    />
-                    <img
-                      v-if="columnServerIconUrl(deckStore.getColumn(colId)!)"
-                      :src="columnServerIconUrl(deckStore.getColumn(colId)!) ?? undefined"
-                      :class="$style.columnFavicon"
-                    />
-                  </div>
                   <button
                     class="_button"
                     :class="$style.columnCellClose"
@@ -463,7 +452,18 @@ async function importFromClipboard() {
                     <i class="ti ti-x" />
                   </button>
                 </div>
-                <div :class="$style.columnCellBody" />
+                <div :class="$style.columnCellBody">
+                  <img
+                    v-if="columnAvatarUrl(deckStore.getColumn(colId)!)"
+                    :src="columnAvatarUrl(deckStore.getColumn(colId)!) ?? undefined"
+                    :class="$style.columnAvatar"
+                  />
+                  <img
+                    v-if="columnServerIconUrl(deckStore.getColumn(colId)!)"
+                    :src="columnServerIconUrl(deckStore.getColumn(colId)!) ?? undefined"
+                    :class="$style.columnFavicon"
+                  />
+                </div>
               </template>
             </div>
           </div>
@@ -671,7 +671,7 @@ async function importFromClipboard() {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 80px;
   background: var(--nd-panel);
   border-radius: 10px;
   overflow: clip;
@@ -689,45 +689,19 @@ async function importFromClipboard() {
   overflow: hidden;
 }
 
-// 左揃え: 種別アイコン
 .columnCellIcon {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--nd-panelHeaderFg);
   opacity: 0.7;
-  flex-shrink: 0;
-  margin-right: auto;
 }
 
-// 中央揃え: アカウント・サーバーアイコン
-.columnCellAccount {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.columnAvatar {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.columnFavicon {
-  width: 12px;
-  height: 12px;
-  object-fit: contain;
-  opacity: 0.7;
-}
-
-// 右揃え: 削除ボタン
 .columnCellClose {
   font-size: 10px;
   color: var(--nd-panelHeaderFg);
   opacity: 0;
+  margin-left: auto;
   padding: 2px;
   border-radius: var(--nd-radius-sm);
-  flex-shrink: 0;
-  margin-left: auto;
   transition: opacity 0.1s;
 
   .columnGroup:hover & {
@@ -741,10 +715,30 @@ async function importFromClipboard() {
   }
 }
 
-// Mirrors panel body area
 .columnCellBody {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 4px;
   background: var(--nd-panel);
+}
+
+.columnAvatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.columnFavicon {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  object-fit: contain;
+  opacity: 0.5;
 }
 
 .emptyMessage {
