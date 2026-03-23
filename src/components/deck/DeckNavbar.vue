@@ -392,7 +392,7 @@ defineExpose({
 
           <div :class="$style.divider" />
 
-          <!-- Account avatars (stacked) -->
+          <!-- Account avatars (stacked, scrollable) -->
           <div :class="$style.accountStack">
             <div
               v-for="(acc, i) in accountsStore.accounts"
@@ -442,7 +442,6 @@ defineExpose({
                 @relogin="(host: string) => closeDrawerAndDo(() => navigateToLogin(host))"
               />
             </div>
-          </div>
             <button
               class="_button"
               :class="$style.accountBtn"
@@ -590,11 +589,20 @@ defineExpose({
   text-overflow: ellipsis;
 }
 
-// Stacked account avatars container
+// Stacked account avatars container (scrollable with snap)
 .accountStack {
   display: flex;
   align-items: center;
-  padding: 8px 10px;
+  padding: 8px 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .accountBtn {
@@ -602,11 +610,8 @@ defineExpose({
   display: block;
   flex-shrink: 0;
   border-radius: 50%;
+  scroll-snap-align: center;
   transition: transform var(--nd-duration-fast);
-
-  & + .accountBtn {
-    margin-left: -10px;
-  }
 
   &:hover {
     transform: scale(1.15);
@@ -810,12 +815,10 @@ defineExpose({
 
   .accountStack {
     flex-direction: column;
-    padding: 8px 0;
-  }
-
-  .accountBtn + .accountBtn {
-    margin-left: 0;
-    margin-top: -8px;
+    padding: 6px 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
   }
 
   .section {
