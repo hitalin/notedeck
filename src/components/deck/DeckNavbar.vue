@@ -630,7 +630,6 @@ defineExpose({
 
   .ti {
     font-size: 14px;
-    line-height: 1;
   }
 }
 
