@@ -628,7 +628,7 @@ defineExpose({
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   font-size: 14px;
-  line-height: 36px;
+  padding-bottom: 3px;
 }
 
 .avatarWrap {
