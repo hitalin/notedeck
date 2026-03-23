@@ -445,9 +445,18 @@ async function importFromClipboard() {
               :class="$style.columnCell"
             >
               <template v-if="deckStore.getColumn(colId)">
-                <div :class="$style.columnCellHeader">
+                <div :class="$style.columnCellHeader" :title="columnLabel(deckStore.getColumn(colId)!)">
                   <i :class="[columnIcon(deckStore.getColumn(colId)!), $style.columnCellIcon]" />
-                  <span :class="$style.columnCellLabel">{{ columnLabel(deckStore.getColumn(colId)!) }}</span>
+                  <img
+                    v-if="columnServerIconUrl(deckStore.getColumn(colId)!)"
+                    :src="columnServerIconUrl(deckStore.getColumn(colId)!) ?? undefined"
+                    :class="$style.columnServerIcon"
+                  />
+                  <img
+                    v-if="columnAvatarUrl(deckStore.getColumn(colId)!)"
+                    :src="columnAvatarUrl(deckStore.getColumn(colId)!) ?? undefined"
+                    :class="$style.columnAvatar"
+                  />
                   <button
                     class="_button"
                     :class="$style.columnCellClose"
@@ -457,18 +466,7 @@ async function importFromClipboard() {
                     <i class="ti ti-x" />
                   </button>
                 </div>
-                <div :class="$style.columnCellBody">
-                  <img
-                    v-if="columnAvatarUrl(deckStore.getColumn(colId)!)"
-                    :src="columnAvatarUrl(deckStore.getColumn(colId)!) ?? undefined"
-                    :class="$style.columnAvatar"
-                  />
-                  <img
-                    v-if="columnServerIconUrl(deckStore.getColumn(colId)!)"
-                    :src="columnServerIconUrl(deckStore.getColumn(colId)!) ?? undefined"
-                    :class="$style.columnServerIcon"
-                  />
-                </div>
+                <div :class="$style.columnCellBody" />
               </template>
             </div>
           </div>
@@ -709,17 +707,6 @@ async function importFromClipboard() {
   flex-shrink: 0;
 }
 
-.columnCellLabel {
-  font-size: 10px;
-  font-weight: bold;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 0.8;
-  flex: 1;
-  min-width: 0;
-}
-
 .columnCellClose {
   font-size: 10px;
   color: var(--nd-panelHeaderFg);
@@ -742,27 +729,24 @@ async function importFromClipboard() {
 
 .columnCellBody {
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 6px 4px;
   background: var(--nd-panel);
 }
 
 .columnAvatar {
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   object-fit: cover;
+  flex-shrink: 0;
 }
 
 .columnServerIcon {
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
   object-fit: contain;
   opacity: 0.5;
+  flex-shrink: 0;
 }
 
 .emptyMessage {
