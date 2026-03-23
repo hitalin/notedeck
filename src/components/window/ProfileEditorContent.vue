@@ -430,42 +430,28 @@ async function importFromClipboard() {
             :data-group-idx="groupIdx"
             :class="[
               $style.columnGroup,
+              { [$style.stacked]: group.length > 1 },
               { [$style.dragging]: dragFromIndex === groupIdx },
               { [$style.dragOver]: dragOverIndex === groupIdx },
             ]"
             @pointerdown="startDrag(groupIdx, $event)"
           >
-            <div
+            <button
               v-for="colId in group"
               :key="colId"
-              :class="$style.columnCell"
+              class="_button"
+              :class="$style.columnTab"
+              :title="deckStore.getColumn(colId) ? columnLabel(deckStore.getColumn(colId)!) : colId"
+              @click="removeColumn(colId)"
             >
-              <template v-if="deckStore.getColumn(colId)">
-                <div :class="$style.columnCellHeader" :title="columnLabel(deckStore.getColumn(colId)!)">
-                  <i :class="[columnIcon(deckStore.getColumn(colId)!), $style.columnCellIcon]" />
-                  <button
-                    class="_button"
-                    :class="$style.columnCellClose"
-                    title="削除"
-                    @click="removeColumn(colId)"
-                  >
-                    <i class="ti ti-x" />
-                  </button>
-                </div>
-                <div :class="$style.columnCellBody">
-                  <img
-                    v-if="columnAvatarUrl(deckStore.getColumn(colId)!)"
-                    :src="columnAvatarUrl(deckStore.getColumn(colId)!) ?? undefined"
-                    :class="$style.columnAvatar"
-                  />
-                  <img
-                    v-if="columnServerIconUrl(deckStore.getColumn(colId)!)"
-                    :src="columnServerIconUrl(deckStore.getColumn(colId)!) ?? undefined"
-                    :class="$style.columnFavicon"
-                  />
-                </div>
-              </template>
-            </div>
+              <i v-if="deckStore.getColumn(colId)" :class="'ti ' + columnIcon(deckStore.getColumn(colId)!)" />
+              <span v-if="columnServerIconUrl(deckStore.getColumn(colId)!)" :class="$style.serverBadge">
+                <img :src="columnServerIconUrl(deckStore.getColumn(colId)!)!" :class="$style.badgeImg" />
+              </span>
+              <span v-if="columnAvatarUrl(deckStore.getColumn(colId)!)" :class="$style.accountBadge">
+                <img :src="columnAvatarUrl(deckStore.getColumn(colId)!)!" :class="$style.badgeImg" />
+              </span>
+            </button>
           </div>
 
           <div v-if="deckStore.windowLayout.length === 0" :class="$style.emptyMessage">
@@ -634,25 +620,28 @@ async function importFromClipboard() {
 
 .columnPreview {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: var(--nd-columnGap, 2px);
-  padding: var(--nd-columnGap, 2px);
-  min-height: 120px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  background: var(--nd-deckBg, var(--nd-bg));
+  gap: 4px;
+  padding: 8px 4px;
+  background: var(--nd-panel);
   border-radius: var(--nd-radius-sm);
 }
 
-// Mirrors .columnSection in DeckColumnsArea
+// Group of columns (stacked columns share a group)
 .columnGroup {
-  flex: 0 0 56px;
   display: flex;
-  flex-direction: column;
-  gap: var(--nd-columnGap, 2px);
+  flex: 0 0 auto;
   cursor: grab;
   user-select: none;
-  transition: opacity 0.15s, outline 0.15s;
+  transition: opacity 0.15s;
+
+  &.stacked {
+    gap: 1px;
+    padding: 2px;
+    background: var(--nd-divider);
+    border-radius: var(--nd-radius-sm);
+  }
 
   &.dragging {
     opacity: 0.3;
@@ -661,84 +650,61 @@ async function importFromClipboard() {
 
   &.dragOver {
     outline: 2px solid var(--nd-accent);
-    outline-offset: -1px;
-    border-radius: 10px;
+    outline-offset: 1px;
+    border-radius: var(--nd-radius-sm);
   }
 }
 
-// Mirrors .deckColumn in DeckColumn
-.columnCell {
-  flex: 1;
+// Mirrors .tab in DeckBottomBar
+.columnTab {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  min-height: 80px;
-  background: var(--nd-panel);
-  border-radius: 10px;
-  overflow: clip;
-}
-
-// Miniature of .columnHeader in DeckColumn
-.columnCellHeader {
-  display: flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 4px;
-  background: var(--nd-panelHeaderBg);
-  color: var(--nd-panelHeaderFg);
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.columnCellIcon {
-  font-size: 14px;
-  color: var(--nd-panelHeaderFg);
-  opacity: 0.7;
-}
-
-.columnCellClose {
-  font-size: 10px;
-  color: var(--nd-panelHeaderFg);
-  opacity: 0;
-  margin-left: auto;
-  padding: 2px;
-  border-radius: var(--nd-radius-sm);
-  transition: opacity 0.1s;
-
-  .columnGroup:hover & {
-    opacity: 0.4;
-  }
-
-  &:hover {
-    opacity: 1 !important;
-    color: var(--nd-error);
-    background: color-mix(in srgb, var(--nd-error) 10%, transparent);
-  }
-}
-
-.columnCellBody {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 6px 4px;
-  background: var(--nd-panel);
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  border-radius: var(--nd-radius-sm);
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.columnAvatar {
-  width: 22px;
-  height: 22px;
+// Mirrors badge styles in DeckBottomBar
+.serverBadge,
+.accountBadge {
+  position: absolute;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  object-fit: cover;
+  overflow: hidden;
+  border: 1px solid var(--nd-panel);
+  background: var(--nd-panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.columnFavicon {
-  width: 18px;
-  height: 18px;
-  border-radius: 3px;
-  object-fit: contain;
-  opacity: 0.5;
+.serverBadge {
+  top: 2px;
+  right: 2px;
+}
+
+.accountBadge {
+  bottom: 2px;
+  left: 2px;
+}
+
+.badgeImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .emptyMessage {
