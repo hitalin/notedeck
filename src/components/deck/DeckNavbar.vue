@@ -447,8 +447,10 @@ defineExpose({
               title="アカウント追加"
               @click="closeDrawerAndDo(navigateToLogin)"
             >
-              <div :class="[$style.avatar, $style.addAccountIcon]">
-                <i class="ti ti-plus" />
+              <div :class="$style.avatarWrap">
+                <div :class="[$style.avatar, $style.addAccountIcon]">
+                  <i class="ti ti-plus" />
+                </div>
               </div>
             </button>
           </div>
@@ -626,6 +628,7 @@ defineExpose({
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   font-size: 14px;
+  line-height: 1;
 }
 
 .avatarWrap {
