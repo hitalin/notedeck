@@ -593,13 +593,7 @@ defineExpose({
   display: flex;
   align-items: stretch;
   justify-content: center;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  flex-wrap: wrap;
 }
 
 .accountBtn {
@@ -813,8 +807,7 @@ defineExpose({
 
   .accountStack {
     flex-direction: column;
-    overflow-x: hidden;
-    overflow-y: auto;
+    flex-wrap: nowrap;
   }
 
   .accountBtn {
