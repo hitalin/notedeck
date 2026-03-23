@@ -156,9 +156,12 @@ function onWindowMouseDown() {
 }
 
 .maximized {
-  inset: 0;
+  top: var(--nd-app-inset-top, 0px);
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100% !important;
-  max-height: 100% !important;
+  max-height: none !important;
   border-radius: 0;
 }
 
@@ -239,20 +242,14 @@ function onWindowMouseDown() {
 
 .mobile {
   left: 0 !important;
-  top: 0 !important;
+  top: var(--nd-app-inset-top, 0px) !important;
   right: 0 !important;
-  bottom: var(--nd-mobileNavHeight, 0px) !important;
+  bottom: 0 !important;
   width: 100% !important;
   height: auto !important;
   max-height: none !important;
   border-radius: 0;
-  z-index: calc(var(--nd-z-navbar) - 1) !important;
-
-  .windowHeader {
-    height: auto;
-    min-height: calc(46px + var(--nd-safe-area-top, env(safe-area-inset-top)));
-    padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
-  }
+  z-index: calc(var(--nd-z-navbar) + 1) !important;
 
   .windowBtn {
     width: 44px;

@@ -137,7 +137,10 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 <style lang="scss" module>
 .windowBackdrop {
   position: fixed;
-  inset: 0;
+  top: var(--nd-app-inset-top, 0px);
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: var(--nd-z-window);
   background: var(--nd-modalBg);
 }
