@@ -640,18 +640,20 @@ async function importFromClipboard() {
 
 .columnPreview {
   display: flex;
+  justify-content: center;
   gap: var(--nd-columnGap, 2px);
   padding: var(--nd-columnGap, 2px);
   flex: 1;
   min-height: 120px;
+  overflow-x: auto;
+  overflow-y: hidden;
   background: var(--nd-deckBg, var(--nd-bg));
   border-radius: var(--nd-radius-sm);
 }
 
 // Mirrors .columnSection in DeckColumnsArea
 .columnGroup {
-  flex: 1;
-  min-width: 0;
+  flex: 0 0 56px;
   display: flex;
   flex-direction: column;
   gap: var(--nd-columnGap, 2px);
