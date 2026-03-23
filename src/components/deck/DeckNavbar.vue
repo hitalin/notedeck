@@ -376,7 +376,6 @@ defineExpose({
               </button>
               <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" @close-all="emit('update:showSettingsMenu', false); emit('update:mobileDrawerOpen', false)" />
             </div>
-            <div :class="$style.divider" />
           </div>
 
           <!-- Post button -->
@@ -390,9 +389,7 @@ defineExpose({
             <span :class="$style.label">ノート</span>
           </button>
 
-          <div :class="$style.divider" />
-
-          <!-- Account avatars (stacked, scrollable) -->
+          <!-- Account avatars -->
           <div :class="$style.accountStack">
             <div
               v-for="acc in accountsStore.accounts"
@@ -591,8 +588,10 @@ defineExpose({
 // Account buttons — same style as bottom bar tabs
 .accountStack {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
+  padding: 4px 2px;
 }
 
 .accountBtn {
