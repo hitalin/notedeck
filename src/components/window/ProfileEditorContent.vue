@@ -686,8 +686,6 @@ async function importFromClipboard() {
 .columnCellHeader {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
   height: 22px;
   padding: 0 4px;
   background: var(--nd-panelHeaderBg);
@@ -696,18 +694,20 @@ async function importFromClipboard() {
   overflow: hidden;
 }
 
+// 左揃え: 種別アイコン
 .columnCellIcon {
   font-size: 12px;
   color: var(--nd-panelHeaderFg);
   opacity: 0.7;
   flex-shrink: 0;
+  margin-right: auto;
 }
 
+// 中央揃え: アカウント・サーバーアイコン
 .columnCellAccount {
   display: flex;
   align-items: center;
   gap: 2px;
-  flex-shrink: 0;
 }
 
 .columnAvatar {
@@ -724,6 +724,7 @@ async function importFromClipboard() {
   opacity: 0.7;
 }
 
+// 右揃え: 削除ボタン
 .columnCellClose {
   font-size: 10px;
   color: var(--nd-panelHeaderFg);
@@ -731,6 +732,7 @@ async function importFromClipboard() {
   padding: 2px;
   border-radius: var(--nd-radius-sm);
   flex-shrink: 0;
+  margin-left: auto;
   transition: opacity 0.1s;
 
   .columnGroup:hover & {
