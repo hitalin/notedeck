@@ -629,6 +629,7 @@ defineExpose({
   color: var(--nd-fg);
   font-size: 14px;
   line-height: 38px;
+  padding-left: 1px;
 }
 
 .avatarWrap {
