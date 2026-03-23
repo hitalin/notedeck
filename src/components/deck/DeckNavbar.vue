@@ -392,66 +392,71 @@ defineExpose({
 
           <div :class="$style.divider" />
 
-          <!-- Account avatars with dropdown menu -->
-          <div
-            v-for="acc in accountsStore.accounts"
-            :key="acc.id"
-            :class="$style.accountWrap"
-          >
+          <!-- Account avatars (stacked) -->
+          <div :class="$style.accountStack">
+            <div
+              v-for="(acc, i) in accountsStore.accounts"
+              :key="acc.id"
+              :class="$style.accountWrap"
+              :style="{ zIndex: accountsStore.accounts.length - i }"
+            >
+              <button
+                class="_button"
+                :class="$style.accountBtn"
+                :title="getAccountLabel(acc)"
+                @click.stop="toggleAccountMenu(acc.id)"
+              >
+                <div :class="$style.avatarWrap">
+                  <img
+                    v-if="isGuestAccount(acc)"
+                    src="/avatar-guest.svg"
+                    :class="$style.avatar"
+                  />
+                  <img
+                    v-else-if="acc.avatarUrl"
+                    :src="acc.avatarUrl"
+                    :class="$style.avatar"
+                  />
+                  <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
+                  <img
+                    :src="getServerIconUrl(acc.host)"
+                    :class="$style.serverBadge"
+                    :title="acc.host"
+                  />
+                  <span
+                    :class="[$style.onlineIndicator, onlineStatusClass(acc.id)]"
+                  />
+                </div>
+              </button>
+
+              <NavAccountMenu
+                :show="accountMenuId === acc.id"
+                :account="acc"
+                :nav-collapsed="navCollapsed"
+                :modes="accountModes[acc.id] ?? {}"
+                :toggling-mode="togglingMode"
+                :mode-error="modeError"
+                :is-admin="accountIsAdmin[acc.id] ?? false"
+                @toggle-mode="toggleAccountMode(acc.id, $event)"
+                @logout="showLogoutDialog(acc.id)"
+                @relogin="(host: string) => closeDrawerAndDo(() => navigateToLogin(host))"
+              />
+            </div>
+          </div>
             <button
               class="_button"
-              :class="[$style.item, $style.account]"
-              :title="getAccountLabel(acc)"
-              @click.stop="toggleAccountMenu(acc.id)"
+              :class="$style.accountBtn"
+              title="アカウント追加"
+              @click="closeDrawerAndDo(navigateToLogin)"
             >
-              <div :class="$style.avatarWrap">
-                <img
-                  v-if="isGuestAccount(acc)"
-                  src="/avatar-guest.svg"
-                  :class="$style.avatar"
-                />
-                <img
-                  v-else-if="acc.avatarUrl"
-                  :src="acc.avatarUrl"
-                  :class="$style.avatar"
-                />
-                <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
-                <img
-                  :src="getServerIconUrl(acc.host)"
-                  :class="$style.serverBadge"
-                  :title="acc.host"
-                />
-                <span
-                  :class="[$style.onlineIndicator, onlineStatusClass(acc.id)]"
-                />
+              <div :class="[$style.avatar, $style.addAccountIcon]">
+                <i class="ti ti-plus" />
               </div>
-              <span :class="$style.label">{{ getAccountLabel(acc) }}</span>
             </button>
-
-            <NavAccountMenu
-              :show="accountMenuId === acc.id"
-              :account="acc"
-              :nav-collapsed="navCollapsed"
-              :modes="accountModes[acc.id] ?? {}"
-              :toggling-mode="togglingMode"
-              :mode-error="modeError"
-              :is-admin="accountIsAdmin[acc.id] ?? false"
-              @toggle-mode="toggleAccountMode(acc.id, $event)"
-              @logout="showLogoutDialog(acc.id)"
-              @relogin="(host: string) => closeDrawerAndDo(() => navigateToLogin(host))"
-            />
           </div>
 
-          <!-- Add account -->
-          <button
-            class="_button"
-            :class="[$style.item, $style.addAccount]"
-            title="アカウント追加"
-            @click="closeDrawerAndDo(navigateToLogin)"
-          >
-            <i class="ti ti-plus" />
-            <span :class="$style.label">アカウント追加</span>
-          </button>
+
+
         </div>
       </div>
 
@@ -585,6 +590,40 @@ defineExpose({
   text-overflow: ellipsis;
 }
 
+// Stacked account avatars container
+.accountStack {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+}
+
+.accountBtn {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  border-radius: 50%;
+  transition: transform var(--nd-duration-fast);
+
+  & + .accountBtn {
+    margin-left: -10px;
+  }
+
+  &:hover {
+    transform: scale(1.15);
+    z-index: 100 !important;
+  }
+}
+
+.addAccountIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  opacity: 0.5;
+  font-size: 14px;
+}
+
 .account {
   gap: 10px;
   padding-left: 4px;
@@ -644,18 +683,8 @@ defineExpose({
   background: var(--nd-statusUnknown);
 }
 
-.addAccount {
-  opacity: 0.5;
-  font-size: 0.8em;
 
-  &:hover {
-    opacity: 0.8;
-  }
 
-  .ti {
-    font-size: 16px;
-  }
-}
 
 .postBtn {
   display: flex;
@@ -777,6 +806,16 @@ defineExpose({
     padding: 8px;
     width: auto;
     border-radius: var(--nd-radius-full);
+  }
+
+  .accountStack {
+    flex-direction: column;
+    padding: 8px 0;
+  }
+
+  .accountBtn + .accountBtn {
+    margin-left: 0;
+    margin-top: -8px;
   }
 
   .section {
