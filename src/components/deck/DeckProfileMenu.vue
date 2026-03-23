@@ -3,6 +3,7 @@ import type { CSSProperties } from 'vue'
 import { computed, ref, watch } from 'vue'
 import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
+import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -64,7 +65,16 @@ async function apply(id: string) {
   }
 }
 
-function remove(id: string) {
+const { confirm } = useConfirm()
+
+async function remove(id: string) {
+  const ok = await confirm({
+    title: 'プロファイルを削除',
+    message: 'このプロファイルを削除しますか？',
+    okLabel: '削除',
+    type: 'danger',
+  })
+  if (!ok) return
   deckStore.deleteProfile(id)
   refreshProfileCommands()
 }
