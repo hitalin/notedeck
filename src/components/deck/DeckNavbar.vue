@@ -395,10 +395,9 @@ defineExpose({
           <!-- Account avatars (stacked, scrollable) -->
           <div :class="$style.accountStack">
             <div
-              v-for="(acc, i) in accountsStore.accounts"
+              v-for="acc in accountsStore.accounts"
               :key="acc.id"
               :class="$style.accountWrap"
-              :style="{ zIndex: accountsStore.accounts.length - i }"
             >
               <button
                 class="_button"
@@ -589,15 +588,13 @@ defineExpose({
   text-overflow: ellipsis;
 }
 
-// Stacked account avatars container (scrollable with snap)
+// Account buttons — same style as bottom bar tabs
 .accountStack {
   display: flex;
-  align-items: center;
-  padding: 8px 6px;
+  align-items: stretch;
+  justify-content: center;
   overflow-x: auto;
   overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 
   &::-webkit-scrollbar {
@@ -607,15 +604,18 @@ defineExpose({
 
 .accountBtn {
   position: relative;
-  display: block;
-  flex-shrink: 0;
-  border-radius: 50%;
-  scroll-snap-align: center;
-  transition: transform var(--nd-duration-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 8px 6px;
+  border-radius: var(--nd-radius-sm);
+  opacity: 0.6;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 
   &:hover {
-    transform: scale(1.15);
-    z-index: 100 !important;
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
   }
 }
 
@@ -625,13 +625,7 @@ defineExpose({
   justify-content: center;
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
-  opacity: 0.5;
   font-size: 14px;
-}
-
-.account {
-  gap: 10px;
-  padding-left: 4px;
 }
 
 .avatarWrap {
@@ -815,10 +809,12 @@ defineExpose({
 
   .accountStack {
     flex-direction: column;
-    padding: 6px 0;
     overflow-x: hidden;
     overflow-y: auto;
-    scroll-snap-type: y mandatory;
+  }
+
+  .accountBtn {
+    padding: 6px 0;
   }
 
   .section {
