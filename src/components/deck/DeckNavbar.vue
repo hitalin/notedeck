@@ -586,16 +586,17 @@ defineExpose({
   text-overflow: ellipsis;
 }
 
-// Account buttons — same style as bottom bar tabs
+// Account buttons
 .accountStack {
   position: relative;
+  margin-top: 8px;
 }
 
 .accountScroll {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 0;
+  padding: 4px 4px;
   overflow-x: auto;
   scrollbar-width: none;
 
@@ -610,7 +611,7 @@ defineExpose({
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  padding: 4px;
+  padding: 6px;
   border-radius: var(--nd-radius-sm);
   overflow: visible;
   opacity: 0.6;
