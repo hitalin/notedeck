@@ -588,9 +588,9 @@ defineExpose({
 // Account buttons — same style as bottom bar tabs
 .accountStack {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  padding: 4px 0;
+  justify-content: center;
+  padding: 4px 2px;
 }
 
 .accountBtn {
