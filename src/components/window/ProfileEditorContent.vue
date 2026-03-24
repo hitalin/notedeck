@@ -751,7 +751,6 @@ async function importFromClipboard() {
   height: 10px;
   border-radius: 50%;
   overflow: hidden;
-  border: 1px solid var(--nd-panel);
   background: var(--nd-panel);
   display: flex;
   align-items: center;
