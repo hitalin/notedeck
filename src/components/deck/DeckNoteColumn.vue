@@ -7,7 +7,6 @@ const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
-import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import {
   type NoteColumnConfig,
   useNoteColumn,
@@ -37,7 +36,7 @@ const {
   notes,
   focusedNoteId,
   pendingNotes,
-  animateEnter,
+  animatingIds,
   postForm,
   handlers,
   noteScrollerRef,
@@ -46,6 +45,7 @@ const {
   handleScroll,
   handlePosted,
   removeNote,
+  loadMore,
   refresh,
   reconnect,
   switchWithSnapshot,
@@ -159,11 +159,7 @@ defineExpose({
       <!-- Inline post form slot (e.g. channel column) -->
       <slot name="before-notes" :handle-posted="handlePosted" />
 
-      <div v-if="isLoading && notes.length === 0">
-        <MkSkeleton v-for="i in 5" :key="i" />
-      </div>
-
-      <template v-else>
+      <template v-if="!(isLoading && notes.length === 0)">
         <button
           v-if="pendingNotes.length > 0"
           :class="$style.newNotesBanner"
@@ -178,12 +174,13 @@ defineExpose({
           ref="noteScrollerRef"
           :items="notes"
           :focused-id="focusedNoteId"
-          :animate="animateEnter"
+          :animating-ids="animatingIds"
           :class="$style.tlScroller"
           @scroll="handleScroll"
+          @near-end="loadMore"
         >
           <template #default="{ item, index }">
-            <div :data-index="index">
+            <div>
               <MkNote
                 :note="item"
                 :focused="item.id === focusedNoteId"

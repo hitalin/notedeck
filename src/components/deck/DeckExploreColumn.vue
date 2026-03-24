@@ -11,7 +11,6 @@ const MkUserPopup = defineAsyncComponent(
   () => import('@/components/common/MkUserPopup.vue'),
 )
 
-import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteColumn } from '@/composables/useNoteColumn'
@@ -314,14 +313,10 @@ function closeUserPopup() {
               </div>
             </div>
           </div>
-          <div v-if="isLoading && notes.length === 0">
-            <MkSkeleton v-for="i in 5" :key="i" />
-          </div>
-
-          <template v-else>
+          <template v-if="!(isLoading && notes.length === 0)">
             <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" :class="$style.tlScroller" @scroll="handleScroll">
               <template #default="{ item, index }">
-                <div :data-index="index">
+                <div>
                   <MkNote
                     :note="item"
                     :focused="item.id === focusedNoteId"

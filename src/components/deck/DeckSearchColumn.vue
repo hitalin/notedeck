@@ -55,9 +55,13 @@ const {
 
 const { navigateToNote } = useNavigation()
 const notes = shallowRef<NormalizedNote[]>([])
-const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(
-  null,
-)
+const noteScrollerRef = ref<{
+  getElement: () => HTMLElement | null
+  scrollToIndex: (
+    index: number,
+    opts?: { align?: string; behavior?: string },
+  ) => void
+} | null>(null)
 watch(
   noteScrollerRef,
   () => {
@@ -72,8 +76,10 @@ const { focusedNoteId } = useNoteFocus(
   props.column.id,
   notes,
   scroller,
-  handlers,
+  { ...handlers, delete: removeNote, edit: handlers.edit },
   (note) => navigateToNote(note._accountId, note.id),
+  undefined,
+  (index) => noteScrollerRef.value?.scrollToIndex(index),
 )
 const searchQuery = ref(props.column.query ?? '')
 const searchInput = ref<HTMLInputElement | null>(null)
@@ -522,7 +528,7 @@ onUnmounted(() => {
         @scroll="handleScroll"
       >
         <template #default="{ item, index }">
-          <div :data-index="index">
+          <div>
             <MkNote
               :note="item"
               :focused="item.id === focusedNoteId"

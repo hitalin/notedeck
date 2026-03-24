@@ -50,6 +50,9 @@ importers:
       '@tabler/icons-webfont':
         specifier: ^3.37.1
         version: 3.37.1
+      '@tanstack/vue-virtual':
+        specifier: ^3.13.23
+        version: 3.13.23(vue@3.5.28(typescript@5.9.3))
       '@tauri-apps/plugin-autostart':
         specifier: ^2.5.1
         version: 2.5.1
@@ -1119,11 +1122,11 @@ packages:
   '@tabler/icons@3.37.1':
     resolution: {integrity: sha512-neLCWkuyNHEPXCyYu6nbN4S3g/59BTa4qyITAugYVpq1YzYNDOZooW7/vRWH98ZItXAudxdKU8muFT7y1PqzuA==}
 
-  '@tanstack/virtual-core@3.13.21':
-    resolution: {integrity: sha512-ww+fmLHyCbPSf7JNbWZP3g7wl6SdNo3ah5Aiw+0e9FDErkVHLKprYUrwTm7dF646FtEkN/KkAKPYezxpmvOjxw==}
+  '@tanstack/virtual-core@3.13.23':
+    resolution: {integrity: sha512-zSz2Z2HNyLjCplANTDyl3BcdQJc2k1+yyFoKhNRmCr7V7dY8o8q5m8uFTI1/Pg1kL+Hgrz6u3Xo6eFUB7l66cg==}
 
-  '@tanstack/vue-virtual@3.13.21':
-    resolution: {integrity: sha512-zneUNdQTcUhoDl6+ek+/O4S9gSZRAc2q7VLscZ4WZnFfZcHc3M7OyVCfSDC3hGuwFqzfL8Cx5bZF6zbGCYwXmw==}
+  '@tanstack/vue-virtual@3.13.23':
+    resolution: {integrity: sha512-b5jPluAR6U3eOq6GWAYSpj3ugnAIZgGR0e6aGAgyRse0Yu6MVQQ0ZWm9SArSXWtageogn6bkVD8D//c4IjW3xQ==}
     peerDependencies:
       vue: ^2.7.0 || ^3.0.0
 
@@ -3907,7 +3910,7 @@ snapshots:
 
   '@headlessui/vue@1.7.23(vue@3.5.28(typescript@5.9.3))':
     dependencies:
-      '@tanstack/vue-virtual': 3.13.21(vue@3.5.28(typescript@5.9.3))
+      '@tanstack/vue-virtual': 3.13.23(vue@3.5.28(typescript@5.9.3))
       vue: 3.5.28(typescript@5.9.3)
 
   '@internationalized/date@3.12.0':
@@ -4654,11 +4657,11 @@ snapshots:
 
   '@tabler/icons@3.37.1': {}
 
-  '@tanstack/virtual-core@3.13.21': {}
+  '@tanstack/virtual-core@3.13.23': {}
 
-  '@tanstack/vue-virtual@3.13.21(vue@3.5.28(typescript@5.9.3))':
+  '@tanstack/vue-virtual@3.13.23(vue@3.5.28(typescript@5.9.3))':
     dependencies:
-      '@tanstack/virtual-core': 3.13.21
+      '@tanstack/virtual-core': 3.13.23
       vue: 3.5.28(typescript@5.9.3)
 
   '@tauri-apps/api@2.10.1': {}
@@ -6526,7 +6529,7 @@ snapshots:
       '@floating-ui/vue': 1.1.9(vue@3.5.28(typescript@5.9.3))
       '@internationalized/date': 3.12.0
       '@internationalized/number': 3.6.5
-      '@tanstack/vue-virtual': 3.13.21(vue@3.5.28(typescript@5.9.3))
+      '@tanstack/vue-virtual': 3.13.23(vue@3.5.28(typescript@5.9.3))
       '@vueuse/core': 10.11.1(vue@3.5.28(typescript@5.9.3))
       '@vueuse/shared': 10.11.1(vue@3.5.28(typescript@5.9.3))
       aria-hidden: 1.2.6

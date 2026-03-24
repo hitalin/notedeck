@@ -1,3 +1,10 @@
+/* Override @tabler/icons-webfont to prevent FOIT (Flash of Invisible Text) */
+@font-face {
+  font-family: "tabler-icons";
+  font-display: swap;
+  src: url("@tabler/icons-webfont/dist/fonts/tabler-icons.woff2") format("woff2");
+}
+
 :root {
   /* Fallback: Mi Dark Theme (overridden by JS theme engine) */
   --nd-accent: #86b300;

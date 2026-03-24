@@ -56,6 +56,43 @@
     shortcuts: [{ key: "d", scope: "body" }],
   },
 
+  {
+    commandId: "close-column",
+    shortcuts: [{ key: "w", ctrl: true, scope: "global" }],
+  },
+  {
+    commandId: "keybinds",
+    shortcuts: [],
+  },
+  {
+    commandId: "css-editor",
+    shortcuts: [],
+  },
+  {
+    commandId: "plugins",
+    shortcuts: [],
+  },
+  {
+    commandId: "login",
+    shortcuts: [],
+  },
+  {
+    commandId: "chat",
+    shortcuts: [],
+  },
+  {
+    commandId: "ai",
+    shortcuts: [],
+  },
+  {
+    commandId: "close-all-floating-windows",
+    shortcuts: [{ key: "Escape", shift: true, scope: "global" }],
+  },
+  {
+    commandId: "toggle-column-mute",
+    shortcuts: [],
+  },
+
   // ── Note navigation ──
   {
     commandId: "note-next",
@@ -91,6 +128,22 @@
   {
     commandId: "note-cw",
     shortcuts: [{ key: "v", scope: "body" }],
+  },
+  {
+    commandId: "note-delete",
+    shortcuts: [{ key: "Delete", scope: "body" }],
+  },
+  {
+    commandId: "note-edit",
+    shortcuts: [],
+  },
+  {
+    commandId: "note-copy-link",
+    shortcuts: [],
+  },
+  {
+    commandId: "note-copy-content",
+    shortcuts: [{ key: "c", scope: "body" }],
   },
 
   // ── Column navigation ──

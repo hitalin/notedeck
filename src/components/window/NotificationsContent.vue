@@ -372,7 +372,7 @@ onUnmounted(() => {
       @scroll="handleScroll"
     >
       <template #default="{ item: notif, index }">
-        <div :data-index="index">
+        <div>
           <div
             :class="[$style.notifItem, notifTypeClass(notif.type)]"
           >

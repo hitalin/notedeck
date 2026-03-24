@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import MkAd from '@/components/common/MkAd.vue'
-import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useAds } from '@/composables/useAds'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
@@ -83,11 +82,7 @@ onMounted(() => {
       Account not found
     </div>
 
-    <div v-else-if="isLoading && ads.length === 0" :class="$style.adsBody">
-      <MkSkeleton v-for="i in 3" :key="i" />
-    </div>
-
-    <div v-else-if="ads.length === 0" :class="$style.columnEmpty">
+    <div v-else-if="ads.length === 0 && !isLoading" :class="$style.columnEmpty">
       広告はありません
     </div>
 

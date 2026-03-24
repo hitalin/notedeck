@@ -26,7 +26,6 @@ const MkUserPopup = defineAsyncComponent(
   () => import('@/components/common/MkUserPopup.vue'),
 )
 
-import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
@@ -505,12 +504,8 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div v-if="isLoading && notifications.length === 0">
-        <MkSkeleton v-for="i in 5" :key="i" />
-      </div>
-
       <NoteScroller
-        v-else
+        v-if="!(isLoading && notifications.length === 0)"
         ref="noteScrollerRef"
         :items="filteredNotifications"
         :estimated-height="80"
@@ -518,7 +513,7 @@ onUnmounted(() => {
         @scroll="handleScroll"
       >
         <template #default="{ item: notif, index }">
-          <div :data-index="index">
+          <div>
             <div
               :class="[$style.notifItem, $style[`notifType_${notif.type}`]]"
             >

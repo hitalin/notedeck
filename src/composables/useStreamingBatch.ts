@@ -1,4 +1,4 @@
-import { nextTick, onScopeDispose, ref, shallowRef } from 'vue'
+import { onScopeDispose, ref, shallowRef } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
 import { NOTE_LIST_MAX } from '@/composables/useNoteList'
 import { insertIntoSorted } from '@/utils/sortNotes'
@@ -15,17 +15,26 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   const MAX_NOTES = options.maxNotes ?? NOTE_LIST_MAX
   const pendingNotes = shallowRef<NormalizedNote[]>([])
   const isAtTop = ref(true)
-  /** True only during the render cycle when streaming notes are inserted */
-  const animateEnter = ref(false)
+  /** Set of note IDs currently playing the slide-in animation */
+  const animatingIds = shallowRef<ReadonlySet<string>>(new Set())
+  const _animTimers = new Set<ReturnType<typeof setTimeout>>()
   let rafBuffer: NormalizedNote[] = []
   let rafId: number | null = null
   let _paused = false
 
-  function enableAnimation() {
-    animateEnter.value = true
-    nextTick(() => {
-      animateEnter.value = false
-    })
+  function enableAnimation(batchIds: string[]) {
+    if (batchIds.length === 0) return
+    const next = new Set(animatingIds.value)
+    for (const id of batchIds) next.add(id)
+    animatingIds.value = next
+
+    const timer = setTimeout(() => {
+      _animTimers.delete(timer)
+      const after = new Set(animatingIds.value)
+      for (const id of batchIds) after.delete(id)
+      animatingIds.value = after
+    }, 700)
+    _animTimers.add(timer)
   }
 
   function syncNoteIds() {
@@ -43,7 +52,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     const batch = rafBuffer
     rafBuffer = []
     if (isAtTop.value) {
-      enableAnimation()
+      enableAnimation(batch.map((n) => n.id))
       for (const n of batch) options.noteIds.add(n.id)
       const merged = insertIntoSorted(options.notes.value, batch)
       options.notes.value =
@@ -74,7 +83,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       pendingNotes.value = []
       return
     }
-    enableAnimation()
+    enableAnimation(newNotes.map((n) => n.id))
     for (const n of newNotes) options.noteIds.add(n.id)
     const merged = insertIntoSorted(options.notes.value, newNotes)
     options.notes.value =
@@ -113,6 +122,9 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       cancelAnimationFrame(rafId)
       rafId = null
     }
+    for (const t of _animTimers) clearTimeout(t)
+    _animTimers.clear()
+    animatingIds.value = new Set()
     pendingNotes.value = []
     isAtTop.value = true
   }
@@ -122,7 +134,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   return {
     pendingNotes,
     isAtTop,
-    animateEnter,
+    animatingIds,
     enqueueNote,
     flushPending,
     handleScroll,

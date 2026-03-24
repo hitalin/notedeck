@@ -1,5 +1,6 @@
 import { useCommandStore } from '@/commands/registry'
 import type { NoteAction } from '@/composables/useNoteFocus'
+import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { useThemeStore } from '@/stores/theme'
@@ -222,6 +223,42 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     execute: () => dispatchNoteAction('toggle-cw'),
   })
 
+  commandStore.register({
+    id: 'note-delete',
+    label: 'ノートを削除',
+    icon: 'trash',
+    category: 'note',
+    shortcuts: keybindsStore.getShortcuts('note-delete'),
+    execute: () => dispatchNoteAction('delete'),
+  })
+
+  commandStore.register({
+    id: 'note-edit',
+    label: 'ノートを編集',
+    icon: 'edit',
+    category: 'note',
+    shortcuts: keybindsStore.getShortcuts('note-edit'),
+    execute: () => dispatchNoteAction('edit'),
+  })
+
+  commandStore.register({
+    id: 'note-copy-link',
+    label: 'ノートのリンクをコピー',
+    icon: 'link',
+    category: 'note',
+    shortcuts: keybindsStore.getShortcuts('note-copy-link'),
+    execute: () => dispatchNoteAction('copy-link'),
+  })
+
+  commandStore.register({
+    id: 'note-copy-content',
+    label: 'ノートの内容をコピー',
+    icon: 'copy',
+    category: 'note',
+    shortcuts: keybindsStore.getShortcuts('note-copy-content'),
+    execute: () => dispatchNoteAction('copy-content'),
+  })
+
   // Column navigation
   const deckStore = useDeckStore()
 
@@ -277,6 +314,108 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
       deckStore.saveAsProfile()
       refreshProfileCommands()
     },
+  })
+
+  // Close active column
+  commandStore.register({
+    id: 'close-column',
+    label: 'カラムを削除',
+    icon: 'trash',
+    category: 'column',
+    shortcuts: keybindsStore.getShortcuts('close-column'),
+    enabled: () => !!deckStore.activeColumnId,
+    execute: async () => {
+      const id = deckStore.activeColumnId
+      if (!id) return
+      const { confirm } = useConfirm()
+      const ok = await confirm({
+        title: 'カラムを削除',
+        message: 'このカラムを削除しますか？',
+        okLabel: '削除',
+        type: 'danger',
+      })
+      if (ok) deckStore.removeColumn(id)
+    },
+  })
+
+  // Column mute toggle
+  commandStore.register({
+    id: 'toggle-column-mute',
+    label: 'カラムのミュート切替',
+    icon: 'volume-off',
+    category: 'column',
+    shortcuts: keybindsStore.getShortcuts('toggle-column-mute'),
+    enabled: () => !!deckStore.activeColumnId,
+    execute: () => {
+      const id = deckStore.activeColumnId
+      if (!id) return
+      const col = deckStore.getColumn(id)
+      if (col) deckStore.updateColumn(id, { soundMuted: !col.soundMuted })
+    },
+  })
+
+  // Tool windows
+  commandStore.register({
+    id: 'keybinds',
+    label: 'キーバインド設定',
+    icon: 'keyboard',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('keybinds'),
+    execute: () => useWindowsStore().open('keybinds'),
+  })
+
+  commandStore.register({
+    id: 'css-editor',
+    label: 'カスタムCSS',
+    icon: 'code',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('css-editor'),
+    execute: () => useWindowsStore().open('cssEditor'),
+  })
+
+  commandStore.register({
+    id: 'plugins',
+    label: 'プラグイン',
+    icon: 'puzzle',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('plugins'),
+    execute: () => useWindowsStore().open('plugins'),
+  })
+
+  commandStore.register({
+    id: 'login',
+    label: 'アカウント追加',
+    icon: 'user-plus',
+    category: 'account',
+    shortcuts: keybindsStore.getShortcuts('login'),
+    execute: () => useWindowsStore().open('login'),
+  })
+
+  commandStore.register({
+    id: 'chat',
+    label: 'チャット',
+    icon: 'message-circle',
+    category: 'navigation',
+    shortcuts: keybindsStore.getShortcuts('chat'),
+    execute: () => useWindowsStore().open('chat'),
+  })
+
+  commandStore.register({
+    id: 'ai',
+    label: 'AIアシスタント',
+    icon: 'robot',
+    category: 'navigation',
+    shortcuts: keybindsStore.getShortcuts('ai'),
+    execute: () => useWindowsStore().open('ai'),
+  })
+
+  commandStore.register({
+    id: 'close-all-floating-windows',
+    label: 'フローティングウィンドウをすべて閉じる',
+    icon: 'x',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('close-all-floating-windows'),
+    execute: () => useWindowsStore().closeAll(),
   })
 
   // Window management (desktop only)
@@ -455,6 +594,19 @@ export function unregisterDefaultCommands() {
     'account-menu',
     'toggle-dark-mode',
     'profile-new',
+    'close-column',
+    'keybinds',
+    'css-editor',
+    'plugins',
+    'login',
+    'chat',
+    'ai',
+    'close-all-floating-windows',
+    'toggle-column-mute',
+    'note-delete',
+    'note-edit',
+    'note-copy-link',
+    'note-copy-content',
     ...NOTE_COMMAND_IDS,
     ...COLUMN_COMMAND_IDS,
     ...QUICK_REACT_IDS,

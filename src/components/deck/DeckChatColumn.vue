@@ -16,7 +16,6 @@ import type {
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
-import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { getAccountAvatarUrl } from '@/stores/accounts'
@@ -485,11 +484,7 @@ onBeforeUnmount(() => {
 
     <!-- History View -->
     <div v-else-if="viewMode === 'history'" :class="$style.chatBody">
-      <div v-if="isLoading && chatHistory.length === 0">
-        <MkSkeleton v-for="i in 5" :key="i" />
-      </div>
-
-      <div v-else-if="chatHistory.length === 0" :class="$style.columnEmpty">
+      <div v-if="chatHistory.length === 0 && !isLoading" :class="$style.columnEmpty">
         No conversations
       </div>
 

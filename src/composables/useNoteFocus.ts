@@ -1,8 +1,10 @@
 import type { ShallowRef } from 'vue'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
+import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
+import { useToast } from '@/stores/toast'
 
 export type NoteAction =
   | 'next'
@@ -14,6 +16,10 @@ export type NoteAction =
   | 'bookmark'
   | 'open'
   | 'toggle-cw'
+  | 'delete'
+  | 'edit'
+  | 'copy-link'
+  | 'copy-content'
   | `quick-react-${number}`
 
 export interface NoteActionHandlers {
@@ -22,9 +28,20 @@ export interface NoteActionHandlers {
   renote: (note: NormalizedNote) => void
   quote: (note: NormalizedNote) => void
   bookmark: (note: NormalizedNote) => void
+  delete?: (note: NormalizedNote) => void
+  edit?: (note: NormalizedNote) => void
 }
 
-function scrollTo(scroller: ShallowRef<HTMLElement | null>, index: number) {
+function scrollTo(
+  scroller: ShallowRef<HTMLElement | null>,
+  index: number,
+  scrollToIndexFn?: (index: number) => void,
+) {
+  if (scrollToIndexFn) {
+    scrollToIndexFn(index)
+    return
+  }
+  // Fallback for non-virtualized contexts
   const el = scroller.value
   if (!el) return
   const item = el.querySelector(`[data-index="${index}"]`) as HTMLElement | null
@@ -38,6 +55,8 @@ export function useNoteFocus(
   handlers: NoteActionHandlers,
   onOpen?: (note: NormalizedNote) => void,
   accountId?: string,
+  /** Virtualizer scroll callback — when provided, used instead of querySelector-based scrolling */
+  scrollToIndex?: (index: number) => void,
 ) {
   const deckStore = useDeckStore()
   const pinnedReactionsStore = usePinnedReactionsStore()
@@ -61,18 +80,18 @@ export function useNoteFocus(
     if (notes.value.length === 0) return
     const next = Math.min(focusedIndex.value + 1, notes.value.length - 1)
     focusedIndex.value = next
-    scrollTo(scroller, next)
+    scrollTo(scroller, next, scrollToIndex)
   }
 
   function focusPrev() {
     if (notes.value.length === 0) return
     if (focusedIndex.value <= 0) {
       focusedIndex.value = -1
-      scrollTo(scroller, 0)
+      scrollTo(scroller, 0, scrollToIndex)
       return
     }
     focusedIndex.value -= 1
-    scrollTo(scroller, focusedIndex.value)
+    scrollTo(scroller, focusedIndex.value, scrollToIndex)
   }
 
   function clearFocus() {
@@ -131,6 +150,45 @@ export function useNoteFocus(
         if (el) {
           const btn = el.querySelector('.cw-toggle') as HTMLElement
           btn?.click()
+        }
+        break
+      }
+      case 'delete': {
+        const note = getFocusedNote()
+        if (!note || !handlers.delete) break
+        const { confirm } = useConfirm()
+        confirm({
+          title: 'ノートを削除',
+          message: 'このノートを削除しますか？',
+          okLabel: '削除',
+          type: 'danger',
+        }).then((ok) => {
+          if (ok) handlers.delete?.(note)
+        })
+        break
+      }
+      case 'edit': {
+        const note = getFocusedNote()
+        if (note) handlers.edit?.(note)
+        break
+      }
+      case 'copy-link': {
+        const note = getFocusedNote()
+        if (note) {
+          const url =
+            note.url ??
+            note.uri ??
+            `https://${note._serverHost}/notes/${note.id}`
+          navigator.clipboard.writeText(url)
+          useToast().show('リンクをコピーしました', 'info')
+        }
+        break
+      }
+      case 'copy-content': {
+        const note = getFocusedNote()
+        if (note?.text) {
+          navigator.clipboard.writeText(note.text)
+          useToast().show('内容をコピーしました', 'info')
         }
         break
       }

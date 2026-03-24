@@ -135,13 +135,16 @@ export function useNoteColumn(config: NoteColumnConfig) {
     config.getColumn().id,
     notes,
     scroller,
-    handlers,
+    { ...handlers, delete: removeNote, edit: handlers.edit },
     (note) => navigateToNote(note._accountId, note.id),
+    undefined,
+    (index) => noteScrollerRef.value?.scrollToIndex(index),
   )
 
   const pendingNotes =
     streamingBatch?.pendingNotes ?? shallowRef<NormalizedNote[]>([])
-  const animateEnter = streamingBatch?.animateEnter ?? ref(false)
+  const animatingIds: { value: ReadonlySet<string> } =
+    streamingBatch?.animatingIds ?? shallowRef<ReadonlySet<string>>(new Set())
 
   /** True when API is unreachable and displaying cached notes */
   const isOffline = ref(false)
@@ -679,9 +682,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
   })
 
   // Ref for NoteScroller component — syncs its scroll container to the scroller ref
-  const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(
-    null,
-  )
+  const noteScrollerRef = ref<{
+    getElement: () => HTMLElement | null
+    scrollToIndex: (
+      index: number,
+      opts?: { align?: string; behavior?: string },
+    ) => void
+  } | null>(null)
   watch(
     noteScrollerRef,
     () => {
@@ -701,7 +708,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     notes,
     focusedNoteId,
     pendingNotes,
-    animateEnter,
+    animatingIds,
     postForm,
     handlers,
     noteScrollerRef,
@@ -710,6 +717,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     handleScroll,
     handlePosted,
     removeNote,
+    loadMore,
     refresh,
     isPulling,
     isPulledEnough,

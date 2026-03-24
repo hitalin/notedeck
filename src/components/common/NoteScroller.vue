@@ -1,28 +1,87 @@
 <script setup lang="ts" generic="T extends { id: string }">
-import { ref } from 'vue'
+import { useVirtualizer } from '@tanstack/vue-virtual'
+import { computed, ref } from 'vue'
 
 const props = withDefaults(
   defineProps<{
     items: T[]
-    /** Estimated item height for content-visibility placeholder */
+    /** Estimated item height for virtualizer sizing */
     estimatedHeight?: number
-    /** When set, enables v-memo to skip VNode diffing for unchanged items */
+    /** When set, highlights the focused item (passed through, not used internally) */
     focusedId?: string
-    /** Enable enter animation for newly inserted items (streaming only) */
-    animate?: boolean
+    /** Set of note IDs currently animating (slide-in for new streaming notes) */
+    animatingIds?: ReadonlySet<string>
   }>(),
-  { estimatedHeight: 150, focusedId: undefined, animate: false },
+  { estimatedHeight: 150, focusedId: undefined, animatingIds: () => new Set() },
 )
 
 const emit = defineEmits<{
   scroll: [event: Event]
+  'near-end': []
 }>()
 
 const scrollContainer = ref<HTMLElement | null>(null)
 
+// Dynamic estimateSize — moving average of measured item heights.
+// Updated every 20 measurements to avoid scrollbar thumb jitter.
+let _measuredSum = 0
+let _measuredCount = 0
+const dynamicEstimate = ref(props.estimatedHeight)
+
+const virtualizerOptions = computed(() => ({
+  count: props.items.length,
+  getScrollElement: () => scrollContainer.value,
+  estimateSize: () => dynamicEstimate.value,
+  overscan: 7,
+  getItemKey: (index: number) => props.items[index]?.id ?? index,
+}))
+
+const virtualizer = useVirtualizer(virtualizerOptions)
+
+const virtualItems = computed(() => virtualizer.value.getVirtualItems())
+const totalSize = computed(() => virtualizer.value.getTotalSize())
+
+function measureElement(el: unknown) {
+  if (!(el instanceof HTMLElement)) return
+  virtualizer.value.measureElement(el)
+  const h = el.offsetHeight
+  if (h > 0) {
+    _measuredSum += h
+    _measuredCount++
+    if (_measuredCount % 20 === 0) {
+      dynamicEstimate.value = Math.round(_measuredSum / _measuredCount)
+    }
+  }
+}
+
+// Near-end detection for load-more, throttled to 200ms.
+let _lastNearEnd = 0
+function onScroll(e: Event) {
+  emit('scroll', e)
+  const now = Date.now()
+  if (now - _lastNearEnd < 200) return
+  const items = virtualizer.value.getVirtualItems()
+  const last = items[items.length - 1]
+  if (last && last.index >= props.items.length - 5) {
+    _lastNearEnd = now
+    emit('near-end')
+  }
+}
+
 defineExpose({
-  /** Expose the raw DOM element so composables can read scrollTop, scrollHeight, etc. */
   getElement: () => scrollContainer.value,
+  scrollToIndex: (
+    index: number,
+    opts?: {
+      align?: 'auto' | 'start' | 'center' | 'end'
+      behavior?: ScrollBehavior
+    },
+  ) => {
+    virtualizer.value.scrollToIndex(index, {
+      align: opts?.align ?? 'auto',
+      behavior: opts?.behavior ?? 'smooth',
+    })
+  },
 })
 
 defineSlots<{
@@ -36,27 +95,24 @@ defineSlots<{
   <div
     ref="scrollContainer"
     :class="$style.noteScroller"
-    @scroll.passive="emit('scroll', $event)"
+    @scroll.passive="onScroll"
   >
     <slot name="prepend" />
-    <TransitionGroup
-      tag="div"
-      :class="$style.noteList"
-      :enter-active-class="props.animate ? $style.enterActive : undefined"
-      :enter-from-class="props.animate ? $style.enterFrom : undefined"
-      :leave-active-class="$style.leaveActive"
-      :leave-to-class="$style.leaveTo"
-    >
+    <div :class="$style.noteList" :style="{ height: `${totalSize}px` }">
       <div
-        v-for="(item, index) in props.items"
-        :key="item.id"
-        v-memo="[item, item.id === props.focusedId]"
-        :class="$style.noteItem"
-        :style="{ containIntrinsicSize: `0 ${props.estimatedHeight}px` }"
+        v-for="vRow in virtualItems"
+        :key="props.items[vRow.index].id"
+        :ref="measureElement"
+        :data-index="vRow.index"
+        :class="[
+          $style.noteItem,
+          animatingIds.has(props.items[vRow.index].id) && $style.enterAnimation,
+        ]"
+        :style="{ translate: `0 ${vRow.start}px` }"
       >
-        <slot :item="item" :index="index" />
+        <slot :item="props.items[vRow.index]" :index="vRow.index" />
       </div>
-    </TransitionGroup>
+    </div>
     <slot name="append" />
   </div>
 </template>
@@ -70,49 +126,36 @@ defineSlots<{
 
 .noteList {
   position: relative;
+  width: 100%;
 }
 
 .noteItem {
-  content-visibility: auto;
-  contain-intrinsic-size: 0 150px; /* fallback, overridden by inline style */
-  contain: content;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
 }
 
-/* Misskey-style TransitionGroup animations */
-/* Note: move-class is intentionally omitted. TransitionGroup's FLIP
-   algorithm calls getBoundingClientRect() on ALL items (300×2=600 calls)
-   per insertion. The visual benefit of existing notes sliding down is
-   minimal — the user's eye follows the entering note, not the rest. */
+/* Misskey-style slide-in animation for streaming notes.
+   Uses CSS @keyframes instead of TransitionGroup — Vapor Mode compatible.
+   Positioning uses the `translate` property (set via inline style),
+   so `transform` is free for animation without conflict. */
+.enterAnimation {
+  animation: noteSlideIn 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+}
 
-.enterActive {
-  transition: transform 0.7s cubic-bezier(0.23, 1, 0.32, 1),
-              opacity 0.7s cubic-bezier(0.23, 1, 0.32, 1);
-
-  :deep(.noteItem) {
-    content-visibility: visible !important;
+@keyframes noteSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(max(-64px, -100%));
   }
-}
-
-.enterFrom {
-  opacity: 0;
-  transform: translateY(max(-64px, -100%));
-}
-
-/* leave: quick collapse */
-.leaveActive {
-  transition: height var(--nd-duration-slow) cubic-bezier(0, 0.5, 0.5, 1),
-              opacity 0.2s cubic-bezier(0, 0.5, 0.5, 1);
-}
-
-.leaveTo {
-  opacity: 0;
-  height: 0;
+  /* `to` is omitted — browser resolves to the element's computed style
+     (transform: none), so the slide naturally lands at the positioned offset. */
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .enterActive,
-  .leaveActive {
-    transition: none;
+  .enterAnimation {
+    animation: none;
   }
 }
 </style>
