@@ -377,6 +377,7 @@ defineExpose({
               <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" @close-all="emit('update:showSettingsMenu', false); emit('update:mobileDrawerOpen', false)" />
             </div>
           </div>
+          <div v-if="isCompact" :class="$style.divider" />
 
           <!-- Post button -->
           <button
