@@ -18,6 +18,7 @@ import type {
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import PopupMenu from '@/components/common/PopupMenu.vue'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -336,17 +337,8 @@ const userMenuView = computed<UserMenuView>(() => {
   return 'main'
 })
 
-function openUserMenu() {
-  showUserMenu.value = true
-}
-
 function closeUserMenu() {
-  showUserMenu.value = false
-  showMuteConfirm.value = false
-  showBlockConfirm.value = false
-  showReportForm.value = false
-  showListPicker.value = false
-  reportComment.value = ''
+  userMenuRef.value?.close()
 }
 
 function userMenuBack() {
@@ -602,7 +594,7 @@ async function handlePosted(editedNoteId?: string) {
               class="_button"
               :class="$style.bannerActionBtn"
               title="その他"
-              @click="openUserMenu"
+              @click="userMenuRef?.open($event)"
             >
               <i class="ti ti-dots" />
             </button>
@@ -763,101 +755,97 @@ async function handlePosted(editedNoteId?: string) {
       />
 
       <!-- User action menu -->
-      <Transition name="nd-popup">
-        <div v-if="showUserMenu" :class="$style.userMenuBackdrop" @click="closeUserMenu">
-          <div :class="$style.userMenuPopup" class="_popup nd-popup-content popup-menu" @click.stop>
-            <!-- Main -->
-            <template v-if="userMenuView === 'main'">
-              <button :class="$style.userMenuItem" @click="openListPicker">
-                <i class="ti ti-list" />
-                リストに追加
-              </button>
-              <div :class="$style.userMenuDivider" />
-              <button :class="$style.userMenuItem" @click="showMuteConfirm = true">
-                <i class="ti ti-eye-off" />
-                ミュート
-              </button>
-              <button :class="[$style.userMenuItem, $style.userMenuDanger]" @click="showBlockConfirm = true">
-                <i class="ti ti-ban" />
-                ブロック
-              </button>
-              <div :class="$style.userMenuDivider" />
-              <button :class="[$style.userMenuItem, $style.userMenuDanger]" @click="showReportForm = true">
-                <i class="ti ti-alert-triangle" />
-                通報
-              </button>
-            </template>
-            <!-- Mute confirm -->
-            <template v-else-if="userMenuView === 'muteConfirm'">
-              <div :class="$style.userMenuConfirmText">@{{ user?.username }} をミュートしますか？</div>
-              <button :class="[$style.userMenuItem, $style.userMenuDanger]" @click="handleMuteUser">
-                <i class="ti ti-eye-off" />
-                ミュート
-              </button>
-              <button :class="$style.userMenuItem" @click="userMenuBack">
-                <i class="ti ti-x" />
-                キャンセル
-              </button>
-            </template>
-            <!-- Block confirm -->
-            <template v-else-if="userMenuView === 'blockConfirm'">
-              <div :class="$style.userMenuConfirmText">@{{ user?.username }} をブロックしますか？</div>
-              <button :class="[$style.userMenuItem, $style.userMenuDanger]" @click="handleBlockUser">
-                <i class="ti ti-ban" />
-                ブロック
-              </button>
-              <button :class="$style.userMenuItem" @click="userMenuBack">
-                <i class="ti ti-x" />
-                キャンセル
-              </button>
-            </template>
-            <!-- Report form -->
-            <template v-else-if="userMenuView === 'reportForm'">
-              <div :class="$style.userMenuConfirmText">@{{ user?.username }} を通報</div>
-              <div :class="$style.reportInputWrap">
-                <textarea
-                  v-model="reportComment"
-                  :class="$style.reportInput"
-                  placeholder="通報理由を入力..."
-                  rows="3"
-                />
-              </div>
-              <button
-                :class="[$style.userMenuItem, $style.userMenuDanger]"
-                :disabled="!reportComment.trim()"
-                @click="handleReportUser"
-              >
-                <i class="ti ti-alert-triangle" />
-                送信
-              </button>
-              <button :class="$style.userMenuItem" @click="userMenuBack">
-                <i class="ti ti-x" />
-                キャンセル
-              </button>
-            </template>
-            <!-- List picker -->
-            <template v-else-if="userMenuView === 'listPicker'">
-              <button :class="$style.userMenuItem" @click="userMenuBack">
-                <i class="ti ti-arrow-left" />
-                戻る
-              </button>
-              <div :class="$style.userMenuDivider" />
-              <template v-if="userLists.length > 0">
-                <button
-                  v-for="list in userLists"
-                  :key="list.id"
-                  :class="$style.userMenuItem"
-                  @click="addToList(list.id)"
-                >
-                  <i class="ti ti-list" />
-                  {{ list.name }}
-                </button>
-              </template>
-              <div v-else :class="$style.userMenuConfirmText">リストがありません</div>
-            </template>
+      <PopupMenu ref="userMenuRef" @close="userMenuBack">
+        <!-- Main -->
+        <template v-if="userMenuView === 'main'">
+          <button class="_popupItem" @click="openListPicker">
+            <i class="ti ti-list" />
+            リストに追加
+          </button>
+          <div class="_popupDivider" />
+          <button class="_popupItem" @click="showMuteConfirm = true">
+            <i class="ti ti-eye-off" />
+            ミュート
+          </button>
+          <button class="_popupItem _popupItemDanger" @click="showBlockConfirm = true">
+            <i class="ti ti-ban" />
+            ブロック
+          </button>
+          <div class="_popupDivider" />
+          <button class="_popupItem _popupItemDanger" @click="showReportForm = true">
+            <i class="ti ti-alert-triangle" />
+            通報
+          </button>
+        </template>
+        <!-- Mute confirm -->
+        <template v-else-if="userMenuView === 'muteConfirm'">
+          <div class="_popupConfirmText">@{{ user?.username }} をミュートしますか？</div>
+          <button class="_popupItem _popupItemDanger" @click="handleMuteUser">
+            <i class="ti ti-eye-off" />
+            ミュート
+          </button>
+          <button class="_popupItem" @click="userMenuBack">
+            <i class="ti ti-x" />
+            キャンセル
+          </button>
+        </template>
+        <!-- Block confirm -->
+        <template v-else-if="userMenuView === 'blockConfirm'">
+          <div class="_popupConfirmText">@{{ user?.username }} をブロックしますか？</div>
+          <button class="_popupItem _popupItemDanger" @click="handleBlockUser">
+            <i class="ti ti-ban" />
+            ブロック
+          </button>
+          <button class="_popupItem" @click="userMenuBack">
+            <i class="ti ti-x" />
+            キャンセル
+          </button>
+        </template>
+        <!-- Report form -->
+        <template v-else-if="userMenuView === 'reportForm'">
+          <div class="_popupConfirmText">@{{ user?.username }} を通報</div>
+          <div class="_popupReportInputWrap">
+            <textarea
+              v-model="reportComment"
+              class="_popupReportInput"
+              placeholder="通報理由を入力..."
+              rows="3"
+            />
           </div>
-        </div>
-      </Transition>
+          <button
+            class="_popupItem _popupItemDanger"
+            :disabled="!reportComment.trim()"
+            @click="handleReportUser"
+          >
+            <i class="ti ti-alert-triangle" />
+            送信
+          </button>
+          <button class="_popupItem" @click="userMenuBack">
+            <i class="ti ti-x" />
+            キャンセル
+          </button>
+        </template>
+        <!-- List picker -->
+        <template v-else-if="userMenuView === 'listPicker'">
+          <button class="_popupItem" @click="userMenuBack">
+            <i class="ti ti-arrow-left" />
+            戻る
+          </button>
+          <div class="_popupDivider" />
+          <template v-if="userLists.length > 0">
+            <button
+              v-for="list in userLists"
+              :key="list.id"
+              class="_popupItem"
+              @click="addToList(list.id)"
+            >
+              <i class="ti ti-list" />
+              {{ list.name }}
+            </button>
+          </template>
+          <div v-else class="_popupConfirmText">リストがありません</div>
+        </template>
+      </PopupMenu>
 
       <div v-if="showQrCode" :class="$style.qrOverlay" @click="showQrCode = false">
         <div :class="$style.qrModal" @click.stop>
@@ -1440,89 +1428,4 @@ async function handlePosted(editedNoteId?: string) {
 /* Empty placeholder classes for dynamic binding */
 .active {}
 .following {}
-
-.userMenuBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: var(--nd-z-popup);
-  background: rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.userMenuPopup {
-  min-width: 240px;
-  max-width: 320px;
-  padding: 6px 0;
-  z-index: calc(var(--nd-z-popup) + 1);
-}
-
-.userMenuItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 22px;
-  border: none;
-  border-radius: 0;
-  background: none;
-  cursor: pointer;
-  color: var(--nd-fg);
-  font-size: 0.85em;
-  text-align: left;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-
-  :global(.ti) {
-    opacity: 0.8;
-    flex-shrink: 0;
-    width: 1em;
-    text-align: center;
-  }
-}
-
-.userMenuDanger {
-  color: var(--nd-error);
-}
-
-.userMenuDivider {
-  height: 1px;
-  margin: 4px 0;
-  background: var(--nd-divider);
-}
-
-.userMenuConfirmText {
-  padding: 7px 22px;
-  font-size: 0.85em;
-  font-weight: bold;
-  color: var(--nd-fg);
-}
-
-.reportInputWrap {
-  padding: 4px 16px;
-}
-
-.reportInput {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid var(--nd-divider);
-  border-radius: 6px;
-  background: var(--nd-bg);
-  color: var(--nd-fg);
-  font-size: 0.85em;
-  resize: vertical;
-
-  &::placeholder {
-    color: var(--nd-fgTransparent);
-  }
-}
 </style>
