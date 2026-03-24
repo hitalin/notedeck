@@ -135,7 +135,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     config.getColumn().id,
     notes,
     scroller,
-    handlers,
+    { ...handlers, delete: removeNote, edit: handlers.edit },
     (note) => navigateToNote(note._accountId, note.id),
   )
 

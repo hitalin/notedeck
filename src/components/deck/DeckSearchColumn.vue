@@ -72,7 +72,7 @@ const { focusedNoteId } = useNoteFocus(
   props.column.id,
   notes,
   scroller,
-  handlers,
+  { ...handlers, delete: removeNote, edit: handlers.edit },
   (note) => navigateToNote(note._accountId, note.id),
 )
 const searchQuery = ref(props.column.query ?? '')
