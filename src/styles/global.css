@@ -236,6 +236,84 @@ html[data-platform="android"] select {
   z-index: var(--nd-z-menu);
 }
 
+/* ---- Popup menu items (shared) ---- */
+
+._popupItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 22px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--nd-fg);
+  font-size: 0.85em;
+  text-align: left;
+  transition: background var(--nd-duration-base);
+}
+
+._popupItem:hover {
+  background: var(--nd-buttonHoverBg);
+}
+
+._popupItem:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+._popupItem .ti {
+  opacity: 0.8;
+  flex-shrink: 0;
+  width: 1em;
+  text-align: center;
+}
+
+._popupItemActive {
+  color: var(--nd-warn, #f0a020);
+}
+
+._popupItemActive .ti {
+  opacity: 1;
+}
+
+._popupItemDanger {
+  color: var(--nd-error);
+}
+
+._popupDivider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--nd-divider);
+}
+
+._popupConfirmText {
+  padding: 7px 22px;
+  font-size: 0.85em;
+  font-weight: bold;
+  color: var(--nd-fg);
+}
+
+._popupReportInputWrap {
+  padding: 4px 16px;
+}
+
+._popupReportInput {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--nd-divider);
+  border-radius: 6px;
+  background: var(--nd-bg);
+  color: var(--nd-fg);
+  font-size: 0.85em;
+  resize: vertical;
+}
+
+._popupReportInput::placeholder {
+  color: var(--nd-fgTransparent);
+}
+
 /* ---- Dialog (shared modal shell) ---- */
 
 ._dialogBackdrop {
@@ -427,6 +505,11 @@ html[data-platform="android"] select {
 .nd-popup-enter-from .nd-popup-content,
 .nd-popup-leave-to .nd-popup-content {
   transform: scale(0.95);
+}
+
+.nd-popup-enter-from .popup-menu,
+.nd-popup-leave-to .popup-menu {
+  transform: scale(0.95) translateY(-4px);
 }
 
 /* ---- Fade transition (Vue <Transition name="nd-fade">) ---- */

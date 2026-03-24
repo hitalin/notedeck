@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { type CSSProperties, computed, ref, useCssModule, watch } from 'vue'
 import type { AvatarDecoration } from '@/adapters/types'
-import { useLazyImage } from '@/composables/useLazyImage'
 import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
 
 const props = withDefaults(
@@ -55,8 +54,6 @@ const avatarSrcset = computed(() => {
   return `${x1} 1x, ${x2} 2x`
 })
 
-const { targetRef, lazySrc, isVisible } = useLazyImage(avatarSrc)
-
 function onAvatarError(e: Event) {
   const img = e.target as HTMLImageElement
   if (!proxyFailed.value && img.src !== props.avatarUrl) {
@@ -97,7 +94,6 @@ const statusClass = computed(() =>
 
 <template>
   <div
-    ref="targetRef"
     class="mk-avatar"
     :class="$style.mkAvatar"
     :style="{ width: `${props.size}px`, height: `${props.size}px` }"
@@ -106,28 +102,25 @@ const statusClass = computed(() =>
     @mouseleave="emit('mouseleave', $event)"
   >
     <img
-      v-if="lazySrc"
       :key="props.avatarUrl ?? undefined"
-      :src="lazySrc"
+      :src="avatarSrc"
       :srcset="avatarSrcset"
       :sizes="`${props.size}px`"
       :alt="props.alt"
       :class="$style.avatarImg"
+      loading="lazy"
       decoding="async"
       @error="onAvatarError"
     />
-    <div v-else :class="[$style.avatarImg, $style.avatarPlaceholder]" />
-    <template v-if="isVisible">
-      <img
-        v-for="(d, i) in props.decorations"
-        :key="d.id"
-        :src="proxyUrl(d.url)"
-        :class="$style.avatarDecoration"
-        :style="decorationStyles[i]"
-        loading="lazy"
-        decoding="async"
-      />
-    </template>
+    <img
+      v-for="(d, i) in props.decorations"
+      :key="d.id"
+      :src="proxyUrl(d.url)"
+      :class="$style.avatarDecoration"
+      :style="decorationStyles[i]"
+      loading="lazy"
+      decoding="async"
+    />
     <div
       v-if="indicator && onlineStatus"
       :class="[$style.onlineIndicator, statusClass]"
@@ -154,10 +147,6 @@ const statusClass = computed(() =>
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-}
-
-.avatarPlaceholder {
-  background: var(--nd-buttonBg);
 }
 
 .avatarDecoration {
