@@ -1,80 +1,25 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
-import { type Diagnostic, linter } from '@codemirror/lint'
 import JSON5 from 'json5'
-import {
-  computed,
-  nextTick,
-  onMounted,
-  onUnmounted,
-  ref,
-  useCssModule,
-  watch,
-} from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
-import { useSwipeTab } from '@/composables/useSwipeTab'
-import { useTabSlide } from '@/composables/useTabSlide'
+import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
+import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useThemeStore } from '@/stores/theme'
 import { DARK_BASE, LIGHT_BASE } from '@/theme/builtinThemes'
 import { parseColor, toRgba } from '@/theme/colorUtils'
 import { compileMisskeyTheme } from '@/theme/compiler'
 import type { MisskeyTheme } from '@/theme/types'
+import { createJson5Linter } from '@/utils/json5Linter'
 
 const jsonLang = json()
-
-const jsonLinter = linter(
-  (view) => {
-    const diagnostics: Diagnostic[] = []
-    const code = view.state.doc.toString()
-    if (!code.trim()) return diagnostics
-    try {
-      JSON5.parse(code)
-    } catch (e) {
-      if (e instanceof Error) {
-        const lineMatch = e.message.match(/at (\d+):(\d+)/)
-        let from = 0
-        let to = code.length
-        if (lineMatch) {
-          const lineNum = parseInt(lineMatch[1] ?? '1', 10)
-          const line = view.state.doc.line(
-            Math.min(lineNum, view.state.doc.lines),
-          )
-          from = line.from
-          to = line.to
-        }
-        diagnostics.push({ from, to, severity: 'error', message: e.message })
-      }
-    }
-    return diagnostics
-  },
-  { delay: 500 },
-)
+const jsonLinter = createJson5Linter()
 
 const themeStore = useThemeStore()
 
-const tab = ref<'visual' | 'code'>('visual')
-const editorRef = ref<HTMLElement | null>(null)
-
-const TABS = ['visual', 'code'] as const
-const themeTabIndex = computed(() => TABS.indexOf(tab.value))
-useTabSlide(themeTabIndex, editorRef)
-
-useSwipeTab(
-  editorRef,
-  () => {
-    const next = TABS[TABS.indexOf(tab.value) + 1]
-    if (next) {
-      tab.value = next
-      return true
-    }
-  },
-  () => {
-    const prev = TABS[TABS.indexOf(tab.value) - 1]
-    if (prev) {
-      tab.value = prev
-      return true
-    }
-  },
+const { tab, containerRef: editorRef } = useEditorTabs(
+  ['visual', 'code'] as const,
+  'visual',
 )
 
 const themeName = ref('My Theme')
@@ -299,8 +244,15 @@ async function installTheme() {
   }, 2000)
 }
 
-// Export as JSON
-const copiedMessage = ref(false)
+// Export / Import
+const {
+  copied: copiedMessage,
+  imported: importedMessage,
+  importError,
+  showCopied,
+  showImported,
+  showImportError,
+} = useClipboardFeedback()
 
 function exportTheme() {
   if (tab.value === 'code') syncVisualFromCode()
@@ -312,25 +264,15 @@ function exportTheme() {
   }
   const json = JSON.stringify(theme, null, 2)
   navigator.clipboard.writeText(json)
-  copiedMessage.value = true
-  setTimeout(() => {
-    copiedMessage.value = false
-  }, 2000)
+  showCopied()
 }
-
-// Import from clipboard
-const importedMessage = ref(false)
-const importError = ref(false)
 
 async function importTheme() {
   try {
     const text = await navigator.clipboard.readText()
     const parsed = JSON5.parse(text)
     if (!parsed || typeof parsed !== 'object' || !parsed.props) {
-      importError.value = true
-      setTimeout(() => {
-        importError.value = false
-      }, 2000)
+      showImportError()
       return
     }
     themeName.value = parsed.name || 'Untitled'
@@ -338,15 +280,9 @@ async function importTheme() {
     overrides.value = { ...parsed.props }
     codeError.value = null
     saveSnapshot()
-    importedMessage.value = true
-    setTimeout(() => {
-      importedMessage.value = false
-    }, 2000)
+    showImported()
   } catch {
-    importError.value = true
-    setTimeout(() => {
-      importError.value = false
-    }, 2000)
+    showImportError()
   }
 }
 

@@ -75,6 +75,18 @@
   gap: 6px;
 }
 
+// Update notification dot (small accent circle on settings icon etc.)
+@mixin update-dot($top: 8px, $right: 8px) {
+  position: absolute;
+  top: $top;
+  right: $right;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--nd-accent);
+  pointer-events: none;
+}
+
 // Import/export button (flex: 1 inside action-group)
 @mixin btn-action {
   @include btn-secondary;

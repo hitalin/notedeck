@@ -4,8 +4,9 @@ import { type Diagnostic, linter } from '@codemirror/lint'
 import { computed, ref, watch } from 'vue'
 import type { Shortcut } from '@/commands/registry'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
-import { useSwipeTab } from '@/composables/useSwipeTab'
-import { useTabSlide } from '@/composables/useTabSlide'
+import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
+import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
+import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
@@ -36,31 +37,9 @@ const jsonLinter = linter(
 const keybindsStore = useKeybindsStore()
 
 // ── Tab management ──
-const tab = ref<'visual' | 'code'>('visual')
-const contentRef = ref<HTMLElement | null>(null)
-
-const TABS = ['visual', 'code'] as const
-const keybindTabIndex = computed(() => TABS.indexOf(tab.value))
-useTabSlide(keybindTabIndex, contentRef)
-
-useSwipeTab(
-  contentRef,
-  () => {
-    const next = TABS[TABS.indexOf(tab.value) + 1]
-    if (next) {
-      tab.value = next
-      return true
-    }
-    return false
-  },
-  () => {
-    const prev = TABS[TABS.indexOf(tab.value) - 1]
-    if (prev) {
-      tab.value = prev
-      return true
-    }
-    return false
-  },
+const { tab, containerRef: contentRef } = useEditorTabs(
+  ['visual', 'code'] as const,
+  'visual',
 )
 
 // ── Visual tab: category-based GUI ──
@@ -306,16 +285,18 @@ function applyFromCode() {
 }
 
 // ── Import/Export ──
-const copiedMessage = ref(false)
-const importedMessage = ref(false)
-const importError = ref(false)
+const {
+  copied: copiedMessage,
+  imported: importedMessage,
+  importError,
+  showCopied,
+  showImported,
+  showImportError,
+} = useClipboardFeedback()
 
 function exportKeybinds() {
   navigator.clipboard.writeText(overridesToJson())
-  copiedMessage.value = true
-  setTimeout(() => {
-    copiedMessage.value = false
-  }, 2000)
+  showCopied()
 }
 
 async function importKeybinds() {
@@ -323,45 +304,29 @@ async function importKeybinds() {
     const text = await navigator.clipboard.readText()
     const parsed = JSON.parse(text)
     if (!parsed || typeof parsed !== 'object') {
-      importError.value = true
-      setTimeout(() => {
-        importError.value = false
-      }, 2000)
+      showImportError()
       return
     }
     keybindsStore.overrides = parsed
     setStorageJson(STORAGE_KEYS.keybinds, parsed)
     jsonCode.value = overridesToJson()
     codeError.value = null
-    importedMessage.value = true
-    setTimeout(() => {
-      importedMessage.value = false
-    }, 2000)
+    showImported()
   } catch {
-    importError.value = true
-    setTimeout(() => {
-      importError.value = false
-    }, 2000)
+    showImportError()
   }
 }
 
 // ── Reset all with confirmation ──
-const confirmingReset = ref(false)
-let resetTimer: ReturnType<typeof setTimeout> | null = null
+const { confirming: confirmingReset, trigger: triggerReset } =
+  useDoubleConfirm()
 
 function handleReset() {
-  if (confirmingReset.value) {
-    if (resetTimer) clearTimeout(resetTimer)
-    confirmingReset.value = false
+  triggerReset(() => {
     keybindsStore.resetAll()
     jsonCode.value = '{}'
     codeError.value = null
-  } else {
-    confirmingReset.value = true
-    resetTimer = setTimeout(() => {
-      confirmingReset.value = false
-    }, 3000)
-  }
+  })
 }
 </script>
 

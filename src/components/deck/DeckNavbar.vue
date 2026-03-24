@@ -482,6 +482,8 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
+
 .wrapper {
   display: contents;
 }
@@ -779,16 +781,7 @@ defineExpose({
   position: relative;
 }
 
-.updateDot {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--nd-accent);
-  pointer-events: none;
-}
+.updateDot { @include update-dot; }
 
 // ============================================================
 // Icon-only mode — navbar adapts to its own width via
