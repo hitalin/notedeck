@@ -1035,8 +1035,6 @@ async function handlePosted(editedNoteId?: string) {
   position: absolute;
   top: 170px;
   left: 16px;
-  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
-  border: 4px solid var(--nd-bg);
   z-index: 2;
 }
 
