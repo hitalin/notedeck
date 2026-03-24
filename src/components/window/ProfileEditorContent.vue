@@ -675,9 +675,9 @@ async function importFromClipboard() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  font-size: 14px;
+  width: 42px;
+  height: 42px;
+  font-size: 16px;
   color: var(--nd-fg);
   opacity: 0.6;
   border-radius: var(--nd-radius-sm);
@@ -703,17 +703,17 @@ async function importFromClipboard() {
 
 .stackBadge {
   position: absolute;
-  top: 1px;
-  left: 1px;
-  min-width: 10px;
-  height: 10px;
-  padding: 0 2px;
-  border-radius: 5px;
+  top: 2px;
+  left: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
   background: var(--nd-accent);
   color: var(--nd-bg);
-  font-size: 7px;
+  font-size: 9px;
   font-weight: bold;
-  line-height: 10px;
+  line-height: 14px;
   text-align: center;
 }
 
@@ -747,10 +747,11 @@ async function importFromClipboard() {
 .serverBadge,
 .accountBadge {
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   overflow: hidden;
+  border: 1.5px solid var(--nd-panel);
   background: var(--nd-panel);
   display: flex;
   align-items: center;
@@ -758,13 +759,13 @@ async function importFromClipboard() {
 }
 
 .serverBadge {
-  top: 1px;
-  right: 1px;
+  top: 2px;
+  right: 2px;
 }
 
 .accountBadge {
-  bottom: 1px;
-  left: 1px;
+  bottom: 2px;
+  left: 2px;
 }
 
 .badgeImg {
