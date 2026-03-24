@@ -1,17 +1,18 @@
 <script setup lang="ts" generic="T extends { id: string }">
-import { ref } from 'vue'
+import { useVirtualizer } from '@tanstack/vue-virtual'
+import { computed, ref, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
     items: T[]
-    /** Estimated item height for content-visibility placeholder */
+    /** Estimated item height for virtualizer sizing */
     estimatedHeight?: number
-    /** When set, enables v-memo to skip VNode diffing for unchanged items */
+    /** When set, highlights the focused item */
     focusedId?: string
-    /** Enable enter animation for newly inserted items (streaming only) */
-    animate?: boolean
+    /** Set of note IDs currently animating (slide-in for new streaming notes) */
+    animatingIds?: ReadonlySet<string>
   }>(),
-  { estimatedHeight: 150, focusedId: undefined, animate: false },
+  { estimatedHeight: 150, focusedId: undefined, animatingIds: () => new Set() },
 )
 
 const emit = defineEmits<{
@@ -19,6 +20,32 @@ const emit = defineEmits<{
 }>()
 
 const scrollContainer = ref<HTMLElement | null>(null)
+
+const count = computed(() => props.items.length)
+
+const virtualizerOptions = computed(() => ({
+  count: count.value,
+  getScrollElement: () => scrollContainer.value,
+  estimateSize: () => props.estimatedHeight,
+  overscan: 5,
+  getItemKey: (index: number) => props.items[index]?.id ?? index,
+}))
+
+const virtualizer = useVirtualizer(virtualizerOptions)
+
+const virtualItems = computed(() => virtualizer.value.getVirtualItems())
+const totalSize = computed(() => virtualizer.value.getTotalSize())
+
+function measureElement(el: Element | ComponentPublicInstance | null) {
+  if (el instanceof HTMLElement) {
+    virtualizer.value.measureElement(el)
+  }
+}
+
+// Re-measure all when items change (e.g. streaming insert, load-more)
+watch(count, () => {
+  virtualizer.value.measure()
+})
 
 defineExpose({
   /** Expose the raw DOM element so composables can read scrollTop, scrollHeight, etc. */
@@ -32,6 +59,10 @@ defineSlots<{
 }>()
 </script>
 
+<script lang="ts">
+import type { ComponentPublicInstance } from 'vue'
+</script>
+
 <template>
   <div
     ref="scrollContainer"
@@ -39,24 +70,23 @@ defineSlots<{
     @scroll.passive="emit('scroll', $event)"
   >
     <slot name="prepend" />
-    <TransitionGroup
-      tag="div"
-      :class="$style.noteList"
-      :enter-active-class="props.animate ? $style.enterActive : undefined"
-      :enter-from-class="props.animate ? $style.enterFrom : undefined"
-      :leave-active-class="$style.leaveActive"
-      :leave-to-class="$style.leaveTo"
-    >
+    <div :class="$style.noteList" :style="{ height: `${totalSize}px` }">
       <div
-        v-for="(item, index) in props.items"
-        :key="item.id"
-        v-memo="[item, item.id === props.focusedId]"
-        :class="$style.noteItem"
-        :style="{ containIntrinsicSize: `0 ${props.estimatedHeight}px` }"
+        v-for="vRow in virtualItems"
+        :key="props.items[vRow.index].id"
+        :ref="measureElement"
+        :data-index="vRow.index"
+        :class="[
+          $style.noteItem,
+          animatingIds.has(props.items[vRow.index].id) && $style.enterAnimation,
+        ]"
+        :style="{
+          transform: `translateY(${vRow.start}px)`,
+        }"
       >
-        <slot :item="item" :index="index" />
+        <slot :item="props.items[vRow.index]" :index="vRow.index" />
       </div>
-    </TransitionGroup>
+    </div>
     <slot name="append" />
   </div>
 </template>
@@ -70,49 +100,37 @@ defineSlots<{
 
 .noteList {
   position: relative;
+  width: 100%;
 }
 
 .noteItem {
-  content-visibility: auto;
-  contain-intrinsic-size: 0 150px; /* fallback, overridden by inline style */
-  contain: content;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
 }
 
-/* Misskey-style TransitionGroup animations */
-/* Note: move-class is intentionally omitted. TransitionGroup's FLIP
-   algorithm calls getBoundingClientRect() on ALL items (300×2=600 calls)
-   per insertion. The visual benefit of existing notes sliding down is
-   minimal — the user's eye follows the entering note, not the rest. */
+/* Misskey-style slide-in animation for streaming notes.
+   Replaces TransitionGroup enter with CSS @keyframes —
+   Vapor Mode compatible (no <TransitionGroup> dependency). */
+.enterAnimation {
+  animation: noteSlideIn 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+}
 
-.enterActive {
-  transition: transform 0.7s cubic-bezier(0.23, 1, 0.32, 1),
-              opacity 0.7s cubic-bezier(0.23, 1, 0.32, 1);
-
-  :deep(.noteItem) {
-    content-visibility: visible !important;
+@keyframes noteSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(max(-64px, -100%));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-.enterFrom {
-  opacity: 0;
-  transform: translateY(max(-64px, -100%));
-}
-
-/* leave: quick collapse */
-.leaveActive {
-  transition: height var(--nd-duration-slow) cubic-bezier(0, 0.5, 0.5, 1),
-              opacity 0.2s cubic-bezier(0, 0.5, 0.5, 1);
-}
-
-.leaveTo {
-  opacity: 0;
-  height: 0;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .enterActive,
-  .leaveActive {
-    transition: none;
+  .enterAnimation {
+    animation: none;
   }
 }
 </style>

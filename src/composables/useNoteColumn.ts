@@ -141,7 +141,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   const pendingNotes =
     streamingBatch?.pendingNotes ?? shallowRef<NormalizedNote[]>([])
-  const animateEnter = streamingBatch?.animateEnter ?? ref(false)
+  const animatingIds: { value: ReadonlySet<string> } =
+    streamingBatch?.animatingIds ?? shallowRef<ReadonlySet<string>>(new Set())
 
   /** True when API is unreachable and displaying cached notes */
   const isOffline = ref(false)
@@ -701,7 +702,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     notes,
     focusedNoteId,
     pendingNotes,
-    animateEnter,
+    animatingIds,
     postForm,
     handlers,
     noteScrollerRef,

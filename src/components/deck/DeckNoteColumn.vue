@@ -37,7 +37,7 @@ const {
   notes,
   focusedNoteId,
   pendingNotes,
-  animateEnter,
+  animatingIds,
   postForm,
   handlers,
   noteScrollerRef,
@@ -178,7 +178,7 @@ defineExpose({
           ref="noteScrollerRef"
           :items="notes"
           :focused-id="focusedNoteId"
-          :animate="animateEnter"
+          :animating-ids="animatingIds"
           :class="$style.tlScroller"
           @scroll="handleScroll"
         >
