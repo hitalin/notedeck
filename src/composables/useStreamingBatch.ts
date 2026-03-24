@@ -17,7 +17,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   const isAtTop = ref(true)
   /** Set of note IDs currently playing the slide-in animation */
   const animatingIds = shallowRef<ReadonlySet<string>>(new Set())
-  let _animTimers: ReturnType<typeof setTimeout>[] = []
+  const _animTimers = new Set<ReturnType<typeof setTimeout>>()
   let rafBuffer: NormalizedNote[] = []
   let rafId: number | null = null
   let _paused = false
@@ -29,12 +29,12 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     animatingIds.value = next
 
     const timer = setTimeout(() => {
+      _animTimers.delete(timer)
       const after = new Set(animatingIds.value)
       for (const id of batchIds) after.delete(id)
       animatingIds.value = after
-      _animTimers = _animTimers.filter((t) => t !== timer)
     }, 700)
-    _animTimers.push(timer)
+    _animTimers.add(timer)
   }
 
   function syncNoteIds() {
@@ -123,7 +123,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       rafId = null
     }
     for (const t of _animTimers) clearTimeout(t)
-    _animTimers = []
+    _animTimers.clear()
     animatingIds.value = new Set()
     pendingNotes.value = []
     isAtTop.value = true
