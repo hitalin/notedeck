@@ -587,10 +587,11 @@ defineExpose({
 
 // Account buttons — same style as bottom bar tabs
 .accountStack {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 2px;
+  padding: 4px 0;
 }
 
 .accountBtn {
@@ -599,7 +600,7 @@ defineExpose({
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  padding: 8px 8px;
+  padding: 4px;
   border-radius: var(--nd-radius-sm);
   overflow: visible;
   opacity: 0.6;
@@ -612,8 +613,8 @@ defineExpose({
 }
 
 .addAccountIcon {
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -629,8 +630,8 @@ defineExpose({
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   object-fit: cover;
   display: block;
@@ -643,9 +644,9 @@ defineExpose({
 .serverBadge {
   position: absolute;
   top: -2px;
-  right: -4px;
-  width: 14px;
-  height: 14px;
+  right: -3px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   object-fit: cover;
   border: 1.5px solid var(--nd-navBg);
@@ -752,7 +753,7 @@ defineExpose({
 }
 
 .accountWrap {
-  position: relative;
+  // position: static — メニューはaccountStack基準で表示
 }
 
 .mobileOnly {
