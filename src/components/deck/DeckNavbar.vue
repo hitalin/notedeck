@@ -376,8 +376,8 @@ defineExpose({
               </button>
               <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" @close-all="emit('update:showSettingsMenu', false); emit('update:mobileDrawerOpen', false)" />
             </div>
-            <div :class="$style.divider" />
           </div>
+          <div v-if="isCompact" :class="$style.divider" />
 
           <!-- Post button -->
           <button
@@ -390,68 +390,70 @@ defineExpose({
             <span :class="$style.label">ノート</span>
           </button>
 
-          <div :class="$style.divider" />
-
-          <!-- Account avatars with dropdown menu -->
-          <div
-            v-for="acc in accountsStore.accounts"
-            :key="acc.id"
-            :class="$style.accountWrap"
-          >
-            <button
-              class="_button"
-              :class="[$style.item, $style.account]"
-              :title="getAccountLabel(acc)"
-              @click.stop="toggleAccountMenu(acc.id)"
-            >
-              <div :class="$style.avatarWrap">
-                <img
-                  v-if="isGuestAccount(acc)"
-                  src="/avatar-guest.svg"
-                  :class="$style.avatar"
-                />
-                <img
-                  v-else-if="acc.avatarUrl"
-                  :src="acc.avatarUrl"
-                  :class="$style.avatar"
-                />
-                <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
-                <img
-                  :src="getServerIconUrl(acc.host)"
-                  :class="$style.serverBadge"
-                  :title="acc.host"
-                />
-                <span
-                  :class="[$style.onlineIndicator, onlineStatusClass(acc.id)]"
+          <!-- Account avatars -->
+          <div :class="$style.accountStack">
+            <div :class="$style.accountScroll">
+              <div
+                v-for="acc in accountsStore.accounts"
+                :key="acc.id"
+                :class="$style.accountWrap"
+              >
+                <button
+                  class="_button"
+                  :class="$style.accountBtn"
+                  :title="getAccountLabel(acc)"
+                  @click.stop="toggleAccountMenu(acc.id)"
+                >
+                  <div :class="$style.avatarWrap">
+                    <img
+                      v-if="isGuestAccount(acc)"
+                      src="/avatar-guest.svg"
+                      :class="$style.avatar"
+                    />
+                    <img
+                      v-else-if="acc.avatarUrl"
+                      :src="acc.avatarUrl"
+                      :class="$style.avatar"
+                    />
+                    <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
+                    <img
+                      :src="getServerIconUrl(acc.host)"
+                      :class="$style.serverBadge"
+                      :title="acc.host"
+                    />
+                    <span
+                      :class="[$style.onlineIndicator, onlineStatusClass(acc.id)]"
+                    />
+                  </div>
+                </button>
+                <NavAccountMenu
+                  :show="accountMenuId === acc.id"
+                  :account="acc"
+                  :nav-collapsed="navCollapsed"
+                  :modes="accountModes[acc.id] ?? {}"
+                  :toggling-mode="togglingMode"
+                  :mode-error="modeError"
+                  :is-admin="accountIsAdmin[acc.id] ?? false"
+                  @toggle-mode="toggleAccountMode(acc.id, $event)"
+                  @logout="showLogoutDialog(acc.id)"
+                  @relogin="(host: string) => closeDrawerAndDo(() => navigateToLogin(host))"
                 />
               </div>
-              <span :class="$style.label">{{ getAccountLabel(acc) }}</span>
-            </button>
-
-            <NavAccountMenu
-              :show="accountMenuId === acc.id"
-              :account="acc"
-              :nav-collapsed="navCollapsed"
-              :modes="accountModes[acc.id] ?? {}"
-              :toggling-mode="togglingMode"
-              :mode-error="modeError"
-              :is-admin="accountIsAdmin[acc.id] ?? false"
-              @toggle-mode="toggleAccountMode(acc.id, $event)"
-              @logout="showLogoutDialog(acc.id)"
-              @relogin="(host: string) => closeDrawerAndDo(() => navigateToLogin(host))"
-            />
+              <button
+                class="_button"
+                :class="$style.accountBtn"
+                title="アカウント追加"
+                @click="closeDrawerAndDo(navigateToLogin)"
+              >
+                <div :class="$style.addAccountIcon">
+                  <i class="ti ti-plus" />
+                </div>
+              </button>
+            </div>
           </div>
 
-          <!-- Add account -->
-          <button
-            class="_button"
-            :class="[$style.item, $style.addAccount]"
-            title="アカウント追加"
-            @click="closeDrawerAndDo(navigateToLogin)"
-          >
-            <i class="ti ti-plus" />
-            <span :class="$style.label">アカウント追加</span>
-          </button>
+
+
         </div>
       </div>
 
@@ -585,9 +587,53 @@ defineExpose({
   text-overflow: ellipsis;
 }
 
-.account {
-  gap: 10px;
-  padding-left: 4px;
+// Account buttons
+.accountStack {
+  position: relative;
+  margin-top: 8px;
+}
+
+.accountScroll {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.accountBtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 6px;
+  border-radius: var(--nd-radius-sm);
+  overflow: visible;
+  opacity: 0.6;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.addAccountIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  font-size: 14px;
 }
 
 .avatarWrap {
@@ -644,18 +690,8 @@ defineExpose({
   background: var(--nd-statusUnknown);
 }
 
-.addAccount {
-  opacity: 0.5;
-  font-size: 0.8em;
 
-  &:hover {
-    opacity: 0.8;
-  }
 
-  .ti {
-    font-size: 16px;
-  }
-}
 
 .postBtn {
   display: flex;
@@ -729,7 +765,8 @@ defineExpose({
 }
 
 .accountWrap {
-  position: relative;
+  // 展開時: position: static → メニューはaccountStack基準
+  // 折りたたみ時: position: relative → メニューはアカウント位置基準（コンテナクエリで切替）
 }
 
 .mobileOnly {
@@ -777,6 +814,23 @@ defineExpose({
     padding: 8px;
     width: auto;
     border-radius: var(--nd-radius-full);
+  }
+
+  .accountStack {
+    position: static;
+  }
+
+  .accountScroll {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .accountWrap {
+    position: relative;
+  }
+
+  .accountBtn {
+    padding: 6px 0;
   }
 
   .section {

@@ -5,6 +5,7 @@ import '@scalar/api-reference/style.css'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
+import { invoke } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -19,8 +20,8 @@ const error = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    const res = await fetch('http://127.0.0.1:19820/api/openapi.json')
-    spec.value = await res.text()
+    const data = await invoke('get_openapi_spec')
+    spec.value = JSON.stringify(data)
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   }

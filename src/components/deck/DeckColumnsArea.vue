@@ -186,11 +186,11 @@ function onColumnsWheel(e: WheelEvent) {
   columnsRef.value.scrollLeft += dy
 }
 
-// Scroll position → active column index
+// Scroll position → active group index
 function onColumnsScroll() {
   if (!columnsRef.value) return
   if (isCompact.value) {
-    // Mobile: 1 column = full viewport width
+    // Mobile: 1 group = full viewport width
     const w = columnsRef.value.clientWidth
     if (w === 0) return
     emit('active-column-index', Math.round(columnsRef.value.scrollLeft / w))
@@ -204,9 +204,8 @@ function onColumnsScroll() {
     const viewPoint = el.scrollLeft + el.clientWidth * progress
     const sections = el.querySelectorAll<HTMLElement>(`:scope > section`)
 
-    let bestFlatIdx = 0
+    let bestGroupIdx = 0
     let bestDist = Infinity
-    let flatIdx = 0
     for (let gi = 0; gi < layout.length; gi++) {
       const section = sections[gi]
       if (section) {
@@ -214,12 +213,11 @@ function onColumnsScroll() {
         const dist = Math.abs(sectionCenter - viewPoint)
         if (dist < bestDist) {
           bestDist = dist
-          bestFlatIdx = flatIdx
+          bestGroupIdx = gi
         }
       }
-      flatIdx += layout[gi]?.length ?? 0
     }
-    emit('active-column-index', bestFlatIdx)
+    emit('active-column-index', bestGroupIdx)
   }
 }
 
@@ -248,7 +246,7 @@ watch(
   { flush: 'post' },
 )
 
-// Scroll to column by flat index
+// Scroll to group by group index
 function scrollToColumn(index: number) {
   if (!columnsRef.value) return
   if (isCompact.value) {
@@ -259,26 +257,13 @@ function scrollToColumn(index: number) {
       behavior: 'instant',
     })
   } else {
-    // Desktop: find the section containing the flat index and scroll to it
     const sections =
       columnsRef.value.querySelectorAll<HTMLElement>(`:scope > section`)
-    const layout = deckStore.windowLayout
-    let flatIdx = 0
-    for (let gi = 0; gi < layout.length; gi++) {
-      const group = layout[gi]
-      if (!group) continue
-      for (let ci = 0; ci < group.length; ci++) {
-        if (flatIdx === index) {
-          sections[gi]?.scrollIntoView({
-            behavior: 'smooth',
-            inline: 'start',
-            block: 'nearest',
-          })
-          return
-        }
-        flatIdx++
-      }
-    }
+    sections[index]?.scrollIntoView({
+      behavior: 'smooth',
+      inline: 'start',
+      block: 'nearest',
+    })
   }
 }
 

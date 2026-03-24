@@ -448,8 +448,13 @@ async fn execute_command(
 
 // --- OpenAPI docs ---
 
+/// Return the OpenAPI spec (used by both the HTTP endpoint and the Tauri command).
+pub fn openapi_spec() -> utoipa::openapi::OpenApi {
+    ApiDoc::openapi()
+}
+
 async fn openapi_json() -> Json<utoipa::openapi::OpenApi> {
-    Json(ApiDoc::openapi())
+    Json(openapi_spec())
 }
 
 async fn openapi_docs() -> axum::response::Html<&'static str> {

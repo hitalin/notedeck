@@ -156,12 +156,18 @@ function columnLabel(col: DeckColumn): string {
   return typeLabel
 }
 
-function columnIcon(col: DeckColumn): string {
-  return `ti ${COLUMN_TYPE_ICONS[col.type] ?? 'ti-layout-columns'}`
+const TL_ICONS: Record<string, string> = {
+  home: 'ti-home',
+  local: 'ti-planet',
+  social: 'ti-rocket',
+  global: 'ti-whirl',
 }
 
-function columnAccount(col: DeckColumn): string {
-  return col.account ?? col.accountId ?? ''
+function columnIcon(col: DeckColumn): string {
+  if (col.type === 'timeline' && col.tl) {
+    return `ti ${TL_ICONS[col.tl] ?? COLUMN_TYPE_ICONS.timeline ?? 'ti-layout-columns'}`
+  }
+  return `ti ${COLUMN_TYPE_ICONS[col.type] ?? 'ti-layout-columns'}`
 }
 
 function columnAvatarUrl(col: DeckColumn): string | null {
@@ -176,6 +182,34 @@ function columnServerIconUrl(col: DeckColumn): string | null {
   if (!account) return null
   const server = serversStore.servers.get(account.host)
   return server?.iconUrl ?? `https://${account.host}/favicon.ico`
+}
+
+// --- Group helpers (1 group = 1 button) ---
+
+function groupPrimaryColumn(group: string[]): DeckColumn | null {
+  for (const id of group) {
+    const col = deckStore.getColumn(id)
+    if (col) return col
+  }
+  return null
+}
+
+function groupLabel(group: string[]): string {
+  const labels = group
+    .map((id) => deckStore.getColumn(id))
+    .filter((col): col is DeckColumn => col != null)
+    .map((col) => columnLabel(col))
+  return labels.join(' / ')
+}
+
+function groupAvatarUrl(group: string[]): string | null {
+  const col = groupPrimaryColumn(group)
+  return col ? columnAvatarUrl(col) : null
+}
+
+function groupServerIconUrl(group: string[]): string | null {
+  const col = groupPrimaryColumn(group)
+  return col ? columnServerIconUrl(col) : null
 }
 
 // --- Drag and drop (reorder layout groups, pointer-based like DeckColumnsArea) ---
@@ -264,8 +298,12 @@ function onDragEnd() {
   }
 }
 
-function removeColumn(id: string) {
-  deckStore.removeColumn(id)
+function removeGroup(groupIdx: number) {
+  const group = deckStore.windowLayout[groupIdx]
+  if (!group) return
+  for (const colId of group) {
+    deckStore.removeColumn(colId)
+  }
 }
 
 // --- Profile name editing ---
@@ -428,53 +466,38 @@ async function importFromClipboard() {
         </div>
 
         <div :class="$style.columnPreview">
-        <div
-          v-for="(group, groupIdx) in deckStore.windowLayout"
-          :key="`${groupIdx}:${group.join(',')}`"
-          :data-group-idx="groupIdx"
-          :class="[
-            $style.columnCard,
-            { [$style.dragging]: dragFromIndex === groupIdx },
-            { [$style.dragOver]: dragOverIndex === groupIdx },
-          ]"
-          @pointerdown="startDrag(groupIdx, $event)"
-        >
           <div
-            v-for="colId in group"
-            :key="colId"
-            :class="$style.columnCell"
+            v-for="(group, groupIdx) in deckStore.windowLayout"
+            :key="`${groupIdx}:${group.join(',')}`"
+            :data-group-idx="groupIdx"
+            :class="[
+              $style.columnTab,
+              { [$style.dragging]: dragFromIndex === groupIdx },
+              { [$style.dragOver]: dragOverIndex === groupIdx },
+            ]"
+            :title="groupLabel(group)"
+            @pointerdown="startDrag(groupIdx, $event)"
           >
-            <template v-if="deckStore.getColumn(colId)">
-              <div :class="$style.columnCellHeader" :title="columnLabel(deckStore.getColumn(colId)!)">
-                <i :class="[columnIcon(deckStore.getColumn(colId)!), $style.columnCellIcon]" />
-                <button
-                  class="_button"
-                  :class="$style.columnCellClose"
-                  title="削除"
-                  @click="removeColumn(colId)"
-                >
-                  <i class="ti ti-x" />
-                </button>
-              </div>
-              <div :class="$style.columnCellBody">
-                <img
-                  v-if="columnAvatarUrl(deckStore.getColumn(colId)!)"
-                  :src="columnAvatarUrl(deckStore.getColumn(colId)!) ?? undefined"
-                  :class="$style.columnAvatar"
-                />
-                <img
-                  v-if="columnServerIconUrl(deckStore.getColumn(colId)!)"
-                  :src="columnServerIconUrl(deckStore.getColumn(colId)!) ?? undefined"
-                  :class="$style.columnServerIcon"
-                />
-              </div>
-            </template>
+            <i v-if="groupPrimaryColumn(group)" :class="'ti ' + columnIcon(groupPrimaryColumn(group)!)" />
+            <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
+            <span v-if="groupServerIconUrl(group)" :class="$style.serverBadge">
+              <img :src="groupServerIconUrl(group)!" :class="$style.badgeImg" />
+            </span>
+            <span v-if="groupAvatarUrl(group)" :class="$style.accountBadge">
+              <img :src="groupAvatarUrl(group)!" :class="$style.badgeImg" />
+            </span>
+            <button
+              class="_button"
+              :class="$style.removeBtn"
+              @click.stop="removeGroup(groupIdx)"
+            >
+              <i class="ti ti-x" />
+            </button>
           </div>
-        </div>
 
-        <div v-if="deckStore.windowLayout.length === 0" :class="$style.emptyMessage">
-          カラムがありません
-        </div>
+          <div v-if="deckStore.windowLayout.length === 0" :class="$style.emptyMessage">
+            カラムがありません
+          </div>
         </div>
       </div>
     </div>
@@ -614,8 +637,6 @@ async function importFromClipboard() {
   flex-direction: column;
   gap: 8px;
   padding: 12px 10px;
-  flex: 1;
-  min-height: 0;
 }
 
 .sectionLabel {
@@ -636,47 +657,37 @@ async function importFromClipboard() {
   text-align: center;
 }
 
-// --- Column preview (horizontal scroll) ---
+// --- Column preview (minimap — mirrors DeckColumnsArea) ---
 
 .columnPreview {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 4px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior: contain;
-  padding: 4px 0 8px;
-  flex: 1;
-  min-height: 100px;
-
-  // Thin scrollbar
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: var(--nd-divider);
-    border-radius: 2px;
-  }
+  padding: 8px 4px;
+  background: var(--nd-panel);
+  border-radius: var(--nd-radius-sm);
 }
 
-.columnCard {
-  flex: 0 0 auto;
-  width: 44px;
+// Mirrors .tab in DeckBottomBar
+.columnTab {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  background: var(--nd-panel);
-  border-radius: 10px;
-  overflow: clip;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  font-size: 16px;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  border-radius: var(--nd-radius-sm);
   cursor: grab;
   user-select: none;
-  box-shadow: 0 0 0 1px var(--nd-divider);
-  transition: opacity 0.15s, box-shadow 0.15s;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 
   &:hover {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--nd-accent) 50%, var(--nd-divider));
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
   }
 
   &.dragging {
@@ -685,87 +696,83 @@ async function importFromClipboard() {
   }
 
   &.dragOver {
-    box-shadow: 0 0 0 2px var(--nd-accent);
+    outline: 2px solid var(--nd-accent);
+    outline-offset: 1px;
   }
 }
 
-// --- Column cell (mimics DeckColumn) ---
-
-.columnCell {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-
-  & + .columnCell {
-    border-top: 2px solid var(--nd-deckBg, var(--nd-bg));
-  }
+.stackBadge {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--nd-accent);
+  color: var(--nd-bg);
+  font-size: 9px;
+  font-weight: bold;
+  line-height: 14px;
+  text-align: center;
 }
 
-.columnCellHeader {
+.removeBtn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--nd-error, #ec4137);
+  color: #fff;
+  font-size: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  height: 26px;
-  padding: 0 4px;
-  background: var(--nd-panelHeaderBg);
-  color: var(--nd-panelHeaderFg);
-  flex-shrink: 0;
-  position: relative;
-}
-
-.columnCellIcon {
-  font-size: 20px;
-  color: var(--nd-panelHeaderFg);
-  opacity: 0.7;
-}
-
-.columnCellClose {
-  position: absolute;
-  right: 2px;
-  font-size: 12px;
-  color: var(--nd-panelHeaderFg);
+  z-index: 1;
   opacity: 0;
-  padding: 2px;
-  border-radius: var(--nd-radius-sm);
-  transition: opacity 0.1s;
+  transition: opacity var(--nd-duration-fast);
 
-  .columnCard:hover & {
-    opacity: 0.4;
+  .columnTab:hover & {
+    opacity: 1;
   }
 
   &:hover {
-    opacity: 1 !important;
-    color: var(--nd-error);
-    background: color-mix(in srgb, var(--nd-error) 10%, transparent);
+    filter: brightness(0.85);
   }
 }
 
-.columnCellBody {
-  flex: 1;
+// Mirrors badge styles in DeckBottomBar
+.serverBadge,
+.accountBadge {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid var(--nd-panel);
+  background: var(--nd-panel);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 4px;
-  background: var(--nd-panel);
 }
 
-.columnAvatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+.serverBadge {
+  top: 2px;
+  right: 2px;
+}
+
+.accountBadge {
+  bottom: 2px;
+  left: 2px;
+}
+
+.badgeImg {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-}
-
-.columnServerIcon {
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  object-fit: contain;
-  opacity: 0.5;
+  border-radius: 50%;
 }
 
 .emptyMessage {

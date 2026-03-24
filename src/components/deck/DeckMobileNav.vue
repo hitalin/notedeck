@@ -44,9 +44,14 @@ const columnMap = computed(() => {
   return map
 })
 
-const visibleColumns = computed(() =>
-  props.layout.flat().filter((id) => columnMap.value.has(id)),
+// グループ単位: 各グループの先頭カラムIDを代表として使う
+const visibleGroups = computed(() =>
+  props.layout.filter((group) => group.some((id) => columnMap.value.has(id))),
 )
+
+function groupPrimaryId(group: string[]): string {
+  return group.find((id) => columnMap.value.has(id)) ?? group[0] ?? ''
+}
 
 const hasMultipleAccounts = computed(() => accountsStore.accounts.length > 1)
 
@@ -144,31 +149,32 @@ watch(
     </button>
     <div ref="mobileNavRef" :class="$style.tabsScroll">
       <button
-        v-for="(colId, i) in visibleColumns"
-        :key="colId"
+        v-for="(group, gi) in visibleGroups"
+        :key="groupPrimaryId(group)"
         class="_button"
-        :class="[$style.tab, { [$style.active]: activeColumnIndex === i }]"
-        @click="emit('scroll-to-column', i)"
+        :class="[$style.tab, { [$style.active]: activeColumnIndex === gi }]"
+        @click="emit('scroll-to-column', gi)"
       >
-        <i :class="'ti ti-' + columnIcon(colId)" />
-        <span v-if="columnServerIcon(colId)" :class="$style.serverBadge">
-          <img :src="columnServerIcon(colId)!" :class="$style.badgeImg" width="14" height="14" />
+        <i :class="'ti ti-' + columnIcon(groupPrimaryId(group))" />
+        <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
+        <span v-if="columnServerIcon(groupPrimaryId(group))" :class="$style.serverBadge">
+          <img :src="columnServerIcon(groupPrimaryId(group))!" :class="$style.badgeImg" width="14" height="14" />
         </span>
-        <span v-else-if="columnAccount(colId)" :class="$style.serverBadge">
+        <span v-else-if="columnAccount(groupPrimaryId(group))" :class="$style.serverBadge">
           <span :class="$style.badgeInitial">{{
-            columnAccount(colId)!.host.charAt(0).toUpperCase()
+            columnAccount(groupPrimaryId(group))!.host.charAt(0).toUpperCase()
           }}</span>
         </span>
-        <span v-if="columnAccount(colId)" :class="$style.accountBadge">
+        <span v-if="columnAccount(groupPrimaryId(group))" :class="$style.accountBadge">
           <img
-            v-if="columnAccount(colId)!.avatarUrl"
-            :src="columnAccount(colId)!.avatarUrl!"
+            v-if="columnAccount(groupPrimaryId(group))!.avatarUrl"
+            :src="columnAccount(groupPrimaryId(group))!.avatarUrl!"
             :class="$style.badgeImg"
             width="14"
             height="14"
           />
           <span v-else :class="$style.badgeInitial">{{
-            columnAccount(colId)!.username.charAt(0).toUpperCase()
+            columnAccount(groupPrimaryId(group))!.username.charAt(0).toUpperCase()
           }}</span>
         </span>
       </button>
@@ -255,6 +261,22 @@ watch(
     border-radius: 3px 3px 0 0;
     background: var(--nd-accent);
   }
+}
+
+.stackBadge {
+  position: absolute;
+  top: 5px;
+  left: calc(50% - 16px);
+  min-width: 12px;
+  height: 12px;
+  padding: 0 2px;
+  border-radius: 6px;
+  background: var(--nd-accent);
+  color: var(--nd-bg);
+  font-size: 8px;
+  font-weight: bold;
+  line-height: 12px;
+  text-align: center;
 }
 
 .serverBadge,

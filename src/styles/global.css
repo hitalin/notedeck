@@ -98,6 +98,8 @@
   --nd-duration-slower: 0.3s;
   /* Easing */
   --nd-ease-pop: cubic-bezier(0, 0, 0.2, 1);
+  /* App chrome offsets (overridden per platform) */
+  --nd-app-inset-top: 0px;
   /* Z-index layers */
   --nd-z-menu: 100;
   --nd-z-overlay: 1000;
@@ -113,6 +115,17 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+/* Desktop Tauri: offset for custom titlebar (32px) */
+html[data-env="tauri"]:not([data-platform="android"]):not([data-platform="ios"]) {
+  --nd-app-inset-top: 32px;
+}
+
+/* Mobile Tauri: offset for system status bar */
+html[data-platform="android"],
+html[data-platform="ios"] {
+  --nd-app-inset-top: env(safe-area-inset-top);
 }
 
 html {

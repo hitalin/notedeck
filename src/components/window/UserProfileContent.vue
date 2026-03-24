@@ -224,8 +224,8 @@ const qrCodeContainerEl = ref<HTMLDivElement | null>(null)
 
 async function fetchImageAsDataUrl(url: string): Promise<string | undefined> {
   try {
-    const proxyUrl = `http://127.0.0.1:19820/proxy/image?url=${encodeURIComponent(url)}`
-    const res = await fetch(proxyUrl)
+    const fetchUrl = proxyUrl(url) ?? url
+    const res = await fetch(fetchUrl)
     const blob = await res.blob()
     return await new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
@@ -1035,8 +1035,6 @@ async function handlePosted(editedNoteId?: string) {
   position: absolute;
   top: 170px;
   left: 16px;
-  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
-  border: 4px solid var(--nd-bg);
   z-index: 2;
 }
 

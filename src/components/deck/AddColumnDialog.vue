@@ -540,7 +540,7 @@ function close() {
             <i class="ti ti-api" />
             <span>APIコンソール</span>
           </button>
-          <button v-if="!isCompact" class="_button" :class="$style.addTypeBtn" @click="selectColumnType('apiDocs')">
+          <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('apiDocs')">
             <i class="ti ti-book" />
             <span>APIドキュメント</span>
           </button>
