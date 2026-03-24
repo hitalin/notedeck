@@ -391,38 +391,53 @@ defineExpose({
 
           <!-- Account avatars -->
           <div :class="$style.accountStack">
-            <!-- Scrollable avatar row -->
             <div :class="$style.accountScroll">
-              <button
+              <div
                 v-for="acc in accountsStore.accounts"
                 :key="acc.id"
-                class="_button"
-                :class="$style.accountBtn"
-                :title="getAccountLabel(acc)"
-                @click.stop="toggleAccountMenu(acc.id)"
+                :class="$style.accountWrap"
               >
-                <div :class="$style.avatarWrap">
-                  <img
-                    v-if="isGuestAccount(acc)"
-                    src="/avatar-guest.svg"
-                    :class="$style.avatar"
-                  />
-                  <img
-                    v-else-if="acc.avatarUrl"
-                    :src="acc.avatarUrl"
-                    :class="$style.avatar"
-                  />
-                  <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
-                  <img
-                    :src="getServerIconUrl(acc.host)"
-                    :class="$style.serverBadge"
-                    :title="acc.host"
-                  />
-                  <span
-                    :class="[$style.onlineIndicator, onlineStatusClass(acc.id)]"
-                  />
-                </div>
-              </button>
+                <button
+                  class="_button"
+                  :class="$style.accountBtn"
+                  :title="getAccountLabel(acc)"
+                  @click.stop="toggleAccountMenu(acc.id)"
+                >
+                  <div :class="$style.avatarWrap">
+                    <img
+                      v-if="isGuestAccount(acc)"
+                      src="/avatar-guest.svg"
+                      :class="$style.avatar"
+                    />
+                    <img
+                      v-else-if="acc.avatarUrl"
+                      :src="acc.avatarUrl"
+                      :class="$style.avatar"
+                    />
+                    <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
+                    <img
+                      :src="getServerIconUrl(acc.host)"
+                      :class="$style.serverBadge"
+                      :title="acc.host"
+                    />
+                    <span
+                      :class="[$style.onlineIndicator, onlineStatusClass(acc.id)]"
+                    />
+                  </div>
+                </button>
+                <NavAccountMenu
+                  :show="accountMenuId === acc.id"
+                  :account="acc"
+                  :nav-collapsed="navCollapsed"
+                  :modes="accountModes[acc.id] ?? {}"
+                  :toggling-mode="togglingMode"
+                  :mode-error="modeError"
+                  :is-admin="accountIsAdmin[acc.id] ?? false"
+                  @toggle-mode="toggleAccountMode(acc.id, $event)"
+                  @logout="showLogoutDialog(acc.id)"
+                  @relogin="(host: string) => closeDrawerAndDo(() => navigateToLogin(host))"
+                />
+              </div>
               <button
                 class="_button"
                 :class="$style.accountBtn"
@@ -434,21 +449,6 @@ defineExpose({
                 </div>
               </button>
             </div>
-            <!-- Menus rendered outside scroll area -->
-            <NavAccountMenu
-              v-for="acc in accountsStore.accounts"
-              :key="'menu-' + acc.id"
-              :show="accountMenuId === acc.id"
-              :account="acc"
-              :nav-collapsed="navCollapsed"
-              :modes="accountModes[acc.id] ?? {}"
-              :toggling-mode="togglingMode"
-              :mode-error="modeError"
-              :is-admin="accountIsAdmin[acc.id] ?? false"
-              @toggle-mode="toggleAccountMode(acc.id, $event)"
-              @logout="showLogoutDialog(acc.id)"
-              @relogin="(host: string) => closeDrawerAndDo(() => navigateToLogin(host))"
-            />
           </div>
 
 
@@ -764,7 +764,8 @@ defineExpose({
 }
 
 .accountWrap {
-  // position: static — メニューはaccountStack基準で表示
+  // 展開時: position: static → メニューはaccountStack基準
+  // 折りたたみ時: position: relative → メニューはアカウント位置基準（コンテナクエリで切替）
 }
 
 .mobileOnly {
@@ -814,10 +815,17 @@ defineExpose({
     border-radius: var(--nd-radius-full);
   }
 
+  .accountStack {
+    position: static;
+  }
+
   .accountScroll {
     flex-direction: column;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: visible;
+  }
+
+  .accountWrap {
+    position: relative;
   }
 
   .accountBtn {
