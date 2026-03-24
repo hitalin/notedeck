@@ -47,7 +47,7 @@ export function useColumnTabs(
   columns: () => DeckColumn[],
   layout: () => string[][],
   activeColumnIndex: () => number,
-  scrollContainerRef: Ref<HTMLElement | null>,
+  scrollContainerRef: Ref<HTMLElement | null | undefined>,
 ) {
   const accountsStore = useAccountsStore()
   const serversStore = useServersStore()
