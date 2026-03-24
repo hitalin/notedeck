@@ -110,7 +110,7 @@ const {
       <template v-if="!(isLoading && notes.length === 0)">
         <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" :class="$style.tlScroller" @scroll="handleScroll">
           <template #default="{ item, index }">
-            <div :data-index="index">
+            <div>
               <MkNote
                 :note="item"
                 :focused="item.id === focusedNoteId"

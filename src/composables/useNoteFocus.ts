@@ -32,7 +32,16 @@ export interface NoteActionHandlers {
   edit?: (note: NormalizedNote) => void
 }
 
-function scrollTo(scroller: ShallowRef<HTMLElement | null>, index: number) {
+function scrollTo(
+  scroller: ShallowRef<HTMLElement | null>,
+  index: number,
+  scrollToIndexFn?: (index: number) => void,
+) {
+  if (scrollToIndexFn) {
+    scrollToIndexFn(index)
+    return
+  }
+  // Fallback for non-virtualized contexts
   const el = scroller.value
   if (!el) return
   const item = el.querySelector(`[data-index="${index}"]`) as HTMLElement | null
@@ -46,6 +55,8 @@ export function useNoteFocus(
   handlers: NoteActionHandlers,
   onOpen?: (note: NormalizedNote) => void,
   accountId?: string,
+  /** Virtualizer scroll callback — when provided, used instead of querySelector-based scrolling */
+  scrollToIndex?: (index: number) => void,
 ) {
   const deckStore = useDeckStore()
   const pinnedReactionsStore = usePinnedReactionsStore()
@@ -69,18 +80,18 @@ export function useNoteFocus(
     if (notes.value.length === 0) return
     const next = Math.min(focusedIndex.value + 1, notes.value.length - 1)
     focusedIndex.value = next
-    scrollTo(scroller, next)
+    scrollTo(scroller, next, scrollToIndex)
   }
 
   function focusPrev() {
     if (notes.value.length === 0) return
     if (focusedIndex.value <= 0) {
       focusedIndex.value = -1
-      scrollTo(scroller, 0)
+      scrollTo(scroller, 0, scrollToIndex)
       return
     }
     focusedIndex.value -= 1
-    scrollTo(scroller, focusedIndex.value)
+    scrollTo(scroller, focusedIndex.value, scrollToIndex)
   }
 
   function clearFocus() {

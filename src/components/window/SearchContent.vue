@@ -534,7 +534,7 @@ setTimeout(() => searchInput.value?.focus(), 100)
       @scroll="handleScroll"
     >
       <template #default="{ item, index }">
-        <div :data-index="index">
+        <div>
           <MkNote
             :note="item"
             @react="handlers.reaction"

@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T extends { id: string }">
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -17,15 +17,22 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   scroll: [event: Event]
+  'near-end': []
 }>()
 
 const scrollContainer = ref<HTMLElement | null>(null)
 
+// Dynamic estimateSize — moving average of measured item heights.
+// Updated every 20 measurements to avoid scrollbar thumb jitter.
+let _measuredSum = 0
+let _measuredCount = 0
+const dynamicEstimate = ref(props.estimatedHeight)
+
 const virtualizerOptions = computed(() => ({
   count: props.items.length,
   getScrollElement: () => scrollContainer.value,
-  estimateSize: () => props.estimatedHeight,
-  overscan: 5,
+  estimateSize: () => dynamicEstimate.value,
+  overscan: 7,
   getItemKey: (index: number) => props.items[index]?.id ?? index,
 }))
 
@@ -35,20 +42,46 @@ const virtualItems = computed(() => virtualizer.value.getVirtualItems())
 const totalSize = computed(() => virtualizer.value.getTotalSize())
 
 function measureElement(el: unknown) {
-  if (el instanceof HTMLElement) {
-    virtualizer.value.measureElement(el)
+  if (!(el instanceof HTMLElement)) return
+  virtualizer.value.measureElement(el)
+  const h = el.offsetHeight
+  if (h > 0) {
+    _measuredSum += h
+    _measuredCount++
+    if (_measuredCount % 20 === 0) {
+      dynamicEstimate.value = Math.round(_measuredSum / _measuredCount)
+    }
   }
 }
 
-// Re-measure all when items change (e.g. tab switch, load-more)
-watch(
-  () => props.items.length,
-  () => virtualizer.value.measure(),
-)
+// Near-end detection for load-more, throttled to 200ms.
+let _lastNearEnd = 0
+function onScroll(e: Event) {
+  emit('scroll', e)
+  const now = Date.now()
+  if (now - _lastNearEnd < 200) return
+  const items = virtualizer.value.getVirtualItems()
+  const last = items[items.length - 1]
+  if (last && last.index >= props.items.length - 5) {
+    _lastNearEnd = now
+    emit('near-end')
+  }
+}
 
 defineExpose({
-  /** Expose the raw DOM element so composables can read scrollTop, scrollHeight, etc. */
   getElement: () => scrollContainer.value,
+  scrollToIndex: (
+    index: number,
+    opts?: {
+      align?: 'auto' | 'start' | 'center' | 'end'
+      behavior?: ScrollBehavior
+    },
+  ) => {
+    virtualizer.value.scrollToIndex(index, {
+      align: opts?.align ?? 'auto',
+      behavior: opts?.behavior ?? 'smooth',
+    })
+  },
 })
 
 defineSlots<{
@@ -62,7 +95,7 @@ defineSlots<{
   <div
     ref="scrollContainer"
     :class="$style.noteScroller"
-    @scroll.passive="emit('scroll', $event)"
+    @scroll.passive="onScroll"
   >
     <slot name="prepend" />
     <div :class="$style.noteList" :style="{ height: `${totalSize}px` }">

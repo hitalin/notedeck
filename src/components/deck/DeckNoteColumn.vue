@@ -45,6 +45,7 @@ const {
   handleScroll,
   handlePosted,
   removeNote,
+  loadMore,
   refresh,
   reconnect,
   switchWithSnapshot,
@@ -176,9 +177,10 @@ defineExpose({
           :animating-ids="animatingIds"
           :class="$style.tlScroller"
           @scroll="handleScroll"
+          @near-end="loadMore"
         >
           <template #default="{ item, index }">
-            <div :data-index="index">
+            <div>
               <MkNote
                 :note="item"
                 :focused="item.id === focusedNoteId"
