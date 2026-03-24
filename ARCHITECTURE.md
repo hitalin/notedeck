@@ -356,14 +356,18 @@ notecli tl -f json | jq '.[].text'
 ### Vue Vapor モード移行（[#52](https://github.com/hitalin/notedeck/issues/52)）
 
 Vue 3.6 で導入予定の Vapor モード（仮想DOMレス）への移行を計画中。
-全96コンポーネントが **100% 互換**（確認済み）。Vue 3.6 安定版リリース後、即座に移行可能。
+コーディング制約（`<script setup>` 必須、`h()`/JSX 禁止等）は全コンポーネントで遵守済み。
 
-**移行時にテストが必要な箇所:**
+**残る Vapor 非互換箇所（初期リリースで未サポートの組み込みコンポーネント）:**
 
 | 項目 | 件数 | 備考 |
 |---|---|---|
-| `<Teleport>` | 41 | モーダル重ね合わせの動作確認 |
-| `<Transition>` / `<TransitionGroup>` | 27 | アニメーション挙動の検証 |
+| `<Transition>` | ~20 | ポップアップ・モーダル・メニュー等のアニメーション |
+| `<TransitionGroup>` | 3 | Toast通知、リアクション表示、ウィンドウレイヤー |
+| `<Teleport>` | 41 | モーダル重ね合わせ（Vapor 対応予定だが要検証） |
+
+**仮想スクロール導入による進展:**
+NoteScroller（タイムライン描画の中核）から `<TransitionGroup>` を除去し、CSS `@keyframes` + データレイヤーマーキングに移行済み。最もパフォーマンスクリティカルなコンポーネントが Vapor 即座対応可能になった。残りの `<Transition>` / `<TransitionGroup>` は UI 装飾用途であり、NoteScroller と同じパターン（CSS @keyframes 化）で段階的に置換可能。
 
 ---
 
