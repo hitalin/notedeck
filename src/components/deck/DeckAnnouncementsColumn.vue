@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import MkMfm from '@/components/common/MkMfm.vue'
-import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
@@ -150,12 +149,8 @@ onUnmounted(() => {
     </div>
 
     <div v-else :class="$style.announcementsBody">
-      <div v-if="isLoading && announcements.length === 0">
-        <MkSkeleton v-for="i in 3" :key="i" />
-      </div>
-
       <div
-        v-else-if="announcements.length === 0"
+        v-if="announcements.length === 0 && !isLoading"
         :class="$style.columnEmpty"
       >
         お知らせはありません

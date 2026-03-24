@@ -3,7 +3,6 @@ import { onMounted, ref } from 'vue'
 import type { NormalizedUser } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
-import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNavigation } from '@/composables/useNavigation'
 import { getAccountAvatarUrl } from '@/stores/accounts'
@@ -122,12 +121,8 @@ onMounted(() => {
     </div>
 
     <div v-else :class="$style.frBody">
-      <div v-if="isLoading && requests.length === 0">
-        <MkSkeleton v-for="i in 3" :key="i" />
-      </div>
-
       <div
-        v-else-if="requests.length === 0"
+        v-if="requests.length === 0 && !isLoading"
         :class="$style.columnEmpty"
       >
         フォローリクエストはありません

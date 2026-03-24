@@ -7,7 +7,6 @@ const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
-import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useNoteColumn } from '@/composables/useNoteColumn'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -108,11 +107,7 @@ const {
           </div>
         </div>
       </div>
-      <div v-if="isLoading && notes.length === 0">
-        <MkSkeleton v-for="i in 5" :key="i" />
-      </div>
-
-      <template v-else>
+      <template v-if="!(isLoading && notes.length === 0)">
         <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" :class="$style.tlScroller" @scroll="handleScroll">
           <template #default="{ item, index }">
             <div :data-index="index">

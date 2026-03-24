@@ -35,14 +35,7 @@ if (isDesktop) {
 let cleanupPipListener: (() => void) | null = null
 
 function dismissSplash() {
-  const splash = document.getElementById('nd-splash')
-  if (!splash) return
-  splash.style.opacity = '0'
-  splash.addEventListener('transitionend', () => splash.remove(), {
-    once: true,
-  })
-  // Fallback: remove after 300ms if transitionend never fires (CSP may block inline transition)
-  setTimeout(() => splash.remove(), 300)
+  document.getElementById('nd-splash')?.remove()
 }
 
 onMounted(async () => {
@@ -57,10 +50,11 @@ onMounted(async () => {
   // NOTE: setDecorations(false) は呼ばない。config で既に false であり、
   // Windows で再度呼ぶとウィンドウスタイル再計算で非クライアント領域が復活する。
   if (isTauri) {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    const currentWindow = getCurrentWindow()
-    const { catchIgnore } = await import('@/utils/logger')
-    await currentWindow.show().catch(catchIgnore('window.show'))
+    const [{ getCurrentWindow }, { catchIgnore }] = await Promise.all([
+      import('@tauri-apps/api/window'),
+      import('@/utils/logger'),
+    ])
+    await getCurrentWindow().show().catch(catchIgnore('window.show'))
   }
 
   // Dismiss splash screen as soon as Vue app is mounted

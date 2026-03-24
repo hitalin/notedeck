@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ServerEmoji } from '@/adapters/types'
-import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -209,12 +208,7 @@ onMounted(() => {
         </button>
       </div>
 
-      <!-- Loading -->
-      <div v-if="isLoading && allEmojis.length === 0" :class="$style.emojiLoading">
-        <MkSkeleton v-for="i in 3" :key="i" />
-      </div>
-
-      <div v-else-if="filteredEmojis.length === 0" :class="$style.columnEmpty">
+      <div v-if="filteredEmojis.length === 0 && !isLoading" :class="$style.columnEmpty">
         絵文字が見つかりません
       </div>
 
@@ -323,10 +317,6 @@ onMounted(() => {
     background: var(--nd-accent);
     color: var(--nd-fgOnAccent, #fff);
   }
-}
-
-.emojiLoading {
-  padding: 16px;
 }
 
 .emojiScroller {

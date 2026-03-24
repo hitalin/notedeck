@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import DOMPurify from 'dompurify'
 import { computed, onMounted, ref } from 'vue'
-import MkSkeleton from '@/components/common/MkSkeleton.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -164,10 +163,6 @@ onMounted(() => {
 
     <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
       {{ error.message }}
-    </div>
-
-    <div v-else-if="isLoading && !meta" :class="$style.serverInfoBody">
-      <MkSkeleton v-for="i in 5" :key="i" />
     </div>
 
     <div v-else-if="meta" ref="scrollContainer" :class="$style.serverInfoBody">
