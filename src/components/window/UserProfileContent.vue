@@ -1451,13 +1451,12 @@ async function handlePosted(editedNoteId?: string) {
   inset: 0;
   z-index: var(--nd-z-popup);
   background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .userMenuPopup {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   min-width: 240px;
   max-width: 320px;
   padding: 6px 0;
