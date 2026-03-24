@@ -517,28 +517,8 @@ watch(tab, (t) => {
   overflow: hidden;
 }
 
-.tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.tab {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  font-size: 0.75em;
-  font-weight: bold;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  border-bottom: 2px solid transparent;
-  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
-
-  &:hover { opacity: 0.8; }
-  &.active { opacity: 1; border-bottom-color: var(--nd-accent); color: var(--nd-accent); }
-}
+.tabs { @include editor-tabs; }
+.tab { @include editor-tab; }
 
 .active { /* modifier */ }
 .hasError { /* modifier */ }

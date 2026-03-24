@@ -3,6 +3,7 @@ import { json } from '@codemirror/lang-json'
 import JSON5 from 'json5'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
+import { COLUMN_ICONS, TL_ICONS } from '@/composables/useColumnTabs'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
@@ -48,43 +49,6 @@ const COLUMN_TYPE_LABELS: Record<string, string> = {
   emoji: '絵文字',
 }
 
-const COLUMN_TYPE_ICONS: Record<string, string> = {
-  timeline: 'ti-list',
-  notifications: 'ti-bell',
-  search: 'ti-search',
-  list: 'ti-list-check',
-  antenna: 'ti-antenna',
-  favorites: 'ti-star',
-  clip: 'ti-paperclip',
-  user: 'ti-user',
-  mentions: 'ti-at',
-  channel: 'ti-device-tv',
-  specified: 'ti-mail',
-  chat: 'ti-messages',
-  widget: 'ti-apps',
-  aiscript: 'ti-code',
-  play: 'ti-player-play',
-  page: 'ti-file-text',
-  ai: 'ti-sparkles',
-  announcements: 'ti-speakerphone',
-  drive: 'ti-cloud',
-  gallery: 'ti-photo',
-  explore: 'ti-compass',
-  followRequests: 'ti-user-plus',
-  achievements: 'ti-trophy',
-  apiConsole: 'ti-terminal',
-  apiDocs: 'ti-book',
-  lookup: 'ti-world-search',
-  serverInfo: 'ti-server',
-  ads: 'ti-ad',
-  aboutMisskey: 'ti-info-circle',
-  emoji: 'ti-mood-smile',
-}
-
-defineProps<{
-  profileId?: string
-}>()
-
 const jsonLang = json()
 const jsonLinter = createJson5Linter()
 
@@ -108,18 +72,11 @@ function columnLabel(col: DeckColumn): string {
   return typeLabel
 }
 
-const TL_ICONS: Record<string, string> = {
-  home: 'ti-home',
-  local: 'ti-planet',
-  social: 'ti-rocket',
-  global: 'ti-whirl',
-}
-
 function columnIcon(col: DeckColumn): string {
   if (col.type === 'timeline' && col.tl) {
-    return `ti ${TL_ICONS[col.tl] ?? COLUMN_TYPE_ICONS.timeline ?? 'ti-layout-columns'}`
+    return `ti ti-${TL_ICONS[col.tl] ?? COLUMN_ICONS.timeline ?? 'layout-columns'}`
   }
-  return `ti ${COLUMN_TYPE_ICONS[col.type] ?? 'ti-layout-columns'}`
+  return `ti ti-${COLUMN_ICONS[col.type] ?? 'layout-columns'}`
 }
 
 function columnAvatarUrl(col: DeckColumn): string | null {
@@ -493,35 +450,9 @@ async function importFromClipboard() {
   overflow: hidden;
 }
 
-.tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.tab {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  font-size: 0.75em;
-  font-weight: bold;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  border-bottom: 2px solid transparent;
-  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
-
-  &:hover {
-    opacity: 0.8;
-  }
-
-  &.active {
-    opacity: 1;
-    border-bottom-color: var(--nd-accent);
-    color: var(--nd-accent);
-  }
-}
+.tabs { @include editor-tabs; }
+.tab { @include editor-tab; }
+.active { /* modifier */ }
 
 .visualPanel {
   display: flex;

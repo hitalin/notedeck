@@ -3,7 +3,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 
-const TAB_ICONS: Record<string, string> = {
+export const COLUMN_ICONS: Record<string, string> = {
   timeline: 'home',
   notifications: 'bell',
   search: 'search',
@@ -36,7 +36,7 @@ const TAB_ICONS: Record<string, string> = {
   emoji: 'mood-smile',
 }
 
-const TL_ICONS: Record<string, string> = {
+export const TL_ICONS: Record<string, string> = {
   home: 'home',
   local: 'planet',
   social: 'rocket',
@@ -72,11 +72,11 @@ export function useColumnTabs(
 
   function columnIcon(colId: string): string {
     const col = columnMap.value.get(colId)
-    if (!col) return TAB_ICONS.timeline ?? ''
+    if (!col) return COLUMN_ICONS.timeline ?? ''
     if (col.type === 'timeline' && col.tl) {
-      return TL_ICONS[col.tl] ?? TAB_ICONS.timeline ?? ''
+      return TL_ICONS[col.tl] ?? COLUMN_ICONS.timeline ?? ''
     }
-    return TAB_ICONS[col.type] ?? TAB_ICONS.timeline ?? ''
+    return COLUMN_ICONS[col.type] ?? COLUMN_ICONS.timeline ?? ''
   }
 
   function columnAccount(colId: string) {
