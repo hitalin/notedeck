@@ -267,7 +267,7 @@ NoteDeck は `Cargo.toml` で git 依存として参照。
 - [x] **通知サウンド** — AudioContext デコード＋キャッシュ、カラム単位ミュート、フェードイン再生
 - [x] **自動アップデート** — Tauri updater で起動時チェック、ダウンロード＋インストール＋自動再起動
 - [x] **自動起動** — tauri-plugin-autostart でOS起動時に自動起動
-- [x] **仮想スクロール** — vue-virtual-scroller（DynamicScroller）を全カラムで使用、最大 500 ノート
+- [x] **仮想スクロール** — @tanstack/vue-virtual で全カラムを仮想化、DOM 30-50 件に抑制、CSS @keyframes で新着アニメーション維持
 
 ### マルチウィンドウ
 

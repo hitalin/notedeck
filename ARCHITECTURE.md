@@ -234,29 +234,31 @@ Misskey 本体および Firefish, Sharkey, Iceshrimp 等のフォークに共通
 
 #### A-10. タイムライン DOM 管理
 
-**場所**: `useNoteList.ts` + `useStreamingBatch.ts`
+**場所**: `NoteScroller.vue` + `useNoteList.ts` + `useStreamingBatch.ts`
 
-タイムラインの DOM ノード数を一定に保つ戦略。仮想スクロールは採用しない。
+`@tanstack/vue-virtual` による仮想スクロールで、viewport + overscan 分のみ DOM に描画する。
 
-**上限管理:**
+**仮想スクロール:**
 
-| 定数 | 値 | 場所 |
+| 設定 | 値 | 説明 |
 |------|-----|------|
-| `NOTE_LIST_MAX` | 300 | `useNoteList.ts` |
+| `NOTE_LIST_MAX` | 300 | データ配列の上限（`useNoteList.ts`） |
+| `overscan` | 7 | viewport 外に余分に描画する件数 |
+| `estimateSize` | 動的 | 実測値の移動平均（20件ごとに更新） |
 
-- `useNoteList` の computed setter で全経路（ストリーミング・手動ロード・ページネーション・onResume）を一括トリム
+- `NoteScroller.vue` が `useVirtualizer` で仮想化。実 DOM は 30-50 件程度に抑制
+- `measureElement` + ResizeObserver で可変高さ（テキストのみ 80px〜画像付き 400px+）を自動追跡
+- `near-end` イベントで末尾到達を検知し loadMore を発火
+- `scrollToIndex` expose でキーボードナビゲーション（j/k）に対応
+
+**アニメーション:**
+
+`<TransitionGroup>` は使わず、データレイヤーでの ID マーキング + CSS `@keyframes` で新着ノートの slide-in アニメーションを実現。位置指定に `translate` プロパティ、アニメーションに `transform` プロパティを使い、独立プロパティとして干渉なく動作する。Vue Vapor Mode 互換。
+
+**バッファリング:**
+
 - `useStreamingBatch` は RAF バッファリング + pending 2段階で高頻度更新を1フレームにまとめる
 - 超過分は末尾から削除。削除されたノートは SQLite に保存済みのため再取得可能
-
-**仮想スクロール不採用の理由:**
-
-1. **可変高さ**: テキストのみ(60px)〜画像4枚(500px)〜CW展開で動的変化。高さ推定が破綻しスクロール位置がガタつく
-2. **先頭挿入**: ストリーミングで新着が先頭に追加されると全インデックスがずれ、スクロール位置がジャンプする
-3. **アニメーション**: `<TransitionGroup>` によるノート出現・退出アニメーションと競合し DOM 追加/削除で途中アニメーションが消える
-4. **デスクトップアプリ**: Tauri アプリは Web ブラウザよりメモリに余裕があり、300件の DOM は問題にならない
-
-**固定高さリストへの適用余地:**
-通知一覧・ユーザー検索結果・フォロー一覧など、高さ均一でアニメーション不要なリストには将来的に仮想スクロールを検討可能。現時点では件数が爆発しにくいため優先度低。
 
 ---
 
