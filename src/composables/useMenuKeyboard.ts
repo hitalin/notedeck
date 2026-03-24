@@ -25,7 +25,7 @@ export function useMenuKeyboard(options: {
     const items = getItems()
     if (items.length === 0) return
     const clamped = Math.max(0, Math.min(index, items.length - 1))
-    items[clamped].focus()
+    items[clamped]?.focus()
   }
 
   function onKeydown(e: KeyboardEvent) {
