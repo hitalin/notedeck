@@ -391,12 +391,11 @@ defineExpose({
 
           <!-- Account avatars -->
           <div :class="$style.accountStack">
-            <div
-              v-for="acc in accountsStore.accounts"
-              :key="acc.id"
-              :class="$style.accountWrap"
-            >
+            <!-- Scrollable avatar row -->
+            <div :class="$style.accountScroll">
               <button
+                v-for="acc in accountsStore.accounts"
+                :key="acc.id"
                 class="_button"
                 :class="$style.accountBtn"
                 :title="getAccountLabel(acc)"
@@ -424,30 +423,32 @@ defineExpose({
                   />
                 </div>
               </button>
-
-              <NavAccountMenu
-                :show="accountMenuId === acc.id"
-                :account="acc"
-                :nav-collapsed="navCollapsed"
-                :modes="accountModes[acc.id] ?? {}"
-                :toggling-mode="togglingMode"
-                :mode-error="modeError"
-                :is-admin="accountIsAdmin[acc.id] ?? false"
-                @toggle-mode="toggleAccountMode(acc.id, $event)"
-                @logout="showLogoutDialog(acc.id)"
-                @relogin="(host: string) => closeDrawerAndDo(() => navigateToLogin(host))"
-              />
+              <button
+                class="_button"
+                :class="$style.accountBtn"
+                title="アカウント追加"
+                @click="closeDrawerAndDo(navigateToLogin)"
+              >
+                <div :class="$style.addAccountIcon">
+                  <i class="ti ti-plus" />
+                </div>
+              </button>
             </div>
-            <button
-              class="_button"
-              :class="$style.accountBtn"
-              title="アカウント追加"
-              @click="closeDrawerAndDo(navigateToLogin)"
-            >
-              <div :class="$style.addAccountIcon">
-                <i class="ti ti-plus" />
-              </div>
-            </button>
+            <!-- Menus rendered outside scroll area -->
+            <NavAccountMenu
+              v-for="acc in accountsStore.accounts"
+              :key="'menu-' + acc.id"
+              :show="accountMenuId === acc.id"
+              :account="acc"
+              :nav-collapsed="navCollapsed"
+              :modes="accountModes[acc.id] ?? {}"
+              :toggling-mode="togglingMode"
+              :mode-error="modeError"
+              :is-admin="accountIsAdmin[acc.id] ?? false"
+              @toggle-mode="toggleAccountMode(acc.id, $event)"
+              @logout="showLogoutDialog(acc.id)"
+              @relogin="(host: string) => closeDrawerAndDo(() => navigateToLogin(host))"
+            />
           </div>
 
 
@@ -588,10 +589,19 @@ defineExpose({
 // Account buttons — same style as bottom bar tabs
 .accountStack {
   position: relative;
+}
+
+.accountScroll {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 4px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .accountBtn {
@@ -613,8 +623,8 @@ defineExpose({
 }
 
 .addAccountIcon {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -630,8 +640,8 @@ defineExpose({
 }
 
 .avatar {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
   display: block;
@@ -644,9 +654,9 @@ defineExpose({
 .serverBadge {
   position: absolute;
   top: -2px;
-  right: -3px;
-  width: 12px;
-  height: 12px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   object-fit: cover;
   border: 1.5px solid var(--nd-navBg);
@@ -801,6 +811,12 @@ defineExpose({
     padding: 8px;
     width: auto;
     border-radius: var(--nd-radius-full);
+  }
+
+  .accountScroll {
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .accountBtn {
