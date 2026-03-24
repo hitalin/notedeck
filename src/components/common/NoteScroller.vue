@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T extends { id: string }">
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -39,6 +39,12 @@ function measureElement(el: unknown) {
     virtualizer.value.measureElement(el)
   }
 }
+
+// Re-measure all when items change (e.g. tab switch, load-more)
+watch(
+  () => props.items.length,
+  () => virtualizer.value.measure(),
+)
 
 defineExpose({
   /** Expose the raw DOM element so composables can read scrollTop, scrollHeight, etc. */
