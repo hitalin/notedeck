@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { relaunch } from '@tauri-apps/plugin-process'
 import type { CSSProperties } from 'vue'
-import { computed, type Ref, ref, watch } from 'vue'
+import { computed, nextTick, type Ref, ref, watch } from 'vue'
+
 import ThemePreview from '@/components/ThemePreview.vue'
+import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
 import { useUpdater } from '@/composables/useUpdater'
 import { type ConfirmOptions, useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
@@ -79,6 +81,13 @@ async function removeTheme(id: string) {
 const menuEl = ref<HTMLElement | null>(null)
 const fixedStyle = ref<CSSProperties | undefined>()
 
+const { activate: activateKeyboard, deactivate: deactivateKeyboard } =
+  useMenuKeyboard({
+    containerRef: menuEl,
+    itemSelector: 'button, [tabindex="0"]',
+    onClose: () => emit('close'),
+  })
+
 watch(
   () => props.show,
   (val) => {
@@ -93,6 +102,9 @@ watch(
       } else {
         fixedStyle.value = undefined
       }
+      nextTick(activateKeyboard)
+    } else {
+      deactivateKeyboard()
     }
   },
   { immediate: true },

@@ -437,6 +437,7 @@ defineExpose({
                   @toggle-mode="toggleAccountMode(acc.id, $event)"
                   @logout="showLogoutDialog(acc.id)"
                   @relogin="(host: string) => closeDrawerAndDo(() => navigateToLogin(host))"
+                  @close="accountMenuId = null"
                 />
               </div>
               <button

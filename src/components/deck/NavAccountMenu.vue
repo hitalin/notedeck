@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+
+import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
 import { useNavigation } from '@/composables/useNavigation'
 import { type Account, isGuestAccount } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -26,9 +28,26 @@ const emit = defineEmits<{
   'toggle-mode': [key: string]
   logout: []
   relogin: [host: string]
+  close: []
 }>()
 
 const { navigateToUser } = useNavigation()
+
+const menuRef = ref<HTMLElement | null>(null)
+const { activate: activateKeyboard, deactivate: deactivateKeyboard } =
+  useMenuKeyboard({
+    containerRef: menuRef,
+    itemSelector: 'button, [tabindex="0"]',
+    onClose: () => emit('close'),
+  })
+
+watch(
+  () => props.show,
+  (v) => {
+    if (v) nextTick(activateKeyboard)
+    else deactivateKeyboard()
+  },
+)
 
 const hasUpperSection = computed(
   () =>
@@ -48,6 +67,7 @@ function modeLabel(key: string): string {
   <Transition name="nav-account-menu">
     <div
       v-if="show"
+      ref="menuRef"
       class="nav-account-menu _popupMenu"
       :class="[$style.navAccountMenu, { [$style.menuRight]: navCollapsed, [$style.mobile]: isCompact }]"
       @click.stop
@@ -58,7 +78,9 @@ function modeLabel(key: string): string {
           v-for="(val, key) in modes"
           :key="key"
           :class="$style.navAccountMenuItem"
+          tabindex="0"
           @click="emit('toggle-mode', key as string)"
+          @keydown.enter="emit('toggle-mode', key as string)"
         >
           <span :class="$style.navAccountMenuLabel">{{ modeLabel(key as string) }}</span>
           <button

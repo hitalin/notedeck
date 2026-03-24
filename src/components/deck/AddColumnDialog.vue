@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+
+import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useNavigation } from '@/composables/useNavigation'
 import {
   getAccountAvatarUrl,
@@ -393,13 +395,20 @@ async function searchAndAddUserColumn() {
   }
 }
 
+const dialogRef = ref<HTMLElement | null>(null)
+const { activate: activateTrap } = useFocusTrap(dialogRef, {
+  onEscape: () => close(),
+})
+
+onMounted(activateTrap)
+
 function close() {
   emit('close')
 }
 </script>
 
 <template>
-  <div :class="[mode === 'pip' ? $style.addInline : $style.addOverlay]" @click="mode !== 'pip' && close()">
+  <div ref="dialogRef" :class="[mode === 'pip' ? $style.addInline : $style.addOverlay]" @click="mode !== 'pip' && close()">
     <div :class="[mode === 'pip' ? $style.addPopupInline : $style.addPopup, isCompact && $style.mobile]" @click.stop>
       <div v-if="!(mode === 'pip' && !addColumnType && !selectConfig && !addUserAccountId)" :class="[$style.addPopupHeader, mode === 'pip' && $style.addPopupHeaderPip]">
         <button v-if="addColumnType && !selectConfig && !addUserAccountId" class="_button" :class="$style.addBackBtn" @click="addColumnType = null">

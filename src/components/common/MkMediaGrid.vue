@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
 import { isSafeUrl } from '@/utils/url'
 
@@ -15,7 +15,12 @@ const props = defineProps<{
 const revealedIds = ref(new Set<string>())
 const loadedIds = ref(new Set<string>())
 const erroredIds = ref(new Set<string>())
-const lightboxFile = ref<NormalizedDriveFile | null>(null)
+const lightboxIndex = ref<number | null>(null)
+const lightboxFile = computed(() =>
+  lightboxIndex.value !== null
+    ? (previewableFiles.value[lightboxIndex.value] ?? null)
+    : null,
+)
 
 function isImage(file: NormalizedDriveFile): boolean {
   return file.type.startsWith('image/')
@@ -69,12 +74,45 @@ function toggleSensitive(file: NormalizedDriveFile, e: Event) {
 function openLightbox(file: NormalizedDriveFile, e: Event) {
   e.stopPropagation()
   if (file.isSensitive && !revealedIds.value.has(file.id)) return
-  lightboxFile.value = file
+  const idx = previewableFiles.value.indexOf(file)
+  if (idx >= 0) lightboxIndex.value = idx
 }
 
 function closeLightbox() {
-  lightboxFile.value = null
+  lightboxIndex.value = null
 }
+
+function onLightboxKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    closeLightbox()
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault()
+    if (lightboxIndex.value !== null && lightboxIndex.value > 0) {
+      lightboxIndex.value--
+    }
+  } else if (e.key === 'ArrowRight') {
+    e.preventDefault()
+    if (
+      lightboxIndex.value !== null &&
+      lightboxIndex.value < previewableFiles.value.length - 1
+    ) {
+      lightboxIndex.value++
+    }
+  }
+}
+
+watch(lightboxIndex, (v) => {
+  if (v !== null) {
+    document.addEventListener('keydown', onLightboxKeydown)
+  } else {
+    document.removeEventListener('keydown', onLightboxKeydown)
+  }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onLightboxKeydown)
+})
 </script>
 
 <template>

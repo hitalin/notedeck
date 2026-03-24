@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+
 import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
+import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
 import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useDeckProfileStore } from '@/stores/deckProfile'
@@ -27,6 +29,13 @@ const profiles = computed(() => profileStore.getProfiles())
 const menuEl = ref<HTMLElement | null>(null)
 const fixedStyle = ref<CSSProperties | undefined>()
 
+const { activate: activateKeyboard, deactivate: deactivateKeyboard } =
+  useMenuKeyboard({
+    containerRef: menuEl,
+    itemSelector: 'button, [tabindex="0"]',
+    onClose: () => emit('close'),
+  })
+
 watch(
   () => props.show,
   (val) => {
@@ -41,6 +50,9 @@ watch(
       } else {
         fixedStyle.value = undefined
       }
+      nextTick(activateKeyboard)
+    } else {
+      deactivateKeyboard()
     }
   },
   { immediate: true },
@@ -95,7 +107,9 @@ function openEditor(id: string) {
           v-for="p in profiles"
           :key="p.id"
           :class="[$style.item, { [$style.active]: p.id === deckStore.windowProfileId }]"
+          tabindex="0"
           @click="apply(p.id)"
+          @keydown.enter="apply(p.id)"
         >
           <span :class="$style.name">{{ p.name }}</span>
           <button
@@ -123,7 +137,7 @@ function openEditor(id: string) {
 
       <div :class="$style.divider" />
 
-      <div :class="[$style.item, $style.newItem]" @click="createProfile">
+      <div :class="[$style.item, $style.newItem]" tabindex="0" @click="createProfile" @keydown.enter="createProfile">
         <i class="ti ti-plus" />
         <span>新規プロファイル</span>
       </div>
