@@ -101,16 +101,16 @@ defineSlots<{
     <div :class="$style.noteList" :style="{ height: `${totalSize}px` }">
       <div
         v-for="vRow in virtualItems"
-        :key="props.items[vRow.index].id"
+        :key="props.items[vRow.index]!.id"
         :ref="measureElement"
         :data-index="vRow.index"
         :class="[
           $style.noteItem,
-          animatingIds.has(props.items[vRow.index].id) && $style.enterAnimation,
+          animatingIds.has(props.items[vRow.index]!.id) && $style.enterAnimation,
         ]"
         :style="{ translate: `0 ${vRow.start}px` }"
       >
-        <slot :item="props.items[vRow.index]" :index="vRow.index" />
+        <slot :item="props.items[vRow.index]!" :index="vRow.index" />
       </div>
     </div>
     <slot name="append" />

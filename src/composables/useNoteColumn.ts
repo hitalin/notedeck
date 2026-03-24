@@ -143,7 +143,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   const pendingNotes =
     streamingBatch?.pendingNotes ?? shallowRef<NormalizedNote[]>([])
-  const animatingIds: { value: ReadonlySet<string> } =
+  const animatingIds =
     streamingBatch?.animatingIds ?? shallowRef<ReadonlySet<string>>(new Set())
 
   /** True when API is unreachable and displaying cached notes */
