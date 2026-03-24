@@ -56,6 +56,31 @@
     shortcuts: [{ key: "d", scope: "body" }],
   },
 
+  {
+    commandId: "close-column",
+    shortcuts: [{ key: "w", ctrl: true, scope: "global" }],
+  },
+  {
+    commandId: "keybinds",
+    shortcuts: [],
+  },
+  {
+    commandId: "css-editor",
+    shortcuts: [],
+  },
+  {
+    commandId: "plugins",
+    shortcuts: [],
+  },
+  {
+    commandId: "login",
+    shortcuts: [],
+  },
+  {
+    commandId: "chat",
+    shortcuts: [],
+  },
+
   // ── Note navigation ──
   {
     commandId: "note-next",

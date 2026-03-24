@@ -1,5 +1,6 @@
 import { useCommandStore } from '@/commands/registry'
 import type { NoteAction } from '@/composables/useNoteFocus'
+import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { useThemeStore } from '@/stores/theme'
@@ -279,6 +280,74 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     },
   })
 
+  // Close active column
+  commandStore.register({
+    id: 'close-column',
+    label: 'カラムを削除',
+    icon: 'trash',
+    category: 'column',
+    shortcuts: keybindsStore.getShortcuts('close-column'),
+    enabled: () => !!deckStore.activeColumnId,
+    execute: async () => {
+      const id = deckStore.activeColumnId
+      if (!id) return
+      const { confirm } = useConfirm()
+      const ok = await confirm({
+        title: 'カラムを削除',
+        message: 'このカラムを削除しますか？',
+        okLabel: '削除',
+        type: 'danger',
+      })
+      if (ok) deckStore.removeColumn(id)
+    },
+  })
+
+  // Tool windows
+  commandStore.register({
+    id: 'keybinds',
+    label: 'キーバインド設定',
+    icon: 'keyboard',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('keybinds'),
+    execute: () => useWindowsStore().open('keybinds'),
+  })
+
+  commandStore.register({
+    id: 'css-editor',
+    label: 'カスタムCSS',
+    icon: 'code',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('css-editor'),
+    execute: () => useWindowsStore().open('cssEditor'),
+  })
+
+  commandStore.register({
+    id: 'plugins',
+    label: 'プラグイン',
+    icon: 'puzzle',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('plugins'),
+    execute: () => useWindowsStore().open('plugins'),
+  })
+
+  commandStore.register({
+    id: 'login',
+    label: 'アカウント追加',
+    icon: 'user-plus',
+    category: 'account',
+    shortcuts: keybindsStore.getShortcuts('login'),
+    execute: () => useWindowsStore().open('login'),
+  })
+
+  commandStore.register({
+    id: 'chat',
+    label: 'チャット',
+    icon: 'message-circle',
+    category: 'navigation',
+    shortcuts: keybindsStore.getShortcuts('chat'),
+    execute: () => useWindowsStore().open('chat'),
+  })
+
   // Window management (desktop only)
   if (useUiStore().isDesktop) {
     commandStore.register({
@@ -455,6 +524,12 @@ export function unregisterDefaultCommands() {
     'account-menu',
     'toggle-dark-mode',
     'profile-new',
+    'close-column',
+    'keybinds',
+    'css-editor',
+    'plugins',
+    'login',
+    'chat',
     ...NOTE_COMMAND_IDS,
     ...COLUMN_COMMAND_IDS,
     ...QUICK_REACT_IDS,
