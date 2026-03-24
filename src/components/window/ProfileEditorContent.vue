@@ -2,6 +2,7 @@
 import { json } from '@codemirror/lang-json'
 import JSON5 from 'json5'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import EditorTabs from '@/components/common/EditorTabs.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { COLUMN_ICONS, TL_ICONS } from '@/composables/useColumnTabs'
 import { useEditorTabs } from '@/composables/useEditorTabs'
@@ -74,9 +75,9 @@ function columnLabel(col: DeckColumn): string {
 
 function columnIcon(col: DeckColumn): string {
   if (col.type === 'timeline' && col.tl) {
-    return `ti ti-${TL_ICONS[col.tl] ?? COLUMN_ICONS.timeline ?? 'layout-columns'}`
+    return TL_ICONS[col.tl] ?? COLUMN_ICONS.timeline ?? 'layout-columns'
   }
-  return `ti ti-${COLUMN_ICONS[col.type] ?? 'layout-columns'}`
+  return COLUMN_ICONS[col.type] ?? 'layout-columns'
 }
 
 function columnAvatarUrl(col: DeckColumn): string | null {
@@ -312,25 +313,13 @@ async function importFromClipboard() {
 
 <template>
   <div ref="editorRef" :class="$style.editor">
-    <!-- Tabs -->
-    <div :class="$style.tabs">
-      <button
-        class="_button"
-        :class="[$style.tab, { [$style.active]: tab === 'visual' }]"
-        @click="tab = 'visual'"
-      >
-        <i class="ti ti-layout-columns" />
-        ビジュアル
-      </button>
-      <button
-        class="_button"
-        :class="[$style.tab, { [$style.active]: tab === 'code' }]"
-        @click="tab = 'code'"
-      >
-        <i class="ti ti-code" />
-        コード
-      </button>
-    </div>
+    <EditorTabs
+      v-model="tab"
+      :tabs="[
+        { value: 'visual', icon: 'layout-columns', label: 'ビジュアル' },
+        { value: 'code', icon: 'code', label: 'コード' },
+      ]"
+    />
 
     <!-- Visual Editor -->
     <div v-if="tab === 'visual'" :class="$style.visualPanel">
@@ -371,7 +360,7 @@ async function importFromClipboard() {
             :title="groupLabel(group)"
             @pointerdown="startDrag(groupIdx, $event)"
           >
-            <i v-if="groupPrimaryColumn(group)" :class="'ti ' + columnIcon(groupPrimaryColumn(group)!)" />
+            <i v-if="groupPrimaryColumn(group)" :class="'ti ti-' + columnIcon(groupPrimaryColumn(group)!)" />
             <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
             <span v-if="groupServerIconUrl(group)" :class="$style.serverBadge">
               <img :src="groupServerIconUrl(group)!" :class="$style.badgeImg" />
@@ -449,10 +438,6 @@ async function importFromClipboard() {
   min-height: 0;
   overflow: hidden;
 }
-
-.tabs { @include editor-tabs; }
-.tab { @include editor-tab; }
-.active { /* modifier */ }
 
 .visualPanel {
   display: flex;

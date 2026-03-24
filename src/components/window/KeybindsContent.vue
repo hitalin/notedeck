@@ -3,6 +3,7 @@ import { json } from '@codemirror/lang-json'
 import { type Diagnostic, linter } from '@codemirror/lint'
 import { computed, ref, watch } from 'vue'
 import type { Shortcut } from '@/commands/registry'
+import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
@@ -332,25 +333,13 @@ function handleReset() {
 
 <template>
   <div ref="contentRef" :class="$style.keybindsContent">
-    <!-- Tabs -->
-    <div :class="$style.tabs">
-      <button
-        class="_button"
-        :class="[$style.tab, { [$style.active]: tab === 'visual' }]"
-        @click="tab = 'visual'"
-      >
-        <i class="ti ti-adjustments" />
-        ビジュアル
-      </button>
-      <button
-        class="_button"
-        :class="[$style.tab, { [$style.active]: tab === 'code' }]"
-        @click="tab = 'code'"
-      >
-        <i class="ti ti-code" />
-        コード
-      </button>
-    </div>
+    <EditorTabs
+      v-model="tab"
+      :tabs="[
+        { value: 'visual', icon: 'adjustments', label: 'ビジュアル' },
+        { value: 'code', icon: 'code', label: 'コード' },
+      ]"
+    />
 
     <!-- Visual tab -->
     <div v-show="tab === 'visual'" :class="$style.visualPanel">
@@ -480,9 +469,6 @@ function handleReset() {
   min-height: 0;
   overflow: hidden;
 }
-
-.tabs { @include editor-tabs; }
-.tab { @include editor-tab; }
 
 .active {
   /* modifier */

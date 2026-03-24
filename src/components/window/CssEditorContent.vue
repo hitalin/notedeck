@@ -2,6 +2,7 @@
 import { css } from '@codemirror/lang-css'
 import { type Diagnostic, linter } from '@codemirror/lint'
 import { computed, ref, watch } from 'vue'
+import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useClickOutside } from '@/composables/useClickOutside'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
@@ -328,25 +329,13 @@ watch(tab, (t) => {
 
 <template>
   <div ref="editorRef" :class="$style.cssContent">
-    <!-- Tabs -->
-    <div :class="$style.tabs">
-      <button
-        class="_button"
-        :class="[$style.tab, { [$style.active]: tab === 'presets' }]"
-        @click="tab = 'presets'"
-      >
-        <i class="ti ti-adjustments" />
-        プリセット
-      </button>
-      <button
-        class="_button"
-        :class="[$style.tab, { [$style.active]: tab === 'code' }]"
-        @click="tab = 'code'"
-      >
-        <i class="ti ti-code" />
-        コード
-      </button>
-    </div>
+    <EditorTabs
+      v-model="tab"
+      :tabs="[
+        { value: 'presets', icon: 'adjustments', label: 'プリセット' },
+        { value: 'code', icon: 'code', label: 'コード' },
+      ]"
+    />
 
     <!-- Presets -->
     <div v-show="tab === 'presets'" :class="$style.presetsPanel">
@@ -516,9 +505,6 @@ watch(tab, (t) => {
   min-height: 0;
   overflow: hidden;
 }
-
-.tabs { @include editor-tabs; }
-.tab { @include editor-tab; }
 
 .active { /* modifier */ }
 .hasError { /* modifier */ }

@@ -10,6 +10,7 @@ import {
   useCssModule,
   watch,
 } from 'vue'
+import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useEditorTabs } from '@/composables/useEditorTabs'
@@ -391,25 +392,13 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
 <template>
   <div ref="editorRef" :class="$style.editor">
-      <!-- Tabs -->
-      <div :class="$style.tabs">
-        <button
-          class="_button"
-          :class="[$style.tab, { [$style.active]: tab === 'visual' }]"
-          @click="tab = 'visual'"
-        >
-          <i class="ti ti-palette" />
-          ビジュアル
-        </button>
-        <button
-          class="_button"
-          :class="[$style.tab, { [$style.active]: tab === 'code' }]"
-          @click="tab = 'code'"
-        >
-          <i class="ti ti-code" />
-          コード
-        </button>
-      </div>
+      <EditorTabs
+        v-model="tab"
+        :tabs="[
+          { value: 'visual', icon: 'palette', label: 'ビジュアル' },
+          { value: 'code', icon: 'code', label: 'コード' },
+        ]"
+      />
 
       <!-- Visual Editor -->
       <div v-show="tab === 'visual'" :class="$style.visualPanel">
@@ -731,9 +720,6 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   min-height: 0;
   overflow: hidden;
 }
-
-.tabs { @include editor-tabs; }
-.tab { @include editor-tab; }
 
 .active {
   /* modifier */
