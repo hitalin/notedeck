@@ -196,6 +196,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::fetch_ogp,
         commands::fetch_nodeinfo,
         commands::fetch_server_meta,
+        commands::fetch_image_base64,
         commands::get_cli_commands,
         commands::get_notecli_version,
         commands::get_openapi_spec,
@@ -272,6 +273,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             .redirect(reqwest::redirect::Policy::limited(5))
             .build()
             .unwrap_or_default();
+
+        // Expose shared HTTP client as Tauri state (used by fetch_image_base64 etc.)
+        app.manage(shared_http.clone());
 
         // Initialize OGP cache (backed by shared Database) and pre-warm from disk
         let ogp_cache = ogp::OgpCache::with_client(db.clone(), shared_http.clone());

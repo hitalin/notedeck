@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use base64::Engine;
 use tauri::State;
 
 use notecli::api::MisskeyClient;
@@ -52,4 +53,29 @@ pub async fn fetch_server_meta(
     host: String,
 ) -> Result<serde_json::Value> {
     client.fetch_server_meta(&host).await
+}
+
+#[tauri::command]
+pub async fn fetch_image_base64(
+    http: State<'_, reqwest::Client>,
+    url: String,
+) -> Result<Option<String>> {
+    if !url.starts_with("https://") {
+        return Err(NoteDeckError::InvalidInput(
+            "Only HTTPS URLs allowed".into(),
+        ));
+    }
+    let resp = http.get(&url).send().await.map_err(NoteDeckError::from)?;
+    if !resp.status().is_success() {
+        return Ok(None);
+    }
+    let content_type = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("image/png")
+        .to_string();
+    let bytes = resp.bytes().await.map_err(NoteDeckError::from)?;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+    Ok(Some(format!("data:{content_type};base64,{b64}")))
 }

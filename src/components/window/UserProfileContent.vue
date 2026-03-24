@@ -36,6 +36,7 @@ import {
   formatDate,
 } from '@/utils/format'
 import { proxyUrl } from '@/utils/imageProxy'
+import { invoke } from '@/utils/tauriInvoke'
 import { toggleFollow } from '@/utils/toggleFollow'
 import { toggleReaction } from '@/utils/toggleReaction'
 import { safeCssUrl } from '@/utils/url'
@@ -224,15 +225,9 @@ const qrCodeContainerEl = ref<HTMLDivElement | null>(null)
 
 async function fetchImageAsDataUrl(url: string): Promise<string | undefined> {
   try {
-    const fetchUrl = proxyUrl(url) ?? url
-    const res = await fetch(fetchUrl)
-    const blob = await res.blob()
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
+    return (
+      (await invoke<string | null>('fetch_image_base64', { url })) ?? undefined
+    )
   } catch {
     return undefined
   }
@@ -319,7 +314,7 @@ async function handleToggleFollow() {
 }
 
 // User action menu state
-const showUserMenu = ref(false)
+const userMenuRef = ref<InstanceType<typeof PopupMenu>>()
 const showMuteConfirm = ref(false)
 const showBlockConfirm = ref(false)
 const showReportForm = ref(false)
