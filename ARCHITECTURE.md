@@ -25,7 +25,7 @@ graph TB
         subgraph Frontend["Frontend (WebView)<br/>Vue 3 + TypeScript + Vite"]
             Pinia["Pinia Stores (13個)"]
             Router["Vue Router"]
-            Composables["Composables (37個)<br/>useNoteList, useColumnSetup,<br/>useStreamingBatch, useDeckWindow,<br/>useEmojiResolver, ..."]
+            Composables["Composables (45個)<br/>useNoteList, useColumnSetup,<br/>useStreamingBatch, useDeckWindow,<br/>useEmojiResolver, ..."]
             Adapter["Server Adapter Layer<br/>(Misskey/Firefish/Sharkey)"]
             Pinia --> Composables
         end

@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
-import { useAccountsStore } from '@/stores/accounts'
+import { ref, watch } from 'vue'
+import { useColumnTabs } from '@/composables/useColumnTabs'
 import type { DeckColumn } from '@/stores/deck'
-import { useServersStore } from '@/stores/servers'
 
 const props = defineProps<{
   columns: DeckColumn[]
@@ -15,9 +14,6 @@ const emit = defineEmits<{
   'toggle-add-menu': []
   'toggle-drawer': []
 }>()
-
-const accountsStore = useAccountsStore()
-const serversStore = useServersStore()
 
 const rootEl = ref<HTMLElement | null>(null)
 const mobileNavRef = ref<HTMLElement | null>(null)
@@ -36,105 +32,17 @@ watch(
   { immediate: true },
 )
 
-const columnMap = computed(() => {
-  const map = new Map<string, DeckColumn>()
-  for (const col of props.columns) {
-    map.set(col.id, col)
-  }
-  return map
-})
-
-// グループ単位: 各グループの先頭カラムIDを代表として使う
-const visibleGroups = computed(() =>
-  props.layout.filter((group) => group.some((id) => columnMap.value.has(id))),
-)
-
-function groupPrimaryId(group: string[]): string {
-  return group.find((id) => columnMap.value.has(id)) ?? group[0] ?? ''
-}
-
-const hasMultipleAccounts = computed(() => accountsStore.accounts.length > 1)
-
-const MOBILE_TAB_ICONS: Record<string, string> = {
-  timeline: 'home',
-  notifications: 'bell',
-  search: 'search',
-  list: 'list',
-  antenna: 'antenna-bars-5',
-  favorites: 'star',
-  clip: 'paperclip',
-  channel: 'device-tv',
-  user: 'user',
-  mentions: 'at',
-  specified: 'mail',
-  chat: 'messages',
-  widget: 'app-window',
-  aiscript: 'terminal-2',
-  play: 'player-play',
-  page: 'note',
-  ai: 'sparkles',
-  announcements: 'speakerphone',
-  drive: 'cloud',
-  explore: 'compass',
-  gallery: 'icons',
-  followRequests: 'user-plus',
-  achievements: 'medal',
-  apiConsole: 'api',
-  apiDocs: 'file-description',
-  lookup: 'world-search',
-  serverInfo: 'server',
-  ads: 'ad-2',
-  aboutMisskey: 'info-circle',
-  emoji: 'mood-smile',
-}
-
-const TL_ICONS: Record<string, string> = {
-  home: 'home',
-  local: 'planet',
-  social: 'rocket',
-  global: 'whirl',
-}
-
-function columnIcon(colId: string): string {
-  const col = columnMap.value.get(colId)
-  if (!col) return MOBILE_TAB_ICONS.timeline ?? ''
-  if (col.type === 'timeline' && col.tl) {
-    return TL_ICONS[col.tl] ?? MOBILE_TAB_ICONS.timeline ?? ''
-  }
-  return MOBILE_TAB_ICONS[col.type] ?? MOBILE_TAB_ICONS.timeline ?? ''
-}
-
-function columnAccount(colId: string) {
-  if (!hasMultipleAccounts.value) return null
-  const col = columnMap.value.get(colId)
-  if (!col?.accountId) return null
-  return accountsStore.accountMap.get(col.accountId) ?? null
-}
-
-function columnServerIcon(colId: string): string | null {
-  if (!hasMultipleAccounts.value) return null
-  const acc = columnAccount(colId)
-  if (!acc) return null
-  return serversStore.getServer(acc.host)?.iconUrl ?? null
-}
-
-watch(
+const {
+  visibleGroups,
+  groupPrimaryId,
+  columnIcon,
+  columnAccount,
+  columnServerIcon,
+} = useColumnTabs(
+  () => props.columns,
+  () => props.layout,
   () => props.activeColumnIndex,
-  () => {
-    nextTick(() => {
-      if (!mobileNavRef.value) return
-      const tab = mobileNavRef.value.children[props.activeColumnIndex] as
-        | HTMLElement
-        | undefined
-      if (tab) {
-        tab.scrollIntoView({
-          behavior: 'smooth',
-          inline: 'center',
-          block: 'nearest',
-        })
-      }
-    })
-  },
+  mobileNavRef,
 )
 </script>
 

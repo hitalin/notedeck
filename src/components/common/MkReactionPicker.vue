@@ -132,6 +132,49 @@ function pickPinnedOrRecent(reaction: string) {
   emit('pick', reaction)
 }
 
+const pickerScrollRef = ref<HTMLElement | null>(null)
+
+function getEmojiButtons(): HTMLButtonElement[] {
+  if (!pickerScrollRef.value) return []
+  return Array.from(
+    pickerScrollRef.value.querySelectorAll<HTMLButtonElement>('button'),
+  )
+}
+
+function onSearchKeydown(e: KeyboardEvent) {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    const buttons = getEmojiButtons()
+    buttons[0]?.focus()
+  } else if (e.key === 'Enter') {
+    e.preventDefault()
+    const buttons = getEmojiButtons()
+    buttons[0]?.click()
+  }
+}
+
+function onScrollKeydown(e: KeyboardEvent) {
+  const buttons = getEmojiButtons()
+  const idx = buttons.indexOf(document.activeElement as HTMLButtonElement)
+  if (idx < 0) return
+
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    e.preventDefault()
+    const next = buttons[idx + 1]
+    if (next) next.focus()
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault()
+    if (idx === 0) {
+      searchInput.value?.focus()
+    } else {
+      buttons[idx - 1]?.focus()
+    }
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    searchInput.value?.focus()
+  }
+}
+
 onMounted(() => {
   nextTick(() => searchInput.value?.focus())
 })
@@ -148,11 +191,12 @@ onMounted(() => {
         type="text"
         placeholder="絵文字を検索..."
         @click.stop
+        @keydown="onSearchKeydown"
       />
     </div>
 
     <!-- Scrollable area -->
-    <div :class="$style.pickerScroll">
+    <div ref="pickerScrollRef" :class="$style.pickerScroll" @keydown="onScrollKeydown">
       <!-- Search results -->
       <template v-if="searchResults">
         <div v-if="searchResults.custom.length === 0 && searchResults.unicode.length === 0" :class="$style.pickerEmpty">

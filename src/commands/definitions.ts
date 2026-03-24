@@ -83,6 +83,32 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
   })
 
   commandStore.register({
+    id: 'move-column-left',
+    label: 'カラムを左に移動',
+    icon: 'arrow-bar-left',
+    category: 'column',
+    shortcuts: keybindsStore.getShortcuts('move-column-left'),
+    enabled: () => !!deckStore.activeColumnId,
+    execute: () => {
+      const id = deckStore.activeColumnId
+      if (id) deckStore.moveLeft(id)
+    },
+  })
+
+  commandStore.register({
+    id: 'move-column-right',
+    label: 'カラムを右に移動',
+    icon: 'arrow-bar-right',
+    category: 'column',
+    shortcuts: keybindsStore.getShortcuts('move-column-right'),
+    enabled: () => !!deckStore.activeColumnId,
+    execute: () => {
+      const id = deckStore.activeColumnId
+      if (id) deckStore.moveRight(id)
+    },
+  })
+
+  commandStore.register({
     id: 'toggle-sidebar',
     label: 'サイドバー切替',
     icon: 'layout-sidebar-left-collapse',

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { defineAsyncComponent, ref } from 'vue'
+import { defineAsyncComponent, nextTick, ref, watch } from 'vue'
+
+import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useUiStore } from '@/stores/ui'
 import { extractThemeVars } from '@/utils/themeVars'
 
@@ -21,6 +23,19 @@ const { isCompactLayout: isCompact } = storeToRefs(useUiStore())
 const show = ref(false)
 const pos = ref({ x: 0, y: 0 })
 const theme = ref<Record<string, string>>({})
+const pickerRef = ref<HTMLElement | null>(null)
+
+const { activate: activateTrap, deactivate: deactivateTrap } = useFocusTrap(
+  pickerRef,
+  {
+    onEscape: () => close(),
+  },
+)
+
+watch(show, (v) => {
+  if (v) nextTick(activateTrap)
+  else deactivateTrap()
+})
 
 function open(e: MouseEvent) {
   const btn = e.currentTarget as HTMLElement
@@ -45,6 +60,7 @@ defineExpose({ open })
     <Transition :name="isCompact ? 'nd-sheet' : 'nd-popup'">
       <div v-if="show" :class="[$style.popupBackdrop, isCompact && $style.mobile]" @click="close">
         <div
+          ref="pickerRef"
           :class="$style.reactionPickerPopup"
           class="nd-popup-content reaction-picker-popup"
           :style="isCompact ? theme : { ...theme, top: pos.y + 'px', left: pos.x + 'px' }"

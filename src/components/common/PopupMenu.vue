@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
+
+import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
 import { extractThemeVars } from '@/utils/themeVars'
 
 const props = withDefaults(
@@ -17,6 +19,19 @@ const emit = defineEmits<{
 const showMenu = ref(false)
 const menuPos = ref({ x: 0, y: 0 })
 const menuTheme = ref<Record<string, string>>({})
+const menuRef = ref<HTMLElement | null>(null)
+
+const { activate: activateKeyboard, deactivate: deactivateKeyboard } =
+  useMenuKeyboard({
+    containerRef: menuRef,
+    itemSelector: 'button',
+    onClose: () => close(),
+  })
+
+watch(showMenu, (v) => {
+  if (v) nextTick(activateKeyboard)
+  else deactivateKeyboard()
+})
 
 function open(e: MouseEvent) {
   const el = e.currentTarget as HTMLElement | null
@@ -48,7 +63,7 @@ function close() {
   emit('close')
 }
 
-defineExpose({ open, close })
+defineExpose({ open, close, activateKeyboard })
 </script>
 
 <template>
@@ -56,6 +71,7 @@ defineExpose({ open, close })
     <Transition name="nd-popup">
       <div v-if="showMenu" :class="$style.popupBackdrop" @click="close">
         <div
+          ref="menuRef"
           :class="$style.popupMenu"
           class="_popup nd-popup-content popup-menu"
           :style="{ ...menuTheme, top: menuPos.y + 'px', left: menuPos.x + 'px' }"

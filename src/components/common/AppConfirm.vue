@@ -1,14 +1,32 @@
 <script setup lang="ts">
+import { nextTick, ref, watch } from 'vue'
+
+import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useConfirm } from '@/stores/confirm'
 
 const { visible, options, resolve } = useConfirm()
+
+const dialogRef = ref<HTMLElement | null>(null)
+const { activate, deactivate } = useFocusTrap(dialogRef, {
+  get initialFocus() {
+    return options.value.type === 'danger'
+      ? '._button:first-child'
+      : '._button:last-child'
+  },
+  onEscape: () => resolve(false),
+})
+
+watch(visible, (v) => {
+  if (v) nextTick(activate)
+  else deactivate()
+})
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="nd-popup">
       <div v-if="visible" class="_dialogBackdrop" @click.self="resolve(false)">
-        <div class="_dialog nd-popup-content" @click.stop>
+        <div ref="dialogRef" class="_dialog nd-popup-content" @click.stop>
           <div :class="$style.header">
             <div :class="$style.title">{{ options.title }}</div>
           </div>

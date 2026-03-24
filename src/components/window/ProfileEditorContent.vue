@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
-import { type Diagnostic, linter } from '@codemirror/lint'
 import JSON5 from 'json5'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
-import { useSwipeTab } from '@/composables/useSwipeTab'
-import { useTabSlide } from '@/composables/useTabSlide'
+import EditorTabs from '@/components/common/EditorTabs.vue'
+import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
+import { COLUMN_ICONS, TL_ICONS } from '@/composables/useColumnTabs'
+import { useEditorTabs } from '@/composables/useEditorTabs'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useServersStore } from '@/stores/servers'
+import { createJson5Linter } from '@/utils/json5Linter'
 
 const CodeEditor = defineAsyncComponent(
   () => import('@/components/deck/widgets/CodeEditor.vue'),
@@ -48,105 +50,20 @@ const COLUMN_TYPE_LABELS: Record<string, string> = {
   emoji: '絵文字',
 }
 
-const COLUMN_TYPE_ICONS: Record<string, string> = {
-  timeline: 'ti-list',
-  notifications: 'ti-bell',
-  search: 'ti-search',
-  list: 'ti-list-check',
-  antenna: 'ti-antenna',
-  favorites: 'ti-star',
-  clip: 'ti-paperclip',
-  user: 'ti-user',
-  mentions: 'ti-at',
-  channel: 'ti-device-tv',
-  specified: 'ti-mail',
-  chat: 'ti-messages',
-  widget: 'ti-apps',
-  aiscript: 'ti-code',
-  play: 'ti-player-play',
-  page: 'ti-file-text',
-  ai: 'ti-sparkles',
-  announcements: 'ti-speakerphone',
-  drive: 'ti-cloud',
-  gallery: 'ti-photo',
-  explore: 'ti-compass',
-  followRequests: 'ti-user-plus',
-  achievements: 'ti-trophy',
-  apiConsole: 'ti-terminal',
-  apiDocs: 'ti-book',
-  lookup: 'ti-world-search',
-  serverInfo: 'ti-server',
-  ads: 'ti-ad',
-  aboutMisskey: 'ti-info-circle',
-  emoji: 'ti-mood-smile',
-}
-
-defineProps<{
-  profileId?: string
-}>()
-
 const jsonLang = json()
-
-const jsonLinter = linter(
-  (view) => {
-    const diagnostics: Diagnostic[] = []
-    const code = view.state.doc.toString()
-    if (!code.trim()) return diagnostics
-    try {
-      JSON5.parse(code)
-    } catch (e) {
-      if (e instanceof Error) {
-        const lineMatch = e.message.match(/at (\d+):(\d+)/)
-        let from = 0
-        let to = code.length
-        if (lineMatch) {
-          const lineNum = Number.parseInt(lineMatch[1] ?? '1', 10)
-          const line = view.state.doc.line(
-            Math.min(lineNum, view.state.doc.lines),
-          )
-          from = line.from
-          to = line.to
-        }
-        diagnostics.push({ from, to, severity: 'error', message: e.message })
-      }
-    }
-    return diagnostics
-  },
-  { delay: 500 },
-)
+const jsonLinter = createJson5Linter()
 
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const deckStore = useDeckStore()
 const profileStore = useDeckProfileStore()
 
-const tab = ref<'visual' | 'code'>('visual')
 const codeContent = ref('')
 const codeError = ref<string | null>(null)
-const editorRef = ref<HTMLElement | null>(null)
 
-const TABS = ['visual', 'code'] as const
-const profileTabIndex = computed(() => TABS.indexOf(tab.value))
-useTabSlide(profileTabIndex, editorRef)
-
-useSwipeTab(
-  editorRef,
-  () => {
-    const idx = TABS.indexOf(tab.value)
-    const next = TABS[idx + 1]
-    if (next) {
-      tab.value = next
-      return true
-    }
-  },
-  () => {
-    const idx = TABS.indexOf(tab.value)
-    const prev = TABS[idx - 1]
-    if (prev) {
-      tab.value = prev
-      return true
-    }
-  },
+const { tab, containerRef: editorRef } = useEditorTabs(
+  ['visual', 'code'] as const,
+  'visual',
 )
 
 function columnLabel(col: DeckColumn): string {
@@ -156,18 +73,11 @@ function columnLabel(col: DeckColumn): string {
   return typeLabel
 }
 
-const TL_ICONS: Record<string, string> = {
-  home: 'ti-home',
-  local: 'ti-planet',
-  social: 'ti-rocket',
-  global: 'ti-whirl',
-}
-
 function columnIcon(col: DeckColumn): string {
   if (col.type === 'timeline' && col.tl) {
-    return `ti ${TL_ICONS[col.tl] ?? COLUMN_TYPE_ICONS.timeline ?? 'ti-layout-columns'}`
+    return TL_ICONS[col.tl] ?? COLUMN_ICONS.timeline ?? 'layout-columns'
   }
-  return `ti ${COLUMN_TYPE_ICONS[col.type] ?? 'ti-layout-columns'}`
+  return COLUMN_ICONS[col.type] ?? 'layout-columns'
 }
 
 function columnAvatarUrl(col: DeckColumn): string | null {
@@ -334,21 +244,7 @@ function syncVisualFromCode() {
       codeError.value = '有効なJSONオブジェクトではありません'
       return
     }
-    if (parsed.name && profileStore.windowProfileId) {
-      profileStore.renameProfile(profileStore.windowProfileId, parsed.name)
-    }
-    const newColumns = Array.isArray(parsed.columns)
-      ? parsed.columns
-      : undefined
-    const newLayout = Array.isArray(parsed.layout) ? parsed.layout : undefined
-    if (newColumns && newLayout) {
-      profileStore.setColumnsAndLayout(newColumns, newLayout)
-    } else if (newColumns) {
-      profileStore.setColumns(newColumns)
-    } else if (newLayout) {
-      profileStore.setLayout(newLayout)
-    }
-    profileStore.flushPersist()
+    applyParsedProfile(parsed as Record<string, unknown>)
     codeError.value = null
   } catch (e) {
     codeError.value = e instanceof Error ? e.message : 'JSON5パースエラー'
@@ -360,9 +256,33 @@ watch(tab, (newTab) => {
 })
 
 // Import/Export
-const copiedMessage = ref(false)
-const importedMessage = ref(false)
-const importError = ref(false)
+const {
+  copied: copiedMessage,
+  imported: importedMessage,
+  importError,
+  showCopied,
+  showImported,
+  showImportError,
+} = useClipboardFeedback()
+
+function applyParsedProfile(parsed: Record<string, unknown>) {
+  if (parsed.name && profileStore.windowProfileId) {
+    profileStore.renameProfile(
+      profileStore.windowProfileId,
+      parsed.name as string,
+    )
+  }
+  const newColumns = Array.isArray(parsed.columns) ? parsed.columns : undefined
+  const newLayout = Array.isArray(parsed.layout) ? parsed.layout : undefined
+  if (newColumns && newLayout) {
+    profileStore.setColumnsAndLayout(newColumns, newLayout)
+  } else if (newColumns) {
+    profileStore.setColumns(newColumns)
+  } else if (newLayout) {
+    profileStore.setLayout(newLayout)
+  }
+  profileStore.flushPersist()
+}
 
 function exportToClipboard() {
   const data = {
@@ -371,10 +291,7 @@ function exportToClipboard() {
     layout: deckStore.windowLayout,
   }
   navigator.clipboard.writeText(JSON5.stringify(data, null, 2))
-  copiedMessage.value = true
-  setTimeout(() => {
-    copiedMessage.value = false
-  }, 2000)
+  showCopied()
 }
 
 async function importFromClipboard() {
@@ -382,62 +299,27 @@ async function importFromClipboard() {
     const text = await navigator.clipboard.readText()
     const parsed = JSON5.parse(text)
     if (!parsed || typeof parsed !== 'object') {
-      importError.value = true
-      setTimeout(() => {
-        importError.value = false
-      }, 2000)
+      showImportError()
       return
     }
-    if (parsed.name && profileStore.windowProfileId) {
-      profileStore.renameProfile(profileStore.windowProfileId, parsed.name)
-    }
-    const newColumns = Array.isArray(parsed.columns)
-      ? parsed.columns
-      : undefined
-    const newLayout = Array.isArray(parsed.layout) ? parsed.layout : undefined
-    if (newColumns && newLayout) {
-      profileStore.setColumnsAndLayout(newColumns, newLayout)
-    } else if (newColumns) {
-      profileStore.setColumns(newColumns)
-    } else if (newLayout) {
-      profileStore.setLayout(newLayout)
-    }
-    profileStore.flushPersist()
+    applyParsedProfile(parsed as Record<string, unknown>)
     codeError.value = null
-    importedMessage.value = true
-    setTimeout(() => {
-      importedMessage.value = false
-    }, 2000)
+    showImported()
   } catch {
-    importError.value = true
-    setTimeout(() => {
-      importError.value = false
-    }, 2000)
+    showImportError()
   }
 }
 </script>
 
 <template>
   <div ref="editorRef" :class="$style.editor">
-    <!-- Tabs -->
-    <div :class="$style.tabs">
-      <button
-        class="_button"
-        :class="[$style.tab, { [$style.active]: tab === 'visual' }]"
-        @click="tab = 'visual'"
-      >
-        <i class="ti ti-layout-columns" />
-        ビジュアル
-      </button>
-      <button
-        class="_button"
-        :class="[$style.tab, { [$style.active]: tab === 'code' }]"
-        @click="tab = 'code'"
-      >
-        <i class="ti ti-code" />
-        コード
-      </button>
-    </div>
+    <EditorTabs
+      v-model="tab"
+      :tabs="[
+        { value: 'visual', icon: 'layout-columns', label: 'ビジュアル' },
+        { value: 'code', icon: 'code', label: 'コード' },
+      ]"
+    />
 
     <!-- Visual Editor -->
     <div v-if="tab === 'visual'" :class="$style.visualPanel">
@@ -478,7 +360,7 @@ async function importFromClipboard() {
             :title="groupLabel(group)"
             @pointerdown="startDrag(groupIdx, $event)"
           >
-            <i v-if="groupPrimaryColumn(group)" :class="'ti ' + columnIcon(groupPrimaryColumn(group)!)" />
+            <i v-if="groupPrimaryColumn(group)" :class="'ti ti-' + columnIcon(groupPrimaryColumn(group)!)" />
             <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
             <span v-if="groupServerIconUrl(group)" :class="$style.serverBadge">
               <img :src="groupServerIconUrl(group)!" :class="$style.badgeImg" />
@@ -555,36 +437,6 @@ async function importFromClipboard() {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-}
-
-.tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.tab {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  font-size: 0.75em;
-  font-weight: bold;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  border-bottom: 2px solid transparent;
-  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
-
-  &:hover {
-    opacity: 0.8;
-  }
-
-  &.active {
-    opacity: 1;
-    border-bottom-color: var(--nd-accent);
-    color: var(--nd-accent);
-  }
 }
 
 .visualPanel {

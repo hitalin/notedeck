@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { css } from '@codemirror/lang-css'
 import { type Diagnostic, linter } from '@codemirror/lint'
-import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
-import { useSwipeTab } from '@/composables/useSwipeTab'
-import { useTabSlide } from '@/composables/useTabSlide'
+import { useClickOutside } from '@/composables/useClickOutside'
+import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
+import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
+import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useThemeStore } from '@/stores/theme'
 
 const cssLang = css()
@@ -41,29 +44,9 @@ const cssLinter = linter(
 
 const themeStore = useThemeStore()
 
-const tab = ref<'presets' | 'code'>('presets')
-const editorRef = ref<HTMLElement | null>(null)
-
-const CSS_TABS = ['presets', 'code'] as const
-const cssTabIndex = computed(() => CSS_TABS.indexOf(tab.value))
-useTabSlide(cssTabIndex, editorRef)
-
-useSwipeTab(
-  editorRef,
-  () => {
-    const next = CSS_TABS[CSS_TABS.indexOf(tab.value) + 1]
-    if (next) {
-      tab.value = next
-      return true
-    }
-  },
-  () => {
-    const prev = CSS_TABS[CSS_TABS.indexOf(tab.value) - 1]
-    if (prev) {
-      tab.value = prev
-      return true
-    }
-  },
+const { tab, containerRef: editorRef } = useEditorTabs(
+  ['presets', 'code'] as const,
+  'presets',
 )
 
 // Local CSS mirror (synced from store on mount)
@@ -270,68 +253,54 @@ function applyFromCode() {
 }
 
 // Import/Export
-const copiedMessage = ref(false)
-const importedMessage = ref(false)
-const importError = ref(false)
+const {
+  copied: copiedMessage,
+  imported: importedMessage,
+  importError,
+  showCopied,
+  showImported,
+  showImportError,
+} = useClipboardFeedback()
 
 function exportCss() {
   navigator.clipboard.writeText(cssCode.value)
-  copiedMessage.value = true
-  setTimeout(() => {
-    copiedMessage.value = false
-  }, 2000)
+  showCopied()
 }
 
 async function importCss() {
   try {
     const text = await navigator.clipboard.readText()
     if (!text.trim()) {
-      importError.value = true
-      setTimeout(() => {
-        importError.value = false
-      }, 2000)
+      showImportError()
       return
     }
     cssCode.value = text
     parsePresetsFromCss(text)
     userFreeformCss.value = extractUserCss(text)
     themeStore.setCustomCss(text)
-    importedMessage.value = true
-    setTimeout(() => {
-      importedMessage.value = false
-    }, 2000)
+    showImported()
   } catch {
-    importError.value = true
-    setTimeout(() => {
-      importError.value = false
-    }, 2000)
+    showImportError()
   }
 }
 
-const confirmingClear = ref(false)
-let clearTimer: ReturnType<typeof setTimeout> | null = null
+const { confirming: confirmingClear, trigger: triggerClear } =
+  useDoubleConfirm()
 
 function handleClear() {
-  if (confirmingClear.value) {
-    if (clearTimer) clearTimeout(clearTimer)
-    confirmingClear.value = false
+  triggerClear(() => {
     presets.value = { customFont: '', fontSize: 0 }
     userFreeformCss.value = ''
     cssCode.value = ''
     cssError.value = null
     codeError.value = null
     themeStore.setCustomCss('')
-  } else {
-    confirmingClear.value = true
-    clearTimer = setTimeout(() => {
-      confirmingClear.value = false
-    }, 3000)
-  }
+  })
 }
 
 // Font dropdown
 const showFontDropdown = ref(false)
-const cssModule = useCssModule()
+const dropdownRef = ref<HTMLElement | null>(null)
 
 const selectedFontLabel = computed(() => {
   const opt = FONT_OPTIONS.find((o) => o.value === presets.value.customFont)
@@ -343,15 +312,9 @@ function selectFont(value: string) {
   showFontDropdown.value = false
 }
 
-function handleOutsideClick(e: MouseEvent) {
-  const target = e.target as HTMLElement
-  if (!target.closest(`.${cssModule.dropdown}`)) {
-    showFontDropdown.value = false
-  }
-}
-
-onMounted(() => document.addEventListener('click', handleOutsideClick))
-onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
+useClickOutside(dropdownRef, () => {
+  showFontDropdown.value = false
+})
 
 watch(tab, (t) => {
   if (t === 'code') {
@@ -366,25 +329,13 @@ watch(tab, (t) => {
 
 <template>
   <div ref="editorRef" :class="$style.cssContent">
-    <!-- Tabs -->
-    <div :class="$style.tabs">
-      <button
-        class="_button"
-        :class="[$style.tab, { [$style.active]: tab === 'presets' }]"
-        @click="tab = 'presets'"
-      >
-        <i class="ti ti-adjustments" />
-        プリセット
-      </button>
-      <button
-        class="_button"
-        :class="[$style.tab, { [$style.active]: tab === 'code' }]"
-        @click="tab = 'code'"
-      >
-        <i class="ti ti-code" />
-        コード
-      </button>
-    </div>
+    <EditorTabs
+      v-model="tab"
+      :tabs="[
+        { value: 'presets', icon: 'adjustments', label: 'プリセット' },
+        { value: 'code', icon: 'code', label: 'コード' },
+      ]"
+    />
 
     <!-- Presets -->
     <div v-show="tab === 'presets'" :class="$style.presetsPanel">
@@ -394,7 +345,7 @@ watch(tab, (t) => {
           <i class="ti ti-typography" />
           フォント
         </div>
-        <div :class="$style.dropdown">
+        <div ref="dropdownRef" :class="$style.dropdown">
           <button
             class="_button"
             :class="$style.dropdownTrigger"
@@ -553,29 +504,6 @@ watch(tab, (t) => {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-}
-
-.tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.tab {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  font-size: 0.75em;
-  font-weight: bold;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  border-bottom: 2px solid transparent;
-  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
-
-  &:hover { opacity: 0.8; }
-  &.active { opacity: 1; border-bottom-color: var(--nd-accent); color: var(--nd-accent); }
 }
 
 .active { /* modifier */ }
