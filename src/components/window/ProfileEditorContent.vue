@@ -156,7 +156,17 @@ function columnLabel(col: DeckColumn): string {
   return typeLabel
 }
 
+const TL_ICONS: Record<string, string> = {
+  home: 'ti-home',
+  local: 'ti-planet',
+  social: 'ti-rocket',
+  global: 'ti-whirl',
+}
+
 function columnIcon(col: DeckColumn): string {
+  if (col.type === 'timeline' && col.tl) {
+    return `ti ${TL_ICONS[col.tl] ?? COLUMN_TYPE_ICONS.timeline ?? 'ti-layout-columns'}`
+  }
   return `ti ${COLUMN_TYPE_ICONS[col.type] ?? 'ti-layout-columns'}`
 }
 
