@@ -107,6 +107,9 @@ const {
           </div>
         </div>
       </div>
+      <div v-if="isLoading && notes.length === 0" :class="$style.columnLoading">
+        <div :class="$style.columnLoadingSpinner" />
+      </div>
       <template v-if="!(isLoading && notes.length === 0)">
         <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" :class="$style.tlScroller" @scroll="handleScroll">
           <template #default="{ item, index }">

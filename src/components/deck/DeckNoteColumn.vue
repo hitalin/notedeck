@@ -149,6 +149,10 @@ defineExpose({
       <!-- Inline post form slot (e.g. channel column) -->
       <slot name="before-notes" :handle-posted="handlePosted" />
 
+      <div v-if="isLoading && notes.length === 0" :class="$style.columnLoading">
+        <div :class="$style.columnLoadingSpinner" />
+      </div>
+
       <template v-if="!(isLoading && notes.length === 0)">
         <button
           v-if="pendingNotes.length > 0"

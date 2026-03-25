@@ -201,6 +201,23 @@
 }
 
 /* Loading */
+.columnLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+}
+
+.columnLoadingSpinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid color-mix(in srgb, var(--nd-accent) 25%, transparent);
+  border-top-color: var(--nd-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
 .loadingMore {
   text-align: center;
   padding: 1rem;
