@@ -61,7 +61,7 @@
     "@types/node": "^24.10.1",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vue/tsconfig": "^0.8.1",
-    "jsdom": "^28.1.0",
+    "happy-dom": "^20.8.8",
     "lefthook": "^2.1.4",
     "sass": "^1.98.0",
     "subset-font": "^2.4.0",

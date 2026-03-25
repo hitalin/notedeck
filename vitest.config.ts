@@ -15,7 +15,7 @@ function json5Plugin(): Plugin {
   }
 }
 
-export default defineConfig({
+const shared = {
   // biome-ignore lint/suspicious/noExplicitAny: vite v7/v8 Plugin type mismatch
   plugins: [vue() as any, json5Plugin() as any],
   resolve: {
@@ -23,9 +23,31 @@ export default defineConfig({
       '@': resolve(import.meta.dirname, 'src'),
     },
   },
+}
+
+export default defineConfig({
+  ...shared,
   test: {
     globals: true,
-    environment: 'jsdom',
+    projects: [
+      {
+        ...shared,
+        test: {
+          name: 'unit',
+          include: ['src/**/*.test.ts'],
+          exclude: ['src/**/*.dom.test.ts'],
+          environment: 'node',
+        },
+      },
+      {
+        ...shared,
+        test: {
+          name: 'dom',
+          include: ['src/**/*.dom.test.ts'],
+          environment: 'happy-dom',
+        },
+      },
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json'],
