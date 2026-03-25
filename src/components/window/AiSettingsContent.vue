@@ -8,6 +8,7 @@ import { useClickOutside } from '@/composables/useClickOutside'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { isTauri, readAiSettings, writeAiSettings } from '@/utils/settingsFs'
 
 const mdLang = markdown({ codeLanguages: languages })
 
@@ -16,31 +17,29 @@ const { tab, containerRef: editorRef } = useEditorTabs(
   'api',
 )
 
-// --- API Settings (mock, localStorage-backed) ---
+// --- AI Settings ---
+// File-backed settings (included in backup): provider, endpoint, model, prompt
+// localStorage-only (excluded from backup): API keys (secrets)
 
-interface AiConfig {
+/** Fields persisted to ai.json (safe to backup). */
+interface AiFileConfig {
   provider: 'ollama' | 'openai' | 'custom'
   ollamaEndpoint: string
   ollamaModel: string
-  openaiApiKey: string
   openaiModel: string
   customEndpoint: string
-  customApiKey: string
   customModel: string
   systemPrompt: string
 }
 
-const STORAGE_KEY = 'nd-ai-settings'
-
-function loadConfig(): AiConfig {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return { ...defaultConfig(), ...JSON.parse(raw) }
-  } catch {
-    /* ignore */
-  }
-  return defaultConfig()
+/** Full config including secrets (never written to file). */
+interface AiConfig extends AiFileConfig {
+  openaiApiKey: string
+  customApiKey: string
 }
+
+const STORAGE_KEY = 'nd-ai-settings'
+const SECRET_FIELDS = ['openaiApiKey', 'customApiKey'] as const
 
 function defaultConfig(): AiConfig {
   return {
@@ -56,10 +55,69 @@ function defaultConfig(): AiConfig {
   }
 }
 
-const config = ref<AiConfig>(loadConfig())
+/** Extract file-safe fields (no secrets). */
+function toFileConfig(c: AiConfig): AiFileConfig {
+  const { openaiApiKey: _, customApiKey: __, ...safe } = c
+  return safe
+}
+
+function loadFromLocalStorage(): AiConfig {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) return { ...defaultConfig(), ...JSON.parse(raw) }
+  } catch {
+    /* ignore */
+  }
+  return defaultConfig()
+}
+
+const config = ref<AiConfig>(loadFromLocalStorage())
+const initialized = ref(false)
 
 function saveConfig() {
+  // Always save full config (including secrets) to localStorage
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config.value))
+  // Persist non-secret fields to file (for backup)
+  if (initialized.value) {
+    persistToFile().catch((e) =>
+      console.warn('[ai-settings] failed to persist to file:', e),
+    )
+  }
+}
+
+async function persistToFile(): Promise<void> {
+  const content = JSON.stringify(toFileConfig(config.value), null, 2)
+  await writeAiSettings(content)
+}
+
+/** Load from file and initialize. File is source of truth for non-secret fields. */
+async function initFileStorage(): Promise<void> {
+  const content = await readAiSettings()
+  if (content) {
+    try {
+      const parsed = JSON.parse(content) as Partial<AiFileConfig>
+      // Merge file config with localStorage secrets
+      const secrets: Pick<AiConfig, (typeof SECRET_FIELDS)[number]> = {
+        openaiApiKey: config.value.openaiApiKey,
+        customApiKey: config.value.customApiKey,
+      }
+      config.value = { ...defaultConfig(), ...parsed, ...secrets }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(config.value))
+    } catch (e) {
+      console.warn('[ai-settings] failed to parse ai.json:', e)
+    }
+  }
+  initialized.value = true
+  // Migrate: localStorage has settings but no file exists
+  if (!content && config.value !== defaultConfig()) {
+    persistToFile().catch((e) =>
+      console.warn('[ai-settings] migration to file failed:', e),
+    )
+  }
+}
+
+if (isTauri) {
+  initFileStorage()
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -165,7 +223,10 @@ const {
 } = useClipboardFeedback()
 
 function exportConfig() {
-  navigator.clipboard.writeText(JSON.stringify(config.value, null, 2))
+  // Export without secrets (same as file backup)
+  navigator.clipboard.writeText(
+    JSON.stringify(toFileConfig(config.value), null, 2),
+  )
   showCopied()
 }
 
@@ -177,7 +238,12 @@ async function importConfig() {
       showImportError()
       return
     }
-    config.value = { ...defaultConfig(), ...parsed }
+    // Preserve existing secrets, merge imported non-secret fields
+    const secrets: Pick<AiConfig, (typeof SECRET_FIELDS)[number]> = {
+      openaiApiKey: config.value.openaiApiKey,
+      customApiKey: config.value.customApiKey,
+    }
+    config.value = { ...defaultConfig(), ...parsed, ...secrets }
     saveConfig()
     showImported()
   } catch {

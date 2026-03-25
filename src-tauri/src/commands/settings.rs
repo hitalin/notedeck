@@ -156,7 +156,7 @@ pub fn rename_settings_file(
 }
 
 /// Allowed root-level filenames (no subdirectory).
-const ALLOWED_ROOT_FILES: &[&str] = &["custom.css", "keybinds.json5"];
+const ALLOWED_ROOT_FILES: &[&str] = &["custom.css", "keybinds.json5", "ai.json"];
 
 /// Resolve the full path for a root-level settings file (under notedeck/).
 fn resolve_root_path(app: &tauri::AppHandle, name: &str) -> Result<PathBuf> {
