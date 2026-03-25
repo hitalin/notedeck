@@ -6,16 +6,12 @@ export type WindowType =
   | 'user-profile'
   | 'follow-list'
   | 'login'
-  | 'search'
-  | 'notifications'
   | 'plugins'
   | 'keybinds'
   | 'cssEditor'
   | 'themeEditor'
   | 'profileEditor'
-  | 'ai'
   | 'aiSettings'
-  | 'chat'
   | 'about'
   | 'navEditor'
 
@@ -39,11 +35,6 @@ export const WINDOW_SIZES: Record<
   'note-detail': { width: 500, maxHeight: 600 },
   'user-profile': { width: 500, maxHeight: 650 },
   'follow-list': { width: 500, maxHeight: 650 },
-  search: { width: 500, maxHeight: 650 },
-  notifications: { width: 500, maxHeight: 650 },
-  chat: { width: 500, maxHeight: 650 },
-  // Content windows (cont.)
-  ai: { width: 500, maxHeight: 650 },
   aiSettings: { width: 400, maxHeight: 700 },
   // Tool windows
   plugins: { width: 500, maxHeight: 650 },
@@ -77,15 +68,11 @@ export const useWindowsStore = defineStore('windows', () => {
   /** Types that are always singletons (at most one instance). */
   const SINGLETON_TYPES: ReadonlySet<WindowType> = new Set([
     'login',
-    'search',
-    'notifications',
     'plugins',
     'keybinds',
     'cssEditor',
     'themeEditor',
-    'ai',
     'aiSettings',
-    'chat',
     'about',
     'navEditor',
     'profileEditor',

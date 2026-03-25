@@ -41,22 +41,21 @@ export function useNavigation() {
     }
   }
 
-  function toggleOrOpenWindow(
+  function toggleOrOpenColumn(
     type: 'notifications' | 'search' | 'chat' | 'ai',
   ) {
-    if (isDeckActive()) {
-      deckStore.toggleSidebarColumn(type, null)
-    } else {
-      windowsStore.open(type)
+    if (!isDeckActive()) {
+      router.push('/deck')
     }
+    deckStore.toggleSidebarColumn(type, null)
   }
 
   function navigateToSearch() {
-    toggleOrOpenWindow('search')
+    toggleOrOpenColumn('search')
   }
 
   function navigateToNotifications() {
-    toggleOrOpenWindow('notifications')
+    toggleOrOpenColumn('notifications')
   }
 
   function navigateToPlugins() {
@@ -64,11 +63,11 @@ export function useNavigation() {
   }
 
   function navigateToAi() {
-    toggleOrOpenWindow('ai')
+    toggleOrOpenColumn('ai')
   }
 
   function navigateToChat() {
-    toggleOrOpenWindow('chat')
+    toggleOrOpenColumn('chat')
   }
 
   return {
