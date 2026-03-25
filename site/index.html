@@ -26,44 +26,47 @@
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
       background:var(--bg);
       color:var(--text);
-      line-height:1.7;
+      line-height:1.6;
     }
-    a{color:var(--green);text-decoration:none}
-    a:hover{text-decoration:underline}
-
-    .container{max-width:760px;margin:0 auto;padding:0 1.5rem}
 
     /* Hero */
     .hero{
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
       text-align:center;
-      padding:6rem 1.5rem 3rem;
+      padding:2rem 1.5rem;
+      gap:2rem;
     }
-    .hero-icon{width:80px;height:80px;border-radius:20px;margin-bottom:1.5rem}
-    .hero h1{font-size:clamp(2.5rem,6vw,3.5rem);font-weight:800;letter-spacing:-0.02em;margin-bottom:.75rem}
+    .hero-icon{width:80px;height:80px;border-radius:20px}
+    .hero h1{font-size:clamp(2.5rem,6vw,4rem);font-weight:800;letter-spacing:-0.02em}
     .hero h1 span{color:var(--green)}
     .hero .tagline{
-      font-size:clamp(1rem,2.5vw,1.25rem);
+      font-size:clamp(1.1rem,2.5vw,1.4rem);
       color:var(--text-muted);
-      margin-bottom:2rem;
+      max-width:600px;
     }
     .hero-buttons{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center}
     .btn{
       display:inline-flex;align-items:center;gap:.5rem;
-      padding:.75rem 1.5rem;
+      padding:.8rem 1.6rem;
       border-radius:var(--radius);
       font-size:1rem;font-weight:600;
       text-decoration:none;
       transition:transform .15s,box-shadow .15s;
     }
-    .btn:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(134,179,0,.25);text-decoration:none}
+    .btn:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(134,179,0,.3)}
     .btn-primary{background:var(--green);color:#fff}
     .btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}
 
     /* Screenshot */
     .screenshot{
-      max-width:900px;
-      margin:0 auto 4rem;
+      max-width:1000px;
+      width:100%;
       padding:0 1.5rem;
+      margin:0 auto;
     }
     .screenshot img{
       width:100%;
@@ -72,86 +75,70 @@
       box-shadow:0 8px 40px rgba(0,0,0,.4);
     }
 
-    /* Sections */
-    section{margin-bottom:4rem}
-    section h2{
-      font-size:1.5rem;
-      font-weight:700;
-      margin-bottom:1rem;
-      padding-bottom:.5rem;
-      border-bottom:1px solid var(--border);
+    /* Features */
+    .features{
+      max-width:900px;
+      margin:6rem auto;
+      padding:0 1.5rem;
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+      gap:2rem;
     }
-    section p{color:var(--text-muted);margin-bottom:1rem}
-
-    /* Feature list */
-    .feature-list{
-      list-style:none;
-      padding:0;
+    .feature{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:1.5rem;
     }
-    .feature-list li{
-      padding:.6rem 0;
-      border-bottom:1px solid var(--border);
-      display:flex;
-      gap:.75rem;
-      align-items:baseline;
-    }
-    .feature-list li:last-child{border-bottom:none}
-    .feature-list .label{
-      font-weight:600;
-      white-space:nowrap;
-      min-width:fit-content;
-    }
-    .feature-list .desc{color:var(--text-muted)}
+    .feature h3{font-size:1.1rem;margin-bottom:.5rem}
+    .feature p{color:var(--text-muted);font-size:.95rem}
 
     /* Download */
+    .download{
+      max-width:700px;
+      margin:0 auto 6rem;
+      padding:0 1.5rem;
+      text-align:center;
+    }
+    .download h2{font-size:2rem;margin-bottom:.5rem}
+    .download .sub{color:var(--text-muted);margin-bottom:2rem}
     .platforms{
       display:grid;
       grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
       gap:1rem;
-      margin-bottom:1.5rem;
     }
     .platform{
-      display:block;
       background:var(--surface);
       border:1px solid var(--border);
       border-radius:var(--radius);
       padding:1.2rem 1rem;
-      text-align:center;
       text-decoration:none;
       color:var(--text);
       transition:border-color .15s;
     }
-    .platform:hover{border-color:var(--green);text-decoration:none}
+    .platform:hover{border-color:var(--green)}
     .platform .os{font-weight:600;margin-bottom:.25rem}
     .platform .format{color:var(--text-muted);font-size:.85rem}
 
-    .install-cmds{
+    .install-alt{
+      margin-top:2rem;
+      text-align:left;
       background:var(--surface);
       border:1px solid var(--border);
       border-radius:var(--radius);
-      padding:1.25rem;
+      padding:1.5rem;
     }
-    .install-cmds h3{font-size:1rem;margin-bottom:.75rem}
+    .install-alt h3{font-size:1rem;margin-bottom:1rem}
     .install-cmd{
       background:var(--bg);
       border-radius:8px;
       padding:.6rem 1rem;
       margin-bottom:.5rem;
       font-family:"SF Mono",Monaco,Consolas,monospace;
-      font-size:.85rem;
-    }
-    .install-cmd:last-child{margin-bottom:0}
-    .install-cmd .cmd-label{color:var(--text-muted);font-size:.75rem;margin-bottom:.15rem}
-
-    .note{
-      margin-top:1.5rem;
-      padding:1rem 1.25rem;
-      background:var(--surface);
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      color:var(--text-muted);
       font-size:.9rem;
     }
+    .install-cmd:last-child{margin-bottom:0}
+    .install-cmd .label{color:var(--text-muted);font-size:.8rem;margin-bottom:.15rem}
 
     /* Footer */
     footer{
@@ -161,6 +148,8 @@
       font-size:.9rem;
       border-top:1px solid var(--border);
     }
+    footer a{color:var(--green);text-decoration:none}
+    footer a:hover{text-decoration:underline}
     .footer-links{display:flex;gap:1.5rem;justify-content:center;margin-bottom:1rem;flex-wrap:wrap}
   </style>
 </head>
@@ -173,7 +162,7 @@
       class="hero-icon"
     />
     <h1>Note<span>Deck</span></h1>
-    <p class="tagline">複数の Misskey サーバーをひとつのデッキで。</p>
+    <p class="tagline">複数の Misskey サーバーをひとつのデッキで。<br />マルチサーバー対応デッキクライアント。</p>
     <div class="hero-buttons">
       <a href="#download" class="btn btn-primary">ダウンロード</a>
       <a href="https://github.com/hitalin/notedeck" class="btn btn-secondary">
@@ -191,112 +180,72 @@
     />
   </div>
 
-  <div class="container">
+  <section class="features">
+    <div class="feature">
+      <h3>サーバーをまたいで一画面に</h3>
+      <p>複数の Misskey サーバーに同時ログイン。タイムライン・通知・リストをカラムに並べて、切り替え不要で全体を把握。</p>
+    </div>
+    <div class="feature">
+      <h3>Misskey フォークもそのまま</h3>
+      <p>Misskey 本家はもちろん、Firefish・CherryPick などの主要フォークにも対応。サーバーの広告表示も尊重します。</p>
+    </div>
+    <div class="feature">
+      <h3>デスクトップに根を張る</h3>
+      <p>システムトレイ常駐、グローバルホットキー、マルチウィンドウ。ブラウザタブではできない、ネイティブアプリならではの体験。</p>
+    </div>
+    <div class="feature">
+      <h3>データはあなたの手元に</h3>
+      <p>ノートはローカル DB に蓄積。全文検索も端末内で完結。設定はテキストファイルだから、バックアップも同期も自由自在。</p>
+    </div>
+    <div class="feature">
+      <h3>Rust で軽く、速く</h3>
+      <p>Tauri v2 + Rust バックエンドで省メモリ・高速起動。Electron 系とは一線を画すパフォーマンス。</p>
+    </div>
+    <div class="feature">
+      <h3>オープンソース</h3>
+      <p>AGPL-3.0 で公開。コードは GitHub で誰でも閲覧・貢献可能。<a href="https://github.com/sponsors/hitalin" style="color:var(--green)">Sponsors</a> で開発を支援できます。</p>
+    </div>
+  </section>
 
-    <section>
-      <h2>NoteDeck とは</h2>
-      <p>
-        NoteDeck は、Misskey 系サーバー向けのマルチカラム・デッキクライアントです。
-        複数のサーバーに同時ログインして、タイムライン・通知・リストなどを一画面に並べて使えます。
-        Tauri v2 + Rust で構築されており、Electron 系クライアントより軽量に動作します。
-      </p>
-    </section>
-
-    <section>
-      <h2>機能</h2>
-      <ul class="feature-list">
-        <li>
-          <span class="label">マルチカラム</span>
-          <span class="desc">タイムライン・通知・リスト・チャンネルなどを自由に並べて表示。幅はドラッグで調整可能</span>
-        </li>
-        <li>
-          <span class="label">マルチサーバー</span>
-          <span class="desc">複数の Misskey サーバーに同時ログイン。ひとつのデッキですべてのアカウントを管理</span>
-        </li>
-        <li>
-          <span class="label">フォーク対応</span>
-          <span class="desc">Misskey 本家に加え、Firefish・CherryPick などの主要フォークに対応</span>
-        </li>
-        <li>
-          <span class="label">クロスプラットフォーム</span>
-          <span class="desc">Windows / macOS / Linux / Android で動作</span>
-        </li>
-        <li>
-          <span class="label">軽量・高速</span>
-          <span class="desc">Rust バックエンド（Tauri v2）で省メモリ・高速起動</span>
-        </li>
-        <li>
-          <span class="label">プロファイル</span>
-          <span class="desc">カラム構成をプロファイルとして保存・切り替え</span>
-        </li>
-        <li>
-          <span class="label">カスタマイズ可能なナビバー</span>
-          <span class="desc">よく使うカラムをナビバーに配置してワンタップで切り替え</span>
-        </li>
-        <li>
-          <span class="label">オープンソース</span>
-          <span class="desc">AGPL-3.0 ライセンスで公開。誰でもコードを閲覧・貢献可能</span>
-        </li>
-      </ul>
-    </section>
-
-    <section id="download">
-      <h2>ダウンロード</h2>
-      <div class="platforms">
-        <a href="https://github.com/hitalin/notedeck/releases/latest" class="platform">
-          <div class="os">Windows</div>
-          <div class="format">.exe</div>
-        </a>
-        <a href="https://github.com/hitalin/notedeck/releases/latest" class="platform">
-          <div class="os">macOS</div>
-          <div class="format">.dmg (Universal)</div>
-        </a>
-        <a href="https://github.com/hitalin/notedeck/releases/latest" class="platform">
-          <div class="os">Linux</div>
-          <div class="format">.deb / .AppImage</div>
-        </a>
-        <a href="https://github.com/hitalin/notedeck/releases/latest" class="platform">
-          <div class="os">Android</div>
-          <div class="format">.apk</div>
-        </a>
+  <section class="download" id="download">
+    <h2>ダウンロード</h2>
+    <p class="sub">お使いの環境に合わせてインストール</p>
+    <div class="platforms">
+      <a href="https://github.com/hitalin/notedeck/releases/latest" class="platform">
+        <div class="os">Windows</div>
+        <div class="format">.exe</div>
+      </a>
+      <a href="https://github.com/hitalin/notedeck/releases/latest" class="platform">
+        <div class="os">macOS</div>
+        <div class="format">.dmg (Universal)</div>
+      </a>
+      <a href="https://github.com/hitalin/notedeck/releases/latest" class="platform">
+        <div class="os">Linux</div>
+        <div class="format">.deb / .AppImage</div>
+      </a>
+      <a href="https://github.com/hitalin/notedeck/releases/latest" class="platform">
+        <div class="os">Android</div>
+        <div class="format">.apk</div>
+      </a>
+    </div>
+    <div class="install-alt">
+      <h3>パッケージマネージャー</h3>
+      <div class="install-cmd">
+        <div class="label">winget</div>winget install Hitalin.NoteDeck
       </div>
-      <div class="install-cmds">
-        <h3>パッケージマネージャー</h3>
-        <div class="install-cmd">
-          <div class="cmd-label">winget</div>
-          winget install Hitalin.NoteDeck
-        </div>
-        <div class="install-cmd">
-          <div class="cmd-label">AUR</div>
-          yay -S misskey-notedeck-bin
-        </div>
-        <div class="install-cmd">
-          <div class="cmd-label">Nix</div>
-          nix run github:hitalin/notedeck
-        </div>
+      <div class="install-cmd">
+        <div class="label">AUR</div>yay -S misskey-notedeck-bin
       </div>
-      <div class="note">
-        Windows / Android ではインストール時にセキュリティ警告が表示されることがあります。
-        これはアプリがコード署名されていないためで、マルウェアではありません。
-        ソースコードは公開されており、ビルドは GitHub Actions で自動化されています。
+      <div class="install-cmd">
+        <div class="label">Nix</div>nix run github:hitalin/notedeck
       </div>
-    </section>
-
-    <section>
-      <h2>支援する</h2>
-      <p>
-        NoteDeck は個人で開発しているオープンソースプロジェクトです。
-        <a href="https://github.com/sponsors/hitalin">GitHub Sponsors</a> で開発の継続を支援できます。
-      </p>
-    </section>
-
-  </div>
+    </div>
+  </section>
 
   <footer>
     <div class="footer-links">
       <a href="https://github.com/hitalin/notedeck">GitHub</a>
       <a href="https://github.com/hitalin/notedeck/issues">Issues</a>
-      <a href="https://github.com/hitalin/notedeck/blob/main/ROADMAP.md">Roadmap</a>
       <a href="https://github.com/sponsors/hitalin">Sponsor</a>
     </div>
     <p>&copy; 2025 NoteDeck &mdash; <a href="https://github.com/hitalin/notedeck/blob/main/LICENSE">AGPL-3.0</a></p>
