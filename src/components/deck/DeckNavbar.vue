@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, useCssModule, watch } from 'vue'
+import ColumnBadges from '@/components/common/ColumnBadges.vue'
+import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useNavigation } from '@/composables/useNavigation'
 import { useUnreadChat } from '@/composables/useUnreadChat'
 import { useUnreadNotifications } from '@/composables/useUnreadNotifications'
@@ -9,7 +11,7 @@ import {
   isGuestAccount,
   useAccountsStore,
 } from '@/stores/accounts'
-import { useDeckStore } from '@/stores/deck'
+import { isNavDivider, type NavItem, useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { useStreamingStore } from '@/stores/streaming'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -57,23 +59,20 @@ const sidebarType = computed(() => {
   return col?.type ?? null
 })
 
-const NAV_ICON_MAP: Record<string, { icon: string; label: string }> = {
-  notifications: { icon: 'ti-bell', label: '通知' },
-  chat: { icon: 'ti-messages', label: 'チャット' },
-  search: { icon: 'ti-search', label: '検索' },
-  ai: { icon: 'ti-sparkles', label: 'AI' },
-  timeline: { icon: 'ti-home', label: 'タイムライン' },
-  mentions: { icon: 'ti-at', label: 'メンション' },
-  favorites: { icon: 'ti-star', label: 'お気に入り' },
-  drive: { icon: 'ti-cloud', label: 'ドライブ' },
-  explore: { icon: 'ti-compass', label: 'みつける' },
-  announcements: { icon: 'ti-speakerphone', label: 'お知らせ' },
-  gallery: { icon: 'ti-photo', label: 'ギャラリー' },
-  followRequests: { icon: 'ti-user-plus', label: 'フォローリクエスト' },
+function navIcon(type: string): string {
+  return `ti-${COLUMN_ICONS[type] ?? 'layout-grid'}`
 }
 
-function getNavAction(type: string): () => void {
-  switch (type) {
+function navLabel(type: string): string {
+  return COLUMN_LABELS[type] ?? type
+}
+
+function getNavAction(item: NavItem): () => void {
+  if (isNavDivider(item))
+    return () => {
+      /* divider has no action */
+    }
+  switch (item.type) {
     case 'notifications':
       return () => {
         markAllAsRead()
@@ -89,16 +88,13 @@ function getNavAction(type: string): () => void {
     case 'ai':
       return navigateToAi
     default:
-      return () =>
-        deckStore.toggleSidebarColumn(
-          type as never,
-          accountsStore.accounts[0]?.id ?? null,
-        )
+      return () => deckStore.toggleSidebarColumn(item.type, item.accountId)
   }
 }
 
-function getNavBadge(type: string): number {
-  switch (type) {
+function getNavBadge(item: NavItem): number {
+  if (isNavDivider(item)) return 0
+  switch (item.type) {
     case 'notifications':
       return totalUnread.value
     case 'chat':
@@ -334,21 +330,21 @@ defineExpose({
       <div :class="$style.body">
         <!-- Top section -->
         <div :class="$style.section">
-          <template v-for="(navType, navIdx) in deckStore.navItems" :key="`${navType}-${navIdx}`">
-            <div v-if="navType === 'divider'" :class="$style.divider" />
+          <template v-for="(navItem, navIdx) in deckStore.navItems" :key="navIdx">
+            <div v-if="isNavDivider(navItem)" :class="$style.divider" />
             <button
               v-else
               class="_button"
-              :class="[$style.item, { [$style.sidebarActive]: sidebarType === navType }]"
-              :title="NAV_ICON_MAP[navType]?.label ?? navType"
-              @click="closeDrawerAndDo(getNavAction(navType))"
+              :class="[$style.item, { [$style.sidebarActive]: sidebarType === navItem.type }]"
+              :title="navLabel(navItem.type)"
+              @click="closeDrawerAndDo(getNavAction(navItem))"
             >
-              <div v-if="getNavBadge(navType) > 0" :class="$style.iconWrap">
-                <i :class="['ti', NAV_ICON_MAP[navType]?.icon ?? 'ti-layout-grid']" />
-                <span :class="$style.badge">{{ getNavBadge(navType) > 99 ? '99+' : getNavBadge(navType) }}</span>
+              <div :class="$style.iconWrap">
+                <i :class="['ti', navIcon(navItem.type)]" />
+                <span v-if="getNavBadge(navItem) > 0" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
+                <ColumnBadges :account-id="navItem.accountId" :size="12" />
               </div>
-              <i v-else :class="['ti', NAV_ICON_MAP[navType]?.icon ?? 'ti-layout-grid']" />
-              <span :class="$style.label">{{ NAV_ICON_MAP[navType]?.label ?? navType }}</span>
+              <span :class="$style.label">{{ navLabel(navItem.type) }}</span>
             </button>
           </template>
         </div>

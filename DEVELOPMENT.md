@@ -137,6 +137,43 @@ Profile B ──→ Main Window（プロファイル切り替え時）
 
 **同期方式:** localStorage（全 webview 共有）を SSoT とし、Tauri イベント（`deck:profile-updated`）でキャッシュ無効化を通知。Rust 側に SSoT を移す案も検討したが、localStorage が既に全 webview で共有されており、本質的に同じ構造になるため不採用（[PR #172](https://github.com/hitalin/notedeck/pull/172) で議論）。
 
+### Window / Column Model（[#194](https://github.com/hitalin/notedeck/issues/194)）
+
+ウィンドウとカラムは「ストリーム / 詳細 / ツール」の3分類で役割を分担する。
+
+| 分類 | UI | 用途 | 永続性 |
+|------|-----|------|--------|
+| **ストリーム** | カラム | 継続的なデータフィード（TL、通知、検索、チャット等） | プロファイルに永続化 |
+| **詳細** | ウィンドウ | 特定アイテムの一時的な表示（ノート詳細、プロフィール、フォローリスト） | セッション限り |
+| **ツール** | ウィンドウ | アプリ設定・管理（ログイン、エディタ群、プラグイン、about） | セッション限り |
+
+**Cross-account カラム:**
+
+ストリーム系カラムは `accountId` で動作モードが決まる。
+
+- `accountId: "user-xxx"` → **per-account**（`useColumnSetup` で単一アダプタ）
+- `accountId: null` → **cross-account**（`useMultiAccountAdapters` で全アカウント並列取得）
+
+対応済みカラム: 通知、検索、チャット、メンション、ダイレクト、フォローリクエスト。
+
+**ナビバー（VSCode Activity Bar 式）:**
+
+左ナビバーのアイコンはカラムの**トグルボタン**として機能する。クリックでサイドバーカラムを左端（`layout[0]`）に挿入、再クリックで削除。同時に1スロットのみ（`sidebar: true` フラグで管理）。
+
+ナビバーのボタン構成はカスタマイズ可能（設定 → ナビバー）。`NavItem = { type, accountId } | { type: 'divider' }` 構造体でプロファイルに永続化される。
+
+**共通コンポーネント:**
+
+| コンポーネント | 用途 | 使用箇所 |
+|-------------|------|---------|
+| `ColumnBadges` | サーバー/アカウントバッジ表示 | DeckNavbar, DeckBottomBar, DeckMobileNav |
+| `AvatarStack` | cross-account 時のアカウントアバター重ね表示 | AddColumnDialog, カラムヘッダー |
+| `EditorTabs` | ビジュアル/コード 2タブ切替 | 全エディタ系ウィンドウ共通 |
+
+**アイコン・ラベルの一元定義:**
+
+`useColumnTabs.ts` の `COLUMN_ICONS` / `COLUMN_LABELS` がカラムタイプのアイコンとラベルの SSoT。ナビバー、ボトムバー、エディタすべてがこれを参照する。
+
 ### Vue Vapor モード移行準備（[#52](https://github.com/hitalin/notedeck/issues/52)）
 
 Vue 3.6 の Vapor モード（仮想DOMレス・コンパイル時DOM操作）への移行を予定。

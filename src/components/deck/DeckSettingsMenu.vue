@@ -151,7 +151,13 @@ function removeWallpaper() {
 const windowsStore = useWindowsStore()
 
 function openToolWindow(
-  type: 'cssEditor' | 'keybinds' | 'themeEditor' | 'navEditor' | 'plugins',
+  type:
+    | 'cssEditor'
+    | 'keybinds'
+    | 'themeEditor'
+    | 'navEditor'
+    | 'plugins'
+    | 'aiSettings',
 ) {
   windowsStore.open(type)
   emit('close-all')
@@ -294,6 +300,10 @@ const importSettings = () =>
       <div :class="$style.settingsMenuItem" @click="openToolWindow('plugins')">
         <i class="ti ti-plug" />
         <span :class="$style.settingsMenuLabel">プラグイン</span>
+      </div>
+      <div :class="$style.settingsMenuItem" @click="openToolWindow('aiSettings')">
+        <i class="ti ti-robot" />
+        <span :class="$style.settingsMenuLabel">AI</span>
       </div>
       <div v-if="!isMobilePlatform" :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
         <i class="ti ti-keyboard" />

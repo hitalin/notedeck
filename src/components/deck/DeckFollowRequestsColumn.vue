@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import type { NormalizedUser } from '@/adapters/types'
+import AvatarStack from '@/components/common/AvatarStack.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNavigation } from '@/composables/useNavigation'
-import { getAccountAvatarUrl } from '@/stores/accounts'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
@@ -15,11 +16,16 @@ import DeckColumn from './DeckColumn.vue'
 interface FollowRequest {
   id: string
   follower: NormalizedUser
+  /** Account that received this request (set in cross-account mode) */
+  _accountId?: string
 }
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
+
+const isCrossAccount = computed(() => props.column.accountId == null)
+const accountsStore = useAccountsStore()
 
 const { navigateToUser: navToUser } = useNavigation()
 const serversStore = useServersStore()
@@ -38,6 +44,14 @@ function scrollToTop() {
 }
 
 async function fetchRequests() {
+  if (isCrossAccount.value) {
+    await fetchRequestsCrossAccount()
+  } else {
+    await fetchRequestsPerAccount()
+  }
+}
+
+async function fetchRequestsPerAccount() {
   const acc = account.value
   if (!acc) return
 
@@ -59,12 +73,43 @@ async function fetchRequests() {
   }
 }
 
+async function fetchRequestsCrossAccount() {
+  isLoading.value = true
+  error.value = null
+  const accounts = accountsStore.accounts.filter((a) => a.hasToken)
+
+  try {
+    const results = await Promise.allSettled(
+      accounts.map(async (acc) => {
+        const reqs = await invoke<FollowRequest[]>('api_get_follow_requests', {
+          accountId: acc.id,
+          limit: 30,
+        })
+        return reqs.map((r) => ({ ...r, _accountId: acc.id }))
+      }),
+    )
+
+    const allRequests: FollowRequest[] = []
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) {
+        allRequests.push(...r.value)
+      }
+    }
+
+    requests.value = allRequests
+  } catch (e) {
+    error.value = AppError.from(e)
+  } finally {
+    isLoading.value = false
+  }
+}
+
 async function handleAction(
   req: FollowRequest,
   action: 'accepted' | 'rejected',
 ) {
-  const acc = account.value
-  if (!acc) return
+  const accountId = isCrossAccount.value ? req._accountId : account.value?.id
+  if (!accountId) return
 
   try {
     const command =
@@ -72,13 +117,24 @@ async function handleAction(
         ? 'api_accept_follow_request'
         : 'api_reject_follow_request'
     await invoke(command, {
-      accountId: acc.id,
+      accountId,
       userId: req.follower.id,
     })
     actionStates.value = { ...actionStates.value, [req.id]: action }
   } catch (e) {
     error.value = AppError.from(e)
   }
+}
+
+function getRequestAccountId(req: FollowRequest): string | undefined {
+  return isCrossAccount.value ? req._accountId : (column.accountId ?? undefined)
+}
+
+function getRequestServerHost(req: FollowRequest): string | undefined {
+  if (isCrossAccount.value && req._accountId) {
+    return accountsStore.accounts.find((a) => a.id === req._accountId)?.host
+  }
+  return account.value?.host
 }
 
 function displayName(user: NormalizedUser): string {
@@ -106,13 +162,16 @@ onMounted(() => {
       <button class="_button" :class="$style.headerRefresh" title="更新" :disabled="isLoading" @click.stop="fetchRequests">
         <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
       </button>
-      <div v-if="account" :class="$style.headerAccount">
+      <!-- Cross-account: AvatarStack -->
+      <AvatarStack v-if="isCrossAccount" :size="20" />
+      <!-- Single-account: account avatar + favicon -->
+      <div v-else-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
-    <div v-if="!account" :class="$style.columnEmpty">
+    <div v-if="!isCrossAccount && !account" :class="$style.columnEmpty">
       Account not found
     </div>
 
@@ -134,7 +193,7 @@ onMounted(() => {
           :key="req.id"
           :class="$style.frItem"
         >
-          <div :class="$style.frUser" @click="column.accountId && navToUser(column.accountId, req.follower.id)">
+          <div :class="$style.frUser" @click="getRequestAccountId(req) && navToUser(getRequestAccountId(req)!, req.follower.id)">
             <MkAvatar
               :avatar-url="req.follower.avatarUrl"
               :decorations="req.follower.avatarDecorations"
@@ -145,7 +204,7 @@ onMounted(() => {
                 <MkMfm
                   v-if="req.follower.name"
                   :text="req.follower.name"
-                  :server-host="account?.host"
+                  :server-host="getRequestServerHost(req)"
                   :emojis="req.follower.emojis"
                   plain
                 />
@@ -153,6 +212,15 @@ onMounted(() => {
               </span>
               <span :class="$style.frAcct">{{ displayName(req.follower) }}</span>
             </div>
+          </div>
+
+          <!-- Cross-account: show which account this request is for -->
+          <div v-if="isCrossAccount && req._accountId" :class="$style.frAccountBadge">
+            <img
+              :src="getAccountAvatarUrl(accountsStore.accounts.find((a) => a.id === req._accountId)!)"
+              :class="$style.frAccountAvatar"
+            />
+            <span :class="$style.frAccountHost">{{ accountsStore.accounts.find((a) => a.id === req._accountId)?.host }}</span>
           </div>
 
           <div :class="$style.frActions">
@@ -232,6 +300,29 @@ onMounted(() => {
 .frAcct {
   font-size: 0.8em;
   opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.frAccountBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding-left: 52px;
+  font-size: 0.75em;
+  opacity: 0.6;
+}
+
+.frAccountAvatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.frAccountHost {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

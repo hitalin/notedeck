@@ -172,6 +172,16 @@ export async function writeKeybinds(content: string): Promise<void> {
   return writeRootSettingsFile('keybinds.json5', content)
 }
 
+// --- AI settings helpers ---
+
+export async function readAiSettings(): Promise<string> {
+  return readRootSettingsFile('ai.json')
+}
+
+export async function writeAiSettings(content: string): Promise<void> {
+  return writeRootSettingsFile('ai.json', content)
+}
+
 // --- Plugin helpers ---
 
 const PLUGINS_DIR = 'plugins'
