@@ -551,12 +551,12 @@ defineExpose({
     background: var(--nd-buttonHoverBg);
     color: var(--nd-fgHighlighted);
 
-    .ti {
+    :global(.ti) {
       opacity: 1;
     }
   }
 
-  .ti {
+  :global(.ti) {
     flex-shrink: 0;
     width: 32px;
     font-size: 1.5em;
