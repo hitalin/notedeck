@@ -61,26 +61,6 @@
       text-align:center;
       padding:2rem 1.5rem;
       gap:1.5rem;
-      position:relative;
-      overflow:hidden;
-    }
-    .blob{
-      position:absolute;
-      border-radius:50%;
-      pointer-events:none;
-      z-index:0;
-    }
-    .hero .blob-1{
-      width:600px;height:600px;
-      background:radial-gradient(circle,rgba(134,179,0,0.18),transparent 70%);
-      top:-200px;right:-200px;
-      animation:blobFloat 20s ease-in-out infinite alternate,blobPulse 6s ease-in-out infinite;
-    }
-    .hero .blob-2{
-      width:500px;height:500px;
-      background:radial-gradient(circle,rgba(74,179,0,0.12),transparent 70%);
-      bottom:-150px;left:-150px;
-      animation:blobFloat 25s ease-in-out infinite alternate-reverse,blobPulse 8s ease-in-out infinite 2s;
     }
     @keyframes blobFloat{
       0%{transform:translate(0,0) scale(1)}
@@ -91,26 +71,31 @@
       50%{opacity:.8}
     }
 
-    .hero>*:not(.blob){position:relative;z-index:1}
-
-    /* Page-wide blobs */
-    .page-blob{
+    /* Background blobs (fixed, page-wide) */
+    .blob{
       position:fixed;
       border-radius:50%;
       pointer-events:none;
       z-index:-1;
     }
-    .page-blob-1{
-      width:500px;height:500px;
-      background:radial-gradient(circle,rgba(134,179,0,0.08),transparent 70%);
-      top:50%;right:-150px;
-      animation:blobFloat 30s ease-in-out infinite alternate,blobPulse 7s ease-in-out infinite 1s;
+    .blob-1{
+      width:600px;height:600px;
+      background:radial-gradient(circle,rgba(134,179,0,0.15),transparent 70%);
+      top:-100px;right:-150px;
+      animation:blobFloat 20s ease-in-out infinite alternate,blobPulse 6s ease-in-out infinite;
     }
-    .page-blob-2{
-      width:400px;height:400px;
-      background:radial-gradient(circle,rgba(74,179,0,0.06),transparent 70%);
-      top:70%;left:-100px;
-      animation:blobFloat 22s ease-in-out infinite alternate-reverse,blobPulse 9s ease-in-out infinite 3s;
+    .blob-2{
+      width:500px;height:500px;
+      background:radial-gradient(circle,rgba(74,179,0,0.1),transparent 70%);
+      bottom:-50px;left:-150px;
+      animation:blobFloat 25s ease-in-out infinite alternate-reverse,blobPulse 8s ease-in-out infinite 2s;
+    }
+    .blob-3{
+      width:450px;height:450px;
+      background:radial-gradient(circle,rgba(134,179,0,0.08),transparent 70%);
+      top:50%;left:50%;
+      margin-left:-225px;
+      animation:blobFloat 30s ease-in-out infinite alternate,blobPulse 10s ease-in-out infinite 4s;
     }
     .hero-icon{width:80px;height:80px;border-radius:20px}
     .hero h1{font-size:clamp(2.5rem,6vw,4rem);font-weight:800;letter-spacing:-0.02em}
@@ -275,12 +260,11 @@
 </head>
 <body>
 
-  <div class="page-blob page-blob-1"></div>
-  <div class="page-blob page-blob-2"></div>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
 
   <section class="hero">
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
     <img
       src="https://raw.githubusercontent.com/hitalin/notedeck/main/src-tauri/icons/128x128%402x.png"
       alt="NoteDeck"
