@@ -3,6 +3,7 @@ import JSON5 from 'json5'
 import { defineAsyncComponent, ref, watch } from 'vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
+import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import type { DeckColumn } from '@/stores/deck'
@@ -28,30 +29,14 @@ const { tab, containerRef: contentRef } = useEditorTabs(
   'visual',
 )
 
-// ── Nav icon map (for display) ──
-const NAV_ICON_MAP: Record<string, { icon: string; label: string }> = {
-  notifications: { icon: 'ti-bell', label: '通知' },
-  chat: { icon: 'ti-messages', label: 'チャット' },
-  search: { icon: 'ti-search', label: '検索' },
-  ai: { icon: 'ti-sparkles', label: 'AI' },
-  timeline: { icon: 'ti-home', label: 'タイムライン' },
-  mentions: { icon: 'ti-at', label: 'メンション' },
-  favorites: { icon: 'ti-star', label: 'お気に入り' },
-  drive: { icon: 'ti-cloud', label: 'ドライブ' },
-  explore: { icon: 'ti-compass', label: 'みつける' },
-  announcements: { icon: 'ti-speakerphone', label: 'お知らせ' },
-  gallery: { icon: 'ti-photo', label: 'ギャラリー' },
-  followRequests: { icon: 'ti-user-plus', label: 'フォローリクエスト' },
-}
-
 function getItemIcon(item: NavItem): string {
   if (isNavDivider(item)) return 'ti-separator'
-  return NAV_ICON_MAP[item.type]?.icon ?? 'ti-layout-grid'
+  return `ti-${COLUMN_ICONS[item.type] ?? 'layout-grid'}`
 }
 
 function getItemLabel(item: NavItem): string {
   if (isNavDivider(item)) return '区切り線'
-  return NAV_ICON_MAP[item.type]?.label ?? item.type
+  return COLUMN_LABELS[item.type] ?? item.type
 }
 
 // ── Visual tab state ──

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, useCssModule, watch } from 'vue'
+import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useNavigation } from '@/composables/useNavigation'
 import { useUnreadChat } from '@/composables/useUnreadChat'
 import { useUnreadNotifications } from '@/composables/useUnreadNotifications'
@@ -57,19 +58,12 @@ const sidebarType = computed(() => {
   return col?.type ?? null
 })
 
-const NAV_ICON_MAP: Record<string, { icon: string; label: string }> = {
-  notifications: { icon: 'ti-bell', label: '通知' },
-  chat: { icon: 'ti-messages', label: 'チャット' },
-  search: { icon: 'ti-search', label: '検索' },
-  ai: { icon: 'ti-sparkles', label: 'AI' },
-  timeline: { icon: 'ti-home', label: 'タイムライン' },
-  mentions: { icon: 'ti-at', label: 'メンション' },
-  favorites: { icon: 'ti-star', label: 'お気に入り' },
-  drive: { icon: 'ti-cloud', label: 'ドライブ' },
-  explore: { icon: 'ti-compass', label: 'みつける' },
-  announcements: { icon: 'ti-speakerphone', label: 'お知らせ' },
-  gallery: { icon: 'ti-photo', label: 'ギャラリー' },
-  followRequests: { icon: 'ti-user-plus', label: 'フォローリクエスト' },
+function navIcon(type: string): string {
+  return `ti-${COLUMN_ICONS[type] ?? 'layout-grid'}`
+}
+
+function navLabel(type: string): string {
+  return COLUMN_LABELS[type] ?? type
 }
 
 function getNavAction(item: NavItem): () => void {
@@ -341,15 +335,15 @@ defineExpose({
               v-else
               class="_button"
               :class="[$style.item, { [$style.sidebarActive]: sidebarType === navItem.type }]"
-              :title="NAV_ICON_MAP[navItem.type]?.label ?? navItem.type"
+              :title="navLabel(navItem.type)"
               @click="closeDrawerAndDo(getNavAction(navItem))"
             >
               <div v-if="getNavBadge(navItem) > 0" :class="$style.iconWrap">
-                <i :class="['ti', NAV_ICON_MAP[navItem.type]?.icon ?? 'ti-layout-grid']" />
+                <i :class="['ti', navIcon(navItem.type)]" />
                 <span :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
               </div>
-              <i v-else :class="['ti', NAV_ICON_MAP[navItem.type]?.icon ?? 'ti-layout-grid']" />
-              <span :class="$style.label">{{ NAV_ICON_MAP[navItem.type]?.label ?? navItem.type }}</span>
+              <i v-else :class="['ti', navIcon(navItem.type)]" />
+              <span :class="$style.label">{{ navLabel(navItem.type) }}</span>
             </button>
           </template>
         </div>
