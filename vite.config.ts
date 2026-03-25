@@ -191,6 +191,20 @@ export default defineConfig({
     __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
   },
   clearScreen: false,
+  optimizeDeps: {
+    // ルートindex.htmlのみスキャン（src-tauri/target/doc/*.htmlを除外）
+    entries: ['index.html'],
+    // 頻出の依存を事前バンドルして初回dev起動を高速化
+    include: [
+      'vue',
+      'vue-router',
+      'pinia',
+      '@vueuse/core',
+      '@tauri-apps/api',
+      'dompurify',
+      'colord',
+    ],
+  },
   server: {
     strictPort: true,
     warmup: {
@@ -202,6 +216,11 @@ export default defineConfig({
         'src/stores/deck.ts',
         'src/stores/accounts.ts',
       ],
+    },
+    watch: {
+      // WSL2: ポーリングを無効にしてイベントベース監視を強制（CPU負荷軽減）
+      usePolling: false,
+      ignored: ['**/src-tauri/target/**'],
     },
   },
 })

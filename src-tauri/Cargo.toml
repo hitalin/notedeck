@@ -57,6 +57,13 @@ tempfile = "3"
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+# dev: 自分のコードは最速コンパイル、依存クレートだけ軽く最適化（実行速度とコンパイル速度のバランス）
+[profile.dev]
+opt-level = 0
+
+[profile.dev.package."*"]
+opt-level = 1
+
 [profile.release]
 lto = "fat"
 codegen-units = 1
