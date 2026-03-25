@@ -537,11 +537,12 @@ defineExpose({
 .item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 0 14px;
+  line-height: 2.85rem;
   border-radius: var(--nd-radius-full);
   color: var(--nd-navFg, var(--nd-fg));
-  font-size: 0.9em;
+  font-size: 0.95em;
   white-space: nowrap;
   text-decoration: none;
   transition: background var(--nd-duration-base), color var(--nd-duration-base);
@@ -557,6 +558,9 @@ defineExpose({
 
   .ti {
     flex-shrink: 0;
+    width: 32px;
+    font-size: 1.25em;
+    text-align: center;
     opacity: 0.7;
   }
 }
