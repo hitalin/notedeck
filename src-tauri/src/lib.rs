@@ -227,16 +227,12 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         migrations::run_fs(&app_dir)?;
 
         // ── Parallel: DB open + Misskey client ──
-        // DB open (SQLite I/O) is the heaviest; run alongside HTTP client construction.
+        // std::thread で並列化（block_on はGTKメインスレッドをデッドロックさせるため使わない）
         let db_path = app_dir.join("notecli.db");
-        let (db_res, client_res) = tauri::async_runtime::block_on(async {
-            tokio::join!(
-                tokio::task::spawn_blocking(move || notecli::db::Database::open(&db_path)),
-                tokio::task::spawn_blocking(notecli::api::MisskeyClient::new),
-            )
-        });
-        let db = std::sync::Arc::new(db_res.expect("db open task panicked")?);
-        let client = std::sync::Arc::new(client_res.expect("client init task panicked")?);
+        let db_handle = std::thread::spawn(move || notecli::db::Database::open(&db_path));
+        let client_handle = std::thread::spawn(notecli::api::MisskeyClient::new);
+        let db = std::sync::Arc::new(db_handle.join().expect("db open thread panicked")?);
+        let client = std::sync::Arc::new(client_handle.join().expect("client init thread panicked")?);
         app.manage(db.clone());
         app.manage(client.clone());
 
@@ -266,21 +262,16 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
 
-        // ── Phase 3: Parallel — DB migration + OGP pre-warm ──
-        // run_db does keychain I/O per account; OGP reads cached rows from SQLite.
-        let db_for_migration = db.clone();
+        // DB migration (synchronous — must complete before app is usable)
+        migrations::run_db(&db);
+
+        // OGP cache: pre-warm in background (non-blocking)
         let ogp_cache = ogp::OgpCache::with_client(db.clone(), shared_http.clone());
         let ogp_warmup = ogp_cache.clone();
         app.manage(ogp_cache);
-        let (migration_res, _) = tauri::async_runtime::block_on(async {
-            tokio::join!(
-                tokio::task::spawn_blocking(move || migrations::run_db(&db_for_migration)),
-                async { ogp_warmup.pre_warm().await },
-            )
+        tauri::async_runtime::spawn(async move {
+            ogp_warmup.pre_warm().await;
         });
-        if let Err(e) = migration_res {
-            tracing::warn!("db migration task failed: {e}");
-        }
 
         // Export account list for background workers (non-secret metadata only)
         commands::export_account_list(app.app_handle(), &db);
