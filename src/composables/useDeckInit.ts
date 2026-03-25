@@ -54,6 +54,8 @@ export function useDeckInit(options: {
     deckStore.flushSave()
   }
 
+  let updateCheckTimer: ReturnType<typeof setTimeout> | undefined
+
   onMounted(() => {
     handleResizeRef = () => options.navbarRef.value?.handleResize()
     window.addEventListener('resize', handleResizeRef)
@@ -88,12 +90,17 @@ export function useDeckInit(options: {
       })
     })
 
-    setTimeout(options.checkForUpdate, 5000)
+    updateCheckTimer = setTimeout(options.checkForUpdate, 5000)
 
-    // Plugins
-    import('@/aiscript/plugin-api').then(({ launchAllPlugins }) => {
-      pluginsStore.ensureLoaded()
-      launchAllPlugins(pluginsStore.plugins)
+    // Plugins — defer to idle since AiScript is not on the critical startup path
+    const idle =
+      window.requestIdleCallback ??
+      ((cb: IdleRequestCallback) => setTimeout(cb, 500))
+    idle(() => {
+      import('@/aiscript/plugin-api').then(({ launchAllPlugins }) => {
+        pluginsStore.ensureLoaded()
+        launchAllPlugins(pluginsStore.plugins)
+      })
     })
 
     // Quick Note: global hotkey (Ctrl+Alt+N)
@@ -131,6 +138,7 @@ export function useDeckInit(options: {
     document.removeEventListener('visibilitychange', onVisibilityChange)
     window.removeEventListener('pagehide', onPageHide)
     unlistenQuickNote?.()
+    clearTimeout(updateCheckTimer)
     unlistenWindowEvents?.()
   })
 }

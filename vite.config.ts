@@ -169,6 +169,15 @@ export default defineConfig({
           if (id.includes('node_modules/@scalar/')) {
             return 'vendor-api-docs'
           }
+          // Bundle rarely-used column types into a single shared chunk
+          if (
+            id.includes('src/components/deck/Deck') &&
+            /(?:AboutMisskey|Ads|Achievements|ApiConsole|ApiDocs|ServerInfo|Emoji|Gallery|Explore|FollowRequests|Lookup|Announcements|Play|AiScript)Column\.vue/.test(
+              id,
+            )
+          ) {
+            return 'columns-rare'
+          }
         },
         minify: {
           compress: {
@@ -182,7 +191,36 @@ export default defineConfig({
     __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
   },
   clearScreen: false,
+  optimizeDeps: {
+    // ルートindex.htmlのみスキャン（src-tauri/target/doc/*.htmlを除外）
+    entries: ['index.html'],
+    // 頻出の依存を事前バンドルして初回dev起動を高速化
+    include: [
+      'vue',
+      'vue-router',
+      'pinia',
+      '@vueuse/core',
+      '@tauri-apps/api',
+      'dompurify',
+      'colord',
+    ],
+  },
   server: {
     strictPort: true,
+    warmup: {
+      clientFiles: [
+        'src/App.vue',
+        'src/views/DeckPage.vue',
+        'src/components/deck/DeckLayout.vue',
+        'src/components/deck/DeckColumnsArea.vue',
+        'src/stores/deck.ts',
+        'src/stores/accounts.ts',
+      ],
+    },
+    watch: {
+      // WSL2: ポーリングを無効にしてイベントベース監視を強制（CPU負荷軽減）
+      usePolling: false,
+      ignored: ['**/src-tauri/target/**'],
+    },
   },
 })

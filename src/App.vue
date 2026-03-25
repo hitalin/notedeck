@@ -36,7 +36,12 @@ if (isTauri) {
 let cleanupPipListener: (() => void) | null = null
 
 function dismissSplash() {
-  document.getElementById('nd-splash')?.remove()
+  const el = document.getElementById('nd-splash')
+  if (!el) return
+  el.classList.add('nd-splash-leaving')
+  el.addEventListener('transitionend', () => el.remove(), { once: true })
+  // Fallback: remove after 200ms even if transitionend doesn't fire
+  setTimeout(() => el.remove(), 200)
 }
 
 onMounted(async () => {
@@ -54,6 +59,14 @@ onMounted(async () => {
     const [{ getCurrentWindow }, { catchIgnore }] = await Promise.all([
       import('@tauri-apps/api/window'),
       import('@/utils/logger'),
+    ])
+    // フォント読み込み + 最初のフレーム描画を待ってから表示（アイコン崩れ防止）
+    // 500ms タイムアウトでフォールバック（WSL2等でrAFが発火しない環境対策）
+    await Promise.race([
+      document.fonts.ready.then(
+        () => new Promise<void>((r) => requestAnimationFrame(() => r())),
+      ),
+      new Promise<void>((r) => setTimeout(r, 500)),
     ])
     await getCurrentWindow().show().catch(catchIgnore('window.show'))
   }

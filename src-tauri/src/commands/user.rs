@@ -1,46 +1,43 @@
-use std::sync::Arc;
-
 use tauri::State;
 
-use notecli::api::{MisskeyClient, SearchUsersOptions};
-use notecli::db::Database;
+use notecli::api::SearchUsersOptions;
 use notecli::error::NoteDeckError;
 use notecli::models::{NormalizedNote, NormalizedUser, NormalizedUserDetail, TimelineOptions};
 
-use super::{get_credentials, get_credentials_or_anon, validate_host, Result};
+use super::{get_credentials, get_credentials_or_anon, validate_host, AppState, Result};
 
 // --- User profile ---
 
 #[tauri::command]
 pub async fn api_get_user(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
 ) -> Result<NormalizedUser> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_user(&host, &token, &user_id).await
 }
 
 #[tauri::command]
 pub async fn api_get_user_detail(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
 ) -> Result<NormalizedUserDetail> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_user_detail(&host, &token, &user_id).await
 }
 
 #[tauri::command]
 pub async fn api_get_user_notes(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
     options: Option<TimelineOptions>,
 ) -> Result<Vec<NormalizedNote>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let notes = client
         .get_user_notes(
@@ -59,11 +56,11 @@ pub async fn api_get_user_notes(
 
 #[tauri::command]
 pub async fn api_get_user_notes_filtered(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     params: serde_json::Value,
 ) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .get_user_notes_filtered(&host, &token, params)
@@ -72,13 +69,13 @@ pub async fn api_get_user_notes_filtered(
 
 #[tauri::command]
 pub async fn api_get_user_featured_notes(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
     limit: Option<i64>,
     until_id: Option<String>,
 ) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .get_user_featured_notes(
@@ -93,11 +90,11 @@ pub async fn api_get_user_featured_notes(
 
 #[tauri::command]
 pub async fn api_get_user_achievements(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
 ) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .get_user_achievements(&host, &token, &user_id)
@@ -106,8 +103,7 @@ pub async fn api_get_user_achievements(
 
 #[tauri::command]
 pub async fn api_lookup_user(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     username: String,
     host: Option<String>,
@@ -116,6 +112,7 @@ pub async fn api_lookup_user(
         return Err(NoteDeckError::InvalidInput("Invalid username".to_string()));
     }
     let validated_host = host.map(|h| validate_host(&h)).transpose()?;
+    let (db, client) = app_state.ready().await;
     let (server_host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .lookup_user(&server_host, &token, &username, validated_host.as_deref())
@@ -124,10 +121,10 @@ pub async fn api_lookup_user(
 
 #[tauri::command]
 pub async fn api_get_self(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.get_self(&host, &token).await
 }
@@ -136,55 +133,55 @@ pub async fn api_get_self(
 
 #[tauri::command]
 pub async fn api_follow_user(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.follow_user(&host, &token, &user_id).await
 }
 
 #[tauri::command]
 pub async fn api_unfollow_user(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.unfollow_user(&host, &token, &user_id).await
 }
 
 #[tauri::command]
 pub async fn api_accept_follow_request(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.accept_follow_request(&host, &token, &user_id).await
 }
 
 #[tauri::command]
 pub async fn api_reject_follow_request(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.reject_follow_request(&host, &token, &user_id).await
 }
 
 #[tauri::command]
 pub async fn api_get_follow_requests(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     limit: Option<i64>,
 ) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .get_follow_requests(&host, &token, limit.unwrap_or(30).clamp(1, 100))
@@ -195,13 +192,13 @@ pub async fn api_get_follow_requests(
 
 #[tauri::command]
 pub async fn api_get_following(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
     limit: Option<i64>,
     until_id: Option<String>,
 ) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .get_following(
@@ -216,13 +213,13 @@ pub async fn api_get_following(
 
 #[tauri::command]
 pub async fn api_get_followers(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
     limit: Option<i64>,
     until_id: Option<String>,
 ) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .get_followers(
@@ -237,11 +234,11 @@ pub async fn api_get_followers(
 
 #[tauri::command]
 pub async fn api_get_user_relations(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_ids: Vec<String>,
 ) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.get_user_relations(&host, &token, &user_ids).await
 }
@@ -250,44 +247,44 @@ pub async fn api_get_user_relations(
 
 #[tauri::command]
 pub async fn api_mute_user(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.mute_user(&host, &token, &user_id).await
 }
 
 #[tauri::command]
 pub async fn api_unmute_user(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.unmute_user(&host, &token, &user_id).await
 }
 
 #[tauri::command]
 pub async fn api_block_user(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.block_user(&host, &token, &user_id).await
 }
 
 #[tauri::command]
 pub async fn api_unblock_user(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.unblock_user(&host, &token, &user_id).await
 }
@@ -296,12 +293,12 @@ pub async fn api_unblock_user(
 
 #[tauri::command]
 pub async fn api_report_user(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
     comment: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.report_user(&host, &token, &user_id, &comment).await
 }
@@ -310,12 +307,12 @@ pub async fn api_report_user(
 
 #[tauri::command]
 pub async fn api_add_user_to_list(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     list_id: String,
     user_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .add_user_to_list(&host, &token, &list_id, &user_id)
@@ -324,12 +321,12 @@ pub async fn api_add_user_to_list(
 
 #[tauri::command]
 pub async fn api_remove_user_from_list(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     list_id: String,
     user_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .remove_user_from_list(&host, &token, &list_id, &user_id)
@@ -341,8 +338,7 @@ pub async fn api_remove_user_from_list(
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn api_search_users(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     query: Option<String>,
     origin: Option<String>,
@@ -351,6 +347,7 @@ pub async fn api_search_users(
     limit: Option<i64>,
     offset: Option<i64>,
 ) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .search_users(
@@ -370,12 +367,12 @@ pub async fn api_search_users(
 
 #[tauri::command]
 pub async fn api_search_users_by_query(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     query: String,
     limit: Option<i64>,
 ) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .search_users_by_query(&host, &token, &query, limit.unwrap_or(10).clamp(1, 100))
@@ -384,12 +381,12 @@ pub async fn api_search_users_by_query(
 
 #[tauri::command]
 pub async fn api_search_hashtags(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     query: String,
     limit: Option<i64>,
 ) -> Result<Vec<String>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .search_hashtags(&host, &token, &query, limit.unwrap_or(10).clamp(1, 100))
@@ -400,11 +397,11 @@ pub async fn api_search_hashtags(
 
 #[tauri::command]
 pub async fn api_ap_show(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     uri: String,
 ) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.ap_show(&host, &token, &uri).await
 }

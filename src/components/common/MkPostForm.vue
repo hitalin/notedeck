@@ -111,6 +111,23 @@ const {
   fileInput,
 )
 
+// Stable keys for poll choices (avoid index-based v-for key bugs on add/remove)
+let pollKeyCounter = 0
+const pollChoiceKeys = ref<number[]>(
+  pollChoices.value.map(() => pollKeyCounter++),
+)
+
+const origAddPollChoice = addPollChoice
+const origRemovePollChoice = removePollChoice
+const addPollChoiceKeyed = () => {
+  origAddPollChoice()
+  pollChoiceKeys.value.push(pollKeyCounter++)
+}
+const removePollChoiceKeyed = (index: number) => {
+  origRemovePollChoice(index)
+  pollChoiceKeys.value.splice(index, 1)
+}
+
 // --- Popup exclusive control ---
 const popups = usePopupControl()
 popups.track(showDraftMenu)
@@ -669,7 +686,7 @@ function onKeydown(e: KeyboardEvent) {
 
       <!-- Poll editor -->
       <div v-if="showPoll" :class="$style.pollEditor">
-        <div v-for="(_, i) in pollChoices" :key="i" :class="$style.pollChoiceRow">
+        <div v-for="(_, i) in pollChoices" :key="pollChoiceKeys[i]" :class="$style.pollChoiceRow">
           <input
             v-model="pollChoices[i]"
             :class="$style.pollChoiceInput"
@@ -679,7 +696,7 @@ function onKeydown(e: KeyboardEvent) {
             v-if="pollChoices.length > 2"
             class="_button"
             :class="$style.pollChoiceRemove"
-            @click="removePollChoice(i)"
+            @click="removePollChoiceKeyed(i)"
           >
             <i class="ti ti-x" />
           </button>
@@ -689,7 +706,7 @@ function onKeydown(e: KeyboardEvent) {
             v-if="pollChoices.length < 10"
             class="_button"
             :class="$style.pollAddBtn"
-            @click="addPollChoice"
+            @click="addPollChoiceKeyed"
           >
             <i class="ti ti-plus" /> 選択肢を追加
           </button>

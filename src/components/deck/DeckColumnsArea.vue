@@ -63,6 +63,20 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
   emoji: defineAsyncComponent(() => import('./DeckEmojiColumn.vue')),
 }
 
+// Preload chunks for column types the user actually has configured
+const COLUMN_PRELOADERS: Partial<Record<string, () => Promise<unknown>>> = {
+  timeline: () => import('./DeckTimelineColumn.vue'),
+  notifications: () => import('./DeckNotificationColumn.vue'),
+  search: () => import('./DeckSearchColumn.vue'),
+  list: () => import('./DeckListColumn.vue'),
+  antenna: () => import('./DeckAntennaColumn.vue'),
+  favorites: () => import('./DeckFavoritesColumn.vue'),
+  mentions: () => import('./DeckMentionsColumn.vue'),
+  channel: () => import('./DeckChannelColumn.vue'),
+  user: () => import('./DeckUserColumn.vue'),
+  chat: () => import('./DeckChatColumn.vue'),
+}
+
 const $style = useCssModule()
 const deckStore = useDeckStore()
 
@@ -95,6 +109,14 @@ const columnsRef = ref<HTMLElement | null>(null)
 
 onMounted(() => {
   colVisibility.setup(columnsRef)
+
+  // Preload chunks for the user's configured column types (production only —
+  // in dev, each import() triggers on-demand transpilation which is slow on WSL2)
+  if (import.meta.env.PROD) {
+    for (const col of deckStore.columns) {
+      COLUMN_PRELOADERS[col.type]?.()
+    }
+  }
 })
 
 onUnmounted(() => {

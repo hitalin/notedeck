@@ -168,6 +168,13 @@ const flash = ref<FlashDetail | null>(null)
 const fetchError = ref<string | null>(null)
 const fetching = ref(false)
 
+const flashCreatedDate = computed(() =>
+  flash.value ? new Date(flash.value.createdAt).toLocaleDateString() : '',
+)
+const flashUpdatedDate = computed(() =>
+  flash.value ? new Date(flash.value.updatedAt).toLocaleDateString() : '',
+)
+
 const uiComponents = ref<UiComponent[]>([])
 const consoleOutput = ref<{ text: string; isError: boolean }[]>([])
 const runError = ref<string | null>(null)
@@ -437,10 +444,10 @@ function reload() {
             </div>
             <div :class="$style.playFooterDates">
               <div v-if="flash.createdAt !== flash.updatedAt">
-                <i class="ti ti-clock" /> Updated: {{ new Date(flash.updatedAt).toLocaleDateString() }}
+                <i class="ti ti-clock" /> Updated: {{ flashUpdatedDate }}
               </div>
               <div>
-                <i class="ti ti-clock" /> Created: {{ new Date(flash.createdAt).toLocaleDateString() }}
+                <i class="ti ti-clock" /> Created: {{ flashCreatedDate }}
               </div>
             </div>
           </div>

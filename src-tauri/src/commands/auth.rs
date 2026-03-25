@@ -1,15 +1,11 @@
-use std::sync::Arc;
-
 use tauri::State;
 use zeroize::Zeroize;
 
-use notecli::api::MisskeyClient;
-use notecli::db::Database;
 use notecli::error::NoteDeckError;
 use notecli::keychain;
 use notecli::models::{Account, AccountPublic, AuthSession};
 
-use super::{export_account_list, validate_host, AuthSessionTracker, Result};
+use super::{export_account_list, validate_host, AppState, AuthSessionTracker, Result};
 
 #[tauri::command]
 pub async fn auth_start(
@@ -78,11 +74,12 @@ pub async fn auth_start(
 pub async fn auth_complete_and_save(
     app: tauri::AppHandle,
     tracker: State<'_, AuthSessionTracker>,
-    client: State<'_, Arc<MisskeyClient>>,
-    db: State<'_, Arc<Database>>,
+    app_state: State<'_, AppState>,
     session: AuthSession,
     software: String,
 ) -> Result<AccountPublic> {
+    let (db, client) = app_state.ready().await;
+
     // Validate this session was created by auth_start and hasn't been replayed
     tracker.consume(&session.session_id, &session.host)?;
 
