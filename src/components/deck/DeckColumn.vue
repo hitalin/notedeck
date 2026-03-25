@@ -333,7 +333,8 @@ function openAsPip() {
   }
 }
 
-/* Column action menu */
+/* Column action menu — nested for specificity 0,2,0 to beat
+   ._button (0,1,0) regardless of CSS chunk load order (Windows WebView2). */
 .columnMenu {
   top: 100%;
   right: 4px;
@@ -344,48 +345,48 @@ function openAsPip() {
   line-height: 1.35;
   font-weight: normal;
   font-size: 1rem;
-}
 
-.columnMenuItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 22px;
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  cursor: pointer;
-  position: relative;
-  transition: background var(--nd-duration-fast);
+  .columnMenuItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 22px;
+    font-size: 0.85em;
+    color: var(--nd-fg);
+    cursor: pointer;
+    position: relative;
+    transition: background var(--nd-duration-fast);
 
-  &:hover {
-    background: var(--nd-accent-hover);
+    &:hover {
+      background: var(--nd-accent-hover);
+    }
+
+    i {
+      flex-shrink: 0;
+      width: 1em;
+      text-align: center;
+      opacity: 0.8;
+    }
+
+    span {
+      white-space: nowrap;
+    }
   }
 
-  i {
-    flex-shrink: 0;
-    width: 1em;
-    text-align: center;
-    opacity: 0.8;
+  .columnMenuDanger {
+    color: var(--nd-love, #ff6b6b);
+
+    i {
+      opacity: 1;
+    }
   }
 
-  span {
-    white-space: nowrap;
+  .columnMenuDivider {
+    border: 0;
+    border-top: 0.5px solid var(--nd-divider);
+    margin: 4px 0;
   }
-}
-
-.columnMenuDanger {
-  color: var(--nd-love, #ff6b6b);
-
-  i {
-    opacity: 1;
-  }
-}
-
-.columnMenuDivider {
-  border: 0;
-  border-top: 0.5px solid var(--nd-divider);
-  margin: 4px 0;
 }
 
 .columnSubHeader {
