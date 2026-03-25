@@ -55,6 +55,8 @@ onMounted(async () => {
       import('@tauri-apps/api/window'),
       import('@/utils/logger'),
     ])
+    // Wait for first frame paint before showing window to avoid white flash
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
     await getCurrentWindow().show().catch(catchIgnore('window.show'))
   }
 

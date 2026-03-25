@@ -114,6 +114,11 @@ onMounted(async () => {
     const userDetail = await adapter.api.getUserDetail(props.userId)
     user.value = userDetail
 
+    // Prefetch banner image so it appears instantly when DOM renders
+    if (userDetail.bannerUrl) {
+      new Image().src = userDetail.bannerUrl
+    }
+
     // Pinned notes require auth — skip for logged-out/guest accounts
     if (account.hasToken) {
       const userPinnedNoteIds = await adapter.api.getUserPinnedNoteIds(

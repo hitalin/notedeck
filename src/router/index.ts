@@ -1,6 +1,7 @@
 import { watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAccountsStore } from '@/stores/accounts'
+import DeckPage from '@/views/DeckPage.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -8,7 +9,7 @@ export const router = createRouter({
     {
       path: '/',
       name: 'deck',
-      component: () => import('@/views/DeckPage.vue'),
+      component: DeckPage,
     },
     {
       path: '/login',

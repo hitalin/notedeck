@@ -84,6 +84,13 @@ onMounted(async () => {
     return
   }
 
+  // Show cached note immediately (skip skeleton) while fetching fresh data
+  const cached = noteStore.get(props.noteId)
+  if (cached) {
+    note.value = cached
+    isLoading.value = false
+  }
+
   try {
     const result = await initAdapterFor(account.host, account.id, {
       pinnedReactions: false,
@@ -103,11 +110,8 @@ onMounted(async () => {
     ancestors.value = conv.reverse()
     children.value = replies
   } catch (e) {
-    // API failed: try cache fallback
-    const cached = noteStore.get(props.noteId)
-    if (cached) {
-      note.value = cached
-    } else {
+    // API failed: keep cached note if displayed, otherwise show error
+    if (!note.value) {
       error.value = AppError.from(e)
     }
   } finally {
