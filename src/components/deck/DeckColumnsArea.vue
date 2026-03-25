@@ -110,9 +110,12 @@ const columnsRef = ref<HTMLElement | null>(null)
 onMounted(() => {
   colVisibility.setup(columnsRef)
 
-  // Preload chunks for the user's configured column types
-  for (const col of deckStore.columns) {
-    COLUMN_PRELOADERS[col.type]?.()
+  // Preload chunks for the user's configured column types (production only —
+  // in dev, each import() triggers on-demand transpilation which is slow on WSL2)
+  if (import.meta.env.PROD) {
+    for (const col of deckStore.columns) {
+      COLUMN_PRELOADERS[col.type]?.()
+    }
   }
 })
 

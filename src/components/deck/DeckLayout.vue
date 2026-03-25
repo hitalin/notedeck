@@ -139,16 +139,19 @@ useDeckInit({
   checkForUpdate,
 })
 
-// Preload MkPostForm chunk during idle time so first open is instant
-onMounted(() => {
-  const idle =
-    window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 200))
-  idle(() => {
-    import('@/components/common/MkPostForm.vue')
-    import('@/components/window/NoteDetailContent.vue')
-    import('@/components/window/UserProfileContent.vue')
+// Preload heavy chunks during idle time so first open is instant (production only —
+// in dev, on-demand transpilation makes this counterproductive)
+if (import.meta.env.PROD) {
+  onMounted(() => {
+    const idle =
+      window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 200))
+    idle(() => {
+      import('@/components/common/MkPostForm.vue')
+      import('@/components/window/NoteDetailContent.vue')
+      import('@/components/window/UserProfileContent.vue')
+    })
   })
-})
+}
 
 function scrollToColumn(index: number) {
   activeColumnIndex.value = index

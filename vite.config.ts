@@ -184,5 +184,15 @@ export default defineConfig({
   clearScreen: false,
   server: {
     strictPort: true,
+    warmup: {
+      clientFiles: [
+        'src/App.vue',
+        'src/views/DeckPage.vue',
+        'src/components/deck/DeckLayout.vue',
+        'src/components/deck/DeckColumnsArea.vue',
+        'src/stores/deck.ts',
+        'src/stores/accounts.ts',
+      ],
+    },
   },
 })
