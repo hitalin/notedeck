@@ -1,16 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
-import type { NormalizedNote } from '@/adapters/types'
+import { computed } from 'vue'
 import AvatarStack from '@/components/common/AvatarStack.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
-import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
+import { useCrossAccountNotes } from '@/composables/useCrossAccountNotes'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
-import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { useNoteStore } from '@/stores/notes'
-import { AppError } from '@/utils/errors'
 import DeckColumn from './DeckColumn.vue'
 import DeckNoteColumn from './DeckNoteColumn.vue'
 
@@ -19,9 +15,6 @@ const props = defineProps<{
 }>()
 
 const isCrossAccount = computed(() => props.column.accountId == null)
-const accountsStore = useAccountsStore()
-const multiAdapters = useMultiAccountAdapters()
-const noteStore = useNoteStore()
 
 // Single-account config
 const noteColumnConfig: NoteColumnConfig = {
@@ -38,127 +31,21 @@ const noteColumnConfig: NoteColumnConfig = {
 const { columnThemeVars, isLoading, error, handlers, scroller, onScroll } =
   useColumnSetup(() => props.column)
 
-const notes = shallowRef<NormalizedNote[]>([])
-const noteScrollerRef = ref<{
-  getElement: () => HTMLElement | null
-  scrollToIndex: (
-    index: number,
-    opts?: { align?: string; behavior?: string },
-  ) => void
-} | null>(null)
-
-watch(
+const {
+  notes,
   noteScrollerRef,
-  () => {
-    scroller.value = noteScrollerRef.value?.getElement() ?? null
-  },
-  { flush: 'post' },
-)
-
-function scrollToTop() {
-  scroller.value?.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-async function connectCrossAccount() {
-  error.value = null
-  isLoading.value = true
-  const accounts = accountsStore.accounts.filter((a) => a.hasToken)
-
-  try {
-    const results = await Promise.allSettled(
-      accounts.map(async (acc) => {
-        const adapter = await multiAdapters.getOrCreate(acc.id)
-        if (!adapter) return []
-        return adapter.api.getMentions()
-      }),
-    )
-
-    const allNotes: NormalizedNote[] = []
-    for (const r of results) {
-      if (r.status === 'fulfilled' && r.value) {
-        allNotes.push(...r.value)
-      }
-    }
-
-    const seen = new Set<string>()
-    notes.value = allNotes
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
-      .filter((n) => {
-        if (seen.has(n.id)) return false
-        seen.add(n.id)
-        return true
-      })
-  } catch (e) {
-    error.value = AppError.from(e)
-  } finally {
-    isLoading.value = false
-  }
-}
-
-async function loadMoreCrossAccount() {
-  if (isLoading.value || notes.value.length === 0) return
-  isLoading.value = true
-  const accounts = accountsStore.accounts.filter((a) => a.hasToken)
-
-  try {
-    const results = await Promise.allSettled(
-      accounts.map(async (acc) => {
-        const adapter = await multiAdapters.getOrCreate(acc.id)
-        if (!adapter) return []
-        const lastForAccount = [...notes.value]
-          .reverse()
-          .find((n) => n._accountId === acc.id)
-        if (!lastForAccount) return adapter.api.getMentions()
-        return adapter.api.getMentions({ untilId: lastForAccount.id })
-      }),
-    )
-
-    const olderNotes: NormalizedNote[] = []
-    for (const r of results) {
-      if (r.status === 'fulfilled' && r.value) {
-        olderNotes.push(...r.value)
-      }
-    }
-
-    const seen = new Set(notes.value.map((n) => n.id))
-    const newOlder = olderNotes
-      .filter((n) => !seen.has(n.id))
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
-
-    notes.value = [...notes.value, ...newOlder]
-  } catch (e) {
-    error.value = AppError.from(e)
-  } finally {
-    isLoading.value = false
-  }
-}
-
-function handleScroll() {
-  onScroll(loadMoreCrossAccount)
-}
-
-async function removeNote(note: NormalizedNote) {
-  const adapter = await multiAdapters.getOrCreate(note._accountId)
-  if (!adapter) return
-  try {
-    await adapter.api.deleteNote(note.id)
-  } catch {
-    return
-  }
-  notes.value = notes.value.filter((n) => n.id !== note.id)
-  noteStore.remove(note.id)
-}
-
-onMounted(() => {
-  if (isCrossAccount.value) {
-    connectCrossAccount()
-  }
+  scrollToTop,
+  connectCrossAccount,
+  loadMoreCrossAccount,
+  handleScroll,
+  removeNote,
+} = useCrossAccountNotes({
+  fetchNotes: (adapter, opts) => adapter.api.getMentions(opts),
+  isCrossAccount: () => isCrossAccount.value,
+  isLoading,
+  error,
+  scroller,
+  onScroll,
 })
 </script>
 

@@ -4,7 +4,11 @@ import JSON5 from 'json5'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
-import { COLUMN_ICONS, TL_ICONS } from '@/composables/useColumnTabs'
+import {
+  COLUMN_ICONS,
+  COLUMN_LABELS,
+  TL_ICONS,
+} from '@/composables/useColumnTabs'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
@@ -19,39 +23,6 @@ const AddColumnDialog = defineAsyncComponent(
 const CodeEditor = defineAsyncComponent(
   () => import('@/components/deck/widgets/CodeEditor.vue'),
 )
-
-const COLUMN_TYPE_LABELS: Record<string, string> = {
-  timeline: 'タイムライン',
-  notifications: '通知',
-  search: '検索',
-  list: 'リスト',
-  antenna: 'アンテナ',
-  favorites: 'お気に入り',
-  clip: 'クリップ',
-  user: 'ユーザー',
-  mentions: 'メンション',
-  channel: 'チャンネル',
-  specified: 'ダイレクト',
-  chat: 'チャット',
-  widget: 'ウィジェット',
-  aiscript: 'AiScript',
-  play: 'Play',
-  page: 'ページ',
-  ai: 'AI',
-  announcements: 'お知らせ',
-  drive: 'ドライブ',
-  gallery: 'ギャラリー',
-  explore: '探索',
-  followRequests: 'フォローリクエスト',
-  achievements: '実績',
-  apiConsole: 'APIコンソール',
-  apiDocs: 'APIドキュメント',
-  lookup: '照会',
-  serverInfo: 'サーバー情報',
-  ads: '広告',
-  aboutMisskey: 'Misskeyについて',
-  emoji: '絵文字',
-}
 
 const jsonLang = json()
 const jsonLinter = createJson5Linter()
@@ -71,7 +42,7 @@ const { tab, containerRef: editorRef } = useEditorTabs(
 
 function columnLabel(col: DeckColumn): string {
   if (col.name) return col.name
-  const typeLabel = COLUMN_TYPE_LABELS[col.type] ?? col.type
+  const typeLabel = COLUMN_LABELS[col.type] ?? col.type
   if (col.tl) return `${typeLabel} (${col.tl})`
   return typeLabel
 }
