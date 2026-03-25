@@ -174,38 +174,50 @@ async function importNav() {
 
     <!-- Visual tab -->
     <div v-show="tab === 'visual'" :class="$style.visualPanel">
-      <!-- Mobile: horizontal row list with move buttons -->
+      <!-- Mobile: row list with move buttons -->
       <div v-if="isCompact" :class="$style.mobilePanel">
+        <div :class="$style.mobileSectionHeader">
+          <i class="ti ti-list" />
+          現在のアイテム
+          <span :class="$style.mobileSectionBadge">{{ items.length }}</span>
+        </div>
+
         <div :class="$style.mobileList">
           <div
             v-for="(item, i) in items"
             :key="i"
             :class="[$style.mobileRow, { [$style.mobileRowDivider]: isNavDivider(item) }]"
           >
+            <i class="ti ti-grip-vertical" :class="$style.mobileGrip" />
             <span :class="$style.mobileIcon">
               <i :class="['ti', getItemIcon(item)]" />
             </span>
             <span :class="$style.mobileLabel">{{ getItemLabel(item) }}</span>
             <ColumnBadges v-if="!isNavDivider(item)" :account-id="item.accountId" :size="10" />
-            <div :class="$style.mobileActions">
-              <button class="_button" :class="$style.mobileBtn" :disabled="i === 0" @click="moveItem(i, -1)">
+            <div :class="$style.mobileMoveGroup">
+              <button class="_button" :class="$style.mobileMoveBtn" :disabled="i === 0" @click="moveItem(i, -1)">
                 <i class="ti ti-chevron-up" />
               </button>
-              <button class="_button" :class="$style.mobileBtn" :disabled="i === items.length - 1" @click="moveItem(i, 1)">
+              <button class="_button" :class="$style.mobileMoveBtn" :disabled="i === items.length - 1" @click="moveItem(i, 1)">
                 <i class="ti ti-chevron-down" />
               </button>
-              <button class="_button" :class="[$style.mobileBtn, $style.mobileBtnDanger]" @click="removeItem(i)">
-                <i class="ti ti-x" />
-              </button>
             </div>
+            <button class="_button" :class="$style.mobileRemoveBtn" @click="removeItem(i)">
+              <i class="ti ti-x" />
+            </button>
           </div>
           <div v-if="items.length === 0" :class="$style.empty">項目なし</div>
         </div>
 
         <button class="_button" :class="$style.mobileAddDivider" @click="addDivider">
-          <i class="ti ti-separator" />
+          <i class="ti ti-plus" />
           区切り線を追加
         </button>
+
+        <div :class="$style.mobileSectionHeader">
+          <i class="ti ti-plus" />
+          アイテムを追加
+        </div>
 
         <AddColumnDialog
           mode="pip"
@@ -476,31 +488,61 @@ async function importNav() {
   scrollbar-width: thin;
 }
 
+.mobileSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 6px;
+  font-size: 0.75em;
+  font-weight: bold;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.mobileSectionBadge {
+  margin-left: auto;
+  font-weight: normal;
+  opacity: 0.8;
+}
+
 .mobileList {
   display: flex;
   flex-direction: column;
+  gap: 4px;
+  padding: 4px 8px;
 }
 
 .mobileRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--nd-divider);
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--nd-panel);
+  border-radius: var(--nd-radius-sm);
+  min-height: 44px;
 
   &.mobileRowDivider {
     opacity: 0.6;
   }
 }
 
+.mobileGrip {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--nd-fg);
+  opacity: 0.25;
+}
+
 .mobileIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
-  font-size: 1.1em;
+  font-size: 1em;
   color: var(--nd-fg);
 }
 
@@ -514,22 +556,22 @@ async function importNav() {
   white-space: nowrap;
 }
 
-.mobileActions {
+.mobileMoveGroup {
   display: flex;
   align-items: center;
-  gap: 2px;
   flex-shrink: 0;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
 }
 
-.mobileBtn {
+.mobileMoveBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--nd-radius-sm);
+  width: 34px;
+  height: 34px;
   color: var(--nd-fg);
-  opacity: 0.6;
+  opacity: 0.5;
   transition: opacity var(--nd-duration-fast), background var(--nd-duration-fast);
 
   &:hover {
@@ -538,29 +580,47 @@ async function importNav() {
   }
 
   &:disabled {
-    opacity: 0.2;
+    opacity: 0.15;
     pointer-events: none;
   }
+}
 
-  &.mobileBtnDanger:hover {
+.mobileRemoveBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  opacity: 0.35;
+  transition: opacity var(--nd-duration-fast), color var(--nd-duration-fast), background var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 1;
     color: var(--nd-love, #ec4137);
+    background: color-mix(in srgb, var(--nd-love, #ec4137) 10%, transparent);
   }
 }
 
 .mobileAddDivider {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  padding: 10px 12px;
+  padding: 10px 16px;
+  margin: 0 8px;
   font-size: 0.8em;
   color: var(--nd-fg);
-  opacity: 0.5;
-  border-bottom: 1px solid var(--nd-divider);
-  transition: opacity var(--nd-duration-fast);
+  opacity: 0.4;
+  border: 1px dashed var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  transition: opacity var(--nd-duration-fast), border-color var(--nd-duration-fast);
 
   &:hover {
-    opacity: 0.8;
+    opacity: 0.7;
+    border-color: var(--nd-accent);
   }
 }
 

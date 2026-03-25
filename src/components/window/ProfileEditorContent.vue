@@ -305,22 +305,23 @@ async function importFromClipboard() {
             :key="`${groupIdx}:${group.join(',')}`"
             :class="$style.mobileRow"
           >
+            <i class="ti ti-grip-vertical" :class="$style.mobileGrip" />
             <span :class="$style.mobileIcon">
               <i v-if="groupPrimaryColumn(group)" :class="'ti ti-' + columnIcon(groupPrimaryColumn(group)!)" />
             </span>
             <span :class="$style.mobileLabel">{{ groupLabel(group) }}</span>
             <span v-if="group.length > 1" :class="$style.mobileStackBadge">{{ group.length }}</span>
-            <div :class="$style.mobileActions">
-              <button class="_button" :class="$style.mobileBtn" :disabled="groupIdx === 0" @click="moveGroup(groupIdx, -1)">
+            <div :class="$style.mobileMoveGroup">
+              <button class="_button" :class="$style.mobileMoveBtn" :disabled="groupIdx === 0" @click="moveGroup(groupIdx, -1)">
                 <i class="ti ti-chevron-left" />
               </button>
-              <button class="_button" :class="$style.mobileBtn" :disabled="groupIdx === deckStore.windowLayout.length - 1" @click="moveGroup(groupIdx, 1)">
+              <button class="_button" :class="$style.mobileMoveBtn" :disabled="groupIdx === deckStore.windowLayout.length - 1" @click="moveGroup(groupIdx, 1)">
                 <i class="ti ti-chevron-right" />
               </button>
-              <button class="_button" :class="[$style.mobileBtn, $style.mobileBtnDanger]" @click="removeGroup(groupIdx)">
-                <i class="ti ti-x" />
-              </button>
             </div>
+            <button class="_button" :class="$style.mobileRemoveBtn" @click="removeGroup(groupIdx)">
+              <i class="ti ti-x" />
+            </button>
           </div>
           <div v-if="deckStore.windowLayout.length === 0" :class="$style.emptyMessage">
             カラムがありません
@@ -652,24 +653,35 @@ async function importFromClipboard() {
 .mobileList {
   display: flex;
   flex-direction: column;
+  gap: 4px;
+  padding: 4px 8px;
 }
 
 .mobileRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--nd-divider);
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--nd-panel);
+  border-radius: var(--nd-radius-sm);
+  min-height: 44px;
+}
+
+.mobileGrip {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--nd-fg);
+  opacity: 0.25;
 }
 
 .mobileIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
-  font-size: 1.1em;
+  font-size: 1em;
   color: var(--nd-fg);
 }
 
@@ -697,22 +709,22 @@ async function importFromClipboard() {
   flex-shrink: 0;
 }
 
-.mobileActions {
+.mobileMoveGroup {
   display: flex;
   align-items: center;
-  gap: 2px;
   flex-shrink: 0;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
 }
 
-.mobileBtn {
+.mobileMoveBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--nd-radius-sm);
+  width: 34px;
+  height: 34px;
   color: var(--nd-fg);
-  opacity: 0.6;
+  opacity: 0.5;
   transition: opacity var(--nd-duration-fast), background var(--nd-duration-fast);
 
   &:hover {
@@ -721,12 +733,28 @@ async function importFromClipboard() {
   }
 
   &:disabled {
-    opacity: 0.2;
+    opacity: 0.15;
     pointer-events: none;
   }
+}
 
-  &.mobileBtnDanger:hover {
+.mobileRemoveBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  opacity: 0.35;
+  transition: opacity var(--nd-duration-fast), color var(--nd-duration-fast), background var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 1;
     color: var(--nd-love, #ec4137);
+    background: color-mix(in srgb, var(--nd-love, #ec4137) 10%, transparent);
   }
 }
 
