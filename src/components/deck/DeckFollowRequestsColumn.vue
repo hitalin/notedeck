@@ -127,7 +127,9 @@ async function handleAction(
 }
 
 function getRequestAccountId(req: FollowRequest): string | undefined {
-  return isCrossAccount.value ? req._accountId : (column.accountId ?? undefined)
+  return isCrossAccount.value
+    ? req._accountId
+    : (props.column.accountId ?? undefined)
 }
 
 function getRequestServerHost(req: FollowRequest): string | undefined {
