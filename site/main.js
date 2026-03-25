@@ -4,6 +4,15 @@ const obs = new IntersectionObserver((entries) => {
 }, { threshold: 0.1 });
 document.querySelectorAll('.fade-in').forEach((el) => obs.observe(el));
 
+/* Fetch screenshot URL from README */
+fetch('https://raw.githubusercontent.com/hitalin/notedeck/main/README.md')
+  .then(r => r.text())
+  .then(md => {
+    const m = md.match(/<img[^>]+src="(https:\/\/github\.com\/user-attachments\/assets\/[^"]+)"/);
+    if (m) document.getElementById('hero-screenshot').src = m[1];
+  })
+  .catch(() => {});
+
 /* Resolve direct download URLs from GitHub Releases API */
 fetch('https://api.github.com/repos/hitalin/notedeck/releases/latest')
   .then(r => r.json())
