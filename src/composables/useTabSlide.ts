@@ -35,6 +35,10 @@ export function useTabSlide(
 
       const cls = forward ? 'nd-tab-slide-left' : 'nd-tab-slide-right'
 
+      // Clear any swipe state that might conflict (snap-back in progress, etc.)
+      el.classList.remove('nd-tab-swiping', 'nd-tab-snap-back')
+      el.style.removeProperty('--nd-swipe')
+
       // Start the enter animation on new content
       el.classList.remove(...SLIDE_CLASSES)
       void el.offsetWidth

@@ -515,3 +515,14 @@ html[data-platform="android"] select {
 .nd-tab-slide-right {
   animation: nd-tab-slide-right-kf 0.2s cubic-bezier(0.2, 0, 0, 1) both;
 }
+
+/* ---- Swipe follow (useSwipeTab touch tracking) ---- */
+
+.nd-tab-swiping {
+  transform: translateX(var(--nd-swipe, 0));
+  will-change: transform;
+}
+
+.nd-tab-snap-back {
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
