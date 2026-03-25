@@ -66,7 +66,7 @@ const requiresAuth = computed(() => {
 function selectColumnType(type: ColumnType) {
   addColumnType.value = type
   // Account-independent types: skip account selection
-  if (type === 'plugins' || type === 'apiDocs') {
+  if (type === 'apiDocs') {
     addColumnForAccount(null)
     return
   }
@@ -204,16 +204,6 @@ function addColumnForAccount(accountId: string | null) {
       name: 'ページ',
       width: 360,
       accountId,
-      active: true,
-    })
-    return
-  }
-  if (type === 'plugins') {
-    finalizeColumn({
-      type: 'plugins',
-      name: 'プラグイン',
-      width: 360,
-      accountId: null,
       active: true,
     })
     return
@@ -562,10 +552,6 @@ function close() {
           <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('widget')">
             <i class="ti ti-app-window" />
             <span>ウィジェット</span>
-          </button>
-          <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('plugins')">
-            <i class="ti ti-plug" />
-            <span>プラグイン</span>
           </button>
           <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('aiscript')">
             <i class="ti ti-terminal-2" />

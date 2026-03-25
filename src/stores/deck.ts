@@ -37,7 +37,6 @@ export type ColumnType =
   | 'ads'
   | 'aboutMisskey'
   | 'emoji'
-  | 'plugins'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
@@ -106,7 +105,6 @@ export const DEFAULT_NAV_ITEMS: ColumnType[] = [
   'notifications',
   'chat',
   'search',
-  'plugins',
   'ai',
 ]
 

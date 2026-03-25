@@ -42,7 +42,7 @@ export function useNavigation() {
   }
 
   function toggleOrOpenWindow(
-    type: 'notifications' | 'search' | 'chat' | 'ai' | 'plugins',
+    type: 'notifications' | 'search' | 'chat' | 'ai',
   ) {
     if (isDeckActive()) {
       deckStore.toggleSidebarColumn(type, null)
@@ -60,7 +60,7 @@ export function useNavigation() {
   }
 
   function navigateToPlugins() {
-    toggleOrOpenWindow('plugins')
+    windowsStore.open('plugins')
   }
 
   function navigateToAi() {

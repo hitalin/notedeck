@@ -42,8 +42,9 @@ export const WINDOW_SIZES: Record<
   notifications: { width: 500, maxHeight: 650 },
   chat: { width: 500, maxHeight: 650 },
   // Content windows (cont.)
-  plugins: { width: 500, maxHeight: 650 },
   ai: { width: 500, maxHeight: 650 },
+  // Tool windows
+  plugins: { width: 500, maxHeight: 650 },
   // Editor windows
   keybinds: { width: 400, maxHeight: 650 },
   cssEditor: { width: 400, maxHeight: 650 },

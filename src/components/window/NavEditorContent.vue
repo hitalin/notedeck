@@ -15,7 +15,6 @@ const ALL_NAV_OPTIONS: NavItemDef[] = [
   { type: 'notifications', icon: 'ti-bell', label: '通知' },
   { type: 'chat', icon: 'ti-messages', label: 'チャット' },
   { type: 'search', icon: 'ti-search', label: '検索' },
-  { type: 'plugins', icon: 'ti-plug', label: 'プラグイン' },
   { type: 'ai', icon: 'ti-sparkles', label: 'AI' },
   { type: 'timeline', icon: 'ti-home', label: 'タイムライン' },
   { type: 'mentions', icon: 'ti-at', label: 'メンション' },

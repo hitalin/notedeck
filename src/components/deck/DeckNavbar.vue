@@ -61,7 +61,6 @@ const NAV_ICON_MAP: Record<string, { icon: string; label: string }> = {
   notifications: { icon: 'ti-bell', label: '通知' },
   chat: { icon: 'ti-messages', label: 'チャット' },
   search: { icon: 'ti-search', label: '検索' },
-  plugins: { icon: 'ti-plug', label: 'プラグイン' },
   ai: { icon: 'ti-sparkles', label: 'AI' },
   timeline: { icon: 'ti-home', label: 'タイムライン' },
   mentions: { icon: 'ti-at', label: 'メンション' },
@@ -87,8 +86,6 @@ function getNavAction(type: string): () => void {
       }
     case 'search':
       return navigateToSearch
-    case 'plugins':
-      return navigateToPlugins
     case 'ai':
       return navigateToAi
     default:
