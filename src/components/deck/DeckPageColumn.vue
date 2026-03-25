@@ -185,6 +185,13 @@ const page = ref<PageDetail | null>(null)
 const fetchError = ref<string | null>(null)
 const fetching = ref(false)
 
+const pageCreatedDate = computed(() =>
+  page.value ? new Date(page.value.createdAt).toLocaleDateString() : '',
+)
+const pageUpdatedDate = computed(() =>
+  page.value ? new Date(page.value.updatedAt).toLocaleDateString() : '',
+)
+
 const uiComponents = ref<UiComponent[]>([])
 const consoleOutput = ref<{ text: string; isError: boolean }[]>([])
 const runError = ref<string | null>(null)
@@ -497,10 +504,10 @@ const pageEditUrl = computed(() => {
             </div>
             <div :class="$style.pageFooterDates">
               <div v-if="page.createdAt !== page.updatedAt">
-                <i class="ti ti-clock" /> Updated: {{ new Date(page.updatedAt).toLocaleDateString() }}
+                <i class="ti ti-clock" /> Updated: {{ pageUpdatedDate }}
               </div>
               <div>
-                <i class="ti ti-clock" /> Created: {{ new Date(page.createdAt).toLocaleDateString() }}
+                <i class="ti ti-clock" /> Created: {{ pageCreatedDate }}
               </div>
             </div>
             <div :class="$style.pageFooterActions">

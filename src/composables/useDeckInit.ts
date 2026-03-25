@@ -54,6 +54,8 @@ export function useDeckInit(options: {
     deckStore.flushSave()
   }
 
+  let updateCheckTimer: ReturnType<typeof setTimeout> | undefined
+
   onMounted(() => {
     handleResizeRef = () => options.navbarRef.value?.handleResize()
     window.addEventListener('resize', handleResizeRef)
@@ -88,7 +90,7 @@ export function useDeckInit(options: {
       })
     })
 
-    setTimeout(options.checkForUpdate, 5000)
+    updateCheckTimer = setTimeout(options.checkForUpdate, 5000)
 
     // Plugins
     import('@/aiscript/plugin-api').then(({ launchAllPlugins }) => {
@@ -131,6 +133,7 @@ export function useDeckInit(options: {
     document.removeEventListener('visibilitychange', onVisibilityChange)
     window.removeEventListener('pagehide', onPageHide)
     unlistenQuickNote?.()
+    clearTimeout(updateCheckTimer)
     unlistenWindowEvents?.()
   })
 }
