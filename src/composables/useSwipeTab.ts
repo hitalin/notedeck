@@ -5,6 +5,7 @@ const FLING_VELOCITY = 0.4 // px/ms — fast flick switches tab even if distance
 const ANGLE_THRESHOLD = 30 // degrees — swipe must be within this angle from horizontal
 const SOFT_CAP = 80 // px — full-speed tracking up to here
 const RUBBER_FACTOR = 0.3 // diminishing returns past SOFT_CAP (iOS-style)
+const MAX_SWIPE = 120 // px — hard cap to prevent excessive displacement
 const WHEEL_THRESHOLD = 50
 const WHEEL_COOLDOWN = 300 // ms — prevent rapid-fire tab switches
 
@@ -29,7 +30,7 @@ function rubberBand(distance: number): number {
   const abs = Math.abs(distance)
   const sign = Math.sign(distance)
   if (abs <= SOFT_CAP) return distance
-  return sign * (SOFT_CAP + (abs - SOFT_CAP) * RUBBER_FACTOR)
+  return sign * Math.min(SOFT_CAP + (abs - SOFT_CAP) * RUBBER_FACTOR, MAX_SWIPE)
 }
 
 /**

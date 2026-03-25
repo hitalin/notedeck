@@ -521,6 +521,11 @@ html[data-platform="android"] select {
 .nd-tab-swiping {
   transform: translateX(var(--nd-swipe, 0));
   will-change: transform;
+  scrollbar-width: none;
+}
+
+.nd-tab-swiping::-webkit-scrollbar {
+  display: none;
 }
 
 .nd-tab-snap-back {
