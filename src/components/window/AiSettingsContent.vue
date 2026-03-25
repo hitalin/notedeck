@@ -254,7 +254,8 @@ watch(
 
 const currentProvider = computed(
   () =>
-    PROVIDERS.find((p) => p.value === config.value.provider) ?? PROVIDERS[0],
+    // biome-ignore lint: PROVIDERS is a non-empty constant array
+    PROVIDERS.find((p) => p.value === config.value.provider) ?? PROVIDERS[0]!,
 )
 
 const currentFields = computed(() => PROVIDER_FIELDS[config.value.provider])
