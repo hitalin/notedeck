@@ -528,7 +528,7 @@ defineExpose({
 .section {
   display: flex;
   flex-direction: column;
-  padding: 10px 16px;
+  padding: 10px 6px;
 }
 
 .spacer {
@@ -538,7 +538,7 @@ defineExpose({
 .divider {
   height: 1px;
   background: var(--nd-divider);
-  margin: 10px 16px;
+  margin: 10px 6px;
   align-self: stretch;
 }
 
