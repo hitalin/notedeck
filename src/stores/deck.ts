@@ -248,27 +248,18 @@ export const useDeckStore = defineStore('deck', () => {
       removeColumn(existing.id)
       return
     }
-    // Remove old sidebar + add new in a single mutation to avoid
-    // flushPersist race (Tauri sync event reloading stale state).
-    const newCol: DeckColumn = {
+    if (existing) {
+      // In-place update: swap type without destroying DOM / layout.
+      updateColumn(existing.id, { type, accountId, name: null })
+      return
+    }
+    addColumnAt(0, {
       type,
       name: null,
       width: 360,
       accountId,
       sidebar: true,
-      id: genColumnId(),
-    }
-    profileStore.mutateProfile((p) => {
-      if (existing) {
-        p.columns = p.columns.filter((c) => c.id !== existing.id)
-        p.layout = p.layout
-          .map((ids) => ids.filter((_id) => _id !== existing.id))
-          .filter((ids) => ids.length > 0)
-      }
-      p.columns.push(newCol)
-      p.layout.splice(0, 0, [newCol.id])
     })
-    activeColumnId.value = newCol.id
   }
 
   function removeColumn(id: string) {
