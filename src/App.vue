@@ -5,15 +5,16 @@ import { useCommandStore } from '@/commands/registry'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { listenPipEvents } from '@/composables/usePipWindow'
 import { useTheme } from '@/composables/useTheme'
-import { useUiStore } from '@/stores/ui'
+import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 
 const uiStore = useUiStore()
 const { isTauri, isDesktop } = uiStore
+const isCompact = useIsCompactLayout()
 const route = useRoute()
 const isPipWindow = computed(() => route.meta.pip === true)
 
-const TitleBar = isDesktop
+const TitleBar = isTauri
   ? defineAsyncComponent(() => import('@/components/common/TitleBar.vue'))
   : null
 
@@ -26,7 +27,7 @@ const DeckWindowLayer = defineAsyncComponent(
 
 const commandStore = useCommandStore()
 
-if (isDesktop) {
+if (isTauri) {
   const { init: initKeyboard } = useKeyboard()
   initKeyboard()
 }
@@ -101,7 +102,7 @@ onUnmounted(() => {
 <template>
   <div :class="$style.root">
     <template v-if="isTauri">
-      <TitleBar v-if="isDesktop && !isPipWindow" />
+      <TitleBar v-if="!isCompact && !isPipWindow" />
       <div :class="$style.content">
         <router-view />
       </div>
@@ -115,7 +116,7 @@ onUnmounted(() => {
       <DeckWindowLayer />
 
       <Teleport to="body">
-        <CommandPalette v-if="commandStore.isOpen && !isDesktop" />
+        <CommandPalette v-if="commandStore.isOpen && isCompact" />
       </Teleport>
     </template>
   </div>

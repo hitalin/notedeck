@@ -22,7 +22,7 @@ const appWindow = getCurrentWindow()
 const commandStore = useCommandStore()
 const accountsStore = useAccountsStore()
 const deckStore = useDeckStore()
-const { platformName } = useUiStore()
+const { platformName, isDesktop } = useUiStore()
 const isCompact = useIsCompactLayout()
 
 const platformLabel: Record<string, string> = {
@@ -141,34 +141,36 @@ async function onPipClick() {
       </button>
     </div>
     <div :class="$style.titlebarControls">
-      <button
-        :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
-        title="開発者ツール"
-        @click="commandStore.execute('devtools')"
-      >
-        <i class="ti ti-code" />
-      </button>
-      <button
-        :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
-        title="新しいウィンドウ"
-        @click="openNewWindow"
-      >
-        <i class="ti ti-app-window" />
-      </button>
-      <button
-        :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
-        title="ピクチャーインピクチャー"
-        @click="onPipClick"
-      >
-        <i class="ti ti-picture-in-picture" />
-      </button>
-      <button
-        :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
-        :title="isCompactSize ? 'デスクトップサイズ' : 'モバイルサイズ'"
-        @click="toggleMobileSize"
-      >
-        <i :class="isCompactSize ? 'ti ti-device-desktop' : 'ti ti-device-mobile'" />
-      </button>
+      <template v-if="isDesktop">
+        <button
+          :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
+          title="開発者ツール"
+          @click="commandStore.execute('devtools')"
+        >
+          <i class="ti ti-code" />
+        </button>
+        <button
+          :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
+          title="新しいウィンドウ"
+          @click="openNewWindow"
+        >
+          <i class="ti ti-app-window" />
+        </button>
+        <button
+          :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
+          title="ピクチャーインピクチャー"
+          @click="onPipClick"
+        >
+          <i class="ti ti-picture-in-picture" />
+        </button>
+        <button
+          :class="[$style.titlebarBtn, $style.titlebarWindowBtn]"
+          :title="isCompactSize ? 'デスクトップサイズ' : 'モバイルサイズ'"
+          @click="toggleMobileSize"
+        >
+          <i :class="isCompactSize ? 'ti ti-device-desktop' : 'ti ti-device-mobile'" />
+        </button>
+      </template>
       <button
         :class="[$style.titlebarBtn, $style.titlebarSidebarBtn, { [$style.titlebarBtnActive]: !deckStore.navCollapsed }]"
         title="サイドバー切替"
@@ -176,25 +178,27 @@ async function onPipClick() {
       >
         <i class="ti ti-layout-sidebar" />
       </button>
-      <button :class="[$style.titlebarBtn, $style.titlebarWindowBtn]" title="最小化" @click="minimize">
-        <svg width="10" height="10" viewBox="0 0 10 10">
-          <rect x="0" y="4.5" width="10" height="1" fill="currentColor" />
-        </svg>
-      </button>
-      <button :class="[$style.titlebarBtn, $style.titlebarWindowBtn]" title="最大化" @click="toggleMaximize">
-        <svg v-if="!isMaximized" width="10" height="10" viewBox="0 0 10 10">
-          <rect x="0.5" y="0.5" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1" fill="none" />
-        </svg>
-        <svg v-else width="10" height="10" viewBox="0 0 10 10">
-          <rect x="2.5" y="0.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1" fill="none" />
-          <rect x="0.5" y="2.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1" fill="var(--nd-navBg, #1a1a2e)" />
-        </svg>
-      </button>
-      <button :class="[$style.titlebarBtn, $style.titlebarBtnClose]" title="閉じる" @click="close">
-        <svg width="10" height="10" viewBox="0 0 10 10">
-          <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-        </svg>
-      </button>
+      <template v-if="isDesktop">
+        <button :class="[$style.titlebarBtn, $style.titlebarWindowBtn]" title="最小化" @click="minimize">
+          <svg width="10" height="10" viewBox="0 0 10 10">
+            <rect x="0" y="4.5" width="10" height="1" fill="currentColor" />
+          </svg>
+        </button>
+        <button :class="[$style.titlebarBtn, $style.titlebarWindowBtn]" title="最大化" @click="toggleMaximize">
+          <svg v-if="!isMaximized" width="10" height="10" viewBox="0 0 10 10">
+            <rect x="0.5" y="0.5" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1" fill="none" />
+          </svg>
+          <svg v-else width="10" height="10" viewBox="0 0 10 10">
+            <rect x="2.5" y="0.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1" fill="none" />
+            <rect x="0.5" y="2.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1" fill="var(--nd-navBg, #1a1a2e)" />
+          </svg>
+        </button>
+        <button :class="[$style.titlebarBtn, $style.titlebarBtnClose]" title="閉じる" @click="close">
+          <svg width="10" height="10" viewBox="0 0 10 10">
+            <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+          </svg>
+        </button>
+      </template>
     </div>
   </div>
 </template>
