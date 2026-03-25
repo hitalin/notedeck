@@ -871,7 +871,11 @@ defineExpose({
     margin: 0 auto;
     border-radius: 50%;
     justify-content: center;
-    font-size: 1.3em;
+    font-size: 1rem;
+
+    :global(.ti) {
+      font-size: 1.5em;
+    }
   }
 }
 
