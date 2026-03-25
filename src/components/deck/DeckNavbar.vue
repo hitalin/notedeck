@@ -800,11 +800,11 @@ defineExpose({
   .item {
     justify-content: center;
     padding: 0;
-    width: 40px;
-    height: 40px;
-    margin: 4px auto;
+    width: 44px;
+    height: 44px;
+    margin: 2px auto;
     border-radius: 50%;
-    font-size: 1.5em;
+    font-size: 1.7em;
   }
 
   .account {
@@ -815,6 +815,7 @@ defineExpose({
 
   .accountStack {
     position: static;
+    margin-top: 12px;
   }
 
   .accountScroll {
@@ -827,11 +828,11 @@ defineExpose({
   }
 
   .accountBtn {
-    padding: 6px 0;
+    padding: 4px 0;
   }
 
   .section {
-    padding: 10px 0;
+    padding: 8px 0 4px;
     align-items: center;
   }
 
