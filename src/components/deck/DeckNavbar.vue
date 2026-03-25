@@ -722,6 +722,13 @@ defineExpose({
   &:active {
     transform: scale(0.97);
   }
+
+  :global(.ti) {
+    flex-shrink: 0;
+    width: 32px;
+    font-size: 1.5em;
+    text-align: center;
+  }
 }
 
 .resizeHandle {
