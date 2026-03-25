@@ -100,8 +100,8 @@ function onlineStatusClass(accountId: string): string | undefined {
 }
 
 // Navbar resize
-const MIN_WIDTH = 80
-const COLLAPSE_THRESHOLD = 140
+const MIN_WIDTH = 56
+const COLLAPSE_THRESHOLD = 120
 const DEFAULT_WIDTH = 250
 const MAX_WIDTH = 400
 const navWidth = ref(
@@ -787,7 +787,7 @@ defineExpose({
 // Icon-only mode — navbar adapts to its own width via
 // Container Query. No class flags needed.
 // ============================================================
-@container navbar (max-width: 100px) {
+@container navbar (max-width: 80px) {
   .body {
     overflow: visible;
     direction: ltr;
@@ -799,9 +799,12 @@ defineExpose({
 
   .item {
     justify-content: center;
-    padding: 16px 0;
-    width: 100%;
-    font-size: 1.4em;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    margin: 4px auto;
+    border-radius: 50%;
+    font-size: 1.5em;
   }
 
   .account {
@@ -833,8 +836,8 @@ defineExpose({
   }
 
   .avatar {
-    width: 38px;
-    height: 38px;
+    width: 32px;
+    height: 32px;
   }
 
   .serverBadge {
@@ -845,13 +848,13 @@ defineExpose({
   }
 
   .postBtn {
-    width: 52px;
-    height: 52px;
+    width: 40px;
+    height: 40px;
     padding: 0;
     margin: 0 auto;
     border-radius: 50%;
     justify-content: center;
-    font-size: 1.3em;
+    font-size: 1.1em;
   }
 }
 

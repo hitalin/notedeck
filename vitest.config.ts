@@ -29,6 +29,7 @@ export default defineConfig({
   ...shared,
   test: {
     globals: true,
+    passWithNoTests: true,
     projects: [
       {
         ...shared,
