@@ -52,14 +52,60 @@ const isCompact = useIsCompactLayout()
 const { totalUnread, markAllAsRead } = useUnreadNotifications()
 const { totalUnread: chatUnread, resetAll: resetChatUnread } = useUnreadChat()
 
-function openNotifications() {
-  markAllAsRead()
-  navigateToNotifications()
+const sidebarType = computed(() => {
+  const col = deckStore.columns.find((c) => c.sidebar)
+  return col?.type ?? null
+})
+
+const NAV_ICON_MAP: Record<string, { icon: string; label: string }> = {
+  notifications: { icon: 'ti-bell', label: '通知' },
+  chat: { icon: 'ti-messages', label: 'チャット' },
+  search: { icon: 'ti-search', label: '検索' },
+  ai: { icon: 'ti-sparkles', label: 'AI' },
+  timeline: { icon: 'ti-home', label: 'タイムライン' },
+  mentions: { icon: 'ti-at', label: 'メンション' },
+  favorites: { icon: 'ti-star', label: 'お気に入り' },
+  drive: { icon: 'ti-cloud', label: 'ドライブ' },
+  explore: { icon: 'ti-compass', label: 'みつける' },
+  announcements: { icon: 'ti-speakerphone', label: 'お知らせ' },
+  gallery: { icon: 'ti-photo', label: 'ギャラリー' },
+  followRequests: { icon: 'ti-user-plus', label: 'フォローリクエスト' },
 }
 
-function openChat() {
-  resetChatUnread()
-  navigateToChat()
+function getNavAction(type: string): () => void {
+  switch (type) {
+    case 'notifications':
+      return () => {
+        markAllAsRead()
+        navigateToNotifications()
+      }
+    case 'chat':
+      return () => {
+        resetChatUnread()
+        navigateToChat()
+      }
+    case 'search':
+      return navigateToSearch
+    case 'ai':
+      return navigateToAi
+    default:
+      return () =>
+        deckStore.toggleSidebarColumn(
+          type as never,
+          accountsStore.accounts[0]?.id ?? null,
+        )
+  }
+}
+
+function getNavBadge(type: string): number {
+  switch (type) {
+    case 'notifications':
+      return totalUnread.value
+    case 'chat':
+      return chatUnread.value
+    default:
+      return 0
+  }
 }
 
 function closeDrawerAndDo(fn: () => void) {
@@ -289,57 +335,21 @@ defineExpose({
         <!-- Top section -->
         <div :class="$style.section">
           <button
+            v-for="navType in deckStore.navItems"
+            :key="navType"
             class="_button"
-            :class="$style.item"
-            title="通知"
-            @click="closeDrawerAndDo(openNotifications)"
+            :class="[$style.item, { [$style.sidebarActive]: sidebarType === navType }]"
+            :title="NAV_ICON_MAP[navType]?.label ?? navType"
+            @click="closeDrawerAndDo(getNavAction(navType))"
           >
-            <div :class="$style.iconWrap">
-              <i class="ti ti-bell" />
-              <span v-if="totalUnread > 0" :class="$style.badge">{{ totalUnread > 99 ? '99+' : totalUnread }}</span>
+            <div v-if="getNavBadge(navType) > 0" :class="$style.iconWrap">
+              <i :class="['ti', NAV_ICON_MAP[navType]?.icon ?? 'ti-layout-grid']" />
+              <span :class="$style.badge">{{ getNavBadge(navType) > 99 ? '99+' : getNavBadge(navType) }}</span>
             </div>
-            <span :class="$style.label">通知</span>
+            <i v-else :class="['ti', NAV_ICON_MAP[navType]?.icon ?? 'ti-layout-grid']" />
+            <span :class="$style.label">{{ NAV_ICON_MAP[navType]?.label ?? navType }}</span>
           </button>
-          <button
-            class="_button"
-            :class="$style.item"
-            title="チャット"
-            @click="closeDrawerAndDo(openChat)"
-          >
-            <div :class="$style.iconWrap">
-              <i class="ti ti-messages" />
-              <span v-if="chatUnread > 0" :class="$style.badge">{{ chatUnread > 99 ? '99+' : chatUnread }}</span>
-            </div>
-            <span :class="$style.label">チャット</span>
-          </button>
-          <button
-            class="_button"
-            :class="$style.item"
-            title="検索"
-            @click="closeDrawerAndDo(navigateToSearch)"
-          >
-            <i class="ti ti-search" />
-            <span :class="$style.label">検索</span>
-          </button>
-          <button
-            class="_button"
-            :class="$style.item"
-            title="プラグイン"
-            @click="closeDrawerAndDo(navigateToPlugins)"
-          >
-            <i class="ti ti-plug" />
-            <span :class="$style.label">プラグイン</span>
-          </button>
-          <button
-            v-if="!isCompact"
-            class="_button"
-            :class="$style.item"
-            title="AI アシスタント"
-            @click="closeDrawerAndDo(navigateToAi)"
-          >
-            <i class="ti ti-sparkles" />
-            <span :class="$style.label">AI</span>
-          </button>
+          <!-- ナビバー編集はボトムバーの設定メニューから -->
         </div>
 
         <!-- Spacer -->
@@ -562,6 +572,15 @@ defineExpose({
     font-size: 1.5em;
     text-align: center;
     opacity: 0.7;
+  }
+}
+
+.sidebarActive {
+  background: var(--nd-buttonHoverBg);
+  color: var(--nd-fgHighlighted);
+
+  :global(.ti) {
+    opacity: 1;
   }
 }
 

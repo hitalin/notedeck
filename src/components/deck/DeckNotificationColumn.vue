@@ -10,14 +10,31 @@ import {
   watch,
 } from 'vue'
 import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
+import AvatarStack from '@/components/common/AvatarStack.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
-import { getAccountAvatarUrl } from '@/stores/accounts'
+import { useColumnSetup } from '@/composables/useColumnSetup'
+import { useEmojiResolver } from '@/composables/useEmojiResolver'
+import { useHoverPopup } from '@/composables/useHoverPopup'
+import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
+import { useNavigation } from '@/composables/useNavigation'
+import { useNoteSound } from '@/composables/useNoteSound'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
+import { useSwipeTab } from '@/composables/useSwipeTab'
+import { useTabIndicator } from '@/composables/useTabIndicator'
+import { useTabSlide } from '@/composables/useTabSlide'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
+import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
+import { AppError } from '@/utils/errors'
+import { formatTime } from '@/utils/formatTime'
+import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
+import { char2twemojiUrl } from '@/utils/twemoji'
+import DeckColumn from './DeckColumn.vue'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -26,27 +43,15 @@ const MkUserPopup = defineAsyncComponent(
   () => import('@/components/common/MkUserPopup.vue'),
 )
 
-import { useColumnSetup } from '@/composables/useColumnSetup'
-import { useEmojiResolver } from '@/composables/useEmojiResolver'
-import { useHoverPopup } from '@/composables/useHoverPopup'
-import { useNavigation } from '@/composables/useNavigation'
-import { useNoteSound } from '@/composables/useNoteSound'
-import { usePullToRefresh } from '@/composables/usePullToRefresh'
-import { useSwipeTab } from '@/composables/useSwipeTab'
-import { useTabIndicator } from '@/composables/useTabIndicator'
-import { useTabSlide } from '@/composables/useTabSlide'
-import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { AppError } from '@/utils/errors'
-import { formatTime } from '@/utils/formatTime'
-import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
-import { char2twemojiUrl } from '@/utils/twemoji'
-import DeckColumn from './DeckColumn.vue'
-
 const noteStore = useNoteStore()
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
+
+const isCrossAccount = computed(() => props.column.accountId == null)
+const accountsStore = useAccountsStore()
+const multiAdapters = useMultiAccountAdapters()
 
 const { reactionUrl: reactionUrlRaw } = useEmojiResolver()
 const {
@@ -254,7 +259,7 @@ watch(
   },
 )
 
-async function connect(useCache = false) {
+async function connectPerAccount(useCache = false) {
   error.value = null
   isLoading.value = true
 
@@ -308,7 +313,56 @@ async function connect(useCache = false) {
   }
 }
 
-async function loadMore() {
+async function connectCrossAccount() {
+  error.value = null
+  isLoading.value = true
+  const accounts = accountsStore.accounts.filter((a) => a.hasToken)
+
+  try {
+    const results = await Promise.allSettled(
+      accounts.map(async (acc) => {
+        const adapter = await multiAdapters.getOrCreate(acc.id)
+        if (!adapter) return []
+        return adapter.api.getNotifications()
+      }),
+    )
+
+    const allNotifs: NormalizedNotification[] = []
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) {
+        allNotifs.push(...r.value)
+      }
+    }
+
+    // Sort by createdAt DESC, deduplicate
+    const seen = new Set<string>()
+    notifications.value = allNotifs
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+      .filter((n) => {
+        if (seen.has(n.id)) return false
+        seen.add(n.id)
+        return true
+      })
+      .slice(0, MAX_NOTIFICATIONS)
+  } catch (e) {
+    error.value = AppError.from(e)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function connect(useCache = false) {
+  if (isCrossAccount.value) {
+    await connectCrossAccount()
+  } else {
+    await connectPerAccount(useCache)
+  }
+}
+
+async function loadMorePerAccount() {
   const adapter = getAdapter()
   if (!adapter || isLoading.value || notifications.value.length === 0) return
   const last = notifications.value.at(-1)
@@ -324,23 +378,93 @@ async function loadMore() {
   }
 }
 
-async function removeNote(note: NormalizedNote) {
-  if (await handlers.delete(note)) {
-    const id = note.id
-    notifications.value = notifications.value.filter(
-      (x) => x.note?.id !== id && x.note?.renoteId !== id,
+async function loadMoreCrossAccount() {
+  if (isLoading.value || notifications.value.length === 0) return
+  isLoading.value = true
+
+  const accounts = accountsStore.accounts.filter((a) => a.hasToken)
+
+  try {
+    const results = await Promise.allSettled(
+      accounts.map(async (acc) => {
+        const adapter = await multiAdapters.getOrCreate(acc.id)
+        if (!adapter) return []
+        // Find this account's oldest notification
+        const lastForAccount = [...notifications.value]
+          .reverse()
+          .find((n) => n._accountId === acc.id)
+        if (!lastForAccount) return adapter.api.getNotifications()
+        return adapter.api.getNotifications({ untilId: lastForAccount.id })
+      }),
     )
-    noteStore.remove(id)
-    invoke('api_delete_cached_note', { noteId: id }).catch((e) => {
-      if (import.meta.env.DEV) console.debug('[delete-cached-note] ignored:', e)
-    })
+
+    const olderNotifs: NormalizedNotification[] = []
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) {
+        olderNotifs.push(...r.value)
+      }
+    }
+
+    const seen = new Set(notifications.value.map((n) => n.id))
+    const newOlder = olderNotifs
+      .filter((n) => !seen.has(n.id))
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+
+    notifications.value = [...notifications.value, ...newOlder].slice(
+      0,
+      MAX_NOTIFICATIONS * 2,
+    )
+  } catch (e) {
+    error.value = AppError.from(e)
+  } finally {
+    isLoading.value = false
   }
+}
+
+async function loadMore() {
+  if (isCrossAccount.value) {
+    await loadMoreCrossAccount()
+  } else {
+    await loadMorePerAccount()
+  }
+}
+
+async function removeNote(note: NormalizedNote) {
+  if (isCrossAccount.value) {
+    const adapter = await multiAdapters.getOrCreate(note._accountId)
+    if (!adapter) return
+    try {
+      await adapter.api.deleteNote(note.id)
+    } catch {
+      return
+    }
+  } else {
+    if (!(await handlers.delete(note))) return
+  }
+  const id = note.id
+  notifications.value = notifications.value.filter(
+    (x) => x.note?.id !== id && x.note?.renoteId !== id,
+  )
+  noteStore.remove(id)
+  invoke('api_delete_cached_note', { noteId: id }).catch((e) => {
+    if (import.meta.env.DEV) console.debug('[delete-cached-note] ignored:', e)
+  })
 }
 
 async function handlePosted(editedNoteId?: string) {
   postForm.close()
   if (editedNoteId) {
-    const adapter = getAdapter()
+    let adapter: Awaited<ReturnType<typeof multiAdapters.getOrCreate>> = null
+    if (isCrossAccount.value) {
+      // Find the account that owns this note
+      const notif = notifications.value.find((n) => n.note?.id === editedNoteId)
+      if (notif) adapter = await multiAdapters.getOrCreate(notif._accountId)
+    } else {
+      adapter = getAdapter()
+    }
     if (!adapter) return
     try {
       const updated = await adapter.api.getNote(editedNoteId)
@@ -361,8 +485,14 @@ async function handleFollowRequest(
   notif: NormalizedNotification,
   action: 'accepted' | 'rejected',
 ) {
-  const adapter = getAdapter()
-  if (!adapter || !notif.user) return
+  if (!notif.user) return
+  let adapter: Awaited<ReturnType<typeof multiAdapters.getOrCreate>> = null
+  if (isCrossAccount.value) {
+    adapter = await multiAdapters.getOrCreate(notif._accountId)
+  } else {
+    adapter = getAdapter()
+  }
+  if (!adapter) return
   try {
     if (action === 'accepted')
       await adapter.api.acceptFollowRequest(notif.user.id)
@@ -381,11 +511,16 @@ function handleScroll() {
 }
 
 async function pullRefresh() {
-  const adapter = getAdapter()
-  if (!adapter) return
-  const fetched = await adapter.api.getNotifications()
-  notifications.value = fetched
-  scrollToTop()
+  if (isCrossAccount.value) {
+    await connectCrossAccount()
+    scrollToTop()
+  } else {
+    const adapter = getAdapter()
+    if (!adapter) return
+    const fetched = await adapter.api.getNotifications()
+    notifications.value = fetched
+    scrollToTop()
+  }
 }
 
 const { isPulling, isPulledEnough, isRefreshing, pullDistance, displayHeight } =
@@ -457,13 +592,16 @@ onUnmounted(() => {
     </template>
 
     <template #header-meta>
-      <div v-if="account" :class="$style.headerAccount">
+      <div v-if="isCrossAccount" :class="$style.headerAccount">
+        <AvatarStack :size="18" />
+      </div>
+      <div v-else-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
-    <div v-if="!account" :class="$style.columnEmpty">
+    <div v-if="!isCrossAccount && !account" :class="$style.columnEmpty">
       Account not found
     </div>
 
@@ -670,6 +808,7 @@ onUnmounted(() => {
   object-fit: contain;
   opacity: 0.7;
 }
+
 
 .notifBody {
   flex: 1;

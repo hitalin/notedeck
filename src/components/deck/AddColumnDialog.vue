@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-
+import AvatarStack from '@/components/common/AvatarStack.vue'
 import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useNavigation } from '@/composables/useNavigation'
 import {
@@ -50,6 +50,13 @@ const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
   'emoji',
 ])
 
+/** Column types that support cross-account mode (accountId: null) */
+const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
+  'notifications',
+  'search',
+  'chat',
+])
+
 /** Whether the selected column type requires authentication */
 const requiresAuth = computed(() => {
   if (!addColumnType.value) return false
@@ -58,6 +65,11 @@ const requiresAuth = computed(() => {
 
 function selectColumnType(type: ColumnType) {
   addColumnType.value = type
+  // Account-independent types: skip account selection
+  if (type === 'apiDocs') {
+    addColumnForAccount(null)
+    return
+  }
   // Auto-select if only one valid account
   const authRequired = !GUEST_ALLOWED_TYPES.has(type)
   const accounts = accountsStore.accounts.filter(
@@ -73,7 +85,7 @@ function selectColumnType(type: ColumnType) {
   }
 }
 
-function addColumnForAccount(accountId: string) {
+function addColumnForAccount(accountId: string | null) {
   const type = addColumnType.value || 'timeline'
   const config = SELECTABLE_CONFIGS.find((c) => c.type === type)
   if (config) {
@@ -88,7 +100,7 @@ function addColumnForAccount(accountId: string) {
     finalizeColumn({
       type: 'widget',
       name: 'ウィジェット',
-      width: 330,
+      width: 360,
       accountId,
       active: true,
       widgets: [],
@@ -99,7 +111,7 @@ function addColumnForAccount(accountId: string) {
     finalizeColumn({
       type: 'aiscript',
       name: 'スクラッチパッド',
-      width: 330,
+      width: 360,
       accountId,
       active: true,
       aiscriptCode: '<: "Hello, AiScript!"',
@@ -120,7 +132,7 @@ function addColumnForAccount(accountId: string) {
     finalizeColumn({
       type: 'lookup',
       name: 'URI照会',
-      width: 330,
+      width: 360,
       accountId,
       active: true,
     })
@@ -130,7 +142,7 @@ function addColumnForAccount(accountId: string) {
     finalizeColumn({
       type: 'serverInfo',
       name: 'サーバー情報',
-      width: 330,
+      width: 360,
       accountId,
       active: true,
     })
@@ -140,7 +152,7 @@ function addColumnForAccount(accountId: string) {
     finalizeColumn({
       type: 'ads',
       name: '広告',
-      width: 330,
+      width: 360,
       accountId,
       active: true,
     })
@@ -150,7 +162,7 @@ function addColumnForAccount(accountId: string) {
     finalizeColumn({
       type: 'aboutMisskey',
       name: 'Misskeyについて',
-      width: 330,
+      width: 360,
       accountId,
       active: true,
     })
@@ -160,7 +172,7 @@ function addColumnForAccount(accountId: string) {
     finalizeColumn({
       type: 'emoji',
       name: 'カスタム絵文字',
-      width: 330,
+      width: 360,
       accountId,
       active: true,
     })
@@ -257,7 +269,7 @@ function addColumnForAccount(accountId: string) {
     finalizeColumn({
       type,
       name: nameMap[type] ?? type,
-      width: 330,
+      width: 360,
       accountId,
       active: true,
     })
@@ -266,7 +278,7 @@ function addColumnForAccount(accountId: string) {
   finalizeColumn({
     type,
     name: null,
-    width: 330,
+    width: 360,
     accountId,
     tl: type === 'timeline' ? 'home' : undefined,
     active: true,
@@ -344,7 +356,7 @@ function addSelectableColumn(itemId: string, itemName: string) {
   finalizeColumn({
     type: selectConfig.value.type,
     name: itemName,
-    width: 330,
+    width: 360,
     accountId: selectAccountId.value,
     [selectConfig.value.idKey]: itemId,
     active: true,
@@ -383,7 +395,7 @@ async function searchAndAddUserColumn() {
     finalizeColumn({
       type: 'user',
       name: displayName,
-      width: 330,
+      width: 360,
       accountId: addUserAccountId.value,
       userId: user.id,
       active: true,
@@ -609,6 +621,15 @@ function close() {
           </button>
         </div>
 
+        <button
+          v-if="addColumnType && CROSS_ACCOUNT_TYPES.has(addColumnType) && accountsStore.accounts.length > 1"
+          class="_button"
+          :class="$style.addAccountBtn"
+          @click="addColumnForAccount(null)"
+        >
+          <AvatarStack :size="28" />
+          <span>全アカウント</span>
+        </button>
         <button
           v-for="account in accountsStore.accounts"
           :key="account.id"

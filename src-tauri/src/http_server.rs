@@ -154,6 +154,7 @@ pub async fn bind() -> Option<BoundServer> {
 }
 
 /// Phase 2: attach routes and start serving. Requires DB/client.
+#[allow(clippy::too_many_arguments)]
 pub async fn serve(
     server: BoundServer,
     app_handle: AppHandle,

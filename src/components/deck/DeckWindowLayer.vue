@@ -53,6 +53,9 @@ const ChatContent = defineAsyncComponent(
 const AboutContent = defineAsyncComponent(
   () => import('@/components/window/AboutContent.vue'),
 )
+const NavEditorContent = defineAsyncComponent(
+  () => import('@/components/window/NavEditorContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -161,6 +164,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       <AiContent v-if="win.type === 'ai'" />
       <ChatContent v-if="win.type === 'chat'" />
       <AboutContent v-if="win.type === 'about'" />
+      <NavEditorContent v-if="win.type === 'navEditor'" />
     </DeckWindow>
   </div>
 </template>

@@ -63,6 +63,8 @@ export interface DeckProfile {
   createdAt: number
   /** Window positions/sizes for multi-window layouts */
   windows?: DeckWindowLayout[]
+  /** Customizable nav bar items (column types to toggle). undefined = defaults */
+  navItems?: ColumnType[]
 }
 
 export interface DeckColumn {
@@ -90,12 +92,21 @@ export interface DeckColumn {
   windowId?: string
   /** Portable account identifier ("user@host") for cross-device profile sharing */
   account?: string
+  /** true if created by nav icon toggle (managed as sidebar slot) */
+  sidebar?: boolean
 }
 
 let columnCounter = 0
 function genColumnId(): string {
   return `col-${Date.now()}-${++columnCounter}`
 }
+
+export const DEFAULT_NAV_ITEMS: ColumnType[] = [
+  'notifications',
+  'chat',
+  'search',
+  'ai',
+]
 
 export const useDeckStore = defineStore('deck', () => {
   const profileStore = useDeckProfileStore()
@@ -104,6 +115,16 @@ export const useDeckStore = defineStore('deck', () => {
   // columns and layout are derived from the profile store (single source of truth)
   const columns = computed(() => profileStore.columns)
   const layout = computed(() => profileStore.layout)
+
+  const navItems = computed(
+    () => profileStore.currentProfile?.navItems ?? DEFAULT_NAV_ITEMS,
+  )
+
+  function setNavItems(items: ColumnType[]) {
+    profileStore.mutateProfile((p) => {
+      p.navItems = items
+    })
+  }
 
   const navCollapsed = ref(false)
   const activeColumnId = ref<string | null>(null)
@@ -197,6 +218,34 @@ export const useDeckStore = defineStore('deck', () => {
     })
     activeColumnId.value = col.id
     return col
+  }
+
+  function addColumnAt(index: number, partial: Omit<DeckColumn, 'id'>) {
+    const col: DeckColumn = { ...partial, id: genColumnId() }
+    profileStore.mutateProfile((p) => {
+      p.columns.push(col)
+      p.layout.splice(index, 0, [col.id])
+    })
+    activeColumnId.value = col.id
+    return col
+  }
+
+  function toggleSidebarColumn(type: ColumnType, accountId: string | null) {
+    const existing = columns.value.find((c) => c.sidebar)
+    if (existing) {
+      if (existing.type === type) {
+        removeColumn(existing.id)
+        return
+      }
+      removeColumn(existing.id)
+    }
+    addColumnAt(0, {
+      type,
+      name: null,
+      width: 360,
+      accountId,
+      sidebar: true,
+    })
   }
 
   function removeColumn(id: string) {
@@ -525,8 +574,12 @@ export const useDeckStore = defineStore('deck', () => {
     focusNextColumn,
     focusPrevColumn,
     focusColumnByIndex,
+    navItems,
+    setNavItems,
     addColumn,
+    addColumnAt,
     removeColumn,
+    toggleSidebarColumn,
     updateColumn,
     swapColumns,
     swapInGroup,

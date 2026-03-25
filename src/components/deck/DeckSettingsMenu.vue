@@ -150,7 +150,9 @@ function removeWallpaper() {
 
 const windowsStore = useWindowsStore()
 
-function openToolWindow(type: 'cssEditor' | 'keybinds' | 'themeEditor') {
+function openToolWindow(
+  type: 'cssEditor' | 'keybinds' | 'themeEditor' | 'navEditor' | 'plugins',
+) {
   windowsStore.open(type)
   emit('close-all')
 }
@@ -285,6 +287,14 @@ const importSettings = () =>
       <!-- Controls -->
       <div :class="$style.settingsMenuDivider" />
 
+      <div :class="$style.settingsMenuItem" @click="openToolWindow('navEditor')">
+        <i class="ti ti-layout-sidebar-left-collapse" />
+        <span :class="$style.settingsMenuLabel">ナビバー</span>
+      </div>
+      <div :class="$style.settingsMenuItem" @click="openToolWindow('plugins')">
+        <i class="ti ti-plug" />
+        <span :class="$style.settingsMenuLabel">プラグイン</span>
+      </div>
       <div v-if="!isMobilePlatform" :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
         <i class="ti ti-keyboard" />
         <span :class="$style.settingsMenuLabel">キーバインド</span>
