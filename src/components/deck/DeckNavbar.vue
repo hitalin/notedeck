@@ -828,7 +828,8 @@ defineExpose({
   }
 
   .accountBtn {
-    padding: 4px 0;
+    padding: 4px;
+    border-radius: 50%;
   }
 
   .section {
