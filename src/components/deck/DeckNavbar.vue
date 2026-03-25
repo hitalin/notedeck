@@ -833,6 +833,7 @@ defineExpose({
   .accountScroll {
     flex-direction: column;
     overflow: visible;
+    gap: 4px;
   }
 
   .accountWrap {
