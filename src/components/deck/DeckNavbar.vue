@@ -808,7 +808,11 @@ defineExpose({
     height: 44px;
     margin: 2px auto;
     border-radius: 50%;
-    font-size: 1.7em;
+    font-size: 1rem;
+
+    :global(.ti) {
+      font-size: 1.5em;
+    }
   }
 
   .account {
