@@ -14,6 +14,7 @@ export type WindowType =
   | 'themeEditor'
   | 'profileEditor'
   | 'ai'
+  | 'aiSettings'
   | 'chat'
   | 'about'
   | 'navEditor'
@@ -43,6 +44,7 @@ export const WINDOW_SIZES: Record<
   chat: { width: 500, maxHeight: 650 },
   // Content windows (cont.)
   ai: { width: 500, maxHeight: 650 },
+  aiSettings: { width: 400, maxHeight: 700 },
   // Tool windows
   plugins: { width: 500, maxHeight: 650 },
   // Editor windows
@@ -92,6 +94,7 @@ export const useWindowsStore = defineStore('windows', () => {
       if (type === 'cssEditor') return true
       if (type === 'themeEditor') return true
       if (type === 'ai') return true
+      if (type === 'aiSettings') return true
       if (type === 'chat') return true
       if (type === 'about') return true
       return false
