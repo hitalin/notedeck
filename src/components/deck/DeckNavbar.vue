@@ -832,7 +832,7 @@ defineExpose({
   }
 
   .section {
-    padding: 8px 0 4px;
+    padding: 8px 0 0;
     align-items: center;
   }
 
@@ -849,13 +849,13 @@ defineExpose({
   }
 
   .postBtn {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     margin: 0 auto;
     border-radius: 50%;
     justify-content: center;
-    font-size: 1.1em;
+    font-size: 1.3em;
   }
 }
 
