@@ -5,6 +5,8 @@ import { computed, ref, watch } from 'vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useClickOutside } from '@/composables/useClickOutside'
+import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
+import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 
 const mdLang = markdown({ codeLanguages: languages })
@@ -56,14 +58,16 @@ function defaultConfig(): AiConfig {
 
 const config = ref<AiConfig>(loadConfig())
 
+function saveConfig() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(config.value))
+}
+
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 watch(
   config,
-  (c) => {
+  () => {
     if (saveTimer) clearTimeout(saveTimer)
-    saveTimer = setTimeout(() => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(c))
-    }, 300)
+    saveTimer = setTimeout(saveConfig, 300)
   },
   { deep: true },
 )
@@ -126,7 +130,10 @@ async function testConnection() {
       headers.Authorization = `Bearer ${config.value.customApiKey}`
     }
 
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(5000) })
+    const res = await fetch(url, {
+      headers,
+      signal: AbortSignal.timeout(5000),
+    })
     if (res.ok) {
       testStatus.value = 'ok'
       testMessage.value = '接続成功'
@@ -146,6 +153,48 @@ async function testConnection() {
 
 // API key visibility
 const showApiKey = ref(false)
+
+// ── Import/Export ──
+const {
+  copied: copiedMessage,
+  imported: importedMessage,
+  importError,
+  showCopied,
+  showImported,
+  showImportError,
+} = useClipboardFeedback()
+
+function exportConfig() {
+  navigator.clipboard.writeText(JSON.stringify(config.value, null, 2))
+  showCopied()
+}
+
+async function importConfig() {
+  try {
+    const text = await navigator.clipboard.readText()
+    const parsed = JSON.parse(text)
+    if (!parsed || typeof parsed !== 'object') {
+      showImportError()
+      return
+    }
+    config.value = { ...defaultConfig(), ...parsed }
+    saveConfig()
+    showImported()
+  } catch {
+    showImportError()
+  }
+}
+
+// ── Reset all with confirmation ──
+const { confirming: confirmingReset, trigger: triggerReset } =
+  useDoubleConfirm()
+
+function handleReset() {
+  triggerReset(() => {
+    config.value = defaultConfig()
+    saveConfig()
+  })
+}
 </script>
 
 <template>
@@ -317,11 +366,11 @@ const showApiKey = ref(false)
           <i :class="testStatus === 'testing' ? 'ti ti-loader-2' : 'ti ti-plug-connected'" />
           {{ testStatus === 'testing' ? '接続テスト中...' : '接続テスト' }}
         </button>
-        <div v-if="testStatus === 'ok'" :class="$style.testSuccess">
+        <div v-if="testStatus === 'ok'" :class="$style.codeSuccess">
           <i class="ti ti-check" />
           {{ testMessage }}
         </div>
-        <div v-if="testStatus === 'error'" :class="$style.testError">
+        <div v-if="testStatus === 'error'" :class="$style.errorMessage">
           <i class="ti ti-alert-triangle" />
           {{ testMessage }}
         </div>
@@ -329,29 +378,49 @@ const showApiKey = ref(false)
     </div>
 
     <!-- System Prompt Tab -->
-    <div v-show="tab === 'prompt'" :class="$style.promptPanel">
-      <div :class="$style.promptHint">
+    <div v-show="tab === 'prompt'" :class="$style.codePanel">
+      <div :class="$style.codeHint">
         AIアシスタントに渡すカスタムシステムプロンプトをMarkdownで記述できます
       </div>
       <CodeEditor
         v-model="config.systemPrompt"
         :language="mdLang"
-        :class="$style.promptEditor"
+        :class="$style.codeEditorWrap"
       />
-      <div :class="$style.promptFooter">
-        <span :class="$style.promptCharCount">
-          {{ config.systemPrompt.length }} 文字
-        </span>
+      <div v-if="config.systemPrompt.trim()" :class="$style.codeSuccess">
+        <i class="ti ti-check" />
+        {{ config.systemPrompt.length }} 文字
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div :class="$style.actions">
+      <div :class="$style.actionGroup">
         <button
-          v-if="config.systemPrompt.trim()"
           class="_button"
-          :class="$style.promptClearBtn"
-          @click="config.systemPrompt = ''"
+          :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: importedMessage || importError }]"
+          @click="importConfig"
         >
-          <i class="ti ti-trash" />
-          クリア
+          <i class="ti" :class="importError ? 'ti-alert-circle' : 'ti-clipboard-text'" />
+          {{ importError ? '無効' : importedMessage ? '読込済み' : 'インポート' }}
+        </button>
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: copiedMessage }]"
+          @click="exportConfig"
+        >
+          <i class="ti ti-clipboard-copy" />
+          {{ copiedMessage ? 'コピー済み' : 'エクスポート' }}
         </button>
       </div>
+      <button
+        class="_button"
+        :class="[$style.actionBtn, $style.danger, { [$style.confirming]: confirmingReset }]"
+        @click="handleReset"
+      >
+        <i class="ti ti-trash" />
+        {{ confirmingReset ? '本当にリセット？' : 'すべてリセット' }}
+      </button>
     </div>
   </div>
 </template>
@@ -368,6 +437,7 @@ const showApiKey = ref(false)
 }
 
 .selected { /* modifier */ }
+.confirming { /* modifier */ }
 
 .panel {
   display: flex;
@@ -522,16 +592,34 @@ const showApiKey = ref(false)
 
 .testing { /* modifier */ }
 
-.testSuccess {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.75em;
-  color: var(--nd-accent);
-  opacity: 0.8;
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-.testError {
+// ── Code tab (prompt) ──
+
+.codePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.codeHint {
+  font-size: 0.75em;
+  opacity: 0.4;
+}
+
+.codeEditorWrap {
+  flex: 1;
+  min-height: 200px;
+}
+
+.errorMessage {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -543,57 +631,26 @@ const showApiKey = ref(false)
   word-break: break-all;
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-// Prompt tab
-.promptPanel {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.promptHint {
-  font-size: 0.75em;
-  opacity: 0.4;
-}
-
-.promptEditor {
-  flex: 1;
-  min-height: 200px;
-}
-
-.promptFooter {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.promptCharCount {
-  font-size: 0.7em;
-  opacity: 0.4;
-}
-
-.promptClearBtn {
-  margin-left: auto;
-  padding: 2px 8px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  font-size: 0.7em;
-  opacity: 0.6;
+.codeSuccess {
   display: flex;
   align-items: center;
   gap: 4px;
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
-
-  &:hover { opacity: 1; background: var(--nd-buttonHoverBg); }
+  font-size: 0.75em;
+  color: var(--nd-accent);
+  opacity: 0.7;
 }
+
+// ── Actions ──
+
+.actions { @include action-bar; }
+.actionGroup { @include action-group; }
+
+.actionBtn {
+  &.secondary { @include btn-action; }
+  &.danger { @include btn-danger-ghost; }
+}
+
+.secondary { /* modifier */ }
+.feedback { /* modifier */ }
+.danger { /* modifier */ }
 </style>
