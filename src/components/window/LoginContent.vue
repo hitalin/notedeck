@@ -36,7 +36,7 @@ const errorMessage = ref('')
 let currentSession: AuthSession | null = null
 
 // Vapor-compatible transition switches (replaces <Transition mode="out-in">)
-const stepSwitch = useVaporTransitionSwitch(step, { leaveDuration: 300 })
+const stepSwitch = useVaporTransitionSwitch(step, { leaveDuration: 0 })
 
 const logoSrc = computed(() =>
   serverStatus.value === 'ok' && serverInfo.value?.iconUrl
@@ -124,7 +124,7 @@ onMounted(() => {
     <!-- Step 1: Input -->
     <div
       v-if="stepSwitch.displayed.value === 'input'"
-      :class="[$style.dialogBody, stepSwitch.leaving.value ? $style.stepLeave : $style.stepEnter]"
+      :class="$style.dialogBody"
     >
       <div :class="$style.logoArea">
         <img
@@ -207,7 +207,7 @@ onMounted(() => {
     <!-- Step 2a: Guest loading -->
     <div
       v-else-if="stepSwitch.displayed.value === 'guestLoading'"
-      :class="[$style.dialogBody, stepSwitch.leaving.value ? $style.stepLeave : $style.stepEnter]"
+      :class="$style.dialogBody"
     >
       <div :class="$style.logoArea">
         <div :class="$style.waitingSpinner" />
@@ -218,7 +218,7 @@ onMounted(() => {
     <!-- Step 2: Waiting -->
     <div
       v-else-if="stepSwitch.displayed.value === 'waiting'"
-      :class="[$style.dialogBody, stepSwitch.leaving.value ? $style.stepLeave : $style.stepEnter]"
+      :class="$style.dialogBody"
     >
       <div :class="$style.logoArea">
         <div :class="$style.waitingSpinner" />
@@ -243,7 +243,7 @@ onMounted(() => {
     <!-- Step 3: Error -->
     <div
       v-else-if="stepSwitch.displayed.value === 'error'"
-      :class="[$style.dialogBody, stepSwitch.leaving.value ? $style.stepLeave : $style.stepEnter]"
+      :class="$style.dialogBody"
     >
       <div :class="$style.logoArea">
         <div :class="$style.errorIconWrap">
@@ -495,12 +495,6 @@ onMounted(() => {
     min-height: 44px;
   }
 }
-
-/* Step transition animations */
-.stepEnter { animation: stepIn 0.3s cubic-bezier(0, 0, 0.35, 1); }
-.stepLeave { animation: stepOut 0.3s cubic-bezier(0, 0, 0.35, 1) forwards; }
-@keyframes stepIn { from { opacity: 0; transform: translateX(50px); } }
-@keyframes stepOut { to { opacity: 0; transform: translateX(-50px); } }
 
 /* Logo / subtitle transition animations */
 .logoEnter { animation: logoIn 0.2s ease; }
