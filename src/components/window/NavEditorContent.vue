@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { json } from '@codemirror/lang-json'
 import JSON5 from 'json5'
 import { defineAsyncComponent, ref, watch } from 'vue'
 import ColumnBadges from '@/components/common/ColumnBadges.vue'
@@ -24,6 +25,7 @@ const CodeEditor = defineAsyncComponent(
 )
 
 const deckStore = useDeckStore()
+const jsonLang = json()
 
 // ── Tab management ──
 const { tab, containerRef: contentRef } = useEditorTabs(
@@ -119,12 +121,15 @@ function applyFromCode() {
 }
 
 // ── Actions ──
-const { copiedMessage, showCopied } = useClipboardFeedback()
-const { confirming: confirmingReset, trigger: handleReset } = useDoubleConfirm(
-  () => {
+const { copied: copiedMessage, showCopied } = useClipboardFeedback()
+const { confirming: confirmingReset, trigger: triggerReset } =
+  useDoubleConfirm()
+
+function handleReset() {
+  triggerReset(() => {
     items.value = structuredClone(DEFAULT_NAV_ITEMS)
-  },
-)
+  })
+}
 
 async function exportNav() {
   try {
@@ -223,6 +228,7 @@ async function importNav() {
       </div>
       <CodeEditor
         v-model="jsonCode"
+        :language="jsonLang"
         :class="[$style.codeEditorWrap, { [$style.hasError]: codeError }]"
       />
       <div v-if="codeError" :class="$style.errorMessage">
