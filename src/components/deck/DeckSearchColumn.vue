@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  computed,
   defineAsyncComponent,
   onMounted,
   onUnmounted,
@@ -8,6 +9,7 @@ import {
   watch,
 } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
+import AvatarStack from '@/components/common/AvatarStack.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import RegexGuide from '@/components/common/RegexGuide.vue'
@@ -21,8 +23,10 @@ const MkPostForm = defineAsyncComponent(
 )
 
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useSearchFilters } from '@/composables/useSearchFilters'
+import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
@@ -36,6 +40,10 @@ import DeckColumn from './DeckColumn.vue'
 const props = defineProps<{
   column: DeckColumnType
 }>()
+
+const isCrossAccount = computed(() => props.column.accountId == null)
+const accountsStore = useAccountsStore()
+const multiAdapters = useMultiAccountAdapters()
 
 const deckStore = useDeckStore()
 const {
@@ -174,9 +182,19 @@ function mergeNotes(
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 async function searchLocal(q: string) {
-  if (!props.column.accountId || !q) return
+  if (!q) return
   const hint = getSearchHint(q)
   if (!hint) return
+
+  if (isCrossAccount.value) {
+    await searchLocalCrossAccount(q, hint)
+  } else {
+    await searchLocalPerAccount(q, hint)
+  }
+}
+
+async function searchLocalPerAccount(q: string, hint: string) {
+  if (!props.column.accountId) return
   try {
     let local = await invoke<NormalizedNote[]>('api_search_notes_local', {
       accountId: props.column.accountId,
@@ -186,7 +204,6 @@ async function searchLocal(q: string) {
       untilDate: getUntilDateISO() ?? null,
       ascending: ascending.value,
     })
-    // Only update if query hasn't changed since we started
     if (searchQuery.value.trim() === q) {
       if (regexMode.value) {
         local = filterNotesByRegex(local, q)
@@ -194,6 +211,40 @@ async function searchLocal(q: string) {
       notes.value = local
       isPreview.value = true
       hasLocalResults.value = local.length > 0
+    }
+  } catch {
+    // non-critical
+  }
+}
+
+async function searchLocalCrossAccount(q: string, hint: string) {
+  const accounts = accountsStore.accounts
+  try {
+    const results = await Promise.allSettled(
+      accounts.map((acc) =>
+        invoke<NormalizedNote[]>('api_search_notes_local', {
+          accountId: acc.id,
+          query: hint,
+          limit: regexMode.value ? 50 : 10,
+          sinceDate: getSinceDateISO() ?? null,
+          untilDate: getUntilDateISO() ?? null,
+          ascending: ascending.value,
+        }),
+      ),
+    )
+    if (searchQuery.value.trim() === q) {
+      let merged: NormalizedNote[] = []
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value) {
+          merged.push(...r.value)
+        }
+      }
+      if (regexMode.value) {
+        merged = filterNotesByRegex(merged, q)
+      }
+      notes.value = mergeNotes([], merged)
+      isPreview.value = true
+      hasLocalResults.value = merged.length > 0
     }
   } catch {
     // non-critical
@@ -249,6 +300,16 @@ async function performSearch() {
 
   const hint = getSearchHint(q)
 
+  if (isCrossAccount.value) {
+    await performSearchCrossAccount(q, hint)
+  } else {
+    await performSearchPerAccount(q, hint)
+  }
+
+  isLoading.value = false
+}
+
+async function performSearchPerAccount(q: string, hint: string) {
   // Local search first (instant) if not already showing preview
   if (!hasLocalResults.value && props.column.accountId && hint) {
     try {
@@ -295,11 +356,84 @@ async function performSearch() {
       }
     }
   }
+}
 
-  isLoading.value = false
+async function performSearchCrossAccount(q: string, hint: string) {
+  const accounts = accountsStore.accounts
+
+  // Local search first (instant) if not already showing preview
+  if (!hasLocalResults.value && hint) {
+    try {
+      const localResults = await Promise.allSettled(
+        accounts.map((acc) =>
+          invoke<NormalizedNote[]>('api_search_notes_local', {
+            accountId: acc.id,
+            query: hint,
+            limit: regexMode.value ? 100 : undefined,
+            sinceDate: getSinceDateISO() ?? null,
+            untilDate: getUntilDateISO() ?? null,
+            ascending: ascending.value,
+          }),
+        ),
+      )
+      let merged: NormalizedNote[] = []
+      for (const r of localResults) {
+        if (r.status === 'fulfilled' && r.value) {
+          merged.push(...r.value)
+        }
+      }
+      if (regexMode.value) {
+        merged = filterNotesByRegex(merged, q)
+      }
+      if (merged.length > 0) {
+        notes.value = mergeNotes([], merged)
+        hasLocalResults.value = true
+      }
+    } catch {
+      // non-critical
+    }
+  }
+
+  // Server search across all accounts
+  if (hint) {
+    try {
+      const serverResults = await Promise.allSettled(
+        accounts.map(async (acc) => {
+          const adapter = await multiAdapters.getOrCreate(acc.id)
+          if (!adapter) return []
+          return adapter.api.searchNotes(hint, {
+            sinceDate: getSinceDateMs(),
+            untilDate: getUntilDateMs(),
+          })
+        }),
+      )
+      let merged: NormalizedNote[] = []
+      for (const r of serverResults) {
+        if (r.status === 'fulfilled' && r.value) {
+          merged.push(...r.value)
+        }
+      }
+      if (regexMode.value) {
+        merged = filterNotesByRegex(merged, q)
+      }
+      notes.value = mergeNotes(hasLocalResults.value ? notes.value : [], merged)
+    } catch (e) {
+      if (!hasLocalResults.value) {
+        error.value = AppError.from(e)
+      }
+    }
+  }
 }
 
 async function loadMore() {
+  if (isCrossAccount.value) {
+    await loadMoreCrossAccount()
+  } else {
+    await loadMorePerAccount()
+  }
+}
+
+async function loadMorePerAccount() {
   const adapter = getAdapter()
   if (!adapter || isLoading.value || notes.value.length === 0) return
   const lastNote = notes.value.at(-1)
@@ -327,20 +461,83 @@ async function loadMore() {
   }
 }
 
+async function loadMoreCrossAccount() {
+  if (isLoading.value || notes.value.length === 0) return
+
+  const q = confirmedQuery.value || searchQuery.value.trim()
+  const hint = getSearchHint(q)
+  if (!hint) return
+
+  const accounts = accountsStore.accounts
+  isLoading.value = true
+
+  try {
+    const results = await Promise.allSettled(
+      accounts.map(async (acc) => {
+        const adapter = await multiAdapters.getOrCreate(acc.id)
+        if (!adapter) return []
+        // Find this account's oldest note for pagination
+        const lastForAccount = [...notes.value]
+          .reverse()
+          .find((n) => n._accountId === acc.id)
+        return adapter.api.searchNotes(hint, {
+          untilId: lastForAccount?.id,
+          sinceDate: getSinceDateMs(),
+          untilDate: getUntilDateMs(),
+        })
+      }),
+    )
+
+    let older: NormalizedNote[] = []
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) {
+        older.push(...r.value)
+      }
+    }
+    if (regexMode.value) {
+      older = filterNotesByRegex(older, q)
+    }
+    notes.value = mergeNotes(notes.value, older)
+  } catch (e) {
+    error.value = AppError.from(e)
+  } finally {
+    isLoading.value = false
+  }
+}
+
 async function removeNote(note: NormalizedNote) {
   const id = note.id
   const prevNotes = notes.value
   notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
 
-  if (!(await handlers.delete(note))) {
-    notes.value = prevNotes
+  if (isCrossAccount.value) {
+    const adapter = await multiAdapters.getOrCreate(note._accountId)
+    if (!adapter) {
+      notes.value = prevNotes
+      return
+    }
+    try {
+      await adapter.api.deleteNote(note.id)
+    } catch {
+      notes.value = prevNotes
+    }
+  } else {
+    if (!(await handlers.delete(note))) {
+      notes.value = prevNotes
+    }
   }
 }
 
 async function handlePosted(editedNoteId?: string) {
   postForm.close()
   if (editedNoteId) {
-    const adapter = getAdapter()
+    let adapter: Awaited<ReturnType<typeof multiAdapters.getOrCreate>> = null
+    if (isCrossAccount.value) {
+      const note = notes.value.find((n) => n.id === editedNoteId)
+      if (note) adapter = await multiAdapters.getOrCreate(note._accountId)
+    } else {
+      adapter = getAdapter()
+    }
     if (!adapter) return
     try {
       const updated = await adapter.api.getNote(editedNoteId)
@@ -371,7 +568,7 @@ onMounted(() => {
   if (searchQuery.value) {
     performSearch()
   } else {
-    initAdapter()
+    if (!isCrossAccount.value) initAdapter()
     searchInput.value?.focus()
   }
 })
@@ -395,7 +592,10 @@ onUnmounted(() => {
     </template>
 
     <template #header-meta>
-      <div v-if="account" :class="$style.headerAccount">
+      <div v-if="isCrossAccount" :class="$style.headerAccount">
+        <AvatarStack :size="18" />
+      </div>
+      <div v-else-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
@@ -499,7 +699,7 @@ onUnmounted(() => {
       </Teleport>
     </template>
 
-    <div v-if="!account" :class="$style.columnEmpty">
+    <div v-if="!account && !isCrossAccount" :class="$style.columnEmpty">
       Account not found
     </div>
 

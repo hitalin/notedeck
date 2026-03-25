@@ -13,20 +13,25 @@ import type {
   ChatMessage,
   NormalizedDriveFile,
 } from '@/adapters/types'
+import AvatarStack from '@/components/common/AvatarStack.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNoteSound } from '@/composables/useNoteSound'
-import { getAccountAvatarUrl } from '@/stores/accounts'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
+import { formatTime } from '@/utils/formatTime'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
+
+const isCrossAccount = computed(() => props.column.accountId == null)
 
 const {
   account,
@@ -38,14 +43,18 @@ const {
   getAdapter,
 } = useColumnSetup(() => props.column)
 
+const accountsStore = useAccountsStore()
+const multiAdapters = useMultiAccountAdapters()
+
 const chatSound = useNoteSound(() => account.value?.host, 'syuilo/waon')
 
 const viewMode = ref<'history' | 'conversation'>('history')
-const chatHistory = shallowRef<ChatMessage[]>([])
 const messages = shallowRef<ChatMessage[]>([])
 const currentOtherId = ref<string | null>(null)
 const currentRoomId = ref<string | null>(null)
 const conversationTitle = ref('')
+const conversationAccountId = ref<string | null>(null)
+const conversationServerHost = ref<string | null>(null)
 const messageText = ref('')
 const isSending = ref(false)
 const showEmojiPicker = ref(false)
@@ -56,16 +65,58 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
 let chatSub: ChannelSubscription | null = null
 
+// --- Cross-account history ---
+interface HistoryEntry {
+  key: string
+  accountId: string
+  serverHost: string
+  message: ChatMessage
+  isRoom: boolean
+  name: string
+  avatarUrl?: string
+  avatarDecorations?: AvatarDecoration[]
+  otherId?: string
+  roomId?: string
+}
+
+const historyEntries = shallowRef<HistoryEntry[]>([])
+const loadProgress = ref<{ host: string; done: boolean }[]>([])
+
+// Per-account: legacy chatHistory for getHistoryEntries()
+const chatHistory = shallowRef<ChatMessage[]>([])
+
 const myUserId = computed(() => {
+  if (isCrossAccount.value) {
+    if (!conversationAccountId.value) return undefined
+    return accountsStore.accounts.find(
+      (a) => a.id === conversationAccountId.value,
+    )?.userId
+  }
   if (!account.value) return undefined
   return account.value.userId
+})
+
+// --- Active account for conversation (cross-account or per-account) ---
+const activeAccountId = computed(() =>
+  isCrossAccount.value ? conversationAccountId.value : props.column.accountId,
+)
+const activeServerHost = computed(() => {
+  if (isCrossAccount.value) return conversationServerHost.value
+  return account.value?.host ?? null
 })
 
 async function connect() {
   error.value = null
   isLoading.value = true
 
-  // Logged-out or unresolved account: nothing to show (no cache)
+  if (isCrossAccount.value) {
+    await connectCrossAccount()
+  } else {
+    await connectPerAccount()
+  }
+}
+
+async function connectPerAccount() {
   if (!account.value || !account.value.hasToken) {
     isLoading.value = false
     return
@@ -97,6 +148,104 @@ async function connect() {
   }
 }
 
+async function connectCrossAccount() {
+  const accounts = accountsStore.accounts.filter((a) => a.hasToken)
+  if (accounts.length === 0) {
+    isLoading.value = false
+    return
+  }
+
+  loadProgress.value = accounts.map((acc) => ({
+    host: acc.host,
+    done: false,
+  }))
+
+  const results = await Promise.allSettled(
+    accounts.map(async (acc, i) => {
+      const adapter = await multiAdapters.getOrCreate(acc.id)
+      if (!adapter) return []
+      try {
+        const userHistory = await adapter.api.getChatHistory()
+        let roomHistory: ChatMessage[] = []
+        try {
+          roomHistory = await invoke<ChatMessage[]>('api_get_chat_history', {
+            accountId: acc.id,
+            limit: 100,
+            room: true,
+          })
+        } catch {
+          // room chat not supported
+        }
+        return [...userHistory, ...roomHistory].map((msg) => ({
+          msg,
+          accountId: acc.id,
+          host: acc.host,
+        }))
+      } finally {
+        loadProgress.value = loadProgress.value.map((p, j) =>
+          j === i ? { ...p, done: true } : p,
+        )
+      }
+    }),
+  )
+
+  const entries: HistoryEntry[] = []
+  const seen = new Set<string>()
+
+  const allMessages: { msg: ChatMessage; accountId: string; host: string }[] =
+    []
+  for (const r of results) {
+    if (r.status === 'fulfilled') allMessages.push(...r.value)
+  }
+  allMessages.sort(
+    (a, b) =>
+      new Date(b.msg.createdAt).getTime() - new Date(a.msg.createdAt).getTime(),
+  )
+
+  for (const { msg, accountId, host } of allMessages) {
+    const uid = accountsStore.accounts.find((a) => a.id === accountId)?.userId
+    if (msg.toRoomId) {
+      const key = `${accountId}:room:${msg.toRoomId}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      entries.push({
+        key,
+        accountId,
+        serverHost: host,
+        message: msg,
+        isRoom: true,
+        name: msg.toRoom?.name || 'Room',
+        avatarUrl: msg.fromUser?.avatarUrl ?? undefined,
+        avatarDecorations: msg.fromUser?.avatarDecorations,
+        roomId: msg.toRoomId,
+      })
+    } else {
+      const otherId = msg.fromUserId === uid ? msg.toUserId : msg.fromUserId
+      if (!otherId) continue
+      const key = `${accountId}:user:${otherId}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const other = msg.fromUserId === uid ? msg.toUser : msg.fromUser
+      entries.push({
+        key,
+        accountId,
+        serverHost: host,
+        message: msg,
+        isRoom: false,
+        name: other?.name || other?.username || otherId,
+        avatarUrl: other?.avatarUrl ?? undefined,
+        avatarDecorations: other?.avatarDecorations,
+        otherId,
+      })
+    }
+  }
+
+  historyEntries.value = entries
+  isLoading.value = false
+  loadProgress.value = []
+}
+
+// Per-account history entries (legacy)
 function getHistoryEntries() {
   const seen = new Set<string>()
   const entries: {
@@ -142,11 +291,8 @@ function getHistoryEntries() {
 }
 
 async function openConversation(
-  entry: ReturnType<typeof getHistoryEntries>[0],
+  entry: HistoryEntry | ReturnType<typeof getHistoryEntries>[0],
 ) {
-  const adapter = getAdapter()
-  if (!adapter) return
-
   chatSub?.dispose()
   chatSub = null
 
@@ -154,12 +300,34 @@ async function openConversation(
   isLoading.value = true
   error.value = null
 
+  // Determine accountId and serverHost
+  const entryAccountId =
+    'accountId' in entry ? entry.accountId : props.column.accountId
+  const entryServerHost =
+    'serverHost' in entry ? entry.serverHost : account.value?.host
+  conversationAccountId.value = entryAccountId ?? null
+  conversationServerHost.value = entryServerHost ?? null
+
+  // Get adapter: cross-account uses multiAdapters, per-account uses getAdapter()
+  const adapter = isCrossAccount.value
+    ? entryAccountId
+      ? await multiAdapters.getOrCreate(entryAccountId)
+      : null
+    : getAdapter()
+  if (!adapter) {
+    isLoading.value = false
+    return
+  }
+
   try {
     if (entry.isRoom) {
-      currentRoomId.value = entry.message.toRoomId ?? ''
+      const roomId =
+        'roomId' in entry ? entry.roomId : (entry.message.toRoomId ?? '')
+      currentRoomId.value = roomId ?? ''
       currentOtherId.value = null
       const msgs = await adapter.api.getChatRoomMessages(currentRoomId.value)
       messages.value = msgs.slice().reverse()
+      if (isCrossAccount.value) adapter.stream.connect()
       chatSub = adapter.stream.subscribeChatRoom(
         currentRoomId.value,
         onNewMessage,
@@ -167,13 +335,16 @@ async function openConversation(
       )
     } else {
       const otherId =
-        entry.message.fromUserId === myUserId.value
-          ? (entry.message.toUserId ?? '')
-          : entry.message.fromUserId
+        'otherId' in entry && entry.otherId
+          ? entry.otherId
+          : entry.message.fromUserId === myUserId.value
+            ? (entry.message.toUserId ?? '')
+            : entry.message.fromUserId
       currentOtherId.value = otherId
       currentRoomId.value = null
       const msgs = await adapter.api.getChatUserMessages(otherId)
       messages.value = msgs.slice().reverse()
+      if (isCrossAccount.value) adapter.stream.connect()
       chatSub = adapter.stream.subscribeChatUser(otherId, onNewMessage, {
         onDeleted: onMessageDeleted,
       })
@@ -205,6 +376,8 @@ function goBack() {
   messages.value = []
   currentOtherId.value = null
   currentRoomId.value = null
+  conversationAccountId.value = null
+  conversationServerHost.value = null
 }
 
 const canSend = computed(() => {
@@ -213,7 +386,9 @@ const canSend = computed(() => {
 })
 
 async function sendMessage() {
-  if (!canSend.value || !props.column.accountId) return
+  if (!canSend.value) return
+  const accId = activeAccountId.value
+  if (!accId) return
 
   isSending.value = true
   try {
@@ -225,7 +400,7 @@ async function sendMessage() {
     if (attachedFile.value) params.fileId = attachedFile.value.id
 
     const sent = await invoke<ChatMessage>('api_create_messaging_message', {
-      accountId: props.column.accountId,
+      accountId: accId,
       params,
     })
     messageText.value = ''
@@ -275,8 +450,16 @@ function openFilePicker() {
 async function onFileSelected(e: Event) {
   const input = e.target as HTMLInputElement
   const files = input.files
-  const adapter = getAdapter()
-  if (!files || !files[0] || !adapter) return
+  if (!files || !files[0]) return
+
+  const accId = activeAccountId.value
+  // For cross-account, get adapter via multiAdapters; for per-account, use getAdapter()
+  const adapter = isCrossAccount.value
+    ? accId
+      ? await multiAdapters.getOrCreate(accId)
+      : null
+    : getAdapter()
+  if (!adapter) return
 
   isUploading.value = true
   try {
@@ -305,7 +488,8 @@ const reactionTargetId = ref<string | null>(null)
 const showReactionPicker = ref(false)
 
 async function handleReact(messageId: string, reaction: string) {
-  if (!props.column.accountId) return
+  const accId = activeAccountId.value
+  if (!accId) return
 
   if (!reaction) {
     // Empty reaction = open picker
@@ -316,7 +500,7 @@ async function handleReact(messageId: string, reaction: string) {
 
   try {
     await invoke('api_react_chat_message', {
-      accountId: props.column.accountId,
+      accountId: accId,
       messageId,
       reaction,
     })
@@ -328,11 +512,12 @@ async function handleReact(messageId: string, reaction: string) {
 }
 
 async function handleUnreact(messageId: string, reaction: string) {
-  if (!props.column.accountId) return
+  const accId = activeAccountId.value
+  if (!accId) return
 
   try {
     await invoke('api_unreact_chat_message', {
-      accountId: props.column.accountId,
+      accountId: accId,
       messageId,
       reaction,
     })
@@ -360,7 +545,10 @@ function updateMessageReaction(
   reaction: string,
   add: boolean,
 ) {
-  const acc = account.value
+  const accId = activeAccountId.value
+  const acc = isCrossAccount.value
+    ? accountsStore.accounts.find((a) => a.id === accId)
+    : account.value
   if (!acc) return
 
   messages.value = messages.value.map((msg) => {
@@ -395,8 +583,15 @@ function scrollToBottom() {
 }
 
 async function loadOlder() {
-  const adapter = getAdapter()
-  if (!adapter || isLoading.value || messages.value.length === 0) return
+  if (isLoading.value || messages.value.length === 0) return
+
+  const adapter = isCrossAccount.value
+    ? conversationAccountId.value
+      ? await multiAdapters.getOrCreate(conversationAccountId.value)
+      : null
+    : getAdapter()
+  if (!adapter) return
+
   const oldest = messages.value[0]
   if (!oldest) return
   isLoading.value = true
@@ -464,7 +659,10 @@ onBeforeUnmount(() => {
     </template>
 
     <template #header-meta>
-      <div v-if="account" :class="$style.headerAccount">
+      <div v-if="isCrossAccount" :class="$style.headerAccount">
+        <AvatarStack :size="18" />
+      </div>
+      <div v-else-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img
           :class="$style.headerFavicon"
@@ -474,7 +672,7 @@ onBeforeUnmount(() => {
       </div>
     </template>
 
-    <div v-if="!account" :class="$style.columnEmpty">
+    <div v-if="!isCrossAccount && !account" :class="$style.columnEmpty">
       Account not found
     </div>
 
@@ -482,8 +680,52 @@ onBeforeUnmount(() => {
       {{ error.message }}
     </div>
 
-    <!-- History View -->
-    <div v-else-if="viewMode === 'history'" :class="$style.chatBody">
+    <!-- Per-account progress (cross-account) -->
+    <div v-if="isCrossAccount && loadProgress.length > 0" :class="$style.chatProgress">
+      <span
+        v-for="(p, i) in loadProgress"
+        :key="i"
+        :class="[$style.progressDot, { [$style.done]: p.done }]"
+        :title="p.host"
+      />
+    </div>
+
+    <!-- History View: Cross-account -->
+    <div v-if="isCrossAccount && viewMode === 'history'" :class="$style.chatBody">
+      <div v-if="historyEntries.length === 0 && !isLoading" :class="$style.columnEmpty">
+        No conversations
+      </div>
+
+      <div v-else :class="$style.historyList">
+        <button
+          v-for="entry in historyEntries"
+          :key="entry.key"
+          :class="$style.historyItem"
+          @click="openConversation(entry)"
+        >
+          <MkAvatar
+            v-if="entry.avatarUrl"
+            :avatar-url="entry.avatarUrl"
+            :decorations="entry.avatarDecorations ?? []"
+            :size="36"
+          />
+          <div v-else :class="$style.historyAvatarPlaceholder">
+            <i :class="entry.isRoom ? 'ti ti-users' : 'ti ti-user'" />
+          </div>
+          <div :class="$style.historyInfo">
+            <div :class="$style.historyName">{{ entry.name }}</div>
+            <div :class="$style.historyPreview">{{ entry.message.text || '(file)' }}</div>
+          </div>
+          <div :class="$style.historyMeta">
+            <span :class="$style.historyHost">{{ entry.serverHost }}</span>
+            <span :class="$style.historyTime">{{ formatTime(entry.message.createdAt) }}</span>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- History View: Per-account -->
+    <div v-else-if="!isCrossAccount && viewMode === 'history'" :class="$style.chatBody">
       <div v-if="chatHistory.length === 0 && !isLoading" :class="$style.columnEmpty">
         No conversations
       </div>
@@ -513,7 +755,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Conversation View -->
-    <div v-else :class="[$style.chatBody, $style.conversation]" @click="closeReactionPicker">
+    <div v-else-if="viewMode === 'conversation'" :class="[$style.chatBody, $style.conversation]" @click="closeReactionPicker">
       <div
         ref="messagesContainer"
         :class="$style.messagesContainer"
@@ -525,8 +767,8 @@ onBeforeUnmount(() => {
           :key="msg.id"
           :message="msg"
           :my-user-id="myUserId"
-          :account-id="column.accountId ?? undefined"
-          :server-host="account?.host"
+          :account-id="activeAccountId ?? undefined"
+          :server-host="activeServerHost ?? undefined"
           @react="handleReact"
           @unreact="handleUnreact"
         />
@@ -535,10 +777,10 @@ onBeforeUnmount(() => {
       <div v-if="error" :class="$style.chatError">{{ error.message }}</div>
 
       <!-- Reaction picker popup -->
-      <div v-if="showReactionPicker && account" :class="$style.chatReactionPicker" @click.stop>
+      <div v-if="showReactionPicker && activeAccountId && activeServerHost" :class="$style.chatReactionPicker" @click.stop>
         <MkReactionPicker
-          :server-host="account.host"
-          :account-id="column.accountId!"
+          :server-host="activeServerHost"
+          :account-id="activeAccountId"
           @pick="pickReaction"
         />
       </div>
@@ -585,10 +827,10 @@ onBeforeUnmount(() => {
           </button>
         </div>
         <!-- Emoji picker popup -->
-        <div v-if="showEmojiPicker && account" :class="$style.chatEmojiPopup" @click.stop>
+        <div v-if="showEmojiPicker && activeAccountId && activeServerHost" :class="$style.chatEmojiPopup" @click.stop>
           <MkReactionPicker
-            :server-host="account.host"
-            :account-id="column.accountId!"
+            :server-host="activeServerHost"
+            :account-id="activeAccountId"
             @pick="pickEmoji"
           />
         </div>
@@ -649,6 +891,29 @@ onBeforeUnmount(() => {
 
   &.conversation {
     overflow: hidden;
+  }
+}
+
+.chatProgress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  flex-shrink: 0;
+}
+
+.progressDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--nd-fg);
+  opacity: 0.15;
+  transition: opacity var(--nd-duration-slower), background var(--nd-duration-slower);
+
+  &.done {
+    background: var(--nd-accent);
+    opacity: 0.8;
   }
 }
 
@@ -717,6 +982,28 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: 2px;
+}
+
+.historyMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.historyHost {
+  font-size: 0.7em;
+  opacity: 0.35;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyTime {
+  font-size: 0.75em;
+  opacity: 0.5;
 }
 
 .messagesContainer {
@@ -918,4 +1205,7 @@ onBeforeUnmount(() => {
   font-size: 0.8em;
   opacity: 0.4;
 }
+
+/* Empty placeholder classes for dynamic binding */
+.done {}
 </style>

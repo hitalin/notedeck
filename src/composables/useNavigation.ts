@@ -1,11 +1,13 @@
 import { useRouter } from 'vue-router'
 import { useAccountsStore } from '@/stores/accounts'
+import { useDeckStore } from '@/stores/deck'
 import { useWindowsStore } from '@/stores/windows'
 
 export function useNavigation() {
   const router = useRouter()
   const windowsStore = useWindowsStore()
   const accountsStore = useAccountsStore()
+  const deckStore = useDeckStore()
 
   function isDeckActive(): boolean {
     return router.currentRoute.value.name === 'deck'
@@ -39,24 +41,34 @@ export function useNavigation() {
     }
   }
 
+  function toggleOrOpenWindow(
+    type: 'notifications' | 'search' | 'chat' | 'ai' | 'plugins',
+  ) {
+    if (isDeckActive()) {
+      deckStore.toggleSidebarColumn(type, null)
+    } else {
+      windowsStore.open(type)
+    }
+  }
+
   function navigateToSearch() {
-    windowsStore.open('search')
+    toggleOrOpenWindow('search')
   }
 
   function navigateToNotifications() {
-    windowsStore.open('notifications')
+    toggleOrOpenWindow('notifications')
   }
 
   function navigateToPlugins() {
-    windowsStore.open('plugins')
+    toggleOrOpenWindow('plugins')
   }
 
   function navigateToAi() {
-    windowsStore.open('ai')
+    toggleOrOpenWindow('ai')
   }
 
   function navigateToChat() {
-    windowsStore.open('chat')
+    toggleOrOpenWindow('chat')
   }
 
   return {
