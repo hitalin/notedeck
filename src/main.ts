@@ -11,6 +11,13 @@ import './styles/global.css'
 // Pre-warm Tauri API module (critical path in App.vue onMounted)
 import('@tauri-apps/api/window')
 
+// Pre-fetch DeckPage chunk so its CSS <link> is inserted early.
+// DeckPage is lazy-imported in the router to preserve CSS Modules injection order,
+// but on Windows WebView2 the CSS load can race with first paint. Triggering the
+// import here (without await) starts the CSS download immediately while the router
+// still controls when the component is actually evaluated.
+import('./views/DeckPage.vue')
+
 // Defer non-critical CSS to idle time — KaTeX and Shiki are not needed at startup
 const _idle =
   window.requestIdleCallback ??
