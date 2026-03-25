@@ -150,7 +150,10 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name ?? 'カスタム絵文字'"
     :theme-vars="columnThemeVars"
+    refreshable
+    :refreshing="isLoading"
     @header-click="scrollToTop"
+    @refresh="loadEmojis"
   >
     <template #header-icon>
       <i class="ti ti-mood-smile" :class="$style.tlHeaderIcon" />
@@ -158,9 +161,6 @@ onMounted(() => {
 
     <template #header-meta>
       <span v-if="allEmojis.length > 0" :class="$style.headerCount">{{ allEmojis.length }}</span>
-      <button class="_button" :class="$style.headerRefresh" title="更新" :disabled="isLoading" @click.stop="loadEmojis">
-        <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
-      </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />

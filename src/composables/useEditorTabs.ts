@@ -6,7 +6,7 @@ import { useTabSlide } from '@/composables/useTabSlide'
  * Unified tab management for editor windows (visual/code pattern).
  *
  * Wraps `useTabSlide` + `useSwipeTab` so each editor doesn't repeat
- * the same 15-line boilerplate.
+ * the same boilerplate.
  */
 export function useEditorTabs<T extends string>(
   tabs: readonly T[],
@@ -16,8 +16,7 @@ export function useEditorTabs<T extends string>(
   const containerRef = ref<HTMLElement | null>(null)
   const tabIndex = computed(() => tabs.indexOf(tab.value))
 
-  const { displayedIndex } = useTabSlide(tabIndex, containerRef)
-  const displayedTab = computed(() => tabs[displayedIndex.value] ?? tab.value)
+  useTabSlide(tabIndex, containerRef)
 
   useSwipeTab(
     containerRef,
@@ -37,5 +36,5 @@ export function useEditorTabs<T extends string>(
     },
   )
 
-  return { tab, displayedTab, containerRef }
+  return { tab, containerRef }
 }

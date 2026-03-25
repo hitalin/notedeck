@@ -612,16 +612,13 @@ fetchAchievements()
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? '実績'" :theme-vars="columnThemeVars">
+  <DeckColumn :column-id="column.id" :title="column.name ?? '実績'" :theme-vars="columnThemeVars" refreshable :refreshing="loading" @refresh="fetchAchievements()">
     <template #header-icon>
       <i class="ti ti-medal" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
       <span v-if="unlockedCount > 0" :class="$style.headerCount">{{ unlockedCount }}/{{ ACHIEVEMENT_TYPES.length }}</span>
-      <button class="_button" :class="$style.headerRefresh" title="更新" :disabled="loading" @click.stop="fetchAchievements()">
-        <i class="ti ti-refresh" :class="{ [String($style.spin)]: loading }" />
-      </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
       </div>

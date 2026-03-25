@@ -18,6 +18,10 @@ const props = defineProps<{
   themeVars?: Record<string, string>
   soundEnabled?: boolean
   webUiUrl?: string
+  /** Show a shared refresh button in the header (hidden on mobile native) */
+  refreshable?: boolean
+  /** Show spin animation on the refresh button */
+  refreshing?: boolean
 }>()
 
 const isPipMode = window.location.pathname === '/pip'
@@ -26,11 +30,11 @@ const pipColumnConfig = inject<(() => DeckColumnType | null) | undefined>(
   undefined,
 )
 
-const emit = defineEmits<{ 'header-click': [] }>()
+const emit = defineEmits<{ 'header-click': []; refresh: [] }>()
 
 const { confirm } = useConfirm()
 const deckStore = useDeckStore()
-const { isDesktop } = useUiStore()
+const { isDesktop, isMobilePlatform } = useUiStore()
 const isCompact = useIsCompactLayout()
 
 /** Whether this column can be popped out (desktop + main window only) */
@@ -175,6 +179,16 @@ function openAsPip() {
       <span :class="$style.headerTitle" :data-tauri-drag-region="isPipMode ? '' : undefined">{{ title }}</span>
 
       <template v-if="!isPipMode">
+        <button
+          v-if="refreshable && !isMobilePlatform"
+          :class="$style.headerRefresh"
+          class="_button"
+          title="更新"
+          :disabled="refreshing"
+          @click.stop="emit('refresh')"
+        >
+          <i class="ti ti-refresh" :class="{ [$style.spin]: refreshing }" />
+        </button>
         <slot name="header-meta" />
       </template>
 
@@ -305,6 +319,31 @@ function openAsPip() {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.85em;
+}
+
+.headerRefresh {
+  flex-shrink: 0;
+  opacity: 0.6;
+  font-size: 14px;
+  padding: 2px;
+  transition: opacity var(--nd-duration-slow);
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &:disabled {
+    opacity: 0.3;
+  }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .grabber {

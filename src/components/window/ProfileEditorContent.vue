@@ -38,11 +38,10 @@ const isCompact = useIsCompactLayout()
 const codeContent = ref('')
 const codeError = ref<string | null>(null)
 
-const {
-  tab,
-  displayedTab,
-  containerRef: editorRef,
-} = useEditorTabs(['visual', 'code'] as const, 'visual')
+const { tab, containerRef: editorRef } = useEditorTabs(
+  ['visual', 'code'] as const,
+  'visual',
+)
 
 function columnLabel(col: DeckColumn): string {
   if (col.name) return col.name
@@ -273,7 +272,7 @@ async function importFromClipboard() {
     />
 
     <!-- Visual Editor -->
-    <div v-if="displayedTab === 'visual'" :class="$style.visualPanel">
+    <div v-if="tab === 'visual'" :class="$style.visualPanel">
       <!-- Profile name -->
       <div :class="$style.nameSection">
         <div :class="$style.nameLabel">
@@ -394,7 +393,7 @@ async function importFromClipboard() {
     </div>
 
     <!-- Code Editor -->
-    <div v-if="displayedTab === 'code'" :class="$style.codePanel">
+    <div v-if="tab === 'code'" :class="$style.codePanel">
       <CodeEditor
         v-model="codeContent"
         :language="jsonLang"

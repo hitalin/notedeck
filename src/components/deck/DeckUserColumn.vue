@@ -67,16 +67,16 @@ const {
     :column-id="column.id"
     :title="column.name || 'ユーザー'"
     :theme-vars="columnThemeVars"
+    refreshable
+    :refreshing="isLoading"
     @header-click="scrollToTop()"
+    @refresh="refresh"
   >
     <template #header-icon>
       <i :class="$style.tlHeaderIcon" class="ti ti-user" />
     </template>
 
     <template #header-meta>
-      <button :class="$style.headerRefresh" class="_button" title="Refresh" :disabled="isLoading" @click.stop="refresh">
-        <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
-      </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
