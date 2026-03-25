@@ -118,28 +118,30 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   renote: 'repeat',
   quote: 'quote',
   mention: 'at',
-  follow: 'user-plus',
-  followRequestAccepted: 'user-check',
-  receiveFollowRequest: 'user-question',
-  pollEnded: 'chart-bar',
+  follow: 'plus',
+  followRequestAccepted: 'check',
+  receiveFollowRequest: 'clock',
+  pollEnded: 'chart-arrows',
+  achievementEarned: 'medal',
+  login: 'login-2',
   createToken: 'key',
 }
 
 const NOTIFICATION_LABELS: Record<string, string> = {
-  reaction: 'reacted',
-  reply: 'replied',
-  renote: 'renoted',
-  quote: 'quoted',
-  mention: 'mentioned you',
-  follow: 'followed you',
-  followRequestAccepted: 'accepted your follow request',
-  receiveFollowRequest: 'requested to follow you',
-  pollEnded: 'Poll ended',
-  achievementEarned: 'Achievement earned',
-  app: 'Notification',
-  login: 'Login detected',
-  createToken: 'Access token created',
-  test: 'Test notification',
+  reaction: 'がリアクション',
+  reply: 'からのリプライ',
+  renote: 'がリノートしました',
+  quote: 'による引用',
+  mention: 'からのメンション',
+  follow: 'にフォローされました',
+  followRequestAccepted: 'がフォローリクエストを承認',
+  receiveFollowRequest: 'からフォローリクエスト',
+  pollEnded: 'アンケートの結果が出ました',
+  achievementEarned: '実績を獲得',
+  app: '通知',
+  login: 'ログインがありました',
+  createToken: 'アクセストークンが作成されました',
+  test: 'テスト通知',
 }
 
 function notificationIcon(type: string): string {
@@ -319,6 +321,10 @@ function notifTypeClass(type: string): string | undefined {
     follow: $style.notifTypeFollow,
     followRequestAccepted: $style.notifTypeFollowRequestAccepted,
     receiveFollowRequest: $style.notifTypeReceiveFollowRequest,
+    achievementEarned: $style.notifTypeAchievementEarned,
+    login: $style.notifTypeLogin,
+    pollEnded: $style.notifTypePollEnded,
+    createToken: $style.notifTypeCreateToken,
   }
   return map[type]
 }
@@ -579,39 +585,61 @@ onUnmounted(() => {
 
 .notifTypeReaction {
   .notifSubIcon {
-    color: var(--nd-love);
-    background: color-mix(in srgb, var(--nd-love) 15%, var(--nd-bg));
+    color: var(--nd-eventReaction);
+    background: color-mix(in srgb, var(--nd-eventReaction) 15%, var(--nd-bg));
   }
 }
 
-.notifTypeReply,
+.notifTypeReply {
+  .notifSubIcon {
+    color: var(--nd-eventReply);
+    background: color-mix(in srgb, var(--nd-eventReply) 15%, var(--nd-bg));
+  }
+}
+
 .notifTypeMention {
   .notifSubIcon {
-    color: var(--nd-accent);
-    background: color-mix(in srgb, var(--nd-accent) 15%, var(--nd-bg));
+    color: var(--nd-eventOther);
+    background: color-mix(in srgb, var(--nd-eventOther) 15%, var(--nd-bg));
   }
 }
 
 .notifTypeRenote,
 .notifTypeQuote {
   .notifSubIcon {
-    color: var(--nd-renote);
-    background: color-mix(in srgb, var(--nd-renote) 15%, var(--nd-bg));
+    color: var(--nd-eventRenote);
+    background: color-mix(in srgb, var(--nd-eventRenote) 15%, var(--nd-bg));
   }
 }
 
 .notifTypeFollow,
-.notifTypeFollowRequestAccepted {
+.notifTypeFollowRequestAccepted,
+.notifTypeReceiveFollowRequest {
   .notifSubIcon {
-    color: var(--nd-link);
-    background: color-mix(in srgb, var(--nd-link) 15%, var(--nd-bg));
+    color: var(--nd-eventFollow);
+    background: color-mix(in srgb, var(--nd-eventFollow) 15%, var(--nd-bg));
   }
 }
 
-.notifTypeReceiveFollowRequest {
+.notifTypeAchievementEarned {
   .notifSubIcon {
-    color: var(--nd-warn);
-    background: color-mix(in srgb, var(--nd-warn) 15%, var(--nd-bg));
+    color: var(--nd-eventAchievement);
+    background: color-mix(in srgb, var(--nd-eventAchievement) 15%, var(--nd-bg));
+  }
+}
+
+.notifTypeLogin {
+  .notifSubIcon {
+    color: var(--nd-eventLogin);
+    background: color-mix(in srgb, var(--nd-eventLogin) 15%, var(--nd-bg));
+  }
+}
+
+.notifTypePollEnded,
+.notifTypeCreateToken {
+  .notifSubIcon {
+    color: var(--nd-eventOther);
+    background: color-mix(in srgb, var(--nd-eventOther) 15%, var(--nd-bg));
   }
 }
 

@@ -149,9 +149,9 @@ const NOTIFICATION_FILTERS = [
   { key: 'renote', label: 'リノート', icon: 'ti ti-repeat' },
   { key: 'quote', label: '引用', icon: 'ti ti-quote' },
   { key: 'mention', label: 'メンション', icon: 'ti ti-at' },
-  { key: 'follow', label: 'フォロー', icon: 'ti ti-user-plus' },
-  { key: 'pollEnded', label: '投票', icon: 'ti ti-chart-bar' },
-  { key: 'achievementEarned', label: '実績', icon: 'ti ti-trophy' },
+  { key: 'follow', label: 'フォロー', icon: 'ti ti-plus' },
+  { key: 'pollEnded', label: 'アンケート', icon: 'ti ti-chart-arrows' },
+  { key: 'achievementEarned', label: '実績', icon: 'ti ti-medal' },
   { key: 'createToken', label: 'トークン', icon: 'ti ti-key' },
 ] as const
 
@@ -243,27 +243,28 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   renote: 'repeat',
   quote: 'quote',
   mention: 'at',
-  follow: 'user-plus',
-  followRequestAccepted: 'user-check',
-  receiveFollowRequest: 'user-question',
-  pollEnded: 'chart-bar',
-  achievementEarned: 'trophy',
+  follow: 'plus',
+  followRequestAccepted: 'check',
+  receiveFollowRequest: 'clock',
+  pollEnded: 'chart-arrows',
+  achievementEarned: 'medal',
+  login: 'login-2',
   createToken: 'key',
 }
 
 const NOTIFICATION_LABELS: Record<string, string> = {
-  reaction: 'リアクション',
-  reply: 'リプライ',
-  renote: 'リノート',
-  quote: '引用',
-  mention: 'メンション',
-  follow: 'フォロー',
-  followRequestAccepted: 'フォローリクエスト承認',
-  receiveFollowRequest: 'フォローリクエスト',
-  pollEnded: '投票終了',
-  achievementEarned: '実績獲得',
+  reaction: 'がリアクション',
+  reply: 'からのリプライ',
+  renote: 'がリノートしました',
+  quote: 'による引用',
+  mention: 'からのメンション',
+  follow: 'にフォローされました',
+  followRequestAccepted: 'がフォローリクエストを承認',
+  receiveFollowRequest: 'からフォローリクエスト',
+  pollEnded: 'アンケートの結果が出ました',
+  achievementEarned: '実績を獲得',
   app: '通知',
-  login: 'ログイン検知',
+  login: 'ログインがありました',
   createToken: 'アクセストークンが作成されました',
   test: 'テスト通知',
 }
@@ -302,6 +303,7 @@ watch(
 async function connectPerAccount(useCache = false) {
   error.value = null
   isLoading.value = true
+  noMoreData.value = false
 
   const cached = loadCache()
   if (useCache && cached.length > 0) {
@@ -353,6 +355,7 @@ async function connectPerAccount(useCache = false) {
 async function connectCrossAccount() {
   error.value = null
   isLoading.value = true
+  noMoreData.value = false
   const accounts = accountsStore.accounts.filter((a) => a.hasToken)
   const cached = loadCache()
 
@@ -393,15 +396,26 @@ async function connect(useCache = false) {
   }
 }
 
+const noMoreData = ref(false)
+
 async function loadMorePerAccount() {
   const adapter = getAdapter()
-  if (!adapter || isLoading.value || notifications.value.length === 0) return
+  if (!adapter || isLoading.value || noMoreData.value) return
+  if (notifications.value.length === 0) return
   const last = notifications.value.at(-1)
   if (!last) return
   isLoading.value = true
   try {
     const older = await adapter.api.getNotifications({ untilId: last.id })
-    notifications.value = [...notifications.value, ...older]
+    if (older.length === 0) {
+      noMoreData.value = true
+      return
+    }
+    const merged = [...notifications.value, ...older]
+    notifications.value =
+      merged.length > MAX_NOTIFICATIONS
+        ? merged.slice(0, MAX_NOTIFICATIONS)
+        : merged
     saveCache()
   } catch (e) {
     error.value = AppError.from(e)
@@ -411,7 +425,8 @@ async function loadMorePerAccount() {
 }
 
 async function loadMoreCrossAccount() {
-  if (isLoading.value || notifications.value.length === 0) return
+  if (isLoading.value || noMoreData.value) return
+  if (notifications.value.length === 0) return
   isLoading.value = true
 
   const accounts = accountsStore.accounts.filter((a) => a.hasToken)
@@ -421,7 +436,6 @@ async function loadMoreCrossAccount() {
       accounts.map(async (acc) => {
         const adapter = await multiAdapters.getOrCreate(acc.id)
         if (!adapter) return []
-        // Find this account's oldest notification
         const lastForAccount = [...notifications.value]
           .reverse()
           .find((n) => n._accountId === acc.id)
@@ -437,18 +451,12 @@ async function loadMoreCrossAccount() {
       }
     }
 
-    const seen = new Set(notifications.value.map((n) => n.id))
-    const newOlder = olderNotifs
-      .filter((n) => !seen.has(n.id))
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
+    if (olderNotifs.length === 0) {
+      noMoreData.value = true
+      return
+    }
 
-    notifications.value = [...notifications.value, ...newOlder].slice(
-      0,
-      MAX_NOTIFICATIONS,
-    )
+    notifications.value = mergeNotifications(olderNotifs, notifications.value)
     saveCache()
   } catch (e) {
     error.value = AppError.from(e)
@@ -927,39 +935,61 @@ onUnmounted(() => {
 
 .notifType_reaction {
   .notifSubIcon {
-    color: var(--nd-love);
-    background: color-mix(in srgb, var(--nd-love) 15%, var(--nd-bg));
+    color: var(--nd-eventReaction);
+    background: color-mix(in srgb, var(--nd-eventReaction) 15%, var(--nd-bg));
   }
 }
 
-.notifType_reply,
+.notifType_reply {
+  .notifSubIcon {
+    color: var(--nd-eventReply);
+    background: color-mix(in srgb, var(--nd-eventReply) 15%, var(--nd-bg));
+  }
+}
+
 .notifType_mention {
   .notifSubIcon {
-    color: var(--nd-accent);
-    background: color-mix(in srgb, var(--nd-accent) 15%, var(--nd-bg));
+    color: var(--nd-eventOther);
+    background: color-mix(in srgb, var(--nd-eventOther) 15%, var(--nd-bg));
   }
 }
 
 .notifType_renote,
 .notifType_quote {
   .notifSubIcon {
-    color: var(--nd-renote);
-    background: color-mix(in srgb, var(--nd-renote) 15%, var(--nd-bg));
+    color: var(--nd-eventRenote);
+    background: color-mix(in srgb, var(--nd-eventRenote) 15%, var(--nd-bg));
   }
 }
 
 .notifType_follow,
-.notifType_followRequestAccepted {
+.notifType_followRequestAccepted,
+.notifType_receiveFollowRequest {
   .notifSubIcon {
-    color: var(--nd-link);
-    background: color-mix(in srgb, var(--nd-link) 15%, var(--nd-bg));
+    color: var(--nd-eventFollow);
+    background: color-mix(in srgb, var(--nd-eventFollow) 15%, var(--nd-bg));
   }
 }
 
-.notifType_receiveFollowRequest {
+.notifType_achievementEarned {
   .notifSubIcon {
-    color: var(--nd-warn);
-    background: color-mix(in srgb, var(--nd-warn) 15%, var(--nd-bg));
+    color: var(--nd-eventAchievement);
+    background: color-mix(in srgb, var(--nd-eventAchievement) 15%, var(--nd-bg));
+  }
+}
+
+.notifType_login {
+  .notifSubIcon {
+    color: var(--nd-eventLogin);
+    background: color-mix(in srgb, var(--nd-eventLogin) 15%, var(--nd-bg));
+  }
+}
+
+.notifType_pollEnded,
+.notifType_createToken {
+  .notifSubIcon {
+    color: var(--nd-eventOther);
+    background: color-mix(in srgb, var(--nd-eventOther) 15%, var(--nd-bg));
   }
 }
 
