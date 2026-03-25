@@ -105,6 +105,43 @@ const MAX_NOTIFICATIONS = 500
 const notifications = shallowRef<NormalizedNotification[]>([])
 const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 
+// --- Notification cache helpers ---
+
+/** Merge fresh notifications with cached ones (dedup by ID, sort by createdAt DESC) */
+function mergeNotifications(
+  fresh: NormalizedNotification[],
+  cached: NormalizedNotification[],
+  limit = MAX_NOTIFICATIONS,
+): NormalizedNotification[] {
+  const map = new Map<string, NormalizedNotification>()
+  for (const n of cached) map.set(n.id, n)
+  for (const n of fresh) map.set(n.id, n) // fresh overwrites cached
+  return [...map.values()]
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
+    .slice(0, limit)
+}
+
+/** Debounced cache save — flushes on unmount */
+let saveCacheTimer: ReturnType<typeof setTimeout> | null = null
+function saveCache() {
+  if (saveCacheTimer) clearTimeout(saveCacheTimer)
+  saveCacheTimer = setTimeout(flushCache, 500)
+}
+function flushCache() {
+  if (saveCacheTimer) {
+    clearTimeout(saveCacheTimer)
+    saveCacheTimer = null
+  }
+  setStorageJson(getCacheKey(), notifications.value)
+}
+
+function loadCache(): NormalizedNotification[] {
+  return getStorageJson<NormalizedNotification[]>(getCacheKey(), [])
+}
+
 const NOTIFICATION_FILTERS = [
   { key: 'all', label: 'すべて', icon: 'ti ti-bell' },
   { key: 'reaction', label: 'リアクション', icon: 'ti ti-mood-plus' },
@@ -164,6 +201,7 @@ function flushRafBuffer() {
     updated.length > MAX_NOTIFICATIONS
       ? updated.slice(0, MAX_NOTIFICATIONS)
       : updated
+  saveCache()
 }
 
 // Cache reaction URLs per notification to avoid double-call in template (v-if + :src)
@@ -239,7 +277,9 @@ function notificationLabel(type: string): string {
 }
 
 function getCacheKey() {
-  return STORAGE_KEYS.notificationCache(props.column.accountId ?? '')
+  return STORAGE_KEYS.notificationCache(
+    props.column.accountId ?? 'cross-account',
+  )
 }
 
 // When account loses token (logout with keep-data), switch to cache display
@@ -249,10 +289,7 @@ watch(
     if (prev && hasToken === false) {
       disconnect()
       try {
-        const cached = getStorageJson<NormalizedNotification[]>(
-          getCacheKey(),
-          [],
-        )
+        const cached = loadCache()
         if (cached.length > 0) notifications.value = cached
       } catch {
         /* non-critical */
@@ -266,9 +303,9 @@ async function connectPerAccount(useCache = false) {
   error.value = null
   isLoading.value = true
 
-  if (useCache && props.column.accountId) {
-    const cached = getStorageJson<NormalizedNotification[]>(getCacheKey(), [])
-    if (cached.length > 0) notifications.value = cached
+  const cached = loadCache()
+  if (useCache && cached.length > 0) {
+    notifications.value = cached
   }
 
   // Logged-out: show cached notifications in read-only mode
@@ -282,9 +319,8 @@ async function connectPerAccount(useCache = false) {
     if (!adapter) return
 
     const fetched = await adapter.api.getNotifications()
-    notifications.value = fetched
-
-    setStorageJson(getCacheKey(), fetched)
+    notifications.value = mergeNotifications(fetched, cached)
+    saveCache()
 
     adapter.stream.connect()
     noteSound.warmup()
@@ -303,8 +339,6 @@ async function connectPerAccount(useCache = false) {
     )
   } catch (e) {
     if (notifications.value.length === 0) {
-      // Try loading from localStorage cache before showing error
-      const cached = getStorageJson<NormalizedNotification[]>(getCacheKey(), [])
       if (cached.length > 0) {
         notifications.value = cached
       } else {
@@ -320,6 +354,7 @@ async function connectCrossAccount() {
   error.value = null
   isLoading.value = true
   const accounts = accountsStore.accounts.filter((a) => a.hasToken)
+  const cached = loadCache()
 
   try {
     const results = await Promise.allSettled(
@@ -337,21 +372,14 @@ async function connectCrossAccount() {
       }
     }
 
-    // Sort by createdAt DESC, deduplicate
-    const seen = new Set<string>()
-    notifications.value = allNotifs
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
-      .filter((n) => {
-        if (seen.has(n.id)) return false
-        seen.add(n.id)
-        return true
-      })
-      .slice(0, MAX_NOTIFICATIONS)
+    notifications.value = mergeNotifications(allNotifs, cached)
+    saveCache()
   } catch (e) {
-    error.value = AppError.from(e)
+    if (cached.length > 0) {
+      notifications.value = cached
+    } else {
+      error.value = AppError.from(e)
+    }
   } finally {
     isLoading.value = false
   }
@@ -374,6 +402,7 @@ async function loadMorePerAccount() {
   try {
     const older = await adapter.api.getNotifications({ untilId: last.id })
     notifications.value = [...notifications.value, ...older]
+    saveCache()
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -418,8 +447,9 @@ async function loadMoreCrossAccount() {
 
     notifications.value = [...notifications.value, ...newOlder].slice(
       0,
-      MAX_NOTIFICATIONS * 2,
+      MAX_NOTIFICATIONS,
     )
+    saveCache()
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -451,6 +481,7 @@ async function removeNote(note: NormalizedNote) {
   notifications.value = notifications.value.filter(
     (x) => x.note?.id !== id && x.note?.renoteId !== id,
   )
+  saveCache()
   noteStore.remove(id)
   invoke('api_delete_cached_note', { noteId: id }).catch((e) => {
     if (import.meta.env.DEV) console.debug('[delete-cached-note] ignored:', e)
@@ -478,6 +509,7 @@ async function handlePosted(editedNoteId?: string) {
           return { ...x, note: { ...x.note, renote: updated } }
         return x
       })
+      saveCache()
     } catch {
       // note may have been deleted
     }
@@ -521,7 +553,8 @@ async function pullRefresh() {
     const adapter = getAdapter()
     if (!adapter) return
     const fetched = await adapter.api.getNotifications()
-    notifications.value = fetched
+    notifications.value = mergeNotifications(fetched, notifications.value)
+    saveCache()
     scrollToTop()
   }
 }
@@ -572,6 +605,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  flushCache()
   disconnect()
   if (rafId !== null) {
     cancelAnimationFrame(rafId)
