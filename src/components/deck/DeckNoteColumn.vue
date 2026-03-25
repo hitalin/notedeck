@@ -80,7 +80,10 @@ defineExpose({
     :theme-vars="columnThemeVars"
     :web-ui-url="webUiUrl"
     :sound-enabled="soundEnabled"
+    :refreshable="!isStreaming"
+    :refreshing="isLoading"
     @header-click="scrollToTop()"
+    @refresh="refresh"
   >
     <template #header-icon>
       <slot name="header-icon">
@@ -89,19 +92,6 @@ defineExpose({
     </template>
 
     <template #header-meta>
-      <button
-        v-if="!isStreaming"
-        :class="$style.headerRefresh"
-        class="_button"
-        title="Refresh"
-        :disabled="isLoading"
-        @click.stop="refresh"
-      >
-        <i
-          class="ti ti-refresh"
-          :class="{ [String($style.spin)]: isLoading }"
-        />
-      </button>
       <div v-if="account" :class="$style.headerAccount">
         <img
           :src="getAccountAvatarUrl(account)"

@@ -154,16 +154,16 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name || 'フォローリクエスト'"
     :theme-vars="columnThemeVars"
+    refreshable
+    :refreshing="isLoading"
     @header-click="scrollToTop"
+    @refresh="fetchRequests"
   >
     <template #header-icon>
       <i class="ti ti-user-plus" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <button class="_button" :class="$style.headerRefresh" title="更新" :disabled="isLoading" @click.stop="fetchRequests">
-        <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
-      </button>
       <!-- Cross-account: AvatarStack -->
       <AvatarStack v-if="isCrossAccount" :size="20" />
       <!-- Single-account: account avatar + favicon -->

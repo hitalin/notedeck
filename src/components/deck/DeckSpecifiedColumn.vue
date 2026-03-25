@@ -60,22 +60,16 @@ const {
     :column-id="column.id"
     :title="column.name || 'ダイレクト'"
     :theme-vars="columnThemeVars"
+    refreshable
+    :refreshing="isLoading"
     @header-click="scrollToTop"
+    @refresh="connectCrossAccount"
   >
     <template #header-icon>
       <i class="ti ti-mail" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <button
-        class="_button"
-        :class="$style.headerRefresh"
-        title="更新"
-        :disabled="isLoading"
-        @click.stop="connectCrossAccount"
-      >
-        <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
-      </button>
       <AvatarStack :size="20" />
     </template>
 

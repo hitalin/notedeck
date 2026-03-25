@@ -163,16 +163,16 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name ?? 'Misskeyについて'"
     :theme-vars="columnThemeVars"
+    refreshable
+    :refreshing="isLoading"
     @header-click="scrollToTop"
+    @refresh="fetchMeta"
   >
     <template #header-icon>
       <i class="ti ti-info-circle" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <button class="_button" :class="$style.headerRefresh" title="更新" :disabled="isLoading" @click.stop="fetchMeta">
-        <i class="ti ti-refresh" :class="{ [String($style.spin)]: isLoading }" />
-      </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
