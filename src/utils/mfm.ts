@@ -48,7 +48,7 @@ const inlinePatterns: PatternDef[] = [
     parse: (m) => ({ type: 'link', label: parseTokens(g(m, 1)), url: g(m, 2) }),
   },
   {
-    regex: /https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+/g,
+    regex: /https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%\u0080-\uFFFF]+/g,
     parse: (m) => ({ type: 'url', value: g(m, 0) }),
   },
   {

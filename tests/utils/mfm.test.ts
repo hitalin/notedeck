@@ -26,6 +26,28 @@ describe('parseMfm', () => {
     expect(tokens[0]?.type).toBe('url')
   })
 
+  it('parses URL with Japanese path (e.g. Wikipedia)', () => {
+    const tokens = parseMfm('https://ja.wikipedia.org/wiki/シナモン')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]).toEqual({
+      type: 'url',
+      value: 'https://ja.wikipedia.org/wiki/シナモン',
+    })
+  })
+
+  it('parses URL with non-ASCII characters in surrounding text', () => {
+    const tokens = parseMfm(
+      'これは https://ja.wikipedia.org/wiki/シナモン の記事',
+    )
+    expect(tokens).toHaveLength(3)
+    expect(tokens[0]).toEqual({ type: 'text', value: 'これは ' })
+    expect(tokens[1]).toEqual({
+      type: 'url',
+      value: 'https://ja.wikipedia.org/wiki/シナモン',
+    })
+    expect(tokens[2]).toEqual({ type: 'text', value: ' の記事' })
+  })
+
   // Mentions
   it('parses local mention', () => {
     const tokens = parseMfm('hello @user')
