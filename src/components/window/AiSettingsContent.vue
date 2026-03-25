@@ -8,6 +8,7 @@ import { useClickOutside } from '@/composables/useClickOutside'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import defaultAiPrompt from '@/defaults/AI.md?raw'
 import { isTauri, readAiSettings, writeAiSettings } from '@/utils/settingsFs'
 
 const mdLang = markdown({ codeLanguages: languages })
@@ -51,7 +52,7 @@ function defaultConfig(): AiConfig {
     customEndpoint: '',
     customApiKey: '',
     customModel: '',
-    systemPrompt: '',
+    systemPrompt: defaultAiPrompt,
   }
 }
 
@@ -453,9 +454,20 @@ function handleReset() {
         :language="mdLang"
         :class="$style.codeEditorWrap"
       />
-      <div v-if="config.systemPrompt.trim()" :class="$style.codeSuccess">
-        <i class="ti ti-check" />
-        {{ config.systemPrompt.length }} 文字
+      <div :class="$style.promptStatus">
+        <div v-if="config.systemPrompt.trim()" :class="$style.codeSuccess">
+          <i class="ti ti-check" />
+          {{ config.systemPrompt.length }} 文字
+        </div>
+        <button
+          v-if="config.systemPrompt !== defaultAiPrompt"
+          class="_button"
+          :class="$style.codeApplyBtn"
+          @click="config.systemPrompt = defaultAiPrompt"
+        >
+          <i class="ti ti-restore" />
+          デフォルトに戻す
+        </button>
       </div>
     </div>
 
@@ -684,6 +696,14 @@ function handleReset() {
   flex: 1;
   min-height: 200px;
 }
+
+.promptStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.codeApplyBtn { @include btn-secondary; }
 
 .errorMessage {
   display: flex;
