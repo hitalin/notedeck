@@ -88,7 +88,7 @@ function selectColumnType(type: ColumnType) {
 function addColumnForAccount(accountId: string | null) {
   const type = addColumnType.value || 'timeline'
   const config = SELECTABLE_CONFIGS.find((c) => c.type === type)
-  if (config) {
+  if (config && accountId) {
     fetchSelectItems(config, accountId)
     return
   }
