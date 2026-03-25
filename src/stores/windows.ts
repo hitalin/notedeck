@@ -67,37 +67,36 @@ export const useWindowsStore = defineStore('windows', () => {
 
   const hasModal = computed(() => windows.value.some((w) => w.modal))
 
+  /** Types that match by both type and specific props (multi-instance). */
+  const PROPS_DEDUP_KEYS: Partial<Record<WindowType, string[]>> = {
+    'note-detail': ['noteId', 'accountId'],
+    'user-profile': ['userId', 'accountId'],
+    'follow-list': ['userId', 'accountId'],
+  }
+
+  /** Types that are always singletons (at most one instance). */
+  const SINGLETON_TYPES: ReadonlySet<WindowType> = new Set([
+    'login',
+    'search',
+    'notifications',
+    'plugins',
+    'keybinds',
+    'cssEditor',
+    'themeEditor',
+    'ai',
+    'aiSettings',
+    'chat',
+    'about',
+    'navEditor',
+    'profileEditor',
+  ])
+
   function open(type: WindowType, props: Record<string, unknown> = {}): string {
-    // Deduplicate: same note/user/login → focus existing
     const duplicate = windows.value.find((w) => {
       if (w.type !== type) return false
-      if (type === 'note-detail')
-        return (
-          w.props.noteId === props.noteId &&
-          w.props.accountId === props.accountId
-        )
-      if (type === 'user-profile')
-        return (
-          w.props.userId === props.userId &&
-          w.props.accountId === props.accountId
-        )
-      if (type === 'follow-list')
-        return (
-          w.props.userId === props.userId &&
-          w.props.accountId === props.accountId
-        )
-      if (type === 'login') return true
-      if (type === 'search') return true
-      if (type === 'notifications') return true
-      if (type === 'plugins') return true
-      if (type === 'keybinds') return true
-      if (type === 'cssEditor') return true
-      if (type === 'themeEditor') return true
-      if (type === 'ai') return true
-      if (type === 'aiSettings') return true
-      if (type === 'chat') return true
-      if (type === 'about') return true
-      return false
+      const keys = PROPS_DEDUP_KEYS[type]
+      if (keys) return keys.every((k) => w.props[k] === props[k])
+      return SINGLETON_TYPES.has(type)
     })
     if (duplicate) {
       bringToFront(duplicate.id)

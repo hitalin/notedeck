@@ -10,6 +10,7 @@ import {
   TL_ICONS,
 } from '@/composables/useColumnTabs'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { usePointerReorder } from '@/composables/usePointerReorder'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -104,91 +105,33 @@ function onColumnSelected(config: Omit<DeckColumn, 'id'>) {
   showAddColumn.value = false
 }
 
-// --- Drag and drop (reorder layout groups, pointer-based like DeckColumnsArea) ---
+// --- Drag and drop (reorder layout groups) ---
 
-const dragFromIndex = ref<number | null>(null)
-const dragOverIndex = ref<number | null>(null)
+const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
+  axis: 'x',
+  dataAttr: 'group-idx',
+  onReorder(fromIdx, toIdx) {
+    // Convert windowLayout indices to layout indices
+    const wl = deckStore.windowLayout
+    const fromGroup = wl[fromIdx]
+    const toGroup = wl[toIdx]
+    if (!fromGroup || !toGroup) return
 
-function startDrag(groupIdx: number, e: PointerEvent) {
-  if (e.button !== 0) return
-  const target = e.target as HTMLElement
-  if (target.closest('button')) return
+    const fullLayout = deckStore.layout
+    const fromLayoutIdx = fullLayout.indexOf(fromGroup)
+    const toLayoutIdx = fullLayout.indexOf(toGroup)
+    if (fromLayoutIdx < 0 || toLayoutIdx < 0) return
 
-  e.preventDefault()
-  const sx = e.clientX
-
-  function onMove(ev: PointerEvent) {
-    if (Math.abs(ev.clientX - sx) < 5) return
-    document.removeEventListener('pointermove', onMove)
-    document.removeEventListener('pointerup', onCancel)
-    beginDrag(groupIdx, ev)
-  }
-
-  function onCancel() {
-    document.removeEventListener('pointermove', onMove)
-    document.removeEventListener('pointerup', onCancel)
-  }
-
-  document.addEventListener('pointermove', onMove)
-  document.addEventListener('pointerup', onCancel)
-}
-
-function beginDrag(groupIdx: number, _e: PointerEvent) {
-  dragFromIndex.value = groupIdx
-  document.body.style.userSelect = 'none'
-  document.body.style.cursor = 'grabbing'
-  document.addEventListener('pointermove', onDragMove)
-  document.addEventListener('pointerup', onDragEnd)
-}
-
-function onDragMove(e: PointerEvent) {
-  const el = document.elementFromPoint(e.clientX, e.clientY)
-  if (!el) {
-    dragOverIndex.value = null
-    return
-  }
-  const card = el.closest('[data-group-idx]') as HTMLElement | null
-  if (card) {
-    const idx = Number(card.dataset.groupIdx)
-    dragOverIndex.value = idx !== dragFromIndex.value ? idx : null
-  } else {
-    dragOverIndex.value = null
-  }
-}
-
-function onDragEnd() {
-  document.removeEventListener('pointermove', onDragMove)
-  document.removeEventListener('pointerup', onDragEnd)
-  document.body.style.userSelect = ''
-  document.body.style.cursor = ''
-
-  const fromIdx = dragFromIndex.value
-  const toIdx = dragOverIndex.value
-  dragFromIndex.value = null
-  dragOverIndex.value = null
-
-  if (fromIdx == null || toIdx == null || fromIdx === toIdx) return
-
-  // Convert windowLayout indices to layout indices
-  const wl = deckStore.windowLayout
-  const fromGroup = wl[fromIdx]
-  const toGroup = wl[toIdx]
-  if (!fromGroup || !toGroup) return
-
-  const fullLayout = deckStore.layout
-  const fromLayoutIdx = fullLayout.indexOf(fromGroup)
-  const toLayoutIdx = fullLayout.indexOf(toGroup)
-  if (fromLayoutIdx < 0 || toLayoutIdx < 0) return
-
-  // Move in full layout
-  const newLayout = fullLayout.map((g) => [...g])
-  const [moved] = newLayout.splice(fromLayoutIdx, 1)
-  if (moved) {
-    newLayout.splice(toLayoutIdx, 0, moved)
-    deckStore.applyLayout(newLayout)
-    deckStore.flushSave()
-  }
-}
+    // Move in full layout
+    const newLayout = fullLayout.map((g) => [...g])
+    const [moved] = newLayout.splice(fromLayoutIdx, 1)
+    if (moved) {
+      newLayout.splice(toLayoutIdx, 0, moved)
+      deckStore.applyLayout(newLayout)
+      deckStore.flushSave()
+    }
+  },
+})
 
 function removeGroup(groupIdx: number) {
   const group = deckStore.windowLayout[groupIdx]

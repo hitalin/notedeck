@@ -7,6 +7,7 @@ import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { usePointerReorder } from '@/composables/usePointerReorder'
 import type { DeckColumn } from '@/stores/deck'
 import {
   DEFAULT_NAV_ITEMS,
@@ -53,77 +54,19 @@ function addDivider() {
   items.value.push({ type: 'divider' })
 }
 
-// ── Pointer-based drag & drop (same pattern as ProfileEditorContent) ──
-const dragFromIndex = ref<number | null>(null)
-const dragOverIndex = ref<number | null>(null)
-
-function startDrag(index: number, e: PointerEvent) {
-  if (e.button !== 0) return
-  const target = e.target as HTMLElement
-  if (target.closest('button')) return
-
-  e.preventDefault()
-  const sy = e.clientY
-
-  function onMove(ev: PointerEvent) {
-    if (Math.abs(ev.clientY - sy) < 5) return
-    document.removeEventListener('pointermove', onMove)
-    document.removeEventListener('pointerup', onCancel)
-    beginDrag(index, ev)
-  }
-
-  function onCancel() {
-    document.removeEventListener('pointermove', onMove)
-    document.removeEventListener('pointerup', onCancel)
-  }
-
-  document.addEventListener('pointermove', onMove)
-  document.addEventListener('pointerup', onCancel)
-}
-
-function beginDrag(index: number, _e: PointerEvent) {
-  dragFromIndex.value = index
-  document.body.style.userSelect = 'none'
-  document.body.style.cursor = 'grabbing'
-  document.addEventListener('pointermove', onDragMove)
-  document.addEventListener('pointerup', onDragEnd)
-}
-
-function onDragMove(e: PointerEvent) {
-  const el = document.elementFromPoint(e.clientX, e.clientY)
-  if (!el) {
-    dragOverIndex.value = null
-    return
-  }
-  const card = el.closest('[data-nav-idx]') as HTMLElement | null
-  if (card) {
-    const idx = Number(card.dataset.navIdx)
-    dragOverIndex.value = idx !== dragFromIndex.value ? idx : null
-  } else {
-    dragOverIndex.value = null
-  }
-}
-
-function onDragEnd() {
-  document.removeEventListener('pointermove', onDragMove)
-  document.removeEventListener('pointerup', onDragEnd)
-  document.body.style.userSelect = ''
-  document.body.style.cursor = ''
-
-  const fromIdx = dragFromIndex.value
-  const toIdx = dragOverIndex.value
-  dragFromIndex.value = null
-  dragOverIndex.value = null
-
-  if (fromIdx == null || toIdx == null || fromIdx === toIdx) return
-
-  const arr = [...items.value]
-  const [moved] = arr.splice(fromIdx, 1)
-  if (moved) {
-    arr.splice(toIdx, 0, moved)
-    items.value = arr
-  }
-}
+// ── Pointer-based drag & drop ──
+const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
+  axis: 'y',
+  dataAttr: 'nav-idx',
+  onReorder(fromIdx, toIdx) {
+    const arr = [...items.value]
+    const [moved] = arr.splice(fromIdx, 1)
+    if (moved) {
+      arr.splice(toIdx, 0, moved)
+      items.value = arr
+    }
+  },
+})
 
 // ── Add via AddColumnDialog ──
 const showAddColumn = ref(false)
