@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, useCssModule, watch } from 'vue'
+import ColumnBadges from '@/components/common/ColumnBadges.vue'
 import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useNavigation } from '@/composables/useNavigation'
 import { useUnreadChat } from '@/composables/useUnreadChat'
@@ -57,20 +58,6 @@ const sidebarType = computed(() => {
   const col = deckStore.columns.find((c) => c.sidebar)
   return col?.type ?? null
 })
-
-const hasMultipleAccounts = computed(() => accountsStore.accounts.length > 1)
-
-function navItemAccount(item: NavItem): Account | null {
-  if (isNavDivider(item) || !item.accountId || !hasMultipleAccounts.value)
-    return null
-  return accountsStore.accountMap.get(item.accountId) ?? null
-}
-
-function navItemServerIcon(item: NavItem): string | null {
-  const acc = navItemAccount(item)
-  if (!acc) return null
-  return serversStore.getServer(acc.host)?.iconUrl ?? null
-}
 
 function navIcon(type: string): string {
   return `ti-${COLUMN_ICONS[type] ?? 'layout-grid'}`
@@ -355,21 +342,7 @@ defineExpose({
               <div :class="$style.iconWrap">
                 <i :class="['ti', navIcon(navItem.type)]" />
                 <span v-if="getNavBadge(navItem) > 0" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
-                <span v-if="navItemServerIcon(navItem)" :class="$style.navServerBadge">
-                  <img :src="navItemServerIcon(navItem)!" :class="$style.navBadgeImg" width="10" height="10" />
-                </span>
-                <span v-if="navItemAccount(navItem)" :class="$style.navAccountBadge">
-                  <img
-                    v-if="navItemAccount(navItem)!.avatarUrl"
-                    :src="navItemAccount(navItem)!.avatarUrl!"
-                    :class="$style.navBadgeImg"
-                    width="10"
-                    height="10"
-                  />
-                  <span v-else :class="$style.navBadgeInitial">{{
-                    navItemAccount(navItem)!.username.charAt(0).toUpperCase()
-                  }}</span>
-                </span>
+                <ColumnBadges :account-id="navItem.accountId" :size="12" />
               </div>
               <span :class="$style.label">{{ navLabel(navItem.type) }}</span>
             </button>
@@ -631,44 +604,6 @@ defineExpose({
   text-align: center;
   pointer-events: none;
   box-sizing: border-box;
-}
-
-.navServerBadge,
-.navAccountBadge {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 1.5px solid var(--nd-panel, #fff);
-  background: var(--nd-panel);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.navServerBadge {
-  top: -2px;
-  right: -4px;
-}
-
-.navAccountBadge {
-  bottom: -2px;
-  left: -4px;
-}
-
-.navBadgeImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-}
-
-.navBadgeInitial {
-  font-size: 7px;
-  font-weight: bold;
-  line-height: 1;
 }
 
 .label {
