@@ -106,7 +106,56 @@ impl IntoResponse for ApiError {
 
 // --- Routes ---
 
-pub async fn start(
+/// Pre-bound HTTP server ready to serve.
+/// Created by [`bind`], consumed by [`serve`].
+pub struct BoundServer {
+    listener: tokio::net::TcpListener,
+}
+
+/// Phase 1: bind the TCP listener (no DB/client needed).
+/// Returns `None` if binding fails after retries.
+pub async fn bind() -> Option<BoundServer> {
+    let addr = SocketAddr::from(([127, 0, 0, 1], PORT));
+
+    const MAX_RETRIES: u32 = 5;
+    const RETRY_DELAY: std::time::Duration = std::time::Duration::from_secs(1);
+    let mut last_err = None;
+    let mut bound = None;
+    for attempt in 1..=MAX_RETRIES {
+        match tokio::net::TcpListener::bind(addr).await {
+            Ok(l) => {
+                bound = Some(l);
+                break;
+            }
+            Err(e) => {
+                tracing::warn!(attempt, max = MAX_RETRIES, %e, "HTTP bind failed");
+                last_err = Some(e);
+                if attempt < MAX_RETRIES {
+                    tokio::time::sleep(RETRY_DELAY).await;
+                }
+            }
+        }
+    }
+    let listener = match bound {
+        Some(l) => l,
+        None => {
+            tracing::error!(
+                %addr,
+                error = %last_err.map(|e| e.to_string()).unwrap_or_default(),
+                "giving up on HTTP bind after {MAX_RETRIES} attempts",
+            );
+            return None;
+        }
+    };
+
+    tracing::info!(%addr, "HTTP server bound");
+
+    Some(BoundServer { listener })
+}
+
+/// Phase 2: attach routes and start serving. Requires DB/client.
+pub async fn serve(
+    server: BoundServer,
     app_handle: AppHandle,
     db: Arc<Database>,
     client: Arc<MisskeyClient>,
@@ -225,45 +274,9 @@ pub async fn start(
         });
     }
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], PORT));
+    tracing::info!("HTTP server serving");
 
-    // Retry binding up to 5 times (covers port held by a previous instance shutting down)
-    let listener = {
-        const MAX_RETRIES: u32 = 5;
-        const RETRY_DELAY: std::time::Duration = std::time::Duration::from_secs(1);
-        let mut last_err = None;
-        let mut bound = None;
-        for attempt in 1..=MAX_RETRIES {
-            match tokio::net::TcpListener::bind(addr).await {
-                Ok(l) => {
-                    bound = Some(l);
-                    break;
-                }
-                Err(e) => {
-                    tracing::warn!(attempt, max = MAX_RETRIES, %e, "HTTP bind failed");
-                    last_err = Some(e);
-                    if attempt < MAX_RETRIES {
-                        tokio::time::sleep(RETRY_DELAY).await;
-                    }
-                }
-            }
-        }
-        match bound {
-            Some(l) => l,
-            None => {
-                tracing::error!(
-                    %addr,
-                    error = %last_err.map(|e| e.to_string()).unwrap_or_default(),
-                    "giving up on HTTP bind after {MAX_RETRIES} attempts",
-                );
-                return;
-            }
-        }
-    };
-
-    tracing::info!(%addr, "HTTP server listening");
-
-    if let Err(e) = axum::serve(listener, app).await {
+    if let Err(e) = axum::serve(server.listener, app).await {
         tracing::error!(%e, "HTTP server error");
     }
 }

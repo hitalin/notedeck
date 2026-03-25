@@ -270,15 +270,21 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Phase 2: Heavy init in background thread
         // DB open + MisskeyClient init → then migrations, streaming, HTTP server
         // Emits "nd:backend-ready" when done so frontend can start IPC calls.
+        //
+        // HTTP bind happens early (no DB needed) so the image proxy is ready
+        // before the frontend requests emoji images.
         // ══════════════════════════════════════════════════════════
 
         let app_handle = app.app_handle().clone();
         let app_dir_bg = app_dir.clone();
         std::thread::spawn(move || {
-            // Parallel: DB open + MisskeyClient init
+            // Parallel: DB open + MisskeyClient init + HTTP bind (all independent)
             let db_path = app_dir_bg.join("notecli.db");
             let db_handle = std::thread::spawn(move || notecli::db::Database::open(&db_path));
             let client_handle = std::thread::spawn(notecli::api::MisskeyClient::new);
+            let http_handle = std::thread::spawn(|| {
+                tauri::async_runtime::block_on(http_server::bind())
+            });
 
             let db = match db_handle.join().expect("db open thread panicked") {
                 Ok(d) => std::sync::Arc::new(d),
@@ -294,6 +300,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                     return;
                 }
             };
+            let bound_server = http_handle.join().expect("http bind thread panicked");
 
             // DB migrations + account export (must complete before commands can use credentials)
             migrations::run_db(&db);
@@ -321,22 +328,26 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                 image_cache::ImageCache::with_client(&app_dir_bg, shared_http),
             );
 
-            // Signal frontend: backend is ready (before server start to unblock UI ASAP)
+            // Signal frontend: backend is ready
+            // HTTP proxy is already bound, so emoji images can be served immediately.
             let _ = tauri::Emitter::emit(&app_handle, "nd:backend-ready", ());
 
-            // Start HTTP API server + OGP pre-warm
-            tauri::async_runtime::spawn(async move {
-                http_server::start(
-                    app_handle,
-                    db,
-                    client,
-                    event_bus,
-                    api_token,
-                    token_path_str,
-                    image_cache,
-                )
-                .await;
-            });
+            // Start HTTP API server (attach routes to pre-bound listener) + OGP pre-warm
+            if let Some(server) = bound_server {
+                tauri::async_runtime::spawn(async move {
+                    http_server::serve(
+                        server,
+                        app_handle,
+                        db,
+                        client,
+                        event_bus,
+                        api_token,
+                        token_path_str,
+                        image_cache,
+                    )
+                    .await;
+                });
+            }
             tauri::async_runtime::spawn(async move {
                 ogp_cache.pre_warm().await;
             });
