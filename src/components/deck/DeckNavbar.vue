@@ -102,7 +102,7 @@ function onlineStatusClass(accountId: string): string | undefined {
 // Navbar resize
 const MIN_WIDTH = 56
 const COLLAPSE_THRESHOLD = 120
-const DEFAULT_WIDTH = 250
+const DEFAULT_WIDTH = 200
 const MAX_WIDTH = 400
 const navWidth = ref(
   document.documentElement.clientWidth <= 1279 ? MIN_WIDTH : DEFAULT_WIDTH,
