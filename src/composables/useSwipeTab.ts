@@ -1,6 +1,7 @@
 import { onUnmounted, type Ref, watch } from 'vue'
 
 const SWIPE_THRESHOLD = 50
+const FLING_VELOCITY = 0.4 // px/ms — fast flick switches tab even if distance < threshold
 const ANGLE_THRESHOLD = 30 // degrees — swipe must be within this angle from horizontal
 const SOFT_CAP = 80 // px — full-speed tracking up to here
 const RUBBER_FACTOR = 0.3 // diminishing returns past SOFT_CAP (iOS-style)
@@ -48,6 +49,7 @@ export function useSwipeTab(
 ) {
   let startX = 0
   let startY = 0
+  let startTime = 0
   let tracking = false
   let direction: 'horizontal' | 'vertical' | null = null
   let boundEl: HTMLElement | null = null
@@ -61,6 +63,7 @@ export function useSwipeTab(
     if (boundEl && hasHorizontalScroll(e.target, boundEl)) return
     startX = touch.clientX
     startY = touch.clientY
+    startTime = Date.now()
     tracking = true
     direction = null
 
@@ -136,7 +139,9 @@ export function useSwipeTab(
         const dx = touch.clientX - startX
         const absDx = Math.abs(dx)
 
-        if (absDx >= SWIPE_THRESHOLD) {
+        const elapsed = Date.now() - startTime
+        const velocity = elapsed > 0 ? absDx / elapsed : 0
+        if (absDx >= SWIPE_THRESHOLD || velocity >= FLING_VELOCITY) {
           const consumed = dx < 0 ? onSwipeLeft() : onSwipeRight()
           if (consumed) {
             // Tab switched — clear swipe state, useTabSlide handles enter animation
