@@ -3,7 +3,6 @@ import { onUnmounted, type Ref, watch } from 'vue'
 const DIRECTION_THRESHOLD = 8 // px — minimum move to determine swipe direction
 const SWIPE_THRESHOLD = 50 // px — minimum distance to trigger tab switch
 const FLING_VELOCITY = 0.4 // px/ms — fast flick switches tab even if distance < threshold
-const ANGLE_THRESHOLD = 30 // degrees — swipe must be within this angle from horizontal
 const SOFT_CAP = 80 // px — full-speed tracking up to here
 const RUBBER_FACTOR = 0.3 // diminishing returns past SOFT_CAP (iOS-style)
 const MAX_SWIPE = 120 // px — hard cap to prevent excessive displacement
@@ -109,13 +108,12 @@ export function useSwipeTab(
     const absDx = Math.abs(dx)
     const absDy = Math.abs(dy)
 
-    // Determine direction on first significant move
+    // Lock to dominant axis on first significant move
     if (
       direction === null &&
       (absDx > DIRECTION_THRESHOLD || absDy > DIRECTION_THRESHOLD)
     ) {
-      const angle = Math.atan2(absDy, absDx) * (180 / Math.PI)
-      direction = angle <= ANGLE_THRESHOLD ? 'horizontal' : 'vertical'
+      direction = absDx >= absDy ? 'horizontal' : 'vertical'
       if (direction === 'horizontal') {
         boundEl?.classList.add(SWIPE_CLASSES.swiping)
       }
@@ -123,12 +121,8 @@ export function useSwipeTab(
 
     if (direction !== 'horizontal') return
 
+    // Axis locked — block scroll, track pure horizontal displacement
     e.preventDefault()
-
-    // Stop following if finger drifts diagonal (Misskey-style)
-    const angle = Math.atan2(absDy, absDx) * (180 / Math.PI)
-    if (angle > ANGLE_THRESHOLD) return
-
     boundEl?.style.setProperty(SWIPE_VAR, `${rubberBand(dx)}px`)
   }
 
