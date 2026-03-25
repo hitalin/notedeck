@@ -18,9 +18,6 @@ export function useEditorTabs<T extends string>(
 
   useTabSlide(tabIndex, containerRef)
 
-  // displayedTab is now just tab (enter-only animation, no delayed switch)
-  const displayedTab = computed(() => tab.value)
-
   useSwipeTab(
     containerRef,
     () => {
@@ -39,5 +36,5 @@ export function useEditorTabs<T extends string>(
     },
   )
 
-  return { tab, displayedTab, containerRef }
+  return { tab, containerRef }
 }

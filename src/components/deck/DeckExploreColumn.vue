@@ -180,7 +180,6 @@ function switchTab(tab: Tab) {
 // Tab slide animation
 const exploreTabIndex = computed(() => tabs.indexOf(activeTab.value))
 useTabSlide(exploreTabIndex, columnContentRef)
-const displayedTab = computed(() => activeTab.value)
 
 // Swipe / wheel to switch tabs
 useSwipeTab(
@@ -293,7 +292,7 @@ function closeUserPopup() {
       </div>
 
       <!-- Notes tab -->
-      <template v-if="displayedTab === 'notes'">
+      <template v-if="activeTab === 'notes'">
         <div v-if="error" :class="[$style.columnEmpty, $style.columnError]">
           {{ error.message }}
         </div>
@@ -338,7 +337,7 @@ function closeUserPopup() {
       </template>
 
       <!-- Users tab -->
-      <template v-else-if="displayedTab === 'users'">
+      <template v-else-if="activeTab === 'users'">
         <div :class="$style.exploreList">
           <div v-if="usersLoading" :class="$style.columnEmpty">読み込み中...</div>
           <div v-else-if="usersError" :class="[$style.columnEmpty, $style.columnError]">{{ usersError }}</div>
