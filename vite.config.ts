@@ -169,6 +169,15 @@ export default defineConfig({
           if (id.includes('node_modules/@scalar/')) {
             return 'vendor-api-docs'
           }
+          // Bundle rarely-used column types into a single shared chunk
+          if (
+            id.includes('src/components/deck/Deck') &&
+            /(?:AboutMisskey|Ads|Achievements|ApiConsole|ApiDocs|ServerInfo|Emoji|Gallery|Explore|FollowRequests|Lookup|Announcements|Play|AiScript)Column\.vue/.test(
+              id,
+            )
+          ) {
+            return 'columns-rare'
+          }
         },
         minify: {
           compress: {

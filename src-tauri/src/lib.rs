@@ -216,24 +216,40 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
     ]);
 
     builder = builder.setup(|app| {
-        // Initialize platform keychain
+        // Initialize app data directory (must be first — other init depends on it)
+        let app_dir = app.path().app_data_dir()?;
+        std::fs::create_dir_all(&app_dir)?;
+
+        // Initialize platform keychain + filesystem migrations (both lightweight)
         if let Err(e) = notecli::keychain::init_store() {
             eprintln!("Warning: keychain unavailable ({e})");
         }
-
-        // Initialize app data directory and run migrations
-        let app_dir = app.path().app_data_dir()?;
-        std::fs::create_dir_all(&app_dir)?;
         migrations::run_fs(&app_dir)?;
 
-        // Initialize SQLite database
+        // ── Parallel: DB open + Misskey client ──
+        // DB open (SQLite I/O) is the heaviest; run alongside HTTP client construction.
         let db_path = app_dir.join("notecli.db");
-        let db = std::sync::Arc::new(notecli::db::Database::open(&db_path)?);
+        let (db_res, client_res) = tauri::async_runtime::block_on(async {
+            tokio::join!(
+                tokio::task::spawn_blocking(move || notecli::db::Database::open(&db_path)),
+                tokio::task::spawn_blocking(notecli::api::MisskeyClient::new),
+            )
+        });
+        let db = std::sync::Arc::new(db_res.expect("db open task panicked")?);
+        let client = std::sync::Arc::new(client_res.expect("client init task panicked")?);
         app.manage(db.clone());
-
-        // Initialize Misskey HTTP client
-        let client = std::sync::Arc::new(notecli::api::MisskeyClient::new()?);
         app.manage(client.clone());
+
+        // Shared HTTP client (struct construction — fast, no I/O)
+        let shared_http = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(5))
+            .pool_max_idle_per_host(8)
+            .pool_idle_timeout(std::time::Duration::from_secs(60))
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+            .redirect(reqwest::redirect::Policy::limited(5))
+            .build()
+            .unwrap_or_default();
+        app.manage(shared_http.clone());
 
         // Initialize event bus (SSE broadcasting)
         let event_bus = std::sync::Arc::new(notecli::event_bus::EventBus::new());
@@ -250,7 +266,24 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
 
-        migrations::run_db(&db);
+        // ── Phase 3: Parallel — DB migration + OGP pre-warm ──
+        // run_db does keychain I/O per account; OGP reads cached rows from SQLite.
+        let db_for_migration = db.clone();
+        let ogp_cache = ogp::OgpCache::with_client(db.clone(), shared_http.clone());
+        let ogp_warmup = ogp_cache.clone();
+        app.manage(ogp_cache);
+        let (migration_res, _) = tauri::async_runtime::block_on(async {
+            tokio::join!(
+                tokio::task::spawn_blocking(move || migrations::run_db(&db_for_migration)),
+                async { ogp_warmup.pre_warm().await },
+            )
+        });
+        if let Err(e) = migration_res {
+            tracing::warn!("db migration task failed: {e}");
+        }
+
+        // Export account list for background workers (non-secret metadata only)
+        commands::export_account_list(app.app_handle(), &db);
 
         // Periodic credential cache cleanup (every 5 minutes)
         tauri::async_runtime::spawn(async {
@@ -259,30 +292,6 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                 tokio::time::sleep(interval).await;
                 commands::cleanup_expired_credentials();
             }
-        });
-
-        // Export account list for background workers (non-secret metadata only)
-        commands::export_account_list(app.app_handle(), &db);
-
-        // Shared HTTP client for OGP / image-cache (single connection pool)
-        let shared_http = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(5))
-            .pool_max_idle_per_host(8)
-            .pool_idle_timeout(std::time::Duration::from_secs(60))
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-            .redirect(reqwest::redirect::Policy::limited(5))
-            .build()
-            .unwrap_or_default();
-
-        // Expose shared HTTP client as Tauri state (used by fetch_image_base64 etc.)
-        app.manage(shared_http.clone());
-
-        // Initialize OGP cache (backed by shared Database) and pre-warm from disk
-        let ogp_cache = ogp::OgpCache::with_client(db.clone(), shared_http.clone());
-        let ogp_warmup = ogp_cache.clone();
-        app.manage(ogp_cache);
-        tauri::async_runtime::spawn(async move {
-            ogp_warmup.pre_warm().await;
         });
 
         // Generate API token (256-bit CSPRNG) and write to file

@@ -8,9 +8,17 @@ import { useThemeStore } from './stores/theme'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
 import './styles/global.css'
 
-// Lazy-load KaTeX CSS — only needed when math formulas appear in notes
-import('katex/dist/katex.min.css')
-import './assets/shiki-dark-plus.css'
+// Pre-warm Tauri API module (critical path in App.vue onMounted)
+import('@tauri-apps/api/window')
+
+// Defer non-critical CSS to idle time — KaTeX and Shiki are not needed at startup
+const _idle =
+  window.requestIdleCallback ??
+  ((cb: IdleRequestCallback) => setTimeout(cb, 2000))
+_idle(() => {
+  import('katex/dist/katex.min.css')
+  import('./assets/shiki-dark-plus.css')
+})
 
 const app = createApp(App)
 const pinia = createPinia()
