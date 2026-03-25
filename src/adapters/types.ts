@@ -320,6 +320,7 @@ export interface NormalizedNotification {
   note?: NormalizedNote
   reaction?: string
   message?: string
+  achievement?: string
 }
 
 export interface CreateNoteParams {

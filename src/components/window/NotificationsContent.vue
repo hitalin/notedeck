@@ -20,6 +20,7 @@ import { useNoteActions } from '@/composables/useNoteActions'
 import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
 import { useIsCompactLayout } from '@/stores/ui'
+import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
 import { formatTime } from '@/utils/formatTime'
 import { char2twemojiUrl } from '@/utils/twemoji'
 
@@ -406,6 +407,7 @@ onUnmounted(() => {
                       <template v-else>{{ notif.user.username }}</template>
                     </span>
                     <span :class="$style.notifLabel">{{ notificationLabel(notif.type) }}</span>
+                    <span v-if="notif.type === 'achievementEarned' && notif.achievement" :class="$style.notifAchievement">{{ ACHIEVEMENT_LABELS[notif.achievement] ?? notif.achievement }}</span>
                     <span
                       v-if="notif.type === 'reaction' && notif.reaction"
                       :class="$style.notifReaction"
@@ -684,6 +686,12 @@ onUnmounted(() => {
 .notifLabel {
   font-size: 0.85em;
   opacity: 0.7;
+}
+
+.notifAchievement {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--nd-fgHighlighted);
 }
 
 .notifReaction {
