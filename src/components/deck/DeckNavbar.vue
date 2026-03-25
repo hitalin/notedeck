@@ -804,7 +804,7 @@ defineExpose({
     height: 40px;
     margin: 4px auto;
     border-radius: 50%;
-    font-size: 1.2em;
+    font-size: 1.5em;
   }
 
   .account {
