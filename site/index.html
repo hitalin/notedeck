@@ -10,23 +10,45 @@
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://raw.githubusercontent.com/hitalin/notedeck/main/src-tauri/icons/128x128%402x.png" />
   <link rel="icon" href="https://raw.githubusercontent.com/hitalin/notedeck/main/src-tauri/icons/32x32.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet" />
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
     :root{
-      --green:#86b300;
-      --bg:#0d1117;
-      --surface:#161b22;
-      --text:#e6edf3;
-      --text-muted:#8b949e;
-      --border:#30363d;
-      --radius:12px;
+      --accent:#86b300;
+      --accent-dark:#4ab300;
+      --bg:#f5f5f5;
+      --surface:rgba(255,255,255,0.5);
+      --surface-hover:rgba(255,255,255,0.7);
+      --text:#222;
+      --text-muted:#666;
+      --border:rgba(0,0,0,0.08);
+      --radius:16px;
+      --radius-pill:999px;
+      --shadow:0 2px 12px rgba(0,0,0,0.06);
+      --blur:blur(12px);
     }
+
+    @media(prefers-color-scheme:dark){
+      :root{
+        --bg:#1a1a1a;
+        --surface:rgba(255,255,255,0.08);
+        --surface-hover:rgba(255,255,255,0.12);
+        --text:#eee;
+        --text-muted:#aaa;
+        --border:rgba(255,255,255,0.08);
+        --shadow:0 2px 12px rgba(0,0,0,0.3);
+      }
+    }
+
     html{scroll-behavior:smooth}
     body{
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+      font-family:Nunito,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
       background:var(--bg);
       color:var(--text);
-      line-height:1.6;
+      line-height:1.75;
     }
 
     /* Hero */
@@ -38,28 +60,81 @@
       justify-content:center;
       text-align:center;
       padding:2rem 1.5rem;
-      gap:2rem;
+      gap:1.5rem;
+      position:relative;
+      overflow:hidden;
     }
+    .hero::before{
+      content:"";
+      position:absolute;
+      width:600px;height:600px;
+      border-radius:50%;
+      background:radial-gradient(circle,rgba(134,179,0,0.15),transparent 70%);
+      top:-200px;right:-200px;
+      animation:blobFloat 20s ease-in-out infinite alternate;
+    }
+    .hero::after{
+      content:"";
+      position:absolute;
+      width:500px;height:500px;
+      border-radius:50%;
+      background:radial-gradient(circle,rgba(74,179,0,0.1),transparent 70%);
+      bottom:-150px;left:-150px;
+      animation:blobFloat 25s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes blobFloat{
+      0%{transform:translate(0,0) scale(1)}
+      100%{transform:translate(40px,-30px) scale(1.1)}
+    }
+
+    .hero>*{position:relative;z-index:1}
     .hero-icon{width:80px;height:80px;border-radius:20px}
     .hero h1{font-size:clamp(2.5rem,6vw,4rem);font-weight:800;letter-spacing:-0.02em}
-    .hero h1 span{color:var(--green)}
-    .hero .tagline{
-      font-size:clamp(1.1rem,2.5vw,1.4rem);
-      color:var(--text-muted);
-      max-width:600px;
+    .hero h1 span{
+      background:linear-gradient(135deg,var(--accent),var(--accent-dark));
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      background-clip:text;
     }
-    .hero-buttons{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center}
+    .hero .tagline{
+      font-size:clamp(1.05rem,2.5vw,1.3rem);
+      color:var(--text-muted);
+      max-width:500px;
+    }
+
+    /* Buttons */
+    .hero-buttons{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center}
     .btn{
       display:inline-flex;align-items:center;gap:.5rem;
-      padding:.8rem 1.6rem;
-      border-radius:var(--radius);
-      font-size:1rem;font-weight:600;
+      padding:.65rem 1.5rem;
+      border-radius:var(--radius-pill);
+      font-size:.95rem;font-weight:700;
       text-decoration:none;
-      transition:transform .15s,box-shadow .15s;
+      transition:all .2s ease;
+      font-family:inherit;
     }
-    .btn:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(134,179,0,.3)}
-    .btn-primary{background:var(--green);color:#fff}
-    .btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+    .btn-primary{
+      background:linear-gradient(135deg,var(--accent),var(--accent-dark));
+      background-size:200% 100%;
+      color:#fff;
+      box-shadow:0 2px 12px rgba(134,179,0,0.3);
+    }
+    .btn-primary:hover{
+      background-position:100% 0;
+      box-shadow:0 4px 20px rgba(134,179,0,0.4);
+      transform:translateY(-2px);
+    }
+    .btn-secondary{
+      background:var(--surface);
+      backdrop-filter:var(--blur);
+      -webkit-backdrop-filter:var(--blur);
+      color:var(--text);
+      border:1px solid var(--border);
+    }
+    .btn-secondary:hover{
+      background:var(--surface-hover);
+      transform:translateY(-2px);
+    }
 
     /* Screenshot */
     .screenshot{
@@ -72,85 +147,113 @@
       width:100%;
       border-radius:var(--radius);
       border:1px solid var(--border);
-      box-shadow:0 8px 40px rgba(0,0,0,.4);
+      box-shadow:var(--shadow);
     }
 
     /* Features */
     .features{
       max-width:900px;
-      margin:6rem auto;
+      margin:5rem auto;
       padding:0 1.5rem;
       display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-      gap:2rem;
+      grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+      gap:1.25rem;
     }
     .feature{
       background:var(--surface);
+      backdrop-filter:var(--blur);
+      -webkit-backdrop-filter:var(--blur);
       border:1px solid var(--border);
       border-radius:var(--radius);
       padding:1.5rem;
+      transition:all .2s ease;
     }
-    .feature h3{font-size:1.1rem;margin-bottom:.5rem}
-    .feature p{color:var(--text-muted);font-size:.95rem}
+    .feature:hover{
+      background:var(--surface-hover);
+      transform:translateY(-2px);
+      box-shadow:var(--shadow);
+    }
+    .feature h3{font-size:1.05rem;margin-bottom:.4rem;font-weight:700}
+    .feature p{color:var(--text-muted);font-size:.9rem;line-height:1.7}
 
     /* Download */
     .download{
       max-width:700px;
-      margin:0 auto 6rem;
+      margin:0 auto 5rem;
       padding:0 1.5rem;
       text-align:center;
     }
-    .download h2{font-size:2rem;margin-bottom:.5rem}
-    .download .sub{color:var(--text-muted);margin-bottom:2rem}
+    .download h2{font-size:1.75rem;font-weight:800;margin-bottom:.25rem}
+    .download .sub{color:var(--text-muted);margin-bottom:1.5rem}
     .platforms{
       display:grid;
       grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
-      gap:1rem;
+      gap:.75rem;
     }
     .platform{
+      display:block;
       background:var(--surface);
+      backdrop-filter:var(--blur);
+      -webkit-backdrop-filter:var(--blur);
       border:1px solid var(--border);
       border-radius:var(--radius);
-      padding:1.2rem 1rem;
+      padding:1.1rem 1rem;
       text-decoration:none;
       color:var(--text);
-      transition:border-color .15s;
+      transition:all .2s ease;
     }
-    .platform:hover{border-color:var(--green)}
-    .platform .os{font-weight:600;margin-bottom:.25rem}
+    .platform:hover{
+      border-color:var(--accent);
+      background:var(--surface-hover);
+      transform:translateY(-2px);
+    }
+    .platform .os{font-weight:700;margin-bottom:.2rem}
     .platform .format{color:var(--text-muted);font-size:.85rem}
 
     .install-alt{
-      margin-top:2rem;
+      margin-top:1.25rem;
       text-align:left;
       background:var(--surface);
+      backdrop-filter:var(--blur);
+      -webkit-backdrop-filter:var(--blur);
       border:1px solid var(--border);
       border-radius:var(--radius);
-      padding:1.5rem;
+      padding:1.25rem;
     }
-    .install-alt h3{font-size:1rem;margin-bottom:1rem}
+    .install-alt h3{font-size:.95rem;font-weight:700;margin-bottom:.75rem}
     .install-cmd{
       background:var(--bg);
       border-radius:8px;
-      padding:.6rem 1rem;
-      margin-bottom:.5rem;
+      padding:.5rem .85rem;
+      margin-bottom:.4rem;
       font-family:"SF Mono",Monaco,Consolas,monospace;
-      font-size:.9rem;
+      font-size:.85rem;
     }
     .install-cmd:last-child{margin-bottom:0}
-    .install-cmd .label{color:var(--text-muted);font-size:.8rem;margin-bottom:.15rem}
+    .install-cmd .label{color:var(--text-muted);font-size:.75rem;margin-bottom:.1rem}
 
     /* Footer */
     footer{
       text-align:center;
-      padding:3rem 1.5rem;
+      padding:2.5rem 1.5rem;
       color:var(--text-muted);
-      font-size:.9rem;
-      border-top:1px solid var(--border);
+      font-size:.85rem;
+      opacity:.7;
     }
-    footer a{color:var(--green);text-decoration:none}
+    footer a{color:var(--accent);text-decoration:none}
     footer a:hover{text-decoration:underline}
-    .footer-links{display:flex;gap:1.5rem;justify-content:center;margin-bottom:1rem;flex-wrap:wrap}
+    .footer-links{display:flex;gap:1.5rem;justify-content:center;margin-bottom:.75rem;flex-wrap:wrap}
+
+    /* Fade-in animation */
+    .fade-in{
+      opacity:0;
+      transform:translateY(20px);
+      transition:opacity .6s ease,transform .6s ease;
+    }
+    .fade-in.visible{
+      opacity:1;
+      transform:translateY(0);
+    }
   </style>
 </head>
 <body>
@@ -166,13 +269,13 @@
     <div class="hero-buttons">
       <a href="#download" class="btn btn-primary">ダウンロード</a>
       <a href="https://github.com/hitalin/notedeck" class="btn btn-secondary">
-        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
         GitHub
       </a>
     </div>
   </section>
 
-  <div class="screenshot">
+  <div class="screenshot fade-in">
     <img
       src="https://github.com/user-attachments/assets/31162728-e6d0-4264-bb96-73e411252113"
       alt="NoteDeck スクリーンショット"
@@ -181,33 +284,33 @@
   </div>
 
   <section class="features">
-    <div class="feature">
+    <div class="feature fade-in">
       <h3>サーバーをまたいで一画面に</h3>
       <p>複数の Misskey サーバーに同時ログイン。タイムライン・通知・リストをカラムに並べて、切り替え不要で全体を把握。</p>
     </div>
-    <div class="feature">
+    <div class="feature fade-in">
       <h3>Misskey フォークもそのまま</h3>
-      <p>Misskey 本家はもちろん、Firefish・CherryPick などの主要フォークにも対応。サーバーの広告表示も尊重します。</p>
+      <p>Misskey 本家はもちろん、Firefish・CherryPick などの主要フォークに対応。サーバーの広告表示も尊重します。</p>
     </div>
-    <div class="feature">
+    <div class="feature fade-in">
       <h3>デスクトップに根を張る</h3>
       <p>システムトレイ常駐、グローバルホットキー、マルチウィンドウ。ブラウザタブではできない、ネイティブアプリならではの体験。</p>
     </div>
-    <div class="feature">
+    <div class="feature fade-in">
       <h3>データはあなたの手元に</h3>
       <p>ノートはローカル DB に蓄積。全文検索も端末内で完結。設定はテキストファイルだから、バックアップも同期も自由自在。</p>
     </div>
-    <div class="feature">
+    <div class="feature fade-in">
       <h3>Rust で軽く、速く</h3>
       <p>Tauri v2 + Rust バックエンドで省メモリ・高速起動。Electron 系とは一線を画すパフォーマンス。</p>
     </div>
-    <div class="feature">
+    <div class="feature fade-in">
       <h3>オープンソース</h3>
-      <p>AGPL-3.0 で公開。コードは GitHub で誰でも閲覧・貢献可能。<a href="https://github.com/sponsors/hitalin" style="color:var(--green)">Sponsors</a> で開発を支援できます。</p>
+      <p>AGPL-3.0 で公開。コードは GitHub で誰でも閲覧・貢献可能。<a href="https://github.com/sponsors/hitalin" style="color:var(--accent)">Sponsors</a> で開発を支援できます。</p>
     </div>
   </section>
 
-  <section class="download" id="download">
+  <section class="download fade-in" id="download">
     <h2>ダウンロード</h2>
     <p class="sub">お使いの環境に合わせてインストール</p>
     <div class="platforms">
@@ -250,6 +353,13 @@
     </div>
     <p>&copy; 2025 NoteDeck &mdash; <a href="https://github.com/hitalin/notedeck/blob/main/LICENSE">AGPL-3.0</a></p>
   </footer>
+
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.fade-in').forEach((el) => observer.observe(el));
+  </script>
 
 </body>
 </html>
