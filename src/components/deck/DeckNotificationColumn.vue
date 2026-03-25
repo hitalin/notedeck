@@ -29,6 +29,7 @@ import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
+import { useServersStore } from '@/stores/servers'
 import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
@@ -52,6 +53,7 @@ const props = defineProps<{
 
 const isCrossAccount = computed(() => props.column.accountId == null)
 const accountsStore = useAccountsStore()
+const serversStore = useServersStore()
 const multiAdapters = useMultiAccountAdapters()
 
 const { reactionUrl: reactionUrlRaw } = useEmojiResolver()
@@ -169,7 +171,10 @@ const { indicatorStyle: filterIndicatorStyle } = useTabIndicator(
 
 const filteredNotifications = computed(() => {
   if (activeFilter.value === 'all') return notifications.value
-  return notifications.value.filter((n) => n.type === activeFilter.value)
+  return notifications.value.filter((n) => {
+    const baseType = n.type.replace(':grouped', '')
+    return baseType === activeFilter.value
+  })
 })
 
 const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(
@@ -239,8 +244,10 @@ function getCachedTwemojiUrl(reaction: string): string | null {
 
 const NOTIFICATION_ICONS: Record<string, string> = {
   reaction: 'mood-plus',
+  'reaction:grouped': 'mood-plus',
   reply: 'arrow-back-up',
   renote: 'repeat',
+  'renote:grouped': 'repeat',
   quote: 'quote',
   mention: 'at',
   follow: 'plus',
@@ -254,8 +261,10 @@ const NOTIFICATION_ICONS: Record<string, string> = {
 
 const NOTIFICATION_LABELS: Record<string, string> = {
   reaction: 'がリアクション',
+  'reaction:grouped': 'がリアクション',
   reply: 'からのリプライ',
   renote: 'がリノートしました',
+  'renote:grouped': 'がリノートしました',
   quote: 'による引用',
   mention: 'からのメンション',
   follow: 'にフォローされました',
@@ -271,8 +280,10 @@ const NOTIFICATION_LABELS: Record<string, string> = {
 
 const NOTIFICATION_COLORS: Record<string, string> = {
   reaction: 'var(--nd-eventReaction)',
+  'reaction:grouped': 'var(--nd-eventReaction)',
   reply: 'var(--nd-eventReply)',
   renote: 'var(--nd-eventRenote)',
+  'renote:grouped': 'var(--nd-eventRenote)',
   quote: 'var(--nd-eventRenote)',
   mention: 'var(--nd-eventOther)',
   follow: 'var(--nd-eventFollow)',
@@ -282,6 +293,26 @@ const NOTIFICATION_COLORS: Record<string, string> = {
   achievementEarned: 'var(--nd-eventAchievement)',
   login: 'var(--nd-eventLogin)',
   createToken: 'var(--nd-eventOther)',
+}
+
+function groupedUsersLabel(notif: NormalizedNotification): string {
+  if (notif.type === 'reaction:grouped' && notif.reactions) {
+    const users = notif.reactions.map((r) => r.user)
+    return formatGroupedUsers(users)
+  }
+  if (notif.type === 'renote:grouped' && notif.users) {
+    return formatGroupedUsers(notif.users)
+  }
+  return ''
+}
+
+function formatGroupedUsers(
+  users: Array<{ name?: string | null; username: string }>,
+): string {
+  if (users.length === 0) return ''
+  const names = users.slice(0, 2).map((u) => u.name || u.username)
+  if (users.length <= 2) return names.join(', ')
+  return `${names.join(', ')} 他${users.length - 2}人`
 }
 
 function notificationIcon(type: string): string {
@@ -319,6 +350,12 @@ watch(
   },
 )
 
+function supportsGroupedNotifications(host?: string): boolean {
+  if (!host) return false
+  const server = serversStore.getServer(host)
+  return server?.features.groupedNotifications === true
+}
+
 async function connectPerAccount(useCache = false) {
   error.value = null
   isLoading.value = true
@@ -339,7 +376,10 @@ async function connectPerAccount(useCache = false) {
     const adapter = await initAdapter()
     if (!adapter) return
 
-    const fetched = await adapter.api.getNotifications()
+    const useGrouped = supportsGroupedNotifications(account.value?.host)
+    const fetched = useGrouped
+      ? await adapter.api.getNotificationsGrouped()
+      : await adapter.api.getNotifications()
     notifications.value = mergeNotifications(fetched, cached)
     saveCache()
 
@@ -383,7 +423,10 @@ async function connectCrossAccount() {
       accounts.map(async (acc) => {
         const adapter = await multiAdapters.getOrCreate(acc.id)
         if (!adapter) return []
-        return adapter.api.getNotifications()
+        const useGrouped = supportsGroupedNotifications(acc.host)
+        return useGrouped
+          ? adapter.api.getNotificationsGrouped()
+          : adapter.api.getNotifications()
       }),
     )
 
@@ -425,7 +468,10 @@ async function loadMorePerAccount() {
   if (!last) return
   isLoading.value = true
   try {
-    const older = await adapter.api.getNotifications({ untilId: last.id })
+    const useGrouped = supportsGroupedNotifications(account.value?.host)
+    const older = useGrouped
+      ? await adapter.api.getNotificationsGrouped({ untilId: last.id })
+      : await adapter.api.getNotifications({ untilId: last.id })
     if (older.length === 0) {
       noMoreData.value = true
       return
@@ -458,8 +504,12 @@ async function loadMoreCrossAccount() {
         const lastForAccount = [...notifications.value]
           .reverse()
           .find((n) => n._accountId === acc.id)
-        if (!lastForAccount) return adapter.api.getNotifications()
-        return adapter.api.getNotifications({ untilId: lastForAccount.id })
+        const useGrouped = supportsGroupedNotifications(acc.host)
+        const fetchFn = useGrouped
+          ? adapter.api.getNotificationsGrouped.bind(adapter.api)
+          : adapter.api.getNotifications.bind(adapter.api)
+        if (!lastForAccount) return fetchFn()
+        return fetchFn({ untilId: lastForAccount.id })
       }),
     )
 
@@ -720,7 +770,61 @@ onUnmounted(() => {
       >
         <template #default="{ item: notif, index }">
           <div>
+            <!-- Grouped notification: reaction:grouped / renote:grouped -->
             <div
+              v-if="notif.type === 'reaction:grouped' || notif.type === 'renote:grouped'"
+              :class="$style.notifItem"
+            >
+              <div :class="$style.notifLayout">
+                <div :class="$style.notifHead">
+                  <AvatarStack
+                    :users="notif.type === 'reaction:grouped'
+                      ? notif.reactions?.map((r: { user: { avatarUrl: string | null; username: string } }) => r.user)
+                      : notif.users"
+                    :size="42"
+                    :max="3"
+                  />
+                  <i :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
+                </div>
+                <div :class="$style.notifTail">
+                  <div :class="$style.notifHeader">
+                    <div :class="$style.notifMeta">
+                      <span :class="$style.notifUserName">{{ groupedUsersLabel(notif) }}</span>
+                      <span :class="$style.notifLabel">{{ notificationLabel(notif.type) }}</span>
+                    </div>
+                    <span :class="$style.notifTime">{{ formatTime(notif.createdAt) }}</span>
+                  </div>
+
+                  <!-- Grouped reaction emojis -->
+                  <div v-if="notif.type === 'reaction:grouped' && notif.reactions?.length" :class="$style.groupedReactions">
+                    <template v-for="r in notif.reactions" :key="`${r.user.id}-${r.reaction}`">
+                      <img v-if="getCachedReactionUrl(r.reaction, notif)" :src="getCachedReactionUrl(r.reaction, notif)!" :alt="r.reaction" :class="$style.groupedReactionEmoji" loading="lazy" />
+                      <img v-else-if="getCachedTwemojiUrl(r.reaction)" :src="getCachedTwemojiUrl(r.reaction)!" :alt="r.reaction" :class="$style.groupedReactionEmoji" loading="lazy" />
+                      <MkEmoji v-else :emoji="r.reaction" :class="$style.groupedReactionEmoji" />
+                    </template>
+                  </div>
+
+                  <div v-if="notif.note" :class="$style.notifNoteWrap">
+                    <MkNote
+                      :note="notif.note"
+                      embedded
+                      @react="handlers.reaction"
+                      @reply="handlers.reply"
+                      @renote="handlers.renote"
+                      @quote="handlers.quote"
+                      @delete="removeNote"
+                      @edit="handlers.edit"
+                      @bookmark="handlers.bookmark"
+                      @delete-and-edit="handlers.deleteAndEdit"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Normal notification -->
+            <div
+              v-else
               :class="$style.notifItem"
             >
               <div :class="$style.notifLayout">
@@ -1191,5 +1295,23 @@ onUnmounted(() => {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* Grouped notification: reaction emoji list */
+.groupedReactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.groupedReactionEmoji {
+  height: 1.6em;
+  vertical-align: middle;
+  object-fit: contain;
+
+  :deep(.twemoji) {
+    height: 1.6em;
+  }
 }
 </style>

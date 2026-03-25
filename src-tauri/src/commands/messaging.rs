@@ -20,6 +20,19 @@ pub async fn api_get_notifications(
 }
 
 #[tauri::command]
+pub async fn api_get_notifications_grouped(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    options: Option<TimelineOptions>,
+) -> Result<Vec<NormalizedNotification>> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .get_notifications_grouped(&host, &token, &account_id, options.unwrap_or_default())
+        .await
+}
+
+#[tauri::command]
 pub async fn api_get_unread_notification_count(
     app_state: State<'_, AppState>,
     account_id: String,
