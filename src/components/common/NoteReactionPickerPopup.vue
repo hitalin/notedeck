@@ -1,15 +1,11 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { defineAsyncComponent, nextTick, ref, watch } from 'vue'
-
+import { nextTick, ref, watch } from 'vue'
 import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useUiStore } from '@/stores/ui'
 import { extractThemeVars } from '@/utils/themeVars'
-
-const MkReactionPicker = defineAsyncComponent(
-  () => import('./MkReactionPicker.vue'),
-)
+import MkReactionPicker from './MkReactionPicker.vue'
 
 const props = defineProps<{
   serverHost: string
@@ -34,8 +30,8 @@ const { activate: activateTrap, deactivate: deactivateTrap } = useFocusTrap(
 )
 
 const { visible, leaving } = useVaporTransition(show, {
-  enterDuration: 400,
-  leaveDuration: 300,
+  enterDuration: 250,
+  leaveDuration: 200,
 })
 
 watch(show, (v) => {

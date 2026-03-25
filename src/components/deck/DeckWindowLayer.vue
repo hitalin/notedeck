@@ -65,7 +65,7 @@ const {
   leaving: backdropLeaving,
 } = useVaporTransition(hasModal, {
   enterDuration: 250,
-  leaveDuration: 250,
+  leaveDuration: 200,
 })
 
 // Windows group transition
@@ -181,7 +181,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 }
 
 .backdropLeave {
-  animation: backdrop-leave 0.25s ease both;
+  animation: backdrop-leave 0.2s ease both;
 }
 
 @keyframes backdrop-enter {

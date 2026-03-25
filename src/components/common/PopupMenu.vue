@@ -23,8 +23,8 @@ const menuTheme = ref<Record<string, string>>({})
 const menuRef = ref<HTMLElement | null>(null)
 
 const { visible, entering, leaving } = useVaporTransition(showMenu, {
-  enterDuration: 300,
-  leaveDuration: 300,
+  enterDuration: 200,
+  leaveDuration: 150,
 })
 
 const { activate: activateKeyboard, deactivate: deactivateKeyboard } =

@@ -143,7 +143,11 @@ useDeckInit({
 onMounted(() => {
   const idle =
     window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 200))
-  idle(() => import('@/components/common/MkPostForm.vue'))
+  idle(() => {
+    import('@/components/common/MkPostForm.vue')
+    import('@/components/window/NoteDetailContent.vue')
+    import('@/components/window/UserProfileContent.vue')
+  })
 })
 
 function scrollToColumn(index: number) {

@@ -16,7 +16,7 @@ const emit = defineEmits<{
 
 const { visible, entering, leaving } = useVaporTransition(
   toRef(props, 'show'),
-  { enterDuration: 300, leaveDuration: 300 },
+  { enterDuration: 250, leaveDuration: 200 },
 )
 </script>
 

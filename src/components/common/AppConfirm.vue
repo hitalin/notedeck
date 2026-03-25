@@ -8,8 +8,8 @@ import { useConfirm } from '@/stores/confirm'
 const { visible: show, options, resolve } = useConfirm()
 
 const { visible, entering, leaving } = useVaporTransition(show, {
-  enterDuration: 300,
-  leaveDuration: 300,
+  enterDuration: 250,
+  leaveDuration: 200,
 })
 
 const dialogRef = ref<HTMLElement | null>(null)

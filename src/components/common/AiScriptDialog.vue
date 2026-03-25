@@ -10,8 +10,8 @@ const dialogType = ref<'info' | 'success' | 'warning' | 'error'>('info')
 const mode = ref<'dialog' | 'confirm'>('dialog')
 
 const { visible, entering, leaving } = useVaporTransition(show, {
-  enterDuration: 300,
-  leaveDuration: 300,
+  enterDuration: 250,
+  leaveDuration: 200,
 })
 
 let resolvePromise: ((value: boolean) => void) | null = null
