@@ -58,6 +58,20 @@ const sidebarType = computed(() => {
   return col?.type ?? null
 })
 
+const hasMultipleAccounts = computed(() => accountsStore.accounts.length > 1)
+
+function navItemAccount(item: NavItem): Account | null {
+  if (isNavDivider(item) || !item.accountId || !hasMultipleAccounts.value)
+    return null
+  return accountsStore.accountMap.get(item.accountId) ?? null
+}
+
+function navItemServerIcon(item: NavItem): string | null {
+  const acc = navItemAccount(item)
+  if (!acc) return null
+  return serversStore.getServer(acc.host)?.iconUrl ?? null
+}
+
 function navIcon(type: string): string {
   return `ti-${COLUMN_ICONS[type] ?? 'layout-grid'}`
 }
@@ -338,11 +352,25 @@ defineExpose({
               :title="navLabel(navItem.type)"
               @click="closeDrawerAndDo(getNavAction(navItem))"
             >
-              <div v-if="getNavBadge(navItem) > 0" :class="$style.iconWrap">
+              <div :class="$style.iconWrap">
                 <i :class="['ti', navIcon(navItem.type)]" />
-                <span :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
+                <span v-if="getNavBadge(navItem) > 0" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
+                <span v-if="navItemServerIcon(navItem)" :class="$style.navServerBadge">
+                  <img :src="navItemServerIcon(navItem)!" :class="$style.navBadgeImg" width="10" height="10" />
+                </span>
+                <span v-if="navItemAccount(navItem)" :class="$style.navAccountBadge">
+                  <img
+                    v-if="navItemAccount(navItem)!.avatarUrl"
+                    :src="navItemAccount(navItem)!.avatarUrl!"
+                    :class="$style.navBadgeImg"
+                    width="10"
+                    height="10"
+                  />
+                  <span v-else :class="$style.navBadgeInitial">{{
+                    navItemAccount(navItem)!.username.charAt(0).toUpperCase()
+                  }}</span>
+                </span>
               </div>
-              <i v-else :class="['ti', navIcon(navItem.type)]" />
               <span :class="$style.label">{{ navLabel(navItem.type) }}</span>
             </button>
           </template>
@@ -603,6 +631,44 @@ defineExpose({
   text-align: center;
   pointer-events: none;
   box-sizing: border-box;
+}
+
+.navServerBadge,
+.navAccountBadge {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid var(--nd-panel, #fff);
+  background: var(--nd-panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.navServerBadge {
+  top: -2px;
+  right: -4px;
+}
+
+.navAccountBadge {
+  bottom: -2px;
+  left: -4px;
+}
+
+.navBadgeImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.navBadgeInitial {
+  font-size: 7px;
+  font-weight: bold;
+  line-height: 1;
 }
 
 .label {
