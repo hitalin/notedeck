@@ -48,20 +48,23 @@ export function usePullToRefresh(
         resolve()
         return
       }
-      const startTime = Date.now()
-      const intervalId = window.setInterval(() => {
-        const time = Date.now() - startTime
-        if (time > RELEASE_TRANSITION_DURATION) {
+      const startTime = performance.now()
+
+      function animate(now: number) {
+        const elapsed = now - startTime
+        if (elapsed >= RELEASE_TRANSITION_DURATION) {
           pullDistance.value = to
-          window.clearInterval(intervalId)
           resolve()
           return
         }
         const nextHeight =
-          startHeight - (overHeight / RELEASE_TRANSITION_DURATION) * time
-        if (pullDistance.value < nextHeight) return
-        pullDistance.value = nextHeight
-      }, 1)
+          startHeight - (overHeight / RELEASE_TRANSITION_DURATION) * elapsed
+        if (pullDistance.value >= nextHeight) {
+          pullDistance.value = nextHeight
+        }
+        requestAnimationFrame(animate)
+      }
+      requestAnimationFrame(animate)
     })
   }
 

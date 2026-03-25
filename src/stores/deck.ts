@@ -638,6 +638,7 @@ export const useDeckStore = defineStore('deck', () => {
     saveWindowLayout: profileStore.saveWindowLayout,
     removeWindowLayout: profileStore.removeWindowLayout,
     getWindowLayouts: profileStore.getWindowLayouts,
+    columnMap,
     crossWindowDragColumnId,
     startSync,
     stopSync,
