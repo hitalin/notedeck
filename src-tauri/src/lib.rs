@@ -262,19 +262,23 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
 
-        // DB migration (synchronous — must complete before app is usable)
-        migrations::run_db(&db);
-
-        // OGP cache: pre-warm in background (non-blocking)
+        // OGP cache (register state immediately, pre-warm in background)
         let ogp_cache = ogp::OgpCache::with_client(db.clone(), shared_http.clone());
-        let ogp_warmup = ogp_cache.clone();
-        app.manage(ogp_cache);
-        tauri::async_runtime::spawn(async move {
-            ogp_warmup.pre_warm().await;
-        });
+        app.manage(ogp_cache.clone());
 
-        // Export account list for background workers (non-secret metadata only)
-        commands::export_account_list(app.app_handle(), &db);
+        // DB migration + OGP pre-warm + account export: all in background
+        // These are not needed before the first window paint.
+        let db_for_bg = db.clone();
+        let app_handle_for_bg = app.app_handle().clone();
+        tauri::async_runtime::spawn(async move {
+            // run_db does keychain I/O — run on blocking thread
+            let db2 = db_for_bg.clone();
+            let _ = tokio::task::spawn_blocking(move || {
+                migrations::run_db(&db2);
+            }).await;
+            commands::export_account_list(&app_handle_for_bg, &db_for_bg);
+            ogp_cache.pre_warm().await;
+        });
 
         // Periodic credential cache cleanup (every 5 minutes)
         tauri::async_runtime::spawn(async {
