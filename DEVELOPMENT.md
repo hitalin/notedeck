@@ -18,7 +18,7 @@ Multi-server Misskey deck client with fork support. 設計思想・方針は [DE
 | Editor | CodeMirror 6 |
 | Linter | Biome |
 | Style | SCSS + CSS Modules (`$style`) |
-| Test | Vitest + jsdom |
+| Test | Vitest + happy-dom |
 
 ## Prerequisites
 
@@ -63,6 +63,15 @@ task lint:fix     # Lint & format fix
 task typecheck    # TypeScript type check
 task clean        # Remove build artifacts
 ```
+
+### テスト構成
+
+テストは 2 プロジェクトに分離（`vitest.config.ts`）:
+
+| プロジェクト | 環境 | ファイルパターン | 用途 |
+|------------|------|----------------|------|
+| `unit` | Node.js | `*.test.ts` | ロジック・ユーティリティ |
+| `dom` | happy-dom | `*.dom.test.ts` | Vue コンポーネント・DOM 操作 |
 
 ## Architecture
 
@@ -136,6 +145,50 @@ Profile B ──→ Main Window（プロファイル切り替え時）
 3. ウィンドウの作成・破棄はプロファイルのデータに影響しない
 
 **同期方式:** localStorage（全 webview 共有）を SSoT とし、Tauri イベント（`deck:profile-updated`）でキャッシュ無効化を通知。Rust 側に SSoT を移す案も検討したが、localStorage が既に全 webview で共有されており、本質的に同じ構造になるため不採用（[PR #172](https://github.com/hitalin/notedeck/pull/172) で議論）。
+
+### Window / Column Model（[#194](https://github.com/hitalin/notedeck/issues/194)）
+
+ウィンドウとカラムは「ストリーム / 詳細 / ツール」の3分類で役割を分担する。
+
+| 分類 | UI | 用途 | 永続性 |
+|------|-----|------|--------|
+| **ストリーム** | カラム | 継続的なデータフィード（TL、通知、検索、チャット等） | プロファイルに永続化 |
+| **詳細** | ウィンドウ | 特定アイテムの一時的な表示（ノート詳細、プロフィール、フォローリスト） | セッション限り |
+| **ツール** | ウィンドウ | アプリ設定・管理（ログイン、エディタ群、プラグイン、about） | セッション限り |
+
+**Cross-account カラム:**
+
+ストリーム系カラムは `accountId` で動作モードが決まる。
+
+- `accountId: "user-xxx"` → **per-account**（`useColumnSetup` で単一アダプタ）
+- `accountId: null` → **cross-account**（`useMultiAccountAdapters` で全アカウント並列取得）
+
+対応済みカラム: 通知、検索、チャット、メンション、ダイレクト、フォローリクエスト。
+
+**ナビバー（VSCode Activity Bar 式）:**
+
+左ナビバーのアイコンはカラムの**トグルボタン**として機能する。クリックでサイドバーカラムを左端（`layout[0]`）に挿入、再クリックで削除。同時に1スロットのみ（`sidebar: true` フラグで管理）。
+
+ナビバーのボタン構成はカスタマイズ可能（設定 → ナビバー）。`NavItem = { type, accountId } | { type: 'divider' }` 構造体でプロファイルに永続化される。
+
+**共通コンポーネント:**
+
+| コンポーネント | 用途 | 使用箇所 |
+|-------------|------|---------|
+| `ColumnBadges` | サーバー/アカウントバッジ表示 | DeckNavbar, DeckBottomBar, DeckMobileNav |
+| `AvatarStack` | cross-account 時のアカウントアバター重ね表示 | AddColumnDialog, カラムヘッダー |
+| `EditorTabs` | ビジュアル/コード 2タブ切替 | 全エディタ系ウィンドウ共通 |
+
+**共通 composable:**
+
+| composable | 用途 | 使用箇所 |
+|-----------|------|---------|
+| `usePointerReorder` | Pointer イベントによるドラッグ&ドロップ並び替え（軸指定対応） | NavEditorContent, ProfileEditorContent |
+| `useCrossAccountNotes` | 複数アカウントからのノート並列取得・統合・重複排除 | DeckMentionsColumn, DeckSpecifiedColumn |
+
+**アイコン・ラベルの一元定義:**
+
+`useColumnTabs.ts` の `COLUMN_ICONS` / `COLUMN_LABELS` がカラムタイプのアイコンとラベルの SSoT。ナビバー、ボトムバー、エディタすべてがこれを参照する。
 
 ### Vue Vapor モード移行準備（[#52](https://github.com/hitalin/notedeck/issues/52)）
 
@@ -217,6 +270,23 @@ const { activate, deactivate } = useMenuKeyboard({
 - **ポップアップメニュー** → `PopupMenu` を使えば自動対応。手動メニューは `useMenuKeyboard` を適用
 - **クリック専用の `<div>`** → `tabindex="0"` + `@keydown.enter` を追加してキーボードから操作可能にする
 - **新機能** → コマンドパレット（`src/commands/definitions.ts`）へのコマンド登録を検討
+
+### AI 設定
+
+NoteDeck にはローカル LLM / OpenAI 互換 API を使った AI 機能がある。
+
+| ファイル | 役割 |
+|---------|------|
+| `src/components/window/AiSettingsContent.vue` | AI 設定ウィンドウ（プロバイダー選択・プロンプト編集） |
+| `src/defaults/AI.md` | デフォルトシステムプロンプト（syuilo/ai ベース） |
+| `src/utils/settingsFs.ts` | Tauri ファイル I/O（`ai.json` 等の読み書き） |
+
+**永続化:**
+- 設定はファイル（`ai.json`）+ localStorage の二層保存
+- **API キーはファイルに含めない**（localStorage のみ保存、セキュリティ対策）
+- ファイルはバックアップ・エクスポート対象
+
+**対応プロバイダー:** Ollama / OpenAI / カスタム OpenAI 互換エンドポイント
 
 ### Build
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import ColumnBadges from '@/components/common/ColumnBadges.vue'
 import { useColumnTabs } from '@/composables/useColumnTabs'
 import type { DeckColumn } from '@/stores/deck'
 
@@ -32,18 +33,13 @@ watch(
   { immediate: true },
 )
 
-const {
-  visibleGroups,
-  groupPrimaryId,
-  columnIcon,
-  columnAccount,
-  columnServerIcon,
-} = useColumnTabs(
-  () => props.columns,
-  () => props.layout,
-  () => props.activeColumnIndex,
-  mobileNavRef,
-)
+const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
+  useColumnTabs(
+    () => props.columns,
+    () => props.layout,
+    () => props.activeColumnIndex,
+    mobileNavRef,
+  )
 </script>
 
 <template>
@@ -65,26 +61,7 @@ const {
       >
         <i :class="'ti ti-' + columnIcon(groupPrimaryId(group))" />
         <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
-        <span v-if="columnServerIcon(groupPrimaryId(group))" :class="$style.serverBadge">
-          <img :src="columnServerIcon(groupPrimaryId(group))!" :class="$style.badgeImg" width="14" height="14" />
-        </span>
-        <span v-else-if="columnAccount(groupPrimaryId(group))" :class="$style.serverBadge">
-          <span :class="$style.badgeInitial">{{
-            columnAccount(groupPrimaryId(group))!.host.charAt(0).toUpperCase()
-          }}</span>
-        </span>
-        <span v-if="columnAccount(groupPrimaryId(group))" :class="$style.accountBadge">
-          <img
-            v-if="columnAccount(groupPrimaryId(group))!.avatarUrl"
-            :src="columnAccount(groupPrimaryId(group))!.avatarUrl!"
-            :class="$style.badgeImg"
-            width="14"
-            height="14"
-          />
-          <span v-else :class="$style.badgeInitial">{{
-            columnAccount(groupPrimaryId(group))!.username.charAt(0).toUpperCase()
-          }}</span>
-        </span>
+        <ColumnBadges :account-id="columnAccountId(groupPrimaryId(group))" :size="14" />
       </button>
     </div>
     <button
@@ -146,6 +123,11 @@ const {
   color: var(--nd-fg);
   opacity: 0.45;
   transition: opacity var(--nd-duration-slow), color var(--nd-duration-slow);
+  --column-badge-border: var(--nd-navBg);
+  --column-badge-server-top: 5px;
+  --column-badge-server-right: calc(50% - 16px);
+  --column-badge-account-bottom: 4px;
+  --column-badge-account-left: calc(50% - 16px);
 
   &:active {
     opacity: 0.7;
@@ -185,45 +167,6 @@ const {
   font-weight: bold;
   line-height: 12px;
   text-align: center;
-}
-
-.serverBadge,
-.accountBadge {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 1.5px solid var(--nd-navBg);
-  background: var(--nd-navBg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.serverBadge {
-  top: 5px;
-  right: calc(50% - 16px);
-}
-
-.accountBadge {
-  bottom: 4px;
-  left: calc(50% - 16px);
-}
-
-.badgeImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-}
-
-.badgeInitial {
-  font-size: 7px;
-  font-weight: bold;
-  line-height: 1;
-  color: var(--nd-fg);
-  opacity: 0.7;
 }
 
 </style>

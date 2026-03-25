@@ -31,6 +31,10 @@ const BASE_TITLES: Record<string, string> = {
   themeEditor: 'テーマ',
   profileEditor: 'プロファイルエディタ',
   ai: 'AI アシスタント',
+  aiSettings: 'AI 設定',
+  chat: 'チャット',
+  about: 'NoteDeck について',
+  navEditor: 'ナビバー',
 }
 
 const windowTitle = computed(() => {
@@ -54,6 +58,10 @@ const icons: Record<string, string> = {
   themeEditor: 'ti ti-palette',
   profileEditor: 'ti ti-layout-columns',
   ai: 'ti ti-sparkles',
+  aiSettings: 'ti ti-robot',
+  chat: 'ti ti-messages',
+  about: 'ti ti-info-circle',
+  navEditor: 'ti ti-layout-sidebar-left-collapse',
 }
 
 const isMinimized = computed(() => props.window.minimized)

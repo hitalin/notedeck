@@ -63,8 +63,8 @@ export interface DeckProfile {
   createdAt: number
   /** Window positions/sizes for multi-window layouts */
   windows?: DeckWindowLayout[]
-  /** Customizable nav bar items (column types to toggle). undefined = defaults */
-  navItems?: ColumnType[]
+  /** Customizable nav bar items (column types or dividers). undefined = defaults */
+  navItems?: NavItem[]
 }
 
 export interface DeckColumn {
@@ -101,12 +101,24 @@ function genColumnId(): string {
   return `col-${Date.now()}-${++columnCounter}`
 }
 
-export const DEFAULT_NAV_ITEMS: ColumnType[] = [
-  'notifications',
-  'chat',
-  'search',
-  'ai',
+export type NavItem =
+  | { type: 'divider' }
+  | { type: ColumnType; accountId: string | null }
+
+export const DEFAULT_NAV_ITEMS: NavItem[] = [
+  { type: 'notifications', accountId: null },
+  { type: 'followRequests', accountId: null },
+  { type: 'mentions', accountId: null },
+  { type: 'specified', accountId: null },
+  { type: 'chat', accountId: null },
+  { type: 'search', accountId: null },
+  { type: 'divider' },
+  { type: 'ai', accountId: null },
 ]
+
+export function isNavDivider(item: NavItem): item is { type: 'divider' } {
+  return item.type === 'divider'
+}
 
 export const useDeckStore = defineStore('deck', () => {
   const profileStore = useDeckProfileStore()
@@ -120,7 +132,7 @@ export const useDeckStore = defineStore('deck', () => {
     () => profileStore.currentProfile?.navItems ?? DEFAULT_NAV_ITEMS,
   )
 
-  function setNavItems(items: ColumnType[]) {
+  function setNavItems(items: NavItem[]) {
     profileStore.mutateProfile((p) => {
       p.navItems = items
     })

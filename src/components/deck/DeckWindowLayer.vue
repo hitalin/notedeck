@@ -47,6 +47,9 @@ const ProfileEditorContent = defineAsyncComponent({
 const AiContent = defineAsyncComponent(
   () => import('@/components/window/AiContent.vue'),
 )
+const AiSettingsContent = defineAsyncComponent(
+  () => import('@/components/window/AiSettingsContent.vue'),
+)
 const ChatContent = defineAsyncComponent(
   () => import('@/components/window/ChatContent.vue'),
 )
@@ -162,6 +165,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         :profile-id="(win.props.profileId as string)"
       />
       <AiContent v-if="win.type === 'ai'" />
+      <AiSettingsContent v-if="win.type === 'aiSettings'" />
       <ChatContent v-if="win.type === 'chat'" />
       <AboutContent v-if="win.type === 'about'" />
       <NavEditorContent v-if="win.type === 'navEditor'" />

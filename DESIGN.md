@@ -23,6 +23,7 @@ appDataDir/
     │   └── *.ndprofile.json5   # デッキプロファイル
     ├── themes/
     │   └── *.ndtheme.json5     # カスタムテーマ（Misskey互換）
+    ├── ai.json                 # AI設定（プロバイダー・プロンプト。APIキーは含まない）
     ├── custom.css              # カスタムCSS
     ├── keybinds.json5          # キーバインド上書き
     └── plugins/
@@ -117,7 +118,7 @@ NoteDeck のデータは大きく2種類に分かれる:
 | 種別 | 内容 | ファイル |
 |------|------|----------|
 | **DB** | アカウント・サーバー情報・キャッシュ | `notecli.db` |
-| **設定** | プロファイル・テーマ・CSS・キーバインド・プラグイン | テキストファイル群 |
+| **設定** | プロファイル・テーマ・CSS・キーバインド・プラグイン・AI設定 | テキストファイル群 |
 
 ### アプリ内バックアップ（設定メニュー）
 
@@ -127,7 +128,7 @@ NoteDeck のデータは大きく2種類に分かれる:
 |------|------|------|------|
 | **DB エクスポート** | `notecli.db` | SQLite | アカウント・サーバー情報の完全バックアップ |
 | **DB インポート** | `notecli.db` | SQLite | SQLiteヘッダ検証付き。インポート後アプリ再起動 |
-| **設定エクスポート** | テキストファイル群 | JSON | `profiles/` `themes/` `plugins/` `custom.css` `keybinds.json5` をキー→値のJSONバンドルとして出力 |
+| **設定エクスポート** | テキストファイル群 | JSON | `profiles/` `themes/` `plugins/` `custom.css` `keybinds.json5` `ai.json` をキー→値のJSONバンドルとして出力 |
 | **設定インポート** | テキストファイル群 | JSON | パストラバーサル防止・ホワイトリスト検証付き。インポート後アプリ再起動 |
 
 **セキュリティ:**
@@ -163,4 +164,4 @@ localStorage → ファイルへの自動マイグレーション:
 3. マイグレーション完了後、localStorage はキャッシュとして維持（削除しない）
 4. 以降はファイルが source of truth
 
-対象: プロファイル（`.ndprofile.json5`）、テーマ（`.ndtheme.json5`）、カスタムCSS（`custom.css`）、キーバインド（`keybinds.json5`）、プラグイン（`.is` + `.meta.json5`）
+対象: プロファイル（`.ndprofile.json5`）、テーマ（`.ndtheme.json5`）、カスタムCSS（`custom.css`）、キーバインド（`keybinds.json5`）、プラグイン（`.is` + `.meta.json5`）、AI設定（`ai.json`）

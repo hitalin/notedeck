@@ -1,7 +1,7 @@
 {
   "name": "notedeck",
   "private": true,
-  "version": "0.7.13",
+  "version": "0.8.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,7 +22,9 @@
     "@codemirror/commands": "^6.10.2",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-markdown": "^6.5.0",
     "@codemirror/language": "^6.12.2",
+    "@codemirror/language-data": "^6.5.2",
     "@codemirror/lint": "^6.9.4",
     "@codemirror/lsp-client": "^6.2.2",
     "@codemirror/state": "^6.5.4",

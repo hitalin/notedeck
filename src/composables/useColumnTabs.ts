@@ -1,7 +1,5 @@
 import { computed, nextTick, type Ref, watch } from 'vue'
-import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
-import { useServersStore } from '@/stores/servers'
 
 export const COLUMN_ICONS: Record<string, string> = {
   timeline: 'home',
@@ -36,6 +34,39 @@ export const COLUMN_ICONS: Record<string, string> = {
   emoji: 'mood-smile',
 }
 
+export const COLUMN_LABELS: Record<string, string> = {
+  timeline: 'タイムライン',
+  notifications: '通知',
+  search: '検索',
+  list: 'リスト',
+  antenna: 'アンテナ',
+  favorites: 'お気に入り',
+  clip: 'クリップ',
+  channel: 'チャンネル',
+  user: 'ユーザー',
+  mentions: 'メンション',
+  specified: 'ダイレクト',
+  chat: 'チャット',
+  widget: 'ウィジェット',
+  aiscript: 'スクラッチパッド',
+  play: 'Misskey Play',
+  page: 'ページ',
+  ai: 'AI',
+  announcements: 'お知らせ',
+  drive: 'ドライブ',
+  explore: 'みつける',
+  gallery: 'ギャラリー',
+  followRequests: 'フォローリクエスト',
+  achievements: '実績',
+  apiConsole: 'APIコンソール',
+  apiDocs: 'APIドキュメント',
+  lookup: 'ルックアップ',
+  serverInfo: 'サーバー情報',
+  ads: '広告',
+  aboutMisskey: 'Misskeyについて',
+  emoji: 'カスタム絵文字',
+}
+
 export const TL_ICONS: Record<string, string> = {
   home: 'home',
   local: 'planet',
@@ -49,9 +80,6 @@ export function useColumnTabs(
   activeColumnIndex: () => number,
   scrollContainerRef: Ref<HTMLElement | null | undefined>,
 ) {
-  const accountsStore = useAccountsStore()
-  const serversStore = useServersStore()
-
   const columnMap = computed(() => {
     const map = new Map<string, DeckColumn>()
     for (const col of columns()) {
@@ -68,8 +96,6 @@ export function useColumnTabs(
     return group.find((id) => columnMap.value.has(id)) ?? group[0] ?? ''
   }
 
-  const hasMultipleAccounts = computed(() => accountsStore.accounts.length > 1)
-
   function columnIcon(colId: string): string {
     const col = columnMap.value.get(colId)
     if (!col) return COLUMN_ICONS.timeline ?? ''
@@ -79,18 +105,9 @@ export function useColumnTabs(
     return COLUMN_ICONS[col.type] ?? COLUMN_ICONS.timeline ?? ''
   }
 
-  function columnAccount(colId: string) {
-    if (!hasMultipleAccounts.value) return null
+  function columnAccountId(colId: string): string | null {
     const col = columnMap.value.get(colId)
-    if (!col?.accountId) return null
-    return accountsStore.accountMap.get(col.accountId) ?? null
-  }
-
-  function columnServerIcon(colId: string): string | null {
-    if (!hasMultipleAccounts.value) return null
-    const acc = columnAccount(colId)
-    if (!acc) return null
-    return serversStore.getServer(acc.host)?.iconUrl ?? null
+    return col?.accountId ?? null
   }
 
   watch(activeColumnIndex, () => {
@@ -113,7 +130,6 @@ export function useColumnTabs(
     visibleGroups,
     groupPrimaryId,
     columnIcon,
-    columnAccount,
-    columnServerIcon,
+    columnAccountId,
   }
 }

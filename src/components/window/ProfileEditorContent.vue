@@ -4,8 +4,13 @@ import JSON5 from 'json5'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
-import { COLUMN_ICONS, TL_ICONS } from '@/composables/useColumnTabs'
+import {
+  COLUMN_ICONS,
+  COLUMN_LABELS,
+  TL_ICONS,
+} from '@/composables/useColumnTabs'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { usePointerReorder } from '@/composables/usePointerReorder'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -13,42 +18,12 @@ import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useServersStore } from '@/stores/servers'
 import { createJson5Linter } from '@/utils/json5Linter'
 
+const AddColumnDialog = defineAsyncComponent(
+  () => import('@/components/deck/AddColumnDialog.vue'),
+)
 const CodeEditor = defineAsyncComponent(
   () => import('@/components/deck/widgets/CodeEditor.vue'),
 )
-
-const COLUMN_TYPE_LABELS: Record<string, string> = {
-  timeline: 'タイムライン',
-  notifications: '通知',
-  search: '検索',
-  list: 'リスト',
-  antenna: 'アンテナ',
-  favorites: 'お気に入り',
-  clip: 'クリップ',
-  user: 'ユーザー',
-  mentions: 'メンション',
-  channel: 'チャンネル',
-  specified: 'ダイレクト',
-  chat: 'チャット',
-  widget: 'ウィジェット',
-  aiscript: 'AiScript',
-  play: 'Play',
-  page: 'ページ',
-  ai: 'AI',
-  announcements: 'お知らせ',
-  drive: 'ドライブ',
-  gallery: 'ギャラリー',
-  explore: '探索',
-  followRequests: 'フォローリクエスト',
-  achievements: '実績',
-  apiConsole: 'APIコンソール',
-  apiDocs: 'APIドキュメント',
-  lookup: '照会',
-  serverInfo: 'サーバー情報',
-  ads: '広告',
-  aboutMisskey: 'Misskeyについて',
-  emoji: '絵文字',
-}
 
 const jsonLang = json()
 const jsonLinter = createJson5Linter()
@@ -68,7 +43,7 @@ const { tab, containerRef: editorRef } = useEditorTabs(
 
 function columnLabel(col: DeckColumn): string {
   if (col.name) return col.name
-  const typeLabel = COLUMN_TYPE_LABELS[col.type] ?? col.type
+  const typeLabel = COLUMN_LABELS[col.type] ?? col.type
   if (col.tl) return `${typeLabel} (${col.tl})`
   return typeLabel
 }
@@ -122,91 +97,41 @@ function groupServerIconUrl(group: string[]): string | null {
   return col ? columnServerIconUrl(col) : null
 }
 
-// --- Drag and drop (reorder layout groups, pointer-based like DeckColumnsArea) ---
+// --- Add column via inline AddColumnDialog ---
+const showAddColumn = ref(false)
 
-const dragFromIndex = ref<number | null>(null)
-const dragOverIndex = ref<number | null>(null)
-
-function startDrag(groupIdx: number, e: PointerEvent) {
-  if (e.button !== 0) return
-  const target = e.target as HTMLElement
-  if (target.closest('button')) return
-
-  e.preventDefault()
-  const sx = e.clientX
-
-  function onMove(ev: PointerEvent) {
-    if (Math.abs(ev.clientX - sx) < 5) return
-    document.removeEventListener('pointermove', onMove)
-    document.removeEventListener('pointerup', onCancel)
-    beginDrag(groupIdx, ev)
-  }
-
-  function onCancel() {
-    document.removeEventListener('pointermove', onMove)
-    document.removeEventListener('pointerup', onCancel)
-  }
-
-  document.addEventListener('pointermove', onMove)
-  document.addEventListener('pointerup', onCancel)
+function onColumnSelected(config: Omit<DeckColumn, 'id'>) {
+  deckStore.addColumn(config)
+  showAddColumn.value = false
 }
 
-function beginDrag(groupIdx: number, _e: PointerEvent) {
-  dragFromIndex.value = groupIdx
-  document.body.style.userSelect = 'none'
-  document.body.style.cursor = 'grabbing'
-  document.addEventListener('pointermove', onDragMove)
-  document.addEventListener('pointerup', onDragEnd)
-}
+// --- Drag and drop (reorder layout groups) ---
 
-function onDragMove(e: PointerEvent) {
-  const el = document.elementFromPoint(e.clientX, e.clientY)
-  if (!el) {
-    dragOverIndex.value = null
-    return
-  }
-  const card = el.closest('[data-group-idx]') as HTMLElement | null
-  if (card) {
-    const idx = Number(card.dataset.groupIdx)
-    dragOverIndex.value = idx !== dragFromIndex.value ? idx : null
-  } else {
-    dragOverIndex.value = null
-  }
-}
+const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
+  axis: 'x',
+  dataAttr: 'group-idx',
+  onReorder(fromIdx, toIdx) {
+    // Convert windowLayout indices to layout indices
+    const wl = deckStore.windowLayout
+    const fromGroup = wl[fromIdx]
+    const toGroup = wl[toIdx]
+    if (!fromGroup || !toGroup) return
 
-function onDragEnd() {
-  document.removeEventListener('pointermove', onDragMove)
-  document.removeEventListener('pointerup', onDragEnd)
-  document.body.style.userSelect = ''
-  document.body.style.cursor = ''
+    const fullLayout = deckStore.layout
+    const fromLayoutIdx = fullLayout.indexOf(fromGroup)
+    const toLayoutIdx = fullLayout.indexOf(toGroup)
+    if (fromLayoutIdx < 0 || toLayoutIdx < 0) return
 
-  const fromIdx = dragFromIndex.value
-  const toIdx = dragOverIndex.value
-  dragFromIndex.value = null
-  dragOverIndex.value = null
-
-  if (fromIdx == null || toIdx == null || fromIdx === toIdx) return
-
-  // Convert windowLayout indices to layout indices
-  const wl = deckStore.windowLayout
-  const fromGroup = wl[fromIdx]
-  const toGroup = wl[toIdx]
-  if (!fromGroup || !toGroup) return
-
-  const fullLayout = deckStore.layout
-  const fromLayoutIdx = fullLayout.indexOf(fromGroup)
-  const toLayoutIdx = fullLayout.indexOf(toGroup)
-  if (fromLayoutIdx < 0 || toLayoutIdx < 0) return
-
-  // Move in full layout
-  const newLayout = fullLayout.map((g) => [...g])
-  const [moved] = newLayout.splice(fromLayoutIdx, 1)
-  if (moved) {
-    newLayout.splice(toLayoutIdx, 0, moved)
-    deckStore.applyLayout(newLayout)
-    deckStore.flushSave()
-  }
-}
+    // Move in full layout
+    const newLayout = fullLayout.map((g) => [...g])
+    const [moved] = newLayout.splice(fromLayoutIdx, 1)
+    if (moved) {
+      newLayout.splice(toLayoutIdx, 0, moved)
+      deckStore.applyLayout(newLayout)
+      deckStore.flushSave()
+    }
+  },
+})
 
 function removeGroup(groupIdx: number) {
   const group = deckStore.windowLayout[groupIdx]
@@ -380,7 +305,24 @@ async function importFromClipboard() {
           <div v-if="deckStore.windowLayout.length === 0" :class="$style.emptyMessage">
             カラムがありません
           </div>
+
+          <!-- Add column button -->
+          <div
+            :class="[$style.columnTab, $style.addColumnTab]"
+            title="カラムを追加"
+            @click="showAddColumn = !showAddColumn"
+          >
+            <i class="ti ti-plus" />
+          </div>
         </div>
+
+        <!-- Inline AddColumnDialog -->
+        <AddColumnDialog
+          v-if="showAddColumn"
+          mode="pip"
+          @column-selected="onColumnSelected"
+          @close="showAddColumn = false"
+        />
       </div>
     </div>
 
@@ -550,6 +492,18 @@ async function importFromClipboard() {
   &.dragOver {
     outline: 2px solid var(--nd-accent);
     outline-offset: 1px;
+  }
+
+  &.addColumnTab {
+    cursor: pointer;
+    opacity: 0.3;
+    border: 1px dashed var(--nd-divider);
+
+    &:hover {
+      opacity: 0.8;
+      border-color: var(--nd-accent);
+      color: var(--nd-accent);
+    }
   }
 }
 

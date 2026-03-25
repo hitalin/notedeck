@@ -1,271 +1,534 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import type { ColumnType } from '@/stores/deck'
-import { DEFAULT_NAV_ITEMS, useDeckStore } from '@/stores/deck'
+import JSON5 from 'json5'
+import { defineAsyncComponent, ref, watch } from 'vue'
+import ColumnBadges from '@/components/common/ColumnBadges.vue'
+import EditorTabs from '@/components/common/EditorTabs.vue'
+import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
+import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
+import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
+import { useEditorTabs } from '@/composables/useEditorTabs'
+import { usePointerReorder } from '@/composables/usePointerReorder'
+import type { DeckColumn } from '@/stores/deck'
+import {
+  DEFAULT_NAV_ITEMS,
+  isNavDivider,
+  type NavItem,
+  useDeckStore,
+} from '@/stores/deck'
+
+const AddColumnDialog = defineAsyncComponent(
+  () => import('@/components/deck/AddColumnDialog.vue'),
+)
+const CodeEditor = defineAsyncComponent(
+  () => import('@/components/deck/widgets/CodeEditor.vue'),
+)
 
 const deckStore = useDeckStore()
 
-interface NavItemDef {
-  type: ColumnType
-  icon: string
-  label: string
+// ── Tab management ──
+const { tab, containerRef: contentRef } = useEditorTabs(
+  ['visual', 'code'] as const,
+  'visual',
+)
+
+function getItemIcon(item: NavItem): string {
+  if (isNavDivider(item)) return 'ti-separator'
+  return `ti-${COLUMN_ICONS[item.type] ?? 'layout-grid'}`
 }
 
-const ALL_NAV_OPTIONS: NavItemDef[] = [
-  { type: 'notifications', icon: 'ti-bell', label: '通知' },
-  { type: 'chat', icon: 'ti-messages', label: 'チャット' },
-  { type: 'search', icon: 'ti-search', label: '検索' },
-  { type: 'ai', icon: 'ti-sparkles', label: 'AI' },
-  { type: 'timeline', icon: 'ti-home', label: 'タイムライン' },
-  { type: 'mentions', icon: 'ti-at', label: 'メンション' },
-  { type: 'favorites', icon: 'ti-star', label: 'お気に入り' },
-  { type: 'drive', icon: 'ti-cloud', label: 'ドライブ' },
-  { type: 'explore', icon: 'ti-compass', label: 'みつける' },
-  { type: 'announcements', icon: 'ti-speakerphone', label: 'お知らせ' },
-  { type: 'gallery', icon: 'ti-photo', label: 'ギャラリー' },
-  { type: 'followRequests', icon: 'ti-user-plus', label: 'フォローリクエスト' },
-]
+function getItemLabel(item: NavItem): string {
+  if (isNavDivider(item)) return '区切り線'
+  return COLUMN_LABELS[item.type] ?? item.type
+}
 
-const NAV_ITEM_MAP = new Map(ALL_NAV_OPTIONS.map((o) => [o.type, o]))
-
-const items = ref<ColumnType[]>([...deckStore.navItems])
+// ── Visual tab state ──
+const items = ref<NavItem[]>(structuredClone(deckStore.navItems))
 
 watch(items, (v) => deckStore.setNavItems(v), { deep: true })
-
-const draggingIndex = ref<number | null>(null)
-
-function onDragStart(index: number, e: DragEvent) {
-  draggingIndex.value = index
-  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
-}
-
-function onDragOver(index: number, e: DragEvent) {
-  e.preventDefault()
-  if (draggingIndex.value === null || draggingIndex.value === index) return
-  const moved = items.value.splice(draggingIndex.value, 1)[0]
-  if (!moved) return
-  items.value.splice(index, 0, moved)
-  draggingIndex.value = index
-}
-
-function onDragEnd() {
-  draggingIndex.value = null
-}
 
 function removeItem(index: number) {
   items.value.splice(index, 1)
 }
 
-function addItem(type: ColumnType) {
-  if (!items.value.includes(type)) {
-    items.value.push(type)
+function addDivider() {
+  items.value.push({ type: 'divider' })
+}
+
+// ── Pointer-based drag & drop ──
+const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
+  axis: 'y',
+  dataAttr: 'nav-idx',
+  onReorder(fromIdx, toIdx) {
+    const arr = [...items.value]
+    const [moved] = arr.splice(fromIdx, 1)
+    if (moved) {
+      arr.splice(toIdx, 0, moved)
+      items.value = arr
+    }
+  },
+})
+
+// ── Add via AddColumnDialog ──
+const showAddColumn = ref(false)
+
+function onColumnSelected(config: Omit<DeckColumn, 'id'>) {
+  items.value.push({
+    type: config.type,
+    accountId: config.accountId,
+  })
+  showAddColumn.value = false
+}
+
+// ── Code tab ──
+function itemsToJson(): string {
+  return JSON5.stringify(items.value, null, 2)
+}
+
+const jsonCode = ref(itemsToJson())
+const codeError = ref<string | null>(null)
+
+watch(tab, (t) => {
+  if (t === 'code') {
+    jsonCode.value = itemsToJson()
+    codeError.value = null
+  }
+})
+
+watch(items, () => {
+  if (tab.value === 'code') {
+    const storeJson = itemsToJson()
+    if (storeJson !== jsonCode.value) {
+      jsonCode.value = storeJson
+    }
+  }
+})
+
+function applyFromCode() {
+  const code = jsonCode.value
+  try {
+    const parsed = JSON5.parse(code)
+    if (!Array.isArray(parsed)) {
+      codeError.value = '配列が必要です'
+      return
+    }
+    items.value = parsed as NavItem[]
+    codeError.value = null
+  } catch (e) {
+    codeError.value = e instanceof Error ? e.message : '無効な JSON5'
   }
 }
 
-function resetToDefault() {
-  items.value = [...DEFAULT_NAV_ITEMS]
+// ── Actions ──
+const { copiedMessage, showCopied } = useClipboardFeedback()
+const { confirming: confirmingReset, trigger: handleReset } = useDoubleConfirm(
+  () => {
+    items.value = structuredClone(DEFAULT_NAV_ITEMS)
+  },
+)
+
+async function exportNav() {
+  try {
+    await navigator.clipboard.writeText(itemsToJson())
+    showCopied()
+  } catch {
+    /* clipboard access denied */
+  }
 }
 
-function getItemDef(type: ColumnType): NavItemDef {
-  return NAV_ITEM_MAP.get(type) ?? { type, icon: 'ti-layout-grid', label: type }
-}
-
-const availableItems = ref<NavItemDef[]>([])
-const showAddMenu = ref(false)
-
-function toggleAddMenu() {
-  availableItems.value = ALL_NAV_OPTIONS.filter(
-    (o) => !items.value.includes(o.type),
-  )
-  showAddMenu.value = !showAddMenu.value
+async function importNav() {
+  try {
+    const text = await navigator.clipboard.readText()
+    const parsed = JSON5.parse(text)
+    if (!Array.isArray(parsed)) return
+    items.value = parsed as NavItem[]
+  } catch {
+    /* clipboard access denied or invalid */
+  }
 }
 </script>
 
 <template>
-  <div :class="$style.root">
-    <div :class="$style.header">ナビバーの項目</div>
+  <div ref="contentRef" :class="$style.editor">
+    <EditorTabs
+      v-model="tab"
+      :tabs="[
+        { value: 'visual', icon: 'adjustments', label: 'ビジュアル' },
+        { value: 'code', icon: 'code', label: 'コード' },
+      ]"
+    />
 
-    <div :class="$style.list">
-      <div
-        v-for="(type, i) in items"
-        :key="type"
-        :class="[$style.item, draggingIndex === i && $style.dragging]"
-        draggable="true"
-        @dragstart="onDragStart(i, $event)"
-        @dragover="onDragOver(i, $event)"
-        @dragend="onDragEnd"
-      >
-        <i class="ti ti-grip-vertical" :class="$style.grip" />
-        <i :class="['ti', getItemDef(type).icon, $style.icon]" />
-        <span :class="$style.label">{{ getItemDef(type).label }}</span>
-        <button class="_button" :class="$style.removeBtn" @click="removeItem(i)">
-          <i class="ti ti-x" />
-        </button>
-      </div>
-      <div v-if="items.length === 0" :class="$style.empty">項目がありません</div>
-    </div>
+    <!-- Visual tab -->
+    <div v-show="tab === 'visual'" :class="$style.visualPanel">
+      <div :class="$style.columns">
+        <!-- Left: nav preview (vertical, drag & drop) -->
+        <div :class="$style.previewPane">
 
-    <div :class="$style.actions">
-      <div :class="$style.addWrap">
-        <button class="_button" :class="$style.addBtn" @click="toggleAddMenu">
-          <i class="ti ti-plus" />
-          <span>項目を追加</span>
-        </button>
-        <div v-if="showAddMenu" :class="$style.addMenu">
-          <button
-            v-for="opt in availableItems"
-            :key="opt.type"
-            class="_button"
-            :class="$style.addMenuItem"
-            @click="addItem(opt.type); showAddMenu = false"
-          >
-            <i :class="['ti', opt.icon]" />
-            <span>{{ opt.label }}</span>
-          </button>
-          <div v-if="availableItems.length === 0" :class="$style.empty">
-            すべての項目が追加済みです
+          <div :class="$style.navPreview">
+            <template v-for="(item, i) in items" :key="i">
+              <div v-if="isNavDivider(item)"
+                :data-nav-idx="i"
+                :class="[$style.navDividerTab, { [$style.dragging]: dragFromIndex === i, [$style.dragOver]: dragOverIndex === i }]"
+                :title="'区切り線'"
+                @pointerdown="startDrag(i, $event)"
+              >
+                <div :class="$style.navDividerLine" />
+                <button class="_button" :class="$style.tabRemoveBtn" @click.stop="removeItem(i)">
+                  <i class="ti ti-x" />
+                </button>
+              </div>
+              <div v-else
+                :data-nav-idx="i"
+                :class="[$style.navTab, { [$style.dragging]: dragFromIndex === i, [$style.dragOver]: dragOverIndex === i }]"
+                :title="getItemLabel(item)"
+                @pointerdown="startDrag(i, $event)"
+              >
+                <i :class="['ti', getItemIcon(item)]" />
+                <ColumnBadges :account-id="item.accountId" :size="10" />
+                <button class="_button" :class="$style.tabRemoveBtn" @click.stop="removeItem(i)">
+                  <i class="ti ti-x" />
+                </button>
+              </div>
+            </template>
+            <div v-if="items.length === 0" :class="$style.empty">項目なし</div>
+
+            <!-- Add buttons -->
+            <div :class="$style.navTab" :title="'カラムを追加'" @click="showAddColumn = true">
+              <i class="ti ti-plus" />
+            </div>
+            <div :class="$style.navDividerTab" :title="'区切り線を追加'" @click="addDivider">
+              <i class="ti ti-separator" :style="{ fontSize: '0.8em', opacity: 0.5 }" />
+            </div>
           </div>
         </div>
+
+        <!-- Right: AddColumnDialog (pip) -->
+        <div v-if="showAddColumn" :class="$style.addPane">
+          <AddColumnDialog
+            mode="pip"
+            @column-selected="onColumnSelected"
+            @close="showAddColumn = false"
+          />
+        </div>
+        <div v-else :class="$style.addPanePlaceholder">
+          <i class="ti ti-arrow-left" />
+          <span>＋ ボタンでカラムを追加</span>
+        </div>
       </div>
-      <button class="_button" :class="$style.resetBtn" @click="resetToDefault">
-        デフォルトに戻す
+    </div>
+
+    <!-- Code tab -->
+    <div v-show="tab === 'code'" :class="$style.codePanel">
+      <div :class="$style.codeHint">
+        ナビバー項目の JSON5 配列（コピーしてバックアップ可能）
+      </div>
+      <CodeEditor
+        v-model="jsonCode"
+        :class="[$style.codeEditorWrap, { [$style.hasError]: codeError }]"
+      />
+      <div v-if="codeError" :class="$style.errorMessage">
+        <i class="ti ti-alert-triangle" />
+        {{ codeError }}
+      </div>
+      <div v-if="!codeError && jsonCode.trim() && jsonCode.trim() !== '[]'" :class="$style.codeSuccess">
+        <i class="ti ti-check" />
+        適用中
+      </div>
+      <button class="_button" :class="$style.codeApplyBtn" @click="applyFromCode">
+        <i class="ti ti-refresh" />
+        ビジュアルに同期
+      </button>
+    </div>
+
+    <!-- Actions (footer) -->
+    <div :class="$style.actions">
+      <div :class="$style.actionGroup">
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary]"
+          @click="importNav"
+        >
+          <i class="ti ti-clipboard-text" />
+          インポート
+        </button>
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: copiedMessage }]"
+          @click="exportNav"
+        >
+          <i class="ti ti-clipboard-copy" />
+          {{ copiedMessage ? 'コピー済み' : 'エクスポート' }}
+        </button>
+      </div>
+      <button
+        class="_button"
+        :class="[$style.actionBtn, $style.danger, { [$style.confirming]: confirmingReset }]"
+        @click="handleReset"
+      >
+        <i class="ti ti-trash" />
+        {{ confirmingReset ? '本当にリセット？' : 'デフォルトに戻す' }}
       </button>
     </div>
   </div>
 </template>
 
 <style lang="scss" module>
-.root {
-  padding: 16px;
+@use '@/styles/buttons' as *;
+
+.editor {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 200px;
+  flex: 1;
+  min-height: 0;
 }
 
-.header {
-  font-weight: bold;
-  font-size: 0.95em;
-}
+// ── Visual tab ──
 
-.list {
+.visualPanel {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  flex: 1;
+  min-height: 0;
 }
 
-.item {
+.columns {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+// ── Left: nav preview ──
+
+.previewPane {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  border-right: 1px solid var(--nd-divider);
+  width: 56px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.navPreview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  background: var(--nd-panel);
+  border-radius: var(--nd-radius-sm);
+}
+
+// Mirrors collapsed navbar icon style (44×44, circle)
+.navTab {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: var(--nd-radius);
-  background: var(--nd-panelHighlight);
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: 2px auto;
+  font-size: 1rem;
+  color: var(--nd-navFg, var(--nd-fg));
+  opacity: 0.7;
+  border-radius: 50%;
   cursor: grab;
-  transition: opacity 0.15s;
+  user-select: none;
+  transition:
+    opacity var(--nd-duration-base),
+    background var(--nd-duration-base);
+
+  :global(.ti) {
+    font-size: 1.5em;
+  }
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
 
   &.dragging {
-    opacity: 0.4;
+    opacity: 0.3;
+    cursor: grabbing;
+  }
+
+  &.dragOver {
+    outline: 2px solid var(--nd-accent);
+    outline-offset: 1px;
   }
 }
 
-.grip {
-  color: var(--nd-fgTransparent);
+.navDividerTab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 12px;
+  margin: 2px auto;
+  border-radius: 50%;
   cursor: grab;
-}
-
-.icon {
-  font-size: 1.2em;
-  opacity: 0.8;
-}
-
-.label {
-  flex: 1;
-  font-size: 0.9em;
-}
-
-.removeBtn {
-  padding: 4px;
-  border-radius: var(--nd-radius);
-  color: var(--nd-fgTransparent);
-  transition: color 0.15s, background 0.15s;
+  user-select: none;
 
   &:hover {
-    color: var(--nd-error);
-    background: color-mix(in srgb, var(--nd-error) 10%, transparent);
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &.dragging {
+    opacity: 0.3;
+    cursor: grabbing;
+  }
+
+  &.dragOver {
+    outline: 2px solid var(--nd-accent);
+    outline-offset: 1px;
+  }
+}
+
+.navDividerLine {
+  width: 24px;
+  height: 1px;
+  background: var(--nd-divider);
+}
+
+.tabRemoveBtn {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--nd-panel);
+  font-size: 8px;
+  color: var(--nd-fg);
+  opacity: 0;
+  transition: opacity var(--nd-duration-fast);
+
+  .navTab:hover &,
+  .navDividerTab:hover & {
+    opacity: 1;
+  }
+
+  &:hover {
+    color: var(--nd-love, #ec4137);
   }
 }
 
 .empty {
-  padding: 12px;
+  padding: 8px;
   text-align: center;
-  color: var(--nd-fgTransparent);
+  color: var(--nd-fg);
+  opacity: 0.4;
+  font-size: 0.75em;
+}
+
+// ── Right: AddColumnDialog ──
+
+.addPane {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.addPanePlaceholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--nd-fg);
+  opacity: 0.25;
   font-size: 0.85em;
 }
 
-.actions {
+// ── Code tab ──
+
+.codePanel {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.addWrap {
-  position: relative;
-}
-
-.addBtn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  width: 100%;
-  border-radius: var(--nd-radius);
-  color: var(--nd-accent);
-  font-size: 0.9em;
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.addMenu {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  max-height: 200px;
+  padding: 10px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  background: var(--nd-panel);
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius);
-  box-shadow: 0 -4px 16px rgb(0 0 0 / 0.15);
-  z-index: 10;
-  margin-bottom: 4px;
 }
 
-.addMenuItem {
+.codeHint {
+  font-size: 0.75em;
+  opacity: 0.5;
+}
+
+.codeEditorWrap {
+  flex: 1;
+  min-height: 120px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  overflow: hidden;
+
+  &.hasError {
+    border-color: var(--nd-love, #ec4137);
+  }
+}
+
+.errorMessage {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  width: 100%;
-  font-size: 0.9em;
+  gap: 4px;
+  font-size: 0.75em;
+  color: var(--nd-love, #ec4137);
+}
 
-  &:hover {
-    background: var(--nd-buttonHoverBg);
+.codeSuccess {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75em;
+  color: var(--nd-accent);
+  opacity: 0.7;
+}
+
+.codeApplyBtn {
+  @include btn-secondary;
+}
+
+// ── Actions (footer) ──
+
+.actions {
+  @include action-bar;
+}
+
+.actionGroup {
+  @include action-group;
+}
+
+.actionBtn {
+  &.secondary {
+    @include btn-action;
+  }
+
+  &.danger {
+    @include btn-danger-ghost;
   }
 }
 
-.resetBtn {
-  padding: 6px 12px;
-  border-radius: var(--nd-radius);
-  color: var(--nd-fgTransparent);
-  font-size: 0.85em;
-  text-align: center;
+.secondary {
+  /* modifier */
+}
 
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-    color: var(--nd-fg);
-  }
+.feedback {
+  /* modifier */
+}
+
+.danger {
+  /* modifier */
+}
+
+.confirming {
+  /* modifier */
 }
 </style>
