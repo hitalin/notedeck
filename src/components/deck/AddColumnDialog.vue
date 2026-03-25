@@ -568,7 +568,7 @@ function close() {
             <i class="ti ti-book" />
             <span>APIドキュメント</span>
           </button>
-          <button v-if="!isCompact" class="_button" :class="$style.addTypeBtn" @click="selectColumnType('ai')">
+          <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('ai')">
             <i class="ti ti-sparkles" />
             <span>AIチャット</span>
           </button>
