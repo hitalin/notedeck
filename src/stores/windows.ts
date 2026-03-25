@@ -55,7 +55,7 @@ export const WINDOW_SIZES: Record<
   // About
   about: { width: 380, maxHeight: 480 },
   // Nav editor
-  navEditor: { width: 400, maxHeight: 600 },
+  navEditor: { width: 400, maxHeight: 650 },
 }
 
 export const useWindowsStore = defineStore('windows', () => {
