@@ -1,4 +1,5 @@
 import { type Ref, watch } from 'vue'
+import { SWIPE_CLASSES } from '@/composables/useSwipeTab'
 
 const SLIDE_CLASSES = ['nd-tab-slide-left', 'nd-tab-slide-right'] as const
 
@@ -36,7 +37,7 @@ export function useTabSlide(
       const cls = forward ? 'nd-tab-slide-left' : 'nd-tab-slide-right'
 
       // Clear any swipe state that might conflict (snap-back in progress, etc.)
-      el.classList.remove('nd-tab-swiping', 'nd-tab-snap-back')
+      el.classList.remove(SWIPE_CLASSES.swiping, SWIPE_CLASSES.snapBack)
       el.style.removeProperty('--nd-swipe')
 
       // Start the enter animation on new content
