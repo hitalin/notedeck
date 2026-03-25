@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const visible = ref(false)
+import { useVaporTransition } from '@/composables/useVaporTransition'
+
+const show = ref(false)
 const title = ref('')
 const text = ref('')
 const dialogType = ref<'info' | 'success' | 'warning' | 'error'>('info')
 const mode = ref<'dialog' | 'confirm'>('dialog')
+
+const { visible, entering, leaving } = useVaporTransition(show, {
+  enterDuration: 300,
+  leaveDuration: 300,
+})
 
 let resolvePromise: ((value: boolean) => void) | null = null
 
@@ -18,7 +25,7 @@ function showDialog(
   text.value = tx
   dialogType.value = type
   mode.value = 'dialog'
-  visible.value = true
+  show.value = true
   return new Promise((resolve) => {
     resolvePromise = () => resolve()
   })
@@ -29,14 +36,14 @@ function showConfirm(t: string, tx: string): Promise<boolean> {
   text.value = tx
   dialogType.value = 'info'
   mode.value = 'confirm'
-  visible.value = true
+  show.value = true
   return new Promise((resolve) => {
     resolvePromise = resolve
   })
 }
 
 function close(result: boolean) {
-  visible.value = false
+  show.value = false
   resolvePromise?.(result)
   resolvePromise = null
 }
@@ -46,25 +53,31 @@ defineExpose({ showDialog, showConfirm })
 
 <template>
   <Teleport to="body">
-    <Transition name="nd-popup">
-      <div v-if="visible" class="_dialogBackdrop" :class="$style.aisBackdrop" @click.self="close(false)">
-        <div :class="[$style.aisDialog, $style[dialogType]]" class="nd-popup-content">
-          <div v-if="title" :class="$style.aisDialogTitle">{{ title }}</div>
-          <div v-if="text" :class="$style.aisDialogText">{{ text }}</div>
-          <div :class="$style.aisDialogActions">
-            <template v-if="mode === 'confirm'">
-              <button :class="[$style.aisDialogBtn, $style.cancel]" @click="close(false)">
-                キャンセル
-              </button>
-              <button :class="[$style.aisDialogBtn, $style.ok]" @click="close(true)">OK</button>
-            </template>
-            <template v-else>
-              <button :class="[$style.aisDialogBtn, $style.ok]" @click="close(true)">OK</button>
-            </template>
-          </div>
+    <div
+      v-if="visible"
+      class="_dialogBackdrop"
+      :class="[$style.aisBackdrop, entering && $style.enter, leaving && $style.leave]"
+      @click.self="close(false)"
+    >
+      <div
+        :class="[$style.aisDialog, $style[dialogType], entering && $style.contentEnter, leaving && $style.contentLeave]"
+        class="nd-popup-content"
+      >
+        <div v-if="title" :class="$style.aisDialogTitle">{{ title }}</div>
+        <div v-if="text" :class="$style.aisDialogText">{{ text }}</div>
+        <div :class="$style.aisDialogActions">
+          <template v-if="mode === 'confirm'">
+            <button :class="[$style.aisDialogBtn, $style.cancel]" @click="close(false)">
+              キャンセル
+            </button>
+            <button :class="[$style.aisDialogBtn, $style.ok]" @click="close(true)">OK</button>
+          </template>
+          <template v-else>
+            <button :class="[$style.aisDialogBtn, $style.ok]" @click="close(true)">OK</button>
+          </template>
         </div>
       </div>
-    </Transition>
+    </div>
   </Teleport>
 </template>
 
@@ -144,5 +157,32 @@ defineExpose({ showDialog, showConfirm })
 .success {}
 .warning {}
 .error {}
+
+// Vapor transition classes
+.enter {
+  animation: backdropIn 0.15s ease;
+}
+.leave {
+  animation: backdropOut 0.15s ease forwards;
+}
+@keyframes backdropIn {
+  from { opacity: 0; }
+}
+@keyframes backdropOut {
+  to { opacity: 0; }
+}
+
+.contentEnter {
+  animation: popupIn 0.3s var(--nd-ease-pop);
+}
+.contentLeave {
+  animation: popupOut 0.15s ease forwards;
+}
+@keyframes popupIn {
+  from { opacity: 0; transform: scale(0.95); }
+}
+@keyframes popupOut {
+  to { opacity: 0; transform: scale(0.95); }
+}
 </style>
 

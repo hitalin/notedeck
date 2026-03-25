@@ -7,6 +7,7 @@ import RegexGuide from '@/components/common/RegexGuide.vue'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNoteActions } from '@/composables/useNoteActions'
 import { useSearchFilters } from '@/composables/useSearchFilters'
+import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -55,6 +56,8 @@ const regexError = ref<string | null>(null)
 
 const regexGuidePos = ref({ top: 0, right: 0 })
 const regexGuideBtnRef = ref<HTMLElement | null>(null)
+const { visible: regexGuideVisible, leaving: regexGuideLeaving } =
+  useVaporTransition(showRegexGuide, { enterDuration: 200, leaveDuration: 200 })
 
 // Date filter & sort
 const {
@@ -489,16 +492,14 @@ setTimeout(() => searchInput.value?.focus(), 100)
     </div>
 
     <Teleport to="body">
-      <Transition name="nd-regex-guide">
-        <div
-          v-if="showRegexGuide"
-          class="nd-regex-guide-popup"
-          :style="{ top: regexGuidePos.top + 'px', right: regexGuidePos.right + 'px' }"
-          @click.stop
-        >
-          <RegexGuide @select="onFilterApply" />
-        </div>
-      </Transition>
+      <div
+        v-if="regexGuideVisible"
+        :class="[$style.regexGuidePopup, regexGuideLeaving ? $style.regexGuideLeave : $style.regexGuideEnter]"
+        :style="{ top: regexGuidePos.top + 'px', right: regexGuidePos.right + 'px' }"
+        @click.stop
+      >
+        <RegexGuide @select="onFilterApply" />
+      </div>
     </Teleport>
 
     <!-- Per-account progress bar -->
@@ -898,23 +899,32 @@ setTimeout(() => searchInput.value?.focus(), 100)
 .regexInvalid {}
 .active {}
 .done {}
-</style>
 
-<style>
-/* Teleported regex guide popup — unscoped */
-.nd-regex-guide-popup {
+.regexGuidePopup {
   position: fixed;
   z-index: calc(var(--nd-z-popup) + 1);
 }
 
-.nd-regex-guide-enter-active,
-.nd-regex-guide-leave-active {
-  transition: opacity var(--nd-duration-slow) cubic-bezier(0, 0, 0.2, 1), transform var(--nd-duration-slow) cubic-bezier(0, 0, 0.2, 1);
+.regexGuideEnter {
+  animation: regexGuideIn 0.2s cubic-bezier(0, 0, 0.2, 1);
 }
 
-.nd-regex-guide-enter-from,
-.nd-regex-guide-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-4px);
+.regexGuideLeave {
+  animation: regexGuideOut 0.2s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+@keyframes regexGuideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+}
+
+@keyframes regexGuideOut {
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
 }
 </style>
+

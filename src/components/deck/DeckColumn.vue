@@ -5,6 +5,7 @@ import {
   popOutColumnToWindow,
   requestMoveColumn,
 } from '@/composables/useDeckWindow'
+import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useConfirm } from '@/stores/confirm'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -39,6 +40,10 @@ const canRecall = computed(() => isDesktop && !!deckStore.currentWindowId)
 const hasWallpaper = computed(() => deckStore.wallpaper != null)
 
 const showMenu = ref(false)
+const { visible: menuVisible, leaving: menuLeaving } = useVaporTransition(
+  showMenu,
+  { enterDuration: 180, leaveDuration: 180 },
+)
 const menuBtnEl = ref<HTMLElement | null>(null)
 const menuEl = ref<HTMLElement | null>(null)
 
@@ -182,8 +187,7 @@ function openAsPip() {
       </button>
 
       <!-- Column action menu -->
-      <Transition name="col-menu">
-        <div v-if="showMenu" ref="menuEl" :class="$style.columnMenu" class="_popupMenu" @pointerdown.stop>
+        <div v-if="menuVisible" ref="menuEl" :class="[$style.columnMenu, menuLeaving ? $style.menuLeave : $style.menuEnter]" class="_popupMenu" @pointerdown.stop>
           <!-- PiP menu -->
           <template v-if="isPipMode">
             <button :class="$style.columnMenuItem" class="_button" @click="returnToDeck">
@@ -225,7 +229,6 @@ function openAsPip() {
             </button>
           </template>
         </div>
-      </Transition>
     </header>
 
     <div :class="$style.columnSubHeader">
@@ -412,18 +415,17 @@ function openAsPip() {
   }
 }
 
-</style>
-
-<style lang="scss">
-/* Transition classes (unscoped, name-based) */
-.col-menu-enter-active,
-.col-menu-leave-active {
-  transition: opacity var(--nd-duration-base) ease, transform var(--nd-duration-base) ease;
+.menuEnter {
+  animation: colMenuIn var(--nd-duration-base) ease;
+}
+.menuLeave {
+  animation: colMenuOut var(--nd-duration-base) ease forwards;
 }
 
-.col-menu-enter-from,
-.col-menu-leave-to {
-  opacity: 0;
-  transform: translateY(-4px) scale(0.97);
+@keyframes colMenuIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+}
+@keyframes colMenuOut {
+  to { opacity: 0; transform: translateY(-4px) scale(0.97); }
 }
 </style>

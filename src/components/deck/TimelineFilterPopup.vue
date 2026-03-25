@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onUnmounted, watch } from 'vue'
+import { onUnmounted, toRef, watch } from 'vue'
 import type { TimelineFilter } from '@/adapters/types'
+import { useVaporTransition } from '@/composables/useVaporTransition'
 
 const props = defineProps<{
   show: boolean
@@ -9,6 +10,11 @@ const props = defineProps<{
   position: { top: number; left: number }
   themeVars?: Record<string, string>
 }>()
+
+const { visible, leaving } = useVaporTransition(toRef(props, 'show'), {
+  enterDuration: 200,
+  leaveDuration: 200,
+})
 
 const emit = defineEmits<{
   close: []
@@ -51,32 +57,31 @@ onUnmounted(() => {
 
 <template>
   <Teleport to="body">
-    <Transition name="nd-filter-popup">
+    <div
+      v-if="visible"
+      :class="[leaving ? $style.filterPopupLeave : $style.filterPopupEnter]"
+      class="nd-filter-popup _popup"
+      :style="{ ...themeVars, top: position.top + 'px', left: position.left + 'px' }"
+      @click.stop
+    >
+      <div class="nd-filter-popup-header">フィルター</div>
       <div
-        v-if="show"
-        class="nd-filter-popup _popup"
-        :style="{ ...themeVars, top: position.top + 'px', left: position.left + 'px' }"
-        @click.stop
+        v-for="key in filterKeys"
+        :key="key"
+        class="nd-filter-item"
+        @click="emit('toggle', key)"
       >
-        <div class="nd-filter-popup-header">フィルター</div>
-        <div
-          v-for="key in filterKeys"
-          :key="key"
-          class="nd-filter-item"
-          @click="emit('toggle', key)"
+        <span class="nd-filter-label">{{ FILTER_LABELS[key] }}</span>
+        <button
+          class="nd-toggle-switch"
+          :class="{ on: key === 'withFiles' ? isFilterActive(key) : !isFilterActive(key) }"
+          :aria-checked="key === 'withFiles' ? isFilterActive(key) : !isFilterActive(key)"
+          role="switch"
         >
-          <span class="nd-filter-label">{{ FILTER_LABELS[key] }}</span>
-          <button
-            class="nd-toggle-switch"
-            :class="{ on: key === 'withFiles' ? isFilterActive(key) : !isFilterActive(key) }"
-            :aria-checked="key === 'withFiles' ? isFilterActive(key) : !isFilterActive(key)"
-            role="switch"
-          >
-            <span class="nd-toggle-switch-knob" />
-          </button>
-        </div>
+          <span class="nd-toggle-switch-knob" />
+        </button>
       </div>
-    </Transition>
+    </div>
   </Teleport>
 </template>
 
@@ -117,14 +122,11 @@ onUnmounted(() => {
   font-size: 0.9em;
 }
 
-.nd-filter-popup-enter-active,
-.nd-filter-popup-leave-active {
-  transition: opacity var(--nd-duration-slow) cubic-bezier(0, 0, 0.2, 1), transform var(--nd-duration-slow) cubic-bezier(0, 0, 0.2, 1);
-}
+</style>
 
-.nd-filter-popup-enter-from,
-.nd-filter-popup-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-4px);
-}
+<style lang="scss" module>
+.filterPopupEnter { animation: filterPopupIn 0.2s cubic-bezier(0, 0, 0.2, 1); }
+.filterPopupLeave { animation: filterPopupOut 0.2s cubic-bezier(0, 0, 0.2, 1) forwards; }
+@keyframes filterPopupIn { from { opacity: 0; transform: scale(0.95) translateY(-4px); } }
+@keyframes filterPopupOut { to { opacity: 0; transform: scale(0.95) translateY(-4px); } }
 </style>

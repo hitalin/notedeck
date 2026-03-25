@@ -11,6 +11,10 @@ import { useAccountMode } from '@/composables/useAccountMode'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
+import {
+  useVaporTransition,
+  useVaporTransitionGroup,
+} from '@/composables/useVaporTransition'
 import { useAccountsStore } from '@/stores/accounts'
 import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
@@ -106,6 +110,9 @@ const instanceTickerStyle = computed(() => {
 })
 
 const renoteMenuPos = ref<{ x: number; y: number } | null>(null)
+const renoteMenuShow = computed(() => renoteMenuPos.value !== null)
+const { visible: renoteMenuVisible, leaving: renoteMenuLeaving } =
+  useVaporTransition(renoteMenuShow, { enterDuration: 300, leaveDuration: 300 })
 const renoteMenuTheme = ref<Record<string, string>>({})
 const myRenoteId = ref<string | null>(null)
 const isRenoted = ref(false)
@@ -277,6 +284,18 @@ const reactionsData = computed(() => {
 
 const sortedReactions = computed(() => reactionsData.value.sorted)
 const reactionUrls = computed(() => reactionsData.value.urls)
+
+const reactionsWithId = computed(() =>
+  sortedReactions.value.map((r) => ({ ...r, id: r.reaction })),
+)
+const {
+  rendered: renderedReactions,
+  enteringIds: reactionEnteringIds,
+  leavingIds: reactionLeavingIds,
+} = useVaporTransitionGroup(reactionsWithId, {
+  enterDuration: 200,
+  leaveDuration: 200,
+})
 
 async function handleMentionClick(username: string, host: string | null) {
   try {
@@ -548,17 +567,20 @@ function closeMentionPopup() {
 
         <!-- Reactions -->
         <div v-if="sortedReactions.length > 0 && !embedded" ref="reactionsAreaRef" :class="$style.reactionsArea">
-          <TransitionGroup
+          <div
             v-if="reactionsVisible"
-            tag="div"
-            name="reaction-appear"
             :class="$style.reactions"
           >
             <button
-              v-for="r in sortedReactions"
+              v-for="r in renderedReactions"
               :key="r.reaction"
-              v-memo="[r.reaction, r.count, effectiveNote.myReaction === r.reaction, reactionUrls[r.reaction]]"
-              :class="[$style.reaction, { [$style.reacted]: effectiveNote.myReaction === r.reaction }]"
+              v-memo="[r.reaction, r.count, effectiveNote.myReaction === r.reaction, reactionUrls[r.reaction], reactionEnteringIds.has(r.id), reactionLeavingIds.has(r.id)]"
+              :class="[
+                $style.reaction,
+                { [$style.reacted]: effectiveNote.myReaction === r.reaction },
+                reactionEnteringIds.has(r.id) && $style.reactionEnter,
+                reactionLeavingIds.has(r.id) && $style.reactionLeave,
+              ]"
               :disabled="isGuest"
               @click.stop="canInteract ? emit('react', r.reaction, effectiveNote) : showLoginPrompt()"
               @mouseenter="reactionUsersRef?.show($event, r.reaction, reactionUrls[r.reaction] ?? null, effectiveNote.reactions[r.reaction] ?? 0)"
@@ -569,7 +591,7 @@ function closeMentionPopup() {
               <MkEmoji v-else :emoji="r.reaction" :class="$style.reactionEmoji" />
               <span :class="$style.count">{{ r.count }}</span>
             </button>
-        </TransitionGroup>
+          </div>
         </div>
 
         <!-- Footer -->
@@ -607,29 +629,31 @@ function closeMentionPopup() {
 
   <!-- Renote popup menu -->
   <Teleport to="body">
-    <Transition name="nd-popup">
-      <div v-if="renoteMenuPos" :class="$style.renoteBackdrop" @click="closeRenoteMenu">
-        <div
-          :class="$style.renotePopup"
-          class="_popup nd-popup-content popup-menu"
-          :style="{ ...renoteMenuTheme, top: renoteMenuPos.y + 'px', left: renoteMenuPos.x + 'px' }"
-          @click.stop
-        >
-          <button v-if="myRenoteId" :class="[$style.renotePopupItem, $style.renotePopupItemActive]" @click="handleUnrenote()">
-            <i class="ti ti-trash" />
-            リノート解除
-          </button>
-          <button v-else :class="$style.renotePopupItem" @click="emit('renote', effectiveNote); closeRenoteMenu(); isRenoted = true">
-            <i class="ti ti-repeat" />
-            リノート
-          </button>
-          <button :class="$style.renotePopupItem" @click="emit('quote', effectiveNote); closeRenoteMenu()">
-            <i class="ti ti-quote" />
-            引用
-          </button>
-        </div>
+    <div
+      v-if="renoteMenuVisible"
+      :class="[$style.renoteBackdrop, renoteMenuLeaving ? $style.renotePopupLeave : $style.renotePopupEnter]"
+      @click="closeRenoteMenu"
+    >
+      <div
+        :class="[$style.renotePopup, renoteMenuLeaving ? $style.renotePopupContentLeave : $style.renotePopupContentEnter]"
+        class="_popup"
+        :style="renoteMenuPos ? { ...renoteMenuTheme, top: renoteMenuPos.y + 'px', left: renoteMenuPos.x + 'px' } : renoteMenuTheme"
+        @click.stop
+      >
+        <button v-if="myRenoteId" :class="[$style.renotePopupItem, $style.renotePopupItemActive]" @click="handleUnrenote()">
+          <i class="ti ti-trash" />
+          リノート解除
+        </button>
+        <button v-else :class="$style.renotePopupItem" @click="emit('renote', effectiveNote); closeRenoteMenu(); isRenoted = true">
+          <i class="ti ti-repeat" />
+          リノート
+        </button>
+        <button :class="$style.renotePopupItem" @click="emit('quote', effectiveNote); closeRenoteMenu()">
+          <i class="ti ti-quote" />
+          引用
+        </button>
       </div>
-    </Transition>
+    </div>
   </Teleport>
 
   <Teleport to="body">
@@ -1217,6 +1241,17 @@ function closeMentionPopup() {
   color: var(--nd-renote);
 }
 
+/* Renote popup animations */
+.renotePopupEnter { animation: renotePopupBdIn 0.3s ease; }
+.renotePopupLeave { animation: renotePopupBdOut 0.3s ease forwards; }
+@keyframes renotePopupBdIn { from { opacity: 0; } }
+@keyframes renotePopupBdOut { to { opacity: 0; } }
+
+.renotePopupContentEnter { animation: renotePopupIn 0.3s var(--nd-ease-pop); }
+.renotePopupContentLeave { animation: renotePopupOut 0.3s var(--nd-ease-pop) forwards; }
+@keyframes renotePopupIn { from { opacity: 0; transform: scale(0.95) translateY(-4px); } }
+@keyframes renotePopupOut { to { opacity: 0; transform: scale(0.95) translateY(-4px); } }
+
 /* Divider between notes */
 .noteRoot + .noteRoot {
   border-top: 1px solid var(--nd-divider);
@@ -1265,28 +1300,27 @@ function closeMentionPopup() {
   .reaction { height: 32px; font-size: 1em; border-radius: 4px; }
   .reaction .count { font-size: 0.9em; line-height: 32px; }
 }
-</style>
 
-<style>
-/* Reaction appear/leave animation (TransitionGroup needs global classes) */
-.reaction-appear-enter-active,
-.reaction-appear-leave-active {
-  transition:
-    opacity 0.2s cubic-bezier(0, 0.5, 0.5, 1),
-    transform 0.2s cubic-bezier(0, 0.5, 0.5, 1);
+.reactionEnter {
+  animation: reaction-enter 0.2s cubic-bezier(0, 0.5, 0.5, 1) both;
 }
 
-.reaction-appear-enter-from {
-  opacity: 0;
-  transform: scale(0.7);
-}
-
-.reaction-appear-leave-active {
+.reactionLeave {
+  animation: reaction-leave 0.2s cubic-bezier(0, 0.5, 0.5, 1) both;
   position: absolute;
 }
 
-.reaction-appear-leave-to {
-  opacity: 0;
-  transform: scale(0.7);
+@keyframes reaction-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+
+@keyframes reaction-leave {
+  to {
+    opacity: 0;
+    transform: scale(0.7);
+  }
 }
 </style>

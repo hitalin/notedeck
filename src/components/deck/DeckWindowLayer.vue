@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, onUnmounted } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted } from 'vue'
+import {
+  useVaporTransition,
+  useVaporTransitionGroup,
+} from '@/composables/useVaporTransition'
 import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
 import DeckWindow from './DeckWindow.vue'
@@ -53,6 +57,27 @@ const AboutContent = defineAsyncComponent(
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
 
+// Backdrop fade transition
+const hasModal = computed(() => windowsStore.hasModal)
+const {
+  visible: backdropVisible,
+  entering: backdropEntering,
+  leaving: backdropLeaving,
+} = useVaporTransition(hasModal, {
+  enterDuration: 250,
+  leaveDuration: 250,
+})
+
+// Windows group transition
+const {
+  rendered: renderedWindows,
+  enteringIds: windowEnteringIds,
+  leavingIds: windowLeavingIds,
+} = useVaporTransitionGroup(
+  computed(() => windowsStore.windows),
+  { enterDuration: 200, leaveDuration: 150 },
+)
+
 function getThemeVars(accountId: unknown): Record<string, string> | undefined {
   if (typeof accountId !== 'string') return undefined
   return themeStore.getStyleVarsForAccount(accountId)
@@ -77,21 +102,27 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 <template>
   <!-- Modal backdrop -->
-  <Transition name="fade">
-    <div
-      v-if="windowsStore.hasModal"
-      :class="$style.windowBackdrop"
-      @click="windowsStore.windows.filter(w => w.modal).forEach(w => closeWindow(w.id))"
-    />
-  </Transition>
+  <div
+    v-if="backdropVisible"
+    :class="[
+      $style.windowBackdrop,
+      backdropEntering && $style.backdropEnter,
+      backdropLeaving && $style.backdropLeave,
+    ]"
+    @click="windowsStore.windows.filter(w => w.modal).forEach(w => closeWindow(w.id))"
+  />
 
   <!-- Windows -->
-  <TransitionGroup name="window">
+  <div>
     <DeckWindow
-      v-for="win in windowsStore.windows"
+      v-for="win in renderedWindows"
       :key="win.id"
       :window="win"
       :theme-vars="getThemeVars(win.props.accountId)"
+      :class="[
+        windowEnteringIds.has(win.id) && $style.windowEnter,
+        windowLeavingIds.has(win.id) && $style.windowLeave,
+      ]"
       @close="closeWindow(win.id)"
     >
       <NoteDetailContent
@@ -131,7 +162,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       <ChatContent v-if="win.type === 'chat'" />
       <AboutContent v-if="win.type === 'about'" />
     </DeckWindow>
-  </TransitionGroup>
+  </div>
 </template>
 
 <style lang="scss" module>
@@ -144,39 +175,46 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   z-index: var(--nd-z-window);
   background: var(--nd-modalBg);
 }
-</style>
 
-<style lang="scss">
-/* Vue transition classes (must be global) */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.25s ease;
+.backdropEnter {
+  animation: backdrop-enter 0.25s ease both;
 }
 
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+.backdropLeave {
+  animation: backdrop-leave 0.25s ease both;
 }
 
-.window-enter-active {
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
+@keyframes backdrop-enter {
+  from {
+    opacity: 0;
+  }
 }
 
-.window-leave-active {
-  transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
+@keyframes backdrop-leave {
+  to {
+    opacity: 0;
+  }
 }
 
-.window-enter-from {
-  opacity: 0;
-  transform: scale(0.95);
+.windowEnter {
+  animation: window-enter 0.2s ease both;
 }
 
-.window-leave-to {
-  opacity: 0;
-  transform: scale(0.95);
+.windowLeave {
+  animation: window-leave 0.15s ease both;
+}
+
+@keyframes window-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes window-leave {
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
 }
 </style>

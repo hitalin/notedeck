@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, toRef, watch } from 'vue'
 
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
 import { useNavigation } from '@/composables/useNavigation'
+import { useVaporTransition } from '@/composables/useVaporTransition'
 import { type Account, isGuestAccount } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
@@ -23,6 +24,11 @@ const props = defineProps<{
 }>()
 
 const isCompact = useIsCompactLayout()
+
+const { visible: menuVisible, leaving: menuLeaving } = useVaporTransition(
+  toRef(props, 'show'),
+  { enterDuration: 180, leaveDuration: 180 },
+)
 
 const emit = defineEmits<{
   'toggle-mode': [key: string]
@@ -64,12 +70,17 @@ function modeLabel(key: string): string {
 </script>
 
 <template>
-  <Transition name="nav-account-menu">
     <div
-      v-if="show"
+      v-if="menuVisible"
       ref="menuRef"
-      class="nav-account-menu _popupMenu"
-      :class="[$style.navAccountMenu, { [$style.menuRight]: navCollapsed, [$style.mobile]: isCompact }]"
+      class="_popupMenu"
+      :class="[
+        $style.navAccountMenu,
+        { [$style.menuRight]: navCollapsed, [$style.mobile]: isCompact },
+        menuLeaving
+          ? (navCollapsed ? $style.menuLeaveRight : $style.menuLeave)
+          : (navCollapsed ? $style.menuEnterRight : $style.menuEnter),
+      ]"
       @click.stop
     >
       <!-- Mode toggles (auth required) -->
@@ -142,7 +153,6 @@ function modeLabel(key: string): string {
         </button>
       </template>
     </div>
-  </Transition>
 </template>
 
 <style lang="scss" module>
@@ -231,23 +241,29 @@ function modeLabel(key: string): string {
   }
 }
 
-</style>
-
-<style lang="scss">
-/* Vue transition classes (must be global) */
-.nav-account-menu-enter-active,
-.nav-account-menu-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+.menuEnter {
+  animation: menuIn 0.18s ease;
+}
+.menuLeave {
+  animation: menuOut 0.18s ease forwards;
+}
+.menuEnterRight {
+  animation: menuInRight 0.18s ease;
+}
+.menuLeaveRight {
+  animation: menuOutRight 0.18s ease forwards;
 }
 
-.nav-account-menu-enter-from,
-.nav-account-menu-leave-to {
-  opacity: 0;
-  transform: translateY(4px);
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(4px); }
 }
-
-.nav-account-menu.menu-right.nav-account-menu-enter-from,
-.nav-account-menu.menu-right.nav-account-menu-leave-to {
-  transform: translateX(-4px);
+@keyframes menuOut {
+  to { opacity: 0; transform: translateY(4px); }
+}
+@keyframes menuInRight {
+  from { opacity: 0; transform: translateX(-4px); }
+}
+@keyframes menuOutRight {
+  to { opacity: 0; transform: translateX(-4px); }
 }
 </style>

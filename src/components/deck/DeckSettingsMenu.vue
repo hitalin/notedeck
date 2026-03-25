@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { relaunch } from '@tauri-apps/plugin-process'
 import type { CSSProperties } from 'vue'
-import { computed, nextTick, type Ref, ref, watch } from 'vue'
+import { computed, nextTick, type Ref, ref, toRef, watch } from 'vue'
 
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
 import { useUpdater } from '@/composables/useUpdater'
+import { useVaporTransition } from '@/composables/useVaporTransition'
 import { type ConfirmOptions, useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
@@ -39,6 +40,10 @@ const {
 } = useUpdater()
 
 const isCompact = useIsCompactLayout()
+const { visible: menuVisible, leaving: menuLeaving } = useVaporTransition(
+  toRef(props, 'show'),
+  { enterDuration: 180, leaveDuration: 180 },
+)
 const { isMobilePlatform } = useUiStore()
 const deckStore = useDeckStore()
 const keybindsStore = useKeybindsStore()
@@ -206,8 +211,7 @@ const importSettings = () =>
 <template>
   <Teleport to="body">
   <div v-if="show" :class="$style.menuBackdrop" @pointerdown="emit('close')" />
-  <Transition name="settings-menu">
-    <div v-if="show" ref="menuEl" :class="[$style.settingsMenu, { [$style.mobile]: isCompact }]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
+    <div v-if="menuVisible" ref="menuEl" :class="[$style.settingsMenu, { [$style.mobile]: isCompact }, menuLeaving ? $style.menuLeave : $style.menuEnter]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
       <div :class="$style.menuBody">
       <!-- Misskey-style day/night toggle panel -->
       <DayNightToggle
@@ -346,7 +350,6 @@ const importSettings = () =>
         </div>
       </div>
     </div>
-  </Transition>
   </Teleport>
 </template>
 
@@ -666,25 +669,27 @@ const importSettings = () =>
     min-height: 44px;
   }
 }
-</style>
 
-<style lang="scss">
-/* Vue transition classes (must be global) */
-.settings-menu-enter-active,
-.settings-menu-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+.menuEnter {
+  animation: menuIn 0.18s ease;
+}
+.menuLeave {
+  animation: menuOut 0.18s ease forwards;
 }
 
-.settings-menu-enter-from,
-.settings-menu-leave-to {
-  opacity: 0;
-  transform: translateY(4px) scale(0.97);
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(4px) scale(0.97); }
+}
+@keyframes menuOut {
+  to { opacity: 0; transform: translateY(4px) scale(0.97); }
 }
 
 @media (max-width: 500px) {
-  .settings-menu-enter-from,
-  .settings-menu-leave-to {
-    transform: translateY(8px) scale(0.97);
+  @keyframes menuIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  }
+  @keyframes menuOut {
+    to { opacity: 0; transform: translateY(8px) scale(0.97); }
   }
 }
 </style>

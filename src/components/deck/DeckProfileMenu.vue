@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, toRef, watch } from 'vue'
 
 import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
+import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useDeckProfileStore } from '@/stores/deckProfile'
@@ -24,6 +25,11 @@ const deckStore = useDeckStore()
 const profileStore = useDeckProfileStore()
 const windowsStore = useWindowsStore()
 const isCompact = useIsCompactLayout()
+
+const { visible: menuVisible, leaving: menuLeaving } = useVaporTransition(
+  toRef(props, 'show'),
+  { enterDuration: 180, leaveDuration: 180 },
+)
 
 const profiles = computed(() => profileStore.getProfiles())
 const menuEl = ref<HTMLElement | null>(null)
@@ -100,8 +106,7 @@ function openEditor(id: string) {
 <template>
   <Teleport to="body">
   <div v-if="show" :class="$style.menuBackdrop" @pointerdown="emit('close')" />
-  <Transition name="profile-menu">
-    <div v-if="show" ref="menuEl" :class="[$style.profileMenu, { [$style.mobile]: isCompact }]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
+    <div v-if="menuVisible" ref="menuEl" :class="[$style.profileMenu, { [$style.mobile]: isCompact }, menuLeaving ? $style.menuLeave : $style.menuEnter]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
       <div :class="$style.list">
         <div
           v-for="p in profiles"
@@ -143,7 +148,6 @@ function openEditor(id: string) {
       </div>
 
     </div>
-  </Transition>
   </Teleport>
 </template>
 
@@ -299,25 +303,27 @@ function openEditor(id: string) {
     padding: 16px;
   }
 }
-</style>
 
-<style lang="scss">
-/* Vue transition classes (must be global) */
-.profile-menu-enter-active,
-.profile-menu-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+.menuEnter {
+  animation: menuIn 0.18s ease;
+}
+.menuLeave {
+  animation: menuOut 0.18s ease forwards;
 }
 
-.profile-menu-enter-from,
-.profile-menu-leave-to {
-  opacity: 0;
-  transform: translateY(4px) scale(0.97);
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(4px) scale(0.97); }
+}
+@keyframes menuOut {
+  to { opacity: 0; transform: translateY(4px) scale(0.97); }
 }
 
 @media (max-width: 500px) {
-  .profile-menu-enter-from,
-  .profile-menu-leave-to {
-    transform: translateY(8px) scale(0.97);
+  @keyframes menuIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  }
+  @keyframes menuOut {
+    to { opacity: 0; transform: translateY(8px) scale(0.97); }
   }
 }
 </style>
