@@ -16,6 +16,7 @@ import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useServersStore } from '@/stores/servers'
+import { useIsCompactLayout } from '@/stores/ui'
 import { createJson5Linter } from '@/utils/json5Linter'
 
 const AddColumnDialog = defineAsyncComponent(
@@ -32,14 +33,16 @@ const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const deckStore = useDeckStore()
 const profileStore = useDeckProfileStore()
+const isCompact = useIsCompactLayout()
 
 const codeContent = ref('')
 const codeError = ref<string | null>(null)
 
-const { tab, containerRef: editorRef } = useEditorTabs(
-  ['visual', 'code'] as const,
-  'visual',
-)
+const {
+  tab,
+  displayedTab,
+  containerRef: editorRef,
+} = useEditorTabs(['visual', 'code'] as const, 'visual')
 
 function columnLabel(col: DeckColumn): string {
   if (col.name) return col.name
@@ -138,6 +141,29 @@ function removeGroup(groupIdx: number) {
   if (!group) return
   for (const colId of group) {
     deckStore.removeColumn(colId)
+  }
+}
+
+function moveGroup(groupIdx: number, direction: -1 | 1) {
+  const wl = deckStore.windowLayout
+  const target = groupIdx + direction
+  if (target < 0 || target >= wl.length) return
+
+  const fromGroup = wl[groupIdx]
+  const toGroup = wl[target]
+  if (!fromGroup || !toGroup) return
+
+  const fullLayout = deckStore.layout
+  const fromLayoutIdx = fullLayout.indexOf(fromGroup)
+  const toLayoutIdx = fullLayout.indexOf(toGroup)
+  if (fromLayoutIdx < 0 || toLayoutIdx < 0) return
+
+  const newLayout = fullLayout.map((g) => [...g])
+  const [moved] = newLayout.splice(fromLayoutIdx, 1)
+  if (moved) {
+    newLayout.splice(toLayoutIdx, 0, moved)
+    deckStore.applyLayout(newLayout)
+    deckStore.flushSave()
   }
 }
 
@@ -247,7 +273,7 @@ async function importFromClipboard() {
     />
 
     <!-- Visual Editor -->
-    <div v-if="tab === 'visual'" :class="$style.visualPanel">
+    <div v-if="displayedTab === 'visual'" :class="$style.visualPanel">
       <!-- Profile name -->
       <div :class="$style.nameSection">
         <div :class="$style.nameLabel">
@@ -272,7 +298,38 @@ async function importFromClipboard() {
           <span :class="$style.sectionBadge">{{ deckStore.windowLayout.length }}</span>
         </div>
 
-        <div :class="$style.columnPreview">
+        <!-- Mobile: row-based list with move buttons -->
+        <div v-if="isCompact" :class="$style.mobileList">
+          <div
+            v-for="(group, groupIdx) in deckStore.windowLayout"
+            :key="`${groupIdx}:${group.join(',')}`"
+            :class="$style.mobileRow"
+          >
+            <i class="ti ti-grip-vertical" :class="$style.mobileGrip" />
+            <span :class="$style.mobileIcon">
+              <i v-if="groupPrimaryColumn(group)" :class="'ti ti-' + columnIcon(groupPrimaryColumn(group)!)" />
+            </span>
+            <span :class="$style.mobileLabel">{{ groupLabel(group) }}</span>
+            <span v-if="group.length > 1" :class="$style.mobileStackBadge">{{ group.length }}</span>
+            <div :class="$style.mobileMoveGroup">
+              <button class="_button" :class="$style.mobileMoveBtn" :disabled="groupIdx === 0" @click="moveGroup(groupIdx, -1)">
+                <i class="ti ti-chevron-left" />
+              </button>
+              <button class="_button" :class="$style.mobileMoveBtn" :disabled="groupIdx === deckStore.windowLayout.length - 1" @click="moveGroup(groupIdx, 1)">
+                <i class="ti ti-chevron-right" />
+              </button>
+            </div>
+            <button class="_button" :class="$style.mobileRemoveBtn" @click="removeGroup(groupIdx)">
+              <i class="ti ti-x" />
+            </button>
+          </div>
+          <div v-if="deckStore.windowLayout.length === 0" :class="$style.emptyMessage">
+            カラムがありません
+          </div>
+        </div>
+
+        <!-- Desktop: icon grid with drag & drop -->
+        <div v-else :class="$style.columnPreview">
           <div
             v-for="(group, groupIdx) in deckStore.windowLayout"
             :key="`${groupIdx}:${group.join(',')}`"
@@ -316,6 +373,16 @@ async function importFromClipboard() {
           </div>
         </div>
 
+        <!-- Add column button (mobile) -->
+        <div
+          v-if="isCompact"
+          :class="[$style.columnTab, $style.addColumnTab]"
+          title="カラムを追加"
+          @click="showAddColumn = !showAddColumn"
+        >
+          <i class="ti ti-plus" />
+        </div>
+
         <!-- Inline AddColumnDialog -->
         <AddColumnDialog
           v-if="showAddColumn"
@@ -327,7 +394,7 @@ async function importFromClipboard() {
     </div>
 
     <!-- Code Editor -->
-    <div v-if="tab === 'code'" :class="$style.codePanel">
+    <div v-if="displayedTab === 'code'" :class="$style.codePanel">
       <CodeEditor
         v-model="codeContent"
         :language="jsonLang"
@@ -579,6 +646,116 @@ async function importFromClipboard() {
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
+}
+
+// ── Mobile: row-based list ──
+
+.mobileList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 8px;
+}
+
+.mobileRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--nd-panel);
+  border-radius: var(--nd-radius-sm);
+  min-height: 44px;
+}
+
+.mobileGrip {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--nd-fg);
+  opacity: 0.25;
+}
+
+.mobileIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  font-size: 1em;
+  color: var(--nd-fg);
+}
+
+.mobileLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobileStackBadge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--nd-accent);
+  color: var(--nd-bg);
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.mobileMoveGroup {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
+}
+
+.mobileMoveBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  transition: opacity var(--nd-duration-fast), background var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &:disabled {
+    opacity: 0.15;
+    pointer-events: none;
+  }
+}
+
+.mobileRemoveBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  opacity: 0.35;
+  transition: opacity var(--nd-duration-fast), color var(--nd-duration-fast), background var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 1;
+    color: var(--nd-love, #ec4137);
+    background: color-mix(in srgb, var(--nd-love, #ec4137) 10%, transparent);
+  }
 }
 
 .emptyMessage {

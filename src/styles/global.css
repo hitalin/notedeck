@@ -495,20 +495,33 @@ html[data-platform="android"] select {
 
 /* ---- Tab slide animation (useTabSlide) ---- */
 
-@keyframes nd-slide-in-left-kf {
-  from { transform: translateX(40px); opacity: 0; }
-  to   { transform: translateX(0);    opacity: 1; }
+/*
+ * Single-keyframe out-in: leave and enter are fused into one animation
+ * so there is zero gap between phases.
+ *
+ *   0%  → visible (old content)
+ *  40%  → faded out + slid away
+ *  50%  → still hidden, opposite side (content switches here)
+ * 100%  → visible (new content)
+ */
+@keyframes nd-tab-slide-left-kf {
+  0%   { opacity: 1; transform: translateX(0); }
+  40%  { opacity: 0; transform: translateX(-30px); }
+  50%  { opacity: 0; transform: translateX(30px); }
+  100% { opacity: 1; transform: translateX(0); }
 }
 
-@keyframes nd-slide-in-right-kf {
-  from { transform: translateX(-40px); opacity: 0; }
-  to   { transform: translateX(0);     opacity: 1; }
+@keyframes nd-tab-slide-right-kf {
+  0%   { opacity: 1; transform: translateX(0); }
+  40%  { opacity: 0; transform: translateX(30px); }
+  50%  { opacity: 0; transform: translateX(-30px); }
+  100% { opacity: 1; transform: translateX(0); }
 }
 
-.nd-slide-in-left {
-  animation: nd-slide-in-left-kf var(--nd-duration-slow) var(--nd-ease-pop);
+.nd-tab-slide-left {
+  animation: nd-tab-slide-left-kf var(--nd-duration-slower) var(--nd-ease-pop) both;
 }
 
-.nd-slide-in-right {
-  animation: nd-slide-in-right-kf var(--nd-duration-slow) var(--nd-ease-pop);
+.nd-tab-slide-right {
+  animation: nd-tab-slide-right-kf var(--nd-duration-slower) var(--nd-ease-pop) both;
 }

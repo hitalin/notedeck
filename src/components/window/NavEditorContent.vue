@@ -16,6 +16,7 @@ import {
   type NavItem,
   useDeckStore,
 } from '@/stores/deck'
+import { useIsCompactLayout } from '@/stores/ui'
 
 const AddColumnDialog = defineAsyncComponent(
   () => import('@/components/deck/AddColumnDialog.vue'),
@@ -25,6 +26,7 @@ const CodeEditor = defineAsyncComponent(
 )
 
 const deckStore = useDeckStore()
+const isCompact = useIsCompactLayout()
 const jsonLang = json()
 
 // ── Tab management ──
@@ -52,6 +54,17 @@ function removeItem(index: number) {
   items.value.splice(index, 1)
 }
 
+function moveItem(index: number, direction: -1 | 1) {
+  const target = index + direction
+  if (target < 0 || target >= items.value.length) return
+  const arr = [...items.value]
+  const [moved] = arr.splice(index, 1)
+  if (moved) {
+    arr.splice(target, 0, moved)
+    items.value = arr
+  }
+}
+
 function addDivider() {
   items.value.push({ type: 'divider' })
 }
@@ -71,14 +84,11 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
 })
 
 // ── Add via AddColumnDialog ──
-const showAddColumn = ref(false)
-
 function onColumnSelected(config: Omit<DeckColumn, 'id'>) {
   items.value.push({
     type: config.type,
     accountId: config.accountId,
   })
-  showAddColumn.value = false
 }
 
 // ── Code tab ──
@@ -164,7 +174,59 @@ async function importNav() {
 
     <!-- Visual tab -->
     <div v-show="tab === 'visual'" :class="$style.visualPanel">
-      <div :class="$style.columns">
+      <!-- Mobile: row list with move buttons -->
+      <div v-if="isCompact" :class="$style.mobilePanel">
+        <div :class="$style.mobileSectionHeader">
+          <i class="ti ti-list" />
+          現在のアイテム
+          <span :class="$style.mobileSectionBadge">{{ items.length }}</span>
+        </div>
+
+        <div :class="$style.mobileList">
+          <div
+            v-for="(item, i) in items"
+            :key="i"
+            :class="[$style.mobileRow, { [$style.mobileRowDivider]: isNavDivider(item) }]"
+          >
+            <i class="ti ti-grip-vertical" :class="$style.mobileGrip" />
+            <span :class="$style.mobileIcon">
+              <i :class="['ti', getItemIcon(item)]" />
+            </span>
+            <span :class="$style.mobileLabel">{{ getItemLabel(item) }}</span>
+            <ColumnBadges v-if="!isNavDivider(item)" :account-id="item.accountId" :size="10" />
+            <div :class="$style.mobileMoveGroup">
+              <button class="_button" :class="$style.mobileMoveBtn" :disabled="i === 0" @click="moveItem(i, -1)">
+                <i class="ti ti-chevron-up" />
+              </button>
+              <button class="_button" :class="$style.mobileMoveBtn" :disabled="i === items.length - 1" @click="moveItem(i, 1)">
+                <i class="ti ti-chevron-down" />
+              </button>
+            </div>
+            <button class="_button" :class="$style.mobileRemoveBtn" @click="removeItem(i)">
+              <i class="ti ti-x" />
+            </button>
+          </div>
+          <div v-if="items.length === 0" :class="$style.empty">項目なし</div>
+        </div>
+
+        <button class="_button" :class="$style.mobileAddDivider" @click="addDivider">
+          <i class="ti ti-plus" />
+          区切り線を追加
+        </button>
+
+        <div :class="$style.mobileSectionHeader">
+          <i class="ti ti-plus" />
+          アイテムを追加
+        </div>
+
+        <AddColumnDialog
+          mode="pip"
+          @column-selected="onColumnSelected"
+        />
+      </div>
+
+      <!-- Desktop: icon grid with drag & drop -->
+      <div v-else :class="$style.columns">
         <!-- Left: nav preview (vertical, drag & drop) -->
         <div :class="$style.previewPane">
 
@@ -196,27 +258,19 @@ async function importNav() {
             </template>
             <div v-if="items.length === 0" :class="$style.empty">項目なし</div>
 
-            <!-- Add buttons -->
-            <div :class="$style.navTab" :title="'カラムを追加'" @click="showAddColumn = true">
-              <i class="ti ti-plus" />
-            </div>
+            <!-- Add divider button -->
             <div :class="$style.navDividerTab" :title="'区切り線を追加'" @click="addDivider">
-              <i class="ti ti-separator" :style="{ fontSize: '0.8em', opacity: 0.5 }" />
+              <i class="ti ti-separator" />
             </div>
           </div>
         </div>
 
-        <!-- Right: AddColumnDialog (pip) -->
-        <div v-if="showAddColumn" :class="$style.addPane">
+        <!-- Right: AddColumnDialog (pip, always visible) -->
+        <div :class="$style.addPane">
           <AddColumnDialog
             mode="pip"
             @column-selected="onColumnSelected"
-            @close="showAddColumn = false"
           />
-        </div>
-        <div v-else :class="$style.addPanePlaceholder">
-          <i class="ti ti-arrow-left" />
-          <span>＋ ボタンでカラムを追加</span>
         </div>
       </div>
     </div>
@@ -370,9 +424,9 @@ async function importNav() {
   align-items: center;
   justify-content: center;
   width: 44px;
-  height: 12px;
+  height: 24px;
   margin: 2px auto;
-  border-radius: 50%;
+  border-radius: 12px;
   cursor: grab;
   user-select: none;
 
@@ -423,6 +477,153 @@ async function importNav() {
   }
 }
 
+// ── Mobile: row-based list ──
+
+.mobilePanel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.mobileSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 6px;
+  font-size: 0.75em;
+  font-weight: bold;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.mobileSectionBadge {
+  margin-left: auto;
+  font-weight: normal;
+  opacity: 0.8;
+}
+
+.mobileList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 8px;
+}
+
+.mobileRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--nd-panel);
+  border-radius: var(--nd-radius-sm);
+  min-height: 44px;
+
+  &.mobileRowDivider {
+    opacity: 0.6;
+  }
+}
+
+.mobileGrip {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--nd-fg);
+  opacity: 0.25;
+}
+
+.mobileIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  font-size: 1em;
+  color: var(--nd-fg);
+}
+
+.mobileLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobileMoveGroup {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
+}
+
+.mobileMoveBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  transition: opacity var(--nd-duration-fast), background var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &:disabled {
+    opacity: 0.15;
+    pointer-events: none;
+  }
+}
+
+.mobileRemoveBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  opacity: 0.35;
+  transition: opacity var(--nd-duration-fast), color var(--nd-duration-fast), background var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 1;
+    color: var(--nd-love, #ec4137);
+    background: color-mix(in srgb, var(--nd-love, #ec4137) 10%, transparent);
+  }
+}
+
+.mobileAddDivider {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  margin: 0 8px;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  opacity: 0.4;
+  border: 1px dashed var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  transition: opacity var(--nd-duration-fast), border-color var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 0.7;
+    border-color: var(--nd-accent);
+  }
+}
+
 .empty {
   padding: 8px;
   text-align: center;
@@ -438,18 +639,6 @@ async function importNav() {
   min-width: 0;
   overflow-y: auto;
   scrollbar-width: thin;
-}
-
-.addPanePlaceholder {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--nd-fg);
-  opacity: 0.25;
-  font-size: 0.85em;
 }
 
 // ── Code tab ──

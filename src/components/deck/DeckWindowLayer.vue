@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, onUnmounted } from 'vue'
-import {
-  useVaporTransition,
-  useVaporTransitionGroup,
-} from '@/composables/useVaporTransition'
+import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
 import DeckWindow from './DeckWindow.vue'
@@ -74,15 +71,7 @@ const {
   leaveDuration: 200,
 })
 
-// Windows group transition
-const {
-  rendered: renderedWindows,
-  enteringIds: windowEnteringIds,
-  leavingIds: windowLeavingIds,
-} = useVaporTransitionGroup(
-  computed(() => windowsStore.windows),
-  { enterDuration: 200, leaveDuration: 150 },
-)
+const renderedWindows = computed(() => windowsStore.windows)
 
 function getThemeVars(accountId: unknown): Record<string, string> | undefined {
   if (typeof accountId !== 'string') return undefined
@@ -125,10 +114,6 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       :key="win.id"
       :window="win"
       :theme-vars="getThemeVars(win.props.accountId)"
-      :class="[
-        windowEnteringIds.has(win.id) && $style.windowEnter,
-        windowLeavingIds.has(win.id) && $style.windowLeave,
-      ]"
       @close="closeWindow(win.id)"
     >
       <NoteDetailContent
@@ -204,25 +189,4 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   }
 }
 
-.windowEnter {
-  animation: window-enter 0.2s ease both;
-}
-
-.windowLeave {
-  animation: window-leave 0.15s ease both;
-}
-
-@keyframes window-enter {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-}
-
-@keyframes window-leave {
-  to {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-}
 </style>

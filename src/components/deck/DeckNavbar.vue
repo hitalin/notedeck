@@ -41,14 +41,7 @@ const emit = defineEmits<{
 }>()
 
 const $style = useCssModule()
-const {
-  navigateToLogin,
-  navigateToSearch,
-  navigateToNotifications,
-  navigateToPlugins,
-  navigateToAi,
-  navigateToChat,
-} = useNavigation()
+const { navigateToLogin, navigateToPlugins } = useNavigation()
 const deckStore = useDeckStore()
 const isCompact = useIsCompactLayout()
 const { totalUnread, markAllAsRead } = useUnreadNotifications()
@@ -72,23 +65,10 @@ function getNavAction(item: NavItem): () => void {
     return () => {
       /* divider has no action */
     }
-  switch (item.type) {
-    case 'notifications':
-      return () => {
-        markAllAsRead()
-        navigateToNotifications()
-      }
-    case 'chat':
-      return () => {
-        resetChatUnread()
-        navigateToChat()
-      }
-    case 'search':
-      return navigateToSearch
-    case 'ai':
-      return navigateToAi
-    default:
-      return () => deckStore.toggleSidebarColumn(item.type, item.accountId)
+  return () => {
+    if (item.type === 'notifications') markAllAsRead()
+    if (item.type === 'chat') resetChatUnread()
+    deckStore.toggleSidebarColumn(item.type, item.accountId)
   }
 }
 
@@ -853,6 +833,7 @@ defineExpose({
   .accountScroll {
     flex-direction: column;
     overflow: visible;
+    gap: 4px;
   }
 
   .accountWrap {

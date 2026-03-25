@@ -244,12 +244,14 @@ export const useDeckStore = defineStore('deck', () => {
 
   function toggleSidebarColumn(type: ColumnType, accountId: string | null) {
     const existing = columns.value.find((c) => c.sidebar)
-    if (existing) {
-      if (existing.type === type) {
-        removeColumn(existing.id)
-        return
-      }
+    if (existing && existing.type === type) {
       removeColumn(existing.id)
+      return
+    }
+    if (existing) {
+      // In-place update: swap type without destroying DOM / layout.
+      updateColumn(existing.id, { type, accountId, name: null })
+      return
     }
     addColumnAt(0, {
       type,
