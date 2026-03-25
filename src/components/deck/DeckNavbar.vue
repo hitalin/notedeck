@@ -334,22 +334,23 @@ defineExpose({
       <div :class="$style.body">
         <!-- Top section -->
         <div :class="$style.section">
-          <button
-            v-for="navType in deckStore.navItems"
-            :key="navType"
-            class="_button"
-            :class="[$style.item, { [$style.sidebarActive]: sidebarType === navType }]"
-            :title="NAV_ICON_MAP[navType]?.label ?? navType"
-            @click="closeDrawerAndDo(getNavAction(navType))"
-          >
-            <div v-if="getNavBadge(navType) > 0" :class="$style.iconWrap">
-              <i :class="['ti', NAV_ICON_MAP[navType]?.icon ?? 'ti-layout-grid']" />
-              <span :class="$style.badge">{{ getNavBadge(navType) > 99 ? '99+' : getNavBadge(navType) }}</span>
-            </div>
-            <i v-else :class="['ti', NAV_ICON_MAP[navType]?.icon ?? 'ti-layout-grid']" />
-            <span :class="$style.label">{{ NAV_ICON_MAP[navType]?.label ?? navType }}</span>
-          </button>
-          <!-- ナビバー編集はボトムバーの設定メニューから -->
+          <template v-for="(navType, navIdx) in deckStore.navItems" :key="`${navType}-${navIdx}`">
+            <div v-if="navType === 'divider'" :class="$style.divider" />
+            <button
+              v-else
+              class="_button"
+              :class="[$style.item, { [$style.sidebarActive]: sidebarType === navType }]"
+              :title="NAV_ICON_MAP[navType]?.label ?? navType"
+              @click="closeDrawerAndDo(getNavAction(navType))"
+            >
+              <div v-if="getNavBadge(navType) > 0" :class="$style.iconWrap">
+                <i :class="['ti', NAV_ICON_MAP[navType]?.icon ?? 'ti-layout-grid']" />
+                <span :class="$style.badge">{{ getNavBadge(navType) > 99 ? '99+' : getNavBadge(navType) }}</span>
+              </div>
+              <i v-else :class="['ti', NAV_ICON_MAP[navType]?.icon ?? 'ti-layout-grid']" />
+              <span :class="$style.label">{{ NAV_ICON_MAP[navType]?.label ?? navType }}</span>
+            </button>
+          </template>
         </div>
 
         <!-- Spacer -->
@@ -542,6 +543,7 @@ defineExpose({
   height: 1px;
   background: var(--nd-divider);
   margin: 10px 16px;
+  align-self: stretch;
 }
 
 .item {
