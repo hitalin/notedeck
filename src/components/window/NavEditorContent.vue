@@ -71,14 +71,11 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
 })
 
 // ── Add via AddColumnDialog ──
-const showAddColumn = ref(false)
-
 function onColumnSelected(config: Omit<DeckColumn, 'id'>) {
   items.value.push({
     type: config.type,
     accountId: config.accountId,
   })
-  showAddColumn.value = false
 }
 
 // ── Code tab ──
@@ -196,27 +193,19 @@ async function importNav() {
             </template>
             <div v-if="items.length === 0" :class="$style.empty">項目なし</div>
 
-            <!-- Add buttons -->
-            <div :class="$style.navTab" :title="'カラムを追加'" @click="showAddColumn = true">
-              <i class="ti ti-plus" />
-            </div>
+            <!-- Add divider button -->
             <div :class="$style.navDividerTab" :title="'区切り線を追加'" @click="addDivider">
-              <i class="ti ti-separator" :style="{ fontSize: '0.8em', opacity: 0.5 }" />
+              <i class="ti ti-separator" />
             </div>
           </div>
         </div>
 
-        <!-- Right: AddColumnDialog (pip) -->
-        <div v-if="showAddColumn" :class="$style.addPane">
+        <!-- Right: AddColumnDialog (pip, always visible) -->
+        <div :class="$style.addPane">
           <AddColumnDialog
             mode="pip"
             @column-selected="onColumnSelected"
-            @close="showAddColumn = false"
           />
-        </div>
-        <div v-else :class="$style.addPanePlaceholder">
-          <i class="ti ti-arrow-left" />
-          <span>＋ ボタンでカラムを追加</span>
         </div>
       </div>
     </div>
@@ -370,9 +359,9 @@ async function importNav() {
   align-items: center;
   justify-content: center;
   width: 44px;
-  height: 12px;
+  height: 24px;
   margin: 2px auto;
-  border-radius: 50%;
+  border-radius: 12px;
   cursor: grab;
   user-select: none;
 
@@ -438,18 +427,6 @@ async function importNav() {
   min-width: 0;
   overflow-y: auto;
   scrollbar-width: thin;
-}
-
-.addPanePlaceholder {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--nd-fg);
-  opacity: 0.25;
-  font-size: 0.85em;
 }
 
 // ── Code tab ──
