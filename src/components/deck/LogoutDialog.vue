@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { toRef } from 'vue'
+
+import { useVaporTransition } from '@/composables/useVaporTransition'
+
 const props = defineProps<{
   show: boolean
   isGuest?: boolean
@@ -9,41 +13,53 @@ const emit = defineEmits<{
   'delete-all': []
   cancel: []
 }>()
+
+const { visible, entering, leaving } = useVaporTransition(
+  toRef(props, 'show'),
+  { enterDuration: 300, leaveDuration: 300 },
+)
 </script>
 
 <template>
   <Teleport to="body">
-    <Transition name="nd-popup">
-      <div v-if="show" class="_dialogBackdrop" @click="emit('cancel')">
-        <div class="_dialog nd-popup-content" @click.stop>
-          <div :class="$style.header">
-            <i :class="[$style.icon, isGuest ? 'ti ti-user-off' : 'ti ti-logout']" />
-            <div :class="$style.title">{{ isGuest ? 'ゲストを削除' : 'ログアウト' }}</div>
-          </div>
+    <div
+      v-if="visible"
+      class="_dialogBackdrop"
+      :class="[entering && $style.enter, leaving && $style.leave]"
+      @click="emit('cancel')"
+    >
+      <div
+        class="_dialog nd-popup-content"
+        :class="[entering && $style.contentEnter, leaving && $style.contentLeave]"
+        @click.stop
+      >
+        <div :class="$style.header">
+          <i :class="[$style.icon, isGuest ? 'ti ti-user-off' : 'ti ti-logout']" />
+          <div :class="$style.title">{{ isGuest ? 'ゲストを削除' : 'ログアウト' }}</div>
+        </div>
 
-          <div :class="$style.body">
-            <p :class="$style.message">
-              {{ isGuest ? 'このゲストアカウントを削除しますか？' : 'ローカルデータをこのデバイスに残しますか？' }}
-            </p>
-            <p v-if="!isGuest" :class="$style.hint">
-              残したデータはオフラインで閲覧できます。
-            </p>
-          </div>
+        <div :class="$style.body">
+          <p :class="$style.message">
+            {{ isGuest ? 'このゲストアカウントを削除しますか？' : 'ローカルデータをこのデバイスに残しますか？' }}
+          </p>
+          <p v-if="!isGuest" :class="$style.hint">
+            残したデータはオフラインで閲覧できます。
+          </p>
+        </div>
 
-          <div :class="$style.actions">
-            <button class="_button" :class="$style.btnCancel" @click="emit('cancel')">
-              キャンセル
-            </button>
-            <button class="_button" :class="$style.btnDelete" @click="emit('delete-all')">
-              {{ isGuest ? '削除' : 'すべて削除' }}
-            </button>
-            <button v-if="!isGuest" class="_button" :class="$style.btnKeep" @click="emit('keep-data')">
-              データを残す
-            </button>
-          </div>
+        <div :class="$style.actions">
+          <button class="_button" :class="$style.btnCancel" @click="emit('cancel')">
+            キャンセル
+          </button>
+          <button class="_button" :class="$style.btnDelete" @click="emit('delete-all')">
+            {{ isGuest ? '削除' : 'すべて削除' }}
+          </button>
+          <button v-if="!isGuest" class="_button" :class="$style.btnKeep" @click="emit('keep-data')">
+            データを残す
+          </button>
         </div>
       </div>
-    </Transition>
+    </div>
   </Teleport>
 </template>
 
@@ -100,4 +116,31 @@ const emit = defineEmits<{
 .btnCancel { @include btn-secondary; }
 .btnDelete { @include btn-danger; }
 .btnKeep { @include btn-primary; }
+
+// Vapor transition classes
+.enter {
+  animation: backdropIn 0.15s ease;
+}
+.leave {
+  animation: backdropOut 0.15s ease forwards;
+}
+@keyframes backdropIn {
+  from { opacity: 0; }
+}
+@keyframes backdropOut {
+  to { opacity: 0; }
+}
+
+.contentEnter {
+  animation: popupIn 0.3s var(--nd-ease-pop);
+}
+.contentLeave {
+  animation: popupOut 0.15s ease forwards;
+}
+@keyframes popupIn {
+  from { opacity: 0; transform: scale(0.95); }
+}
+@keyframes popupOut {
+  to { opacity: 0; transform: scale(0.95); }
+}
 </style>

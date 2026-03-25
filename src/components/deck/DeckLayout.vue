@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { convertFileSrc } from '@tauri-apps/api/core'
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import AppConfirm from '@/components/common/AppConfirm.vue'
 import AppToast from '@/components/common/AppToast.vue'
 import { useDeckInit } from '@/composables/useDeckInit'
@@ -9,6 +9,7 @@ import { useFileDrop } from '@/composables/useFileDrop'
 import { useNavigation } from '@/composables/useNavigation'
 import { provideScrollDirection } from '@/composables/useScrollDirection'
 import { useUpdater } from '@/composables/useUpdater'
+import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -109,6 +110,18 @@ const fileDrop = useFileDrop((paths, position) => {
   }
 })
 
+// Vapor-compatible transitions
+const drawerT = useVaporTransition(mobileDrawerOpen, { leaveDuration: 250 })
+const addMenuT = useVaporTransition(showAddMenu, { leaveDuration: 300 })
+const composeShow = computed(
+  () => showCompose.value && accountsStore.accounts.length > 0,
+)
+const composeT = useVaporTransition(composeShow, { leaveDuration: 300 })
+const fileDropShow = computed(() => fileDrop.isDragging.value)
+const fileDropT = useVaporTransition(fileDropShow, { leaveDuration: 250 })
+const crossDropShow = computed(() => !!deckStore.crossWindowDragColumnId)
+const crossDropT = useVaporTransition(crossDropShow, { leaveDuration: 250 })
+
 provideScrollDirection()
 
 // Initialize deck data + app-level side effects
@@ -124,6 +137,13 @@ useDeckInit({
   toggleAddMenu,
   navbarRef,
   checkForUpdate,
+})
+
+// Preload MkPostForm chunk during idle time so first open is instant
+onMounted(() => {
+  const idle =
+    window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 200))
+  idle(() => import('@/components/common/MkPostForm.vue'))
 })
 
 function scrollToColumn(index: number) {
@@ -199,13 +219,11 @@ function acceptCrossWindowDrop() {
     </button>
 
     <!-- Mobile drawer overlay -->
-    <Transition name="fade">
-      <div
-        v-if="mobileDrawerOpen"
-        :class="$style.drawerOverlay"
-        @click="mobileDrawerOpen = false"
-      />
-    </Transition>
+    <div
+      v-if="drawerT.visible.value"
+      :class="[$style.drawerOverlay, drawerT.entering.value && $style.fadeEnter, drawerT.leaving.value && $style.fadeLeave]"
+      @click="mobileDrawerOpen = false"
+    />
 
     <!-- Mobile bottom nav -->
     <DeckMobileNav
@@ -220,49 +238,49 @@ function acceptCrossWindowDrop() {
 
     <!-- Add column popup -->
     <Teleport to="body">
-      <Transition name="modal">
-        <AddColumnDialog v-if="showAddMenu" @close="showAddMenu = false" />
-      </Transition>
+      <AddColumnDialog
+        v-if="addMenuT.visible.value"
+        :class="[addMenuT.entering.value && $style.modalEnter, addMenuT.leaving.value && $style.modalLeave]"
+        @close="showAddMenu = false"
+      />
     </Teleport>
 
     <Teleport to="body">
-      <Transition name="modal">
-        <MkPostForm
-          v-if="showCompose && accountsStore.accounts.length > 0"
-          :account-id="accountsStore.accounts[0]!.id"
-          :initial-file-paths="pendingFilePaths"
-          @close="closeCompose"
-          @posted="closeCompose"
-        />
-      </Transition>
+      <MkPostForm
+        v-if="composeT.visible.value"
+        :class="[composeT.entering.value && $style.modalEnter, composeT.leaving.value && $style.modalLeave]"
+        :account-id="accountsStore.accounts[0]!.id"
+        :initial-file-paths="pendingFilePaths"
+        @close="closeCompose"
+        @posted="closeCompose"
+      />
     </Teleport>
 
     <!-- File drop overlay -->
-    <Transition name="fade">
-      <div v-if="fileDrop.isDragging.value" :class="$style.fileDropOverlay">
-        <div :class="$style.dropContent">
-          <i class="ti ti-upload" />
-          <span>ファイルをドロップしてアップロード</span>
-        </div>
+    <div
+      v-if="fileDropT.visible.value"
+      :class="[$style.fileDropOverlay, fileDropT.entering.value && $style.fadeEnter, fileDropT.leaving.value && $style.fadeLeave]"
+    >
+      <div :class="$style.dropContent">
+        <i class="ti ti-upload" />
+        <span>ファイルをドロップしてアップロード</span>
       </div>
-    </Transition>
+    </div>
 
     <AppToast />
     <AppConfirm />
 
     <!-- Cross-window column drop overlay -->
-    <Transition name="fade">
-      <div
-        v-if="deckStore.crossWindowDragColumnId"
-        :class="$style.crossWindowDropOverlay"
-        @click="acceptCrossWindowDrop"
-      >
-        <div :class="$style.dropContent">
-          <i class="ti ti-arrows-move" />
-          <span>ここにカラムを移動</span>
-        </div>
+    <div
+      v-if="crossDropT.visible.value"
+      :class="[$style.crossWindowDropOverlay, crossDropT.entering.value && $style.fadeEnter, crossDropT.leaving.value && $style.fadeLeave]"
+      @click="acceptCrossWindowDrop"
+    >
+      <div :class="$style.dropContent">
+        <i class="ti ti-arrows-move" />
+        <span>ここにカラムを移動</span>
       </div>
-    </Transition>
+    </div>
   </div>
 </template>
 
@@ -375,19 +393,19 @@ function acceptCrossWindowDrop() {
     opacity: 0.9;
   }
 }
+
+.fadeEnter { animation: fadeIn 0.25s ease; }
+.fadeLeave { animation: fadeOut 0.25s ease forwards; }
+@keyframes fadeIn { from { opacity: 0; } }
+@keyframes fadeOut { to { opacity: 0; } }
+
+.modalEnter { animation: modalIn 0.3s ease; }
+.modalLeave { animation: modalOut 0.3s ease forwards; }
+@keyframes modalIn { from { opacity: 0; } }
+@keyframes modalOut { to { opacity: 0; } }
 </style>
 
 <style>
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity var(--nd-duration-slow) ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity var(--nd-duration-slow) ease;

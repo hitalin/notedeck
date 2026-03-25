@@ -492,44 +492,6 @@ html[data-platform="android"] select {
   transform: translateX(18px);
 }
 
-/* ---- Popup transition (Vue <Transition name="nd-popup">) ---- */
-
-.nd-popup-enter-active,
-.nd-popup-leave-active {
-  transition: opacity var(--nd-duration-base) ease;
-}
-
-.nd-popup-enter-active .nd-popup-content,
-.nd-popup-leave-active .nd-popup-content {
-  transition: opacity var(--nd-duration-slow) var(--nd-ease-pop), transform var(--nd-duration-slow) var(--nd-ease-pop);
-}
-
-.nd-popup-enter-from,
-.nd-popup-leave-to {
-  opacity: 0;
-}
-
-.nd-popup-enter-from .nd-popup-content,
-.nd-popup-leave-to .nd-popup-content {
-  transform: scale(0.95);
-}
-
-.nd-popup-enter-from .popup-menu,
-.nd-popup-leave-to .popup-menu {
-  transform: scale(0.95) translateY(-4px);
-}
-
-/* ---- Fade transition (Vue <Transition name="nd-fade">) ---- */
-
-.nd-fade-enter-active,
-.nd-fade-leave-active {
-  transition: opacity var(--nd-duration-slower) ease;
-}
-
-.nd-fade-enter-from,
-.nd-fade-leave-to {
-  opacity: 0;
-}
 
 /* ---- Tab slide animation (useTabSlide) ---- */
 

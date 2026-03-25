@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useVaporTransitionGroup } from '@/composables/useVaporTransition'
 
 export interface ToastItem {
   id: number
@@ -9,6 +10,11 @@ export interface ToastItem {
 
 const toasts = ref<ToastItem[]>([])
 let nextId = 0
+
+const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
+  enterDuration: 300,
+  leaveDuration: 150,
+})
 
 function show(text: string, type: ToastItem['type'] = 'info') {
   const id = nextId++
@@ -23,15 +29,20 @@ defineExpose({ show })
 
 <template>
   <Teleport to="body">
-    <TransitionGroup name="toast" tag="div" :class="$style.aisToastContainer">
+    <div :class="$style.aisToastContainer">
       <div
-        v-for="toast in toasts"
+        v-for="toast in rendered"
         :key="toast.id"
-        :class="[$style.aisToast, $style[toast.type]]"
+        :class="[
+          $style.aisToast,
+          $style[toast.type],
+          enteringIds.has(toast.id) && $style.toastEnter,
+          leavingIds.has(toast.id) && $style.toastLeave,
+        ]"
       >
         {{ toast.text }}
       </div>
-    </TransitionGroup>
+    </div>
   </Teleport>
 </template>
 
@@ -74,24 +85,26 @@ defineExpose({ show })
 .success {}
 .warning {}
 .error {}
-</style>
 
-<style>
-.toast-enter-active {
-  transition: all var(--nd-duration-slow) ease;
+.toastEnter {
+  animation: ais-toast-enter 0.3s ease both;
 }
 
-.toast-leave-active {
-  transition: all var(--nd-duration-base) ease;
+.toastLeave {
+  animation: ais-toast-leave 0.15s ease both;
 }
 
-.toast-enter-from {
-  opacity: 0;
-  transform: translateX(20px);
+@keyframes ais-toast-enter {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
 }
 
-.toast-leave-to {
-  opacity: 0;
-  transform: translateX(20px);
+@keyframes ais-toast-leave {
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+  }
 }
 </style>

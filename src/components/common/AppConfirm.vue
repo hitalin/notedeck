@@ -2,9 +2,15 @@
 import { nextTick, ref, watch } from 'vue'
 
 import { useFocusTrap } from '@/composables/useFocusTrap'
+import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useConfirm } from '@/stores/confirm'
 
-const { visible, options, resolve } = useConfirm()
+const { visible: show, options, resolve } = useConfirm()
+
+const { visible, entering, leaving } = useVaporTransition(show, {
+  enterDuration: 300,
+  leaveDuration: 300,
+})
 
 const dialogRef = ref<HTMLElement | null>(null)
 const { activate, deactivate } = useFocusTrap(dialogRef, {
@@ -24,30 +30,38 @@ watch(visible, (v) => {
 
 <template>
   <Teleport to="body">
-    <Transition name="nd-popup">
-      <div v-if="visible" class="_dialogBackdrop" @click.self="resolve(false)">
-        <div ref="dialogRef" class="_dialog nd-popup-content" @click.stop>
-          <div :class="$style.header">
-            <div :class="$style.title">{{ options.title }}</div>
-          </div>
-          <div :class="$style.body">
-            <p :class="$style.message">{{ options.message }}</p>
-          </div>
-          <div :class="$style.actions">
-            <button v-if="!options.hideCancel" class="_button" :class="$style.btnCancel" @click="resolve(false)">
-              {{ options.cancelLabel || 'キャンセル' }}
-            </button>
-            <button
-              class="_button"
-              :class="options.type === 'danger' ? $style.btnDanger : $style.btnOk"
-              @click="resolve(true)"
-            >
-              {{ options.okLabel || 'OK' }}
-            </button>
-          </div>
+    <div
+      v-if="visible"
+      class="_dialogBackdrop"
+      :class="[entering && $style.enter, leaving && $style.leave]"
+      @click.self="resolve(false)"
+    >
+      <div
+        ref="dialogRef"
+        class="_dialog nd-popup-content"
+        :class="[entering && $style.contentEnter, leaving && $style.contentLeave]"
+        @click.stop
+      >
+        <div :class="$style.header">
+          <div :class="$style.title">{{ options.title }}</div>
+        </div>
+        <div :class="$style.body">
+          <p :class="$style.message">{{ options.message }}</p>
+        </div>
+        <div :class="$style.actions">
+          <button v-if="!options.hideCancel" class="_button" :class="$style.btnCancel" @click="resolve(false)">
+            {{ options.cancelLabel || 'キャンセル' }}
+          </button>
+          <button
+            class="_button"
+            :class="options.type === 'danger' ? $style.btnDanger : $style.btnOk"
+            @click="resolve(true)"
+          >
+            {{ options.okLabel || 'OK' }}
+          </button>
         </div>
       </div>
-    </Transition>
+    </div>
   </Teleport>
 </template>
 
@@ -88,4 +102,31 @@ watch(visible, (v) => {
 .btnCancel { @include btn-secondary; }
 .btnOk { @include btn-primary; }
 .btnDanger { @include btn-danger; }
+
+// Vapor transition classes
+.enter {
+  animation: backdropIn 0.15s ease;
+}
+.leave {
+  animation: backdropOut 0.15s ease forwards;
+}
+@keyframes backdropIn {
+  from { opacity: 0; }
+}
+@keyframes backdropOut {
+  to { opacity: 0; }
+}
+
+.contentEnter {
+  animation: popupIn 0.3s var(--nd-ease-pop);
+}
+.contentLeave {
+  animation: popupOut 0.15s ease forwards;
+}
+@keyframes popupIn {
+  from { opacity: 0; transform: scale(0.95); }
+}
+@keyframes popupOut {
+  to { opacity: 0; transform: scale(0.95); }
+}
 </style>

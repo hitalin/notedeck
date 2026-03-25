@@ -10,6 +10,8 @@ function safeMediaSrc(url: string | null | undefined): string | undefined {
 
 const props = defineProps<{
   files: NormalizedDriveFile[]
+  /** When true, load images eagerly (item is near viewport in virtual scroller) */
+  eager?: boolean
 }>()
 
 const revealedIds = ref(new Set<string>())
@@ -82,23 +84,31 @@ function closeLightbox() {
   lightboxIndex.value = null
 }
 
+function prevImage() {
+  if (lightboxIndex.value !== null && lightboxIndex.value > 0) {
+    lightboxIndex.value--
+  }
+}
+
+function nextImage() {
+  if (
+    lightboxIndex.value !== null &&
+    lightboxIndex.value < previewableFiles.value.length - 1
+  ) {
+    lightboxIndex.value++
+  }
+}
+
 function onLightboxKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     e.preventDefault()
     closeLightbox()
   } else if (e.key === 'ArrowLeft') {
     e.preventDefault()
-    if (lightboxIndex.value !== null && lightboxIndex.value > 0) {
-      lightboxIndex.value--
-    }
+    prevImage()
   } else if (e.key === 'ArrowRight') {
     e.preventDefault()
-    if (
-      lightboxIndex.value !== null &&
-      lightboxIndex.value < previewableFiles.value.length - 1
-    ) {
-      lightboxIndex.value++
-    }
+    nextImage()
   }
 }
 
@@ -161,7 +171,7 @@ onUnmounted(() => {
           :src="safeMediaSrc(file.thumbnailUrl) || safeMediaSrc(file.url)"
           :alt="file.name"
           :class="[$style.mediaImage, { [$style.isLoaded]: loadedIds.has(file.id) }]"
-          loading="lazy"
+          :loading="props.eager ? 'eager' : 'lazy'"
           decoding="async"
           @load="onImageLoaded(file.id)"
           @error="onImageError(file.id)"
@@ -222,6 +232,31 @@ onUnmounted(() => {
           <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
         </svg>
       </button>
+
+      <!-- Prev button -->
+      <button
+        v-if="previewableFiles.length > 1 && lightboxIndex !== null && lightboxIndex > 0"
+        :class="$style.lightboxNav"
+        :style="{ left: '16px' }"
+        @click.stop="prevImage()"
+      >
+        <svg viewBox="0 0 24 24" width="28" height="28">
+          <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+
+      <!-- Next button -->
+      <button
+        v-if="previewableFiles.length > 1 && lightboxIndex !== null && lightboxIndex < previewableFiles.length - 1"
+        :class="$style.lightboxNav"
+        :style="{ right: '16px' }"
+        @click.stop="nextImage()"
+      >
+        <svg viewBox="0 0 24 24" width="28" height="28">
+          <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+
       <img
         v-if="isImage(lightboxFile)"
         :src="safeMediaSrc(lightboxFile.url)"
@@ -237,6 +272,16 @@ onUnmounted(() => {
         autoplay
         @click.stop
       />
+
+      <!-- Dot indicators -->
+      <div v-if="previewableFiles.length > 1" :class="$style.lightboxDots" @click.stop>
+        <button
+          v-for="(_, i) in previewableFiles"
+          :key="i"
+          :class="[$style.lightboxDot, { [$style.lightboxDotActive]: i === lightboxIndex }]"
+          @click="lightboxIndex = i"
+        />
+      </div>
     </div>
   </Teleport>
 </template>
@@ -486,6 +531,57 @@ onUnmounted(() => {
   max-height: 90vh;
   cursor: default;
   border-radius: 4px;
+}
+
+.lightboxNav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+  z-index: 1;
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+
+.lightboxDots {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 1;
+}
+
+.lightboxDot {
+  width: 8px;
+  height: 8px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.7);
+  }
+}
+
+.lightboxDotActive {
+  background: #fff;
 }
 
 @keyframes shimmer {

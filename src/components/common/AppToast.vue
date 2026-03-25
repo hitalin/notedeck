@@ -1,16 +1,26 @@
 <script setup lang="ts">
+import { useVaporTransitionGroup } from '@/composables/useVaporTransition'
 import { useToast } from '@/stores/toast'
 
 const { toasts } = useToast()
+const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
+  enterDuration: 300,
+  leaveDuration: 150,
+})
 </script>
 
 <template>
   <Teleport to="body">
-    <TransitionGroup name="app-toast" tag="div" :class="$style.container">
+    <div :class="$style.container">
       <div
-        v-for="toast in toasts"
+        v-for="toast in rendered"
         :key="toast.id"
-        :class="[$style.toast, $style[toast.type]]"
+        :class="[
+          $style.toast,
+          $style[toast.type],
+          enteringIds.has(toast.id) && $style.toastEnter,
+          leavingIds.has(toast.id) && $style.toastLeave,
+        ]"
       >
         <i
           :class="[
@@ -23,7 +33,7 @@ const { toasts } = useToast()
         />
         <span :class="$style.text">{{ toast.text }}</span>
       </div>
-    </TransitionGroup>
+    </div>
   </Teleport>
 </template>
 
@@ -87,28 +97,26 @@ const { toasts } = useToast()
   color: #fff;
   background: color-mix(in srgb, var(--nd-accent) 85%, transparent);
 }
-</style>
 
-<style>
-.app-toast-enter-active {
-  transition:
-    opacity var(--nd-duration-slower) var(--nd-ease-pop),
-    transform var(--nd-duration-slower) var(--nd-ease-pop);
+.toastEnter {
+  animation: toast-enter 0.3s var(--nd-ease-pop) both;
 }
 
-.app-toast-leave-active {
-  transition:
-    opacity var(--nd-duration-base) ease,
-    transform var(--nd-duration-base) ease;
+.toastLeave {
+  animation: toast-leave 0.15s ease both;
 }
 
-.app-toast-enter-from {
-  opacity: 0;
-  transform: translateY(-12px) scale(0.95);
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.95);
+  }
 }
 
-.app-toast-leave-to {
-  opacity: 0;
-  transform: translateY(8px) scale(0.95);
+@keyframes toast-leave {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
 }
 </style>

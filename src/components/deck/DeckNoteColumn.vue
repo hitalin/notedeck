@@ -179,11 +179,12 @@ defineExpose({
           @scroll="handleScroll"
           @near-end="loadMore"
         >
-          <template #default="{ item, index }">
+          <template #default="{ item, index, nearViewport }">
             <div>
               <MkNote
                 :note="item"
                 :focused="item.id === focusedNoteId"
+                :near-viewport="nearViewport"
                 @react="handlers.reaction"
                 @reply="handlers.reply"
                 @renote="handlers.renote"

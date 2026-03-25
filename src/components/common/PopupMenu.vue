@@ -2,6 +2,7 @@
 import { nextTick, ref, watch } from 'vue'
 
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
+import { useVaporTransition } from '@/composables/useVaporTransition'
 import { extractThemeVars } from '@/utils/themeVars'
 
 const props = withDefaults(
@@ -21,6 +22,11 @@ const menuPos = ref({ x: 0, y: 0 })
 const menuTheme = ref<Record<string, string>>({})
 const menuRef = ref<HTMLElement | null>(null)
 
+const { visible, entering, leaving } = useVaporTransition(showMenu, {
+  enterDuration: 300,
+  leaveDuration: 300,
+})
+
 const { activate: activateKeyboard, deactivate: deactivateKeyboard } =
   useMenuKeyboard({
     containerRef: menuRef,
@@ -28,7 +34,7 @@ const { activate: activateKeyboard, deactivate: deactivateKeyboard } =
     onClose: () => close(),
   })
 
-watch(showMenu, (v) => {
+watch(visible, (v) => {
   if (v) nextTick(activateKeyboard)
   else deactivateKeyboard()
 })
@@ -68,19 +74,21 @@ defineExpose({ open, close, activateKeyboard })
 
 <template>
   <Teleport to="body">
-    <Transition name="nd-popup">
-      <div v-if="showMenu" :class="$style.popupBackdrop" @click="close">
-        <div
-          ref="menuRef"
-          :class="$style.popupMenu"
-          class="_popup nd-popup-content popup-menu"
-          :style="{ ...menuTheme, top: menuPos.y + 'px', left: menuPos.x + 'px' }"
-          @click.stop
-        >
-          <slot />
-        </div>
+    <div
+      v-if="visible"
+      :class="[$style.popupBackdrop, entering && $style.enter, leaving && $style.leave]"
+      @click="close"
+    >
+      <div
+        ref="menuRef"
+        :class="[$style.popupMenu, entering && $style.contentEnter, leaving && $style.contentLeave]"
+        class="_popup nd-popup-content popup-menu"
+        :style="{ ...menuTheme, top: menuPos.y + 'px', left: menuPos.x + 'px' }"
+        @click.stop
+      >
+        <slot />
       </div>
-    </Transition>
+    </div>
   </Teleport>
 </template>
 
@@ -98,5 +106,32 @@ defineExpose({ open, close, activateKeyboard })
   max-width: 300px;
   padding: 6px 0;
   z-index: calc(var(--nd-z-popup) + 1);
+}
+
+// Vapor transition classes
+.enter {
+  animation: backdropIn 0.15s ease;
+}
+.leave {
+  animation: backdropOut 0.15s ease forwards;
+}
+@keyframes backdropIn {
+  from { opacity: 0; }
+}
+@keyframes backdropOut {
+  to { opacity: 0; }
+}
+
+.contentEnter {
+  animation: popupIn 0.3s var(--nd-ease-pop);
+}
+.contentLeave {
+  animation: popupOut 0.15s ease forwards;
+}
+@keyframes popupIn {
+  from { opacity: 0; transform: scale(0.95); }
+}
+@keyframes popupOut {
+  to { opacity: 0; transform: scale(0.95); }
 }
 </style>

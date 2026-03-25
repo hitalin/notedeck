@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { MisskeyAuth } from '@/adapters/misskey/auth'
 import type { AuthSession } from '@/adapters/types'
 import { useServerPreview } from '@/composables/useServerPreview'
+import { useVaporTransitionSwitch } from '@/composables/useVaporTransition'
 import { detectServer } from '@/core/server'
 import type { Account } from '@/stores/accounts'
 import { useAccountsStore } from '@/stores/accounts'
@@ -33,6 +34,20 @@ const {
 const step = ref<'input' | 'waiting' | 'guestLoading' | 'error'>('input')
 const errorMessage = ref('')
 let currentSession: AuthSession | null = null
+
+// Vapor-compatible transition switches (replaces <Transition mode="out-in">)
+const stepSwitch = useVaporTransitionSwitch(step, { leaveDuration: 300 })
+
+const logoSrc = computed(() =>
+  serverStatus.value === 'ok' && serverInfo.value?.iconUrl
+    ? serverInfo.value.iconUrl
+    : 'default',
+)
+const logoSwitch = useVaporTransitionSwitch(logoSrc, { leaveDuration: 200 })
+
+const subtitleSwitch = useVaporTransitionSwitch(serverStatus, {
+  leaveDuration: 200,
+})
 
 async function startLogin() {
   const trimmedHost = host.value
@@ -106,110 +121,144 @@ onMounted(() => {
 
 <template>
   <div :class="[$style.loginContent, { [$style.mobile]: isCompact }]">
-    <Transition name="step" mode="out-in">
-      <!-- Step 1: Input -->
-      <div v-if="step === 'input'" key="input" :class="$style.dialogBody">
-        <div :class="$style.logoArea">
-          <Transition name="logo" mode="out-in">
-            <img v-if="serverStatus === 'ok' && serverInfo?.iconUrl" :key="serverInfo.iconUrl" :src="serverInfo.iconUrl" alt="" :class="$style.appLogo" @error="($event.target as HTMLImageElement).src = '/favicon.svg'" />
-            <img v-else key="default" src="/favicon.svg" alt="NoteDeck" :class="$style.appLogo" />
-          </Transition>
-          <Transition name="logo" mode="out-in">
-            <p v-if="serverStatus === 'checking'" key="checking" :class="$style.subtitle">確認中...</p>
-            <p v-else-if="serverStatus === 'ok'" key="ok" :class="[$style.subtitle, $style.subtitleOk]">
-              サーバーに接続できます
-            </p>
-            <p v-else-if="serverStatus === 'unsupported'" key="unsupported" :class="[$style.subtitle, $style.subtitleWarn]">
-              {{ previewError }}
-            </p>
-            <p v-else-if="serverStatus === 'error'" key="error" :class="[$style.subtitle, $style.subtitleError]">
-              {{ previewError }}
-            </p>
-            <p v-else key="idle" :class="$style.subtitle">Misskeyサーバーに接続</p>
-          </Transition>
-        </div>
+    <!-- Step 1: Input -->
+    <div
+      v-if="stepSwitch.displayed.value === 'input'"
+      :class="[$style.dialogBody, stepSwitch.leaving.value ? $style.stepLeave : $style.stepEnter]"
+    >
+      <div :class="$style.logoArea">
+        <img
+          v-if="logoSwitch.displayed.value !== 'default'"
+          :key="logoSwitch.displayed.value"
+          :src="logoSwitch.displayed.value"
+          alt=""
+          :class="[$style.appLogo, logoSwitch.leaving.value ? $style.logoLeave : $style.logoEnter]"
+          @error="($event.target as HTMLImageElement).src = '/favicon.svg'"
+        />
+        <img
+          v-else
+          key="default"
+          src="/favicon.svg"
+          alt="NoteDeck"
+          :class="[$style.appLogo, logoSwitch.leaving.value ? $style.logoLeave : $style.logoEnter]"
+        />
+        <p
+          v-if="subtitleSwitch.displayed.value === 'checking'"
+          :class="[$style.subtitle, subtitleSwitch.leaving.value ? $style.logoLeave : $style.logoEnter]"
+        >確認中...</p>
+        <p
+          v-else-if="subtitleSwitch.displayed.value === 'ok'"
+          :class="[$style.subtitle, $style.subtitleOk, subtitleSwitch.leaving.value ? $style.logoLeave : $style.logoEnter]"
+        >
+          サーバーに接続できます
+        </p>
+        <p
+          v-else-if="subtitleSwitch.displayed.value === 'unsupported'"
+          :class="[$style.subtitle, $style.subtitleWarn, subtitleSwitch.leaving.value ? $style.logoLeave : $style.logoEnter]"
+        >
+          {{ previewError }}
+        </p>
+        <p
+          v-else-if="subtitleSwitch.displayed.value === 'error'"
+          :class="[$style.subtitle, $style.subtitleError, subtitleSwitch.leaving.value ? $style.logoLeave : $style.logoEnter]"
+        >
+          {{ previewError }}
+        </p>
+        <p
+          v-else
+          :class="[$style.subtitle, subtitleSwitch.leaving.value ? $style.logoLeave : $style.logoEnter]"
+        >Misskeyサーバーに接続</p>
+      </div>
 
-        <div :class="$style.formArea">
-          <label :class="$style.inputLabel" for="host">サーバーアドレス</label>
-          <input
-            id="host"
-            v-model="host"
-            type="text"
-            :class="$style.mkInput"
-            placeholder="misskey.io"
-            autocomplete="off"
-            @keyup.enter="startLogin"
-          />
-        </div>
+      <div :class="$style.formArea">
+        <label :class="$style.inputLabel" for="host">サーバーアドレス</label>
+        <input
+          id="host"
+          v-model="host"
+          type="text"
+          :class="$style.mkInput"
+          placeholder="misskey.io"
+          autocomplete="off"
+          @keyup.enter="startLogin"
+        />
+      </div>
 
-        <div :class="$style.actions">
-          <button
-            :class="$style.btnLogin"
-            :disabled="!host.trim()"
-            @click="startLogin"
-          >
-            ログイン
-          </button>
-          <button
-            :class="$style.btnGuest"
-            :disabled="!host.trim()"
-            @click="startGuest"
-          >
-            ゲストとして閲覧
-          </button>
-          <button class="_button" :class="$style.btnCancel" @click="emit('close')">
-            キャンセル
-          </button>
+      <div :class="$style.actions">
+        <button
+          :class="$style.btnLogin"
+          :disabled="!host.trim()"
+          @click="startLogin"
+        >
+          ログイン
+        </button>
+        <button
+          :class="$style.btnGuest"
+          :disabled="!host.trim()"
+          @click="startGuest"
+        >
+          ゲストとして閲覧
+        </button>
+        <button class="_button" :class="$style.btnCancel" @click="emit('close')">
+          キャンセル
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2a: Guest loading -->
+    <div
+      v-else-if="stepSwitch.displayed.value === 'guestLoading'"
+      :class="[$style.dialogBody, stepSwitch.leaving.value ? $style.stepLeave : $style.stepEnter]"
+    >
+      <div :class="$style.logoArea">
+        <div :class="$style.waitingSpinner" />
+        <p :class="$style.subtitle">サーバーに接続中...</p>
+      </div>
+    </div>
+
+    <!-- Step 2: Waiting -->
+    <div
+      v-else-if="stepSwitch.displayed.value === 'waiting'"
+      :class="[$style.dialogBody, stepSwitch.leaving.value ? $style.stepLeave : $style.stepEnter]"
+    >
+      <div :class="$style.logoArea">
+        <div :class="$style.waitingSpinner" />
+        <p :class="$style.subtitle">認証待ち...</p>
+      </div>
+
+      <div :class="$style.waitingInfo">
+        <p>ブラウザで認証画面が開きました。</p>
+        <p>認証が完了したら、下のボタンをクリックしてください。</p>
+      </div>
+
+      <div :class="$style.actions">
+        <button :class="$style.btnLogin" @click="completeLogin">
+          認証しました
+        </button>
+        <button class="_button" :class="$style.btnCancel" @click="reset">
+          キャンセル
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 3: Error -->
+    <div
+      v-else-if="stepSwitch.displayed.value === 'error'"
+      :class="[$style.dialogBody, stepSwitch.leaving.value ? $style.stepLeave : $style.stepEnter]"
+    >
+      <div :class="$style.logoArea">
+        <div :class="$style.errorIconWrap">
+          <i class="ti ti-alert-triangle" />
         </div>
       </div>
 
-      <!-- Step 2a: Guest loading -->
-      <div v-else-if="step === 'guestLoading'" key="guestLoading" :class="$style.dialogBody">
-        <div :class="$style.logoArea">
-          <div :class="$style.waitingSpinner" />
-          <p :class="$style.subtitle">サーバーに接続中...</p>
-        </div>
+      <p :class="$style.errorText">{{ errorMessage }}</p>
+
+      <div :class="$style.actions">
+        <button :class="$style.btnLogin" @click="reset">
+          やり直す
+        </button>
       </div>
-
-      <!-- Step 2: Waiting -->
-      <div v-else-if="step === 'waiting'" key="waiting" :class="$style.dialogBody">
-        <div :class="$style.logoArea">
-          <div :class="$style.waitingSpinner" />
-          <p :class="$style.subtitle">認証待ち...</p>
-        </div>
-
-        <div :class="$style.waitingInfo">
-          <p>ブラウザで認証画面が開きました。</p>
-          <p>認証が完了したら、下のボタンをクリックしてください。</p>
-        </div>
-
-        <div :class="$style.actions">
-          <button :class="$style.btnLogin" @click="completeLogin">
-            認証しました
-          </button>
-          <button class="_button" :class="$style.btnCancel" @click="reset">
-            キャンセル
-          </button>
-        </div>
-      </div>
-
-      <!-- Step 3: Error -->
-      <div v-else-if="step === 'error'" key="error" :class="$style.dialogBody">
-        <div :class="$style.logoArea">
-          <div :class="$style.errorIconWrap">
-            <i class="ti ti-alert-triangle" />
-          </div>
-        </div>
-
-        <p :class="$style.errorText">{{ errorMessage }}</p>
-
-        <div :class="$style.actions">
-          <button :class="$style.btnLogin" @click="reset">
-            やり直す
-          </button>
-        </div>
-      </div>
-    </Transition>
+    </div>
   </div>
 </template>
 
@@ -446,37 +495,16 @@ onMounted(() => {
     min-height: 44px;
   }
 }
-</style>
 
-<!-- Transition classes (must be unscoped for Vue transitions) -->
-<style>
-.step-enter-active,
-.step-leave-active {
-  transition: opacity var(--nd-duration-slower) cubic-bezier(0, 0, 0.35, 1), transform var(--nd-duration-slower) cubic-bezier(0, 0, 0.35, 1);
-}
+/* Step transition animations */
+.stepEnter { animation: stepIn 0.3s cubic-bezier(0, 0, 0.35, 1); }
+.stepLeave { animation: stepOut 0.3s cubic-bezier(0, 0, 0.35, 1) forwards; }
+@keyframes stepIn { from { opacity: 0; transform: translateX(50px); } }
+@keyframes stepOut { to { opacity: 0; transform: translateX(-50px); } }
 
-.step-enter-from {
-  opacity: 0;
-  transform: translateX(50px);
-}
-
-.step-leave-to {
-  opacity: 0;
-  transform: translateX(-50px);
-}
-
-.logo-enter-active,
-.logo-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.logo-enter-from {
-  opacity: 0;
-  transform: scale(0.9);
-}
-
-.logo-leave-to {
-  opacity: 0;
-  transform: scale(0.9);
-}
+/* Logo / subtitle transition animations */
+.logoEnter { animation: logoIn 0.2s ease; }
+.logoLeave { animation: logoOut 0.2s ease forwards; }
+@keyframes logoIn { from { opacity: 0; transform: scale(0.9); } }
+@keyframes logoOut { to { opacity: 0; transform: scale(0.9); } }
 </style>

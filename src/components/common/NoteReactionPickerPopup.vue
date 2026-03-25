@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia'
 import { defineAsyncComponent, nextTick, ref, watch } from 'vue'
 
 import { useFocusTrap } from '@/composables/useFocusTrap'
+import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useUiStore } from '@/stores/ui'
 import { extractThemeVars } from '@/utils/themeVars'
 
@@ -32,6 +33,11 @@ const { activate: activateTrap, deactivate: deactivateTrap } = useFocusTrap(
   },
 )
 
+const { visible, leaving } = useVaporTransition(show, {
+  enterDuration: 400,
+  leaveDuration: 300,
+})
+
 watch(show, (v) => {
   if (v) nextTick(activateTrap)
   else deactivateTrap()
@@ -57,23 +63,31 @@ defineExpose({ open })
 
 <template>
   <Teleport to="body">
-    <Transition :name="isCompact ? 'nd-sheet' : 'nd-popup'">
-      <div v-if="show" :class="[$style.popupBackdrop, isCompact && $style.mobile]" @click="close">
-        <div
-          ref="pickerRef"
-          :class="$style.reactionPickerPopup"
-          class="nd-popup-content reaction-picker-popup"
-          :style="isCompact ? theme : { ...theme, top: pos.y + 'px', left: pos.x + 'px' }"
-          @click.stop
-        >
-          <MkReactionPicker
-            :server-host="serverHost"
-            :account-id="accountId"
-            @pick="(r: string) => { emit('pick', r); close() }"
-          />
-        </div>
+    <div
+      v-if="visible"
+      :class="[
+        $style.popupBackdrop,
+        isCompact && $style.mobile,
+        leaving ? (isCompact ? $style.sheetLeave : $style.popupLeave) : (isCompact ? $style.sheetEnter : $style.popupEnter),
+      ]"
+      @click="close"
+    >
+      <div
+        ref="pickerRef"
+        :class="[
+          $style.reactionPickerPopup,
+          leaving ? (isCompact ? $style.sheetContentLeave : $style.popupContentLeave) : (isCompact ? $style.sheetContentEnter : $style.popupContentEnter),
+        ]"
+        :style="isCompact ? theme : { ...theme, top: pos.y + 'px', left: pos.x + 'px' }"
+        @click.stop
+      >
+        <MkReactionPicker
+          :server-host="serverHost"
+          :account-id="accountId"
+          @pick="(r: string) => { emit('pick', r); close() }"
+        />
       </div>
-    </Transition>
+    </div>
   </Teleport>
 </template>
 
@@ -111,33 +125,28 @@ defineExpose({ open })
     padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
   }
 }
-</style>
 
-<style>
-/* Override default nd-popup transform (slides from left) */
-.nd-popup-enter-from .reaction-picker-popup,
-.nd-popup-leave-to .reaction-picker-popup {
-  transform: translateX(-100%) scale(0.95);
-}
+/* Desktop popup backdrop */
+.popupEnter { animation: popupBdIn 0.3s ease; }
+.popupLeave { animation: popupBdOut 0.3s ease forwards; }
+@keyframes popupBdIn { from { opacity: 0; } }
+@keyframes popupBdOut { to { opacity: 0; } }
 
-/* Mobile bottom-sheet transition */
-.nd-sheet-enter-active,
-.nd-sheet-leave-active {
-  transition: opacity var(--nd-duration-slow) ease;
-}
+/* Desktop popup content */
+.popupContentEnter { animation: popupIn 0.3s ease; }
+.popupContentLeave { animation: popupOut 0.3s ease forwards; }
+@keyframes popupIn { from { opacity: 0; transform: translateX(-100%) scale(0.95); } }
+@keyframes popupOut { to { opacity: 0; transform: translateX(-100%) scale(0.95); } }
 
-.nd-sheet-enter-active .reaction-picker-popup,
-.nd-sheet-leave-active .reaction-picker-popup {
-  transition: transform var(--nd-duration-slower) cubic-bezier(0.16, 1, 0.3, 1);
-}
+/* Mobile sheet backdrop */
+.sheetEnter { animation: sheetBdIn 0.4s ease; }
+.sheetLeave { animation: sheetBdOut 0.3s ease forwards; }
+@keyframes sheetBdIn { from { opacity: 0; } }
+@keyframes sheetBdOut { to { opacity: 0; } }
 
-.nd-sheet-enter-from,
-.nd-sheet-leave-to {
-  opacity: 0;
-}
-
-.nd-sheet-enter-from .reaction-picker-popup,
-.nd-sheet-leave-to .reaction-picker-popup {
-  transform: translateY(100%);
-}
+/* Mobile sheet content */
+.sheetContentEnter { animation: sheetIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.sheetContentLeave { animation: sheetOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes sheetIn { from { transform: translateY(100%); } }
+@keyframes sheetOut { to { transform: translateY(100%); } }
 </style>

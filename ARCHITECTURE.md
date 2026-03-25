@@ -356,14 +356,15 @@ notecli tl -f json | jq '.[].text'
 ### Vue Vapor モード移行（[#52](https://github.com/hitalin/notedeck/issues/52)）
 
 Vue 3.6 で導入予定の Vapor モード（仮想DOMレス）への移行を計画中。
-全96コンポーネントが **100% 互換**（確認済み）。Vue 3.6 安定版リリース後、即座に移行可能。
+コーディング制約（`<script setup>` 必須、`h()`/JSX 禁止等）は全コンポーネントで遵守済み。
 
-**移行時にテストが必要な箇所:**
+**`<Transition>` / `<TransitionGroup>` 完全除去済み。** 全22箇所を composable（`useVaporTransition`, `useVaporTransitionSwitch`, `useVaporTransitionGroup`）+ CSS `@keyframes` に移行。leave animation は composable で DOM 除去を遅延させることで実現。
+
+**残る Vapor 非互換箇所（初期リリースで未サポートの組み込みコンポーネント）:**
 
 | 項目 | 件数 | 備考 |
 |---|---|---|
-| `<Teleport>` | 41 | モーダル重ね合わせの動作確認 |
-| `<Transition>` / `<TransitionGroup>` | 27 | アニメーション挙動の検証 |
+| `<Teleport>` | 41 | モーダル重ね合わせ（Vapor 対応予定だが要検証） |
 
 ---
 

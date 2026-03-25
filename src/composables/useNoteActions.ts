@@ -3,6 +3,7 @@ import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
 import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
+import { hapticLight } from '@/utils/haptics'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { toggleFavorite } from '@/utils/toggleFavorite'
 import { toggleReaction } from '@/utils/toggleReaction'
@@ -60,6 +61,7 @@ export function useNoteActions(
   async function handleRenote(note: NormalizedNote) {
     const adapter = await resolve(note)
     if (!adapter) return
+    hapticLight()
     note.renoteCount = (note.renoteCount ?? 0) + 1
     onMutated(note)
     try {
@@ -74,6 +76,7 @@ export function useNoteActions(
 
   function handleReply(note: NormalizedNote) {
     if (!canWrite(note._accountId)) return
+    hapticLight()
     postFormAccountId.value = note._accountId
     postFormReplyTo.value = note
     postFormRenoteId.value = undefined
@@ -115,6 +118,7 @@ export function useNoteActions(
   async function handleBookmark(note: NormalizedNote) {
     const adapter = await resolve(note)
     if (!adapter) return
+    hapticLight()
     try {
       await toggleFavorite(adapter.api, note, () => onMutated(note))
     } catch (e) {
