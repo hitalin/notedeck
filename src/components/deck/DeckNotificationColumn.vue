@@ -29,6 +29,7 @@ import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
+import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
@@ -694,6 +695,11 @@ onUnmounted(() => {
                     <span :class="$style.notifTime">{{ formatTime(notif.createdAt) }}</span>
                   </div>
 
+                  <!-- Achievement name -->
+                  <div v-if="notif.type === 'achievementEarned' && notif.achievement" :class="$style.notifAchievement">
+                    {{ ACHIEVEMENT_LABELS[notif.achievement] ?? notif.achievement }}
+                  </div>
+
                   <!-- Follow request actions -->
                   <div
                     v-if="notif.type === 'receiveFollowRequest' && notif.user"
@@ -994,6 +1000,13 @@ onUnmounted(() => {
 .notifLabel {
   font-size: 0.85em;
   opacity: 0.7;
+}
+
+.notifAchievement {
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  opacity: 0.7;
+  margin-top: 2px;
 }
 
 .notifReaction {
