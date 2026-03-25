@@ -18,67 +18,186 @@ const { tab, containerRef: editorRef } = useEditorTabs(
   'api',
 )
 
-// --- AI Settings ---
-// File-backed settings (included in backup): provider, endpoint, model, prompt
-// localStorage-only (excluded from backup): API keys (secrets)
+// --- Type definitions ---
 
-/** Fields persisted to ai.json (safe to backup). */
-interface AiFileConfig {
-  provider: 'ollama' | 'openai' | 'custom'
-  ollamaEndpoint: string
-  ollamaModel: string
-  openaiModel: string
-  customEndpoint: string
-  customModel: string
+interface ProviderSettings {
+  endpoint: string
+  apiKey: string
+  model: string
+}
+
+type ProviderKey = 'ollama' | 'openai' | 'custom'
+
+interface AiConfig {
+  provider: ProviderKey
+  ollama: ProviderSettings
+  openai: ProviderSettings
+  custom: ProviderSettings
   systemPrompt: string
 }
 
-/** Full config including secrets (never written to file). */
-interface AiConfig extends AiFileConfig {
-  openaiApiKey: string
-  customApiKey: string
+const PROVIDER_KEYS: readonly ProviderKey[] = ['ollama', 'openai', 'custom']
+const STORAGE_KEY = 'nd-ai-settings'
+
+// --- Provider schema (data-driven UI) ---
+
+interface ProviderOption {
+  value: ProviderKey
+  label: string
+  icon: string
+  /** URL path appended to endpoint for connection test */
+  testPath: string
 }
 
-const STORAGE_KEY = 'nd-ai-settings'
-const SECRET_FIELDS = ['openaiApiKey', 'customApiKey'] as const
+interface FieldDef {
+  key: keyof ProviderSettings
+  label: string
+  icon: string
+  secret?: boolean
+  placeholder: string
+}
+
+const PROVIDERS: ProviderOption[] = [
+  {
+    value: 'ollama',
+    label: 'Ollama',
+    icon: 'ti-server',
+    testPath: '/api/tags',
+  },
+  {
+    value: 'openai',
+    label: 'OpenAI',
+    icon: 'ti-brand-openai',
+    testPath: '/models',
+  },
+  {
+    value: 'custom',
+    label: 'カスタム (OpenAI互換)',
+    icon: 'ti-plug',
+    testPath: '/models',
+  },
+]
+
+const PROVIDER_FIELDS: Record<ProviderKey, FieldDef[]> = {
+  ollama: [
+    {
+      key: 'endpoint',
+      label: 'エンドポイント',
+      icon: 'ti-link',
+      placeholder: 'http://localhost:11434',
+    },
+    {
+      key: 'model',
+      label: 'モデル',
+      icon: 'ti-cube',
+      placeholder: 'llama3, gemma2, etc.',
+    },
+  ],
+  openai: [
+    {
+      key: 'apiKey',
+      label: 'APIキー',
+      icon: 'ti-key',
+      secret: true,
+      placeholder: 'sk-...',
+    },
+    {
+      key: 'model',
+      label: 'モデル',
+      icon: 'ti-cube',
+      placeholder: 'gpt-4o',
+    },
+  ],
+  custom: [
+    {
+      key: 'endpoint',
+      label: 'エンドポイント',
+      icon: 'ti-link',
+      placeholder: 'https://api.example.com/v1',
+    },
+    {
+      key: 'apiKey',
+      label: 'APIキー',
+      icon: 'ti-key',
+      secret: true,
+      placeholder: 'APIキー（任意）',
+    },
+    {
+      key: 'model',
+      label: 'モデル',
+      icon: 'ti-cube',
+      placeholder: 'モデル名',
+    },
+  ],
+}
+
+// --- Config defaults & persistence ---
+
+function defaultProviderSettings(): Record<ProviderKey, ProviderSettings> {
+  return {
+    ollama: {
+      endpoint: 'http://localhost:11434',
+      apiKey: '',
+      model: '',
+    },
+    openai: {
+      endpoint: 'https://api.openai.com/v1',
+      apiKey: '',
+      model: 'gpt-4o',
+    },
+    custom: { endpoint: '', apiKey: '', model: '' },
+  }
+}
 
 function defaultConfig(): AiConfig {
+  const providers = defaultProviderSettings()
   return {
     provider: 'ollama',
-    ollamaEndpoint: 'http://localhost:11434',
-    ollamaModel: '',
-    openaiApiKey: '',
-    openaiModel: 'gpt-4o',
-    customEndpoint: '',
-    customApiKey: '',
-    customModel: '',
+    ...providers,
     systemPrompt: defaultAiPrompt,
   }
 }
 
-/** Extract file-safe fields (no secrets). */
-function toFileConfig(c: AiConfig): AiFileConfig {
-  const { openaiApiKey: _, customApiKey: __, ...safe } = c
-  return safe
+/** Strip apiKey from each provider for file backup. */
+function toFileConfig(c: AiConfig): Record<string, unknown> {
+  const result: Record<string, unknown> = {
+    provider: c.provider,
+    systemPrompt: c.systemPrompt,
+  }
+  for (const key of PROVIDER_KEYS) {
+    const { apiKey: _, ...safe } = c[key]
+    result[key] = safe
+  }
+  return result
 }
 
 function loadFromLocalStorage(): AiConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return { ...defaultConfig(), ...JSON.parse(raw) }
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<AiConfig>
+      return mergeConfig(defaultConfig(), parsed)
+    }
   } catch {
     /* ignore */
   }
   return defaultConfig()
 }
 
+/** Deep-merge partial config into defaults, preserving nested provider fields. */
+function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
+  const result = { ...base, ...partial }
+  for (const key of PROVIDER_KEYS) {
+    result[key] = { ...base[key], ...(partial[key] ?? {}) }
+  }
+  return result
+}
+
 const config = ref<AiConfig>(loadFromLocalStorage())
 const initialized = ref(false)
 
 function saveConfig() {
-  // Always save full config (including secrets) to localStorage
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config.value))
-  // Persist non-secret fields to file (for backup)
   if (initialized.value) {
     persistToFile().catch((e) =>
       console.warn('[ai-settings] failed to persist to file:', e),
@@ -91,25 +210,25 @@ async function persistToFile(): Promise<void> {
   await writeAiSettings(content)
 }
 
-/** Load from file and initialize. File is source of truth for non-secret fields. */
 async function initFileStorage(): Promise<void> {
   const content = await readAiSettings()
   if (content) {
     try {
-      const parsed = JSON.parse(content) as Partial<AiFileConfig>
-      // Merge file config with localStorage secrets
-      const secrets: Pick<AiConfig, (typeof SECRET_FIELDS)[number]> = {
-        openaiApiKey: config.value.openaiApiKey,
-        customApiKey: config.value.customApiKey,
+      const parsed = JSON.parse(content) as Partial<AiConfig>
+      // Preserve localStorage secrets, merge file config
+      const secrets = Object.fromEntries(
+        PROVIDER_KEYS.map((k) => [k, config.value[k].apiKey]),
+      )
+      config.value = mergeConfig(defaultConfig(), parsed)
+      for (const k of PROVIDER_KEYS) {
+        config.value[k].apiKey = secrets[k] ?? ''
       }
-      config.value = { ...defaultConfig(), ...parsed, ...secrets }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(config.value))
     } catch (e) {
       console.warn('[ai-settings] failed to parse ai.json:', e)
     }
   }
   initialized.value = true
-  // Migrate: localStorage has settings but no file exists
   if (!content && config.value !== defaultConfig()) {
     persistToFile().catch((e) =>
       console.warn('[ai-settings] migration to file failed:', e),
@@ -131,28 +250,23 @@ watch(
   { deep: true },
 )
 
-// Provider dropdown
-const showProviderDropdown = ref(false)
-const providerDropdownRef = ref<HTMLElement | null>(null)
+// --- Computed helpers ---
 
-interface ProviderOption {
-  value: AiConfig['provider']
-  label: string
-  icon: string
-}
-
-const PROVIDERS: ProviderOption[] = [
-  { value: 'ollama', label: 'Ollama', icon: 'ti-server' },
-  { value: 'openai', label: 'OpenAI', icon: 'ti-brand-openai' },
-  { value: 'custom', label: 'カスタム (OpenAI互換)', icon: 'ti-plug' },
-]
-
-const selectedProvider = computed(
+const currentProvider = computed(
   () =>
     PROVIDERS.find((p) => p.value === config.value.provider) ?? PROVIDERS[0],
 )
 
-function selectProvider(value: AiConfig['provider']) {
+const currentFields = computed(() => PROVIDER_FIELDS[config.value.provider])
+
+const currentSettings = computed(() => config.value[config.value.provider])
+
+// --- Provider dropdown ---
+
+const showProviderDropdown = ref(false)
+const providerDropdownRef = ref<HTMLElement | null>(null)
+
+function selectProvider(value: ProviderKey) {
   config.value.provider = value
   showProviderDropdown.value = false
 }
@@ -161,7 +275,8 @@ useClickOutside(providerDropdownRef, () => {
   showProviderDropdown.value = false
 })
 
-// Connection test
+// --- Connection test ---
+
 const testStatus = ref<'idle' | 'testing' | 'ok' | 'error'>('idle')
 const testMessage = ref('')
 
@@ -170,23 +285,13 @@ async function testConnection() {
   testMessage.value = ''
 
   try {
-    let url: string
-    if (config.value.provider === 'ollama') {
-      url = `${config.value.ollamaEndpoint}/api/tags`
-    } else if (config.value.provider === 'openai') {
-      url = 'https://api.openai.com/v1/models'
-    } else {
-      url = `${config.value.customEndpoint}/models`
-    }
+    const provider = currentProvider.value
+    const settings = currentSettings.value
+    const url = `${settings.endpoint}${provider.testPath}`
 
     const headers: Record<string, string> = {}
-    if (config.value.provider === 'openai' && config.value.openaiApiKey) {
-      headers.Authorization = `Bearer ${config.value.openaiApiKey}`
-    } else if (
-      config.value.provider === 'custom' &&
-      config.value.customApiKey
-    ) {
-      headers.Authorization = `Bearer ${config.value.customApiKey}`
+    if (settings.apiKey) {
+      headers.Authorization = `Bearer ${settings.apiKey}`
     }
 
     const res = await fetch(url, {
@@ -210,10 +315,12 @@ async function testConnection() {
   }, 3000)
 }
 
-// API key visibility
+// --- API key visibility ---
+
 const showApiKey = ref(false)
 
-// ── Import/Export ──
+// --- Import/Export ---
+
 const {
   copied: copiedMessage,
   imported: importedMessage,
@@ -224,7 +331,6 @@ const {
 } = useClipboardFeedback()
 
 function exportConfig() {
-  // Export without secrets (same as file backup)
   navigator.clipboard.writeText(
     JSON.stringify(toFileConfig(config.value), null, 2),
   )
@@ -239,12 +345,14 @@ async function importConfig() {
       showImportError()
       return
     }
-    // Preserve existing secrets, merge imported non-secret fields
-    const secrets: Pick<AiConfig, (typeof SECRET_FIELDS)[number]> = {
-      openaiApiKey: config.value.openaiApiKey,
-      customApiKey: config.value.customApiKey,
+    // Preserve existing secrets
+    const secrets = Object.fromEntries(
+      PROVIDER_KEYS.map((k) => [k, config.value[k].apiKey]),
+    )
+    config.value = mergeConfig(defaultConfig(), parsed as Partial<AiConfig>)
+    for (const k of PROVIDER_KEYS) {
+      config.value[k].apiKey = secrets[k] ?? ''
     }
-    config.value = { ...defaultConfig(), ...parsed, ...secrets }
     saveConfig()
     showImported()
   } catch {
@@ -252,7 +360,8 @@ async function importConfig() {
   }
 }
 
-// ── Reset all with confirmation ──
+// --- Reset ---
+
 const { confirming: confirmingReset, trigger: triggerReset } =
   useDoubleConfirm()
 
@@ -288,8 +397,8 @@ function handleReset() {
             :class="$style.dropdownTrigger"
             @click="showProviderDropdown = !showProviderDropdown"
           >
-            <i :class="'ti ' + selectedProvider.icon" />
-            <span>{{ selectedProvider.label }}</span>
+            <i :class="'ti ' + currentProvider.icon" />
+            <span>{{ currentProvider.label }}</span>
             <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
           </button>
           <div v-if="showProviderDropdown" :class="$style.dropdownPanel">
@@ -308,119 +417,35 @@ function handleReset() {
         </div>
       </div>
 
-      <!-- Ollama Settings -->
-      <template v-if="config.provider === 'ollama'">
-        <div :class="$style.section">
-          <div :class="$style.sectionLabel">
-            <i class="ti ti-link" />
-            エンドポイント
-          </div>
+      <!-- Provider-specific fields (data-driven) -->
+      <div v-for="field in currentFields" :key="field.key" :class="$style.section">
+        <div :class="$style.sectionLabel">
+          <i :class="'ti ' + field.icon" />
+          {{ field.label }}
+        </div>
+        <div v-if="field.secret" :class="$style.inputRow">
           <input
-            v-model="config.ollamaEndpoint"
+            v-model="currentSettings[field.key]"
             :class="$style.input"
-            type="text"
-            placeholder="http://localhost:11434"
+            :type="showApiKey ? 'text' : 'password'"
+            :placeholder="field.placeholder"
           />
+          <button
+            class="_button"
+            :class="$style.visibilityBtn"
+            @click="showApiKey = !showApiKey"
+          >
+            <i :class="showApiKey ? 'ti ti-eye-off' : 'ti ti-eye'" />
+          </button>
         </div>
-        <div :class="$style.section">
-          <div :class="$style.sectionLabel">
-            <i class="ti ti-cube" />
-            モデル
-          </div>
-          <input
-            v-model="config.ollamaModel"
-            :class="$style.input"
-            type="text"
-            placeholder="llama3, gemma2, etc."
-          />
-        </div>
-      </template>
-
-      <!-- OpenAI Settings -->
-      <template v-if="config.provider === 'openai'">
-        <div :class="$style.section">
-          <div :class="$style.sectionLabel">
-            <i class="ti ti-key" />
-            APIキー
-          </div>
-          <div :class="$style.inputRow">
-            <input
-              v-model="config.openaiApiKey"
-              :class="$style.input"
-              :type="showApiKey ? 'text' : 'password'"
-              placeholder="sk-..."
-            />
-            <button
-              class="_button"
-              :class="$style.visibilityBtn"
-              @click="showApiKey = !showApiKey"
-            >
-              <i :class="showApiKey ? 'ti ti-eye-off' : 'ti ti-eye'" />
-            </button>
-          </div>
-        </div>
-        <div :class="$style.section">
-          <div :class="$style.sectionLabel">
-            <i class="ti ti-cube" />
-            モデル
-          </div>
-          <input
-            v-model="config.openaiModel"
-            :class="$style.input"
-            type="text"
-            placeholder="gpt-4o"
-          />
-        </div>
-      </template>
-
-      <!-- Custom Settings -->
-      <template v-if="config.provider === 'custom'">
-        <div :class="$style.section">
-          <div :class="$style.sectionLabel">
-            <i class="ti ti-link" />
-            エンドポイント
-          </div>
-          <input
-            v-model="config.customEndpoint"
-            :class="$style.input"
-            type="text"
-            placeholder="https://api.example.com/v1"
-          />
-        </div>
-        <div :class="$style.section">
-          <div :class="$style.sectionLabel">
-            <i class="ti ti-key" />
-            APIキー
-          </div>
-          <div :class="$style.inputRow">
-            <input
-              v-model="config.customApiKey"
-              :class="$style.input"
-              :type="showApiKey ? 'text' : 'password'"
-              placeholder="APIキー（任意）"
-            />
-            <button
-              class="_button"
-              :class="$style.visibilityBtn"
-              @click="showApiKey = !showApiKey"
-            >
-              <i :class="showApiKey ? 'ti ti-eye-off' : 'ti ti-eye'" />
-            </button>
-          </div>
-        </div>
-        <div :class="$style.section">
-          <div :class="$style.sectionLabel">
-            <i class="ti ti-cube" />
-            モデル
-          </div>
-          <input
-            v-model="config.customModel"
-            :class="$style.input"
-            type="text"
-            placeholder="モデル名"
-          />
-        </div>
-      </template>
+        <input
+          v-else
+          v-model="currentSettings[field.key]"
+          :class="$style.input"
+          type="text"
+          :placeholder="field.placeholder"
+        />
+      </div>
 
       <!-- Connection Test -->
       <div :class="$style.section">
