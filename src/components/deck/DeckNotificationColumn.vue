@@ -269,8 +269,27 @@ const NOTIFICATION_LABELS: Record<string, string> = {
   test: 'テスト通知',
 }
 
+const NOTIFICATION_COLORS: Record<string, string> = {
+  reaction: 'var(--nd-eventReaction)',
+  reply: 'var(--nd-eventReply)',
+  renote: 'var(--nd-eventRenote)',
+  quote: 'var(--nd-eventRenote)',
+  mention: 'var(--nd-eventOther)',
+  follow: 'var(--nd-eventFollow)',
+  followRequestAccepted: 'var(--nd-eventFollow)',
+  receiveFollowRequest: 'var(--nd-eventFollow)',
+  pollEnded: 'var(--nd-eventOther)',
+  achievementEarned: 'var(--nd-eventAchievement)',
+  login: 'var(--nd-eventLogin)',
+  createToken: 'var(--nd-eventOther)',
+}
+
 function notificationIcon(type: string): string {
   return NOTIFICATION_ICONS[type] || 'bell'
+}
+
+function notificationColor(type: string): string {
+  return NOTIFICATION_COLORS[type] || 'var(--nd-eventOther)'
 }
 
 function notificationLabel(type: string): string {
@@ -687,6 +706,10 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <div v-if="isLoading && notifications.length === 0" :class="$style.columnLoading">
+        <div :class="$style.columnLoadingSpinner" />
+      </div>
+
       <NoteScroller
         v-if="!(isLoading && notifications.length === 0)"
         ref="noteScrollerRef"
@@ -698,7 +721,7 @@ onUnmounted(() => {
         <template #default="{ item: notif, index }">
           <div>
             <div
-              :class="[$style.notifItem, $style[`notifType_${notif.type}`]]"
+              :class="$style.notifItem"
             >
               <div :class="$style.notifLayout">
                 <!-- Head: Avatar with sub-icon overlay -->
@@ -715,7 +738,7 @@ onUnmounted(() => {
                     @mouseleave="onNotifAvatarMouseLeave"
                   />
                   <img v-else-if="account?.avatarUrl" :src="account.avatarUrl" :class="$style.notifFallbackAvatar" />
-                  <i :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" />
+                  <i :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
                 </div>
 
                 <!-- Tail: Header + body -->
@@ -933,66 +956,6 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--nd-divider);
 }
 
-.notifType_reaction {
-  .notifSubIcon {
-    color: var(--nd-eventReaction);
-    background: color-mix(in srgb, var(--nd-eventReaction) 15%, var(--nd-bg));
-  }
-}
-
-.notifType_reply {
-  .notifSubIcon {
-    color: var(--nd-eventReply);
-    background: color-mix(in srgb, var(--nd-eventReply) 15%, var(--nd-bg));
-  }
-}
-
-.notifType_mention {
-  .notifSubIcon {
-    color: var(--nd-eventOther);
-    background: color-mix(in srgb, var(--nd-eventOther) 15%, var(--nd-bg));
-  }
-}
-
-.notifType_renote,
-.notifType_quote {
-  .notifSubIcon {
-    color: var(--nd-eventRenote);
-    background: color-mix(in srgb, var(--nd-eventRenote) 15%, var(--nd-bg));
-  }
-}
-
-.notifType_follow,
-.notifType_followRequestAccepted,
-.notifType_receiveFollowRequest {
-  .notifSubIcon {
-    color: var(--nd-eventFollow);
-    background: color-mix(in srgb, var(--nd-eventFollow) 15%, var(--nd-bg));
-  }
-}
-
-.notifType_achievementEarned {
-  .notifSubIcon {
-    color: var(--nd-eventAchievement);
-    background: color-mix(in srgb, var(--nd-eventAchievement) 15%, var(--nd-bg));
-  }
-}
-
-.notifType_login {
-  .notifSubIcon {
-    color: var(--nd-eventLogin);
-    background: color-mix(in srgb, var(--nd-eventLogin) 15%, var(--nd-bg));
-  }
-}
-
-.notifType_pollEnded,
-.notifType_createToken {
-  .notifSubIcon {
-    color: var(--nd-eventOther);
-    background: color-mix(in srgb, var(--nd-eventOther) 15%, var(--nd-bg));
-  }
-}
-
 .notifLayout {
   display: flex;
   padding: 12px 16px;
@@ -1020,16 +983,19 @@ onUnmounted(() => {
 .notifSubIcon {
   position: absolute;
   bottom: -2px;
-  right: -4px;
+  right: -2px;
   font-size: 11px;
   width: 20px;
   height: 20px;
+  line-height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--nd-bg);
-  border: 2px solid var(--nd-bg);
+  background: var(--nd-panel);
+  box-shadow: 0 0 0 3px var(--nd-panel);
+  color: #fff;
+  text-align: center;
 }
 
 .notifTail {
