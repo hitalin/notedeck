@@ -104,6 +104,7 @@ function detectFeatures(
 
   if (software === 'misskey') {
     features.scheduledNotes = isVersionAtLeast(version, 2025, 10, 0)
+    features.groupedNotifications = isVersionAtLeast(version, 2024, 2, 0)
   }
 
   return features
@@ -119,5 +120,6 @@ function defaultFeatures(): ServerFeatures {
     antennas: true,
     quotes: true,
     scheduledNotes: false,
+    groupedNotifications: false,
   }
 }

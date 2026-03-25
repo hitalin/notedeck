@@ -22,6 +22,7 @@ export interface ServerFeatures {
   channels: boolean
   antennas: boolean
   quotes: boolean
+  groupedNotifications: boolean
   [key: string]: boolean
 }
 
@@ -310,6 +311,11 @@ export interface NoteUpdateEvent {
   }
 }
 
+export interface ReactionInfo {
+  user: NormalizedUser
+  reaction: string
+}
+
 export interface NormalizedNotification {
   id: string
   _accountId: string
@@ -321,6 +327,10 @@ export interface NormalizedNotification {
   reaction?: string
   message?: string
   achievement?: string
+  /** Grouped reactions (for reaction:grouped type) */
+  reactions?: ReactionInfo[]
+  /** Grouped users (for renote:grouped type) */
+  users?: NormalizedUser[]
 }
 
 export interface CreateNoteParams {
@@ -398,6 +408,9 @@ export interface ApiAdapter {
   ): Promise<NormalizedNote[]>
   createNote(params: CreateNoteParams): Promise<NormalizedNote>
   getNotifications(
+    options?: PaginationOptions,
+  ): Promise<NormalizedNotification[]>
+  getNotificationsGrouped(
     options?: PaginationOptions,
   ): Promise<NormalizedNotification[]>
   searchNotes(query: string, options?: SearchOptions): Promise<NormalizedNote[]>

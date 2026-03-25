@@ -311,6 +311,19 @@ export class MisskeyApi implements ApiAdapter {
     })
   }
 
+  async getNotificationsGrouped(
+    options: PaginationOptions = {},
+  ): Promise<NormalizedNotification[]> {
+    return invoke('api_get_notifications_grouped', {
+      accountId: this.accountId,
+      options: {
+        limit: options.limit ?? 20,
+        sinceId: options.sinceId ?? null,
+        untilId: options.untilId ?? null,
+      },
+    })
+  }
+
   async searchNotes(
     query: string,
     options: SearchOptions = {},
