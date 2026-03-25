@@ -16,7 +16,8 @@ export function useEditorTabs<T extends string>(
   const containerRef = ref<HTMLElement | null>(null)
   const tabIndex = computed(() => tabs.indexOf(tab.value))
 
-  useTabSlide(tabIndex, containerRef)
+  const { displayedIndex } = useTabSlide(tabIndex, containerRef)
+  const displayedTab = computed(() => tabs[displayedIndex.value] ?? tab.value)
 
   useSwipeTab(
     containerRef,
@@ -36,5 +37,5 @@ export function useEditorTabs<T extends string>(
     },
   )
 
-  return { tab, containerRef }
+  return { tab, displayedTab, containerRef }
 }

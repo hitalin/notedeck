@@ -1,16 +1,30 @@
-import { type Ref, watch } from 'vue'
+import { type Ref, ref, watch } from 'vue'
+
+const SLIDE_CLASSES = ['nd-tab-slide-left', 'nd-tab-slide-right'] as const
 
 /**
- * Apply a directional slide-in animation when the active tab index changes.
+ * Fused out-in slide animation for tab switching.
  *
- * Uses `{ flush: 'post' }` so the animation class is added **after** the DOM
- * has been updated with new content (e.g. snapshot notes from switchWithSnapshot).
+ * Uses a single CSS keyframe that covers both leave and enter phases,
+ * eliminating any gap between them:
+ *
+ *   0%  → old content visible
+ *  40%  → faded out (old content hidden)
+ *  50%  → still hidden, content switches here via `displayedIndex`
+ * 100%  → new content visible
+ *
+ * Returns `displayedIndex` — use it for v-if / content rendering.
  */
 export function useTabSlide(
   tabIndex: Ref<number>,
   contentRef: Ref<HTMLElement | null>,
 ) {
+  // --nd-duration-slower = 0.3s; midpoint = 45% ≈ 135ms
+  const SWITCH_DELAY = 135
+
+  const displayedIndex = ref(tabIndex.value)
   let prev: number | undefined
+  let pendingCleanup: (() => void) | null = null
 
   watch(
     tabIndex,
@@ -18,19 +32,44 @@ export function useTabSlide(
       const el = contentRef.value
       if (!el || prev === undefined || cur === prev) {
         prev = cur
+        displayedIndex.value = cur
         return
       }
 
-      const cls = cur > prev ? 'nd-slide-in-left' : 'nd-slide-in-right'
+      // Cancel any pending transition
+      if (pendingCleanup) {
+        pendingCleanup()
+        pendingCleanup = null
+      }
+
+      const forward = cur > prev
       prev = cur
 
-      el.classList.remove('nd-slide-in-left', 'nd-slide-in-right')
-      void el.offsetWidth // force reflow to restart animation
+      const cls = forward ? 'nd-tab-slide-left' : 'nd-tab-slide-right'
+
+      // Start the fused animation
+      el.classList.remove(...SLIDE_CLASSES)
+      void el.offsetWidth
       el.classList.add(cls)
-      el.addEventListener('animationend', () => el.classList.remove(cls), {
-        once: true,
-      })
+
+      // Switch content at the midpoint (opacity is 0 here)
+      const switchTimer = setTimeout(() => {
+        displayedIndex.value = cur
+      }, SWITCH_DELAY)
+
+      // Clean up class when animation ends
+      const onEnd = () => el.classList.remove(cls)
+      el.addEventListener('animationend', onEnd, { once: true })
+
+      pendingCleanup = () => {
+        clearTimeout(switchTimer)
+        el.removeEventListener('animationend', onEnd)
+        el.classList.remove(...SLIDE_CLASSES)
+        displayedIndex.value = cur
+      }
     },
-    { flush: 'post' },
+    { flush: 'sync' },
   )
+
+  return { displayedIndex }
 }
