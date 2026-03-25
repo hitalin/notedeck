@@ -216,6 +216,10 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
     ]);
 
     builder = builder.setup(|app| {
+        // ══════════════════════════════════════════════════════════
+        // Phase 1: Lightweight init (< 50ms) — window shows immediately after this
+        // ══════════════════════════════════════════════════════════
+
         // Initialize app data directory (must be first — other init depends on it)
         let app_dir = app.path().app_data_dir()?;
         std::fs::create_dir_all(&app_dir)?;
@@ -226,15 +230,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         }
         migrations::run_fs(&app_dir)?;
 
-        // ── Parallel: DB open + Misskey client ──
-        // std::thread で並列化（block_on はGTKメインスレッドをデッドロックさせるため使わない）
-        let db_path = app_dir.join("notecli.db");
-        let db_handle = std::thread::spawn(move || notecli::db::Database::open(&db_path));
-        let client_handle = std::thread::spawn(notecli::api::MisskeyClient::new);
-        let db = std::sync::Arc::new(db_handle.join().expect("db open thread panicked")?);
-        let client = std::sync::Arc::new(client_handle.join().expect("client init thread panicked")?);
-        app.manage(db.clone());
-        app.manage(client.clone());
+        // AppState: empty wrapper — commands await until Phase 2 fills it
+        let app_state = commands::AppState::new();
+        app.manage(app_state);
 
         // Shared HTTP client (struct construction — fast, no I/O)
         let shared_http = reqwest::Client::builder()
@@ -251,43 +249,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         let event_bus = std::sync::Arc::new(notecli::event_bus::EventBus::new());
         app.manage(event_bus.clone());
 
-        // Initialize streaming manager (delegates to notecli)
-        let emitter = std::sync::Arc::new(streaming::TauriEmitter::new(app.app_handle().clone()));
-        app.manage(notecli::streaming::StreamingManager::new(
-            emitter,
-            event_bus.clone(),
-            db.clone(),
-        ));
-
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
-
-        // OGP cache (register state immediately, pre-warm in background)
-        let ogp_cache = ogp::OgpCache::with_client(db.clone(), shared_http.clone());
-        app.manage(ogp_cache.clone());
-
-        // DB migration + OGP pre-warm + account export: all in background
-        // These are not needed before the first window paint.
-        let db_for_bg = db.clone();
-        let app_handle_for_bg = app.app_handle().clone();
-        tauri::async_runtime::spawn(async move {
-            // run_db does keychain I/O — run on blocking thread
-            let db2 = db_for_bg.clone();
-            let _ = tokio::task::spawn_blocking(move || {
-                migrations::run_db(&db2);
-            }).await;
-            commands::export_account_list(&app_handle_for_bg, &db_for_bg);
-            ogp_cache.pre_warm().await;
-        });
-
-        // Periodic credential cache cleanup (every 5 minutes)
-        tauri::async_runtime::spawn(async {
-            let interval = std::time::Duration::from_secs(5 * 60);
-            loop {
-                tokio::time::sleep(interval).await;
-                commands::cleanup_expired_credentials();
-            }
-        });
 
         // Generate API token (256-bit CSPRNG) and write to file
         let api_token: String = rand::random::<[u8; 32]>()
@@ -303,22 +266,89 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         }
         let token_path_str = token_path.to_string_lossy().to_string();
 
-        // Initialize image cache (shares HTTP client with OGP cache)
-        let image_cache = std::sync::Arc::new(image_cache::ImageCache::with_client(&app_dir, shared_http));
+        // ══════════════════════════════════════════════════════════
+        // Phase 2: Heavy init in background thread
+        // DB open + MisskeyClient init → then migrations, streaming, HTTP server
+        // Emits "nd:backend-ready" when done so frontend can start IPC calls.
+        // ══════════════════════════════════════════════════════════
 
-        // Start HTTP API server
         let app_handle = app.app_handle().clone();
-        tauri::async_runtime::spawn(async move {
-            http_server::start(
-                app_handle,
+        let app_dir_bg = app_dir.clone();
+        std::thread::spawn(move || {
+            // Parallel: DB open + MisskeyClient init
+            let db_path = app_dir_bg.join("notecli.db");
+            let db_handle = std::thread::spawn(move || notecli::db::Database::open(&db_path));
+            let client_handle = std::thread::spawn(notecli::api::MisskeyClient::new);
+
+            let db = match db_handle.join().expect("db open thread panicked") {
+                Ok(d) => std::sync::Arc::new(d),
+                Err(e) => {
+                    eprintln!("Fatal: DB open failed: {e}");
+                    return;
+                }
+            };
+            let client = match client_handle.join().expect("client init thread panicked") {
+                Ok(c) => std::sync::Arc::new(c),
+                Err(e) => {
+                    eprintln!("Fatal: MisskeyClient init failed: {e}");
+                    return;
+                }
+            };
+
+            // DB migrations + account export (must complete before commands can use credentials)
+            migrations::run_db(&db);
+            commands::export_account_list(&app_handle, &db);
+
+            // Streaming manager (depends on DB)
+            let emitter = std::sync::Arc::new(streaming::TauriEmitter::new(app_handle.clone()));
+            app_handle.manage(notecli::streaming::StreamingManager::new(
+                emitter,
+                event_bus.clone(),
                 db.clone(),
-                client,
-                event_bus,
-                api_token,
-                token_path_str,
-                image_cache,
-            )
-            .await;
+            ));
+
+            // Signal AppState — commands waiting on ready() will unblock
+            // Placed AFTER migrations so credentials are available when commands execute.
+            let app_state: tauri::State<'_, commands::AppState> = app_handle.state();
+            app_state.initialize(db.clone(), client.clone());
+
+            // OGP cache
+            let ogp_cache = ogp::OgpCache::with_client(db.clone(), shared_http.clone());
+            app_handle.manage(ogp_cache.clone());
+
+            // Image cache
+            let image_cache = std::sync::Arc::new(
+                image_cache::ImageCache::with_client(&app_dir_bg, shared_http),
+            );
+
+            // Signal frontend: backend is ready (before server start to unblock UI ASAP)
+            let _ = tauri::Emitter::emit(&app_handle, "nd:backend-ready", ());
+
+            // Start HTTP API server + OGP pre-warm
+            tauri::async_runtime::spawn(async move {
+                http_server::start(
+                    app_handle,
+                    db,
+                    client,
+                    event_bus,
+                    api_token,
+                    token_path_str,
+                    image_cache,
+                )
+                .await;
+            });
+            tauri::async_runtime::spawn(async move {
+                ogp_cache.pre_warm().await;
+            });
+        });
+
+        // Periodic credential cache cleanup (every 5 minutes)
+        tauri::async_runtime::spawn(async {
+            let interval = std::time::Duration::from_secs(5 * 60);
+            loop {
+                tokio::time::sleep(interval).await;
+                commands::cleanup_expired_credentials();
+            }
         });
 
         // Global shortcuts (desktop only)

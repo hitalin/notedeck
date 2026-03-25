@@ -22,7 +22,7 @@ pub use user::*;
 pub use utility::*;
 
 use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
@@ -30,9 +30,59 @@ use zeroize::Zeroize;
 
 use tauri::Manager;
 
+use notecli::api::MisskeyClient;
 use notecli::db::Database;
 use notecli::error::NoteDeckError;
 use notecli::keychain;
+
+// ── AppState: deferred initialization wrapper ──
+
+struct AppStateInner {
+    db: Arc<Database>,
+    client: Arc<MisskeyClient>,
+}
+
+/// Heavy state (DB, MisskeyClient) wrapped for deferred initialization.
+/// Registered in setup() as empty, initialized in a background thread.
+/// Commands call `db()` / `client()` which await until initialization completes.
+pub struct AppState {
+    rx: tokio::sync::watch::Receiver<Option<Arc<AppStateInner>>>,
+    tx: tokio::sync::watch::Sender<Option<Arc<AppStateInner>>>,
+}
+
+impl AppState {
+    pub fn new() -> Self {
+        let (tx, rx) = tokio::sync::watch::channel(None);
+        Self { rx, tx }
+    }
+
+    /// Called once from the background init thread when DB + client are ready.
+    pub fn initialize(&self, db: Arc<Database>, client: Arc<MisskeyClient>) {
+        let _ = self.tx.send(Some(Arc::new(AppStateInner { db, client })));
+    }
+
+    /// Await until initialized, then return DB reference.
+    pub async fn db(&self) -> Arc<Database> {
+        let mut rx = self.rx.clone();
+        let r = rx.wait_for(|v| v.is_some()).await.unwrap();
+        Arc::clone(&r.as_ref().unwrap().db)
+    }
+
+    /// Await until initialized, then return MisskeyClient reference.
+    pub async fn client(&self) -> Arc<MisskeyClient> {
+        let mut rx = self.rx.clone();
+        let r = rx.wait_for(|v| v.is_some()).await.unwrap();
+        Arc::clone(&r.as_ref().unwrap().client)
+    }
+
+    /// Await until initialized, then return both.
+    pub async fn ready(&self) -> (Arc<Database>, Arc<MisskeyClient>) {
+        let mut rx = self.rx.clone();
+        let r = rx.wait_for(|v| v.is_some()).await.unwrap();
+        let inner = r.as_ref().unwrap();
+        (Arc::clone(&inner.db), Arc::clone(&inner.client))
+    }
+}
 
 /// Regex for extracting HTTPS URLs from note text
 static URL_RE: LazyLock<regex::Regex> =
@@ -190,6 +240,7 @@ pub fn get_credentials(db: &Database, account_id: &str) -> Result<(String, Strin
         .ok_or_else(|| NoteDeckError::AccountNotFound(account_id.to_string()))?;
     let host = account.host.clone();
 
+    // Try keychain first (ignore errors — keychain may be unavailable)
     // Try keychain first (ignore errors — keychain may be unavailable)
     if let Some(token) = keychain::get_token(account_id).ok().flatten() {
         // Keychain has the token; clear DB copy if still present

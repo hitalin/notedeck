@@ -1,17 +1,15 @@
-use std::sync::Arc;
-
 use tauri::State;
 
-use notecli::db::Database;
 use notecli::keychain;
 use notecli::models::{Account, AccountPublic, StoredServer};
 
-use super::{export_account_list, invalidate_credentials, validate_host, Result};
+use super::{export_account_list, invalidate_credentials, validate_host, AppState, Result};
 
 // --- DB: Accounts ---
 
 #[tauri::command]
-pub fn load_accounts(db: State<'_, Arc<Database>>) -> Result<Vec<AccountPublic>> {
+pub async fn load_accounts(app_state: State<'_, AppState>) -> Result<Vec<AccountPublic>> {
+    let db = app_state.db().await;
     let accounts = db.load_accounts()?;
     Ok(accounts
         .iter()
@@ -24,11 +22,12 @@ pub fn load_accounts(db: State<'_, Arc<Database>>) -> Result<Vec<AccountPublic>>
 }
 
 #[tauri::command]
-pub fn delete_account(
+pub async fn delete_account(
     app: tauri::AppHandle,
-    db: State<'_, Arc<Database>>,
+    app_state: State<'_, AppState>,
     id: String,
 ) -> Result<()> {
+    let db = app_state.db().await;
     invalidate_credentials(&id);
     let _ = keychain::delete_token(&id);
     db.delete_account(&id)?;
@@ -38,11 +37,12 @@ pub fn delete_account(
 
 /// Logout: delete token only, keep account record and columns
 #[tauri::command]
-pub fn logout_account(
+pub async fn logout_account(
     app: tauri::AppHandle,
-    db: State<'_, Arc<Database>>,
+    app_state: State<'_, AppState>,
     id: String,
 ) -> Result<()> {
+    let db = app_state.db().await;
     invalidate_credentials(&id);
     let _ = keychain::delete_token(&id);
     db.clear_token(&id)?;
@@ -56,10 +56,11 @@ pub fn logout_account(
 #[tauri::command]
 pub async fn create_guest_account(
     app: tauri::AppHandle,
-    db: State<'_, Arc<Database>>,
+    app_state: State<'_, AppState>,
     host: String,
     software: String,
 ) -> Result<AccountPublic> {
+    let db = app_state.db().await;
     let host = validate_host(&host)?;
     let id = uuid::Uuid::new_v4().to_string();
     let username = format!("guest_{}", &id[..8]);
@@ -89,16 +90,19 @@ pub async fn create_guest_account(
 // --- DB: Servers ---
 
 #[tauri::command]
-pub fn load_servers(db: State<'_, Arc<Database>>) -> Result<Vec<StoredServer>> {
+pub async fn load_servers(app_state: State<'_, AppState>) -> Result<Vec<StoredServer>> {
+    let db = app_state.db().await;
     db.load_servers()
 }
 
 #[tauri::command]
-pub fn get_server(db: State<'_, Arc<Database>>, host: String) -> Result<Option<StoredServer>> {
+pub async fn get_server(app_state: State<'_, AppState>, host: String) -> Result<Option<StoredServer>> {
+    let db = app_state.db().await;
     db.get_server(&host)
 }
 
 #[tauri::command]
-pub fn upsert_server(db: State<'_, Arc<Database>>, server: StoredServer) -> Result<()> {
+pub async fn upsert_server(app_state: State<'_, AppState>, server: StoredServer) -> Result<()> {
+    let db = app_state.db().await;
     db.upsert_server(&server)
 }

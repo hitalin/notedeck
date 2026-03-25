@@ -1,22 +1,18 @@
-use std::sync::Arc;
-
 use tauri::State;
 
-use notecli::api::MisskeyClient;
-use notecli::db::Database;
 use notecli::models::{ChatMessage, NormalizedNotification, TimelineOptions};
 
-use super::{get_credentials, Result};
+use super::{get_credentials, AppState, Result};
 
 // --- Notifications ---
 
 #[tauri::command]
 pub async fn api_get_notifications(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     options: Option<TimelineOptions>,
 ) -> Result<Vec<NormalizedNotification>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .get_notifications(&host, &token, &account_id, options.unwrap_or_default())
@@ -25,10 +21,10 @@ pub async fn api_get_notifications(
 
 #[tauri::command]
 pub async fn api_get_unread_notification_count(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<i64> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .get_unread_notification_count(&host, &token)
@@ -37,10 +33,10 @@ pub async fn api_get_unread_notification_count(
 
 #[tauri::command]
 pub async fn api_mark_all_notifications_as_read(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .mark_all_notifications_as_read(&host, &token)
@@ -51,10 +47,10 @@ pub async fn api_mark_all_notifications_as_read(
 
 #[tauri::command]
 pub async fn api_get_unread_chat(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<bool> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.get_unread_chat(&host, &token).await
 }
@@ -63,12 +59,12 @@ pub async fn api_get_unread_chat(
 
 #[tauri::command]
 pub async fn api_get_chat_history(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     limit: Option<i64>,
     room: Option<bool>,
 ) -> Result<Vec<ChatMessage>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .get_chat_history(&host, &token, limit.unwrap_or(100), room.unwrap_or(false))
@@ -77,14 +73,14 @@ pub async fn api_get_chat_history(
 
 #[tauri::command]
 pub async fn api_get_chat_user_messages(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
     limit: Option<i64>,
     since_id: Option<String>,
     until_id: Option<String>,
 ) -> Result<Vec<ChatMessage>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .get_chat_user_messages(
@@ -100,14 +96,14 @@ pub async fn api_get_chat_user_messages(
 
 #[tauri::command]
 pub async fn api_get_chat_room_messages(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     room_id: String,
     limit: Option<i64>,
     since_id: Option<String>,
     until_id: Option<String>,
 ) -> Result<Vec<ChatMessage>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .get_chat_room_messages(
@@ -123,13 +119,13 @@ pub async fn api_get_chat_room_messages(
 
 #[tauri::command]
 pub async fn api_create_chat_message(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: Option<String>,
     room_id: Option<String>,
     text: String,
 ) -> Result<ChatMessage> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     match (user_id, room_id) {
         (Some(uid), _) => {
@@ -152,12 +148,12 @@ pub async fn api_create_chat_message(
 
 #[tauri::command]
 pub async fn api_react_chat_message(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     message_id: String,
     reaction: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .react_chat_message(&host, &token, &message_id, &reaction)
@@ -166,12 +162,12 @@ pub async fn api_react_chat_message(
 
 #[tauri::command]
 pub async fn api_unreact_chat_message(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     message_id: String,
     reaction: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .unreact_chat_message(&host, &token, &message_id, &reaction)
@@ -182,11 +178,11 @@ pub async fn api_unreact_chat_message(
 
 #[tauri::command]
 pub async fn api_create_messaging_message(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     params: serde_json::Value,
 ) -> Result<ChatMessage> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.create_messaging_message(&host, &token, params).await
 }

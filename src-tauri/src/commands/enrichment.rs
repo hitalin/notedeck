@@ -1,23 +1,20 @@
-use std::sync::Arc;
-
 use base64::Engine;
 use tauri::State;
 
-use notecli::api::MisskeyClient;
-use notecli::db::Database;
 use notecli::error::NoteDeckError;
 
-use super::{get_credentials, Result};
+use super::{get_credentials, AppState, Result};
 
 // --- OGP Preview ---
 
 #[tauri::command]
 pub async fn fetch_ogp(
     ogp_cache: State<'_, crate::ogp::OgpCache>,
-    db: State<'_, Arc<Database>>,
+    app_state: State<'_, AppState>,
     url: String,
     account_id: Option<String>,
 ) -> Result<crate::ogp::OgpData> {
+    let db = app_state.db().await;
     if url.len() > 2048 {
         return Err(NoteDeckError::InvalidInput("URL too long".to_string()));
     }
@@ -41,17 +38,19 @@ pub async fn fetch_ogp(
 
 #[tauri::command]
 pub async fn fetch_nodeinfo(
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     host: String,
 ) -> Result<serde_json::Value> {
+    let client = app_state.client().await;
     client.fetch_nodeinfo(&host).await
 }
 
 #[tauri::command]
 pub async fn fetch_server_meta(
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     host: String,
 ) -> Result<serde_json::Value> {
+    let client = app_state.client().await;
     client.fetch_server_meta(&host).await
 }
 

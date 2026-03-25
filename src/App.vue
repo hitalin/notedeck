@@ -60,6 +60,14 @@ onMounted(async () => {
       import('@tauri-apps/api/window'),
       import('@/utils/logger'),
     ])
+    // フォント読み込み + 最初のフレーム描画を待ってから表示（アイコン崩れ防止）
+    // 500ms タイムアウトでフォールバック（WSL2等でrAFが発火しない環境対策）
+    await Promise.race([
+      document.fonts.ready.then(
+        () => new Promise<void>((r) => requestAnimationFrame(() => r())),
+      ),
+      new Promise<void>((r) => setTimeout(r, 500)),
+    ])
     await getCurrentWindow().show().catch(catchIgnore('window.show'))
   }
 

@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
 use tauri::State;
 
 use notecli::db::Database;
 use notecli::models::TimelineType;
 use notecli::streaming::StreamingManager;
 
-use super::{get_credentials, Result};
+use super::{get_credentials, AppState, Result};
 
 /// Ensure the streaming WebSocket is connected for the given account.
 async fn ensure_stream_connected(
@@ -20,22 +18,24 @@ async fn ensure_stream_connected(
 
 #[tauri::command]
 pub async fn stream_connect(
-    db: State<'_, Arc<Database>>,
+    app_state: State<'_, AppState>,
     streaming: State<'_, StreamingManager>,
     account_id: String,
 ) -> Result<()> {
+    let db = app_state.db().await;
     ensure_stream_connected(&db, &streaming, &account_id).await
 }
 
 /// Connect + subscribe in a single IPC round-trip (timeline).
 #[tauri::command]
 pub async fn stream_connect_and_subscribe_timeline(
-    db: State<'_, Arc<Database>>,
+    app_state: State<'_, AppState>,
     streaming: State<'_, StreamingManager>,
     account_id: String,
     timeline_type: TimelineType,
     list_id: Option<String>,
 ) -> Result<String> {
+    let db = app_state.db().await;
     ensure_stream_connected(&db, &streaming, &account_id).await?;
     streaming
         .subscribe_timeline(&account_id, timeline_type, list_id)
@@ -45,11 +45,12 @@ pub async fn stream_connect_and_subscribe_timeline(
 /// Connect + subscribe in a single IPC round-trip (antenna).
 #[tauri::command]
 pub async fn stream_connect_and_subscribe_antenna(
-    db: State<'_, Arc<Database>>,
+    app_state: State<'_, AppState>,
     streaming: State<'_, StreamingManager>,
     account_id: String,
     antenna_id: String,
 ) -> Result<String> {
+    let db = app_state.db().await;
     ensure_stream_connected(&db, &streaming, &account_id).await?;
     streaming.subscribe_antenna(&account_id, &antenna_id).await
 }
@@ -57,11 +58,12 @@ pub async fn stream_connect_and_subscribe_antenna(
 /// Connect + subscribe in a single IPC round-trip (channel).
 #[tauri::command]
 pub async fn stream_connect_and_subscribe_channel(
-    db: State<'_, Arc<Database>>,
+    app_state: State<'_, AppState>,
     streaming: State<'_, StreamingManager>,
     account_id: String,
     channel_id: String,
 ) -> Result<String> {
+    let db = app_state.db().await;
     ensure_stream_connected(&db, &streaming, &account_id).await?;
     streaming.subscribe_channel(&account_id, &channel_id).await
 }

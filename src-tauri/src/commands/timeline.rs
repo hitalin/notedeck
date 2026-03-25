@@ -1,11 +1,8 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use futures_util::stream::{self, StreamExt};
 use tauri::State;
 
-use notecli::api::MisskeyClient;
-use notecli::db::Database;
 use notecli::error::NoteDeckError;
 use notecli::models::{
     Antenna, Channel, Clip, CreateNoteParams, NormalizedDriveFile, NormalizedNote,
@@ -14,7 +11,7 @@ use notecli::models::{
 };
 
 use super::{
-    extract_ogp_urls, get_credentials, get_credentials_or_anon, Result, TimelineEnriched,
+    extract_ogp_urls, get_credentials, get_credentials_or_anon, AppState, Result, TimelineEnriched,
     MAX_UPLOAD_BYTES,
 };
 
@@ -25,12 +22,12 @@ const MAX_OGP_CONCURRENT: usize = 10;
 
 #[tauri::command]
 pub async fn api_get_timeline(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     timeline_type: TimelineType,
     options: Option<TimelineOptions>,
 ) -> Result<Vec<NormalizedNote>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let opts = options.unwrap_or_default();
     let cache_key = if timeline_type.as_str() == "user-list" {
@@ -53,13 +50,13 @@ pub async fn api_get_timeline(
 
 #[tauri::command]
 pub async fn api_get_timeline_enriched(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     ogp_cache: State<'_, crate::ogp::OgpCache>,
     account_id: String,
     timeline_type: TimelineType,
     options: Option<TimelineOptions>,
 ) -> Result<TimelineEnriched> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let opts = options.unwrap_or_default();
     let cache_key = if timeline_type.as_str() == "user-list" {
@@ -120,34 +117,34 @@ pub async fn api_get_timeline_enriched(
 
 #[tauri::command]
 pub async fn api_get_user_lists(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<Vec<UserList>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.get_user_lists(&host, &token).await
 }
 
 #[tauri::command]
 pub async fn api_get_antennas(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<Vec<Antenna>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.get_antennas(&host, &token).await
 }
 
 #[tauri::command]
 pub async fn api_get_antenna_notes(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     antenna_id: String,
     limit: Option<i64>,
     since_id: Option<String>,
     until_id: Option<String>,
 ) -> Result<Vec<NormalizedNote>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     let notes = client
         .get_antenna_notes(
@@ -168,13 +165,13 @@ pub async fn api_get_antenna_notes(
 
 #[tauri::command]
 pub async fn api_get_favorites(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     limit: Option<i64>,
     since_id: Option<String>,
     until_id: Option<String>,
 ) -> Result<Vec<NormalizedNote>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     let notes = client
         .get_favorites(
@@ -194,11 +191,11 @@ pub async fn api_get_favorites(
 
 #[tauri::command]
 pub async fn api_get_featured_notes(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     limit: Option<i64>,
 ) -> Result<Vec<NormalizedNote>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let notes = client
         .get_featured_notes(&host, &token, &account_id, limit.unwrap_or(30))
@@ -208,14 +205,14 @@ pub async fn api_get_featured_notes(
 
 #[tauri::command]
 pub async fn api_get_mentions(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     limit: Option<i64>,
     since_id: Option<String>,
     until_id: Option<String>,
     visibility: Option<String>,
 ) -> Result<Vec<NormalizedNote>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     let notes = client
         .get_mentions(
@@ -238,24 +235,24 @@ pub async fn api_get_mentions(
 
 #[tauri::command]
 pub async fn api_get_clips(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<Vec<Clip>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.get_clips(&host, &token).await
 }
 
 #[tauri::command]
 pub async fn api_get_clip_notes(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     clip_id: String,
     limit: Option<i64>,
     since_id: Option<String>,
     until_id: Option<String>,
 ) -> Result<Vec<NormalizedNote>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     let notes = client
         .get_clip_notes(
@@ -278,24 +275,24 @@ pub async fn api_get_clip_notes(
 
 #[tauri::command]
 pub async fn api_get_channels(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<Vec<Channel>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_channels(&host, &token).await
 }
 
 #[tauri::command]
 pub async fn api_get_channel_notes(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     channel_id: String,
     limit: Option<i64>,
     since_id: Option<String>,
     until_id: Option<String>,
 ) -> Result<Vec<NormalizedNote>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let notes = client
         .get_channel_notes(
@@ -318,23 +315,23 @@ pub async fn api_get_channel_notes(
 
 #[tauri::command]
 pub async fn api_get_note(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     note_id: String,
 ) -> Result<NormalizedNote> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_note(&host, &token, &account_id, &note_id).await
 }
 
 #[tauri::command]
 pub async fn api_create_note(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     params: CreateNoteParams,
     channel_id: Option<String>,
 ) -> Result<NormalizedNote> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     if let Some(ref ch_id) = channel_id {
         // Build request body manually to include channelId
@@ -384,23 +381,23 @@ pub async fn api_create_note(
 
 #[tauri::command]
 pub async fn api_update_note(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     note_id: String,
     params: CreateNoteParams,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.update_note(&host, &token, &note_id, params).await
 }
 
 #[tauri::command]
 pub async fn api_delete_note(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     note_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.delete_note(&host, &token, &note_id).await
 }
@@ -409,12 +406,12 @@ pub async fn api_delete_note(
 
 #[tauri::command]
 pub async fn api_create_reaction(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     note_id: String,
     reaction: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .create_reaction(&host, &token, &note_id, &reaction)
@@ -423,24 +420,24 @@ pub async fn api_create_reaction(
 
 #[tauri::command]
 pub async fn api_delete_reaction(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     note_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.delete_reaction(&host, &token, &note_id).await
 }
 
 #[tauri::command]
 pub async fn api_get_note_reactions(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     note_id: String,
     reaction_type: Option<String>,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNoteReaction>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_note_reactions(
@@ -457,22 +454,22 @@ pub async fn api_get_note_reactions(
 
 #[tauri::command]
 pub async fn api_create_favorite(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     note_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.create_favorite(&host, &token, &note_id).await
 }
 
 #[tauri::command]
 pub async fn api_delete_favorite(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     note_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.delete_favorite(&host, &token, &note_id).await
 }
@@ -481,33 +478,33 @@ pub async fn api_delete_favorite(
 
 #[tauri::command]
 pub async fn api_pin_note(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     note_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.pin_note(&host, &token, &note_id).await
 }
 
 #[tauri::command]
 pub async fn api_unpin_note(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     note_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.unpin_note(&host, &token, &note_id).await
 }
 
 #[tauri::command]
 pub async fn api_get_user_pinned_note_ids(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     user_id: String,
 ) -> Result<Vec<String>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .get_user_pinned_note_ids(&host, &token, &user_id)
@@ -518,12 +515,12 @@ pub async fn api_get_user_pinned_note_ids(
 
 #[tauri::command]
 pub async fn api_add_note_to_clip(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     clip_id: String,
     note_id: String,
 ) -> Result<()> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .add_note_to_clip(&host, &token, &clip_id, &note_id)
@@ -534,12 +531,12 @@ pub async fn api_add_note_to_clip(
 
 #[tauri::command]
 pub async fn api_get_note_children(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     note_id: String,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNote>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_note_children(
@@ -554,12 +551,12 @@ pub async fn api_get_note_children(
 
 #[tauri::command]
 pub async fn api_get_note_renotes(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     note_id: String,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNote>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     let data = client
         .request(
@@ -578,12 +575,12 @@ pub async fn api_get_note_renotes(
 
 #[tauri::command]
 pub async fn api_get_note_conversation(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     note_id: String,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNote>> {
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_note_conversation(
@@ -600,8 +597,7 @@ pub async fn api_get_note_conversation(
 
 #[tauri::command]
 pub async fn api_search_notes(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     query: String,
     options: Option<SearchOptions>,
@@ -611,6 +607,7 @@ pub async fn api_search_notes(
             "Search query too long".to_string(),
         ));
     }
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .search_notes(
@@ -627,8 +624,7 @@ pub async fn api_search_notes(
 
 #[tauri::command]
 pub async fn api_upload_file(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     file_name: String,
     file_data: Vec<u8>,
@@ -638,6 +634,7 @@ pub async fn api_upload_file(
     if file_data.len() > MAX_UPLOAD_BYTES {
         return Err(NoteDeckError::InvalidInput("File too large".to_string()));
     }
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .upload_file(
@@ -653,8 +650,7 @@ pub async fn api_upload_file(
 
 #[tauri::command]
 pub async fn api_upload_file_from_path(
-    db: State<'_, Arc<Database>>,
-    client: State<'_, Arc<MisskeyClient>>,
+    app_state: State<'_, AppState>,
     account_id: String,
     file_path: String,
     is_sensitive: bool,
@@ -673,6 +669,7 @@ pub async fn api_upload_file_from_path(
     let content_type = mime_guess::from_path(path)
         .first_or_octet_stream()
         .to_string();
+    let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client
         .upload_file(
@@ -689,12 +686,13 @@ pub async fn api_upload_file_from_path(
 // --- Cache ---
 
 #[tauri::command]
-pub fn api_get_cached_timeline(
-    db: State<'_, Arc<Database>>,
+pub async fn api_get_cached_timeline(
+    app_state: State<'_, AppState>,
     account_id: String,
     timeline_type: String,
     limit: Option<i64>,
 ) -> Result<Vec<NormalizedNote>> {
+    let db = app_state.db().await;
     db.get_cached_timeline(
         &account_id,
         &timeline_type,
@@ -703,8 +701,8 @@ pub fn api_get_cached_timeline(
 }
 
 #[tauri::command]
-pub fn api_get_cached_timeline_before(
-    db: State<'_, Arc<Database>>,
+pub async fn api_get_cached_timeline_before(
+    app_state: State<'_, AppState>,
     account_id: String,
     timeline_type: String,
     before: String,
@@ -713,6 +711,7 @@ pub fn api_get_cached_timeline_before(
     if before.len() > 30 {
         return Err(NoteDeckError::InvalidInput("Invalid date".to_string()));
     }
+    let db = app_state.db().await;
     db.get_cached_timeline_before(
         &account_id,
         &timeline_type,
@@ -722,17 +721,18 @@ pub fn api_get_cached_timeline_before(
 }
 
 #[tauri::command]
-pub fn api_get_cache_date_range(
-    db: State<'_, Arc<Database>>,
+pub async fn api_get_cache_date_range(
+    app_state: State<'_, AppState>,
     account_id: String,
     timeline_type: String,
 ) -> Result<Option<(String, String)>> {
+    let db = app_state.db().await;
     db.get_cache_date_range(&account_id, &timeline_type)
 }
 
 #[tauri::command]
-pub fn api_search_notes_local(
-    db: State<'_, Arc<Database>>,
+pub async fn api_search_notes_local(
+    app_state: State<'_, AppState>,
     account_id: String,
     query: String,
     limit: Option<i64>,
@@ -745,6 +745,7 @@ pub fn api_search_notes_local(
             "Search query too long".to_string(),
         ));
     }
+    let db = app_state.db().await;
     db.search_cached_notes_advanced(
         &account_id,
         &query,
@@ -756,6 +757,10 @@ pub fn api_search_notes_local(
 }
 
 #[tauri::command]
-pub fn api_delete_cached_note(db: State<'_, Arc<Database>>, note_id: String) -> Result<()> {
+pub async fn api_delete_cached_note(
+    app_state: State<'_, AppState>,
+    note_id: String,
+) -> Result<()> {
+    let db = app_state.db().await;
     db.delete_cached_note(&note_id)
 }

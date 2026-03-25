@@ -43,7 +43,9 @@ themeStore.init()
 // Initialize keybinds file-based storage
 useKeybindsStore().init()
 
-// Start loading accounts early (runs in parallel with mount)
+// Start loading accounts early (runs in parallel with mount).
+// In Tauri, invoke('load_accounts') internally awaits AppState readiness,
+// so it naturally waits for DB to open — no explicit gate needed.
 useAccountsStore().loadAccounts()
 
 app.use(router)
