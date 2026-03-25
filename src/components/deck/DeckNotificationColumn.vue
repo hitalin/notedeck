@@ -738,7 +738,12 @@ onUnmounted(() => {
                     @mouseleave="onNotifAvatarMouseLeave"
                   />
                   <img v-else-if="account?.avatarUrl" :src="account.avatarUrl" :class="$style.notifFallbackAvatar" />
-                  <i :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
+                  <template v-if="notif.type === 'reaction' && notif.reaction">
+                    <img v-if="getCachedReactionUrl(notif.reaction, notif)" :src="getCachedReactionUrl(notif.reaction, notif)!" :alt="notif.reaction" :class="$style.notifSubIconEmoji" loading="lazy" />
+                    <img v-else-if="getCachedTwemojiUrl(notif.reaction)" :src="getCachedTwemojiUrl(notif.reaction)!" :alt="notif.reaction" :class="$style.notifSubIconEmoji" loading="lazy" />
+                    <i v-else :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
+                  </template>
+                  <i v-else :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
                 </div>
 
                 <!-- Tail: Header + body -->
@@ -996,6 +1001,18 @@ onUnmounted(() => {
   box-shadow: 0 0 0 3px var(--nd-panel);
   color: #fff;
   text-align: center;
+}
+
+.notifSubIconEmoji {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: var(--nd-panel);
+  box-shadow: 0 0 0 3px var(--nd-panel);
 }
 
 .notifTail {
