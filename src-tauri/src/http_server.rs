@@ -153,38 +153,40 @@ pub async fn bind() -> Option<BoundServer> {
     Some(BoundServer { listener })
 }
 
+/// Configuration for starting the HTTP server (Phase 2).
+pub struct ServeConfig {
+    pub server: BoundServer,
+    pub app_handle: AppHandle,
+    pub db: Arc<Database>,
+    pub client: Arc<MisskeyClient>,
+    pub event_bus: Arc<EventBus>,
+    pub api_token: String,
+    pub token_path: String,
+    pub image_cache: Arc<ImageCache>,
+}
+
 /// Phase 2: attach routes and start serving. Requires DB/client.
-#[allow(clippy::too_many_arguments)]
-pub async fn serve(
-    server: BoundServer,
-    app_handle: AppHandle,
-    db: Arc<Database>,
-    client: Arc<MisskeyClient>,
-    event_bus: Arc<EventBus>,
-    api_token: String,
-    token_path: String,
-    image_cache: Arc<ImageCache>,
-) {
+pub async fn serve(config: ServeConfig) {
     // Build core Misskey API routes from notecli
     let notecli_state = notecli::http_server::AppState::new(
-        db,
-        client,
-        event_bus,
-        api_token.clone(),
-        token_path.clone(),
+        config.db,
+        config.client,
+        config.event_bus,
+        config.api_token.clone(),
+        config.token_path.clone(),
     );
     let core_routes = notecli::http_server::build_core_routes(notecli_state);
 
     // NoteDeck-specific state
     let deck_state = DeckState {
-        app_handle,
-        api_token: api_token.clone(),
-        image_cache,
+        app_handle: config.app_handle,
+        api_token: config.api_token.clone(),
+        image_cache: config.image_cache,
     };
 
     // NoteDeck index (public, includes all endpoints)
     let index_route = {
-        let token_path = token_path.clone();
+        let token_path = config.token_path.clone();
         Router::new()
             .route(
                 "/api",
@@ -277,7 +279,7 @@ pub async fn serve(
 
     tracing::info!("HTTP server serving");
 
-    if let Err(e) = axum::serve(server.listener, app).await {
+    if let Err(e) = axum::serve(config.server.listener, app).await {
         tracing::error!(%e, "HTTP server error");
     }
 }

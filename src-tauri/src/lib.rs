@@ -335,16 +335,16 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             // Start HTTP API server (attach routes to pre-bound listener) + OGP pre-warm
             if let Some(server) = bound_server {
                 tauri::async_runtime::spawn(async move {
-                    http_server::serve(
+                    http_server::serve(http_server::ServeConfig {
                         server,
                         app_handle,
                         db,
                         client,
                         event_bus,
                         api_token,
-                        token_path_str,
+                        token_path: token_path_str,
                         image_cache,
-                    )
+                    })
                     .await;
                 });
             }
