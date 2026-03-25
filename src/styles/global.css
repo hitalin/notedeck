@@ -518,16 +518,11 @@ html[data-platform="android"] select {
 
 /* ---- Swipe follow (useSwipeTab touch tracking) ---- */
 
-.nd-tab-swiping {
+.nd-tab-swiping > * {
   transform: translateX(var(--nd-swipe, 0));
   will-change: transform;
-  scrollbar-width: none;
 }
 
-.nd-tab-swiping::-webkit-scrollbar {
-  display: none;
-}
-
-.nd-tab-snap-back {
+.nd-tab-snap-back > * {
   transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
 }

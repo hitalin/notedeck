@@ -110,6 +110,10 @@ export function useSwipeTab(
 
     e.preventDefault()
 
+    // Stop following if finger drifts diagonal (Misskey-style)
+    const angle = Math.atan2(absDy, absDx) * (180 / Math.PI)
+    if (angle > ANGLE_THRESHOLD) return
+
     boundEl?.style.setProperty('--nd-swipe', `${rubberBand(dx)}px`)
   }
 
