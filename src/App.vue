@@ -57,8 +57,16 @@ onMounted(async () => {
     await getCurrentWindow().show().catch(catchIgnore('window.show'))
   }
 
-  // Dismiss splash screen as soon as Vue app is mounted
-  dismissSplash()
+  // Dismiss splash when first column renders content, with 2s timeout fallback
+  const splashTimeout = setTimeout(dismissSplash, 2000)
+  window.addEventListener(
+    'nd:column-ready',
+    () => {
+      clearTimeout(splashTimeout)
+      dismissSplash()
+    },
+    { once: true },
+  )
 
   // Defer theme account fetching (network I/O) to after first paint
   useTheme()

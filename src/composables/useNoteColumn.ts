@@ -30,6 +30,15 @@ import { catchLog, logWarn } from '@/utils/logger'
 import { insertIntoSorted } from '@/utils/sortNotes'
 import { invoke } from '@/utils/tauriInvoke'
 
+/** Snapshots of unmounted columns for instant restore on re-mount */
+interface ColumnSnapshot {
+  notes: NormalizedNote[]
+  scrollTop: number
+  savedAt: number
+}
+const columnSnapshots = new Map<string, ColumnSnapshot>()
+const SNAPSHOT_TTL = 5 * 60_000 // 5 minutes
+
 export interface NoteColumnConfig {
   getColumn: () => DeckColumnType
   fetch: (
@@ -208,6 +217,21 @@ export function useNoteColumn(config: NoteColumnConfig) {
       return
     }
 
+    // Restore snapshot from a previously unmounted instance (instant re-mount)
+    const colId = config.getColumn().id
+    const snapshot = columnSnapshots.get(colId)
+    if (snapshot && Date.now() - snapshot.savedAt < SNAPSHOT_TTL) {
+      columnSnapshots.delete(colId)
+      setNotes(snapshot.notes)
+      const savedScrollTop = snapshot.scrollTop
+      nextTick(() => {
+        const el = noteScrollerRef.value?.getElement?.()
+        if (el) el.scrollTop = savedScrollTop
+      })
+    } else {
+      columnSnapshots.delete(colId)
+    }
+
     let cachedIds: string[] = []
 
     // Load cache when explicitly requested OR when account has no token
@@ -230,6 +254,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
           if (filtered.length > 0) {
             setNotes(filtered)
             cachedIds = filtered.map((n) => n.id)
+            window.dispatchEvent(new Event('nd:column-ready'))
           }
         } catch (e) {
           logWarn('load-cache', e)
@@ -347,6 +372,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
       }
     } finally {
       isLoading.value = false
+      if (notes.value.length > 0) {
+        window.dispatchEvent(new Event('nd:column-ready'))
+      }
     }
   }
 
@@ -677,6 +705,16 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   onUnmounted(() => {
     window.removeEventListener('deck-resume', onResume)
+    // Save snapshot for instant restore if column is re-mounted
+    const colId = config.getColumn().id
+    if (notes.value.length > 0) {
+      const el = noteScrollerRef.value?.getElement?.()
+      columnSnapshots.set(colId, {
+        notes: notes.value.slice(0, 40),
+        scrollTop: el?.scrollTop ?? 0,
+        savedAt: Date.now(),
+      })
+    }
     disconnect()
     streamingBatch?.resetBatch()
   })

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { convertFileSrc } from '@tauri-apps/api/core'
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import AppConfirm from '@/components/common/AppConfirm.vue'
 import AppToast from '@/components/common/AppToast.vue'
 import { useDeckInit } from '@/composables/useDeckInit'
@@ -137,6 +137,13 @@ useDeckInit({
   toggleAddMenu,
   navbarRef,
   checkForUpdate,
+})
+
+// Preload MkPostForm chunk during idle time so first open is instant
+onMounted(() => {
+  const idle =
+    window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 200))
+  idle(() => import('@/components/common/MkPostForm.vue'))
 })
 
 function scrollToColumn(index: number) {

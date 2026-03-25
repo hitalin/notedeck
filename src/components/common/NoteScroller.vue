@@ -41,6 +41,34 @@ const virtualizer = useVirtualizer(virtualizerOptions)
 const virtualItems = computed(() => virtualizer.value.getVirtualItems())
 const totalSize = computed(() => virtualizer.value.getTotalSize())
 
+/** Indices of items near the viewport (visible + 2 overscan) for eager image loading */
+const nearViewportRange = computed(() => {
+  const items = virtualItems.value
+  const first = items[0]
+  const last = items[items.length - 1]
+  if (!first || !last) return { start: 0, end: 0 }
+  const el = scrollContainer.value
+  if (!el) return { start: first.index, end: last.index }
+  const scrollTop = el.scrollTop
+  const viewEnd = scrollTop + el.clientHeight
+  let start = first.index
+  let end = last.index
+  for (const item of items) {
+    if (item.end >= scrollTop) {
+      start = Math.max(0, item.index - 2)
+      break
+    }
+  }
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i]
+    if (item && item.start <= viewEnd) {
+      end = item.index + 2
+      break
+    }
+  }
+  return { start, end }
+})
+
 function measureElement(el: unknown) {
   if (!(el instanceof HTMLElement)) return
   virtualizer.value.measureElement(el)
@@ -85,7 +113,7 @@ defineExpose({
 })
 
 defineSlots<{
-  default(props: { item: T; index: number }): unknown
+  default(props: { item: T; index: number; nearViewport: boolean }): unknown
   prepend(): unknown
   append(): unknown
 }>()
@@ -110,7 +138,7 @@ defineSlots<{
         ]"
         :style="{ translate: `0 ${vRow.start}px` }"
       >
-        <slot :item="props.items[vRow.index]!" :index="vRow.index" />
+        <slot :item="props.items[vRow.index]!" :index="vRow.index" :near-viewport="vRow.index >= nearViewportRange.start && vRow.index <= nearViewportRange.end" />
       </div>
     </div>
     <slot name="append" />
@@ -134,6 +162,7 @@ defineSlots<{
   top: 0;
   left: 0;
   width: 100%;
+  contain: layout style paint;
 }
 
 /* Misskey-style slide-in animation for streaming notes.

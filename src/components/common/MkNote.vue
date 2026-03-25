@@ -39,6 +39,8 @@ const props = defineProps<{
   focused?: boolean
   pinnedNoteIds?: string[]
   embedded?: boolean
+  /** Hint from virtual scroller: this note is near the viewport, use eager image loading */
+  nearViewport?: boolean
 }>()
 
 /** Pure renote → show inner note, otherwise show note itself */
@@ -77,7 +79,7 @@ const { stop: stopReactionsObserver } = useIntersectionObserver(
       stopReactionsObserver()
     }
   },
-  { rootMargin: '200px' },
+  { rootMargin: '400px' },
 )
 
 const emit = defineEmits<{
@@ -552,6 +554,7 @@ function closeMentionPopup() {
           <MkMediaGrid
             v-if="effectiveNote.files.length > 0"
             :files="effectiveNote.files"
+            :eager="props.nearViewport"
           />
 
           <MkPoll

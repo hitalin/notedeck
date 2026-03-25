@@ -22,6 +22,7 @@ import {
 } from '@/composables/useDrafts'
 import { useAccountsStore } from '@/stores/accounts'
 import { useThemeStore } from '@/stores/theme'
+import { useToast } from '@/stores/toast'
 import {
   CUSTOM_TL_ICONS,
   detectAvailableTimelines,
@@ -203,55 +204,80 @@ export function usePostFormState(
     isPosting.value = true
     error.value = null
 
-    try {
-      if (props.editNote) {
+    // Edit mode: wait for API response (cannot be optimistic)
+    if (props.editNote) {
+      try {
         await adapter.api.updateNote(props.editNote.id, {
           text: text.value || undefined,
           cw: showCw.value && cw.value ? cw.value : undefined,
         })
-      } else {
-        const fileIds =
-          attachedFiles.value.length > 0
-            ? attachedFiles.value.map((f) => f.id)
-            : undefined
-        const modeFlags =
-          Object.keys(noteModeFlags.value).length > 0
-            ? noteModeFlags.value
-            : undefined
-        const pollParam =
-          showPoll.value &&
-          pollChoices.value.filter((c) => c.trim()).length >= 2
-            ? {
-                choices: pollChoices.value.filter((c) => c.trim()),
-                multiple: pollMultiple.value || undefined,
-                expiresAt: pollExpiresAt.value ?? undefined,
-              }
-            : undefined
-        const noteParams = applyNotePostInterruptors({
-          text: text.value || undefined,
-          cw: showCw.value && cw.value ? cw.value : undefined,
-          visibility: visibility.value,
-          localOnly:
-            visibility.value === 'specified'
-              ? false
-              : localOnly.value || undefined,
-          modeFlags,
-          replyId: props.replyTo?.id,
-          renoteId: props.renoteId,
-          channelId: props.channelId,
-          fileIds,
-          poll: pollParam,
-          scheduledAt: scheduledAt.value ?? undefined,
-        })
-        await adapter.api.createNote(noteParams)
+        posted.value = true
+        callbacks.onPosted(props.editNote.id)
+      } catch (e) {
+        error.value = AppError.from(e).message
+      } finally {
+        isPosting.value = false
       }
-      posted.value = true
-      callbacks.onPosted(props.editNote?.id)
-    } catch (e) {
-      error.value = AppError.from(e).message
-    } finally {
-      isPosting.value = false
+      return
     }
+
+    // New note: optimistic UI — close form immediately, post in background
+    const fileIds =
+      attachedFiles.value.length > 0
+        ? attachedFiles.value.map((f) => f.id)
+        : undefined
+    const modeFlags =
+      Object.keys(noteModeFlags.value).length > 0
+        ? noteModeFlags.value
+        : undefined
+    const pollParam =
+      showPoll.value && pollChoices.value.filter((c) => c.trim()).length >= 2
+        ? {
+            choices: pollChoices.value.filter((c) => c.trim()),
+            multiple: pollMultiple.value || undefined,
+            expiresAt: pollExpiresAt.value ?? undefined,
+          }
+        : undefined
+    const noteParams = applyNotePostInterruptors({
+      text: text.value || undefined,
+      cw: showCw.value && cw.value ? cw.value : undefined,
+      visibility: visibility.value,
+      localOnly:
+        visibility.value === 'specified' ? false : localOnly.value || undefined,
+      modeFlags,
+      replyId: props.replyTo?.id,
+      renoteId: props.renoteId,
+      channelId: props.channelId,
+      fileIds,
+      poll: pollParam,
+      scheduledAt: scheduledAt.value ?? undefined,
+    })
+
+    // Close form optimistically before awaiting API
+    posted.value = true
+    isPosting.value = false
+    callbacks.onPosted()
+
+    // Fire API call in background — on failure, save draft and notify
+    const currentAdapter = adapter
+    const currentAccountId = activeAccountId.value
+    currentAdapter.api.createNote(noteParams).catch((e) => {
+      const { show } = useToast()
+      show(AppError.from(e).message, 'error')
+      // Auto-save as draft so user can retry
+      saveDraft(currentAccountId, {
+        text: noteParams.text ?? '',
+        cw: noteParams.cw ?? '',
+        showCw: !!noteParams.cw,
+        visibility: noteParams.visibility ?? 'public',
+        localOnly: noteParams.localOnly ?? false,
+        fileIds: noteParams.fileIds ?? [],
+        pollChoices: noteParams.poll?.choices ?? [],
+        pollMultiple: noteParams.poll?.multiple ?? false,
+        showPoll: !!noteParams.poll,
+        scheduledAt: noteParams.scheduledAt ?? null,
+      })
+    })
   }
 
   function openFilePicker() {
