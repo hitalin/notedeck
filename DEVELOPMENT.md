@@ -18,7 +18,7 @@ Multi-server Misskey deck client with fork support. 設計思想・方針は [DE
 | Editor | CodeMirror 6 |
 | Linter | Biome |
 | Style | SCSS + CSS Modules (`$style`) |
-| Test | Vitest + jsdom |
+| Test | Vitest + happy-dom |
 
 ## Prerequisites
 
@@ -63,6 +63,15 @@ task lint:fix     # Lint & format fix
 task typecheck    # TypeScript type check
 task clean        # Remove build artifacts
 ```
+
+### テスト構成
+
+テストは 2 プロジェクトに分離（`vitest.config.ts`）:
+
+| プロジェクト | 環境 | ファイルパターン | 用途 |
+|------------|------|----------------|------|
+| `unit` | Node.js | `*.test.ts` | ロジック・ユーティリティ |
+| `dom` | happy-dom | `*.dom.test.ts` | Vue コンポーネント・DOM 操作 |
 
 ## Architecture
 
@@ -170,6 +179,13 @@ Profile B ──→ Main Window（プロファイル切り替え時）
 | `AvatarStack` | cross-account 時のアカウントアバター重ね表示 | AddColumnDialog, カラムヘッダー |
 | `EditorTabs` | ビジュアル/コード 2タブ切替 | 全エディタ系ウィンドウ共通 |
 
+**共通 composable:**
+
+| composable | 用途 | 使用箇所 |
+|-----------|------|---------|
+| `usePointerReorder` | Pointer イベントによるドラッグ&ドロップ並び替え（軸指定対応） | NavEditorContent, ProfileEditorContent |
+| `useCrossAccountNotes` | 複数アカウントからのノート並列取得・統合・重複排除 | DeckMentionsColumn, DeckSpecifiedColumn |
+
 **アイコン・ラベルの一元定義:**
 
 `useColumnTabs.ts` の `COLUMN_ICONS` / `COLUMN_LABELS` がカラムタイプのアイコンとラベルの SSoT。ナビバー、ボトムバー、エディタすべてがこれを参照する。
@@ -254,6 +270,23 @@ const { activate, deactivate } = useMenuKeyboard({
 - **ポップアップメニュー** → `PopupMenu` を使えば自動対応。手動メニューは `useMenuKeyboard` を適用
 - **クリック専用の `<div>`** → `tabindex="0"` + `@keydown.enter` を追加してキーボードから操作可能にする
 - **新機能** → コマンドパレット（`src/commands/definitions.ts`）へのコマンド登録を検討
+
+### AI 設定
+
+NoteDeck にはローカル LLM / OpenAI 互換 API を使った AI 機能がある。
+
+| ファイル | 役割 |
+|---------|------|
+| `src/components/window/AiSettingsContent.vue` | AI 設定ウィンドウ（プロバイダー選択・プロンプト編集） |
+| `src/defaults/AI.md` | デフォルトシステムプロンプト（syuilo/ai ベース） |
+| `src/utils/settingsFs.ts` | Tauri ファイル I/O（`ai.json` 等の読み書き） |
+
+**永続化:**
+- 設定はファイル（`ai.json`）+ localStorage の二層保存
+- **API キーはファイルに含めない**（localStorage のみ保存、セキュリティ対策）
+- ファイルはバックアップ・エクスポート対象
+
+**対応プロバイダー:** Ollama / OpenAI / カスタム OpenAI 互換エンドポイント
 
 ### Build
 
