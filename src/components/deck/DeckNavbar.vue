@@ -102,7 +102,7 @@ function onlineStatusClass(accountId: string): string | undefined {
 // Navbar resize
 const MIN_WIDTH = 56
 const COLLAPSE_THRESHOLD = 120
-const DEFAULT_WIDTH = 250
+const DEFAULT_WIDTH = 220
 const MAX_WIDTH = 400
 const navWidth = ref(
   document.documentElement.clientWidth <= 1279 ? MIN_WIDTH : DEFAULT_WIDTH,
@@ -551,12 +551,12 @@ defineExpose({
     background: var(--nd-buttonHoverBg);
     color: var(--nd-fgHighlighted);
 
-    .ti {
+    :global(.ti) {
       opacity: 1;
     }
   }
 
-  .ti {
+  :global(.ti) {
     flex-shrink: 0;
     width: 32px;
     font-size: 1.5em;
@@ -722,6 +722,13 @@ defineExpose({
   &:active {
     transform: scale(0.97);
   }
+
+  :global(.ti) {
+    flex-shrink: 0;
+    width: 32px;
+    font-size: 1.5em;
+    text-align: center;
+  }
 }
 
 .resizeHandle {
@@ -808,7 +815,11 @@ defineExpose({
     height: 44px;
     margin: 2px auto;
     border-radius: 50%;
-    font-size: 1.7em;
+    font-size: 1rem;
+
+    :global(.ti) {
+      font-size: 1.5em;
+    }
   }
 
   .account {
@@ -860,7 +871,11 @@ defineExpose({
     margin: 0 auto;
     border-radius: 50%;
     justify-content: center;
-    font-size: 1.3em;
+    font-size: 1rem;
+
+    :global(.ti) {
+      font-size: 1.5em;
+    }
   }
 }
 
