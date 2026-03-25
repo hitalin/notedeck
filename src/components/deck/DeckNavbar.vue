@@ -537,11 +537,12 @@ defineExpose({
 .item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 0 14px;
+  line-height: 2.85rem;
   border-radius: var(--nd-radius-full);
   color: var(--nd-navFg, var(--nd-fg));
-  font-size: 0.9em;
+  font-size: 0.95em;
   white-space: nowrap;
   text-decoration: none;
   transition: background var(--nd-duration-base), color var(--nd-duration-base);
@@ -557,6 +558,9 @@ defineExpose({
 
   .ti {
     flex-shrink: 0;
+    width: 32px;
+    font-size: 1.5em;
+    text-align: center;
     opacity: 0.7;
   }
 }
@@ -800,11 +804,11 @@ defineExpose({
   .item {
     justify-content: center;
     padding: 0;
-    width: 40px;
-    height: 40px;
-    margin: 4px auto;
+    width: 44px;
+    height: 44px;
+    margin: 2px auto;
     border-radius: 50%;
-    font-size: 1.5em;
+    font-size: 1.7em;
   }
 
   .account {
@@ -815,6 +819,7 @@ defineExpose({
 
   .accountStack {
     position: static;
+    margin-top: 12px;
   }
 
   .accountScroll {
@@ -827,11 +832,12 @@ defineExpose({
   }
 
   .accountBtn {
-    padding: 6px 0;
+    padding: 4px;
+    border-radius: 50%;
   }
 
   .section {
-    padding: 10px 0;
+    padding: 8px 0 0;
     align-items: center;
   }
 
@@ -848,13 +854,13 @@ defineExpose({
   }
 
   .postBtn {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     margin: 0 auto;
     border-radius: 50%;
     justify-content: center;
-    font-size: 1.1em;
+    font-size: 1.3em;
   }
 }
 
