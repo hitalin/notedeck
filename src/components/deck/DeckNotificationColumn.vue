@@ -113,6 +113,7 @@ const NOTIFICATION_FILTERS = [
   { key: 'mention', label: 'メンション', icon: 'ti ti-at' },
   { key: 'follow', label: 'フォロー', icon: 'ti ti-user-plus' },
   { key: 'pollEnded', label: '投票', icon: 'ti ti-chart-bar' },
+  { key: 'achievementEarned', label: '実績', icon: 'ti ti-trophy' },
   { key: 'createToken', label: 'トークン', icon: 'ti ti-key' },
 ] as const
 
@@ -207,6 +208,7 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   followRequestAccepted: 'user-check',
   receiveFollowRequest: 'user-question',
   pollEnded: 'chart-bar',
+  achievementEarned: 'trophy',
   createToken: 'key',
 }
 
