@@ -9,7 +9,7 @@ import {
   isGuestAccount,
   useAccountsStore,
 } from '@/stores/accounts'
-import { useDeckStore } from '@/stores/deck'
+import { isNavDivider, type NavItem, useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { useStreamingStore } from '@/stores/streaming'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -72,8 +72,12 @@ const NAV_ICON_MAP: Record<string, { icon: string; label: string }> = {
   followRequests: { icon: 'ti-user-plus', label: 'フォローリクエスト' },
 }
 
-function getNavAction(type: string): () => void {
-  switch (type) {
+function getNavAction(item: NavItem): () => void {
+  if (isNavDivider(item))
+    return () => {
+      /* divider has no action */
+    }
+  switch (item.type) {
     case 'notifications':
       return () => {
         markAllAsRead()
@@ -89,16 +93,13 @@ function getNavAction(type: string): () => void {
     case 'ai':
       return navigateToAi
     default:
-      return () =>
-        deckStore.toggleSidebarColumn(
-          type as never,
-          accountsStore.accounts[0]?.id ?? null,
-        )
+      return () => deckStore.toggleSidebarColumn(item.type, item.accountId)
   }
 }
 
-function getNavBadge(type: string): number {
-  switch (type) {
+function getNavBadge(item: NavItem): number {
+  if (isNavDivider(item)) return 0
+  switch (item.type) {
     case 'notifications':
       return totalUnread.value
     case 'chat':
@@ -334,21 +335,21 @@ defineExpose({
       <div :class="$style.body">
         <!-- Top section -->
         <div :class="$style.section">
-          <template v-for="(navType, navIdx) in deckStore.navItems" :key="`${navType}-${navIdx}`">
-            <div v-if="navType === 'divider'" :class="$style.divider" />
+          <template v-for="(navItem, navIdx) in deckStore.navItems" :key="navIdx">
+            <div v-if="isNavDivider(navItem)" :class="$style.divider" />
             <button
               v-else
               class="_button"
-              :class="[$style.item, { [$style.sidebarActive]: sidebarType === navType }]"
-              :title="NAV_ICON_MAP[navType]?.label ?? navType"
-              @click="closeDrawerAndDo(getNavAction(navType))"
+              :class="[$style.item, { [$style.sidebarActive]: sidebarType === navItem.type }]"
+              :title="NAV_ICON_MAP[navItem.type]?.label ?? navItem.type"
+              @click="closeDrawerAndDo(getNavAction(navItem))"
             >
-              <div v-if="getNavBadge(navType) > 0" :class="$style.iconWrap">
-                <i :class="['ti', NAV_ICON_MAP[navType]?.icon ?? 'ti-layout-grid']" />
-                <span :class="$style.badge">{{ getNavBadge(navType) > 99 ? '99+' : getNavBadge(navType) }}</span>
+              <div v-if="getNavBadge(navItem) > 0" :class="$style.iconWrap">
+                <i :class="['ti', NAV_ICON_MAP[navItem.type]?.icon ?? 'ti-layout-grid']" />
+                <span :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
               </div>
-              <i v-else :class="['ti', NAV_ICON_MAP[navType]?.icon ?? 'ti-layout-grid']" />
-              <span :class="$style.label">{{ NAV_ICON_MAP[navType]?.label ?? navType }}</span>
+              <i v-else :class="['ti', NAV_ICON_MAP[navItem.type]?.icon ?? 'ti-layout-grid']" />
+              <span :class="$style.label">{{ NAV_ICON_MAP[navItem.type]?.label ?? navItem.type }}</span>
             </button>
           </template>
         </div>

@@ -5,9 +5,17 @@ import EditorTabs from '@/components/common/EditorTabs.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
-import type { ColumnType, NavItem } from '@/stores/deck'
-import { DEFAULT_NAV_ITEMS, useDeckStore } from '@/stores/deck'
+import type { DeckColumn } from '@/stores/deck'
+import {
+  DEFAULT_NAV_ITEMS,
+  isNavDivider,
+  type NavItem,
+  useDeckStore,
+} from '@/stores/deck'
 
+const AddColumnDialog = defineAsyncComponent(
+  () => import('@/components/deck/AddColumnDialog.vue'),
+)
 const CodeEditor = defineAsyncComponent(
   () => import('@/components/deck/widgets/CodeEditor.vue'),
 )
@@ -20,32 +28,34 @@ const { tab, containerRef: contentRef } = useEditorTabs(
   'visual',
 )
 
-// ── Nav item definitions ──
-interface NavItemDef {
-  type: ColumnType
-  icon: string
-  label: string
+// ── Nav icon map (for display) ──
+const NAV_ICON_MAP: Record<string, { icon: string; label: string }> = {
+  notifications: { icon: 'ti-bell', label: '通知' },
+  chat: { icon: 'ti-messages', label: 'チャット' },
+  search: { icon: 'ti-search', label: '検索' },
+  ai: { icon: 'ti-sparkles', label: 'AI' },
+  timeline: { icon: 'ti-home', label: 'タイムライン' },
+  mentions: { icon: 'ti-at', label: 'メンション' },
+  favorites: { icon: 'ti-star', label: 'お気に入り' },
+  drive: { icon: 'ti-cloud', label: 'ドライブ' },
+  explore: { icon: 'ti-compass', label: 'みつける' },
+  announcements: { icon: 'ti-speakerphone', label: 'お知らせ' },
+  gallery: { icon: 'ti-photo', label: 'ギャラリー' },
+  followRequests: { icon: 'ti-user-plus', label: 'フォローリクエスト' },
 }
 
-const ALL_NAV_OPTIONS: NavItemDef[] = [
-  { type: 'notifications', icon: 'ti-bell', label: '通知' },
-  { type: 'chat', icon: 'ti-messages', label: 'チャット' },
-  { type: 'search', icon: 'ti-search', label: '検索' },
-  { type: 'ai', icon: 'ti-sparkles', label: 'AI' },
-  { type: 'timeline', icon: 'ti-home', label: 'タイムライン' },
-  { type: 'mentions', icon: 'ti-at', label: 'メンション' },
-  { type: 'favorites', icon: 'ti-star', label: 'お気に入り' },
-  { type: 'drive', icon: 'ti-cloud', label: 'ドライブ' },
-  { type: 'explore', icon: 'ti-compass', label: 'みつける' },
-  { type: 'announcements', icon: 'ti-speakerphone', label: 'お知らせ' },
-  { type: 'gallery', icon: 'ti-photo', label: 'ギャラリー' },
-  { type: 'followRequests', icon: 'ti-user-plus', label: 'フォローリクエスト' },
-]
+function getItemIcon(item: NavItem): string {
+  if (isNavDivider(item)) return 'ti-separator'
+  return NAV_ICON_MAP[item.type]?.icon ?? 'ti-layout-grid'
+}
 
-const NAV_ITEM_MAP = new Map(ALL_NAV_OPTIONS.map((o) => [o.type, o]))
+function getItemLabel(item: NavItem): string {
+  if (isNavDivider(item)) return '区切り線'
+  return NAV_ICON_MAP[item.type]?.label ?? item.type
+}
 
 // ── Visual tab state ──
-const items = ref<NavItem[]>([...deckStore.navItems])
+const items = ref<NavItem[]>(structuredClone(deckStore.navItems))
 
 watch(items, (v) => deckStore.setNavItems(v), { deep: true })
 
@@ -75,24 +85,19 @@ function removeItem(index: number) {
   items.value.splice(index, 1)
 }
 
-function addItem(type: ColumnType) {
-  if (!items.value.includes(type)) {
-    items.value.push(type)
-  }
-}
-
 function addDivider() {
-  items.value.push('divider')
+  items.value.push({ type: 'divider' })
 }
 
-function getItemDef(type: ColumnType): NavItemDef {
-  return NAV_ITEM_MAP.get(type) ?? { type, icon: 'ti-layout-grid', label: type }
-}
+// ── Add via AddColumnDialog ──
+const showAddColumn = ref(false)
 
-const showAddMenu = ref(false)
-
-function availableOptions(): NavItemDef[] {
-  return ALL_NAV_OPTIONS.filter((o) => !items.value.includes(o.type))
+function onColumnSelected(config: Omit<DeckColumn, 'id'>) {
+  items.value.push({
+    type: config.type,
+    accountId: config.accountId,
+  })
+  showAddColumn.value = false
 }
 
 // ── Code tab ──
@@ -138,7 +143,7 @@ function applyFromCode() {
 const { copiedMessage, showCopied } = useClipboardFeedback()
 const { confirming: confirmingReset, trigger: handleReset } = useDoubleConfirm(
   () => {
-    items.value = [...DEFAULT_NAV_ITEMS]
+    items.value = structuredClone(DEFAULT_NAV_ITEMS)
   },
 )
 
@@ -183,7 +188,7 @@ async function importNav() {
         <div :class="$style.itemList">
           <div
             v-for="(item, i) in items"
-            :key="`${item}-${i}`"
+            :key="i"
             :class="$style.itemRow"
           >
             <div :class="$style.moveButtons">
@@ -206,13 +211,16 @@ async function importNav() {
                 <i class="ti ti-chevron-down" />
               </button>
             </div>
-            <template v-if="item === 'divider'">
+            <template v-if="isNavDivider(item)">
               <div :class="$style.dividerLine" />
               <span :class="$style.dividerLabel">区切り線</span>
             </template>
             <template v-else>
-              <i :class="['ti', getItemDef(item).icon]" :style="{ opacity: 0.7 }" />
-              <span :class="$style.itemLabel">{{ getItemDef(item).label }}</span>
+              <i :class="['ti', getItemIcon(item)]" :style="{ opacity: 0.7 }" />
+              <span :class="$style.itemLabel">{{ getItemLabel(item) }}</span>
+              <span v-if="item.accountId" :class="$style.accountHint">
+                {{ item.accountId.slice(0, 8) }}
+              </span>
             </template>
             <button class="_button" :class="$style.removeBtn" title="削除" @click="removeItem(i)">
               <i class="ti ti-x" />
@@ -223,37 +231,25 @@ async function importNav() {
       </div>
 
       <div :class="$style.section">
-        <div :class="$style.addWrap">
-          <button class="_button" :class="$style.addShortcutBtn" @click="showAddMenu = !showAddMenu">
+        <div :class="$style.addButtons">
+          <button class="_button" :class="$style.addShortcutBtn" @click="showAddColumn = true">
             <i class="ti ti-plus" />
-            <span>項目を追加</span>
+            <span>カラムを追加</span>
           </button>
-          <div v-if="showAddMenu" :class="$style.dropdownPanel">
-            <button
-              class="_button"
-              :class="$style.dropdownItem"
-              @click="addDivider(); showAddMenu = false"
-            >
-              <i class="ti ti-separator" />
-              <span :class="$style.dropdownItemLabel">区切り線</span>
-            </button>
-            <div :class="$style.dropdownDivider" />
-            <button
-              v-for="opt in availableOptions()"
-              :key="opt.type"
-              class="_button"
-              :class="$style.dropdownItem"
-              @click="addItem(opt.type); showAddMenu = false"
-            >
-              <i :class="['ti', opt.icon]" />
-              <span :class="$style.dropdownItemLabel">{{ opt.label }}</span>
-            </button>
-            <div v-if="availableOptions().length === 0" :class="$style.empty">
-              すべての項目が追加済みです
-            </div>
-          </div>
+          <button class="_button" :class="$style.addShortcutBtn" @click="addDivider">
+            <i class="ti ti-separator" />
+            <span>区切り線</span>
+          </button>
         </div>
       </div>
+
+      <!-- Inline AddColumnDialog -->
+      <AddColumnDialog
+        v-if="showAddColumn"
+        mode="pip"
+        @column-selected="onColumnSelected"
+        @close="showAddColumn = false"
+      />
     </div>
 
     <!-- Code tab -->
@@ -418,6 +414,12 @@ async function importNav() {
   font-size: 0.85em;
 }
 
+.accountHint {
+  font-size: 0.7em;
+  opacity: 0.4;
+  font-family: monospace;
+}
+
 .removeBtn {
   display: flex;
   align-items: center;
@@ -444,10 +446,11 @@ async function importNav() {
   font-size: 0.8em;
 }
 
-// ── Add button ──
+// ── Add buttons ──
 
-.addWrap {
-  position: relative;
+.addButtons {
+  display: flex;
+  gap: 8px;
 }
 
 .addShortcutBtn {
@@ -467,51 +470,6 @@ async function importNav() {
     opacity: 1;
     background: var(--nd-buttonHoverBg);
   }
-}
-
-.dropdownPanel {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  max-height: 240px;
-  overflow-y: auto;
-  margin-bottom: 2px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-panel);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
-}
-
-.dropdownItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 10px;
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-
-  & + & {
-    border-top: 1px solid color-mix(in srgb, var(--nd-divider) 50%, transparent);
-  }
-}
-
-.dropdownItemLabel {
-  flex: 1;
-}
-
-.dropdownDivider {
-  height: 1px;
-  background: var(--nd-divider);
 }
 
 // ── Code tab ──

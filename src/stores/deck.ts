@@ -101,15 +101,21 @@ function genColumnId(): string {
   return `col-${Date.now()}-${++columnCounter}`
 }
 
-export type NavItem = ColumnType | 'divider'
+export type NavItem =
+  | { type: 'divider' }
+  | { type: ColumnType; accountId: string | null }
 
 export const DEFAULT_NAV_ITEMS: NavItem[] = [
-  'notifications',
-  'chat',
-  'search',
-  'divider',
-  'ai',
+  { type: 'notifications', accountId: null },
+  { type: 'chat', accountId: null },
+  { type: 'search', accountId: null },
+  { type: 'divider' },
+  { type: 'ai', accountId: null },
 ]
+
+export function isNavDivider(item: NavItem): item is { type: 'divider' } {
+  return item.type === 'divider'
+}
 
 export const useDeckStore = defineStore('deck', () => {
   const profileStore = useDeckProfileStore()
