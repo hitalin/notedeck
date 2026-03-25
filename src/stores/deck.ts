@@ -107,6 +107,9 @@ export type NavItem =
 
 export const DEFAULT_NAV_ITEMS: NavItem[] = [
   { type: 'notifications', accountId: null },
+  { type: 'followRequests', accountId: null },
+  { type: 'mentions', accountId: null },
+  { type: 'specified', accountId: null },
   { type: 'chat', accountId: null },
   { type: 'search', accountId: null },
   { type: 'divider' },

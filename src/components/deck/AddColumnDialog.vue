@@ -55,6 +55,9 @@ const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
   'notifications',
   'search',
   'chat',
+  'mentions',
+  'specified',
+  'followRequests',
 ])
 
 /** Whether the selected column type requires authentication */
