@@ -102,7 +102,7 @@ onUnmounted(() => {
 <template>
   <div :class="$style.root">
     <template v-if="isTauri">
-      <TitleBar v-if="!isCompact && !isPipWindow" />
+      <TitleBar v-if="(isDesktop || !isCompact) && !isPipWindow" />
       <div :class="$style.content">
         <router-view />
       </div>
@@ -116,7 +116,7 @@ onUnmounted(() => {
       <DeckWindowLayer />
 
       <Teleport to="body">
-        <CommandPalette v-if="commandStore.isOpen && isCompact" />
+        <CommandPalette v-if="commandStore.isOpen && !isDesktop && isCompact" />
       </Teleport>
     </template>
   </div>
