@@ -36,7 +36,12 @@ if (isTauri) {
 let cleanupPipListener: (() => void) | null = null
 
 function dismissSplash() {
-  document.getElementById('nd-splash')?.remove()
+  const el = document.getElementById('nd-splash')
+  if (!el) return
+  el.classList.add('nd-splash-leaving')
+  el.addEventListener('transitionend', () => el.remove(), { once: true })
+  // Fallback: remove after 200ms even if transitionend doesn't fire
+  setTimeout(() => el.remove(), 200)
 }
 
 onMounted(async () => {
