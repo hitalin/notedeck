@@ -496,32 +496,22 @@ html[data-platform="android"] select {
 /* ---- Tab slide animation (useTabSlide) ---- */
 
 /*
- * Single-keyframe out-in: leave and enter are fused into one animation
- * so there is zero gap between phases.
- *
- *   0%  → visible (old content)
- *  40%  → faded out + slid away
- *  50%  → still hidden, opposite side (content switches here)
- * 100%  → visible (new content)
+ * Enter slide: new content slides in with a subtle offset.
  */
 @keyframes nd-tab-slide-left-kf {
-  0%   { opacity: 1; transform: translateX(0); }
-  40%  { opacity: 0; transform: translateX(-30px); }
-  50%  { opacity: 0; transform: translateX(30px); }
-  100% { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateX(calc(50% + 12px)); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes nd-tab-slide-right-kf {
-  0%   { opacity: 1; transform: translateX(0); }
-  40%  { opacity: 0; transform: translateX(30px); }
-  50%  { opacity: 0; transform: translateX(-30px); }
-  100% { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateX(calc(-50% - 12px)); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 .nd-tab-slide-left {
-  animation: nd-tab-slide-left-kf var(--nd-duration-slower) var(--nd-ease-pop) both;
+  animation: nd-tab-slide-left-kf 0.2s cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 .nd-tab-slide-right {
-  animation: nd-tab-slide-right-kf var(--nd-duration-slower) var(--nd-ease-pop) both;
+  animation: nd-tab-slide-right-kf 0.2s cubic-bezier(0.2, 0, 0, 1) both;
 }

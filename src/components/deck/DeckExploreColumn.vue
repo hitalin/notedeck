@@ -179,13 +179,8 @@ function switchTab(tab: Tab) {
 
 // Tab slide animation
 const exploreTabIndex = computed(() => tabs.indexOf(activeTab.value))
-const { displayedIndex: displayedExploreIdx } = useTabSlide(
-  exploreTabIndex,
-  columnContentRef,
-)
-const displayedTab = computed(
-  () => tabs[displayedExploreIdx.value] ?? activeTab.value,
-)
+useTabSlide(exploreTabIndex, columnContentRef)
+const displayedTab = computed(() => activeTab.value)
 
 // Swipe / wheel to switch tabs
 useSwipeTab(
