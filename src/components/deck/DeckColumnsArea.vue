@@ -12,7 +12,6 @@ import {
 import { useColumnDrag } from '@/composables/useColumnDrag'
 import { useColumnResize } from '@/composables/useColumnResize'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
-import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
 
@@ -88,14 +87,7 @@ const columnDrag = useColumnDrag(deckStore, {
 })
 const isCompact = useIsCompactLayout()
 
-// Column lookup map — store を直接参照（将来 windowId でフィルタ可能）
-const columnMap = computed(() => {
-  const map = new Map<string, DeckColumn>()
-  for (const col of deckStore.columns) {
-    map.set(col.id, col)
-  }
-  return map
-})
+const columnMap = computed(() => deckStore.columnMap)
 
 // Column resize
 const { resizingColId, startColumnResize, WIDE_COLUMN_TYPES } = useColumnResize(

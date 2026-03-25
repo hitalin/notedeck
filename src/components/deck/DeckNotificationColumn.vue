@@ -29,6 +29,7 @@ import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
+import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
@@ -104,6 +105,43 @@ const MAX_NOTIFICATIONS = 500
 const notifications = shallowRef<NormalizedNotification[]>([])
 const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 
+// --- Notification cache helpers ---
+
+/** Merge fresh notifications with cached ones (dedup by ID, sort by createdAt DESC) */
+function mergeNotifications(
+  fresh: NormalizedNotification[],
+  cached: NormalizedNotification[],
+  limit = MAX_NOTIFICATIONS,
+): NormalizedNotification[] {
+  const map = new Map<string, NormalizedNotification>()
+  for (const n of cached) map.set(n.id, n)
+  for (const n of fresh) map.set(n.id, n) // fresh overwrites cached
+  return [...map.values()]
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
+    .slice(0, limit)
+}
+
+/** Debounced cache save — flushes on unmount */
+let saveCacheTimer: ReturnType<typeof setTimeout> | null = null
+function saveCache() {
+  if (saveCacheTimer) clearTimeout(saveCacheTimer)
+  saveCacheTimer = setTimeout(flushCache, 500)
+}
+function flushCache() {
+  if (saveCacheTimer) {
+    clearTimeout(saveCacheTimer)
+    saveCacheTimer = null
+  }
+  setStorageJson(getCacheKey(), notifications.value)
+}
+
+function loadCache(): NormalizedNotification[] {
+  return getStorageJson<NormalizedNotification[]>(getCacheKey(), [])
+}
+
 const NOTIFICATION_FILTERS = [
   { key: 'all', label: 'すべて', icon: 'ti ti-bell' },
   { key: 'reaction', label: 'リアクション', icon: 'ti ti-mood-plus' },
@@ -111,8 +149,9 @@ const NOTIFICATION_FILTERS = [
   { key: 'renote', label: 'リノート', icon: 'ti ti-repeat' },
   { key: 'quote', label: '引用', icon: 'ti ti-quote' },
   { key: 'mention', label: 'メンション', icon: 'ti ti-at' },
-  { key: 'follow', label: 'フォロー', icon: 'ti ti-user-plus' },
-  { key: 'pollEnded', label: '投票', icon: 'ti ti-chart-bar' },
+  { key: 'follow', label: 'フォロー', icon: 'ti ti-plus' },
+  { key: 'pollEnded', label: 'アンケート', icon: 'ti ti-chart-arrows' },
+  { key: 'achievementEarned', label: '実績', icon: 'ti ti-medal' },
   { key: 'createToken', label: 'トークン', icon: 'ti ti-key' },
 ] as const
 
@@ -162,6 +201,7 @@ function flushRafBuffer() {
     updated.length > MAX_NOTIFICATIONS
       ? updated.slice(0, MAX_NOTIFICATIONS)
       : updated
+  saveCache()
 }
 
 // Cache reaction URLs per notification to avoid double-call in template (v-if + :src)
@@ -203,32 +243,53 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   renote: 'repeat',
   quote: 'quote',
   mention: 'at',
-  follow: 'user-plus',
-  followRequestAccepted: 'user-check',
-  receiveFollowRequest: 'user-question',
-  pollEnded: 'chart-bar',
+  follow: 'plus',
+  followRequestAccepted: 'check',
+  receiveFollowRequest: 'clock',
+  pollEnded: 'chart-arrows',
+  achievementEarned: 'medal',
+  login: 'login-2',
   createToken: 'key',
 }
 
 const NOTIFICATION_LABELS: Record<string, string> = {
-  reaction: 'リアクション',
-  reply: 'リプライ',
-  renote: 'リノート',
-  quote: '引用',
-  mention: 'メンション',
-  follow: 'フォロー',
-  followRequestAccepted: 'フォローリクエスト承認',
-  receiveFollowRequest: 'フォローリクエスト',
-  pollEnded: '投票終了',
-  achievementEarned: '実績獲得',
+  reaction: 'がリアクション',
+  reply: 'からのリプライ',
+  renote: 'がリノートしました',
+  quote: 'による引用',
+  mention: 'からのメンション',
+  follow: 'にフォローされました',
+  followRequestAccepted: 'がフォローリクエストを承認',
+  receiveFollowRequest: 'からフォローリクエスト',
+  pollEnded: 'アンケートの結果が出ました',
+  achievementEarned: '実績を獲得',
   app: '通知',
-  login: 'ログイン検知',
+  login: 'ログインがありました',
   createToken: 'アクセストークンが作成されました',
   test: 'テスト通知',
 }
 
+const NOTIFICATION_COLORS: Record<string, string> = {
+  reaction: 'var(--nd-eventReaction)',
+  reply: 'var(--nd-eventReply)',
+  renote: 'var(--nd-eventRenote)',
+  quote: 'var(--nd-eventRenote)',
+  mention: 'var(--nd-eventOther)',
+  follow: 'var(--nd-eventFollow)',
+  followRequestAccepted: 'var(--nd-eventFollow)',
+  receiveFollowRequest: 'var(--nd-eventFollow)',
+  pollEnded: 'var(--nd-eventOther)',
+  achievementEarned: 'var(--nd-eventAchievement)',
+  login: 'var(--nd-eventLogin)',
+  createToken: 'var(--nd-eventOther)',
+}
+
 function notificationIcon(type: string): string {
   return NOTIFICATION_ICONS[type] || 'bell'
+}
+
+function notificationColor(type: string): string {
+  return NOTIFICATION_COLORS[type] || 'var(--nd-eventOther)'
 }
 
 function notificationLabel(type: string): string {
@@ -236,7 +297,9 @@ function notificationLabel(type: string): string {
 }
 
 function getCacheKey() {
-  return STORAGE_KEYS.notificationCache(props.column.accountId ?? '')
+  return STORAGE_KEYS.notificationCache(
+    props.column.accountId ?? 'cross-account',
+  )
 }
 
 // When account loses token (logout with keep-data), switch to cache display
@@ -246,10 +309,7 @@ watch(
     if (prev && hasToken === false) {
       disconnect()
       try {
-        const cached = getStorageJson<NormalizedNotification[]>(
-          getCacheKey(),
-          [],
-        )
+        const cached = loadCache()
         if (cached.length > 0) notifications.value = cached
       } catch {
         /* non-critical */
@@ -262,10 +322,11 @@ watch(
 async function connectPerAccount(useCache = false) {
   error.value = null
   isLoading.value = true
+  noMoreData.value = false
 
-  if (useCache && props.column.accountId) {
-    const cached = getStorageJson<NormalizedNotification[]>(getCacheKey(), [])
-    if (cached.length > 0) notifications.value = cached
+  const cached = loadCache()
+  if (useCache && cached.length > 0) {
+    notifications.value = cached
   }
 
   // Logged-out: show cached notifications in read-only mode
@@ -279,9 +340,8 @@ async function connectPerAccount(useCache = false) {
     if (!adapter) return
 
     const fetched = await adapter.api.getNotifications()
-    notifications.value = fetched
-
-    setStorageJson(getCacheKey(), fetched)
+    notifications.value = mergeNotifications(fetched, cached)
+    saveCache()
 
     adapter.stream.connect()
     noteSound.warmup()
@@ -300,8 +360,6 @@ async function connectPerAccount(useCache = false) {
     )
   } catch (e) {
     if (notifications.value.length === 0) {
-      // Try loading from localStorage cache before showing error
-      const cached = getStorageJson<NormalizedNotification[]>(getCacheKey(), [])
       if (cached.length > 0) {
         notifications.value = cached
       } else {
@@ -316,7 +374,9 @@ async function connectPerAccount(useCache = false) {
 async function connectCrossAccount() {
   error.value = null
   isLoading.value = true
+  noMoreData.value = false
   const accounts = accountsStore.accounts.filter((a) => a.hasToken)
+  const cached = loadCache()
 
   try {
     const results = await Promise.allSettled(
@@ -334,21 +394,14 @@ async function connectCrossAccount() {
       }
     }
 
-    // Sort by createdAt DESC, deduplicate
-    const seen = new Set<string>()
-    notifications.value = allNotifs
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
-      .filter((n) => {
-        if (seen.has(n.id)) return false
-        seen.add(n.id)
-        return true
-      })
-      .slice(0, MAX_NOTIFICATIONS)
+    notifications.value = mergeNotifications(allNotifs, cached)
+    saveCache()
   } catch (e) {
-    error.value = AppError.from(e)
+    if (cached.length > 0) {
+      notifications.value = cached
+    } else {
+      error.value = AppError.from(e)
+    }
   } finally {
     isLoading.value = false
   }
@@ -362,15 +415,27 @@ async function connect(useCache = false) {
   }
 }
 
+const noMoreData = ref(false)
+
 async function loadMorePerAccount() {
   const adapter = getAdapter()
-  if (!adapter || isLoading.value || notifications.value.length === 0) return
+  if (!adapter || isLoading.value || noMoreData.value) return
+  if (notifications.value.length === 0) return
   const last = notifications.value.at(-1)
   if (!last) return
   isLoading.value = true
   try {
     const older = await adapter.api.getNotifications({ untilId: last.id })
-    notifications.value = [...notifications.value, ...older]
+    if (older.length === 0) {
+      noMoreData.value = true
+      return
+    }
+    const merged = [...notifications.value, ...older]
+    notifications.value =
+      merged.length > MAX_NOTIFICATIONS
+        ? merged.slice(0, MAX_NOTIFICATIONS)
+        : merged
+    saveCache()
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -379,7 +444,8 @@ async function loadMorePerAccount() {
 }
 
 async function loadMoreCrossAccount() {
-  if (isLoading.value || notifications.value.length === 0) return
+  if (isLoading.value || noMoreData.value) return
+  if (notifications.value.length === 0) return
   isLoading.value = true
 
   const accounts = accountsStore.accounts.filter((a) => a.hasToken)
@@ -389,7 +455,6 @@ async function loadMoreCrossAccount() {
       accounts.map(async (acc) => {
         const adapter = await multiAdapters.getOrCreate(acc.id)
         if (!adapter) return []
-        // Find this account's oldest notification
         const lastForAccount = [...notifications.value]
           .reverse()
           .find((n) => n._accountId === acc.id)
@@ -405,18 +470,13 @@ async function loadMoreCrossAccount() {
       }
     }
 
-    const seen = new Set(notifications.value.map((n) => n.id))
-    const newOlder = olderNotifs
-      .filter((n) => !seen.has(n.id))
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
+    if (olderNotifs.length === 0) {
+      noMoreData.value = true
+      return
+    }
 
-    notifications.value = [...notifications.value, ...newOlder].slice(
-      0,
-      MAX_NOTIFICATIONS * 2,
-    )
+    notifications.value = mergeNotifications(olderNotifs, notifications.value)
+    saveCache()
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -448,6 +508,7 @@ async function removeNote(note: NormalizedNote) {
   notifications.value = notifications.value.filter(
     (x) => x.note?.id !== id && x.note?.renoteId !== id,
   )
+  saveCache()
   noteStore.remove(id)
   invoke('api_delete_cached_note', { noteId: id }).catch((e) => {
     if (import.meta.env.DEV) console.debug('[delete-cached-note] ignored:', e)
@@ -475,6 +536,7 @@ async function handlePosted(editedNoteId?: string) {
           return { ...x, note: { ...x.note, renote: updated } }
         return x
       })
+      saveCache()
     } catch {
       // note may have been deleted
     }
@@ -518,7 +580,8 @@ async function pullRefresh() {
     const adapter = getAdapter()
     if (!adapter) return
     const fetched = await adapter.api.getNotifications()
-    notifications.value = fetched
+    notifications.value = mergeNotifications(fetched, notifications.value)
+    saveCache()
     scrollToTop()
   }
 }
@@ -569,6 +632,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  flushCache()
   disconnect()
   if (rafId !== null) {
     cancelAnimationFrame(rafId)
@@ -642,6 +706,10 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <div v-if="isLoading && notifications.length === 0" :class="$style.columnLoading">
+        <div :class="$style.columnLoadingSpinner" />
+      </div>
+
       <NoteScroller
         v-if="!(isLoading && notifications.length === 0)"
         ref="noteScrollerRef"
@@ -653,7 +721,7 @@ onUnmounted(() => {
         <template #default="{ item: notif, index }">
           <div>
             <div
-              :class="[$style.notifItem, $style[`notifType_${notif.type}`]]"
+              :class="$style.notifItem"
             >
               <div :class="$style.notifLayout">
                 <!-- Head: Avatar with sub-icon overlay -->
@@ -670,7 +738,7 @@ onUnmounted(() => {
                     @mouseleave="onNotifAvatarMouseLeave"
                   />
                   <img v-else-if="account?.avatarUrl" :src="account.avatarUrl" :class="$style.notifFallbackAvatar" />
-                  <i :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" />
+                  <i :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
                 </div>
 
                 <!-- Tail: Header + body -->
@@ -690,6 +758,11 @@ onUnmounted(() => {
                       </span>
                     </div>
                     <span :class="$style.notifTime">{{ formatTime(notif.createdAt) }}</span>
+                  </div>
+
+                  <!-- Achievement name -->
+                  <div v-if="notif.type === 'achievementEarned' && notif.achievement" :class="$style.notifAchievement">
+                    {{ ACHIEVEMENT_LABELS[notif.achievement] ?? notif.achievement }}
                   </div>
 
                   <!-- Follow request actions -->
@@ -883,44 +956,6 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--nd-divider);
 }
 
-.notifType_reaction {
-  .notifSubIcon {
-    color: var(--nd-love);
-    background: color-mix(in srgb, var(--nd-love) 15%, var(--nd-bg));
-  }
-}
-
-.notifType_reply,
-.notifType_mention {
-  .notifSubIcon {
-    color: var(--nd-accent);
-    background: color-mix(in srgb, var(--nd-accent) 15%, var(--nd-bg));
-  }
-}
-
-.notifType_renote,
-.notifType_quote {
-  .notifSubIcon {
-    color: var(--nd-renote);
-    background: color-mix(in srgb, var(--nd-renote) 15%, var(--nd-bg));
-  }
-}
-
-.notifType_follow,
-.notifType_followRequestAccepted {
-  .notifSubIcon {
-    color: var(--nd-link);
-    background: color-mix(in srgb, var(--nd-link) 15%, var(--nd-bg));
-  }
-}
-
-.notifType_receiveFollowRequest {
-  .notifSubIcon {
-    color: var(--nd-warn);
-    background: color-mix(in srgb, var(--nd-warn) 15%, var(--nd-bg));
-  }
-}
-
 .notifLayout {
   display: flex;
   padding: 12px 16px;
@@ -948,16 +983,19 @@ onUnmounted(() => {
 .notifSubIcon {
   position: absolute;
   bottom: -2px;
-  right: -4px;
+  right: -2px;
   font-size: 11px;
   width: 20px;
   height: 20px;
+  line-height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--nd-bg);
-  border: 2px solid var(--nd-bg);
+  background: var(--nd-panel);
+  box-shadow: 0 0 0 3px var(--nd-panel);
+  color: #fff;
+  text-align: center;
 }
 
 .notifTail {
@@ -992,6 +1030,13 @@ onUnmounted(() => {
 .notifLabel {
   font-size: 0.85em;
   opacity: 0.7;
+}
+
+.notifAchievement {
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  opacity: 0.7;
+  margin-top: 2px;
 }
 
 .notifReaction {

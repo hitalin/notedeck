@@ -17,12 +17,6 @@ const FollowListContent = defineAsyncComponent(
 const LoginContent = defineAsyncComponent(
   () => import('@/components/window/LoginContent.vue'),
 )
-const SearchContent = defineAsyncComponent(
-  () => import('@/components/window/SearchContent.vue'),
-)
-const NotificationsContent = defineAsyncComponent(
-  () => import('@/components/window/NotificationsContent.vue'),
-)
 const PluginsContent = defineAsyncComponent(
   () => import('@/components/window/PluginsContent.vue'),
 )
@@ -41,14 +35,8 @@ const ProfileEditorContent = defineAsyncComponent({
     console.error('[ProfileEditorContent] load error:', err)
   },
 })
-const AiContent = defineAsyncComponent(
-  () => import('@/components/window/AiContent.vue'),
-)
 const AiSettingsContent = defineAsyncComponent(
   () => import('@/components/window/AiSettingsContent.vue'),
-)
-const ChatContent = defineAsyncComponent(
-  () => import('@/components/window/ChatContent.vue'),
 )
 const AboutContent = defineAsyncComponent(
   () => import('@/components/window/AboutContent.vue'),
@@ -139,8 +127,6 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         @close="closeWindow(win.id)"
         @success="closeWindow(win.id)"
       />
-      <SearchContent v-if="win.type === 'search'" />
-      <NotificationsContent v-if="win.type === 'notifications'" />
       <PluginsContent v-if="win.type === 'plugins'" />
       <KeybindsContent v-if="win.type === 'keybinds'" />
       <CssEditorContent v-if="win.type === 'cssEditor'" />
@@ -149,9 +135,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         v-if="win.type === 'profileEditor'"
         :profile-id="(win.props.profileId as string)"
       />
-      <AiContent v-if="win.type === 'ai'" />
       <AiSettingsContent v-if="win.type === 'aiSettings'" />
-      <ChatContent v-if="win.type === 'chat'" />
       <AboutContent v-if="win.type === 'about'" />
       <NavEditorContent v-if="win.type === 'navEditor'" />
     </DeckWindow>

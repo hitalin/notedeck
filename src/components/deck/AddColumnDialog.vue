@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import AvatarStack from '@/components/common/AvatarStack.vue'
+import { COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useNavigation } from '@/composables/useNavigation'
 import {
@@ -88,6 +89,16 @@ function selectColumnType(type: ColumnType) {
   }
 }
 
+/** Column types with extra properties beyond the standard defaults */
+const COLUMN_EXTRA_PROPS: Partial<
+  Record<ColumnType, Partial<Omit<DeckColumn, 'id'>>>
+> = {
+  widget: { widgets: [] },
+  aiscript: { aiscriptCode: '<: "Hello, AiScript!"' },
+  apiDocs: { accountId: null, width: 990 },
+  timeline: { tl: 'home', name: null },
+}
+
 function addColumnForAccount(accountId: string | null) {
   const type = addColumnType.value || 'timeline'
   const config = SELECTABLE_CONFIGS.find((c) => c.type === type)
@@ -99,193 +110,15 @@ function addColumnForAccount(accountId: string | null) {
     addUserAccountId.value = accountId
     return
   }
-  if (type === 'widget') {
-    finalizeColumn({
-      type: 'widget',
-      name: 'ウィジェット',
-      width: 360,
-      accountId,
-      active: true,
-      widgets: [],
-    })
-    return
-  }
-  if (type === 'aiscript') {
-    finalizeColumn({
-      type: 'aiscript',
-      name: 'スクラッチパッド',
-      width: 360,
-      accountId,
-      active: true,
-      aiscriptCode: '<: "Hello, AiScript!"',
-    })
-    return
-  }
-  if (type === 'apiConsole') {
-    finalizeColumn({
-      type: 'apiConsole',
-      name: 'APIコンソール',
-      width: 360,
-      accountId,
-      active: true,
-    })
-    return
-  }
-  if (type === 'lookup') {
-    finalizeColumn({
-      type: 'lookup',
-      name: 'URI照会',
-      width: 360,
-      accountId,
-      active: true,
-    })
-    return
-  }
-  if (type === 'serverInfo') {
-    finalizeColumn({
-      type: 'serverInfo',
-      name: 'サーバー情報',
-      width: 360,
-      accountId,
-      active: true,
-    })
-    return
-  }
-  if (type === 'ads') {
-    finalizeColumn({
-      type: 'ads',
-      name: '広告',
-      width: 360,
-      accountId,
-      active: true,
-    })
-    return
-  }
-  if (type === 'aboutMisskey') {
-    finalizeColumn({
-      type: 'aboutMisskey',
-      name: 'Misskeyについて',
-      width: 360,
-      accountId,
-      active: true,
-    })
-    return
-  }
-  if (type === 'emoji') {
-    finalizeColumn({
-      type: 'emoji',
-      name: 'カスタム絵文字',
-      width: 360,
-      accountId,
-      active: true,
-    })
-    return
-  }
-  if (type === 'apiDocs') {
-    finalizeColumn({
-      type: 'apiDocs',
-      name: 'APIドキュメント',
-      width: 990,
-      accountId: null,
-      active: true,
-    })
-    return
-  }
-  if (type === 'play') {
-    finalizeColumn({
-      type: 'play',
-      name: 'Misskey Play',
-      width: 360,
-      accountId,
-      active: true,
-    })
-    return
-  }
-  if (type === 'page') {
-    finalizeColumn({
-      type: 'page',
-      name: 'ページ',
-      width: 360,
-      accountId,
-      active: true,
-    })
-    return
-  }
-  if (type === 'ai') {
-    finalizeColumn({
-      type: 'ai',
-      name: 'AIチャット',
-      width: 360,
-      accountId,
-      active: true,
-    })
-    return
-  }
-  if (type === 'drive') {
-    finalizeColumn({
-      type: 'drive',
-      name: 'ドライブ',
-      width: 360,
-      accountId,
-      active: true,
-    })
-    return
-  }
-  if (type === 'gallery') {
-    finalizeColumn({
-      type: 'gallery',
-      name: 'ギャラリー',
-      width: 360,
-      accountId,
-      active: true,
-    })
-    return
-  }
-  if (type === 'explore') {
-    finalizeColumn({
-      type: 'explore',
-      name: 'みつける',
-      width: 360,
-      accountId,
-      active: true,
-    })
-    return
-  }
-  if (
-    type === 'favorites' ||
-    type === 'mentions' ||
-    type === 'specified' ||
-    type === 'chat' ||
-    type === 'announcements' ||
-    type === 'followRequests' ||
-    type === 'achievements'
-  ) {
-    const nameMap: Record<string, string> = {
-      favorites: 'お気に入り',
-      mentions: 'メンション',
-      specified: 'ダイレクト',
-      chat: 'チャット',
-      announcements: 'お知らせ',
-      followRequests: 'フォローリクエスト',
-      achievements: '実績',
-    }
-    finalizeColumn({
-      type,
-      name: nameMap[type] ?? type,
-      width: 360,
-      accountId,
-      active: true,
-    })
-    return
-  }
+  const extra = COLUMN_EXTRA_PROPS[type]
   finalizeColumn({
     type,
-    name: null,
+    name: COLUMN_LABELS[type] ?? type,
     width: 360,
     accountId,
-    tl: type === 'timeline' ? 'home' : undefined,
     active: true,
-  })
+    ...extra,
+  } as Omit<DeckColumn, 'id'>)
 }
 
 // Selectable column types (list, antenna, channel, clip)

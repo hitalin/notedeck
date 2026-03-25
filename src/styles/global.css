@@ -71,6 +71,14 @@
   --nd-codeNumber: #cfff9e;
   --nd-codeBoolean: #c59eff;
   --nd-deckBg: #000;
+  /* Notification event colors (Misskey native) */
+  --nd-eventReaction: #e99a0b;
+  --nd-eventReply: #007aff;
+  --nd-eventRenote: #36d298;
+  --nd-eventFollow: #36aed2;
+  --nd-eventAchievement: #cb9a11;
+  --nd-eventLogin: #007aff;
+  --nd-eventOther: #88a6b7;
   /* Status indicator */
   --nd-statusOnline: #58d4c9;
   --nd-statusActive: #e4bc48;
@@ -518,11 +526,11 @@ html[data-platform="android"] select {
 
 /* ---- Swipe follow (useSwipeTab touch tracking) ---- */
 
-.nd-tab-swiping {
+.nd-tab-swiping > * {
   transform: translateX(var(--nd-swipe, 0));
   will-change: transform;
 }
 
-.nd-tab-snap-back {
+.nd-tab-snap-back > * {
   transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
 }

@@ -21,27 +21,38 @@ export function usePointerReorder(options: PointerReorderOptions) {
     c.toUpperCase(),
   )
 
+  /** threshold判定中のリスナーをクリーンアップする関数 */
+  let cleanupPending: (() => void) | null = null
+
   function startDrag(index: number, e: PointerEvent) {
     if (e.button !== 0) return
     const target = e.target as HTMLElement
     if (target.closest('button')) return
 
+    // 前回の threshold 判定中リスナーが残っていたらクリーンアップ
+    cleanupPending?.()
+
     e.preventDefault()
     const start = axis === 'x' ? e.clientX : e.clientY
+
+    function cleanup() {
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onCancel)
+      cleanupPending = null
+    }
 
     function onMove(ev: PointerEvent) {
       const current = axis === 'x' ? ev.clientX : ev.clientY
       if (Math.abs(current - start) < threshold) return
-      document.removeEventListener('pointermove', onMove)
-      document.removeEventListener('pointerup', onCancel)
+      cleanup()
       beginDrag(index)
     }
 
     function onCancel() {
-      document.removeEventListener('pointermove', onMove)
-      document.removeEventListener('pointerup', onCancel)
+      cleanup()
     }
 
+    cleanupPending = cleanup
     document.addEventListener('pointermove', onMove)
     document.addEventListener('pointerup', onCancel)
   }

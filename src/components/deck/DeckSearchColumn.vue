@@ -708,8 +708,8 @@ onUnmounted(() => {
     </div>
 
     <div v-else :class="$style.searchBody">
-      <div v-if="isLoading && notes.length === 0" :class="$style.columnEmpty">
-        Searching...
+      <div v-if="isLoading && notes.length === 0" :class="$style.columnLoading">
+        <div :class="$style.columnLoadingSpinner" />
       </div>
 
       <div v-else-if="!searchQuery.trim() && notes.length === 0" :class="$style.columnEmpty">

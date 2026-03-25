@@ -1,12 +1,24 @@
 import { onUnmounted, type Ref, watch } from 'vue'
 
-const SWIPE_THRESHOLD = 50
+const DIRECTION_THRESHOLD = 8 // px — minimum move to determine swipe direction
+const SWIPE_THRESHOLD = 50 // px — minimum distance to trigger tab switch
 const FLING_VELOCITY = 0.4 // px/ms — fast flick switches tab even if distance < threshold
 const ANGLE_THRESHOLD = 30 // degrees — swipe must be within this angle from horizontal
 const SOFT_CAP = 80 // px — full-speed tracking up to here
 const RUBBER_FACTOR = 0.3 // diminishing returns past SOFT_CAP (iOS-style)
-const WHEEL_THRESHOLD = 50
+const MAX_SWIPE = 120 // px — hard cap to prevent excessive displacement
+const SNAP_BACK_TIMEOUT = 220 // ms — safety fallback for transitionend (200ms CSS + buffer)
+const WHEEL_THRESHOLD = 50 // px — accumulated delta to trigger tab switch
 const WHEEL_COOLDOWN = 300 // ms — prevent rapid-fire tab switches
+
+/** CSS class names shared with useTabSlide */
+export const SWIPE_CLASSES = {
+  swiping: 'nd-tab-swiping',
+  snapBack: 'nd-tab-snap-back',
+} as const
+
+/** CSS custom property for swipe offset */
+const SWIPE_VAR = '--nd-swipe'
 
 /** Check if touch target is inside a horizontally scrollable element */
 function hasHorizontalScroll(
@@ -29,7 +41,13 @@ function rubberBand(distance: number): number {
   const abs = Math.abs(distance)
   const sign = Math.sign(distance)
   if (abs <= SOFT_CAP) return distance
-  return sign * (SOFT_CAP + (abs - SOFT_CAP) * RUBBER_FACTOR)
+  return sign * Math.min(SOFT_CAP + (abs - SOFT_CAP) * RUBBER_FACTOR, MAX_SWIPE)
+}
+
+/** Remove all swipe-related CSS state from an element */
+function clearSwipeState(el: HTMLElement) {
+  el.classList.remove(SWIPE_CLASSES.swiping, SWIPE_CLASSES.snapBack)
+  el.style.removeProperty(SWIPE_VAR)
 }
 
 /**
@@ -67,11 +85,10 @@ export function useSwipeTab(
     tracking = true
     direction = null
 
-    const el = boundEl
-    if (el) {
+    if (boundEl) {
       // Clear any lingering snap-back state
-      el.classList.remove('nd-tab-snap-back')
-      el.style.removeProperty('--nd-swipe')
+      boundEl.classList.remove(SWIPE_CLASSES.snapBack)
+      boundEl.style.removeProperty(SWIPE_VAR)
     }
   }
 
@@ -80,11 +97,7 @@ export function useSwipeTab(
     // Cancel swipe on multi-touch (e.g. pinch-to-zoom)
     if (e.touches.length > 1) {
       tracking = false
-      const el = boundEl
-      if (el && direction === 'horizontal') {
-        el.classList.remove('nd-tab-swiping')
-        el.style.removeProperty('--nd-swipe')
-      }
+      if (boundEl && direction === 'horizontal') clearSwipeState(boundEl)
       direction = null
       return
     }
@@ -97,11 +110,14 @@ export function useSwipeTab(
     const absDy = Math.abs(dy)
 
     // Determine direction on first significant move
-    if (direction === null && (absDx > 8 || absDy > 8)) {
+    if (
+      direction === null &&
+      (absDx > DIRECTION_THRESHOLD || absDy > DIRECTION_THRESHOLD)
+    ) {
       const angle = Math.atan2(absDy, absDx) * (180 / Math.PI)
       direction = angle <= ANGLE_THRESHOLD ? 'horizontal' : 'vertical'
       if (direction === 'horizontal') {
-        boundEl?.classList.add('nd-tab-swiping')
+        boundEl?.classList.add(SWIPE_CLASSES.swiping)
       }
     }
 
@@ -109,21 +125,24 @@ export function useSwipeTab(
 
     e.preventDefault()
 
-    boundEl?.style.setProperty('--nd-swipe', `${rubberBand(dx)}px`)
+    // Stop following if finger drifts diagonal (Misskey-style)
+    const angle = Math.atan2(absDy, absDx) * (180 / Math.PI)
+    if (angle > ANGLE_THRESHOLD) return
+
+    boundEl?.style.setProperty(SWIPE_VAR, `${rubberBand(dx)}px`)
   }
 
   function snapBack(el: HTMLElement) {
-    el.classList.add('nd-tab-snap-back')
-    el.style.setProperty('--nd-swipe', '0px')
+    el.classList.add(SWIPE_CLASSES.snapBack)
+    el.style.setProperty(SWIPE_VAR, '0px')
     let cleaned = false
     const cleanup = () => {
       if (cleaned) return
       cleaned = true
-      el.classList.remove('nd-tab-swiping', 'nd-tab-snap-back')
-      el.style.removeProperty('--nd-swipe')
+      clearSwipeState(el)
     }
     el.addEventListener('transitionend', cleanup, { once: true })
-    setTimeout(cleanup, 220)
+    setTimeout(cleanup, SNAP_BACK_TIMEOUT)
   }
 
   function onTouchEnd(e: TouchEvent) {
@@ -131,43 +150,39 @@ export function useSwipeTab(
     tracking = false
 
     const el = boundEl
-    if (!el) return
+    if (!el || direction !== 'horizontal') {
+      direction = null
+      return
+    }
+    direction = null
 
-    if (direction === 'horizontal') {
-      const touch = e.changedTouches[0]
-      if (touch) {
-        const dx = touch.clientX - startX
-        const absDx = Math.abs(dx)
+    const touch = e.changedTouches[0]
+    if (!touch) return
 
-        const elapsed = Date.now() - startTime
-        const velocity = elapsed > 0 ? absDx / elapsed : 0
-        if (absDx >= SWIPE_THRESHOLD || velocity >= FLING_VELOCITY) {
-          const consumed = dx < 0 ? onSwipeLeft() : onSwipeRight()
-          if (consumed) {
-            // Tab switched — clear swipe state, useTabSlide handles enter animation
-            el.classList.remove('nd-tab-swiping')
-            el.style.removeProperty('--nd-swipe')
-          } else {
-            // No tab in that direction — snap back
-            snapBack(el)
-          }
-        } else {
-          snapBack(el)
-        }
-      }
+    const dx = touch.clientX - startX
+    const absDx = Math.abs(dx)
+    const elapsed = Date.now() - startTime
+    const velocity = elapsed > 0 ? absDx / elapsed : 0
+
+    if (absDx < SWIPE_THRESHOLD && velocity < FLING_VELOCITY) {
+      snapBack(el)
+      return
     }
 
-    direction = null
+    const consumed = dx < 0 ? onSwipeLeft() : onSwipeRight()
+    if (consumed) {
+      // Tab switched — clear swipe state, useTabSlide handles enter animation
+      clearSwipeState(el)
+    } else {
+      // No tab in that direction — snap back
+      snapBack(el)
+    }
   }
 
   function onTouchCancel() {
     if (!tracking) return
     tracking = false
-    const el = boundEl
-    if (el && direction === 'horizontal') {
-      el.classList.remove('nd-tab-swiping')
-      el.style.removeProperty('--nd-swipe')
-    }
+    if (boundEl && direction === 'horizontal') clearSwipeState(boundEl)
     direction = null
   }
 

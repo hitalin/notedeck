@@ -22,6 +22,34 @@ export interface CrossAccountNotesOptions {
   onScroll: (loadMore: () => void) => void
 }
 
+/** Promise.allSettled の結果からノートを集約 */
+function collectFulfilled(
+  results: PromiseSettledResult<NormalizedNote[]>[],
+): NormalizedNote[] {
+  const collected: NormalizedNote[] = []
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value) {
+      collected.push(...r.value)
+    }
+  }
+  return collected
+}
+
+/** 既存IDを除外し、createdAt降順でソート */
+function dedup(
+  incoming: NormalizedNote[],
+  existingIds?: Set<string>,
+): NormalizedNote[] {
+  const seen = existingIds ?? new Set<string>()
+  return incoming
+    .filter((n) => {
+      if (seen.has(n.id)) return false
+      seen.add(n.id)
+      return true
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
 export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
   const { fetchNotes, isCrossAccount, isLoading, error, scroller, onScroll } =
     options
@@ -65,24 +93,7 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
         }),
       )
 
-      const allNotes: NormalizedNote[] = []
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value) {
-          allNotes.push(...r.value)
-        }
-      }
-
-      const seen = new Set<string>()
-      notes.value = allNotes
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        )
-        .filter((n) => {
-          if (seen.has(n.id)) return false
-          seen.add(n.id)
-          return true
-        })
+      notes.value = dedup(collectFulfilled(results))
     } catch (e) {
       error.value = AppError.from(e)
     } finally {
@@ -108,21 +119,8 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
         }),
       )
 
-      const olderNotes: NormalizedNote[] = []
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value) {
-          olderNotes.push(...r.value)
-        }
-      }
-
-      const seen = new Set(notes.value.map((n) => n.id))
-      const newOlder = olderNotes
-        .filter((n) => !seen.has(n.id))
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        )
-
+      const existingIds = new Set(notes.value.map((n) => n.id))
+      const newOlder = dedup(collectFulfilled(results), existingIds)
       notes.value = [...notes.value, ...newOlder]
     } catch (e) {
       error.value = AppError.from(e)

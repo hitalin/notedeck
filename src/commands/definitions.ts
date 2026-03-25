@@ -397,7 +397,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     icon: 'message-circle',
     category: 'navigation',
     shortcuts: keybindsStore.getShortcuts('chat'),
-    execute: () => useWindowsStore().open('chat'),
+    execute: () => useDeckStore().toggleSidebarColumn('chat', null),
   })
 
   commandStore.register({
@@ -406,7 +406,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     icon: 'robot',
     category: 'navigation',
     shortcuts: keybindsStore.getShortcuts('ai'),
-    execute: () => useWindowsStore().open('ai'),
+    execute: () => useDeckStore().toggleSidebarColumn('ai', null),
   })
 
   commandStore.register({
