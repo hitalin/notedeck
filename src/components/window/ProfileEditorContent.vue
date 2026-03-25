@@ -13,6 +13,9 @@ import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useServersStore } from '@/stores/servers'
 import { createJson5Linter } from '@/utils/json5Linter'
 
+const AddColumnDialog = defineAsyncComponent(
+  () => import('@/components/deck/AddColumnDialog.vue'),
+)
 const CodeEditor = defineAsyncComponent(
   () => import('@/components/deck/widgets/CodeEditor.vue'),
 )
@@ -120,6 +123,14 @@ function groupAvatarUrl(group: string[]): string | null {
 function groupServerIconUrl(group: string[]): string | null {
   const col = groupPrimaryColumn(group)
   return col ? columnServerIconUrl(col) : null
+}
+
+// --- Add column via inline AddColumnDialog ---
+const showAddColumn = ref(false)
+
+function onColumnSelected(config: Omit<DeckColumn, 'id'>) {
+  deckStore.addColumn(config)
+  showAddColumn.value = false
 }
 
 // --- Drag and drop (reorder layout groups, pointer-based like DeckColumnsArea) ---
@@ -380,7 +391,24 @@ async function importFromClipboard() {
           <div v-if="deckStore.windowLayout.length === 0" :class="$style.emptyMessage">
             カラムがありません
           </div>
+
+          <!-- Add column button -->
+          <div
+            :class="[$style.columnTab, $style.addColumnTab]"
+            title="カラムを追加"
+            @click="showAddColumn = !showAddColumn"
+          >
+            <i class="ti ti-plus" />
+          </div>
         </div>
+
+        <!-- Inline AddColumnDialog -->
+        <AddColumnDialog
+          v-if="showAddColumn"
+          mode="pip"
+          @column-selected="onColumnSelected"
+          @close="showAddColumn = false"
+        />
       </div>
     </div>
 
@@ -550,6 +578,18 @@ async function importFromClipboard() {
   &.dragOver {
     outline: 2px solid var(--nd-accent);
     outline-offset: 1px;
+  }
+
+  &.addColumnTab {
+    cursor: pointer;
+    opacity: 0.3;
+    border: 1px dashed var(--nd-divider);
+
+    &:hover {
+      opacity: 0.8;
+      border-color: var(--nd-accent);
+      color: var(--nd-accent);
+    }
   }
 }
 
