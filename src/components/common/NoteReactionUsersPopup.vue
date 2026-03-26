@@ -13,6 +13,10 @@ defineProps<{
   serverHost: string
 }>()
 
+const emit = defineEmits<{
+  openModal: [reaction: string]
+}>()
+
 const popup = useHoverPopup({
   hideDelay: 300,
   hideGuardSelector: '.reaction-users-popup',
@@ -55,6 +59,7 @@ defineExpose({ show, hide })
         :x="popup.position.value.x"
         :y="popup.position.value.y"
         @close="popup.forceClose()"
+        @open-modal="(r: string) => { popup.forceClose(); emit('openModal', r) }"
       />
     </div>
   </Teleport>

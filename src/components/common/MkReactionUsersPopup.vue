@@ -10,6 +10,8 @@ import MkMfm from './MkMfm.vue'
 
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
 
+const LIMIT = 20
+
 const props = defineProps<{
   noteId: string
   accountId: string
@@ -23,6 +25,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
+  openModal: [reaction: string]
 }>()
 
 const { navigateToUser } = useNavigation()
@@ -31,6 +34,8 @@ const accountsStore = useAccountsStore()
 
 const reactions = ref<NoteReaction[]>([])
 const isLoading = ref(true)
+const hasMore = ref(false)
+const scrollRef = ref<HTMLElement | null>(null)
 
 // User hover popup
 const showUserPopup = ref(false)
@@ -39,19 +44,27 @@ const userPopupPos = ref({ x: 0, y: 0 })
 const userPopupTheme = ref<Record<string, string>>({})
 let hoverTimer: ReturnType<typeof setTimeout> | null = null
 
-async function fetchReactions() {
+async function fetchReactions(untilId?: string) {
+  if (isLoading.value && untilId) return
   isLoading.value = true
-  reactions.value = []
+  if (!untilId) reactions.value = []
   try {
     const account = accountsStore.accounts.find((a) => a.id === props.accountId)
     if (!account) return
     const serverInfo = await serversStore.getServerInfo(account.host)
     const adapter = createAdapter(serverInfo, account.id)
-    reactions.value = await adapter.api.getNoteReactions(
+    const result = await adapter.api.getNoteReactions(
       props.noteId,
       props.reaction,
-      11,
+      LIMIT,
+      untilId,
     )
+    if (untilId) {
+      reactions.value = [...reactions.value, ...result]
+    } else {
+      reactions.value = result
+    }
+    hasMore.value = result.length === LIMIT
   } catch {
     // Non-critical popup
   } finally {
@@ -59,7 +72,23 @@ async function fetchReactions() {
   }
 }
 
-watch(() => props.reaction, fetchReactions, { immediate: true })
+function onScroll() {
+  if (!scrollRef.value || !hasMore.value || isLoading.value) return
+  const el = scrollRef.value
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 50) {
+    const lastId = reactions.value[reactions.value.length - 1]?.id
+    if (lastId) fetchReactions(lastId)
+  }
+}
+
+watch(
+  () => props.reaction,
+  () => {
+    hasMore.value = false
+    fetchReactions()
+  },
+  { immediate: true },
+)
 
 function handleMouseLeave() {
   if (showUserPopup.value) return
@@ -120,39 +149,46 @@ onUnmounted(() => {
     :style="{ left: `${x}px`, top: `${y}px` }"
     @mouseleave="handleMouseLeave"
   >
-    <div v-if="isLoading" :class="$style.popupLoading">読み込み中...</div>
+    <div v-if="isLoading && reactions.length === 0" :class="$style.popupLoading">読み込み中...</div>
     <template v-else>
       <div v-if="reactions.length === 0" :class="$style.popupLoading">リアクションなし</div>
       <template v-else>
-        <button
-          v-for="r in reactions.slice(0, 10)"
-          :key="r.id"
-          :class="$style.reactionUserRow"
-          @click.stop="onUserClick(r.user.id)"
-          @mouseenter="onUserMouseEnter($event, r.user.id)"
-          @mouseleave="onUserMouseLeave"
-        >
-          <img
-            v-if="r.user.avatarUrl"
-            :src="r.user.avatarUrl"
-            :class="$style.reactionUserAvatar"
-            width="24"
-            height="24"
-            loading="lazy"
-            decoding="async"
-          />
-          <div v-else :class="[$style.reactionUserAvatar, $style.reactionUserAvatarPlaceholder]" />
-          <div :class="$style.reactionUserInfo">
-            <span :class="$style.reactionUserName">
-              <MkMfm v-if="r.user.name" :text="r.user.name" :emojis="r.user.emojis" :server-host="serverHost" />
-              <template v-else>{{ r.user.username }}</template>
-            </span>
-            <span :class="$style.reactionUserUsername">@{{ r.user.username }}</span>
-          </div>
-        </button>
-        <div v-if="totalCount > 10" :class="$style.reactionUsersMore">
-          and {{ totalCount - 10 }} more
+        <div ref="scrollRef" :class="$style.scrollArea" @scroll="onScroll">
+          <button
+            v-for="r in reactions"
+            :key="r.id"
+            :class="$style.reactionUserRow"
+            @click.stop="onUserClick(r.user.id)"
+            @mouseenter="onUserMouseEnter($event, r.user.id)"
+            @mouseleave="onUserMouseLeave"
+          >
+            <img
+              v-if="r.user.avatarUrl"
+              :src="r.user.avatarUrl"
+              :class="$style.reactionUserAvatar"
+              width="24"
+              height="24"
+              loading="lazy"
+              decoding="async"
+            />
+            <div v-else :class="[$style.reactionUserAvatar, $style.reactionUserAvatarPlaceholder]" />
+            <div :class="$style.reactionUserInfo">
+              <span :class="$style.reactionUserName">
+                <MkMfm v-if="r.user.name" :text="r.user.name" :emojis="r.user.emojis" :server-host="serverHost" />
+                <template v-else>{{ r.user.username }}</template>
+              </span>
+              <span :class="$style.reactionUserUsername">@{{ r.user.username }}</span>
+            </div>
+          </button>
+          <div v-if="isLoading && reactions.length > 0" :class="$style.popupLoading">読み込み中...</div>
         </div>
+        <button
+          v-if="totalCount > reactions.length"
+          :class="$style.reactionUsersMore"
+          @click.stop="emit('openModal', reaction)"
+        >
+          全{{ totalCount }}人を表示
+        </button>
       </template>
     </template>
   </div>
@@ -178,6 +214,8 @@ onUnmounted(() => {
   width: 240px;
   padding: 8px 0;
   pointer-events: auto;
+  display: flex;
+  flex-direction: column;
 
   /* Invisible bridge to catch the mouse in the gap between badge and popup */
   &::before {
@@ -188,6 +226,12 @@ onUnmounted(() => {
     right: 0;
     height: 8px;
   }
+}
+
+.scrollArea {
+  overflow-y: auto;
+  max-height: 320px;
+  scrollbar-width: thin;
 }
 
 .popupLoading {
@@ -256,7 +300,18 @@ onUnmounted(() => {
 .reactionUsersMore {
   padding: 6px 12px 4px;
   font-size: 0.75em;
-  opacity: 0.5;
   text-align: center;
+  color: var(--nd-accent);
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  font: inherit;
+  flex-shrink: 0;
+  transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.7;
+  }
 }
 </style>
