@@ -149,11 +149,16 @@ const tlModes = ref<Record<string, boolean>>({})
 
 const allTlTypes = computed(() => {
   const allowed = availableStandardTl.value
-  if (allowed.length === 0) return [] // Policy detection not yet complete
   const allowedSet = new Set(allowed)
-  const standard = TL_TYPES.filter((t) => allowedSet.has(t.value))
+  // Before policy detection completes: show no tabs (connect is also delayed)
+  // After policy detection: use detected list, or fall back to all TL_TYPES
+  if (!connectReady.value) return []
+  const standard =
+    allowedSet.size > 0
+      ? TL_TYPES.filter((t) => allowedSet.has(t.value))
+      : TL_TYPES.map((t) => t)
   for (const ct of customTimelines.value) {
-    if (allowedSet.has(ct.type)) {
+    if (allowedSet.size === 0 || allowedSet.has(ct.type)) {
       standard.push({ value: ct.type, label: ct.label })
     }
   }
@@ -331,8 +336,10 @@ watch(
 
 // --- Startup: detect policies and custom TLs ---
 onMounted(async () => {
-  const host = account.value?.host
   const accountId = props.column.accountId
+  const host = accountId
+    ? accountsStore.accountMap.get(accountId)?.host
+    : undefined
   if (accountId) clearAvailableTlCache(accountId)
   fetchAds()
   if (host && accountId) {
