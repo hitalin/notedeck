@@ -10,6 +10,7 @@ import { applyNoteViewInterruptors } from '@/aiscript/plugin-api'
 import { useAccountMode } from '@/composables/useAccountMode'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
+import { useLongPress } from '@/composables/useLongPress'
 import { useNavigation } from '@/composables/useNavigation'
 import {
   useVaporTransition,
@@ -32,6 +33,9 @@ import NoteReactionPickerPopup from './NoteReactionPickerPopup.vue'
 import NoteReactionUsersPopup from './NoteReactionUsersPopup.vue'
 
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
+const NoteReactionUsersModal = defineAsyncComponent(
+  () => import('./NoteReactionUsersModal.vue'),
+)
 
 const props = defineProps<{
   note: NormalizedNote
@@ -68,6 +72,15 @@ const reactionPickerRef = ref<InstanceType<
 const reactionUsersRef = ref<InstanceType<
   typeof NoteReactionUsersPopup
 > | null>(null)
+const reactionModalRef = ref<InstanceType<
+  typeof NoteReactionUsersModal
+> | null>(null)
+
+const { longPressed, handlers: lpHandlers } = useLongPress((e) => {
+  const btn = (e.target as HTMLElement).closest('button') as HTMLElement | null
+  const reaction = btn?.dataset.reaction
+  if (reaction) reactionModalRef.value?.open(reaction)
+})
 const reactionsAreaRef = ref<HTMLElement | null>(null)
 const reactionsVisible = ref(false)
 
@@ -584,8 +597,13 @@ function closeMentionPopup() {
                 reactionEnteringIds.has(r.id) && $style.reactionEnter,
                 reactionLeavingIds.has(r.id) && $style.reactionLeave,
               ]"
+              :data-reaction="r.reaction"
               :disabled="isGuest"
-              @click.stop="canInteract ? emit('react', r.reaction, effectiveNote) : showLoginPrompt()"
+              @click.stop="longPressed ? undefined : (canInteract ? emit('react', r.reaction, effectiveNote) : showLoginPrompt())"
+              @pointerdown="lpHandlers.onPointerdown"
+              @pointermove="lpHandlers.onPointermove"
+              @pointerup="lpHandlers.onPointerup"
+              @pointercancel="lpHandlers.onPointercancel"
               @mouseenter="reactionUsersRef?.show($event, r.reaction, reactionUrls[r.reaction] ?? null, effectiveNote.reactions[r.reaction] ?? 0)"
               @mouseleave="reactionUsersRef?.hide()"
             >
@@ -688,6 +706,15 @@ function closeMentionPopup() {
     :note-id="effectiveNote.id"
     :account-id="note._accountId"
     :server-host="effectiveNote._serverHost"
+  />
+
+  <NoteReactionUsersModal
+    ref="reactionModalRef"
+    :note-id="effectiveNote.id"
+    :account-id="note._accountId"
+    :server-host="effectiveNote._serverHost"
+    :reactions="sortedReactions"
+    :reaction-urls="reactionUrls"
   />
 
   <NoteMoreMenu
