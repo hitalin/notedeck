@@ -376,6 +376,7 @@ export interface ApiAdapter {
     noteId: string,
     reactionType?: string,
     limit?: number,
+    untilId?: string,
   ): Promise<NoteReaction[]>
   updateNote(noteId: string, params: CreateNoteParams): Promise<void>
   deleteNote(noteId: string): Promise<void>

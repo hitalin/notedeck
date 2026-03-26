@@ -279,11 +279,11 @@ const reactionsData = computed(() => {
   if (keys.length === 0)
     return {
       sorted: [] as { reaction: string; count: number }[],
-      urls: {} as Record<string, string | null>,
+      urls: {} as Record<string, string | undefined>,
     }
   keys.sort()
   const sorted: { reaction: string; count: number }[] = new Array(keys.length)
-  const urls: Record<string, string | null> = {}
+  const urls: Record<string, string | undefined> = {}
   for (let i = 0; i < keys.length; i++) {
     const reaction = keys[i] as string
     sorted[i] = { reaction, count: reactions[reaction] as number }
