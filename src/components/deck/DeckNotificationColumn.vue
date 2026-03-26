@@ -121,7 +121,7 @@ function closeUserPopup() {
   userPopup.forceClose()
 }
 
-const MAX_NOTIFICATIONS = 300
+const MAX_NOTIFICATIONS = 500
 const notifications = shallowRef<NormalizedNotification[]>([])
 const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 
@@ -1083,7 +1083,6 @@ onUnmounted(() => {
   overflow-x: clip;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
-  will-change: scroll-position;
 }
 
 .notifItem {
