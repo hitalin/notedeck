@@ -4,6 +4,7 @@ import { hapticMedium } from '@/utils/haptics'
 // Misskey 本家と同じパラメータ
 const SCROLL_STOP = 10
 const FIRE_THRESHOLD = 200
+const DIRECTION_THRESHOLD = 8 // px — same as useSwipeTab
 const MAX_PULL_DISTANCE = Infinity
 const PULL_BRAKE_BASE = 1.5
 const PULL_BRAKE_FACTOR = 170
@@ -21,6 +22,8 @@ export function usePullToRefresh(
   const pullDistance = ref(0)
 
   let startScreenY: number | null = null
+  let startScreenX: number | null = null
+  let direction: 'vertical' | 'horizontal' | null = null
   let boundEl: HTMLElement | null = null
 
   function getEl(): HTMLElement | null {
@@ -37,6 +40,10 @@ export function usePullToRefresh(
 
   function getScreenY(e: TouchEvent): number {
     return e.touches[0]?.screenY ?? 0
+  }
+
+  function getScreenX(e: TouchEvent): number {
+    return e.touches[0]?.screenX ?? 0
   }
 
   function moveBySystem(to: number): Promise<void> {
@@ -87,6 +94,8 @@ export function usePullToRefresh(
 
     isPulling.value = true
     startScreenY = getScreenY(e)
+    startScreenX = getScreenX(e)
+    direction = null
     pullDistance.value = 0
   }
 
@@ -104,7 +113,26 @@ export function usePullToRefresh(
 
     if (startScreenY === null) {
       startScreenY = getScreenY(e)
+      startScreenX = getScreenX(e)
     }
+
+    // Lock to dominant axis on first significant move
+    if (direction === null && startScreenX !== null) {
+      const absDx = Math.abs(getScreenX(e) - startScreenX)
+      const absDy = Math.abs(getScreenY(e) - startScreenY)
+      if (absDx >= DIRECTION_THRESHOLD || absDy >= DIRECTION_THRESHOLD) {
+        direction = absDy >= absDx ? 'vertical' : 'horizontal'
+      }
+    }
+
+    // Horizontal gesture — let useSwipeTab handle it
+    if (direction === 'horizontal') {
+      pullDistance.value = 0
+      isPulledEnough.value = false
+      isPulling.value = false
+      return
+    }
+
     const moveScreenY = getScreenY(e)
     // biome-ignore lint/style/noNonNullAssertion: guaranteed by null check above
     const moveHeight = moveScreenY - startScreenY!
@@ -123,6 +151,8 @@ export function usePullToRefresh(
 
   async function onTouchEnd() {
     startScreenY = null
+    startScreenX = null
+    direction = null
     if (isPulledEnough.value) {
       isPulledEnough.value = false
       isRefreshing.value = true
