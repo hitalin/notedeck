@@ -99,7 +99,21 @@ const { resizingColId, startColumnResize, WIDE_COLUMN_TYPES } = useColumnResize(
 const colVisibility = provideColumnVisibility()
 const columnsRef = ref<HTMLElement | null>(null)
 
-onMounted(() => {
+// Windows horizontal wheel: listen for Tauri event from hwheel_hook
+let unlistenHWheel: (() => void) | null = null
+
+onMounted(async () => {
+  // Passive wheel listener — lets the browser optimize scroll on the compositor thread
+  columnsRef.value?.addEventListener('wheel', onColumnsWheel, { passive: true })
+
+  // Windows hwheel: Tauri イベント経由で受信 → 同じ rAF バッチに合流
+  if (window.__TAURI_INTERNALS__) {
+    const { listen } = await import('@tauri-apps/api/event')
+    unlistenHWheel = await listen<number>('nd:hwheel', (ev) => {
+      scheduleScroll(ev.payload)
+    })
+  }
+
   colVisibility.setup(columnsRef)
 
   // Preload chunks for the user's configured column types (production only —
@@ -112,6 +126,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  columnsRef.value?.removeEventListener('wheel', onColumnsWheel)
+  if (rafId) cancelAnimationFrame(rafId)
+  unlistenHWheel?.()
   colVisibility.disconnect()
 })
 
@@ -175,29 +192,42 @@ function cellDropZone(colId: string): string | undefined {
   return dt.position
 }
 
-// Wheel deltaY → scrollLeft conversion for horizontal column scrolling
+// --- Horizontal scroll: passive wheel + rAF batch ---
+let pendingScroll = 0
+let rafId = 0
+
+function scheduleScroll(delta: number) {
+  pendingScroll += delta
+  if (!rafId) {
+    rafId = requestAnimationFrame(() => {
+      if (columnsRef.value) {
+        columnsRef.value.scrollLeft += pendingScroll
+      }
+      pendingScroll = 0
+      rafId = 0
+    })
+  }
+}
+
+// Passive wheel handler — no preventDefault() needed:
+// - deltaX: browser scrolls .columns natively via overflow-x: auto
+// - deltaY inside column: browser scrolls column vertically
+// - deltaY outside column: convert to horizontal scroll via rAF batch
 function onColumnsWheel(e: WheelEvent) {
   if (!columnsRef.value) return
-  const target = e.target as HTMLElement | null
-  const inColumn = target?.closest('.deck-column')
+  // カラム内 → ブラウザのネイティブ処理に任せる
+  if ((e.target as HTMLElement | null)?.closest('.deck-column')) return
 
   // Shift+ホイール: Windows WebView2 では横スクロールが deltaX ではなく
   // shiftKey + deltaY として送られるため、deltaX に読み替える
   const dx = e.shiftKey && e.deltaX === 0 ? e.deltaY : e.deltaX
   const dy = e.shiftKey && e.deltaX === 0 ? 0 : e.deltaY
 
-  // deltaX主体（サムホイール・トラックパッド横スワイプ等）: カラム上でもデッキ横スクロール
-  if (Math.abs(dx) > Math.abs(dy)) {
-    if (inColumn) {
-      e.preventDefault()
-      columnsRef.value.scrollLeft += dx
-    }
-    return
-  }
-  // deltaY主体（通常ホイール）: カラム外のみ横スクロールに変換
-  if (inColumn) return
-  e.preventDefault()
-  columnsRef.value.scrollLeft += dy
+  // deltaX 主体 → ブラウザが overflow-x: auto で処理
+  if (Math.abs(dx) > Math.abs(dy)) return
+
+  // deltaY 主体 + カラム外 → 横スクロールに変換（rAF バッチ）
+  scheduleScroll(dy)
 }
 
 // Scroll position → active group index
@@ -288,7 +318,6 @@ defineExpose({ scrollToColumn, columnMap })
   <div
     ref="columnsRef"
     :class="[$style.columns, { [$style.swipeMode]: isCompact }]"
-    @wheel="onColumnsWheel"
     @scroll.passive="onColumnsScroll"
   >
     <div

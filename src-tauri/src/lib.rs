@@ -451,11 +451,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                 .build(app)?;
         }
 
-        // Forward WM_MOUSEHWHEEL to WebView (Windows WebView2 workaround)
+        // Forward WM_MOUSEHWHEEL as Tauri event (Windows WebView2 workaround)
         #[cfg(target_os = "windows")]
-        if let Some(w) = app.get_webview_window("main") {
-            hwheel_hook::install(&w);
-        }
+        hwheel_hook::install(app.handle());
 
         // Fit window to monitor if larger than available screen (e.g. low-res VMs)
         #[cfg(not(mobile))]
