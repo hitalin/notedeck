@@ -93,7 +93,7 @@ const {
         ref="noteScrollerRef"
         :items="notes"
         :class="$style.tlScroller"
-        @scroll.passive="handleScroll"
+        @scroll="handleScroll"
         @near-end="loadMoreCrossAccount"
       >
         <template #default="{ item }">

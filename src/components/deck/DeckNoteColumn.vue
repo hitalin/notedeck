@@ -170,7 +170,7 @@ defineExpose({
           :focused-id="focusedNoteId"
           :animating-ids="animatingIds"
           :class="$style.tlScroller"
-          @scroll.passive="handleScroll"
+          @scroll="handleScroll"
           @near-end="loadMore"
         >
           <template #default="{ item, index, nearViewport }">
