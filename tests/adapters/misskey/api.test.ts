@@ -88,12 +88,12 @@ describe('MisskeyApi', () => {
   })
 
   describe('getTimeline', () => {
-    it('invokes api_get_timeline_enriched with options', async () => {
-      vi.mocked(invoke).mockResolvedValue({ notes: [], ogp_hints: {} })
+    it('invokes api_get_timeline with options', async () => {
+      vi.mocked(invoke).mockResolvedValue([])
 
       await api.getTimeline('home', { limit: 10 })
 
-      expect(invoke).toHaveBeenCalledWith('api_get_timeline_enriched', {
+      expect(invoke).toHaveBeenCalledWith('api_get_timeline', {
         accountId: 'acc-1',
         timelineType: 'home',
         options: {

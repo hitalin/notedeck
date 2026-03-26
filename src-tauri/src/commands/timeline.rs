@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use futures_util::stream::{self, StreamExt};
-use tauri::State;
+use tauri::{Emitter, Manager, State};
 
 use notecli::error::NoteDeckError;
 use notecli::models::{
@@ -11,7 +11,7 @@ use notecli::models::{
 };
 
 use super::{
-    extract_ogp_urls, get_credentials, get_credentials_or_anon, AppState, Result, TimelineEnriched,
+    extract_ogp_urls, get_credentials, get_credentials_or_anon, AppState, Result,
     MAX_UPLOAD_BYTES,
 };
 
@@ -22,6 +22,7 @@ const MAX_OGP_CONCURRENT: usize = 10;
 
 #[tauri::command]
 pub async fn api_get_timeline(
+    app: tauri::AppHandle,
     app_state: State<'_, AppState>,
     account_id: String,
     timeline_type: TimelineType,
@@ -45,39 +46,24 @@ pub async fn api_get_timeline(
     if let Err(e) = db.cache_notes(&notes, &cache_key) {
         eprintln!("[cache] failed to cache timeline notes: {e}");
     }
+
+    // Background OGP prefetch: extract URLs and spawn async task (non-blocking)
+    if !token.is_empty() {
+        spawn_ogp_prefetch(&app, &notes, host, token);
+    }
+
     Ok(notes)
 }
 
-#[tauri::command]
-pub async fn api_get_timeline_enriched(
-    app_state: State<'_, AppState>,
-    ogp_cache: State<'_, crate::ogp::OgpCache>,
-    account_id: String,
-    timeline_type: TimelineType,
-    options: Option<TimelineOptions>,
-) -> Result<TimelineEnriched> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let opts = options.unwrap_or_default();
-    let cache_key = if timeline_type.as_str() == "user-list" {
-        if let Some(ref list_id) = opts.list_id {
-            format!("user-list:{list_id}")
-        } else {
-            timeline_type.as_str().to_string()
-        }
-    } else {
-        timeline_type.as_str().to_string()
-    };
-    let notes = client
-        .get_timeline(&host, &token, &account_id, timeline_type, opts)
-        .await?;
-    if let Err(e) = db.cache_notes(&notes, &cache_key) {
-        eprintln!("[cache] failed to cache timeline notes: {e}");
-    }
-
-    // Extract unique URLs from all note texts (skip media URLs)
+/// Extract URLs from notes and spawn background OGP prefetch via Tauri events.
+fn spawn_ogp_prefetch(
+    app: &tauri::AppHandle,
+    notes: &[NormalizedNote],
+    host: String,
+    token: String,
+) {
     let mut urls: Vec<String> = Vec::new();
-    for note in &notes {
+    for note in notes {
         if let Some(ref text) = note.text {
             urls.extend(extract_ogp_urls(text));
         }
@@ -90,27 +76,35 @@ pub async fn api_get_timeline_enriched(
     urls.sort_unstable();
     urls.dedup();
 
-    // Parallel OGP prefetch with concurrency limit (best-effort, errors are silently skipped)
-    let ogp_hints = if urls.is_empty() {
-        HashMap::new()
-    } else {
-        let ogp = &*ogp_cache;
-        stream::iter(urls)
+    if urls.is_empty() {
+        return;
+    }
+
+    let ogp_cache: crate::ogp::OgpCache = (*app.state::<crate::ogp::OgpCache>()).clone();
+    let app = app.clone();
+    tokio::spawn(async move {
+        let hints: HashMap<String, crate::ogp::OgpData> = stream::iter(urls)
             .map(|url| {
                 let host = host.clone();
                 let token = token.clone();
+                let ogp = ogp_cache.clone();
                 async move {
-                    let result = ogp.get_ogp_via_server(&url, &host, &token).await;
+                    let result: std::result::Result<crate::ogp::OgpData, _> =
+                        ogp.get_ogp_via_server(&url, &host, &token).await;
                     (url, result.ok())
                 }
             })
             .buffer_unordered(MAX_OGP_CONCURRENT)
-            .filter_map(|(url, data)| async move { data.map(|d| (url, d)) })
+            .filter_map(|(url, data): (String, Option<crate::ogp::OgpData>)| async move {
+                data.map(|d| (url, d))
+            })
             .collect()
-            .await
-    };
+            .await;
 
-    Ok(TimelineEnriched { notes, ogp_hints })
+        if !hints.is_empty() {
+            let _ = app.emit("nd:ogp-hints", &hints);
+        }
+    });
 }
 
 // --- Lists / Antennas ---
@@ -765,4 +759,47 @@ pub async fn api_delete_cached_note(
 ) -> Result<()> {
     let db = app_state.db().await;
     db.delete_cached_note(&note_id)
+}
+
+/// Maximum number of concurrent note verification requests
+const MAX_VERIFY_CONCURRENT: usize = 20;
+
+/// Bulk-verify cached notes against the server.
+/// Returns a map of note_id → fresh NormalizedNote for notes that still exist.
+/// Missing notes (404) are omitted from the result.
+#[tauri::command]
+pub async fn api_verify_notes(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    note_ids: Vec<String>,
+) -> Result<HashMap<String, NormalizedNote>> {
+    if note_ids.len() > 200 {
+        return Err(NoteDeckError::InvalidInput(
+            "Too many note IDs".to_string(),
+        ));
+    }
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+
+    let verified: HashMap<String, NormalizedNote> = stream::iter(note_ids)
+        .map(|id| {
+            let host = host.clone();
+            let token = token.clone();
+            let account_id = account_id.clone();
+            let client = client.clone();
+            async move {
+                let result = client.get_note(&host, &token, &account_id, &id).await;
+                (id, result.ok())
+            }
+        })
+        .buffer_unordered(MAX_VERIFY_CONCURRENT)
+        .filter_map(
+            |(id, note): (String, Option<NormalizedNote>)| async move {
+                note.map(|n| (id, n))
+            },
+        )
+        .collect()
+        .await;
+
+    Ok(verified)
 }

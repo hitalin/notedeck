@@ -316,15 +316,18 @@ defineExpose({ scrollToColumn, columnMap })
           @mousedown="deckStore.setActiveColumn(colId)"
           @pointerdown="onColumnPointerDown(colId, $event)"
         >
-          <component
-            v-if="
-              colVisibility.isColumnMounted(colId) &&
-              columnMap.get(colId) &&
-              COLUMN_COMPONENTS[columnMap.get(colId)!.type]
-            "
-            :is="COLUMN_COMPONENTS[columnMap.get(colId)!.type]"
-            :column="columnMap.get(colId)!"
-          />
+          <KeepAlive>
+            <component
+              v-if="
+                colVisibility.isColumnMounted(colId) &&
+                columnMap.get(colId) &&
+                COLUMN_COMPONENTS[columnMap.get(colId)!.type]
+              "
+              :is="COLUMN_COMPONENTS[columnMap.get(colId)!.type]"
+              :key="colId"
+              :column="columnMap.get(colId)!"
+            />
+          </KeepAlive>
         </div>
       </section>
       <div

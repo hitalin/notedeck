@@ -294,10 +294,15 @@ export function useNoteColumn(config: NoteColumnConfig) {
       isOffline.value = false
 
       // Background: verify cached notes not confirmed by fresh API fetch
-      if (cachedIds.length > 0) {
+      if (cachedIds.length > 0 && column.accountId) {
         const unverified = cachedIds.filter((id) => !freshIds.has(id))
         if (unverified.length > 0) {
-          purgeStaleCachedNotes(adapter, unverified, () => !!getAdapter())
+          purgeStaleCachedNotes(
+            adapter,
+            unverified,
+            () => !!getAdapter(),
+            column.accountId,
+          )
         }
       }
     } catch (e) {
@@ -523,13 +528,19 @@ export function useNoteColumn(config: NoteColumnConfig) {
     }
 
     // Background: verify cached notes not confirmed by fresh API fetch
-    if (cached.length > 0 && adapter) {
+    const resumeColumn = config.getColumn()
+    if (cached.length > 0 && adapter && resumeColumn.accountId) {
       const freshIds = new Set(fetched.map((n) => n.id))
       const unverified = cached
         .map((n) => n.id)
         .filter((id) => !freshIds.has(id))
       if (unverified.length > 0) {
-        purgeStaleCachedNotes(adapter, unverified, () => !!getAdapter())
+        purgeStaleCachedNotes(
+          adapter,
+          unverified,
+          () => !!getAdapter(),
+          resumeColumn.accountId,
+        )
       }
     }
   }
