@@ -436,6 +436,7 @@ pub async fn api_get_note_reactions(
     note_id: String,
     reaction_type: Option<String>,
     limit: Option<u32>,
+    until_id: Option<String>,
 ) -> Result<Vec<NormalizedNoteReaction>> {
     let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
@@ -446,6 +447,7 @@ pub async fn api_get_note_reactions(
             &note_id,
             reaction_type.as_deref(),
             limit.unwrap_or(11).clamp(1, 100),
+            until_id.as_deref(),
         )
         .await
 }

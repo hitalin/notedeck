@@ -106,12 +106,14 @@ export class MisskeyApi implements ApiAdapter {
     noteId: string,
     reactionType?: string,
     limit?: number,
+    untilId?: string,
   ): Promise<NoteReaction[]> {
     return invoke('api_get_note_reactions', {
       accountId: this.accountId,
       noteId,
       reactionType: reactionType ?? null,
       limit: limit ?? null,
+      untilId: untilId ?? null,
     })
   }
 

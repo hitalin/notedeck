@@ -9,7 +9,11 @@ import {
   useCssModule,
   watch,
 } from 'vue'
-import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
+import type {
+  ApiAdapter,
+  NormalizedNote,
+  NormalizedNotification,
+} from '@/adapters/types'
 import AvatarStack from '@/components/common/AvatarStack.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
@@ -171,10 +175,9 @@ const { indicatorStyle: filterIndicatorStyle } = useTabIndicator(
 
 const filteredNotifications = computed(() => {
   if (activeFilter.value === 'all') return notifications.value
-  return notifications.value.filter((n) => {
-    const baseType = n.type.replace(':grouped', '')
-    return baseType === activeFilter.value
-  })
+  return notifications.value.filter(
+    (n) => baseType(n.type) === activeFilter.value,
+  )
 })
 
 const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(
@@ -244,10 +247,8 @@ function getCachedTwemojiUrl(reaction: string): string | null {
 
 const NOTIFICATION_ICONS: Record<string, string> = {
   reaction: 'mood-plus',
-  'reaction:grouped': 'mood-plus',
   reply: 'arrow-back-up',
   renote: 'repeat',
-  'renote:grouped': 'repeat',
   quote: 'quote',
   mention: 'at',
   follow: 'plus',
@@ -261,10 +262,8 @@ const NOTIFICATION_ICONS: Record<string, string> = {
 
 const NOTIFICATION_LABELS: Record<string, string> = {
   reaction: 'がリアクション',
-  'reaction:grouped': 'がリアクション',
   reply: 'からのリプライ',
   renote: 'がリノートしました',
-  'renote:grouped': 'がリノートしました',
   quote: 'による引用',
   mention: 'からのメンション',
   follow: 'にフォローされました',
@@ -280,10 +279,8 @@ const NOTIFICATION_LABELS: Record<string, string> = {
 
 const NOTIFICATION_COLORS: Record<string, string> = {
   reaction: 'var(--nd-eventReaction)',
-  'reaction:grouped': 'var(--nd-eventReaction)',
   reply: 'var(--nd-eventReply)',
   renote: 'var(--nd-eventRenote)',
-  'renote:grouped': 'var(--nd-eventRenote)',
   quote: 'var(--nd-eventRenote)',
   mention: 'var(--nd-eventOther)',
   follow: 'var(--nd-eventFollow)',
@@ -293,6 +290,11 @@ const NOTIFICATION_COLORS: Record<string, string> = {
   achievementEarned: 'var(--nd-eventAchievement)',
   login: 'var(--nd-eventLogin)',
   createToken: 'var(--nd-eventOther)',
+}
+
+/** Strip `:grouped` suffix for map lookups */
+function baseType(type: string): string {
+  return type.replace(':grouped', '')
 }
 
 function groupedUsersLabel(notif: NormalizedNotification): string {
@@ -316,15 +318,15 @@ function formatGroupedUsers(
 }
 
 function notificationIcon(type: string): string {
-  return NOTIFICATION_ICONS[type] || 'bell'
+  return NOTIFICATION_ICONS[baseType(type)] || 'bell'
 }
 
 function notificationColor(type: string): string {
-  return NOTIFICATION_COLORS[type] || 'var(--nd-eventOther)'
+  return NOTIFICATION_COLORS[baseType(type)] || 'var(--nd-eventOther)'
 }
 
 function notificationLabel(type: string): string {
-  return NOTIFICATION_LABELS[type] || type
+  return NOTIFICATION_LABELS[baseType(type)] || type
 }
 
 function getCacheKey() {
@@ -356,6 +358,16 @@ function supportsGroupedNotifications(host?: string): boolean {
   return server?.features.groupedNotifications === true
 }
 
+function fetchNotifications(
+  api: Pick<ApiAdapter, 'getNotifications' | 'getNotificationsGrouped'>,
+  host: string | undefined,
+  opts?: { untilId?: string },
+) {
+  return supportsGroupedNotifications(host)
+    ? api.getNotificationsGrouped(opts)
+    : api.getNotifications(opts)
+}
+
 async function connectPerAccount(useCache = false) {
   error.value = null
   isLoading.value = true
@@ -376,10 +388,7 @@ async function connectPerAccount(useCache = false) {
     const adapter = await initAdapter()
     if (!adapter) return
 
-    const useGrouped = supportsGroupedNotifications(account.value?.host)
-    const fetched = useGrouped
-      ? await adapter.api.getNotificationsGrouped()
-      : await adapter.api.getNotifications()
+    const fetched = await fetchNotifications(adapter.api, account.value?.host)
     notifications.value = mergeNotifications(fetched, cached)
     saveCache()
 
@@ -423,10 +432,7 @@ async function connectCrossAccount() {
       accounts.map(async (acc) => {
         const adapter = await multiAdapters.getOrCreate(acc.id)
         if (!adapter) return []
-        const useGrouped = supportsGroupedNotifications(acc.host)
-        return useGrouped
-          ? adapter.api.getNotificationsGrouped()
-          : adapter.api.getNotifications()
+        return fetchNotifications(adapter.api, acc.host)
       }),
     )
 
@@ -468,10 +474,9 @@ async function loadMorePerAccount() {
   if (!last) return
   isLoading.value = true
   try {
-    const useGrouped = supportsGroupedNotifications(account.value?.host)
-    const older = useGrouped
-      ? await adapter.api.getNotificationsGrouped({ untilId: last.id })
-      : await adapter.api.getNotifications({ untilId: last.id })
+    const older = await fetchNotifications(adapter.api, account.value?.host, {
+      untilId: last.id,
+    })
     if (older.length === 0) {
       noMoreData.value = true
       return
@@ -504,12 +509,10 @@ async function loadMoreCrossAccount() {
         const lastForAccount = [...notifications.value]
           .reverse()
           .find((n) => n._accountId === acc.id)
-        const useGrouped = supportsGroupedNotifications(acc.host)
-        const fetchFn = useGrouped
-          ? adapter.api.getNotificationsGrouped.bind(adapter.api)
-          : adapter.api.getNotifications.bind(adapter.api)
-        if (!lastForAccount) return fetchFn()
-        return fetchFn({ untilId: lastForAccount.id })
+        if (!lastForAccount) return fetchNotifications(adapter.api, acc.host)
+        return fetchNotifications(adapter.api, acc.host, {
+          untilId: lastForAccount.id,
+        })
       }),
     )
 
