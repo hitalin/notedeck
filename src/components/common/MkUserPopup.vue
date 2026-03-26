@@ -12,6 +12,7 @@ import MkAvatar from './MkAvatar.vue'
 import MkMfm from './MkMfm.vue'
 
 const USER_DETAIL_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+const USER_DETAIL_CACHE_MAX = 32
 const userDetailCache = new Map<
   string,
   { data: NormalizedUserDetail; at: number }
@@ -61,6 +62,10 @@ onMounted(async () => {
     }
 
     const result = await promise
+    if (userDetailCache.size >= USER_DETAIL_CACHE_MAX) {
+      const oldest = userDetailCache.keys().next().value
+      if (oldest !== undefined) userDetailCache.delete(oldest)
+    }
     userDetailCache.set(cacheKey, { data: result, at: Date.now() })
     pendingUserDetails.delete(cacheKey)
     user.value = result

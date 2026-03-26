@@ -38,10 +38,15 @@ export function populateOgpCache(hints: Record<string, OgpData>) {
 }
 
 /** Listen for background OGP prefetch results from Rust side. Call once at app init. */
-export function initOgpListener(): void {
-  listen<Record<string, OgpData>>('nd:ogp-hints', (event) => {
-    populateOgpCache(event.payload)
-  })
+let ogpUnlisten: (() => void) | null = null
+export async function initOgpListener(): Promise<void> {
+  ogpUnlisten?.()
+  ogpUnlisten = await listen<Record<string, OgpData>>(
+    'nd:ogp-hints',
+    (event) => {
+      populateOgpCache(event.payload)
+    },
+  )
 }
 
 export function useOgpPreview(initialUrl: string, accountId?: string) {
