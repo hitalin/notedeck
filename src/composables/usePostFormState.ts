@@ -1,7 +1,6 @@
 import { computed, nextTick, type Ref, ref } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
-  NormalizedDriveFile,
   NormalizedNote,
   NoteVisibility,
   ServerAdapter,
@@ -20,6 +19,7 @@ import {
   loadDrafts,
   saveDraft,
 } from '@/composables/useDrafts'
+import { useFileAttachment } from '@/composables/useFileAttachment'
 import { useAccountsStore } from '@/stores/accounts'
 import { useThemeStore } from '@/stores/theme'
 import { useToast } from '@/stores/toast'
@@ -56,8 +56,16 @@ export function usePostFormState(
   const isPosting = ref(false)
   const posted = ref(false)
   const error = ref<string | null>(null)
-  const attachedFiles = ref<NormalizedDriveFile[]>([])
-  const isUploading = ref(false)
+  let adapter: ServerAdapter | null = null
+  const {
+    attachedFiles,
+    isUploading,
+    openFilePicker,
+    onFileSelected,
+    uploadFilesFromPaths,
+    attachDriveFiles,
+    removeFile,
+  } = useFileAttachment(() => adapter, fileInput, error)
   const noteModeFlags = ref<Record<string, boolean>>({})
   const disabledVisibilities = ref(new Set<string>())
   const showPoll = ref(false)
@@ -68,8 +76,6 @@ export function usePostFormState(
   const supportsScheduledNotes = ref(false)
   const drafts = ref<Draft[]>([])
   const showDraftMenu = ref(false)
-
-  let adapter: ServerAdapter | null = null
 
   const activeAccountId = ref(props.accountId)
   const accounts = computed(() => accountsStore.accounts)
@@ -278,67 +284,6 @@ export function usePostFormState(
         scheduledAt: noteParams.scheduledAt ?? null,
       })
     })
-  }
-
-  function openFilePicker() {
-    fileInput.value?.click()
-  }
-
-  async function onFileSelected(e: Event) {
-    const input = e.target as HTMLInputElement
-    const files = input.files
-    if (!files || !adapter) return
-
-    isUploading.value = true
-    error.value = null
-
-    try {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const buffer = await file.arrayBuffer()
-        const data = Array.from(new Uint8Array(buffer))
-        // biome-ignore lint/style/noNonNullAssertion: adapter is initialized before upload
-        return adapter!.api.uploadFile(
-          file.name,
-          data,
-          file.type || 'application/octet-stream',
-        )
-      })
-      const uploaded = await Promise.all(uploadPromises)
-      attachedFiles.value = [...attachedFiles.value, ...uploaded]
-    } catch (e) {
-      error.value = AppError.from(e).message
-    } finally {
-      isUploading.value = false
-      input.value = ''
-    }
-  }
-
-  async function uploadFilesFromPaths(paths: string[]) {
-    if (!adapter || paths.length === 0) return
-
-    isUploading.value = true
-    error.value = null
-
-    try {
-      const uploadPromises = paths.map((path) =>
-        // biome-ignore lint/style/noNonNullAssertion: adapter is initialized before upload
-        adapter!.api.uploadFileFromPath(path),
-      )
-      const uploaded = await Promise.all(uploadPromises)
-      attachedFiles.value = [...attachedFiles.value, ...uploaded]
-    } catch (e) {
-      error.value = AppError.from(e).message
-    } finally {
-      isUploading.value = false
-    }
-  }
-
-  function attachDriveFiles(driveFiles: NormalizedDriveFile[]) {
-    attachedFiles.value = [...attachedFiles.value, ...driveFiles]
-  }
-
-  function removeFile(fileId: string) {
-    attachedFiles.value = attachedFiles.value.filter((f) => f.id !== fileId)
   }
 
   function selectVisibility(v: NoteVisibility) {

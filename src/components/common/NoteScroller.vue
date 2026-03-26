@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T extends { id: string }">
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -95,6 +95,12 @@ function onScroll(e: Event) {
     emit('near-end')
   }
 }
+
+// Re-measure all when items change (e.g. tab switch, streaming, load-more)
+watch(
+  () => props.items.length,
+  () => virtualizer.value.measure(),
+)
 
 defineExpose({
   getElement: () => scrollContainer.value,

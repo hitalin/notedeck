@@ -50,9 +50,13 @@ function buildTimelineOptions() {
   }
 }
 
+// --- Connect readiness: wait for policy detection before connecting ---
+const connectReady = ref(false)
+
 // --- NoteColumnConfig ---
 
 const noteColumnConfig: NoteColumnConfig = {
+  connectReady,
   getColumn: () => props.column,
   fetch: async (adapter, opts) => {
     try {
@@ -145,13 +149,11 @@ const tlModes = ref<Record<string, boolean>>({})
 
 const allTlTypes = computed(() => {
   const allowed = availableStandardTl.value
+  if (allowed.length === 0) return [] // Policy detection not yet complete
   const allowedSet = new Set(allowed)
-  const standard =
-    allowedSet.size > 0
-      ? TL_TYPES.filter((t) => allowedSet.has(t.value))
-      : TL_TYPES.map((t) => t)
+  const standard = TL_TYPES.filter((t) => allowedSet.has(t.value))
   for (const ct of customTimelines.value) {
-    if (allowedSet.size === 0 || allowedSet.has(ct.type)) {
+    if (allowedSet.has(ct.type)) {
       standard.push({ value: ct.type, label: ct.label })
     }
   }
@@ -354,6 +356,8 @@ onMounted(async () => {
       switchTl(availableStandardTl.value[0] ?? 'local')
     }
   }
+  // Signal useNoteColumn that policy detection is complete and it's safe to connect
+  connectReady.value = true
 })
 </script>
 

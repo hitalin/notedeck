@@ -1,3 +1,4 @@
+import type { Ref } from 'vue'
 import {
   computed,
   nextTick,
@@ -17,27 +18,23 @@ import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useColumnVisible } from '@/composables/useColumnVisibility'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteCapture } from '@/composables/useNoteCapture'
+import {
+  loadCachedTimeline,
+  loadCachedTimelineBefore,
+  purgeStaleCachedNotes,
+  restoreSnapshot,
+  saveSnapshot,
+} from '@/composables/useNoteColumnCache'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useNoteList } from '@/composables/useNoteList'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { useNoteStore } from '@/stores/notes'
 import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
-import { catchLog, logWarn } from '@/utils/logger'
+import { logWarn } from '@/utils/logger'
 import { insertIntoSorted } from '@/utils/sortNotes'
-import { invoke } from '@/utils/tauriInvoke'
-
-/** Snapshots of unmounted columns for instant restore on re-mount */
-interface ColumnSnapshot {
-  notes: NormalizedNote[]
-  scrollTop: number
-  savedAt: number
-}
-const columnSnapshots = new Map<string, ColumnSnapshot>()
-const SNAPSHOT_TTL = 5 * 60_000 // 5 minutes
 
 export interface NoteColumnConfig {
   getColumn: () => DeckColumnType
@@ -62,10 +59,14 @@ export interface NoteColumnConfig {
   ) => Promise<{ notes: NormalizedNote[]; mode: 'replace' | 'prepend' }>
   /** Filter cached notes after loading from SQLite (e.g. timeline column filters) */
   filterCachedNotes?: (notes: NormalizedNote[]) => NormalizedNote[]
+  /**
+   * When provided, delays `connect()` until this ref becomes `true`.
+   * Used by timeline columns to wait for policy detection before connecting.
+   */
+  connectReady?: Ref<boolean>
 }
 
 export function useNoteColumn(config: NoteColumnConfig) {
-  const noteStore = useNoteStore()
   const {
     account,
     columnThemeVars,
@@ -181,35 +182,6 @@ export function useNoteColumn(config: NoteColumnConfig) {
     },
   )
 
-  /**
-   * Background-verify that cached notes still exist on the server.
-   * Any note returning 404 is purged from noteStore + DB cache.
-   * Confirmed notes are refreshed with latest data.
-   */
-  async function purgeStaleCachedNotes(
-    adapter: ServerAdapter,
-    idsToVerify: string[],
-  ) {
-    const BATCH_SIZE = 5
-    for (let i = 0; i < idsToVerify.length; i += BATCH_SIZE) {
-      if (!getAdapter()) return // column was unmounted
-      const batch = idsToVerify.slice(i, i + BATCH_SIZE)
-      await Promise.allSettled(
-        batch.map(async (id) => {
-          try {
-            const fresh = await adapter.api.getNote(id)
-            noteStore.update(id, fresh)
-          } catch {
-            noteStore.remove(id)
-            invoke('api_delete_cached_note', { noteId: id }).catch(
-              catchLog('delete-cached-note'),
-            )
-          }
-        }),
-      )
-    }
-  }
-
   async function connect(useCache = false) {
     error.value = null
 
@@ -219,17 +191,14 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     // Restore snapshot from a previously unmounted instance (instant re-mount)
     const colId = config.getColumn().id
-    const snapshot = columnSnapshots.get(colId)
-    if (snapshot && Date.now() - snapshot.savedAt < SNAPSHOT_TTL) {
-      columnSnapshots.delete(colId)
+    const snapshot = restoreSnapshot(colId)
+    if (snapshot) {
       setNotes(snapshot.notes)
       const savedScrollTop = snapshot.scrollTop
       nextTick(() => {
         const el = noteScrollerRef.value?.getElement?.()
         if (el) el.scrollTop = savedScrollTop
       })
-    } else {
-      columnSnapshots.delete(colId)
     }
 
     let cachedIds: string[] = []
@@ -242,14 +211,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
       const cacheKey = config.cache?.getKey()
       if (column.accountId && cacheKey) {
         try {
-          const cached = await invoke<NormalizedNote[]>(
-            'api_get_cached_timeline',
-            {
-              accountId: column.accountId,
-              timelineType: cacheKey,
-              limit: 40,
-            },
-          )
+          const cached = await loadCachedTimeline(column.accountId, cacheKey)
           const filtered = applyFilter(cached)
           if (filtered.length > 0) {
             setNotes(filtered)
@@ -334,7 +296,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
       if (cachedIds.length > 0) {
         const unverified = cachedIds.filter((id) => !freshIds.has(id))
         if (unverified.length > 0) {
-          purgeStaleCachedNotes(adapter, unverified)
+          purgeStaleCachedNotes(adapter, unverified, () => !!getAdapter())
         }
       }
     } catch (e) {
@@ -347,14 +309,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
         const cacheKey = config.cache?.getKey()
         if (column.accountId && cacheKey) {
           try {
-            const cached = await invoke<NormalizedNote[]>(
-              'api_get_cached_timeline',
-              {
-                accountId: column.accountId,
-                timelineType: cacheKey,
-                limit: 40,
-              },
-            )
+            const cached = await loadCachedTimeline(column.accountId, cacheKey)
             const filtered = applyFilter(cached)
             if (filtered.length > 0) {
               setNotes(filtered)
@@ -387,14 +342,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
     if (!lastNote) return
     isLoading.value = true
     try {
-      const older = await invoke<NormalizedNote[]>(
-        'api_get_cached_timeline_before',
-        {
-          accountId: column.accountId,
-          timelineType: cacheKey,
-          before: lastNote.createdAt,
-          limit: 40,
-        },
+      const older = await loadCachedTimelineBefore(
+        column.accountId,
+        cacheKey,
+        lastNote.createdAt,
       )
       const filtered = applyFilter(older)
       if (filtered.length > 0) {
@@ -536,11 +487,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
             const cacheKey = config.cache!.getKey()
             if (!column.accountId || !cacheKey) return []
             try {
-              return await invoke<NormalizedNote[]>('api_get_cached_timeline', {
-                accountId: column.accountId,
-                timelineType: cacheKey,
-                limit: 40,
-              })
+              return await loadCachedTimeline(column.accountId, cacheKey)
             } catch (e) {
               logWarn('resume-cache', e)
               return []
@@ -581,7 +528,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
         .map((n) => n.id)
         .filter((id) => !freshIds.has(id))
       if (unverified.length > 0) {
-        purgeStaleCachedNotes(adapter, unverified)
+        purgeStaleCachedNotes(adapter, unverified, () => !!getAdapter())
       }
     }
   }
@@ -620,13 +567,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
           const cacheKey = config.cache.getKey()
           if (column.accountId && cacheKey) {
             try {
-              const cached = await invoke<NormalizedNote[]>(
-                'api_get_cached_timeline',
-                {
-                  accountId: column.accountId,
-                  timelineType: cacheKey,
-                  limit: 40,
-                },
+              const cached = await loadCachedTimeline(
+                column.accountId,
+                cacheKey,
               )
               const filtered = applyFilter(cached)
               if (filtered.length > 0) setNotes(filtered)
@@ -700,20 +643,25 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   onMounted(() => {
     window.addEventListener('deck-resume', onResume)
-    connect(true)
+    if (config.connectReady && !config.connectReady.value) {
+      // Delay connect until the parent signals readiness (e.g. policy detection)
+      const stop = watch(config.connectReady, (ready) => {
+        if (ready) {
+          stop()
+          connect(true)
+        }
+      })
+    } else {
+      connect(true)
+    }
   })
 
   onUnmounted(() => {
     window.removeEventListener('deck-resume', onResume)
     // Save snapshot for instant restore if column is re-mounted
-    const colId = config.getColumn().id
     if (notes.value.length > 0) {
       const el = noteScrollerRef.value?.getElement?.()
-      columnSnapshots.set(colId, {
-        notes: notes.value.slice(0, 40),
-        scrollTop: el?.scrollTop ?? 0,
-        savedAt: Date.now(),
-      })
+      saveSnapshot(config.getColumn().id, notes.value, el?.scrollTop ?? 0)
     }
     disconnect()
     streamingBatch?.resetBatch()
