@@ -72,6 +72,11 @@ function onUserClick(userId: string) {
 }
 
 function onUserMouseEnter(e: MouseEvent, userId: string) {
+  if (hoverTimer) {
+    clearTimeout(hoverTimer)
+    hoverTimer = null
+  }
+
   const el = e.currentTarget as HTMLElement
   const rect = el.getBoundingClientRect()
   userPopupPos.value = { x: rect.right + 8, y: rect.top }
@@ -79,6 +84,8 @@ function onUserMouseEnter(e: MouseEvent, userId: string) {
 
   const column = document.querySelector('.deck-column') as HTMLElement | null
   if (column) userPopupTheme.value = extractThemeVars(column)
+
+  if (showUserPopup.value) return // Already showing — key change triggers re-render
 
   hoverTimer = setTimeout(() => {
     showUserPopup.value = true
@@ -153,6 +160,7 @@ onUnmounted(() => {
   <Teleport to="body">
     <div v-if="showUserPopup" :style="userPopupTheme">
       <MkUserPopup
+        :key="userPopupUserId"
         :user-id="userPopupUserId"
         :account-id="accountId"
         :x="userPopupPos.x"
