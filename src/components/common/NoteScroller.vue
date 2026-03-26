@@ -1,9 +1,5 @@
 <script setup lang="ts" generic="T extends { id: string }">
-import {
-  useVirtualizer,
-  type VirtualItem,
-  type Virtualizer,
-} from '@tanstack/vue-virtual'
+import { useVirtualizer } from '@tanstack/vue-virtual'
 import { computed, ref } from 'vue'
 
 const props = withDefaults(
@@ -27,8 +23,9 @@ const emit = defineEmits<{
 const scrollContainer = ref<HTMLElement | null>(null)
 
 // Dynamic estimateSize — exponential moving average (EMA) of measured item heights.
-// Converges fast during bootstrap (first 5), then tracks recent height trends.
-const EMA_ALPHA = 0.15
+// Converges fast during bootstrap (first 10), then tracks recent height trends.
+const EMA_ALPHA = 0.3
+const BOOTSTRAP_COUNT = 10
 let _emaValue = props.estimatedHeight
 let _measuredCount = 0
 const dynamicEstimate = ref(props.estimatedHeight)
@@ -37,16 +34,8 @@ const virtualizerOptions = computed(() => ({
   count: props.items.length,
   getScrollElement: () => scrollContainer.value,
   estimateSize: () => dynamicEstimate.value,
-  overscan: 5,
+  overscan: 12,
   getItemKey: (index: number) => props.items[index]?.id ?? index,
-  shouldAdjustScrollPositionOnItemSizeChange: (
-    item: VirtualItem,
-    _delta: number,
-    instance: Virtualizer<HTMLElement, Element>,
-  ) =>
-    item.start <
-    (instance.scrollOffset ?? 0) +
-      (instance as unknown as { scrollAdjustments: number }).scrollAdjustments,
 }))
 
 const virtualizer = useVirtualizer(virtualizerOptions)
@@ -68,14 +57,14 @@ const nearViewportRange = computed(() => {
   let end = last.index
   for (const item of items) {
     if (item.end >= scrollTop) {
-      start = Math.max(0, item.index - 2)
+      start = Math.max(0, item.index - 4)
       break
     }
   }
   for (let i = items.length - 1; i >= 0; i--) {
     const item = items[i]
     if (item && item.start <= viewEnd) {
-      end = item.index + 2
+      end = item.index + 4
       break
     }
   }
@@ -89,15 +78,13 @@ function measureElement(el: unknown) {
   if (h <= 0) return
 
   _measuredCount++
-  if (_measuredCount <= 5) {
+  if (_measuredCount <= BOOTSTRAP_COUNT) {
     // Bootstrap: simple incremental average for fast convergence
     _emaValue += (h - _emaValue) / _measuredCount
   } else {
     _emaValue = EMA_ALPHA * h + (1 - EMA_ALPHA) * _emaValue
   }
-  if (_measuredCount <= 5 || _measuredCount % 5 === 0) {
-    dynamicEstimate.value = Math.round(_emaValue)
-  }
+  dynamicEstimate.value = Math.round(_emaValue)
 }
 
 // Near-end detection for load-more, throttled to 200ms.
@@ -105,10 +92,10 @@ let _lastNearEnd = 0
 function onScroll(e: Event) {
   emit('scroll', e)
   const now = Date.now()
-  if (now - _lastNearEnd < 200) return
+  if (now - _lastNearEnd < 100) return
   const items = virtualizer.value.getVirtualItems()
   const last = items[items.length - 1]
-  if (last && last.index >= props.items.length - 5) {
+  if (last && last.index >= props.items.length - 10) {
     _lastNearEnd = now
     emit('near-end')
   }
@@ -185,7 +172,8 @@ defineSlots<{
   left: 0;
   width: 100%;
   contain: layout style paint;
-  will-change: transform;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 150px;
 }
 
 /* Misskey-style slide-in animation for streaming notes.
@@ -193,7 +181,7 @@ defineSlots<{
    Positioning uses the `translate` property (set via inline style),
    so `transform` is free for animation without conflict. */
 .enterAnimation {
-  animation: noteSlideIn 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+  animation: noteSlideIn 0.35s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @keyframes noteSlideIn {

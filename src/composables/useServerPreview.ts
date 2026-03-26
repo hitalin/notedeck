@@ -11,7 +11,7 @@ const SUPPORTED_SOFTWARE: ServerSoftware[] = [
   'iceshrimp',
 ]
 
-export function useServerPreview(host: Ref<string>, debounceMs = 600) {
+export function useServerPreview(host: Ref<string>, debounceMs = 350) {
   const status = ref<ServerStatus>('idle')
   const serverInfo = ref<ServerInfo | null>(null)
   const errorMessage = ref('')

@@ -92,7 +92,7 @@ const { stop: stopReactionsObserver } = useIntersectionObserver(
       stopReactionsObserver()
     }
   },
-  { rootMargin: '400px' },
+  { rootMargin: '150px' },
 )
 
 const emit = defineEmits<{
@@ -744,6 +744,8 @@ function closeMentionPopup() {
   position: relative;
   font-size: 1.05em;
   contain: content;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
   container-type: inline-size;
 
   &:not(.detailed) {

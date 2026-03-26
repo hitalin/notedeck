@@ -289,7 +289,7 @@ defineExpose({ scrollToColumn, columnMap })
     ref="columnsRef"
     :class="[$style.columns, { [$style.swipeMode]: isCompact }]"
     @wheel="onColumnsWheel"
-    @scroll="onColumnsScroll"
+    @scroll.passive="onColumnsScroll"
   >
     <div
       v-if="dropInsertIndex === 0"
@@ -316,7 +316,7 @@ defineExpose({ scrollToColumn, columnMap })
           @mousedown="deckStore.setActiveColumn(colId)"
           @pointerdown="onColumnPointerDown(colId, $event)"
         >
-          <KeepAlive>
+          <KeepAlive :max="6">
             <component
               v-if="
                 colVisibility.isColumnMounted(colId) &&

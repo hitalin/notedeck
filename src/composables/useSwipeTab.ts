@@ -219,8 +219,7 @@ export function useSwipeTab(
     el.addEventListener('touchmove', onTouchMove, { passive: false })
     el.addEventListener('touchend', onTouchEnd, { passive: true })
     el.addEventListener('touchcancel', onTouchCancel, { passive: true })
-    // Not passive: stopPropagation requires non-passive on some engines
-    el.addEventListener('wheel', onWheel)
+    el.addEventListener('wheel', onWheel, { passive: true })
   }
 
   function unbind() {

@@ -10,10 +10,10 @@ const toasts = ref<ToastItem[]>([])
 let nextId = 0
 
 const DURATION: Record<ToastItem['type'], number> = {
-  success: 3000,
-  info: 3000,
-  warning: 4000,
-  error: 5000,
+  success: 2000,
+  info: 2000,
+  warning: 3000,
+  error: 4000,
 }
 
 export function useToast() {

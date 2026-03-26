@@ -1,5 +1,12 @@
 /* === Column common styles === */
 
+/* Scroll item optimization —
+   Skips rendering of offscreen items within a scrollable column.
+   Apply these 3 properties to any v-for list item inside a scroll container:
+     contain: layout style paint;
+     content-visibility: auto;
+     contain-intrinsic-size: auto <estimated-height>; */
+
 /* Header */
 .tlHeaderIcon {
   flex-shrink: 0;
@@ -74,12 +81,7 @@
   overflow-x: clip;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
-  will-change: scroll-position;
   -webkit-overflow-scrolling: touch;
-
-  :deep(.vue-recycle-scroller__item-view) {
-    will-change: transform;
-  }
 }
 
 /* Empty & error states */

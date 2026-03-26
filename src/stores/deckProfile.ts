@@ -115,7 +115,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     persistTimer = setTimeout(() => {
       persistTimer = null
       flushPersist()
-    }, 100)
+    }, 300)
   }
 
   function flushPersist() {

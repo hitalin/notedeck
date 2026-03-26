@@ -29,7 +29,7 @@ export function useHoverPopup(options?: {
   hideDelay?: number
   hideGuardSelector?: string
 }) {
-  const showDelay = options?.showDelay ?? 400
+  const showDelay = options?.showDelay ?? 250
   const hideDelay = options?.hideDelay ?? 0
   const hideGuardSelector = options?.hideGuardSelector
 

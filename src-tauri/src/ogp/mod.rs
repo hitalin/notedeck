@@ -12,7 +12,7 @@ use tokio::sync::{watch, Mutex};
 
 const CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 const CACHE_TTL_SECS: i64 = 24 * 60 * 60;
-const MAX_ENTRIES: usize = 512;
+const MAX_ENTRIES: usize = 128;
 const MAX_HTML_SIZE: usize = 2 * 1024 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

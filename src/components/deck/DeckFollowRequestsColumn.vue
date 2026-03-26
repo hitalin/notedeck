@@ -269,6 +269,9 @@ onMounted(() => {
 .frItem {
   padding: 14px 16px;
   border-bottom: 1px solid var(--nd-divider);
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 100px;
 }
 
 .frUser {

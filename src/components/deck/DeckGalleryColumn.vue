@@ -262,7 +262,7 @@ fetchGallery()
 
     <!-- Grid view -->
     <template v-else>
-      <div :class="$style.galleryGridScroll" @scroll="onScroll">
+      <div :class="$style.galleryGridScroll" @scroll.passive="onScroll">
         <div v-if="loading && posts.length === 0" :class="$style.columnEmpty">読み込み中...</div>
         <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
         <div v-else-if="posts.length === 0" :class="$style.columnEmpty">
@@ -344,6 +344,9 @@ fetchGallery()
   flex-direction: column;
   overflow: hidden;
   transition: opacity var(--nd-duration-base);
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 160px;
 
   &:hover {
     opacity: 0.8;

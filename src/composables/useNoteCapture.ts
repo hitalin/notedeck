@@ -5,7 +5,7 @@ import type {
   StreamAdapter,
 } from '@/adapters/types'
 
-const MAX_CAPTURE = 100
+const MAX_CAPTURE = 80
 
 /**
  * Subscribes displayed notes to Misskey's Note Capture mechanism (subNote/unsubNote)

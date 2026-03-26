@@ -530,7 +530,7 @@ async function handlePosted(editedNoteId?: string) {
 </script>
 
 <template>
-  <div :class="$style.userProfileContent" @scroll="onScroll">
+  <div :class="$style.userProfileContent" @scroll.passive="onScroll">
     <div v-if="isLoading" :class="$style.stateMessage">読み込み中...</div>
 
     <div v-else-if="error" :class="[$style.stateMessage, $style.stateError]">

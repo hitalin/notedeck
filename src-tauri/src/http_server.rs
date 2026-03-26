@@ -533,7 +533,7 @@ fn transform_image(
 
     // Always encode as WebP (lossless) — smaller than PNG and avoids
     // format-mismatch issues (e.g. resized JPEG re-encoded as PNG).
-    let mut buf = Vec::new();
+    let mut buf = Vec::with_capacity((data.len() / 4).max(4096));
     let encoder = image::codecs::webp::WebPEncoder::new_lossless(&mut buf);
     img.write_with_encoder(encoder).ok()?;
 
@@ -636,7 +636,7 @@ async fn proxy_image(
             if wants_transform {
                 // Need full bytes for transform — collect stream first
                 use futures_util::StreamExt;
-                let mut all_bytes = Vec::new();
+                let mut all_bytes = Vec::with_capacity(65_536);
                 let mut stream = byte_stream;
                 while let Some(chunk) = stream.next().await {
                     match chunk {

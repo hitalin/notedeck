@@ -6,6 +6,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import { parseNoteUrl } from '@/utils/noteUrl'
 import { invoke } from '@/utils/tauriInvoke'
 
+const EMBED_CACHE_MAX = 64
 const embedCache = new Map<string, NormalizedNote | null>()
 const pendingEmbeds = new Map<string, Promise<NormalizedNote | null>>()
 
@@ -69,6 +70,10 @@ async function fetchNote() {
     }
 
     const result = await promise
+    if (embedCache.size >= EMBED_CACHE_MAX) {
+      const oldest = embedCache.keys().next().value
+      if (oldest !== undefined) embedCache.delete(oldest)
+    }
     embedCache.set(cacheKey, result)
     pendingEmbeds.delete(cacheKey)
 
@@ -96,7 +101,7 @@ onMounted(() => {
         fetchNote()
       }
     },
-    { rootMargin: '600px' },
+    { rootMargin: '200px' },
   )
   observer.observe(el.value)
 })

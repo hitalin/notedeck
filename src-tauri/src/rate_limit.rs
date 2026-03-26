@@ -14,7 +14,7 @@ use tokio::sync::RwLock;
 /// Sliding window duration
 const WINDOW_DURATION: Duration = Duration::from_secs(60);
 /// Max requests per host within the window (matches typical Misskey rate limit)
-const MAX_REQUESTS_PER_WINDOW: usize = 300;
+const MAX_REQUESTS_PER_WINDOW: usize = 150;
 
 /// Per-host sliding window rate limiter.
 ///

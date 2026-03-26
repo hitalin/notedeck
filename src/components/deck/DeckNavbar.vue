@@ -891,7 +891,7 @@ defineExpose({
   padding-top: max(var(--nd-safe-area-top, env(safe-area-inset-top)), 12px);
   padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
   transform: translateX(-100%);
-  transition: transform 0.25s ease;
+  transition: transform 0.15s ease;
   box-shadow: none;
   background: var(--nd-navBg);
   backdrop-filter: none;

@@ -418,6 +418,7 @@ export function applyNotePostInterruptors<T>(form: T): T {
 // Launch / Abort
 // ---------------------------------------------------------------------------
 
+const MAX_PLUGIN_LOGS = 200
 const pluginLogs = new Map<string, { text: string; isError: boolean }[]>()
 
 export function getPluginLogs(
@@ -460,8 +461,13 @@ export async function launchPlugin(plugin: PluginMeta): Promise<void> {
   const env = { ...baseEnv, ...pluginEnv, ...ndEnv }
 
   const ioOpts = createInterpreterOptions({
-    onOutput: (text) => logs.push({ text, isError: false }),
-    onError: (err) => logs.push({ text: err.message, isError: true }),
+    onOutput: (text) => {
+      if (logs.length < MAX_PLUGIN_LOGS) logs.push({ text, isError: false })
+    },
+    onError: (err) => {
+      if (logs.length < MAX_PLUGIN_LOGS)
+        logs.push({ text: err.message, isError: true })
+    },
   })
 
   const code = sanitizeCode(plugin.src)

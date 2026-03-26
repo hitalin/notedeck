@@ -41,7 +41,7 @@ export function useMentionSearch(activeAccountId: Ref<string>) {
       } finally {
         mentionSearching.value = false
       }
-    }, 300)
+    }, 150)
   }
 
   function pickMention(

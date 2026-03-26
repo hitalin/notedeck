@@ -212,6 +212,9 @@ onUnmounted(() => {
 .announcementItem {
   padding: 16px;
   border-bottom: 1px solid var(--nd-divider);
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
 
   &.unread {
     background: var(--nd-accentedBg);

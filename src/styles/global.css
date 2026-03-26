@@ -103,14 +103,14 @@
   --nd-radius-full: 999px;
   --nd-margin: 10px;
   --nd-columnGap: 2px;
-  --nd-blur: 15px;
-  --nd-blur-panel: 8px;
-  --nd-blur-content: 4px;
+  --nd-blur: 10px;
+  --nd-blur-panel: 6px;
+  --nd-blur-content: 3px;
   /* Transition duration */
-  --nd-duration-fast: 0.1s;
-  --nd-duration-base: 0.15s;
-  --nd-duration-slow: 0.2s;
-  --nd-duration-slower: 0.3s;
+  --nd-duration-fast: 0.08s;
+  --nd-duration-base: 0.1s;
+  --nd-duration-slow: 0.12s;
+  --nd-duration-slower: 0.18s;
   /* Easing */
   --nd-ease-pop: cubic-bezier(0, 0, 0.2, 1);
   /* App chrome offsets (overridden per platform) */
@@ -532,5 +532,5 @@ html[data-platform="android"] select {
 }
 
 .nd-tab-snap-back > * {
-  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
 }

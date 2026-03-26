@@ -1083,11 +1083,13 @@ onUnmounted(() => {
   overflow-x: clip;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
-  will-change: scroll-position;
 }
 
 .notifItem {
   border-bottom: 1px solid var(--nd-divider);
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 80px;
 }
 
 .notifLayout {
