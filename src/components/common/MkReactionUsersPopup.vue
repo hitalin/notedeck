@@ -6,8 +6,9 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { proxyUrl } from '@/utils/imageProxy'
 import MkEmoji from './MkEmoji.vue'
+import MkMfm from './MkMfm.vue'
 
-const PREVIEW_LIMIT = 5
+const PREVIEW_LIMIT = 10
 
 const props = defineProps<{
   noteId: string
@@ -30,7 +31,6 @@ const accountsStore = useAccountsStore()
 
 const reactions = ref<NoteReaction[]>([])
 const isLoading = ref(true)
-const remaining = ref(0)
 
 async function fetchReactions() {
   isLoading.value = true
@@ -40,13 +40,11 @@ async function fetchReactions() {
     if (!account) return
     const serverInfo = await serversStore.getServerInfo(account.host)
     const adapter = createAdapter(serverInfo, account.id)
-    const result = await adapter.api.getNoteReactions(
+    reactions.value = await adapter.api.getNoteReactions(
       props.noteId,
       props.reaction,
       PREVIEW_LIMIT,
     )
-    reactions.value = result
-    remaining.value = Math.max(0, props.totalCount - result.length)
   } catch {
     // Non-critical tooltip
   } finally {
@@ -55,10 +53,6 @@ async function fetchReactions() {
 }
 
 watch(() => props.reaction, fetchReactions, { immediate: true })
-
-function openModal() {
-  emit('openModal', props.reaction)
-}
 
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') emit('close')
@@ -69,61 +63,64 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 <template>
   <div
-    :class="$style.tooltip"
+    :class="$style.root"
     class="_popup reaction-users-popup"
     :style="{ left: `${x}px`, top: `${y}px` }"
     @mouseleave="emit('close')"
   >
     <template v-if="!isLoading || reactions.length > 0">
-      <!-- Reaction emoji -->
-      <img
-        v-if="reactionUrl"
-        :src="proxyUrl(reactionUrl)"
-        :alt="reaction"
-        :class="$style.reactionEmoji"
-        decoding="async"
-        loading="lazy"
-      />
-      <MkEmoji v-else :emoji="reaction" :class="$style.reactionEmoji" />
-
-      <!-- Avatars -->
-      <div :class="$style.avatars">
+      <!-- Left: reaction icon + name -->
+      <div :class="$style.reaction">
         <img
-          v-for="r in reactions"
-          :key="r.id"
-          :src="r.user.avatarUrl ?? ''"
-          :alt="r.user.name ?? r.user.username"
-          :title="r.user.name ?? r.user.username"
-          :class="$style.avatar"
-          width="24"
-          height="24"
-          loading="lazy"
+          v-if="reactionUrl"
+          :src="proxyUrl(reactionUrl)"
+          :alt="reaction"
+          :class="$style.reactionIcon"
           decoding="async"
+          loading="lazy"
         />
+        <MkEmoji v-else :emoji="reaction" :class="$style.reactionIcon" />
       </div>
 
-      <!-- "+N" badge → opens modal -->
-      <button
-        v-if="remaining > 0"
-        :class="$style.more"
-        @click.stop="openModal"
-      >
-        +{{ remaining }}
-      </button>
+      <!-- Right: user list -->
+      <div :class="$style.users">
+        <div v-for="r in reactions" :key="r.id" :class="$style.user">
+          <img
+            v-if="r.user.avatarUrl"
+            :src="r.user.avatarUrl"
+            :class="$style.avatar"
+            width="24"
+            height="24"
+            loading="lazy"
+            decoding="async"
+          />
+          <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
+          <span :class="$style.userName">
+            <MkMfm v-if="r.user.name" :text="r.user.name" :emojis="r.user.emojis" :server-host="serverHost" />
+            <template v-else>{{ r.user.username }}</template>
+          </span>
+        </div>
+        <button
+          v-if="totalCount > PREVIEW_LIMIT"
+          :class="$style.more"
+          @click.stop="emit('openModal', reaction)"
+        >
+          +{{ totalCount - reactions.length }}
+        </button>
+      </div>
     </template>
   </div>
 </template>
 
 <style lang="scss" module>
-.tooltip {
+.root {
   position: fixed;
   z-index: calc(var(--nd-z-popup) + 1);
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  align-items: stretch;
+  max-width: 340px;
+  padding: 8px 12px;
   pointer-events: auto;
-  white-space: nowrap;
 
   /* Bridge to catch the mouse in the gap between badge and tooltip */
   &::before {
@@ -136,16 +133,37 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   }
 }
 
-.reactionEmoji {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
+.reaction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 10px;
+  margin-right: 10px;
+  border-right: 1px solid var(--nd-divider);
   flex-shrink: 0;
 }
 
-.avatars {
+.reactionIcon {
+  height: 32px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+}
+
+.users {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  max-height: 96px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.user {
   display: flex;
   align-items: center;
+  gap: 6px;
 }
 
 .avatar {
@@ -153,31 +171,34 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   height: 24px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid var(--nd-popup, var(--nd-panel));
-  margin-left: -6px;
+  flex-shrink: 0;
+}
 
-  &:first-child {
-    margin-left: 0;
-  }
+.avatarPlaceholder {
+  background: var(--nd-buttonBg);
+}
+
+.userName {
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .more {
-  padding: 2px 8px;
+  padding: 0;
   border: none;
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  font-size: 0.75em;
+  background: none;
+  color: var(--nd-accent);
+  font-size: 0.85em;
   font-weight: bold;
-  border-radius: 10px;
   cursor: pointer;
-  flex-shrink: 0;
-  transition:
-    background var(--nd-duration-base),
-    color var(--nd-duration-base);
+  text-align: left;
+  transition: opacity var(--nd-duration-base);
 
   &:hover {
-    background: var(--nd-accent);
-    color: #fff;
+    opacity: 0.7;
   }
 }
 </style>
