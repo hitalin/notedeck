@@ -148,17 +148,13 @@ const customTlIcon = computed(() => {
 const tlModes = ref<Record<string, boolean>>({})
 
 const allTlTypes = computed(() => {
+  if (!connectReady.value) return [] // Policy detection not yet complete
   const allowed = availableStandardTl.value
+  if (allowed.length === 0) return TL_TYPES.map((t) => t) // No account — show all
   const allowedSet = new Set(allowed)
-  // Before policy detection completes: show no tabs (connect is also delayed)
-  // After policy detection: use detected list, or fall back to all TL_TYPES
-  if (!connectReady.value) return []
-  const standard =
-    allowedSet.size > 0
-      ? TL_TYPES.filter((t) => allowedSet.has(t.value))
-      : TL_TYPES.map((t) => t)
+  const standard = TL_TYPES.filter((t) => allowedSet.has(t.value))
   for (const ct of customTimelines.value) {
-    if (allowedSet.size === 0 || allowedSet.has(ct.type)) {
+    if (allowedSet.has(ct.type)) {
       standard.push({ value: ct.type, label: ct.label })
     }
   }
@@ -275,25 +271,30 @@ async function switchTl(type: TimelineType) {
 
 // --- Policies ---
 
-async function refreshPolicies() {
-  const accountId = props.column.accountId
-  const host = account.value?.host
-  if (!accountId) return
-  clearAvailableTlCache(accountId)
-  const availability = await detectAvailableTimelines(accountId)
-  if (host) {
-    const ct = await detectCustomTimelines(host)
-    customTimelines.value = ct.filter((c) => {
-      if (!availability.denied.has(c.type)) return true
-      const modeKey = findModeKeyForTimeline(c.type, availability.modes)
-      return modeKey != null && availability.modes[modeKey] === true
-    })
-  }
+async function applyPolicies(accountId: string, host: string) {
+  const [ct, availability] = await Promise.all([
+    detectCustomTimelines(host),
+    detectAvailableTimelines(accountId),
+  ])
+  customTimelines.value = ct.filter((c) => {
+    if (!availability.denied.has(c.type)) return true
+    const modeKey = findModeKeyForTimeline(c.type, availability.modes)
+    return modeKey != null && availability.modes[modeKey] === true
+  })
   availableStandardTl.value = [
     ...availability.available,
     ...customTimelines.value.map((c) => c.type),
   ]
   tlModes.value = availability.modes
+}
+
+async function refreshPolicies() {
+  const accountId = props.column.accountId
+  const host =
+    account.value?.host ?? accountsStore.accountMap.get(accountId ?? '')?.host
+  if (!accountId || !host) return
+  clearAvailableTlCache(accountId)
+  await applyPolicies(accountId, host)
 }
 
 // --- Swipe to switch timeline tabs ---
@@ -343,27 +344,11 @@ onMounted(async () => {
   if (accountId) clearAvailableTlCache(accountId)
   fetchAds()
   if (host && accountId) {
-    const [ct, , availability] = await Promise.all([
-      detectCustomTimelines(host),
-      refreshFilterKeys(),
-      detectAvailableTimelines(accountId),
-    ])
-    customTimelines.value = ct.filter((c) => {
-      if (!availability.denied.has(c.type)) return true
-      const modeKey = findModeKeyForTimeline(c.type, availability.modes)
-      return modeKey != null && availability.modes[modeKey] === true
-    })
-    availableStandardTl.value = [
-      ...availability.available,
-      ...customTimelines.value.map((c) => c.type),
-    ]
-    tlModes.value = availability.modes
-
+    await Promise.all([applyPolicies(accountId, host), refreshFilterKeys()])
     if (!availableStandardTl.value.includes(tlType.value)) {
       switchTl(availableStandardTl.value[0] ?? 'local')
     }
   }
-  // Signal useNoteColumn that policy detection is complete and it's safe to connect
   connectReady.value = true
 })
 </script>
