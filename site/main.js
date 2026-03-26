@@ -1,3 +1,28 @@
+/* Color mode toggle: system → light → dark → system */
+(function() {
+  const modes = ['system', 'light', 'dark'];
+  let current = localStorage.getItem('color-mode') || 'system';
+
+  function apply(mode) {
+    document.documentElement.setAttribute('data-color-mode', mode);
+    if (mode === 'light') {
+      document.documentElement.style.colorScheme = 'light';
+    } else if (mode === 'dark') {
+      document.documentElement.style.colorScheme = 'dark';
+    } else {
+      document.documentElement.style.colorScheme = '';
+    }
+  }
+
+  apply(current);
+
+  document.getElementById('color-mode-toggle')?.addEventListener('click', function() {
+    current = modes[(modes.indexOf(current) + 1) % modes.length];
+    localStorage.setItem('color-mode', current);
+    apply(current);
+  });
+})();
+
 /* Scroll fade-in */
 const obs = new IntersectionObserver((entries) => {
   entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
