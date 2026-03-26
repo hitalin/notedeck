@@ -2,7 +2,8 @@
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { computed, ref, watch } from 'vue'
 
-const PREFETCH_AHEAD = 15
+const PREFETCH_AHEAD = 30
+const PREFETCH_BEHIND = 10
 
 const props = withDefaults(
   defineProps<{
@@ -81,23 +82,30 @@ const nearViewportRange = computed(() => {
 })
 
 // Prefetch zone: items beyond nearViewport that should have images preloaded.
-// Only extends forward (scroll direction) to avoid wasting bandwidth.
+// Extends both directions — ahead aggressively, behind moderately.
 const prefetchZone = computed(() => {
   const near = nearViewportRange.value
-  const start = near.end + 1
+  const start = Math.max(0, near.start - PREFETCH_BEHIND)
   const end = Math.min(near.end + PREFETCH_AHEAD, props.items.length - 1)
-  return { start, end }
+  return { start, end: Math.max(start, end) }
 })
 
-watch(prefetchZone, (zone) => {
-  if (!props.prefetch || zone.start > zone.end) return
-  const items: T[] = []
-  for (let i = zone.start; i <= zone.end; i++) {
-    const item = props.items[i]
-    if (item) items.push(item)
-  }
-  if (items.length > 0) props.prefetch(items)
-})
+watch(
+  prefetchZone,
+  (zone) => {
+    if (!props.prefetch || zone.start > zone.end) return
+    const near = nearViewportRange.value
+    const items: T[] = []
+    for (let i = zone.start; i <= zone.end; i++) {
+      // Skip items already in nearViewport (they get eager loading via DOM)
+      if (i >= near.start && i <= near.end) continue
+      const item = props.items[i]
+      if (item) items.push(item)
+    }
+    if (items.length > 0) props.prefetch(items)
+  },
+  { immediate: true },
+)
 
 function measureElement(el: unknown) {
   if (!(el instanceof HTMLElement)) return
