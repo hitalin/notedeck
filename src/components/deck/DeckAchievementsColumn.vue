@@ -615,6 +615,9 @@ fetchAchievements()
   padding: 12px 8px;
   border-radius: var(--nd-radius-md);
   transition: background var(--nd-duration-base);
+  contain: layout style;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 110px;
 
   &:hover {
     background: var(--nd-buttonHoverBg);

@@ -744,6 +744,8 @@ function closeMentionPopup() {
   position: relative;
   font-size: 1.05em;
   contain: content;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
   container-type: inline-size;
 
   &:not(.detailed) {

@@ -582,6 +582,9 @@ function reload() {
   text-align: left;
   border-bottom: 1px solid var(--nd-divider);
   transition: background var(--nd-duration-base);
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 65px;
 
   &:hover {
     background: var(--nd-buttonHoverBg);
