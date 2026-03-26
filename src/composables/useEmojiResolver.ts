@@ -9,7 +9,7 @@ export function useEmojiResolver() {
     emojis: Record<string, string>,
     reactionEmojis: Record<string, string>,
     serverHost: string,
-  ): string | undefined {
+  ): string | null {
     const base = shortcode.replace(/@\.$/, '')
     const withDot = `${base}@.`
     return (
@@ -29,7 +29,7 @@ export function useEmojiResolver() {
     emojis: Record<string, string>,
     reactionEmojis: Record<string, string>,
     serverHost: string,
-  ): string | undefined {
+  ): string | null {
     if (reaction.startsWith(':') && reaction.endsWith(':')) {
       return resolveEmoji(
         reaction.slice(1, -1),
@@ -38,7 +38,7 @@ export function useEmojiResolver() {
         serverHost,
       )
     }
-    return undefined
+    return null
   }
 
   return { resolveEmoji, reactionUrl }

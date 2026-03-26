@@ -18,7 +18,7 @@ const props = defineProps<{
   accountId: string
   serverHost: string
   reactions: { reaction: string; count: number }[]
-  reactionUrls: Record<string, string | undefined>
+  reactionUrls: Record<string, string | null>
 }>()
 
 const { isCompactLayout: isCompact } = storeToRefs(useUiStore())
