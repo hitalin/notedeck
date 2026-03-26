@@ -34,7 +34,7 @@ const virtualizerOptions = computed(() => ({
   count: props.items.length,
   getScrollElement: () => scrollContainer.value,
   estimateSize: () => dynamicEstimate.value,
-  overscan: 8,
+  overscan: 12,
   getItemKey: (index: number) => props.items[index]?.id ?? index,
 }))
 
@@ -57,14 +57,14 @@ const nearViewportRange = computed(() => {
   let end = last.index
   for (const item of items) {
     if (item.end >= scrollTop) {
-      start = Math.max(0, item.index - 2)
+      start = Math.max(0, item.index - 4)
       break
     }
   }
   for (let i = items.length - 1; i >= 0; i--) {
     const item = items[i]
     if (item && item.start <= viewEnd) {
-      end = item.index + 2
+      end = item.index + 4
       break
     }
   }
@@ -179,7 +179,7 @@ defineSlots<{
    Positioning uses the `translate` property (set via inline style),
    so `transform` is free for animation without conflict. */
 .enterAnimation {
-  animation: noteSlideIn 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+  animation: noteSlideIn 0.35s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @keyframes noteSlideIn {

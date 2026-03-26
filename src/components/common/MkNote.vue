@@ -92,7 +92,7 @@ const { stop: stopReactionsObserver } = useIntersectionObserver(
       stopReactionsObserver()
     }
   },
-  { rootMargin: '400px' },
+  { rootMargin: '150px' },
 )
 
 const emit = defineEmits<{

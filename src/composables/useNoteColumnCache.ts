@@ -20,10 +20,15 @@ export function saveSnapshot(
   notes: NormalizedNote[],
   scrollTop: number,
 ): void {
+  // Evict expired snapshots on save to prevent accumulation
+  const now = Date.now()
+  for (const [id, snap] of columnSnapshots) {
+    if (now - snap.savedAt >= SNAPSHOT_TTL) columnSnapshots.delete(id)
+  }
   columnSnapshots.set(colId, {
-    notes: notes.slice(0, 30),
+    notes: notes.slice(0, 50),
     scrollTop,
-    savedAt: Date.now(),
+    savedAt: now,
   })
 }
 
