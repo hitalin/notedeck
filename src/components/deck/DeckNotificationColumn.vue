@@ -33,6 +33,7 @@ import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
+import { usePerformanceStore } from '@/stores/performance'
 import { useServersStore } from '@/stores/servers'
 import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
 import { AppError } from '@/utils/errors'
@@ -121,7 +122,7 @@ function closeUserPopup() {
   userPopup.forceClose()
 }
 
-const MAX_NOTIFICATIONS = 300
+const perfStore = usePerformanceStore()
 const notifications = shallowRef<NormalizedNotification[]>([])
 const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 
@@ -131,7 +132,7 @@ const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 function mergeNotifications(
   fresh: NormalizedNotification[],
   cached: NormalizedNotification[],
-  limit = MAX_NOTIFICATIONS,
+  limit = perfStore.get('maxNotifications'),
 ): NormalizedNotification[] {
   const map = new Map<string, NormalizedNotification>()
   for (const n of cached) map.set(n.id, n)
@@ -220,8 +221,8 @@ function flushRafBuffer() {
   rafBuffer = []
   const updated = [...batch, ...notifications.value]
   notifications.value =
-    updated.length > MAX_NOTIFICATIONS
-      ? updated.slice(0, MAX_NOTIFICATIONS)
+    updated.length > perfStore.get('maxNotifications')
+      ? updated.slice(0, perfStore.get('maxNotifications'))
       : updated
   saveCache()
 }
@@ -497,8 +498,8 @@ async function loadMorePerAccount() {
     }
     const merged = [...notifications.value, ...older]
     notifications.value =
-      merged.length > MAX_NOTIFICATIONS
-        ? merged.slice(0, MAX_NOTIFICATIONS)
+      merged.length > perfStore.get('maxNotifications')
+        ? merged.slice(0, perfStore.get('maxNotifications'))
         : merged
     saveCache()
   } catch (e) {

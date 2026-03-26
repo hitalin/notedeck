@@ -1,17 +1,16 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
 import type { ServerEmoji } from '@/adapters/types'
+import { usePerformanceStore } from '@/stores/performance'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 export const useEmojisStore = defineStore('emojis', () => {
+  const perfStore = usePerformanceStore()
+
   // host → (shortcode → url) — for fast emoji resolution in notes
-  // Cap entries per host to limit memory (large servers have 5000+ emoji)
-  const MAX_CACHE_PER_HOST = 3000
   const cache = shallowRef(new Map<string, Record<string, string>>())
 
   // host → ServerEmoji[] — for the reaction picker (with category/aliases)
-  // Only keep the most recent MAX_EMOJI_LIST_HOSTS hosts to bound memory
-  const MAX_EMOJI_LIST_HOSTS = 3
   const emojiList = shallowRef(new Map<string, ServerEmoji[]>())
 
   // In-flight dedup: avoid parallel fetches for the same host
@@ -33,22 +32,17 @@ export const useEmojisStore = defineStore('emojis', () => {
     cache.value = map
   }
 
-  /** Max emoji entries to persist per host.
-   *  Full lists are kept in memory; only a subset is persisted to localStorage
-   *  to avoid quota issues with large servers (some have 5000+ custom emoji). */
-  const MAX_PERSIST_PER_HOST = 300
-
   function persistToStorage() {
     try {
+      const maxPersist = perfStore.get('emojiPersistPerHost')
       const obj: Record<string, Record<string, string>> = {}
       for (const [host, lookup] of cache.value) {
         const keys = Object.keys(lookup)
-        if (keys.length <= MAX_PERSIST_PER_HOST) {
+        if (keys.length <= maxPersist) {
           obj[host] = lookup
         } else {
-          // Persist only the first N entries (most commonly used come first from API)
           const subset: Record<string, string> = {}
-          for (const key of keys.slice(0, MAX_PERSIST_PER_HOST)) {
+          for (const key of keys.slice(0, maxPersist)) {
             subset[key] = lookup[key] ?? ''
           }
           obj[host] = subset
@@ -66,10 +60,8 @@ export const useEmojisStore = defineStore('emojis', () => {
   function set(host: string, emojis: ServerEmoji[]) {
     // Build shortcode→url lookup for resolution (cap per host)
     const lookup: Record<string, string> = {}
-    const capped =
-      emojis.length > MAX_CACHE_PER_HOST
-        ? emojis.slice(0, MAX_CACHE_PER_HOST)
-        : emojis
+    const maxCache = perfStore.get('emojiCachePerHost')
+    const capped = emojis.length > maxCache ? emojis.slice(0, maxCache) : emojis
     for (const e of capped) {
       lookup[e.name] = e.url
     }
@@ -81,7 +73,7 @@ export const useEmojisStore = defineStore('emojis', () => {
     // emojiList: only keep the most recent hosts to bound memory
     const nextList = new Map(emojiList.value)
     nextList.set(host, emojis)
-    if (nextList.size > MAX_EMOJI_LIST_HOSTS) {
+    if (nextList.size > perfStore.get('emojiListHosts')) {
       const oldest = nextList.keys().next().value
       if (oldest !== undefined) nextList.delete(oldest)
     }

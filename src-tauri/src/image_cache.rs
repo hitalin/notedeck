@@ -10,20 +10,23 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::{watch, Mutex, RwLock, Semaphore};
 
+use crate::perf_config::SharedPerfConfig;
+
 const CACHE_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60); // 7 days
 const MAX_FILE_SIZE: u64 = 20 * 1024 * 1024; // 20MB
-const MAX_CONCURRENT_FETCHES: usize = 30;
 // Negative cache TTLs by error class
 const NEGATIVE_TTL_CLIENT: Duration = Duration::from_secs(24 * 60 * 60); // 4xx: 24h
 const NEGATIVE_TTL_SERVER: Duration = Duration::from_secs(2 * 60); // 5xx: 2min
 const NEGATIVE_TTL_NETWORK: Duration = Duration::from_secs(30); // timeout/conn: 30s
-const MEMORY_CACHE_MAX_ITEM: usize = 64 * 1024; // 64KB
-const MEMORY_CACHE_MAX_TOTAL: usize = 4 * 1024 * 1024; // 4MB
-
-/// Circuit breaker: block an entire host after this many consecutive failures.
-const CIRCUIT_BREAKER_THRESHOLD: u32 = 5;
 /// How long a tripped circuit breaker blocks the host.
 const CIRCUIT_BREAKER_DURATION: Duration = Duration::from_secs(60);
+
+// Fallback defaults (used when perf_config is not available, e.g. in tests)
+const DEFAULT_MEMORY_CACHE_MAX_ITEM: usize = 64 * 1024;
+const DEFAULT_MEMORY_CACHE_MAX_TOTAL: usize = 4 * 1024 * 1024;
+const DEFAULT_MAX_CONCURRENT_FETCHES: usize = 30;
+#[allow(dead_code)]
+const DEFAULT_CIRCUIT_BREAKER_THRESHOLD: u32 = 5;
 
 struct HostCircuitState {
     consecutive_failures: u32,
@@ -59,8 +62,6 @@ struct MemCacheState {
     total_size: usize,
 }
 
-const MEM_CACHE_CAPACITY: usize = MEMORY_CACHE_MAX_TOTAL / (MEMORY_CACHE_MAX_ITEM / 2);
-
 pub struct ImageCache {
     cache_dir: PathBuf,
     inflight: Arc<Mutex<InflightMap>>,
@@ -69,30 +70,36 @@ pub struct ImageCache {
     negative_cache: Arc<RwLock<HashMap<String, (Instant, Duration)>>>,
     mem_cache: Arc<RwLock<MemCacheState>>,
     host_circuits: Arc<RwLock<HashMap<String, HostCircuitState>>>,
+    perf: SharedPerfConfig,
 }
 
 impl ImageCache {
-    /// Create with a default HTTP client (used in tests).
+    /// Create with a default HTTP client and default perf config (used in tests).
     #[cfg(test)]
     pub fn new(app_dir: &Path) -> Self {
-        Self::with_client(app_dir, reqwest::Client::default())
+        let perf = Arc::new(RwLock::new(crate::perf_config::PerformanceConfig::default()));
+        Self::with_client(app_dir, reqwest::Client::default(), perf)
     }
 
-    pub fn with_client(app_dir: &Path, http_client: reqwest::Client) -> Self {
+    pub fn with_client(app_dir: &Path, http_client: reqwest::Client, perf: SharedPerfConfig) -> Self {
         let cache_dir = app_dir.join("image_cache");
         std::fs::create_dir_all(&cache_dir).ok();
+        let max_total = DEFAULT_MEMORY_CACHE_MAX_TOTAL;
+        let max_item = DEFAULT_MEMORY_CACHE_MAX_ITEM;
+        let capacity = max_total / (max_item / 2);
 
         Self {
             cache_dir,
             inflight: Arc::new(Mutex::new(HashMap::new())),
             http_client,
-            fetch_semaphore: Arc::new(Semaphore::new(MAX_CONCURRENT_FETCHES)),
+            fetch_semaphore: Arc::new(Semaphore::new(DEFAULT_MAX_CONCURRENT_FETCHES)),
             negative_cache: Arc::new(RwLock::new(HashMap::new())),
             mem_cache: Arc::new(RwLock::new(MemCacheState {
-                entries: LruCache::new(NonZeroUsize::new(MEM_CACHE_CAPACITY).unwrap()),
+                entries: LruCache::new(NonZeroUsize::new(capacity).unwrap()),
                 total_size: 0,
             })),
             host_circuits: Arc::new(RwLock::new(HashMap::new())),
+            perf,
         }
     }
 
@@ -126,7 +133,8 @@ impl ImageCache {
         let data_path = data_path.to_path_buf();
 
         // Promote small files to memory cache
-        let mem_bytes = if bytes.len() <= MEMORY_CACHE_MAX_ITEM {
+        let max_item = self.perf.read().await.memory_cache_max_item;
+        let mem_bytes = if bytes.len() <= max_item {
             let arc = Arc::new(bytes);
             self.insert_mem_cache(hash, &arc, &content_type).await;
             Some(arc)
@@ -142,9 +150,10 @@ impl ImageCache {
     }
 
     async fn insert_mem_cache(&self, hash: &str, data: &Arc<Vec<u8>>, content_type: &str) {
+        let max_total = self.perf.read().await.memory_cache_max_total;
         let mut state = self.mem_cache.write().await;
         // LRU eviction: pop least-recently-used until there is room
-        while state.total_size + data.len() > MEMORY_CACHE_MAX_TOTAL && !state.entries.is_empty() {
+        while state.total_size + data.len() > max_total && !state.entries.is_empty() {
             if let Some((_key, removed)) = state.entries.pop_lru() {
                 state.total_size = state.total_size.saturating_sub(removed.data.len());
             } else {
@@ -328,6 +337,7 @@ impl ImageCache {
         let negative_cache = self.negative_cache.clone();
         let mem_cache = self.mem_cache.clone();
         let host_circuits = self.host_circuits.clone();
+        let perf = self.perf.clone();
         let url_host = Self::extract_host(url).unwrap_or_default();
 
         tokio::spawn(async move {
@@ -384,7 +394,8 @@ impl ImageCache {
                         tripped_at: None,
                     });
                     state.consecutive_failures += 1;
-                    if state.consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD {
+                    let threshold = perf.read().await.circuit_breaker_threshold;
+                    if state.consecutive_failures >= threshold {
                         state.tripped_at = Some(Instant::now());
                     }
                 }
@@ -405,9 +416,13 @@ impl ImageCache {
                 .ok();
 
                 // Store in memory cache if small enough
-                let mem_bytes = if bytes_arc.len() <= MEMORY_CACHE_MAX_ITEM {
+                let pc = perf.read().await;
+                let max_item = pc.memory_cache_max_item;
+                let max_total = pc.memory_cache_max_total;
+                drop(pc);
+                let mem_bytes = if bytes_arc.len() <= max_item {
                     let mut state = mem_cache.write().await;
-                    while state.total_size + bytes_arc.len() > MEMORY_CACHE_MAX_TOTAL
+                    while state.total_size + bytes_arc.len() > max_total
                         && !state.entries.is_empty()
                     {
                         if let Some((_key, removed)) = state.entries.pop_lru() {
@@ -469,6 +484,7 @@ impl ImageCache {
         let neg = self.negative_cache.clone();
         let inflight = self.inflight.clone();
         let host_circuits = self.host_circuits.clone();
+        let perf = self.perf.clone();
         let host = Self::extract_host(url).unwrap_or_default();
         let hash = hash.to_string();
         let msg = msg.to_string();
@@ -487,7 +503,8 @@ impl ImageCache {
                     tripped_at: None,
                 });
                 state.consecutive_failures += 1;
-                if state.consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD {
+                let threshold = perf.read().await.circuit_breaker_threshold;
+                if state.consecutive_failures >= threshold {
                     state.tripped_at = Some(Instant::now());
                 }
             }
@@ -565,7 +582,7 @@ mod tests {
         let cache = ImageCache::new(dir.path());
 
         // Insert entries that fill the memory budget
-        let big = Arc::new(vec![0u8; MEMORY_CACHE_MAX_TOTAL / 2]);
+        let big = Arc::new(vec![0u8; DEFAULT_MEMORY_CACHE_MAX_TOTAL / 2]);
         cache.insert_mem_cache("a", &big, "image/png").await;
         cache.insert_mem_cache("b", &big, "image/png").await;
 

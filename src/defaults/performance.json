@@ -1,0 +1,19 @@
+{
+  "emojiCachePerHost": 3000,
+  "emojiListHosts": 3,
+  "emojiPersistPerHost": 300,
+  "noteStoreMax": 1500,
+  "noteListMax": 200,
+  "maxNotifications": 300,
+  "mfmCacheMax": 256,
+  "imageProxyCacheMax": 256,
+  "ogpCacheMax": 128,
+  "noteCaptureMax": 50,
+  "overscan": 7,
+  "memoryCacheMaxMB": 4,
+  "memoryCacheMaxItemKB": 64,
+  "maxConcurrentFetches": 30,
+  "rustOgpCacheMax": 64,
+  "maxRequestsPerWindow": 200,
+  "circuitBreakerThreshold": 5
+}

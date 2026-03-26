@@ -182,6 +182,16 @@ export async function writeAiSettings(content: string): Promise<void> {
   return writeRootSettingsFile('ai.json', content)
 }
 
+// --- Performance helpers ---
+
+export async function readPerformance(): Promise<string> {
+  return readRootSettingsFile('performance.json')
+}
+
+export async function writePerformance(content: string): Promise<void> {
+  return writeRootSettingsFile('performance.json', content)
+}
+
 // --- Plugin helpers ---
 
 const PLUGINS_DIR = 'plugins'

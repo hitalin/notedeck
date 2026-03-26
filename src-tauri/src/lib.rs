@@ -17,6 +17,7 @@ mod http_server;
 mod image_cache;
 mod migrations;
 mod ogp;
+mod perf_config;
 mod query_bridge;
 mod rate_limit;
 mod streaming;
@@ -214,6 +215,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::write_root_settings_file,
         commands::export_settings_json,
         commands::import_settings_json,
+        perf_config::update_performance_config,
+        perf_config::get_performance_config,
     ]);
 
     builder = builder.setup(|app| {
@@ -234,6 +237,12 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // AppState: empty wrapper — commands await until Phase 2 fills it
         let app_state = commands::AppState::new();
         app.manage(app_state);
+
+        // Performance config: starts with defaults, updated dynamically via Tauri command
+        let shared_perf: perf_config::SharedPerfConfig =
+            std::sync::Arc::new(tokio::sync::RwLock::new(perf_config::PerformanceConfig::default()));
+        let shared_perf_bg = shared_perf.clone();
+        app.manage(shared_perf);
 
         // Shared HTTP client (struct construction — fast, no I/O)
         let shared_http = reqwest::Client::builder()
@@ -321,12 +330,12 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             app_state.initialize(db.clone(), client.clone());
 
             // OGP cache
-            let ogp_cache = ogp::OgpCache::with_client(db.clone(), shared_http.clone());
+            let ogp_cache = ogp::OgpCache::with_client(db.clone(), shared_http.clone(), shared_perf_bg.clone());
             app_handle.manage(ogp_cache.clone());
 
             // Image cache
             let image_cache = std::sync::Arc::new(
-                image_cache::ImageCache::with_client(&app_dir_bg, shared_http),
+                image_cache::ImageCache::with_client(&app_dir_bg, shared_http, shared_perf_bg.clone()),
             );
 
             // Signal frontend: backend is ready
@@ -345,6 +354,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                         api_token,
                         token_path: token_path_str,
                         image_cache,
+                        perf: shared_perf_bg,
                     })
                     .await;
                 });

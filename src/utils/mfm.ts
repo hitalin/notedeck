@@ -369,9 +369,18 @@ function parseTokens(text: string): MfmToken[] {
   return tokens
 }
 
+import { usePerformanceStore } from '@/stores/performance'
+
 const parseCache = new Map<string, MfmToken[]>()
-const CACHE_MAX = 256
 const MAX_MFM_LENGTH = 10000
+
+function getMfmCacheMax(): number {
+  try {
+    return usePerformanceStore().get('mfmCacheMax')
+  } catch {
+    return 256
+  }
+}
 
 export function parseMfm(text: string): MfmToken[] {
   if (!text) return []
@@ -391,7 +400,8 @@ export function parseMfm(text: string): MfmToken[] {
 
   const tokens = parseTokens(text)
 
-  if (parseCache.size >= CACHE_MAX) {
+  const cacheMax = getMfmCacheMax()
+  if (parseCache.size >= cacheMax) {
     const first = parseCache.keys().next().value
     if (first !== undefined) parseCache.delete(first)
   }

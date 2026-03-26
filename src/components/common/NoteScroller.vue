@@ -1,7 +1,9 @@
 <script setup lang="ts" generic="T extends { id: string }">
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { computed, ref, watch } from 'vue'
+import { usePerformanceStore } from '@/stores/performance'
 
+const perfStore = usePerformanceStore()
 const PREFETCH_AHEAD = 30
 const PREFETCH_BEHIND = 10
 
@@ -44,7 +46,7 @@ const virtualizerOptions = computed(() => ({
   count: props.items.length,
   getScrollElement: () => scrollContainer.value,
   estimateSize: () => dynamicEstimate.value,
-  overscan: 7,
+  overscan: perfStore.get('overscan'),
   getItemKey: (index: number) => props.items[index]?.id ?? index,
 }))
 
