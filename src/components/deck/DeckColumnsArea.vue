@@ -316,7 +316,7 @@ defineExpose({ scrollToColumn, columnMap })
           @mousedown="deckStore.setActiveColumn(colId)"
           @pointerdown="onColumnPointerDown(colId, $event)"
         >
-          <KeepAlive :max="10">
+          <KeepAlive :max="6">
             <component
               v-if="
                 colVisibility.isColumnMounted(colId) &&

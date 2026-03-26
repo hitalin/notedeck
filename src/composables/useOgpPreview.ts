@@ -4,7 +4,7 @@ import { ref } from 'vue'
 import type { OgpData } from '@/utils/ogp'
 import { invoke } from '@/utils/tauriInvoke'
 
-const OGP_CACHE_MAX = 1024
+const OGP_CACHE_MAX = 256
 
 const ogpCache = new Map<string, OgpData | null>()
 const pendingRequests = new Map<string, Promise<OgpData | null>>()

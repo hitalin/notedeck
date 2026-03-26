@@ -251,7 +251,7 @@ interface TlSnapshot {
   notes: NormalizedNote[]
   scrollTop: number
 }
-const SNAPSHOT_MAX_NOTES = 50
+const SNAPSHOT_MAX_NOTES = 30
 const tlSnapshots = new Map<TimelineType, TlSnapshot>()
 
 async function switchTl(type: TimelineType) {

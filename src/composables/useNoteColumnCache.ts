@@ -21,7 +21,7 @@ export function saveSnapshot(
   scrollTop: number,
 ): void {
   columnSnapshots.set(colId, {
-    notes: notes.slice(0, 40),
+    notes: notes.slice(0, 30),
     scrollTop,
     savedAt: Date.now(),
   })

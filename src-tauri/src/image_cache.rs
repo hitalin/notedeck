@@ -18,7 +18,7 @@ const NEGATIVE_TTL_CLIENT: Duration = Duration::from_secs(24 * 60 * 60); // 4xx:
 const NEGATIVE_TTL_SERVER: Duration = Duration::from_secs(5 * 60); // 5xx: 5min
 const NEGATIVE_TTL_NETWORK: Duration = Duration::from_secs(60); // timeout/conn: 1min
 const MEMORY_CACHE_MAX_ITEM: usize = 64 * 1024; // 64KB
-const MEMORY_CACHE_MAX_TOTAL: usize = 16 * 1024 * 1024; // 16MB
+const MEMORY_CACHE_MAX_TOTAL: usize = 8 * 1024 * 1024; // 8MB
 
 /// Circuit breaker: block an entire host after this many consecutive failures.
 const CIRCUIT_BREAKER_THRESHOLD: u32 = 3;

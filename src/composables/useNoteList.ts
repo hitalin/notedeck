@@ -8,7 +8,7 @@ import { useNoteStore } from '@/stores/notes'
 import { invoke } from '@/utils/tauriInvoke'
 
 /** Maximum number of notes to keep in DOM per column */
-export const NOTE_LIST_MAX = 300
+export const NOTE_LIST_MAX = 150
 
 export interface UseNoteListOptions {
   getMyUserId: () => string | undefined

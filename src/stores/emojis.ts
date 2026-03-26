@@ -32,7 +32,7 @@ export const useEmojisStore = defineStore('emojis', () => {
   /** Max emoji entries to persist per host.
    *  Full lists are kept in memory; only a subset is persisted to localStorage
    *  to avoid quota issues with large servers (some have 5000+ custom emoji). */
-  const MAX_PERSIST_PER_HOST = 500
+  const MAX_PERSIST_PER_HOST = 200
 
   function persistToStorage() {
     try {
