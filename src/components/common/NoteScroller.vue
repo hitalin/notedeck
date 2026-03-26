@@ -34,7 +34,7 @@ const virtualizerOptions = computed(() => ({
   count: props.items.length,
   getScrollElement: () => scrollContainer.value,
   estimateSize: () => dynamicEstimate.value,
-  overscan: 12,
+  overscan: 7,
   getItemKey: (index: number) => props.items[index]?.id ?? index,
 }))
 

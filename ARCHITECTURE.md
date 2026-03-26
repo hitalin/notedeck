@@ -242,7 +242,7 @@ Misskey 本体および Firefish, Sharkey, Iceshrimp 等のフォークに共通
 
 | 設定 | 値 | 説明 |
 |------|-----|------|
-| `NOTE_LIST_MAX` | 300 | データ配列の上限（`useNoteList.ts`） |
+| `NOTE_LIST_MAX` | 200 | データ配列の上限（`useNoteList.ts`） |
 | `overscan` | 7 | viewport 外に余分に描画する件数 |
 | `estimateSize` | 動的 | 実測値の移動平均（20件ごとに更新） |
 

@@ -6,7 +6,7 @@ import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 export const useEmojisStore = defineStore('emojis', () => {
   // host → (shortcode → url) — for fast emoji resolution in notes
   // Cap entries per host to limit memory (large servers have 5000+ emoji)
-  const MAX_CACHE_PER_HOST = 1500
+  const MAX_CACHE_PER_HOST = 3000
   const cache = shallowRef(new Map<string, Record<string, string>>())
 
   // host → ServerEmoji[] — for the reaction picker (with category/aliases)
@@ -36,7 +36,7 @@ export const useEmojisStore = defineStore('emojis', () => {
   /** Max emoji entries to persist per host.
    *  Full lists are kept in memory; only a subset is persisted to localStorage
    *  to avoid quota issues with large servers (some have 5000+ custom emoji). */
-  const MAX_PERSIST_PER_HOST = 200
+  const MAX_PERSIST_PER_HOST = 300
 
   function persistToStorage() {
     try {

@@ -1,6 +1,6 @@
 const PROXY_BASE = 'http://127.0.0.1:19820/proxy/image'
 const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-const CACHE_MAX = 512
+const CACHE_MAX = 256
 const proxyUrlCache = new Map<string, string>()
 
 function evictIfFull() {
