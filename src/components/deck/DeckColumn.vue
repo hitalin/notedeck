@@ -268,6 +268,7 @@ function openAsPip() {
   border-radius: 10px;
   overflow: clip;
   contain: layout paint style;
+  content-visibility: auto;
   container-type: inline-size;
   position: relative;
 }

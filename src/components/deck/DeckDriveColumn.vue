@@ -447,6 +447,9 @@ fetchDrive()
   text-align: left;
   border-bottom: 1px solid var(--nd-divider);
   transition: background var(--nd-duration-base);
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 50px;
 
   &:hover {
     background: var(--nd-buttonHoverBg);
@@ -488,6 +491,9 @@ fetchDrive()
   flex-direction: column;
   overflow: hidden;
   transition: opacity var(--nd-duration-base);
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
 
   &:hover {
     opacity: 0.8;

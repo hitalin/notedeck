@@ -935,6 +935,9 @@ onBeforeUnmount(() => {
   color: var(--nd-fg);
   text-align: left;
   cursor: pointer;
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 65px;
   border-bottom: 1px solid var(--nd-divider, rgba(255, 255, 255, 0.05));
 
   &:hover {

@@ -344,6 +344,9 @@ fetchGallery()
   flex-direction: column;
   overflow: hidden;
   transition: opacity var(--nd-duration-base);
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 160px;
 
   &:hover {
     opacity: 0.8;
