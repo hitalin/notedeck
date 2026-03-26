@@ -4,8 +4,6 @@ import { computed, ref, watch } from 'vue'
 import { usePerformanceStore } from '@/stores/performance'
 
 const perfStore = usePerformanceStore()
-const PREFETCH_AHEAD = 30
-const PREFETCH_BEHIND = 10
 
 const props = withDefaults(
   defineProps<{
@@ -87,8 +85,11 @@ const nearViewportRange = computed(() => {
 // Extends both directions — ahead aggressively, behind moderately.
 const prefetchZone = computed(() => {
   const near = nearViewportRange.value
-  const start = Math.max(0, near.start - PREFETCH_BEHIND)
-  const end = Math.min(near.end + PREFETCH_AHEAD, props.items.length - 1)
+  const start = Math.max(0, near.start - perfStore.get('prefetchBehind'))
+  const end = Math.min(
+    near.end + perfStore.get('prefetchAhead'),
+    props.items.length - 1,
+  )
   return { start, end: Math.max(start, end) }
 })
 

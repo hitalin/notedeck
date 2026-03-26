@@ -12,14 +12,11 @@ use tokio::sync::{watch, Mutex, RwLock, Semaphore};
 
 use crate::perf_config::SharedPerfConfig;
 
-const CACHE_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60); // 7 days
 const MAX_FILE_SIZE: u64 = 20 * 1024 * 1024; // 20MB
 // Negative cache TTLs by error class
 const NEGATIVE_TTL_CLIENT: Duration = Duration::from_secs(24 * 60 * 60); // 4xx: 24h
 const NEGATIVE_TTL_SERVER: Duration = Duration::from_secs(2 * 60); // 5xx: 2min
 const NEGATIVE_TTL_NETWORK: Duration = Duration::from_secs(30); // timeout/conn: 30s
-/// How long a tripped circuit breaker blocks the host.
-const CIRCUIT_BREAKER_DURATION: Duration = Duration::from_secs(60);
 
 // Fallback defaults (used when perf_config is not available, e.g. in tests)
 const DEFAULT_MEMORY_CACHE_MAX_ITEM: usize = 64 * 1024;
@@ -111,6 +108,8 @@ impl ImageCache {
     ) -> Option<CacheEntry> {
         let meta_path_owned = meta_path.to_path_buf();
         let data_path_owned = data_path.to_path_buf();
+        let cache_ttl_days = self.perf.read().await.image_cache_ttl_days;
+        let cache_ttl = Duration::from_secs(cache_ttl_days * 24 * 60 * 60);
         let (content_type, bytes) = tokio::task::spawn_blocking(move || {
             if !data_path_owned.exists() || !meta_path_owned.exists() {
                 return None;
@@ -120,7 +119,7 @@ impl ImageCache {
             if SystemTime::now()
                 .duration_since(modified)
                 .unwrap_or_default()
-                > CACHE_TTL
+                > cache_ttl
             {
                 return None;
             }
@@ -206,10 +205,11 @@ impl ImageCache {
 
     /// Check if a host's circuit breaker is tripped.
     async fn is_host_blocked(&self, host: &str) -> bool {
+        let cb_duration = Duration::from_secs(self.perf.read().await.circuit_breaker_duration);
         let circuits = self.host_circuits.read().await;
         if let Some(state) = circuits.get(host) {
             if let Some(tripped_at) = state.tripped_at {
-                if tripped_at.elapsed() < CIRCUIT_BREAKER_DURATION {
+                if tripped_at.elapsed() < cb_duration {
                     return true;
                 }
             }

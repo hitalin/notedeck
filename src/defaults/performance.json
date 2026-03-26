@@ -15,5 +15,9 @@
   "maxConcurrentFetches": 30,
   "rustOgpCacheMax": 64,
   "maxRequestsPerWindow": 200,
-  "circuitBreakerThreshold": 5
+  "circuitBreakerThreshold": 5,
+  "circuitBreakerDuration": 60,
+  "imageCacheTTLDays": 7,
+  "prefetchAhead": 30,
+  "prefetchBehind": 10
 }

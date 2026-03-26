@@ -12,6 +12,8 @@ pub struct PerformanceConfig {
     pub rust_ogp_cache_max: usize,
     pub max_requests_per_window: usize,
     pub circuit_breaker_threshold: u32,
+    pub circuit_breaker_duration: u64,
+    pub image_cache_ttl_days: u64,
 }
 
 impl Default for PerformanceConfig {
@@ -23,6 +25,8 @@ impl Default for PerformanceConfig {
             rust_ogp_cache_max: 64,
             max_requests_per_window: 200,
             circuit_breaker_threshold: 5,
+            circuit_breaker_duration: 60,
+            image_cache_ttl_days: 7,
         }
     }
 }

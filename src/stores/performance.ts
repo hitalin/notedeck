@@ -23,6 +23,8 @@ export interface PerformanceConfig {
   // Realtime
   noteCaptureMax: number
   overscan: number
+  prefetchAhead: number
+  prefetchBehind: number
   // Rust: backend
   memoryCacheMaxMB: number
   memoryCacheMaxItemKB: number
@@ -30,6 +32,8 @@ export interface PerformanceConfig {
   rustOgpCacheMax: number
   maxRequestsPerWindow: number
   circuitBreakerThreshold: number
+  circuitBreakerDuration: number
+  imageCacheTTLDays: number
 }
 
 export type PerformanceKey = keyof PerformanceConfig
@@ -200,8 +204,44 @@ export const FIELD_META: Record<PerformanceKey, FieldMeta> = {
     step: 1,
     unit: '回',
     category: 'backend',
-    label: 'サーキットブレーカー',
+    label: 'サーキットブレーカー閾値',
     description: 'この回数連続失敗でホストを一時遮断',
+  },
+  circuitBreakerDuration: {
+    min: 10,
+    max: 300,
+    step: 10,
+    unit: '秒',
+    category: 'backend',
+    label: 'サーキットブレーカー期間',
+    description: '遮断されたホストの復帰までの待機時間',
+  },
+  imageCacheTTLDays: {
+    min: 1,
+    max: 30,
+    step: 1,
+    unit: '日',
+    category: 'backend',
+    label: '画像キャッシュ有効期限',
+    description: 'ディスク上の画像キャッシュの保持日数',
+  },
+  prefetchAhead: {
+    min: 0,
+    max: 60,
+    step: 5,
+    unit: '件',
+    category: 'realtime',
+    label: '先読みプリフェッチ',
+    description: 'viewport下方向に先読みする画像プリフェッチ数',
+  },
+  prefetchBehind: {
+    min: 0,
+    max: 30,
+    step: 5,
+    unit: '件',
+    category: 'realtime',
+    label: '後方プリフェッチ',
+    description: 'viewport上方向に遡って画像プリフェッチする数',
   },
 }
 
@@ -237,6 +277,10 @@ export const PRESETS = {
       rustOgpCacheMax: 32,
       maxRequestsPerWindow: 100,
       circuitBreakerThreshold: 3,
+      circuitBreakerDuration: 90,
+      imageCacheTTLDays: 3,
+      prefetchAhead: 10,
+      prefetchBehind: 5,
     } satisfies PerformanceConfig,
   },
   balanced: {
@@ -265,6 +309,10 @@ export const PRESETS = {
       rustOgpCacheMax: 256,
       maxRequestsPerWindow: 300,
       circuitBreakerThreshold: 5,
+      circuitBreakerDuration: 30,
+      imageCacheTTLDays: 14,
+      prefetchAhead: 50,
+      prefetchBehind: 20,
     } satisfies PerformanceConfig,
   },
 } as const
@@ -323,6 +371,8 @@ export const usePerformanceStore = defineStore('performance', () => {
         rust_ogp_cache_max: c.rustOgpCacheMax,
         max_requests_per_window: c.maxRequestsPerWindow,
         circuit_breaker_threshold: c.circuitBreakerThreshold,
+        circuit_breaker_duration: c.circuitBreakerDuration,
+        image_cache_ttl_days: c.imageCacheTTLDays,
       },
     })
   }
