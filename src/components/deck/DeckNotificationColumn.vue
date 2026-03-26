@@ -103,6 +103,20 @@ function onNotifAvatarMouseLeave() {
   userPopup.hide()
 }
 
+/** Resolve the account that owns a notification (for cross-account support) */
+function resolveNotifAccount(notif: NormalizedNotification) {
+  if (!isCrossAccount.value) return account.value
+  return accountsStore.accounts.find((a) => a.id === notif._accountId)
+}
+
+/** Get the server favicon URL for a notification's account */
+function resolveNotifServerIcon(notif: NormalizedNotification): string | null {
+  const acc = resolveNotifAccount(notif)
+  if (!acc) return null
+  const info = serversStore.servers.get(acc.host)
+  return info?.iconUrl || `https://${acc.host}/favicon.ico`
+}
+
 function closeUserPopup() {
   userPopup.forceClose()
 }
@@ -844,7 +858,15 @@ onUnmounted(() => {
                     @mouseenter="onNotifAvatarMouseEnter(notif, $event)"
                     @mouseleave="onNotifAvatarMouseLeave"
                   />
-                  <img v-else-if="account?.avatarUrl" :src="account.avatarUrl" :class="$style.notifFallbackAvatar" />
+                  <template v-else>
+                    <img v-if="resolveNotifAccount(notif)?.avatarUrl" :src="resolveNotifAccount(notif)!.avatarUrl!" :class="$style.notifFallbackAvatar" />
+                    <img
+                      v-if="isCrossAccount && resolveNotifServerIcon(notif)"
+                      :src="resolveNotifServerIcon(notif)!"
+                      :class="$style.notifServerBadge"
+                      :title="resolveNotifAccount(notif)?.host"
+                    />
+                  </template>
                   <template v-if="notif.type === 'reaction' && notif.reaction">
                     <img v-if="getCachedReactionUrl(notif.reaction, notif)" :src="getCachedReactionUrl(notif.reaction, notif)!" :alt="notif.reaction" :class="$style.notifSubIconEmoji" loading="lazy" />
                     <img v-else-if="getCachedTwemojiUrl(notif.reaction)" :src="getCachedTwemojiUrl(notif.reaction)!" :alt="notif.reaction" :class="$style.notifSubIconEmoji" loading="lazy" />
@@ -1090,6 +1112,18 @@ onUnmounted(() => {
   height: 42px;
   border-radius: 50%;
   object-fit: cover;
+}
+
+.notifServerBadge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: var(--nd-panel);
+  box-shadow: 0 0 0 2px var(--nd-panel);
 }
 
 .notifSubIcon {
