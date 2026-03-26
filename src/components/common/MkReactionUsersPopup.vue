@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type { NoteReaction } from '@/adapters/types'
+import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { proxyUrl } from '@/utils/imageProxy'
+import { extractThemeVars } from '@/utils/themeVars'
 import MkEmoji from './MkEmoji.vue'
 import MkMfm from './MkMfm.vue'
+
+const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
 
 const PREVIEW_LIMIT = 10
 
@@ -26,11 +30,19 @@ const emit = defineEmits<{
   openModal: [reaction: string]
 }>()
 
+const { navigateToUser } = useNavigation()
 const serversStore = useServersStore()
 const accountsStore = useAccountsStore()
 
 const reactions = ref<NoteReaction[]>([])
 const isLoading = ref(true)
+
+// User hover popup
+const showUserPopup = ref(false)
+const userPopupUserId = ref('')
+const userPopupPos = ref({ x: 0, y: 0 })
+const userPopupTheme = ref<Record<string, string>>({})
+let hoverTimer: ReturnType<typeof setTimeout> | null = null
 
 async function fetchReactions() {
   isLoading.value = true
@@ -54,11 +66,56 @@ async function fetchReactions() {
 
 watch(() => props.reaction, fetchReactions, { immediate: true })
 
+function handleMouseLeave() {
+  if (showUserPopup.value) return
+  emit('close')
+}
+
+function onUserClick(userId: string) {
+  emit('close')
+  navigateToUser(props.accountId, userId)
+}
+
+function onUserMouseEnter(e: MouseEvent, userId: string) {
+  if (hoverTimer) {
+    clearTimeout(hoverTimer)
+    hoverTimer = null
+  }
+
+  const el = e.currentTarget as HTMLElement
+  const rect = el.getBoundingClientRect()
+  userPopupPos.value = { x: rect.right + 8, y: rect.top }
+  userPopupUserId.value = userId
+
+  const column = document.querySelector('.deck-column') as HTMLElement | null
+  if (column) userPopupTheme.value = extractThemeVars(column)
+
+  if (showUserPopup.value) return
+
+  hoverTimer = setTimeout(() => {
+    showUserPopup.value = true
+  }, 400)
+}
+
+function onUserMouseLeave() {
+  if (hoverTimer) {
+    clearTimeout(hoverTimer)
+    hoverTimer = null
+  }
+}
+
+function closeUserPopup() {
+  showUserPopup.value = false
+}
+
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') emit('close')
 }
 onMounted(() => document.addEventListener('keydown', onKeydown))
-onUnmounted(() => document.removeEventListener('keydown', onKeydown))
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydown)
+  if (hoverTimer) clearTimeout(hoverTimer)
+})
 </script>
 
 <template>
@@ -66,10 +123,10 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
     :class="$style.root"
     class="_popup reaction-users-popup"
     :style="{ left: `${x}px`, top: `${y}px` }"
-    @mouseleave="emit('close')"
+    @mouseleave="handleMouseLeave"
   >
     <template v-if="!isLoading || reactions.length > 0">
-      <!-- Left: reaction icon + name -->
+      <!-- Left: reaction icon -->
       <div :class="$style.reaction">
         <img
           v-if="reactionUrl"
@@ -82,9 +139,16 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         <MkEmoji v-else :emoji="reaction" :class="$style.reactionIcon" />
       </div>
 
-      <!-- Right: user list -->
+      <!-- Right: user list (original style) -->
       <div :class="$style.users">
-        <div v-for="r in reactions" :key="r.id" :class="$style.user">
+        <button
+          v-for="r in reactions"
+          :key="r.id"
+          :class="$style.userRow"
+          @click.stop="onUserClick(r.user.id)"
+          @mouseenter="onUserMouseEnter($event, r.user.id)"
+          @mouseleave="onUserMouseLeave"
+        >
           <img
             v-if="r.user.avatarUrl"
             :src="r.user.avatarUrl"
@@ -95,11 +159,14 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
             decoding="async"
           />
           <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
-          <span :class="$style.userName">
-            <MkMfm v-if="r.user.name" :text="r.user.name" :emojis="r.user.emojis" :server-host="serverHost" />
-            <template v-else>{{ r.user.username }}</template>
-          </span>
-        </div>
+          <div :class="$style.userInfo">
+            <span :class="$style.userName">
+              <MkMfm v-if="r.user.name" :text="r.user.name" :emojis="r.user.emojis" :server-host="serverHost" />
+              <template v-else>{{ r.user.username }}</template>
+            </span>
+            <span :class="$style.userHandle">@{{ r.user.username }}</span>
+          </div>
+        </button>
         <button
           v-if="totalCount > PREVIEW_LIMIT"
           :class="$style.more"
@@ -110,6 +177,19 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       </div>
     </template>
   </div>
+
+  <Teleport to="body">
+    <div v-if="showUserPopup" :style="userPopupTheme">
+      <MkUserPopup
+        :key="userPopupUserId"
+        :user-id="userPopupUserId"
+        :account-id="accountId"
+        :x="userPopupPos.x"
+        :y="userPopupPos.y"
+        @close="closeUserPopup"
+      />
+    </div>
+  </Teleport>
 </template>
 
 <style lang="scss" module>
@@ -119,7 +199,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   display: flex;
   align-items: stretch;
   max-width: 340px;
-  padding: 8px 12px;
+  padding: 8px 0 8px 12px;
   pointer-events: auto;
 
   /* Bridge to catch the mouse in the gap between badge and tooltip */
@@ -138,7 +218,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   align-items: center;
   justify-content: center;
   padding-right: 10px;
-  margin-right: 10px;
+  margin-right: 2px;
   border-right: 1px solid var(--nd-divider);
   flex-shrink: 0;
 }
@@ -153,17 +233,29 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 .users {
   display: flex;
   flex-direction: column;
-  gap: 4px;
   min-width: 0;
   max-height: 96px;
   overflow-y: auto;
   scrollbar-width: thin;
 }
 
-.user {
+.userRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 4px 12px;
+  width: 100%;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
 .avatar {
@@ -178,16 +270,32 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   background: var(--nd-buttonBg);
 }
 
+.userInfo {
+  min-width: 0;
+  overflow: hidden;
+}
+
 .userName {
   font-size: 0.85em;
-  color: var(--nd-fg);
+  font-weight: bold;
+  color: var(--nd-fgHighlighted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.userHandle {
+  font-size: 0.75em;
+  opacity: 0.6;
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .more {
-  padding: 0;
+  padding: 4px 12px;
   border: none;
   background: none;
   color: var(--nd-accent);
@@ -195,6 +303,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   font-weight: bold;
   cursor: pointer;
   text-align: left;
+  flex-shrink: 0;
   transition: opacity var(--nd-duration-base);
 
   &:hover {
