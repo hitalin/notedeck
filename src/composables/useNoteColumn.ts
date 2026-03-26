@@ -27,6 +27,7 @@ import {
 } from '@/composables/useNoteColumnCache'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useNoteList } from '@/composables/useNoteList'
+import { useNoteScrollerRef } from '@/composables/useNoteScrollerRef'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
@@ -81,7 +82,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     postForm,
     handlers,
     scroller,
-    onScroll,
+    onScrollReport,
   } = useColumnSetup(config.getColumn, {
     isOffline: () => isOffline.value,
   })
@@ -387,7 +388,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   function handleScroll() {
     streamingBatch?.handleScroll()
-    onScroll(loadMore)
+    onScrollReport()
   }
 
   function scrollToTop() {
@@ -667,21 +668,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     streamingBatch?.resetBatch()
   })
 
-  // Ref for NoteScroller component — syncs its scroll container to the scroller ref
-  const noteScrollerRef = ref<{
-    getElement: () => HTMLElement | null
-    scrollToIndex: (
-      index: number,
-      opts?: { align?: string; behavior?: string },
-    ) => void
-  } | null>(null)
-  watch(
-    noteScrollerRef,
-    () => {
-      scroller.value = noteScrollerRef.value?.getElement() ?? null
-    },
-    { flush: 'post' },
-  )
+  const { noteScrollerRef } = useNoteScrollerRef(scroller)
 
   return {
     account,

@@ -53,6 +53,8 @@ export function insertIntoSorted(
 ): NormalizedNote[] {
   if (batch.length === 0) return sorted
   if (sorted.length === 0) return sortByCreatedAtDesc([...batch])
+  // Fast path: single-element batch (most common for streaming) needs no copy/sort
+  if (batch.length === 1) return mergeSortedNotes(batch, sorted)
   const sortedBatch = sortByCreatedAtDesc([...batch])
   return mergeSortedNotes(sortedBatch, sorted)
 }

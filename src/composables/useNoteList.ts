@@ -41,9 +41,14 @@ export function useNoteList(options: UseNoteListOptions) {
       const trimmed =
         newNotes.length > maxNotes ? newNotes.slice(0, maxNotes) : newNotes
       noteStore.put(trimmed)
-      orderedIds.value = trimmed.map((n) => n.id)
+      const ids: string[] = new Array(trimmed.length)
       noteIds.clear()
-      for (const n of trimmed) noteIds.add(n.id)
+      for (let i = 0; i < trimmed.length; i++) {
+        const id = trimmed[i].id
+        ids[i] = id
+        noteIds.add(id)
+      }
+      orderedIds.value = ids
     },
   })
 

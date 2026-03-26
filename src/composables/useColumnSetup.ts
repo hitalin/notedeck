@@ -230,6 +230,8 @@ export function useColumnSetup(
   const { reportScroll } = useScrollDirection()
 
   let lastScrollCheck = 0
+
+  /** Scroll handler with load-more detection (for non-NoteScroller columns) */
   function onScroll(loadMore: () => void) {
     const el = scroller.value ?? undefined
     if (!el) return
@@ -242,6 +244,12 @@ export function useColumnSetup(
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
       loadMore()
     }
+  }
+
+  /** Scroll handler without load-more (for NoteScroller columns that use @near-end) */
+  function onScrollReport() {
+    const el = scroller.value ?? undefined
+    if (el) reportScroll(el.scrollTop)
   }
 
   return {
@@ -283,5 +291,6 @@ export function useColumnSetup(
     // Virtual scroller
     scroller,
     onScroll,
+    onScrollReport,
   }
 }

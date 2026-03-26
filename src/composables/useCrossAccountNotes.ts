@@ -1,6 +1,7 @@
-import { onMounted, ref, shallowRef, watch } from 'vue'
+import { onMounted, type Ref, shallowRef } from 'vue'
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
+import { useNoteScrollerRef } from '@/composables/useNoteScrollerRef'
 import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
 import { AppError } from '@/utils/errors'
@@ -16,10 +17,10 @@ export interface CrossAccountNotesOptions {
   isCrossAccount: () => boolean
 
   /** Loading / error / scroller refs from useColumnSetup */
-  isLoading: ReturnType<typeof ref<boolean>>
-  error: ReturnType<typeof ref<AppError | null>>
-  scroller: ReturnType<typeof ref<HTMLElement | null>>
-  onScroll: (loadMore: () => void) => void
+  isLoading: Ref<boolean>
+  error: Ref<AppError | null>
+  scroller: Ref<HTMLElement | null>
+  onScrollReport: () => void
 }
 
 /** Promise.allSettled の結果からノートを集約 */
@@ -51,29 +52,21 @@ function dedup(
 }
 
 export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
-  const { fetchNotes, isCrossAccount, isLoading, error, scroller, onScroll } =
-    options
+  const {
+    fetchNotes,
+    isCrossAccount,
+    isLoading,
+    error,
+    scroller,
+    onScrollReport,
+  } = options
 
   const accountsStore = useAccountsStore()
   const multiAdapters = useMultiAccountAdapters()
   const noteStore = useNoteStore()
 
   const notes = shallowRef<NormalizedNote[]>([])
-  const noteScrollerRef = ref<{
-    getElement: () => HTMLElement | null
-    scrollToIndex: (
-      index: number,
-      opts?: { align?: string; behavior?: string },
-    ) => void
-  } | null>(null)
-
-  watch(
-    noteScrollerRef,
-    () => {
-      scroller.value = noteScrollerRef.value?.getElement() ?? null
-    },
-    { flush: 'post' },
-  )
+  const { noteScrollerRef } = useNoteScrollerRef(scroller)
 
   function scrollToTop() {
     scroller.value?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -130,7 +123,7 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
   }
 
   function handleScroll() {
-    onScroll(loadMoreCrossAccount)
+    onScrollReport()
   }
 
   async function removeNote(note: NormalizedNote) {
