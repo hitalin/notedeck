@@ -12,7 +12,7 @@ use tokio::sync::{watch, Mutex, RwLock, Semaphore};
 
 const CACHE_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60); // 7 days
 const MAX_FILE_SIZE: u64 = 20 * 1024 * 1024; // 20MB
-const MAX_CONCURRENT_FETCHES: usize = 50;
+const MAX_CONCURRENT_FETCHES: usize = 20;
 // Negative cache TTLs by error class
 const NEGATIVE_TTL_CLIENT: Duration = Duration::from_secs(24 * 60 * 60); // 4xx: 24h
 const NEGATIVE_TTL_SERVER: Duration = Duration::from_secs(2 * 60); // 5xx: 2min

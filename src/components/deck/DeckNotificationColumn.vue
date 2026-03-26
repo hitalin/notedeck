@@ -121,7 +121,7 @@ function closeUserPopup() {
   userPopup.forceClose()
 }
 
-const MAX_NOTIFICATIONS = 500
+const MAX_NOTIFICATIONS = 300
 const notifications = shallowRef<NormalizedNotification[]>([])
 const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 
