@@ -1,6 +1,10 @@
 <script setup lang="ts" generic="T extends { id: string }">
-import { useVirtualizer } from '@tanstack/vue-virtual'
-import { computed, ref, watch } from 'vue'
+import {
+  useVirtualizer,
+  type VirtualItem,
+  type Virtualizer,
+} from '@tanstack/vue-virtual'
+import { computed, ref } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -22,9 +26,10 @@ const emit = defineEmits<{
 
 const scrollContainer = ref<HTMLElement | null>(null)
 
-// Dynamic estimateSize — moving average of measured item heights.
-// Updated every 20 measurements to avoid scrollbar thumb jitter.
-let _measuredSum = 0
+// Dynamic estimateSize — exponential moving average (EMA) of measured item heights.
+// Converges fast during bootstrap (first 5), then tracks recent height trends.
+const EMA_ALPHA = 0.15
+let _emaValue = props.estimatedHeight
 let _measuredCount = 0
 const dynamicEstimate = ref(props.estimatedHeight)
 
@@ -32,8 +37,13 @@ const virtualizerOptions = computed(() => ({
   count: props.items.length,
   getScrollElement: () => scrollContainer.value,
   estimateSize: () => dynamicEstimate.value,
-  overscan: 7,
+  overscan: 5,
   getItemKey: (index: number) => props.items[index]?.id ?? index,
+  shouldAdjustScrollPositionOnItemSizeChange: (
+    item: VirtualItem,
+    _delta: number,
+    instance: Virtualizer<HTMLElement, Element>,
+  ) => item.start < instance.getScrollOffset() + instance.scrollAdjustments,
 }))
 
 const virtualizer = useVirtualizer(virtualizerOptions)
@@ -73,12 +83,17 @@ function measureElement(el: unknown) {
   if (!(el instanceof HTMLElement)) return
   virtualizer.value.measureElement(el)
   const h = el.offsetHeight
-  if (h > 0) {
-    _measuredSum += h
-    _measuredCount++
-    if (_measuredCount % 20 === 0) {
-      dynamicEstimate.value = Math.round(_measuredSum / _measuredCount)
-    }
+  if (h <= 0) return
+
+  _measuredCount++
+  if (_measuredCount <= 5) {
+    // Bootstrap: simple incremental average for fast convergence
+    _emaValue += (h - _emaValue) / _measuredCount
+  } else {
+    _emaValue = EMA_ALPHA * h + (1 - EMA_ALPHA) * _emaValue
+  }
+  if (_measuredCount <= 5 || _measuredCount % 5 === 0) {
+    dynamicEstimate.value = Math.round(_emaValue)
   }
 }
 
@@ -96,11 +111,9 @@ function onScroll(e: Event) {
   }
 }
 
-// Re-measure all when items change (e.g. tab switch, streaming, load-more)
-watch(
-  () => props.items.length,
-  () => virtualizer.value.measure(),
-)
+// NOTE: Do NOT call virtualizer.measure() on items.length change.
+// measure() clears the entire itemSizeCache, forcing all items back to estimateSize.
+// TanStack recalculates automatically when options.count changes via the computed.
 
 defineExpose({
   getElement: () => scrollContainer.value,
@@ -169,6 +182,7 @@ defineSlots<{
   left: 0;
   width: 100%;
   contain: layout style paint;
+  will-change: transform;
 }
 
 /* Misskey-style slide-in animation for streaming notes.
