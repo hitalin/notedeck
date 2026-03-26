@@ -17,10 +17,12 @@ import { useDeckStore } from '@/stores/deck'
 import type { CustomTimelineInfo } from '@/utils/customTimelines'
 import {
   clearAvailableTlCache,
+  clearRuntimeDenied,
   detectAvailableTimelines,
   detectCustomTimelines,
   detectFilterKeys,
   findModeKeyForTimeline,
+  markTimelineDenied,
 } from '@/utils/customTimelines'
 import { matchesFilter } from '@/utils/timelineFilter'
 import DeckNoteColumn from './DeckNoteColumn.vue'
@@ -65,13 +67,15 @@ const noteColumnConfig: NoteColumnConfig = {
         ...buildTimelineOptions(),
       })
     } catch (e) {
-      // Handle "disabled" timeline errors: refresh policies and switch TL
+      // Handle "disabled" timeline errors: forcibly remove the TL tab and switch
       if (String(e).includes('disabled')) {
-        await refreshPolicies()
-        if (!availableStandardTl.value.includes(tlType.value)) {
-          switchTl('home')
-          return []
-        }
+        const aid = props.column.accountId
+        if (aid) markTimelineDenied(aid, tlType.value)
+        availableStandardTl.value = availableStandardTl.value.filter(
+          (t) => t !== tlType.value,
+        )
+        switchTl(availableStandardTl.value[0] ?? 'home')
+        return []
       }
       throw e
     }
@@ -146,11 +150,16 @@ const customTlIcon = computed(() => {
 
 // --- Mode state (per-account, per-TL) ---
 const tlModes = ref<Record<string, boolean>>({})
+const policyLoaded = ref(false)
 
 const allTlTypes = computed(() => {
   if (!connectReady.value) return [] // Policy detection not yet complete
+  if (!policyLoaded.value) return TL_TYPES.map((t) => t) // No account — show all
   const allowed = availableStandardTl.value
-  if (allowed.length === 0) return TL_TYPES.map((t) => t) // No account — show all
+  if (allowed.length === 0) {
+    // Policies loaded but nothing available — show home only as safe fallback
+    return TL_TYPES.filter((t) => t.value === 'home')
+  }
   const allowedSet = new Set(allowed)
   const standard = TL_TYPES.filter((t) => allowedSet.has(t.value))
   for (const ct of customTimelines.value) {
@@ -286,6 +295,7 @@ async function applyPolicies(accountId: string, host: string) {
     ...customTimelines.value.map((c) => c.type),
   ]
   tlModes.value = availability.modes
+  policyLoaded.value = true
 }
 
 async function refreshPolicies() {
@@ -326,6 +336,8 @@ useSwipeTab(
 watch(
   () => accountsStore.modeVersion,
   async () => {
+    const accountId = props.column.accountId
+    if (accountId) clearRuntimeDenied(accountId)
     await refreshPolicies()
     if (!availableStandardTl.value.includes(tlType.value)) {
       switchTl(availableStandardTl.value[0] ?? 'local')
