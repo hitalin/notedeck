@@ -109,8 +109,8 @@
   /* Transition duration */
   --nd-duration-fast: 0.1s;
   --nd-duration-base: 0.15s;
-  --nd-duration-slow: 0.2s;
-  --nd-duration-slower: 0.3s;
+  --nd-duration-slow: 0.15s;
+  --nd-duration-slower: 0.2s;
   /* Easing */
   --nd-ease-pop: cubic-bezier(0, 0, 0.2, 1);
   /* App chrome offsets (overridden per platform) */

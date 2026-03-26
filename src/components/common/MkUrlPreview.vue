@@ -91,7 +91,7 @@ onMounted(() => {
         fetch()
       }
     },
-    { rootMargin: '600px' },
+    { rootMargin: '200px' },
   )
   observer.observe(el.value)
 })

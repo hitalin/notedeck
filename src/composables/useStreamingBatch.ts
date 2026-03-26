@@ -33,7 +33,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       const after = new Set(animatingIds.value)
       for (const id of batchIds) after.delete(id)
       animatingIds.value = after
-    }, 700)
+    }, 350)
     _animTimers.add(timer)
   }
 

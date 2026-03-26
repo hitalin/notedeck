@@ -16,7 +16,7 @@ use super::{
 };
 
 /// Maximum number of concurrent OGP prefetch requests per timeline load
-const MAX_OGP_CONCURRENT: usize = 10;
+const MAX_OGP_CONCURRENT: usize = 20;
 
 // --- Timelines ---
 

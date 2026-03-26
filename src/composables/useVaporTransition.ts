@@ -21,7 +21,7 @@ export function useVaporTransition(
   show: Ref<boolean>,
   options: VaporTransitionOptions = {},
 ) {
-  const { enterDuration = 300, leaveDuration = 300 } = options
+  const { enterDuration = 200, leaveDuration = 200 } = options
   const visible = ref(show.value)
   const entering = ref(false)
   const leaving = ref(false)
@@ -126,7 +126,7 @@ export function useVaporTransitionGroup<T extends HasId>(
   source: Ref<T[]>,
   options: VaporTransitionGroupOptions = {},
 ) {
-  const { enterDuration = 300, leaveDuration = 300 } = options
+  const { enterDuration = 200, leaveDuration = 200 } = options
   const enteringIds = shallowRef<ReadonlySet<string | number>>(new Set())
   const leavingMap = shallowRef<ReadonlyMap<string | number, T>>(new Map())
   const _timers = new Set<ReturnType<typeof setTimeout>>()

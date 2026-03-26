@@ -15,10 +15,10 @@ const MAX_FILE_SIZE: u64 = 20 * 1024 * 1024; // 20MB
 const MAX_CONCURRENT_FETCHES: usize = 50;
 // Negative cache TTLs by error class
 const NEGATIVE_TTL_CLIENT: Duration = Duration::from_secs(24 * 60 * 60); // 4xx: 24h
-const NEGATIVE_TTL_SERVER: Duration = Duration::from_secs(5 * 60); // 5xx: 5min
-const NEGATIVE_TTL_NETWORK: Duration = Duration::from_secs(60); // timeout/conn: 1min
+const NEGATIVE_TTL_SERVER: Duration = Duration::from_secs(2 * 60); // 5xx: 2min
+const NEGATIVE_TTL_NETWORK: Duration = Duration::from_secs(30); // timeout/conn: 30s
 const MEMORY_CACHE_MAX_ITEM: usize = 64 * 1024; // 64KB
-const MEMORY_CACHE_MAX_TOTAL: usize = 4 * 1024 * 1024; // 4MB
+const MEMORY_CACHE_MAX_TOTAL: usize = 8 * 1024 * 1024; // 8MB
 
 /// Circuit breaker: block an entire host after this many consecutive failures.
 const CIRCUIT_BREAKER_THRESHOLD: u32 = 3;
