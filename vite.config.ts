@@ -157,7 +157,7 @@ export default defineConfig({
           ) {
             return 'vendor-vue'
           }
-          if (id.includes('node_modules/@syuilo/aiscript/')) {
+          if (id.includes('node_modules/@syuilo/aiscript')) {
             return 'vendor-aiscript'
           }
           if (

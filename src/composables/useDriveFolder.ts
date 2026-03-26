@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import type { DriveFolder, NormalizedDriveFile } from '@/adapters/types'
 import { AppError } from '@/utils/errors'
 import { invoke } from '@/utils/tauriInvoke'
@@ -12,8 +12,8 @@ export interface UseDriveFolderOptions {
 export function useDriveFolder(options: UseDriveFolderOptions) {
   const currentFolderId = ref<string | null>(options.initialFolderId ?? null)
   const folderStack = ref<DriveFolder[]>([])
-  const folders = ref<DriveFolder[]>([])
-  const files = ref<NormalizedDriveFile[]>([])
+  const folders = shallowRef<DriveFolder[]>([])
+  const files = shallowRef<NormalizedDriveFile[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
 
