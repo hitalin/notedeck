@@ -92,10 +92,10 @@ let _lastNearEnd = 0
 function onScroll(e: Event) {
   emit('scroll', e)
   const now = Date.now()
-  if (now - _lastNearEnd < 200) return
+  if (now - _lastNearEnd < 100) return
   const items = virtualizer.value.getVirtualItems()
   const last = items[items.length - 1]
-  if (last && last.index >= props.items.length - 5) {
+  if (last && last.index >= props.items.length - 10) {
     _lastNearEnd = now
     emit('near-end')
   }
@@ -172,6 +172,7 @@ defineSlots<{
   left: 0;
   width: 100%;
   contain: layout style paint;
+  content-visibility: auto;
 }
 
 /* Misskey-style slide-in animation for streaming notes.

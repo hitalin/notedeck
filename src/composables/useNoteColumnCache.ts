@@ -12,7 +12,7 @@ interface ColumnSnapshot {
 }
 
 const columnSnapshots = new Map<string, ColumnSnapshot>()
-const SNAPSHOT_TTL = 5 * 60_000 // 5 minutes
+const SNAPSHOT_TTL = 10 * 60_000 // 10 minutes
 
 /** Save notes + scroll position for instant restore on re-mount. */
 export function saveSnapshot(
