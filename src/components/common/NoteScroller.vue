@@ -43,7 +43,10 @@ const virtualizerOptions = computed(() => ({
     item: VirtualItem,
     _delta: number,
     instance: Virtualizer<HTMLElement, Element>,
-  ) => item.start < instance.getScrollOffset() + instance.scrollAdjustments,
+  ) =>
+    item.start <
+    (instance.scrollOffset ?? 0) +
+      (instance as unknown as { scrollAdjustments: number }).scrollAdjustments,
 }))
 
 const virtualizer = useVirtualizer(virtualizerOptions)
