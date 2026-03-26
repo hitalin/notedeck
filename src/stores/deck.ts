@@ -4,6 +4,8 @@ import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useDeckWallpaperStore } from '@/stores/deckWallpaper'
+import { buildColumnUri } from '@/utils/columnUri'
+import * as deckLayout from '@/utils/deckLayout'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 export type ColumnType =
@@ -173,53 +175,15 @@ export const useDeckStore = defineStore('deck', () => {
     if (col) activeColumnId.value = col.id
   }
 
-  const localUriBuilders: Partial<
-    Record<DeckColumn['type'], (col: DeckColumn) => string>
-  > = {
-    widget: (col) => `notedeck://widget/${col.id}`,
-    aiscript: (col) => `notedeck://aiscript/${col.id}`,
-    play: (col) => `notedeck://play/${col.id}`,
-    apiDocs: () => 'notedeck://api/docs',
-    lookup: (col) => `notedeck://lookup/${col.id}`,
-    serverInfo: (col) => `notedeck://server-info/${col.id}`,
-  }
-
-  const accountUriBuilders: Partial<
-    Record<DeckColumn['type'], (col: DeckColumn, host: string) => string>
-  > = {
-    timeline: (col, host) => `notedeck://${host}/timeline/${col.tl ?? 'home'}`,
-    notifications: (_, host) => `notedeck://${host}/notifications`,
-    search: (col, host) =>
-      `notedeck://${host}/search${col.query ? `?q=${col.query}` : ''}`,
-    list: (col, host) => `notedeck://${host}/list/${col.listId}`,
-    antenna: (col, host) => `notedeck://${host}/antenna/${col.antennaId}`,
-    favorites: (_, host) => `notedeck://${host}/favorites`,
-    clip: (col, host) => `notedeck://${host}/clip/${col.clipId}`,
-    channel: (col, host) => `notedeck://${host}/channel/${col.channelId}`,
-    user: (col, host) => `notedeck://${host}/user/${col.userId}`,
-    mentions: (_, host) => `notedeck://${host}/mentions`,
-    specified: (_, host) => `notedeck://${host}/direct`,
-    chat: (_, host) => `notedeck://${host}/chat`,
-    announcements: (_, host) => `notedeck://${host}/announcements`,
-    drive: (_, host) => `notedeck://${host}/drive`,
-    gallery: (_, host) => `notedeck://${host}/gallery`,
-  }
-
   const activeColumnUri = computed(() => {
     if (!activeColumnId.value) return null
     const col = getColumn(activeColumnId.value)
     if (!col) return null
 
-    const localBuilder = localUriBuilders[col.type]
-    if (localBuilder) return localBuilder(col)
-
-    if (!col.accountId) return null
+    if (!col.accountId) return buildColumnUri(col, null)
     const accountsStore = useAccountsStore()
     const account = accountsStore.accounts.find((a) => a.id === col.accountId)
-    if (!account) return null
-
-    const accountBuilder = accountUriBuilders[col.type]
-    return accountBuilder ? accountBuilder(col, account.host) : null
+    return buildColumnUri(col, account?.host ?? null)
   })
 
   function addColumn(partial: Omit<DeckColumn, 'id'>) {
@@ -280,34 +244,13 @@ export const useDeckStore = defineStore('deck', () => {
     }
   }
 
-  /** Find the group index containing a column ID. */
-  function groupIndexOf(colId: string, layoutSnapshot?: string[][]): number {
-    const l = layoutSnapshot ?? layout.value
-    for (let i = 0; i < l.length; i++) {
-      if (l[i]?.includes(colId)) return i
-    }
-    return -1
-  }
-
   function applyLayout(newLayout: string[][]) {
     profileStore.setLayout(newLayout)
   }
 
   function swapColumns(aIdx: number, bIdx: number) {
-    if (
-      aIdx < 0 ||
-      bIdx < 0 ||
-      aIdx >= layout.value.length ||
-      bIdx >= layout.value.length
-    )
-      return
-    const newLayout = [...layout.value]
-    const a = newLayout[aIdx]
-    const b = newLayout[bIdx]
-    if (!a || !b) return
-    newLayout[aIdx] = b
-    newLayout[bIdx] = a
-    applyLayout(newLayout)
+    const result = deckLayout.swapGroups(layout.value, aIdx, bIdx)
+    if (result) applyLayout(result)
   }
 
   function stackColumn(
@@ -315,98 +258,32 @@ export const useDeckStore = defineStore('deck', () => {
     toId: string,
     position: 'above' | 'below',
   ) {
-    if (fromId === toId) return
-    const fromGroupIdx = groupIndexOf(fromId)
-    const toGroupIdx = groupIndexOf(toId)
-    if (fromGroupIdx < 0 || toGroupIdx < 0) return
-
-    const fromGroup = layout.value[fromGroupIdx]
-    if (!fromGroup) return
-    const newFromGroup = fromGroup.filter((id) => id !== fromId)
-
-    const newLayout = [...layout.value]
-    if (newFromGroup.length === 0) {
-      newLayout.splice(fromGroupIdx, 1)
-    } else {
-      newLayout[fromGroupIdx] = newFromGroup
-    }
-
-    const targetIdx = groupIndexOf(toId, newLayout)
-    if (targetIdx < 0) return
-    const targetGroup = newLayout[targetIdx]
-    if (!targetGroup) return
-
-    const toPos = targetGroup.indexOf(toId)
-    const insertAt = position === 'above' ? toPos : toPos + 1
-    const newTargetGroup = [...targetGroup]
-    newTargetGroup.splice(insertAt, 0, fromId)
-    newLayout[targetIdx] = newTargetGroup
-
-    applyLayout(newLayout)
+    const result = deckLayout.stackColumn(layout.value, fromId, toId, position)
+    if (result) applyLayout(result)
   }
 
   function swapInGroup(idA: string, idB: string) {
-    if (idA === idB) return
-    const groupIdx = groupIndexOf(idA)
-    if (groupIdx < 0) return
-    const group = layout.value[groupIdx]
-    if (!group) return
-    const posA = group.indexOf(idA)
-    const posB = group.indexOf(idB)
-    if (posA < 0 || posB < 0) return
-    const newGroup = [...group]
-    newGroup[posA] = idB
-    newGroup[posB] = idA
-    const newLayout = [...layout.value]
-    newLayout[groupIdx] = newGroup
-    applyLayout(newLayout)
+    const result = deckLayout.swapInGroup(layout.value, idA, idB)
+    if (result) applyLayout(result)
   }
 
   function insertColumnAt(id: string, targetIndex: number) {
-    const groupIdx = groupIndexOf(id)
-    if (groupIdx < 0) return
-    const group = layout.value[groupIdx]
-    if (!group) return
-
-    if (group.length === 1 && groupIdx === targetIndex) return
-
-    const newGroup = group.filter((colId) => colId !== id)
-    const newLayout = [...layout.value]
-    if (newGroup.length === 0) {
-      newLayout.splice(groupIdx, 1)
-    } else {
-      newLayout[groupIdx] = newGroup
-    }
-
-    const adjustedIndex =
-      newGroup.length === 0 && targetIndex > groupIdx
-        ? targetIndex - 1
-        : targetIndex
-    const clampedIndex = Math.max(0, Math.min(adjustedIndex, newLayout.length))
-    newLayout.splice(clampedIndex, 0, [id])
-    applyLayout(newLayout)
+    const result = deckLayout.insertColumnAt(layout.value, id, targetIndex)
+    if (result) applyLayout(result)
   }
 
   function unstackColumn(id: string) {
-    const groupIdx = groupIndexOf(id)
-    if (groupIdx < 0) return
-    const group = layout.value[groupIdx]
-    if (!group || group.length <= 1) return
-
-    const newGroup = group.filter((colId) => colId !== id)
-    const newLayout = [...layout.value]
-    newLayout[groupIdx] = newGroup
-    newLayout.splice(groupIdx + 1, 0, [id])
-    applyLayout(newLayout)
+    const result = deckLayout.unstackColumn(layout.value, id)
+    if (result) applyLayout(result)
   }
 
   function moveLeft(id: string) {
-    const idx = groupIndexOf(id)
+    const idx = deckLayout.groupIndexOf(layout.value, id)
     if (idx > 0) swapColumns(idx, idx - 1)
   }
 
   function moveRight(id: string) {
-    const idx = groupIndexOf(id)
+    const idx = deckLayout.groupIndexOf(layout.value, id)
     if (idx < layout.value.length - 1) swapColumns(idx, idx + 1)
   }
 
