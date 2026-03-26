@@ -185,7 +185,6 @@ defineSlots<{
   left: 0;
   width: 100%;
   contain: layout style paint;
-  will-change: transform;
 }
 
 /* Misskey-style slide-in animation for streaming notes.

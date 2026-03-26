@@ -251,16 +251,17 @@ interface TlSnapshot {
   notes: NormalizedNote[]
   scrollTop: number
 }
+const SNAPSHOT_MAX_NOTES = 50
 const tlSnapshots = new Map<TimelineType, TlSnapshot>()
 
 async function switchTl(type: TimelineType) {
   if (type === tlType.value) return
 
-  // Save current tab snapshot
+  // Save current tab snapshot (limit stored notes to reduce memory)
   const col = noteColumnRef.value
   if (col) {
     tlSnapshots.set(tlType.value, {
-      notes: [...(col.notes ?? [])],
+      notes: (col.notes ?? []).slice(0, SNAPSHOT_MAX_NOTES),
       scrollTop: (col.scroller as HTMLElement | undefined)?.scrollTop ?? 0,
     })
   }
