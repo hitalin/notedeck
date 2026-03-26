@@ -706,6 +706,7 @@ function closeMentionPopup() {
     :note-id="effectiveNote.id"
     :account-id="note._accountId"
     :server-host="effectiveNote._serverHost"
+    @open-modal="(r: string) => reactionModalRef?.open(r)"
   />
 
   <NoteReactionUsersModal

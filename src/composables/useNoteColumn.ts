@@ -27,6 +27,7 @@ import {
 } from '@/composables/useNoteColumnCache'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useNoteList } from '@/composables/useNoteList'
+import { useNoteScrollerRef } from '@/composables/useNoteScrollerRef'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
@@ -81,7 +82,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     postForm,
     handlers,
     scroller,
-    onScroll,
+    onScrollReport,
   } = useColumnSetup(config.getColumn, {
     isOffline: () => isOffline.value,
   })
@@ -293,10 +294,15 @@ export function useNoteColumn(config: NoteColumnConfig) {
       isOffline.value = false
 
       // Background: verify cached notes not confirmed by fresh API fetch
-      if (cachedIds.length > 0) {
+      if (cachedIds.length > 0 && column.accountId) {
         const unverified = cachedIds.filter((id) => !freshIds.has(id))
         if (unverified.length > 0) {
-          purgeStaleCachedNotes(adapter, unverified, () => !!getAdapter())
+          purgeStaleCachedNotes(
+            adapter,
+            unverified,
+            () => !!getAdapter(),
+            column.accountId,
+          )
         }
       }
     } catch (e) {
@@ -387,7 +393,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   function handleScroll() {
     streamingBatch?.handleScroll()
-    onScroll(loadMore)
+    onScrollReport()
   }
 
   function scrollToTop() {
@@ -522,13 +528,19 @@ export function useNoteColumn(config: NoteColumnConfig) {
     }
 
     // Background: verify cached notes not confirmed by fresh API fetch
-    if (cached.length > 0 && adapter) {
+    const resumeColumn = config.getColumn()
+    if (cached.length > 0 && adapter && resumeColumn.accountId) {
       const freshIds = new Set(fetched.map((n) => n.id))
       const unverified = cached
         .map((n) => n.id)
         .filter((id) => !freshIds.has(id))
       if (unverified.length > 0) {
-        purgeStaleCachedNotes(adapter, unverified, () => !!getAdapter())
+        purgeStaleCachedNotes(
+          adapter,
+          unverified,
+          () => !!getAdapter(),
+          resumeColumn.accountId,
+        )
       }
     }
   }
@@ -667,21 +679,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     streamingBatch?.resetBatch()
   })
 
-  // Ref for NoteScroller component — syncs its scroll container to the scroller ref
-  const noteScrollerRef = ref<{
-    getElement: () => HTMLElement | null
-    scrollToIndex: (
-      index: number,
-      opts?: { align?: string; behavior?: string },
-    ) => void
-  } | null>(null)
-  watch(
-    noteScrollerRef,
-    () => {
-      scroller.value = noteScrollerRef.value?.getElement() ?? null
-    },
-    { flush: 'post' },
-  )
+  const { noteScrollerRef } = useNoteScrollerRef(scroller)
 
   return {
     account,

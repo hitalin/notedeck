@@ -5,10 +5,14 @@ import type { NoteReaction } from '@/adapters/types'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
+import { proxyUrl } from '@/utils/imageProxy'
 import { extractThemeVars } from '@/utils/themeVars'
+import MkEmoji from './MkEmoji.vue'
 import MkMfm from './MkMfm.vue'
 
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
+
+const PREVIEW_LIMIT = 10
 
 const props = defineProps<{
   noteId: string
@@ -23,6 +27,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
+  openModal: [reaction: string]
 }>()
 
 const { navigateToUser } = useNavigation()
@@ -50,10 +55,10 @@ async function fetchReactions() {
     reactions.value = await adapter.api.getNoteReactions(
       props.noteId,
       props.reaction,
-      11,
+      PREVIEW_LIMIT,
     )
   } catch {
-    // Non-critical popup
+    // Non-critical tooltip
   } finally {
     isLoading.value = false
   }
@@ -85,7 +90,7 @@ function onUserMouseEnter(e: MouseEvent, userId: string) {
   const column = document.querySelector('.deck-column') as HTMLElement | null
   if (column) userPopupTheme.value = extractThemeVars(column)
 
-  if (showUserPopup.value) return // Already showing — key change triggers re-render
+  if (showUserPopup.value) return
 
   hoverTimer = setTimeout(() => {
     showUserPopup.value = true
@@ -115,19 +120,31 @@ onUnmounted(() => {
 
 <template>
   <div
-    :class="$style.reactionUsersPopup"
+    :class="$style.root"
     class="_popup reaction-users-popup"
     :style="{ left: `${x}px`, top: `${y}px` }"
     @mouseleave="handleMouseLeave"
   >
-    <div v-if="isLoading" :class="$style.popupLoading">読み込み中...</div>
-    <template v-else>
-      <div v-if="reactions.length === 0" :class="$style.popupLoading">リアクションなし</div>
-      <template v-else>
+    <template v-if="!isLoading || reactions.length > 0">
+      <!-- Left: reaction icon -->
+      <div :class="$style.reaction">
+        <img
+          v-if="reactionUrl"
+          :src="proxyUrl(reactionUrl)"
+          :alt="reaction"
+          :class="$style.reactionIcon"
+          decoding="async"
+          loading="lazy"
+        />
+        <MkEmoji v-else :emoji="reaction" :class="$style.reactionIcon" />
+      </div>
+
+      <!-- Right: user list (original style) -->
+      <div :class="$style.users">
         <button
-          v-for="r in reactions.slice(0, 10)"
+          v-for="r in reactions"
           :key="r.id"
-          :class="$style.reactionUserRow"
+          :class="$style.userRow"
           @click.stop="onUserClick(r.user.id)"
           @mouseenter="onUserMouseEnter($event, r.user.id)"
           @mouseleave="onUserMouseLeave"
@@ -135,25 +152,29 @@ onUnmounted(() => {
           <img
             v-if="r.user.avatarUrl"
             :src="r.user.avatarUrl"
-            :class="$style.reactionUserAvatar"
+            :class="$style.avatar"
             width="24"
             height="24"
             loading="lazy"
             decoding="async"
           />
-          <div v-else :class="[$style.reactionUserAvatar, $style.reactionUserAvatarPlaceholder]" />
-          <div :class="$style.reactionUserInfo">
-            <span :class="$style.reactionUserName">
+          <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
+          <div :class="$style.userInfo">
+            <span :class="$style.userName">
               <MkMfm v-if="r.user.name" :text="r.user.name" :emojis="r.user.emojis" :server-host="serverHost" />
               <template v-else>{{ r.user.username }}</template>
             </span>
-            <span :class="$style.reactionUserUsername">@{{ r.user.username }}</span>
+            <span :class="$style.userHandle">@{{ r.user.username }}</span>
           </div>
         </button>
-        <div v-if="totalCount > 10" :class="$style.reactionUsersMore">
-          and {{ totalCount - 10 }} more
-        </div>
-      </template>
+        <button
+          v-if="totalCount > PREVIEW_LIMIT"
+          :class="$style.more"
+          @click.stop="emit('openModal', reaction)"
+        >
+          +{{ totalCount - reactions.length }}
+        </button>
+      </div>
     </template>
   </div>
 
@@ -172,14 +193,16 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" module>
-.reactionUsersPopup {
+.root {
   position: fixed;
   z-index: calc(var(--nd-z-popup) + 1);
-  width: 240px;
-  padding: 8px 0;
+  display: flex;
+  align-items: stretch;
+  max-width: 340px;
+  padding: 8px 0 8px 12px;
   pointer-events: auto;
 
-  /* Invisible bridge to catch the mouse in the gap between badge and popup */
+  /* Bridge to catch the mouse in the gap between badge and tooltip */
   &::before {
     content: '';
     position: absolute;
@@ -190,15 +213,33 @@ onUnmounted(() => {
   }
 }
 
-.popupLoading {
-  padding: 12px 16px;
-  text-align: center;
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  opacity: 0.5;
+.reaction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 10px;
+  margin-right: 2px;
+  border-right: 1px solid var(--nd-divider);
+  flex-shrink: 0;
 }
 
-.reactionUserRow {
+.reactionIcon {
+  height: 32px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+}
+
+.users {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-height: 96px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.userRow {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -217,7 +258,7 @@ onUnmounted(() => {
   }
 }
 
-.reactionUserAvatar {
+.avatar {
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -225,16 +266,16 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.reactionUserAvatarPlaceholder {
+.avatarPlaceholder {
   background: var(--nd-buttonBg);
 }
 
-.reactionUserInfo {
+.userInfo {
   min-width: 0;
   overflow: hidden;
 }
 
-.reactionUserName {
+.userName {
   font-size: 0.85em;
   font-weight: bold;
   color: var(--nd-fgHighlighted);
@@ -244,7 +285,7 @@ onUnmounted(() => {
   display: block;
 }
 
-.reactionUserUsername {
+.userHandle {
   font-size: 0.75em;
   opacity: 0.6;
   display: block;
@@ -253,10 +294,20 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.reactionUsersMore {
-  padding: 6px 12px 4px;
-  font-size: 0.75em;
-  opacity: 0.5;
-  text-align: center;
+.more {
+  padding: 4px 12px;
+  border: none;
+  background: none;
+  color: var(--nd-accent);
+  font-size: 0.85em;
+  font-weight: bold;
+  cursor: pointer;
+  text-align: left;
+  flex-shrink: 0;
+  transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 0.7;
+  }
 }
 </style>

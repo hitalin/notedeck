@@ -79,6 +79,27 @@ export interface TimelineAvailability {
 // Cache: accountId → availability
 const availableTlCache = new Map<string, TimelineAvailability>()
 
+// Runtime-denied: TL types that returned "disabled" errors at runtime.
+// Persists across policy refreshes until explicitly cleared (e.g., mode toggle).
+const runtimeDenied = new Map<string, Set<string>>()
+
+export function markTimelineDenied(accountId: string, tlType: string): void {
+  let set = runtimeDenied.get(accountId)
+  if (!set) {
+    set = new Set()
+    runtimeDenied.set(accountId, set)
+  }
+  set.add(tlType)
+}
+
+export function getRuntimeDenied(accountId: string): Set<string> {
+  return runtimeDenied.get(accountId) ?? new Set()
+}
+
+export function clearRuntimeDenied(accountId: string): void {
+  runtimeDenied.delete(accountId)
+}
+
 /**
  * Detect timeline availability and mode flags from user policies.
  * Scans both known standard policies and fork-specific *TlAvailable patterns.
@@ -120,13 +141,23 @@ export async function detectAvailableTimelines(
       }
     }
 
+    // Determine if server supports the policy system.
+    // If policies object is empty (no boolean keys returned), the server is
+    // likely too old to report availability — fall back to allowing all TLs.
+    const hasPolicySupport =
+      Object.keys(policies).length > 0 || Object.keys(modes).length > 0
+
     // Standard TLs
     const handledKeys = POLICY_HANDLED_KEYS
     for (const [policyKey, tlTypes] of Object.entries(POLICY_TIMELINE_MAP)) {
-      if (policies[policyKey] !== false) {
-        available.push(...tlTypes)
+      if (hasPolicySupport) {
+        if (policies[policyKey] === true) {
+          available.push(...tlTypes)
+        } else {
+          for (const t of tlTypes) denied.add(t)
+        }
       } else {
-        for (const t of tlTypes) denied.add(t)
+        available.push(...tlTypes)
       }
     }
 
@@ -136,7 +167,7 @@ export async function detectAvailableTimelines(
       const match = key.match(/^(.+)TlAvailable$/)
       if (!match) continue
       const type = match[1] as string
-      if (value !== false) {
+      if (value === true) {
         available.push(type)
       } else {
         denied.add(type)
@@ -144,8 +175,15 @@ export async function detectAvailableTimelines(
     }
   } catch (e) {
     console.warn('[availableTimelines] failed to detect policies:', e)
-    // Fallback: show all standard timelines
-    available.push('local', 'social', 'global')
+    // Conservative fallback: keep only 'home' (set on line 105)
+  }
+
+  // Apply runtime-denied types (from previous "disabled" API errors)
+  const rtDenied = getRuntimeDenied(accountId)
+  for (const d of rtDenied) {
+    denied.add(d)
+    const idx = available.indexOf(d as TimelineType)
+    if (idx >= 0) available.splice(idx, 1)
   }
 
   const result = { available, denied, modes }

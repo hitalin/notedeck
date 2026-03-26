@@ -25,7 +25,6 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
-use serde::Serialize;
 use zeroize::Zeroize;
 
 use tauri::Manager;
@@ -93,12 +92,6 @@ static MEDIA_EXT_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
     regex::Regex::new(r"(?i)\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mp3|ogg|wav)(\?.*)?$")
         .unwrap()
 });
-
-#[derive(Serialize)]
-pub struct TimelineEnriched {
-    pub notes: Vec<notecli::models::NormalizedNote>,
-    pub ogp_hints: HashMap<String, crate::ogp::OgpData>,
-}
 
 pub(crate) fn extract_ogp_urls(text: &str) -> Vec<String> {
     URL_RE

@@ -317,7 +317,7 @@ function closeUserPopup() {
             <div :class="$style.columnLoadingSpinner" />
           </div>
           <template v-if="!(isLoading && notes.length === 0)">
-            <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" :class="$style.tlScroller" @scroll="handleScroll">
+            <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" :class="$style.tlScroller" @scroll="handleScroll" @near-end="loadMore">
               <template #default="{ item, index }">
                 <div>
                   <MkNote

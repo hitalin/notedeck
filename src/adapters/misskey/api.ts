@@ -1,6 +1,4 @@
-import { populateOgpCache } from '@/composables/useOgpPreview'
 import { AppError } from '@/utils/errors'
-import type { OgpData } from '@/utils/ogp'
 import { invoke } from '@/utils/tauriInvoke'
 import type {
   Antenna,
@@ -26,11 +24,6 @@ import type {
   UserRelation,
 } from '../types'
 
-interface TimelineEnriched {
-  notes: NormalizedNote[]
-  ogp_hints: Record<string, OgpData>
-}
-
 export class MisskeyApi implements ApiAdapter {
   private accountId: string
   private hasToken: boolean
@@ -48,20 +41,8 @@ export class MisskeyApi implements ApiAdapter {
     type: TimelineType,
     options: TimelineOptions = {},
   ): Promise<NormalizedNote[]> {
-    if (!this.hasToken) {
-      return invoke('api_get_timeline', {
-        accountId: this.accountId,
-        timelineType: type,
-        options: {
-          limit: options.limit ?? 20,
-          sinceId: options.sinceId ?? null,
-          untilId: options.untilId ?? null,
-          filters: options.filters ?? null,
-          listId: options.listId ?? null,
-        },
-      })
-    }
-    const result = await invoke<TimelineEnriched>('api_get_timeline_enriched', {
+    // OGP prefetch is handled asynchronously on the Rust side via Tauri events
+    return invoke('api_get_timeline', {
       accountId: this.accountId,
       timelineType: type,
       options: {
@@ -72,10 +53,6 @@ export class MisskeyApi implements ApiAdapter {
         listId: options.listId ?? null,
       },
     })
-    if (result.ogp_hints && Object.keys(result.ogp_hints).length > 0) {
-      populateOgpCache(result.ogp_hints)
-    }
-    return result.notes
   }
 
   async getNote(noteId: string): Promise<NormalizedNote> {

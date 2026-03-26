@@ -28,8 +28,14 @@ const noteColumnConfig: NoteColumnConfig = {
 }
 
 // Cross-account state
-const { columnThemeVars, isLoading, error, handlers, scroller, onScroll } =
-  useColumnSetup(() => props.column)
+const {
+  columnThemeVars,
+  isLoading,
+  error,
+  handlers,
+  scroller,
+  onScrollReport,
+} = useColumnSetup(() => props.column)
 
 const {
   notes,
@@ -45,7 +51,7 @@ const {
   isLoading,
   error,
   scroller,
-  onScroll,
+  onScrollReport,
 })
 </script>
 

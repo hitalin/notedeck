@@ -1,4 +1,6 @@
+import { listen } from '@tauri-apps/api/event'
 import { ref } from 'vue'
+
 import type { OgpData } from '@/utils/ogp'
 import { invoke } from '@/utils/tauriInvoke'
 
@@ -33,6 +35,13 @@ export function populateOgpCache(hints: Record<string, OgpData>) {
   for (const [url, data] of Object.entries(hints)) {
     setOgpCache(url, data)
   }
+}
+
+/** Listen for background OGP prefetch results from Rust side. Call once at app init. */
+export function initOgpListener(): void {
+  listen<Record<string, OgpData>>('nd:ogp-hints', (event) => {
+    populateOgpCache(event.payload)
+  })
 }
 
 export function useOgpPreview(initialUrl: string, accountId?: string) {

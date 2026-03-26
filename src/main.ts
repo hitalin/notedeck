@@ -1,6 +1,7 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
+import { initOgpListener } from './composables/useOgpPreview'
 import { router, setupAccountRedirect } from './router'
 import { useAccountsStore } from './stores/accounts'
 import { useKeybindsStore } from './stores/keybinds'
@@ -49,6 +50,9 @@ themeStore.init()
 
 // Initialize keybinds file-based storage
 useKeybindsStore().init()
+
+// Listen for background OGP prefetch results from Rust side
+initOgpListener()
 
 // Start loading accounts early (runs in parallel with mount).
 // In Tauri, invoke('load_accounts') internally awaits AppState readiness,

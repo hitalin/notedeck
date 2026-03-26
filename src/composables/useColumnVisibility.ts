@@ -12,7 +12,8 @@ type VisibilityMap = Map<string, boolean>
 const COLUMN_VISIBILITY_KEY: InjectionKey<VisibilityMap> =
   Symbol('columnVisibility')
 
-/** Delay before unmounting an off-screen column (ms). */
+/** Delay before deactivating an off-screen column (ms).
+ *  With KeepAlive, deactivated columns are cached and restored instantly. */
 const UNLOAD_DELAY = 10_000
 
 type MountedMap = Map<string, boolean>
