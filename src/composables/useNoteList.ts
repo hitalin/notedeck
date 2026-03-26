@@ -44,7 +44,8 @@ export function useNoteList(options: UseNoteListOptions) {
       const ids: string[] = new Array(trimmed.length)
       noteIds.clear()
       for (let i = 0; i < trimmed.length; i++) {
-        const id = trimmed[i].id
+        // biome-ignore lint/style/noNonNullAssertion: bounded loop
+        const id = trimmed[i]!.id
         ids[i] = id
         noteIds.add(id)
       }

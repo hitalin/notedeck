@@ -37,6 +37,7 @@ const {
   isRefreshing,
   pullDistance,
   displayHeight,
+  loadMore,
 } = useNoteColumn({
   getColumn: () => props.column,
   fetch: (adapter, opts) =>

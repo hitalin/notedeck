@@ -294,14 +294,15 @@ export function useNoteColumn(config: NoteColumnConfig) {
       isOffline.value = false
 
       // Background: verify cached notes not confirmed by fresh API fetch
-      if (cachedIds.length > 0 && column.accountId) {
+      const currentColumn = config.getColumn()
+      if (cachedIds.length > 0 && currentColumn.accountId) {
         const unverified = cachedIds.filter((id) => !freshIds.has(id))
         if (unverified.length > 0) {
           purgeStaleCachedNotes(
             adapter,
             unverified,
             () => !!getAdapter(),
-            column.accountId,
+            currentColumn.accountId,
           )
         }
       }
