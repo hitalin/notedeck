@@ -375,6 +375,12 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
 }
 .install-cmd:hover .copy-hint{opacity:1}
 .install-cmd.copied .copy-hint{color:var(--accent)}
+.install-cmd code{background:none;font:inherit}
+.sh-prompt{color:var(--text-muted);user-select:none}
+.sh-cmd{color:#86b300;font-weight:700}
+.sh-sub{color:#e5c07b}
+.sh-flag{color:#c678dd}
+.sh-arg{color:#61afef}
 
 /* Footer */
 footer{text-align:center;padding:2.5rem 1.5rem;color:var(--text-muted);font-size:.85rem;opacity:.7}
