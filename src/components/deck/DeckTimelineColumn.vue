@@ -351,6 +351,14 @@ watch(
 // --- Startup: detect policies and custom TLs ---
 onMounted(async () => {
   const accountId = props.column.accountId
+
+  // Wait for accounts to load so accountMap is populated.
+  // Without this, host is undefined in production (Tauri IPC is slower),
+  // which skips the policy check and connects with an unauthorized TL type.
+  if (!accountsStore.isLoaded) {
+    await accountsStore.loadAccounts()
+  }
+
   const host = accountId
     ? accountsStore.accountMap.get(accountId)?.host
     : undefined
@@ -359,7 +367,11 @@ onMounted(async () => {
   if (host && accountId) {
     await Promise.all([applyPolicies(accountId, host), refreshFilterKeys()])
     if (!availableStandardTl.value.includes(tlType.value)) {
-      switchTl(availableStandardTl.value[0] ?? 'local')
+      // Only update tlType synchronously here — full reconnect will happen
+      // via connectReady watcher in useNoteColumn, avoiding a double-connect race.
+      const fallback = availableStandardTl.value[0] ?? 'local'
+      tlType.value = fallback
+      deckStore.updateColumn(props.column.id, { tl: fallback })
     }
   }
   connectReady.value = true
