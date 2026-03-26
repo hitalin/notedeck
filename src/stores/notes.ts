@@ -5,7 +5,7 @@ import type { NormalizedNote, NoteUpdateEvent } from '@/adapters/types'
 /** Maximum number of notes retained in the global store.
  *  Notes exceeding this limit are evicted in insertion order (oldest first).
  *  Keeps memory bounded during long sessions with many columns. */
-const NOTE_STORE_MAX = 2000
+const NOTE_STORE_MAX = 1200
 
 export const useNoteStore = defineStore('notes', () => {
   const noteMap = shallowRef(new Map<string, NormalizedNote>())

@@ -5,9 +5,13 @@ import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 export const useEmojisStore = defineStore('emojis', () => {
   // host → (shortcode → url) — for fast emoji resolution in notes
+  // Cap entries per host to limit memory (large servers have 5000+ emoji)
+  const MAX_CACHE_PER_HOST = 1500
   const cache = shallowRef(new Map<string, Record<string, string>>())
 
   // host → ServerEmoji[] — for the reaction picker (with category/aliases)
+  // Only keep the most recent MAX_EMOJI_LIST_HOSTS hosts to bound memory
+  const MAX_EMOJI_LIST_HOSTS = 3
   const emojiList = shallowRef(new Map<string, ServerEmoji[]>())
 
   // In-flight dedup: avoid parallel fetches for the same host
@@ -60,9 +64,13 @@ export const useEmojisStore = defineStore('emojis', () => {
   loadFromStorage()
 
   function set(host: string, emojis: ServerEmoji[]) {
-    // Build shortcode→url lookup for resolution
+    // Build shortcode→url lookup for resolution (cap per host)
     const lookup: Record<string, string> = {}
-    for (const e of emojis) {
+    const capped =
+      emojis.length > MAX_CACHE_PER_HOST
+        ? emojis.slice(0, MAX_CACHE_PER_HOST)
+        : emojis
+    for (const e of capped) {
       lookup[e.name] = e.url
     }
 
@@ -70,8 +78,13 @@ export const useEmojisStore = defineStore('emojis', () => {
     nextCache.set(host, lookup)
     cache.value = nextCache
 
+    // emojiList: only keep the most recent hosts to bound memory
     const nextList = new Map(emojiList.value)
     nextList.set(host, emojis)
+    if (nextList.size > MAX_EMOJI_LIST_HOSTS) {
+      const oldest = nextList.keys().next().value
+      if (oldest !== undefined) nextList.delete(oldest)
+    }
     emojiList.value = nextList
 
     pending.delete(host)
