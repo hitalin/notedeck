@@ -1,3 +1,4 @@
+import type { Ref } from 'vue'
 import {
   computed,
   nextTick,
@@ -62,6 +63,11 @@ export interface NoteColumnConfig {
   ) => Promise<{ notes: NormalizedNote[]; mode: 'replace' | 'prepend' }>
   /** Filter cached notes after loading from SQLite (e.g. timeline column filters) */
   filterCachedNotes?: (notes: NormalizedNote[]) => NormalizedNote[]
+  /**
+   * When provided, delays `connect()` until this ref becomes `true`.
+   * Used by timeline columns to wait for policy detection before connecting.
+   */
+  connectReady?: Ref<boolean>
 }
 
 export function useNoteColumn(config: NoteColumnConfig) {
@@ -700,7 +706,17 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   onMounted(() => {
     window.addEventListener('deck-resume', onResume)
-    connect(true)
+    if (config.connectReady && !config.connectReady.value) {
+      // Delay connect until the parent signals readiness (e.g. policy detection)
+      const stop = watch(config.connectReady, (ready) => {
+        if (ready) {
+          stop()
+          connect(true)
+        }
+      })
+    } else {
+      connect(true)
+    }
   })
 
   onUnmounted(() => {
