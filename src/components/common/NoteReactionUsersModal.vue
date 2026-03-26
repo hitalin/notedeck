@@ -144,7 +144,7 @@ defineExpose({ open })
         </div>
 
         <!-- User list -->
-        <div ref="scrollRef" :class="$style.userList" @scroll="onScroll">
+        <div ref="scrollRef" :class="$style.userList" @scroll.passive="onScroll">
           <div v-if="isLoading && users.length === 0" :class="$style.loading">読み込み中...</div>
           <template v-else>
             <div v-if="users.length === 0" :class="$style.loading">リアクションなし</div>

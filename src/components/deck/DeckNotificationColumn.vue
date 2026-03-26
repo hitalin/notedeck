@@ -783,7 +783,7 @@ onUnmounted(() => {
         :items="filteredNotifications"
         :estimated-height="80"
         :class="$style.notifScroller"
-        @scroll="handleScroll"
+        @scroll.passive="handleScroll"
       >
         <template #default="{ item: notif, index }">
           <div>
@@ -1087,6 +1087,9 @@ onUnmounted(() => {
 
 .notifItem {
   border-bottom: 1px solid var(--nd-divider);
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 80px;
 }
 
 .notifLayout {

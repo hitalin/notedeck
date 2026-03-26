@@ -726,7 +726,7 @@ onUnmounted(() => {
         :items="notes"
         :focused-id="focusedNoteId"
         :class="$style.searchScroller"
-        @scroll="handleScroll"
+        @scroll.passive="handleScroll"
       >
         <template #default="{ item, index }">
           <div>

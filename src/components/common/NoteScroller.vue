@@ -173,6 +173,7 @@ defineSlots<{
   width: 100%;
   contain: layout style paint;
   content-visibility: auto;
+  contain-intrinsic-size: auto 150px;
 }
 
 /* Misskey-style slide-in animation for streaming notes.

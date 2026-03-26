@@ -532,5 +532,5 @@ html[data-platform="android"] select {
 }
 
 .nd-tab-snap-back > * {
-  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
 }

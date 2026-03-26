@@ -168,7 +168,7 @@ function navigateUser(userId: string) {
       </button>
     </div>
 
-    <div :class="$style.listBody" @scroll="onScroll">
+    <div :class="$style.listBody" @scroll.passive="onScroll">
       <div
         v-for="u in users"
         :key="u.id"
