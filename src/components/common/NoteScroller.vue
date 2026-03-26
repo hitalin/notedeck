@@ -1,6 +1,8 @@
 <script setup lang="ts" generic="T extends { id: string }">
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+
+const PREFETCH_AHEAD = 15
 
 const props = withDefaults(
   defineProps<{
@@ -11,8 +13,15 @@ const props = withDefaults(
     focusedId?: string
     /** Set of note IDs currently animating (slide-in for new streaming notes) */
     animatingIds?: ReadonlySet<string>
+    /** Called with items beyond nearViewport that should be image-prefetched */
+    prefetch?: (items: T[]) => void
   }>(),
-  { estimatedHeight: 150, focusedId: undefined, animatingIds: () => new Set() },
+  {
+    estimatedHeight: 150,
+    focusedId: undefined,
+    animatingIds: () => new Set(),
+    prefetch: undefined,
+  },
 )
 
 const emit = defineEmits<{
@@ -69,6 +78,25 @@ const nearViewportRange = computed(() => {
     }
   }
   return { start, end }
+})
+
+// Prefetch zone: items beyond nearViewport that should have images preloaded.
+// Only extends forward (scroll direction) to avoid wasting bandwidth.
+const prefetchZone = computed(() => {
+  const near = nearViewportRange.value
+  const start = near.end + 1
+  const end = Math.min(near.end + PREFETCH_AHEAD, props.items.length - 1)
+  return { start, end }
+})
+
+watch(prefetchZone, (zone) => {
+  if (!props.prefetch || zone.start > zone.end) return
+  const items: T[] = []
+  for (let i = zone.start; i <= zone.end; i++) {
+    const item = props.items[i]
+    if (item) items.push(item)
+  }
+  if (items.length > 0) props.prefetch(items)
 })
 
 function measureElement(el: unknown) {
