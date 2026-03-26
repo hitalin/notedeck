@@ -205,7 +205,6 @@ export default defineConfig({
       '@vueuse/core',
       '@tauri-apps/api',
       'dompurify',
-      'colord',
     ],
   },
   server: {
