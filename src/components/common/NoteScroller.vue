@@ -1,9 +1,5 @@
 <script setup lang="ts" generic="T extends { id: string }">
-import {
-  useVirtualizer,
-  type VirtualItem,
-  type Virtualizer,
-} from '@tanstack/vue-virtual'
+import { useVirtualizer } from '@tanstack/vue-virtual'
 import { computed, ref } from 'vue'
 
 const props = withDefaults(
@@ -27,8 +23,9 @@ const emit = defineEmits<{
 const scrollContainer = ref<HTMLElement | null>(null)
 
 // Dynamic estimateSize — exponential moving average (EMA) of measured item heights.
-// Converges fast during bootstrap (first 5), then tracks recent height trends.
-const EMA_ALPHA = 0.15
+// Converges fast during bootstrap (first 10), then tracks recent height trends.
+const EMA_ALPHA = 0.3
+const BOOTSTRAP_COUNT = 10
 let _emaValue = props.estimatedHeight
 let _measuredCount = 0
 const dynamicEstimate = ref(props.estimatedHeight)
@@ -37,16 +34,8 @@ const virtualizerOptions = computed(() => ({
   count: props.items.length,
   getScrollElement: () => scrollContainer.value,
   estimateSize: () => dynamicEstimate.value,
-  overscan: 5,
+  overscan: 10,
   getItemKey: (index: number) => props.items[index]?.id ?? index,
-  shouldAdjustScrollPositionOnItemSizeChange: (
-    item: VirtualItem,
-    _delta: number,
-    instance: Virtualizer<HTMLElement, Element>,
-  ) =>
-    item.start <
-    (instance.scrollOffset ?? 0) +
-      (instance as unknown as { scrollAdjustments: number }).scrollAdjustments,
 }))
 
 const virtualizer = useVirtualizer(virtualizerOptions)
@@ -89,15 +78,13 @@ function measureElement(el: unknown) {
   if (h <= 0) return
 
   _measuredCount++
-  if (_measuredCount <= 5) {
+  if (_measuredCount <= BOOTSTRAP_COUNT) {
     // Bootstrap: simple incremental average for fast convergence
     _emaValue += (h - _emaValue) / _measuredCount
   } else {
     _emaValue = EMA_ALPHA * h + (1 - EMA_ALPHA) * _emaValue
   }
-  if (_measuredCount <= 5 || _measuredCount % 5 === 0) {
-    dynamicEstimate.value = Math.round(_emaValue)
-  }
+  dynamicEstimate.value = Math.round(_emaValue)
 }
 
 // Near-end detection for load-more, throttled to 200ms.
