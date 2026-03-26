@@ -49,6 +49,10 @@ fetch('https://api.github.com/repos/hitalin/notedeck/releases/latest')
       linux:   a => a.name.endsWith('.deb'),
       android: a => a.name.endsWith('.apk'),
     };
+    const badge = document.getElementById('latest-version');
+    if (badge && release.tag_name) {
+      badge.textContent = release.tag_name;
+    }
     document.querySelectorAll('.platform[data-platform]').forEach(el => {
       const fn = match[el.dataset.platform];
       const asset = fn && assets.find(fn);
