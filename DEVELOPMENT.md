@@ -136,6 +136,120 @@ src-tauri/src/              # Rust backend (Tauri 固有部分)
 
 Misskey API クライアント・DB・モデル・ストリーミングコアなどの共通ロジックは全て `notecli` クレートにあり、`src-tauri/` には Tauri 固有の薄いラッパーのみ残っています。
 
+### Boot Sequence
+
+NoteDeck は **UI 表示までの時間を最小化** するため、バックエンドの重い初期化をバックグラウンドで行いながらフロントエンドを先行起動する設計になっている。
+
+#### 全体フロー
+
+Rust バックエンドとフロントエンドが並列に動作し、イベントで連携する。
+
+```mermaid
+sequenceDiagram
+    participant R as Rust (Tauri)
+    participant W as WebView
+    participant V as Vue (Frontend)
+
+    Note over R: Phase 1 — 軽量初期化 (< 50ms)
+    R->>R: Tokio ランタイム作成 (workers=2)
+    R->>R: Tauri プラグイン登録
+    R->>R: setup(): データディレクトリ / キーチェーン / マイグレーション
+    R->>R: AppState を empty で登録
+    R->>R: PerfConfig / HTTP Client / EventBus 初期化
+    R->>W: WebView ロード開始
+
+    Note over W: スプラッシュ画面表示 (#nd-splash)
+
+    par Phase 2 — バックグラウンド重初期化
+        R->>R: [Thread 1] DB open
+        R->>R: [Thread 2] MisskeyClient init
+        R->>R: [Thread 3] HTTP server bind
+    end
+
+    W->>V: main.ts 実行開始
+    V->>V: Tauri API / DeckPage 事前フェッチ
+    V->>V: createApp → Pinia → Router
+    V->>V: themeStore.init() (localStorage 復元)
+    V->>V: keybinds / performance init
+
+    Note over R: Stage 1 — DB 準備完了
+    R->>R: DB マイグレーション
+    R->>R: app_state.initialize_db(db)
+
+    par アカウント読み込み（先着順）
+        R-->>V: nd:accounts-early イベント
+        V->>R: invoke('load_accounts')
+        R-->>V: IPC レスポンス
+    end
+
+    V->>V: app.mount('#app')
+    V->>V: App.vue: window.show()
+
+    R->>R: StreamingManager 初期化
+
+    Note over R: Stage 2 — 完全準備完了
+    R->>R: app_state.initialize(db, client)
+    R->>R: HTTP サーバー起動 + OGP/画像キャッシュ
+    R-->>V: nd:backend-ready イベント
+
+    V->>V: DeckLayout mount
+    V-->>V: nd:deck-mounted → スプラッシュ解除
+    V->>V: deckStore.startSync() (ストリーミング接続)
+    V->>V: registerDefaultCommands()
+
+    Note over V: requestAnimationFrame (defer)
+    V->>V: ApiBridge / Notifications / OGP / CLI commands
+
+    Note over V: requestIdleCallback (defer)
+    V->>V: KaTeX CSS / Shiki CSS
+```
+
+#### Two-stage AppState
+
+バックエンドの初期化を 2 段階に分けて、DB が準備できた時点で一部のコマンドを先行アンロックする仕組み（`src-tauri/src/commands/mod.rs`）。
+
+```mermaid
+stateDiagram-v2
+    [*] --> Empty : AppState::new()
+    Empty --> DB_Ready : initialize_db(db)
+    DB_Ready --> Fully_Ready : initialize(db, client)
+
+    state Empty {
+        [*] : 全コマンド待機
+    }
+    state DB_Ready {
+        [*] : DB専用コマンドがアンロック
+        [*] : load_accounts 等
+    }
+    state Fully_Ready {
+        [*] : 全コマンドがアンロック
+    }
+```
+
+内部的には `tokio::sync::watch::channel` を 2 本持ち、`db()` は DB チャネルのみ、`client()` はフルチャネルを待機する。これにより `load_accounts` のようなDB専用コマンドは MisskeyClient の初期化を待たずに応答できる。
+
+#### スプラッシュ画面
+
+`index.html` にインラインで定義された `#nd-splash`（ハートビートアニメーション付きロゴ）。
+
+- **表示**: WebView ロード直後（Vue マウント前から表示済み）
+- **解除**: `nd:deck-mounted` イベント受信時（DeckLayout の DOM 構築完了時点）
+- **フォールバック**: 500ms タイムアウトで強制解除
+- **アニメーション**: `opacity: 0` トランジション → `transitionend` で DOM 削除
+
+データ（ノート等）のロード完了は待たず、カラムフレームの描画が完了した時点でスプラッシュを解除する。
+
+#### 起動時の最適化テクニック
+
+| テクニック | 実装箇所 | 効果 |
+|-----------|---------|------|
+| Two-stage AppState | `commands/mod.rs` | DB 準備次第でアカウント読み込み開始 |
+| 早期アカウントイベント | `lib.rs` → `nd:accounts-early` | IPC 往復を待たずにフロントへ通知 |
+| 動的 import 事前フェッチ | `main.ts` | DeckPage / カラムチャンクを並列ダウンロード |
+| テーマ localStorage 復元 | `themeStore.init()` | ネットワーク不要で FOUC 防止 |
+| 3 スレッド並列初期化 | `lib.rs` Phase 2 | DB / Client / HTTP bind を同時実行 |
+| 非クリティカル処理の defer | `useDeckInit` | rAF / rIC で初回描画を優先 |
+
 ### Multi-Window & Profile Architecture
 
 ウィンドウとプロファイルは**直交する概念**です。
