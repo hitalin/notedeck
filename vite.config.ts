@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import JSON5 from 'json5'
+import { Features } from 'lightningcss'
 import type { Plugin } from 'vite'
 import { defineConfig } from 'vite'
 
@@ -141,6 +142,12 @@ export default defineConfig({
   },
   css: {
     transformer: 'lightningcss',
+    lightningcss: {
+      // Tauri WebView: macOS=WebKit 16+, Windows=Chromium 110+, Linux=WebKitGTK 2.40+
+      // 全エンジンが最新CSS機能をサポートするため、vendor prefix を最小化
+      include: Features.Nesting | Features.MediaRangeSyntax,
+      exclude: Features.VendorPrefixes,
+    },
     modules: {
       localsConvention: 'camelCaseOnly',
     },
@@ -150,6 +157,7 @@ export default defineConfig({
     sourcemap: false,
     modulePreload: false,
     assetsInlineLimit: 8192,
+    reportCompressedSize: false,
     rolldownOptions: {
       output: {
         manualChunks(id) {
