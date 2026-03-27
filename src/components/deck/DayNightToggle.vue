@@ -151,24 +151,26 @@ function onSyncChange(e: Event) {
 
 .star {
   position: absolute;
+  width: 30px;
+  height: 3px;
   background-color: #fff;
-  transition: width 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95), height 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95), transform 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
+  transition: transform 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95), opacity 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
   border-radius: 50%;
 }
 
 .star1 {
-  top: 10px; left: 35px; z-index: 0; width: 30px; height: 3px;
-  .checked & { width: 2px; height: 2px; }
+  top: 10px; left: 35px; z-index: 0;
+  .checked & { transform: scale(0.067, 0.67); }
 }
 
 .star2 {
-  top: 18px; left: 28px; z-index: 1; width: 30px; height: 3px;
-  .checked & { width: 4px; height: 4px; transform: translate3d(-5px, 0, 0); }
+  top: 18px; left: 28px; z-index: 1;
+  .checked & { transform: scale(0.133, 1.33) translate3d(-5px, 0, 0); }
 }
 
 .star3 {
-  top: 27px; left: 40px; z-index: 0; width: 30px; height: 3px;
-  .checked & { width: 2px; height: 2px; transform: translate3d(-7px, 0, 0); }
+  top: 27px; left: 40px; z-index: 0;
+  .checked & { transform: scale(0.067, 0.67) translate3d(-7px, 0, 0); }
 }
 
 .star4, .star5, .star6 {

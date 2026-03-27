@@ -491,6 +491,10 @@ summary,
   -webkit-user-select: none;
 }
 
+.nd-dragging {
+  cursor: grabbing;
+}
+
 ._acrylic {
   background: color(from var(--nd-bg) srgb r g b / 0.5);
   backdrop-filter: var(--nd-vibrancy);

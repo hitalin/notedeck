@@ -17,7 +17,7 @@ export function useTabIndicator(
   activeSelector: string,
   trigger: WatchSource,
 ) {
-  const style = ref({ left: '0px', width: '0px', opacity: '0' })
+  const style = ref({ translate: '0 0', scale: '0 1', opacity: '0' })
   let rafId: number | null = null
 
   function update() {
@@ -29,12 +29,12 @@ export function useTabIndicator(
         activeSelector,
       ) as HTMLElement | null
       if (!activeTab) {
-        style.value = { left: '0px', width: '0px', opacity: '0' }
+        style.value = { translate: '0 0', scale: '0 1', opacity: '0' }
         return
       }
       style.value = {
-        left: `${activeTab.offsetLeft}px`,
-        width: `${activeTab.offsetWidth}px`,
+        translate: `${activeTab.offsetLeft}px 0`,
+        scale: `${activeTab.offsetWidth} 1`,
         opacity: '1',
       }
     })
