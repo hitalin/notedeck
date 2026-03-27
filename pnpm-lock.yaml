@@ -144,9 +144,6 @@ importers:
       lefthook:
         specifier: ^2.1.4
         version: 2.1.4
-      lightningcss:
-        specifier: ^1.32.0
-        version: 1.32.0
       sass:
         specifier: ^1.98.0
         version: 1.98.0

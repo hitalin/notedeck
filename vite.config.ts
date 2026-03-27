@@ -11,10 +11,7 @@ function json5Plugin(): Plugin {
     transform(code, id) {
       if (!id.endsWith('.json5')) return undefined
       const parsed = JSON5.parse(code)
-      return {
-        code: `export default ${JSON.stringify(parsed)} as const`,
-        map: null,
-      }
+      return { code: `export default ${JSON.stringify(parsed)}`, map: null }
     },
   }
 }
@@ -143,7 +140,6 @@ export default defineConfig({
     },
   },
   css: {
-    transformer: 'lightningcss',
     modules: {
       localsConvention: 'camelCaseOnly',
     },
@@ -151,8 +147,6 @@ export default defineConfig({
   build: {
     target: 'esnext',
     sourcemap: false,
-    modulePreload: false,
-    assetsInlineLimit: 8192,
     rolldownOptions: {
       output: {
         manualChunks(id) {
