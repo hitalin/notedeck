@@ -127,6 +127,19 @@ const POLICY_TIMELINE_MAP: Record<string, TimelineType[]> = {
 }
 const POLICY_HANDLED_KEYS = new Set(Object.keys(POLICY_TIMELINE_MAP))
 
+/**
+ * Given a timeline type, return all types in the same policy group.
+ * e.g., 'local' → ['local', 'social'] (both gated by ltlAvailable)
+ */
+export function getRelatedTimelineTypes(tlType: string): string[] {
+  for (const types of Object.values(POLICY_TIMELINE_MAP)) {
+    if (types.includes(tlType as TimelineType)) {
+      return [...types]
+    }
+  }
+  return [tlType]
+}
+
 export interface TimelineAvailability {
   available: TimelineType[]
   denied: Set<string>

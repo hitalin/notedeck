@@ -22,6 +22,7 @@ import {
   detectCustomTimelines,
   detectFilterKeys,
   findModeKeyForTimeline,
+  getRelatedTimelineTypes,
   markTimelineDenied,
 } from '@/utils/customTimelines'
 import { matchesFilter } from '@/utils/timelineFilter'
@@ -67,12 +68,15 @@ const noteColumnConfig: NoteColumnConfig = {
         ...buildTimelineOptions(),
       })
     } catch (e) {
-      // Handle "disabled" timeline errors: forcibly remove the TL tab and switch
+      // Handle "disabled" timeline errors: remove related TL tabs and switch
       if (String(e).includes('disabled')) {
         const aid = props.column.accountId
-        if (aid) markTimelineDenied(aid, tlType.value)
+        const related = new Set(getRelatedTimelineTypes(tlType.value))
+        if (aid) {
+          for (const t of related) markTimelineDenied(aid, t)
+        }
         availableStandardTl.value = availableStandardTl.value.filter(
-          (t) => t !== tlType.value,
+          (t) => !related.has(t),
         )
         switchTl(availableStandardTl.value[0] ?? 'home')
         return []
@@ -363,15 +367,21 @@ onMounted(async () => {
     ? accountsStore.accountMap.get(accountId)?.host
     : undefined
   fetchAds()
-  if (host && accountId) {
-    await Promise.all([applyPolicies(accountId, host), refreshFilterKeys()])
-    if (!availableStandardTl.value.includes(tlType.value)) {
-      // Only update tlType synchronously here — full reconnect will happen
-      // via connectReady watcher in useNoteColumn, avoiding a double-connect race.
-      const fallback = availableStandardTl.value[0] ?? 'local'
-      tlType.value = fallback
-      deckStore.updateColumn(props.column.id, { tl: fallback })
+  try {
+    if (host && accountId) {
+      await Promise.all([applyPolicies(accountId, host), refreshFilterKeys()])
+      if (!availableStandardTl.value.includes(tlType.value)) {
+        // Only update tlType synchronously here — full reconnect will happen
+        // via connectReady watcher in useNoteColumn, avoiding a double-connect race.
+        const fallback = availableStandardTl.value[0] ?? 'local'
+        tlType.value = fallback
+        deckStore.updateColumn(props.column.id, { tl: fallback })
+      }
     }
+  } catch (e) {
+    // Policy detection failed — show all tabs as fallback so the column
+    // remains usable. Individual tabs will be removed at runtime if disabled.
+    console.warn('[DeckTimelineColumn] policy detection failed:', e)
   }
   connectReady.value = true
 })
