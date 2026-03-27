@@ -107,7 +107,7 @@ onMounted(async () => {
   columnsRef.value?.addEventListener('wheel', onColumnsWheel, { passive: true })
 
   // Windows hwheel: Tauri イベント経由で受信 → 同じ rAF バッチに合流
-  if ((window as Record<string, unknown>).__TAURI_INTERNALS__) {
+  if ((window as unknown as Record<string, unknown>).__TAURI_INTERNALS__) {
     const { listen } = await import('@tauri-apps/api/event')
     unlistenHWheel = await listen<number>('nd:hwheel', (ev) => {
       scheduleScroll(ev.payload)
