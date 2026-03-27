@@ -334,13 +334,20 @@ function baseType(type: string): string {
 }
 
 function groupedUsers(notif: NormalizedNotification): NormalizedUser[] {
+  let users: NormalizedUser[]
   if (notif.type === 'reaction:grouped' && notif.reactions) {
-    return notif.reactions.map((r) => r.user)
+    users = notif.reactions.map((r) => r.user)
+  } else if (notif.type === 'renote:grouped' && notif.users) {
+    users = notif.users
+  } else {
+    return []
   }
-  if (notif.type === 'renote:grouped' && notif.users) {
-    return notif.users
-  }
-  return []
+  const seen = new Set<string>()
+  return users.filter((u) => {
+    if (seen.has(u.id)) return false
+    seen.add(u.id)
+    return true
+  })
 }
 
 function notificationIcon(type: string): string {
