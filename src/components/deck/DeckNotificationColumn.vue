@@ -814,9 +814,7 @@ onUnmounted(() => {
               <div :class="$style.notifLayout">
                 <div :class="$style.notifGroupedHead">
                   <div
-                    v-for="u in (notif.type === 'reaction:grouped'
-                      ? notif.reactions?.map((r: { user: NormalizedUser }) => r.user).slice(0, 3)
-                      : notif.users?.slice(0, 3)) ?? []"
+                    v-for="u in groupedUsers(notif).slice(0, 3)"
                     :key="u.id"
                     :class="$style.notifHead"
                   >
