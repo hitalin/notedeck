@@ -221,42 +221,6 @@ input {
   user-select: text;
 }
 
-/* Input focus animation — Apple-style glow ring */
-input[type="text"],
-input[type="search"],
-input[type="email"],
-input[type="url"],
-input[type="password"],
-input[type="number"],
-textarea {
-  transition:
-    border-color var(--nd-duration-fast) var(--nd-ease-spring),
-    box-shadow var(--nd-duration-fast) var(--nd-ease-spring);
-}
-
-input[type="text"]:focus,
-input[type="search"]:focus,
-input[type="email"]:focus,
-input[type="url"]:focus,
-input[type="password"]:focus,
-input[type="number"]:focus,
-textarea:focus {
-  outline: none;
-  border-color: var(--nd-accent);
-  box-shadow: 0 0 0 3px var(--nd-focus);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  input[type="text"],
-  input[type="search"],
-  input[type="email"],
-  input[type="url"],
-  input[type="password"],
-  input[type="number"],
-  textarea {
-    transition: none;
-  }
-}
 
 @media (max-width: 500px) {
   input[type="text"],
