@@ -357,11 +357,24 @@ function groupedUsers(notif: NormalizedNotification): NormalizedUser[] {
   })
 }
 
-function userReaction(
-  notif: NormalizedNotification,
-  userId: string,
-): string | undefined {
-  return notif.reactions?.find((r) => r.user.id === userId)?.reaction
+interface AvatarEntry {
+  user: NormalizedUser
+  reaction?: string
+}
+
+function groupedAvatarEntries(notif: NormalizedNotification): AvatarEntry[] {
+  if (notif.type === 'reaction:grouped' && notif.reactions) {
+    const seen = new Set<string>()
+    return notif.reactions
+      .filter((r) => {
+        const key = `${r.user.id}\0${r.reaction}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      .map((r) => ({ user: r.user, reaction: r.reaction }))
+  }
+  return groupedUsers(notif).map((u) => ({ user: u }))
 }
 
 function uniqueReactions(reactions: { reaction: string }[]): string[] {
@@ -858,23 +871,23 @@ onUnmounted(() => {
               <div :class="$style.notifLayout">
                 <div :class="$style.notifGroupedHead">
                   <div
-                    v-for="u in groupedUsers(notif).slice(0, 3)"
-                    :key="u.id"
+                    v-for="entry in groupedAvatarEntries(notif).slice(0, 3)"
+                    :key="`${entry.user.id}-${entry.reaction ?? ''}`"
                     :class="$style.notifHead"
                   >
                     <MkAvatar
-                      :avatar-url="u.avatarUrl"
-                      :decorations="u.avatarDecorations"
+                      :avatar-url="entry.user.avatarUrl"
+                      :decorations="entry.user.avatarDecorations"
                       :size="42"
-                      :alt="u.username ?? undefined"
+                      :alt="entry.user.username ?? undefined"
                       :class="$style.notifUserAvatar"
-                      @click="onGroupedAvatarClick(notif._accountId, u.id, $event)"
-                      @mouseenter="onGroupedAvatarMouseEnter(notif._accountId, u.id, $event)"
+                      @click="onGroupedAvatarClick(notif._accountId, entry.user.id, $event)"
+                      @mouseenter="onGroupedAvatarMouseEnter(notif._accountId, entry.user.id, $event)"
                       @mouseleave="onNotifAvatarMouseLeave"
                     />
-                    <template v-if="notif.type === 'reaction:grouped' && userReaction(notif, u.id)">
-                      <img v-if="getCachedReactionUrl(userReaction(notif, u.id)!, notif)" :src="getCachedReactionUrl(userReaction(notif, u.id)!, notif)!" :alt="userReaction(notif, u.id)!" :class="$style.notifSubIconEmoji" loading="lazy" />
-                      <img v-else-if="getCachedTwemojiUrl(userReaction(notif, u.id)!)" :src="getCachedTwemojiUrl(userReaction(notif, u.id)!)!" :alt="userReaction(notif, u.id)!" :class="$style.notifSubIconEmoji" loading="lazy" />
+                    <template v-if="entry.reaction">
+                      <img v-if="getCachedReactionUrl(entry.reaction, notif)" :src="getCachedReactionUrl(entry.reaction, notif)!" :alt="entry.reaction" :class="$style.notifSubIconEmoji" loading="lazy" />
+                      <img v-else-if="getCachedTwemojiUrl(entry.reaction)" :src="getCachedTwemojiUrl(entry.reaction)!" :alt="entry.reaction" :class="$style.notifSubIconEmoji" loading="lazy" />
                       <i v-else :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
                     </template>
                     <i v-else :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
