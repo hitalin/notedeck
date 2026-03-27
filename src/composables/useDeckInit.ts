@@ -10,6 +10,7 @@ import {
   listenDeckWindowEvents,
   saveCurrentWindowLayout,
 } from '@/composables/useDeckWindow'
+import { initOgpListener } from '@/composables/useOgpPreview'
 import { useDeckStore } from '@/stores/deck'
 import { usePluginsStore } from '@/stores/plugins'
 import { useUiStore } from '@/stores/ui'
@@ -84,6 +85,7 @@ export function useDeckInit(options: {
     requestAnimationFrame(() => {
       initApiBridge()
       initDesktopNotifications()
+      initOgpListener()
       loadCliCommands()
       onNotificationAction((ctx) => {
         if (ctx.noteId) {

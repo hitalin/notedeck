@@ -41,40 +41,56 @@ struct AppStateInner {
     client: Arc<MisskeyClient>,
 }
 
-/// Heavy state (DB, MisskeyClient) wrapped for deferred initialization.
+/// Heavy state (DB, MisskeyClient) wrapped for two-stage deferred initialization.
 /// Registered in setup() as empty, initialized in a background thread.
-/// Commands call `db()` / `client()` which await until initialization completes.
+///
+/// **Two-stage init**: DB becomes available first (after migrations), unblocking
+/// DB-only commands like `load_accounts`. The full state (DB + client) is signalled
+/// later once MisskeyClient is also ready.
 pub struct AppState {
+    // Full init (DB + client) — used by client() and ready()
     rx: tokio::sync::watch::Receiver<Option<Arc<AppStateInner>>>,
     tx: tokio::sync::watch::Sender<Option<Arc<AppStateInner>>>,
+    // DB-only early init — used by db()
+    db_rx: tokio::sync::watch::Receiver<Option<Arc<Database>>>,
+    db_tx: tokio::sync::watch::Sender<Option<Arc<Database>>>,
 }
 
 impl AppState {
     pub fn new() -> Self {
         let (tx, rx) = tokio::sync::watch::channel(None);
-        Self { rx, tx }
+        let (db_tx, db_rx) = tokio::sync::watch::channel(None);
+        Self { rx, tx, db_rx, db_tx }
+    }
+
+    /// Called as soon as DB is ready (after migrations, before client).
+    /// Unblocks all commands that only need `db()`.
+    pub fn initialize_db(&self, db: Arc<Database>) {
+        let _ = self.db_tx.send(Some(db));
     }
 
     /// Called once from the background init thread when DB + client are ready.
     pub fn initialize(&self, db: Arc<Database>, client: Arc<MisskeyClient>) {
+        // Also signal DB channel in case initialize_db() wasn't called
+        let _ = self.db_tx.send(Some(Arc::clone(&db)));
         let _ = self.tx.send(Some(Arc::new(AppStateInner { db, client })));
     }
 
-    /// Await until initialized, then return DB reference.
+    /// Await until DB is ready (fast path — does not wait for MisskeyClient).
     pub async fn db(&self) -> Arc<Database> {
-        let mut rx = self.rx.clone();
+        let mut rx = self.db_rx.clone();
         let r = rx.wait_for(|v| v.is_some()).await.unwrap();
-        Arc::clone(&r.as_ref().unwrap().db)
+        Arc::clone(r.as_ref().unwrap())
     }
 
-    /// Await until initialized, then return MisskeyClient reference.
+    /// Await until fully initialized, then return MisskeyClient reference.
     pub async fn client(&self) -> Arc<MisskeyClient> {
         let mut rx = self.rx.clone();
         let r = rx.wait_for(|v| v.is_some()).await.unwrap();
         Arc::clone(&r.as_ref().unwrap().client)
     }
 
-    /// Await until initialized, then return both.
+    /// Await until fully initialized, then return both.
     pub async fn ready(&self) -> (Arc<Database>, Arc<MisskeyClient>) {
         let mut rx = self.rx.clone();
         let r = rx.wait_for(|v| v.is_some()).await.unwrap();

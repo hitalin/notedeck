@@ -217,7 +217,6 @@ export function useNoteColumn(config: NoteColumnConfig) {
           if (filtered.length > 0) {
             setNotes(filtered)
             cachedIds = filtered.map((n) => n.id)
-            window.dispatchEvent(new Event('nd:column-ready'))
           }
         } catch (e) {
           logWarn('load-cache', e)
@@ -334,9 +333,6 @@ export function useNoteColumn(config: NoteColumnConfig) {
       }
     } finally {
       isLoading.value = false
-      if (notes.value.length > 0) {
-        window.dispatchEvent(new Event('nd:column-ready'))
-      }
     }
   }
 

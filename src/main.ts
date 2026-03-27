@@ -1,7 +1,6 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
-import { initOgpListener } from './composables/useOgpPreview'
 import { router, setupAccountRedirect } from './router'
 import { useAccountsStore } from './stores/accounts'
 import { useKeybindsStore } from './stores/keybinds'
@@ -19,6 +18,13 @@ import('@tauri-apps/api/window')
 // import here (without await) starts the CSS download immediately while the router
 // still controls when the component is actually evaluated.
 import('./views/DeckPage.vue')
+
+// Pre-fetch most common column chunks so downloads start during Vue bootstrap
+// (normally these don't start until DeckColumnsArea.onMounted — 4 component layers deep)
+if (import.meta.env.PROD) {
+  import('./components/deck/DeckTimelineColumn.vue')
+  import('./components/deck/DeckNotificationColumn.vue')
+}
 
 // Defer non-critical CSS to idle time — KaTeX and Shiki are not needed at startup
 const _idle =
@@ -52,9 +58,6 @@ themeStore.init()
 // Initialize file-based storage for keybinds and performance settings
 useKeybindsStore().init()
 usePerformanceStore().init()
-
-// Listen for background OGP prefetch results from Rust side
-initOgpListener()
 
 // Start loading accounts early (runs in parallel with mount).
 // In Tauri, invoke('load_accounts') internally awaits AppState readiness,

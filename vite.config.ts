@@ -133,8 +133,39 @@ function subsetTablerIcons(): Plugin {
   }
 }
 
+/** Inject <link rel="preload"> for the subset tabler-icons woff2 font.
+ *  The hash changes each build due to subsetting, so we find the actual
+ *  asset name from the bundle and inject the tag at build time. */
+function preloadTablerFont(): Plugin {
+  return {
+    name: 'preload-tabler-font',
+    enforce: 'post',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!ctx.bundle) return html
+        const fontAsset = Object.keys(ctx.bundle).find(
+          (name) => name.includes('tabler-icons') && name.endsWith('.woff2'),
+        )
+        if (!fontAsset) return html
+        const tag = `<link rel="preload" href="/${fontAsset}" as="font" type="font/woff2" crossorigin>`
+        return html.replace(
+          '<link rel="stylesheet"',
+          `${tag}\n    <link rel="stylesheet"`,
+        )
+      },
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [vue(), json5Plugin(), stripUnusedFonts(), subsetTablerIcons()],
+  plugins: [
+    vue(),
+    json5Plugin(),
+    stripUnusedFonts(),
+    subsetTablerIcons(),
+    preloadTablerFont(),
+  ],
   resolve: {
     alias: {
       '@': resolve(import.meta.dirname, 'src'),

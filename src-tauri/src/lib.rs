@@ -319,9 +319,15 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
             // DB migrations + account export (must complete before commands can use credentials)
             migrations::run_db(&db);
+
+            // Stage 1: Signal DB readiness — unblocks DB-only commands (load_accounts, etc.)
+            // immediately, without waiting for MisskeyClient or HTTP server.
+            let app_state: tauri::State<'_, commands::AppState> = app_handle.state();
+            app_state.initialize_db(db.clone());
+
             commands::export_account_list(&app_handle, &db);
 
-            // Emit account list to frontend early — before AppState.initialize() —
+            // Emit account list to frontend early — before full AppState.initialize() —
             // so the accounts store can populate without waiting for IPC readiness.
             commands::emit_accounts_early(&app_handle, &db);
 
@@ -333,9 +339,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                 db.clone(),
             ));
 
-            // Signal AppState — commands waiting on ready() will unblock
-            // Placed AFTER migrations so credentials are available when commands execute.
-            let app_state: tauri::State<'_, commands::AppState> = app_handle.state();
+            // Stage 2: Signal full AppState — unblocks commands needing MisskeyClient.
             app_state.initialize(db.clone(), client.clone());
 
             // OGP cache

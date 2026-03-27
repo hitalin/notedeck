@@ -66,7 +66,7 @@ onMounted(async () => {
 
   // Dismiss splash when deck layout structure is mounted (not data load).
   // This shows column frames immediately; notes fill in asynchronously.
-  const splashTimeout = setTimeout(dismissSplash, 1000)
+  const splashTimeout = setTimeout(dismissSplash, 500)
   window.addEventListener(
     'nd:deck-mounted',
     () => {
