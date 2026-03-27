@@ -25,6 +25,12 @@ export interface PerformanceConfig {
   overscan: number
   prefetchAhead: number
   prefetchBehind: number
+  prefetchTrackedMax: number
+  lazyLoadMargin: number
+  nearViewportBuffer: number
+  // Image / OGP
+  ogpGalleryMax: number
+  embedCacheMax: number
   // Rust: backend
   memoryCacheMaxMB: number
   memoryCacheMaxItemKB: number
@@ -243,6 +249,52 @@ export const FIELD_META: Record<PerformanceKey, FieldMeta> = {
     label: '後方プリフェッチ',
     description: 'viewport上方向に遡って画像プリフェッチする数',
   },
+  prefetchTrackedMax: {
+    min: 100,
+    max: 2000,
+    step: 100,
+    unit: '件',
+    category: 'realtime',
+    label: 'プリフェッチ追跡上限',
+    description: 'プリフェッチ済みURLの記憶数。超過すると古い順に破棄',
+  },
+  lazyLoadMargin: {
+    min: 0,
+    max: 500,
+    step: 50,
+    unit: 'px',
+    category: 'realtime',
+    label: '遅延読み込みマージン',
+    description:
+      'OGPプレビューや埋め込みノートの読み込みを開始するviewportからの距離',
+  },
+  nearViewportBuffer: {
+    min: 1,
+    max: 10,
+    step: 1,
+    unit: '件',
+    category: 'realtime',
+    label: 'Viewport近傍バッファ',
+    description: 'viewport端から画像をeager読み込みする余裕アイテム数',
+  },
+  ogpGalleryMax: {
+    min: 0,
+    max: 8,
+    step: 1,
+    unit: '枚',
+    category: 'cache',
+    label: 'OGPギャラリー上限',
+    description: 'OGPプレビューのギャラリー画像の最大表示枚数',
+  },
+  embedCacheMax: {
+    min: 16,
+    max: 256,
+    step: 16,
+    unit: '件',
+    category: 'cache',
+    label: '埋め込みノートキャッシュ',
+    description: '埋め込みノートのLRUキャッシュ上限',
+  },
 }
 
 export const CATEGORY_LABELS: Record<string, { label: string; icon: string }> =
@@ -281,6 +333,11 @@ export const PRESETS = {
       imageCacheTTLDays: 3,
       prefetchAhead: 15,
       prefetchBehind: 5,
+      prefetchTrackedMax: 200,
+      lazyLoadMargin: 100,
+      nearViewportBuffer: 2,
+      ogpGalleryMax: 2,
+      embedCacheMax: 32,
     } satisfies PerformanceConfig,
   },
   balanced: {
@@ -313,6 +370,11 @@ export const PRESETS = {
       imageCacheTTLDays: 14,
       prefetchAhead: 40,
       prefetchBehind: 15,
+      prefetchTrackedMax: 1000,
+      lazyLoadMargin: 300,
+      nearViewportBuffer: 6,
+      ogpGalleryMax: 6,
+      embedCacheMax: 128,
     } satisfies PerformanceConfig,
   },
 } as const

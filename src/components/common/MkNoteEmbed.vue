@@ -3,10 +3,11 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { MisskeyApi } from '@/adapters/misskey/api'
 import type { NormalizedNote } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
+import { usePerformanceStore } from '@/stores/performance'
 import { parseNoteUrl } from '@/utils/noteUrl'
 import { invoke } from '@/utils/tauriInvoke'
 
-const EMBED_CACHE_MAX = 64
+const perfStore = usePerformanceStore()
 const embedCache = new Map<string, NormalizedNote | null>()
 const pendingEmbeds = new Map<string, Promise<NormalizedNote | null>>()
 
@@ -70,7 +71,7 @@ async function fetchNote() {
     }
 
     const result = await promise
-    if (embedCache.size >= EMBED_CACHE_MAX) {
+    if (embedCache.size >= perfStore.get('embedCacheMax')) {
       const oldest = embedCache.keys().next().value
       if (oldest !== undefined) embedCache.delete(oldest)
     }
@@ -101,7 +102,7 @@ onMounted(() => {
         fetchNote()
       }
     },
-    { rootMargin: '200px' },
+    { rootMargin: `${perfStore.get('lazyLoadMargin')}px` },
   )
   observer.observe(el.value)
 })
