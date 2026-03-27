@@ -23,6 +23,12 @@ function isEmoji(candidate: AutocompleteCandidate): candidate is ServerEmoji {
 function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
   return typeof candidate === 'object' && 'username' in candidate
 }
+
+function candidateKey(candidate: AutocompleteCandidate): string {
+  if (typeof candidate === 'string') return candidate
+  if ('username' in candidate) return candidate.id
+  return candidate.name
+}
 </script>
 
 <template>
@@ -30,7 +36,7 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
     <div v-if="candidates.length > 0" :class="$style.autocompleteList">
       <button
         v-for="(candidate, i) in candidates"
-        :key="i"
+        :key="candidateKey(candidate)"
         :class="[$style.autocompleteItem, i === selectedIndex && $style.selected]"
         class="_button"
         @click="emit('select', i)"

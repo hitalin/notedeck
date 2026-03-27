@@ -103,8 +103,8 @@
   --nd-radius-full: 999px;
   --nd-margin: 10px;
   --nd-columnGap: 2px;
-  --nd-blur: 3px;
-  --nd-blur-panel: 2px;
+  --nd-blur: 2px;
+  --nd-blur-panel: 1px;
   --nd-blur-content: 1px;
   /* Transition duration
      Apple pattern: enter slightly longer than leave for natural weight */
@@ -129,9 +129,9 @@
   --nd-active-scale: 0.96;
   --nd-active-scale-heavy: 0.92; /* Destructive / heavy actions (delete, report) */
   /* Vibrancy (Apple-style saturated blur) */
-  --nd-vibrancy: saturate(1.4) blur(var(--nd-blur));
-  --nd-vibrancy-panel: saturate(1.4) blur(var(--nd-blur-panel));
-  --nd-vibrancy-content: saturate(1.4) blur(var(--nd-blur-content));
+  --nd-vibrancy: blur(var(--nd-blur));
+  --nd-vibrancy-panel: blur(var(--nd-blur-panel));
+  --nd-vibrancy-content: blur(var(--nd-blur-content));
   /* App chrome offsets (overridden per platform) */
   --nd-app-inset-top: 0px;
   /* Z-index layers */
@@ -269,11 +269,9 @@ a,
 summary,
 [role="button"],
 [role="menuitem"],
-[role="tab"],
-[role="option"],
-[role="listitem"] {
+[role="tab"] {
   transition:
-    background var(--nd-duration-base),
+    background-color var(--nd-duration-base),
     opacity var(--nd-duration-base);
 }
 
@@ -654,17 +652,6 @@ summary,
 
 ._tada {
   animation: nd-tada 1s ease;
-}
-
-/* RubberBand: elastic stretch (Misskey mfm-rubberBand) */
-@keyframes nd-rubberBand {
-  from { transform: scale3d(1, 1, 1); }
-  30%  { transform: scale3d(1.25, 0.75, 1); }
-  40%  { transform: scale3d(0.75, 1.25, 1); }
-  50%  { transform: scale3d(1.15, 0.85, 1); }
-  65%  { transform: scale3d(0.95, 1.05, 1); }
-  75%  { transform: scale3d(1.05, 0.95, 1); }
-  to   { transform: scale3d(1, 1, 1); }
 }
 
 /* ---- Micro-interaction keyframes ---- */
