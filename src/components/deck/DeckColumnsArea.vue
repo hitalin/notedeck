@@ -331,7 +331,7 @@ defineExpose({ scrollToColumn, columnMap })
     >
       <section
         :class="[$style.columnSection, sectionClass(group)]"
-        :style="{ flexBasis: sectionWidth(group) }"
+        :style="{ flexBasis: sectionWidth(group), '--col-idx': groupIndex }"
       >
         <div
           v-for="colId in group"
@@ -391,6 +391,17 @@ defineExpose({ scrollToColumn, columnMap })
   display: flex;
   flex-direction: column;
   contain: layout style;
+  /* Staggered entrance: each column fades in with a slight upward slide.
+     --col-idx is set inline; animation triggers when #app.nd-app-ready starts. */
+  animation: nd-col-enter .4s cubic-bezier(.16,1,.3,1) both;
+  animation-delay: calc(var(--col-idx, 0) * 40ms + 50ms);
+}
+@keyframes nd-col-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .columnSection { animation: none; }
 }
 
 .wideColumn {

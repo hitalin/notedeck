@@ -41,13 +41,14 @@ function dismissSplash() {
   const el = document.getElementById('nd-splash')
   if (!el) return
   // Ensure splash is visible for at least 150ms to avoid a flash-like flicker.
-  // If the deck layout mounts very quickly, a tiny flash feels glitchy.
   const elapsed = performance.now() - splashShownAt
   const delay = Math.max(0, 150 - elapsed)
   setTimeout(() => {
+    // Start #app entrance animation in sync with splash fade-out
+    document.getElementById('app')?.classList.add('nd-app-ready')
     el.classList.add('nd-splash-leaving')
     el.addEventListener('transitionend', () => el.remove(), { once: true })
-    setTimeout(() => el.remove(), 300)
+    setTimeout(() => el.remove(), 400)
   }, delay)
 }
 
