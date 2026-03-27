@@ -34,19 +34,9 @@ export const useEmojisStore = defineStore('emojis', () => {
 
   function persistToStorage() {
     try {
-      const maxPersist = perfStore.get('emojiPersistPerHost')
       const obj: Record<string, Record<string, string>> = {}
       for (const [host, lookup] of cache.value) {
-        const keys = Object.keys(lookup)
-        if (keys.length <= maxPersist) {
-          obj[host] = lookup
-        } else {
-          const subset: Record<string, string> = {}
-          for (const key of keys.slice(0, maxPersist)) {
-            subset[key] = lookup[key] ?? ''
-          }
-          obj[host] = subset
-        }
+        obj[host] = lookup
       }
       setStorageJson(STORAGE_KEYS.emojisCache, obj)
     } catch {
@@ -58,11 +48,9 @@ export const useEmojisStore = defineStore('emojis', () => {
   loadFromStorage()
 
   function set(host: string, emojis: ServerEmoji[]) {
-    // Build shortcode→url lookup for resolution (cap per host)
+    // Build shortcode→url lookup for resolution (no cap — lightweight Record<string, string>)
     const lookup: Record<string, string> = {}
-    const maxCache = perfStore.get('emojiCachePerHost')
-    const capped = emojis.length > maxCache ? emojis.slice(0, maxCache) : emojis
-    for (const e of capped) {
+    for (const e of emojis) {
       lookup[e.name] = e.url
     }
 
