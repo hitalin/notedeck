@@ -9,6 +9,6 @@
   <!-- eyes -->
   <circle cx="42" cy="52" r="7" fill="#fff"/>
   <circle cx="86" cy="52" r="7" fill="#fff"/>
-  <!-- mouth (disappointed) -->
-  <path d="M48 84 L64 76 L80 84" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- mouth (sad curve) -->
+  <path d="M48 84 Q64 70 80 84" stroke="#fff" stroke-width="6" stroke-linecap="round" fill="none"/>
 </svg>
