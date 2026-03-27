@@ -2,6 +2,14 @@
 
 Misskey 系マルチサーバー対応デッキクライアント。Tauri v2 + Vue 3 + TypeScript + Pinia。
 
+## 環境セットアップ
+
+Node.js / pnpm は [proto](https://moonrepo.dev/proto) で管理。Bash コマンド実行時は shims を PATH に含めること：
+
+```bash
+export PATH="$HOME/.proto/shims:$HOME/.proto/bin:$PATH"
+```
+
 ## 開発コマンド
 
 ```bash
