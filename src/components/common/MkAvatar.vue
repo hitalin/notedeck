@@ -28,6 +28,7 @@ const emit = defineEmits<{
 }>()
 
 const AVATAR_DEFAULT = '/avatar-default.svg'
+const AVATAR_ERROR = '/avatar-error.svg'
 
 const proxyFailed = ref(false)
 const allFailed = ref(false)
@@ -41,7 +42,8 @@ watch(
 )
 
 const avatarSrc = computed(() => {
-  if (!props.avatarUrl || allFailed.value) return AVATAR_DEFAULT
+  if (!props.avatarUrl) return AVATAR_DEFAULT
+  if (allFailed.value) return AVATAR_ERROR
   if (proxyFailed.value) return props.avatarUrl
   return proxyThumbUrl(props.avatarUrl, props.size)
 })
