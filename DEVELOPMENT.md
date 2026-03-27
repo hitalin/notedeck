@@ -210,7 +210,7 @@ sequenceDiagram
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Empty : AppState::new()
+    [*] --> Empty : AppState new()
     Empty --> DB_Ready : initialize_db(db)
     DB_Ready --> Fully_Ready : initialize(db, client)
 
