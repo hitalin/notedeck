@@ -67,14 +67,14 @@ const nearViewportRange = computed(() => {
   let end = last.index
   for (const item of items) {
     if (item.end >= scrollTop) {
-      start = Math.max(0, item.index - 4)
+      start = Math.max(0, item.index - perfStore.get('nearViewportBuffer'))
       break
     }
   }
   for (let i = items.length - 1; i >= 0; i--) {
     const item = items[i]
     if (item && item.start <= viewEnd) {
-      end = item.index + 4
+      end = item.index + perfStore.get('nearViewportBuffer')
       break
     }
   }

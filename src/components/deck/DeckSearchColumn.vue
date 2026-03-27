@@ -10,6 +10,7 @@ import {
 } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
 import AvatarStack from '@/components/common/AvatarStack.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import RegexGuide from '@/components/common/RegexGuide.vue'
@@ -709,7 +710,7 @@ onUnmounted(() => {
 
     <div v-else :class="$style.searchBody">
       <div v-if="isLoading && notes.length === 0" :class="$style.columnLoading">
-        <div :class="$style.columnLoadingSpinner" />
+        <LoadingSpinner />
       </div>
 
       <div v-else-if="!searchQuery.trim() && notes.length === 0" :class="$style.columnEmpty">

@@ -398,7 +398,7 @@ const pageEditUrl = computed(() => {
         <i class="ti ti-arrow-left" />
       </button>
       <button v-else class="_button" :class="$style.headerRefresh" title="Refresh" :disabled="listLoading" @click.stop="fetchList()">
-        <i class="ti ti-refresh" :class="{ [String($style.spin)]: listLoading }" />
+        <i class="ti ti-refresh" :class="{ 'nd-spin': listLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />

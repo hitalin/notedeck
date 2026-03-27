@@ -9,9 +9,12 @@ import {
   watch,
 } from 'vue'
 import { useOgpPreview } from '@/composables/useOgpPreview'
+import { usePerformanceStore } from '@/stores/performance'
 import { proxyUrl } from '@/utils/imageProxy'
 import { parseNoteUrl } from '@/utils/noteUrl'
 import { isSafeUrl } from '@/utils/url'
+
+const perfStore = usePerformanceStore()
 
 const MkNoteEmbed = defineAsyncComponent(() => import('./MkNoteEmbed.vue'))
 
@@ -56,7 +59,7 @@ watch(
 
 const galleryImages = computed(() => {
   if (!data.value?.medias?.length || data.value.medias.length < 2) return []
-  return data.value.medias.slice(0, 4)
+  return data.value.medias.slice(0, perfStore.get('ogpGalleryMax'))
 })
 
 function onGalleryError(index: number) {
@@ -91,7 +94,7 @@ onMounted(() => {
         fetch()
       }
     },
-    { rootMargin: '200px' },
+    { rootMargin: `${perfStore.get('lazyLoadMargin')}px` },
   )
   observer.observe(el.value)
 })

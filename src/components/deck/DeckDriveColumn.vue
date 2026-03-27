@@ -211,7 +211,7 @@ fetchDrive()
         <i class="ti ti-upload" />
       </button>
       <button v-if="!detailFile && !selectMode" class="_button" :class="$style.headerRefresh" title="更新" :disabled="loading" @click.stop="fetchDrive()">
-        <i class="ti ti-refresh" :class="{ [String($style.spin)]: loading }" />
+        <i class="ti ti-refresh" :class="{ 'nd-spin': loading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
@@ -325,7 +325,7 @@ fetchDrive()
               @click="openFilePicker"
             >
               <div :class="[$style.driveGridThumb, $style.driveUploadThumb]">
-                <i v-if="uploading" class="ti ti-loader-2" :class="$style.spin" />
+                <i v-if="uploading" class="ti ti-loader-2 nd-spin" />
                 <i v-else class="ti ti-plus" />
               </div>
               <div :class="$style.driveGridLabel">アップロード</div>
@@ -573,10 +573,6 @@ fetchDrive()
   }
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
 
 /* --- Detail view --- */
 .driveDetailScroll {

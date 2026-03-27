@@ -1,7 +1,7 @@
 {
-  "emojiCachePerHost": 3000,
-  "emojiListHosts": 3,
-  "emojiPersistPerHost": 300,
+  "emojiCachePerHost": 4000,
+  "emojiListHosts": 4,
+  "emojiPersistPerHost": 500,
   "noteStoreMax": 1500,
   "noteListMax": 200,
   "maxNotifications": 300,
@@ -19,5 +19,10 @@
   "circuitBreakerDuration": 60,
   "imageCacheTTLDays": 7,
   "prefetchAhead": 30,
-  "prefetchBehind": 10
+  "prefetchBehind": 10,
+  "prefetchTrackedMax": 500,
+  "lazyLoadMargin": 200,
+  "ogpGalleryMax": 4,
+  "embedCacheMax": 64,
+  "nearViewportBuffer": 4
 }

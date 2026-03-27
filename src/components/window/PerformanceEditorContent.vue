@@ -39,6 +39,16 @@ const categories = computed(() => {
   return cats
 })
 
+const expandedSections = ref(new Set<string>())
+
+function toggleSection(catKey: string) {
+  if (expandedSections.value.has(catKey)) {
+    expandedSections.value.delete(catKey)
+  } else {
+    expandedSections.value.add(catKey)
+  }
+}
+
 function handleSlider(key: PerformanceKey, event: Event) {
   const target = event.target as HTMLInputElement
   perfStore.set(key, Number(target.value))
@@ -190,46 +200,56 @@ function handleReset() {
         :key="catKey"
         :class="$style.section"
       >
-        <div :class="$style.sectionLabel">
+        <button
+          class="_button"
+          :class="$style.sectionLabel"
+          @click="toggleSection(catKey)"
+        >
           <i :class="'ti ' + CATEGORY_LABELS[catKey]?.icon" />
           {{ CATEGORY_LABELS[catKey]?.label }}
-        </div>
-        <div v-for="field in fields" :key="field.key" :class="$style.field">
-          <div :class="$style.fieldHeader">
-            <span :class="$style.fieldLabel">{{ field.meta.label }}</span>
-            <div :class="$style.fieldValue">
-              <input
-                type="number"
-                :class="$style.numberInput"
-                :value="perfStore.get(field.key)"
-                :min="field.meta.min"
-                :max="field.meta.max"
-                :step="field.meta.step"
-                @change="handleNumberInput(field.key, $event)"
-              />
-              <span :class="$style.fieldUnit">{{ field.meta.unit }}</span>
-              <button
-                v-if="perfStore.isCustomized(field.key)"
-                class="_button"
-                :class="$style.resetBtn"
-                :title="'デフォルト: ' + perfStore.getDefault(field.key)"
-                @click="perfStore.resetKey(field.key)"
-              >
-                <i class="ti ti-restore" />
-              </button>
-            </div>
-          </div>
-          <input
-            type="range"
-            :class="$style.slider"
-            :value="perfStore.get(field.key)"
-            :min="field.meta.min"
-            :max="field.meta.max"
-            :step="field.meta.step"
-            @input="handleSlider(field.key, $event)"
+          <i
+            class="ti ti-chevron-down"
+            :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.has(catKey) }]"
           />
-          <div :class="$style.fieldDesc">{{ field.meta.description }}</div>
-        </div>
+        </button>
+        <template v-if="expandedSections.has(catKey)">
+          <div v-for="field in fields" :key="field.key" :class="$style.field">
+            <div :class="$style.fieldHeader">
+              <span :class="$style.fieldLabel">{{ field.meta.label }}</span>
+              <div :class="$style.fieldValue">
+                <input
+                  type="number"
+                  :class="$style.numberInput"
+                  :value="perfStore.get(field.key)"
+                  :min="field.meta.min"
+                  :max="field.meta.max"
+                  :step="field.meta.step"
+                  @change="handleNumberInput(field.key, $event)"
+                />
+                <span :class="$style.fieldUnit">{{ field.meta.unit }}</span>
+                <button
+                  v-if="perfStore.isCustomized(field.key)"
+                  class="_button"
+                  :class="$style.resetBtn"
+                  :title="'デフォルト: ' + perfStore.getDefault(field.key)"
+                  @click="perfStore.resetKey(field.key)"
+                >
+                  <i class="ti ti-restore" />
+                </button>
+              </div>
+            </div>
+            <input
+              type="range"
+              :class="$style.slider"
+              :value="perfStore.get(field.key)"
+              :min="field.meta.min"
+              :max="field.meta.max"
+              :step="field.meta.step"
+              @input="handleSlider(field.key, $event)"
+            />
+            <div :class="$style.fieldDesc">{{ field.meta.description }}</div>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -321,9 +341,27 @@ function handleReset() {
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
   font-size: 0.8em;
   font-weight: bold;
   opacity: 0.7;
+  cursor: pointer;
+  transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.chevron {
+  margin-left: auto;
+  font-size: 0.9em;
+  transition: transform var(--nd-duration-base);
+  transform: rotate(-90deg);
+}
+
+.chevronOpen {
+  transform: rotate(0deg);
 }
 
 // --- Presets ---

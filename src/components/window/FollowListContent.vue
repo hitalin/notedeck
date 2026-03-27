@@ -195,7 +195,7 @@ function navigateUser(userId: string) {
           @click.stop="account?.hasToken ? toggleFollow(u) : showLoginPrompt()"
         >
           <template v-if="followLoadingIds.has(u.id)">
-            <i class="ti ti-loader-2" :class="$style.spin" />
+            <i class="ti ti-loader-2 nd-spin" />
           </template>
           <template v-else-if="followingIds.has(u.id)">
             フォロー中
@@ -364,12 +364,4 @@ function navigateUser(userId: string) {
   color: var(--nd-fg);
 }
 
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
 </style>

@@ -3,6 +3,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, onMounted, ref } from 'vue'
 import { MisskeyAuth } from '@/adapters/misskey/auth'
 import type { AuthSession } from '@/adapters/types'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useServerPreview } from '@/composables/useServerPreview'
 import { useVaporTransitionSwitch } from '@/composables/useVaporTransition'
 import { detectServer } from '@/core/server'
@@ -210,7 +211,7 @@ onMounted(() => {
       :class="$style.dialogBody"
     >
       <div :class="$style.logoArea">
-        <div :class="$style.waitingSpinner" />
+        <LoadingSpinner :size="48" />
         <p :class="$style.subtitle">サーバーに接続中...</p>
       </div>
     </div>
@@ -221,7 +222,7 @@ onMounted(() => {
       :class="$style.dialogBody"
     >
       <div :class="$style.logoArea">
-        <div :class="$style.waitingSpinner" />
+        <LoadingSpinner :size="48" />
         <p :class="$style.subtitle">認証待ち...</p>
       </div>
 
@@ -432,18 +433,6 @@ onMounted(() => {
   }
 }
 
-.waitingSpinner {
-  width: 48px;
-  height: 48px;
-  border: 3px solid var(--nd-divider);
-  border-top-color: var(--nd-accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 
 .waitingInfo {
   margin-bottom: 24px;

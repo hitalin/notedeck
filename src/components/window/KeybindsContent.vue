@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
 import { type Diagnostic, linter } from '@codemirror/lint'
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import type { Shortcut } from '@/commands/registry'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
@@ -135,24 +135,37 @@ const COMMAND_CATEGORIES: Record<string, string> = {
   ),
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  general: '全般',
-  navigation: 'ナビゲーション',
-  account: 'アカウント',
-  column: 'カラム',
-  note: 'ノート',
-  window: 'ウィンドウ',
-  profile: 'プロファイル',
+const CATEGORY_LABELS: Record<string, { label: string; icon: string }> = {
+  general: { label: '全般', icon: 'ti-settings' },
+  navigation: { label: 'ナビゲーション', icon: 'ti-compass' },
+  account: { label: 'アカウント', icon: 'ti-user' },
+  column: { label: 'カラム', icon: 'ti-columns' },
+  note: { label: 'ノート', icon: 'ti-note' },
+  window: { label: 'ウィンドウ', icon: 'ti-app-window' },
+  profile: { label: 'プロファイル', icon: 'ti-id-badge-2' },
+}
+
+const expandedSections = reactive<Record<string, boolean>>({})
+
+function toggleSection(key: string) {
+  expandedSections[key] = !expandedSections[key]
 }
 
 const groupedCommands = computed(() => {
-  const groups: { category: string; label: string; commands: string[] }[] = []
+  const groups: {
+    category: string
+    label: string
+    icon: string
+    commands: string[]
+  }[] = []
   for (const cat of CATEGORY_ORDER) {
     const cmds = commandIds.filter((id) => COMMAND_CATEGORIES[id] === cat)
     if (cmds.length > 0) {
+      const meta = CATEGORY_LABELS[cat]
       groups.push({
         category: cat,
-        label: CATEGORY_LABELS[cat] ?? cat,
+        label: meta?.label ?? cat,
+        icon: meta?.icon ?? 'ti-folder',
         commands: cmds,
       })
     }
@@ -343,59 +356,65 @@ function handleReset() {
 
     <!-- Visual tab -->
     <div v-show="tab === 'visual'" :class="$style.visualPanel">
-      <template v-for="group in groupedCommands" :key="group.category">
-        <div :class="$style.categoryHeader">{{ group.label }}</div>
-        <div
-          v-for="cmdId in group.commands"
-          :key="cmdId"
-          :class="[$style.keybindRow, { [$style.customized]: keybindsStore.isCustomized(cmdId) }]"
-        >
-          <div :class="$style.keybindLabel">
-            {{ COMMAND_LABELS[cmdId] ?? cmdId }}
-          </div>
-          <div :class="$style.keybindShortcuts">
-            <template v-for="(shortcut, idx) in keybindsStore.getShortcuts(cmdId)" :key="idx">
-              <div
-                :class="[$style.shortcutBadge, { [$style.recording]: recordingCommandId === cmdId && recordingIndex === idx }]"
-                tabindex="0"
-                @click="startRecording(cmdId, idx)"
-                @keydown="onKeyDown($event, cmdId, idx)"
-              >
-                <template v-if="recordingCommandId === cmdId && recordingIndex === idx">
-                  <span :class="$style.recordingText">入力待ち...</span>
-                </template>
-                <template v-else>
-                  {{ formatShortcut(shortcut) }}
-                  <button class="_button" :class="$style.removeShortcut" @click.stop="removeShortcut(cmdId, idx)">
-                    <i class="ti ti-x" />
-                  </button>
-                </template>
-              </div>
-            </template>
-            <button
-              v-if="recordingCommandId === cmdId && recordingIndex >= keybindsStore.getShortcuts(cmdId).length"
-              class="_button"
-              :class="[$style.shortcutBadge, $style.recording]"
-              tabindex="0"
-              @keydown="onKeyDown($event, cmdId, recordingIndex)"
-            >
-              <span :class="$style.recordingText">入力待ち...</span>
-            </button>
-            <button class="_button" :class="$style.addShortcutBtn" title="ショートカットを追加" @click="addShortcut(cmdId)">
-              <i class="ti ti-plus" />
-            </button>
-          </div>
-          <button
-            v-if="keybindsStore.isCustomized(cmdId)"
-            class="_button"
-            :class="$style.resetBtn"
-            title="デフォルトに戻す"
-            @click="resetCommand(cmdId)"
+      <div v-for="group in groupedCommands" :key="group.category" :class="$style.section">
+        <button class="_button" :class="$style.categoryHeader" @click="toggleSection(group.category)">
+          <i :class="'ti ' + group.icon" />
+          {{ group.label }}
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections[group.category] }]" />
+        </button>
+        <template v-if="expandedSections[group.category]">
+          <div
+            v-for="cmdId in group.commands"
+            :key="cmdId"
+            :class="[$style.keybindRow, { [$style.customized]: keybindsStore.isCustomized(cmdId) }]"
           >
-            <i class="ti ti-restore" />
-          </button>
-        </div>
-      </template>
+            <div :class="$style.keybindLabel">
+              {{ COMMAND_LABELS[cmdId] ?? cmdId }}
+            </div>
+            <div :class="$style.keybindShortcuts">
+              <template v-for="(shortcut, idx) in keybindsStore.getShortcuts(cmdId)" :key="idx">
+                <div
+                  :class="[$style.shortcutBadge, { [$style.recording]: recordingCommandId === cmdId && recordingIndex === idx }]"
+                  tabindex="0"
+                  @click="startRecording(cmdId, idx)"
+                  @keydown="onKeyDown($event, cmdId, idx)"
+                >
+                  <template v-if="recordingCommandId === cmdId && recordingIndex === idx">
+                    <span :class="$style.recordingText">入力待ち...</span>
+                  </template>
+                  <template v-else>
+                    {{ formatShortcut(shortcut) }}
+                    <button class="_button" :class="$style.removeShortcut" @click.stop="removeShortcut(cmdId, idx)">
+                      <i class="ti ti-x" />
+                    </button>
+                  </template>
+                </div>
+              </template>
+              <button
+                v-if="recordingCommandId === cmdId && recordingIndex >= keybindsStore.getShortcuts(cmdId).length"
+                class="_button"
+                :class="[$style.shortcutBadge, $style.recording]"
+                tabindex="0"
+                @keydown="onKeyDown($event, cmdId, recordingIndex)"
+              >
+                <span :class="$style.recordingText">入力待ち...</span>
+              </button>
+              <button class="_button" :class="$style.addShortcutBtn" title="ショートカットを追加" @click="addShortcut(cmdId)">
+                <i class="ti ti-plus" />
+              </button>
+            </div>
+            <button
+              v-if="keybindsStore.isCustomized(cmdId)"
+              class="_button"
+              :class="$style.resetBtn"
+              title="デフォルトに戻す"
+              @click="resetCommand(cmdId)"
+            >
+              <i class="ti ti-restore" />
+            </button>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- Code tab -->
@@ -490,30 +509,50 @@ function handleReset() {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 8px 10px;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
 }
 
+.section {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--nd-divider);
+}
+
 .categoryHeader {
-  font-size: 0.75em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 10px;
+  font-size: 0.8em;
   font-weight: bold;
   color: var(--nd-fg);
-  opacity: 0.5;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 12px 0 4px;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity var(--nd-duration-base);
 
-  &:first-child {
-    padding-top: 0;
+  &:hover {
+    opacity: 1;
   }
+}
+
+.chevron {
+  margin-left: auto;
+  font-size: 0.9em;
+  transition: transform var(--nd-duration-base);
+  transform: rotate(-90deg);
+}
+
+.chevronOpen {
+  transform: rotate(0deg);
 }
 
 .keybindRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
+  padding: 6px 10px;
   border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-fast);
 

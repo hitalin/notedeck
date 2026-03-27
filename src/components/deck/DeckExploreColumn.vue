@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref } from 'vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import { invoke } from '@/utils/tauriInvoke'
@@ -265,7 +266,7 @@ function closeUserPopup() {
         <i class="ti ti-arrow-left" />
       </button>
       <button v-else class="_button" :class="$style.headerRefresh" title="Refresh" :disabled="currentLoading" @click.stop="refresh">
-        <i class="ti ti-refresh" :class="{ [String($style.spin)]: currentLoading }" />
+        <i class="ti ti-refresh" :class="{ 'nd-spin': currentLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
@@ -305,7 +306,7 @@ function closeUserPopup() {
             :style="`--frame-min-height: ${displayHeight()}px`"
           >
             <div :class="$style.pullFrameContent">
-              <i v-if="isRefreshing" class="ti ti-loader-2" :class="$style.spin" />
+              <i v-if="isRefreshing" class="ti ti-loader-2 nd-spin" />
               <i v-else class="ti ti-arrow-bar-to-down" :class="{ refresh: isPulledEnough }" />
               <div :class="$style.pullText">
                 <template v-if="isPulledEnough">離してリフレッシュ</template>
@@ -315,7 +316,7 @@ function closeUserPopup() {
             </div>
           </div>
           <div v-if="isLoading && notes.length === 0" :class="$style.columnLoading">
-            <div :class="$style.columnLoadingSpinner" />
+            <LoadingSpinner />
           </div>
           <template v-if="!(isLoading && notes.length === 0)">
             <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" :class="$style.tlScroller" @scroll="handleScroll" @near-end="loadMore">

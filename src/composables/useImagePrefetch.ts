@@ -1,4 +1,5 @@
 import type { NormalizedNote } from '@/adapters/types'
+import { usePerformanceStore } from '@/stores/performance'
 import { proxyUrl } from '@/utils/imageProxy'
 import { isSafeUrl } from '@/utils/url'
 
@@ -9,10 +10,17 @@ import { isSafeUrl } from '@/utils/url'
  */
 
 const prefetchedUrls = new Set<string>()
-const MAX_TRACKED = 500
+
+function getTrackedMax(): number {
+  try {
+    return usePerformanceStore().get('prefetchTrackedMax')
+  } catch {
+    return 500
+  }
+}
 
 function evictOldest() {
-  if (prefetchedUrls.size <= MAX_TRACKED) return
+  if (prefetchedUrls.size <= getTrackedMax()) return
   const iter = prefetchedUrls.values()
   // Remove oldest 100 entries to avoid frequent eviction
   for (let i = 0; i < 100; i++) {

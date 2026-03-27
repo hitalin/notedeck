@@ -25,6 +25,12 @@ export interface PerformanceConfig {
   overscan: number
   prefetchAhead: number
   prefetchBehind: number
+  prefetchTrackedMax: number
+  lazyLoadMargin: number
+  nearViewportBuffer: number
+  // Image / OGP
+  ogpGalleryMax: number
+  embedCacheMax: number
   // Rust: backend
   memoryCacheMaxMB: number
   memoryCacheMaxItemKB: number
@@ -243,6 +249,52 @@ export const FIELD_META: Record<PerformanceKey, FieldMeta> = {
     label: '後方プリフェッチ',
     description: 'viewport上方向に遡って画像プリフェッチする数',
   },
+  prefetchTrackedMax: {
+    min: 100,
+    max: 2000,
+    step: 100,
+    unit: '件',
+    category: 'realtime',
+    label: 'プリフェッチ追跡上限',
+    description: 'プリフェッチ済みURLの記憶数。超過すると古い順に破棄',
+  },
+  lazyLoadMargin: {
+    min: 0,
+    max: 500,
+    step: 50,
+    unit: 'px',
+    category: 'realtime',
+    label: '遅延読み込みマージン',
+    description:
+      'OGPプレビューや埋め込みノートの読み込みを開始するviewportからの距離',
+  },
+  nearViewportBuffer: {
+    min: 1,
+    max: 10,
+    step: 1,
+    unit: '件',
+    category: 'realtime',
+    label: 'Viewport近傍バッファ',
+    description: 'viewport端から画像をeager読み込みする余裕アイテム数',
+  },
+  ogpGalleryMax: {
+    min: 0,
+    max: 8,
+    step: 1,
+    unit: '枚',
+    category: 'cache',
+    label: 'OGPギャラリー上限',
+    description: 'OGPプレビューのギャラリー画像の最大表示枚数',
+  },
+  embedCacheMax: {
+    min: 16,
+    max: 256,
+    step: 16,
+    unit: '件',
+    category: 'cache',
+    label: '埋め込みノートキャッシュ',
+    description: '埋め込みノートのLRUキャッシュ上限',
+  },
 }
 
 export const CATEGORY_LABELS: Record<string, { label: string; icon: string }> =
@@ -260,9 +312,9 @@ export const PRESETS = {
     label: '省メモリ',
     icon: 'ti-leaf',
     values: {
-      emojiCachePerHost: 1500,
+      emojiCachePerHost: 2000,
       emojiListHosts: 2,
-      emojiPersistPerHost: 100,
+      emojiPersistPerHost: 200,
       noteStoreMax: 800,
       noteListMax: 150,
       maxNotifications: 100,
@@ -281,6 +333,11 @@ export const PRESETS = {
       imageCacheTTLDays: 3,
       prefetchAhead: 15,
       prefetchBehind: 5,
+      prefetchTrackedMax: 200,
+      lazyLoadMargin: 100,
+      nearViewportBuffer: 2,
+      ogpGalleryMax: 2,
+      embedCacheMax: 32,
     } satisfies PerformanceConfig,
   },
   balanced: {
@@ -292,12 +349,12 @@ export const PRESETS = {
     label: '高パフォーマンス',
     icon: 'ti-rocket',
     values: {
-      emojiCachePerHost: 5000,
-      emojiListHosts: 5,
-      emojiPersistPerHost: 500,
+      emojiCachePerHost: 7000,
+      emojiListHosts: 6,
+      emojiPersistPerHost: 700,
       noteStoreMax: 3000,
       noteListMax: 300,
-      maxNotifications: 300,
+      maxNotifications: 500,
       mfmCacheMax: 512,
       imageProxyCacheMax: 512,
       ogpCacheMax: 256,
@@ -313,6 +370,11 @@ export const PRESETS = {
       imageCacheTTLDays: 14,
       prefetchAhead: 40,
       prefetchBehind: 15,
+      prefetchTrackedMax: 1000,
+      lazyLoadMargin: 300,
+      nearViewportBuffer: 6,
+      ogpGalleryMax: 6,
+      embedCacheMax: 128,
     } satisfies PerformanceConfig,
   },
 } as const
@@ -326,20 +388,28 @@ const FIXED_OVERHEAD_MB = 6 // tokio runtime + HTTP pools + Rust structures
 /** Estimate memory usage (MB) for a given config. */
 export function estimateMemoryMB(c: PerformanceConfig): number {
   const imageCacheMB = c.memoryCacheMaxMB
-  const noteStoreMB = (c.noteStoreMax * 3) / 1024 // ~3KB per note
-  const emojiMB = (c.emojiCachePerHost * c.emojiListHosts * 0.12) / 1024
-  const notificationMB = (c.maxNotifications * 2) / 1024
-  const parseCacheMB =
-    ((c.mfmCacheMax + c.imageProxyCacheMax + c.ogpCacheMax) * 0.5) / 1024
+  const noteStoreMB = (c.noteStoreMax * 4) / 1024 // ~4KB per note (nested user/reactions + V8 overhead)
+  const emojiMB = (c.emojiCachePerHost * c.emojiListHosts * 0.3) / 1024 // ~0.3KB (shortcode + URL + ServerEmoji)
+  const notificationMB = (c.maxNotifications * 4) / 1024 // ~4KB (note object + notification metadata)
+  // Parse caches differ in entry size
+  const mfmCacheMB = (c.mfmCacheMax * 2) / 1024 // ~2KB per MFM AST
+  const proxyCacheMB = (c.imageProxyCacheMax * 0.2) / 1024 // ~0.2KB per URL string
+  const ogpCacheMB = (c.ogpCacheMax * 1.5) / 1024 // ~1.5KB (title + description + image URL)
   const rustOgpMB = (c.rustOgpCacheMax * 5) / 1024
+  const embedCacheMB = (c.embedCacheMax * 4) / 1024 // ~4KB per embedded note
+  const prefetchTrackMB = (c.prefetchTrackedMax * 0.1) / 1024 // ~0.1KB per URL in Set
   return Math.round(
     FIXED_OVERHEAD_MB +
       imageCacheMB +
       noteStoreMB +
       emojiMB +
       notificationMB +
-      parseCacheMB +
-      rustOgpMB,
+      mfmCacheMB +
+      proxyCacheMB +
+      ogpCacheMB +
+      rustOgpMB +
+      embedCacheMB +
+      prefetchTrackMB,
   )
 }
 
@@ -348,18 +418,30 @@ export function estimateMemoryMB(c: PerformanceConfig): number {
  *
  * Model assumptions (3 active columns, moderate scrolling):
  * - ~150 unique notes viewed per hour (base)
- * - Prefetch extends effective load range
- * - ~50KB per note (avatar + emoji + occasional thumbnail, after proxy resize)
- * - noteListMax scales column buffer size
+ * - Prefetch loads images slightly ahead; most would be viewed on scroll,
+ *   only ~30% of prefetch range represents truly extra load
+ * - ~50KB per note for images (avatar + emoji + occasional thumbnail, after proxy resize)
+ * - Higher concurrency / rate limits → more requests complete → more actual bytes
+ * - ~20% of notes contain URLs that trigger OGP fetch (~10KB each)
+ * - ~3KB of API/WebSocket traffic per note (JSON payload)
  */
 export function estimateNetworkMBPerHour(c: PerformanceConfig): number {
   const BASE_NOTES = 150
-  const AVG_KB_PER_NOTE = 50
-  const prefetchFactor = 1 + (c.prefetchAhead + c.prefetchBehind) / 30
-  const listFactor = c.noteListMax / 200
-  return Math.round(
-    (BASE_NOTES * prefetchFactor * listFactor * AVG_KB_PER_NOTE) / 1024,
+  const AVG_IMAGE_KB = 50
+  // Only ~30% of prefetch range is "extra" (rest would be viewed on scroll)
+  const prefetchExtra = (c.prefetchAhead + c.prefetchBehind) * 0.3
+  // Higher concurrency and rate limits allow more requests to complete,
+  // increasing effective throughput (normalized to balanced defaults)
+  const throughputFactor = Math.sqrt(
+    (c.maxConcurrentFetches / 30) * (c.maxRequestsPerWindow / 200),
   )
+  const imageTraffic =
+    ((BASE_NOTES + prefetchExtra) * AVG_IMAGE_KB * throughputFactor) / 1024
+  // ~20% of notes contain URLs triggering OGP fetch
+  const ogpTraffic = (BASE_NOTES * 0.2 * 10) / 1024
+  // API/WebSocket: note JSON + notifications + streaming
+  const apiTraffic = (BASE_NOTES * 3) / 1024
+  return Math.round(imageTraffic + ogpTraffic + apiTraffic)
 }
 
 export const usePerformanceStore = defineStore('performance', () => {

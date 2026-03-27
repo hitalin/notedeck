@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 
@@ -130,7 +131,7 @@ defineExpose({
         :style="`--frame-min-height: ${displayHeight()}px`"
       >
         <div :class="$style.pullFrameContent">
-          <i v-if="isRefreshing" class="ti ti-loader-2" :class="$style.spin" />
+          <i v-if="isRefreshing" class="ti ti-loader-2 nd-spin" />
           <i v-else class="ti ti-arrow-bar-to-down" :class="{ refresh: isPulledEnough }" />
           <div :class="$style.pullText">
             <template v-if="isPulledEnough">離してリフレッシュ</template>
@@ -151,7 +152,7 @@ defineExpose({
       <slot name="before-notes" :handle-posted="handlePosted" />
 
       <div v-if="isLoading && notes.length === 0" :class="$style.columnLoading">
-        <div :class="$style.columnLoadingSpinner" />
+        <LoadingSpinner />
       </div>
 
       <template v-if="!(isLoading && notes.length === 0)">

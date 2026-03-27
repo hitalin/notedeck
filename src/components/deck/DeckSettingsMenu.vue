@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { relaunch } from '@tauri-apps/plugin-process'
-import type { CSSProperties } from 'vue'
-import { computed, nextTick, type Ref, ref, toRef, watch } from 'vue'
+import type { CSSProperties, Ref } from 'vue'
+import { computed, nextTick, reactive, ref, toRef, watch } from 'vue'
 
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
@@ -54,6 +54,11 @@ const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const themeGridOpen = ref(false)
+const expandedSections = reactive<Record<string, boolean>>({})
+
+function toggleSection(key: string) {
+  expandedSections[key] = !expandedSections[key]
+}
 
 // Current mode's builtin theme
 const builtinTheme = computed(() => (isDark.value ? DARK_THEME : LIGHT_THEME))
@@ -224,65 +229,70 @@ const importSettings = () =>
   <div v-if="show" :class="$style.menuBackdrop" @pointerdown="emit('close')" />
     <div v-if="menuVisible" ref="menuEl" :class="[$style.settingsMenu, { [$style.mobile]: isCompact }, menuLeaving ? $style.menuLeave : $style.menuEnter]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
       <div :class="$style.menuBody">
-      <!-- Misskey-style day/night toggle panel -->
-      <DayNightToggle
-        :is-dark="isDark"
-        :is-following-system="isFollowingSystem"
-        @toggle-dark="toggleDarkMode"
-        @toggle-sync="(checked: boolean) => toggleSyncDevice(checked)"
-      />
-
-      <!-- Theme selection folder -->
-      <div :class="$style.themeSelectSection">
-        <button :class="$style.themeSelectHeader" @click="themeGridOpen = !themeGridOpen">
-          <i :class="isDark ? 'ti ti-moon' : 'ti ti-sun'" />
-          <span>{{ isDark ? 'ダークテーマで使うテーマ' : 'ライトテーマで使うテーマ' }}</span>
-          <i :class="[$style.chevron, { [$style.open]: themeGridOpen }]" class="ti ti-chevron-down" />
+      <!-- アピアランス -->
+      <div :class="$style.categorySection">
+        <button :class="$style.categoryHeader" @click="toggleSection('appearance')">
+          <i class="ti ti-brush" />
+          <span>アピアランス</span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.appearance }]" />
         </button>
-        <div v-if="themeGridOpen" :class="$style.themeSelectBody">
-          <div :class="$style.themeGrid">
-            <!-- Builtin theme -->
-            <div :class="[$style.themeItem, { [$style.selected]: selectedId == null }]" @click="selectTheme(null)">
-              <ThemePreview :theme="builtinTheme" :class="$style.themeItemPreview" />
-              <div :class="$style.themeItemName">{{ builtinTheme.name }}</div>
-            </div>
-            <!-- Installed themes -->
-            <div
-              v-for="theme in currentModeThemes"
-              :key="theme.id"
-              :class="[$style.themeItem, { [$style.selected]: selectedId === theme.id }]"
-              @click="selectTheme(theme.id)"
-            >
-              <div :class="$style.themeItemPreviewWrap">
-                <ThemePreview :theme="theme" :class="$style.themeItemPreview" />
-                <button class="_button" :class="$style.themeRemoveBtn" @click.stop="removeTheme(theme.id)">
-                  <i class="ti ti-x" />
-                </button>
+        <div v-if="expandedSections.appearance" :class="$style.categoryBody">
+          <DayNightToggle
+            :is-dark="isDark"
+            :is-following-system="isFollowingSystem"
+            @toggle-dark="toggleDarkMode"
+            @toggle-sync="(checked: boolean) => toggleSyncDevice(checked)"
+          />
+
+          <div :class="$style.themeSelectSection">
+            <button :class="$style.themeSelectHeader" @click="themeGridOpen = !themeGridOpen">
+              <i :class="isDark ? 'ti ti-moon' : 'ti ti-sun'" />
+              <span>{{ isDark ? 'ダークテーマで使うテーマ' : 'ライトテーマで使うテーマ' }}</span>
+              <i :class="[$style.chevron, { [$style.chevronOpen]: themeGridOpen }]" class="ti ti-chevron-down" />
+            </button>
+            <div v-if="themeGridOpen" :class="$style.themeSelectBody">
+              <div :class="$style.themeGrid">
+                <div :class="[$style.themeItem, { [$style.selected]: selectedId == null }]" @click="selectTheme(null)">
+                  <ThemePreview :theme="builtinTheme" :class="$style.themeItemPreview" />
+                  <div :class="$style.themeItemName">{{ builtinTheme.name }}</div>
+                </div>
+                <div
+                  v-for="theme in currentModeThemes"
+                  :key="theme.id"
+                  :class="[$style.themeItem, { [$style.selected]: selectedId === theme.id }]"
+                  @click="selectTheme(theme.id)"
+                >
+                  <div :class="$style.themeItemPreviewWrap">
+                    <ThemePreview :theme="theme" :class="$style.themeItemPreview" />
+                    <button class="_button" :class="$style.themeRemoveBtn" @click.stop="removeTheme(theme.id)">
+                      <i class="ti ti-x" />
+                    </button>
+                  </div>
+                  <div :class="$style.themeItemName">{{ theme.name }}</div>
+                </div>
               </div>
-              <div :class="$style.themeItemName">{{ theme.name }}</div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Appearance -->
-      <div :class="$style.settingsMenuItem" @click="openToolWindow('themeEditor')">
-        <i class="ti ti-palette" />
-        <span :class="$style.settingsMenuLabel">テーマ</span>
-        <span v-if="selectedId != null" :class="$style.activeDot" />
-      </div>
-      <div :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
-        <i class="ti ti-code" />
-        <span :class="$style.settingsMenuLabel">カスタムCSS</span>
-        <span v-if="themeStore.customCss" :class="$style.activeDot" />
-      </div>
-      <div v-if="deckStore.wallpaper == null" :class="$style.settingsMenuItem" @click="pickWallpaper">
-        <i class="ti ti-photo" />
-        <span :class="$style.settingsMenuLabel">壁紙を設定</span>
-      </div>
-      <div v-else :class="$style.settingsMenuItem" @click="removeWallpaper">
-        <i class="ti ti-photo-off" />
-        <span :class="$style.settingsMenuLabel">壁紙を削除</span>
+          <div :class="$style.settingsMenuItem" @click="openToolWindow('themeEditor')">
+            <i class="ti ti-palette" />
+            <span :class="$style.settingsMenuLabel">テーマ</span>
+            <span v-if="selectedId != null" :class="$style.activeDot" />
+          </div>
+          <div :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
+            <i class="ti ti-code" />
+            <span :class="$style.settingsMenuLabel">カスタムCSS</span>
+            <span v-if="themeStore.customCss" :class="$style.activeDot" />
+          </div>
+          <div v-if="deckStore.wallpaper == null" :class="$style.settingsMenuItem" @click="pickWallpaper">
+            <i class="ti ti-photo" />
+            <span :class="$style.settingsMenuLabel">壁紙を設定</span>
+          </div>
+          <div v-else :class="$style.settingsMenuItem" @click="removeWallpaper">
+            <i class="ti ti-photo-off" />
+            <span :class="$style.settingsMenuLabel">壁紙を削除</span>
+          </div>
+        </div>
       </div>
 
       <input
@@ -293,62 +303,76 @@ const importSettings = () =>
         @change="onFileSelected"
       />
 
-      <!-- Controls -->
-      <div :class="$style.settingsMenuDivider" />
-
-      <div :class="$style.settingsMenuItem" @click="openToolWindow('navEditor')">
-        <i class="ti ti-layout-sidebar-left-collapse" />
-        <span :class="$style.settingsMenuLabel">ナビバー</span>
-      </div>
-      <div :class="$style.settingsMenuItem" @click="openToolWindow('plugins')">
-        <i class="ti ti-plug" />
-        <span :class="$style.settingsMenuLabel">プラグイン</span>
-      </div>
-      <div :class="$style.settingsMenuItem" @click="openToolWindow('aiSettings')">
-        <i class="ti ti-robot" />
-        <span :class="$style.settingsMenuLabel">AI</span>
-      </div>
-      <div v-if="!isMobilePlatform" :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
-        <i class="ti ti-keyboard" />
-        <span :class="$style.settingsMenuLabel">キーバインド</span>
-        <span v-if="Object.keys(keybindsStore.overrides).length > 0" :class="$style.activeDot" />
-      </div>
-      <div :class="$style.settingsMenuItem" @click="openToolWindow('performanceEditor')">
-        <i class="ti ti-gauge" />
-        <span :class="$style.settingsMenuLabel">パフォーマンス</span>
-        <span v-if="Object.keys(perfStore.overrides).length > 0" :class="$style.activeDot" />
-      </div>
-
-      <!-- Data -->
-      <div :class="$style.settingsMenuDivider" />
-
-      <div :class="$style.dataGroup">
-        <span :class="$style.dataGroupLabel"><i class="ti ti-database" /> DBバックアップ</span>
-        <div :class="$style.dataBtnRow">
-          <button class="_button" :class="$style.dataBtn" :disabled="isImportingDb" @click="importDb">
-            <i class="ti ti-clipboard-text" />
-            {{ isImportingDb ? '処理中...' : 'インポート' }}
-          </button>
-          <button class="_button" :class="$style.dataBtn" :disabled="isExporting" @click="exportDb">
-            <i class="ti ti-clipboard-copy" />
-            {{ isExporting ? '処理中...' : 'エクスポート' }}
-          </button>
+      <!-- 設定 -->
+      <div :class="$style.categorySection">
+        <button :class="$style.categoryHeader" @click="toggleSection('settings')">
+          <i class="ti ti-settings" />
+          <span>設定</span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.settings }]" />
+        </button>
+        <div v-if="expandedSections.settings" :class="$style.categoryBody">
+          <div :class="$style.settingsMenuItem" @click="openToolWindow('navEditor')">
+            <i class="ti ti-layout-sidebar-left-collapse" />
+            <span :class="$style.settingsMenuLabel">ナビバー</span>
+          </div>
+          <div :class="$style.settingsMenuItem" @click="openToolWindow('plugins')">
+            <i class="ti ti-plug" />
+            <span :class="$style.settingsMenuLabel">プラグイン</span>
+          </div>
+          <div :class="$style.settingsMenuItem" @click="openToolWindow('aiSettings')">
+            <i class="ti ti-robot" />
+            <span :class="$style.settingsMenuLabel">AI</span>
+          </div>
+          <div v-if="!isMobilePlatform" :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
+            <i class="ti ti-keyboard" />
+            <span :class="$style.settingsMenuLabel">キーバインド</span>
+            <span v-if="Object.keys(keybindsStore.overrides).length > 0" :class="$style.activeDot" />
+          </div>
+          <div :class="$style.settingsMenuItem" @click="openToolWindow('performanceEditor')">
+            <i class="ti ti-gauge" />
+            <span :class="$style.settingsMenuLabel">パフォーマンス</span>
+            <span v-if="Object.keys(perfStore.overrides).length > 0" :class="$style.activeDot" />
+          </div>
         </div>
       </div>
-      <div :class="$style.dataGroup">
-        <span :class="$style.dataGroupLabel"><i class="ti ti-settings" /> 設定バックアップ</span>
-        <div :class="$style.dataBtnRow">
-          <button class="_button" :class="$style.dataBtn" :disabled="isImportingSettings" @click="importSettings">
-            <i class="ti ti-clipboard-text" />
-            {{ isImportingSettings ? '処理中...' : 'インポート' }}
-          </button>
-          <button class="_button" :class="$style.dataBtn" :disabled="isExportingSettings" @click="exportSettings">
-            <i class="ti ti-clipboard-copy" />
-            {{ isExportingSettings ? '処理中...' : 'エクスポート' }}
-          </button>
+
+      <!-- バックアップ -->
+      <div :class="$style.categorySection">
+        <button :class="$style.categoryHeader" @click="toggleSection('backup')">
+          <i class="ti ti-database-export" />
+          <span>バックアップ</span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.backup }]" />
+        </button>
+        <div v-if="expandedSections.backup" :class="$style.categoryBody">
+          <div :class="$style.dataGroup">
+            <span :class="$style.dataGroupLabel"><i class="ti ti-database" /> DBバックアップ</span>
+            <div :class="$style.dataBtnRow">
+              <button class="_button" :class="$style.dataBtn" :disabled="isImportingDb" @click="importDb">
+                <i class="ti ti-clipboard-text" />
+                {{ isImportingDb ? '処理中...' : 'インポート' }}
+              </button>
+              <button class="_button" :class="$style.dataBtn" :disabled="isExporting" @click="exportDb">
+                <i class="ti ti-clipboard-copy" />
+                {{ isExporting ? '処理中...' : 'エクスポート' }}
+              </button>
+            </div>
+          </div>
+          <div :class="$style.dataGroup">
+            <span :class="$style.dataGroupLabel"><i class="ti ti-settings" /> 設定バックアップ</span>
+            <div :class="$style.dataBtnRow">
+              <button class="_button" :class="$style.dataBtn" :disabled="isImportingSettings" @click="importSettings">
+                <i class="ti ti-clipboard-text" />
+                {{ isImportingSettings ? '処理中...' : 'インポート' }}
+              </button>
+              <button class="_button" :class="$style.dataBtn" :disabled="isExportingSettings" @click="exportSettings">
+                <i class="ti ti-clipboard-copy" />
+                {{ isExportingSettings ? '処理中...' : 'エクスポート' }}
+              </button>
+            </div>
+          </div>
+          <div v-if="backupError" :class="$style.backupError">{{ backupError }}</div>
         </div>
       </div>
-      <div v-if="backupError" :class="$style.backupError">{{ backupError }}</div>
 
       </div>
       <div :class="$style.menuFooter">
@@ -411,6 +435,38 @@ const importSettings = () =>
   flex-shrink: 0;
 }
 
+/* -- Category accordion -- */
+
+.categorySection {
+  border-bottom: 1px solid var(--nd-divider);
+}
+
+.categoryHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 16px;
+  font-size: 0.85em;
+  font-weight: bold;
+  color: var(--nd-fg);
+  opacity: 0.7;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: opacity var(--nd-duration-fast), background var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-accent-hover);
+  }
+}
+
+.categoryBody {
+  padding-bottom: 4px;
+  padding-left: 12px;
+}
+
 /* -- Theme selection grid -- */
 
 .themeSelectSection {
@@ -440,11 +496,13 @@ const importSettings = () =>
 
 .chevron {
   margin-left: auto;
+  font-size: 0.9em;
   transition: transform var(--nd-duration-base);
+  transform: rotate(-90deg);
+}
 
-  &.open {
-    transform: rotate(180deg);
-  }
+.chevronOpen {
+  transform: rotate(0deg);
 }
 
 .themeSelectBody {

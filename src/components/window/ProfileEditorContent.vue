@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
 import JSON5 from 'json5'
-import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import {
@@ -34,6 +34,12 @@ const serversStore = useServersStore()
 const deckStore = useDeckStore()
 const profileStore = useDeckProfileStore()
 const isCompact = useIsCompactLayout()
+
+const expandedSections = reactive<Record<string, boolean>>({})
+
+function toggleSection(key: string) {
+  expandedSections[key] = !expandedSections[key]
+}
 
 const codeContent = ref('')
 const codeError = ref<string | null>(null)
@@ -275,11 +281,13 @@ async function importFromClipboard() {
     <div v-if="tab === 'visual'" :class="$style.visualPanel">
       <!-- Profile name -->
       <div :class="$style.nameSection">
-        <div :class="$style.nameLabel">
+        <button class="_button" :class="$style.nameLabel" @click="toggleSection('name')">
           <i class="ti ti-tag" />
           プロファイル名
-        </div>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.name }]" />
+        </button>
         <input
+          v-if="expandedSections.name"
           :value="profileStore.currentProfileName ?? ''"
           :class="$style.nameInput"
           type="text"
@@ -291,12 +299,14 @@ async function importFromClipboard() {
 
       <!-- Column preview -->
       <div :class="$style.columnSection">
-        <div :class="$style.sectionLabel">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('columns')">
           <i class="ti ti-columns" />
           カラム
           <span :class="$style.sectionBadge">{{ deckStore.windowLayout.length }}</span>
-        </div>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.columns }]" />
+        </button>
 
+        <template v-if="expandedSections.columns">
         <!-- Mobile: row-based list with move buttons -->
         <div v-if="isCompact" :class="$style.mobileList">
           <div
@@ -389,6 +399,7 @@ async function importFromClipboard() {
           @column-selected="onColumnSelected"
           @close="showAddColumn = false"
         />
+        </template>
       </div>
     </div>
 
@@ -469,9 +480,16 @@ async function importFromClipboard() {
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
   font-size: 0.8em;
   font-weight: bold;
   opacity: 0.7;
+  cursor: pointer;
+  transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
 .nameInput {
@@ -503,13 +521,30 @@ async function importFromClipboard() {
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
   font-size: 0.8em;
   font-weight: bold;
   opacity: 0.7;
+  cursor: pointer;
+  transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.chevron {
+  margin-left: auto;
+  font-size: 0.9em;
+  transition: transform var(--nd-duration-base);
+  transform: rotate(-90deg);
+}
+
+.chevronOpen {
+  transform: rotate(0deg);
 }
 
 .sectionBadge {
-  margin-left: auto;
   font-weight: normal;
   font-size: 0.9em;
   opacity: 0.8;
