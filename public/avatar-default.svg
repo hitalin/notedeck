@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#d87f61"/>
-      <stop offset="100%" stop-color="#b25b3e"/>
+      <stop offset="0%" stop-color="#b4e900"/>
+      <stop offset="100%" stop-color="#00e085"/>
     </linearGradient>
   </defs>
   <rect width="128" height="128" rx="20" fill="url(#bg)"/>
   <!-- eyes -->
-  <circle cx="42" cy="52" r="7" fill="#fff"/>
-  <circle cx="86" cy="52" r="7" fill="#fff"/>
-  <!-- mouth (disappointed) -->
-  <path d="M48 84 L64 76 L80 84" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="42" cy="52" r="8" fill="#fff"/>
+  <circle cx="86" cy="52" r="8" fill="#fff"/>
+  <!-- mouth -->
+  <path d="M48 76 Q64 92 80 76" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none"/>
 </svg>
