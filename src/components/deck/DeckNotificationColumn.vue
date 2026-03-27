@@ -125,10 +125,17 @@ function onNotifAvatarMouseLeave() {
   userPopup.hide()
 }
 
+// O(1) account lookup map for cross-account columns
+const accountById = computed(() => {
+  const map = new Map<string, (typeof accountsStore.accounts)[number]>()
+  for (const a of accountsStore.accounts) map.set(a.id, a)
+  return map
+})
+
 /** Resolve the account that owns a notification (for cross-account support) */
 function resolveNotifAccount(notif: NormalizedNotification) {
   if (!isCrossAccount.value) return account.value
-  return accountsStore.accounts.find((a) => a.id === notif._accountId)
+  return accountById.value.get(notif._accountId)
 }
 
 /** Get the server favicon URL for a notification's account */
