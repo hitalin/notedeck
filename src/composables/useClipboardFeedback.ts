@@ -33,12 +33,28 @@ export function useClipboardFeedback(duration = 2000) {
     }, duration)
   }
 
+  async function copyToClipboard(text: string) {
+    await navigator.clipboard.writeText(text)
+    showCopied()
+  }
+
+  async function readFromClipboard(): Promise<string | null> {
+    try {
+      return await navigator.clipboard.readText()
+    } catch {
+      return null
+    }
+  }
+
   return {
     copied,
     imported,
+    importFeedback: imported,
     importError,
     showCopied,
     showImported,
     showImportError,
+    copyToClipboard,
+    readFromClipboard,
   }
 }
