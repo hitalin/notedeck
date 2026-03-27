@@ -103,9 +103,9 @@
   --nd-radius-full: 999px;
   --nd-margin: 10px;
   --nd-columnGap: 2px;
-  --nd-blur: 10px;
-  --nd-blur-panel: 6px;
-  --nd-blur-content: 3px;
+  --nd-blur: 3px;
+  --nd-blur-panel: 2px;
+  --nd-blur-content: 1px;
   /* Transition duration
      Apple pattern: enter slightly longer than leave for natural weight */
   --nd-duration-fast: 0.15s;
@@ -274,11 +274,7 @@ summary,
 [role="listitem"] {
   transition:
     background var(--nd-duration-base),
-    color var(--nd-duration-base),
-    opacity var(--nd-duration-base),
-    filter var(--nd-duration-base),
-    box-shadow var(--nd-duration-base),
-    border-color var(--nd-duration-base);
+    opacity var(--nd-duration-base);
 }
 
 /* ---- Popup (shared acrylic panel) ---- */
@@ -317,7 +313,7 @@ summary,
   color: var(--nd-fg);
   font-size: 0.85em;
   text-align: left;
-  transition: background var(--nd-duration-base), color var(--nd-duration-base), filter var(--nd-duration-base), opacity var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
+  transition: background var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._popupItem:hover {
@@ -433,7 +429,7 @@ summary,
   font-family: inherit;
   line-height: inherit;
   max-width: 100%;
-  transition: background var(--nd-duration-base), color var(--nd-duration-base), filter var(--nd-duration-base), opacity var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
+  transition: background var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._button:active:not(:disabled) {
@@ -467,7 +463,7 @@ summary,
   font-family: inherit;
   line-height: inherit;
   touch-action: manipulation;
-  transition: background var(--nd-duration-fast), color var(--nd-duration-base), filter var(--nd-duration-base), opacity var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
+  transition: background var(--nd-duration-fast), transform var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._buttonPrimary:hover:not(:disabled) {

@@ -1109,10 +1109,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   border: none;
   cursor: pointer;
   color: var(--nd-fg);
-  transition:
-    background var(--nd-duration-fast),
-    opacity var(--nd-duration-base) var(--nd-ease-reaction),
-    transform var(--nd-duration-base) var(--nd-ease-spring-bouncy);
+  transition: background var(--nd-duration-fast);
 
   &:hover {
     background: rgba(0, 0, 0, 0.1);
@@ -1210,10 +1207,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   cursor: pointer;
   color: color-mix(in srgb, var(--nd-panel) 30%, var(--nd-fg) 70%);
   font-size: 1em;
-  transition:
-    color var(--nd-duration-base),
-    background var(--nd-duration-fast),
-    transform var(--nd-duration-fast) var(--nd-ease-spring);
+  transition: background var(--nd-duration-fast);
 
   &:active {
     transform: scale(0.88);
