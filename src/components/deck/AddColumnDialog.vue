@@ -517,6 +517,12 @@ function close() {
   align-items: center;
   justify-content: center;
   background: var(--nd-modalBg);
+
+  @media (prefers-reduced-motion: no-preference) {
+    > .addPopup {
+      animation: addPopupIn 0.2s var(--nd-ease-spring);
+    }
+  }
 }
 
 .addPopup {
@@ -727,6 +733,10 @@ function close() {
 
 .chevronOpen {
   transform: rotate(0deg);
+}
+
+@keyframes addPopupIn {
+  from { opacity: 0; transform: scale(0.95); }
 }
 
 .addPopup.mobile {

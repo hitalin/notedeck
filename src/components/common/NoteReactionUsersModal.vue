@@ -42,8 +42,8 @@ const { activate: activateTrap, deactivate: deactivateTrap } = useFocusTrap(
 )
 
 const { visible, leaving } = useVaporTransition(show, {
-  enterDuration: 250,
-  leaveDuration: 200,
+  enterDuration: 200,
+  leaveDuration: 150,
 })
 
 watch(show, (v) => {

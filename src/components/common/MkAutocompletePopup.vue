@@ -83,6 +83,15 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
   max-height: 240px;
   overflow-y: auto;
   padding: 4px;
+  animation: acPopupIn 0.1s ease-out;
+}
+
+@keyframes acPopupIn {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .autocompletePopup { animation: none; }
 }
 
 .autocompleteItem {

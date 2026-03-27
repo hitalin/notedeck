@@ -3,10 +3,12 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import AppConfirm from '@/components/common/AppConfirm.vue'
 import AppToast from '@/components/common/AppToast.vue'
+import MkRippleEffect from '@/components/common/MkRippleEffect.vue'
 import { useDeckInit } from '@/composables/useDeckInit'
 import { requestMoveColumn } from '@/composables/useDeckWindow'
 import { useFileDrop } from '@/composables/useFileDrop'
 import { useNavigation } from '@/composables/useNavigation'
+import { useRippleEffect } from '@/composables/useRippleEffect'
 import { provideScrollDirection } from '@/composables/useScrollDirection'
 import { useUpdater } from '@/composables/useUpdater'
 import { useVaporTransition } from '@/composables/useVaporTransition'
@@ -45,6 +47,7 @@ const mobileDrawerOpen = ref(false)
 const pendingFilePaths = ref<string[]>([])
 const activeColumnIndex = ref(0)
 const { updateAvailable, checkForUpdate } = useUpdater()
+const { ripples, remove: removeRipple } = useRippleEffect()
 
 const wallpaperStyle = computed(() =>
   deckStore.wallpaper != null
@@ -111,16 +114,16 @@ const fileDrop = useFileDrop((paths, position) => {
 })
 
 // Vapor-compatible transitions
-const drawerT = useVaporTransition(mobileDrawerOpen, { leaveDuration: 250 })
-const addMenuT = useVaporTransition(showAddMenu, { leaveDuration: 300 })
+const drawerT = useVaporTransition(mobileDrawerOpen, { leaveDuration: 200 })
+const addMenuT = useVaporTransition(showAddMenu, { leaveDuration: 200 })
 const composeShow = computed(
   () => showCompose.value && accountsStore.accounts.length > 0,
 )
-const composeT = useVaporTransition(composeShow, { leaveDuration: 300 })
+const composeT = useVaporTransition(composeShow, { leaveDuration: 200 })
 const fileDropShow = computed(() => fileDrop.isDragging.value)
-const fileDropT = useVaporTransition(fileDropShow, { leaveDuration: 250 })
+const fileDropT = useVaporTransition(fileDropShow, { leaveDuration: 200 })
 const crossDropShow = computed(() => !!deckStore.crossWindowDragColumnId)
-const crossDropT = useVaporTransition(crossDropShow, { leaveDuration: 250 })
+const crossDropT = useVaporTransition(crossDropShow, { leaveDuration: 200 })
 
 provideScrollDirection()
 
@@ -277,6 +280,15 @@ function acceptCrossWindowDrop() {
     <AppToast />
     <AppConfirm />
 
+    <!-- Misskey-style ripple effects (reaction celebration particles) -->
+    <MkRippleEffect
+      v-for="r in ripples"
+      :key="r.id"
+      :x="r.x"
+      :y="r.y"
+      @done="removeRipple(r.id)"
+    />
+
     <!-- Cross-window column drop overlay -->
     <div
       v-if="crossDropT.visible.value"
@@ -401,13 +413,13 @@ function acceptCrossWindowDrop() {
   }
 }
 
-.fadeEnter { animation: fadeIn 0.25s ease; }
-.fadeLeave { animation: fadeOut 0.25s ease forwards; }
+.fadeEnter { animation: fadeIn 0.18s ease-out; }
+.fadeLeave { animation: fadeOut 0.18s ease-in forwards; }
 @keyframes fadeIn { from { opacity: 0; } }
 @keyframes fadeOut { to { opacity: 0; } }
 
-.modalEnter { animation: modalIn 0.3s ease; }
-.modalLeave { animation: modalOut 0.3s ease forwards; }
+.modalEnter { animation: modalIn 0.2s ease-out; }
+.modalLeave { animation: modalOut 0.2s ease-in forwards; }
 @keyframes modalIn { from { opacity: 0; } }
 @keyframes modalOut { to { opacity: 0; } }
 </style>

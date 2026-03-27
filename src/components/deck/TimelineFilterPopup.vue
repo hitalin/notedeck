@@ -12,8 +12,8 @@ const props = defineProps<{
 }>()
 
 const { visible, leaving } = useVaporTransition(toRef(props, 'show'), {
-  enterDuration: 200,
-  leaveDuration: 200,
+  enterDuration: 180,
+  leaveDuration: 150,
 })
 
 const emit = defineEmits<{
@@ -125,8 +125,8 @@ onUnmounted(() => {
 </style>
 
 <style lang="scss" module>
-.filterPopupEnter { animation: filterPopupIn 0.2s var(--nd-ease-pop); }
-.filterPopupLeave { animation: filterPopupOut 0.2s var(--nd-ease-pop) forwards; }
+.filterPopupEnter { animation: filterPopupIn 0.18s var(--nd-ease-pop); }
+.filterPopupLeave { animation: filterPopupOut 0.15s var(--nd-ease-pop) forwards; }
 @keyframes filterPopupIn { from { opacity: 0; transform: scale(0.95) translateY(-4px); } }
 @keyframes filterPopupOut { to { opacity: 0; transform: scale(0.95) translateY(-4px); } }
 </style>

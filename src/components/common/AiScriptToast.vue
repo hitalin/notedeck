@@ -12,8 +12,8 @@ const toasts = ref<ToastItem[]>([])
 let nextId = 0
 
 const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
-  enterDuration: 300,
-  leaveDuration: 150,
+  enterDuration: 250,
+  leaveDuration: 120,
 })
 
 function show(text: string, type: ToastItem['type'] = 'info') {
@@ -87,11 +87,11 @@ defineExpose({ show })
 .error {}
 
 .toastEnter {
-  animation: ais-toast-enter 0.3s ease both;
+  animation: ais-toast-enter 0.25s var(--nd-ease-spring) both;
 }
 
 .toastLeave {
-  animation: ais-toast-leave 0.15s ease both;
+  animation: ais-toast-leave 0.12s ease-in both;
 }
 
 @keyframes ais-toast-enter {

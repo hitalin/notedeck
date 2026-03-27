@@ -238,7 +238,7 @@ defineSlots<{
    Positioning uses the `translate` property (set via inline style),
    so `transform` is free for animation without conflict. */
 .enterAnimation {
-  animation: noteSlideIn var(--nd-duration-slow) var(--nd-ease-spring);
+  animation: noteSlideIn var(--nd-duration-tl-enter) var(--nd-ease-slide);
 }
 
 @keyframes noteSlideIn {

@@ -201,6 +201,7 @@ onUnmounted(() => {
   max-width: 340px;
   padding: 8px 0 8px 12px;
   pointer-events: auto;
+  animation: reactionPopupIn 0.15s var(--nd-ease-spring);
 
   /* Bridge to catch the mouse in the gap between badge and tooltip */
   &::before {
@@ -309,5 +310,13 @@ onUnmounted(() => {
   &:hover {
     opacity: 0.7;
   }
+}
+
+@keyframes reactionPopupIn {
+  from { opacity: 0; transform: scale(0.97) translateY(4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root { animation: none; }
 }
 </style>

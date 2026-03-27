@@ -4,8 +4,8 @@ import { useToast } from '@/stores/toast'
 
 const { toasts } = useToast()
 const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
-  enterDuration: 300,
-  leaveDuration: 150,
+  enterDuration: 250,
+  leaveDuration: 120,
 })
 </script>
 
@@ -99,11 +99,11 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
 }
 
 .toastEnter {
-  animation: toast-enter 0.35s var(--nd-ease-spring) both;
+  animation: toast-enter var(--nd-duration-slow) var(--nd-ease-slide) both;
 }
 
 .toastLeave {
-  animation: toast-leave 0.2s var(--nd-ease-spring) both;
+  animation: toast-leave var(--nd-duration-fast) var(--nd-ease-slide) both;
 }
 
 @keyframes toast-enter {

@@ -1093,16 +1093,16 @@ function closeMentionPopup() {
   cursor: pointer;
   color: var(--nd-fg);
   transition:
-    background 0.15s,
-    opacity 0.2s cubic-bezier(0, 0.5, 0.5, 1),
-    transform 0.2s cubic-bezier(0, 0.5, 0.5, 1);
+    background var(--nd-duration-fast),
+    opacity var(--nd-duration-base) var(--nd-ease-reaction),
+    transform var(--nd-duration-base) var(--nd-ease-reaction);
 
   &:hover {
     background: rgba(0, 0, 0, 0.1);
   }
 
   &:active {
-    animation: reaction-bounce 0.35s var(--nd-ease-spring);
+    animation: reaction-bounce var(--nd-duration-slower) var(--nd-ease-spring);
   }
 
   &.reacted,
@@ -1110,6 +1110,11 @@ function closeMentionPopup() {
     background: var(--nd-accentedBg);
     color: var(--nd-accent);
     box-shadow: 0 0 0 1px var(--nd-accent) inset;
+  }
+
+  /* Misskey: drop-shadow on custom emoji when reacted */
+  &.reacted .customEmoji {
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
   }
 
   .customEmoji {
@@ -1181,11 +1186,15 @@ function closeMentionPopup() {
   min-width: 44px;
   margin-right: 28px;
   border: none;
+  border-radius: var(--nd-radius-sm);
   background: none;
   cursor: pointer;
   color: color-mix(in srgb, var(--nd-panel) 30%, var(--nd-fg) 70%);
   font-size: 1em;
-  transition: color var(--nd-duration-base), transform var(--nd-duration-fast);
+  transition:
+    color var(--nd-duration-base),
+    background var(--nd-duration-fast),
+    transform var(--nd-duration-fast);
 
   &:active {
     transform: scale(0.9);
@@ -1193,6 +1202,7 @@ function closeMentionPopup() {
 
   &:hover {
     color: var(--nd-fgHighlighted);
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
   }
 }
 
@@ -1215,7 +1225,7 @@ function closeMentionPopup() {
 }
 
 .reactionButton:active {
-  animation: reaction-bounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: reaction-bounce var(--nd-duration-slower) var(--nd-ease-overshoot);
 }
 
 .moreButton:hover {
@@ -1275,15 +1285,15 @@ function closeMentionPopup() {
 }
 
 /* Renote popup animations */
-.renotePopupEnter { animation: renotePopupBdIn 0.3s ease; }
-.renotePopupLeave { animation: renotePopupBdOut 0.3s ease forwards; }
+.renotePopupEnter { animation: renotePopupBdIn var(--nd-duration-slow) ease; }
+.renotePopupLeave { animation: renotePopupBdOut var(--nd-duration-slow) ease forwards; }
 @keyframes renotePopupBdIn { from { opacity: 0; } }
 @keyframes renotePopupBdOut { to { opacity: 0; } }
 
-.renotePopupContentEnter { animation: renotePopupIn 0.3s var(--nd-ease-pop); }
-.renotePopupContentLeave { animation: renotePopupOut 0.3s var(--nd-ease-pop) forwards; }
-@keyframes renotePopupIn { from { opacity: 0; transform: scale(0.95) translateY(-4px); } }
-@keyframes renotePopupOut { to { opacity: 0; transform: scale(0.95) translateY(-4px); } }
+.renotePopupContentEnter { animation: renotePopupIn var(--nd-duration-slow) var(--nd-ease-menu); }
+.renotePopupContentLeave { animation: renotePopupOut var(--nd-duration-slow) var(--nd-ease-menu) forwards; }
+@keyframes renotePopupIn { from { opacity: 0; transform: scale(0.9); } }
+@keyframes renotePopupOut { to { opacity: 0; transform: scale(0.9); } }
 
 /* Divider between notes */
 .noteRoot + .noteRoot {

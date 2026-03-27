@@ -29,8 +29,8 @@ const {
   entering: paletteEntering,
   leaving: paletteLeaving,
 } = useVaporTransition(isOpen, {
-  enterDuration: 300,
-  leaveDuration: 200,
+  enterDuration: 250,
+  leaveDuration: 180,
 })
 
 /** Whether the user is in command mode (input starts with ">") */

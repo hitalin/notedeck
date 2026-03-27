@@ -585,13 +585,15 @@ defineExpose({
   text-align: center;
   pointer-events: none;
   box-sizing: border-box;
-  animation: nd-badge-in var(--nd-duration-slow) var(--nd-ease-spring) both;
+  animation: nd-badge-in 0.7s ease both;
 }
 
+/* Misskey global-bounce style: 3-step overshoot for satisfying pop-in */
 @keyframes nd-badge-in {
   0%   { transform: scale(0); opacity: 0; }
-  50%  { transform: scale(1.3); }
-  100% { transform: scale(1); opacity: 1; }
+  19%  { transform: scale(1.15); opacity: 1; }
+  48%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
 }
 
 .label {
