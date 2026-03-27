@@ -320,6 +320,25 @@ pub fn export_account_list(app: &tauri::AppHandle, db: &Database) {
     );
 }
 
+/// Emit account list to frontend via Tauri event before AppState is initialized.
+/// This lets the accounts store populate early, bypassing the AppState readiness gate.
+/// Uses the same AccountPublic format as the load_accounts command.
+pub fn emit_accounts_early(app: &tauri::AppHandle, db: &Database) {
+    use tauri::Emitter;
+    let Ok(accounts) = db.load_accounts() else {
+        return;
+    };
+    let list: Vec<notecli::models::AccountPublic> = accounts
+        .iter()
+        .map(|a| {
+            let has_token =
+                !a.token.is_empty() || keychain::get_token(&a.id).ok().flatten().is_some();
+            notecli::models::AccountPublic::new(a, has_token)
+        })
+        .collect();
+    let _ = app.emit("nd:accounts-early", &list);
+}
+
 pub(crate) fn validate_host(host: &str) -> Result<String> {
     let normalized = host.trim().to_ascii_lowercase();
     if normalized.is_empty() {

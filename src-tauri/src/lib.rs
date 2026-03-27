@@ -321,6 +321,10 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             migrations::run_db(&db);
             commands::export_account_list(&app_handle, &db);
 
+            // Emit account list to frontend early — before AppState.initialize() —
+            // so the accounts store can populate without waiting for IPC readiness.
+            commands::emit_accounts_early(&app_handle, &db);
+
             // Streaming manager (depends on DB)
             let emitter = std::sync::Arc::new(streaming::TauriEmitter::new(app_handle.clone()));
             app_handle.manage(notecli::streaming::StreamingManager::new(

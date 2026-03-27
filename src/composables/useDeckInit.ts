@@ -57,6 +57,10 @@ export function useDeckInit(options: {
   let updateCheckTimer: ReturnType<typeof setTimeout> | undefined
 
   onMounted(() => {
+    // Signal that deck layout structure is in the DOM — splash can dismiss now.
+    // Data (notes) loads asynchronously; column frames are already visible.
+    window.dispatchEvent(new Event('nd:deck-mounted'))
+
     handleResizeRef = () => options.navbarRef.value?.handleResize()
     window.addEventListener('resize', handleResizeRef)
     document.addEventListener('visibilitychange', onVisibilityChange)

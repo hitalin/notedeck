@@ -52,7 +52,8 @@ onMounted(async () => {
   }
   document.documentElement.dataset.env = isTauri ? 'tauri' : 'web'
 
-  // Show window (visible: false in tauri.conf.json to avoid Windows titlebar flicker)
+  // Show window immediately (visible: false in tauri.conf.json to avoid WebView2 flash).
+  // Splash screen covers FOUT, so no need to wait for fonts.
   // NOTE: setDecorations(false) は呼ばない。config で既に false であり、
   // Windows で再度呼ぶとウィンドウスタイル再計算で非クライアント領域が復活する。
   if (isTauri) {
@@ -60,21 +61,14 @@ onMounted(async () => {
       import('@tauri-apps/api/window'),
       import('@/utils/logger'),
     ])
-    // フォント読み込み + 最初のフレーム描画を待ってから表示（アイコン崩れ防止）
-    // 500ms タイムアウトでフォールバック（WSL2等でrAFが発火しない環境対策）
-    await Promise.race([
-      document.fonts.ready.then(
-        () => new Promise<void>((r) => requestAnimationFrame(() => r())),
-      ),
-      new Promise<void>((r) => setTimeout(r, 500)),
-    ])
     await getCurrentWindow().show().catch(catchIgnore('window.show'))
   }
 
-  // Dismiss splash when first column renders content, with 2s timeout fallback
-  const splashTimeout = setTimeout(dismissSplash, 2000)
+  // Dismiss splash when deck layout structure is mounted (not data load).
+  // This shows column frames immediately; notes fill in asynchronously.
+  const splashTimeout = setTimeout(dismissSplash, 1000)
   window.addEventListener(
-    'nd:column-ready',
+    'nd:deck-mounted',
     () => {
       clearTimeout(splashTimeout)
       dismissSplash()

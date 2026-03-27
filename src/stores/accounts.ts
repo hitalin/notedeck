@@ -64,17 +64,53 @@ export const useAccountsStore = defineStore('accounts', () => {
   })
 
   let loadPromise: Promise<void> | null = null
+  let earlyUnlisten: (() => void) | null = null
+
+  /** Accept accounts from the early Tauri event (fires before AppState.initialize). */
+  function applyAccounts(stored: Account[]): void {
+    accounts.value = stored
+    if (stored.length > 0 && !activeAccountId.value) {
+      activeAccountId.value = stored[0]?.id ?? null
+    }
+    isLoaded.value = true
+  }
+
+  /**
+   * Listen for the early `nd:accounts-early` Tauri event emitted from Rust
+   * before AppState is ready. If it arrives before the invoke() resolves,
+   * the store is populated immediately — bypassing the AppState readiness gate.
+   */
+  function listenEarlyAccounts(): void {
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen<Account[]>('nd:accounts-early', (event) => {
+        if (!isLoaded.value) {
+          applyAccounts(event.payload)
+        }
+        earlyUnlisten?.()
+        earlyUnlisten = null
+      }).then((fn) => {
+        // If already loaded (invoke was faster), clean up immediately
+        if (isLoaded.value) {
+          fn()
+        } else {
+          earlyUnlisten = fn
+        }
+      })
+    })
+  }
 
   function loadAccounts(): Promise<void> {
     if (loadPromise) return loadPromise
+    listenEarlyAccounts()
     loadPromise = (async () => {
       // Deduplication is handled by UNIQUE(host, user_id) constraint in SQLite
       const stored = await invoke<Account[]>('load_accounts')
-      accounts.value = stored
-      if (accounts.value.length > 0 && !activeAccountId.value) {
-        activeAccountId.value = accounts.value[0]?.id ?? null
+      // Only apply if early event hasn't already populated
+      if (!isLoaded.value) {
+        applyAccounts(stored)
       }
-      isLoaded.value = true
+      earlyUnlisten?.()
+      earlyUnlisten = null
     })()
     return loadPromise
   }
