@@ -118,7 +118,7 @@ onUnmounted(() => {
       <div :class="$style.skeletonLine" style="width: 40%" />
       <div :class="$style.skeletonLine" style="width: 70%" />
     </div>
-    <div v-else-if="note" :class="$style.noteEmbedContent">
+    <div v-else-if="note" :class="[$style.noteEmbedContent, 'nd-content-appear']">
       <MkNote :note="note" embedded />
     </div>
     <!-- failed: render nothing, let parent fall back to OGP -->

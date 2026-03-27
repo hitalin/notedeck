@@ -20,6 +20,7 @@ import {
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
+import { hapticLight, hapticMedium } from '@/utils/haptics'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
@@ -317,7 +318,7 @@ defineExpose({
               class="_button"
               :class="[$style.item, { [$style.sidebarActive]: sidebarType === navItem.type }]"
               :title="navLabel(navItem.type)"
-              @click="closeDrawerAndDo(getNavAction(navItem))"
+              @click="hapticLight(); closeDrawerAndDo(getNavAction(navItem))"
             >
               <div :class="$style.iconWrap">
                 <i :class="['ti', navIcon(navItem.type)]" />
@@ -371,7 +372,7 @@ defineExpose({
             class="_button"
             :class="$style.postBtn"
             title="ノート作成"
-            @click="closeDrawerAndDo(() => emit('open-compose'))"
+            @click="hapticMedium(); closeDrawerAndDo(() => emit('open-compose'))"
           >
             <i class="ti ti-pencil" />
             <span :class="$style.label">ノート</span>

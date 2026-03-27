@@ -107,12 +107,22 @@
   --nd-blur-panel: 6px;
   --nd-blur-content: 3px;
   /* Transition duration */
-  --nd-duration-fast: 0.08s;
-  --nd-duration-base: 0.1s;
-  --nd-duration-slow: 0.12s;
-  --nd-duration-slower: 0.18s;
+  --nd-duration-fast: 0.15s;
+  --nd-duration-base: 0.2s;
+  --nd-duration-slow: 0.3s;
+  --nd-duration-slower: 0.4s;
   /* Easing */
   --nd-ease-pop: cubic-bezier(0, 0, 0.2, 1);
+  /* Spring easing — approximates iOS UISpring(dampingRatio: 0.86) */
+  --nd-ease-spring: linear(
+    0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%,
+    0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%,
+    1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%,
+    1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%,
+    0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1
+  );
+  /* Active press scale */
+  --nd-active-scale: 0.97;
   /* App chrome offsets (overridden per platform) */
   --nd-app-inset-top: 0px;
   /* Z-index layers */
@@ -280,11 +290,15 @@ html[data-platform="android"] select {
   color: var(--nd-fg);
   font-size: 0.85em;
   text-align: left;
-  transition: background var(--nd-duration-base);
+  transition: background var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._popupItem:hover {
   background: var(--nd-buttonHoverBg);
+}
+
+._popupItem:active:not(:disabled) {
+  transform: scale(var(--nd-active-scale));
 }
 
 ._popupItem:disabled {
@@ -391,6 +405,11 @@ html[data-platform="android"] select {
   font-family: inherit;
   line-height: inherit;
   max-width: 100%;
+  transition: transform var(--nd-duration-fast) var(--nd-ease-spring);
+}
+
+._button:active:not(:disabled) {
+  transform: scale(var(--nd-active-scale));
 }
 
 ._button:disabled {
@@ -418,7 +437,7 @@ html[data-platform="android"] select {
   font-family: inherit;
   line-height: inherit;
   touch-action: manipulation;
-  transition: background var(--nd-duration-fast);
+  transition: background var(--nd-duration-fast), transform var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._buttonPrimary:hover:not(:disabled) {
@@ -427,6 +446,7 @@ html[data-platform="android"] select {
 
 ._buttonPrimary:active:not(:disabled) {
   background: hsl(from var(--nd-accent) h s calc(l - 5));
+  transform: scale(var(--nd-active-scale));
 }
 
 ._buttonPrimary:disabled {
@@ -558,4 +578,21 @@ html[data-platform="android"] select {
 
 .nd-spin {
   animation: nd-spin 0.8s linear infinite;
+}
+
+/* ---- Content crossfade (skeleton → real content) ---- */
+
+@keyframes nd-content-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+.nd-content-appear {
+  animation: nd-content-in var(--nd-duration-slow) var(--nd-ease-spring) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nd-content-appear {
+    animation: none;
+  }
 }

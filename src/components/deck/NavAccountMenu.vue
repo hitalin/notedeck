@@ -6,6 +6,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { type Account, isGuestAccount } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
+import { hapticSelection } from '@/utils/haptics'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 
 const openUrl = async (url: string) => {
@@ -90,7 +91,7 @@ function modeLabel(key: string): string {
           :key="key"
           :class="$style.navAccountMenuItem"
           tabindex="0"
-          @click="emit('toggle-mode', key as string)"
+          @click="hapticSelection(); emit('toggle-mode', key as string)"
           @keydown.enter="emit('toggle-mode', key as string)"
         >
           <span :class="$style.navAccountMenuLabel">{{ modeLabel(key as string) }}</span>

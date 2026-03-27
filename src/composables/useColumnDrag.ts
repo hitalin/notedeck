@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import type { useDeckStore } from '@/stores/deck'
+import { hapticLight, hapticMedium } from '@/utils/haptics'
 
 type DeckStore = ReturnType<typeof useDeckStore>
 
@@ -69,6 +70,7 @@ export function useColumnDrag(
   }
 
   function beginDrag(columnId: string, e: PointerEvent) {
+    hapticLight()
     dragColumnId.value = columnId
     buildGroupIndexMap()
 
@@ -273,6 +275,8 @@ export function useColumnDrag(
         }
       }
     }
+
+    hapticMedium()
 
     // Notify other windows that drag ended
     emitDragEvent('deck:drag-end', dragColumnId.value)

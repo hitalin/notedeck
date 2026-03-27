@@ -426,12 +426,15 @@ onUnmounted(() => {
   object-fit: cover;
   content-visibility: auto;
   opacity: 0;
-  transition: opacity var(--nd-duration-slower);
+  transform: scale(0.98);
+  transition: opacity var(--nd-duration-slower) var(--nd-ease-spring),
+    transform var(--nd-duration-slower) var(--nd-ease-spring);
   position: relative;
   z-index: 1;
 
   &.isLoaded {
     opacity: 1;
+    transform: none;
   }
 }
 
