@@ -120,7 +120,7 @@ class FrameEngineImpl {
     for (const phase of PHASE_ORDER) {
       const queue = this._queues[phase]
       for (let i = queue.length - 1; i >= 0; i--) {
-        if (queue[i].fn === fn) {
+        if (queue[i]?.fn === fn) {
           queue.splice(i, 1)
         }
       }
