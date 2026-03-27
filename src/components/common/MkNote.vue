@@ -1112,14 +1112,14 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   transition:
     background var(--nd-duration-fast),
     opacity var(--nd-duration-base) var(--nd-ease-reaction),
-    transform var(--nd-duration-base) var(--nd-ease-reaction);
+    transform var(--nd-duration-base) var(--nd-ease-spring-bouncy);
 
   &:hover {
     background: rgba(0, 0, 0, 0.1);
   }
 
   &:active {
-    animation: reaction-bounce var(--nd-duration-slower) var(--nd-ease-spring);
+    animation: reaction-bounce 0.5s var(--nd-ease-spring-bouncy);
   }
 
   &.reacted,
@@ -1153,9 +1153,12 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 }
 
 @keyframes reaction-bounce {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.25); }
-  60% { transform: scale(0.95); }
+  0%   { transform: scale(1); }
+  15%  { transform: scale(0.92); }
+  35%  { transform: scale(1.28); }
+  55%  { transform: scale(0.94); }
+  72%  { transform: scale(1.06); }
+  85%  { transform: scale(0.98); }
   100% { transform: scale(1); }
 }
 
@@ -1211,10 +1214,11 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   transition:
     color var(--nd-duration-base),
     background var(--nd-duration-fast),
-    transform var(--nd-duration-fast);
+    transform var(--nd-duration-fast) var(--nd-ease-spring);
 
   &:active {
-    transform: scale(0.9);
+    transform: scale(0.88);
+    transition: transform 0.06s ease-out;
   }
 
   &:hover {
@@ -1242,7 +1246,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 }
 
 .reactionButton:active {
-  animation: reaction-bounce var(--nd-duration-slower) var(--nd-ease-overshoot);
+  animation: reaction-bounce 0.5s var(--nd-ease-spring-bouncy);
 }
 
 .moreButton:hover {
@@ -1302,15 +1306,15 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 }
 
 /* Renote popup animations */
-.renotePopupEnter { animation: renotePopupBdIn var(--nd-duration-slow) ease; }
-.renotePopupLeave { animation: renotePopupBdOut var(--nd-duration-slow) ease forwards; }
+.renotePopupEnter { animation: renotePopupBdIn var(--nd-duration-base) var(--nd-ease-decel); }
+.renotePopupLeave { animation: renotePopupBdOut var(--nd-duration-fast) ease-in forwards; }
 @keyframes renotePopupBdIn { from { opacity: 0; } }
 @keyframes renotePopupBdOut { to { opacity: 0; } }
 
-.renotePopupContentEnter { animation: renotePopupIn var(--nd-duration-slow) var(--nd-ease-menu); }
-.renotePopupContentLeave { animation: renotePopupOut var(--nd-duration-slow) var(--nd-ease-menu) forwards; }
-@keyframes renotePopupIn { from { opacity: 0; transform: scale(0.9); } }
-@keyframes renotePopupOut { to { opacity: 0; transform: scale(0.9); } }
+.renotePopupContentEnter { animation: renotePopupIn 0.35s var(--nd-ease-spring); }
+.renotePopupContentLeave { animation: renotePopupOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
+@keyframes renotePopupIn { from { opacity: 0; transform: scale(0.85) translateY(4px); } }
+@keyframes renotePopupOut { to { opacity: 0; transform: scale(0.92); } }
 
 /* Divider between notes */
 .noteRoot + .noteRoot {
@@ -1362,25 +1366,28 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 }
 
 .reactionEnter {
-  animation: reaction-enter 0.25s var(--nd-ease-spring) both;
+  animation: reaction-enter 0.35s var(--nd-ease-spring-bouncy) both;
 }
 
 .reactionLeave {
-  animation: reaction-leave 0.2s var(--nd-ease-spring) both;
+  animation: reaction-leave 0.15s var(--nd-ease-decel) both;
   position: absolute;
 }
 
 @keyframes reaction-enter {
   from {
     opacity: 0;
-    transform: scale(0.7);
+    transform: scale(0) rotate(-8deg);
+  }
+  50% {
+    opacity: 1;
   }
 }
 
 @keyframes reaction-leave {
   to {
     opacity: 0;
-    transform: scale(0.7);
+    transform: scale(0.5);
   }
 }
 

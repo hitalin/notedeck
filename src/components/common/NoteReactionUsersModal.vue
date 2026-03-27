@@ -338,24 +338,24 @@ defineExpose({ open })
 }
 
 /* Desktop popup */
-.popupEnter { animation: modalBdIn var(--nd-duration-slow) ease-out; }
-.popupLeave { animation: modalBdOut var(--nd-duration-slow) ease-in forwards; }
+.popupEnter { animation: modalBdIn var(--nd-duration-base) var(--nd-ease-decel); }
+.popupLeave { animation: modalBdOut var(--nd-duration-fast) ease-in forwards; }
 @keyframes modalBdIn { from { opacity: 0; } }
 @keyframes modalBdOut { to { opacity: 0; } }
 
-.popupContentEnter { animation: modalIn var(--nd-duration-slow) var(--nd-ease-spring); }
-.popupContentLeave { animation: modalOut var(--nd-duration-slow) var(--nd-ease-spring) forwards; }
-@keyframes modalIn { from { opacity: 0; transform: scale(0.95); } }
-@keyframes modalOut { to { opacity: 0; transform: scale(0.95); } }
+.popupContentEnter { animation: modalIn 0.4s var(--nd-ease-spring); }
+.popupContentLeave { animation: modalOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
+@keyframes modalIn { from { opacity: 0; transform: scale(0.88) translateY(6px); } }
+@keyframes modalOut { to { opacity: 0; transform: scale(0.93); } }
 
-/* Mobile sheet */
-.sheetEnter { animation: sheetBdIn var(--nd-duration-slower) ease-out; }
-.sheetLeave { animation: sheetBdOut var(--nd-duration-slow) ease-in forwards; }
+/* Mobile sheet — iOS-style spring slide */
+.sheetEnter { animation: sheetBdIn var(--nd-duration-slow) var(--nd-ease-decel); }
+.sheetLeave { animation: sheetBdOut var(--nd-duration-fast) ease-in forwards; }
 @keyframes sheetBdIn { from { opacity: 0; } }
 @keyframes sheetBdOut { to { opacity: 0; } }
 
-.sheetContentEnter { animation: sheetIn var(--nd-duration-slower) var(--nd-ease-spring); }
-.sheetContentLeave { animation: sheetOut var(--nd-duration-slow) var(--nd-ease-spring) forwards; }
+.sheetContentEnter { animation: sheetIn 0.42s var(--nd-ease-spring); }
+.sheetContentLeave { animation: sheetOut 0.2s var(--nd-ease-decel) forwards; }
 @keyframes sheetIn { from { transform: translateY(100%); } }
 @keyframes sheetOut { to { transform: translateY(100%); } }
 </style>

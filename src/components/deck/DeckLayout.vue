@@ -413,13 +413,13 @@ function acceptCrossWindowDrop() {
   }
 }
 
-.fadeEnter { animation: fadeIn 0.18s ease-out; }
-.fadeLeave { animation: fadeOut 0.18s ease-in forwards; }
+.fadeEnter { animation: fadeIn var(--nd-duration-base) var(--nd-ease-decel); }
+.fadeLeave { animation: fadeOut var(--nd-duration-fast) ease-in forwards; }
 @keyframes fadeIn { from { opacity: 0; } }
 @keyframes fadeOut { to { opacity: 0; } }
 
-.modalEnter { animation: modalIn 0.2s ease-out; }
-.modalLeave { animation: modalOut 0.2s ease-in forwards; }
+.modalEnter { animation: modalIn 0.35s var(--nd-ease-spring); }
+.modalLeave { animation: modalOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
 @keyframes modalIn { from { opacity: 0; } }
 @keyframes modalOut { to { opacity: 0; } }
 </style>

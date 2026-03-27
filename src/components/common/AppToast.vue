@@ -99,24 +99,24 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
 }
 
 .toastEnter {
-  animation: toast-enter var(--nd-duration-slow) var(--nd-ease-slide) both;
+  animation: toast-enter 0.4s var(--nd-ease-spring) both;
 }
 
 .toastLeave {
-  animation: toast-leave var(--nd-duration-fast) var(--nd-ease-slide) both;
+  animation: toast-leave var(--nd-duration-fast) var(--nd-ease-decel) both;
 }
 
 @keyframes toast-enter {
   from {
     opacity: 0;
-    transform: translateY(-12px) scale(0.95);
+    transform: translateY(-16px) scale(0.9);
   }
 }
 
 @keyframes toast-leave {
   to {
     opacity: 0;
-    transform: translateY(8px) scale(0.95);
+    transform: translateY(6px) scale(0.95);
   }
 }
 
