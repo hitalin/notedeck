@@ -118,10 +118,10 @@ export function useUnreadChat() {
   document.addEventListener('visibilitychange', onVisibilityChange)
 
   onUnmounted(() => {
-    stopPolling()
     document.removeEventListener('visibilitychange', onVisibilityChange)
     refCount--
     if (refCount <= 0) {
+      stopPolling()
       teardownListener()
       refCount = 0
     }

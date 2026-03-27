@@ -618,7 +618,12 @@ async function loadOlder() {
   }
 }
 
+let lastScrollCheck = 0
+
 function handleScroll() {
+  const now = Date.now()
+  if (now - lastScrollCheck < 200) return
+  lastScrollCheck = now
   const el = messagesContainer.value
   if (!el) return
   if (el.scrollTop < 100) {
