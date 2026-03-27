@@ -99,7 +99,7 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
 }
 
 .toastEnter {
-  animation: toast-enter 0.4s var(--nd-ease-spring) both;
+  animation: toast-enter 0.25s var(--nd-ease-spring) both;
 }
 
 .toastLeave {

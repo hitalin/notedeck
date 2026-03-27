@@ -118,7 +118,7 @@ watch(visible, (v) => {
 }
 
 .contentEnter {
-  animation: popupIn 0.4s var(--nd-ease-spring);
+  animation: popupIn 0.2s var(--nd-ease-spring);
 }
 .contentLeave {
   animation: popupOut var(--nd-duration-base) var(--nd-ease-decel) forwards;

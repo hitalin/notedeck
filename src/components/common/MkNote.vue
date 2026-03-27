@@ -1119,7 +1119,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   }
 
   &:active {
-    animation: reaction-bounce 0.5s var(--nd-ease-spring-bouncy);
+    animation: reaction-bounce 0.35s var(--nd-ease-spring-bouncy);
   }
 
   &.reacted,
@@ -1155,11 +1155,9 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 
 @keyframes reaction-bounce {
   0%   { transform: scale(1); }
-  15%  { transform: scale(0.92); }
-  35%  { transform: scale(1.28); }
-  55%  { transform: scale(0.94); }
-  72%  { transform: scale(1.06); }
-  85%  { transform: scale(0.98); }
+  15%  { transform: scale(0.95); }
+  35%  { transform: scale(1.08); }
+  60%  { transform: scale(0.98); }
   100% { transform: scale(1); }
 }
 
@@ -1247,7 +1245,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 }
 
 .reactionButton:active {
-  animation: reaction-bounce 0.5s var(--nd-ease-spring-bouncy);
+  animation: reaction-bounce 0.35s var(--nd-ease-spring-bouncy);
 }
 
 .moreButton:hover {
@@ -1312,7 +1310,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 @keyframes renotePopupBdIn { from { opacity: 0; } }
 @keyframes renotePopupBdOut { to { opacity: 0; } }
 
-.renotePopupContentEnter { animation: renotePopupIn 0.35s var(--nd-ease-spring); }
+.renotePopupContentEnter { animation: renotePopupIn 0.2s var(--nd-ease-spring); }
 .renotePopupContentLeave { animation: renotePopupOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
 @keyframes renotePopupIn { from { opacity: 0; transform: scale(0.85) translateY(4px); } }
 @keyframes renotePopupOut { to { opacity: 0; transform: scale(0.92); } }

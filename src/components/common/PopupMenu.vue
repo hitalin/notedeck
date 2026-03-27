@@ -123,7 +123,7 @@ defineExpose({ open, close, activateKeyboard })
 }
 
 .contentEnter {
-  animation: popupIn 0.32s var(--nd-ease-spring);
+  animation: popupIn 0.18s var(--nd-ease-spring);
 }
 .contentLeave {
   animation: popupOut var(--nd-duration-base) var(--nd-ease-decel) forwards;

@@ -109,7 +109,7 @@ export function useColumnDrag(
           transform: 'scale(0.9) rotate(-1deg)',
           boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
           transition:
-            'opacity 0.2s ease-out, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease-out',
+            'opacity 0.2s ease-out, transform 0.3s cubic-bezier(0.34, 1.1, 0.64, 1), box-shadow 0.2s ease-out',
         })
       }
       document.body.appendChild(ghost)

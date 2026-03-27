@@ -159,7 +159,7 @@ function onWindowMouseDown() {
   border-radius: var(--nd-radius);
   box-shadow: 0 8px 32px var(--nd-shadow);
   overflow: clip;
-  animation: windowIn 0.38s var(--nd-ease-spring);
+  animation: windowIn 0.2s var(--nd-ease-spring);
 }
 
 @keyframes windowIn {

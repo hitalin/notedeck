@@ -129,7 +129,7 @@ defineExpose({ open })
 @keyframes popupBdOut { to { opacity: 0; } }
 
 /* Desktop popup content — spring scale from origin */
-.popupContentEnter { animation: popupIn 0.35s var(--nd-ease-spring); }
+.popupContentEnter { animation: popupIn 0.2s var(--nd-ease-spring); }
 .popupContentLeave { animation: popupOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
 @keyframes popupIn { from { opacity: 0; transform: translateX(-80%) scale(0.85); } }
 @keyframes popupOut { to { opacity: 0; transform: translateX(-60%) scale(0.9); } }
@@ -141,7 +141,7 @@ defineExpose({ open })
 @keyframes sheetBdOut { to { opacity: 0; } }
 
 /* Mobile sheet content — iOS-style spring slide up */
-.sheetContentEnter { animation: sheetIn 0.4s var(--nd-ease-spring); }
+.sheetContentEnter { animation: sheetIn 0.25s var(--nd-ease-spring); }
 .sheetContentLeave { animation: sheetOut 0.2s var(--nd-ease-decel) forwards; }
 @keyframes sheetIn { from { transform: translateY(100%); } }
 @keyframes sheetOut { to { transform: translateY(100%); } }

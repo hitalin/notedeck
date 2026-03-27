@@ -124,7 +124,7 @@ function onSyncChange(e: Event) {
   background-color: #ffcf96;
   border-radius: 50px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  transition: transform 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55), background-color 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transition: transform 400ms cubic-bezier(0.34, 1.1, 0.64, 1), background-color 400ms cubic-bezier(0.34, 1.1, 0.64, 1);
   transform: rotate(-45deg);
 
   .checked & {

@@ -114,29 +114,13 @@
   --nd-duration-slower: 0.38s;
   --nd-duration-tl-enter: 0.5s; /* Timeline note insertion — Misskey uses 0.7s */
   /* Easing
-     Core philosophy: Apple spring physics + Misskey playfulness */
-  --nd-ease-pop: cubic-bezier(0, 0, 0.2, 1);
-  /* Spring easing — approximates iOS UISpring(dampingRatio: 0.82)
-     Slightly underdamped for visible bounce, but settles quickly */
-  --nd-ease-spring: linear(
-    0, 0.011, 0.044 2.1%, 0.165, 0.326 6.7%, 0.787 12.9%,
-    0.973 16.5%, 1.040, 1.098, 1.139, 1.163 24%,
-    1.170, 1.172, 1.168, 1.158 29.9%, 1.127 33%,
-    1.042 40%, 1.008 44%, 0.986, 0.975 51%,
-    0.974 54%, 0.977 58%, 1.001 72%, 1
-  );
-  /* Bouncy spring — for reactions, badges (Misskey playfulness)
-     Higher overshoot, more oscillation */
-  --nd-ease-spring-bouncy: linear(
-    0, 0.014, 0.056 2.2%, 0.200, 0.390 6.8%, 0.850 13%,
-    1.030 16.5%, 1.130, 1.206, 1.245 23.5%,
-    1.250, 1.240, 1.218, 1.185 29.5%, 1.120 33.5%,
-    1.010 40.5%, 0.960 45%, 0.938 49%,
-    0.940 52%, 0.952 56%, 0.990 66%, 1.008 75%, 1
-  );
+     Priority: ① Misskey cubic-bezier ② Apple smoothness ③ VSCode restraint ④ osu! micro-joy */
+  --nd-ease-pop: cubic-bezier(0, 0, 0.2, 1);          /* Misskey popup — fast decelerate */
+  --nd-ease-spring: cubic-bezier(0, 0.5, 0.5, 1);     /* Misskey standard — smooth ease-out */
+  --nd-ease-spring-bouncy: cubic-bezier(0, 0.55, 0.35, 1.04); /* Misskey base + hint of osu! overshoot (~4%) */
   /* Additional easing curves */
-  --nd-ease-decel: cubic-bezier(0.22, 1, 0.36, 1);
-  --nd-ease-overshoot: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --nd-ease-decel: cubic-bezier(0.22, 1, 0.36, 1);    /* Apple-style decelerate */
+  --nd-ease-overshoot: cubic-bezier(0.175, 0.885, 0.32, 1.08); /* Subtle overshoot for badges/notifications */
   /* Misskey-native easing curves */
   --nd-ease-reaction: cubic-bezier(0, 0.7, 0.3, 1); /* Reaction appear/disappear — snappier attack */
   --nd-ease-slide: cubic-bezier(0.23, 1, 0.32, 1);  /* Timeline slide-in, tooltip */
@@ -609,11 +593,11 @@ img {
 }
 
 .nd-tab-slide-left {
-  animation: nd-tab-slide-left-kf 0.28s var(--nd-ease-spring) both;
+  animation: nd-tab-slide-left-kf 0.2s var(--nd-ease-spring) both;
 }
 
 .nd-tab-slide-right {
-  animation: nd-tab-slide-right-kf 0.28s var(--nd-ease-spring) both;
+  animation: nd-tab-slide-right-kf 0.2s var(--nd-ease-spring) both;
 }
 
 /* ---- Swipe follow (useSwipeTab touch tracking) ---- */
@@ -624,7 +608,7 @@ img {
 }
 
 .nd-tab-snap-back > * {
-  transition: transform 0.3s var(--nd-ease-spring);
+  transition: transform 0.25s var(--nd-ease-spring);
 }
 
 
@@ -648,24 +632,21 @@ img {
 }
 
 .nd-content-appear {
-  animation: nd-content-in var(--nd-duration-slow) var(--nd-ease-spring) both;
+  animation: nd-content-in var(--nd-duration-slow) var(--nd-ease-decel) both;
 }
 
 /* ---- Misskey global animations ---- */
 
-/* Bounce: elastic overshoot (Misskey playfulness + Apple spring settle)
-   — for badges, notifications */
+/* Bounce: Misskey global-bounce values + Apple settle */
 @keyframes nd-bounce {
-  0%   { transform: scale(0.85); }
-  18%  { transform: scale(1.14); }
-  36%  { transform: scale(0.93); }
-  54%  { transform: scale(1.04); }
-  72%  { transform: scale(0.98); }
+  0%   { transform: scale(0.90); }
+  19%  { transform: scale(1.10); }
+  48%  { transform: scale(0.95); }
   100% { transform: scale(1.00); }
 }
 
 ._bounce {
-  animation: nd-bounce 0.6s var(--nd-ease-spring-bouncy);
+  animation: nd-bounce 0.7s ease;
   will-change: transform;
 }
 
@@ -695,14 +676,14 @@ img {
 
 /* ---- Micro-interaction keyframes ---- */
 
-/* Reaction counter number pop (osu! hit-feedback style) */
+/* Reaction counter number pop (subtle osu! hint) */
 @keyframes nd-count-bump {
   0%   { transform: scale(1); }
-  40%  { transform: scale(1.3); }
+  40%  { transform: scale(1.12); }
   100% { transform: scale(1); }
 }
 ._countBump {
-  animation: nd-count-bump 0.3s var(--nd-ease-spring-bouncy);
+  animation: nd-count-bump 0.25s var(--nd-ease-spring-bouncy);
 }
 
 /* New note insertion highlight pulse */
