@@ -1,19 +1,25 @@
 import { listen } from '@tauri-apps/api/event'
 import { ref } from 'vue'
-
+import { usePerformanceStore } from '@/stores/performance'
 import type { OgpData } from '@/utils/ogp'
 import { invoke } from '@/utils/tauriInvoke'
 
-const OGP_CACHE_MAX = 256
-
 const ogpCache = new Map<string, OgpData | null>()
+
+function getOgpCacheMax(): number {
+  try {
+    return usePerformanceStore().get('ogpCacheMax')
+  } catch {
+    return 128
+  }
+}
 const pendingRequests = new Map<string, Promise<OgpData | null>>()
 
 function setOgpCache(url: string, value: OgpData | null) {
   if (ogpCache.has(url)) {
     // LRU: delete and re-insert to move to end (most recently used)
     ogpCache.delete(url)
-  } else if (ogpCache.size >= OGP_CACHE_MAX) {
+  } else if (ogpCache.size >= getOgpCacheMax()) {
     // Evict least recently used (first entry in Map iteration order)
     const lru = ogpCache.keys().next().value
     if (lru !== undefined) ogpCache.delete(lru)

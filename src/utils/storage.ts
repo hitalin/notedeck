@@ -77,6 +77,7 @@ export const STORAGE_KEYS = {
   plugins: 'nd-plugins',
   recentEmojis: 'nd-recent-emojis',
   emojisCache: 'emojis_cache',
+  performance: 'nd-performance',
   mutedAds: 'nd-muted-ads',
 
   // Per-account (dynamic key builders)

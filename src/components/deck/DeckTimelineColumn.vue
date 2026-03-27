@@ -362,7 +362,6 @@ onMounted(async () => {
   const host = accountId
     ? accountsStore.accountMap.get(accountId)?.host
     : undefined
-  if (accountId) clearAvailableTlCache(accountId)
   fetchAds()
   if (host && accountId) {
     await Promise.all([applyPolicies(accountId, host), refreshFilterKeys()])

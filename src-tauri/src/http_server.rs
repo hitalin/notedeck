@@ -163,6 +163,7 @@ pub struct ServeConfig {
     pub api_token: String,
     pub token_path: String,
     pub image_cache: Arc<ImageCache>,
+    pub perf: crate::perf_config::SharedPerfConfig,
 }
 
 /// Phase 2: attach routes and start serving. Requires DB/client.
@@ -252,7 +253,7 @@ pub async fn serve(config: ServeConfig) {
         .with_state(deck_state);
 
     // Rate limiter for upstream Misskey API requests
-    let rate_limiter = RateLimiter::new();
+    let rate_limiter = RateLimiter::new(config.perf);
 
     let app = Router::new()
         .merge(index_route)

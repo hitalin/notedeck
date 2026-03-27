@@ -10,6 +10,7 @@ import { useVaporTransition } from '@/composables/useVaporTransition'
 import { type ConfirmOptions, useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
+import { usePerformanceStore } from '@/stores/performance'
 import { useThemeStore } from '@/stores/theme'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
@@ -47,6 +48,7 @@ const { visible: menuVisible, leaving: menuLeaving } = useVaporTransition(
 const { isMobilePlatform } = useUiStore()
 const deckStore = useDeckStore()
 const keybindsStore = useKeybindsStore()
+const perfStore = usePerformanceStore()
 const themeStore = useThemeStore()
 const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
@@ -309,6 +311,11 @@ const importSettings = () =>
         <i class="ti ti-keyboard" />
         <span :class="$style.settingsMenuLabel">キーバインド</span>
         <span v-if="Object.keys(keybindsStore.overrides).length > 0" :class="$style.activeDot" />
+      </div>
+      <div :class="$style.settingsMenuItem" @click="openToolWindow('performanceEditor')">
+        <i class="ti ti-gauge" />
+        <span :class="$style.settingsMenuLabel">パフォーマンス</span>
+        <span v-if="Object.keys(perfStore.overrides).length > 0" :class="$style.activeDot" />
       </div>
 
       <!-- Data -->

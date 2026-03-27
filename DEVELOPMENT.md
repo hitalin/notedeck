@@ -288,6 +288,33 @@ NoteDeck にはローカル LLM / OpenAI 互換 API を使った AI 機能があ
 
 **対応プロバイダー:** Ollama / OpenAI / カスタム OpenAI 互換エンドポイント
 
+### パフォーマンス設定
+
+NoteDeck のパフォーマンス関連パラメータはすべてユーザーが調整可能。設定エディタ UI とプリセット、ファイルベースのバックアップに対応している。
+
+| ファイル | 役割 |
+|---------|------|
+| `src/stores/performance.ts` | Pinia ストア（`PerformanceConfig` 型定義・プリセット・Rust 同期） |
+| `src/components/window/PerformanceEditorContent.vue` | 設定エディタ UI |
+| `src/defaults/performance.json` | デフォルト値（「バランス」プリセット相当） |
+| `src/utils/settingsFs.ts` | Tauri ファイル I/O（`performance.json` 読み書き） |
+
+**カテゴリ:** 絵文字キャッシュ / ノート / パースキャッシュ / リアルタイム / バックエンド（Rust）
+
+**プリセット:**
+
+| プリセット | 想定用途 |
+|-----------|---------|
+| 省メモリ | 低スペック端末・メモリ節約 |
+| バランス | デフォルト（`defaults/performance.json` と同値） |
+| 高パフォーマンス | ハイエンド端末・大量カラム運用 |
+
+**永続化:**
+- 設定はファイル（`performance.json`）+ localStorage の二層保存
+- デフォルト値と同じキーはオーバーライドに含めない（差分のみ保存）
+- ファイルはバックアップ・エクスポート対象
+- バックエンド（Rust）側のパラメータは `invoke('update_performance_config')` で即時同期
+
 ### Build
 
 Vite 8 (Rolldown + OXC ベース) を使用。`vite.config.ts` で以下のカスタムプラグインを定義：

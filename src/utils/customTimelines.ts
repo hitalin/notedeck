@@ -32,29 +32,86 @@ export const CUSTOM_TL_ICONS: Record<string, string> = {
 const GENERIC_TL_ICON =
   'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z'
 
+// --- localStorage SWR cache ---
+
+const POLICY_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24h
+
+interface CacheEntry<T> {
+  data: T
+  updatedAt: number
+}
+
+function readCache<T>(key: string): CacheEntry<T> | null {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    return JSON.parse(raw) as CacheEntry<T>
+  } catch {
+    return null
+  }
+}
+
+function writeCache<T>(key: string, data: T): void {
+  try {
+    const entry: CacheEntry<T> = { data, updatedAt: Date.now() }
+    localStorage.setItem(key, JSON.stringify(entry))
+  } catch {
+    // localStorage full or unavailable — ignore
+  }
+}
+
+// --- Custom timeline detection (per host) ---
+
+// Memory cache: host → custom timelines
+const customTlMemCache = new Map<string, CustomTimelineInfo[]>()
+
+async function fetchCustomTimelinesFromNetwork(
+  host: string,
+): Promise<CustomTimelineInfo[]> {
+  const endpoints = await invoke<string[]>('api_get_endpoints', { host })
+  const customs: CustomTimelineInfo[] = []
+  for (const ep of endpoints) {
+    const match = ep.match(/^notes\/(.+)-timeline$/)
+    if (!match || STANDARD_TL_ENDPOINTS.has(ep)) continue
+    const type = match[1] as string
+    customs.push({
+      type,
+      label: type.charAt(0).toUpperCase() + type.slice(1),
+      icon: CUSTOM_TL_ICONS[type] ?? GENERIC_TL_ICON,
+    })
+  }
+  customTlMemCache.set(host, customs)
+  writeCache(`nd:custom_tl:${host}`, customs)
+  return customs
+}
+
 /**
  * Auto-detect custom timelines by scanning /api/endpoints
  * for notes/*-timeline patterns not in the standard set.
+ * Uses SWR: returns localStorage cache immediately, revalidates in background if stale.
  */
 export async function detectCustomTimelines(
   host: string,
 ): Promise<CustomTimelineInfo[]> {
-  try {
-    const endpoints = await invoke<string[]>('api_get_endpoints', { host })
-    const customs: CustomTimelineInfo[] = []
+  // 1. Memory cache
+  const memCached = customTlMemCache.get(host)
+  if (memCached) return memCached
 
-    for (const ep of endpoints) {
-      const match = ep.match(/^notes\/(.+)-timeline$/)
-      if (!match || STANDARD_TL_ENDPOINTS.has(ep)) continue
-      const type = match[1] as string
-      customs.push({
-        type,
-        label: type.charAt(0).toUpperCase() + type.slice(1),
-        icon: CUSTOM_TL_ICONS[type] ?? GENERIC_TL_ICON,
+  // 2. localStorage cache (SWR)
+  const stored = readCache<CustomTimelineInfo[]>(`nd:custom_tl:${host}`)
+  if (stored) {
+    customTlMemCache.set(host, stored.data)
+    if (Date.now() - stored.updatedAt >= POLICY_CACHE_TTL_MS) {
+      fetchCustomTimelinesFromNetwork(host).catch(() => {
+        /* stale cache is fine — revalidation is best-effort */
       })
     }
+    return stored.data
+  }
 
-    return customs
+  // 3. No cache — network required
+  try {
+    return await fetchCustomTimelinesFromNetwork(host)
   } catch (e) {
     console.warn('[customTimelines] failed to detect:', e)
     return []
@@ -74,6 +131,25 @@ export interface TimelineAvailability {
   available: TimelineType[]
   denied: Set<string>
   modes: Record<string, boolean> // e.g., { isInYamiMode: true }
+}
+
+// Serialized form for localStorage (Set → Array)
+interface SerializedAvailability {
+  available: TimelineType[]
+  denied: string[]
+  modes: Record<string, boolean>
+}
+
+function serializeAvailability(
+  a: TimelineAvailability,
+): SerializedAvailability {
+  return { available: a.available, denied: [...a.denied], modes: a.modes }
+}
+
+function deserializeAvailability(
+  s: SerializedAvailability,
+): TimelineAvailability {
+  return { available: s.available, denied: new Set(s.denied), modes: s.modes }
 }
 
 // Cache: accountId → availability
@@ -100,82 +176,57 @@ export function clearRuntimeDenied(accountId: string): void {
   runtimeDenied.delete(accountId)
 }
 
-/**
- * Detect timeline availability and mode flags from user policies.
- * Scans both known standard policies and fork-specific *TlAvailable patterns.
- * Also extracts isIn*Mode flags for mode toggle detection.
- */
-export async function detectAvailableTimelines(
+/** Core network fetch logic for policies. Caches result in memory + localStorage. */
+async function fetchPoliciesFromNetwork(
   accountId: string,
 ): Promise<TimelineAvailability> {
-  const cached = availableTlCache.get(accountId)
-  if (cached) return cached
-
   const denied = new Set<string>()
   const modes: Record<string, boolean> = {}
-
-  // Guest / logged-out: only public timelines (local, global)
-  const account = useAccountsStore().accountMap.get(accountId)
-  if (account && !account.hasToken) {
-    const available: TimelineType[] = ['local', 'global']
-    const result = { available, denied, modes }
-    availableTlCache.set(accountId, result)
-    return result
-  }
-
   const available: TimelineType[] = ['home']
 
-  try {
-    const data = await invoke<Record<string, boolean>>(
-      'api_get_user_policies',
-      { accountId },
-    )
+  const data = await invoke<Record<string, boolean>>('api_get_user_policies', {
+    accountId,
+  })
 
-    // Separate mode flags from policies
-    const policies: Record<string, boolean> = {}
-    for (const [key, value] of Object.entries(data)) {
-      if (key.startsWith('isIn') && key.endsWith('Mode')) {
-        modes[key] = value
-      } else {
-        policies[key] = value
-      }
+  // Separate mode flags from policies
+  const policies: Record<string, boolean> = {}
+  for (const [key, value] of Object.entries(data)) {
+    if (key.startsWith('isIn') && key.endsWith('Mode')) {
+      modes[key] = value
+    } else {
+      policies[key] = value
     }
+  }
 
-    // Determine if server supports the policy system.
-    // If policies object is empty (no boolean keys returned), the server is
-    // likely too old to report availability — fall back to allowing all TLs.
-    const hasPolicySupport =
-      Object.keys(policies).length > 0 || Object.keys(modes).length > 0
+  // Determine if server supports the policy system.
+  const hasPolicySupport =
+    Object.keys(policies).length > 0 || Object.keys(modes).length > 0
 
-    // Standard TLs
-    const handledKeys = POLICY_HANDLED_KEYS
-    for (const [policyKey, tlTypes] of Object.entries(POLICY_TIMELINE_MAP)) {
-      if (hasPolicySupport) {
-        if (policies[policyKey] === true) {
-          available.push(...tlTypes)
-        } else {
-          for (const t of tlTypes) denied.add(t)
-        }
-      } else {
+  // Standard TLs
+  const handledKeys = POLICY_HANDLED_KEYS
+  for (const [policyKey, tlTypes] of Object.entries(POLICY_TIMELINE_MAP)) {
+    if (hasPolicySupport) {
+      if (policies[policyKey] === true) {
         available.push(...tlTypes)
-      }
-    }
-
-    // Fork-specific: scan *TlAvailable patterns dynamically
-    for (const [key, value] of Object.entries(policies)) {
-      if (handledKeys.has(key)) continue
-      const match = key.match(/^(.+)TlAvailable$/)
-      if (!match) continue
-      const type = match[1] as string
-      if (value === true) {
-        available.push(type)
       } else {
-        denied.add(type)
+        for (const t of tlTypes) denied.add(t)
       }
+    } else {
+      available.push(...tlTypes)
     }
-  } catch (e) {
-    console.warn('[availableTimelines] failed to detect policies:', e)
-    // Conservative fallback: keep only 'home' (set on line 105)
+  }
+
+  // Fork-specific: scan *TlAvailable patterns dynamically
+  for (const [key, value] of Object.entries(policies)) {
+    if (handledKeys.has(key)) continue
+    const match = key.match(/^(.+)TlAvailable$/)
+    if (!match) continue
+    const type = match[1] as string
+    if (value === true) {
+      available.push(type)
+    } else {
+      denied.add(type)
+    }
   }
 
   // Apply runtime-denied types (from previous "disabled" API errors)
@@ -188,7 +239,69 @@ export async function detectAvailableTimelines(
 
   const result = { available, denied, modes }
   availableTlCache.set(accountId, result)
+  writeCache(`nd:policies:${accountId}`, serializeAvailability(result))
   return result
+}
+
+/**
+ * Detect timeline availability and mode flags from user policies.
+ * Scans both known standard policies and fork-specific *TlAvailable patterns.
+ * Also extracts isIn*Mode flags for mode toggle detection.
+ * Uses SWR: returns localStorage cache immediately, revalidates in background if stale.
+ */
+export async function detectAvailableTimelines(
+  accountId: string,
+): Promise<TimelineAvailability> {
+  // 1. Memory cache
+  const cached = availableTlCache.get(accountId)
+  if (cached) return cached
+
+  // Guest / logged-out: only public timelines (local, global)
+  const account = useAccountsStore().accountMap.get(accountId)
+  if (account && !account.hasToken) {
+    const result: TimelineAvailability = {
+      available: ['local', 'global'],
+      denied: new Set(),
+      modes: {},
+    }
+    availableTlCache.set(accountId, result)
+    return result
+  }
+
+  // 2. localStorage cache (SWR)
+  const stored = readCache<SerializedAvailability>(`nd:policies:${accountId}`)
+  if (stored) {
+    const result = deserializeAvailability(stored.data)
+    // Apply runtime-denied on top of cached data
+    const rtDenied = getRuntimeDenied(accountId)
+    for (const d of rtDenied) {
+      result.denied.add(d)
+      const idx = result.available.indexOf(d as TimelineType)
+      if (idx >= 0) result.available.splice(idx, 1)
+    }
+    availableTlCache.set(accountId, result)
+    if (Date.now() - stored.updatedAt >= POLICY_CACHE_TTL_MS) {
+      fetchPoliciesFromNetwork(accountId).catch(() => {
+        /* stale cache is fine — revalidation is best-effort */
+      })
+    }
+    return result
+  }
+
+  // 3. No cache — network required
+  try {
+    return await fetchPoliciesFromNetwork(accountId)
+  } catch (e) {
+    console.warn('[availableTimelines] failed to detect policies:', e)
+    // Conservative fallback: keep only 'home'
+    const result: TimelineAvailability = {
+      available: ['home'],
+      denied: new Set(),
+      modes: {},
+    }
+    availableTlCache.set(accountId, result)
+    return result
+  }
 }
 
 /** Invalidate the cached availability for an account (e.g., after mode toggle). */

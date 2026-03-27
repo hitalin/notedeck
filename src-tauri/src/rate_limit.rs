@@ -11,10 +11,13 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 
+use crate::perf_config::SharedPerfConfig;
+
 /// Sliding window duration
 const WINDOW_DURATION: Duration = Duration::from_secs(60);
-/// Max requests per host within the window (matches typical Misskey rate limit)
-const MAX_REQUESTS_PER_WINDOW: usize = 150;
+/// Default max requests per host (used in tests)
+#[cfg(test)]
+const DEFAULT_MAX_REQUESTS_PER_WINDOW: usize = 200;
 
 /// Per-host sliding window rate limiter.
 ///
@@ -23,17 +26,20 @@ const MAX_REQUESTS_PER_WINDOW: usize = 150;
 #[derive(Clone)]
 pub struct RateLimiter {
     windows: Arc<RwLock<HashMap<String, VecDeque<Instant>>>>,
+    perf: SharedPerfConfig,
 }
 
 impl RateLimiter {
-    pub fn new() -> Self {
+    pub fn new(perf: SharedPerfConfig) -> Self {
         Self {
             windows: Arc::new(RwLock::new(HashMap::new())),
+            perf,
         }
     }
 
     /// Check if a request to `host` is allowed. Returns `true` if within limit.
     pub async fn check(&self, host: &str) -> bool {
+        let max_requests = self.perf.read().await.max_requests_per_window;
         let now = Instant::now();
         let mut windows = self.windows.write().await;
         let window = windows.entry(host.to_string()).or_default();
@@ -43,7 +49,7 @@ impl RateLimiter {
             window.pop_front();
         }
 
-        if window.len() >= MAX_REQUESTS_PER_WINDOW {
+        if window.len() >= max_requests {
             false
         } else {
             window.push_back(now);
@@ -126,8 +132,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_rate_limiter_allows_within_limit() {
-        let limiter = RateLimiter::new();
-        for _ in 0..MAX_REQUESTS_PER_WINDOW {
+        let limiter = RateLimiter::new(std::sync::Arc::new(tokio::sync::RwLock::new(crate::perf_config::PerformanceConfig::default())));
+        for _ in 0..DEFAULT_MAX_REQUESTS_PER_WINDOW {
             assert!(limiter.check("test.host").await);
         }
         // Next request should be rejected
@@ -136,8 +142,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_rate_limiter_independent_hosts() {
-        let limiter = RateLimiter::new();
-        for _ in 0..MAX_REQUESTS_PER_WINDOW {
+        let limiter = RateLimiter::new(std::sync::Arc::new(tokio::sync::RwLock::new(crate::perf_config::PerformanceConfig::default())));
+        for _ in 0..DEFAULT_MAX_REQUESTS_PER_WINDOW {
             limiter.check("host-a.example").await;
         }
         // host-a is full, but host-b should still be allowed
@@ -146,7 +152,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cleanup_removes_stale_entries() {
-        let limiter = RateLimiter::new();
+        let limiter = RateLimiter::new(std::sync::Arc::new(tokio::sync::RwLock::new(crate::perf_config::PerformanceConfig::default())));
         limiter.check("stale.host").await;
 
         // Manually inject an old timestamp

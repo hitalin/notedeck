@@ -1,6 +1,6 @@
 import { onScopeDispose, ref, shallowRef } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
-import { NOTE_LIST_MAX } from '@/composables/useNoteList'
+import { usePerformanceStore } from '@/stores/performance'
 import { insertIntoSorted } from '@/utils/sortNotes'
 
 export interface UseStreamingBatchOptions {
@@ -12,7 +12,8 @@ export interface UseStreamingBatchOptions {
 }
 
 export function useStreamingBatch(options: UseStreamingBatchOptions) {
-  const MAX_NOTES = options.maxNotes ?? NOTE_LIST_MAX
+  const perfStore = usePerformanceStore()
+  const MAX_NOTES = options.maxNotes ?? perfStore.get('noteListMax')
   const pendingNotes = shallowRef<NormalizedNote[]>([])
   const isAtTop = ref(true)
   /** Set of note IDs currently playing the slide-in animation */

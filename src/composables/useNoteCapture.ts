@@ -4,8 +4,7 @@ import type {
   NoteUpdateEvent,
   StreamAdapter,
 } from '@/adapters/types'
-
-const MAX_CAPTURE = 80
+import { usePerformanceStore } from '@/stores/performance'
 
 /**
  * Subscribes displayed notes to Misskey's Note Capture mechanism (subNote/unsubNote)
@@ -23,13 +22,14 @@ export function useNoteCapture(
   getStream: () => StreamAdapter | undefined,
   onUpdate: (event: NoteUpdateEvent) => void,
 ) {
+  const perfStore = usePerformanceStore()
   const capturedIds = new Set<string>()
 
   function sync(notes: NormalizedNote[]) {
     const stream = getStream()
     if (!stream) return
 
-    const capped = notes.slice(0, MAX_CAPTURE)
+    const capped = notes.slice(0, perfStore.get('noteCaptureMax'))
     const currentIds = new Set<string>()
     for (const note of capped) {
       currentIds.add(note.id)

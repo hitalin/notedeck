@@ -1,6 +1,9 @@
 <script setup lang="ts" generic="T extends { id: string }">
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { usePerformanceStore } from '@/stores/performance'
+
+const perfStore = usePerformanceStore()
 
 const props = withDefaults(
   defineProps<{
@@ -11,8 +14,15 @@ const props = withDefaults(
     focusedId?: string
     /** Set of note IDs currently animating (slide-in for new streaming notes) */
     animatingIds?: ReadonlySet<string>
+    /** Called with items beyond nearViewport that should be image-prefetched */
+    prefetch?: (items: T[]) => void
   }>(),
-  { estimatedHeight: 150, focusedId: undefined, animatingIds: () => new Set() },
+  {
+    estimatedHeight: 150,
+    focusedId: undefined,
+    animatingIds: () => new Set(),
+    prefetch: undefined,
+  },
 )
 
 const emit = defineEmits<{
@@ -34,7 +44,7 @@ const virtualizerOptions = computed(() => ({
   count: props.items.length,
   getScrollElement: () => scrollContainer.value,
   estimateSize: () => dynamicEstimate.value,
-  overscan: 12,
+  overscan: perfStore.get('overscan'),
   getItemKey: (index: number) => props.items[index]?.id ?? index,
 }))
 
@@ -70,6 +80,35 @@ const nearViewportRange = computed(() => {
   }
   return { start, end }
 })
+
+// Prefetch zone: items beyond nearViewport that should have images preloaded.
+// Extends both directions — ahead aggressively, behind moderately.
+const prefetchZone = computed(() => {
+  const near = nearViewportRange.value
+  const start = Math.max(0, near.start - perfStore.get('prefetchBehind'))
+  const end = Math.min(
+    near.end + perfStore.get('prefetchAhead'),
+    props.items.length - 1,
+  )
+  return { start, end: Math.max(start, end) }
+})
+
+watch(
+  prefetchZone,
+  (zone) => {
+    if (!props.prefetch || zone.start > zone.end) return
+    const near = nearViewportRange.value
+    const items: T[] = []
+    for (let i = zone.start; i <= zone.end; i++) {
+      // Skip items already in nearViewport (they get eager loading via DOM)
+      if (i >= near.start && i <= near.end) continue
+      const item = props.items[i]
+      if (item) items.push(item)
+    }
+    if (items.length > 0) props.prefetch(items)
+  },
+  { immediate: true },
+)
 
 function measureElement(el: unknown) {
   if (!(el instanceof HTMLElement)) return

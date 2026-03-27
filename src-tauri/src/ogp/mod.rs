@@ -12,7 +12,9 @@ use tokio::sync::{watch, Mutex};
 
 const CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 const CACHE_TTL_SECS: i64 = 24 * 60 * 60;
-const MAX_ENTRIES: usize = 128;
+use crate::perf_config::SharedPerfConfig;
+
+const DEFAULT_MAX_ENTRIES: usize = 64;
 const MAX_HTML_SIZE: usize = 2 * 1024 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,6 +125,7 @@ pub struct OgpCache {
     http_client: reqwest::Client,
     db: Arc<notecli::db::Database>,
     loaded: Arc<std::sync::atomic::AtomicBool>,
+    perf: SharedPerfConfig,
 }
 
 impl OgpCache {
@@ -135,18 +138,20 @@ impl OgpCache {
     /// Create with a default HTTP client (used in tests).
     #[allow(dead_code)]
     pub fn new(db: Arc<notecli::db::Database>) -> Self {
-        Self::with_client(db, reqwest::Client::default())
+        let perf = Arc::new(tokio::sync::RwLock::new(crate::perf_config::PerformanceConfig::default()));
+        Self::with_client(db, reqwest::Client::default(), perf)
     }
 
-    pub fn with_client(db: Arc<notecli::db::Database>, http_client: reqwest::Client) -> Self {
+    pub fn with_client(db: Arc<notecli::db::Database>, http_client: reqwest::Client, perf: SharedPerfConfig) -> Self {
         Self {
             cache: Arc::new(Mutex::new(LruCache::new(
-                NonZeroUsize::new(MAX_ENTRIES).unwrap(),
+                NonZeroUsize::new(DEFAULT_MAX_ENTRIES).unwrap(),
             ))),
             inflight: Arc::new(Mutex::new(HashMap::new())),
             http_client,
             db,
             loaded: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            perf,
         }
     }
 
@@ -160,7 +165,8 @@ impl OgpCache {
 
         self.db.cleanup_expired_ogp().ok();
 
-        if let Ok(rows) = self.db.load_summary_cache(MAX_ENTRIES) {
+        let max_entries = self.perf.read().await.rust_ogp_cache_max;
+        if let Ok(rows) = self.db.load_summary_cache(max_entries) {
             let mut cache = self.cache.lock().await;
             // Insert in reverse so the most recent entries are promoted to MRU
             for row in rows.iter().rev() {

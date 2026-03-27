@@ -1,11 +1,19 @@
+import { usePerformanceStore } from '@/stores/performance'
+
 const PROXY_BASE = 'http://127.0.0.1:19820/proxy/image'
 const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-const CACHE_MAX = 512
 const proxyUrlCache = new Map<string, string>()
 
+function getProxyCacheMax(): number {
+  try {
+    return usePerformanceStore().get('imageProxyCacheMax')
+  } catch {
+    return 256
+  }
+}
+
 function evictIfFull() {
-  if (proxyUrlCache.size >= CACHE_MAX) {
-    // Map iterates in insertion order; delete the oldest entry
+  if (proxyUrlCache.size >= getProxyCacheMax()) {
     const oldest = proxyUrlCache.keys().next().value
     if (oldest !== undefined) proxyUrlCache.delete(oldest)
   }

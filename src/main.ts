@@ -5,6 +5,7 @@ import { initOgpListener } from './composables/useOgpPreview'
 import { router, setupAccountRedirect } from './router'
 import { useAccountsStore } from './stores/accounts'
 import { useKeybindsStore } from './stores/keybinds'
+import { usePerformanceStore } from './stores/performance'
 import { useThemeStore } from './stores/theme'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
 import './styles/global.css'
@@ -48,8 +49,9 @@ window.addEventListener('unhandledrejection', (event) => {
 const themeStore = useThemeStore()
 themeStore.init()
 
-// Initialize keybinds file-based storage
+// Initialize file-based storage for keybinds and performance settings
 useKeybindsStore().init()
+usePerformanceStore().init()
 
 // Listen for background OGP prefetch results from Rust side
 initOgpListener()

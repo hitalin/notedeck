@@ -7,6 +7,7 @@ const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
+import { prefetchNoteImages } from '@/composables/useImagePrefetch'
 import {
   type NoteColumnConfig,
   useNoteColumn,
@@ -169,6 +170,7 @@ defineExpose({
           :items="notes"
           :focused-id="focusedNoteId"
           :animating-ids="animatingIds"
+          :prefetch="prefetchNoteImages"
           :class="$style.tlScroller"
           @scroll="handleScroll"
           @near-end="loadMore"

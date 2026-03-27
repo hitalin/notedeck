@@ -5,10 +5,11 @@ import type {
   ServerAdapter,
 } from '@/adapters/types'
 import { useNoteStore } from '@/stores/notes'
+import { usePerformanceStore } from '@/stores/performance'
 import { invoke } from '@/utils/tauriInvoke'
 
-/** Maximum number of notes to keep in DOM per column */
-export const NOTE_LIST_MAX = 250
+/** @deprecated Use usePerformanceStore().get('noteListMax') instead. Kept for test compatibility. */
+export const NOTE_LIST_MAX = 200
 
 export interface UseNoteListOptions {
   getMyUserId: () => string | undefined
@@ -21,7 +22,8 @@ export interface UseNoteListOptions {
 
 export function useNoteList(options: UseNoteListOptions) {
   const noteStore = useNoteStore()
-  const maxNotes = options.maxNotes ?? NOTE_LIST_MAX
+  const perfStore = usePerformanceStore()
+  const maxNotes = options.maxNotes ?? perfStore.get('noteListMax')
   const orderedIds = shallowRef<string[]>([])
   const noteIds = new Set<string>()
   let onNotesChangedFn = options.onNotesChanged
