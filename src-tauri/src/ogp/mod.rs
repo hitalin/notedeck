@@ -529,8 +529,8 @@ fn detect_charset_from_html(bytes: &[u8]) -> Option<&'static encoding_rs::Encodi
     // <meta charset="Shift_JIS">
     if let Some(pos) = lower.find("charset=") {
         let rest = &lower[pos + "charset=".len()..];
-        let rest = rest.trim_start_matches(|c: char| c == '"' || c == '\'' || c == ' ');
-        let end = rest.find(|c: char| c == '"' || c == '\'' || c == ' ' || c == ';' || c == '>')
+        let rest = rest.trim_start_matches(['"', '\'', ' ']);
+        let end = rest.find(['"', '\'', ' ', ';', '>'])
             .unwrap_or(rest.len());
         let name = &rest[..end];
         if !name.is_empty() {
