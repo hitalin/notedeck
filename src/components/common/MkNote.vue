@@ -12,6 +12,7 @@ import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useLongPress } from '@/composables/useLongPress'
 import { useNavigation } from '@/composables/useNavigation'
+import { useRippleEffect } from '@/composables/useRippleEffect'
 import {
   useVaporTransition,
   useVaporTransitionGroup,
@@ -64,6 +65,7 @@ const isPureRenote = computed(
 )
 
 const { canInteract, isGuest } = useAccountMode(() => props.note._accountId)
+const { spawn: spawnRipple } = useRippleEffect()
 
 const moreMenuRef = ref<InstanceType<typeof NoteMoreMenu> | null>(null)
 const reactionPickerRef = ref<InstanceType<
@@ -362,6 +364,21 @@ function onMentionLeave() {
 function closeMentionPopup() {
   mentionPopup.forceClose()
 }
+
+function handleReactionClick(e: MouseEvent, reaction: string) {
+  if (longPressed.value) return
+  if (!canInteract.value) {
+    showLoginPrompt()
+    return
+  }
+  // Spawn ripple at click position for Misskey-style celebration
+  const isRemoving = effectiveNote.value.myReaction === reaction
+  if (!isRemoving) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    spawnRipple(rect.left + rect.width / 2, rect.top + rect.height / 2)
+  }
+  emit('react', reaction, effectiveNote.value)
+}
 </script>
 
 <template>
@@ -599,7 +616,7 @@ function closeMentionPopup() {
               ]"
               :data-reaction="r.reaction"
               :disabled="isGuest"
-              @click.stop="longPressed ? undefined : (canInteract ? emit('react', r.reaction, effectiveNote) : showLoginPrompt())"
+              @click.stop="handleReactionClick($event, r.reaction)"
               @pointerdown="lpHandlers.onPointerdown"
               @pointermove="lpHandlers.onPointermove"
               @pointerup="lpHandlers.onPointerup"
