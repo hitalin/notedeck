@@ -13,6 +13,7 @@ import type {
   ApiAdapter,
   NormalizedNote,
   NormalizedNotification,
+  NormalizedUser,
 } from '@/adapters/types'
 import AvatarStack from '@/components/common/AvatarStack.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
@@ -92,10 +93,30 @@ function onNotifAvatarClick(notif: NormalizedNotification, e: MouseEvent) {
   navToUser(notif._accountId, notif.user!.id)
 }
 
+function onGroupedAvatarClick(
+  accountId: string,
+  userId: string,
+  e: MouseEvent,
+) {
+  e.stopPropagation()
+  navToUser(accountId, userId)
+}
+
 function onNotifAvatarMouseEnter(notif: NormalizedNotification, e: MouseEvent) {
   // biome-ignore lint/style/noNonNullAssertion: user exists for interactive notifications
   hoveredUserId.value = notif.user!.id
   hoveredAccountId.value = notif._accountId
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  userPopup.show({ x: rect.right + 8, y: rect.top })
+}
+
+function onGroupedAvatarMouseEnter(
+  accountId: string,
+  userId: string,
+  e: MouseEvent,
+) {
+  hoveredUserId.value = userId
+  hoveredAccountId.value = accountId
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
   userPopup.show({ x: rect.right + 8, y: rect.top })
 }
@@ -794,14 +815,23 @@ onUnmounted(() => {
               :class="$style.notifItem"
             >
               <div :class="$style.notifLayout">
-                <div :class="$style.notifHead">
-                  <AvatarStack
-                    :users="notif.type === 'reaction:grouped'
-                      ? notif.reactions?.map((r: { user: { avatarUrl: string | null; username: string } }) => r.user)
-                      : notif.users"
-                    :size="42"
-                    :max="3"
-                  />
+                <div :class="$style.notifGroupedHead">
+                  <div :class="$style.notifGroupedAvatars">
+                    <MkAvatar
+                      v-for="u in (notif.type === 'reaction:grouped'
+                        ? notif.reactions?.map((r: { user: NormalizedUser }) => r.user).slice(0, 3)
+                        : notif.users?.slice(0, 3)) ?? []"
+                      :key="u.id"
+                      :avatar-url="u.avatarUrl"
+                      :decorations="u.avatarDecorations"
+                      :size="28"
+                      :alt="u.username ?? undefined"
+                      :class="$style.notifUserAvatar"
+                      @click="onGroupedAvatarClick(notif._accountId, u.id, $event)"
+                      @mouseenter="onGroupedAvatarMouseEnter(notif._accountId, u.id, $event)"
+                      @mouseleave="onNotifAvatarMouseLeave"
+                    />
+                  </div>
                   <i :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
                 </div>
                 <div :class="$style.notifTail">
@@ -1104,6 +1134,24 @@ onUnmounted(() => {
   flex-shrink: 0;
   width: 42px;
   height: 42px;
+}
+
+.notifGroupedHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+
+  .notifSubIcon {
+    position: static;
+    box-shadow: none;
+  }
+}
+
+.notifGroupedAvatars {
+  display: flex;
+  gap: 4px;
 }
 
 .notifUserAvatar {
