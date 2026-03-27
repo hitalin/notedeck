@@ -203,9 +203,7 @@ defineExpose({ open })
   max-height: 480px;
   display: flex;
   flex-direction: column;
-  background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 85%, transparent);
-  backdrop-filter: var(--nd-vibrancy);
-  -webkit-backdrop-filter: var(--nd-vibrancy);
+  background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 96%, transparent);
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   overflow: hidden;

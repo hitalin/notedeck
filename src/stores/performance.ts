@@ -445,8 +445,9 @@ export function estimateMemoryMB(c: PerformanceConfig): number {
   const prefetchTrackMB = (c.prefetchTrackedMax * 0.1) / 1024 // ~0.1KB per URL in Set
   const noteCaptureMB = (c.noteCaptureMax * 0.5) / 1024 // ~0.5KB per WebSocket subscription
   // GPU texture memory for backdrop-filter compositing layers
-  // Each blur surface creates a ~400×800 RGBA texture ≈ 1.2MB; typical 2–3 surfaces
-  const blurGpuMB = c.cssBlurLevel > 0 ? c.cssBlurLevel * 1.2 : 0
+  // Each blur surface creates a ~400×800 RGBA texture ≈ 1.2MB
+  // After cleanup: only 3 permanent surfaces (navbar, window header, acrylic)
+  const blurGpuMB = c.cssBlurLevel > 0 ? c.cssBlurLevel * 0.8 : 0
   return Math.round(
     FIXED_OVERHEAD_MB +
       imageCacheMB +

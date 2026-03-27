@@ -380,7 +380,6 @@ defineExpose({ scrollToColumn, columnMap })
   overflow-x: auto;
   overflow-y: clip;
   overscroll-behavior: contain;
-  will-change: scroll-position;
   min-width: 0;
   min-height: 0;
 }

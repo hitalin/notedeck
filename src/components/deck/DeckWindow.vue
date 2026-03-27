@@ -172,10 +172,6 @@ function onWindowMouseDown() {
   from { opacity: 0; transform: scale(0.88) translateY(6px); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .deckWindow { animation: none; }
-}
-
 .dragging {
   opacity: 0.92;
   will-change: translate;

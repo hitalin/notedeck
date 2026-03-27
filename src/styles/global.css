@@ -275,14 +275,12 @@ summary,
     opacity var(--nd-duration-base);
 }
 
-/* ---- Popup (shared acrylic panel) ---- */
+/* ---- Popup (shared panel — no backdrop-filter to save GPU memory) ---- */
 
 ._popup {
-  background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
+  background: color-mix(in srgb, var(--nd-popup) 96%, transparent);
   border-radius: var(--nd-radius);
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: var(--nd-vibrancy);
-  -webkit-backdrop-filter: var(--nd-vibrancy);
   contain: paint;
 }
 
@@ -291,8 +289,6 @@ summary,
   background: var(--nd-popup, var(--nd-panelBg));
   border-radius: var(--nd-radius-md);
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: var(--nd-vibrancy);
-  -webkit-backdrop-filter: var(--nd-vibrancy);
   padding: 6px 0;
   z-index: var(--nd-z-menu);
   contain: paint;
