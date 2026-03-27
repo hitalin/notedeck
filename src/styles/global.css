@@ -283,6 +283,7 @@ summary,
   box-shadow: var(--nd-shadow-m);
   backdrop-filter: var(--nd-vibrancy);
   -webkit-backdrop-filter: var(--nd-vibrancy);
+  contain: paint;
 }
 
 ._popupMenu {
@@ -294,6 +295,7 @@ summary,
   -webkit-backdrop-filter: var(--nd-vibrancy);
   padding: 6px 0;
   z-index: var(--nd-z-menu);
+  contain: paint;
 }
 
 /* ---- Popup menu items (shared) ---- */
@@ -508,8 +510,6 @@ summary,
   font-size: 0.85em;
   font-weight: bold;
   cursor: pointer;
-  backdrop-filter: var(--nd-vibrancy-content);
-  -webkit-backdrop-filter: var(--nd-vibrancy-content);
   z-index: 2;
 }
 

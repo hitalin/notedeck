@@ -209,6 +209,7 @@ defineExpose({ open })
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   overflow: hidden;
+  contain: paint;
 
   .mobile & {
     width: 100%;

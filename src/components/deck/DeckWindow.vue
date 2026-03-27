@@ -123,10 +123,10 @@ function onWindowMouseDown() {
     :class="[$style.deckWindow, { [$style.dragging]: isDragging, [$style.minimized]: isMinimized, [$style.maximized]: isMaximized, [$style.mobile]: isCompact }]"
     :style="isMaximized ? { ...themeVars, zIndex: window.zIndex } : {
       ...themeVars,
-      left: (isDragging ? dragX : window.x) + 'px',
-      top: (isDragging ? dragY : window.y) + 'px',
-      width: size.width + 'px',
-      maxHeight: size.maxHeight + 'px',
+      '--nd-win-x': (isDragging ? dragX : window.x) + 'px',
+      '--nd-win-y': (isDragging ? dragY : window.y) + 'px',
+      '--nd-win-w': size.width + 'px',
+      '--nd-win-h': size.maxHeight + 'px',
       zIndex: window.zIndex,
     }"
     @mousedown="onWindowMouseDown"
@@ -153,12 +153,18 @@ function onWindowMouseDown() {
 <style lang="scss" module>
 .deckWindow {
   position: fixed;
+  left: 0;
+  top: 0;
+  translate: var(--nd-win-x, 0) var(--nd-win-y, 0);
+  width: var(--nd-win-w, auto);
+  max-height: var(--nd-win-h, none);
   display: flex;
   flex-direction: column;
   background: var(--nd-panel);
   border-radius: var(--nd-radius);
   box-shadow: 0 8px 32px var(--nd-shadow);
   overflow: clip;
+  contain: layout paint;
   animation: windowIn 0.2s var(--nd-ease-spring);
 }
 
@@ -172,6 +178,7 @@ function onWindowMouseDown() {
 
 .dragging {
   opacity: 0.92;
+  will-change: translate;
 }
 
 .maximized {

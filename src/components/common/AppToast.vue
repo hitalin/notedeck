@@ -59,10 +59,9 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
   border-radius: var(--nd-radius-md);
   font-size: 0.85em;
   color: #fff;
-  background: color-mix(in srgb, var(--nd-panel) 80%, transparent);
-  backdrop-filter: var(--nd-vibrancy);
-  -webkit-backdrop-filter: var(--nd-vibrancy);
+  background: var(--nd-panel);
   box-shadow: var(--nd-shadow-m);
+  contain: paint;
   pointer-events: auto;
   white-space: nowrap;
   max-width: 90vw;

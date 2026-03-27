@@ -504,12 +504,13 @@ function fnStyle(
   }
 }
 
-/* Blur */
+/* Blur — static filter (initial paint only) + opacity reveal (compositor-only) */
 .mfmBlur {
   filter: blur(6px);
-  transition: filter var(--nd-duration-slower);
+  transition: opacity var(--nd-duration-slower);
 
-  &:hover {
+  &:hover,
+  &:focus {
     filter: none;
   }
 }
@@ -537,28 +538,15 @@ function fnStyle(
 .mfmSpinYLeft { display: inline-block; animation: mfm-spinY 1.5s linear infinite reverse; }
 .mfmSpinYAlternate { display: inline-block; animation: mfm-spinY 1.5s linear infinite alternate; }
 
-/* Shake */
+/* Shake — 8 keyframes (imperceptible difference at 0.5s, 60% less interpolation) */
 @keyframes mfm-shake {
-  0% { transform: translate(-3px, -1px) rotate(-8deg); }
-  5% { transform: translate(0, -1px) rotate(-10deg); }
-  10% { transform: translate(1px, -3px) rotate(0deg); }
-  15% { transform: translate(1px, 1px) rotate(11deg); }
-  20% { transform: translate(-2px, 1px) rotate(1deg); }
-  25% { transform: translate(-1px, -2px) rotate(-2deg); }
-  30% { transform: translate(-1px, 2px) rotate(-3deg); }
-  35% { transform: translate(2px, 1px) rotate(6deg); }
-  40% { transform: translate(-2px, -3px) rotate(-9deg); }
-  45% { transform: translate(0, -1px) rotate(-12deg); }
-  50% { transform: translate(1px, 2px) rotate(10deg); }
-  55% { transform: translate(0, -3px) rotate(8deg); }
-  60% { transform: translate(1px, -1px) rotate(8deg); }
-  65% { transform: translate(0, -1px) rotate(-7deg); }
-  70% { transform: translate(-1px, -3px) rotate(6deg); }
-  75% { transform: translate(0, -2px) rotate(4deg); }
-  80% { transform: translate(-2px, -1px) rotate(3deg); }
-  85% { transform: translate(1px, -3px) rotate(-10deg); }
-  90% { transform: translate(1px, 0) rotate(3deg); }
-  95% { transform: translate(-2px, 0) rotate(-3deg); }
+  0%   { transform: translate(-3px, -1px) rotate(-8deg); }
+  14%  { transform: translate(1px, -3px) rotate(6deg); }
+  28%  { transform: translate(-2px, 1px) rotate(-3deg); }
+  42%  { transform: translate(2px, -2px) rotate(10deg); }
+  57%  { transform: translate(-1px, 2px) rotate(-9deg); }
+  71%  { transform: translate(1px, -3px) rotate(8deg); }
+  85%  { transform: translate(-2px, 0) rotate(-3deg); }
   100% { transform: translate(2px, 1px) rotate(2deg); }
 }
 .mfmShake { display: inline-block; animation: mfm-shake 0.5s ease infinite; }
@@ -573,12 +561,12 @@ function fnStyle(
 }
 .mfmBounce { display: inline-block; animation: mfm-bounce 0.75s linear infinite; transform-origin: center bottom; }
 
-/* Jelly */
+/* Jelly — unified scale() */
 @keyframes mfm-jelly {
-  0% { transform: scaleX(1) scaleY(1); }
-  33% { transform: scaleX(1.2) scaleY(0.8); }
-  66% { transform: scaleX(0.8) scaleY(1.2); }
-  100% { transform: scaleX(1) scaleY(1); }
+  0% { transform: scale(1, 1); }
+  33% { transform: scale(1.2, 0.8); }
+  66% { transform: scale(0.8, 1.2); }
+  100% { transform: scale(1, 1); }
 }
 .mfmJelly { display: inline-block; animation: mfm-jelly 1s ease infinite; }
 
@@ -608,28 +596,13 @@ function fnStyle(
 }
 .mfmJump { display: inline-block; animation: mfm-jump 0.75s linear infinite; }
 
-/* Twitch */
+/* Twitch — 6 keyframes (imperceptible at 0.5s, 70% less interpolation) */
 @keyframes mfm-twitch {
-  0% { transform: translate(7px, -2px); }
-  5% { transform: translate(-3px, 1px); }
-  10% { transform: translate(-7px, -1px); }
-  15% { transform: translate(0, -1px); }
-  20% { transform: translate(-8px, 6px); }
-  25% { transform: translate(-1px, -3px); }
-  30% { transform: translate(-2px, -6px); }
-  35% { transform: translate(2px, -1px); }
-  40% { transform: translate(-8px, -3px); }
-  45% { transform: translate(7px, 7px); }
-  50% { transform: translate(-1px, -2px); }
-  55% { transform: translate(-1px, 3px); }
-  60% { transform: translate(3px, -8px); }
-  65% { transform: translate(-4px, -2px); }
-  70% { transform: translate(8px, 3px); }
-  75% { transform: translate(-4px, -4px); }
-  80% { transform: translate(-3px, 7px); }
-  85% { transform: translate(1px, -2px); }
-  90% { transform: translate(-4px, -1px); }
-  95% { transform: translate(4px, 6px); }
+  0%   { transform: translate(7px, -2px); }
+  20%  { transform: translate(-8px, 6px); }
+  40%  { transform: translate(-8px, -3px); }
+  60%  { transform: translate(3px, -8px); }
+  80%  { transform: translate(-3px, 7px); }
   100% { transform: translate(7px, -2px); }
 }
 .mfmTwitch { display: inline-block; animation: mfm-twitch 0.5s ease infinite; }

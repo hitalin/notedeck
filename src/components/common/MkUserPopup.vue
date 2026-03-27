@@ -152,6 +152,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   width: 300px;
   overflow: hidden;
   pointer-events: auto;
+  contain: paint;
   animation: userPopupIn 0.15s var(--nd-ease-spring);
 }
 

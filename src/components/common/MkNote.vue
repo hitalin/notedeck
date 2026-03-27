@@ -983,9 +983,9 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   overflow: hidden;
   white-space: nowrap;
   max-width: 200px;
-  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.7);
-  paint-order: stroke fill;
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.8),
+    0 0 4px rgba(0, 0, 0, 0.5);
 }
 
 .info {
