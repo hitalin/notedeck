@@ -13,6 +13,7 @@ import type {
   ApiAdapter,
   NormalizedNote,
   NormalizedNotification,
+  NormalizedUser,
 } from '@/adapters/types'
 import AvatarStack from '@/components/common/AvatarStack.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
@@ -92,6 +93,15 @@ function onNotifAvatarClick(notif: NormalizedNotification, e: MouseEvent) {
   navToUser(notif._accountId, notif.user!.id)
 }
 
+function onGroupedAvatarClick(
+  accountId: string,
+  userId: string,
+  e: MouseEvent,
+) {
+  e.stopPropagation()
+  navToUser(accountId, userId)
+}
+
 function onNotifAvatarMouseEnter(notif: NormalizedNotification, e: MouseEvent) {
   // biome-ignore lint/style/noNonNullAssertion: user exists for interactive notifications
   hoveredUserId.value = notif.user!.id
@@ -100,14 +110,32 @@ function onNotifAvatarMouseEnter(notif: NormalizedNotification, e: MouseEvent) {
   userPopup.show({ x: rect.right + 8, y: rect.top })
 }
 
+function onGroupedAvatarMouseEnter(
+  accountId: string,
+  userId: string,
+  e: MouseEvent,
+) {
+  hoveredUserId.value = userId
+  hoveredAccountId.value = accountId
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  userPopup.show({ x: rect.right + 8, y: rect.top })
+}
+
 function onNotifAvatarMouseLeave() {
   userPopup.hide()
 }
 
+// O(1) account lookup map for cross-account columns
+const accountById = computed(() => {
+  const map = new Map<string, (typeof accountsStore.accounts)[number]>()
+  for (const a of accountsStore.accounts) map.set(a.id, a)
+  return map
+})
+
 /** Resolve the account that owns a notification (for cross-account support) */
 function resolveNotifAccount(notif: NormalizedNotification) {
   if (!isCrossAccount.value) return account.value
-  return accountsStore.accounts.find((a) => a.id === notif._accountId)
+  return accountById.value.get(notif._accountId)
 }
 
 /** Get the server favicon URL for a notification's account */
@@ -137,10 +165,10 @@ function mergeNotifications(
   const map = new Map<string, NormalizedNotification>()
   for (const n of cached) map.set(n.id, n)
   for (const n of fresh) map.set(n.id, n) // fresh overwrites cached
+  // ISO 8601 strings are lexicographically sortable — avoid Date object allocation
   return [...map.values()]
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    .sort((a, b) =>
+      b.createdAt > a.createdAt ? 1 : b.createdAt < a.createdAt ? -1 : 0,
     )
     .slice(0, limit)
 }
@@ -312,24 +340,45 @@ function baseType(type: string): string {
   return type.replace(':grouped', '')
 }
 
-function groupedUsersLabel(notif: NormalizedNotification): string {
+function groupedUsers(notif: NormalizedNotification): NormalizedUser[] {
+  let users: NormalizedUser[]
   if (notif.type === 'reaction:grouped' && notif.reactions) {
-    const users = notif.reactions.map((r) => r.user)
-    return formatGroupedUsers(users)
+    users = notif.reactions.map((r) => r.user)
+  } else if (notif.type === 'renote:grouped' && notif.users) {
+    users = notif.users
+  } else {
+    return []
   }
-  if (notif.type === 'renote:grouped' && notif.users) {
-    return formatGroupedUsers(notif.users)
-  }
-  return ''
+  const seen = new Set<string>()
+  return users.filter((u) => {
+    if (seen.has(u.id)) return false
+    seen.add(u.id)
+    return true
+  })
 }
 
-function formatGroupedUsers(
-  users: Array<{ name?: string | null; username: string }>,
-): string {
-  if (users.length === 0) return ''
-  const names = users.slice(0, 2).map((u) => u.name || u.username)
-  if (users.length <= 2) return names.join(', ')
-  return `${names.join(', ')} 他${users.length - 2}人`
+interface AvatarEntry {
+  user: NormalizedUser
+  reaction?: string
+}
+
+function groupedAvatarEntries(notif: NormalizedNotification): AvatarEntry[] {
+  if (notif.type === 'reaction:grouped' && notif.reactions) {
+    const seen = new Set<string>()
+    return notif.reactions
+      .filter((r) => {
+        const key = `${r.user.id}\0${r.reaction}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      .map((r) => ({ user: r.user, reaction: r.reaction }))
+  }
+  return groupedUsers(notif).map((u) => ({ user: u }))
+}
+
+function uniqueReactions(reactions: { reaction: string }[]): string[] {
+  return [...new Set(reactions.map((r) => r.reaction))]
 }
 
 function notificationIcon(type: string): string {
@@ -435,12 +484,16 @@ async function connectPerAccount(useCache = false) {
   }
 }
 
-async function connectCrossAccount() {
+async function connectCrossAccount(useCache = false) {
   error.value = null
   isLoading.value = true
   noMoreData.value = false
   const accounts = accountsStore.accounts.filter((a) => a.hasToken)
   const cached = loadCache()
+
+  if (useCache && cached.length > 0) {
+    notifications.value = cached
+  }
 
   try {
     const results = await Promise.allSettled(
@@ -460,6 +513,23 @@ async function connectCrossAccount() {
 
     notifications.value = mergeNotifications(allNotifs, cached)
     saveCache()
+
+    // Set up streaming for each account
+    for (const acc of accounts) {
+      const adapter = await multiAdapters.getOrCreate(acc.id)
+      if (!adapter) continue
+      adapter.stream.connect()
+      adapter.stream.subscribeMain((event) => {
+        if (event.type === 'notification') {
+          const notification = event.body as NormalizedNotification
+          if (!props.column.soundMuted) noteSound.play()
+          rafBuffer.push(notification)
+          if (rafId === null) {
+            rafId = requestAnimationFrame(flushRafBuffer)
+          }
+        }
+      })
+    }
   } catch (e) {
     if (cached.length > 0) {
       notifications.value = cached
@@ -473,7 +543,7 @@ async function connectCrossAccount() {
 
 async function connect(useCache = false) {
   if (isCrossAccount.value) {
-    await connectCrossAccount()
+    await connectCrossAccount(useCache)
   } else {
     await connectPerAccount(useCache)
   }
@@ -516,14 +586,19 @@ async function loadMoreCrossAccount() {
 
   const accounts = accountsStore.accounts.filter((a) => a.hasToken)
 
+  // Build last-notification-per-account map in a single reverse pass (O(n))
+  const lastByAccount = new Map<string, NormalizedNotification>()
+  for (let i = notifications.value.length - 1; i >= 0; i--) {
+    const n = notifications.value[i]
+    if (!lastByAccount.has(n._accountId)) lastByAccount.set(n._accountId, n)
+  }
+
   try {
     const results = await Promise.allSettled(
       accounts.map(async (acc) => {
         const adapter = await multiAdapters.getOrCreate(acc.id)
         if (!adapter) return []
-        const lastForAccount = [...notifications.value]
-          .reverse()
-          .find((n) => n._accountId === acc.id)
+        const lastForAccount = lastByAccount.get(acc.id)
         if (!lastForAccount) return fetchNotifications(adapter.api, acc.host)
         return fetchNotifications(adapter.api, acc.host, {
           untilId: lastForAccount.id,
@@ -794,32 +869,51 @@ onUnmounted(() => {
               :class="$style.notifItem"
             >
               <div :class="$style.notifLayout">
-                <div :class="$style.notifHead">
-                  <AvatarStack
-                    :users="notif.type === 'reaction:grouped'
-                      ? notif.reactions?.map((r: { user: { avatarUrl: string | null; username: string } }) => r.user)
-                      : notif.users"
-                    :size="42"
-                    :max="3"
-                  />
-                  <i :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
+                <div :class="$style.notifGroupedHead">
+                  <div
+                    v-for="entry in groupedAvatarEntries(notif).slice(0, 3)"
+                    :key="`${entry.user.id}-${entry.reaction ?? ''}`"
+                    :class="$style.notifHead"
+                  >
+                    <MkAvatar
+                      :avatar-url="entry.user.avatarUrl"
+                      :decorations="entry.user.avatarDecorations"
+                      :size="42"
+                      :alt="entry.user.username ?? undefined"
+                      :class="$style.notifUserAvatar"
+                      @click="onGroupedAvatarClick(notif._accountId, entry.user.id, $event)"
+                      @mouseenter="onGroupedAvatarMouseEnter(notif._accountId, entry.user.id, $event)"
+                      @mouseleave="onNotifAvatarMouseLeave"
+                    />
+                    <template v-if="entry.reaction">
+                      <img v-if="getCachedReactionUrl(entry.reaction, notif)" :src="getCachedReactionUrl(entry.reaction, notif)!" :alt="entry.reaction" :class="$style.notifSubIconEmoji" loading="lazy" />
+                      <img v-else-if="getCachedTwemojiUrl(entry.reaction)" :src="getCachedTwemojiUrl(entry.reaction)!" :alt="entry.reaction" :class="$style.notifSubIconEmoji" loading="lazy" />
+                      <i v-else :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
+                    </template>
+                    <i v-else :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
+                  </div>
                 </div>
                 <div :class="$style.notifTail">
                   <div :class="$style.notifHeader">
                     <div :class="$style.notifMeta">
-                      <span :class="$style.notifUserName">{{ groupedUsersLabel(notif) }}</span>
+                      <span :class="$style.notifUserName">
+                        <template v-for="(u, i) in groupedUsers(notif).slice(0, 2)" :key="u.id">
+                          <template v-if="i > 0">, </template>
+                          <MkMfm v-if="u.name" :text="u.name" :emojis="u.emojis" :server-host="notif._serverHost" />
+                          <template v-else>{{ u.username }}</template>
+                        </template>
+                        <template v-if="groupedUsers(notif).length > 2"> 他{{ groupedUsers(notif).length - 2 }}人</template>
+                      </span>
                       <span :class="$style.notifLabel">{{ notificationLabel(notif.type) }}</span>
+                      <template v-if="notif.type === 'reaction:grouped' && notif.reactions?.length">
+                        <span v-for="reaction in uniqueReactions(notif.reactions)" :key="reaction" :class="$style.notifReaction">
+                          <img v-if="getCachedReactionUrl(reaction, notif)" :src="getCachedReactionUrl(reaction, notif)!" :alt="reaction" :class="$style.notifReactionEmoji" loading="lazy" />
+                          <img v-else-if="getCachedTwemojiUrl(reaction)" :src="getCachedTwemojiUrl(reaction)!" :alt="reaction" :class="$style.notifReactionEmoji" loading="lazy" />
+                          <MkEmoji v-else :emoji="reaction" :class="$style.notifReactionEmoji" />
+                        </span>
+                      </template>
                     </div>
                     <span :class="$style.notifTime">{{ formatTime(notif.createdAt) }}</span>
-                  </div>
-
-                  <!-- Grouped reaction emojis -->
-                  <div v-if="notif.type === 'reaction:grouped' && notif.reactions?.length" :class="$style.groupedReactions">
-                    <template v-for="r in notif.reactions" :key="`${r.user.id}-${r.reaction}`">
-                      <img v-if="getCachedReactionUrl(r.reaction, notif)" :src="getCachedReactionUrl(r.reaction, notif)!" :alt="r.reaction" :class="$style.groupedReactionEmoji" loading="lazy" />
-                      <img v-else-if="getCachedTwemojiUrl(r.reaction)" :src="getCachedTwemojiUrl(r.reaction)!" :alt="r.reaction" :class="$style.groupedReactionEmoji" loading="lazy" />
-                      <MkEmoji v-else :emoji="r.reaction" :class="$style.groupedReactionEmoji" />
-                    </template>
                   </div>
 
                   <div v-if="notif.note" :class="$style.notifNoteWrap">
@@ -881,7 +975,7 @@ onUnmounted(() => {
                   <div :class="$style.notifHeader">
                     <div :class="$style.notifMeta">
                       <span v-if="notif.user" :class="$style.notifUserName">
-                        <MkMfm v-if="notif.user.name" :text="notif.user.name" :emojis="notif.user.emojis" :server-host="account?.host" />
+                        <MkMfm v-if="notif.user.name" :text="notif.user.name" :emojis="notif.user.emojis" :server-host="notif._serverHost" />
                         <template v-else>{{ notif.user.username }}</template>
                       </span>
                       <span :class="$style.notifLabel">{{ notificationLabel(notif.type) }}</span>
@@ -1104,6 +1198,13 @@ onUnmounted(() => {
   flex-shrink: 0;
   width: 42px;
   height: 42px;
+}
+
+.notifGroupedHead {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 5px;
 }
 
 .notifUserAvatar {
@@ -1337,21 +1438,4 @@ onUnmounted(() => {
   to { transform: rotate(360deg); }
 }
 
-/* Grouped notification: reaction emoji list */
-.groupedReactions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
-}
-
-.groupedReactionEmoji {
-  height: 1.6em;
-  vertical-align: middle;
-  object-fit: contain;
-
-  :deep(.twemoji) {
-    height: 1.6em;
-  }
-}
 </style>

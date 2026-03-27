@@ -167,7 +167,8 @@ pub struct ServeConfig {
 }
 
 /// Phase 2: attach routes and start serving. Requires DB/client.
-pub async fn serve(config: ServeConfig) {
+/// Sends `()` on `ready_tx` once routes are built and the server is about to accept connections.
+pub async fn serve(config: ServeConfig, ready_tx: tokio::sync::oneshot::Sender<()>) {
     // Build core Misskey API routes from notecli
     let notecli_state = notecli::http_server::AppState::new(
         config.db,
@@ -279,6 +280,7 @@ pub async fn serve(config: ServeConfig) {
     }
 
     tracing::info!("HTTP server serving");
+    ready_tx.send(()).ok();
 
     if let Err(e) = axum::serve(config.server.listener, app).await {
         tracing::error!(%e, "HTTP server error");
@@ -658,6 +660,9 @@ async fn proxy_image(
                     .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
             }
         }
-        Err(msg) => (StatusCode::BAD_GATEWAY, msg).into_response(),
+        Err(msg) => {
+            tracing::warn!(url = %params.url, error = %msg, "proxy_image: upstream fetch failed");
+            (StatusCode::BAD_GATEWAY, msg).into_response()
+        }
     }
 }

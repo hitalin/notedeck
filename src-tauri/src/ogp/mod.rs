@@ -428,7 +428,8 @@ impl OgpCache {
             .headers()
             .get(reqwest::header::CONTENT_TYPE)
             .and_then(|v| v.to_str().ok())
-            .unwrap_or("");
+            .unwrap_or("")
+            .to_string();
         if !content_type.contains("text/html") && !content_type.contains("application/xhtml") {
             return Err("Not an HTML page".to_string());
         }
@@ -447,7 +448,7 @@ impl OgpCache {
             return Err("Page too large".to_string());
         }
 
-        let html = String::from_utf8_lossy(&bytes);
+        let html = decode_html_bytes(&bytes, &content_type);
 
         // Detect bot-challenge / captcha pages (Cloudflare, etc.)
         if parser::is_challenge_page(&html) {
@@ -484,6 +485,59 @@ impl OgpCache {
 
         Ok(data)
     }
+}
+
+/// Decode HTML bytes using charset from Content-Type header or `<meta charset>` tag.
+/// Falls back to UTF-8 if no charset is specified or detected.
+fn decode_html_bytes(bytes: &[u8], content_type: &str) -> String {
+    // 1. Try charset from Content-Type header (e.g. "text/html; charset=Shift_JIS")
+    let encoding = extract_charset_from_content_type(content_type)
+        .and_then(|name| encoding_rs::Encoding::for_label(name.as_bytes()))
+        // 2. Try <meta charset="..."> or <meta http-equiv="Content-Type" content="...; charset=...">
+        .or_else(|| detect_charset_from_html(bytes));
+
+    match encoding {
+        Some(enc) if enc != encoding_rs::UTF_8 => {
+            let (decoded, _, _) = enc.decode(bytes);
+            decoded.into_owned()
+        }
+        _ => String::from_utf8_lossy(bytes).into_owned(),
+    }
+}
+
+fn extract_charset_from_content_type(content_type: &str) -> Option<String> {
+    content_type
+        .split(';')
+        .find_map(|part| {
+            let part = part.trim();
+            if part.to_ascii_lowercase().starts_with("charset=") {
+                Some(part["charset=".len()..].trim_matches('"').trim().to_string())
+            } else {
+                None
+            }
+        })
+}
+
+/// Scan the first 1024 bytes for <meta charset="..."> or
+/// <meta http-equiv="Content-Type" content="...; charset=...">
+fn detect_charset_from_html(bytes: &[u8]) -> Option<&'static encoding_rs::Encoding> {
+    let head = &bytes[..bytes.len().min(4096)];
+    // Use lossy conversion just for scanning — only the ASCII meta tags matter
+    let snippet = String::from_utf8_lossy(head);
+    let lower = snippet.to_ascii_lowercase();
+
+    // <meta charset="Shift_JIS">
+    if let Some(pos) = lower.find("charset=") {
+        let rest = &lower[pos + "charset=".len()..];
+        let rest = rest.trim_start_matches(['"', '\'', ' ']);
+        let end = rest.find(['"', '\'', ' ', ';', '>'])
+            .unwrap_or(rest.len());
+        let name = &rest[..end];
+        if !name.is_empty() {
+            return encoding_rs::Encoding::for_label(name.as_bytes());
+        }
+    }
+    None
 }
 
 #[cfg(test)]

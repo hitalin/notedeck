@@ -16,7 +16,7 @@ const MAX_FILE_SIZE: u64 = 20 * 1024 * 1024; // 20MB
 // Negative cache TTLs by error class
 const NEGATIVE_TTL_CLIENT: Duration = Duration::from_secs(24 * 60 * 60); // 4xx: 24h
 const NEGATIVE_TTL_SERVER: Duration = Duration::from_secs(2 * 60); // 5xx: 2min
-const NEGATIVE_TTL_NETWORK: Duration = Duration::from_secs(30); // timeout/conn: 30s
+const NEGATIVE_TTL_NETWORK: Duration = Duration::from_secs(5); // timeout/conn: 5s
 
 // Fallback defaults (used when perf_config is not available, e.g. in tests)
 const DEFAULT_MEMORY_CACHE_MAX_ITEM: usize = 64 * 1024;
@@ -294,7 +294,7 @@ impl ImageCache {
             req = req.header(reqwest::header::REFERER, referer);
         }
         let resp = req.send().await.map_err(|e| {
-            let msg = format!("Fetch failed: {e}");
+            let msg = format!("Fetch failed: {e:#}");
             self.record_negative_and_notify(url, &hash, &tx, &msg, NEGATIVE_TTL_NETWORK);
             msg
         })?;

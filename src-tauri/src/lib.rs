@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tauri::Manager;
 #[cfg(not(mobile))]
 use tauri::{
@@ -219,7 +221,10 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         perf_config::get_performance_config,
     ]);
 
-    builder = builder.setup(|app| {
+    let has_tray = Arc::new(AtomicBool::new(false));
+    let has_tray_for_setup = has_tray.clone();
+
+    builder = builder.setup(move |app| {
         // ══════════════════════════════════════════════════════════
         // Phase 1: Lightweight init (< 50ms) — window shows immediately after this
         // ══════════════════════════════════════════════════════════
@@ -338,16 +343,16 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                 image_cache::ImageCache::with_client(&app_dir_bg, shared_http, shared_perf_bg.clone()),
             );
 
-            // Signal frontend: backend is ready
-            // HTTP proxy is already bound, so emoji images can be served immediately.
-            let _ = tauri::Emitter::emit(&app_handle, "nd:backend-ready", ());
-
-            // Start HTTP API server (attach routes to pre-bound listener) + OGP pre-warm
+            // Start HTTP API server (attach routes to pre-bound listener)
+            // Wait for the server to be ready before signalling the frontend,
+            // so the image proxy can serve emoji requests immediately.
             if let Some(server) = bound_server {
+                let (ready_tx, ready_rx) = tokio::sync::oneshot::channel::<()>();
+                let serve_app_handle = app_handle.clone();
                 tauri::async_runtime::spawn(async move {
                     http_server::serve(http_server::ServeConfig {
                         server,
-                        app_handle,
+                        app_handle: serve_app_handle,
                         db,
                         client,
                         event_bus,
@@ -355,10 +360,13 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                         token_path: token_path_str,
                         image_cache,
                         perf: shared_perf_bg,
-                    })
+                    }, ready_tx)
                     .await;
                 });
+                // Block until routes are built and server is about to accept
+                tauri::async_runtime::block_on(async { ready_rx.await.ok() });
             }
+            let _ = tauri::Emitter::emit(&app_handle, "nd:backend-ready", ());
             tauri::async_runtime::spawn(async move {
                 ogp_cache.pre_warm().await;
             });
@@ -424,7 +432,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                 .ok_or("Default window icon not found")?
                 .clone();
 
-            TrayIconBuilder::new()
+            match TrayIconBuilder::new()
                 .icon(icon)
                 .tooltip("NoteDeck")
                 .menu(&menu)
@@ -458,7 +466,15 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 })
-                .build(app)?;
+                .build(app)
+            {
+                Ok(_) => {
+                    has_tray_for_setup.store(true, Ordering::Relaxed);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to create tray icon (continuing without it): {e}");
+                }
+            }
         }
 
         // Forward WM_MOUSEHWHEEL as Tauri event (Windows WebView2 workaround)
@@ -491,13 +507,16 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
     });
 
-    // Hide to tray on close (desktop only)
+    // Hide to tray on close (desktop only, requires tray icon)
     #[cfg(not(mobile))]
     {
-        builder = builder.on_window_event(|window, event| {
+        let has_tray = has_tray.clone();
+        builder = builder.on_window_event(move |window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+                if has_tray.load(Ordering::Relaxed) {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
             }
         });
     }
