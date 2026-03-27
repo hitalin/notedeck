@@ -1149,6 +1149,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 
   &.reacted .count {
     color: var(--nd-accent);
+    animation: nd-count-bump 0.3s var(--nd-ease-spring-bouncy);
   }
 }
 

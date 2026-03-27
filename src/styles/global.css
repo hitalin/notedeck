@@ -143,6 +143,7 @@
   --nd-ease-menu: cubic-bezier(0.16, 1, 0.3, 1);    /* Context menu, popup */
   /* Active press scale — slightly more noticeable for tactile feel */
   --nd-active-scale: 0.96;
+  --nd-active-scale-heavy: 0.92; /* Destructive / heavy actions (delete, report) */
   /* Vibrancy (Apple-style saturated blur) */
   --nd-vibrancy: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
   --nd-vibrancy-panel: saturate(1.8) brightness(1.1) blur(var(--nd-blur-panel));
@@ -690,6 +691,36 @@ img {
   65%  { transform: scale3d(0.95, 1.05, 1); }
   75%  { transform: scale3d(1.05, 0.95, 1); }
   to   { transform: scale3d(1, 1, 1); }
+}
+
+/* ---- Micro-interaction keyframes ---- */
+
+/* Reaction counter number pop (osu! hit-feedback style) */
+@keyframes nd-count-bump {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+._countBump {
+  animation: nd-count-bump 0.3s var(--nd-ease-spring-bouncy);
+}
+
+/* New note insertion highlight pulse */
+@keyframes nd-note-highlight {
+  from { background-color: var(--nd-accentedBg); }
+  to   { background-color: transparent; }
+}
+
+/* Error shake */
+@keyframes nd-shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(5px); }
+  60%      { transform: translateX(-3px); }
+  80%      { transform: translateX(2px); }
+}
+._shake {
+  animation: nd-shake 0.4s var(--nd-ease-decel);
 }
 
 /* ---- Global reduced-motion ---- */
