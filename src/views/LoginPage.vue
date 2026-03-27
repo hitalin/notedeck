@@ -71,9 +71,7 @@ function onSuccess() {
   align-items: center;
   height: 46px;
   padding: 0 8px 0 20px;
-  background: color-mix(in srgb, var(--nd-panel) 80%, transparent);
-  backdrop-filter: var(--nd-vibrancy);
-  -webkit-backdrop-filter: var(--nd-vibrancy);
+  background: color-mix(in srgb, var(--nd-panel) 96%, transparent);
   border-bottom: 1px solid var(--nd-divider);
   z-index: 1;
 }

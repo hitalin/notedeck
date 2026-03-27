@@ -160,10 +160,6 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   from { opacity: 0; transform: scale(0.97) translateY(4px); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .userPopup { animation: none; }
-}
-
 .popupLoading {
   padding: 24px;
   text-align: center;

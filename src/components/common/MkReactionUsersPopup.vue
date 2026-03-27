@@ -316,7 +316,4 @@ onUnmounted(() => {
   from { opacity: 0; transform: scale(0.88) translateY(6px); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .root { animation: none; }
-}
 </style>

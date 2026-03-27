@@ -924,9 +924,7 @@ async function handlePosted(editedNoteId?: string) {
   font-size: 0.75em;
   font-weight: bold;
   color: #fff;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: var(--nd-vibrancy-panel);
-  -webkit-backdrop-filter: var(--nd-vibrancy-panel);
+  background: rgba(0, 0, 0, 0.55);
 }
 
 .bannerTitle {
@@ -976,9 +974,7 @@ async function handlePosted(editedNoteId?: string) {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: var(--nd-vibrancy-panel);
-  -webkit-backdrop-filter: var(--nd-vibrancy-panel);
+  background: rgba(0, 0, 0, 0.45);
   padding: 8px;
   border-radius: 24px;
   z-index: 3;
@@ -1251,8 +1247,6 @@ async function handlePosted(editedNoteId?: string) {
   align-items: center;
   justify-content: center;
   background: var(--nd-overlayDark);
-  backdrop-filter: var(--nd-vibrancy-content);
-  -webkit-backdrop-filter: var(--nd-vibrancy-content);
 }
 
 .qrModal {

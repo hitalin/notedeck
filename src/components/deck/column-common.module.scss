@@ -108,9 +108,7 @@
   font-size: 0.85em;
   font-weight: bold;
   color: var(--nd-fgOnAccent);
-  background: color-mix(in srgb, var(--nd-accent) 70%, transparent);
-  -webkit-backdrop-filter: var(--nd-vibrancy-panel);
-  backdrop-filter: var(--nd-vibrancy-panel);
+  background: color-mix(in srgb, var(--nd-accent) 88%, transparent);
   cursor: pointer;
   transition: opacity var(--nd-duration-base);
   animation: slide-down var(--nd-duration-slow) var(--nd-ease-spring);
@@ -179,8 +177,6 @@
   font-weight: bold;
   white-space: nowrap;
   color: var(--nd-fgOnAccent);
-  -webkit-backdrop-filter: var(--nd-vibrancy-panel);
-  backdrop-filter: var(--nd-vibrancy-panel);
   animation: slide-down var(--nd-duration-slow) var(--nd-ease-spring);
 }
 

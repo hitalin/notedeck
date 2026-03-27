@@ -59,8 +59,6 @@ function onClose() {
   position: sticky;
   top: 0;
   background: var(--nd-windowHeader);
-  backdrop-filter: var(--nd-vibrancy);
-  -webkit-backdrop-filter: var(--nd-vibrancy);
   z-index: 10;
 }
 

@@ -53,9 +53,7 @@ function toggle() {
   position: sticky;
   top: 0;
   z-index: 1;
-  backdrop-filter: var(--nd-vibrancy);
-  -webkit-backdrop-filter: var(--nd-vibrancy);
-  background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 70%, transparent);
+  background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 92%, transparent);
 
   &:hover {
     opacity: 1;

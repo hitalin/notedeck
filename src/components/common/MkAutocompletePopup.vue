@@ -96,10 +96,6 @@ function candidateKey(candidate: AutocompleteCandidate): string {
   from { opacity: 0; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .autocompletePopup { animation: none; }
-}
-
 .autocompleteItem {
   display: flex;
   align-items: center;

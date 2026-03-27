@@ -7,6 +7,11 @@ import {
   type QualityPreset,
 } from '@/composables/useAdaptiveQuality'
 import defaultsJson from '@/defaults/performance.json'
+import { frameEngine } from '@/engine/frameEngine'
+import {
+  frameTelemetry,
+  type QualityLevel,
+} from '@/engine/telemetry/frameTelemetry'
 import { isTauri, readPerformance, writePerformance } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
@@ -36,6 +41,10 @@ export interface PerformanceConfig {
   // Image / OGP
   ogpGalleryMax: number
   embedCacheMax: number
+  // CSS rendering
+  cssBlurLevel: number
+  cssAnimationScale: number
+  cssShadowLevel: number
   // Rust: backend
   memoryCacheMaxMB: number
   memoryCacheMaxItemKB: number
@@ -300,6 +309,35 @@ export const FIELD_META: Record<PerformanceKey, FieldMeta> = {
     label: '埋め込みノートキャッシュ',
     description: '埋め込みノートのLRUキャッシュ上限',
   },
+  cssBlurLevel: {
+    min: 0,
+    max: 2,
+    step: 1,
+    unit: '',
+    category: 'css',
+    label: 'ブラー強度',
+    description:
+      'backdrop-filterブラーの強度。0=無効、1=軽量(1–2px)、2=フル(4px)。最もGPU負荷が高い',
+  },
+  cssAnimationScale: {
+    min: 0,
+    max: 100,
+    step: 25,
+    unit: '%',
+    category: 'css',
+    label: 'アニメーション速度',
+    description:
+      'トランジション・アニメーションの速度スケール。0%で即時描画、100%で通常速度',
+  },
+  cssShadowLevel: {
+    min: 0,
+    max: 2,
+    step: 1,
+    unit: '',
+    category: 'css',
+    label: 'シャドウ強度',
+    description: 'box-shadowの描画レベル。0=無効、1=軽量、2=フル(Misskey準拠)',
+  },
 }
 
 export const CATEGORY_LABELS: Record<string, { label: string; icon: string }> =
@@ -309,6 +347,7 @@ export const CATEGORY_LABELS: Record<string, { label: string; icon: string }> =
     cache: { label: 'パースキャッシュ', icon: 'ti-database' },
     realtime: { label: 'リアルタイム', icon: 'ti-bolt' },
     backend: { label: 'バックエンド', icon: 'ti-server' },
+    css: { label: 'CSS描画', icon: 'ti-palette' },
   }
 
 /** Preset definitions. */
@@ -343,6 +382,9 @@ export const PRESETS = {
       nearViewportBuffer: 2,
       ogpGalleryMax: 2,
       embedCacheMax: 32,
+      cssBlurLevel: 0,
+      cssAnimationScale: 50,
+      cssShadowLevel: 1,
     } satisfies PerformanceConfig,
   },
   balanced: {
@@ -380,6 +422,9 @@ export const PRESETS = {
       nearViewportBuffer: 6,
       ogpGalleryMax: 6,
       embedCacheMax: 128,
+      cssBlurLevel: 2,
+      cssAnimationScale: 100,
+      cssShadowLevel: 2,
     } satisfies PerformanceConfig,
   },
 } as const
@@ -403,6 +448,11 @@ export function estimateMemoryMB(c: PerformanceConfig): number {
   const rustOgpMB = (c.rustOgpCacheMax * 5) / 1024
   const embedCacheMB = (c.embedCacheMax * 4) / 1024 // ~4KB per embedded note
   const prefetchTrackMB = (c.prefetchTrackedMax * 0.1) / 1024 // ~0.1KB per URL in Set
+  const noteCaptureMB = (c.noteCaptureMax * 0.5) / 1024 // ~0.5KB per WebSocket subscription
+  // GPU texture memory for backdrop-filter compositing layers
+  // Each blur surface creates a ~400×800 RGBA texture ≈ 1.2MB
+  // After cleanup: only 3 permanent surfaces (navbar, window header, acrylic)
+  const blurGpuMB = c.cssBlurLevel > 0 ? c.cssBlurLevel * 0.8 : 0
   return Math.round(
     FIXED_OVERHEAD_MB +
       imageCacheMB +
@@ -414,8 +464,52 @@ export function estimateMemoryMB(c: PerformanceConfig): number {
       ogpCacheMB +
       rustOgpMB +
       embedCacheMB +
-      prefetchTrackMB,
+      prefetchTrackMB +
+      noteCaptureMB +
+      blurGpuMB,
   )
+}
+
+export interface RenderCost {
+  /** 0–100 relative rendering weight */
+  score: number
+  /** Human-readable label */
+  label: string
+}
+
+/**
+ * Estimate CSS rendering cost as a 0–100 relative score.
+ *
+ * Factors (approximate GPU frame-time contribution):
+ * - backdrop-filter blur: heaviest — each composited layer costs 1–5ms
+ * - box-shadow: moderate — GPU rasterisation per shadowed element
+ * - Animation/transition: light (compositor-only) but many concurrent ones add up
+ * - DOM element count (overscan + noteListMax): more layers to composite
+ */
+export function estimateRenderCost(c: PerformanceConfig): RenderCost {
+  // Blur: 0→0, 1→15, 2→40 (non-linear — blur radius cost grows super-linearly)
+  const blurScore = c.cssBlurLevel === 0 ? 0 : c.cssBlurLevel === 1 ? 15 : 40
+  // Shadow: 0→0, 1→5, 2→10
+  const shadowScore = c.cssShadowLevel * 5
+  // Animations: 0→0, 50→4, 100→8
+  const animScore = (c.cssAnimationScale / 100) * 8
+  // Overscan: each extra item = extra composite layer (clamped contribution)
+  const overscanScore = Math.min(Math.max(c.overscan - 2, 0) * 1.5, 15)
+  // DOM size: more rendered notes = heavier composite
+  const domScore = Math.min((c.noteListMax - 50) / 25, 20)
+
+  const raw = Math.round(
+    blurScore + shadowScore + animScore + overscanScore + domScore,
+  )
+  const score = Math.max(0, Math.min(100, raw))
+
+  let label: string
+  if (score <= 25) label = '軽い'
+  else if (score <= 50) label = '標準'
+  else if (score <= 75) label = 'やや重い'
+  else label = '重い'
+
+  return { score, label }
 }
 
 /**
@@ -449,6 +543,15 @@ export function estimateNetworkMBPerHour(c: PerformanceConfig): number {
   return Math.round(imageTraffic + ogpTraffic + apiTraffic)
 }
 
+/** Base durations (seconds) matching global.css :root values. */
+const CSS_BASE_DURATIONS: Record<string, number> = {
+  '--nd-duration-fast': 0.15,
+  '--nd-duration-base': 0.2,
+  '--nd-duration-slow': 0.28,
+  '--nd-duration-slower': 0.38,
+  '--nd-duration-tl-enter': 0.5,
+}
+
 export const usePerformanceStore = defineStore('performance', () => {
   const overrides = ref<Partial<PerformanceConfig>>(
     getStorageJson<Partial<PerformanceConfig>>(STORAGE_KEYS.performance, {}),
@@ -472,8 +575,75 @@ export const usePerformanceStore = defineStore('performance', () => {
     return DEFAULTS[key]
   }
 
+  /** Apply CSS-related config values to :root custom properties. */
+  function syncCssProperties(): void {
+    if (typeof document === 'undefined') return
+    const s = document.documentElement.style
+    const c = config.value
+
+    // --- Blur ---
+    switch (c.cssBlurLevel) {
+      case 0:
+        s.setProperty('--nd-blur', '0px')
+        s.setProperty('--nd-blur-panel', '0px')
+        s.setProperty('--nd-blur-content', '0px')
+        s.setProperty('--nd-vibrancy', 'none')
+        s.setProperty('--nd-vibrancy-panel', 'none')
+        s.setProperty('--nd-vibrancy-content', 'none')
+        break
+      case 2:
+        s.setProperty('--nd-blur', '4px')
+        s.setProperty('--nd-blur-panel', '2px')
+        s.setProperty('--nd-blur-content', '2px')
+        s.setProperty('--nd-vibrancy', 'blur(4px)')
+        s.setProperty('--nd-vibrancy-panel', 'blur(2px)')
+        s.setProperty('--nd-vibrancy-content', 'blur(2px)')
+        break
+      default: // 1 = global.css defaults
+        for (const p of [
+          '--nd-blur',
+          '--nd-blur-panel',
+          '--nd-blur-content',
+          '--nd-vibrancy',
+          '--nd-vibrancy-panel',
+          '--nd-vibrancy-content',
+        ])
+          s.removeProperty(p)
+    }
+
+    // --- Shadow ---
+    switch (c.cssShadowLevel) {
+      case 0:
+        s.setProperty('--nd-shadow-s', 'none')
+        s.setProperty('--nd-shadow-m', 'none')
+        s.setProperty('--nd-shadow-l', 'none')
+        break
+      case 1:
+        s.setProperty('--nd-shadow-s', '0 1px 4px var(--nd-shadow)')
+        s.setProperty('--nd-shadow-m', '0 2px 12px var(--nd-shadow)')
+        s.setProperty('--nd-shadow-l', '0 4px 16px var(--nd-shadow)')
+        break
+      default: // 2 = global.css defaults
+        for (const p of ['--nd-shadow-s', '--nd-shadow-m', '--nd-shadow-l'])
+          s.removeProperty(p)
+    }
+
+    // --- Animation duration scale ---
+    const scale = c.cssAnimationScale / 100
+    if (scale === 1) {
+      for (const p of Object.keys(CSS_BASE_DURATIONS)) s.removeProperty(p)
+    } else if (scale === 0) {
+      for (const p of Object.keys(CSS_BASE_DURATIONS))
+        s.setProperty(p, '0.01ms')
+    } else {
+      for (const [p, base] of Object.entries(CSS_BASE_DURATIONS))
+        s.setProperty(p, `${(base * scale).toFixed(3)}s`)
+    }
+  }
+
   function saveOverrides() {
     setStorageJson(STORAGE_KEYS.performance, overrides.value)
+    syncCssProperties()
     if (initialized.value) {
       persistToFile().catch((e) =>
         console.warn('[performance] failed to persist to file:', e),
@@ -554,6 +724,25 @@ export const usePerformanceStore = defineStore('performance', () => {
     } else {
       initialized.value = true
     }
+
+    // Apply CSS overrides to :root on startup
+    syncCssProperties()
+
+    // --- Frame Engine + Telemetry ---
+    frameEngine.start()
+
+    // Map preset to telemetry quality level
+    const presetToQuality = (p: QualityPreset): QualityLevel => p
+
+    frameTelemetry.start(
+      presetToQuality(recommendedPreset.value ?? 'balanced'),
+      (quality) => {
+        // Auto quality adjustment — only change CSS rendering properties
+        // (blur, shadow, animation). Never touch cache sizes or note limits,
+        // as those are unrelated to frame jank.
+        applyCssQuality(quality)
+      },
+    )
   }
 
   function set<K extends PerformanceKey>(key: K, value: PerformanceConfig[K]) {
@@ -574,6 +763,38 @@ export const usePerformanceStore = defineStore('performance', () => {
 
   function resetAll() {
     overrides.value = {}
+    saveOverrides()
+  }
+
+  /** CSS rendering property presets for auto-quality adjustment.
+   *  Only blur/shadow/animation — never cache sizes or note limits. */
+  const CSS_QUALITY_PRESETS: Record<
+    QualityLevel,
+    Pick<
+      PerformanceConfig,
+      'cssBlurLevel' | 'cssAnimationScale' | 'cssShadowLevel'
+    >
+  > = {
+    low: { cssBlurLevel: 0, cssAnimationScale: 50, cssShadowLevel: 1 },
+    balanced: {
+      cssBlurLevel: DEFAULTS.cssBlurLevel,
+      cssAnimationScale: DEFAULTS.cssAnimationScale,
+      cssShadowLevel: DEFAULTS.cssShadowLevel,
+    },
+    high: { cssBlurLevel: 2, cssAnimationScale: 100, cssShadowLevel: 2 },
+  }
+
+  /** Apply only CSS rendering properties for auto-quality adjustment. */
+  function applyCssQuality(quality: QualityLevel): void {
+    const css = CSS_QUALITY_PRESETS[quality]
+    for (const [k, v] of Object.entries(css)) {
+      const key = k as PerformanceKey
+      if (v === DEFAULTS[key]) {
+        delete overrides.value[key]
+      } else {
+        overrides.value[key] = v as never
+      }
+    }
     saveOverrides()
   }
 
@@ -633,6 +854,8 @@ export const usePerformanceStore = defineStore('performance', () => {
   const estimatedNetworkMBPerHour = computed(() =>
     estimateNetworkMBPerHour(config.value),
   )
+  /** Estimated CSS rendering cost for current config. */
+  const estimatedRenderCost = computed(() => estimateRenderCost(config.value))
 
   return {
     overrides,
@@ -641,6 +864,7 @@ export const usePerformanceStore = defineStore('performance', () => {
     recommendedPreset,
     estimatedMemoryMB,
     estimatedNetworkMBPerHour,
+    estimatedRenderCost,
     init,
     get,
     getDefault,

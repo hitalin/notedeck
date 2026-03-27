@@ -1173,6 +1173,7 @@ onUnmounted(() => {
   height: 3px;
   background: var(--nd-accent);
   border-radius: var(--nd-radius-full) var(--nd-radius-full) 0 0;
+  transform-origin: 0 0;
   transition: translate var(--nd-duration-slower) var(--nd-ease-pop), scale var(--nd-duration-slower) var(--nd-ease-pop), opacity var(--nd-duration-slower) var(--nd-ease-pop);
   pointer-events: none;
 }
