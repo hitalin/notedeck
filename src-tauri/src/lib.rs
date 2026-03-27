@@ -282,12 +282,16 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         let token_path_str = token_path.to_string_lossy().to_string();
 
         // ══════════════════════════════════════════════════════════
-        // Phase 2: Heavy init in background thread
-        // DB open + MisskeyClient init → then migrations, streaming, HTTP server
-        // Emits "nd:backend-ready" when done so frontend can start IPC calls.
+        // Phase 2: Heavy init in background thread (two-stage)
         //
-        // HTTP bind happens early (no DB needed) so the image proxy is ready
-        // before the frontend requests emoji images.
+        // Stage 1 — DB ready: DB open → migrations → initialize_db()
+        //   Unblocks DB-only commands (load_accounts, cache queries).
+        //
+        // Stage 2 — Full ready: MisskeyClient + HTTP server → initialize()
+        //   Unblocks API commands. Emits "nd:backend-ready" when complete.
+        //
+        // HTTP bind starts in parallel (no DB needed) so the image proxy
+        // is ready before the frontend requests emoji images.
         // ══════════════════════════════════════════════════════════
 
         let app_handle = app.app_handle().clone();

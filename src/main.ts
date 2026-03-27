@@ -60,8 +60,8 @@ useKeybindsStore().init()
 usePerformanceStore().init()
 
 // Start loading accounts early (runs in parallel with mount).
-// In Tauri, invoke('load_accounts') internally awaits AppState readiness,
-// so it naturally waits for DB to open — no explicit gate needed.
+// Two-stage AppState: invoke('load_accounts') awaits DB readiness only,
+// not full init — so it resolves as soon as DB + migrations complete.
 useAccountsStore().loadAccounts()
 
 app.use(router)
