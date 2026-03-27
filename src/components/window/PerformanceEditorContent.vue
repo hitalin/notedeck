@@ -176,6 +176,12 @@ function handleReset() {
             <i class="ti ti-network" />
             通信量: <strong>約 {{ perfStore.estimatedNetworkMBPerHour }} MB/時間</strong>
           </div>
+          <div :class="$style.estimateSep" />
+          <div :class="$style.estimateItem">
+            <i class="ti ti-palette" />
+            描画: <strong>{{ perfStore.estimatedRenderCost.label }}</strong>
+            <span :class="$style.estimateScore">({{ perfStore.estimatedRenderCost.score }})</span>
+          </div>
         </div>
         <div :class="$style.presetRow">
           <button
@@ -398,6 +404,12 @@ function handleReset() {
   height: 12px;
   background: var(--nd-divider);
   flex-shrink: 0;
+}
+
+.estimateScore {
+  opacity: 0.5;
+  font-weight: normal;
+  font-size: 0.9em;
 }
 
 .presetRow {

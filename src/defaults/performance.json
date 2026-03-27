@@ -24,5 +24,8 @@
   "lazyLoadMargin": 200,
   "ogpGalleryMax": 4,
   "embedCacheMax": 64,
-  "nearViewportBuffer": 4
+  "nearViewportBuffer": 4,
+  "cssBlurLevel": 1,
+  "cssAnimationScale": 100,
+  "cssShadowLevel": 2
 }
