@@ -148,13 +148,8 @@ function onKeydown(e: KeyboardEvent) {
   }
 
   &.loading i {
-    animation: spin 1s linear infinite;
+    animation: nd-spin 0.8s linear infinite;
   }
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 .apiConsole {

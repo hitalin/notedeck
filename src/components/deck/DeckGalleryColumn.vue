@@ -170,7 +170,7 @@ fetchGallery()
         <i class="ti ti-arrow-left" />
       </button>
       <button v-if="!detailPost" class="_button" :class="$style.headerRefresh" title="更新" :disabled="loading" @click.stop="fetchGallery()">
-        <i class="ti ti-refresh" :class="{ [String($style.spin)]: loading }" />
+        <i class="ti ti-refresh" :class="{ 'nd-spin': loading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />

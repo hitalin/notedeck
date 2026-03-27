@@ -690,16 +690,11 @@ function handleReset() {
   &.testing {
     opacity: 0.6;
 
-    i { animation: spin 1s linear infinite; }
+    i { animation: nd-spin 0.8s linear infinite; }
   }
 }
 
 .testing { /* modifier */ }
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
 
 // ── Code tab (prompt) ──
 

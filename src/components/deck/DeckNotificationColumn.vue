@@ -16,6 +16,7 @@ import type {
   NormalizedUser,
 } from '@/adapters/types'
 import AvatarStack from '@/components/common/AvatarStack.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
@@ -840,7 +841,7 @@ onUnmounted(() => {
         :style="`--frame-min-height: ${displayHeight()}px`"
       >
         <div :class="$style.pullFrameContent">
-          <i v-if="isRefreshing" class="ti ti-loader-2" :class="$style.spin" />
+          <i v-if="isRefreshing" class="ti ti-loader-2 nd-spin" />
           <i v-else class="ti ti-arrow-bar-to-down" :class="{ refresh: isPulledEnough }" />
           <div :class="$style.pullText">
             <template v-if="isPulledEnough">離してリフレッシュ</template>
@@ -851,7 +852,7 @@ onUnmounted(() => {
       </div>
 
       <div v-if="isLoading && notifications.length === 0" :class="$style.columnLoading">
-        <div :class="$style.columnLoadingSpinner" />
+        <LoadingSpinner />
       </div>
 
       <NoteScroller
@@ -1430,13 +1431,5 @@ onUnmounted(() => {
   font-style: italic;
 }
 
-.spin {
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
 
 </style>

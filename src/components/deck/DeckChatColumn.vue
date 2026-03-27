@@ -799,7 +799,7 @@ onBeforeUnmount(() => {
           </button>
         </div>
         <div v-if="isUploading" :class="$style.chatUploading">
-          <i class="ti ti-loader-2" :class="$style.spin" /> アップロード中...
+          <i class="ti ti-loader-2 nd-spin" /> アップロード中...
         </div>
         <div :class="$style.chatInputRow">
           <div :class="$style.chatInputActions">
@@ -1082,13 +1082,6 @@ onBeforeUnmount(() => {
   padding: 2px 8px 4px;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}
 
 .chatInputRow {
   display: flex;

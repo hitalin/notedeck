@@ -430,17 +430,12 @@ onUnmounted(() => {
   }
 
   &.running i {
-    animation: spin 1s linear infinite;
+    animation: nd-spin 0.8s linear infinite;
   }
 }
 
 .running {
   /* used as modifier */
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 .aisColBody {

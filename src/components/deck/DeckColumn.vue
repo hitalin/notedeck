@@ -187,7 +187,7 @@ function openAsPip() {
           :disabled="refreshing"
           @click.stop="emit('refresh')"
         >
-          <i class="ti ti-refresh" :class="{ [$style.spin]: refreshing }" />
+          <i class="ti ti-refresh" :class="{ 'nd-spin': refreshing }" />
         </button>
         <slot name="header-meta" />
       </template>
@@ -338,14 +338,6 @@ function openAsPip() {
   }
 }
 
-.spin {
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
 
 .grabber {
   flex-shrink: 0;
