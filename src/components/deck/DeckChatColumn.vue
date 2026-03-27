@@ -1154,6 +1154,8 @@ onBeforeUnmount(() => {
     cursor: default;
   }
 
+  transition: filter var(--nd-duration-base);
+
   &:not(:disabled):hover {
     filter: brightness(1.1);
   }

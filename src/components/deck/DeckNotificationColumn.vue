@@ -1404,7 +1404,7 @@ onUnmounted(() => {
   border: none;
   border-radius: var(--nd-radius-full);
   cursor: pointer;
-  transition: background var(--nd-duration-fast) ease;
+  transition: background var(--nd-duration-fast) ease, filter var(--nd-duration-base);
 }
 
 .acceptBtn {

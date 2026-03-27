@@ -275,6 +275,28 @@ html[data-platform="android"] select {
   font-size: 16px;
 }
 
+/* ---- Anti-flicker: smooth base transitions for interactive elements ----
+   Elements without their own transition get a smooth hover fallback.
+   Component-scoped styles that define their own transition override this. */
+
+button,
+a,
+summary,
+[role="button"],
+[role="menuitem"],
+[role="tab"],
+[role="option"],
+[role="listitem"],
+img {
+  transition:
+    background var(--nd-duration-base),
+    color var(--nd-duration-base),
+    opacity var(--nd-duration-base),
+    filter var(--nd-duration-base),
+    box-shadow var(--nd-duration-base),
+    border-color var(--nd-duration-base);
+}
+
 /* ---- Popup (shared acrylic panel) ---- */
 
 ._popup {
@@ -311,7 +333,7 @@ html[data-platform="android"] select {
   color: var(--nd-fg);
   font-size: 0.85em;
   text-align: left;
-  transition: background var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
+  transition: background var(--nd-duration-base), color var(--nd-duration-base), filter var(--nd-duration-base), opacity var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._popupItem:hover {
@@ -427,7 +449,7 @@ html[data-platform="android"] select {
   font-family: inherit;
   line-height: inherit;
   max-width: 100%;
-  transition: transform var(--nd-duration-fast) var(--nd-ease-spring);
+  transition: background var(--nd-duration-base), color var(--nd-duration-base), filter var(--nd-duration-base), opacity var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._button:active:not(:disabled) {
@@ -461,7 +483,7 @@ html[data-platform="android"] select {
   font-family: inherit;
   line-height: inherit;
   touch-action: manipulation;
-  transition: background var(--nd-duration-fast), transform var(--nd-duration-fast) var(--nd-ease-spring);
+  transition: background var(--nd-duration-fast), color var(--nd-duration-base), filter var(--nd-duration-base), opacity var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._buttonPrimary:hover:not(:disabled) {
