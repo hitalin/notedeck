@@ -1,7 +1,7 @@
 {
-  "emojiCachePerHost": 3000,
-  "emojiListHosts": 3,
-  "emojiPersistPerHost": 300,
+  "emojiCachePerHost": 4000,
+  "emojiListHosts": 4,
+  "emojiPersistPerHost": 500,
   "noteStoreMax": 1500,
   "noteListMax": 200,
   "maxNotifications": 300,
