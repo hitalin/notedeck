@@ -158,10 +158,10 @@ function mergeNotifications(
   const map = new Map<string, NormalizedNotification>()
   for (const n of cached) map.set(n.id, n)
   for (const n of fresh) map.set(n.id, n) // fresh overwrites cached
+  // ISO 8601 strings are lexicographically sortable — avoid Date object allocation
   return [...map.values()]
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    .sort((a, b) =>
+      b.createdAt > a.createdAt ? 1 : b.createdAt < a.createdAt ? -1 : 0,
     )
     .slice(0, limit)
 }
@@ -350,6 +350,10 @@ function groupedUsers(notif: NormalizedNotification): NormalizedUser[] {
   })
 }
 
+function uniqueReactions(reactions: { reaction: string }[]): string[] {
+  return [...new Set(reactions.map((r) => r.reaction))]
+}
+
 function notificationIcon(type: string): string {
   return NOTIFICATION_ICONS[baseType(type)] || 'bell'
 }
@@ -453,12 +457,16 @@ async function connectPerAccount(useCache = false) {
   }
 }
 
-async function connectCrossAccount() {
+async function connectCrossAccount(useCache = false) {
   error.value = null
   isLoading.value = true
   noMoreData.value = false
   const accounts = accountsStore.accounts.filter((a) => a.hasToken)
   const cached = loadCache()
+
+  if (useCache && cached.length > 0) {
+    notifications.value = cached
+  }
 
   try {
     const results = await Promise.allSettled(
@@ -478,6 +486,23 @@ async function connectCrossAccount() {
 
     notifications.value = mergeNotifications(allNotifs, cached)
     saveCache()
+
+    // Set up streaming for each account
+    for (const acc of accounts) {
+      const adapter = await multiAdapters.getOrCreate(acc.id)
+      if (!adapter) continue
+      adapter.stream.connect()
+      adapter.stream.subscribeMain((event) => {
+        if (event.type === 'notification') {
+          const notification = event.body as NormalizedNotification
+          if (!props.column.soundMuted) noteSound.play()
+          rafBuffer.push(notification)
+          if (rafId === null) {
+            rafId = requestAnimationFrame(flushRafBuffer)
+          }
+        }
+      })
+    }
   } catch (e) {
     if (cached.length > 0) {
       notifications.value = cached
@@ -491,7 +516,7 @@ async function connectCrossAccount() {
 
 async function connect(useCache = false) {
   if (isCrossAccount.value) {
-    await connectCrossAccount()
+    await connectCrossAccount(useCache)
   } else {
     await connectPerAccount(useCache)
   }
@@ -847,12 +872,12 @@ onUnmounted(() => {
                     <span :class="$style.notifTime">{{ formatTime(notif.createdAt) }}</span>
                   </div>
 
-                  <!-- Grouped reaction emojis -->
+                  <!-- Grouped reaction emojis (deduplicated) -->
                   <div v-if="notif.type === 'reaction:grouped' && notif.reactions?.length" :class="$style.groupedReactions">
-                    <template v-for="r in notif.reactions" :key="`${r.user.id}-${r.reaction}`">
-                      <img v-if="getCachedReactionUrl(r.reaction, notif)" :src="getCachedReactionUrl(r.reaction, notif)!" :alt="r.reaction" :class="$style.groupedReactionEmoji" loading="lazy" />
-                      <img v-else-if="getCachedTwemojiUrl(r.reaction)" :src="getCachedTwemojiUrl(r.reaction)!" :alt="r.reaction" :class="$style.groupedReactionEmoji" loading="lazy" />
-                      <MkEmoji v-else :emoji="r.reaction" :class="$style.groupedReactionEmoji" />
+                    <template v-for="reaction in uniqueReactions(notif.reactions)" :key="reaction">
+                      <img v-if="getCachedReactionUrl(reaction, notif)" :src="getCachedReactionUrl(reaction, notif)!" :alt="reaction" :class="$style.groupedReactionEmoji" loading="lazy" />
+                      <img v-else-if="getCachedTwemojiUrl(reaction)" :src="getCachedTwemojiUrl(reaction)!" :alt="reaction" :class="$style.groupedReactionEmoji" loading="lazy" />
+                      <MkEmoji v-else :emoji="reaction" :class="$style.groupedReactionEmoji" />
                     </template>
                   </div>
 
