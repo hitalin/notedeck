@@ -590,7 +590,8 @@ async function loadMoreCrossAccount() {
   const lastByAccount = new Map<string, NormalizedNotification>()
   for (let i = notifications.value.length - 1; i >= 0; i--) {
     const n = notifications.value[i]
-    if (!lastByAccount.has(n._accountId)) lastByAccount.set(n._accountId, n)
+    if (n && !lastByAccount.has(n._accountId))
+      lastByAccount.set(n._accountId, n)
   }
 
   try {
