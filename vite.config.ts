@@ -230,6 +230,11 @@ export default defineConfig({
     },
   },
   define: {
+    __APP_VERSION__: JSON.stringify(
+      JSON.parse(
+        readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf-8'),
+      ).version,
+    ),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
     __VUE_OPTIONS_API__: false,
     __VUE_PROD_DEVTOOLS__: false,

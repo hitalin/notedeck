@@ -6,24 +6,27 @@ import { useAccountsStore } from './stores/accounts'
 import { useKeybindsStore } from './stores/keybinds'
 import { usePerformanceStore } from './stores/performance'
 import { useThemeStore } from './stores/theme'
+import { isTauri } from './utils/settingsFs'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
 import './styles/global.css'
 
-// Pre-warm Tauri API module (critical path in App.vue onMounted)
-import('@tauri-apps/api/window')
+if (isTauri) {
+  // Pre-warm Tauri API module (critical path in App.vue onMounted)
+  import('@tauri-apps/api/window')
 
-// Pre-fetch DeckPage chunk so its CSS <link> is inserted early.
-// DeckPage is lazy-imported in the router to preserve CSS Modules injection order,
-// but on Windows WebView2 the CSS load can race with first paint. Triggering the
-// import here (without await) starts the CSS download immediately while the router
-// still controls when the component is actually evaluated.
-import('./views/DeckPage.vue')
+  // Pre-fetch DeckPage chunk so its CSS <link> is inserted early.
+  // DeckPage is lazy-imported in the router to preserve CSS Modules injection order,
+  // but on Windows WebView2 the CSS load can race with first paint. Triggering the
+  // import here (without await) starts the CSS download immediately while the router
+  // still controls when the component is actually evaluated.
+  import('./views/DeckPage.vue')
 
-// Pre-fetch most common column chunks so downloads start during Vue bootstrap
-// (normally these don't start until DeckColumnsArea.onMounted — 4 component layers deep)
-if (import.meta.env.PROD) {
-  import('./components/deck/DeckTimelineColumn.vue')
-  import('./components/deck/DeckNotificationColumn.vue')
+  // Pre-fetch most common column chunks so downloads start during Vue bootstrap
+  // (normally these don't start until DeckColumnsArea.onMounted — 4 component layers deep)
+  if (import.meta.env.PROD) {
+    import('./components/deck/DeckTimelineColumn.vue')
+    import('./components/deck/DeckNotificationColumn.vue')
+  }
 }
 
 // Defer non-critical CSS to idle time — KaTeX and Shiki are not needed at startup
@@ -51,22 +54,26 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('[unhandled] Promise rejection:', event.reason)
 })
 
-// Apply cached theme before mount to prevent FOUC
-const themeStore = useThemeStore()
-themeStore.init()
+if (isTauri) {
+  // Apply cached theme before mount to prevent FOUC
+  const themeStore = useThemeStore()
+  themeStore.init()
 
-// Initialize file-based storage for keybinds and performance settings
-useKeybindsStore().init()
-usePerformanceStore().init()
+  // Initialize file-based storage for keybinds and performance settings
+  useKeybindsStore().init()
+  usePerformanceStore().init()
 
-// Start loading accounts early (runs in parallel with mount).
-// Two-stage AppState: invoke('load_accounts') awaits DB readiness only,
-// not full init — so it resolves as soon as DB + migrations complete.
-useAccountsStore().loadAccounts()
+  // Start loading accounts early (runs in parallel with mount).
+  // Two-stage AppState: invoke('load_accounts') awaits DB readiness only,
+  // not full init — so it resolves as soon as DB + migrations complete.
+  useAccountsStore().loadAccounts()
+}
 
 app.use(router)
 
-// Redirect to login reactively after accounts load (non-blocking)
-setupAccountRedirect()
+if (isTauri) {
+  // Redirect to login reactively after accounts load (non-blocking)
+  setupAccountRedirect()
+}
 
 app.mount('#app')

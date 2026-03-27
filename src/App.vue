@@ -14,6 +14,10 @@ const isCompact = useIsCompactLayout()
 const route = useRoute()
 const isPipWindow = computed(() => route.meta.pip === true)
 
+const DevWelcome = isTauri
+  ? null
+  : defineAsyncComponent(() => import('@/components/DevWelcome.vue'))
+
 const TitleBar = isTauri
   ? defineAsyncComponent(() => import('@/components/common/TitleBar.vue'))
   : null
@@ -122,10 +126,7 @@ onUnmounted(() => {
         <router-view />
       </div>
     </template>
-    <div v-else :class="$style.noTauri">
-      <p>NoteDeck requires the Tauri runtime.</p>
-      <p>Run <code>pnpm tauri:dev</code> instead of <code>pnpm dev</code>.</p>
-    </div>
+    <DevWelcome v-else />
 
     <template v-if="!isPipWindow">
       <DeckWindowLayer />
@@ -153,21 +154,4 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.noTauri {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--nd-fg);
-  font-size: 0.9em;
-  gap: 4px;
-
-  code {
-    background: #333;
-    padding: 2px 6px;
-    border-radius: 4px;
-    color: #ddd;
-  }
-}
 </style>
