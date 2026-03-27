@@ -206,7 +206,7 @@ async function toggleAccountMode(accountId: string, key: string) {
       [accountId]: { ...modes, [key]: newValue },
     }
     clearAvailableTlCache(accountId)
-    accountsStore.bumpModeVersion()
+    accountsStore.bumpModeVersion(accountId)
   } catch (e) {
     const err = AppError.from(e)
     if (err.isAuth || String(err.message).includes('permission')) {

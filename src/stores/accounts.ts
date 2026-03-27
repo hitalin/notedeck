@@ -38,7 +38,7 @@ export const useAccountsStore = defineStore('accounts', () => {
   const accounts = ref<Account[]>([])
   const activeAccountId = ref<string | null>(null)
   const isLoaded = ref(false)
-  const modeVersion = ref(0)
+  const modeVersionByAccount = ref<Record<string, number>>({})
 
   const accountMap = computed(() => {
     const map = new Map<string, Account>()
@@ -116,8 +116,15 @@ export const useAccountsStore = defineStore('accounts', () => {
     }
   }
 
-  function bumpModeVersion(): void {
-    modeVersion.value++
+  function getModeVersion(accountId: string): number {
+    return modeVersionByAccount.value[accountId] ?? 0
+  }
+
+  function bumpModeVersion(accountId: string): void {
+    modeVersionByAccount.value = {
+      ...modeVersionByAccount.value,
+      [accountId]: (modeVersionByAccount.value[accountId] ?? 0) + 1,
+    }
   }
 
   return {
@@ -132,7 +139,8 @@ export const useAccountsStore = defineStore('accounts', () => {
     removeAccount,
     logoutAccount,
     switchAccount,
-    modeVersion,
+    modeVersionByAccount,
+    getModeVersion,
     bumpModeVersion,
   }
 })
