@@ -198,6 +198,24 @@ defineSlots<{
   overflow-y: auto;
   height: 100%;
   overscroll-behavior: contain;
+  position: relative;
+
+  /* Scroll-edge fade: subtle shadow that appears when content is scrollable */
+  &::after {
+    content: '';
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    display: block;
+    width: 100%;
+    height: 24px;
+    margin-top: -24px;
+    background: linear-gradient(to top, var(--nd-panel, var(--nd-bg)), transparent);
+    opacity: 0.6;
+    pointer-events: none;
+    z-index: 1;
+    transition: opacity var(--nd-duration-base);
+  }
 }
 
 .noteList {
@@ -220,7 +238,7 @@ defineSlots<{
    Positioning uses the `translate` property (set via inline style),
    so `transform` is free for animation without conflict. */
 .enterAnimation {
-  animation: noteSlideIn 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+  animation: noteSlideIn var(--nd-duration-tl-enter) var(--nd-ease-slide);
 }
 
 @keyframes noteSlideIn {
@@ -232,9 +250,4 @@ defineSlots<{
      (transform: none), so the slide naturally lands at the positioned offset. */
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .enterAnimation {
-    animation: none;
-  }
-}
 </style>

@@ -282,12 +282,16 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         let token_path_str = token_path.to_string_lossy().to_string();
 
         // ══════════════════════════════════════════════════════════
-        // Phase 2: Heavy init in background thread
-        // DB open + MisskeyClient init → then migrations, streaming, HTTP server
-        // Emits "nd:backend-ready" when done so frontend can start IPC calls.
+        // Phase 2: Heavy init in background thread (two-stage)
         //
-        // HTTP bind happens early (no DB needed) so the image proxy is ready
-        // before the frontend requests emoji images.
+        // Stage 1 — DB ready: DB open → migrations → initialize_db()
+        //   Unblocks DB-only commands (load_accounts, cache queries).
+        //
+        // Stage 2 — Full ready: MisskeyClient + HTTP server → initialize()
+        //   Unblocks API commands. Emits "nd:backend-ready" when complete.
+        //
+        // HTTP bind starts in parallel (no DB needed) so the image proxy
+        // is ready before the frontend requests emoji images.
         // ══════════════════════════════════════════════════════════
 
         let app_handle = app.app_handle().clone();
@@ -319,7 +323,17 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
             // DB migrations + account export (must complete before commands can use credentials)
             migrations::run_db(&db);
+
+            // Stage 1: Signal DB readiness — unblocks DB-only commands (load_accounts, etc.)
+            // immediately, without waiting for MisskeyClient or HTTP server.
+            let app_state: tauri::State<'_, commands::AppState> = app_handle.state();
+            app_state.initialize_db(db.clone());
+
             commands::export_account_list(&app_handle, &db);
+
+            // Emit account list to frontend early — before full AppState.initialize() —
+            // so the accounts store can populate without waiting for IPC readiness.
+            commands::emit_accounts_early(&app_handle, &db);
 
             // Streaming manager (depends on DB)
             let emitter = std::sync::Arc::new(streaming::TauriEmitter::new(app_handle.clone()));
@@ -329,9 +343,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                 db.clone(),
             ));
 
-            // Signal AppState — commands waiting on ready() will unblock
-            // Placed AFTER migrations so credentials are available when commands execute.
-            let app_state: tauri::State<'_, commands::AppState> = app_handle.state();
+            // Stage 2: Signal full AppState — unblocks commands needing MisskeyClient.
             app_state.initialize(db.clone(), client.clone());
 
             // OGP cache

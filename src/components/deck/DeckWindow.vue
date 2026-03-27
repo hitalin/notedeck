@@ -159,6 +159,15 @@ function onWindowMouseDown() {
   border-radius: var(--nd-radius);
   box-shadow: 0 8px 32px var(--nd-shadow);
   overflow: clip;
+  animation: windowIn 0.38s var(--nd-ease-spring);
+}
+
+@keyframes windowIn {
+  from { opacity: 0; transform: scale(0.88) translateY(6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deckWindow { animation: none; }
 }
 
 .dragging {
@@ -188,8 +197,8 @@ function onWindowMouseDown() {
   height: 42px;
   padding: 0 8px 0 16px;
   background: var(--nd-windowHeader);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   border-bottom: 1px solid var(--nd-divider);
   cursor: grab;
   flex-shrink: 0;

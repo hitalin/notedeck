@@ -106,13 +106,47 @@
   --nd-blur: 10px;
   --nd-blur-panel: 6px;
   --nd-blur-content: 3px;
-  /* Transition duration */
-  --nd-duration-fast: 0.08s;
-  --nd-duration-base: 0.1s;
-  --nd-duration-slow: 0.12s;
-  --nd-duration-slower: 0.18s;
-  /* Easing */
+  /* Transition duration
+     Apple pattern: enter slightly longer than leave for natural weight */
+  --nd-duration-fast: 0.1s;
+  --nd-duration-base: 0.2s;
+  --nd-duration-slow: 0.28s;
+  --nd-duration-slower: 0.38s;
+  --nd-duration-tl-enter: 0.5s; /* Timeline note insertion — Misskey uses 0.7s */
+  /* Easing
+     Core philosophy: Apple spring physics + Misskey playfulness */
   --nd-ease-pop: cubic-bezier(0, 0, 0.2, 1);
+  /* Spring easing — approximates iOS UISpring(dampingRatio: 0.82)
+     Slightly underdamped for visible bounce, but settles quickly */
+  --nd-ease-spring: linear(
+    0, 0.011, 0.044 2.1%, 0.165, 0.326 6.7%, 0.787 12.9%,
+    0.973 16.5%, 1.040, 1.098, 1.139, 1.163 24%,
+    1.170, 1.172, 1.168, 1.158 29.9%, 1.127 33%,
+    1.042 40%, 1.008 44%, 0.986, 0.975 51%,
+    0.974 54%, 0.977 58%, 1.001 72%, 1
+  );
+  /* Bouncy spring — for reactions, badges (Misskey playfulness)
+     Higher overshoot, more oscillation */
+  --nd-ease-spring-bouncy: linear(
+    0, 0.014, 0.056 2.2%, 0.200, 0.390 6.8%, 0.850 13%,
+    1.030 16.5%, 1.130, 1.206, 1.245 23.5%,
+    1.250, 1.240, 1.218, 1.185 29.5%, 1.120 33.5%,
+    1.010 40.5%, 0.960 45%, 0.938 49%,
+    0.940 52%, 0.952 56%, 0.990 66%, 1.008 75%, 1
+  );
+  /* Additional easing curves */
+  --nd-ease-decel: cubic-bezier(0.22, 1, 0.36, 1);
+  --nd-ease-overshoot: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  /* Misskey-native easing curves */
+  --nd-ease-reaction: cubic-bezier(0, 0.7, 0.3, 1); /* Reaction appear/disappear — snappier attack */
+  --nd-ease-slide: cubic-bezier(0.23, 1, 0.32, 1);  /* Timeline slide-in, tooltip */
+  --nd-ease-menu: cubic-bezier(0.16, 1, 0.3, 1);    /* Context menu, popup */
+  /* Active press scale — slightly more noticeable for tactile feel */
+  --nd-active-scale: 0.96;
+  /* Vibrancy (Apple-style saturated blur) */
+  --nd-vibrancy: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
+  --nd-vibrancy-panel: saturate(1.8) brightness(1.1) blur(var(--nd-blur-panel));
+  --nd-vibrancy-content: saturate(1.8) brightness(1.1) blur(var(--nd-blur-content));
   /* App chrome offsets (overridden per platform) */
   --nd-app-inset-top: 0px;
   /* Z-index layers */
@@ -170,10 +204,20 @@ body {
   overscroll-behavior: none;
 }
 
+/* Entrance animation: #app slides up and fades in while splash dissolves.
+   The animation is paused until JS adds .nd-app-ready, so the first frame
+   (opacity:0 translateY:8px) acts as the initial hidden state. */
+@keyframes nd-app-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
 #app {
   height: 100%;
+  animation: nd-app-enter .35s cubic-bezier(.16,1,.3,1) both paused;
 }
-
+#app.nd-app-ready {
+  animation-play-state: running;
+}
 a {
   color: var(--nd-link);
   text-decoration: none;
@@ -196,6 +240,7 @@ textarea,
 input {
   user-select: text;
 }
+
 
 @media (max-width: 500px) {
   input[type="text"],
@@ -236,8 +281,8 @@ html[data-platform="android"] select {
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: var(--nd-radius);
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
 }
 
 ._popupMenu {
@@ -245,8 +290,8 @@ html[data-platform="android"] select {
   background: var(--nd-popup, var(--nd-panelBg));
   border-radius: var(--nd-radius-md);
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   padding: 6px 0;
   z-index: var(--nd-z-menu);
 }
@@ -266,11 +311,16 @@ html[data-platform="android"] select {
   color: var(--nd-fg);
   font-size: 0.85em;
   text-align: left;
-  transition: background var(--nd-duration-base);
+  transition: background var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._popupItem:hover {
   background: var(--nd-buttonHoverBg);
+}
+
+._popupItem:active:not(:disabled) {
+  transform: scale(var(--nd-active-scale));
+  transition: transform 0.06s ease-out;
 }
 
 ._popupItem:disabled {
@@ -377,6 +427,12 @@ html[data-platform="android"] select {
   font-family: inherit;
   line-height: inherit;
   max-width: 100%;
+  transition: transform var(--nd-duration-fast) var(--nd-ease-spring);
+}
+
+._button:active:not(:disabled) {
+  transform: scale(var(--nd-active-scale));
+  transition: transform 0.06s ease-out;
 }
 
 ._button:disabled {
@@ -385,8 +441,9 @@ html[data-platform="android"] select {
 }
 
 ._button:focus-visible {
-  outline: 2px solid var(--nd-focus);
-  outline-offset: -2px;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--nd-focus);
+  transition: box-shadow var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._buttonPrimary {
@@ -404,7 +461,7 @@ html[data-platform="android"] select {
   font-family: inherit;
   line-height: inherit;
   touch-action: manipulation;
-  transition: background var(--nd-duration-fast);
+  transition: background var(--nd-duration-fast), transform var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._buttonPrimary:hover:not(:disabled) {
@@ -413,6 +470,13 @@ html[data-platform="android"] select {
 
 ._buttonPrimary:active:not(:disabled) {
   background: hsl(from var(--nd-accent) h s calc(l - 5));
+  transform: scale(var(--nd-active-scale));
+}
+
+._buttonPrimary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--nd-focus);
+  transition: box-shadow var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._buttonPrimary:disabled {
@@ -427,8 +491,8 @@ html[data-platform="android"] select {
 
 ._acrylic {
   background: color(from var(--nd-bg) srgb r g b / 0.5);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
 }
 
 ._sensitiveOverlay {
@@ -444,8 +508,8 @@ html[data-platform="android"] select {
   font-size: 0.85em;
   font-weight: bold;
   cursor: pointer;
-  backdrop-filter: blur(var(--nd-blur-content));
-  -webkit-backdrop-filter: blur(var(--nd-blur-content));
+  backdrop-filter: var(--nd-vibrancy-content);
+  -webkit-backdrop-filter: var(--nd-vibrancy-content);
   z-index: 2;
 }
 
@@ -465,6 +529,10 @@ html[data-platform="android"] select {
   border-radius: var(--nd-radius-full);
 }
 
+::-webkit-scrollbar-thumb:hover {
+  background: var(--nd-scrollbarHandleHover);
+}
+
 /* ---- Toggle switch (shared) ---- */
 
 .nd-toggle-switch {
@@ -475,7 +543,7 @@ html[data-platform="android"] select {
   background: var(--nd-buttonBg, rgba(255, 255, 255, 0.1));
   border: none;
   cursor: pointer;
-  transition: background var(--nd-duration-slow);
+  transition: background var(--nd-duration-base);
   padding: 0;
   flex-shrink: 0;
 }
@@ -492,9 +560,10 @@ html[data-platform="android"] select {
   height: 18px;
   border-radius: 50%;
   background: #fff;
-  transition: transform var(--nd-duration-slow);
+  transition: transform var(--nd-duration-base) var(--nd-ease-spring);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
+
 
 .nd-toggle-switch.on .nd-toggle-switch-knob {
   transform: translateX(18px);
@@ -517,11 +586,11 @@ html[data-platform="android"] select {
 }
 
 .nd-tab-slide-left {
-  animation: nd-tab-slide-left-kf 0.2s cubic-bezier(0.2, 0, 0, 1) both;
+  animation: nd-tab-slide-left-kf 0.28s var(--nd-ease-spring) both;
 }
 
 .nd-tab-slide-right {
-  animation: nd-tab-slide-right-kf 0.2s cubic-bezier(0.2, 0, 0, 1) both;
+  animation: nd-tab-slide-right-kf 0.28s var(--nd-ease-spring) both;
 }
 
 /* ---- Swipe follow (useSwipeTab touch tracking) ---- */
@@ -532,8 +601,10 @@ html[data-platform="android"] select {
 }
 
 .nd-tab-snap-back > * {
-  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
+  transition: transform 0.3s var(--nd-ease-spring);
 }
+
+
 
 /* ---- Spin animation (shared by all loading spinners) ---- */
 
@@ -544,4 +615,70 @@ html[data-platform="android"] select {
 
 .nd-spin {
   animation: nd-spin 0.8s linear infinite;
+}
+
+/* ---- Content crossfade (skeleton → real content) ---- */
+
+@keyframes nd-content-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+.nd-content-appear {
+  animation: nd-content-in var(--nd-duration-slow) var(--nd-ease-spring) both;
+}
+
+/* ---- Misskey global animations ---- */
+
+/* Bounce: elastic overshoot (Misskey playfulness + Apple spring settle)
+   — for badges, notifications */
+@keyframes nd-bounce {
+  0%   { transform: scale(0.85); }
+  18%  { transform: scale(1.14); }
+  36%  { transform: scale(0.93); }
+  54%  { transform: scale(1.04); }
+  72%  { transform: scale(0.98); }
+  100% { transform: scale(1.00); }
+}
+
+._bounce {
+  animation: nd-bounce 0.6s var(--nd-ease-spring-bouncy);
+  will-change: transform;
+}
+
+/* Tada: attention-seeking wobble (Misskey global-tada) */
+@keyframes nd-tada {
+  from       { transform: scale3d(1, 1, 1); }
+  10%, 20%   { transform: scale3d(0.91, 0.91, 0.91) rotate3d(0, 0, 1, -2deg); }
+  30%, 50%, 70%, 90% { transform: scale3d(1.09, 1.09, 1.09) rotate3d(0, 0, 1, 2deg); }
+  40%, 60%, 80% { transform: scale3d(1.09, 1.09, 1.09) rotate3d(0, 0, 1, -2deg); }
+  to         { transform: scale3d(1, 1, 1); }
+}
+
+._tada {
+  animation: nd-tada 1s ease;
+}
+
+/* RubberBand: elastic stretch (Misskey mfm-rubberBand) */
+@keyframes nd-rubberBand {
+  from { transform: scale3d(1, 1, 1); }
+  30%  { transform: scale3d(1.25, 0.75, 1); }
+  40%  { transform: scale3d(0.75, 1.25, 1); }
+  50%  { transform: scale3d(1.15, 0.85, 1); }
+  65%  { transform: scale3d(0.95, 1.05, 1); }
+  75%  { transform: scale3d(1.05, 0.95, 1); }
+  to   { transform: scale3d(1, 1, 1); }
+}
+
+/* ---- Global reduced-motion ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -4,8 +4,8 @@ import { useToast } from '@/stores/toast'
 
 const { toasts } = useToast()
 const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
-  enterDuration: 300,
-  leaveDuration: 150,
+  enterDuration: 250,
+  leaveDuration: 120,
 })
 </script>
 
@@ -60,8 +60,8 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
   font-size: 0.85em;
   color: #fff;
   background: color-mix(in srgb, var(--nd-panel) 80%, transparent);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   box-shadow: var(--nd-shadow-m);
   pointer-events: auto;
   white-space: nowrap;
@@ -99,24 +99,25 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
 }
 
 .toastEnter {
-  animation: toast-enter 0.3s var(--nd-ease-pop) both;
+  animation: toast-enter 0.4s var(--nd-ease-spring) both;
 }
 
 .toastLeave {
-  animation: toast-leave 0.15s ease both;
+  animation: toast-leave var(--nd-duration-fast) var(--nd-ease-decel) both;
 }
 
 @keyframes toast-enter {
   from {
     opacity: 0;
-    transform: translateY(-12px) scale(0.95);
+    transform: translateY(-16px) scale(0.9);
   }
 }
 
 @keyframes toast-leave {
   to {
     opacity: 0;
-    transform: translateY(8px) scale(0.95);
+    transform: translateY(6px) scale(0.95);
   }
 }
+
 </style>

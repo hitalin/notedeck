@@ -58,8 +58,8 @@ const {
   entering: backdropEntering,
   leaving: backdropLeaving,
 } = useVaporTransition(hasModal, {
-  enterDuration: 250,
-  leaveDuration: 200,
+  enterDuration: 200,
+  leaveDuration: 150,
 })
 
 const renderedWindows = computed(() => windowsStore.windows)
@@ -158,11 +158,11 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 }
 
 .backdropEnter {
-  animation: backdrop-enter 0.25s ease both;
+  animation: backdrop-enter 0.18s ease-out both;
 }
 
 .backdropLeave {
-  animation: backdrop-leave 0.2s ease both;
+  animation: backdrop-leave 0.15s ease-in both;
 }
 
 @keyframes backdrop-enter {

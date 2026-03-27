@@ -20,6 +20,7 @@ import {
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
+import { hapticLight, hapticMedium } from '@/utils/haptics'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
@@ -317,11 +318,11 @@ defineExpose({
               class="_button"
               :class="[$style.item, { [$style.sidebarActive]: sidebarType === navItem.type }]"
               :title="navLabel(navItem.type)"
-              @click="closeDrawerAndDo(getNavAction(navItem))"
+              @click="hapticLight(); closeDrawerAndDo(getNavAction(navItem))"
             >
               <div :class="$style.iconWrap">
                 <i :class="['ti', navIcon(navItem.type)]" />
-                <span v-if="getNavBadge(navItem) > 0" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
+                <span v-if="getNavBadge(navItem) > 0" :key="getNavBadge(navItem)" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
                 <ColumnBadges :account-id="navItem.accountId" :size="12" />
               </div>
               <span :class="$style.label">{{ navLabel(navItem.type) }}</span>
@@ -371,7 +372,7 @@ defineExpose({
             class="_button"
             :class="$style.postBtn"
             title="ノート作成"
-            @click="closeDrawerAndDo(() => emit('open-compose'))"
+            @click="hapticMedium(); closeDrawerAndDo(() => emit('open-compose'))"
           >
             <i class="ti ti-pencil" />
             <span :class="$style.label">ノート</span>
@@ -482,8 +483,8 @@ defineExpose({
   flex: 0 0 auto;
   display: flex;
   background: color(from var(--nd-navBg) srgb r g b / 0.5);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   border-right: 1px solid var(--nd-divider);
   position: relative;
   z-index: 1;
@@ -533,7 +534,7 @@ defineExpose({
   font-size: 0.95em;
   white-space: nowrap;
   text-decoration: none;
-  transition: background var(--nd-duration-base), color var(--nd-duration-base);
+  transition: background var(--nd-duration-base), color var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
 
   &:hover {
     background: var(--nd-buttonHoverBg);
@@ -584,6 +585,15 @@ defineExpose({
   text-align: center;
   pointer-events: none;
   box-sizing: border-box;
+  animation: nd-badge-in 0.7s ease both;
+}
+
+/* Misskey global-bounce style: 3-step overshoot for satisfying pop-in */
+@keyframes nd-badge-in {
+  0%   { transform: scale(0); opacity: 0; }
+  19%  { transform: scale(1.15); opacity: 1; }
+  48%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
 }
 
 .label {
@@ -620,11 +630,15 @@ defineExpose({
   border-radius: var(--nd-radius-sm);
   overflow: visible;
   opacity: 0.6;
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
 
   &:hover {
     opacity: 1;
     background: var(--nd-buttonHoverBg);
+  }
+
+  &:active {
+    transform: scale(0.95);
   }
 }
 
@@ -709,7 +723,7 @@ defineExpose({
   font-weight: bold;
   font-size: 0.9em;
   white-space: nowrap;
-  transition: transform var(--nd-duration-base), box-shadow var(--nd-duration-base);
+  transition: transform var(--nd-duration-fast) var(--nd-ease-spring), box-shadow var(--nd-duration-base);
 
   &:hover {
     transform: scale(1.03);
@@ -717,7 +731,7 @@ defineExpose({
   }
 
   &:active {
-    transform: scale(0.97);
+    transform: scale(var(--nd-active-scale));
   }
 
   :global(.ti) {

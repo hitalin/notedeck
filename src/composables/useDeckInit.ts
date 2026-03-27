@@ -10,6 +10,7 @@ import {
   listenDeckWindowEvents,
   saveCurrentWindowLayout,
 } from '@/composables/useDeckWindow'
+import { initOgpListener } from '@/composables/useOgpPreview'
 import { useDeckStore } from '@/stores/deck'
 import { usePluginsStore } from '@/stores/plugins'
 import { useUiStore } from '@/stores/ui'
@@ -57,6 +58,10 @@ export function useDeckInit(options: {
   let updateCheckTimer: ReturnType<typeof setTimeout> | undefined
 
   onMounted(() => {
+    // Signal that deck layout structure is in the DOM — splash can dismiss now.
+    // Data (notes) loads asynchronously; column frames are already visible.
+    window.dispatchEvent(new Event('nd:deck-mounted'))
+
     handleResizeRef = () => options.navbarRef.value?.handleResize()
     window.addEventListener('resize', handleResizeRef)
     document.addEventListener('visibilitychange', onVisibilityChange)
@@ -80,6 +85,7 @@ export function useDeckInit(options: {
     requestAnimationFrame(() => {
       initApiBridge()
       initDesktopNotifications()
+      initOgpListener()
       loadCliCommands()
       onNotificationAction((ctx) => {
         if (ctx.noteId) {

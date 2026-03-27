@@ -30,8 +30,8 @@ const { activate: activateTrap, deactivate: deactivateTrap } = useFocusTrap(
 )
 
 const { visible, leaving } = useVaporTransition(show, {
-  enterDuration: 250,
-  leaveDuration: 200,
+  enterDuration: 200,
+  leaveDuration: 150,
 })
 
 watch(show, (v) => {
@@ -106,8 +106,8 @@ defineExpose({ open })
   transform: translateX(-100%);
   z-index: calc(var(--nd-z-popup) + 1);
   background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 85%, transparent);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   overflow: hidden;
@@ -123,26 +123,27 @@ defineExpose({ open })
 }
 
 /* Desktop popup backdrop */
-.popupEnter { animation: popupBdIn 0.3s ease; }
-.popupLeave { animation: popupBdOut 0.3s ease forwards; }
+.popupEnter { animation: popupBdIn var(--nd-duration-base) var(--nd-ease-decel); }
+.popupLeave { animation: popupBdOut var(--nd-duration-fast) ease-in forwards; }
 @keyframes popupBdIn { from { opacity: 0; } }
 @keyframes popupBdOut { to { opacity: 0; } }
 
-/* Desktop popup content */
-.popupContentEnter { animation: popupIn 0.3s ease; }
-.popupContentLeave { animation: popupOut 0.3s ease forwards; }
-@keyframes popupIn { from { opacity: 0; transform: translateX(-100%) scale(0.95); } }
-@keyframes popupOut { to { opacity: 0; transform: translateX(-100%) scale(0.95); } }
+/* Desktop popup content — spring scale from origin */
+.popupContentEnter { animation: popupIn 0.35s var(--nd-ease-spring); }
+.popupContentLeave { animation: popupOut 0.12s var(--nd-ease-decel) forwards; }
+@keyframes popupIn { from { opacity: 0; transform: translateX(-80%) scale(0.85); } }
+@keyframes popupOut { to { opacity: 0; transform: translateX(-60%) scale(0.9); } }
 
 /* Mobile sheet backdrop */
-.sheetEnter { animation: sheetBdIn 0.4s ease; }
-.sheetLeave { animation: sheetBdOut 0.3s ease forwards; }
+.sheetEnter { animation: sheetBdIn var(--nd-duration-base) var(--nd-ease-decel); }
+.sheetLeave { animation: sheetBdOut var(--nd-duration-fast) ease-in forwards; }
 @keyframes sheetBdIn { from { opacity: 0; } }
 @keyframes sheetBdOut { to { opacity: 0; } }
 
-/* Mobile sheet content */
-.sheetContentEnter { animation: sheetIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-.sheetContentLeave { animation: sheetOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+/* Mobile sheet content — iOS-style spring slide up */
+.sheetContentEnter { animation: sheetIn 0.4s var(--nd-ease-spring); }
+.sheetContentLeave { animation: sheetOut 0.2s var(--nd-ease-decel) forwards; }
 @keyframes sheetIn { from { transform: translateY(100%); } }
 @keyframes sheetOut { to { transform: translateY(100%); } }
+
 </style>

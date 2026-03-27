@@ -104,7 +104,7 @@ const regexError = ref<string | null>(null)
 const regexGuidePos = ref({ top: 0, right: 0 })
 const regexGuideBtnRef = ref<HTMLElement | null>(null)
 const { visible: regexGuideVisible, leaving: regexGuideLeaving } =
-  useVaporTransition(showRegexGuide, { enterDuration: 200, leaveDuration: 200 })
+  useVaporTransition(showRegexGuide, { enterDuration: 180, leaveDuration: 150 })
 
 // Date filter & sort
 const {
@@ -1052,11 +1052,11 @@ onUnmounted(() => {
 }
 
 .regexGuideEnter {
-  animation: regexGuideIn 0.2s cubic-bezier(0, 0, 0.2, 1);
+  animation: regexGuideIn 0.2s var(--nd-ease-pop);
 }
 
 .regexGuideLeave {
-  animation: regexGuideOut 0.2s cubic-bezier(0, 0, 0.2, 1) forwards;
+  animation: regexGuideOut 0.2s var(--nd-ease-pop) forwards;
 }
 
 @keyframes regexGuideIn {

@@ -42,8 +42,8 @@ const { activate: activateTrap, deactivate: deactivateTrap } = useFocusTrap(
 )
 
 const { visible, leaving } = useVaporTransition(show, {
-  enterDuration: 250,
-  leaveDuration: 200,
+  enterDuration: 200,
+  leaveDuration: 150,
 })
 
 watch(show, (v) => {
@@ -204,8 +204,8 @@ defineExpose({ open })
   display: flex;
   flex-direction: column;
   background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 85%, transparent);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   overflow: hidden;
@@ -338,24 +338,24 @@ defineExpose({ open })
 }
 
 /* Desktop popup */
-.popupEnter { animation: modalBdIn 0.3s ease; }
-.popupLeave { animation: modalBdOut 0.3s ease forwards; }
+.popupEnter { animation: modalBdIn var(--nd-duration-base) var(--nd-ease-decel); }
+.popupLeave { animation: modalBdOut var(--nd-duration-fast) ease-in forwards; }
 @keyframes modalBdIn { from { opacity: 0; } }
 @keyframes modalBdOut { to { opacity: 0; } }
 
-.popupContentEnter { animation: modalIn 0.3s ease; }
-.popupContentLeave { animation: modalOut 0.3s ease forwards; }
-@keyframes modalIn { from { opacity: 0; transform: scale(0.95); } }
-@keyframes modalOut { to { opacity: 0; transform: scale(0.95); } }
+.popupContentEnter { animation: modalIn 0.4s var(--nd-ease-spring); }
+.popupContentLeave { animation: modalOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
+@keyframes modalIn { from { opacity: 0; transform: scale(0.88) translateY(6px); } }
+@keyframes modalOut { to { opacity: 0; transform: scale(0.93); } }
 
-/* Mobile sheet */
-.sheetEnter { animation: sheetBdIn 0.4s ease; }
-.sheetLeave { animation: sheetBdOut 0.3s ease forwards; }
+/* Mobile sheet — iOS-style spring slide */
+.sheetEnter { animation: sheetBdIn var(--nd-duration-slow) var(--nd-ease-decel); }
+.sheetLeave { animation: sheetBdOut var(--nd-duration-fast) ease-in forwards; }
 @keyframes sheetBdIn { from { opacity: 0; } }
 @keyframes sheetBdOut { to { opacity: 0; } }
 
-.sheetContentEnter { animation: sheetIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-.sheetContentLeave { animation: sheetOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.sheetContentEnter { animation: sheetIn 0.42s var(--nd-ease-spring); }
+.sheetContentLeave { animation: sheetOut 0.2s var(--nd-ease-decel) forwards; }
 @keyframes sheetIn { from { transform: translateY(100%); } }
 @keyframes sheetOut { to { transform: translateY(100%); } }
 </style>

@@ -10,8 +10,8 @@ const dialogType = ref<'info' | 'success' | 'warning' | 'error'>('info')
 const mode = ref<'dialog' | 'confirm'>('dialog')
 
 const { visible, entering, leaving } = useVaporTransition(show, {
-  enterDuration: 250,
-  leaveDuration: 200,
+  enterDuration: 200,
+  leaveDuration: 150,
 })
 
 let resolvePromise: ((value: boolean) => void) | null = null
@@ -160,10 +160,10 @@ defineExpose({ showDialog, showConfirm })
 
 // Vapor transition classes
 .enter {
-  animation: backdropIn 0.15s ease;
+  animation: backdropIn var(--nd-duration-base) var(--nd-ease-decel);
 }
 .leave {
-  animation: backdropOut 0.15s ease forwards;
+  animation: backdropOut var(--nd-duration-fast) ease-in forwards;
 }
 @keyframes backdropIn {
   from { opacity: 0; }
@@ -173,16 +173,16 @@ defineExpose({ showDialog, showConfirm })
 }
 
 .contentEnter {
-  animation: popupIn 0.3s var(--nd-ease-pop);
+  animation: popupIn 0.4s var(--nd-ease-spring);
 }
 .contentLeave {
-  animation: popupOut 0.15s ease forwards;
+  animation: popupOut var(--nd-duration-fast) var(--nd-ease-decel) forwards;
 }
 @keyframes popupIn {
-  from { opacity: 0; transform: scale(0.95); }
+  from { opacity: 0; transform: scale(0.85) translateY(8px); }
 }
 @keyframes popupOut {
-  to { opacity: 0; transform: scale(0.95); }
+  to { opacity: 0; transform: scale(0.92) translateY(4px); }
 }
 </style>
 

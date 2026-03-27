@@ -12,6 +12,7 @@ import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useLongPress } from '@/composables/useLongPress'
 import { useNavigation } from '@/composables/useNavigation'
+import { useRippleEffect } from '@/composables/useRippleEffect'
 import {
   useVaporTransition,
   useVaporTransitionGroup,
@@ -64,6 +65,7 @@ const isPureRenote = computed(
 )
 
 const { canInteract, isGuest } = useAccountMode(() => props.note._accountId)
+const { spawn: spawnRipple } = useRippleEffect()
 
 const moreMenuRef = ref<InstanceType<typeof NoteMoreMenu> | null>(null)
 const reactionPickerRef = ref<InstanceType<
@@ -362,6 +364,21 @@ function onMentionLeave() {
 function closeMentionPopup() {
   mentionPopup.forceClose()
 }
+
+function handleReactionClick(e: MouseEvent, reaction: string) {
+  if (longPressed.value) return
+  if (!canInteract.value) {
+    showLoginPrompt()
+    return
+  }
+  // Spawn ripple at click position for Misskey-style celebration
+  const isRemoving = effectiveNote.value.myReaction === reaction
+  if (!isRemoving) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    spawnRipple(rect.left + rect.width / 2, rect.top + rect.height / 2)
+  }
+  emit('react', reaction, effectiveNote.value)
+}
 </script>
 
 <template>
@@ -599,7 +616,7 @@ function closeMentionPopup() {
               ]"
               :data-reaction="r.reaction"
               :disabled="isGuest"
-              @click.stop="longPressed ? undefined : (canInteract ? emit('react', r.reaction, effectiveNote) : showLoginPrompt())"
+              @click.stop="handleReactionClick($event, r.reaction)"
               @pointerdown="lpHandlers.onPointerdown"
               @pointermove="lpHandlers.onPointermove"
               @pointerup="lpHandlers.onPointerup"
@@ -1093,16 +1110,16 @@ function closeMentionPopup() {
   cursor: pointer;
   color: var(--nd-fg);
   transition:
-    background 0.15s,
-    opacity 0.2s cubic-bezier(0, 0.5, 0.5, 1),
-    transform 0.2s cubic-bezier(0, 0.5, 0.5, 1);
+    background var(--nd-duration-fast),
+    opacity var(--nd-duration-base) var(--nd-ease-reaction),
+    transform var(--nd-duration-base) var(--nd-ease-spring-bouncy);
 
   &:hover {
     background: rgba(0, 0, 0, 0.1);
   }
 
   &:active {
-    animation: reaction-bounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: reaction-bounce 0.5s var(--nd-ease-spring-bouncy);
   }
 
   &.reacted,
@@ -1110,6 +1127,11 @@ function closeMentionPopup() {
     background: var(--nd-accentedBg);
     color: var(--nd-accent);
     box-shadow: 0 0 0 1px var(--nd-accent) inset;
+  }
+
+  /* Misskey: drop-shadow on custom emoji when reacted */
+  &.reacted .customEmoji {
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
   }
 
   .customEmoji {
@@ -1131,9 +1153,12 @@ function closeMentionPopup() {
 }
 
 @keyframes reaction-bounce {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.25); }
-  60% { transform: scale(0.95); }
+  0%   { transform: scale(1); }
+  15%  { transform: scale(0.92); }
+  35%  { transform: scale(1.28); }
+  55%  { transform: scale(0.94); }
+  72%  { transform: scale(1.06); }
+  85%  { transform: scale(0.98); }
   100% { transform: scale(1); }
 }
 
@@ -1181,18 +1206,24 @@ function closeMentionPopup() {
   min-width: 44px;
   margin-right: 28px;
   border: none;
+  border-radius: var(--nd-radius-sm);
   background: none;
   cursor: pointer;
   color: color-mix(in srgb, var(--nd-panel) 30%, var(--nd-fg) 70%);
   font-size: 1em;
-  transition: color var(--nd-duration-base), transform var(--nd-duration-fast);
+  transition:
+    color var(--nd-duration-base),
+    background var(--nd-duration-fast),
+    transform var(--nd-duration-fast) var(--nd-ease-spring);
 
   &:active {
-    transform: scale(0.9);
+    transform: scale(0.88);
+    transition: transform 0.06s ease-out;
   }
 
   &:hover {
     color: var(--nd-fgHighlighted);
+    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
   }
 }
 
@@ -1215,7 +1246,7 @@ function closeMentionPopup() {
 }
 
 .reactionButton:active {
-  animation: reaction-bounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: reaction-bounce 0.5s var(--nd-ease-spring-bouncy);
 }
 
 .moreButton:hover {
@@ -1275,15 +1306,15 @@ function closeMentionPopup() {
 }
 
 /* Renote popup animations */
-.renotePopupEnter { animation: renotePopupBdIn 0.3s ease; }
-.renotePopupLeave { animation: renotePopupBdOut 0.3s ease forwards; }
+.renotePopupEnter { animation: renotePopupBdIn var(--nd-duration-base) var(--nd-ease-decel); }
+.renotePopupLeave { animation: renotePopupBdOut var(--nd-duration-fast) ease-in forwards; }
 @keyframes renotePopupBdIn { from { opacity: 0; } }
 @keyframes renotePopupBdOut { to { opacity: 0; } }
 
-.renotePopupContentEnter { animation: renotePopupIn 0.3s var(--nd-ease-pop); }
-.renotePopupContentLeave { animation: renotePopupOut 0.3s var(--nd-ease-pop) forwards; }
-@keyframes renotePopupIn { from { opacity: 0; transform: scale(0.95) translateY(-4px); } }
-@keyframes renotePopupOut { to { opacity: 0; transform: scale(0.95) translateY(-4px); } }
+.renotePopupContentEnter { animation: renotePopupIn 0.35s var(--nd-ease-spring); }
+.renotePopupContentLeave { animation: renotePopupOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
+@keyframes renotePopupIn { from { opacity: 0; transform: scale(0.85) translateY(4px); } }
+@keyframes renotePopupOut { to { opacity: 0; transform: scale(0.92); } }
 
 /* Divider between notes */
 .noteRoot + .noteRoot {
@@ -1335,25 +1366,29 @@ function closeMentionPopup() {
 }
 
 .reactionEnter {
-  animation: reaction-enter 0.2s cubic-bezier(0, 0.5, 0.5, 1) both;
+  animation: reaction-enter 0.35s var(--nd-ease-spring-bouncy) both;
 }
 
 .reactionLeave {
-  animation: reaction-leave 0.2s cubic-bezier(0, 0.5, 0.5, 1) both;
+  animation: reaction-leave 0.15s var(--nd-ease-decel) both;
   position: absolute;
 }
 
 @keyframes reaction-enter {
   from {
     opacity: 0;
-    transform: scale(0.7);
+    transform: scale(0) rotate(-8deg);
+  }
+  50% {
+    opacity: 1;
   }
 }
 
 @keyframes reaction-leave {
   to {
     opacity: 0;
-    transform: scale(0.7);
+    transform: scale(0.5);
   }
 }
+
 </style>

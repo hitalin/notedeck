@@ -16,7 +16,7 @@ const emit = defineEmits<{
 
 const { visible, entering, leaving } = useVaporTransition(
   toRef(props, 'show'),
-  { enterDuration: 250, leaveDuration: 200 },
+  { enterDuration: 200, leaveDuration: 150 },
 )
 </script>
 
@@ -119,10 +119,10 @@ const { visible, entering, leaving } = useVaporTransition(
 
 // Vapor transition classes
 .enter {
-  animation: backdropIn 0.15s ease;
+  animation: backdropIn 0.12s ease-out;
 }
 .leave {
-  animation: backdropOut 0.15s ease forwards;
+  animation: backdropOut 0.12s ease-in forwards;
 }
 @keyframes backdropIn {
   from { opacity: 0; }
@@ -132,10 +132,10 @@ const { visible, entering, leaving } = useVaporTransition(
 }
 
 .contentEnter {
-  animation: popupIn 0.3s var(--nd-ease-pop);
+  animation: popupIn 0.2s var(--nd-ease-spring);
 }
 .contentLeave {
-  animation: popupOut 0.15s ease forwards;
+  animation: popupOut 0.15s var(--nd-ease-spring) forwards;
 }
 @keyframes popupIn {
   from { opacity: 0; transform: scale(0.95); }

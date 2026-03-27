@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import type { useDeckStore } from '@/stores/deck'
+import { hapticLight, hapticMedium } from '@/utils/haptics'
 
 type DeckStore = ReturnType<typeof useDeckStore>
 
@@ -69,6 +70,7 @@ export function useColumnDrag(
   }
 
   function beginDrag(columnId: string, e: PointerEvent) {
+    hapticLight()
     dragColumnId.value = columnId
     buildGroupIndexMap()
 
@@ -80,18 +82,45 @@ export function useColumnDrag(
     ) as HTMLElement | null
     if (header) {
       ghost = header.cloneNode(true) as HTMLElement
-      Object.assign(ghost.style, {
-        position: 'fixed',
-        zIndex: '10000',
-        pointerEvents: 'none',
-        opacity: '0.8',
-        width: `${header.clientWidth}px`,
-        transform: 'scale(0.95)',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-        borderRadius: '8px',
-        overflow: 'hidden',
-      })
+      const prefersReduced = window.matchMedia(
+        '(prefers-reduced-motion: reduce)',
+      ).matches
+      if (prefersReduced) {
+        Object.assign(ghost.style, {
+          position: 'fixed',
+          zIndex: '10000',
+          pointerEvents: 'none',
+          opacity: '0.85',
+          width: `${header.clientWidth}px`,
+          transform: 'scale(0.95)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+          borderRadius: '8px',
+          overflow: 'hidden',
+        })
+      } else {
+        Object.assign(ghost.style, {
+          position: 'fixed',
+          zIndex: '10000',
+          pointerEvents: 'none',
+          width: `${header.clientWidth}px`,
+          borderRadius: '8px',
+          overflow: 'hidden',
+          opacity: '0',
+          transform: 'scale(0.9) rotate(-1deg)',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
+          transition:
+            'opacity 0.2s ease-out, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease-out',
+        })
+      }
       document.body.appendChild(ghost)
+      if (!prefersReduced) {
+        requestAnimationFrame(() => {
+          if (ghost) {
+            ghost.style.opacity = '0.85'
+            ghost.style.transform = 'scale(1.02) rotate(-1.5deg)'
+          }
+        })
+      }
     }
 
     moveGhost(e.clientX, e.clientY)
@@ -273,6 +302,8 @@ export function useColumnDrag(
         }
       }
     }
+
+    hapticMedium()
 
     // Notify other windows that drag ended
     emitDragEvent('deck:drag-end', dragColumnId.value)

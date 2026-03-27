@@ -64,17 +64,39 @@ export const useAccountsStore = defineStore('accounts', () => {
   })
 
   let loadPromise: Promise<void> | null = null
+  let earlyUnlisten: (() => void) | null = null
+
+  function applyAccounts(stored: Account[]): void {
+    accounts.value = stored
+    if (stored.length > 0 && !activeAccountId.value) {
+      activeAccountId.value = stored[0]?.id ?? null
+    }
+    isLoaded.value = true
+  }
+
+  function cleanupEarlyListener(): void {
+    earlyUnlisten?.()
+    earlyUnlisten = null
+  }
+
+  /** Listen for `nd:accounts-early` Tauri event (fires before full AppState init).
+   *  Whichever arrives first — this event or the invoke() result — populates the store. */
+  async function listenEarlyAccounts(): Promise<void> {
+    const { listen } = await import('@tauri-apps/api/event')
+    earlyUnlisten = await listen<Account[]>('nd:accounts-early', (event) => {
+      if (!isLoaded.value) applyAccounts(event.payload)
+      cleanupEarlyListener()
+    })
+    if (isLoaded.value) cleanupEarlyListener()
+  }
 
   function loadAccounts(): Promise<void> {
     if (loadPromise) return loadPromise
+    listenEarlyAccounts()
     loadPromise = (async () => {
-      // Deduplication is handled by UNIQUE(host, user_id) constraint in SQLite
       const stored = await invoke<Account[]>('load_accounts')
-      accounts.value = stored
-      if (accounts.value.length > 0 && !activeAccountId.value) {
-        activeAccountId.value = accounts.value[0]?.id ?? null
-      }
-      isLoaded.value = true
+      if (!isLoaded.value) applyAccounts(stored)
+      cleanupEarlyListener()
     })()
     return loadPromise
   }

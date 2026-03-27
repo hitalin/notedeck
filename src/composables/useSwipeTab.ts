@@ -1,4 +1,5 @@
 import { onUnmounted, type Ref, watch } from 'vue'
+import { hapticLight } from '@/utils/haptics'
 
 const DIRECTION_THRESHOLD = 8 // px — minimum move to determine swipe direction
 const SWIPE_THRESHOLD = 50 // px — minimum distance to trigger tab switch
@@ -165,6 +166,7 @@ export function useSwipeTab(
 
     const consumed = dx < 0 ? onSwipeLeft() : onSwipeRight()
     if (consumed) {
+      hapticLight()
       // Tab switched — clear swipe state, useTabSlide handles enter animation
       clearSwipeState(el)
     } else {
@@ -204,6 +206,7 @@ export function useSwipeTab(
 
       // Stop the event from reaching DeckColumnsArea when tab was switched
       if (consumed) {
+        hapticLight()
         e.stopPropagation()
       }
     }

@@ -18,7 +18,7 @@ NoteDeck の成長は対応フォークの数に直結します。
 
 1. リポジトリをフォーク
 2. ブランチを作成（`git checkout -b feat/your-feature`）
-3. `task lint` と `task test` を通す
+3. `pnpm lint` と `pnpm test` を通す
 4. Pull Request を作成
 
 ## 開発方針

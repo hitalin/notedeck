@@ -8,8 +8,8 @@
 
 ## Test
 
-- [ ] `task test` パス
-- [ ] `task typecheck` パス
+- [ ] `pnpm test` パス
+- [ ] `pnpm typecheck` パス
 - [ ] 手動確認済み
 
 ## Screenshots

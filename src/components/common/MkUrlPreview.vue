@@ -121,7 +121,7 @@ function hostname(url: string): string {
 
 <template>
   <MkNoteEmbed v-if="isNoteUrl" :url="url" :account-id="accountId" />
-  <div v-else-if="shouldPreview" ref="el" :class="$style.urlPreview" @click="handleClick">
+  <div v-else-if="shouldPreview" ref="el" :class="[$style.urlPreview, !loading && 'nd-content-appear']" @click="handleClick">
     <div v-if="loading" :class="$style.urlPreviewSkeleton">
       <div :class="$style.skeletonText">
         <div :class="$style.skeletonLine" style="width: 60%" />

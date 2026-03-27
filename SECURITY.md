@@ -141,7 +141,7 @@ flowchart LR
 
 ### ホスト検証 (Rust バックエンド)
 
-- **ファイル**: `src-tauri/src/commands.rs` — `validate_host()`
+- **ファイル**: `src-tauri/src/commands/mod.rs` — `validate_host()`
 - ブロック対象:
   - ループバック: `localhost`, `127.*`, `::1`, `[::1]`
   - プライベート IP: `10.*`, `192.168.*`, `172.16.0.0/12`
@@ -222,7 +222,7 @@ flowchart TB
 
 | 層 | 実装 | ファイル |
 |----|------|----------|
-| 永続化 | OS キーチェーン (primary) | `src-tauri/src/commands.rs` |
+| 永続化 | OS キーチェーン (primary) | `src-tauri/src/commands/auth.rs` |
 | フォールバック | DB 保存 → キーチェーンへ自動移行 | 同上 |
 | メモリ | TTL 60秒キャッシュ + `Zeroize` trait | 同上 |
 | 破棄 | `Drop` 実装でメモリを即時ゼロ化 | 同上 |

@@ -59,8 +59,8 @@ function onClose() {
   position: sticky;
   top: 0;
   background: var(--nd-windowHeader);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   z-index: 10;
 }
 

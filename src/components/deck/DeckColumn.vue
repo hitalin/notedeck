@@ -449,16 +449,16 @@ function openAsPip() {
 }
 
 .menuEnter {
-  animation: colMenuIn var(--nd-duration-base) ease;
+  animation: colMenuIn 0.28s var(--nd-ease-spring);
 }
 .menuLeave {
-  animation: colMenuOut var(--nd-duration-base) ease forwards;
+  animation: colMenuOut var(--nd-duration-fast) var(--nd-ease-decel) forwards;
 }
 
 @keyframes colMenuIn {
-  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  from { opacity: 0; transform: translateY(-6px) scale(0.92); }
 }
 @keyframes colMenuOut {
-  to { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to { opacity: 0; transform: translateY(-4px) scale(0.95); }
 }
 </style>

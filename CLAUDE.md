@@ -2,15 +2,19 @@
 
 Misskey 系マルチサーバー対応デッキクライアント。Tauri v2 + Vue 3 + TypeScript + Pinia。
 
+## 環境セットアップ
+
+開発環境は Nix flake で管理。`nix develop`（または direnv）で Node.js, pnpm, Rust 等が揃う。
+
 ## 開発コマンド
 
 ```bash
-task dev          # Vite dev server（ブラウザ確認用）
-task dev:tauri    # Tauri デスクトップ開発
-task test         # vitest run
-task lint         # biome check
-task lint:fix     # biome check --write
-task typecheck    # vue-tsc --noEmit
+pnpm dev          # Vite dev server（ブラウザ確認用）
+pnpm tauri:dev    # Tauri デスクトップ開発
+pnpm test         # vitest run
+pnpm lint         # biome check
+pnpm lint:fix     # biome check --write
+pnpm typecheck    # vue-tsc --noEmit
 ```
 
 ## Git ワークフロー
@@ -67,7 +71,7 @@ cd src-tauri && cargo check && cd ..
 ### 2. PR 作成・マージ
 
 - develop → main の PR を作成（タイトル例: `Release vX.Y.Z`）
-- `task changelog` で変更一覧を PR 本文に記載
+- `pnpm changelog` で変更一覧を PR 本文に記載
 - CI（lint, typecheck, test）が通ることを確認
 - マージ
 

@@ -14,6 +14,10 @@ const isCompact = useIsCompactLayout()
 const route = useRoute()
 const isPipWindow = computed(() => route.meta.pip === true)
 
+const DevWelcome = isTauri
+  ? null
+  : defineAsyncComponent(() => import('@/components/DevWelcome.vue'))
+
 const TitleBar = isTauri
   ? defineAsyncComponent(() => import('@/components/common/TitleBar.vue'))
   : null
@@ -35,13 +39,21 @@ if (isTauri) {
 // Listen for PiP IPC events (main window only)
 let cleanupPipListener: (() => void) | null = null
 
+const splashShownAt = performance.now()
+
 function dismissSplash() {
   const el = document.getElementById('nd-splash')
   if (!el) return
-  el.classList.add('nd-splash-leaving')
-  el.addEventListener('transitionend', () => el.remove(), { once: true })
-  // Fallback: remove after 200ms even if transitionend doesn't fire
-  setTimeout(() => el.remove(), 200)
+  // Ensure splash is visible for at least 150ms to avoid a flash-like flicker.
+  const elapsed = performance.now() - splashShownAt
+  const delay = Math.max(0, 150 - elapsed)
+  setTimeout(() => {
+    // Start #app entrance animation in sync with splash fade-out
+    document.getElementById('app')?.classList.add('nd-app-ready')
+    el.classList.add('nd-splash-leaving')
+    el.addEventListener('transitionend', () => el.remove(), { once: true })
+    setTimeout(() => el.remove(), 400)
+  }, delay)
 }
 
 onMounted(async () => {
@@ -52,7 +64,8 @@ onMounted(async () => {
   }
   document.documentElement.dataset.env = isTauri ? 'tauri' : 'web'
 
-  // Show window (visible: false in tauri.conf.json to avoid Windows titlebar flicker)
+  // Show window immediately (visible: false in tauri.conf.json to avoid WebView2 flash).
+  // Splash screen covers FOUT, so no need to wait for fonts.
   // NOTE: setDecorations(false) は呼ばない。config で既に false であり、
   // Windows で再度呼ぶとウィンドウスタイル再計算で非クライアント領域が復活する。
   if (isTauri) {
@@ -60,21 +73,14 @@ onMounted(async () => {
       import('@tauri-apps/api/window'),
       import('@/utils/logger'),
     ])
-    // フォント読み込み + 最初のフレーム描画を待ってから表示（アイコン崩れ防止）
-    // 500ms タイムアウトでフォールバック（WSL2等でrAFが発火しない環境対策）
-    await Promise.race([
-      document.fonts.ready.then(
-        () => new Promise<void>((r) => requestAnimationFrame(() => r())),
-      ),
-      new Promise<void>((r) => setTimeout(r, 500)),
-    ])
     await getCurrentWindow().show().catch(catchIgnore('window.show'))
   }
 
-  // Dismiss splash when first column renders content, with 2s timeout fallback
-  const splashTimeout = setTimeout(dismissSplash, 2000)
+  // Dismiss splash when deck layout structure is mounted (not data load).
+  // This shows column frames immediately; notes fill in asynchronously.
+  const splashTimeout = setTimeout(dismissSplash, 500)
   window.addEventListener(
-    'nd:column-ready',
+    'nd:deck-mounted',
     () => {
       clearTimeout(splashTimeout)
       dismissSplash()
@@ -120,10 +126,7 @@ onUnmounted(() => {
         <router-view />
       </div>
     </template>
-    <div v-else :class="$style.noTauri">
-      <p>NoteDeck requires the Tauri runtime.</p>
-      <p>Run <code>pnpm tauri:dev</code> instead of <code>pnpm dev</code>.</p>
-    </div>
+    <DevWelcome v-else />
 
     <template v-if="!isPipWindow">
       <DeckWindowLayer />
@@ -151,21 +154,4 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.noTauri {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--nd-fg);
-  font-size: 0.9em;
-  gap: 4px;
-
-  code {
-    background: #333;
-    padding: 2px 6px;
-    border-radius: 4px;
-    color: #ddd;
-  }
-}
 </style>

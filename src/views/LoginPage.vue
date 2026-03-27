@@ -72,8 +72,8 @@ function onSuccess() {
   height: 46px;
   padding: 0 8px 0 20px;
   background: color-mix(in srgb, var(--nd-panel) 80%, transparent);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   border-bottom: 1px solid var(--nd-divider);
   z-index: 1;
 }

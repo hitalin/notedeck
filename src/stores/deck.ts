@@ -6,6 +6,7 @@ import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useDeckWallpaperStore } from '@/stores/deckWallpaper'
 import { buildColumnUri } from '@/utils/columnUri'
 import * as deckLayout from '@/utils/deckLayout'
+import { hapticMedium } from '@/utils/haptics'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 export type ColumnType =
@@ -193,6 +194,7 @@ export const useDeckStore = defineStore('deck', () => {
       p.layout.push([col.id])
     })
     activeColumnId.value = col.id
+    hapticMedium()
     return col
   }
 
@@ -203,6 +205,7 @@ export const useDeckStore = defineStore('deck', () => {
       p.layout.splice(index, 0, [col.id])
     })
     activeColumnId.value = col.id
+    hapticMedium()
     return col
   }
 
@@ -234,6 +237,7 @@ export const useDeckStore = defineStore('deck', () => {
         .filter((ids) => ids.length > 0)
     })
     profileStore.flushPersist()
+    hapticMedium()
   }
 
   function updateColumn(id: string, updates: Partial<DeckColumn>) {

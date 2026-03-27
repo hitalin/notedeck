@@ -13,7 +13,7 @@ import { invoke as tauriInvoke } from '@tauri-apps/api/core'
 const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
 
 /**
- * ブラウザ単体開発時（task dev）のモック invoke。
+ * ブラウザ単体開発時（pnpm dev）のモック invoke。
  * Tauri 環境では本物の invoke をそのまま使う。
  * モックハンドラは mockHandlers に追加可能。
  */

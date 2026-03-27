@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import JSON5 from 'json5'
+import { Features } from 'lightningcss'
 import type { Plugin } from 'vite'
 import { defineConfig } from 'vite'
 
@@ -132,14 +133,52 @@ function subsetTablerIcons(): Plugin {
   }
 }
 
+/** Inject <link rel="preload"> for the subset tabler-icons woff2 font.
+ *  The hash changes each build due to subsetting, so we find the actual
+ *  asset name from the bundle and inject the tag at build time. */
+function preloadTablerFont(): Plugin {
+  return {
+    name: 'preload-tabler-font',
+    enforce: 'post',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!ctx.bundle) return html
+        const fontAsset = Object.keys(ctx.bundle).find(
+          (name) => name.includes('tabler-icons') && name.endsWith('.woff2'),
+        )
+        if (!fontAsset) return html
+        const tag = `<link rel="preload" href="/${fontAsset}" as="font" type="font/woff2" crossorigin>`
+        return html.replace(
+          '<link rel="stylesheet"',
+          `${tag}\n    <link rel="stylesheet"`,
+        )
+      },
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [vue(), json5Plugin(), stripUnusedFonts(), subsetTablerIcons()],
+  plugins: [
+    vue(),
+    json5Plugin(),
+    stripUnusedFonts(),
+    subsetTablerIcons(),
+    preloadTablerFont(),
+  ],
   resolve: {
     alias: {
       '@': resolve(import.meta.dirname, 'src'),
     },
   },
   css: {
+    transformer: 'lightningcss',
+    lightningcss: {
+      // Tauri WebView は全て最新エンジン（WebKit 16+/Chromium 110+/WebKitGTK 2.40+）
+      // targets 未指定 = コンパイルダウンなし（Nesting等をそのまま出力）
+      // vendor prefix も不要なので除外し、minify のみ行う
+      exclude: Features.VendorPrefixes,
+    },
     modules: {
       localsConvention: 'camelCaseOnly',
     },
@@ -147,6 +186,9 @@ export default defineConfig({
   build: {
     target: 'esnext',
     sourcemap: false,
+    modulePreload: false,
+    assetsInlineLimit: 8192,
+    reportCompressedSize: false,
     rolldownOptions: {
       output: {
         manualChunks(id) {
@@ -188,6 +230,11 @@ export default defineConfig({
     },
   },
   define: {
+    __APP_VERSION__: JSON.stringify(
+      JSON.parse(
+        readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf-8'),
+      ).version,
+    ),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
     __VUE_OPTIONS_API__: false,
     __VUE_PROD_DEVTOOLS__: false,

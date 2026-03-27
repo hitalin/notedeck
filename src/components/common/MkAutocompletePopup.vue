@@ -47,6 +47,7 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
           <img
             :src="candidate.avatarUrl || '/avatar-default.svg'"
             :class="$style.acUserAvatar"
+            @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'"
           />
           <div :class="$style.acUserInfo">
             <span :class="$style.acUserName">{{ candidate.name || candidate.username }}</span>
@@ -82,6 +83,15 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
   max-height: 240px;
   overflow-y: auto;
   padding: 4px;
+  animation: acPopupIn 0.1s ease-out;
+}
+
+@keyframes acPopupIn {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .autocompletePopup { animation: none; }
 }
 
 .autocompleteItem {

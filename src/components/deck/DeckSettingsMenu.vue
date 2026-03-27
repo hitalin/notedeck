@@ -124,6 +124,7 @@ watch(
 )
 
 function toggleDarkMode() {
+  hapticSelection()
   themeStore.toggleTheme()
 }
 
