@@ -35,13 +35,20 @@ if (isTauri) {
 // Listen for PiP IPC events (main window only)
 let cleanupPipListener: (() => void) | null = null
 
+const splashShownAt = performance.now()
+
 function dismissSplash() {
   const el = document.getElementById('nd-splash')
   if (!el) return
-  el.classList.add('nd-splash-leaving')
-  el.addEventListener('transitionend', () => el.remove(), { once: true })
-  // Fallback: remove after 200ms even if transitionend doesn't fire
-  setTimeout(() => el.remove(), 200)
+  // Ensure splash is visible for at least 150ms to avoid a flash-like flicker.
+  // If the deck layout mounts very quickly, a tiny flash feels glitchy.
+  const elapsed = performance.now() - splashShownAt
+  const delay = Math.max(0, 150 - elapsed)
+  setTimeout(() => {
+    el.classList.add('nd-splash-leaving')
+    el.addEventListener('transitionend', () => el.remove(), { once: true })
+    setTimeout(() => el.remove(), 300)
+  }, delay)
 }
 
 onMounted(async () => {
