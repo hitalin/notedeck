@@ -24,7 +24,7 @@ const menuRef = ref<HTMLElement | null>(null)
 
 const { visible, entering, leaving } = useVaporTransition(showMenu, {
   enterDuration: 200,
-  leaveDuration: 150,
+  leaveDuration: 200,
 })
 
 const { activate: activateKeyboard, deactivate: deactivateKeyboard } =
@@ -113,7 +113,7 @@ defineExpose({ open, close, activateKeyboard })
   animation: backdropIn var(--nd-duration-base) var(--nd-ease-decel);
 }
 .leave {
-  animation: backdropOut var(--nd-duration-fast) ease-in forwards;
+  animation: backdropOut var(--nd-duration-base) ease-out forwards;
 }
 @keyframes backdropIn {
   from { opacity: 0; }
@@ -126,7 +126,7 @@ defineExpose({ open, close, activateKeyboard })
   animation: popupIn 0.32s var(--nd-ease-spring);
 }
 .contentLeave {
-  animation: popupOut var(--nd-duration-fast) var(--nd-ease-decel) forwards;
+  animation: popupOut var(--nd-duration-base) var(--nd-ease-decel) forwards;
 }
 @keyframes popupIn {
   from { opacity: 0; transform: scale(0.88) translateY(4px); }

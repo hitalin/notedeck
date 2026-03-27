@@ -451,7 +451,7 @@ function primaryShortcut(cmd: Command): string | null {
 }
 
 .paletteOverlayLeave {
-  animation: nd-palette-overlay-in var(--nd-duration-base) ease-in both reverse;
+  animation: nd-palette-overlay-in var(--nd-duration-base) ease-out both reverse;
 }
 
 .paletteEnter {
@@ -459,7 +459,7 @@ function primaryShortcut(cmd: Command): string | null {
 }
 
 .paletteLeave {
-  animation: nd-palette-in var(--nd-duration-base) ease-in both reverse;
+  animation: nd-palette-in var(--nd-duration-base) ease-out both reverse;
 }
 
 .paletteInputWrap {

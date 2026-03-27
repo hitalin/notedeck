@@ -236,8 +236,8 @@ function onWindowMouseDown() {
   opacity: 0.6;
   flex-shrink: 0;
   transition:
-    background 0.15s,
-    opacity 0.15s;
+    background var(--nd-duration-fast),
+    opacity var(--nd-duration-fast);
 
   &:hover {
     background: var(--nd-buttonHoverBg);

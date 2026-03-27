@@ -108,7 +108,7 @@
   --nd-blur-content: 3px;
   /* Transition duration
      Apple pattern: enter slightly longer than leave for natural weight */
-  --nd-duration-fast: 0.1s;
+  --nd-duration-fast: 0.15s;
   --nd-duration-base: 0.2s;
   --nd-duration-slow: 0.28s;
   --nd-duration-slower: 0.38s;
@@ -342,7 +342,7 @@ img {
 
 ._popupItem:active:not(:disabled) {
   transform: scale(var(--nd-active-scale));
-  transition: transform 0.06s ease-out;
+  transition: transform 0.08s ease-out;
 }
 
 ._popupItem:disabled {
@@ -454,7 +454,7 @@ img {
 
 ._button:active:not(:disabled) {
   transform: scale(var(--nd-active-scale));
-  transition: transform 0.06s ease-out;
+  transition: transform 0.08s ease-out;
 }
 
 ._button:disabled {

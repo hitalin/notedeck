@@ -13,7 +13,7 @@ const props = defineProps<{
 
 const { visible, leaving } = useVaporTransition(toRef(props, 'show'), {
   enterDuration: 180,
-  leaveDuration: 150,
+  leaveDuration: 200,
 })
 
 const emit = defineEmits<{

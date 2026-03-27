@@ -7,7 +7,7 @@ const FLING_VELOCITY = 0.4 // px/ms — fast flick switches tab even if distance
 const SOFT_CAP = 80 // px — full-speed tracking up to here
 const RUBBER_FACTOR = 0.3 // diminishing returns past SOFT_CAP (iOS-style)
 const MAX_SWIPE = 120 // px — hard cap to prevent excessive displacement
-const SNAP_BACK_TIMEOUT = 220 // ms — safety fallback for transitionend (200ms CSS + buffer)
+const SNAP_BACK_TIMEOUT = 340 // ms — safety fallback for transitionend (300ms CSS + buffer)
 const WHEEL_THRESHOLD = 50 // px — accumulated delta to trigger tab switch
 const WHEEL_COOLDOWN = 300 // ms — prevent rapid-fire tab switches
 

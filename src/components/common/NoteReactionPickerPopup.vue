@@ -31,7 +31,7 @@ const { activate: activateTrap, deactivate: deactivateTrap } = useFocusTrap(
 
 const { visible, leaving } = useVaporTransition(show, {
   enterDuration: 200,
-  leaveDuration: 150,
+  leaveDuration: 200,
 })
 
 watch(show, (v) => {
@@ -124,19 +124,19 @@ defineExpose({ open })
 
 /* Desktop popup backdrop */
 .popupEnter { animation: popupBdIn var(--nd-duration-base) var(--nd-ease-decel); }
-.popupLeave { animation: popupBdOut var(--nd-duration-fast) ease-in forwards; }
+.popupLeave { animation: popupBdOut var(--nd-duration-base) ease-out forwards; }
 @keyframes popupBdIn { from { opacity: 0; } }
 @keyframes popupBdOut { to { opacity: 0; } }
 
 /* Desktop popup content — spring scale from origin */
 .popupContentEnter { animation: popupIn 0.35s var(--nd-ease-spring); }
-.popupContentLeave { animation: popupOut 0.12s var(--nd-ease-decel) forwards; }
+.popupContentLeave { animation: popupOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
 @keyframes popupIn { from { opacity: 0; transform: translateX(-80%) scale(0.85); } }
 @keyframes popupOut { to { opacity: 0; transform: translateX(-60%) scale(0.9); } }
 
 /* Mobile sheet backdrop */
 .sheetEnter { animation: sheetBdIn var(--nd-duration-base) var(--nd-ease-decel); }
-.sheetLeave { animation: sheetBdOut var(--nd-duration-fast) ease-in forwards; }
+.sheetLeave { animation: sheetBdOut var(--nd-duration-base) ease-out forwards; }
 @keyframes sheetBdIn { from { opacity: 0; } }
 @keyframes sheetBdOut { to { opacity: 0; } }
 

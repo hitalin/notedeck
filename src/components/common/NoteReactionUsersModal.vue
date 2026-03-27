@@ -43,7 +43,7 @@ const { activate: activateTrap, deactivate: deactivateTrap } = useFocusTrap(
 
 const { visible, leaving } = useVaporTransition(show, {
   enterDuration: 200,
-  leaveDuration: 150,
+  leaveDuration: 200,
 })
 
 watch(show, (v) => {
@@ -339,18 +339,18 @@ defineExpose({ open })
 
 /* Desktop popup */
 .popupEnter { animation: modalBdIn var(--nd-duration-base) var(--nd-ease-decel); }
-.popupLeave { animation: modalBdOut var(--nd-duration-fast) ease-in forwards; }
+.popupLeave { animation: modalBdOut var(--nd-duration-base) ease-out forwards; }
 @keyframes modalBdIn { from { opacity: 0; } }
 @keyframes modalBdOut { to { opacity: 0; } }
 
 .popupContentEnter { animation: modalIn 0.4s var(--nd-ease-spring); }
-.popupContentLeave { animation: modalOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
+.popupContentLeave { animation: modalOut var(--nd-duration-base) var(--nd-ease-decel) forwards; }
 @keyframes modalIn { from { opacity: 0; transform: scale(0.88) translateY(6px); } }
 @keyframes modalOut { to { opacity: 0; transform: scale(0.93); } }
 
 /* Mobile sheet — iOS-style spring slide */
 .sheetEnter { animation: sheetBdIn var(--nd-duration-slow) var(--nd-ease-decel); }
-.sheetLeave { animation: sheetBdOut var(--nd-duration-fast) ease-in forwards; }
+.sheetLeave { animation: sheetBdOut var(--nd-duration-base) ease-out forwards; }
 @keyframes sheetBdIn { from { opacity: 0; } }
 @keyframes sheetBdOut { to { opacity: 0; } }
 

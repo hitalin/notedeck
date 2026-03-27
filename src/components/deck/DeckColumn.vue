@@ -452,7 +452,7 @@ function openAsPip() {
   animation: colMenuIn 0.28s var(--nd-ease-spring);
 }
 .menuLeave {
-  animation: colMenuOut var(--nd-duration-fast) var(--nd-ease-decel) forwards;
+  animation: colMenuOut var(--nd-duration-base) var(--nd-ease-decel) forwards;
 }
 
 @keyframes colMenuIn {
