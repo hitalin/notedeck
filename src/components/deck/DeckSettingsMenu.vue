@@ -159,7 +159,8 @@ function openToolWindow(
     | 'themeEditor'
     | 'navEditor'
     | 'plugins'
-    | 'aiSettings',
+    | 'aiSettings'
+    | 'performanceEditor',
 ) {
   windowsStore.open(type)
   emit('close-all')
