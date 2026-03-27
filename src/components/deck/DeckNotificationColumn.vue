@@ -559,14 +559,19 @@ async function loadMoreCrossAccount() {
 
   const accounts = accountsStore.accounts.filter((a) => a.hasToken)
 
+  // Build last-notification-per-account map in a single reverse pass (O(n))
+  const lastByAccount = new Map<string, NormalizedNotification>()
+  for (let i = notifications.value.length - 1; i >= 0; i--) {
+    const n = notifications.value[i]
+    if (!lastByAccount.has(n._accountId)) lastByAccount.set(n._accountId, n)
+  }
+
   try {
     const results = await Promise.allSettled(
       accounts.map(async (acc) => {
         const adapter = await multiAdapters.getOrCreate(acc.id)
         if (!adapter) return []
-        const lastForAccount = [...notifications.value]
-          .reverse()
-          .find((n) => n._accountId === acc.id)
+        const lastForAccount = lastByAccount.get(acc.id)
         if (!lastForAccount) return fetchNotifications(adapter.api, acc.host)
         return fetchNotifications(adapter.api, acc.host, {
           untilId: lastForAccount.id,
