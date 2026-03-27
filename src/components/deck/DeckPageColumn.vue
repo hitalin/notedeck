@@ -499,7 +499,7 @@ const pageEditUrl = computed(() => {
           <!-- Footer -->
           <div :class="$style.pageFooter">
             <div :class="$style.pageFooterAuthor">
-              <img :src="page.user.avatarUrl || '/avatar-default.svg'" :class="$style.pageFooterAvatar" />
+              <img :src="page.user.avatarUrl || '/avatar-default.svg'" :class="$style.pageFooterAvatar" @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'" />
               By @{{ page.user.username }}
             </div>
             <div :class="$style.pageFooterDates">

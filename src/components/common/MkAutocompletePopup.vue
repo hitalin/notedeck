@@ -47,6 +47,7 @@ function isUser(candidate: AutocompleteCandidate): candidate is NormalizedUser {
           <img
             :src="candidate.avatarUrl || '/avatar-default.svg'"
             :class="$style.acUserAvatar"
+            @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'"
           />
           <div :class="$style.acUserInfo">
             <span :class="$style.acUserName">{{ candidate.name || candidate.username }}</span>

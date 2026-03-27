@@ -239,6 +239,7 @@ fetchGallery()
                 <img
                   :src="detailPost.user.avatarUrl || '/avatar-default.svg'"
                   :class="$style.galleryUserAvatar"
+                  @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'"
                 />
                 <span :class="$style.galleryUserName">{{ detailPost.user.name || detailPost.user.username }}</span>
               </div>
@@ -303,6 +304,7 @@ fetchGallery()
                     <img
                       :src="post.user.avatarUrl || '/avatar-default.svg'"
                       :class="$style.galleryGridAvatar"
+                      @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'"
                     />
                     {{ post.user.name || post.user.username }}
                   </span>
