@@ -1,12 +1,13 @@
 import type { Ref, WatchSource } from 'vue'
 import { nextTick, onMounted, onScopeDispose, ref, watch } from 'vue'
+import { frameEngine } from '@/engine/frameEngine'
 
 /**
  * Manages a sliding tab indicator that tracks the active tab element.
  *
- * Uses requestAnimationFrame to batch DOM reads (offsetLeft/offsetWidth)
- * and writes (style update) into a single frame, preventing layout thrashing
- * when multiple triggers fire in quick succession.
+ * Gaming CSS v2: Uses Frame Engine's read/write phase separation
+ * to batch DOM reads (offsetLeft/offsetWidth) and writes (style update)
+ * into proper phases, preventing layout thrashing.
  *
  * @param containerRef - Ref to the container element holding the tabs
  * @param activeSelector - CSS selector for the currently active tab
@@ -18,25 +19,40 @@ export function useTabIndicator(
   trigger: WatchSource,
 ) {
   const style = ref({ translate: '0 0', scale: '0 1', opacity: '0' })
-  let rafId: number | null = null
+  let pending = false
 
   function update() {
-    if (rafId !== null) return
-    rafId = requestAnimationFrame(() => {
-      rafId = null
-      if (!containerRef.value) return
+    if (pending) return
+    pending = true
+
+    // Read phase: measure DOM
+    frameEngine.schedule('read', () => {
+      if (!containerRef.value) {
+        pending = false
+        style.value = { translate: '0 0', scale: '0 1', opacity: '0' }
+        return
+      }
       const activeTab = containerRef.value.querySelector(
         activeSelector,
       ) as HTMLElement | null
       if (!activeTab) {
+        pending = false
         style.value = { translate: '0 0', scale: '0 1', opacity: '0' }
         return
       }
-      style.value = {
-        translate: `${activeTab.offsetLeft}px 0`,
-        scale: `${activeTab.offsetWidth} 1`,
-        opacity: '1',
-      }
+
+      const left = activeTab.offsetLeft
+      const width = activeTab.offsetWidth
+
+      // Write phase: update style (scheduled from within read)
+      frameEngine.schedule('write', () => {
+        pending = false
+        style.value = {
+          translate: `${left}px 0`,
+          scale: `${width} 1`,
+          opacity: '1',
+        }
+      })
     })
   }
 
@@ -44,10 +60,7 @@ export function useTabIndicator(
   onMounted(() => nextTick(update))
 
   onScopeDispose(() => {
-    if (rafId !== null) {
-      cancelAnimationFrame(rafId)
-      rafId = null
-    }
+    pending = false
   })
 
   return { indicatorStyle: style, updateIndicator: update }

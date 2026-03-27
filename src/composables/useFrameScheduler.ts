@@ -1,86 +1,44 @@
 import { onScopeDispose } from 'vue'
 
+import { type FramePhase, frameEngine } from '@/engine/frameEngine'
+
 /**
  * Frame-aware priority scheduler — Gaming CSS Engine の共通基盤。
  *
- * ゲームエンジンの「フレーム予算管理」を Vue composable として提供。
- * 既存の個別 RAF パターン (useStreamingBatch, notes.ts 等) と同じ原理を汎用化。
+ * Gaming CSS v2: Frame Engine の Vue composable ラッパー。
+ * 既存の API (high/normal/idle) を維持しつつ、統一 RAF ループにルーティングする。
  *
- * - high:   次の RAF 先頭で実行（ユーザー入力応答）
- * - normal: 次の RAF で high の後に実行（ストリーミング、アニメーション）
- * - idle:   requestIdleCallback で実行（プリフェッチ、キャッシュ更新）
+ * - high:   Frame Engine の 'input' phase（ユーザー入力応答）
+ * - normal: Frame Engine の 'write' phase（ストリーミング、DOM更新）
+ * - idle:   Frame Engine の 'idle' phase（プリフェッチ、キャッシュ更新）
  */
 export type FramePriority = 'high' | 'normal' | 'idle'
 
-const IDLE_TIMEOUT_MS = 2000
-
-const _idle: (cb: IdleRequestCallback) => number =
-  typeof window !== 'undefined' && window.requestIdleCallback
-    ? (cb) => window.requestIdleCallback(cb, { timeout: IDLE_TIMEOUT_MS })
-    : (cb) => window.setTimeout(cb, IDLE_TIMEOUT_MS) as unknown as number
-
-const _cancelIdle: (id: number) => void =
-  typeof window !== 'undefined' && window.cancelIdleCallback
-    ? (id) => window.cancelIdleCallback(id)
-    : (id) => window.clearTimeout(id)
+/** Map legacy priority names to Frame Engine phases. */
+const PHASE_MAP: Record<FramePriority, FramePhase> = {
+  high: 'input',
+  normal: 'write',
+  idle: 'idle',
+}
 
 export function useFrameScheduler() {
-  const highQueue: (() => void)[] = []
-  const normalQueue: (() => void)[] = []
-  let rafId: number | null = null
-  const idleIds = new Set<number>()
-
-  function flushFrame() {
-    rafId = null
-    // High priority first
-    const high = highQueue.splice(0)
-    for (const fn of high) fn()
-    // Then normal
-    const normal = normalQueue.splice(0)
-    for (const fn of normal) fn()
-  }
-
-  function ensureRaf() {
-    if (rafId === null) {
-      rafId = requestAnimationFrame(flushFrame)
-    }
-  }
+  const tracked = new Set<() => void>()
 
   function schedule(fn: () => void, priority: FramePriority = 'normal'): void {
-    if (priority === 'idle') {
-      const id = _idle(() => {
-        idleIds.delete(id)
-        fn()
-      })
-      idleIds.add(id)
-      return
-    }
-    const queue = priority === 'high' ? highQueue : normalQueue
-    queue.push(fn)
-    ensureRaf()
+    tracked.add(fn)
+    frameEngine.schedule(PHASE_MAP[priority], fn)
   }
 
   function cancel(fn: () => void): void {
-    let idx = highQueue.indexOf(fn)
-    if (idx !== -1) {
-      highQueue.splice(idx, 1)
-      return
-    }
-    idx = normalQueue.indexOf(fn)
-    if (idx !== -1) {
-      normalQueue.splice(idx, 1)
-    }
+    tracked.delete(fn)
+    frameEngine.cancel(fn)
   }
 
   function dispose() {
-    if (rafId !== null) {
-      cancelAnimationFrame(rafId)
-      rafId = null
+    for (const fn of tracked) {
+      frameEngine.cancel(fn)
     }
-    highQueue.length = 0
-    normalQueue.length = 0
-    for (const id of idleIds) _cancelIdle(id)
-    idleIds.clear()
+    tracked.clear()
   }
 
   onScopeDispose(dispose)

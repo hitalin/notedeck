@@ -1,8 +1,17 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { effectScope } from 'vue'
+import { frameEngine } from '@/engine/frameEngine'
 import { useFrameScheduler } from './useFrameScheduler'
 
 describe('useFrameScheduler', () => {
+  beforeEach(() => {
+    frameEngine.start()
+  })
+
+  afterEach(() => {
+    frameEngine.stop()
+  })
+
   it('high が normal より先に実行される', async () => {
     const order: string[] = []
     const scope = effectScope()

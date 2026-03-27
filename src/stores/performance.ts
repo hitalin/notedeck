@@ -7,6 +7,11 @@ import {
   type QualityPreset,
 } from '@/composables/useAdaptiveQuality'
 import defaultsJson from '@/defaults/performance.json'
+import { frameEngine } from '@/engine/frameEngine'
+import {
+  frameTelemetry,
+  type QualityLevel,
+} from '@/engine/telemetry/frameTelemetry'
 import { isTauri, readPerformance, writePerformance } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
@@ -722,6 +727,20 @@ export const usePerformanceStore = defineStore('performance', () => {
 
     // Apply CSS overrides to :root on startup
     syncCssProperties()
+
+    // --- Gaming CSS v2: Frame Engine + Telemetry ---
+    frameEngine.start()
+
+    // Map preset to telemetry quality level
+    const presetToQuality = (p: QualityPreset): QualityLevel => p
+
+    frameTelemetry.start(
+      presetToQuality(recommendedPreset.value ?? 'balanced'),
+      (quality) => {
+        // Auto quality adjustment callback — apply the matching preset
+        applyPreset(quality)
+      },
+    )
   }
 
   function set<K extends PerformanceKey>(key: K, value: PerformanceConfig[K]) {
