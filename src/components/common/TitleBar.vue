@@ -172,6 +172,7 @@ async function onPipClick() {
         </button>
       </template>
       <button
+        v-if="!isCompact"
         :class="[$style.titlebarBtn, $style.titlebarSidebarBtn, { [$style.titlebarBtnActive]: !deckStore.navCollapsed }]"
         title="サイドバー切替"
         @click="commandStore.execute('toggle-sidebar')"
