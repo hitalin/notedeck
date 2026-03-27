@@ -214,16 +214,10 @@ stateDiagram-v2
     Empty --> DB_Ready : initialize_db(db)
     DB_Ready --> Fully_Ready : initialize(db, client)
 
-    state Empty {
-        [*] : 全コマンド待機
-    }
-    state DB_Ready {
-        [*] : DB専用コマンドがアンロック
-        [*] : load_accounts 等
-    }
-    state Fully_Ready {
-        [*] : 全コマンドがアンロック
-    }
+    Empty : 全コマンド待機
+    DB_Ready : DB専用コマンドがアンロック
+    DB_Ready : (load_accounts 等)
+    Fully_Ready : 全コマンドがアンロック
 ```
 
 内部的には `tokio::sync::watch::channel` を 2 本持ち、`db()` は DB チャネルのみ、`client()` はフルチャネルを待機する。これにより `load_accounts` のようなDB専用コマンドは MisskeyClient の初期化を待たずに応答できる。
