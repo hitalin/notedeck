@@ -143,9 +143,9 @@ export default defineConfig({
   css: {
     transformer: 'lightningcss',
     lightningcss: {
-      // Tauri WebView: macOS=WebKit 16+, Windows=Chromium 110+, Linux=WebKitGTK 2.40+
-      // 全エンジンが最新CSS機能をサポートするため、vendor prefix を最小化
-      include: Features.Nesting | Features.MediaRangeSyntax,
+      // Tauri WebView は全て最新エンジン（WebKit 16+/Chromium 110+/WebKitGTK 2.40+）
+      // targets 未指定 = コンパイルダウンなし（Nesting等をそのまま出力）
+      // vendor prefix も不要なので除外し、minify のみ行う
       exclude: Features.VendorPrefixes,
     },
     modules: {
