@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, toRef, watch } from 'vue'
 import { createCliHandlers } from '@/commands/cliHandlers'
 import { getCliMeta, parseCliInput } from '@/commands/cliParser'
 import type { Command } from '@/commands/registry'
 import { useCommandStore } from '@/commands/registry'
 import { useNavigation } from '@/composables/useNavigation'
+import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useUiStore } from '@/stores/ui'
@@ -20,6 +21,17 @@ const commandStore = useCommandStore()
 const query = ref('')
 const selectedIndex = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
+
+// Dialog mode animation (Spotlight-style)
+const isOpen = toRef(() => commandStore.isOpen)
+const {
+  visible: paletteVisible,
+  entering: paletteEntering,
+  leaving: paletteLeaving,
+} = useVaporTransition(isOpen, {
+  enterDuration: 300,
+  leaveDuration: 200,
+})
 
 /** Whether the user is in command mode (input starts with ">") */
 const isCommandMode = computed(() => query.value.startsWith('>'))
@@ -244,8 +256,24 @@ function primaryShortcut(cmd: Command): string | null {
   </template>
 
   <!-- ===== DIALOG MODE (Mobile) ===== -->
-  <div v-else :class="$style.paletteOverlay" @click="commandStore.close()">
-    <div :class="$style.palette" @click.stop @keydown="onKeydown">
+  <div
+    v-if="!inline && paletteVisible"
+    :class="[
+      $style.paletteOverlay,
+      paletteEntering && $style.paletteOverlayEnter,
+      paletteLeaving && $style.paletteOverlayLeave,
+    ]"
+    @click="commandStore.close()"
+  >
+    <div
+      :class="[
+        $style.palette,
+        paletteEntering && $style.paletteEnter,
+        paletteLeaving && $style.paletteLeave,
+      ]"
+      @click.stop
+      @keydown="onKeydown"
+    >
       <div :class="$style.paletteInputWrap">
         <i class="ti ti-search" :class="$style.paletteSearchIcon" />
         <input
@@ -396,13 +424,51 @@ function primaryShortcut(cmd: Command): string | null {
   margin-inline: 8px;
   display: flex;
   flex-direction: column;
-  background: var(--nd-popup, #252526);
+  background: color-mix(in srgb, var(--nd-popup, #252526) 80%, transparent);
+  backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
+  -webkit-backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--nd-radius-sm);
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(0, 0, 0, 0.15);
   overflow: hidden;
+}
+
+/* Spotlight-style animations */
+@keyframes nd-palette-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes nd-palette-in {
+  from { opacity: 0; transform: scale(0.95) translateY(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.paletteOverlayEnter {
+  animation: nd-palette-overlay-in var(--nd-duration-slow) ease-out both;
+}
+
+.paletteOverlayLeave {
+  animation: nd-palette-overlay-in var(--nd-duration-base) ease-in both reverse;
+}
+
+.paletteEnter {
+  animation: nd-palette-in var(--nd-duration-slow) var(--nd-ease-spring) both;
+}
+
+.paletteLeave {
+  animation: nd-palette-in var(--nd-duration-base) ease-in both reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paletteOverlayEnter,
+  .paletteOverlayLeave,
+  .paletteEnter,
+  .paletteLeave {
+    animation: none;
+  }
 }
 
 .paletteInputWrap {

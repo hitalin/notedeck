@@ -297,8 +297,8 @@ html[data-platform="android"] select {
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: var(--nd-radius);
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
+  -webkit-backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
 }
 
 ._popupMenu {
@@ -306,8 +306,8 @@ html[data-platform="android"] select {
   background: var(--nd-popup, var(--nd-panelBg));
   border-radius: var(--nd-radius-md);
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
+  -webkit-backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
   padding: 6px 0;
   z-index: var(--nd-z-menu);
 }
@@ -505,8 +505,8 @@ html[data-platform="android"] select {
 
 ._acrylic {
   background: color(from var(--nd-bg) srgb r g b / 0.5);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
+  -webkit-backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
 }
 
 ._sensitiveOverlay {

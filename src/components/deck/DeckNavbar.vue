@@ -322,7 +322,7 @@ defineExpose({
             >
               <div :class="$style.iconWrap">
                 <i :class="['ti', navIcon(navItem.type)]" />
-                <span v-if="getNavBadge(navItem) > 0" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
+                <span v-if="getNavBadge(navItem) > 0" :key="getNavBadge(navItem)" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
                 <ColumnBadges :account-id="navItem.accountId" :size="12" />
               </div>
               <span :class="$style.label">{{ navLabel(navItem.type) }}</span>
@@ -483,8 +483,8 @@ defineExpose({
   flex: 0 0 auto;
   display: flex;
   background: color(from var(--nd-navBg) srgb r g b / 0.5);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
+  -webkit-backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
   border-right: 1px solid var(--nd-divider);
   position: relative;
   z-index: 1;
@@ -585,6 +585,19 @@ defineExpose({
   text-align: center;
   pointer-events: none;
   box-sizing: border-box;
+  animation: nd-badge-in var(--nd-duration-slow) var(--nd-ease-spring) both;
+}
+
+@keyframes nd-badge-in {
+  0%   { transform: scale(0); opacity: 0; }
+  50%  { transform: scale(1.3); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge {
+    animation: none;
+  }
 }
 
 .label {
