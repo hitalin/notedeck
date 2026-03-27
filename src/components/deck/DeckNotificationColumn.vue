@@ -1142,7 +1142,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  gap: 4px;
+  gap: 5px;
 }
 
 .notifUserAvatar {
