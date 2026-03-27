@@ -6,6 +6,7 @@ import {
   nextTick,
   onMounted,
   onUnmounted,
+  reactive,
   ref,
   useCssModule,
   watch,
@@ -309,14 +310,11 @@ function deleteInstalledTheme(theme: MisskeyTheme, e: Event) {
   themeStore.removeTheme(theme.id)
 }
 
-// Section collapse states
-const collapsedSections = ref<Record<string, boolean>>({})
+// Section expand states (default: all collapsed)
+const expandedSections = reactive<Record<string, boolean>>({})
 
 function toggleSection(section: string) {
-  collapsedSections.value = {
-    ...collapsedSections.value,
-    [section]: !collapsedSections.value[section],
-  }
+  expandedSections[section] = !expandedSections[section]
 }
 
 // All non-primary props that have overrides
@@ -404,44 +402,48 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
       <div v-show="tab === 'visual'" :class="$style.visualPanel">
         <!-- Theme info -->
         <div :class="$style.section">
-          <div :class="$style.sectionLabel">
+          <button class="_button" :class="$style.sectionLabel" @click="toggleSection('info')">
             <i class="ti ti-tag" />
             テーマ情報
-          </div>
-          <input
-            v-model="themeName"
-            :class="$style.nameInput"
-            type="text"
-            placeholder="テーマ名"
-            spellcheck="false"
-          />
-          <div :class="$style.baseToggle">
-            <button
-              class="_button"
-              :class="[$style.baseBtn, { [$style.active]: baseMode === 'dark' }]"
-              @click="baseMode = 'dark'"
-            >
-              <i class="ti ti-moon" />
-              Dark
-            </button>
-            <button
-              class="_button"
-              :class="[$style.baseBtn, { [$style.active]: baseMode === 'light' }]"
-              @click="baseMode = 'light'"
-            >
-              <i class="ti ti-sun" />
-              Light
-            </button>
-          </div>
+            <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.info }]" />
+          </button>
+          <template v-if="expandedSections.info">
+            <input
+              v-model="themeName"
+              :class="$style.nameInput"
+              type="text"
+              placeholder="テーマ名"
+              spellcheck="false"
+            />
+            <div :class="$style.baseToggle">
+              <button
+                class="_button"
+                :class="[$style.baseBtn, { [$style.active]: baseMode === 'dark' }]"
+                @click="baseMode = 'dark'"
+              >
+                <i class="ti ti-moon" />
+                Dark
+              </button>
+              <button
+                class="_button"
+                :class="[$style.baseBtn, { [$style.active]: baseMode === 'light' }]"
+                @click="baseMode = 'light'"
+              >
+                <i class="ti ti-sun" />
+                Light
+              </button>
+            </div>
+          </template>
         </div>
 
         <!-- Load from existing -->
         <div v-if="themeStore.installedThemes.length" :class="$style.section">
-          <div :class="$style.sectionLabel">
+          <button class="_button" :class="$style.sectionLabel" @click="toggleSection('existing')">
             <i class="ti ti-folder-open" />
             既存テーマ
-          </div>
-          <div :class="$style.dropdown">
+            <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.existing }]" />
+          </button>
+          <div v-if="expandedSections.existing" :class="$style.dropdown">
             <button
               class="_button"
               :class="$style.dropdownTrigger"
@@ -483,16 +485,14 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
             :class="$style.sectionLabel"
             @click="toggleSection('primary')"
           >
-            <i
-              class="ti"
-              :class="collapsedSections.primary ? 'ti-chevron-right' : 'ti-chevron-down'"
-            />
+            <i class="ti ti-palette" />
             基本色
             <span v-if="primaryOverrideCount > 0" :class="$style.sectionValue">
               {{ primaryOverrideCount }}/{{ PRIMARY_PROPS.length }}
             </span>
+            <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.primary }]" />
           </button>
-          <div v-show="!collapsedSections.primary" :class="$style.propList">
+          <div v-if="expandedSections.primary" :class="$style.propList">
             <div
               v-for="prop in PRIMARY_PROPS"
               :key="prop.key"
@@ -550,14 +550,12 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
             :class="$style.sectionLabel"
             @click="toggleSection('secondary')"
           >
-            <i
-              class="ti"
-              :class="collapsedSections.secondary ? 'ti-chevron-right' : 'ti-chevron-down'"
-            />
+            <i class="ti ti-adjustments" />
             追加プロパティ
             <span :class="$style.sectionValue">{{ secondaryOverrides.length }}</span>
+            <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.secondary }]" />
           </button>
-          <div v-show="!collapsedSections.secondary" :class="$style.propList">
+          <div v-if="expandedSections.secondary" :class="$style.propList">
             <div
               v-for="key in secondaryOverrides"
               :key="key"
@@ -772,8 +770,18 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   }
 }
 
-.sectionValue {
+.chevron {
   margin-left: auto;
+  font-size: 0.9em;
+  transition: transform var(--nd-duration-base);
+  transform: rotate(-90deg);
+}
+
+.chevronOpen {
+  transform: rotate(0deg);
+}
+
+.sectionValue {
   font-weight: normal;
   font-size: 0.9em;
   opacity: 0.8;

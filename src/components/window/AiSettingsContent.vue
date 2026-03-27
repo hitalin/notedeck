@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { markdown } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useClickOutside } from '@/composables/useClickOutside'
@@ -191,6 +191,12 @@ function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
     result[key] = { ...base[key], ...(partial[key] ?? {}) }
   }
   return result
+}
+
+const expandedSections = reactive<Record<string, boolean>>({})
+
+function toggleSection(key: string) {
+  expandedSections[key] = !expandedSections[key]
 }
 
 const config = ref<AiConfig>(loadFromLocalStorage())
@@ -388,85 +394,98 @@ function handleReset() {
     <div v-show="tab === 'api'" :class="$style.panel">
       <!-- Provider -->
       <div :class="$style.section">
-        <div :class="$style.sectionLabel">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('provider')">
           <i class="ti ti-cloud" />
           プロバイダー
-        </div>
-        <div ref="providerDropdownRef" :class="$style.dropdown">
-          <button
-            class="_button"
-            :class="$style.dropdownTrigger"
-            @click="showProviderDropdown = !showProviderDropdown"
-          >
-            <i :class="'ti ' + currentProvider.icon" />
-            <span>{{ currentProvider.label }}</span>
-            <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
-          </button>
-          <div v-if="showProviderDropdown" :class="$style.dropdownPanel">
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.provider }]" />
+        </button>
+        <template v-if="expandedSections.provider">
+          <div ref="providerDropdownRef" :class="$style.dropdown">
             <button
-              v-for="opt in PROVIDERS"
-              :key="opt.value"
               class="_button"
-              :class="[$style.dropdownItem, { [$style.selected]: config.provider === opt.value }]"
-              @click="selectProvider(opt.value)"
+              :class="$style.dropdownTrigger"
+              @click="showProviderDropdown = !showProviderDropdown"
             >
-              <i :class="'ti ' + opt.icon" />
-              <span>{{ opt.label }}</span>
-              <i v-if="config.provider === opt.value" class="ti ti-check" :class="$style.checkIcon" />
+              <i :class="'ti ' + currentProvider.icon" />
+              <span>{{ currentProvider.label }}</span>
+              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
             </button>
+            <div v-if="showProviderDropdown" :class="$style.dropdownPanel">
+              <button
+                v-for="opt in PROVIDERS"
+                :key="opt.value"
+                class="_button"
+                :class="[$style.dropdownItem, { [$style.selected]: config.provider === opt.value }]"
+                @click="selectProvider(opt.value)"
+              >
+                <i :class="'ti ' + opt.icon" />
+                <span>{{ opt.label }}</span>
+                <i v-if="config.provider === opt.value" class="ti ti-check" :class="$style.checkIcon" />
+              </button>
+            </div>
           </div>
-        </div>
+        </template>
       </div>
 
       <!-- Provider-specific fields (data-driven) -->
       <div v-for="field in currentFields" :key="field.key" :class="$style.section">
-        <div :class="$style.sectionLabel">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection(field.key)">
           <i :class="'ti ' + field.icon" />
           {{ field.label }}
-        </div>
-        <div v-if="field.secret" :class="$style.inputRow">
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections[field.key] }]" />
+        </button>
+        <template v-if="expandedSections[field.key]">
+          <div v-if="field.secret" :class="$style.inputRow">
+            <input
+              v-model="currentSettings[field.key]"
+              :class="$style.input"
+              :type="showApiKey ? 'text' : 'password'"
+              :placeholder="field.placeholder"
+            />
+            <button
+              class="_button"
+              :class="$style.visibilityBtn"
+              @click="showApiKey = !showApiKey"
+            >
+              <i :class="showApiKey ? 'ti ti-eye-off' : 'ti ti-eye'" />
+            </button>
+          </div>
           <input
+            v-else
             v-model="currentSettings[field.key]"
             :class="$style.input"
-            :type="showApiKey ? 'text' : 'password'"
+            type="text"
             :placeholder="field.placeholder"
           />
-          <button
-            class="_button"
-            :class="$style.visibilityBtn"
-            @click="showApiKey = !showApiKey"
-          >
-            <i :class="showApiKey ? 'ti ti-eye-off' : 'ti ti-eye'" />
-          </button>
-        </div>
-        <input
-          v-else
-          v-model="currentSettings[field.key]"
-          :class="$style.input"
-          type="text"
-          :placeholder="field.placeholder"
-        />
+        </template>
       </div>
 
       <!-- Connection Test -->
       <div :class="$style.section">
-        <button
-          class="_button"
-          :class="[$style.testBtn, { [$style.testing]: testStatus === 'testing' }]"
-          :disabled="testStatus === 'testing'"
-          @click="testConnection"
-        >
-          <i :class="testStatus === 'testing' ? 'ti ti-loader-2' : 'ti ti-plug-connected'" />
-          {{ testStatus === 'testing' ? '接続テスト中...' : '接続テスト' }}
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('test')">
+          <i class="ti ti-plug-connected" />
+          接続テスト
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.test }]" />
         </button>
-        <div v-if="testStatus === 'ok'" :class="$style.codeSuccess">
-          <i class="ti ti-check" />
-          {{ testMessage }}
-        </div>
-        <div v-if="testStatus === 'error'" :class="$style.errorMessage">
-          <i class="ti ti-alert-triangle" />
-          {{ testMessage }}
-        </div>
+        <template v-if="expandedSections.test">
+          <button
+            class="_button"
+            :class="[$style.testBtn, { [$style.testing]: testStatus === 'testing' }]"
+            :disabled="testStatus === 'testing'"
+            @click="testConnection"
+          >
+            <i :class="testStatus === 'testing' ? 'ti ti-loader-2' : 'ti ti-plug-connected'" />
+            {{ testStatus === 'testing' ? '接続テスト中...' : '接続テスト' }}
+          </button>
+          <div v-if="testStatus === 'ok'" :class="$style.codeSuccess">
+            <i class="ti ti-check" />
+            {{ testMessage }}
+          </div>
+          <div v-if="testStatus === 'error'" :class="$style.errorMessage">
+            <i class="ti ti-alert-triangle" />
+            {{ testMessage }}
+          </div>
+        </template>
       </div>
     </div>
 
@@ -565,9 +584,27 @@ function handleReset() {
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
   font-size: 0.8em;
   font-weight: bold;
   opacity: 0.7;
+  cursor: pointer;
+  transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.chevron {
+  margin-left: auto;
+  font-size: 0.9em;
+  transition: transform var(--nd-duration-base);
+  transform: rotate(-90deg);
+}
+
+.chevronOpen {
+  transform: rotate(0deg);
 }
 
 .input {

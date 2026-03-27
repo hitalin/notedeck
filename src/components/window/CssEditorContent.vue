@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { css } from '@codemirror/lang-css'
 import { type Diagnostic, linter } from '@codemirror/lint'
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useClickOutside } from '@/composables/useClickOutside'
@@ -66,6 +66,12 @@ function parsePresetsFromCss(cssStr: string) {
   presets.value.fontSize = sizeMatch ? Number(sizeMatch[1]) : 0
 }
 parsePresetsFromCss(cssCode.value)
+
+const expandedSections = reactive<Record<string, boolean>>({})
+
+function toggleSection(key: string) {
+  expandedSections[key] = !expandedSections[key]
+}
 
 interface FontOption {
   value: string
@@ -341,96 +347,105 @@ watch(tab, (t) => {
     <div v-show="tab === 'presets'" :class="$style.presetsPanel">
       <!-- Font -->
       <div :class="$style.section">
-        <div :class="$style.sectionLabel">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('font')">
           <i class="ti ti-typography" />
           フォント
-        </div>
-        <div ref="dropdownRef" :class="$style.dropdown">
-          <button
-            class="_button"
-            :class="$style.dropdownTrigger"
-            @click="showFontDropdown = !showFontDropdown"
-          >
-            <span
-              v-if="presets.customFont"
-              :class="$style.fontPreviewLabel"
-              :style="{ fontFamily: `'${presets.customFont}', sans-serif` }"
-            >{{ selectedFontLabel }}</span>
-            <span v-else>{{ selectedFontLabel }}</span>
-            <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
-          </button>
-          <div v-if="showFontDropdown" :class="$style.dropdownPanel">
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.font }]" />
+        </button>
+        <template v-if="expandedSections.font">
+          <div ref="dropdownRef" :class="$style.dropdown">
             <button
-              v-for="opt in FONT_OPTIONS"
-              :key="opt.value"
               class="_button"
-              :class="[$style.dropdownItem, { [$style.selected]: presets.customFont === opt.value }]"
-              @click="selectFont(opt.value)"
+              :class="$style.dropdownTrigger"
+              @click="showFontDropdown = !showFontDropdown"
             >
               <span
-                v-if="opt.value"
+                v-if="presets.customFont"
                 :class="$style.fontPreviewLabel"
-                :style="{ fontFamily: `'${opt.value}', sans-serif` }"
-              >{{ opt.label }}</span>
-              <span v-else>{{ opt.label }}</span>
-              <i v-if="presets.customFont === opt.value" class="ti ti-check" :class="$style.checkIcon" />
+                :style="{ fontFamily: `'${presets.customFont}', sans-serif` }"
+              >{{ selectedFontLabel }}</span>
+              <span v-else>{{ selectedFontLabel }}</span>
+              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
             </button>
+            <div v-if="showFontDropdown" :class="$style.dropdownPanel">
+              <button
+                v-for="opt in FONT_OPTIONS"
+                :key="opt.value"
+                class="_button"
+                :class="[$style.dropdownItem, { [$style.selected]: presets.customFont === opt.value }]"
+                @click="selectFont(opt.value)"
+              >
+                <span
+                  v-if="opt.value"
+                  :class="$style.fontPreviewLabel"
+                  :style="{ fontFamily: `'${opt.value}', sans-serif` }"
+                >{{ opt.label }}</span>
+                <span v-else>{{ opt.label }}</span>
+                <i v-if="presets.customFont === opt.value" class="ti ti-check" :class="$style.checkIcon" />
+              </button>
+            </div>
           </div>
-        </div>
-        <div v-if="presets.customFont" :class="$style.preview" :style="{ fontFamily: `'${presets.customFont}', sans-serif` }">
-          あいうえお ABCabc 123
-        </div>
+          <div v-if="presets.customFont" :class="$style.preview" :style="{ fontFamily: `'${presets.customFont}', sans-serif` }">
+            あいうえお ABCabc 123
+          </div>
+        </template>
       </div>
 
       <!-- Font Size -->
       <div :class="$style.section">
-        <div :class="$style.sectionLabel">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('fontSize')">
           <i class="ti ti-text-resize" />
           フォントサイズ
           <span :class="$style.sectionValue">{{ fontSizeLabel }}</span>
-        </div>
-        <div :class="$style.sliderRow">
-          <span :class="$style.sliderLabel">小</span>
-          <input
-            v-model.number="presets.fontSize"
-            type="range"
-            :min="FONT_SIZE_MIN"
-            :max="FONT_SIZE_MAX"
-            step="1"
-            :class="$style.slider"
-          />
-          <span :class="$style.sliderLabel">大</span>
-        </div>
-        <button
-          v-if="presets.fontSize !== 0"
-          class="_button"
-          :class="$style.resetBtn"
-          @click="presets.fontSize = 0"
-        >
-          リセット
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.fontSize }]" />
         </button>
+        <template v-if="expandedSections.fontSize">
+          <div :class="$style.sliderRow">
+            <span :class="$style.sliderLabel">小</span>
+            <input
+              v-model.number="presets.fontSize"
+              type="range"
+              :min="FONT_SIZE_MIN"
+              :max="FONT_SIZE_MAX"
+              step="1"
+              :class="$style.slider"
+            />
+            <span :class="$style.sliderLabel">大</span>
+          </div>
+          <button
+            v-if="presets.fontSize !== 0"
+            class="_button"
+            :class="$style.resetBtn"
+            @click="presets.fontSize = 0"
+          >
+            リセット
+          </button>
+        </template>
       </div>
 
       <!-- Freeform CSS -->
       <div :class="$style.section">
-        <div :class="$style.sectionLabel">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('css')">
           <i class="ti ti-pencil" />
           追加CSS
-        </div>
-        <CodeEditor
-          v-model="userFreeformCss"
-          :language="cssLang"
-          :linter="cssLinter"
-          :class="[$style.editorWrap, { [$style.hasError]: cssError }]"
-          max-height="300px"
-        />
-        <div v-if="cssError" :class="$style.errorMessage">
-          <i class="ti ti-alert-triangle" />
-          {{ cssError }}
-        </div>
-        <div v-if="cssError" :class="$style.errorHint">
-          CSSにエラーがあるため適用されません
-        </div>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.css }]" />
+        </button>
+        <template v-if="expandedSections.css">
+          <CodeEditor
+            v-model="userFreeformCss"
+            :language="cssLang"
+            :linter="cssLinter"
+            :class="[$style.editorWrap, { [$style.hasError]: cssError }]"
+            max-height="300px"
+          />
+          <div v-if="cssError" :class="$style.errorMessage">
+            <i class="ti ti-alert-triangle" />
+            {{ cssError }}
+          </div>
+          <div v-if="cssError" :class="$style.errorHint">
+            CSSにエラーがあるため適用されません
+          </div>
+        </template>
       </div>
     </div>
 
@@ -533,9 +548,27 @@ watch(tab, (t) => {
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
   font-size: 0.8em;
   font-weight: bold;
   opacity: 0.7;
+  cursor: pointer;
+  transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.chevron {
+  margin-left: auto;
+  font-size: 0.9em;
+  transition: transform var(--nd-duration-base);
+  transform: rotate(-90deg);
+}
+
+.chevronOpen {
+  transform: rotate(0deg);
 }
 
 .sectionValue {
