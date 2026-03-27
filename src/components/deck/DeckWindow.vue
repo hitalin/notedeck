@@ -274,6 +274,7 @@ function onWindowMouseDown() {
   width: 100% !important;
   height: auto !important;
   max-height: none !important;
+  translate: none !important;
   border-radius: 0;
   z-index: calc(var(--nd-z-navbar) + 1) !important;
 
