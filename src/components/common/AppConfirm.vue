@@ -105,10 +105,10 @@ watch(visible, (v) => {
 
 // Vapor transition classes
 .enter {
-  animation: backdropIn 0.15s ease;
+  animation: backdropIn 0.2s ease-out;
 }
 .leave {
-  animation: backdropOut 0.15s ease forwards;
+  animation: backdropOut 0.15s ease-in forwards;
 }
 @keyframes backdropIn {
   from { opacity: 0; }
@@ -118,15 +118,21 @@ watch(visible, (v) => {
 }
 
 .contentEnter {
-  animation: popupIn 0.3s var(--nd-ease-pop);
+  animation: popupIn 0.3s var(--nd-ease-spring);
 }
 .contentLeave {
-  animation: popupOut 0.15s ease forwards;
+  animation: popupOut 0.2s var(--nd-ease-spring) forwards;
 }
 @keyframes popupIn {
   from { opacity: 0; transform: scale(0.95); }
 }
 @keyframes popupOut {
   to { opacity: 0; transform: scale(0.95); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contentEnter, .contentLeave, .enter, .leave {
+    animation: none;
+  }
 }
 </style>

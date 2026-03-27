@@ -1102,7 +1102,7 @@ function closeMentionPopup() {
   }
 
   &:active {
-    animation: reaction-bounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: reaction-bounce 0.35s var(--nd-ease-spring);
   }
 
   &.reacted,
@@ -1335,11 +1335,11 @@ function closeMentionPopup() {
 }
 
 .reactionEnter {
-  animation: reaction-enter 0.2s cubic-bezier(0, 0.5, 0.5, 1) both;
+  animation: reaction-enter 0.25s var(--nd-ease-spring) both;
 }
 
 .reactionLeave {
-  animation: reaction-leave 0.2s cubic-bezier(0, 0.5, 0.5, 1) both;
+  animation: reaction-leave 0.2s var(--nd-ease-spring) both;
   position: absolute;
 }
 
@@ -1354,6 +1354,12 @@ function closeMentionPopup() {
   to {
     opacity: 0;
     transform: scale(0.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reactionEnter, .reactionLeave {
+    animation: none;
   }
 }
 </style>

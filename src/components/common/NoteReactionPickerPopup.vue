@@ -123,26 +123,35 @@ defineExpose({ open })
 }
 
 /* Desktop popup backdrop */
-.popupEnter { animation: popupBdIn 0.3s ease; }
-.popupLeave { animation: popupBdOut 0.3s ease forwards; }
+.popupEnter { animation: popupBdIn 0.25s ease-out; }
+.popupLeave { animation: popupBdOut 0.2s ease-in forwards; }
 @keyframes popupBdIn { from { opacity: 0; } }
 @keyframes popupBdOut { to { opacity: 0; } }
 
 /* Desktop popup content */
-.popupContentEnter { animation: popupIn 0.3s ease; }
-.popupContentLeave { animation: popupOut 0.3s ease forwards; }
+.popupContentEnter { animation: popupIn 0.3s var(--nd-ease-spring); }
+.popupContentLeave { animation: popupOut 0.2s var(--nd-ease-spring) forwards; }
 @keyframes popupIn { from { opacity: 0; transform: translateX(-100%) scale(0.95); } }
 @keyframes popupOut { to { opacity: 0; transform: translateX(-100%) scale(0.95); } }
 
 /* Mobile sheet backdrop */
-.sheetEnter { animation: sheetBdIn 0.4s ease; }
-.sheetLeave { animation: sheetBdOut 0.3s ease forwards; }
+.sheetEnter { animation: sheetBdIn 0.3s ease-out; }
+.sheetLeave { animation: sheetBdOut 0.2s ease-in forwards; }
 @keyframes sheetBdIn { from { opacity: 0; } }
 @keyframes sheetBdOut { to { opacity: 0; } }
 
 /* Mobile sheet content */
-.sheetContentEnter { animation: sheetIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-.sheetContentLeave { animation: sheetOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.sheetContentEnter { animation: sheetIn 0.4s var(--nd-ease-spring); }
+.sheetContentLeave { animation: sheetOut 0.25s var(--nd-ease-spring) forwards; }
 @keyframes sheetIn { from { transform: translateY(100%); } }
 @keyframes sheetOut { to { transform: translateY(100%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .popupContentEnter, .popupContentLeave,
+  .sheetContentEnter, .sheetContentLeave,
+  .popupEnter, .popupLeave,
+  .sheetEnter, .sheetLeave {
+    animation: none;
+  }
+}
 </style>

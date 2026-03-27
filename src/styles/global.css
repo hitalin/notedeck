@@ -221,6 +221,43 @@ input {
   user-select: text;
 }
 
+/* Input focus animation — Apple-style glow ring */
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="url"],
+input[type="password"],
+input[type="number"],
+textarea {
+  transition:
+    border-color var(--nd-duration-fast) var(--nd-ease-spring),
+    box-shadow var(--nd-duration-fast) var(--nd-ease-spring);
+}
+
+input[type="text"]:focus,
+input[type="search"]:focus,
+input[type="email"]:focus,
+input[type="url"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--nd-accent);
+  box-shadow: 0 0 0 3px var(--nd-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  input[type="text"],
+  input[type="search"],
+  input[type="email"],
+  input[type="url"],
+  input[type="password"],
+  input[type="number"],
+  textarea {
+    transition: none;
+  }
+}
+
 @media (max-width: 500px) {
   input[type="text"],
   input[type="search"],
@@ -418,8 +455,9 @@ html[data-platform="android"] select {
 }
 
 ._button:focus-visible {
-  outline: 2px solid var(--nd-focus);
-  outline-offset: -2px;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--nd-focus);
+  transition: box-shadow var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._buttonPrimary {
@@ -447,6 +485,12 @@ html[data-platform="android"] select {
 ._buttonPrimary:active:not(:disabled) {
   background: hsl(from var(--nd-accent) h s calc(l - 5));
   transform: scale(var(--nd-active-scale));
+}
+
+._buttonPrimary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--nd-focus);
+  transition: box-shadow var(--nd-duration-fast) var(--nd-ease-spring);
 }
 
 ._buttonPrimary:disabled {
@@ -499,6 +543,10 @@ html[data-platform="android"] select {
   border-radius: var(--nd-radius-full);
 }
 
+::-webkit-scrollbar-thumb:hover {
+  background: var(--nd-scrollbarHandleHover);
+}
+
 /* ---- Toggle switch (shared) ---- */
 
 .nd-toggle-switch {
@@ -509,7 +557,7 @@ html[data-platform="android"] select {
   background: var(--nd-buttonBg, rgba(255, 255, 255, 0.1));
   border: none;
   cursor: pointer;
-  transition: background var(--nd-duration-slow);
+  transition: background var(--nd-duration-base);
   padding: 0;
   flex-shrink: 0;
 }
@@ -526,8 +574,15 @@ html[data-platform="android"] select {
   height: 18px;
   border-radius: 50%;
   background: #fff;
-  transition: transform var(--nd-duration-slow);
+  transition: transform var(--nd-duration-base) var(--nd-ease-spring);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nd-toggle-switch,
+  .nd-toggle-switch-knob {
+    transition: none;
+  }
 }
 
 .nd-toggle-switch.on .nd-toggle-switch-knob {
@@ -566,7 +621,13 @@ html[data-platform="android"] select {
 }
 
 .nd-tab-snap-back > * {
-  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
+  transition: transform 0.3s var(--nd-ease-spring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nd-tab-snap-back > * {
+    transition: transform 0.15s ease;
+  }
 }
 
 /* ---- Spin animation (shared by all loading spinners) ---- */

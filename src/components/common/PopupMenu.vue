@@ -23,8 +23,8 @@ const menuTheme = ref<Record<string, string>>({})
 const menuRef = ref<HTMLElement | null>(null)
 
 const { visible, entering, leaving } = useVaporTransition(showMenu, {
-  enterDuration: 200,
-  leaveDuration: 150,
+  enterDuration: 250,
+  leaveDuration: 180,
 })
 
 const { activate: activateKeyboard, deactivate: deactivateKeyboard } =
@@ -110,10 +110,10 @@ defineExpose({ open, close, activateKeyboard })
 
 // Vapor transition classes
 .enter {
-  animation: backdropIn 0.15s ease;
+  animation: backdropIn 0.2s ease-out;
 }
 .leave {
-  animation: backdropOut 0.15s ease forwards;
+  animation: backdropOut 0.15s ease-in forwards;
 }
 @keyframes backdropIn {
   from { opacity: 0; }
@@ -123,15 +123,21 @@ defineExpose({ open, close, activateKeyboard })
 }
 
 .contentEnter {
-  animation: popupIn 0.3s var(--nd-ease-pop);
+  animation: popupIn 0.25s var(--nd-ease-spring);
 }
 .contentLeave {
-  animation: popupOut 0.15s ease forwards;
+  animation: popupOut 0.18s var(--nd-ease-spring) forwards;
 }
 @keyframes popupIn {
   from { opacity: 0; transform: scale(0.95); }
 }
 @keyframes popupOut {
   to { opacity: 0; transform: scale(0.95); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contentEnter, .contentLeave, .enter, .leave {
+    animation: none;
+  }
 }
 </style>

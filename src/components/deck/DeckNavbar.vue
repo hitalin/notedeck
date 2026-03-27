@@ -534,7 +534,7 @@ defineExpose({
   font-size: 0.95em;
   white-space: nowrap;
   text-decoration: none;
-  transition: background var(--nd-duration-base), color var(--nd-duration-base);
+  transition: background var(--nd-duration-base), color var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
 
   &:hover {
     background: var(--nd-buttonHoverBg);
@@ -621,11 +621,15 @@ defineExpose({
   border-radius: var(--nd-radius-sm);
   overflow: visible;
   opacity: 0.6;
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
 
   &:hover {
     opacity: 1;
     background: var(--nd-buttonHoverBg);
+  }
+
+  &:active {
+    transform: scale(0.95);
   }
 }
 
@@ -710,7 +714,7 @@ defineExpose({
   font-weight: bold;
   font-size: 0.9em;
   white-space: nowrap;
-  transition: transform var(--nd-duration-base), box-shadow var(--nd-duration-base);
+  transition: transform var(--nd-duration-fast) var(--nd-ease-spring), box-shadow var(--nd-duration-base);
 
   &:hover {
     transform: scale(1.03);
@@ -718,7 +722,7 @@ defineExpose({
   }
 
   &:active {
-    transform: scale(0.97);
+    transform: scale(var(--nd-active-scale));
   }
 
   :global(.ti) {
