@@ -307,6 +307,11 @@ export async function detectAvailableTimelines(
 /** Invalidate the cached availability for an account (e.g., after mode toggle). */
 export function clearAvailableTlCache(accountId: string) {
   availableTlCache.delete(accountId)
+  try {
+    localStorage.removeItem(`nd:policies:${accountId}`)
+  } catch {
+    // localStorage unavailable — ignore
+  }
 }
 
 /**
