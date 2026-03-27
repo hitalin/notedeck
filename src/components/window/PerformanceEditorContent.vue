@@ -154,6 +154,18 @@ function handleReset() {
           <i class="ti ti-template" />
           プリセット
         </div>
+
+        <div :class="$style.estimateBar">
+          <div :class="$style.estimateItem">
+            <i class="ti ti-cpu" />
+            メモリ: <strong>約 {{ perfStore.estimatedMemoryMB }} MB</strong>
+          </div>
+          <div :class="$style.estimateSep" />
+          <div :class="$style.estimateItem">
+            <i class="ti ti-network" />
+            通信量: <strong>約 {{ perfStore.estimatedNetworkMBPerHour }} MB/時間</strong>
+          </div>
+        </div>
         <div :class="$style.presetRow">
           <button
             v-for="(preset, key) in PRESETS"
@@ -315,6 +327,35 @@ function handleReset() {
 }
 
 // --- Presets ---
+
+.estimateBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--nd-radius-sm);
+  background: color-mix(in srgb, var(--nd-accent) 8%, var(--nd-bg));
+  color: var(--nd-fg);
+  font-size: 0.72em;
+
+  strong {
+    color: var(--nd-accent);
+  }
+}
+
+.estimateItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.estimateSep {
+  width: 1px;
+  height: 12px;
+  background: var(--nd-divider);
+  flex-shrink: 0;
+}
 
 .presetRow {
   display: flex;

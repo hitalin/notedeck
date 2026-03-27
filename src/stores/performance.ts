@@ -321,6 +321,47 @@ export type PresetKey = keyof typeof PRESETS
 
 const DEFAULTS: PerformanceConfig = defaultsJson as PerformanceConfig
 
+const FIXED_OVERHEAD_MB = 6 // tokio runtime + HTTP pools + Rust structures
+
+/** Estimate memory usage (MB) for a given config. */
+export function estimateMemoryMB(c: PerformanceConfig): number {
+  const imageCacheMB = c.memoryCacheMaxMB
+  const noteStoreMB = (c.noteStoreMax * 3) / 1024 // ~3KB per note
+  const emojiMB = (c.emojiCachePerHost * c.emojiListHosts * 0.12) / 1024
+  const notificationMB = (c.maxNotifications * 2) / 1024
+  const parseCacheMB =
+    ((c.mfmCacheMax + c.imageProxyCacheMax + c.ogpCacheMax) * 0.5) / 1024
+  const rustOgpMB = (c.rustOgpCacheMax * 5) / 1024
+  return Math.round(
+    FIXED_OVERHEAD_MB +
+      imageCacheMB +
+      noteStoreMB +
+      emojiMB +
+      notificationMB +
+      parseCacheMB +
+      rustOgpMB,
+  )
+}
+
+/**
+ * Estimate hourly network usage (MB/hour) for moderate use.
+ *
+ * Model assumptions (3 active columns, moderate scrolling):
+ * - ~150 unique notes viewed per hour (base)
+ * - Prefetch extends effective load range
+ * - ~50KB per note (avatar + emoji + occasional thumbnail, after proxy resize)
+ * - noteListMax scales column buffer size
+ */
+export function estimateNetworkMBPerHour(c: PerformanceConfig): number {
+  const BASE_NOTES = 150
+  const AVG_KB_PER_NOTE = 50
+  const prefetchFactor = 1 + (c.prefetchAhead + c.prefetchBehind) / 30
+  const listFactor = c.noteListMax / 200
+  return Math.round(
+    (BASE_NOTES * prefetchFactor * listFactor * AVG_KB_PER_NOTE) / 1024,
+  )
+}
+
 export const usePerformanceStore = defineStore('performance', () => {
   const overrides = ref<Partial<PerformanceConfig>>(
     getStorageJson<Partial<PerformanceConfig>>(STORAGE_KEYS.performance, {}),
@@ -481,10 +522,19 @@ export const usePerformanceStore = defineStore('performance', () => {
     return key in overrides.value
   }
 
+  /** Estimated memory usage (MB) for current config. */
+  const estimatedMemoryMB = computed(() => estimateMemoryMB(config.value))
+  /** Estimated network usage (MB/hour) for current config. */
+  const estimatedNetworkMBPerHour = computed(() =>
+    estimateNetworkMBPerHour(config.value),
+  )
+
   return {
     overrides,
     config,
     activePreset,
+    estimatedMemoryMB,
+    estimatedNetworkMBPerHour,
     init,
     get,
     getDefault,
