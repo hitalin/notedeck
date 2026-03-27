@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .env*
+!.envrc
 
 # Editor directories and files
 .vscode/*
@@ -35,6 +36,7 @@ src-tauri/gen/
 
 # Nix
 result
+.direnv/
 
 # Keystore
 *.keystore

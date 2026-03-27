@@ -22,12 +22,24 @@ Multi-server Misskey deck client with fork support. 設計思想・方針は [DE
 
 ## Prerequisites
 
+### 推奨: Nix flake（ワンコマンドセットアップ）
+
+[Nix](https://nixos.org/) がインストール済みなら、全ての開発依存が自動で揃います。
+
+```bash
+nix develop        # Node.js, pnpm, Rust 等が揃ったシェルに入る
+pnpm install       # パッケージインストール
+```
+
+[direnv](https://direnv.net/) を使うと `cd` するだけで自動的に環境が有効になります（`.envrc` 同梱）。
+
+### 手動セットアップ
+
 | ツール | インストール |
 |--------|-------------|
 | [Node.js](https://nodejs.org/) (LTS) | 公式サイト or `nvm install --lts` |
 | [pnpm](https://pnpm.io/) | `corepack enable && corepack prepare pnpm@latest --activate` |
 | [Rust](https://www.rust-lang.org/) (stable) | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
-| [Task](https://taskfile.dev/) | `sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin` |
 
 **Linux のみ**: Tauri のビルドに追加パッケージが必要です。
 
@@ -43,25 +55,25 @@ sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchel
 pnpm install
 
 # Start dev server (Tauri desktop)
-task dev:tauri
+pnpm tauri:dev
 
 # Start dev server (browser, for development only)
-task dev
+pnpm dev
 ```
 
-## Available Tasks
+## Available Scripts
 
 ```bash
-task dev          # Vite dev server
-task dev:tauri    # Tauri dev
-task build        # Production build
-task build:tauri  # Tauri native build
-task test         # Run unit tests
-task test:watch   # Run tests in watch mode
-task lint         # Lint & format check
-task lint:fix     # Lint & format fix
-task typecheck    # TypeScript type check
-task clean        # Remove build artifacts
+pnpm dev          # Vite dev server
+pnpm tauri:dev    # Tauri dev
+pnpm build        # Production build
+pnpm tauri:build  # Tauri native build
+pnpm test         # Run unit tests
+pnpm test:watch   # Run tests in watch mode
+pnpm lint         # Lint & format check
+pnpm lint:fix     # Lint & format fix
+pnpm typecheck    # TypeScript type check
+pnpm clean        # Remove build artifacts
 ```
 
 ### テスト構成

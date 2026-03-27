@@ -35,90 +35,14 @@
         ];
       in
       {
-        packages.default = pkgs.stdenv.mkDerivation (finalAttrs: {
-          pname = "notedeck";
-          version = "0.1.3";
-          src = ./.;
-
-          cargoDeps = pkgs.rustPlatform.importCargoLock {
-            lockFile = ./src-tauri/Cargo.lock;
-            outputHashes = {
-              "notecli-0.1.0" = "sha256-IyRDu2jsAtWf8CvjpDvsvNMUgSvnFB9Zetp522OVBFI=";
-            };
-          };
-
-          pnpmDeps = pkgs.fetchPnpmDeps {
-            inherit (finalAttrs) pname version src;
-            pnpm = pkgs.pnpm_10;
-            fetcherVersion = 3;
-            hash = "sha256-br4gb/EQMv2w66v5hirZj8GUGuYPdKJXNEel9HNmfVc=";
-          };
-
-          nativeBuildInputs = with pkgs; [
-            cargo
-            rustc
-            rustPlatform.cargoSetupHook
-            pnpm_10
-            pnpmConfigHook
-            nodejs
-            pkg-config
-            wrapGAppsHook3
-          ];
-
-          buildInputs = desktopDeps;
-
-          cargoRoot = "src-tauri";
-
-          buildPhase = ''
-            runHook preBuild
-            pnpm build
-            cd src-tauri
-            cargo build --release
-            cd ..
-            runHook postBuild
-          '';
-
-          installPhase = ''
-            runHook preInstall
-
-            install -Dm755 src-tauri/target/release/notedeck $out/bin/notedeck
-
-            install -Dm644 src-tauri/icons/128x128.png \
-              $out/share/icons/hicolor/128x128/apps/com.notedeck.desktop.png
-            install -Dm644 src-tauri/icons/32x32.png \
-              $out/share/icons/hicolor/32x32/apps/com.notedeck.desktop.png
-            install -Dm644 src-tauri/icons/icon.svg \
-              $out/share/icons/hicolor/scalable/apps/com.notedeck.desktop.svg
-
-            install -Dm644 /dev/stdin $out/share/applications/com.notedeck.desktop <<EOF
-            [Desktop Entry]
-            Name=NoteDeck
-            Exec=notedeck
-            Icon=com.notedeck.desktop
-            Type=Application
-            Categories=Network;InstantMessaging;
-            Comment=Misskey deck client
-            EOF
-
-            runHook postInstall
-          '';
-
-          meta = with pkgs.lib; {
-            description = "Misskey deck client";
-            homepage = "https://github.com/hitalin/notedeck";
-            license = licenses.agpl3Plus;
-            mainProgram = "notedeck";
-            platforms = platforms.linux;
-          };
-        });
-
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            # Java
-            jdk17
-
             # Node.js
             nodejs
+            pnpm_10
+
+            # Java (Android)
+            jdk17
 
             # Rust
             rustup
