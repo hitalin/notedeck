@@ -333,24 +333,14 @@ function baseType(type: string): string {
   return type.replace(':grouped', '')
 }
 
-function groupedUsersLabel(notif: NormalizedNotification): string {
+function groupedUsers(notif: NormalizedNotification): NormalizedUser[] {
   if (notif.type === 'reaction:grouped' && notif.reactions) {
-    const users = notif.reactions.map((r) => r.user)
-    return formatGroupedUsers(users)
+    return notif.reactions.map((r) => r.user)
   }
   if (notif.type === 'renote:grouped' && notif.users) {
-    return formatGroupedUsers(notif.users)
+    return notif.users
   }
-  return ''
-}
-
-function formatGroupedUsers(
-  users: Array<{ name?: string | null; username: string }>,
-): string {
-  if (users.length === 0) return ''
-  const names = users.slice(0, 2).map((u) => u.name || u.username)
-  if (users.length <= 2) return names.join(', ')
-  return `${names.join(', ')} 他${users.length - 2}人`
+  return []
 }
 
 function notificationIcon(type: string): string {
@@ -839,7 +829,14 @@ onUnmounted(() => {
                 <div :class="$style.notifTail">
                   <div :class="$style.notifHeader">
                     <div :class="$style.notifMeta">
-                      <span :class="$style.notifUserName">{{ groupedUsersLabel(notif) }}</span>
+                      <span :class="$style.notifUserName">
+                        <template v-for="(u, i) in groupedUsers(notif).slice(0, 2)" :key="u.id">
+                          <template v-if="i > 0">, </template>
+                          <MkMfm v-if="u.name" :text="u.name" :emojis="u.emojis" :server-host="notif._serverHost" />
+                          <template v-else>{{ u.username }}</template>
+                        </template>
+                        <template v-if="groupedUsers(notif).length > 2"> 他{{ groupedUsers(notif).length - 2 }}人</template>
+                      </span>
                       <span :class="$style.notifLabel">{{ notificationLabel(notif.type) }}</span>
                     </div>
                     <span :class="$style.notifTime">{{ formatTime(notif.createdAt) }}</span>
