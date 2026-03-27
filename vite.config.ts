@@ -184,6 +184,7 @@ export default defineConfig({
     },
   },
   build: {
+    cssMinify: 'lightningcss',
     target: 'esnext',
     sourcemap: false,
     modulePreload: false,

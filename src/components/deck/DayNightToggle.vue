@@ -244,11 +244,11 @@ function onSyncChange(e: Event) {
   height: 18px;
   background: #fff;
   border-radius: 50%;
-  transition: transform var(--nd-duration-slow);
+  transition: translate var(--nd-duration-slow);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 
   .active & {
-    transform: translateX(18px);
+    translate: 18px 0;
   }
 }
 

@@ -539,7 +539,7 @@ onUnmounted(() => {
 .lightboxNav {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
+  translate: 0 -50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -562,7 +562,7 @@ onUnmounted(() => {
   position: absolute;
   bottom: 20px;
   left: 50%;
-  transform: translateX(-50%);
+  translate: -50% 0;
   display: flex;
   gap: 8px;
   z-index: 1;

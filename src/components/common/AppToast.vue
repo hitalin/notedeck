@@ -42,7 +42,7 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
   position: fixed;
   top: 15%;
   left: 50%;
-  transform: translateX(-50%);
+  translate: -50% 0;
   z-index: var(--nd-z-popup);
   display: flex;
   flex-direction: column;

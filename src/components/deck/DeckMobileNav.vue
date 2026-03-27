@@ -145,7 +145,7 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
     position: absolute;
     bottom: 0;
     left: 50%;
-    transform: translateX(-50%);
+    translate: -50% 0;
     width: 24px;
     height: 3px;
     border-radius: 3px 3px 0 0;

@@ -764,7 +764,7 @@ defineExpose({
   position: absolute;
   right: 0;
   top: 50%;
-  transform: translateY(-50%) translateX(50%);
+  translate: 50% -50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -904,8 +904,8 @@ defineExpose({
   flex-basis: 250px !important;
   padding-top: max(var(--nd-safe-area-top, env(safe-area-inset-top)), 12px);
   padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
-  transform: translateX(-100%);
-  transition: transform 0.15s ease;
+  translate: -100% 0;
+  transition: translate 0.15s ease;
   box-shadow: none;
   background: var(--nd-navBg);
   backdrop-filter: none;
@@ -917,7 +917,7 @@ defineExpose({
 }
 
 .drawerOpen {
-  transform: translateX(0);
+  translate: 0 0;
   box-shadow: 4px 0 16px rgb(0 0 0 / 0.3);
 }
 </style>

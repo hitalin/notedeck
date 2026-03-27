@@ -103,7 +103,7 @@ defineExpose({ open })
 
 .reactionPickerPopup {
   position: fixed;
-  transform: translateX(-100%);
+  translate: -100% 0;
   z-index: calc(var(--nd-z-popup) + 1);
   background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 85%, transparent);
   backdrop-filter: var(--nd-vibrancy);
@@ -143,7 +143,7 @@ defineExpose({ open })
 /* Mobile sheet content — iOS-style spring slide up */
 .sheetContentEnter { animation: sheetIn 0.25s var(--nd-ease-spring); }
 .sheetContentLeave { animation: sheetOut 0.2s var(--nd-ease-decel) forwards; }
-@keyframes sheetIn { from { transform: translateY(100%); } }
-@keyframes sheetOut { to { transform: translateY(100%); } }
+@keyframes sheetIn { from { translate: 0 100%; } }
+@keyframes sheetOut { to { translate: 0 100%; } }
 
 </style>
