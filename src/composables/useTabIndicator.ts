@@ -5,7 +5,7 @@ import { frameEngine } from '@/engine/frameEngine'
 /**
  * Manages a sliding tab indicator that tracks the active tab element.
  *
- * Gaming CSS v2: Uses Frame Engine's read/write phase separation
+ * Uses Frame Engine's read/write phase separation
  * to batch DOM reads (offsetLeft/offsetWidth) and writes (style update)
  * into proper phases, preventing layout thrashing.
  *

@@ -3,10 +3,10 @@ import { onScopeDispose } from 'vue'
 import { type FramePhase, frameEngine } from '@/engine/frameEngine'
 
 /**
- * Frame-aware priority scheduler — Gaming CSS Engine の共通基盤。
+ * Frame-aware priority scheduler。
  *
- * Gaming CSS v2: Frame Engine の Vue composable ラッパー。
- * 既存の API (high/normal/idle) を維持しつつ、統一 RAF ループにルーティングする。
+ * Frame Engine の Vue composable ラッパー。
+ * 既存の API (high/normal/idle) を維持しつつ、RAF ループにルーティングする。
  *
  * - high:   Frame Engine の 'input' phase（ユーザー入力応答）
  * - normal: Frame Engine の 'write' phase（ストリーミング、DOM更新）

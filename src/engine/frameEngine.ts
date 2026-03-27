@@ -1,13 +1,13 @@
 /**
- * Frame Engine — Gaming CSS v2 の中核。
+ * Frame Engine — DOM read/write バッチスケジューラ。
  *
- * ゲームエンジンの「単一レンダーループ」を WebView 上に再現する。
- * 全ての DOM 読み書き・アニメーション・アイドル処理を 1 つの RAF ループに統合し、
- * フェーズ別のフレーム予算管理で 60fps (16.6ms) を維持する。
+ * Layout Thrashing を回避するため、DOM の読み取りと書き込みを
+ * フェーズ別に分離して単一 RAF ループで実行する（fastdom と同じ考え方）。
+ * ワークがないフレームではループを停止し、CPU ウェイクアップを避ける。
  *
  * フェーズ実行順序:
- *   1. input   — ポインタ状態の flush (< 2ms)
- *   2. animate — JS 駆動アニメーション tick (< 4ms)
+ *   1. input   — ポインタ状態の flush
+ *   2. animate — JS 駆動アニメーション tick
  *   3. read    — バッチ DOM 測定 (getBoundingClientRect 等)
  *   4. write   — バッチ DOM 変更 (style, class 更新)
  *   5. idle    — 残余時間で低優先度処理

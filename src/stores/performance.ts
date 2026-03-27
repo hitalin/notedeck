@@ -728,7 +728,7 @@ export const usePerformanceStore = defineStore('performance', () => {
     // Apply CSS overrides to :root on startup
     syncCssProperties()
 
-    // --- Gaming CSS v2: Frame Engine + Telemetry ---
+    // --- Frame Engine + Telemetry ---
     frameEngine.start()
 
     // Map preset to telemetry quality level
@@ -737,8 +737,10 @@ export const usePerformanceStore = defineStore('performance', () => {
     frameTelemetry.start(
       presetToQuality(recommendedPreset.value ?? 'balanced'),
       (quality) => {
-        // Auto quality adjustment callback — apply the matching preset
-        applyPreset(quality)
+        // Auto quality adjustment — only change CSS rendering properties
+        // (blur, shadow, animation). Never touch cache sizes or note limits,
+        // as those are unrelated to frame jank.
+        applyCssQuality(quality)
       },
     )
   }
@@ -761,6 +763,38 @@ export const usePerformanceStore = defineStore('performance', () => {
 
   function resetAll() {
     overrides.value = {}
+    saveOverrides()
+  }
+
+  /** CSS rendering property presets for auto-quality adjustment.
+   *  Only blur/shadow/animation — never cache sizes or note limits. */
+  const CSS_QUALITY_PRESETS: Record<
+    QualityLevel,
+    Pick<
+      PerformanceConfig,
+      'cssBlurLevel' | 'cssAnimationScale' | 'cssShadowLevel'
+    >
+  > = {
+    low: { cssBlurLevel: 0, cssAnimationScale: 50, cssShadowLevel: 1 },
+    balanced: {
+      cssBlurLevel: DEFAULTS.cssBlurLevel,
+      cssAnimationScale: DEFAULTS.cssAnimationScale,
+      cssShadowLevel: DEFAULTS.cssShadowLevel,
+    },
+    high: { cssBlurLevel: 2, cssAnimationScale: 100, cssShadowLevel: 2 },
+  }
+
+  /** Apply only CSS rendering properties for auto-quality adjustment. */
+  function applyCssQuality(quality: QualityLevel): void {
+    const css = CSS_QUALITY_PRESETS[quality]
+    for (const [k, v] of Object.entries(css)) {
+      const key = k as PerformanceKey
+      if (v === DEFAULTS[key]) {
+        delete overrides.value[key]
+      } else {
+        overrides.value[key] = v as never
+      }
+    }
     saveOverrides()
   }
 

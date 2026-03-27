@@ -1,11 +1,8 @@
 /**
- * Gaming CSS Engine v2 — エントリーポイント。
+ * Rendering Performance Engine — エントリーポイント。
  *
- * ゲームエンジンの概念を WebView + CSS + TypeScript 制約下に再構成:
- * - ブラウザの GPU コンポジタ = レンダリングバックエンド
- * - CSS = シェーダー言語
- * - DOM = シーングラフ
- * - RAF = ゲームループ
+ * DOM read/write のバッチングとフレーム予算管理で Layout Thrashing を回避し、
+ * Jank 検出に基づく CSS 品質の自動調整で安定した描画を維持する。
  */
 
 export {
