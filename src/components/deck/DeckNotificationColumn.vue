@@ -357,6 +357,13 @@ function groupedUsers(notif: NormalizedNotification): NormalizedUser[] {
   })
 }
 
+function userReaction(
+  notif: NormalizedNotification,
+  userId: string,
+): string | undefined {
+  return notif.reactions?.find((r) => r.user.id === userId)?.reaction
+}
+
 function uniqueReactions(reactions: { reaction: string }[]): string[] {
   return [...new Set(reactions.map((r) => r.reaction))]
 }
@@ -865,7 +872,12 @@ onUnmounted(() => {
                       @mouseenter="onGroupedAvatarMouseEnter(notif._accountId, u.id, $event)"
                       @mouseleave="onNotifAvatarMouseLeave"
                     />
-                    <i :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
+                    <template v-if="notif.type === 'reaction:grouped' && userReaction(notif, u.id)">
+                      <img v-if="getCachedReactionUrl(userReaction(notif, u.id)!, notif)" :src="getCachedReactionUrl(userReaction(notif, u.id)!, notif)!" :alt="userReaction(notif, u.id)!" :class="$style.notifSubIconEmoji" loading="lazy" />
+                      <img v-else-if="getCachedTwemojiUrl(userReaction(notif, u.id)!)" :src="getCachedTwemojiUrl(userReaction(notif, u.id)!)!" :alt="userReaction(notif, u.id)!" :class="$style.notifSubIconEmoji" loading="lazy" />
+                      <i v-else :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
+                    </template>
+                    <i v-else :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
                   </div>
                 </div>
                 <div :class="$style.notifTail">
