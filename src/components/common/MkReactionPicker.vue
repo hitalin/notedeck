@@ -98,8 +98,8 @@ const searchResults = computed(() => {
   return { custom: customResults, unicode: unicodeResults }
 })
 
-// Recently used emojis with resolved URLs for custom ones
-const recentEmojis = computed(() => recentEmojisStore.list)
+// Recently used emojis (per server)
+const recentEmojis = computed(() => recentEmojisStore.get(props.serverHost))
 
 function resolveEmojiUrl(reaction: string): string | null {
   if (reaction.startsWith(':') && reaction.endsWith(':')) {
@@ -115,20 +115,20 @@ function isCustomEmoji(reaction: string): boolean {
 
 function pickEmoji(emoji: string) {
   hapticLight()
-  recentEmojisStore.add(emoji, pinnedEmojis.value)
+  recentEmojisStore.add(props.serverHost, emoji, pinnedEmojis.value)
   emit('pick', emoji)
 }
 
 function pickCustom(name: string) {
   hapticLight()
   const key = `:${name}:`
-  recentEmojisStore.add(key, pinnedEmojis.value)
+  recentEmojisStore.add(props.serverHost, key, pinnedEmojis.value)
   emit('pick', key)
 }
 
 function pickPinnedOrRecent(reaction: string) {
   hapticLight()
-  recentEmojisStore.add(reaction, pinnedEmojis.value)
+  recentEmojisStore.add(props.serverHost, reaction, pinnedEmojis.value)
   emit('pick', reaction)
 }
 
