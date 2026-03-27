@@ -337,9 +337,12 @@ useSwipeTab(
   },
 )
 
-// --- Mode version watch ---
+// --- Mode version watch (per-account: only react to this column's account) ---
 watch(
-  () => accountsStore.modeVersion,
+  () => {
+    const aid = props.column.accountId
+    return aid ? accountsStore.getModeVersion(aid) : -1
+  },
   async () => {
     const accountId = props.column.accountId
     if (accountId) clearRuntimeDenied(accountId)
