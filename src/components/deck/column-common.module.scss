@@ -108,11 +108,11 @@
   font-weight: bold;
   color: var(--nd-fgOnAccent);
   background: color-mix(in srgb, var(--nd-accent) 70%, transparent);
-  -webkit-backdrop-filter: blur(var(--nd-blur-panel));
-  backdrop-filter: blur(var(--nd-blur-panel));
+  -webkit-backdrop-filter: var(--nd-vibrancy-panel);
+  backdrop-filter: var(--nd-vibrancy-panel);
   cursor: pointer;
   transition: opacity var(--nd-duration-base);
-  animation: slide-down 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  animation: slide-down var(--nd-duration-slow) var(--nd-ease-spring);
 
   &:hover {
     opacity: 0.85;
@@ -178,9 +178,9 @@
   font-weight: bold;
   white-space: nowrap;
   color: var(--nd-fgOnAccent);
-  -webkit-backdrop-filter: blur(var(--nd-blur-panel));
-  backdrop-filter: blur(var(--nd-blur-panel));
-  animation: slide-down 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  -webkit-backdrop-filter: var(--nd-vibrancy-panel);
+  backdrop-filter: var(--nd-vibrancy-panel);
+  animation: slide-down var(--nd-duration-slow) var(--nd-ease-spring);
 }
 
 .offlineBanner {

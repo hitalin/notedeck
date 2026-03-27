@@ -1357,9 +1357,4 @@ function closeMentionPopup() {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .reactionEnter, .reactionLeave {
-    animation: none;
-  }
-}
 </style>

@@ -188,8 +188,8 @@ function onWindowMouseDown() {
   height: 42px;
   padding: 0 8px 0 16px;
   background: var(--nd-windowHeader);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   border-bottom: 1px solid var(--nd-divider);
   cursor: grab;
   flex-shrink: 0;

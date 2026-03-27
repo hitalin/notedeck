@@ -139,7 +139,7 @@ const appVersion = __APP_VERSION__
 
 .notice {
   background: var(--surface);
-  backdrop-filter: blur(12px);
+  backdrop-filter: var(--nd-vibrancy);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 1.25rem 1.75rem;

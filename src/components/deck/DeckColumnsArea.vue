@@ -393,17 +393,13 @@ defineExpose({ scrollToColumn, columnMap })
   contain: layout style;
   /* Staggered entrance: each column fades in with a slight upward slide.
      --col-idx is set inline; animation triggers when #app.nd-app-ready starts. */
-  animation: nd-col-enter .4s cubic-bezier(.16,1,.3,1) both;
+  animation: nd-col-enter var(--nd-duration-slower) var(--nd-ease-spring) both;
   animation-delay: calc(var(--col-idx, 0) * 40ms + 50ms);
 }
 @keyframes nd-col-enter {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .columnSection { animation: none; }
-}
-
 .wideColumn {
   max-width: 1200px;
 }

@@ -1052,11 +1052,11 @@ onUnmounted(() => {
 }
 
 .regexGuideEnter {
-  animation: regexGuideIn 0.2s cubic-bezier(0, 0, 0.2, 1);
+  animation: regexGuideIn 0.2s var(--nd-ease-pop);
 }
 
 .regexGuideLeave {
-  animation: regexGuideOut 0.2s cubic-bezier(0, 0, 0.2, 1) forwards;
+  animation: regexGuideOut 0.2s var(--nd-ease-pop) forwards;
 }
 
 @keyframes regexGuideIn {

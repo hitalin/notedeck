@@ -488,7 +488,7 @@ onMounted(async () => {
   height: 3px;
   background: var(--nd-accent);
   border-radius: var(--nd-radius-full) var(--nd-radius-full) 0 0;
-  transition: left var(--nd-duration-slower) cubic-bezier(0, 0, 0.2, 1), width var(--nd-duration-slower) cubic-bezier(0, 0, 0.2, 1);
+  transition: left var(--nd-duration-slower) var(--nd-ease-pop), width var(--nd-duration-slower) var(--nd-ease-pop);
   pointer-events: none;
 }
 

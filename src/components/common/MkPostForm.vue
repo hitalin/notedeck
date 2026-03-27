@@ -1115,8 +1115,8 @@ function onKeydown(e: KeyboardEvent) {
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: 12px;
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
 }
 
 .accountOption {
@@ -1236,8 +1236,8 @@ function onKeydown(e: KeyboardEvent) {
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: 12px;
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
 }
 
 .visibilityOption {
@@ -1289,8 +1289,8 @@ function onKeydown(e: KeyboardEvent) {
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: 12px;
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
 }
 
 .moreMenuItem {
@@ -1670,8 +1670,8 @@ function onKeydown(e: KeyboardEvent) {
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: 12px;
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
 }
 
 /* ── Mention popup ── */

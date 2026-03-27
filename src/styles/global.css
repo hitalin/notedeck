@@ -121,8 +121,15 @@
     1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%,
     0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1
   );
+  /* Additional easing curves */
+  --nd-ease-decel: cubic-bezier(0.2, 0, 0, 1);
+  --nd-ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
   /* Active press scale */
   --nd-active-scale: 0.97;
+  /* Vibrancy (Apple-style saturated blur) */
+  --nd-vibrancy: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
+  --nd-vibrancy-panel: saturate(1.8) brightness(1.1) blur(var(--nd-blur-panel));
+  --nd-vibrancy-content: saturate(1.8) brightness(1.1) blur(var(--nd-blur-content));
   /* App chrome offsets (overridden per platform) */
   --nd-app-inset-top: 0px;
   /* Z-index layers */
@@ -194,10 +201,6 @@ body {
 #app.nd-app-ready {
   animation-play-state: running;
 }
-@media (prefers-reduced-motion: reduce) {
-  #app { animation: none; opacity: 1; }
-}
-
 a {
   color: var(--nd-link);
   text-decoration: none;
@@ -261,8 +264,8 @@ html[data-platform="android"] select {
   background: color-mix(in srgb, var(--nd-popup) 85%, transparent);
   border-radius: var(--nd-radius);
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
-  -webkit-backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
 }
 
 ._popupMenu {
@@ -270,8 +273,8 @@ html[data-platform="android"] select {
   background: var(--nd-popup, var(--nd-panelBg));
   border-radius: var(--nd-radius-md);
   box-shadow: var(--nd-shadow-m);
-  backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
-  -webkit-backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   padding: 6px 0;
   z-index: var(--nd-z-menu);
 }
@@ -469,8 +472,8 @@ html[data-platform="android"] select {
 
 ._acrylic {
   background: color(from var(--nd-bg) srgb r g b / 0.5);
-  backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
-  -webkit-backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
 }
 
 ._sensitiveOverlay {
@@ -486,8 +489,8 @@ html[data-platform="android"] select {
   font-size: 0.85em;
   font-weight: bold;
   cursor: pointer;
-  backdrop-filter: blur(var(--nd-blur-content));
-  -webkit-backdrop-filter: blur(var(--nd-blur-content));
+  backdrop-filter: var(--nd-vibrancy-content);
+  -webkit-backdrop-filter: var(--nd-vibrancy-content);
   z-index: 2;
 }
 
@@ -542,12 +545,6 @@ html[data-platform="android"] select {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .nd-toggle-switch,
-  .nd-toggle-switch-knob {
-    transition: none;
-  }
-}
 
 .nd-toggle-switch.on .nd-toggle-switch-knob {
   transform: translateX(18px);
@@ -588,11 +585,7 @@ html[data-platform="android"] select {
   transition: transform 0.3s var(--nd-ease-spring);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .nd-tab-snap-back > * {
-    transition: transform 0.15s ease;
-  }
-}
+
 
 /* ---- Spin animation (shared by all loading spinners) ---- */
 
@@ -616,8 +609,54 @@ html[data-platform="android"] select {
   animation: nd-content-in var(--nd-duration-slow) var(--nd-ease-spring) both;
 }
 
+/* ---- Misskey global animations ---- */
+
+/* Bounce: 3-step overshoot (Misskey global-bounce) — for badges, notifications */
+@keyframes nd-bounce {
+  0%   { transform: scaleX(0.90) scaleY(0.90); }
+  19%  { transform: scaleX(1.10) scaleY(1.10); }
+  48%  { transform: scaleX(0.95) scaleY(0.95); }
+  100% { transform: scaleX(1.00) scaleY(1.00); }
+}
+
+._bounce {
+  animation: nd-bounce 0.7s ease;
+  will-change: transform;
+}
+
+/* Tada: attention-seeking wobble (Misskey global-tada) */
+@keyframes nd-tada {
+  from       { transform: scale3d(1, 1, 1); }
+  10%, 20%   { transform: scale3d(0.91, 0.91, 0.91) rotate3d(0, 0, 1, -2deg); }
+  30%, 50%, 70%, 90% { transform: scale3d(1.09, 1.09, 1.09) rotate3d(0, 0, 1, 2deg); }
+  40%, 60%, 80% { transform: scale3d(1.09, 1.09, 1.09) rotate3d(0, 0, 1, -2deg); }
+  to         { transform: scale3d(1, 1, 1); }
+}
+
+._tada {
+  animation: nd-tada 1s ease;
+}
+
+/* RubberBand: elastic stretch (Misskey mfm-rubberBand) */
+@keyframes nd-rubberBand {
+  from { transform: scale3d(1, 1, 1); }
+  30%  { transform: scale3d(1.25, 0.75, 1); }
+  40%  { transform: scale3d(0.75, 1.25, 1); }
+  50%  { transform: scale3d(1.15, 0.85, 1); }
+  65%  { transform: scale3d(0.95, 1.05, 1); }
+  75%  { transform: scale3d(1.05, 0.95, 1); }
+  to   { transform: scale3d(1, 1, 1); }
+}
+
+/* ---- Global reduced-motion ---- */
+
 @media (prefers-reduced-motion: reduce) {
-  .nd-content-appear {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

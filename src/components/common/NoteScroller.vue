@@ -238,7 +238,7 @@ defineSlots<{
    Positioning uses the `translate` property (set via inline style),
    so `transform` is free for animation without conflict. */
 .enterAnimation {
-  animation: noteSlideIn 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+  animation: noteSlideIn var(--nd-duration-slow) var(--nd-ease-spring);
 }
 
 @keyframes noteSlideIn {
@@ -250,9 +250,4 @@ defineSlots<{
      (transform: none), so the slide naturally lands at the positioned offset. */
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .enterAnimation {
-    animation: none;
-  }
-}
 </style>

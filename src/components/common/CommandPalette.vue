@@ -425,8 +425,8 @@ function primaryShortcut(cmd: Command): string | null {
   display: flex;
   flex-direction: column;
   background: color-mix(in srgb, var(--nd-popup, #252526) 80%, transparent);
-  backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
-  -webkit-backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--nd-radius-sm);
   box-shadow:
@@ -460,15 +460,6 @@ function primaryShortcut(cmd: Command): string | null {
 
 .paletteLeave {
   animation: nd-palette-in var(--nd-duration-base) ease-in both reverse;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .paletteOverlayEnter,
-  .paletteOverlayLeave,
-  .paletteEnter,
-  .paletteLeave {
-    animation: none;
-  }
 }
 
 .paletteInputWrap {

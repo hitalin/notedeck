@@ -60,8 +60,8 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
   font-size: 0.85em;
   color: #fff;
   background: color-mix(in srgb, var(--nd-panel) 80%, transparent);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   box-shadow: var(--nd-shadow-m);
   pointer-events: auto;
   white-space: nowrap;
@@ -120,9 +120,4 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .toastEnter, .toastLeave {
-    animation: none;
-  }
-}
 </style>

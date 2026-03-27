@@ -483,8 +483,8 @@ defineExpose({
   flex: 0 0 auto;
   display: flex;
   background: color(from var(--nd-navBg) srgb r g b / 0.5);
-  backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
-  -webkit-backdrop-filter: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   border-right: 1px solid var(--nd-divider);
   position: relative;
   z-index: 1;
@@ -592,12 +592,6 @@ defineExpose({
   0%   { transform: scale(0); opacity: 0; }
   50%  { transform: scale(1.3); }
   100% { transform: scale(1); opacity: 1; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .badge {
-    animation: none;
-  }
 }
 
 .label {

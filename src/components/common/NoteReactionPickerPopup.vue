@@ -106,8 +106,8 @@ defineExpose({ open })
   transform: translateX(-100%);
   z-index: calc(var(--nd-z-popup) + 1);
   background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 85%, transparent);
-  backdrop-filter: blur(var(--nd-blur));
-  -webkit-backdrop-filter: blur(var(--nd-blur));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   overflow: hidden;
@@ -146,12 +146,4 @@ defineExpose({ open })
 @keyframes sheetIn { from { transform: translateY(100%); } }
 @keyframes sheetOut { to { transform: translateY(100%); } }
 
-@media (prefers-reduced-motion: reduce) {
-  .popupContentEnter, .popupContentLeave,
-  .sheetContentEnter, .sheetContentLeave,
-  .popupEnter, .popupLeave,
-  .sheetEnter, .sheetLeave {
-    animation: none;
-  }
-}
 </style>

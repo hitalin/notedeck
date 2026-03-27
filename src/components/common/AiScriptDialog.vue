@@ -160,10 +160,10 @@ defineExpose({ showDialog, showConfirm })
 
 // Vapor transition classes
 .enter {
-  animation: backdropIn 0.15s ease;
+  animation: backdropIn var(--nd-duration-base) ease-out;
 }
 .leave {
-  animation: backdropOut 0.15s ease forwards;
+  animation: backdropOut var(--nd-duration-fast) ease-in forwards;
 }
 @keyframes backdropIn {
   from { opacity: 0; }
@@ -173,10 +173,10 @@ defineExpose({ showDialog, showConfirm })
 }
 
 .contentEnter {
-  animation: popupIn 0.3s var(--nd-ease-pop);
+  animation: popupIn var(--nd-duration-slow) var(--nd-ease-spring);
 }
 .contentLeave {
-  animation: popupOut 0.15s ease forwards;
+  animation: popupOut var(--nd-duration-fast) var(--nd-ease-spring) forwards;
 }
 @keyframes popupIn {
   from { opacity: 0; transform: scale(0.95); }

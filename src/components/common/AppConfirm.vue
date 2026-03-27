@@ -130,9 +130,4 @@ watch(visible, (v) => {
   to { opacity: 0; transform: scale(0.95); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .contentEnter, .contentLeave, .enter, .leave {
-    animation: none;
-  }
-}
 </style>
