@@ -905,17 +905,15 @@ onUnmounted(() => {
                         <template v-if="groupedUsers(notif).length > 2"> 他{{ groupedUsers(notif).length - 2 }}人</template>
                       </span>
                       <span :class="$style.notifLabel">{{ notificationLabel(notif.type) }}</span>
+                      <template v-if="notif.type === 'reaction:grouped' && notif.reactions?.length">
+                        <span v-for="reaction in uniqueReactions(notif.reactions)" :key="reaction" :class="$style.notifReaction">
+                          <img v-if="getCachedReactionUrl(reaction, notif)" :src="getCachedReactionUrl(reaction, notif)!" :alt="reaction" :class="$style.notifReactionEmoji" loading="lazy" />
+                          <img v-else-if="getCachedTwemojiUrl(reaction)" :src="getCachedTwemojiUrl(reaction)!" :alt="reaction" :class="$style.notifReactionEmoji" loading="lazy" />
+                          <MkEmoji v-else :emoji="reaction" :class="$style.notifReactionEmoji" />
+                        </span>
+                      </template>
                     </div>
                     <span :class="$style.notifTime">{{ formatTime(notif.createdAt) }}</span>
-                  </div>
-
-                  <!-- Grouped reaction emojis (deduplicated) -->
-                  <div v-if="notif.type === 'reaction:grouped' && notif.reactions?.length" :class="$style.groupedReactions">
-                    <template v-for="reaction in uniqueReactions(notif.reactions)" :key="reaction">
-                      <img v-if="getCachedReactionUrl(reaction, notif)" :src="getCachedReactionUrl(reaction, notif)!" :alt="reaction" :class="$style.groupedReactionEmoji" loading="lazy" />
-                      <img v-else-if="getCachedTwemojiUrl(reaction)" :src="getCachedTwemojiUrl(reaction)!" :alt="reaction" :class="$style.groupedReactionEmoji" loading="lazy" />
-                      <MkEmoji v-else :emoji="reaction" :class="$style.groupedReactionEmoji" />
-                    </template>
                   </div>
 
                   <div v-if="notif.note" :class="$style.notifNoteWrap">
@@ -1440,21 +1438,4 @@ onUnmounted(() => {
   to { transform: rotate(360deg); }
 }
 
-/* Grouped notification: reaction emoji list */
-.groupedReactions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
-}
-
-.groupedReactionEmoji {
-  height: 1.6em;
-  vertical-align: middle;
-  object-fit: contain;
-
-  :deep(.twemoji) {
-    height: 1.6em;
-  }
-}
 </style>
