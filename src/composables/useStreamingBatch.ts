@@ -1,5 +1,6 @@
 import { onScopeDispose, ref, shallowRef } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
+import { useFrameScheduler } from '@/composables/useFrameScheduler'
 import { usePerformanceStore } from '@/stores/performance'
 import { insertIntoSorted } from '@/utils/sortNotes'
 
@@ -13,6 +14,7 @@ export interface UseStreamingBatchOptions {
 
 export function useStreamingBatch(options: UseStreamingBatchOptions) {
   const perfStore = usePerformanceStore()
+  const { schedule, cancel } = useFrameScheduler()
   const MAX_NOTES = options.maxNotes ?? perfStore.get('noteListMax')
   const pendingNotes = shallowRef<NormalizedNote[]>([])
   const isAtTop = ref(true)
@@ -20,7 +22,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   const animatingIds = shallowRef<ReadonlySet<string>>(new Set())
   const _animTimers = new Set<ReturnType<typeof setTimeout>>()
   let rafBuffer: NormalizedNote[] = []
-  let rafId: number | null = null
+  let rafScheduled = false
   let _paused = false
 
   function enableAnimation(batchIds: string[]) {
@@ -48,7 +50,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   }
 
   function flushRafBuffer() {
-    rafId = null
+    rafScheduled = false
     if (rafBuffer.length === 0) return
     const batch = rafBuffer
     rafBuffer = []
@@ -70,8 +72,9 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   function enqueueNote(note: NormalizedNote) {
     if (_paused) return
     rafBuffer.push(note)
-    if (rafId === null) {
-      rafId = requestAnimationFrame(flushRafBuffer)
+    if (!rafScheduled) {
+      rafScheduled = true
+      schedule(flushRafBuffer, 'normal')
     }
   }
 
@@ -119,9 +122,9 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
 
   function resetBatch() {
     rafBuffer = []
-    if (rafId !== null) {
-      cancelAnimationFrame(rafId)
-      rafId = null
+    if (rafScheduled) {
+      cancel(flushRafBuffer)
+      rafScheduled = false
     }
     for (const t of _animTimers) clearTimeout(t)
     _animTimers.clear()

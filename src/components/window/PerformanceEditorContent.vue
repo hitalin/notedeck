@@ -18,6 +18,7 @@ import {
 const jsonLang = json()
 
 const perfStore = usePerformanceStore()
+const recommendedPreset = computed(() => perfStore.recommendedPreset)
 
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['visual', 'code'] as const,
@@ -186,6 +187,10 @@ function handleReset() {
           >
             <i :class="'ti ' + preset.icon" />
             {{ preset.label }}
+            <span
+              v-if="recommendedPreset === key && perfStore.activePreset !== key"
+              :class="$style.recommendBadge"
+            >おすすめ</span>
           </button>
           <div v-if="perfStore.activePreset === 'custom'" :class="$style.presetCustom">
             <i class="ti ti-settings" />
@@ -422,6 +427,18 @@ function handleReset() {
     color: var(--nd-accent);
     background: color-mix(in srgb, var(--nd-accent) 8%, var(--nd-bg));
   }
+}
+
+.recommendBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: var(--nd-radius-sm);
+  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  color: var(--nd-accent);
+  font-size: 0.85em;
+  font-weight: 500;
+  line-height: 1;
 }
 
 .presetCustom {
