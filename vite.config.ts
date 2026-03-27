@@ -140,6 +140,7 @@ export default defineConfig({
     },
   },
   css: {
+    transformer: 'lightningcss',
     modules: {
       localsConvention: 'camelCaseOnly',
     },
@@ -147,6 +148,8 @@ export default defineConfig({
   build: {
     target: 'esnext',
     sourcemap: false,
+    modulePreload: false,
+    assetsInlineLimit: 8192,
     rolldownOptions: {
       output: {
         manualChunks(id) {
