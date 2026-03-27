@@ -703,7 +703,7 @@ fetchDrive()
   justify-content: center;
   color: transparent;
   font-size: 12px;
-  transition: all var(--nd-duration-base);
+  transition: background var(--nd-duration-base), border-color var(--nd-duration-base), color var(--nd-duration-base);
 
   &.checked {
     background: var(--nd-accent);

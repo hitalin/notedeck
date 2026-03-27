@@ -129,9 +129,9 @@
   --nd-active-scale: 0.96;
   --nd-active-scale-heavy: 0.92; /* Destructive / heavy actions (delete, report) */
   /* Vibrancy (Apple-style saturated blur) */
-  --nd-vibrancy: saturate(1.8) brightness(1.1) blur(var(--nd-blur));
-  --nd-vibrancy-panel: saturate(1.8) brightness(1.1) blur(var(--nd-blur-panel));
-  --nd-vibrancy-content: saturate(1.8) brightness(1.1) blur(var(--nd-blur-content));
+  --nd-vibrancy: saturate(1.4) blur(var(--nd-blur));
+  --nd-vibrancy-panel: saturate(1.4) blur(var(--nd-blur-panel));
+  --nd-vibrancy-content: saturate(1.4) blur(var(--nd-blur-content));
   /* App chrome offsets (overridden per platform) */
   --nd-app-inset-top: 0px;
   /* Z-index layers */
@@ -271,8 +271,7 @@ summary,
 [role="menuitem"],
 [role="tab"],
 [role="option"],
-[role="listitem"],
-img {
+[role="listitem"] {
   transition:
     background var(--nd-duration-base),
     color var(--nd-duration-base),
@@ -604,7 +603,6 @@ img {
 
 .nd-tab-swiping > * {
   transform: translateX(var(--nd-swipe, 0));
-  will-change: transform;
 }
 
 .nd-tab-snap-back > * {
@@ -647,7 +645,6 @@ img {
 
 ._bounce {
   animation: nd-bounce 0.7s ease;
-  will-change: transform;
 }
 
 /* Tada: attention-seeking wobble (Misskey global-tada) */
