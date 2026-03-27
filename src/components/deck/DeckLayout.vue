@@ -75,40 +75,43 @@ function toggleAddMenu() {
 }
 
 // File drop handling
+// Drop targets follow physical layering: only the topmost visible surface accepts drops.
+// - Post form open → only the form itself (not the backdrop)
+// - Post form closed → only columns (not the deck background)
 const fileDrop = useFileDrop((paths, position) => {
+  const el = document.elementFromPoint(position.x, position.y)
+
   if (showCompose.value) {
-    pendingFilePaths.value = paths
+    // Only accept drops that land on the post form, not the dark backdrop
+    if (el?.closest('[data-post-form]')) {
+      pendingFilePaths.value = paths
+    }
     return
   }
 
-  const el = document.elementFromPoint(position.x, position.y)
   const columnCell = el?.closest('[data-column-id]') as HTMLElement | null
+  if (!columnCell) return
 
-  if (columnCell) {
-    const colId = columnCell.dataset.columnId
-    const col = colId ? columnsAreaRef.value?.columnMap.get(colId) : undefined
-    if (col?.type === 'drive' && col.accountId) {
-      const accountId = col.accountId
-      for (const path of paths) {
-        invoke('api_upload_file_from_path', {
-          accountId,
-          filePath: path,
-          isSensitive: false,
-        }).then(() => {
-          window.dispatchEvent(
-            new CustomEvent('drive-files-changed', { detail: { accountId } }),
-          )
-        })
-      }
-      return
+  const colId = columnCell.dataset.columnId
+  const col = colId ? columnsAreaRef.value?.columnMap.get(colId) : undefined
+
+  if (col?.type === 'drive' && col.accountId) {
+    const accountId = col.accountId
+    for (const path of paths) {
+      invoke('api_upload_file_from_path', {
+        accountId,
+        filePath: path,
+        isSensitive: false,
+      }).then(() => {
+        window.dispatchEvent(
+          new CustomEvent('drive-files-changed', { detail: { accountId } }),
+        )
+      })
     }
+    return
   }
 
-  if (
-    !columnCell &&
-    paths.length === 1 &&
-    IMAGE_EXTENSIONS.test(paths[0] ?? '')
-  ) {
+  if (paths.length === 1 && IMAGE_EXTENSIONS.test(paths[0] ?? '')) {
     deckStore.setWallpaper(convertFileSrc(paths[0] ?? ''))
   }
 })
