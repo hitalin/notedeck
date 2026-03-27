@@ -639,7 +639,7 @@ async function importFromClipboard() {
   justify-content: center;
   z-index: 1;
   opacity: 0;
-  transition: opacity var(--nd-duration-fast);
+  transition: opacity var(--nd-duration-fast), filter var(--nd-duration-base);
 
   .columnTab:hover & {
     opacity: 1;

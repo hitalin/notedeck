@@ -1168,10 +1168,12 @@ onUnmounted(() => {
 .filterIndicator {
   position: absolute;
   bottom: 0;
+  left: 0;
+  width: 1px;
   height: 3px;
   background: var(--nd-accent);
   border-radius: var(--nd-radius-full) var(--nd-radius-full) 0 0;
-  transition: left var(--nd-duration-slower) var(--nd-ease-pop), width var(--nd-duration-slower) var(--nd-ease-pop);
+  transition: translate var(--nd-duration-slower) var(--nd-ease-pop), scale var(--nd-duration-slower) var(--nd-ease-pop), opacity var(--nd-duration-slower) var(--nd-ease-pop);
   pointer-events: none;
 }
 
@@ -1404,7 +1406,7 @@ onUnmounted(() => {
   border: none;
   border-radius: var(--nd-radius-full);
   cursor: pointer;
-  transition: background var(--nd-duration-fast) ease;
+  transition: background var(--nd-duration-fast) ease, filter var(--nd-duration-base);
 }
 
 .acceptBtn {

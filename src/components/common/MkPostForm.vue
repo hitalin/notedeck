@@ -331,7 +331,7 @@ function onKeydown(e: KeyboardEvent) {
 
 <template>
   <div :class="[inline ? $style.postInlineWrapper : $style.postOverlay, { [$style.mobile]: isCompact }]" @click="!inline && emit('close')">
-    <div :class="[$style.postForm, { [$style.postFormInline]: inline }]" :style="formThemeVars" @click.stop="closePopups">
+    <div data-post-form :class="[$style.postForm, { [$style.postFormInline]: inline }]" :style="formThemeVars" @click.stop="closePopups">
       <!-- Header -->
       <header :class="$style.header">
         <div v-if="!inline" :class="$style.headerLeft">

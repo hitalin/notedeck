@@ -433,6 +433,7 @@ function primaryShortcut(cmd: Command): string | null {
     0 2px 8px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(0, 0, 0, 0.15);
   overflow: hidden;
+  contain: layout paint;
 }
 
 /* Spotlight-style animations */
@@ -451,7 +452,7 @@ function primaryShortcut(cmd: Command): string | null {
 }
 
 .paletteOverlayLeave {
-  animation: nd-palette-overlay-in var(--nd-duration-base) ease-in both reverse;
+  animation: nd-palette-overlay-in var(--nd-duration-base) ease-out both reverse;
 }
 
 .paletteEnter {
@@ -459,7 +460,7 @@ function primaryShortcut(cmd: Command): string | null {
 }
 
 .paletteLeave {
-  animation: nd-palette-in var(--nd-duration-base) ease-in both reverse;
+  animation: nd-palette-in var(--nd-duration-base) ease-out both reverse;
 }
 
 .paletteInputWrap {

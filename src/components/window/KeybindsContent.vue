@@ -644,7 +644,7 @@ function handleReset() {
   font-size: 0.9em;
   opacity: 0;
   color: var(--nd-fg);
-  transition: opacity var(--nd-duration-base);
+  transition: opacity var(--nd-duration-base), color var(--nd-duration-base);
 
   &:hover {
     opacity: 1 !important;

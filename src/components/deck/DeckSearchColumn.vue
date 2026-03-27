@@ -104,7 +104,7 @@ const regexError = ref<string | null>(null)
 const regexGuidePos = ref({ top: 0, right: 0 })
 const regexGuideBtnRef = ref<HTMLElement | null>(null)
 const { visible: regexGuideVisible, leaving: regexGuideLeaving } =
-  useVaporTransition(showRegexGuide, { enterDuration: 180, leaveDuration: 150 })
+  useVaporTransition(showRegexGuide, { enterDuration: 180, leaveDuration: 200 })
 
 // Date filter & sort
 const {

@@ -98,7 +98,7 @@ const statusClass = computed(() =>
   <div
     class="mk-avatar"
     :class="$style.mkAvatar"
-    :style="{ width: `${props.size}px`, height: `${props.size}px` }"
+    :style="`--avatar-size:${props.size}px`"
     @click="emit('click', $event)"
     @mouseenter="emit('mouseenter', $event)"
     @mouseleave="emit('mouseleave', $event)"
@@ -135,6 +135,8 @@ const statusClass = computed(() =>
   position: relative;
   display: inline-block;
   flex-shrink: 0;
+  width: var(--avatar-size, 58px);
+  height: var(--avatar-size, 58px);
   border-radius: 50%;
   background: var(--nd-buttonBg);
   transition: transform var(--nd-duration-slow) ease;

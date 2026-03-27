@@ -76,6 +76,7 @@ function reduceFrequency() {
   max-width: 100%;
   margin: auto;
   border-radius: 5px;
+  transition: filter var(--nd-duration-base);
 }
 
 .adInfoBtn {

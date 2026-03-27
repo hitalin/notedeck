@@ -1,22 +1,26 @@
 import { defineStore } from 'pinia'
 import { shallowRef, triggerRef } from 'vue'
 import type { NormalizedNote, NoteUpdateEvent } from '@/adapters/types'
+import { useFrameScheduler } from '@/composables/useFrameScheduler'
 import { usePerformanceStore } from '@/stores/performance'
 
 export const useNoteStore = defineStore('notes', () => {
   const perfStore = usePerformanceStore()
+  const { schedule } = useFrameScheduler()
   const noteMap = shallowRef(new Map<string, NormalizedNote>())
   const deleteListeners = new Set<(id: string) => void>()
 
   /** Batch triggerRef calls into one per animation frame (streaming events fire rapidly) */
-  let triggerRafId: number | null = null
+  let triggerScheduled = false
+  const doTrigger = () => {
+    triggerScheduled = false
+    triggerRef(noteMap)
+  }
 
   function scheduleTrigger() {
-    if (triggerRafId !== null) return
-    triggerRafId = requestAnimationFrame(() => {
-      triggerRafId = null
-      triggerRef(noteMap)
-    })
+    if (triggerScheduled) return
+    triggerScheduled = true
+    schedule(doTrigger, 'normal')
   }
 
   /** Evict oldest entries when map exceeds limit. */

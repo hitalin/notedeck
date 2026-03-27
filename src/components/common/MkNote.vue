@@ -129,7 +129,7 @@ const instanceTickerStyle = computed(() => {
 const renoteMenuPos = ref<{ x: number; y: number } | null>(null)
 const renoteMenuShow = computed(() => renoteMenuPos.value !== null)
 const { visible: renoteMenuVisible, leaving: renoteMenuLeaving } =
-  useVaporTransition(renoteMenuShow, { enterDuration: 200, leaveDuration: 150 })
+  useVaporTransition(renoteMenuShow, { enterDuration: 200, leaveDuration: 200 })
 const renoteMenuTheme = ref<Record<string, string>>({})
 const myRenoteId = ref<string | null>(null)
 const isRenoted = ref(false)
@@ -983,9 +983,9 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   overflow: hidden;
   white-space: nowrap;
   max-width: 200px;
-  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.7);
-  paint-order: stroke fill;
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.8),
+    0 0 4px rgba(0, 0, 0, 0.5);
 }
 
 .info {
@@ -1109,17 +1109,14 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   border: none;
   cursor: pointer;
   color: var(--nd-fg);
-  transition:
-    background var(--nd-duration-fast),
-    opacity var(--nd-duration-base) var(--nd-ease-reaction),
-    transform var(--nd-duration-base) var(--nd-ease-spring-bouncy);
+  transition: background var(--nd-duration-fast);
 
   &:hover {
     background: rgba(0, 0, 0, 0.1);
   }
 
   &:active {
-    animation: reaction-bounce 0.5s var(--nd-ease-spring-bouncy);
+    animation: reaction-bounce 0.35s var(--nd-ease-spring-bouncy);
   }
 
   &.reacted,
@@ -1149,16 +1146,15 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 
   &.reacted .count {
     color: var(--nd-accent);
+    animation: nd-count-bump 0.3s var(--nd-ease-spring-bouncy);
   }
 }
 
 @keyframes reaction-bounce {
   0%   { transform: scale(1); }
-  15%  { transform: scale(0.92); }
-  35%  { transform: scale(1.28); }
-  55%  { transform: scale(0.94); }
-  72%  { transform: scale(1.06); }
-  85%  { transform: scale(0.98); }
+  15%  { transform: scale(0.95); }
+  35%  { transform: scale(1.08); }
+  60%  { transform: scale(0.98); }
   100% { transform: scale(1); }
 }
 
@@ -1211,10 +1207,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   cursor: pointer;
   color: color-mix(in srgb, var(--nd-panel) 30%, var(--nd-fg) 70%);
   font-size: 1em;
-  transition:
-    color var(--nd-duration-base),
-    background var(--nd-duration-fast),
-    transform var(--nd-duration-fast) var(--nd-ease-spring);
+  transition: background var(--nd-duration-fast);
 
   &:active {
     transform: scale(0.88);
@@ -1246,7 +1239,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 }
 
 .reactionButton:active {
-  animation: reaction-bounce 0.5s var(--nd-ease-spring-bouncy);
+  animation: reaction-bounce 0.35s var(--nd-ease-spring-bouncy);
 }
 
 .moreButton:hover {
@@ -1311,7 +1304,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 @keyframes renotePopupBdIn { from { opacity: 0; } }
 @keyframes renotePopupBdOut { to { opacity: 0; } }
 
-.renotePopupContentEnter { animation: renotePopupIn 0.35s var(--nd-ease-spring); }
+.renotePopupContentEnter { animation: renotePopupIn 0.2s var(--nd-ease-spring); }
 .renotePopupContentLeave { animation: renotePopupOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
 @keyframes renotePopupIn { from { opacity: 0; transform: scale(0.85) translateY(4px); } }
 @keyframes renotePopupOut { to { opacity: 0; transform: scale(0.92); } }

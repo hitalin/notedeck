@@ -182,6 +182,7 @@ export class MisskeyStream implements StreamAdapter {
     this.chatMessageHandlers.clear()
     this.chatDeletedHandlers.clear()
     this.noteCaptureHandlers.clear()
+    this.eventHandlers.clear()
     this._state = 'disconnected'
   }
 

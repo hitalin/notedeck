@@ -1,8 +1,12 @@
 import type { Ref, WatchSource } from 'vue'
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onScopeDispose, ref, watch } from 'vue'
 
 /**
  * Manages a sliding tab indicator that tracks the active tab element.
+ *
+ * Uses requestAnimationFrame to batch DOM reads (offsetLeft/offsetWidth)
+ * and writes (style update) into a single frame, preventing layout thrashing
+ * when multiple triggers fire in quick succession.
  *
  * @param containerRef - Ref to the container element holding the tabs
  * @param activeSelector - CSS selector for the currently active tab
@@ -13,26 +17,38 @@ export function useTabIndicator(
   activeSelector: string,
   trigger: WatchSource,
 ) {
-  const style = ref({ left: '0px', width: '0px', opacity: '0' })
+  const style = ref({ translate: '0 0', scale: '0 1', opacity: '0' })
+  let rafId: number | null = null
 
   function update() {
-    if (!containerRef.value) return
-    const activeTab = containerRef.value.querySelector(
-      activeSelector,
-    ) as HTMLElement | null
-    if (!activeTab) {
-      style.value = { left: '0px', width: '0px', opacity: '0' }
-      return
-    }
-    style.value = {
-      left: `${activeTab.offsetLeft}px`,
-      width: `${activeTab.offsetWidth}px`,
-      opacity: '1',
-    }
+    if (rafId !== null) return
+    rafId = requestAnimationFrame(() => {
+      rafId = null
+      if (!containerRef.value) return
+      const activeTab = containerRef.value.querySelector(
+        activeSelector,
+      ) as HTMLElement | null
+      if (!activeTab) {
+        style.value = { translate: '0 0', scale: '0 1', opacity: '0' }
+        return
+      }
+      style.value = {
+        translate: `${activeTab.offsetLeft}px 0`,
+        scale: `${activeTab.offsetWidth} 1`,
+        opacity: '1',
+      }
+    })
   }
 
   watch(trigger, () => nextTick(update))
   onMounted(() => nextTick(update))
+
+  onScopeDispose(() => {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+    }
+  })
 
   return { indicatorStyle: style, updateIndicator: update }
 }

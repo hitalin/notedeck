@@ -91,7 +91,7 @@ defineExpose({ show })
 }
 
 .toastLeave {
-  animation: ais-toast-leave 0.12s ease-in both;
+  animation: ais-toast-leave var(--nd-duration-fast) ease-out both;
 }
 
 @keyframes ais-toast-enter {

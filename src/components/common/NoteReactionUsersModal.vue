@@ -43,7 +43,7 @@ const { activate: activateTrap, deactivate: deactivateTrap } = useFocusTrap(
 
 const { visible, leaving } = useVaporTransition(show, {
   enterDuration: 200,
-  leaveDuration: 150,
+  leaveDuration: 200,
 })
 
 watch(show, (v) => {
@@ -209,6 +209,7 @@ defineExpose({ open })
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   overflow: hidden;
+  contain: paint;
 
   .mobile & {
     width: 100%;
@@ -339,22 +340,22 @@ defineExpose({ open })
 
 /* Desktop popup */
 .popupEnter { animation: modalBdIn var(--nd-duration-base) var(--nd-ease-decel); }
-.popupLeave { animation: modalBdOut var(--nd-duration-fast) ease-in forwards; }
+.popupLeave { animation: modalBdOut var(--nd-duration-base) ease-out forwards; }
 @keyframes modalBdIn { from { opacity: 0; } }
 @keyframes modalBdOut { to { opacity: 0; } }
 
-.popupContentEnter { animation: modalIn 0.4s var(--nd-ease-spring); }
-.popupContentLeave { animation: modalOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
+.popupContentEnter { animation: modalIn 0.2s var(--nd-ease-spring); }
+.popupContentLeave { animation: modalOut var(--nd-duration-base) var(--nd-ease-decel) forwards; }
 @keyframes modalIn { from { opacity: 0; transform: scale(0.88) translateY(6px); } }
 @keyframes modalOut { to { opacity: 0; transform: scale(0.93); } }
 
 /* Mobile sheet — iOS-style spring slide */
 .sheetEnter { animation: sheetBdIn var(--nd-duration-slow) var(--nd-ease-decel); }
-.sheetLeave { animation: sheetBdOut var(--nd-duration-fast) ease-in forwards; }
+.sheetLeave { animation: sheetBdOut var(--nd-duration-base) ease-out forwards; }
 @keyframes sheetBdIn { from { opacity: 0; } }
 @keyframes sheetBdOut { to { opacity: 0; } }
 
-.sheetContentEnter { animation: sheetIn 0.42s var(--nd-ease-spring); }
+.sheetContentEnter { animation: sheetIn 0.25s var(--nd-ease-spring); }
 .sheetContentLeave { animation: sheetOut 0.2s var(--nd-ease-decel) forwards; }
 @keyframes sheetIn { from { transform: translateY(100%); } }
 @keyframes sheetOut { to { transform: translateY(100%); } }

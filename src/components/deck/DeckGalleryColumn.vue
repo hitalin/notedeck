@@ -138,7 +138,12 @@ function formatDate(dateStr: string): string {
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
 }
 
+let lastScrollCheck = 0
+
 function onScroll(e: Event) {
+  const now = Date.now()
+  if (now - lastScrollCheck < 200) return
+  lastScrollCheck = now
   const el = e.target as HTMLElement
   if (
     el.scrollHeight - el.scrollTop - el.clientHeight < 200 &&

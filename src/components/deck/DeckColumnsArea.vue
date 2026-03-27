@@ -380,6 +380,7 @@ defineExpose({ scrollToColumn, columnMap })
   overflow-x: auto;
   overflow-y: clip;
   overscroll-behavior: contain;
+  will-change: scroll-position;
   min-width: 0;
   min-height: 0;
 }
@@ -390,10 +391,11 @@ defineExpose({ scrollToColumn, columnMap })
   max-width: 600px;
   display: flex;
   flex-direction: column;
-  contain: layout style;
+  contain: layout style paint;
   /* Staggered entrance: each column fades in with a slight upward slide.
-     --col-idx is set inline; animation triggers when #app.nd-app-ready starts. */
-  animation: nd-col-enter var(--nd-duration-slower) var(--nd-ease-spring) both;
+     --col-idx is set inline; animation triggers when #app.nd-app-ready starts.
+     forwards → 完了後にコンポジタレイヤーを解放 */
+  animation: nd-col-enter var(--nd-duration-slower) var(--nd-ease-spring) forwards;
   animation-delay: calc(var(--col-idx, 0) * 40ms + 50ms);
 }
 @keyframes nd-col-enter {

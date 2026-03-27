@@ -11,7 +11,7 @@ const mode = ref<'dialog' | 'confirm'>('dialog')
 
 const { visible, entering, leaving } = useVaporTransition(show, {
   enterDuration: 200,
-  leaveDuration: 150,
+  leaveDuration: 200,
 })
 
 let resolvePromise: ((value: boolean) => void) | null = null
@@ -163,7 +163,7 @@ defineExpose({ showDialog, showConfirm })
   animation: backdropIn var(--nd-duration-base) var(--nd-ease-decel);
 }
 .leave {
-  animation: backdropOut var(--nd-duration-fast) ease-in forwards;
+  animation: backdropOut var(--nd-duration-base) ease-out forwards;
 }
 @keyframes backdropIn {
   from { opacity: 0; }
@@ -173,10 +173,10 @@ defineExpose({ showDialog, showConfirm })
 }
 
 .contentEnter {
-  animation: popupIn 0.4s var(--nd-ease-spring);
+  animation: popupIn 0.2s var(--nd-ease-spring);
 }
 .contentLeave {
-  animation: popupOut var(--nd-duration-fast) var(--nd-ease-decel) forwards;
+  animation: popupOut var(--nd-duration-base) var(--nd-ease-decel) forwards;
 }
 @keyframes popupIn {
   from { opacity: 0; transform: scale(0.85) translateY(8px); }

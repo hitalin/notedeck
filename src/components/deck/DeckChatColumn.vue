@@ -618,7 +618,12 @@ async function loadOlder() {
   }
 }
 
+let lastScrollCheck = 0
+
 function handleScroll() {
+  const now = Date.now()
+  if (now - lastScrollCheck < 200) return
+  lastScrollCheck = now
   const el = messagesContainer.value
   if (!el) return
   if (el.scrollTop < 100) {
@@ -1153,6 +1158,8 @@ onBeforeUnmount(() => {
     opacity: 0.3;
     cursor: default;
   }
+
+  transition: filter var(--nd-duration-base);
 
   &:not(:disabled):hover {
     filter: brightness(1.1);

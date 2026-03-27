@@ -42,7 +42,7 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
   position: fixed;
   top: 15%;
   left: 50%;
-  transform: translateX(-50%);
+  translate: -50% 0;
   z-index: var(--nd-z-popup);
   display: flex;
   flex-direction: column;
@@ -59,10 +59,9 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
   border-radius: var(--nd-radius-md);
   font-size: 0.85em;
   color: #fff;
-  background: color-mix(in srgb, var(--nd-panel) 80%, transparent);
-  backdrop-filter: var(--nd-vibrancy);
-  -webkit-backdrop-filter: var(--nd-vibrancy);
+  background: var(--nd-panel);
   box-shadow: var(--nd-shadow-m);
+  contain: paint;
   pointer-events: auto;
   white-space: nowrap;
   max-width: 90vw;
@@ -99,11 +98,11 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
 }
 
 .toastEnter {
-  animation: toast-enter 0.4s var(--nd-ease-spring) both;
+  animation: toast-enter 0.25s var(--nd-ease-spring) both;
 }
 
 .toastLeave {
-  animation: toast-leave var(--nd-duration-fast) var(--nd-ease-decel) both;
+  animation: toast-leave var(--nd-duration-base) var(--nd-ease-decel) both;
 }
 
 @keyframes toast-enter {

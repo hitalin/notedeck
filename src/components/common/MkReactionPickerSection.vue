@@ -49,6 +49,7 @@ function toggle() {
   font-weight: bold;
   cursor: pointer;
   opacity: 0.7;
+  transition: opacity var(--nd-duration-base);
   position: sticky;
   top: 0;
   z-index: 1;

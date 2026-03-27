@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
+import {
+  detectQuality,
+  detectQualitySync,
+  type QualityPreset,
+} from '@/composables/useAdaptiveQuality'
 import defaultsJson from '@/defaults/performance.json'
 import { isTauri, readPerformance, writePerformance } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
@@ -449,6 +454,7 @@ export const usePerformanceStore = defineStore('performance', () => {
     getStorageJson<Partial<PerformanceConfig>>(STORAGE_KEYS.performance, {}),
   )
   const initialized = ref(false)
+  const recommendedPreset = ref<QualityPreset | null>(null)
 
   /** Merged config: overrides on top of defaults. */
   const config = computed<PerformanceConfig>(() => ({
@@ -524,6 +530,23 @@ export const usePerformanceStore = defineStore('performance', () => {
   }
 
   function init(): void {
+    // Adaptive quality: sync detection first, then precise measurement when idle
+    recommendedPreset.value = detectQualitySync()
+    const runPrecise = () => {
+      detectQuality()
+        .then((result) => {
+          recommendedPreset.value = result
+        })
+        .catch(() => {
+          // Keep sync result as fallback
+        })
+    }
+    if (typeof window !== 'undefined' && window.requestIdleCallback) {
+      window.requestIdleCallback(runPrecise, { timeout: 5000 })
+    } else {
+      setTimeout(runPrecise, 3000)
+    }
+
     if (isTauri) {
       initFileStorage().catch((e) =>
         console.warn('[performance] file storage init failed:', e),
@@ -615,6 +638,7 @@ export const usePerformanceStore = defineStore('performance', () => {
     overrides,
     config,
     activePreset,
+    recommendedPreset,
     estimatedMemoryMB,
     estimatedNetworkMBPerHour,
     init,

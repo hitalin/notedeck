@@ -33,7 +33,7 @@ function formatExpiry(iso: string): string {
       :key="i"
       :class="[$style.pollChoice, { [$style.voted]: choice.isVoted }]"
     >
-      <div :class="$style.pollBar" :style="{ width: `${percentage(choice.votes)}%` }" />
+      <div :class="$style.pollBar" :style="{ '--nd-poll-ratio': percentage(choice.votes) / 100 }" />
       <div :class="$style.pollContent">
         <span :class="$style.pollText">{{ choice.text }}</span>
         <span :class="$style.pollPct">{{ percentage(choice.votes) }}%</span>
@@ -79,9 +79,12 @@ function formatExpiry(iso: string): string {
   position: absolute;
   top: 0;
   left: 0;
+  width: 100%;
   height: 100%;
   background: var(--nd-accentedBg);
-  transition: width var(--nd-duration-slower) ease;
+  transform: scaleX(var(--nd-poll-ratio, 0));
+  transform-origin: left;
+  transition: transform var(--nd-duration-slower) ease;
 }
 
 .pollContent {

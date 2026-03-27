@@ -24,6 +24,7 @@ export function useColumnDrag(
   const dropTarget = ref<DropTarget | null>(null)
 
   let ghost: HTMLElement | null = null
+  let ghostHalfWidth = 0
 
   // Pre-computed lookup: columnId → group index in layout (built once per drag)
   let groupIndexMap: Map<string, number> | null = null
@@ -82,12 +83,15 @@ export function useColumnDrag(
     ) as HTMLElement | null
     if (header) {
       ghost = header.cloneNode(true) as HTMLElement
+      ghostHalfWidth = header.clientWidth / 2
       const prefersReduced = window.matchMedia(
         '(prefers-reduced-motion: reduce)',
       ).matches
       if (prefersReduced) {
         Object.assign(ghost.style, {
           position: 'fixed',
+          left: '0',
+          top: '0',
           zIndex: '10000',
           pointerEvents: 'none',
           opacity: '0.85',
@@ -100,6 +104,8 @@ export function useColumnDrag(
       } else {
         Object.assign(ghost.style, {
           position: 'fixed',
+          left: '0',
+          top: '0',
           zIndex: '10000',
           pointerEvents: 'none',
           width: `${header.clientWidth}px`,
@@ -109,7 +115,7 @@ export function useColumnDrag(
           transform: 'scale(0.9) rotate(-1deg)',
           boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
           transition:
-            'opacity 0.2s ease-out, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease-out',
+            'opacity 0.2s ease-out, transform 0.3s cubic-bezier(0.34, 1.1, 0.64, 1)',
         })
       }
       document.body.appendChild(ghost)
@@ -124,8 +130,7 @@ export function useColumnDrag(
     }
 
     moveGhost(e.clientX, e.clientY)
-    document.body.style.userSelect = 'none'
-    document.body.style.cursor = 'grabbing'
+    document.body.classList.add('nd-dragging')
 
     document.addEventListener('pointermove', onDragMove)
     document.addEventListener('pointerup', onDragEnd)
@@ -137,8 +142,7 @@ export function useColumnDrag(
 
   function moveGhost(x: number, y: number) {
     if (!ghost) return
-    ghost.style.left = `${x - ghost.offsetWidth / 2}px`
-    ghost.style.top = `${y - 10}px`
+    ghost.style.translate = `${x - ghostHalfWidth}px ${y - 10}px`
   }
 
   function onDragMove(e: PointerEvent) {
@@ -269,8 +273,8 @@ export function useColumnDrag(
       ghost.remove()
       ghost = null
     }
-    document.body.style.userSelect = ''
-    document.body.style.cursor = ''
+    ghostHalfWidth = 0
+    document.body.classList.remove('nd-dragging')
   }
 
   function onDragEnd() {
