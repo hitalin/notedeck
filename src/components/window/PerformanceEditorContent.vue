@@ -6,6 +6,7 @@ import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { frameTelemetry } from '@/engine/telemetry/frameTelemetry'
 import {
   CATEGORY_LABELS,
   FIELD_META,
@@ -184,6 +185,36 @@ function handleReset() {
             <span :class="$style.estimateScore">({{ perfStore.estimatedRenderCost.score }})</span>
           </div>
         </div>
+        <!-- Live Telemetry -->
+        <div :class="$style.estimateBar">
+          <div :class="$style.estimateItem">
+            <i class="ti ti-activity" />
+            FPS: <strong>{{ frameTelemetry.fps.value }}</strong>
+          </div>
+          <div :class="$style.estimateSep" />
+          <div :class="$style.estimateItem">
+            <i class="ti ti-clock" />
+            フレーム: <strong>{{ frameTelemetry.frameTimeEma.value.toFixed(1) }}ms</strong>
+            <span :class="$style.estimateScore">(P95: {{ frameTelemetry.p95FrameTime.value.toFixed(1) }})</span>
+          </div>
+          <div :class="$style.estimateSep" />
+          <div :class="$style.estimateItem">
+            <i class="ti ti-alert-triangle" />
+            ジャンク: <strong>{{ frameTelemetry.jankCount.value }}/秒</strong>
+          </div>
+        </div>
+
+        <div :class="$style.autoAdjustRow">
+          <span :class="$style.fieldLabel">自動品質調整</span>
+          <button
+            class="_button"
+            :class="[$style.toggleBtn, { [$style.toggleActive]: frameTelemetry.autoAdjustEnabled.value }]"
+            @click="frameTelemetry.setAutoAdjust(!frameTelemetry.autoAdjustEnabled.value)"
+          >
+            {{ frameTelemetry.autoAdjustEnabled.value ? 'ON' : 'OFF' }}
+          </button>
+        </div>
+
         <div :class="$style.presetRow">
           <button
             v-for="(preset, key) in PRESETS"
@@ -632,4 +663,32 @@ function handleReset() {
 .secondary { /* modifier */ }
 .feedback { /* modifier */ }
 .danger { /* modifier */ }
+
+// --- Auto Adjust ---
+
+.autoAdjustRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.toggleBtn {
+  padding: 3px 10px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  font-size: 0.72em;
+  font-weight: 500;
+  transition: border-color var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.toggleActive {
+  border-color: var(--nd-accent);
+  color: var(--nd-accent);
+  background: color-mix(in srgb, var(--nd-accent) 8%, var(--nd-bg));
+}
 </style>

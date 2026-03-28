@@ -41,11 +41,9 @@ const _cancelIdle: (id: number) => void =
     ? (id) => window.cancelIdleCallback(id)
     : (id) => window.clearTimeout(id)
 
-/** Detect display refresh rate for frame budget calculation. */
-function detectFrameBudget(): number {
-  // Default to 60fps (16.6ms). Could be refined with frame time measurement.
-  return 16.6
-}
+/** Known display refresh rates for snap calibration. */
+const KNOWN_RATES = [60, 90, 120, 144, 165, 240]
+const CALIBRATION_FRAMES = 10
 
 function createQueues(): Record<FramePhase, QueueEntry[]> {
   return { input: [], animate: [], read: [], write: [], idle: [] }
@@ -61,7 +59,12 @@ class FrameEngineImpl {
   private _frameStart = 0
   private _lastFrameTime = 0
   private _isOverBudget = false
-  readonly frameBudget = detectFrameBudget()
+  private _frameBudget = 16.6
+
+  // --- Calibration ---
+  private _calibrating = false
+  private _calibrationSamples: number[] = []
+  private _lastTimestamp = 0
 
   // --- EMA for continuous monitoring ---
   private _frameTimeEma = 16.6
@@ -71,6 +74,10 @@ class FrameEngineImpl {
 
   // --- Listeners ---
   private _onFrameListeners: ((stats: FrameStats) => void)[] = []
+
+  get frameBudget(): number {
+    return this._frameBudget
+  }
 
   get lastFrameTime(): number {
     return this._lastFrameTime
@@ -140,11 +147,17 @@ class FrameEngineImpl {
 
   /**
    * Start the engine. Called once at app init.
+   * Runs a calibration phase (10 frames) to detect display refresh rate.
    */
   start(): void {
     if (this._running) return
     this._running = true
     this._lastJankReset = performance.now()
+    // Start calibration to detect refresh rate
+    this._calibrating = true
+    this._calibrationSamples = []
+    this._lastTimestamp = 0
+    this._ensureRaf()
   }
 
   /**
@@ -152,6 +165,7 @@ class FrameEngineImpl {
    */
   stop(): void {
     this._running = false
+    this._calibrating = false
     if (this._rafId !== null) {
       cancelAnimationFrame(this._rafId)
       this._rafId = null
@@ -167,8 +181,20 @@ class FrameEngineImpl {
     }
   }
 
-  private _tick(_timestamp: number): void {
+  private _tick(timestamp: number): void {
     this._rafId = null
+
+    // Calibration: collect frame intervals alongside normal work
+    if (this._calibrating) {
+      if (this._lastTimestamp > 0) {
+        this._calibrationSamples.push(timestamp - this._lastTimestamp)
+      }
+      this._lastTimestamp = timestamp
+      if (this._calibrationSamples.length >= CALIBRATION_FRAMES) {
+        this._finishCalibration()
+      }
+    }
+
     this._frameStart = performance.now()
 
     // Execute phases in order
@@ -183,14 +209,14 @@ class FrameEngineImpl {
     // Measure frame time
     const elapsed = performance.now() - this._frameStart
     this._lastFrameTime = elapsed
-    this._isOverBudget = elapsed > this.frameBudget
+    this._isOverBudget = elapsed > this._frameBudget
 
     // Update EMA (alpha = 0.2 for smooth tracking)
     this._frameTimeEma = 0.2 * elapsed + 0.8 * this._frameTimeEma
 
-    // Jank detection: frame took > 2x budget (33ms at 60fps)
+    // Jank detection: frame took > 2x budget
     this._frameCount++
-    if (elapsed > this.frameBudget * 2) {
+    if (elapsed > this._frameBudget * 2) {
       this._jankCount++
     }
 
@@ -203,10 +229,22 @@ class FrameEngineImpl {
       this._lastJankReset = now
     }
 
-    // Re-schedule if there's pending work
-    if (this._hasPendingWork()) {
+    // Re-schedule if there's pending work or still calibrating
+    if (this._calibrating || this._hasPendingWork()) {
       this._ensureRaf()
     }
+  }
+
+  /** Snap median frame interval to nearest known refresh rate. */
+  private _finishCalibration(): void {
+    this._calibrating = false
+    const sorted = [...this._calibrationSamples].sort((a, b) => a - b)
+    const median = sorted[Math.floor(sorted.length / 2)] ?? 16.6
+    const hz = Math.round(1000 / median)
+    const snapped = KNOWN_RATES.reduce((prev, curr) =>
+      Math.abs(curr - hz) < Math.abs(prev - hz) ? curr : prev,
+    )
+    this._frameBudget = 1000 / snapped
   }
 
   private _flushPhase(phase: FramePhase): void {
@@ -233,13 +271,13 @@ class FrameEngineImpl {
     const queue = this._queues.idle
     if (queue.length === 0) return
 
-    const remaining = this.frameBudget - (performance.now() - this._frameStart)
+    const remaining = this._frameBudget - (performance.now() - this._frameStart)
     if (remaining < 1) return // No budget left
 
     // Run as many idle tasks as we can within remaining budget
     while (queue.length > 0) {
       const elapsed = performance.now() - this._frameStart
-      if (elapsed >= this.frameBudget - 1) break // Leave 1ms margin
+      if (elapsed >= this._frameBudget - 1) break // Leave 1ms margin
       const entry = queue.shift()
       if (entry) entry.fn()
     }
@@ -273,7 +311,7 @@ export interface FrameStats {
   fps: number
   /** Exponential moving average of frame time (ms) */
   frameTimeEma: number
-  /** Number of janky frames (> 33ms) in the last second */
+  /** Number of janky frames (> 2x budget) in the last second */
   jankCount: number
   /** Last frame's execution time (ms) */
   lastFrameTime: number

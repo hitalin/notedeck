@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import {
-  detectQuality,
+  detectQualityFromEma,
   detectQualitySync,
   type QualityPreset,
 } from '@/composables/useAdaptiveQuality'
@@ -914,22 +914,14 @@ export const usePerformanceStore = defineStore('performance', () => {
   }
 
   function init(): void {
-    // Adaptive quality: sync detection first, then precise measurement when idle
+    // Adaptive quality: sync detection first, then refine from telemetry EMA
     recommendedPreset.value = detectQualitySync()
-    const runPrecise = () => {
-      detectQuality()
-        .then((result) => {
-          recommendedPreset.value = result
-        })
-        .catch(() => {
-          // Keep sync result as fallback
-        })
-    }
-    if (typeof window !== 'undefined' && window.requestIdleCallback) {
-      window.requestIdleCallback(runPrecise, { timeout: 5000 })
-    } else {
-      setTimeout(runPrecise, 3000)
-    }
+    // After 3 seconds of telemetry data, use stable EMA for precise detection
+    setTimeout(() => {
+      recommendedPreset.value = detectQualityFromEma(
+        frameTelemetry.frameTimeEma.value,
+      )
+    }, 3000)
 
     if (isTauri) {
       initFileStorage().catch((e) =>
