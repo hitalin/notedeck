@@ -36,7 +36,12 @@ export const useNoteStore = defineStore('notes', () => {
     }
   }
 
-  function put(notes: NormalizedNote[]) {
+  /**
+   * Insert notes into the global store.
+   * @param skipTrigger - When true, skip scheduling triggerRef. Use this when
+   *   the caller already drives reactivity via its own ref (e.g. orderedIds in useNoteList).
+   */
+  function put(notes: NormalizedNote[], skipTrigger = false) {
     const map = noteMap.value
     // First pass: insert all notes and renotes (delete before set to refresh insertion order)
     for (const note of notes) {
@@ -57,26 +62,28 @@ export const useNoteStore = defineStore('notes', () => {
       }
     }
     evictIfNeeded()
-    scheduleTrigger()
+    if (!skipTrigger) scheduleTrigger()
   }
 
   function get(id: string): NormalizedNote | undefined {
     return noteMap.value.get(id)
   }
 
-  /** Resolve an ordered list of IDs into NormalizedNote[], with latest renote from store */
+  /** Resolve an ordered list of IDs into NormalizedNote[], with latest renote from store.
+   *  Pure function — does not mutate the Map (renote syncing is handled eagerly in put()). */
   function resolve(ids: string[]): NormalizedNote[] {
     const map = noteMap.value
     const result: NormalizedNote[] = []
     for (const id of ids) {
-      let note = map.get(id)
+      const note = map.get(id)
       if (!note) continue
-      // Create a new parent reference when renote changes so Vue detects the prop update
+      // Return a fresh object when renote reference is stale so Vue detects the prop update.
+      // No Map mutation — keeps this function safe for use inside computed getters.
       if (note.renoteId) {
         const renote = map.get(note.renoteId)
         if (renote && renote !== note.renote) {
-          note = { ...note, renote }
-          map.set(id, note)
+          result.push({ ...note, renote })
+          continue
         }
       }
       result.push(note)

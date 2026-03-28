@@ -31,6 +31,7 @@ import { useNoteScrollerRef } from '@/composables/useNoteScrollerRef'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
+import { isGuestAccount } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useOfflineModeStore } from '@/stores/offlineMode'
 import { dedup } from '@/utils/dedup'
@@ -188,9 +189,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
     () => account.value?.hasToken,
     async (hasToken, prev) => {
       if (prev === true && hasToken === false) {
-        // Logout: switch to anonymous API for public timelines
+        // Logout: stop streaming, preserve displayed notes (freeze)
         disconnect()
-        connect(true)
       } else if (prev === false && hasToken === true) {
         // Re-login: reconnect with full authentication
         reconnect()
@@ -245,6 +245,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
     // App-level offline mode: skip API fetch and streaming, show cache only
     if (useOfflineModeStore().isOfflineMode) {
       isOffline.value = true
+      isLoading.value = false
+      return
+    }
+
+    // Logged-out account: show cached notes only, skip API fetch.
+    // Guest accounts (never authenticated) still use anonymous API.
+    if (!account.value.hasToken && !isGuestAccount(account.value)) {
       isLoading.value = false
       return
     }
@@ -553,7 +560,17 @@ export function useNoteColumn(config: NoteColumnConfig) {
   /** Disconnect, reset, and reconnect with fresh config state */
   async function reconnect(useCache = false) {
     const adapter = getAdapter()
-    if (adapter && config.streaming && streamingBatch) {
+    if (useOfflineModeStore().isOfflineMode) {
+      // Offline mode: load cache only, skip API fetch and streaming
+      setNotes([])
+      isLoading.value = true
+      if (useCache && config.cache) {
+        const filtered = await loadFilteredCache('reconnect-cache')
+        if (filtered.length > 0) setNotes(filtered)
+      }
+      isOffline.value = true
+      isLoading.value = false
+    } else if (adapter && config.streaming && streamingBatch) {
       // Stream-preserving path: reuse adapter/WebSocket, swap subscription only
       resubscribe(adapter)
       setNotes([])

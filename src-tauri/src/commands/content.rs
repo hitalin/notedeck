@@ -93,7 +93,7 @@ pub async fn api_get_server_stats(
     account_id: String,
 ) -> Result<serde_json::Value> {
     let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_server_stats(&host, &token).await
 }
 
@@ -103,7 +103,7 @@ pub async fn api_get_meta_detail(
     account_id: String,
 ) -> Result<serde_json::Value> {
     let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_meta_detail(&host, &token).await
 }
 
@@ -191,7 +191,7 @@ pub async fn api_get_pages(
             "Invalid page endpoint".to_string(),
         ));
     }
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_pages(&host, &token, &endpoint, limit.unwrap_or(30).clamp(1, 100))
         .await
@@ -204,7 +204,7 @@ pub async fn api_get_page(
     page_id: String,
 ) -> Result<serde_json::Value> {
     let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_page(&host, &token, &page_id).await
 }
 
@@ -240,7 +240,7 @@ pub async fn api_get_gallery_posts(
     until_id: Option<String>,
 ) -> Result<serde_json::Value> {
     let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_gallery_posts(
             &host,
@@ -289,7 +289,7 @@ pub async fn api_get_flashes(
             "Invalid flash endpoint".to_string(),
         ));
     }
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .get_flashes(&host, &token, &endpoint, limit.unwrap_or(30).clamp(1, 100))
         .await
@@ -302,7 +302,7 @@ pub async fn api_get_flash(
     flash_id: String,
 ) -> Result<serde_json::Value> {
     let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.get_flash(&host, &token, &flash_id).await
 }
 

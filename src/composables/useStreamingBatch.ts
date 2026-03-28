@@ -71,6 +71,8 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
 
   function enqueueNote(note: NormalizedNote) {
     if (_paused) return
+    // Emergency cap: prevent unbounded buffer growth (e.g. from listener leaks)
+    if (rafBuffer.length >= MAX_NOTES * 2) return
     rafBuffer.push(note)
     if (!rafScheduled) {
       rafScheduled = true

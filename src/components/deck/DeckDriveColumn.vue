@@ -21,6 +21,7 @@ const props = defineProps<{
 }>()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const isLoggedOut = computed(() => account.value?.hasToken === false)
 
 const {
   folderStack,
@@ -299,9 +300,12 @@ fetchDrive()
       </div>
 
       <div :class="$style.driveGridScroll">
-        <div v-if="loading" :class="$style.columnEmpty">読み込み中...</div>
-        <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
-        <template v-else>
+        <div v-if="isLoggedOut" :class="$style.loggedOutBanner">
+          <i class="ti ti-logout" />ログアウト中
+        </div>
+        <div v-if="loading && !isLoggedOut" :class="$style.columnEmpty">読み込み中...</div>
+        <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
+        <template v-else-if="!isLoggedOut">
           <!-- Folders -->
           <button
             v-for="folder in folders"
@@ -431,6 +435,7 @@ fetchDrive()
 
 /* --- Grid scroll --- */
 .driveGridScroll {
+  position: relative;
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;

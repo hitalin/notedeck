@@ -9,7 +9,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
-import { AppError } from '@/utils/errors'
+import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
@@ -31,6 +31,7 @@ const { navigateToUser: navToUser } = useNavigation()
 const serversStore = useServersStore()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const isLoggedOut = computed(() => account.value?.hasToken === false)
 
 const serverIconUrl = ref<string | undefined>()
 const isLoading = ref(false)
@@ -177,11 +178,14 @@ onMounted(() => {
       Account not found
     </div>
 
-    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error.message }}
+    <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">
+      {{ error.isAuth ? AUTH_ERROR_MESSAGE : error.message }}
     </div>
 
     <div v-else :class="$style.frBody">
+      <div v-if="isLoggedOut" :class="$style.loggedOutBanner">
+        <i class="ti ti-logout" />ログアウト中
+      </div>
       <div
         v-if="requests.length === 0 && !isLoading"
         :class="$style.columnEmpty"
@@ -250,6 +254,7 @@ onMounted(() => {
 @use './column-common.module.scss';
 
 .frBody {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;

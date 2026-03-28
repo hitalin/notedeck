@@ -11,6 +11,8 @@ export type ErrorCode =
   | 'INVALID_INPUT'
   | 'UNKNOWN'
 
+export const AUTH_ERROR_MESSAGE = 'ログインが必要です。'
+
 export class AppError extends Error {
   readonly code: ErrorCode
 

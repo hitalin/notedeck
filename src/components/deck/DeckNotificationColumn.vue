@@ -38,7 +38,7 @@ import { useNoteStore } from '@/stores/notes'
 import { usePerformanceStore } from '@/stores/performance'
 import { useServersStore } from '@/stores/servers'
 import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
-import { AppError } from '@/utils/errors'
+import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
@@ -79,6 +79,8 @@ const {
   scroller,
   onScroll,
 } = useColumnSetup(() => props.column)
+
+const isLoggedOut = computed(() => account.value?.hasToken === false)
 
 const { navigateToUser: navToUser } = useNavigation()
 const noteSound = useNoteSound(() => account.value?.host, 'syuilo/n-ea')
@@ -814,11 +816,14 @@ onUnmounted(() => {
       Account not found
     </div>
 
-    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error.message }}
+    <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">
+      {{ error.isAuth ? AUTH_ERROR_MESSAGE : error.message }}
     </div>
 
     <div v-else :class="$style.notifBody">
+      <div v-if="isLoggedOut" :class="$style.loggedOutBanner">
+        <i class="ti ti-logout" />ログアウト中
+      </div>
       <!-- Notification filter tabs -->
       <div ref="filterBarRef" :class="$style.filterBar">
         <button
@@ -1115,6 +1120,7 @@ onUnmounted(() => {
 
 
 .notifBody {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;

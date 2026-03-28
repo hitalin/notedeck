@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckProfileStore } from '@/stores/deckProfile'
@@ -218,6 +218,11 @@ export const useDeckStore = defineStore('deck', () => {
     if (existing) {
       // In-place update: swap type without destroying DOM / layout.
       updateColumn(existing.id, { type, accountId, name: null })
+      // Force watch re-trigger even if the same column is already active
+      activeColumnId.value = null
+      nextTick(() => {
+        activeColumnId.value = existing.id
+      })
       return
     }
     addColumnAt(0, {

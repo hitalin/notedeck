@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
@@ -9,7 +10,8 @@ const props = defineProps<{
   column: DeckColumnType
 }>()
 
-const { columnThemeVars } = useColumnTheme(() => props.column)
+const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const isLoggedOut = computed(() => account.value?.hasToken === false)
 
 const endpoint = ref('')
 const params = ref('{}')
@@ -43,7 +45,8 @@ async function execute() {
     })
     response.value = JSON.stringify(result, null, 2)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    const appErr = AppError.from(e)
+    error.value = appErr.isAuth ? AUTH_ERROR_MESSAGE : appErr.message
   } finally {
     loading.value = false
   }
@@ -108,6 +111,7 @@ function onKeydown(e: KeyboardEvent) {
         <div v-if="!column.accountId" :class="$style.responseEmpty">
           アカウントが設定されていません
         </div>
+        <div v-else-if="isLoggedOut" :class="$style.responseError"><i class="ti ti-logout" /> ログアウト中</div>
         <div v-else-if="error" :class="$style.responseError">{{ error }}</div>
         <div v-else-if="response !== null" :class="$style.responseBody">
           <pre>{{ response }}</pre>
