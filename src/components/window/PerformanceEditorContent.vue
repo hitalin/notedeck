@@ -19,7 +19,6 @@ import {
 const jsonLang = json()
 
 const perfStore = usePerformanceStore()
-const recommendedPreset = computed(() => perfStore.recommendedPreset)
 
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['visual', 'code'] as const,
@@ -204,17 +203,6 @@ function handleReset() {
           </div>
         </div>
 
-        <div :class="$style.autoAdjustRow">
-          <span :class="$style.fieldLabel">自動品質調整</span>
-          <button
-            class="_button"
-            :class="[$style.toggleBtn, { [$style.toggleActive]: frameTelemetry.autoAdjustEnabled.value }]"
-            @click="frameTelemetry.setAutoAdjust(!frameTelemetry.autoAdjustEnabled.value)"
-          >
-            {{ frameTelemetry.autoAdjustEnabled.value ? 'ON' : 'OFF' }}
-          </button>
-        </div>
-
         <div :class="$style.presetRow">
           <button
             v-for="(preset, key) in PRESETS"
@@ -225,10 +213,6 @@ function handleReset() {
           >
             <i :class="'ti ' + preset.icon" />
             {{ preset.label }}
-            <span
-              v-if="recommendedPreset === key && perfStore.activePreset !== key"
-              :class="$style.recommendBadge"
-            >おすすめ</span>
           </button>
           <div v-if="perfStore.activePreset === 'custom'" :class="$style.presetCustom">
             <i class="ti ti-settings" />
@@ -473,18 +457,6 @@ function handleReset() {
   }
 }
 
-.recommendBadge {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 5px;
-  border-radius: var(--nd-radius-sm);
-  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
-  color: var(--nd-accent);
-  font-size: 0.85em;
-  font-weight: 500;
-  line-height: 1;
-}
-
 .presetCustom {
   display: flex;
   align-items: center;
@@ -664,31 +636,4 @@ function handleReset() {
 .feedback { /* modifier */ }
 .danger { /* modifier */ }
 
-// --- Auto Adjust ---
-
-.autoAdjustRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 0;
-}
-
-.toggleBtn {
-  padding: 3px 10px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  font-size: 0.72em;
-  font-weight: 500;
-  transition: border-color var(--nd-duration-base), background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.toggleActive {
-  border-color: var(--nd-accent);
-  color: var(--nd-accent);
-  background: color-mix(in srgb, var(--nd-accent) 8%, var(--nd-bg));
-}
 </style>

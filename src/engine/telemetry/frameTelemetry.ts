@@ -27,7 +27,7 @@ class FrameTelemetryImpl {
   private _p95FrameTime = ref(16.6)
   private _jankCount = ref(0)
   private _currentQuality = ref<QualityLevel>('balanced')
-  private _autoAdjustEnabled = ref(false)
+  private _autoAdjustEnabled = ref(true)
 
   // --- Internal state ---
   private _frameTimeHistory: number[] = []
