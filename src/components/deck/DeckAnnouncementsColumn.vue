@@ -5,7 +5,7 @@ import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
-import { AppError } from '@/utils/errors'
+import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
@@ -36,6 +36,7 @@ const themeStore = useThemeStore()
 const account = computed(() =>
   accountsStore.accounts.find((a) => a.id === props.column.accountId),
 )
+const isLoggedOut = computed(() => account.value?.hasToken === false)
 
 const columnThemeVars = computed(() => {
   const accountId = props.column.accountId
@@ -144,11 +145,14 @@ onUnmounted(() => {
       Account not found
     </div>
 
-    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error.message }}
+    <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">
+      {{ error.isAuth ? AUTH_ERROR_MESSAGE : error.message }}
     </div>
 
     <div v-else :class="$style.announcementsBody">
+      <div v-if="isLoggedOut" :class="$style.loggedOutBanner">
+        <i class="ti ti-logout" />ログアウト中
+      </div>
       <div
         v-if="announcements.length === 0 && !isLoading"
         :class="$style.columnEmpty"
@@ -193,6 +197,7 @@ onUnmounted(() => {
 <style lang="scss" module>
 @use './column-common.module.scss';
 .announcementsBody {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;

@@ -4,7 +4,7 @@ import { useColumnTheme } from '@/composables/useColumnTheme'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
-import { AppError } from '@/utils/errors'
+import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
@@ -13,6 +13,7 @@ const props = defineProps<{
 }>()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const isLoggedOut = computed(() => account.value?.hasToken === false)
 
 interface Achievement {
   name: string
@@ -524,7 +525,8 @@ async function fetchAchievements() {
     })
     achievements.value = result
   } catch (e) {
-    error.value = AppError.from(e).message
+    const appErr = AppError.from(e)
+    error.value = appErr.isAuth ? AUTH_ERROR_MESSAGE : appErr.message
   } finally {
     loading.value = false
   }
@@ -547,8 +549,11 @@ fetchAchievements()
     </template>
 
     <div :class="$style.achievementsScroll">
-      <div v-if="loading && achievements.length === 0" :class="$style.columnEmpty">読み込み中...</div>
-      <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
+      <div v-if="isLoggedOut" :class="$style.loggedOutBanner">
+        <i class="ti ti-logout" />ログアウト中
+      </div>
+      <div v-if="loading && achievements.length === 0 && !isLoggedOut" :class="$style.columnEmpty">読み込み中...</div>
+      <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
       <div v-else-if="achievements.length === 0 && !loading" :class="$style.columnEmpty">実績がありません</div>
       <template v-else>
         <div :class="$style.achievementsGrid">
@@ -594,6 +599,7 @@ fetchAchievements()
 }
 
 .achievementsScroll {
+  position: relative;
   flex: 1;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
