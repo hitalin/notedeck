@@ -427,7 +427,7 @@ defineExpose({
           <!-- Realtime mode -->
           <button
             class="_button"
-            :class="[$style.item, { [$style.pollingActive]: isPollingMode, [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
+            :class="[$style.item, { [$style.realtimeActive]: !isPollingMode, [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
             :disabled="offlineModeStore.isOfflineMode"
             title="リアルタイムモード切替"
             @click="hapticLight(); toggleRealtimeMode()"
@@ -642,7 +642,7 @@ defineExpose({
   }
 }
 
-.pollingActive {
+.realtimeActive {
   color: var(--nd-warn, #e2a100);
 
   :global(.ti) {
