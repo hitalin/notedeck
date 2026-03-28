@@ -410,7 +410,7 @@ defineExpose({
           <button
             class="_button"
             :class="[$style.item, offlineModeStore.isOfflineMode ? $style.offlineActive : $style.onlineActive]"
-            title="オフラインモード"
+            :title="offlineModeStore.isOfflineMode ? 'オンラインモードに切り替え' : 'オフラインモードに切り替え'"
             @click="hapticLight(); toggleOfflineMode()"
           >
             <div :class="$style.iconWrap">
@@ -424,7 +424,7 @@ defineExpose({
             class="_button"
             :class="[$style.item, realtimeModeStore.isRealtime ? $style.realtimeActive : $style.pollingActive, { [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
             :disabled="offlineModeStore.isOfflineMode"
-            title="リアルタイムモード切替"
+            :title="realtimeModeStore.isRealtime ? 'ポーリングモードに切り替え' : 'リアルタイムモードに切り替え'"
             @click="hapticLight(); toggleRealtimeMode()"
           >
             <div :class="$style.iconWrap">
