@@ -5,7 +5,7 @@ import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
-import { proxyUrl } from '@/utils/imageProxy'
+import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
 import { invoke } from '@/utils/tauriInvoke'
 
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
@@ -15,6 +15,7 @@ const props = defineProps<{
   myUserId?: string
   accountId?: string
   serverHost?: string
+  otherAvatarUrl?: string
 }>()
 
 const emit = defineEmits<{
@@ -23,6 +24,8 @@ const emit = defineEmits<{
 }>()
 
 const { reactionUrl } = useEmojiResolver()
+
+const AVATAR_ERROR = '/avatar-error.svg'
 
 const isMine = computed(
   () => props.myUserId && props.message.fromUserId === props.myUserId,
@@ -66,26 +69,36 @@ const groupedReactions = computed(() => {
       reaction: string
       count: number
       users: string[]
-      avatarUrls: (string | null)[]
+      avatarUrls: string[]
       reacted: boolean
     }
   >()
   for (const r of reactions) {
-    const userName = r.user ? r.user.name || r.user.username : ''
-    const avatarUrl = r.user?.avatarUrl ?? null
-    const isMe = r.user ? r.user.id === props.myUserId : false
+    let userName = ''
+    let avatarUrl: string | undefined
+    let isMe = false
+
+    if (r.user) {
+      userName = r.user.name || r.user.username
+      avatarUrl = r.user.avatarUrl
+      isMe = r.user.id === props.myUserId
+    } else if (props.otherAvatarUrl) {
+      // 1-on-1: no user in reaction = the other participant reacted
+      avatarUrl = props.otherAvatarUrl
+    }
+
     const existing = map.get(r.reaction)
     if (existing) {
       existing.count++
       if (userName) existing.users.push(userName)
-      existing.avatarUrls.push(avatarUrl)
+      if (avatarUrl) existing.avatarUrls.push(avatarUrl)
       if (isMe) existing.reacted = true
     } else {
       map.set(r.reaction, {
         reaction: r.reaction,
         count: 1,
         users: userName ? [userName] : [],
-        avatarUrls: [avatarUrl],
+        avatarUrls: avatarUrl ? [avatarUrl] : [],
         reacted: isMe,
       })
     }
@@ -96,6 +109,13 @@ const groupedReactions = computed(() => {
 function getReactionImageUrl(reaction: string): string | null {
   if (!props.serverHost) return null
   return reactionUrl(reaction, {}, {}, props.serverHost)
+}
+
+function onReactionAvatarError(e: Event) {
+  const img = e.target as HTMLImageElement
+  if (!img.src.endsWith(AVATAR_ERROR)) {
+    img.src = AVATAR_ERROR
+  }
 }
 
 function handleReactionClick(reaction: string, reacted: boolean) {
@@ -184,16 +204,21 @@ function closeMentionPopup() {
           :title="r.users.join(', ')"
           @click="handleReactionClick(r.reaction, r.reacted)"
         >
-          <span :class="$style.reactionAvatars">
-            <img
+          <span v-if="r.avatarUrls.length > 0" :class="$style.reactionAvatars">
+            <span
               v-for="(url, i) in r.avatarUrls.slice(0, 3)"
               :key="i"
-              :src="url ? proxyUrl(url) : ''"
-              :class="$style.reactionAvatar"
+              :class="$style.reactionAvatarWrap"
               :style="{ marginLeft: i > 0 ? '-6px' : '0' }"
-              decoding="async"
-              loading="lazy"
-            />
+            >
+              <img
+                :src="proxyThumbUrl(url, 18)"
+                :class="$style.reactionAvatar"
+                decoding="async"
+                loading="lazy"
+                @error="onReactionAvatarError"
+              />
+            </span>
           </span>
           <img
             v-if="getReactionImageUrl(r.reaction)"
@@ -373,13 +398,22 @@ function closeMentionPopup() {
   flex-shrink: 0;
 }
 
-.reactionAvatar {
+.reactionAvatarWrap {
+  display: inline-block;
   width: 18px;
   height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--nd-buttonBg);
+  overflow: hidden;
+  border: 1.5px solid var(--nd-panel, #1a1a1a);
+}
+
+.reactionAvatar {
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  border: 1.5px solid var(--nd-panel, #1a1a1a);
-  flex-shrink: 0;
 }
 
 .reactionEmojiImg {
