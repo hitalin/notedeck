@@ -211,7 +211,7 @@ onMounted(() => {
       :class="$style.dialogBody"
     >
       <div :class="$style.logoArea">
-        <LoadingSpinner :size="48" />
+        <LoadingSpinner />
         <p :class="$style.subtitle">サーバーに接続中...</p>
       </div>
     </div>
@@ -222,7 +222,7 @@ onMounted(() => {
       :class="$style.dialogBody"
     >
       <div :class="$style.logoArea">
-        <LoadingSpinner :size="48" />
+        <LoadingSpinner />
         <p :class="$style.subtitle">認証待ち...</p>
       </div>
 
