@@ -120,30 +120,40 @@ export function usePostFormState(
     }
     // Load drafts for this account
     drafts.value = loadDrafts(acc.id)
-    // Detect active modes for note-level flags
-    try {
-      const availability = await detectAvailableTimelines(acc.id)
+
+    // Fetch modes, policies, and user settings in parallel (all independent after adapter init)
+    const [availabilityResult, policiesResult, userInfoResult] =
+      await Promise.allSettled([
+        detectAvailableTimelines(acc.id),
+        invoke<Record<string, boolean>>('api_get_user_policies', {
+          accountId: acc.id,
+        }),
+        invoke<{
+          defaultNoteVisibility?: string
+          defaultNoteLocalOnly?: boolean
+        }>('api_get_self', { accountId: acc.id }),
+      ])
+
+    // Apply mode flags
+    if (availabilityResult.status === 'fulfilled') {
       const flags: Record<string, boolean> = {}
-      for (const [key, value] of Object.entries(availability.modes)) {
+      for (const [key, value] of Object.entries(
+        availabilityResult.value.modes,
+      )) {
         if (value) {
           flags[key.replace(/^isIn/, 'isNoteIn')] = true
         }
       }
       noteModeFlags.value = flags
-    } catch {
+    } else {
       noteModeFlags.value = {}
     }
 
-    // Detect visibility restrictions from role policies
+    // Apply visibility restrictions from role policies
     const disabled = new Set<string>()
-    try {
-      const policies = await invoke<Record<string, boolean>>(
-        'api_get_user_policies',
-        { accountId: acc.id },
-      )
-      // Standard: canPublicNote
+    if (policiesResult.status === 'fulfilled') {
+      const policies = policiesResult.value
       if (policies.canPublicNote === false) disabled.add('public')
-      // Fork extensions: can*Note pattern (e.g., canHomeNote, canPublicNonLtlNote)
       for (const [key, value] of Object.entries(policies)) {
         if (value !== false) continue
         const match = key.match(/^can(.+)Note$/)
@@ -152,7 +162,7 @@ export function usePostFormState(
           (match[1]?.charAt(0).toLowerCase() ?? '') + (match[1]?.slice(1) ?? '')
         disabled.add(name)
       }
-      // Filter mode flags by can*Note policies (e.g., canYamiNote=false → remove isNoteInYamiMode)
+      // Filter mode flags by can*Note policies
       const filtered: Record<string, boolean> = {}
       for (const [flagKey, flagValue] of Object.entries(noteModeFlags.value)) {
         const m = flagKey.match(/^isNoteIn(.+)Mode$/)
@@ -163,22 +173,16 @@ export function usePostFormState(
         filtered[flagKey] = flagValue
       }
       noteModeFlags.value = filtered
-    } catch {
-      // Policies unavailable — allow all
     }
-    // Reply to specified → restrict to followers/specified
     if (props.replyTo?.visibility === 'specified') {
       disabled.add('public')
       disabled.add('home')
     }
     disabledVisibilities.value = disabled
 
-    // Fetch default note settings from server user settings
-    try {
-      const userInfo = await invoke<{
-        defaultNoteVisibility?: string
-        defaultNoteLocalOnly?: boolean
-      }>('api_get_self', { accountId: acc.id })
+    // Apply default note settings
+    if (userInfoResult.status === 'fulfilled') {
+      const userInfo = userInfoResult.value
       const v = userInfo.defaultNoteVisibility
       if (v && visibilityOptions.some((o) => o.value === v)) {
         visibility.value = v as NoteVisibility
@@ -186,8 +190,6 @@ export function usePostFormState(
       if (!props.channelId) {
         localOnly.value = userInfo.defaultNoteLocalOnly === true
       }
-    } catch {
-      // Fallback to defaults (public, federation on)
     }
 
     // Auto-correct if current visibility is disabled

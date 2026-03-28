@@ -360,7 +360,7 @@ onMounted(() => {
   border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-base);
   cursor: pointer;
-  contain: layout style;
+  contain: layout style paint;
   content-visibility: auto;
   contain-intrinsic-size: auto 48px;
 
