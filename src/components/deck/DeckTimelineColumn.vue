@@ -112,8 +112,8 @@ const swipeTarget = computed<HTMLElement | null>(
   () => (noteColumnRef.value?.scroller as HTMLElement | undefined) ?? null,
 )
 
-async function reconnect() {
-  await noteColumnRef.value?.reconnect()
+async function reconnect(useCache = false) {
+  await noteColumnRef.value?.reconnect(useCache)
 }
 
 // --- Ads ---
