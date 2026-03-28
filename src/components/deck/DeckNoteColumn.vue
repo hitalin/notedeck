@@ -15,6 +15,7 @@ import {
 } from '@/composables/useNoteColumn'
 import { getAccountAvatarUrl, isGuestAccount } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useOfflineModeStore } from '@/stores/offlineMode'
 import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import DeckColumn from './DeckColumn.vue'
 
@@ -61,6 +62,7 @@ const {
 
 const isStreaming = !!props.noteColumnConfig.streaming
 
+const offlineModeStore = useOfflineModeStore()
 const realtimeModeStore = useRealtimeModeStore()
 const isPollingMode = computed(() => !realtimeModeStore.isRealtime)
 
@@ -148,7 +150,7 @@ defineExpose({
       <div v-if="isLoggedOut && account && !isGuestAccount(account)" :class="$style.loggedOutBanner">
         <i class="ti ti-logout" />ログアウト中
       </div>
-      <div v-else-if="isOffline && !isLoggedOut" :class="$style.offlineBanner">
+      <div v-else-if="(isOffline || offlineModeStore.isOfflineMode) && !isLoggedOut" :class="$style.offlineBanner">
         <i class="ti ti-cloud-off" />オフライン
       </div>
       <div v-else-if="isPollingMode" :class="$style.pollingBanner">
