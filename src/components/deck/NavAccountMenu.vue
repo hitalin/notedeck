@@ -71,7 +71,6 @@ function modeLabel(key: string): string {
 
 function modeIcon(key: string, active: boolean): string {
   // Known mode icons — fall back to generic toggle icon
-  if (key === 'isInRealtimeMode') return active ? 'ti-bolt' : 'ti-bolt-off'
   if (key === 'isInYamiMode') return active ? 'ti-moon' : 'ti-moon-off'
   return active ? 'ti-toggle-right' : 'ti-toggle-left'
 }

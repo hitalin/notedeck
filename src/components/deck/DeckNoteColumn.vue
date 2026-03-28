@@ -62,10 +62,7 @@ const {
 const isStreaming = !!props.noteColumnConfig.streaming
 
 const realtimeModeStore = useRealtimeModeStore()
-const isPollingMode = computed(() => {
-  const id = account.value?.id
-  return id ? realtimeModeStore.modeByAccount[id] === false : false
-})
+const isPollingMode = computed(() => !realtimeModeStore.isRealtime)
 
 const webUiUrl = computed(() => {
   if (!props.webUiPath || !account.value) return undefined

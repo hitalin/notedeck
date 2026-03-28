@@ -14,6 +14,7 @@ import {
 import { useConfirm } from '@/stores/confirm'
 import { isNavDivider, type NavItem, useDeckStore } from '@/stores/deck'
 import { useOfflineModeStore } from '@/stores/offlineMode'
+import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import { useServersStore } from '@/stores/servers'
 import { useStreamingStore } from '@/stores/streaming'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -49,6 +50,7 @@ const { navigateToLogin, navigateToPlugins } = useNavigation()
 const { confirm } = useConfirm()
 const deckStore = useDeckStore()
 const offlineModeStore = useOfflineModeStore()
+const realtimeModeStore = useRealtimeModeStore()
 const isCompact = useIsCompactLayout()
 const { totalUnread, markAllAsRead } = useUnreadNotifications()
 const { totalUnread: chatUnread, resetAll: resetChatUnread } = useUnreadChat()
@@ -64,6 +66,19 @@ async function toggleOfflineMode() {
     cancelLabel: 'キャンセル',
   })
   if (ok) await offlineModeStore.toggle()
+}
+
+async function toggleRealtimeMode() {
+  const isRealtime = realtimeModeStore.isRealtime
+  const ok = await confirm({
+    title: isRealtime ? 'ポーリングモードに切替' : 'リアルタイムモードに切替',
+    message: isRealtime
+      ? 'WebSocket接続を切断し、定期的なHTTPポーリングに切り替えます。'
+      : 'リアルタイム更新に切り替えます。',
+    okLabel: '切替',
+    cancelLabel: 'キャンセル',
+  })
+  if (ok) realtimeModeStore.toggle()
 }
 
 const sidebarType = computed(() => {
@@ -400,6 +415,20 @@ defineExpose({
             <span :class="$style.label">オフライン</span>
           </button>
 
+          <!-- Realtime mode -->
+          <button
+            class="_button"
+            :class="[$style.item, { [$style.realtimeActive]: realtimeModeStore.isRealtime, [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
+            :disabled="offlineModeStore.isOfflineMode"
+            title="リアルタイムモード切替"
+            @click="hapticLight(); toggleRealtimeMode()"
+          >
+            <div :class="$style.iconWrap">
+              <i :class="realtimeModeStore.isRealtime ? 'ti ti-bolt' : 'ti ti-bolt-off'" />
+            </div>
+            <span :class="$style.label">{{ realtimeModeStore.isRealtime ? 'リアルタイム' : 'ポーリング' }}</span>
+          </button>
+
           <!-- Post button -->
           <button
             class="_button"
@@ -602,6 +631,19 @@ defineExpose({
   :global(.ti) {
     opacity: 1;
   }
+}
+
+.realtimeActive {
+  color: var(--nd-warn, #e2a100);
+
+  :global(.ti) {
+    opacity: 1;
+  }
+}
+
+.itemDisabled {
+  opacity: 0.35;
+  pointer-events: none;
 }
 
 .iconWrap {

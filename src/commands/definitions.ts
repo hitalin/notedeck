@@ -1,6 +1,5 @@
 import { useCommandStore } from '@/commands/registry'
 import type { NoteAction } from '@/composables/useNoteFocus'
-import { useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
@@ -168,10 +167,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     icon: 'bolt',
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('toggle-realtime-mode'),
-    execute: () => {
-      const accountId = useAccountsStore().activeAccountId
-      if (accountId) useRealtimeModeStore().toggleRealtimeMode(accountId)
-    },
+    execute: () => useRealtimeModeStore().toggle(),
   })
 
   for (const freq of ['low', 'medium', 'high'] as const) {
@@ -187,12 +183,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
       icon: 'clock',
       category: 'general',
       shortcuts: [],
-      execute: () => {
-        const accountId = useAccountsStore().activeAccountId
-        if (accountId) {
-          useRealtimeModeStore().setPollingFrequency(accountId, freq)
-        }
-      },
+      execute: () => useRealtimeModeStore().setPollingFrequency(freq),
     })
   }
 
