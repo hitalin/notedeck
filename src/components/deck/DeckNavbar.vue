@@ -350,19 +350,6 @@ defineExpose({
           </template>
         </div>
 
-        <!-- Offline mode -->
-        <button
-          class="_button"
-          :class="[$style.item, { [$style.offlineActive]: offlineModeStore.isOfflineMode }]"
-          title="オフラインモード"
-          @click="hapticLight(); toggleOfflineMode()"
-        >
-          <div :class="$style.iconWrap">
-            <i :class="offlineModeStore.isOfflineMode ? 'ti ti-wifi-off' : 'ti ti-wifi'" />
-          </div>
-          <span :class="$style.label">オフライン</span>
-        </button>
-
         <!-- Spacer -->
         <div :class="$style.spacer" />
 
@@ -399,6 +386,19 @@ defineExpose({
             </div>
           </div>
           <div v-if="isCompact" :class="$style.divider" />
+
+          <!-- Offline mode -->
+          <button
+            class="_button"
+            :class="[$style.item, { [$style.offlineActive]: offlineModeStore.isOfflineMode }]"
+            title="オフラインモード"
+            @click="hapticLight(); toggleOfflineMode()"
+          >
+            <div :class="$style.iconWrap">
+              <i :class="offlineModeStore.isOfflineMode ? 'ti ti-wifi-off' : 'ti ti-wifi'" />
+            </div>
+            <span :class="$style.label">オフライン</span>
+          </button>
 
           <!-- Post button -->
           <button
