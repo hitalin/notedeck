@@ -7,12 +7,10 @@ import ThemePreview from '@/components/ThemePreview.vue'
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
 import { useUpdater } from '@/composables/useUpdater'
 import { useVaporTransition } from '@/composables/useVaporTransition'
-import { useAccountsStore } from '@/stores/accounts'
 import { type ConfirmOptions, useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { usePerformanceStore } from '@/stores/performance'
-import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import { useThemeStore } from '@/stores/theme'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
@@ -42,17 +40,6 @@ const {
   installUpdate,
 } = useUpdater()
 
-const accountsStore = useAccountsStore()
-const realtimeModeStore = useRealtimeModeStore()
-const activeAccountId = computed(() => accountsStore.activeAccountId)
-const isRealtimeMode = computed(() => {
-  const id = activeAccountId.value
-  return id ? realtimeModeStore.isRealtimeMode(id) : true
-})
-const pollingFrequency = computed(() => {
-  const id = activeAccountId.value
-  return id ? realtimeModeStore.getPollingFrequency(id) : 'medium'
-})
 const isCompact = useIsCompactLayout()
 const { visible: menuVisible, leaving: menuLeaving } = useVaporTransition(
   toRef(props, 'show'),
@@ -347,28 +334,6 @@ const importSettings = () =>
             <span :class="$style.settingsMenuLabel">パフォーマンス</span>
             <span v-if="Object.keys(perfStore.overrides).length > 0" :class="$style.activeDot" />
           </div>
-          <div :class="$style.settingsMenuDivider" />
-          <div v-if="activeAccountId" :class="$style.settingsMenuItem" @click="realtimeModeStore.toggleRealtimeMode(activeAccountId)">
-            <i :class="isRealtimeMode ? 'ti ti-bolt' : 'ti ti-bolt-off'" />
-            <span :class="$style.settingsMenuLabel">リアルタイムモード</span>
-            <span v-if="!isRealtimeMode" :class="$style.activeDot" />
-          </div>
-          <template v-if="activeAccountId && !isRealtimeMode">
-            <div :class="$style.pollingFrequencyRow">
-              <span :class="$style.pollingFrequencyLabel">更新頻度</span>
-              <div :class="$style.pollingFrequencyBtns">
-                <button
-                  v-for="freq in (['low', 'medium', 'high'] as const)"
-                  :key="freq"
-                  class="_button"
-                  :class="[$style.pollingFrequencyBtn, { [$style.pollingFrequencyBtnActive]: pollingFrequency === freq }]"
-                  @click="realtimeModeStore.setPollingFrequency(activeAccountId!, freq)"
-                >
-                  {{ freq === 'low' ? '低' : freq === 'medium' ? '中' : '高' }}
-                </button>
-              </div>
-            </div>
-          </template>
         </div>
       </div>
 
@@ -716,49 +681,6 @@ const importSettings = () =>
 
 .settingsMenuLabel {
   position: relative;
-}
-
-.pollingFrequencyRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 16px 6px;
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  opacity: 0.8;
-}
-
-.pollingFrequencyLabel {
-  white-space: nowrap;
-}
-
-.pollingFrequencyBtns {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-}
-
-.pollingFrequencyBtn {
-  padding: 2px 10px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  transition: background var(--nd-duration-fast), color var(--nd-duration-fast);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.pollingFrequencyBtnActive {
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent, #fff);
-
-  &:hover {
-    background: var(--nd-accent);
-    opacity: 0.85;
-  }
 }
 
 .updateSection {

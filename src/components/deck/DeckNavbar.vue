@@ -55,9 +55,11 @@ const isCompact = useIsCompactLayout()
 const { totalUnread, markAllAsRead } = useUnreadNotifications()
 const { totalUnread: chatUnread, resetAll: resetChatUnread } = useUnreadChat()
 
+/** Whether the active account has polling enabled (ignoring offline override). */
 const isPollingMode = computed(() => {
   const id = accountsStore.activeAccountId
-  return id ? !realtimeModeStore.isRealtimeMode(id) : false
+  if (!id) return false
+  return realtimeModeStore.modeByAccount[id] === false
 })
 
 async function toggleRealtimeMode() {
@@ -425,7 +427,8 @@ defineExpose({
           <!-- Realtime mode -->
           <button
             class="_button"
-            :class="[$style.item, { [$style.pollingActive]: isPollingMode }]"
+            :class="[$style.item, { [$style.pollingActive]: isPollingMode, [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
+            :disabled="offlineModeStore.isOfflineMode"
             title="リアルタイムモード切替"
             @click="hapticLight(); toggleRealtimeMode()"
           >
@@ -645,6 +648,11 @@ defineExpose({
   :global(.ti) {
     opacity: 1;
   }
+}
+
+.itemDisabled {
+  opacity: 0.35;
+  pointer-events: none;
 }
 
 .iconWrap {
