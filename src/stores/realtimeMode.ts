@@ -2,28 +2,19 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useOfflineModeStore } from '@/stores/offlineMode'
+import { usePerformanceStore } from '@/stores/performance'
 import { getStorageJson, setStorageJson } from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
 
-export type PollingFrequency = 'low' | 'medium' | 'high'
-
 const STORAGE_KEY = 'nd-realtime-mode'
-
-const POLLING_INTERVALS: Record<PollingFrequency, number> = {
-  low: 30_000,
-  medium: 15_000,
-  high: 5_000,
-}
 
 interface RealtimeModeState {
   enabled: boolean
-  pollingFrequency: PollingFrequency
 }
 
 // Migrate from old per-account schema if present
 interface LegacyState {
   modeByAccount: Record<string, boolean>
-  frequencyByAccount?: Record<string, PollingFrequency>
 }
 
 function loadState(): RealtimeModeState {
@@ -31,7 +22,7 @@ function loadState(): RealtimeModeState {
     STORAGE_KEY,
     null,
   )
-  if (!raw) return { enabled: true, pollingFrequency: 'medium' }
+  if (!raw) return { enabled: true }
 
   // Legacy migration: per-account → app-wide
   if ('modeByAccount' in raw) {
@@ -39,25 +30,18 @@ function loadState(): RealtimeModeState {
     const anyPolling = Object.values(legacy.modeByAccount).some(
       (v) => v === false,
     )
-    const firstFreq = legacy.frequencyByAccount
-      ? (Object.values(legacy.frequencyByAccount)[0] ?? 'medium')
-      : 'medium'
-    return { enabled: !anyPolling, pollingFrequency: firstFreq }
+    return { enabled: !anyPolling }
   }
 
-  return raw as RealtimeModeState
+  return { enabled: (raw as RealtimeModeState).enabled ?? true }
 }
 
 export const useRealtimeModeStore = defineStore('realtimeMode', () => {
   const initial = loadState()
   const enabled = ref(initial.enabled)
-  const pollingFrequency = ref<PollingFrequency>(initial.pollingFrequency)
 
   function persist(): void {
-    setStorageJson(STORAGE_KEY, {
-      enabled: enabled.value,
-      pollingFrequency: pollingFrequency.value,
-    })
+    setStorageJson(STORAGE_KEY, { enabled: enabled.value })
   }
 
   /** Whether the app is in real-time (WebSocket) mode. Returns false when offline. */
@@ -66,15 +50,13 @@ export const useRealtimeModeStore = defineStore('realtimeMode', () => {
     return enabled.value
   })
 
-  const pollingIntervalMs = computed(
-    () => POLLING_INTERVALS[pollingFrequency.value],
-  )
+  function getPollingIntervalMs(): number {
+    return usePerformanceStore().get('streamPollingInterval') * 1000
+  }
 
   function applyToAllAccounts(): void {
     const mode = enabled.value ? 'realtime' : 'polling'
-    const intervalMs = enabled.value
-      ? undefined
-      : POLLING_INTERVALS[pollingFrequency.value]
+    const intervalMs = enabled.value ? undefined : getPollingIntervalMs()
     for (const acc of useAccountsStore().accounts) {
       if (acc.hasToken) {
         invoke('stream_set_mode', {
@@ -97,21 +79,10 @@ export const useRealtimeModeStore = defineStore('realtimeMode', () => {
     setRealtimeMode(!enabled.value)
   }
 
-  function setPollingFrequency(frequency: PollingFrequency): void {
-    pollingFrequency.value = frequency
-    persist()
-    if (!enabled.value) {
-      applyToAllAccounts()
-    }
-  }
-
   return {
     enabled,
-    pollingFrequency,
-    pollingIntervalMs,
     isRealtime,
     setRealtimeMode,
     toggle,
-    setPollingFrequency,
   }
 })

@@ -170,23 +170,6 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     execute: () => useRealtimeModeStore().toggle(),
   })
 
-  for (const freq of ['low', 'medium', 'high'] as const) {
-    const label =
-      freq === 'low'
-        ? '低 (30秒)'
-        : freq === 'medium'
-          ? '中 (15秒)'
-          : '高 (5秒)'
-    commandStore.register({
-      id: `polling-frequency-${freq}`,
-      label: `ポーリング頻度: ${label}`,
-      icon: 'clock',
-      category: 'general',
-      shortcuts: [],
-      execute: () => useRealtimeModeStore().setPollingFrequency(freq),
-    })
-  }
-
   // Note-level shortcuts (dispatched as CustomEvents to active column)
   commandStore.register({
     id: 'note-next',

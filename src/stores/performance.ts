@@ -51,6 +51,7 @@ export interface PerformanceConfig {
   circuitBreakerDuration: number
   imageCacheTTLDays: number
   // Polling
+  streamPollingInterval: number
   notificationPollInterval: number
   chatPollInterval: number
   // Realtime (continued)
@@ -355,6 +356,16 @@ export const FIELD_META: Record<PerformanceKey, FieldMeta> = {
     label: 'シャドウ強度',
     description: 'box-shadowの描画レベル。0=無効、1=軽量、2=フル(Misskey準拠)',
   },
+  streamPollingInterval: {
+    min: 3,
+    max: 60,
+    step: 1,
+    unit: '秒',
+    category: 'polling',
+    label: 'ストリームポーリング間隔',
+    description:
+      'ポーリングモード時のタイムライン更新間隔。短いほどリアルタイムに近い',
+  },
   notificationPollInterval: {
     min: 30,
     max: 600,
@@ -550,6 +561,7 @@ export const SLIDER_LOW: PerformanceConfig = {
   cssBlurLevel: 0,
   cssAnimationScale: 50,
   cssShadowLevel: 1,
+  streamPollingInterval: 30,
   notificationPollInterval: 300,
   chatPollInterval: 300,
   columnUnloadDelay: 2000,
@@ -599,6 +611,7 @@ export const SLIDER_HIGH: PerformanceConfig = {
   cssBlurLevel: 2,
   cssAnimationScale: 100,
   cssShadowLevel: 2,
+  streamPollingInterval: 5,
   notificationPollInterval: 60,
   chatPollInterval: 60,
   columnUnloadDelay: 15000,
