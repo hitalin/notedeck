@@ -6,6 +6,7 @@ import { useAccountsStore } from './stores/accounts'
 import { useKeybindsStore } from './stores/keybinds'
 import { useOfflineModeStore } from './stores/offlineMode'
 import { usePerformanceStore } from './stores/performance'
+import { useServersStore } from './stores/servers'
 import { useThemeStore } from './stores/theme'
 import { isTauri } from './utils/settingsFs'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
@@ -69,6 +70,9 @@ if (isTauri) {
   // Two-stage AppState: invoke('load_accounts') awaits DB readiness only,
   // not full init — so it resolves as soon as DB + migrations complete.
   useAccountsStore().loadAccounts()
+
+  // Pre-load server info from DB so ColumnBadges can show icons immediately
+  useServersStore().loadCachedServers()
 }
 
 app.use(router)
