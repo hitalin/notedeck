@@ -185,6 +185,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::auth_complete_and_save,
         commands::stream_connect,
         commands::stream_disconnect,
+        commands::stream_set_mode,
         commands::stream_connect_and_subscribe_timeline,
         commands::stream_connect_and_subscribe_antenna,
         commands::stream_connect_and_subscribe_channel,
