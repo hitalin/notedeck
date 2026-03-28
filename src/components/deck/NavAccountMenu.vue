@@ -68,6 +68,13 @@ function modeLabel(key: string): string {
   if (!match) return key
   return `${match[1]}モード`
 }
+
+function modeIcon(key: string, active: boolean): string {
+  // Known mode icons — fall back to generic toggle icon
+  if (key === 'isInRealtimeMode') return active ? 'ti-bolt' : 'ti-bolt-off'
+  if (key === 'isInYamiMode') return active ? 'ti-moon' : 'ti-moon-off'
+  return active ? 'ti-toggle-right' : 'ti-toggle-left'
+}
 </script>
 
 <template>
@@ -86,25 +93,18 @@ function modeLabel(key: string): string {
     >
       <!-- Mode toggles (auth required) -->
       <template v-if="account.hasToken && Object.keys(modes).length > 0">
-        <div
+        <button
           v-for="(val, key) in modes"
           :key="key"
-          :class="$style.navAccountMenuItem"
-          tabindex="0"
+          class="_button"
+          :class="[$style.navAccountMenuItem, { [$style.modeActive]: val }]"
+          :disabled="togglingMode"
           @click="hapticSelection(); emit('toggle-mode', key as string)"
           @keydown.enter="emit('toggle-mode', key as string)"
         >
           <span :class="$style.navAccountMenuLabel">{{ modeLabel(key as string) }}</span>
-          <button
-            class="nd-toggle-switch"
-            :class="{ on: val }"
-            :disabled="togglingMode"
-            role="switch"
-            :aria-checked="val"
-          >
-            <span class="nd-toggle-switch-knob" />
-          </button>
-        </div>
+          <i :class="['ti', modeIcon(key as string, val)]" />
+        </button>
       </template>
       <div v-if="modeError" :class="$style.navAccountMenuError">{{ modeError }}</div>
       <!-- Profile & external links (hidden for guests) -->
@@ -193,6 +193,10 @@ function modeLabel(key: string): string {
   &:hover {
     background: var(--nd-buttonHoverBg);
   }
+}
+
+.modeActive {
+  color: var(--nd-accent, #86b300);
 }
 
 .navAccountMenuLabel {
