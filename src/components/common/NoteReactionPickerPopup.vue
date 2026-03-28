@@ -113,6 +113,7 @@ defineExpose({ open })
 
   .mobile & {
     position: static;
+    translate: none;
     transform: none;
     width: 100%;
     border-radius: 16px 16px 0 0;
@@ -127,11 +128,11 @@ defineExpose({ open })
 @keyframes popupBdIn { from { opacity: 0; } }
 @keyframes popupBdOut { to { opacity: 0; } }
 
-/* Desktop popup content — spring scale from origin */
-.popupContentEnter { animation: popupIn 0.2s var(--nd-ease-spring); }
-.popupContentLeave { animation: popupOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
-@keyframes popupIn { from { opacity: 0; transform: translateX(-80%) scale(0.85); } }
-@keyframes popupOut { to { opacity: 0; transform: translateX(-60%) scale(0.9); } }
+/* Desktop popup content — scale + fade (translate: -100% handles positioning) */
+.popupContentEnter { animation: reactionPickerIn 0.2s var(--nd-ease-spring); }
+.popupContentLeave { animation: reactionPickerOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
+@keyframes reactionPickerIn { from { opacity: 0; transform: scale(0.85); } }
+@keyframes reactionPickerOut { to { opacity: 0; transform: scale(0.9); } }
 
 /* Mobile sheet backdrop */
 .sheetEnter { animation: sheetBdIn var(--nd-duration-base) var(--nd-ease-decel); }
