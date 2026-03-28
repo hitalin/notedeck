@@ -12,6 +12,7 @@ import {
 } from '@/composables/useDeckWindow'
 import { initOgpListener } from '@/composables/useOgpPreview'
 import { useDeckStore } from '@/stores/deck'
+import { useOfflineModeStore } from '@/stores/offlineMode'
 import { usePluginsStore } from '@/stores/plugins'
 import { useUiStore } from '@/stores/ui'
 import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
@@ -116,6 +117,9 @@ export function useDeckInit(options: {
           commandStore.openWithInput('post ')
         }).then((fn) => {
           unlistenQuickNote = fn
+        })
+        listen('nd:toggle-offline-mode', () => {
+          useOfflineModeStore().toggle()
         })
       })
 

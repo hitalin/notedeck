@@ -32,6 +32,7 @@ import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useOfflineModeStore } from '@/stores/offlineMode'
 import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
 import { logWarn } from '@/utils/logger'
@@ -231,6 +232,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     // Unresolved account: show cached notes in read-only mode
     if (!account.value) {
+      isOffline.value = true
+      isLoading.value = false
+      return
+    }
+
+    // App-level offline mode: skip API fetch and streaming, show cache only
+    if (useOfflineModeStore().isOfflineMode) {
       isOffline.value = true
       isLoading.value = false
       return

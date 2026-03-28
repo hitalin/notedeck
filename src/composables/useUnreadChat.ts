@@ -1,6 +1,7 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
+import { useOfflineModeStore } from '@/stores/offlineMode'
 import { usePerformanceStore } from '@/stores/performance'
 import { invoke } from '@/utils/tauriInvoke'
 
@@ -62,6 +63,7 @@ export function useUnreadChat() {
   )
 
   async function fetchAll() {
+    if (useOfflineModeStore().isOfflineMode) return
     const authed = accountsStore.accounts.filter((acc) => acc.hasToken)
     const results = await Promise.all(
       authed.map(async (acc) => ({

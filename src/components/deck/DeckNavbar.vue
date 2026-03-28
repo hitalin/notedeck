@@ -11,7 +11,9 @@ import {
   isGuestAccount,
   useAccountsStore,
 } from '@/stores/accounts'
+import { useConfirm } from '@/stores/confirm'
 import { isNavDivider, type NavItem, useDeckStore } from '@/stores/deck'
+import { useOfflineModeStore } from '@/stores/offlineMode'
 import { useServersStore } from '@/stores/servers'
 import { useStreamingStore } from '@/stores/streaming'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -44,10 +46,25 @@ const emit = defineEmits<{
 
 const $style = useCssModule()
 const { navigateToLogin, navigateToPlugins } = useNavigation()
+const { confirm } = useConfirm()
 const deckStore = useDeckStore()
+const offlineModeStore = useOfflineModeStore()
 const isCompact = useIsCompactLayout()
 const { totalUnread, markAllAsRead } = useUnreadNotifications()
 const { totalUnread: chatUnread, resetAll: resetChatUnread } = useUnreadChat()
+
+async function toggleOfflineMode() {
+  const isOn = offlineModeStore.isOfflineMode
+  const ok = await confirm({
+    title: isOn ? 'オフラインモードを解除' : 'オフラインモードに切替',
+    message: isOn
+      ? 'サーバーに再接続します。'
+      : 'すべての通信を停止し、キャッシュ済みデータのみ表示します。',
+    okLabel: isOn ? '解除' : '切替',
+    cancelLabel: 'キャンセル',
+  })
+  if (ok) await offlineModeStore.toggle()
+}
 
 const sidebarType = computed(() => {
   const col = deckStore.columns.find((c) => c.sidebar)
@@ -333,6 +350,19 @@ defineExpose({
           </template>
         </div>
 
+        <!-- Offline mode -->
+        <button
+          class="_button"
+          :class="[$style.item, { [$style.offlineActive]: offlineModeStore.isOfflineMode }]"
+          title="オフラインモード"
+          @click="hapticLight(); toggleOfflineMode()"
+        >
+          <div :class="$style.iconWrap">
+            <i :class="offlineModeStore.isOfflineMode ? 'ti ti-wifi-off' : 'ti ti-wifi'" />
+          </div>
+          <span :class="$style.label">オフライン</span>
+        </button>
+
         <!-- Spacer -->
         <div :class="$style.spacer" />
 
@@ -560,6 +590,14 @@ defineExpose({
 .sidebarActive {
   background: var(--nd-buttonHoverBg);
   color: var(--nd-fgHighlighted);
+
+  :global(.ti) {
+    opacity: 1;
+  }
+}
+
+.offlineActive {
+  color: var(--nd-accent, #86b300);
 
   :global(.ti) {
     opacity: 1;
