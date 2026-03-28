@@ -282,7 +282,7 @@ watch(
     )
     if (el)
       el.scrollIntoView({
-        behavior: 'smooth',
+        behavior: isCompact.value ? 'instant' : 'smooth',
         block: 'nearest',
         inline: 'nearest',
       })
