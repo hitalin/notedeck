@@ -21,6 +21,7 @@ import {
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
 import { hapticLight, hapticMedium } from '@/utils/haptics'
+import { proxyThumbUrl } from '@/utils/imageProxy'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
@@ -93,8 +94,10 @@ const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const streamingStore = useStreamingStore()
 
-function getServerIconUrl(host: string): string {
-  return serversStore.getServer(host)?.iconUrl || `https://${host}/favicon.ico`
+function getServerIconUrl(host: string): string | undefined {
+  const url =
+    serversStore.getServer(host)?.iconUrl || `https://${host}/favicon.ico`
+  return proxyThumbUrl(url, 28)
 }
 
 watch(
@@ -400,7 +403,7 @@ defineExpose({
                     />
                     <img
                       v-else-if="acc.avatarUrl"
-                      :src="acc.avatarUrl"
+                      :src="proxyThumbUrl(acc.avatarUrl, 56)"
                       :class="$style.avatar"
                     />
                     <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />

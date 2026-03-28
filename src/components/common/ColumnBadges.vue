@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
+import { proxyThumbUrl } from '@/utils/imageProxy'
 
 const props = withDefaults(
   defineProps<{
@@ -26,7 +27,8 @@ const account = computed(() => {
 
 const serverIcon = computed(() => {
   if (!account.value) return null
-  return serversStore.getServer(account.value.host)?.iconUrl ?? null
+  const url = serversStore.getServer(account.value.host)?.iconUrl ?? null
+  return url ? (proxyThumbUrl(url, 28) ?? null) : null
 })
 
 const hostInitial = computed(
@@ -59,7 +61,7 @@ const usernameInitial = computed(
     >
       <img
         v-if="account.avatarUrl"
-        :src="account.avatarUrl"
+        :src="proxyThumbUrl(account.avatarUrl, 28)"
         :class="$style.badgeImg"
         :width="size - 4"
         :height="size - 4"
