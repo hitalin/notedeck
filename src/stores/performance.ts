@@ -650,126 +650,6 @@ export function detectSliderPosition(cfg: PerformanceConfig): number | null {
 
 const DEFAULTS: PerformanceConfig = defaultsJson as PerformanceConfig
 
-const FIXED_OVERHEAD_MB = 6 // tokio runtime + HTTP pools + Rust structures
-
-/** Estimate memory usage (MB) for a given config. */
-export function estimateMemoryMB(c: PerformanceConfig): number {
-  const imageCacheMB = c.memoryCacheMaxMB
-  const noteStoreMB = (c.noteStoreMax * 4) / 1024 // ~4KB per note (nested user/reactions + V8 overhead)
-  const emojiMB = (c.emojiCachePerHost * c.emojiListHosts * 0.3) / 1024 // ~0.3KB (shortcode + URL + ServerEmoji)
-  const notificationMB = (c.maxNotifications * 4) / 1024 // ~4KB (note object + notification metadata)
-  // Parse caches differ in entry size
-  const mfmCacheMB = (c.mfmCacheMax * 2) / 1024 // ~2KB per MFM AST
-  const proxyCacheMB = (c.imageProxyCacheMax * 0.2) / 1024 // ~0.2KB per URL string
-  const ogpCacheMB = (c.ogpCacheMax * 1.5) / 1024 // ~1.5KB (title + description + image URL)
-  const rustOgpMB = (c.rustOgpCacheMax * 5) / 1024
-  const embedCacheMB = (c.embedCacheMax * 4) / 1024 // ~4KB per embedded note
-  const prefetchTrackMB = (c.prefetchTrackedMax * 0.1) / 1024 // ~0.1KB per URL in Set
-  const noteCaptureMB = (c.noteCaptureMax * 0.5) / 1024 // ~0.5KB per WebSocket subscription
-  // GPU texture memory for backdrop-filter compositing layers
-  // Each blur surface creates a ~400×800 RGBA texture ≈ 1.2MB
-  // After cleanup: only 3 permanent surfaces (navbar, window header, acrylic)
-  const blurGpuMB = c.cssBlurLevel > 0 ? c.cssBlurLevel * 0.8 : 0
-  // Column snapshots: ~5 columns × snapshotMaxNotes × 4KB per note
-  const snapshotMB = (5 * c.snapshotMaxNotes * 4) / 1024
-  // Sound cache: ~50KB per AudioBuffer (short notification sounds)
-  const soundCacheMB = (c.soundCacheMax * 50) / 1024
-  return Math.round(
-    FIXED_OVERHEAD_MB +
-      imageCacheMB +
-      noteStoreMB +
-      emojiMB +
-      notificationMB +
-      mfmCacheMB +
-      proxyCacheMB +
-      ogpCacheMB +
-      rustOgpMB +
-      embedCacheMB +
-      prefetchTrackMB +
-      noteCaptureMB +
-      blurGpuMB +
-      snapshotMB +
-      soundCacheMB,
-  )
-}
-
-export interface RenderCost {
-  /** 0–100 relative rendering weight */
-  score: number
-  /** Human-readable label */
-  label: string
-}
-
-/**
- * Estimate CSS rendering cost as a 0–100 relative score.
- *
- * Factors (approximate GPU frame-time contribution):
- * - backdrop-filter blur: heaviest — each composited layer costs 1–5ms
- * - box-shadow: moderate — GPU rasterisation per shadowed element
- * - Animation/transition: light (compositor-only) but many concurrent ones add up
- * - DOM element count (overscan + noteListMax): more layers to composite
- */
-export function estimateRenderCost(c: PerformanceConfig): RenderCost {
-  // Blur: 0→0, 1→15, 2→40 (non-linear — blur radius cost grows super-linearly)
-  const blurScore = c.cssBlurLevel === 0 ? 0 : c.cssBlurLevel === 1 ? 15 : 40
-  // Shadow: 0→0, 1→5, 2→10
-  const shadowScore = c.cssShadowLevel * 5
-  // Animations: 0→0, 50→4, 100→8
-  const animScore = (c.cssAnimationScale / 100) * 8
-  // Overscan: each extra item = extra composite layer (clamped contribution)
-  const overscanScore = Math.min(Math.max(c.overscan - 2, 0) * 1.5, 15)
-  // DOM size: more rendered notes = heavier composite
-  const domScore = Math.min((c.noteListMax - 50) / 25, 20)
-
-  const raw = Math.round(
-    blurScore + shadowScore + animScore + overscanScore + domScore,
-  )
-  const score = Math.max(0, Math.min(100, raw))
-
-  let label: string
-  if (score <= 25) label = '軽い'
-  else if (score <= 50) label = '標準'
-  else if (score <= 75) label = 'やや重い'
-  else label = '重い'
-
-  return { score, label }
-}
-
-/**
- * Estimate hourly network usage (MB/hour) for moderate use.
- *
- * Model assumptions (3 active columns, moderate scrolling):
- * - ~150 unique notes viewed per hour (base)
- * - Prefetch loads images slightly ahead; most would be viewed on scroll,
- *   only ~30% of prefetch range represents truly extra load
- * - ~50KB per note for images (avatar + emoji + occasional thumbnail, after proxy resize)
- * - Higher concurrency / rate limits → more requests complete → more actual bytes
- * - ~20% of notes contain URLs that trigger OGP fetch (~10KB each)
- * - ~3KB of API/WebSocket traffic per note (JSON payload)
- */
-export function estimateNetworkMBPerHour(c: PerformanceConfig): number {
-  const BASE_NOTES = 150
-  const AVG_IMAGE_KB = 50
-  // Only ~30% of prefetch range is "extra" (rest would be viewed on scroll)
-  const prefetchExtra = (c.prefetchAhead + c.prefetchBehind) * 0.3
-  // Higher concurrency and rate limits allow more requests to complete,
-  // increasing effective throughput (normalized to balanced defaults)
-  const throughputFactor = Math.sqrt(
-    (c.maxConcurrentFetches / 30) * (c.maxRequestsPerWindow / 200),
-  )
-  const imageTraffic =
-    ((BASE_NOTES + prefetchExtra) * AVG_IMAGE_KB * throughputFactor) / 1024
-  // ~20% of notes contain URLs triggering OGP fetch
-  const ogpTraffic = (BASE_NOTES * 0.2 * 10) / 1024
-  // API/WebSocket: note JSON + notifications + streaming
-  const apiTraffic = (BASE_NOTES * 3) / 1024
-  // Polling overhead: ~2KB per poll response
-  const pollRequestsPerHour =
-    3600 / c.notificationPollInterval + 3600 / c.chatPollInterval
-  const pollTraffic = (pollRequestsPerHour * 2) / 1024
-  return Math.round(imageTraffic + ogpTraffic + apiTraffic + pollTraffic)
-}
-
 /** Base durations (seconds) matching global.css :root values. */
 const CSS_BASE_DURATIONS: Record<string, number> = {
   '--nd-duration-fast': 0.15,
@@ -1030,22 +910,10 @@ export const usePerformanceStore = defineStore('performance', () => {
     return key in overrides.value
   }
 
-  /** Estimated memory usage (MB) for current config. */
-  const estimatedMemoryMB = computed(() => estimateMemoryMB(config.value))
-  /** Estimated network usage (MB/hour) for current config. */
-  const estimatedNetworkMBPerHour = computed(() =>
-    estimateNetworkMBPerHour(config.value),
-  )
-  /** Estimated CSS rendering cost for current config. */
-  const estimatedRenderCost = computed(() => estimateRenderCost(config.value))
-
   return {
     overrides,
     config,
     sliderPosition,
-    estimatedMemoryMB,
-    estimatedNetworkMBPerHour,
-    estimatedRenderCost,
     init,
     get,
     getDefault,

@@ -6,7 +6,6 @@ import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
-import { frameTelemetry } from '@/engine/telemetry/frameTelemetry'
 import {
   CATEGORY_LABELS,
   FIELD_META,
@@ -167,49 +166,7 @@ function handleReset() {
 
     <!-- Visual Tab -->
     <div v-show="tab === 'visual'" :class="$style.panel">
-      <!-- Presets -->
       <div :class="$style.section">
-        <div :class="$style.sectionLabel">
-          <i class="ti ti-template" />
-          プリセット
-        </div>
-
-        <div :class="$style.estimateBar">
-          <div :class="$style.estimateItem">
-            <i class="ti ti-cpu" />
-            メモリ: <strong>約 {{ perfStore.estimatedMemoryMB }} MB</strong>
-          </div>
-          <div :class="$style.estimateSep" />
-          <div :class="$style.estimateItem">
-            <i class="ti ti-network" />
-            通信量: <strong>約 {{ perfStore.estimatedNetworkMBPerHour }} MB/時間</strong>
-          </div>
-          <div :class="$style.estimateSep" />
-          <div :class="$style.estimateItem">
-            <i class="ti ti-palette" />
-            描画: <strong>{{ perfStore.estimatedRenderCost.label }}</strong>
-            <span :class="$style.estimateScore">({{ perfStore.estimatedRenderCost.score }})</span>
-          </div>
-        </div>
-        <!-- Live Telemetry -->
-        <div :class="$style.estimateBar">
-          <div :class="$style.estimateItem">
-            <i class="ti ti-activity" />
-            FPS: <strong>{{ frameTelemetry.fps.value }}</strong>
-          </div>
-          <div :class="$style.estimateSep" />
-          <div :class="$style.estimateItem">
-            <i class="ti ti-clock" />
-            フレーム: <strong>{{ frameTelemetry.frameTimeEma.value.toFixed(1) }}ms</strong>
-            <span :class="$style.estimateScore">(P95: {{ frameTelemetry.p95FrameTime.value.toFixed(1) }})</span>
-          </div>
-          <div :class="$style.estimateSep" />
-          <div :class="$style.estimateItem">
-            <i class="ti ti-alert-triangle" />
-            ジャンク: <strong>{{ frameTelemetry.jankCount.value }}/秒</strong>
-          </div>
-        </div>
-
         <div :class="$style.sliderRow">
           <span :class="$style.sliderEndLabel">省メモリ</span>
           <input
@@ -398,42 +355,7 @@ function handleReset() {
   transform: rotate(0deg);
 }
 
-// --- Presets ---
-
-.estimateBar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: var(--nd-radius-sm);
-  background: color-mix(in srgb, var(--nd-accent) 8%, var(--nd-bg));
-  color: var(--nd-fg);
-  font-size: 0.72em;
-
-  strong {
-    color: var(--nd-accent);
-  }
-}
-
-.estimateItem {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.estimateSep {
-  width: 1px;
-  height: 12px;
-  background: var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.estimateScore {
-  opacity: 0.5;
-  font-weight: normal;
-  font-size: 0.9em;
-}
+// --- Slider ---
 
 .sliderRow {
   display: flex;
