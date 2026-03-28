@@ -1,6 +1,7 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
+import { usePerformanceStore } from '@/stores/performance'
 import { invoke } from '@/utils/tauriInvoke'
 
 interface StreamEventEnvelope {
@@ -84,7 +85,11 @@ export function useUnreadChat() {
   function startPolling() {
     if (isPollingActive) return
     isPollingActive = true
-    pollingInterval = setInterval(fetchAll, 120_000)
+    const perfStore = usePerformanceStore()
+    pollingInterval = setInterval(
+      fetchAll,
+      perfStore.get('chatPollInterval') * 1000,
+    )
   }
 
   function stopPolling() {
@@ -111,6 +116,18 @@ export function useUnreadChat() {
   watch(
     () => accountsStore.accounts.length,
     () => fetchAll(),
+  )
+
+  // Restart polling when interval setting changes
+  const perfStore = usePerformanceStore()
+  watch(
+    () => perfStore.get('chatPollInterval'),
+    () => {
+      if (isPollingActive) {
+        stopPolling()
+        startPolling()
+      }
+    },
   )
 
   fetchAll()

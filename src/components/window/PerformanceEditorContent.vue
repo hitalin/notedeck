@@ -10,15 +10,12 @@ import {
   CATEGORY_LABELS,
   FIELD_META,
   type PerformanceKey,
-  PRESETS,
-  type PresetKey,
   usePerformanceStore,
 } from '@/stores/performance'
 
 const jsonLang = json()
 
 const perfStore = usePerformanceStore()
-const recommendedPreset = computed(() => perfStore.recommendedPreset)
 
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['visual', 'code'] as const,
@@ -40,13 +37,14 @@ const categories = computed(() => {
   return cats
 })
 
-const expandedSections = ref(new Set<string>())
+const expandedSections = ref<string[]>([])
 
 function toggleSection(catKey: string) {
-  if (expandedSections.value.has(catKey)) {
-    expandedSections.value.delete(catKey)
+  const idx = expandedSections.value.indexOf(catKey)
+  if (idx >= 0) {
+    expandedSections.value = expandedSections.value.filter((k) => k !== catKey)
   } else {
-    expandedSections.value.add(catKey)
+    expandedSections.value = [...expandedSections.value, catKey]
   }
 }
 
@@ -63,8 +61,17 @@ function handleNumberInput(key: PerformanceKey, event: Event) {
   }
 }
 
-function selectPreset(key: PresetKey) {
-  perfStore.applyPreset(key)
+// --- Master slider ---
+
+const sliderPosition = computed(() => perfStore.sliderPosition)
+const isCustom = computed(() => sliderPosition.value === null)
+const sliderValue = computed(() =>
+  sliderPosition.value !== null ? Math.round(sliderPosition.value * 100) : 50,
+)
+
+function handleMasterSlider(event: Event) {
+  const t = Number((event.target as HTMLInputElement).value) / 100
+  perfStore.applySlider(t)
 }
 
 // --- Code tab ---
@@ -159,49 +166,23 @@ function handleReset() {
 
     <!-- Visual Tab -->
     <div v-show="tab === 'visual'" :class="$style.panel">
-      <!-- Presets -->
       <div :class="$style.section">
-        <div :class="$style.sectionLabel">
-          <i class="ti ti-template" />
-          プリセット
+        <div :class="$style.sliderRow">
+          <span :class="$style.sliderEndLabel">省メモリ</span>
+          <input
+            type="range"
+            :class="$style.masterSlider"
+            :value="sliderValue"
+            min="0"
+            max="100"
+            step="1"
+            @input="handleMasterSlider"
+          />
+          <span :class="$style.sliderEndLabel">高性能</span>
         </div>
-
-        <div :class="$style.estimateBar">
-          <div :class="$style.estimateItem">
-            <i class="ti ti-cpu" />
-            メモリ: <strong>約 {{ perfStore.estimatedMemoryMB }} MB</strong>
-          </div>
-          <div :class="$style.estimateSep" />
-          <div :class="$style.estimateItem">
-            <i class="ti ti-network" />
-            通信量: <strong>約 {{ perfStore.estimatedNetworkMBPerHour }} MB/時間</strong>
-          </div>
-          <div :class="$style.estimateSep" />
-          <div :class="$style.estimateItem">
-            <i class="ti ti-palette" />
-            描画: <strong>{{ perfStore.estimatedRenderCost.label }}</strong>
-            <span :class="$style.estimateScore">({{ perfStore.estimatedRenderCost.score }})</span>
-          </div>
-        </div>
-        <div :class="$style.presetRow">
-          <button
-            v-for="(preset, key) in PRESETS"
-            :key="key"
-            class="_button"
-            :class="[$style.presetBtn, { [$style.presetActive]: perfStore.activePreset === key }]"
-            @click="selectPreset(key as PresetKey)"
-          >
-            <i :class="'ti ' + preset.icon" />
-            {{ preset.label }}
-            <span
-              v-if="recommendedPreset === key && perfStore.activePreset !== key"
-              :class="$style.recommendBadge"
-            >おすすめ</span>
-          </button>
-          <div v-if="perfStore.activePreset === 'custom'" :class="$style.presetCustom">
-            <i class="ti ti-settings" />
-            カスタム
-          </div>
+        <div v-if="isCustom" :class="$style.customNotice">
+          <i class="ti ti-settings" />
+          カスタム — スライダーを動かすと線形補間に戻ります
         </div>
       </div>
 
@@ -220,10 +201,10 @@ function handleReset() {
           {{ CATEGORY_LABELS[catKey]?.label }}
           <i
             class="ti ti-chevron-down"
-            :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.has(catKey) }]"
+            :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.includes(catKey) }]"
           />
         </button>
-        <template v-if="expandedSections.has(catKey)">
+        <template v-if="expandedSections.includes(catKey)">
           <div v-for="field in fields" :key="field.key" :class="$style.field">
             <div :class="$style.fieldHeader">
               <span :class="$style.fieldLabel">{{ field.meta.label }}</span>
@@ -328,7 +309,6 @@ function handleReset() {
 }
 
 .confirming { /* modifier */ }
-.presetActive { /* modifier */ }
 
 .panel {
   display: flex;
@@ -375,91 +355,60 @@ function handleReset() {
   transform: rotate(0deg);
 }
 
-// --- Presets ---
+// --- Slider ---
 
-.estimateBar {
+.sliderRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  border-radius: var(--nd-radius-sm);
-  background: color-mix(in srgb, var(--nd-accent) 8%, var(--nd-bg));
-  color: var(--nd-fg);
-  font-size: 0.72em;
-
-  strong {
-    color: var(--nd-accent);
-  }
 }
 
-.estimateItem {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.sliderEndLabel {
+  font-size: 0.7em;
+  opacity: 0.5;
   white-space: nowrap;
-}
-
-.estimateSep {
-  width: 1px;
-  height: 12px;
-  background: var(--nd-divider);
   flex-shrink: 0;
 }
 
-.estimateScore {
-  opacity: 0.5;
-  font-weight: normal;
-  font-size: 0.9em;
-}
+.masterSlider {
+  flex: 1;
+  height: 4px;
+  appearance: none;
+  background: var(--nd-divider);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
 
-.presetRow {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--nd-accent);
+    cursor: pointer;
+    transition: transform 0.1s;
 
-.presetBtn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-bg);
-  color: var(--nd-fg);
-  font-size: 0.75em;
-  transition: border-color var(--nd-duration-base), background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
+    &:hover {
+      transform: scale(1.2);
+    }
   }
 
-  &.presetActive {
-    border-color: var(--nd-accent);
-    color: var(--nd-accent);
-    background: color-mix(in srgb, var(--nd-accent) 8%, var(--nd-bg));
+  &::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 50%;
+    background: var(--nd-accent);
+    cursor: pointer;
   }
 }
 
-.recommendBadge {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 5px;
-  border-radius: var(--nd-radius-sm);
-  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
-  color: var(--nd-accent);
-  font-size: 0.85em;
-  font-weight: 500;
-  line-height: 1;
-}
-
-.presetCustom {
+.customNotice {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 5px 10px;
-  font-size: 0.75em;
-  opacity: 0.5;
+  font-size: 0.7em;
+  opacity: 0.4;
 }
 
 // --- Fields ---
@@ -631,4 +580,5 @@ function handleReset() {
 .secondary { /* modifier */ }
 .feedback { /* modifier */ }
 .danger { /* modifier */ }
+
 </style>

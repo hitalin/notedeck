@@ -22,34 +22,6 @@ function readDeviceSignals(): DeviceSignals {
 }
 
 /**
- * RAF フレーム時間を計測してフレームドロップを検出する。
- * @param sampleCount 計測するフレーム数（デフォルト 30）
- * @returns 平均フレーム時間（ms）
- */
-function measureFrameTime(sampleCount = 30): Promise<number> {
-  return new Promise((resolve) => {
-    const times: number[] = []
-    let prev = 0
-
-    function tick(now: number) {
-      if (prev > 0) {
-        times.push(now - prev)
-      }
-      prev = now
-
-      if (times.length < sampleCount) {
-        requestAnimationFrame(tick)
-      } else {
-        const avg = times.reduce((a, b) => a + b, 0) / times.length
-        resolve(avg)
-      }
-    }
-
-    requestAnimationFrame(tick)
-  })
-}
-
-/**
  * 静的シグナル（CPU コア数、メモリ）のみで即座に推奨を返す。
  */
 export function detectQualitySync(): QualityPreset {
@@ -64,21 +36,19 @@ export function detectQualitySync(): QualityPreset {
 }
 
 /**
- * フレーム計測を含む精密な推奨を返す（30 フレーム≒500ms）。
- * 起動後の落ち着いたタイミングで呼ぶことを推奨。
+ * frameTelemetry の EMA フレーム時間から品質を推奨する。
+ * init() で telemetry が安定した後に呼ぶ。
  */
-export async function detectQuality(): Promise<QualityPreset> {
+export function detectQualityFromEma(frameTimeEma: number): QualityPreset {
   const sync = detectQualitySync()
 
   // prefers-reduced-motion は最優先
   if (sync === 'low') return 'low'
 
-  const avgFrameTime = await measureFrameTime()
-
   // 20ms 以上 = 50fps 未満 → low を推奨
-  if (avgFrameTime > 20) return 'low'
+  if (frameTimeEma > 20) return 'low'
   // 18ms 以上 = 55fps 前後 → balanced
-  if (avgFrameTime > 18) return 'balanced'
+  if (frameTimeEma > 18) return 'balanced'
 
   return sync
 }

@@ -27,5 +27,21 @@
   "nearViewportBuffer": 4,
   "cssBlurLevel": 1,
   "cssAnimationScale": 100,
-  "cssShadowLevel": 2
+  "cssShadowLevel": 2,
+  "notificationPollInterval": 120,
+  "chatPollInterval": 120,
+  "columnUnloadDelay": 5000,
+  "snapshotMaxNotes": 50,
+  "snapshotTTL": 10,
+  "jankDowngradeThreshold": 5,
+  "stableUpgradeSeconds": 10,
+  "noteAnimationDuration": 350,
+  "frameHistorySize": 100,
+  "soundCacheMax": 8,
+  "cachedTimelineLimit": 40,
+  "pullFireThreshold": 200,
+  "swipeThreshold": 50,
+  "flingVelocity": 0.4,
+  "wheelCooldown": 300,
+  "scrollHideThreshold": 30
 }

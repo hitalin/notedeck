@@ -1,5 +1,7 @@
 import { type InjectionKey, inject, provide, ref } from 'vue'
 
+import { usePerformanceStore } from '@/stores/performance'
+
 const SCROLL_DIR_KEY: InjectionKey<{
   navHidden: ReturnType<typeof ref<boolean>>
   reportScroll: (scrollTop: number) => void
@@ -10,7 +12,7 @@ export function provideScrollDirection() {
   const navHidden = ref(false)
   let lastScrollTop = 0
   let accumulatedDelta = 0
-  const THRESHOLD = 30
+  const THRESHOLD = usePerformanceStore().get('scrollHideThreshold')
 
   function reportScroll(scrollTop: number) {
     const delta = scrollTop - lastScrollTop

@@ -1,21 +1,21 @@
 import { onUnmounted, type Ref, ref, watch } from 'vue'
+
+import { usePerformanceStore } from '@/stores/performance'
 import { hapticMedium } from '@/utils/haptics'
 
 // Misskey 本家と同じパラメータ
 const SCROLL_STOP = 10
-const FIRE_THRESHOLD = 200
 const DIRECTION_THRESHOLD = 8 // px — same as useSwipeTab
 const MAX_PULL_DISTANCE = Infinity
 const PULL_BRAKE_BASE = 1.5
 const PULL_BRAKE_FACTOR = 170
 const RELEASE_TRANSITION_DURATION = 200
 
-export { FIRE_THRESHOLD }
-
 export function usePullToRefresh(
   scrollerRef: Ref<HTMLElement | null>,
   onRefresh: () => Promise<void>,
 ) {
+  const FIRE_THRESHOLD = usePerformanceStore().get('pullFireThreshold')
   const isPulling = ref(false)
   const isPulledEnough = ref(false)
   const isRefreshing = ref(false)

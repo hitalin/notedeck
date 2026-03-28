@@ -53,6 +53,7 @@ const messages = shallowRef<ChatMessage[]>([])
 const currentOtherId = ref<string | null>(null)
 const currentRoomId = ref<string | null>(null)
 const conversationTitle = ref('')
+const conversationOtherAvatarUrl = ref<string | null>(null)
 const conversationAccountId = ref<string | null>(null)
 const conversationServerHost = ref<string | null>(null)
 const messageText = ref('')
@@ -297,6 +298,7 @@ async function openConversation(
   chatSub = null
 
   conversationTitle.value = entry.name
+  conversationOtherAvatarUrl.value = entry.avatarUrl ?? null
   isLoading.value = true
   error.value = null
 
@@ -774,6 +776,7 @@ onBeforeUnmount(() => {
           :my-user-id="myUserId"
           :account-id="activeAccountId ?? undefined"
           :server-host="activeServerHost ?? undefined"
+          :other-avatar-url="currentRoomId ? undefined : conversationOtherAvatarUrl ?? undefined"
           @react="handleReact"
           @unreact="handleUnreact"
         />

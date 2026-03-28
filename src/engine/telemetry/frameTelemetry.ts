@@ -13,9 +13,9 @@ import { type FrameStats, frameEngine } from '../frameEngine'
 
 export type QualityLevel = 'low' | 'balanced' | 'high'
 
-/** Thresholds for automatic quality adjustment. */
-const JANK_DOWNGRADE_THRESHOLD = 5 // janks/sec to trigger downgrade
-const STABLE_UPGRADE_SECONDS = 10 // consecutive stable seconds to try upgrade
+/** Default thresholds for automatic quality adjustment. */
+const DEFAULT_JANK_DOWNGRADE_THRESHOLD = 5
+const DEFAULT_STABLE_UPGRADE_SECONDS = 10
 const FRAME_HISTORY_SIZE = 100 // ring buffer for P95 calculation
 
 const QUALITY_ORDER: QualityLevel[] = ['low', 'balanced', 'high']
@@ -27,14 +27,17 @@ class FrameTelemetryImpl {
   private _p95FrameTime = ref(16.6)
   private _jankCount = ref(0)
   private _currentQuality = ref<QualityLevel>('balanced')
-  private _autoAdjustEnabled = ref(false)
+  private _autoAdjustEnabled = ref(true)
 
   // --- Internal state ---
   private _frameTimeHistory: number[] = []
   private _historyIndex = 0
   private _stableSeconds = 0
+  private _historySize = FRAME_HISTORY_SIZE
   private _unsubscribe: (() => void) | null = null
   private _onQualityChange: ((quality: QualityLevel) => void) | null = null
+  private _jankThreshold = DEFAULT_JANK_DOWNGRADE_THRESHOLD
+  private _stableTarget = DEFAULT_STABLE_UPGRADE_SECONDS
 
   // --- Public readonly refs ---
   readonly fps = readonly(this._fps)
@@ -52,10 +55,20 @@ class FrameTelemetryImpl {
   start(
     initialQuality: QualityLevel,
     onQualityChange?: (quality: QualityLevel) => void,
+    options?: {
+      jankDowngradeThreshold?: number
+      stableUpgradeSeconds?: number
+      frameHistorySize?: number
+    },
   ): void {
+    this._jankThreshold =
+      options?.jankDowngradeThreshold ?? DEFAULT_JANK_DOWNGRADE_THRESHOLD
+    this._stableTarget =
+      options?.stableUpgradeSeconds ?? DEFAULT_STABLE_UPGRADE_SECONDS
+    this._historySize = options?.frameHistorySize ?? FRAME_HISTORY_SIZE
     this._currentQuality.value = initialQuality
     this._onQualityChange = onQualityChange ?? null
-    this._frameTimeHistory = new Array(FRAME_HISTORY_SIZE).fill(16.6)
+    this._frameTimeHistory = new Array(this._historySize).fill(16.6)
     this._historyIndex = 0
     this._stableSeconds = 0
 
@@ -94,7 +107,7 @@ class FrameTelemetryImpl {
 
     // Record frame time in ring buffer
     this._frameTimeHistory[this._historyIndex] = stats.frameTimeEma
-    this._historyIndex = (this._historyIndex + 1) % FRAME_HISTORY_SIZE
+    this._historyIndex = (this._historyIndex + 1) % this._historySize
 
     // Calculate P95
     this._p95FrameTime.value = this._calculateP95()
@@ -115,7 +128,7 @@ class FrameTelemetryImpl {
     const currentIdx = QUALITY_ORDER.indexOf(this._currentQuality.value)
 
     // Downgrade: too many janks
-    if (stats.jankCount > JANK_DOWNGRADE_THRESHOLD && currentIdx > 0) {
+    if (stats.jankCount > this._jankThreshold && currentIdx > 0) {
       const newQuality = QUALITY_ORDER[currentIdx - 1]
       if (newQuality) {
         this._currentQuality.value = newQuality
@@ -129,7 +142,7 @@ class FrameTelemetryImpl {
     if (stats.jankCount === 0) {
       this._stableSeconds++
       if (
-        this._stableSeconds >= STABLE_UPGRADE_SECONDS &&
+        this._stableSeconds >= this._stableTarget &&
         currentIdx < QUALITY_ORDER.length - 1
       ) {
         const newQuality = QUALITY_ORDER[currentIdx + 1]

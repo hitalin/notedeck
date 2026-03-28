@@ -1,11 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import {
-  detectQuality,
-  detectQualitySync,
-  type QualityPreset,
-} from '@/composables/useAdaptiveQuality'
+import { detectQualitySync } from '@/composables/useAdaptiveQuality'
 import defaultsJson from '@/defaults/performance.json'
 import { frameEngine } from '@/engine/frameEngine'
 import {
@@ -54,6 +50,27 @@ export interface PerformanceConfig {
   circuitBreakerThreshold: number
   circuitBreakerDuration: number
   imageCacheTTLDays: number
+  // Polling
+  notificationPollInterval: number
+  chatPollInterval: number
+  // Realtime (continued)
+  columnUnloadDelay: number
+  snapshotMaxNotes: number
+  snapshotTTL: number
+  // Telemetry
+  jankDowngradeThreshold: number
+  stableUpgradeSeconds: number
+  noteAnimationDuration: number
+  frameHistorySize: number
+  // Cache (continued)
+  soundCacheMax: number
+  cachedTimelineLimit: number
+  // Interaction
+  pullFireThreshold: number
+  swipeThreshold: number
+  flingVelocity: number
+  wheelCooldown: number
+  scrollHideThreshold: number
 }
 
 export type PerformanceKey = keyof PerformanceConfig
@@ -338,6 +355,154 @@ export const FIELD_META: Record<PerformanceKey, FieldMeta> = {
     label: 'シャドウ強度',
     description: 'box-shadowの描画レベル。0=無効、1=軽量、2=フル(Misskey準拠)',
   },
+  notificationPollInterval: {
+    min: 30,
+    max: 600,
+    step: 30,
+    unit: '秒',
+    category: 'polling',
+    label: '通知ポーリング間隔',
+    description:
+      '通知未読数の確認間隔。短いほどリアルタイム、長いほどバッテリー節約',
+  },
+  chatPollInterval: {
+    min: 30,
+    max: 600,
+    step: 30,
+    unit: '秒',
+    category: 'polling',
+    label: 'チャットポーリング間隔',
+    description: 'チャット未読の確認間隔',
+  },
+  columnUnloadDelay: {
+    min: 1000,
+    max: 30000,
+    step: 1000,
+    unit: 'ms',
+    category: 'realtime',
+    label: 'カラムアンロード遅延',
+    description:
+      '画面外カラムをアンマウントするまでの待機時間。短いほどメモリ節約',
+  },
+  snapshotMaxNotes: {
+    min: 10,
+    max: 100,
+    step: 10,
+    unit: '件',
+    category: 'realtime',
+    label: 'スナップショット保存数',
+    description: 'カラムスナップショットに保存するノート数。多いほど復帰が完全',
+  },
+  snapshotTTL: {
+    min: 1,
+    max: 30,
+    step: 1,
+    unit: '分',
+    category: 'realtime',
+    label: 'スナップショット有効期限',
+    description: 'カラムスナップショットの保持期間。期限切れで再フェッチ',
+  },
+  jankDowngradeThreshold: {
+    min: 1,
+    max: 15,
+    step: 1,
+    unit: '回/秒',
+    category: 'telemetry',
+    label: 'ジャンク検出感度',
+    description:
+      'この回数/秒を超えるジャンクで自動品質ダウングレード。低いほど敏感',
+  },
+  stableUpgradeSeconds: {
+    min: 5,
+    max: 30,
+    step: 5,
+    unit: '秒',
+    category: 'telemetry',
+    label: 'アップグレード待機',
+    description: '安定がこの秒数続くと自動品質アップグレードを試行',
+  },
+  noteAnimationDuration: {
+    min: 0,
+    max: 800,
+    step: 50,
+    unit: 'ms',
+    category: 'telemetry',
+    label: 'ノート出現アニメーション',
+    description: '新着ノートのスライドインアニメーション時間。0で即時表示',
+  },
+  frameHistorySize: {
+    min: 30,
+    max: 500,
+    step: 10,
+    unit: 'フレーム',
+    category: 'telemetry',
+    label: 'P95履歴サイズ',
+    description:
+      'P95フレーム時間計算用のリングバッファサイズ。大きいほど安定するが反応が遅い',
+  },
+  soundCacheMax: {
+    min: 2,
+    max: 32,
+    step: 2,
+    unit: '件',
+    category: 'cache',
+    label: '通知音キャッシュ',
+    description: '通知音のAudioBufferキャッシュ数。多サーバー利用時は増やす',
+  },
+  cachedTimelineLimit: {
+    min: 10,
+    max: 200,
+    step: 10,
+    unit: '件',
+    category: 'cache',
+    label: 'タイムラインキャッシュ読み込み',
+    description: 'カラム復帰時にDBキャッシュから読み込むノート件数',
+  },
+  pullFireThreshold: {
+    min: 80,
+    max: 400,
+    step: 20,
+    unit: 'px',
+    category: 'interaction',
+    label: 'プルリフレッシュ距離',
+    description: 'プルトゥリフレッシュが発火するまでの引っ張り距離',
+  },
+  swipeThreshold: {
+    min: 20,
+    max: 120,
+    step: 10,
+    unit: 'px',
+    category: 'interaction',
+    label: 'スワイプ切り替え距離',
+    description: 'タブ切り替えに必要な最小スワイプ距離',
+  },
+  flingVelocity: {
+    min: 0.1,
+    max: 1.0,
+    step: 0.1,
+    unit: 'px/ms',
+    category: 'interaction',
+    label: 'フリック速度',
+    description: 'この速度以上のフリックで即座にタブ切り替え',
+  },
+  wheelCooldown: {
+    min: 100,
+    max: 1000,
+    step: 50,
+    unit: 'ms',
+    category: 'interaction',
+    label: 'ホイールクールダウン',
+    description: 'マウスホイールによるタブ切り替え後の再発火防止時間',
+  },
+  scrollHideThreshold: {
+    min: 10,
+    max: 100,
+    step: 10,
+    unit: 'px',
+    category: 'interaction',
+    label: 'ナビバー非表示感度',
+    description: 'スクロールでナビバーを非表示にする累積距離。小さいほど敏感',
+  },
 }
 
 export const CATEGORY_LABELS: Record<string, { label: string; icon: string }> =
@@ -348,200 +513,142 @@ export const CATEGORY_LABELS: Record<string, { label: string; icon: string }> =
     realtime: { label: 'リアルタイム', icon: 'ti-bolt' },
     backend: { label: 'バックエンド', icon: 'ti-server' },
     css: { label: 'CSS描画', icon: 'ti-palette' },
+    polling: { label: 'ポーリング', icon: 'ti-refresh' },
+    telemetry: { label: 'テレメトリ', icon: 'ti-chart-line' },
+    interaction: { label: 'インタラクション', icon: 'ti-hand-finger' },
   }
 
 /** Preset definitions. */
-export const PRESETS = {
-  low: {
-    label: '省メモリ',
-    icon: 'ti-leaf',
-    values: {
-      emojiCachePerHost: 2000,
-      emojiListHosts: 2,
-      emojiPersistPerHost: 200,
-      noteStoreMax: 800,
-      noteListMax: 150,
-      maxNotifications: 100,
-      mfmCacheMax: 128,
-      imageProxyCacheMax: 128,
-      ogpCacheMax: 64,
-      noteCaptureMax: 20,
-      overscan: 4,
-      memoryCacheMaxMB: 2,
-      memoryCacheMaxItemKB: 32,
-      maxConcurrentFetches: 15,
-      rustOgpCacheMax: 32,
-      maxRequestsPerWindow: 100,
-      circuitBreakerThreshold: 3,
-      circuitBreakerDuration: 90,
-      imageCacheTTLDays: 3,
-      prefetchAhead: 15,
-      prefetchBehind: 5,
-      prefetchTrackedMax: 200,
-      lazyLoadMargin: 100,
-      nearViewportBuffer: 2,
-      ogpGalleryMax: 2,
-      embedCacheMax: 32,
-      cssBlurLevel: 0,
-      cssAnimationScale: 50,
-      cssShadowLevel: 1,
-    } satisfies PerformanceConfig,
-  },
-  balanced: {
-    label: 'バランス',
-    icon: 'ti-scale',
-    values: null, // = defaults
-  },
-  high: {
-    label: '高パフォーマンス',
-    icon: 'ti-rocket',
-    values: {
-      emojiCachePerHost: 7000,
-      emojiListHosts: 6,
-      emojiPersistPerHost: 700,
-      noteStoreMax: 3000,
-      noteListMax: 300,
-      maxNotifications: 500,
-      mfmCacheMax: 512,
-      imageProxyCacheMax: 512,
-      ogpCacheMax: 256,
-      noteCaptureMax: 100,
-      overscan: 10,
-      memoryCacheMaxMB: 8,
-      memoryCacheMaxItemKB: 128,
-      maxConcurrentFetches: 40,
-      rustOgpCacheMax: 128,
-      maxRequestsPerWindow: 300,
-      circuitBreakerThreshold: 5,
-      circuitBreakerDuration: 30,
-      imageCacheTTLDays: 14,
-      prefetchAhead: 40,
-      prefetchBehind: 15,
-      prefetchTrackedMax: 1000,
-      lazyLoadMargin: 300,
-      nearViewportBuffer: 6,
-      ogpGalleryMax: 6,
-      embedCacheMax: 128,
-      cssBlurLevel: 2,
-      cssAnimationScale: 100,
-      cssShadowLevel: 2,
-    } satisfies PerformanceConfig,
-  },
-} as const
+/** Slider endpoint: t=0 (省メモリ) */
+export const SLIDER_LOW: PerformanceConfig = {
+  emojiCachePerHost: 2000,
+  emojiListHosts: 2,
+  emojiPersistPerHost: 200,
+  noteStoreMax: 800,
+  noteListMax: 150,
+  maxNotifications: 100,
+  mfmCacheMax: 128,
+  imageProxyCacheMax: 128,
+  ogpCacheMax: 64,
+  noteCaptureMax: 20,
+  overscan: 4,
+  memoryCacheMaxMB: 2,
+  memoryCacheMaxItemKB: 32,
+  maxConcurrentFetches: 15,
+  rustOgpCacheMax: 32,
+  maxRequestsPerWindow: 100,
+  circuitBreakerThreshold: 3,
+  circuitBreakerDuration: 90,
+  imageCacheTTLDays: 3,
+  prefetchAhead: 15,
+  prefetchBehind: 5,
+  prefetchTrackedMax: 200,
+  lazyLoadMargin: 100,
+  nearViewportBuffer: 2,
+  ogpGalleryMax: 2,
+  embedCacheMax: 32,
+  cssBlurLevel: 0,
+  cssAnimationScale: 50,
+  cssShadowLevel: 1,
+  notificationPollInterval: 300,
+  chatPollInterval: 300,
+  columnUnloadDelay: 2000,
+  snapshotMaxNotes: 20,
+  snapshotTTL: 5,
+  jankDowngradeThreshold: 3,
+  stableUpgradeSeconds: 15,
+  noteAnimationDuration: 200,
+  frameHistorySize: 50,
+  soundCacheMax: 4,
+  cachedTimelineLimit: 20,
+  pullFireThreshold: 200,
+  swipeThreshold: 50,
+  flingVelocity: 0.4,
+  wheelCooldown: 300,
+  scrollHideThreshold: 30,
+}
 
-export type PresetKey = keyof typeof PRESETS
+/** Slider endpoint: t=1 (高パフォーマンス) */
+export const SLIDER_HIGH: PerformanceConfig = {
+  emojiCachePerHost: 7000,
+  emojiListHosts: 6,
+  emojiPersistPerHost: 700,
+  noteStoreMax: 3000,
+  noteListMax: 300,
+  maxNotifications: 500,
+  mfmCacheMax: 512,
+  imageProxyCacheMax: 512,
+  ogpCacheMax: 256,
+  noteCaptureMax: 100,
+  overscan: 10,
+  memoryCacheMaxMB: 8,
+  memoryCacheMaxItemKB: 128,
+  maxConcurrentFetches: 40,
+  rustOgpCacheMax: 128,
+  maxRequestsPerWindow: 300,
+  circuitBreakerThreshold: 5,
+  circuitBreakerDuration: 30,
+  imageCacheTTLDays: 14,
+  prefetchAhead: 40,
+  prefetchBehind: 15,
+  prefetchTrackedMax: 1000,
+  lazyLoadMargin: 300,
+  nearViewportBuffer: 6,
+  ogpGalleryMax: 6,
+  embedCacheMax: 128,
+  cssBlurLevel: 2,
+  cssAnimationScale: 100,
+  cssShadowLevel: 2,
+  notificationPollInterval: 60,
+  chatPollInterval: 60,
+  columnUnloadDelay: 15000,
+  snapshotMaxNotes: 80,
+  snapshotTTL: 20,
+  jankDowngradeThreshold: 8,
+  stableUpgradeSeconds: 5,
+  noteAnimationDuration: 500,
+  frameHistorySize: 200,
+  soundCacheMax: 16,
+  cachedTimelineLimit: 80,
+  pullFireThreshold: 200,
+  swipeThreshold: 50,
+  flingVelocity: 0.4,
+  wheelCooldown: 300,
+  scrollHideThreshold: 30,
+}
+
+/** Interpolate all config values linearly between SLIDER_LOW (t=0) and SLIDER_HIGH (t=1). */
+export function interpolateConfig(t: number): PerformanceConfig {
+  const result = {} as Record<string, number>
+  for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
+    const low = SLIDER_LOW[key]
+    const high = SLIDER_HIGH[key]
+    const meta = FIELD_META[key]
+    const raw = low + (high - low) * t
+    const snapped = Math.round(raw / meta.step) * meta.step
+    result[key] = Math.max(meta.min, Math.min(meta.max, snapped))
+  }
+  return result as unknown as PerformanceConfig
+}
+
+/** Find slider position t ∈ [0,1] that matches config, or null if custom. */
+export function detectSliderPosition(cfg: PerformanceConfig): number | null {
+  for (let i = 0; i <= 100; i++) {
+    const t = i / 100
+    const interp = interpolateConfig(t)
+    let match = true
+    for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
+      if (cfg[key] !== interp[key]) {
+        match = false
+        break
+      }
+    }
+    if (match) return t
+  }
+  return null
+}
 
 const DEFAULTS: PerformanceConfig = defaultsJson as PerformanceConfig
-
-const FIXED_OVERHEAD_MB = 6 // tokio runtime + HTTP pools + Rust structures
-
-/** Estimate memory usage (MB) for a given config. */
-export function estimateMemoryMB(c: PerformanceConfig): number {
-  const imageCacheMB = c.memoryCacheMaxMB
-  const noteStoreMB = (c.noteStoreMax * 4) / 1024 // ~4KB per note (nested user/reactions + V8 overhead)
-  const emojiMB = (c.emojiCachePerHost * c.emojiListHosts * 0.3) / 1024 // ~0.3KB (shortcode + URL + ServerEmoji)
-  const notificationMB = (c.maxNotifications * 4) / 1024 // ~4KB (note object + notification metadata)
-  // Parse caches differ in entry size
-  const mfmCacheMB = (c.mfmCacheMax * 2) / 1024 // ~2KB per MFM AST
-  const proxyCacheMB = (c.imageProxyCacheMax * 0.2) / 1024 // ~0.2KB per URL string
-  const ogpCacheMB = (c.ogpCacheMax * 1.5) / 1024 // ~1.5KB (title + description + image URL)
-  const rustOgpMB = (c.rustOgpCacheMax * 5) / 1024
-  const embedCacheMB = (c.embedCacheMax * 4) / 1024 // ~4KB per embedded note
-  const prefetchTrackMB = (c.prefetchTrackedMax * 0.1) / 1024 // ~0.1KB per URL in Set
-  const noteCaptureMB = (c.noteCaptureMax * 0.5) / 1024 // ~0.5KB per WebSocket subscription
-  // GPU texture memory for backdrop-filter compositing layers
-  // Each blur surface creates a ~400×800 RGBA texture ≈ 1.2MB
-  // After cleanup: only 3 permanent surfaces (navbar, window header, acrylic)
-  const blurGpuMB = c.cssBlurLevel > 0 ? c.cssBlurLevel * 0.8 : 0
-  return Math.round(
-    FIXED_OVERHEAD_MB +
-      imageCacheMB +
-      noteStoreMB +
-      emojiMB +
-      notificationMB +
-      mfmCacheMB +
-      proxyCacheMB +
-      ogpCacheMB +
-      rustOgpMB +
-      embedCacheMB +
-      prefetchTrackMB +
-      noteCaptureMB +
-      blurGpuMB,
-  )
-}
-
-export interface RenderCost {
-  /** 0–100 relative rendering weight */
-  score: number
-  /** Human-readable label */
-  label: string
-}
-
-/**
- * Estimate CSS rendering cost as a 0–100 relative score.
- *
- * Factors (approximate GPU frame-time contribution):
- * - backdrop-filter blur: heaviest — each composited layer costs 1–5ms
- * - box-shadow: moderate — GPU rasterisation per shadowed element
- * - Animation/transition: light (compositor-only) but many concurrent ones add up
- * - DOM element count (overscan + noteListMax): more layers to composite
- */
-export function estimateRenderCost(c: PerformanceConfig): RenderCost {
-  // Blur: 0→0, 1→15, 2→40 (non-linear — blur radius cost grows super-linearly)
-  const blurScore = c.cssBlurLevel === 0 ? 0 : c.cssBlurLevel === 1 ? 15 : 40
-  // Shadow: 0→0, 1→5, 2→10
-  const shadowScore = c.cssShadowLevel * 5
-  // Animations: 0→0, 50→4, 100→8
-  const animScore = (c.cssAnimationScale / 100) * 8
-  // Overscan: each extra item = extra composite layer (clamped contribution)
-  const overscanScore = Math.min(Math.max(c.overscan - 2, 0) * 1.5, 15)
-  // DOM size: more rendered notes = heavier composite
-  const domScore = Math.min((c.noteListMax - 50) / 25, 20)
-
-  const raw = Math.round(
-    blurScore + shadowScore + animScore + overscanScore + domScore,
-  )
-  const score = Math.max(0, Math.min(100, raw))
-
-  let label: string
-  if (score <= 25) label = '軽い'
-  else if (score <= 50) label = '標準'
-  else if (score <= 75) label = 'やや重い'
-  else label = '重い'
-
-  return { score, label }
-}
-
-/**
- * Estimate hourly network usage (MB/hour) for moderate use.
- *
- * Model assumptions (3 active columns, moderate scrolling):
- * - ~150 unique notes viewed per hour (base)
- * - Prefetch loads images slightly ahead; most would be viewed on scroll,
- *   only ~30% of prefetch range represents truly extra load
- * - ~50KB per note for images (avatar + emoji + occasional thumbnail, after proxy resize)
- * - Higher concurrency / rate limits → more requests complete → more actual bytes
- * - ~20% of notes contain URLs that trigger OGP fetch (~10KB each)
- * - ~3KB of API/WebSocket traffic per note (JSON payload)
- */
-export function estimateNetworkMBPerHour(c: PerformanceConfig): number {
-  const BASE_NOTES = 150
-  const AVG_IMAGE_KB = 50
-  // Only ~30% of prefetch range is "extra" (rest would be viewed on scroll)
-  const prefetchExtra = (c.prefetchAhead + c.prefetchBehind) * 0.3
-  // Higher concurrency and rate limits allow more requests to complete,
-  // increasing effective throughput (normalized to balanced defaults)
-  const throughputFactor = Math.sqrt(
-    (c.maxConcurrentFetches / 30) * (c.maxRequestsPerWindow / 200),
-  )
-  const imageTraffic =
-    ((BASE_NOTES + prefetchExtra) * AVG_IMAGE_KB * throughputFactor) / 1024
-  // ~20% of notes contain URLs triggering OGP fetch
-  const ogpTraffic = (BASE_NOTES * 0.2 * 10) / 1024
-  // API/WebSocket: note JSON + notifications + streaming
-  const apiTraffic = (BASE_NOTES * 3) / 1024
-  return Math.round(imageTraffic + ogpTraffic + apiTraffic)
-}
 
 /** Base durations (seconds) matching global.css :root values. */
 const CSS_BASE_DURATIONS: Record<string, number> = {
@@ -557,8 +664,6 @@ export const usePerformanceStore = defineStore('performance', () => {
     getStorageJson<Partial<PerformanceConfig>>(STORAGE_KEYS.performance, {}),
   )
   const initialized = ref(false)
-  const recommendedPreset = ref<QualityPreset | null>(null)
-
   /** Merged config: overrides on top of defaults. */
   const config = computed<PerformanceConfig>(() => ({
     ...DEFAULTS,
@@ -700,23 +805,6 @@ export const usePerformanceStore = defineStore('performance', () => {
   }
 
   function init(): void {
-    // Adaptive quality: sync detection first, then precise measurement when idle
-    recommendedPreset.value = detectQualitySync()
-    const runPrecise = () => {
-      detectQuality()
-        .then((result) => {
-          recommendedPreset.value = result
-        })
-        .catch(() => {
-          // Keep sync result as fallback
-        })
-    }
-    if (typeof window !== 'undefined' && window.requestIdleCallback) {
-      window.requestIdleCallback(runPrecise, { timeout: 5000 })
-    } else {
-      setTimeout(runPrecise, 3000)
-    }
-
     if (isTauri) {
       initFileStorage().catch((e) =>
         console.warn('[performance] file storage init failed:', e),
@@ -731,16 +819,18 @@ export const usePerformanceStore = defineStore('performance', () => {
     // --- Frame Engine + Telemetry ---
     frameEngine.start()
 
-    // Map preset to telemetry quality level
-    const presetToQuality = (p: QualityPreset): QualityLevel => p
-
     frameTelemetry.start(
-      presetToQuality(recommendedPreset.value ?? 'balanced'),
+      detectQualitySync() as QualityLevel,
       (quality) => {
         // Auto quality adjustment — only change CSS rendering properties
         // (blur, shadow, animation). Never touch cache sizes or note limits,
         // as those are unrelated to frame jank.
         applyCssQuality(quality)
+      },
+      {
+        jankDowngradeThreshold: config.value.jankDowngradeThreshold,
+        stableUpgradeSeconds: config.value.stableUpgradeSeconds,
+        frameHistorySize: config.value.frameHistorySize,
       },
     )
   }
@@ -798,80 +888,39 @@ export const usePerformanceStore = defineStore('performance', () => {
     saveOverrides()
   }
 
-  function applyPreset(preset: PresetKey) {
-    const p = PRESETS[preset]
-    if (p.values == null) {
-      overrides.value = {}
-    } else {
-      const partial: Partial<PerformanceConfig> = {}
-      for (const [k, v] of Object.entries(p.values)) {
-        const key = k as PerformanceKey
-        if (v !== DEFAULTS[key]) {
-          partial[key] = v as never
-        }
+  /** Apply slider position t ∈ [0, 1] — interpolates all values linearly. */
+  function applySlider(t: number) {
+    const target = interpolateConfig(t)
+    const partial: Partial<PerformanceConfig> = {}
+    for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
+      if (target[key] !== DEFAULTS[key]) {
+        partial[key] = target[key] as never
       }
-      overrides.value = partial
     }
+    overrides.value = partial
     saveOverrides()
   }
 
-  /** Detect which preset matches the current config (or 'custom'). */
-  const activePreset = computed<PresetKey | 'custom'>(() => {
-    const keys = Object.keys(overrides.value) as PerformanceKey[]
-    if (keys.length === 0) return 'balanced'
-    for (const [presetKey, preset] of Object.entries(PRESETS) as [
-      PresetKey,
-      (typeof PRESETS)[PresetKey],
-    ][]) {
-      if (preset.values == null) continue
-      const presetOverrides: Partial<PerformanceConfig> = {}
-      for (const [k, v] of Object.entries(preset.values)) {
-        if (v !== DEFAULTS[k as PerformanceKey]) {
-          presetOverrides[k as PerformanceKey] = v as never
-        }
-      }
-      const presetKeys = Object.keys(presetOverrides) as PerformanceKey[]
-      if (presetKeys.length !== keys.length) continue
-      let match = true
-      for (const pk of presetKeys) {
-        if (overrides.value[pk] !== presetOverrides[pk]) {
-          match = false
-          break
-        }
-      }
-      if (match) return presetKey
-    }
-    return 'custom'
+  /** Current slider position (0–1), or null if config doesn't match any interpolation point. */
+  const sliderPosition = computed<number | null>(() => {
+    return detectSliderPosition(config.value)
   })
 
   function isCustomized(key: PerformanceKey): boolean {
     return key in overrides.value
   }
 
-  /** Estimated memory usage (MB) for current config. */
-  const estimatedMemoryMB = computed(() => estimateMemoryMB(config.value))
-  /** Estimated network usage (MB/hour) for current config. */
-  const estimatedNetworkMBPerHour = computed(() =>
-    estimateNetworkMBPerHour(config.value),
-  )
-  /** Estimated CSS rendering cost for current config. */
-  const estimatedRenderCost = computed(() => estimateRenderCost(config.value))
-
   return {
     overrides,
     config,
-    activePreset,
-    recommendedPreset,
-    estimatedMemoryMB,
-    estimatedNetworkMBPerHour,
-    estimatedRenderCost,
+    sliderPosition,
     init,
     get,
     getDefault,
     set,
     resetKey,
     resetAll,
-    applyPreset,
+    applySlider,
     isCustomized,
   }
 })

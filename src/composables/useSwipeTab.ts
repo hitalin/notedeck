@@ -1,15 +1,14 @@
 import { onUnmounted, type Ref, watch } from 'vue'
+
+import { usePerformanceStore } from '@/stores/performance'
 import { hapticLight } from '@/utils/haptics'
 
 const DIRECTION_THRESHOLD = 8 // px — minimum move to determine swipe direction
-const SWIPE_THRESHOLD = 50 // px — minimum distance to trigger tab switch
-const FLING_VELOCITY = 0.4 // px/ms — fast flick switches tab even if distance < threshold
 const SOFT_CAP = 80 // px — full-speed tracking up to here
 const RUBBER_FACTOR = 0.3 // diminishing returns past SOFT_CAP (iOS-style)
 const MAX_SWIPE = 120 // px — hard cap to prevent excessive displacement
 const SNAP_BACK_TIMEOUT = 340 // ms — safety fallback for transitionend (300ms CSS + buffer)
 const WHEEL_THRESHOLD = 50 // px — accumulated delta to trigger tab switch
-const WHEEL_COOLDOWN = 300 // ms — prevent rapid-fire tab switches
 
 /** CSS class names shared with useTabSlide */
 export const SWIPE_CLASSES = {
@@ -65,6 +64,11 @@ export function useSwipeTab(
   onSwipeLeft: () => boolean | undefined,
   onSwipeRight: () => boolean | undefined,
 ) {
+  const perfStore = usePerformanceStore()
+  const SWIPE_THRESHOLD = perfStore.get('swipeThreshold')
+  const FLING_VELOCITY = perfStore.get('flingVelocity')
+  const WHEEL_COOLDOWN = perfStore.get('wheelCooldown')
+
   let startX = 0
   let startY = 0
   let startTime = 0
