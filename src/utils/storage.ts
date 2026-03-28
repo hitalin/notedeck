@@ -80,6 +80,7 @@ export const STORAGE_KEYS = {
   performance: 'nd-performance',
   mutedAds: 'nd-muted-ads',
   offlineMode: 'nd-offline-mode',
+  realtimeMode: 'nd-realtime-mode',
 
   // Per-account (dynamic key builders)
   drafts: (accountId: string) => `nd-drafts-${accountId}`,

@@ -1,9 +1,11 @@
 import { useCommandStore } from '@/commands/registry'
 import type { NoteAction } from '@/composables/useNoteFocus'
+import { useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { useOfflineModeStore } from '@/stores/offlineMode'
+import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import { useThemeStore } from '@/stores/theme'
 import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
@@ -158,6 +160,18 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('toggle-offline-mode'),
     execute: () => useOfflineModeStore().toggle(),
+  })
+
+  commandStore.register({
+    id: 'toggle-realtime-mode',
+    label: 'リアルタイムモード切替',
+    icon: 'bolt',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('toggle-realtime-mode'),
+    execute: () => {
+      const accountId = useAccountsStore().activeAccountId
+      if (accountId) useRealtimeModeStore().toggleRealtimeMode(accountId)
+    },
   })
 
   // Note-level shortcuts (dispatched as CustomEvents to active column)
@@ -604,6 +618,7 @@ export function unregisterDefaultCommands() {
     'account-menu',
     'toggle-dark-mode',
     'toggle-offline-mode',
+    'toggle-realtime-mode',
     'profile-new',
     'close-column',
     'keybinds',

@@ -105,6 +105,7 @@ function detectFeatures(
   if (software === 'misskey') {
     features.scheduledNotes = isVersionAtLeast(version, 2025, 10, 0)
     features.groupedNotifications = isVersionAtLeast(version, 2024, 2, 0)
+    features.notesShowPartialBulk = isVersionAtLeast(version, 2025, 5, 1)
   }
 
   return features
