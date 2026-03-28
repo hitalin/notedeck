@@ -1,4 +1,4 @@
-import { computed, nextTick, type Ref, ref } from 'vue'
+import { computed, nextTick, type Ref, ref, shallowRef } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   NormalizedNote,
@@ -67,7 +67,7 @@ export function usePostFormState(
     removeFile,
   } = useFileAttachment(() => adapter, fileInput, error)
   const noteModeFlags = ref<Record<string, boolean>>({})
-  const disabledVisibilities = ref(new Set<string>())
+  const disabledVisibilities = shallowRef(new Set<string>())
   const showPoll = ref(false)
   const pollChoices = ref<string[]>(['', ''])
   const pollMultiple = ref(false)

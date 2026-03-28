@@ -89,6 +89,7 @@ function candidateKey(candidate: AutocompleteCandidate): string {
   max-height: 240px;
   overflow-y: auto;
   padding: 4px;
+  contain: paint;
   animation: acPopupIn 0.1s ease-out;
 }
 

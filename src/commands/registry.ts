@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, shallowRef, triggerRef } from 'vue'
 
 export interface Shortcut {
   /** KeyboardEvent.key の値 ('k', 'p', 'Escape' 等) */
@@ -29,7 +29,7 @@ export interface Command {
 }
 
 export const useCommandStore = defineStore('commands', () => {
-  const commands = ref(new Map<string, Command>())
+  const commands = shallowRef(new Map<string, Command>())
   const isOpen = ref(false)
   const initialInput = ref<string | null>(null)
   /** When set, only commands matching this predicate are shown */
@@ -37,10 +37,12 @@ export const useCommandStore = defineStore('commands', () => {
 
   function register(command: Command) {
     commands.value.set(command.id, command)
+    triggerRef(commands)
   }
 
   function unregister(id: string) {
     commands.value.delete(id)
+    triggerRef(commands)
   }
 
   function getEnabled(): Command[] {

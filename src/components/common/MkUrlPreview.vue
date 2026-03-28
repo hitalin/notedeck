@@ -6,6 +6,8 @@ import {
   onMounted,
   onUnmounted,
   ref,
+  shallowRef,
+  triggerRef,
   watch,
 } from 'vue'
 import { useOgpPreview } from '@/composables/useOgpPreview'
@@ -43,7 +45,7 @@ const el = ref<HTMLElement | null>(null)
 const imageError = ref(false)
 const sensitiveRevealed = ref(false)
 const playerExpanded = ref(false)
-const galleryErrors = ref(new Set<number>())
+const galleryErrors = shallowRef(new Set<number>())
 
 // When virtual scroller recycles this component with a new URL, re-fetch
 watch(
@@ -64,6 +66,7 @@ const galleryImages = computed(() => {
 
 function onGalleryError(index: number) {
   galleryErrors.value.add(index)
+  triggerRef(galleryErrors)
 }
 let observer: IntersectionObserver | null = null
 

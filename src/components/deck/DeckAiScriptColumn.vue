@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { type Ast, Interpreter, Parser } from '@syuilo/aiscript'
-import { computed, defineAsyncComponent, onUnmounted, ref, watch } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onUnmounted,
+  ref,
+  shallowRef,
+  triggerRef,
+  watch,
+} from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
 import { createInterpreterOptions } from '@/aiscript/common'
 import {
@@ -81,7 +89,7 @@ useSwipeTab(
 )
 
 // Inspector: track which components are expanded
-const inspectorExpanded = ref(new Set<string>())
+const inspectorExpanded = shallowRef(new Set<string>())
 
 function toggleInspectorItem(id: string) {
   if (inspectorExpanded.value.has(id)) {
@@ -89,6 +97,7 @@ function toggleInspectorItem(id: string) {
   } else {
     inspectorExpanded.value.add(id)
   }
+  triggerRef(inspectorExpanded)
 }
 
 function flattenComponents(components: UiComponent[]): UiComponent[] {
