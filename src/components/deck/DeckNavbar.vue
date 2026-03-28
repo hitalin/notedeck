@@ -409,20 +409,20 @@ defineExpose({
           <!-- Offline mode -->
           <button
             class="_button"
-            :class="[$style.item, { [$style.offlineActive]: offlineModeStore.isOfflineMode }]"
+            :class="[$style.item, offlineModeStore.isOfflineMode ? $style.offlineActive : $style.onlineActive]"
             title="オフラインモード"
             @click="hapticLight(); toggleOfflineMode()"
           >
             <div :class="$style.iconWrap">
               <i :class="offlineModeStore.isOfflineMode ? 'ti ti-wifi-off' : 'ti ti-wifi'" />
             </div>
-            <span :class="$style.label">オフライン</span>
+            <span :class="$style.label">{{ offlineModeStore.isOfflineMode ? 'オフライン' : 'オンライン' }}</span>
           </button>
 
           <!-- Realtime mode -->
           <button
             class="_button"
-            :class="[$style.item, { [$style.realtimeActive]: realtimeModeStore.isRealtime, [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
+            :class="[$style.item, realtimeModeStore.isRealtime ? $style.realtimeActive : $style.pollingActive, { [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
             :disabled="offlineModeStore.isOfflineMode"
             title="リアルタイムモード切替"
             @click="hapticLight(); toggleRealtimeMode()"
@@ -629,8 +629,16 @@ defineExpose({
   }
 }
 
+.onlineActive {
+  color: #86b300;
+
+  :global(.ti) {
+    opacity: 1;
+  }
+}
+
 .offlineActive {
-  color: var(--nd-accent, #86b300);
+  color: #d32f2f;
 
   :global(.ti) {
     opacity: 1;
@@ -638,7 +646,15 @@ defineExpose({
 }
 
 .realtimeActive {
-  color: var(--nd-warn, #e2a100);
+  color: #e2a100;
+
+  :global(.ti) {
+    opacity: 1;
+  }
+}
+
+.pollingActive {
+  color: #9c27b0;
 
   :global(.ti) {
     opacity: 1;
