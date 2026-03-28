@@ -27,5 +27,13 @@
   "nearViewportBuffer": 4,
   "cssBlurLevel": 1,
   "cssAnimationScale": 100,
-  "cssShadowLevel": 2
+  "cssShadowLevel": 2,
+  "notificationPollInterval": 120,
+  "chatPollInterval": 120,
+  "columnUnloadDelay": 5000,
+  "snapshotMaxNotes": 50,
+  "snapshotTTL": 10,
+  "jankDowngradeThreshold": 5,
+  "stableUpgradeSeconds": 10,
+  "noteAnimationDuration": 350
 }

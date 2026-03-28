@@ -40,13 +40,14 @@ const categories = computed(() => {
   return cats
 })
 
-const expandedSections = ref(new Set<string>())
+const expandedSections = ref<string[]>([])
 
 function toggleSection(catKey: string) {
-  if (expandedSections.value.has(catKey)) {
-    expandedSections.value.delete(catKey)
+  const idx = expandedSections.value.indexOf(catKey)
+  if (idx >= 0) {
+    expandedSections.value = expandedSections.value.filter((k) => k !== catKey)
   } else {
-    expandedSections.value.add(catKey)
+    expandedSections.value = [...expandedSections.value, catKey]
   }
 }
 
@@ -220,10 +221,10 @@ function handleReset() {
           {{ CATEGORY_LABELS[catKey]?.label }}
           <i
             class="ti ti-chevron-down"
-            :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.has(catKey) }]"
+            :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.includes(catKey) }]"
           />
         </button>
-        <template v-if="expandedSections.has(catKey)">
+        <template v-if="expandedSections.includes(catKey)">
           <div v-for="field in fields" :key="field.key" :class="$style.field">
             <div :class="$style.fieldHeader">
               <span :class="$style.fieldLabel">{{ field.meta.label }}</span>

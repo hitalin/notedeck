@@ -1,5 +1,6 @@
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
 import { useNoteStore } from '@/stores/notes'
+import { usePerformanceStore } from '@/stores/performance'
 import { catchLog } from '@/utils/logger'
 import { invoke } from '@/utils/tauriInvoke'
 
@@ -12,7 +13,6 @@ interface ColumnSnapshot {
 }
 
 const columnSnapshots = new Map<string, ColumnSnapshot>()
-const SNAPSHOT_TTL = 10 * 60_000 // 10 minutes
 
 /** Save notes + scroll position for instant restore on re-mount. */
 export function saveSnapshot(
@@ -20,13 +20,15 @@ export function saveSnapshot(
   notes: NormalizedNote[],
   scrollTop: number,
 ): void {
+  const perfStore = usePerformanceStore()
+  const ttl = perfStore.get('snapshotTTL') * 60_000
   // Evict expired snapshots on save to prevent accumulation
   const now = Date.now()
   for (const [id, snap] of columnSnapshots) {
-    if (now - snap.savedAt >= SNAPSHOT_TTL) columnSnapshots.delete(id)
+    if (now - snap.savedAt >= ttl) columnSnapshots.delete(id)
   }
   columnSnapshots.set(colId, {
-    notes: notes.slice(0, 50),
+    notes: notes.slice(0, perfStore.get('snapshotMaxNotes')),
     scrollTop,
     savedAt: now,
   })
@@ -34,9 +36,11 @@ export function saveSnapshot(
 
 /** Restore and consume a snapshot if it exists and hasn't expired. */
 export function restoreSnapshot(colId: string): ColumnSnapshot | null {
+  const perfStore = usePerformanceStore()
+  const ttl = perfStore.get('snapshotTTL') * 60_000
   const snapshot = columnSnapshots.get(colId)
   columnSnapshots.delete(colId)
-  if (snapshot && Date.now() - snapshot.savedAt < SNAPSHOT_TTL) {
+  if (snapshot && Date.now() - snapshot.savedAt < ttl) {
     return snapshot
   }
   return null

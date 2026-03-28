@@ -6,15 +6,14 @@ import {
   type Ref,
   reactive,
 } from 'vue'
+import { usePerformanceStore } from '@/stores/performance'
 
 type VisibilityMap = Map<string, boolean>
 
 const COLUMN_VISIBILITY_KEY: InjectionKey<VisibilityMap> =
   Symbol('columnVisibility')
 
-/** Delay before deactivating an off-screen column (ms).
- *  With KeepAlive, deactivated columns are cached and restored instantly. */
-const UNLOAD_DELAY = 5_000
+/** Delay before deactivating an off-screen column (ms). */
 
 type MountedMap = Map<string, boolean>
 
@@ -22,6 +21,7 @@ const COLUMN_MOUNTED_KEY: InjectionKey<MountedMap> = Symbol('columnMounted')
 
 /** Provide column visibility tracking from DeckLayout. */
 export function provideColumnVisibility() {
+  const perfStore = usePerformanceStore()
   const map: VisibilityMap = reactive(new Map())
   const mounted: MountedMap = reactive(new Map())
   provide(COLUMN_VISIBILITY_KEY, map)
@@ -59,7 +59,7 @@ export function provideColumnVisibility() {
                 if (!map.get(colId)) {
                   mounted.set(colId, false)
                 }
-              }, UNLOAD_DELAY)
+              }, perfStore.get('columnUnloadDelay'))
               unloadTimers.set(colId, timer)
             }
           }

@@ -54,6 +54,17 @@ export interface PerformanceConfig {
   circuitBreakerThreshold: number
   circuitBreakerDuration: number
   imageCacheTTLDays: number
+  // Polling
+  notificationPollInterval: number
+  chatPollInterval: number
+  // Realtime (continued)
+  columnUnloadDelay: number
+  snapshotMaxNotes: number
+  snapshotTTL: number
+  // Telemetry
+  jankDowngradeThreshold: number
+  stableUpgradeSeconds: number
+  noteAnimationDuration: number
 }
 
 export type PerformanceKey = keyof PerformanceConfig
@@ -338,6 +349,81 @@ export const FIELD_META: Record<PerformanceKey, FieldMeta> = {
     label: 'シャドウ強度',
     description: 'box-shadowの描画レベル。0=無効、1=軽量、2=フル(Misskey準拠)',
   },
+  notificationPollInterval: {
+    min: 30,
+    max: 600,
+    step: 30,
+    unit: '秒',
+    category: 'polling',
+    label: '通知ポーリング間隔',
+    description:
+      '通知未読数の確認間隔。短いほどリアルタイム、長いほどバッテリー節約',
+  },
+  chatPollInterval: {
+    min: 30,
+    max: 600,
+    step: 30,
+    unit: '秒',
+    category: 'polling',
+    label: 'チャットポーリング間隔',
+    description: 'チャット未読の確認間隔',
+  },
+  columnUnloadDelay: {
+    min: 1000,
+    max: 30000,
+    step: 1000,
+    unit: 'ms',
+    category: 'realtime',
+    label: 'カラムアンロード遅延',
+    description:
+      '画面外カラムをアンマウントするまでの待機時間。短いほどメモリ節約',
+  },
+  snapshotMaxNotes: {
+    min: 10,
+    max: 100,
+    step: 10,
+    unit: '件',
+    category: 'realtime',
+    label: 'スナップショット保存数',
+    description: 'カラムスナップショットに保存するノート数。多いほど復帰が完全',
+  },
+  snapshotTTL: {
+    min: 1,
+    max: 30,
+    step: 1,
+    unit: '分',
+    category: 'realtime',
+    label: 'スナップショット有効期限',
+    description: 'カラムスナップショットの保持期間。期限切れで再フェッチ',
+  },
+  jankDowngradeThreshold: {
+    min: 1,
+    max: 15,
+    step: 1,
+    unit: '回/秒',
+    category: 'telemetry',
+    label: 'ジャンク検出感度',
+    description:
+      'この回数/秒を超えるジャンクで自動品質ダウングレード。低いほど敏感',
+  },
+  stableUpgradeSeconds: {
+    min: 5,
+    max: 30,
+    step: 5,
+    unit: '秒',
+    category: 'telemetry',
+    label: 'アップグレード待機',
+    description: '安定がこの秒数続くと自動品質アップグレードを試行',
+  },
+  noteAnimationDuration: {
+    min: 0,
+    max: 800,
+    step: 50,
+    unit: 'ms',
+    category: 'telemetry',
+    label: 'ノート出現アニメーション',
+    description: '新着ノートのスライドインアニメーション時間。0で即時表示',
+  },
 }
 
 export const CATEGORY_LABELS: Record<string, { label: string; icon: string }> =
@@ -348,6 +434,8 @@ export const CATEGORY_LABELS: Record<string, { label: string; icon: string }> =
     realtime: { label: 'リアルタイム', icon: 'ti-bolt' },
     backend: { label: 'バックエンド', icon: 'ti-server' },
     css: { label: 'CSS描画', icon: 'ti-palette' },
+    polling: { label: 'ポーリング', icon: 'ti-refresh' },
+    telemetry: { label: 'テレメトリ', icon: 'ti-chart-line' },
   }
 
 /** Preset definitions. */
@@ -385,6 +473,14 @@ export const PRESETS = {
       cssBlurLevel: 0,
       cssAnimationScale: 50,
       cssShadowLevel: 1,
+      notificationPollInterval: 300,
+      chatPollInterval: 300,
+      columnUnloadDelay: 2000,
+      snapshotMaxNotes: 20,
+      snapshotTTL: 5,
+      jankDowngradeThreshold: 3,
+      stableUpgradeSeconds: 15,
+      noteAnimationDuration: 200,
     } satisfies PerformanceConfig,
   },
   balanced: {
@@ -425,6 +521,14 @@ export const PRESETS = {
       cssBlurLevel: 2,
       cssAnimationScale: 100,
       cssShadowLevel: 2,
+      notificationPollInterval: 60,
+      chatPollInterval: 60,
+      columnUnloadDelay: 15000,
+      snapshotMaxNotes: 80,
+      snapshotTTL: 20,
+      jankDowngradeThreshold: 8,
+      stableUpgradeSeconds: 5,
+      noteAnimationDuration: 500,
     } satisfies PerformanceConfig,
   },
 } as const
@@ -453,6 +557,8 @@ export function estimateMemoryMB(c: PerformanceConfig): number {
   // Each blur surface creates a ~400×800 RGBA texture ≈ 1.2MB
   // After cleanup: only 3 permanent surfaces (navbar, window header, acrylic)
   const blurGpuMB = c.cssBlurLevel > 0 ? c.cssBlurLevel * 0.8 : 0
+  // Column snapshots: ~5 columns × snapshotMaxNotes × 4KB per note
+  const snapshotMB = (5 * c.snapshotMaxNotes * 4) / 1024
   return Math.round(
     FIXED_OVERHEAD_MB +
       imageCacheMB +
@@ -466,7 +572,8 @@ export function estimateMemoryMB(c: PerformanceConfig): number {
       embedCacheMB +
       prefetchTrackMB +
       noteCaptureMB +
-      blurGpuMB,
+      blurGpuMB +
+      snapshotMB,
   )
 }
 
@@ -540,7 +647,11 @@ export function estimateNetworkMBPerHour(c: PerformanceConfig): number {
   const ogpTraffic = (BASE_NOTES * 0.2 * 10) / 1024
   // API/WebSocket: note JSON + notifications + streaming
   const apiTraffic = (BASE_NOTES * 3) / 1024
-  return Math.round(imageTraffic + ogpTraffic + apiTraffic)
+  // Polling overhead: ~2KB per poll response
+  const pollRequestsPerHour =
+    3600 / c.notificationPollInterval + 3600 / c.chatPollInterval
+  const pollTraffic = (pollRequestsPerHour * 2) / 1024
+  return Math.round(imageTraffic + ogpTraffic + apiTraffic + pollTraffic)
 }
 
 /** Base durations (seconds) matching global.css :root values. */
@@ -741,6 +852,10 @@ export const usePerformanceStore = defineStore('performance', () => {
         // (blur, shadow, animation). Never touch cache sizes or note limits,
         // as those are unrelated to frame jank.
         applyCssQuality(quality)
+      },
+      {
+        jankDowngradeThreshold: config.value.jankDowngradeThreshold,
+        stableUpgradeSeconds: config.value.stableUpgradeSeconds,
       },
     )
   }

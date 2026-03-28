@@ -13,9 +13,9 @@ import { type FrameStats, frameEngine } from '../frameEngine'
 
 export type QualityLevel = 'low' | 'balanced' | 'high'
 
-/** Thresholds for automatic quality adjustment. */
-const JANK_DOWNGRADE_THRESHOLD = 5 // janks/sec to trigger downgrade
-const STABLE_UPGRADE_SECONDS = 10 // consecutive stable seconds to try upgrade
+/** Default thresholds for automatic quality adjustment. */
+const DEFAULT_JANK_DOWNGRADE_THRESHOLD = 5
+const DEFAULT_STABLE_UPGRADE_SECONDS = 10
 const FRAME_HISTORY_SIZE = 100 // ring buffer for P95 calculation
 
 const QUALITY_ORDER: QualityLevel[] = ['low', 'balanced', 'high']
@@ -35,6 +35,8 @@ class FrameTelemetryImpl {
   private _stableSeconds = 0
   private _unsubscribe: (() => void) | null = null
   private _onQualityChange: ((quality: QualityLevel) => void) | null = null
+  private _jankThreshold = DEFAULT_JANK_DOWNGRADE_THRESHOLD
+  private _stableTarget = DEFAULT_STABLE_UPGRADE_SECONDS
 
   // --- Public readonly refs ---
   readonly fps = readonly(this._fps)
@@ -52,7 +54,15 @@ class FrameTelemetryImpl {
   start(
     initialQuality: QualityLevel,
     onQualityChange?: (quality: QualityLevel) => void,
+    options?: {
+      jankDowngradeThreshold?: number
+      stableUpgradeSeconds?: number
+    },
   ): void {
+    this._jankThreshold =
+      options?.jankDowngradeThreshold ?? DEFAULT_JANK_DOWNGRADE_THRESHOLD
+    this._stableTarget =
+      options?.stableUpgradeSeconds ?? DEFAULT_STABLE_UPGRADE_SECONDS
     this._currentQuality.value = initialQuality
     this._onQualityChange = onQualityChange ?? null
     this._frameTimeHistory = new Array(FRAME_HISTORY_SIZE).fill(16.6)
@@ -115,7 +125,7 @@ class FrameTelemetryImpl {
     const currentIdx = QUALITY_ORDER.indexOf(this._currentQuality.value)
 
     // Downgrade: too many janks
-    if (stats.jankCount > JANK_DOWNGRADE_THRESHOLD && currentIdx > 0) {
+    if (stats.jankCount > this._jankThreshold && currentIdx > 0) {
       const newQuality = QUALITY_ORDER[currentIdx - 1]
       if (newQuality) {
         this._currentQuality.value = newQuality
@@ -129,7 +139,7 @@ class FrameTelemetryImpl {
     if (stats.jankCount === 0) {
       this._stableSeconds++
       if (
-        this._stableSeconds >= STABLE_UPGRADE_SECONDS &&
+        this._stableSeconds >= this._stableTarget &&
         currentIdx < QUALITY_ORDER.length - 1
       ) {
         const newQuality = QUALITY_ORDER[currentIdx + 1]
