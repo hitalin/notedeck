@@ -279,7 +279,7 @@ async function switchTl(type: TimelineType) {
   if (snapshot && snapshot.notes.length > 0) {
     await col?.switchWithSnapshot(snapshot.notes, snapshot.scrollTop)
   } else {
-    await reconnect()
+    await reconnect(true)
   }
 }
 

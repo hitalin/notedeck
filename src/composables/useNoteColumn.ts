@@ -553,7 +553,17 @@ export function useNoteColumn(config: NoteColumnConfig) {
   /** Disconnect, reset, and reconnect with fresh config state */
   async function reconnect(useCache = false) {
     const adapter = getAdapter()
-    if (adapter && config.streaming && streamingBatch) {
+    if (useOfflineModeStore().isOfflineMode) {
+      // Offline mode: load cache only, skip API fetch and streaming
+      setNotes([])
+      isLoading.value = true
+      if (useCache && config.cache) {
+        const filtered = await loadFilteredCache('reconnect-cache')
+        if (filtered.length > 0) setNotes(filtered)
+      }
+      isOffline.value = true
+      isLoading.value = false
+    } else if (adapter && config.streaming && streamingBatch) {
       // Stream-preserving path: reuse adapter/WebSocket, swap subscription only
       resubscribe(adapter)
       setNotes([])
