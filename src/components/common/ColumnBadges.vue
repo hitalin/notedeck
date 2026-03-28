@@ -31,6 +31,11 @@ const serverIcon = computed(() => {
   return url ? (proxyThumbUrl(url, 28) ?? null) : null
 })
 
+const avatarThumbUrl = computed(() => {
+  if (!account.value?.avatarUrl) return null
+  return proxyThumbUrl(account.value.avatarUrl, 28) ?? null
+})
+
 const hostInitial = computed(
   () => account.value?.host.charAt(0).toUpperCase() ?? '',
 )
@@ -60,8 +65,8 @@ const usernameInitial = computed(
       :style="{ width: `${size}px`, height: `${size}px` }"
     >
       <img
-        v-if="account.avatarUrl"
-        :src="proxyThumbUrl(account.avatarUrl, 28)"
+        v-if="avatarThumbUrl"
+        :src="avatarThumbUrl"
         :class="$style.badgeImg"
         :width="size - 4"
         :height="size - 4"

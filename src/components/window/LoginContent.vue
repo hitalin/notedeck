@@ -50,11 +50,15 @@ const subtitleSwitch = useVaporTransitionSwitch(serverStatus, {
   leaveDuration: 200,
 })
 
-async function startLogin() {
-  const trimmedHost = host.value
+function normalizeHost(): string {
+  return host.value
     .trim()
     .replace(/^https?:\/\//, '')
     .replace(/\/$/, '')
+}
+
+async function startLogin() {
+  const trimmedHost = normalizeHost()
   if (!trimmedHost) return
 
   try {
@@ -86,10 +90,7 @@ async function completeLogin() {
 }
 
 async function startGuest() {
-  const trimmedHost = host.value
-    .trim()
-    .replace(/^https?:\/\//, '')
-    .replace(/\/$/, '')
+  const trimmedHost = normalizeHost()
   if (!trimmedHost) return
 
   try {

@@ -306,13 +306,17 @@ function startResize(e: MouseEvent) {
   document.addEventListener('mouseup', stopResize)
 }
 
+let resizeRafId = 0
 function onResize(e: MouseEvent) {
-  const w = e.clientX
-  if (w <= COLLAPSE_THRESHOLD) {
-    navWidth.value = MIN_WIDTH
-  } else {
-    navWidth.value = Math.min(w, MAX_WIDTH)
-  }
+  cancelAnimationFrame(resizeRafId)
+  resizeRafId = requestAnimationFrame(() => {
+    const w = e.clientX
+    if (w <= COLLAPSE_THRESHOLD) {
+      navWidth.value = MIN_WIDTH
+    } else {
+      navWidth.value = Math.min(w, MAX_WIDTH)
+    }
+  })
 }
 
 function stopResize() {

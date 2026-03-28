@@ -1,22 +1,40 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
-import { getStorageString, setStorageString } from '@/utils/storage'
+import { getStorageJson, setStorageJson } from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
 
 const STORAGE_KEY = 'nd-offline-mode'
+
+interface OfflineModeState {
+  enabled: boolean
+}
 
 export const useOfflineModeStore = defineStore('offlineMode', () => {
   const isOfflineMode = ref(false)
 
   /** Restore persisted state from previous session. */
   function init(): void {
-    isOfflineMode.value = getStorageString(STORAGE_KEY) === 'true'
+    // Migrate from old string-based format
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw === 'true' || raw === 'false') {
+      const enabled = raw === 'true'
+      isOfflineMode.value = enabled
+      setStorageJson(STORAGE_KEY, { enabled })
+      return
+    }
+    isOfflineMode.value =
+      getStorageJson<OfflineModeState | null>(STORAGE_KEY, null)?.enabled ??
+      false
+  }
+
+  function persist(): void {
+    setStorageJson(STORAGE_KEY, { enabled: isOfflineMode.value })
   }
 
   async function enable(): Promise<void> {
     isOfflineMode.value = true
-    setStorageString(STORAGE_KEY, 'true')
+    persist()
 
     // Disconnect all streaming connections
     const accounts = useAccountsStore().accounts
@@ -34,7 +52,7 @@ export const useOfflineModeStore = defineStore('offlineMode', () => {
 
   async function disable(): Promise<void> {
     isOfflineMode.value = false
-    setStorageString(STORAGE_KEY, 'false')
+    persist()
 
     // Trigger reconnection via existing deck-resume path
     window.dispatchEvent(new Event('deck-resume'))

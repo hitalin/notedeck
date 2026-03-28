@@ -169,6 +169,20 @@ export function useNoteColumn(config: NoteColumnConfig) {
     return config.filterCachedNotes ? config.filterCachedNotes(cached) : cached
   }
 
+  /** Load and filter cached timeline notes. Returns empty array on failure. */
+  async function loadFilteredCache(label: string): Promise<NormalizedNote[]> {
+    const column = config.getColumn()
+    const cacheKey = config.cache?.getKey()
+    if (!column.accountId || !cacheKey) return []
+    try {
+      const cached = await loadCachedTimeline(column.accountId, cacheKey)
+      return applyFilter(cached)
+    } catch (e) {
+      logWarn(label, e)
+      return []
+    }
+  }
+
   // Handle token state transitions (logout / re-login)
   watch(
     () => account.value?.hasToken,
@@ -209,19 +223,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
     const shouldLoadCache =
       (useCache || !account.value || !account.value.hasToken) && config.cache
     if (shouldLoadCache) {
-      const column = config.getColumn()
-      const cacheKey = config.cache?.getKey()
-      if (column.accountId && cacheKey) {
-        try {
-          const cached = await loadCachedTimeline(column.accountId, cacheKey)
-          const filtered = applyFilter(cached)
-          if (filtered.length > 0) {
-            setNotes(filtered)
-            cachedIds = filtered.map((n) => n.id)
-          }
-        } catch (e) {
-          logWarn('load-cache', e)
-        }
+      const filtered = await loadFilteredCache('load-cache')
+      if (filtered.length > 0) {
+        setNotes(filtered)
+        cachedIds = filtered.map((n) => n.id)
       }
     }
 
@@ -319,22 +324,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
         isOffline.value = true
       } else {
         // No notes loaded yet — try cache before showing error
-        const column = config.getColumn()
-        const cacheKey = config.cache?.getKey()
-        if (column.accountId && cacheKey) {
-          try {
-            const cached = await loadCachedTimeline(column.accountId, cacheKey)
-            const filtered = applyFilter(cached)
-            if (filtered.length > 0) {
-              setNotes(filtered)
-              isOffline.value = true
-            } else {
-              error.value = AppError.from(e)
-            }
-          } catch (cacheErr) {
-            logWarn('fallback-cache', cacheErr)
-            error.value = AppError.from(e)
-          }
+        const filtered = await loadFilteredCache('fallback-cache')
+        if (filtered.length > 0) {
+          setNotes(filtered)
+          isOffline.value = true
         } else {
           error.value = AppError.from(e)
         }
@@ -492,18 +485,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     // Run cache fetch and API fetch in parallel
     const cachePromise =
       isStreaming && config.cache
-        ? (async () => {
-            const column = config.getColumn()
-            // biome-ignore lint/style/noNonNullAssertion: guarded by config.cache check above
-            const cacheKey = config.cache!.getKey()
-            if (!column.accountId || !cacheKey) return []
-            try {
-              return await loadCachedTimeline(column.accountId, cacheKey)
-            } catch (e) {
-              logWarn('resume-cache', e)
-              return []
-            }
-          })()
+        ? loadFilteredCache('resume-cache')
         : Promise.resolve([] as NormalizedNote[])
 
     let apiFailed = false
@@ -515,11 +497,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
         })
       : Promise.resolve([] as NormalizedNote[])
 
-    const [rawCached, fetched] = await Promise.all([cachePromise, apiPromise])
+    const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
     isOffline.value = apiFailed
 
     // Merge results: API results take priority, then filtered cache
-    const cached = applyFilter(rawCached)
     const allNew = [...fetched, ...cached].filter((n) => !noteIds.has(n.id))
     if (allNew.length > 0) {
       // Deduplicate by id (API results first)
@@ -580,20 +561,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
       try {
         // Load cache if requested
         if (useCache && config.cache) {
-          const column = config.getColumn()
-          const cacheKey = config.cache.getKey()
-          if (column.accountId && cacheKey) {
-            try {
-              const cached = await loadCachedTimeline(
-                column.accountId,
-                cacheKey,
-              )
-              const filtered = applyFilter(cached)
-              if (filtered.length > 0) setNotes(filtered)
-            } catch (e) {
-              logWarn('reconnect-cache', e)
-            }
-          }
+          const filtered = await loadFilteredCache('reconnect-cache')
+          if (filtered.length > 0) setNotes(filtered)
         }
         // Fetch latest from API
         const dedupKey = `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
