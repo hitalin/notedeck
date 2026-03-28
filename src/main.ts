@@ -4,6 +4,7 @@ import App from './App.vue'
 import { router, setupAccountRedirect } from './router'
 import { useAccountsStore } from './stores/accounts'
 import { useKeybindsStore } from './stores/keybinds'
+import { useOfflineModeStore } from './stores/offlineMode'
 import { usePerformanceStore } from './stores/performance'
 import { useThemeStore } from './stores/theme'
 import { isTauri } from './utils/settingsFs'
@@ -61,6 +62,7 @@ if (isTauri) {
 
   // Initialize file-based storage for keybinds and performance settings
   useKeybindsStore().init()
+  useOfflineModeStore().init()
   usePerformanceStore().init()
 
   // Start loading accounts early (runs in parallel with mount).

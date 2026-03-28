@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
-import { setStorageString } from '@/utils/storage'
+import { getStorageString, setStorageString } from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
 
 const STORAGE_KEY = 'nd-offline-mode'
@@ -9,11 +9,9 @@ const STORAGE_KEY = 'nd-offline-mode'
 export const useOfflineModeStore = defineStore('offlineMode', () => {
   const isOfflineMode = ref(false)
 
-  /** Restore persisted state (always starts as false for safety). */
+  /** Restore persisted state from previous session. */
   function init(): void {
-    // Intentionally do NOT restore — app always starts online.
-    // The key is kept for future consideration.
-    isOfflineMode.value = false
+    isOfflineMode.value = getStorageString(STORAGE_KEY) === 'true'
   }
 
   async function enable(): Promise<void> {
