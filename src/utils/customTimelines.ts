@@ -273,9 +273,16 @@ export async function detectAvailableTimelines(
   const cached = availableTlCache.get(accountId)
   if (cached) return cached
 
-  // Guest / logged-out: only public timelines (local, global)
+  // Logged-out: use cached policies from authenticated session (preserves tabs)
   const account = useAccountsStore().accountMap.get(accountId)
   if (account && !account.hasToken) {
+    const stored = readCache<SerializedAvailability>(`nd:policies:${accountId}`)
+    if (stored) {
+      const result = deserializeAvailability(stored.data)
+      availableTlCache.set(accountId, result)
+      return result
+    }
+    // No cache (guest account): conservative fallback
     const result: TimelineAvailability = {
       available: ['local', 'global'],
       denied: new Set(),
