@@ -57,7 +57,7 @@ export const useNoteStore = defineStore('notes', () => {
       }
     }
     evictIfNeeded()
-    triggerRef(noteMap)
+    scheduleTrigger()
   }
 
   function get(id: string): NormalizedNote | undefined {

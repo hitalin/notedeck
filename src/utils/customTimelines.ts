@@ -8,6 +8,10 @@ export interface CustomTimelineInfo {
   icon: string // SVG path
 }
 
+// Regex patterns for policy/mode scanning (module-level to avoid recompilation in loops)
+const TL_AVAILABLE_RE = /^(.+)TlAvailable$/
+const MODE_RE = /^isIn(.+)Mode$/
+
 // Standard timeline endpoints — excluded from custom detection
 const STANDARD_TL_ENDPOINTS = new Set([
   'notes/timeline',
@@ -232,7 +236,7 @@ async function fetchPoliciesFromNetwork(
   // Fork-specific: scan *TlAvailable patterns dynamically
   for (const [key, value] of Object.entries(policies)) {
     if (handledKeys.has(key)) continue
-    const match = key.match(/^(.+)TlAvailable$/)
+    const match = key.match(TL_AVAILABLE_RE)
     if (!match) continue
     const type = match[1] as string
     if (value === true) {
@@ -337,7 +341,7 @@ export function findModeKeyForTimeline(
   modes: Record<string, boolean>,
 ): string | undefined {
   for (const key of Object.keys(modes)) {
-    const match = key.match(/^isIn(.+)Mode$/)
+    const match = key.match(MODE_RE)
     if (!match) continue
     if (match[1] && tlType.startsWith(match[1].toLowerCase())) return key
   }

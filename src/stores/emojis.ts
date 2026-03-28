@@ -44,6 +44,17 @@ export const useEmojisStore = defineStore('emojis', () => {
     }
   }
 
+  const PERSIST_DELAY = 300
+  let persistTimer: ReturnType<typeof setTimeout> | null = null
+
+  function schedulePersist() {
+    if (persistTimer) clearTimeout(persistTimer)
+    persistTimer = setTimeout(() => {
+      persistToStorage()
+      persistTimer = null
+    }, PERSIST_DELAY)
+  }
+
   // Initialize from localStorage
   loadFromStorage()
 
@@ -69,8 +80,8 @@ export const useEmojisStore = defineStore('emojis', () => {
 
     pending.delete(host)
 
-    // Persist shortcode→url cache for offline use
-    persistToStorage()
+    // Persist shortcode→url cache for offline use (debounced)
+    schedulePersist()
   }
 
   const RETRY_BACKOFF_MS = 30_000
