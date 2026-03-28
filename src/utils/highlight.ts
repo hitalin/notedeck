@@ -36,8 +36,14 @@ const lazyLangLoaders: Record<
 /** Track which lazy languages are currently being loaded to avoid duplicates. */
 const pendingLangs = new Set<string>()
 
+const htmlEscapeMap: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+}
+
 function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return text.replace(/[&<>]/g, (c) => htmlEscapeMap[c] ?? c)
 }
 
 function colorToClass(color: string): string {

@@ -10,6 +10,7 @@ import { useScrollDirection } from '@/composables/useScrollDirection'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
+import { useOfflineModeStore } from '@/stores/offlineMode'
 import { useThemeStore } from '@/stores/theme'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
@@ -111,7 +112,7 @@ export function useColumnSetup(
   const actionSound = useNoteSound(() => account.value?.host, 'syuilo/bubble2')
 
   function checkOffline(): boolean {
-    if (options?.isOffline?.()) {
+    if (useOfflineModeStore().isOfflineMode || options?.isOffline?.()) {
       console.warn('[offline] Write operation blocked')
       return true
     }

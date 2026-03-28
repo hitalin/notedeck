@@ -22,9 +22,8 @@ import {
 } from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
 
-// Keyed by "accountId:dark" / "accountId:light"
-const compiledCache = new Map<string, CompiledProps>()
-const fetchingAccounts = new Set<string>()
+// Moved inside defineStore below to isolate per-window instance.
+// (Module-level Maps leak data between Tauri multi-window contexts.)
 
 interface ThemeResponse {
   syncDark?: unknown
@@ -86,6 +85,10 @@ function parseMetaTheme(
 }
 
 export const useThemeStore = defineStore('theme', () => {
+  // Per-store-instance caches (isolated per window)
+  const compiledCache = new Map<string, CompiledProps>()
+  const fetchingAccounts = new Set<string>()
+
   const currentSource = ref<ThemeSource | null>(null)
   // 'dark' | 'light' | null (null = follow OS)
   const manualMode = ref<'dark' | 'light' | null>(null)

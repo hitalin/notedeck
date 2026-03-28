@@ -28,6 +28,7 @@
   "cssBlurLevel": 1,
   "cssAnimationScale": 100,
   "cssShadowLevel": 2,
+  "streamPollingInterval": 15,
   "notificationPollInterval": 120,
   "chatPollInterval": 120,
   "columnUnloadDelay": 5000,

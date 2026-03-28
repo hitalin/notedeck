@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, useCssModule, watch } from 'vue'
 import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useUiStore } from '@/stores/ui'
@@ -16,6 +16,7 @@ const emit = defineEmits<{
   pick: [reaction: string]
 }>()
 
+const $style = useCssModule()
 const { isCompactLayout: isCompact } = storeToRefs(useUiStore())
 const show = ref(false)
 const pos = ref({ x: 0, y: 0 })
@@ -33,6 +34,29 @@ const { visible, leaving } = useVaporTransition(show, {
   enterDuration: 200,
   leaveDuration: 200,
 })
+
+const backdropClass = computed(() => [
+  $style.popupBackdrop,
+  isCompact.value && $style.mobile,
+  leaving.value
+    ? isCompact.value
+      ? $style.sheetLeave
+      : $style.popupLeave
+    : isCompact.value
+      ? $style.sheetEnter
+      : $style.popupEnter,
+])
+
+const contentClass = computed(() => [
+  $style.reactionPickerPopup,
+  leaving.value
+    ? isCompact.value
+      ? $style.sheetContentLeave
+      : $style.popupContentLeave
+    : isCompact.value
+      ? $style.sheetContentEnter
+      : $style.popupContentEnter,
+])
 
 watch(show, (v) => {
   if (v) nextTick(activateTrap)
@@ -61,19 +85,12 @@ defineExpose({ open })
   <Teleport to="body">
     <div
       v-if="visible"
-      :class="[
-        $style.popupBackdrop,
-        isCompact && $style.mobile,
-        leaving ? (isCompact ? $style.sheetLeave : $style.popupLeave) : (isCompact ? $style.sheetEnter : $style.popupEnter),
-      ]"
+      :class="backdropClass"
       @click="close"
     >
       <div
         ref="pickerRef"
-        :class="[
-          $style.reactionPickerPopup,
-          leaving ? (isCompact ? $style.sheetContentLeave : $style.popupContentLeave) : (isCompact ? $style.sheetContentEnter : $style.popupContentEnter),
-        ]"
+        :class="contentClass"
         :style="isCompact ? theme : { ...theme, top: pos.y + 'px', left: pos.x + 'px' }"
         @click.stop
       >
@@ -113,6 +130,7 @@ defineExpose({ open })
 
   .mobile & {
     position: static;
+    translate: none;
     transform: none;
     width: 100%;
     border-radius: 16px 16px 0 0;
@@ -127,11 +145,11 @@ defineExpose({ open })
 @keyframes popupBdIn { from { opacity: 0; } }
 @keyframes popupBdOut { to { opacity: 0; } }
 
-/* Desktop popup content — spring scale from origin */
-.popupContentEnter { animation: popupIn 0.2s var(--nd-ease-spring); }
-.popupContentLeave { animation: popupOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
-@keyframes popupIn { from { opacity: 0; transform: translateX(-80%) scale(0.85); } }
-@keyframes popupOut { to { opacity: 0; transform: translateX(-60%) scale(0.9); } }
+/* Desktop popup content — scale + fade (translate: -100% handles positioning) */
+.popupContentEnter { animation: reactionPickerIn 0.2s var(--nd-ease-spring); }
+.popupContentLeave { animation: reactionPickerOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
+@keyframes reactionPickerIn { from { opacity: 0; transform: scale(0.85); } }
+@keyframes reactionPickerOut { to { opacity: 0; transform: scale(0.9); } }
 
 /* Mobile sheet backdrop */
 .sheetEnter { animation: sheetBdIn var(--nd-duration-base) var(--nd-ease-decel); }

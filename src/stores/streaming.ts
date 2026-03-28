@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { shallowRef, triggerRef } from 'vue'
 import type { NormalizedUserDetail } from '@/adapters/types'
 import { invoke } from '@/utils/tauriInvoke'
 
@@ -7,7 +7,7 @@ export type OnlineStatus = 'online' | 'active' | 'offline' | 'unknown'
 
 export const useStreamingStore = defineStore('streaming', () => {
   /** accountId → OnlineStatus */
-  const states = ref<Record<string, OnlineStatus>>({})
+  const states = shallowRef<Record<string, OnlineStatus>>({})
 
   /** Fetch onlineStatus from users/show API for a given account */
   async function fetchOnlineStatus(
@@ -22,12 +22,12 @@ export const useStreamingStore = defineStore('streaming', () => {
       const status = detail.onlineStatus
       // API success = server reachable.
       // 'unknown' means hidden status — for own account, treat as 'online'
-      states.value = {
-        ...states.value,
-        [accountId]: status && status !== 'unknown' ? status : 'online',
-      }
+      states.value[accountId] =
+        status && status !== 'unknown' ? status : 'online'
+      triggerRef(states)
     } catch {
-      states.value = { ...states.value, [accountId]: 'unknown' }
+      states.value[accountId] = 'unknown'
+      triggerRef(states)
     }
   }
 
@@ -37,7 +37,8 @@ export const useStreamingStore = defineStore('streaming', () => {
 
   /** Mark an account as disconnected (e.g. on logout) */
   function disconnect(accountId: string): void {
-    states.value = { ...states.value, [accountId]: 'offline' }
+    states.value[accountId] = 'offline'
+    triggerRef(states)
   }
 
   return {

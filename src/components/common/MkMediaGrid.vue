@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, shallowRef, watch } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
 import { isSafeUrl } from '@/utils/url'
 
@@ -14,9 +14,9 @@ const props = defineProps<{
   eager?: boolean
 }>()
 
-const revealedIds = ref(new Set<string>())
-const loadedIds = ref(new Set<string>())
-const erroredIds = ref(new Set<string>())
+const revealedIds = shallowRef(new Set<string>())
+const loadedIds = shallowRef(new Set<string>())
+const erroredIds = shallowRef(new Set<string>())
 const lightboxIndex = ref<number | null>(null)
 const lightboxFile = computed(() =>
   lightboxIndex.value !== null

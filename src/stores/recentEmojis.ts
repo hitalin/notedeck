@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 const MAX_RECENT = 32
+const PERSIST_DELAY = 300
 
 export const useRecentEmojisStore = defineStore('recentEmojis', () => {
   // host → emoji list
@@ -10,8 +11,14 @@ export const useRecentEmojisStore = defineStore('recentEmojis', () => {
     getStorageJson<Record<string, string[]>>(STORAGE_KEYS.recentEmojis, {}),
   )
 
-  function save() {
-    setStorageJson(STORAGE_KEYS.recentEmojis, map.value)
+  let persistTimer: ReturnType<typeof setTimeout> | null = null
+
+  function scheduleSave() {
+    if (persistTimer) clearTimeout(persistTimer)
+    persistTimer = setTimeout(() => {
+      setStorageJson(STORAGE_KEYS.recentEmojis, map.value)
+      persistTimer = null
+    }, PERSIST_DELAY)
   }
 
   function get(host: string): string[] {
@@ -24,7 +31,7 @@ export const useRecentEmojisStore = defineStore('recentEmojis', () => {
     const next = prev.filter((e) => e !== emoji)
     next.unshift(emoji)
     map.value = { ...map.value, [host]: next.slice(0, MAX_RECENT) }
-    save()
+    scheduleSave()
   }
 
   return { get, add }

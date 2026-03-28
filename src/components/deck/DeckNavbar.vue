@@ -11,7 +11,10 @@ import {
   isGuestAccount,
   useAccountsStore,
 } from '@/stores/accounts'
+import { useConfirm } from '@/stores/confirm'
 import { isNavDivider, type NavItem, useDeckStore } from '@/stores/deck'
+import { useOfflineModeStore } from '@/stores/offlineMode'
+import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import { useServersStore } from '@/stores/servers'
 import { useStreamingStore } from '@/stores/streaming'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -21,6 +24,7 @@ import {
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
 import { hapticLight, hapticMedium } from '@/utils/haptics'
+import { proxyThumbUrl } from '@/utils/imageProxy'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
@@ -43,10 +47,39 @@ const emit = defineEmits<{
 
 const $style = useCssModule()
 const { navigateToLogin, navigateToPlugins } = useNavigation()
+const { confirm } = useConfirm()
 const deckStore = useDeckStore()
+const offlineModeStore = useOfflineModeStore()
+const realtimeModeStore = useRealtimeModeStore()
 const isCompact = useIsCompactLayout()
 const { totalUnread, markAllAsRead } = useUnreadNotifications()
 const { totalUnread: chatUnread, resetAll: resetChatUnread } = useUnreadChat()
+
+async function toggleOfflineMode() {
+  const isOn = offlineModeStore.isOfflineMode
+  const ok = await confirm({
+    title: isOn ? 'オフラインモードを解除' : 'オフラインモードに切替',
+    message: isOn
+      ? 'サーバーに再接続します。'
+      : 'すべての通信を停止し、キャッシュ済みデータのみ表示します。',
+    okLabel: isOn ? '解除' : '切替',
+    cancelLabel: 'キャンセル',
+  })
+  if (ok) await offlineModeStore.toggle()
+}
+
+async function toggleRealtimeMode() {
+  const isRealtime = realtimeModeStore.isRealtime
+  const ok = await confirm({
+    title: isRealtime ? 'ポーリングモードに切替' : 'リアルタイムモードに切替',
+    message: isRealtime
+      ? 'WebSocket接続を切断し、定期的なHTTPポーリングに切り替えます。'
+      : 'リアルタイム更新に切り替えます。',
+    okLabel: '切替',
+    cancelLabel: 'キャンセル',
+  })
+  if (ok) realtimeModeStore.toggle()
+}
 
 const sidebarType = computed(() => {
   const col = deckStore.columns.find((c) => c.sidebar)
@@ -93,8 +126,10 @@ const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const streamingStore = useStreamingStore()
 
-function getServerIconUrl(host: string): string {
-  return serversStore.getServer(host)?.iconUrl || `https://${host}/favicon.ico`
+function getServerIconUrl(host: string): string | undefined {
+  const url =
+    serversStore.getServer(host)?.iconUrl || `https://${host}/favicon.ico`
+  return proxyThumbUrl(url, 28)
 }
 
 watch(
@@ -271,13 +306,17 @@ function startResize(e: MouseEvent) {
   document.addEventListener('mouseup', stopResize)
 }
 
+let resizeRafId = 0
 function onResize(e: MouseEvent) {
-  const w = e.clientX
-  if (w <= COLLAPSE_THRESHOLD) {
-    navWidth.value = MIN_WIDTH
-  } else {
-    navWidth.value = Math.min(w, MAX_WIDTH)
-  }
+  cancelAnimationFrame(resizeRafId)
+  resizeRafId = requestAnimationFrame(() => {
+    const w = e.clientX
+    if (w <= COLLAPSE_THRESHOLD) {
+      navWidth.value = MIN_WIDTH
+    } else {
+      navWidth.value = Math.min(w, MAX_WIDTH)
+    }
+  })
 }
 
 function stopResize() {
@@ -367,6 +406,33 @@ defineExpose({
           </div>
           <div v-if="isCompact" :class="$style.divider" />
 
+          <!-- Offline mode -->
+          <button
+            class="_button"
+            :class="[$style.item, { [$style.offlineActive]: offlineModeStore.isOfflineMode }]"
+            title="オフラインモード"
+            @click="hapticLight(); toggleOfflineMode()"
+          >
+            <div :class="$style.iconWrap">
+              <i :class="offlineModeStore.isOfflineMode ? 'ti ti-wifi-off' : 'ti ti-wifi'" />
+            </div>
+            <span :class="$style.label">オフライン</span>
+          </button>
+
+          <!-- Realtime mode -->
+          <button
+            class="_button"
+            :class="[$style.item, { [$style.realtimeActive]: realtimeModeStore.isRealtime, [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
+            :disabled="offlineModeStore.isOfflineMode"
+            title="リアルタイムモード切替"
+            @click="hapticLight(); toggleRealtimeMode()"
+          >
+            <div :class="$style.iconWrap">
+              <i :class="realtimeModeStore.isRealtime ? 'ti ti-bolt' : 'ti ti-bolt-off'" />
+            </div>
+            <span :class="$style.label">{{ realtimeModeStore.isRealtime ? 'リアルタイム' : 'ポーリング' }}</span>
+          </button>
+
           <!-- Post button -->
           <button
             class="_button"
@@ -400,7 +466,7 @@ defineExpose({
                     />
                     <img
                       v-else-if="acc.avatarUrl"
-                      :src="acc.avatarUrl"
+                      :src="proxyThumbUrl(acc.avatarUrl, 56)"
                       :class="$style.avatar"
                     />
                     <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
@@ -561,6 +627,27 @@ defineExpose({
   :global(.ti) {
     opacity: 1;
   }
+}
+
+.offlineActive {
+  color: var(--nd-accent, #86b300);
+
+  :global(.ti) {
+    opacity: 1;
+  }
+}
+
+.realtimeActive {
+  color: var(--nd-warn, #e2a100);
+
+  :global(.ti) {
+    opacity: 1;
+  }
+}
+
+.itemDisabled {
+  opacity: 0.35;
+  pointer-events: none;
 }
 
 .iconWrap {

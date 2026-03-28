@@ -4,6 +4,7 @@ import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNoteScrollerRef } from '@/composables/useNoteScrollerRef'
 import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
+import { mapWithConcurrency } from '@/utils/concurrency'
 import { AppError } from '@/utils/errors'
 
 export interface CrossAccountNotesOptions {
@@ -78,12 +79,14 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
     const accounts = accountsStore.accounts.filter((a) => a.hasToken)
 
     try {
-      const results = await Promise.allSettled(
-        accounts.map(async (acc) => {
+      const results = await mapWithConcurrency(
+        accounts,
+        async (acc) => {
           const adapter = await multiAdapters.getOrCreate(acc.id)
           if (!adapter) return []
           return fetchNotes(adapter)
-        }),
+        },
+        3,
       )
 
       notes.value = dedup(collectFulfilled(results))
@@ -100,8 +103,9 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
     const accounts = accountsStore.accounts.filter((a) => a.hasToken)
 
     try {
-      const results = await Promise.allSettled(
-        accounts.map(async (acc) => {
+      const results = await mapWithConcurrency(
+        accounts,
+        async (acc) => {
           const adapter = await multiAdapters.getOrCreate(acc.id)
           if (!adapter) return []
           const lastForAccount = [...notes.value]
@@ -109,7 +113,8 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
             .find((n) => n._accountId === acc.id)
           if (!lastForAccount) return fetchNotes(adapter)
           return fetchNotes(adapter, { untilId: lastForAccount.id })
-        }),
+        },
+        3,
       )
 
       const existingIds = new Set(notes.value.map((n) => n.id))

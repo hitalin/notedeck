@@ -4,7 +4,9 @@ import App from './App.vue'
 import { router, setupAccountRedirect } from './router'
 import { useAccountsStore } from './stores/accounts'
 import { useKeybindsStore } from './stores/keybinds'
+import { useOfflineModeStore } from './stores/offlineMode'
 import { usePerformanceStore } from './stores/performance'
+import { useServersStore } from './stores/servers'
 import { useThemeStore } from './stores/theme'
 import { isTauri } from './utils/settingsFs'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
@@ -61,12 +63,16 @@ if (isTauri) {
 
   // Initialize file-based storage for keybinds and performance settings
   useKeybindsStore().init()
+  useOfflineModeStore().init()
   usePerformanceStore().init()
 
   // Start loading accounts early (runs in parallel with mount).
   // Two-stage AppState: invoke('load_accounts') awaits DB readiness only,
   // not full init — so it resolves as soon as DB + migrations complete.
   useAccountsStore().loadAccounts()
+
+  // Pre-load server info from DB so ColumnBadges can show icons immediately
+  useServersStore().loadCachedServers()
 }
 
 app.use(router)

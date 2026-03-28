@@ -1,6 +1,6 @@
 import JSON5 from 'json5'
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 
 import type { DeckColumn, DeckProfile, DeckWindowLayout } from '@/stores/deck'
 import * as settingsFs from '@/utils/settingsFs'
@@ -52,25 +52,33 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   /** Cached profile name, kept in sync imperatively to avoid localStorage dependency. */
   const currentProfileName = ref<string | null>(null)
 
-  /** In-memory cache of profiles. Serves as the reactive single source of truth
-   *  within a window. All reads go through this; writes update it + persist. */
-  const profilesData = ref<DeckProfile[]>([])
+  /** In-memory cache of profiles. Uses shallowRef to avoid deep reactivity
+   *  overhead on large nested DeckColumn[]/DeckWindowLayout[] structures.
+   *  In-place mutations are signalled via profileVersion bump. */
+  const profilesData = shallowRef<DeckProfile[]>([])
 
   // --- Profile data access (reactive) ---
 
-  /** The profile this window is currently viewing. */
-  const currentProfile = computed(
-    () =>
-      profilesData.value.find((p) => p.id === windowProfileId.value) ?? null,
-  )
+  /** The profile this window is currently viewing.
+   *  Depends on profileVersion to detect in-place mutations (shallowRef). */
+  const currentProfile = computed(() => {
+    void profileVersion.value
+    return (
+      profilesData.value.find((p) => p.id === windowProfileId.value) ?? null
+    )
+  })
 
   /** Columns of the current profile (reactive, read-only from outside). */
-  const columns = computed<DeckColumn[]>(
-    () => currentProfile.value?.columns ?? [],
-  )
+  const columns = computed<DeckColumn[]>(() => {
+    void profileVersion.value
+    return currentProfile.value?.columns ?? []
+  })
 
   /** Layout of the current profile (reactive, read-only from outside). */
-  const layout = computed<string[][]>(() => currentProfile.value?.layout ?? [])
+  const layout = computed<string[][]>(() => {
+    void profileVersion.value
+    return currentProfile.value?.layout ?? []
+  })
 
   // --- Profile mutation ---
 

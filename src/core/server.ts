@@ -71,10 +71,12 @@ function detectSoftware(name: string): ServerSoftware {
  * Parse a Misskey-style version string (e.g. "2025.10.0") into comparable parts.
  * Returns null for unparseable versions.
  */
+const MISSKEY_VERSION_RE = /^(\d{4})\.(\d+)\.(\d+)/
+
 function parseMisskeyVersion(
   version: string,
 ): { major: number; minor: number; patch: number } | null {
-  const match = version.match(/^(\d{4})\.(\d+)\.(\d+)/)
+  const match = version.match(MISSKEY_VERSION_RE)
   if (!match) return null
   return {
     major: Number(match[1]),
@@ -105,6 +107,7 @@ function detectFeatures(
   if (software === 'misskey') {
     features.scheduledNotes = isVersionAtLeast(version, 2025, 10, 0)
     features.groupedNotifications = isVersionAtLeast(version, 2024, 2, 0)
+    features.notesShowPartialBulk = isVersionAtLeast(version, 2025, 5, 1)
   }
 
   return features

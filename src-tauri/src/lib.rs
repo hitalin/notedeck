@@ -185,6 +185,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::auth_complete_and_save,
         commands::stream_connect,
         commands::stream_disconnect,
+        commands::stream_set_mode,
         commands::stream_connect_and_subscribe_timeline,
         commands::stream_connect_and_subscribe_antenna,
         commands::stream_connect_and_subscribe_channel,
@@ -436,8 +437,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(not(mobile))]
         {
             let show_i = MenuItem::with_id(app, "show", "Show NoteDeck", true, None::<&str>)?;
+            let offline_i = MenuItem::with_id(app, "offline", "Offline Mode", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
+            let menu = Menu::with_items(app, &[&show_i, &offline_i, &quit_i])?;
 
             let icon = app
                 .default_window_icon()
@@ -454,6 +456,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                             let _ = w.show();
                             let _ = w.set_focus();
                         }
+                    }
+                    "offline" => {
+                        let _ = app.emit("nd:toggle-offline-mode", ());
                     }
                     "quit" => {
                         app.exit(0);

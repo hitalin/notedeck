@@ -501,6 +501,7 @@ function primaryShortcut(cmd: Command): string | null {
 .paletteList {
   overflow-y: auto;
   padding: 4px 0;
+  contain: paint;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 

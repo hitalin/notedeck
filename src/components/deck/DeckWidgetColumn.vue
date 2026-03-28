@@ -124,6 +124,8 @@ function removeWidget(widgetId: string) {
   border-radius: 10px;
   background: var(--nd-panel);
   overflow: hidden;
+  contain: layout style paint;
+  content-visibility: auto;
 }
 
 .widgetHeader {

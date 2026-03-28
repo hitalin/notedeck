@@ -1,4 +1,4 @@
-import { type Ref, ref } from 'vue'
+import { onScopeDispose, type Ref, ref } from 'vue'
 import type { NormalizedUser } from '@/adapters/types'
 import { invoke } from '@/utils/tauriInvoke'
 
@@ -58,6 +58,14 @@ export function useMentionSearch(activeAccountId: Ref<string>) {
     insertAtCursor(textareaRef.value, mention)
     showMentionPopup.value = false
   }
+
+  onScopeDispose(() => {
+    if (mentionDebounceTimer) {
+      clearTimeout(mentionDebounceTimer)
+      mentionDebounceTimer = null
+    }
+    mentionSearching.value = false
+  })
 
   return {
     showMentionPopup,

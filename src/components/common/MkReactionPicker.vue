@@ -381,6 +381,7 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
+  contain: paint;
   scrollbar-width: none;
 }
 

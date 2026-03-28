@@ -11,8 +11,8 @@ export function extractLiterals(pattern: string): string {
     .map((s) => s.trim())
     .filter((s) => s.length >= 2)
   if (parts.length === 0) return ''
-  // 最長のリテラル部分を返す
-  return parts.sort((a, b) => b.length - a.length)[0] ?? ''
+  // 最長のリテラル部分を返す（ソート不要、単一パスで十分）
+  return parts.reduce((max, s) => (s.length > max.length ? s : max), '')
 }
 
 /**

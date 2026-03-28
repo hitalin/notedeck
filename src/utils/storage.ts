@@ -79,6 +79,8 @@ export const STORAGE_KEYS = {
   emojisCache: 'emojis_cache',
   performance: 'nd-performance',
   mutedAds: 'nd-muted-ads',
+  offlineMode: 'nd-offline-mode',
+  realtimeMode: 'nd-realtime-mode',
 
   // Per-account (dynamic key builders)
   drafts: (accountId: string) => `nd-drafts-${accountId}`,
