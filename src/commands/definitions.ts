@@ -174,6 +174,28 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     },
   })
 
+  for (const freq of ['low', 'medium', 'high'] as const) {
+    const label =
+      freq === 'low'
+        ? '低 (30秒)'
+        : freq === 'medium'
+          ? '中 (15秒)'
+          : '高 (5秒)'
+    commandStore.register({
+      id: `polling-frequency-${freq}`,
+      label: `ポーリング頻度: ${label}`,
+      icon: 'clock',
+      category: 'general',
+      shortcuts: [],
+      execute: () => {
+        const accountId = useAccountsStore().activeAccountId
+        if (accountId) {
+          useRealtimeModeStore().setPollingFrequency(accountId, freq)
+        }
+      },
+    })
+  }
+
   // Note-level shortcuts (dispatched as CustomEvents to active column)
   commandStore.register({
     id: 'note-next',
@@ -619,6 +641,9 @@ export function unregisterDefaultCommands() {
     'toggle-dark-mode',
     'toggle-offline-mode',
     'toggle-realtime-mode',
+    'polling-frequency-low',
+    'polling-frequency-medium',
+    'polling-frequency-high',
     'profile-new',
     'close-column',
     'keybinds',

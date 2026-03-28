@@ -190,6 +190,11 @@
   background: color-mix(in srgb, var(--nd-error) 70%, transparent);
 }
 
+.pollingBanner {
+  @extend %statusBanner;
+  background: color-mix(in srgb, var(--nd-accent) 50%, transparent);
+}
+
 /* Loading */
 .columnLoading {
   display: flex;

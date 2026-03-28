@@ -15,6 +15,7 @@ import {
 } from '@/composables/useNoteColumn'
 import { getAccountAvatarUrl, isGuestAccount } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -59,6 +60,12 @@ const {
 } = useNoteColumn(props.noteColumnConfig)
 
 const isStreaming = !!props.noteColumnConfig.streaming
+
+const realtimeModeStore = useRealtimeModeStore()
+const isPollingMode = computed(() => {
+  const id = account.value?.id
+  return id ? realtimeModeStore.modeByAccount[id] === false : false
+})
 
 const webUiUrl = computed(() => {
   if (!props.webUiPath || !account.value) return undefined
@@ -146,6 +153,9 @@ defineExpose({
       </div>
       <div v-else-if="isOffline && !isLoggedOut" :class="$style.offlineBanner">
         <i class="ti ti-cloud-off" />オフライン
+      </div>
+      <div v-else-if="isPollingMode" :class="$style.pollingBanner">
+        <i class="ti ti-bolt-off" />ポーリング
       </div>
 
       <!-- Inline post form slot (e.g. channel column) -->
