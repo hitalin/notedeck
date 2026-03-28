@@ -40,6 +40,8 @@ export class MisskeyStream implements StreamAdapter {
 
   // Centralized listeners (registered once in connect(), cleaned up in disconnect())
   private unlistenFns: (() => void)[] = []
+  /** Incremented on each registerListeners() call; stale listeners check this to self-discard. */
+  private _listenerGeneration = 0
 
   // Handler maps for O(1) dispatch by subscriptionId
   private noteHandlers = new Map<string, (note: NormalizedNote) => void>()
@@ -101,7 +103,14 @@ export class MisskeyStream implements StreamAdapter {
   }
 
   private registerListeners(): void {
+    // Bump generation so any in-flight listen() from a previous call will self-discard
+    const gen = ++this._listenerGeneration
+
     listen<StreamEventEnvelope>('stream-event', (event) => {
+      // Stale listener guard: if a newer registerListeners() has been called,
+      // this callback belongs to a superseded generation — ignore it.
+      if (gen !== this._listenerGeneration) return
+
       const { kind, payload: p } = event.payload
       if (p.accountId !== this.accountId) return
 
@@ -168,11 +177,20 @@ export class MisskeyStream implements StreamAdapter {
           break
       }
     })
-      .then((fn) => this.unlistenFns.push(fn))
+      .then((fn) => {
+        if (gen !== this._listenerGeneration) {
+          // This listener was superseded before its Promise resolved — unlisten immediately
+          fn()
+          return
+        }
+        this.unlistenFns.push(fn)
+      })
       .catch((e) => console.error('[stream] failed to listen stream-event:', e))
   }
 
   cleanup(): void {
+    // Invalidate any in-flight listen() Promises so their callbacks become no-ops
+    this._listenerGeneration++
     for (const fn of this.unlistenFns) fn()
     this.unlistenFns = []
     this.noteHandlers.clear()

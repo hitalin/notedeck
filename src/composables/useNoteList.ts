@@ -42,7 +42,9 @@ export function useNoteList(options: UseNoteListOptions) {
     set: (newNotes: NormalizedNote[]) => {
       const trimmed =
         newNotes.length > maxNotes ? newNotes.slice(0, maxNotes) : newNotes
-      noteStore.put(trimmed)
+      // skipTrigger: orderedIds assignment below already drives this column's reactivity.
+      // A global triggerRef would redundantly invalidate ALL columns' notes computeds.
+      noteStore.put(trimmed, true)
       const ids: string[] = new Array(trimmed.length)
       noteIds.clear()
       for (let i = 0; i < trimmed.length; i++) {
