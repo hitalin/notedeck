@@ -35,5 +35,13 @@
   "snapshotTTL": 10,
   "jankDowngradeThreshold": 5,
   "stableUpgradeSeconds": 10,
-  "noteAnimationDuration": 350
+  "noteAnimationDuration": 350,
+  "frameHistorySize": 100,
+  "soundCacheMax": 8,
+  "cachedTimelineLimit": 40,
+  "pullFireThreshold": 200,
+  "swipeThreshold": 50,
+  "flingVelocity": 0.4,
+  "wheelCooldown": 300,
+  "scrollHideThreshold": 30
 }

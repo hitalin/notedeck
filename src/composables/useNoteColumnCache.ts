@@ -52,12 +52,14 @@ export function restoreSnapshot(colId: string): ColumnSnapshot | null {
 export async function loadCachedTimeline(
   accountId: string,
   timelineType: string,
-  limit = 40,
+  limit?: number,
 ): Promise<NormalizedNote[]> {
+  const effectiveLimit =
+    limit ?? usePerformanceStore().get('cachedTimelineLimit')
   return invoke<NormalizedNote[]>('api_get_cached_timeline', {
     accountId,
     timelineType,
-    limit,
+    limit: effectiveLimit,
   })
 }
 
@@ -66,13 +68,15 @@ export async function loadCachedTimelineBefore(
   accountId: string,
   timelineType: string,
   before: string,
-  limit = 40,
+  limit?: number,
 ): Promise<NormalizedNote[]> {
+  const effectiveLimit =
+    limit ?? usePerformanceStore().get('cachedTimelineLimit')
   return invoke<NormalizedNote[]>('api_get_cached_timeline_before', {
     accountId,
     timelineType,
     before,
-    limit,
+    limit: effectiveLimit,
   })
 }
 

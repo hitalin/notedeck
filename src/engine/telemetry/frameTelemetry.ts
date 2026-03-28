@@ -33,6 +33,7 @@ class FrameTelemetryImpl {
   private _frameTimeHistory: number[] = []
   private _historyIndex = 0
   private _stableSeconds = 0
+  private _historySize = FRAME_HISTORY_SIZE
   private _unsubscribe: (() => void) | null = null
   private _onQualityChange: ((quality: QualityLevel) => void) | null = null
   private _jankThreshold = DEFAULT_JANK_DOWNGRADE_THRESHOLD
@@ -57,15 +58,17 @@ class FrameTelemetryImpl {
     options?: {
       jankDowngradeThreshold?: number
       stableUpgradeSeconds?: number
+      frameHistorySize?: number
     },
   ): void {
     this._jankThreshold =
       options?.jankDowngradeThreshold ?? DEFAULT_JANK_DOWNGRADE_THRESHOLD
     this._stableTarget =
       options?.stableUpgradeSeconds ?? DEFAULT_STABLE_UPGRADE_SECONDS
+    this._historySize = options?.frameHistorySize ?? FRAME_HISTORY_SIZE
     this._currentQuality.value = initialQuality
     this._onQualityChange = onQualityChange ?? null
-    this._frameTimeHistory = new Array(FRAME_HISTORY_SIZE).fill(16.6)
+    this._frameTimeHistory = new Array(this._historySize).fill(16.6)
     this._historyIndex = 0
     this._stableSeconds = 0
 
@@ -104,7 +107,7 @@ class FrameTelemetryImpl {
 
     // Record frame time in ring buffer
     this._frameTimeHistory[this._historyIndex] = stats.frameTimeEma
-    this._historyIndex = (this._historyIndex + 1) % FRAME_HISTORY_SIZE
+    this._historyIndex = (this._historyIndex + 1) % this._historySize
 
     // Calculate P95
     this._p95FrameTime.value = this._calculateP95()

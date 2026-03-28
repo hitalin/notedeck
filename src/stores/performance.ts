@@ -65,6 +65,16 @@ export interface PerformanceConfig {
   jankDowngradeThreshold: number
   stableUpgradeSeconds: number
   noteAnimationDuration: number
+  frameHistorySize: number
+  // Cache (continued)
+  soundCacheMax: number
+  cachedTimelineLimit: number
+  // Interaction
+  pullFireThreshold: number
+  swipeThreshold: number
+  flingVelocity: number
+  wheelCooldown: number
+  scrollHideThreshold: number
 }
 
 export type PerformanceKey = keyof PerformanceConfig
@@ -424,6 +434,79 @@ export const FIELD_META: Record<PerformanceKey, FieldMeta> = {
     label: 'ノート出現アニメーション',
     description: '新着ノートのスライドインアニメーション時間。0で即時表示',
   },
+  frameHistorySize: {
+    min: 30,
+    max: 500,
+    step: 10,
+    unit: 'フレーム',
+    category: 'telemetry',
+    label: 'P95履歴サイズ',
+    description:
+      'P95フレーム時間計算用のリングバッファサイズ。大きいほど安定するが反応が遅い',
+  },
+  soundCacheMax: {
+    min: 2,
+    max: 32,
+    step: 2,
+    unit: '件',
+    category: 'cache',
+    label: '通知音キャッシュ',
+    description: '通知音のAudioBufferキャッシュ数。多サーバー利用時は増やす',
+  },
+  cachedTimelineLimit: {
+    min: 10,
+    max: 200,
+    step: 10,
+    unit: '件',
+    category: 'cache',
+    label: 'タイムラインキャッシュ読み込み',
+    description: 'カラム復帰時にDBキャッシュから読み込むノート件数',
+  },
+  pullFireThreshold: {
+    min: 80,
+    max: 400,
+    step: 20,
+    unit: 'px',
+    category: 'interaction',
+    label: 'プルリフレッシュ距離',
+    description: 'プルトゥリフレッシュが発火するまでの引っ張り距離',
+  },
+  swipeThreshold: {
+    min: 20,
+    max: 120,
+    step: 10,
+    unit: 'px',
+    category: 'interaction',
+    label: 'スワイプ切り替え距離',
+    description: 'タブ切り替えに必要な最小スワイプ距離',
+  },
+  flingVelocity: {
+    min: 0.1,
+    max: 1.0,
+    step: 0.1,
+    unit: 'px/ms',
+    category: 'interaction',
+    label: 'フリック速度',
+    description: 'この速度以上のフリックで即座にタブ切り替え',
+  },
+  wheelCooldown: {
+    min: 100,
+    max: 1000,
+    step: 50,
+    unit: 'ms',
+    category: 'interaction',
+    label: 'ホイールクールダウン',
+    description: 'マウスホイールによるタブ切り替え後の再発火防止時間',
+  },
+  scrollHideThreshold: {
+    min: 10,
+    max: 100,
+    step: 10,
+    unit: 'px',
+    category: 'interaction',
+    label: 'ナビバー非表示感度',
+    description: 'スクロールでナビバーを非表示にする累積距離。小さいほど敏感',
+  },
 }
 
 export const CATEGORY_LABELS: Record<string, { label: string; icon: string }> =
@@ -436,6 +519,7 @@ export const CATEGORY_LABELS: Record<string, { label: string; icon: string }> =
     css: { label: 'CSS描画', icon: 'ti-palette' },
     polling: { label: 'ポーリング', icon: 'ti-refresh' },
     telemetry: { label: 'テレメトリ', icon: 'ti-chart-line' },
+    interaction: { label: 'インタラクション', icon: 'ti-hand-finger' },
   }
 
 /** Preset definitions. */
@@ -481,6 +565,14 @@ export const PRESETS = {
       jankDowngradeThreshold: 3,
       stableUpgradeSeconds: 15,
       noteAnimationDuration: 200,
+      frameHistorySize: 50,
+      soundCacheMax: 4,
+      cachedTimelineLimit: 20,
+      pullFireThreshold: 200,
+      swipeThreshold: 50,
+      flingVelocity: 0.4,
+      wheelCooldown: 300,
+      scrollHideThreshold: 30,
     } satisfies PerformanceConfig,
   },
   balanced: {
@@ -529,6 +621,14 @@ export const PRESETS = {
       jankDowngradeThreshold: 8,
       stableUpgradeSeconds: 5,
       noteAnimationDuration: 500,
+      frameHistorySize: 200,
+      soundCacheMax: 16,
+      cachedTimelineLimit: 80,
+      pullFireThreshold: 200,
+      swipeThreshold: 50,
+      flingVelocity: 0.4,
+      wheelCooldown: 300,
+      scrollHideThreshold: 30,
     } satisfies PerformanceConfig,
   },
 } as const
@@ -559,6 +659,8 @@ export function estimateMemoryMB(c: PerformanceConfig): number {
   const blurGpuMB = c.cssBlurLevel > 0 ? c.cssBlurLevel * 0.8 : 0
   // Column snapshots: ~5 columns × snapshotMaxNotes × 4KB per note
   const snapshotMB = (5 * c.snapshotMaxNotes * 4) / 1024
+  // Sound cache: ~50KB per AudioBuffer (short notification sounds)
+  const soundCacheMB = (c.soundCacheMax * 50) / 1024
   return Math.round(
     FIXED_OVERHEAD_MB +
       imageCacheMB +
@@ -573,7 +675,8 @@ export function estimateMemoryMB(c: PerformanceConfig): number {
       prefetchTrackMB +
       noteCaptureMB +
       blurGpuMB +
-      snapshotMB,
+      snapshotMB +
+      soundCacheMB,
   )
 }
 
@@ -856,6 +959,7 @@ export const usePerformanceStore = defineStore('performance', () => {
       {
         jankDowngradeThreshold: config.value.jankDowngradeThreshold,
         stableUpgradeSeconds: config.value.stableUpgradeSeconds,
+        frameHistorySize: config.value.frameHistorySize,
       },
     )
   }

@@ -1,3 +1,5 @@
+import { usePerformanceStore } from '@/stores/performance'
+
 const PROXY_BASE = 'http://127.0.0.1:19820/proxy/image'
 const RETRY_AFTER_MS = 5 * 60 * 1000
 const IS_ANDROID = /Android/i.test(navigator.userAgent)
@@ -5,7 +7,13 @@ const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
 // --- Web Audio API (desktop / iOS) ---
 
-const SOUND_CACHE_MAX = 8
+function getSoundCacheMax(): number {
+  try {
+    return usePerformanceStore().get('soundCacheMax')
+  } catch {
+    return 8
+  }
+}
 const bufferCache = new Map<string, AudioBuffer>()
 const failedHosts = new Map<string, number>()
 let audioCtx: AudioContext | null = null
@@ -55,7 +63,7 @@ async function ensureBuffer(
     const arrayBuf = await resp.arrayBuffer()
     const ctx = getAudioContext()
     const audioBuf = await ctx.decodeAudioData(arrayBuf)
-    if (bufferCache.size >= SOUND_CACHE_MAX) {
+    if (bufferCache.size >= getSoundCacheMax()) {
       const oldest = bufferCache.keys().next().value
       if (oldest !== undefined) bufferCache.delete(oldest)
     }
@@ -82,7 +90,7 @@ function ensureAudioElement(host: string, soundType: string): HTMLAudioElement {
   const el = new Audio(getSoundUrl(host, soundType))
   el.volume = 0.3
   el.preload = 'auto'
-  if (audioElCache.size >= SOUND_CACHE_MAX) {
+  if (audioElCache.size >= getSoundCacheMax()) {
     const oldest = audioElCache.keys().next().value
     if (oldest !== undefined) audioElCache.delete(oldest)
   }
