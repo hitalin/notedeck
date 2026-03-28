@@ -1,7 +1,8 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, type Ref, ref, watch } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useOfflineModeStore } from '@/stores/offlineMode'
+import type { PerformanceKey } from '@/stores/performance'
 import { usePerformanceStore } from '@/stores/performance'
 
 interface StreamEventEnvelope {
@@ -14,7 +15,7 @@ interface StreamEventEnvelope {
 
 export interface UnreadCounterConfig {
   /** Performance store key for polling interval (seconds) */
-  pollIntervalKey: string
+  pollIntervalKey: PerformanceKey
   /** Fetch the unread count for a single account */
   fetchCount: (accountId: string) => Promise<number>
   /** Handle a stream event — return updated count delta or null to skip */
@@ -26,7 +27,7 @@ export interface UnreadCounterConfig {
 }
 
 interface SharedState {
-  counts: ReturnType<typeof ref<Record<string, number>>>
+  counts: Ref<Record<string, number>>
   listenerSetUp: boolean
   unlistenFn: UnlistenFn | null
   refCount: number
