@@ -614,7 +614,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     const adapter = getAdapter()
     if (!adapter || !config.streaming || !streamingBatch) {
       // Fallback to full reconnect if no adapter
-      await reconnect()
+      await reconnect(true)
       return
     }
 
