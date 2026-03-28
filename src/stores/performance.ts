@@ -1,11 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import {
-  detectQualityFromEma,
-  detectQualitySync,
-  type QualityPreset,
-} from '@/composables/useAdaptiveQuality'
+import { detectQualitySync } from '@/composables/useAdaptiveQuality'
 import defaultsJson from '@/defaults/performance.json'
 import { frameEngine } from '@/engine/frameEngine'
 import {
@@ -523,117 +519,134 @@ export const CATEGORY_LABELS: Record<string, { label: string; icon: string }> =
   }
 
 /** Preset definitions. */
-export const PRESETS = {
-  low: {
-    label: '省メモリ',
-    icon: 'ti-leaf',
-    values: {
-      emojiCachePerHost: 2000,
-      emojiListHosts: 2,
-      emojiPersistPerHost: 200,
-      noteStoreMax: 800,
-      noteListMax: 150,
-      maxNotifications: 100,
-      mfmCacheMax: 128,
-      imageProxyCacheMax: 128,
-      ogpCacheMax: 64,
-      noteCaptureMax: 20,
-      overscan: 4,
-      memoryCacheMaxMB: 2,
-      memoryCacheMaxItemKB: 32,
-      maxConcurrentFetches: 15,
-      rustOgpCacheMax: 32,
-      maxRequestsPerWindow: 100,
-      circuitBreakerThreshold: 3,
-      circuitBreakerDuration: 90,
-      imageCacheTTLDays: 3,
-      prefetchAhead: 15,
-      prefetchBehind: 5,
-      prefetchTrackedMax: 200,
-      lazyLoadMargin: 100,
-      nearViewportBuffer: 2,
-      ogpGalleryMax: 2,
-      embedCacheMax: 32,
-      cssBlurLevel: 0,
-      cssAnimationScale: 50,
-      cssShadowLevel: 1,
-      notificationPollInterval: 300,
-      chatPollInterval: 300,
-      columnUnloadDelay: 2000,
-      snapshotMaxNotes: 20,
-      snapshotTTL: 5,
-      jankDowngradeThreshold: 3,
-      stableUpgradeSeconds: 15,
-      noteAnimationDuration: 200,
-      frameHistorySize: 50,
-      soundCacheMax: 4,
-      cachedTimelineLimit: 20,
-      pullFireThreshold: 200,
-      swipeThreshold: 50,
-      flingVelocity: 0.4,
-      wheelCooldown: 300,
-      scrollHideThreshold: 30,
-    } satisfies PerformanceConfig,
-  },
-  balanced: {
-    label: 'バランス',
-    icon: 'ti-scale',
-    values: null, // = defaults
-  },
-  high: {
-    label: '高パフォーマンス',
-    icon: 'ti-rocket',
-    values: {
-      emojiCachePerHost: 7000,
-      emojiListHosts: 6,
-      emojiPersistPerHost: 700,
-      noteStoreMax: 3000,
-      noteListMax: 300,
-      maxNotifications: 500,
-      mfmCacheMax: 512,
-      imageProxyCacheMax: 512,
-      ogpCacheMax: 256,
-      noteCaptureMax: 100,
-      overscan: 10,
-      memoryCacheMaxMB: 8,
-      memoryCacheMaxItemKB: 128,
-      maxConcurrentFetches: 40,
-      rustOgpCacheMax: 128,
-      maxRequestsPerWindow: 300,
-      circuitBreakerThreshold: 5,
-      circuitBreakerDuration: 30,
-      imageCacheTTLDays: 14,
-      prefetchAhead: 40,
-      prefetchBehind: 15,
-      prefetchTrackedMax: 1000,
-      lazyLoadMargin: 300,
-      nearViewportBuffer: 6,
-      ogpGalleryMax: 6,
-      embedCacheMax: 128,
-      cssBlurLevel: 2,
-      cssAnimationScale: 100,
-      cssShadowLevel: 2,
-      notificationPollInterval: 60,
-      chatPollInterval: 60,
-      columnUnloadDelay: 15000,
-      snapshotMaxNotes: 80,
-      snapshotTTL: 20,
-      jankDowngradeThreshold: 8,
-      stableUpgradeSeconds: 5,
-      noteAnimationDuration: 500,
-      frameHistorySize: 200,
-      soundCacheMax: 16,
-      cachedTimelineLimit: 80,
-      pullFireThreshold: 200,
-      swipeThreshold: 50,
-      flingVelocity: 0.4,
-      wheelCooldown: 300,
-      scrollHideThreshold: 30,
-    } satisfies PerformanceConfig,
-  },
-} as const
+/** Slider endpoint: t=0 (省メモリ) */
+export const SLIDER_LOW: PerformanceConfig = {
+  emojiCachePerHost: 2000,
+  emojiListHosts: 2,
+  emojiPersistPerHost: 200,
+  noteStoreMax: 800,
+  noteListMax: 150,
+  maxNotifications: 100,
+  mfmCacheMax: 128,
+  imageProxyCacheMax: 128,
+  ogpCacheMax: 64,
+  noteCaptureMax: 20,
+  overscan: 4,
+  memoryCacheMaxMB: 2,
+  memoryCacheMaxItemKB: 32,
+  maxConcurrentFetches: 15,
+  rustOgpCacheMax: 32,
+  maxRequestsPerWindow: 100,
+  circuitBreakerThreshold: 3,
+  circuitBreakerDuration: 90,
+  imageCacheTTLDays: 3,
+  prefetchAhead: 15,
+  prefetchBehind: 5,
+  prefetchTrackedMax: 200,
+  lazyLoadMargin: 100,
+  nearViewportBuffer: 2,
+  ogpGalleryMax: 2,
+  embedCacheMax: 32,
+  cssBlurLevel: 0,
+  cssAnimationScale: 50,
+  cssShadowLevel: 1,
+  notificationPollInterval: 300,
+  chatPollInterval: 300,
+  columnUnloadDelay: 2000,
+  snapshotMaxNotes: 20,
+  snapshotTTL: 5,
+  jankDowngradeThreshold: 3,
+  stableUpgradeSeconds: 15,
+  noteAnimationDuration: 200,
+  frameHistorySize: 50,
+  soundCacheMax: 4,
+  cachedTimelineLimit: 20,
+  pullFireThreshold: 200,
+  swipeThreshold: 50,
+  flingVelocity: 0.4,
+  wheelCooldown: 300,
+  scrollHideThreshold: 30,
+}
 
-export type PresetKey = keyof typeof PRESETS
+/** Slider endpoint: t=1 (高パフォーマンス) */
+export const SLIDER_HIGH: PerformanceConfig = {
+  emojiCachePerHost: 7000,
+  emojiListHosts: 6,
+  emojiPersistPerHost: 700,
+  noteStoreMax: 3000,
+  noteListMax: 300,
+  maxNotifications: 500,
+  mfmCacheMax: 512,
+  imageProxyCacheMax: 512,
+  ogpCacheMax: 256,
+  noteCaptureMax: 100,
+  overscan: 10,
+  memoryCacheMaxMB: 8,
+  memoryCacheMaxItemKB: 128,
+  maxConcurrentFetches: 40,
+  rustOgpCacheMax: 128,
+  maxRequestsPerWindow: 300,
+  circuitBreakerThreshold: 5,
+  circuitBreakerDuration: 30,
+  imageCacheTTLDays: 14,
+  prefetchAhead: 40,
+  prefetchBehind: 15,
+  prefetchTrackedMax: 1000,
+  lazyLoadMargin: 300,
+  nearViewportBuffer: 6,
+  ogpGalleryMax: 6,
+  embedCacheMax: 128,
+  cssBlurLevel: 2,
+  cssAnimationScale: 100,
+  cssShadowLevel: 2,
+  notificationPollInterval: 60,
+  chatPollInterval: 60,
+  columnUnloadDelay: 15000,
+  snapshotMaxNotes: 80,
+  snapshotTTL: 20,
+  jankDowngradeThreshold: 8,
+  stableUpgradeSeconds: 5,
+  noteAnimationDuration: 500,
+  frameHistorySize: 200,
+  soundCacheMax: 16,
+  cachedTimelineLimit: 80,
+  pullFireThreshold: 200,
+  swipeThreshold: 50,
+  flingVelocity: 0.4,
+  wheelCooldown: 300,
+  scrollHideThreshold: 30,
+}
+
+/** Interpolate all config values linearly between SLIDER_LOW (t=0) and SLIDER_HIGH (t=1). */
+export function interpolateConfig(t: number): PerformanceConfig {
+  const result = {} as Record<string, number>
+  for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
+    const low = SLIDER_LOW[key]
+    const high = SLIDER_HIGH[key]
+    const meta = FIELD_META[key]
+    const raw = low + (high - low) * t
+    const snapped = Math.round(raw / meta.step) * meta.step
+    result[key] = Math.max(meta.min, Math.min(meta.max, snapped))
+  }
+  return result as unknown as PerformanceConfig
+}
+
+/** Find slider position t ∈ [0,1] that matches config, or null if custom. */
+export function detectSliderPosition(cfg: PerformanceConfig): number | null {
+  for (let i = 0; i <= 100; i++) {
+    const t = i / 100
+    const interp = interpolateConfig(t)
+    let match = true
+    for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
+      if (cfg[key] !== interp[key]) {
+        match = false
+        break
+      }
+    }
+    if (match) return t
+  }
+  return null
+}
 
 const DEFAULTS: PerformanceConfig = defaultsJson as PerformanceConfig
 
@@ -771,8 +784,6 @@ export const usePerformanceStore = defineStore('performance', () => {
     getStorageJson<Partial<PerformanceConfig>>(STORAGE_KEYS.performance, {}),
   )
   const initialized = ref(false)
-  const recommendedPreset = ref<QualityPreset | null>(null)
-
   /** Merged config: overrides on top of defaults. */
   const config = computed<PerformanceConfig>(() => ({
     ...DEFAULTS,
@@ -914,15 +925,6 @@ export const usePerformanceStore = defineStore('performance', () => {
   }
 
   function init(): void {
-    // Adaptive quality: sync detection first, then refine from telemetry EMA
-    recommendedPreset.value = detectQualitySync()
-    // After 3 seconds of telemetry data, use stable EMA for precise detection
-    setTimeout(() => {
-      recommendedPreset.value = detectQualityFromEma(
-        frameTelemetry.frameTimeEma.value,
-      )
-    }, 3000)
-
     if (isTauri) {
       initFileStorage().catch((e) =>
         console.warn('[performance] file storage init failed:', e),
@@ -937,11 +939,8 @@ export const usePerformanceStore = defineStore('performance', () => {
     // --- Frame Engine + Telemetry ---
     frameEngine.start()
 
-    // Map preset to telemetry quality level
-    const presetToQuality = (p: QualityPreset): QualityLevel => p
-
     frameTelemetry.start(
-      presetToQuality(recommendedPreset.value ?? 'balanced'),
+      detectQualitySync() as QualityLevel,
       (quality) => {
         // Auto quality adjustment — only change CSS rendering properties
         // (blur, shadow, animation). Never touch cache sizes or note limits,
@@ -1009,50 +1008,22 @@ export const usePerformanceStore = defineStore('performance', () => {
     saveOverrides()
   }
 
-  function applyPreset(preset: PresetKey) {
-    const p = PRESETS[preset]
-    if (p.values == null) {
-      overrides.value = {}
-    } else {
-      const partial: Partial<PerformanceConfig> = {}
-      for (const [k, v] of Object.entries(p.values)) {
-        const key = k as PerformanceKey
-        if (v !== DEFAULTS[key]) {
-          partial[key] = v as never
-        }
+  /** Apply slider position t ∈ [0, 1] — interpolates all values linearly. */
+  function applySlider(t: number) {
+    const target = interpolateConfig(t)
+    const partial: Partial<PerformanceConfig> = {}
+    for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
+      if (target[key] !== DEFAULTS[key]) {
+        partial[key] = target[key] as never
       }
-      overrides.value = partial
     }
+    overrides.value = partial
     saveOverrides()
   }
 
-  /** Detect which preset matches the current config (or 'custom'). */
-  const activePreset = computed<PresetKey | 'custom'>(() => {
-    const keys = Object.keys(overrides.value) as PerformanceKey[]
-    if (keys.length === 0) return 'balanced'
-    for (const [presetKey, preset] of Object.entries(PRESETS) as [
-      PresetKey,
-      (typeof PRESETS)[PresetKey],
-    ][]) {
-      if (preset.values == null) continue
-      const presetOverrides: Partial<PerformanceConfig> = {}
-      for (const [k, v] of Object.entries(preset.values)) {
-        if (v !== DEFAULTS[k as PerformanceKey]) {
-          presetOverrides[k as PerformanceKey] = v as never
-        }
-      }
-      const presetKeys = Object.keys(presetOverrides) as PerformanceKey[]
-      if (presetKeys.length !== keys.length) continue
-      let match = true
-      for (const pk of presetKeys) {
-        if (overrides.value[pk] !== presetOverrides[pk]) {
-          match = false
-          break
-        }
-      }
-      if (match) return presetKey
-    }
-    return 'custom'
+  /** Current slider position (0–1), or null if config doesn't match any interpolation point. */
+  const sliderPosition = computed<number | null>(() => {
+    return detectSliderPosition(config.value)
   })
 
   function isCustomized(key: PerformanceKey): boolean {
@@ -1071,8 +1042,7 @@ export const usePerformanceStore = defineStore('performance', () => {
   return {
     overrides,
     config,
-    activePreset,
-    recommendedPreset,
+    sliderPosition,
     estimatedMemoryMB,
     estimatedNetworkMBPerHour,
     estimatedRenderCost,
@@ -1082,7 +1052,7 @@ export const usePerformanceStore = defineStore('performance', () => {
     set,
     resetKey,
     resetAll,
-    applyPreset,
+    applySlider,
     isCustomized,
   }
 })

@@ -11,8 +11,6 @@ import {
   CATEGORY_LABELS,
   FIELD_META,
   type PerformanceKey,
-  PRESETS,
-  type PresetKey,
   usePerformanceStore,
 } from '@/stores/performance'
 
@@ -64,8 +62,17 @@ function handleNumberInput(key: PerformanceKey, event: Event) {
   }
 }
 
-function selectPreset(key: PresetKey) {
-  perfStore.applyPreset(key)
+// --- Master slider ---
+
+const sliderPosition = computed(() => perfStore.sliderPosition)
+const isCustom = computed(() => sliderPosition.value === null)
+const sliderValue = computed(() =>
+  sliderPosition.value !== null ? Math.round(sliderPosition.value * 100) : 50,
+)
+
+function handleMasterSlider(event: Event) {
+  const t = Number((event.target as HTMLInputElement).value) / 100
+  perfStore.applySlider(t)
 }
 
 // --- Code tab ---
@@ -203,21 +210,22 @@ function handleReset() {
           </div>
         </div>
 
-        <div :class="$style.presetRow">
-          <button
-            v-for="(preset, key) in PRESETS"
-            :key="key"
-            class="_button"
-            :class="[$style.presetBtn, { [$style.presetActive]: perfStore.activePreset === key }]"
-            @click="selectPreset(key as PresetKey)"
-          >
-            <i :class="'ti ' + preset.icon" />
-            {{ preset.label }}
-          </button>
-          <div v-if="perfStore.activePreset === 'custom'" :class="$style.presetCustom">
-            <i class="ti ti-settings" />
-            カスタム
-          </div>
+        <div :class="$style.sliderRow">
+          <span :class="$style.sliderEndLabel">省メモリ</span>
+          <input
+            type="range"
+            :class="$style.masterSlider"
+            :value="sliderValue"
+            min="0"
+            max="100"
+            step="1"
+            @input="handleMasterSlider"
+          />
+          <span :class="$style.sliderEndLabel">高性能</span>
+        </div>
+        <div v-if="isCustom" :class="$style.customNotice">
+          <i class="ti ti-settings" />
+          カスタム — スライダーを動かすと線形補間に戻ります
         </div>
       </div>
 
@@ -344,7 +352,6 @@ function handleReset() {
 }
 
 .confirming { /* modifier */ }
-.presetActive { /* modifier */ }
 
 .panel {
   display: flex;
@@ -428,42 +435,58 @@ function handleReset() {
   font-size: 0.9em;
 }
 
-.presetRow {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.presetBtn {
+.sliderRow {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-bg);
-  color: var(--nd-fg);
-  font-size: 0.75em;
-  transition: border-color var(--nd-duration-base), background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-
-  &.presetActive {
-    border-color: var(--nd-accent);
-    color: var(--nd-accent);
-    background: color-mix(in srgb, var(--nd-accent) 8%, var(--nd-bg));
-  }
+  gap: 8px;
 }
 
-.presetCustom {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  font-size: 0.75em;
+.sliderEndLabel {
+  font-size: 0.7em;
   opacity: 0.5;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.masterSlider {
+  flex: 1;
+  height: 4px;
+  appearance: none;
+  background: var(--nd-divider);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--nd-accent);
+    cursor: pointer;
+    transition: transform 0.1s;
+
+    &:hover {
+      transform: scale(1.2);
+    }
+  }
+
+  &::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 50%;
+    background: var(--nd-accent);
+    cursor: pointer;
+  }
+}
+
+.customNotice {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7em;
+  opacity: 0.4;
 }
 
 // --- Fields ---
