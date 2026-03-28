@@ -447,7 +447,7 @@ const importSettings = () =>
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 8px 16px;
+  padding: 10px 16px;
   font-size: 0.85em;
   font-weight: bold;
   color: var(--nd-fg);
