@@ -49,7 +49,7 @@ function toggleCategory(key: string) {
 
 const addColumnType = ref<ColumnType | null>(null)
 
-/** Column types that work without authentication */
+/** Column types that work without authentication (all APIs use get_credentials_or_anon) */
 const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
   'timeline',
   'user',
@@ -57,6 +57,14 @@ const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
   'channel',
   'explore',
   'emoji',
+  'announcements',
+  'gallery',
+  'serverInfo',
+  'aboutMisskey',
+  'ads',
+  'lookup',
+  'play',
+  'page',
 ])
 
 /** Column types that support cross-account mode (accountId: null) */

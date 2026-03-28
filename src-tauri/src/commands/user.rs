@@ -402,6 +402,6 @@ pub async fn api_ap_show(
     uri: String,
 ) -> Result<serde_json::Value> {
     let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.ap_show(&host, &token, &uri).await
 }
