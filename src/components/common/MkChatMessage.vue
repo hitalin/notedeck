@@ -370,6 +370,7 @@ function closeMentionPopup() {
 .reactionAvatars {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .reactionAvatar {
@@ -378,12 +379,14 @@ function closeMentionPopup() {
   border-radius: 50%;
   object-fit: cover;
   border: 1.5px solid var(--nd-panel, #1a1a1a);
+  flex-shrink: 0;
 }
 
 .reactionEmojiImg {
   width: 18px;
   height: 18px;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 .reactionEmojiText {
