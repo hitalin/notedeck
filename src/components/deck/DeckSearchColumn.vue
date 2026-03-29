@@ -751,7 +751,7 @@ onUnmounted(() => {
             Press Enter to search server
           </div>
           <div v-else-if="isLoading && notes.length > 0" :class="$style.loadingMore">
-            {{ hasLocalResults ? 'Searching server...' : 'Loading...' }}
+            <LoadingSpinner />
           </div>
         </template>
       </NoteScroller>
@@ -1032,10 +1032,10 @@ onUnmounted(() => {
 }
 
 .loadingMore {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 1rem;
-  font-size: 0.8em;
-  opacity: 0.4;
 }
 
 .searchPreviewHint {

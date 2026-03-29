@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AvatarStack from '@/components/common/AvatarStack.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
@@ -110,7 +111,7 @@ const {
 
         <template #append>
           <div v-if="isLoading && notes.length > 0" :class="$style.loadingMore">
-            Loading...
+            <LoadingSpinner />
           </div>
         </template>
       </NoteScroller>

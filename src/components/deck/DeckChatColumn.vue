@@ -14,6 +14,7 @@ import type {
   NormalizedDriveFile,
 } from '@/adapters/types'
 import AvatarStack from '@/components/common/AvatarStack.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
@@ -768,7 +769,7 @@ onBeforeUnmount(() => {
         :class="$style.messagesContainer"
         @scroll.passive="handleScroll"
       >
-        <div v-if="isLoading" :class="$style.loadingMore">読み込み中...</div>
+        <div v-if="isLoading" :class="$style.loadingMore"><LoadingSpinner /></div>
         <MkChatMessage
           v-for="msg in messages"
           :key="msg.id"
@@ -1206,10 +1207,10 @@ onBeforeUnmount(() => {
 }
 
 .loadingMore {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 1rem;
-  font-size: 0.8em;
-  opacity: 0.4;
 }
 
 /* Empty placeholder classes for dynamic binding */

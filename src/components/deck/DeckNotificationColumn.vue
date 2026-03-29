@@ -1054,7 +1054,7 @@ onUnmounted(() => {
 
         <template #append>
           <div v-if="isLoading && notifications.length > 0" :class="$style.loadingMore">
-            読み込み中...
+            <LoadingSpinner />
           </div>
         </template>
       </NoteScroller>
@@ -1387,10 +1387,10 @@ onUnmounted(() => {
 }
 
 .loadingMore {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 1rem;
-  font-size: 0.8em;
-  opacity: 0.4;
 }
 
 .followRequestActions {

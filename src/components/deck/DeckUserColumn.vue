@@ -133,7 +133,7 @@ const {
 
           <template #append>
             <div v-if="isLoading && notes.length > 0" :class="$style.loadingMore">
-              Loading...
+              <LoadingSpinner />
             </div>
           </template>
         </NoteScroller>
