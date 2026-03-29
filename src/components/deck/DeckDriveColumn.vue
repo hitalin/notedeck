@@ -301,9 +301,6 @@ fetchDrive()
       </div>
 
       <div :class="$style.driveGridScroll">
-        <div v-if="isLoggedOut" :class="$style.loggedOutBanner">
-          <i class="ti ti-logout" />ログアウト中
-        </div>
         <div v-if="loading && !isLoggedOut" :class="$style.columnLoading"><LoadingSpinner /></div>
         <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
         <template v-else-if="!isLoggedOut">

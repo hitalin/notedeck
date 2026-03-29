@@ -183,9 +183,6 @@ onMounted(() => {
     </div>
 
     <div v-else :class="$style.frBody">
-      <div v-if="isLoggedOut" :class="$style.loggedOutBanner">
-        <i class="ti ti-logout" />ログアウト中
-      </div>
       <div
         v-if="requests.length === 0 && !isLoading"
         :class="$style.columnEmpty"

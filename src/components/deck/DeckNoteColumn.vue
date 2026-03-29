@@ -147,13 +147,10 @@ defineExpose({
         </div>
       </div>
 
-      <div v-if="isLoggedOut && account && !isGuestAccount(account)" :class="$style.loggedOutBanner">
-        <i class="ti ti-logout" />ログアウト中
-      </div>
-      <div v-else-if="(isOffline || offlineModeStore.isOfflineMode) && !isLoggedOut" :class="$style.offlineBanner">
+      <div v-if="isOffline && !offlineModeStore.isOfflineMode && !isLoggedOut" :class="$style.offlineBanner">
         <i class="ti ti-cloud-off" />オフライン
       </div>
-      <div v-else-if="isPollingMode" :class="$style.pollingBanner">
+      <div v-else-if="isPollingMode && !isLoggedOut" :class="$style.pollingBanner">
         <i class="ti ti-bolt-off" />ポーリング
       </div>
 

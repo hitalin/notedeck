@@ -6,9 +6,11 @@ import {
   requestMoveColumn,
 } from '@/composables/useDeckWindow'
 import { useVaporTransition } from '@/composables/useVaporTransition'
+import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { useOfflineModeStore } from '@/stores/offlineMode'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 
 const props = defineProps<{
@@ -34,8 +36,21 @@ const emit = defineEmits<{ 'header-click': []; refresh: [] }>()
 
 const { confirm } = useConfirm()
 const deckStore = useDeckStore()
+const accountsStore = useAccountsStore()
+const offlineModeStore = useOfflineModeStore()
 const { isDesktop, isMobilePlatform } = useUiStore()
 const isCompact = useIsCompactLayout()
+
+const columnConfig = computed(() => deckStore.getColumn(props.columnId))
+const columnAccount = computed(() => {
+  const accountId = columnConfig.value?.accountId
+  if (!accountId) return null
+  return accountsStore.accountMap.get(accountId) ?? null
+})
+const isLoggedOut = computed(() => {
+  const acc = columnAccount.value
+  return acc != null && !acc.hasToken && !isGuestAccount(acc)
+})
 
 /** Whether this column can be popped out (desktop + main window only) */
 const canPopOut = computed(() => isDesktop && !deckStore.currentWindowId)
@@ -250,6 +265,12 @@ function openAsPip() {
     </div>
 
     <div :class="$style.columnBody">
+      <div v-if="isLoggedOut" :class="$style.loggedOutBanner">
+        <i class="ti ti-logout" />ログアウト中
+      </div>
+      <div v-else-if="offlineModeStore.isOfflineMode && !isLoggedOut" :class="$style.offlineBanner">
+        <i class="ti ti-cloud-off" />オフライン
+      </div>
       <slot />
     </div>
 
@@ -398,12 +419,48 @@ function openAsPip() {
 }
 
 .columnBody {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background-color: var(--nd-bg);
+}
+
+%statusBanner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--nd-radius-full);
+  font-size: 0.85em;
+  font-weight: bold;
+  white-space: nowrap;
+  color: var(--nd-fgOnAccent);
+  pointer-events: none;
+  animation: slide-down var(--nd-duration-slow) var(--nd-ease-spring);
+}
+
+.offlineBanner {
+  @extend %statusBanner;
+  background: color-mix(in srgb, var(--nd-warn) 70%, transparent);
+}
+
+.loggedOutBanner {
+  @extend %statusBanner;
+  background: color-mix(in srgb, var(--nd-error) 70%, transparent);
+}
+
+@keyframes slide-down {
+  from { translate: -50% -100%; opacity: 0; }
+  to { translate: -50% 0; opacity: 1; }
 }
 
 .mobile {

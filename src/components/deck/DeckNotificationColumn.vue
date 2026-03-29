@@ -812,18 +812,7 @@ onUnmounted(() => {
       </div>
     </template>
 
-    <div v-if="!isCrossAccount && !account" :class="$style.columnEmpty">
-      アカウントが見つかりません
-    </div>
-
-    <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error.isAuth ? AUTH_ERROR_MESSAGE : error.message }}
-    </div>
-
-    <div v-else :class="$style.notifBody">
-      <div v-if="isLoggedOut" :class="$style.loggedOutBanner">
-        <i class="ti ti-logout" />ログアウト中
-      </div>
+    <template #header-extra>
       <!-- Notification filter tabs -->
       <div ref="filterBarRef" :class="$style.filterBar">
         <button
@@ -839,7 +828,17 @@ onUnmounted(() => {
         </button>
         <div :class="$style.filterIndicator" :style="filterIndicatorStyle" />
       </div>
+    </template>
 
+    <div v-if="!isCrossAccount && !account" :class="$style.columnEmpty">
+      アカウントが見つかりません
+    </div>
+
+    <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">
+      {{ error.isAuth ? AUTH_ERROR_MESSAGE : error.message }}
+    </div>
+
+    <div v-else :class="$style.notifBody">
       <div
         v-if="isPulling"
         :class="$style.pullFrame"
