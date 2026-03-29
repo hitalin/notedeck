@@ -115,6 +115,8 @@ defineExpose({ open })
     background: rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: flex-end;
+    /* Android: キーボード表示時に inset:0 だけでは全画面カバーできないケースがある */
+    height: 100dvh;
   }
 }
 

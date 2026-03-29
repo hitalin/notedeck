@@ -176,7 +176,10 @@ function onScrollKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
-  nextTick(() => searchInput.value?.focus())
+  // モバイルでは自動フォーカスしない（仮想キーボードでピッカーが押し出される）
+  if (!isCompact.value) {
+    nextTick(() => searchInput.value?.focus())
+  }
 })
 </script>
 
@@ -441,7 +444,7 @@ onMounted(() => {
 .mobile {
   width: 100%;
   max-width: 100%;
-  max-height: 50vh;
+  max-height: 50dvh;
 
   .pickerSearchInput {
     padding: 10px 12px;
