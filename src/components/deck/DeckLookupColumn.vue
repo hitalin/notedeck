@@ -294,7 +294,7 @@ async function handlePosted(editedNoteId?: string) {
     :theme-vars="columnThemeVars"
   >
     <template #header-icon>
-      <i class="ti ti-world-search" :class="$style.lookupHeaderIcon" />
+      <i class="ti ti-world-search" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
@@ -383,32 +383,7 @@ async function handlePosted(editedNoteId?: string) {
 </template>
 
 <style lang="scss" module>
-.lookupHeaderIcon {
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-
-.headerAccount {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 4px;
-  flex-shrink: 0;
-}
-
-.headerAvatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.headerFavicon {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  opacity: 0.7;
-}
+@use './column-common.module.scss';
 
 .lookupBar {
   display: flex;
@@ -522,20 +497,5 @@ async function handlePosted(editedNoteId?: string) {
 .lookupUserArrow {
   flex-shrink: 0;
   opacity: 0.3;
-}
-
-.columnEmpty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  font-size: 0.85em;
-}
-
-.columnError {
-  color: var(--nd-love);
-  opacity: 1;
 }
 </style>

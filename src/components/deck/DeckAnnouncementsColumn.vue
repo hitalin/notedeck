@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import MkMfm from '@/components/common/MkMfm.vue'
-import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
+import { useColumnTheme } from '@/composables/useColumnTheme'
+import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
-import { useThemeStore } from '@/stores/theme'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { invoke } from '@/utils/tauriInvoke'
@@ -29,20 +29,10 @@ const props = defineProps<{
   column: DeckColumnType
 }>()
 
-const accountsStore = useAccountsStore()
+const { account, columnThemeVars } = useColumnTheme(() => props.column)
 const serversStore = useServersStore()
-const themeStore = useThemeStore()
 
-const account = computed(() =>
-  accountsStore.accounts.find((a) => a.id === props.column.accountId),
-)
 const isLoggedOut = computed(() => account.value?.hasToken === false)
-
-const columnThemeVars = computed(() => {
-  const accountId = props.column.accountId
-  if (!accountId) return undefined
-  return themeStore.getStyleVarsForAccount(accountId)
-})
 
 const serverIconUrl = ref<string | undefined>()
 const isLoading = ref(false)

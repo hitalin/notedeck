@@ -799,7 +799,7 @@ onUnmounted(() => {
     @header-click="scrollToTop"
   >
     <template #header-icon>
-      <i :class="$style.notifHeaderIcon" class="ti ti-bell" />
+      <i :class="$style.tlHeaderIcon" class="ti ti-bell" />
     </template>
 
     <template #header-meta>
@@ -1091,32 +1091,6 @@ onUnmounted(() => {
 <style lang="scss" module>
 @use './column-common.module.scss';
 
-.notifHeaderIcon {
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-
-.headerAccount {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 4px;
-  flex-shrink: 0;
-}
-
-.headerAvatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.headerFavicon {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  opacity: 0.7;
-}
 
 
 .notifBody {

@@ -722,7 +722,7 @@ onBeforeUnmount(() => {
           </div>
           <div :class="$style.historyInfo">
             <div :class="$style.historyName">{{ entry.name }}</div>
-            <div :class="$style.historyPreview">{{ entry.message.text || '(file)' }}</div>
+            <div :class="$style.historyPreview">{{ entry.message.text || '(ファイル)' }}</div>
           </div>
           <div :class="$style.historyMeta">
             <span :class="$style.historyHost">{{ entry.serverHost }}</span>
@@ -756,7 +756,7 @@ onBeforeUnmount(() => {
           </div>
           <div :class="$style.historyInfo">
             <div :class="$style.historyName">{{ entry.name }}</div>
-            <div :class="$style.historyPreview">{{ entry.message.text || '(file)' }}</div>
+            <div :class="$style.historyPreview">{{ entry.message.text || '(ファイル)' }}</div>
           </div>
         </button>
       </div>
@@ -858,39 +858,13 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 @use './column-common.module.scss';
 
-.tlHeaderIcon {
-  flex-shrink: 0;
-  opacity: 0.7;
+.clickable {
+  cursor: pointer;
+  opacity: 0.8;
 
-  &.clickable {
-    cursor: pointer;
-    opacity: 0.8;
-
-    &:hover {
-      opacity: 1;
-    }
+  &:hover {
+    opacity: 1;
   }
-}
-
-.headerAccount {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.headerAvatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.headerFavicon {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  opacity: 0.7;
 }
 
 .chatBody {
