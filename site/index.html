@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NoteDeck - マルチサーバー対応 Misskey デッキクライアント</title>
-  <meta name="description" content="複数の Misskey サーバーをひとつのデッキで。Windows, macOS, Linux, Android 対応のオープンソースクライアント。" />
+  <meta name="description" content="複数の Misskey サーバーをひとつのデッキで。メモリ 1/5、オフライン対応、ローカル全文検索。Windows, macOS, Linux, Android 対応のオープンソースクライアント。" />
   <meta property="og:title" content="NoteDeck" />
-  <meta property="og:description" content="複数の Misskey サーバーをひとつのデッキで。マルチサーバー対応 Misskey デッキクライアント。" />
+  <meta property="og:description" content="複数の Misskey サーバーをひとつのデッキで。ネイティブの速さとオフライン対応を兼ね備えたデッキクライアント。" />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://raw.githubusercontent.com/hitalin/notedeck/main/src-tauri/icons/128x128%402x.png" />
   <link rel="icon" href="https://raw.githubusercontent.com/hitalin/notedeck/main/src-tauri/icons/32x32.png" type="image/png" />
@@ -31,7 +31,9 @@
           <b>Note<span>Deck</span></b>
         </a>
         <div class="nav-items">
+          <a href="#why">特長</a>
           <a href="#features">機能</a>
+          <a href="#architecture">アーキテクチャ</a>
           <a href="#download">ダウンロード</a>
         </div>
         <div class="nav-right">
@@ -48,7 +50,9 @@
       </nav>
     </div>
     <div class="nav-mobile-drawer">
+      <a href="#why" class="nav-mobile-item" onclick="document.querySelector('.nav-root').classList.remove('nav-open')">特長</a>
       <a href="#features" class="nav-mobile-item" onclick="document.querySelector('.nav-root').classList.remove('nav-open')">機能</a>
+      <a href="#architecture" class="nav-mobile-item" onclick="document.querySelector('.nav-root').classList.remove('nav-open')">アーキテクチャ</a>
       <a href="#download" class="nav-mobile-item" onclick="document.querySelector('.nav-root').classList.remove('nav-open')">ダウンロード</a>
       <a href="https://github.com/hitalin/notedeck" class="nav-mobile-item" onclick="document.querySelector('.nav-root').classList.remove('nav-open')">GitHub</a>
     </div>
@@ -67,7 +71,7 @@
       class="hero-icon"
     />
     <h1>Note<span>Deck</span></h1>
-    <p class="tagline">複数の Misskey サーバーをひとつのデッキで。<br />マルチサーバー対応デッキクライアント。</p>
+    <p class="tagline">ブラウザを超えた、デッキ体験。<br />複数の Misskey サーバーを、ひとつのネイティブアプリで。</p>
     <div class="hero-buttons">
       <a href="#download" class="btn btn-primary">ダウンロード</a>
       <a href="https://github.com/hitalin/notedeck" class="btn btn-secondary">
@@ -88,33 +92,240 @@
     </div>
   </div>
 
+  <!-- Why NoteDeck — 3 pillars -->
+  <section class="pillars" id="why">
+    <h2 class="section-title fade-in">なぜ NoteDeck？</h2>
+    <div class="pillars-grid">
+      <div class="pillar glass fade-in">
+        <div class="pillar-icon">
+          <!-- Lightning bolt -->
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <h3>ネイティブの速さ</h3>
+        <p class="pillar-lead">Electron ベースのクライアントの <strong>1/5 のメモリ</strong>で動作。</p>
+        <p>Tauri v2 + Rust バックエンドにより、メモリ使用量は約 40MB。200MB 超が当たり前の他クライアントと比べて圧倒的に軽量。起動も一瞬、バッテリーにも優しい。</p>
+      </div>
+      <div class="pillar glass fade-in">
+        <div class="pillar-icon">
+          <!-- Database/offline -->
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        </div>
+        <h3>オフラインファースト</h3>
+        <p class="pillar-lead">ノートはローカル DB に蓄積。<strong>オフラインでも読める。</strong></p>
+        <p>流れたタイムラインもローカル SQLite に自動保存。全文検索で過去の投稿を即座に発見。ネットワークが切れても、蓄積したノートはいつでも閲覧可能。</p>
+      </div>
+      <div class="pillar glass fade-in">
+        <div class="pillar-icon">
+          <!-- Grid/multi-server -->
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </div>
+        <h3>全鯖をひとつのデッキで</h3>
+        <p class="pillar-lead">複数サーバーの通知・TL・検索を<strong>クロスアカウントで統合表示。</strong></p>
+        <p>misskey.io、にじみす、Firefish — 何鯖使っていても、ひとつのデッキにまとめて把握。アカウントごとにブラウザのタブを開く時代は終わり。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Performance comparison -->
+  <section class="comparison fade-in" id="performance">
+    <h2 class="section-title">ブラウザを超えるパフォーマンス</h2>
+    <p class="section-sub">同じサーバーに接続した状態での比較（参考値）</p>
+    <div class="comparison-table-wrapper glass">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Misskey Web UI</th>
+            <th>Aria（Electron）</th>
+            <th class="highlight">NoteDeck</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-label">メモリ使用量</td>
+            <td>〜300 MB+</td>
+            <td>〜200 MB</td>
+            <td class="highlight"><strong>〜40 MB</strong></td>
+          </tr>
+          <tr>
+            <td class="row-label">起動時間</td>
+            <td>ブラウザ依存</td>
+            <td>数秒</td>
+            <td class="highlight"><strong>&lt; 1秒</strong></td>
+          </tr>
+          <tr>
+            <td class="row-label">オフライン閲覧</td>
+            <td>不可</td>
+            <td>不可</td>
+            <td class="highlight"><strong>可能</strong></td>
+          </tr>
+          <tr>
+            <td class="row-label">ローカル全文検索</td>
+            <td>なし</td>
+            <td>なし</td>
+            <td class="highlight"><strong>FTS5</strong></td>
+          </tr>
+          <tr>
+            <td class="row-label">トークン保管</td>
+            <td>localStorage</td>
+            <td>localStorage</td>
+            <td class="highlight"><strong>OS キーチェーン</strong></td>
+          </tr>
+          <tr>
+            <td class="row-label">外部ツール連携</td>
+            <td>なし</td>
+            <td>なし</td>
+            <td class="highlight"><strong>REST API</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <!-- Features -->
   <section class="features" id="features">
     <h2 class="section-title fade-in">機能</h2>
-    <div class="features-grid">
-      <div class="feature glass fade-in">
-        <h3>全鯖を一画面で</h3>
-        <p>複数サーバーに同時ログイン。HTL・通知・リスト・チャンネルをカラムに並べて、タブ切り替えなしで全体を把握。</p>
+
+    <!-- Feature: Deck UI -->
+    <div class="feature-section fade-in">
+      <div class="feature-text">
+        <div class="feature-badge">デッキ UI</div>
+        <h3>自由に並べる、自分だけのレイアウト</h3>
+        <p>HTL・LTL・通知・検索・リスト・アンテナ・チャンネル・チャット — あらゆるカラムを横に並べて一覧。カラム幅はドラッグで自由に調整、プロファイルとして保存すればワンクリックで切り替え。</p>
+        <ul class="feature-list">
+          <li>16 種類以上のカラムタイプ</li>
+          <li>クロスアカウント通知・検索の統合表示</li>
+          <li>プロファイルでレイアウトを切り替え</li>
+          <li>ナビバーのカスタマイズ（VSCode 式）</li>
+        </ul>
       </div>
-      <div class="feature glass fade-in">
-        <h3>フォークもそのまま使える</h3>
-        <p>Misskey 本家に加え、Firefish・CherryPick など主要フォークに対応。サーバー広告もちゃんと表示します。</p>
+    </div>
+
+    <!-- Feature: Offline & Local DB -->
+    <div class="feature-section fade-in">
+      <div class="feature-text">
+        <div class="feature-badge">オフライン &amp; ローカル DB</div>
+        <h3>流れたノートも、ここに残る</h3>
+        <p>タイムラインに流れてきたノートは自動でローカル SQLite に蓄積。サーバーからノートが消えても、連合が切れても、手元のデータは残り続けます。</p>
+        <ul class="feature-list">
+          <li>SQLite + WAL モードで高速書き込み</li>
+          <li>FTS5 全文検索 — 過去ノートを一瞬で発見</li>
+          <li>オフラインモード切り替えでバッテリー節約</li>
+          <li>DB ファイルコピーで丸ごとバックアップ</li>
+        </ul>
       </div>
-      <div class="feature glass fade-in">
-        <h3>ブラウザから解放される</h3>
-        <p>システムトレイ常駐、グローバルホットキー、マルチウィンドウ。タブに埋もれない、ネイティブアプリならではの快適さ。</p>
+    </div>
+
+    <!-- Feature: Performance -->
+    <div class="feature-section fade-in">
+      <div class="feature-text">
+        <div class="feature-badge">パフォーマンス</div>
+        <h3>重いクライアントに慣れた人ほど驚く</h3>
+        <p>Tauri v2 + Rust バックエンドで、ブラウザのオーバーヘッドを排除。フレームレートを自動監視し、描画負荷が高い場面では CSS エフェクトを自動的に軽減する Adaptive Quality を搭載。</p>
+        <ul class="feature-list">
+          <li>メモリ約 40MB — Electron 製の 1/5</li>
+          <li>起動 1 秒未満（DB・HTTP・ストリーム並列初期化）</li>
+          <li>Frame Scheduler で Layout Thrashing を回避</li>
+          <li>省メモリ〜高パフォーマンスのプリセット切り替え</li>
+        </ul>
       </div>
-      <div class="feature glass fade-in">
-        <h3>ノートを手元に蓄積</h3>
-        <p>流れたノートもローカル DB に残る。全文検索で過去の投稿をすぐ見つけられる。設定はテキストファイルだから丸ごとバックアップも簡単。</p>
+    </div>
+
+    <!-- Feature: Security -->
+    <div class="feature-section fade-in">
+      <div class="feature-text">
+        <div class="feature-badge">セキュリティ</div>
+        <h3>トークンは OS が守る</h3>
+        <p>ブラウザの localStorage にトークンを保存する Web クライアントとは設計が違います。NoteDeck はアクセストークンを OS のキーチェーン（macOS Keychain / Windows Credential Manager / Linux Secret Service）に暗号化保存。ブラウザ拡張や XSS によるトークン窃取は構造的に不可能です。</p>
+        <ul class="feature-list">
+          <li>OS キーチェーンで暗号化保管</li>
+          <li>メモリ上のトークンは自動 zeroize</li>
+          <li>localhost API は DNS Rebinding 対策済み</li>
+          <li>SSRF 防止（プライベート IP 範囲をブロック）</li>
+        </ul>
       </div>
-      <div class="feature glass fade-in">
-        <h3>軽い。速い。</h3>
-        <p>Tauri v2 + Rust バックエンドで省メモリ・高速起動。重いクライアントに慣れた人ほど違いを感じるはず。</p>
+    </div>
+
+    <!-- Feature: API & Extensibility -->
+    <div class="feature-section fade-in">
+      <div class="feature-text">
+        <div class="feature-badge">拡張性</div>
+        <h3>外部ツールからデッキを操作</h3>
+        <p>NoteDeck はバックグラウンドで REST API サーバー（localhost:19820）を起動。ノート投稿、タイムライン取得、カラム操作、コマンド実行 — すべてを HTTP で制御可能。Raycast、Obsidian、StreamDeck、自作ボットとの連携が、OAuth なしで実現します。</p>
+        <ul class="feature-list">
+          <li>20 以上の REST エンドポイント</li>
+          <li>OpenAPI 仕様 + 自動ドキュメント生成</li>
+          <li>SSE でリアルタイムイベント受信</li>
+          <li>AiScript プラグインでカラム動的生成</li>
+        </ul>
       </div>
-      <div class="feature glass fade-in">
-        <h3>オープンソース</h3>
-        <p>AGPL-3.0 で全コード公開。欲しい機能があれば PR も歓迎。<a href="https://github.com/sponsors/hitalin">Sponsors</a> で開発を支援できます。</p>
+    </div>
+
+    <!-- Feature: Keyboard -->
+    <div class="feature-section fade-in">
+      <div class="feature-text">
+        <div class="feature-badge">キーボード駆動</div>
+        <h3>マウスなしで全操作</h3>
+        <p>コマンドパレット（Ctrl+K）であらゆる操作を検索・実行。ノートの移動、リアクション、リノート、カラム操作まで、すべてキーボードだけで完結。キーバインドは JSON で自由にカスタマイズ。</p>
+        <ul class="feature-list">
+          <li>30 以上のビルトインコマンド</li>
+          <li>コマンドパレットで即座にアクセス</li>
+          <li>全キーバインドをカスタマイズ可能</li>
+          <li>ボスキーでウィンドウを即座に隠す</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Feature: Fork support -->
+    <div class="feature-section fade-in">
+      <div class="feature-text">
+        <div class="feature-badge">フォーク対応</div>
+        <h3>Misskey だけじゃない</h3>
+        <p>Misskey 本家に加え、Firefish・CherryPick・Sharkey・Iceshrimp など主要フォークに対応。サーバー種別は自動検出され、フォーク固有の API 差分はアダプター層が吸収します。サーバー広告もちゃんと表示 — エコシステムとの共生を大切にしています。</p>
+      </div>
+    </div>
+
+    <!-- Feature: Open Source -->
+    <div class="feature-section fade-in">
+      <div class="feature-text">
+        <div class="feature-badge">オープンソース</div>
+        <h3>全コード公開。一緒に作ろう</h3>
+        <p>AGPL-3.0 ライセンスで全ソースコードを公開。バグ報告、機能提案、PR — すべて歓迎です。<a href="https://github.com/sponsors/hitalin">GitHub Sponsors</a> で開発を支援することもできます。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture -->
+  <section class="architecture" id="architecture">
+    <h2 class="section-title fade-in">アーキテクチャ</h2>
+    <p class="section-sub fade-in">ブラウザアプリには実現できない構造的な優位性</p>
+    <div class="arch-grid">
+      <div class="arch-layer glass fade-in">
+        <div class="arch-label">フロントエンド</div>
+        <div class="arch-title">Vue 3 + TypeScript</div>
+        <div class="arch-desc">Vapor モード移行準備済み。CSS Containment、Frame Scheduler で描画最適化。Pinia による状態管理。</div>
+      </div>
+      <div class="arch-arrow fade-in">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+      </div>
+      <div class="arch-layer glass fade-in">
+        <div class="arch-label">Tauri v2 ブリッジ</div>
+        <div class="arch-title">Rust — 薄いラッパー</div>
+        <div class="arch-desc">グローバルホットキー、システムトレイ、OS キーチェーン、自動アップデート。WebView とプロセス分離でセキュリティを確保。</div>
+      </div>
+      <div class="arch-arrow fade-in">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+      </div>
+      <div class="arch-layer arch-core glass fade-in">
+        <div class="arch-label">コア</div>
+        <div class="arch-title">notecli — Rust ヘッドレスクライアント</div>
+        <div class="arch-desc">Misskey API + WebSocket ストリーミング + SQLite（FTS5）+ localhost HTTP API。Tauri なしでも単体動作する独立ライブラリ。</div>
+        <div class="arch-tags">
+          <span>reqwest</span>
+          <span>tokio</span>
+          <span>rusqlite</span>
+          <span>axum</span>
+        </div>
       </div>
     </div>
   </section>

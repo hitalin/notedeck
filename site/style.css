@@ -278,7 +278,7 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
   background:linear-gradient(135deg,var(--accent),var(--accent-dark));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
 }
-.hero .tagline{font-size:clamp(1.05rem,2.5vw,1.3rem);color:var(--text-muted);max-width:500px}
+.hero .tagline{font-size:clamp(1.05rem,2.5vw,1.3rem);color:var(--text-muted);max-width:540px}
 
 /* Buttons */
 .hero-buttons{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center}
@@ -331,20 +331,146 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
   transform:translateY(-3px);box-shadow:var(--shadow);
 }
 
-/* Section title */
-.section-title{text-align:center;font-size:1.75rem;font-weight:800;margin-bottom:2.5rem}
+/* Section common */
+.section-title{text-align:center;font-size:1.75rem;font-weight:800;margin-bottom:1rem}
+.section-sub{text-align:center;color:var(--text-muted);font-size:.95rem;margin-bottom:2.5rem}
 
-/* Features */
-.features{max-width:900px;margin:5rem auto;padding:0 1.5rem}
-.features-grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.25rem;
+/* ===== Pillars (Why NoteDeck) ===== */
+.pillars{max-width:1100px;margin:5rem auto;padding:0 1.5rem}
+.pillars .section-title{margin-bottom:2.5rem}
+.pillars-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;
 }
-.feature{padding:1.5rem}
-.feature h3{font-size:1.05rem;margin-bottom:.4rem;font-weight:700}
-.feature p{color:var(--text-muted);font-size:.9rem;line-height:1.7}
-.feature p a{font-weight:700}
+@media(max-width:800px){
+  .pillars-grid{grid-template-columns:1fr}
+}
+.pillar{padding:2rem 1.75rem;text-align:center}
+.pillar:hover{transform:translateY(-5px)}
+.pillar-icon{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:60px;height:60px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(134,179,0,0.15),rgba(74,179,0,0.1));
+  color:var(--accent);margin-bottom:1rem;
+}
+.pillar h3{font-size:1.2rem;font-weight:800;margin-bottom:.5rem}
+.pillar .pillar-lead{
+  font-size:1rem;font-weight:700;margin-bottom:.5rem;
+  color:var(--text);
+}
+.pillar p{color:var(--text-muted);font-size:.9rem;line-height:1.7}
 
-/* Download */
+/* ===== Comparison table ===== */
+.comparison{max-width:900px;margin:5rem auto;padding:0 1.5rem}
+.comparison .section-title{margin-bottom:.5rem}
+.comparison-table-wrapper{padding:1.5rem;overflow-x:auto}
+.comparison-table{
+  width:100%;border-collapse:collapse;font-size:.9rem;
+}
+.comparison-table th,.comparison-table td{
+  padding:.65rem 1rem;text-align:center;
+  border-bottom:1px solid var(--border);
+}
+.comparison-table thead th{
+  font-weight:700;color:var(--text-muted);font-size:.85rem;
+  padding-bottom:.75rem;
+}
+.comparison-table thead th.highlight{
+  color:var(--accent);font-size:.95rem;
+}
+.comparison-table .row-label{
+  text-align:left;font-weight:700;color:var(--text);white-space:nowrap;
+}
+.comparison-table td.highlight{
+  color:var(--accent);
+}
+.comparison-table tbody tr:last-child td{border-bottom:none}
+@media(max-width:640px){
+  .comparison-table{font-size:.8rem}
+  .comparison-table th,.comparison-table td{padding:.5rem .6rem}
+}
+
+/* ===== Features (detailed) ===== */
+.features{max-width:900px;margin:5rem auto;padding:0 1.5rem}
+.features .section-title{margin-bottom:3rem}
+
+.feature-section{
+  margin-bottom:3rem;
+  padding:2rem;
+  background:var(--surface);
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--border);border-radius:var(--radius);
+}
+.feature-section:last-child{margin-bottom:0}
+
+.feature-badge{
+  display:inline-block;
+  font-size:.75rem;font-weight:700;
+  color:var(--accent);
+  background:rgba(134,179,0,0.12);
+  padding:.2em .7em;border-radius:var(--radius-pill);
+  margin-bottom:.75rem;
+  letter-spacing:.03em;
+}
+.feature-text h3{
+  font-size:1.15rem;font-weight:800;margin-bottom:.6rem;
+}
+.feature-text p{
+  color:var(--text-muted);font-size:.9rem;line-height:1.8;margin-bottom:.75rem;
+}
+.feature-text p a{font-weight:700}
+
+.feature-list{
+  list-style:none;padding:0;margin:.5rem 0 0;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.4rem;
+}
+.feature-list li{
+  font-size:.85rem;color:var(--text-muted);
+  padding-left:1.3em;position:relative;
+}
+.feature-list li::before{
+  content:"";position:absolute;left:0;top:.55em;
+  width:8px;height:8px;border-radius:50%;
+  background:var(--accent);opacity:.6;
+}
+
+/* ===== Architecture ===== */
+.architecture{max-width:700px;margin:5rem auto;padding:0 1.5rem}
+
+.arch-grid{
+  display:flex;flex-direction:column;align-items:center;gap:0;
+}
+.arch-layer{
+  width:100%;padding:1.5rem 1.75rem;text-align:center;
+}
+.arch-layer:hover{transform:translateY(-3px)}
+.arch-core{
+  border:2px solid var(--accent);
+  background:rgba(134,179,0,0.06);
+}
+.arch-label{
+  font-size:.7rem;font-weight:700;
+  color:var(--accent);text-transform:uppercase;letter-spacing:.1em;
+  margin-bottom:.3rem;
+}
+.arch-title{font-size:1.05rem;font-weight:800;margin-bottom:.4rem}
+.arch-desc{color:var(--text-muted);font-size:.85rem;line-height:1.7}
+.arch-tags{
+  display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;
+  margin-top:.75rem;
+}
+.arch-tags span{
+  font-size:.7rem;font-weight:700;
+  color:var(--text-muted);
+  background:var(--surface);
+  border:1px solid var(--border);
+  padding:.15em .6em;border-radius:var(--radius-pill);
+}
+.arch-arrow{
+  display:flex;justify-content:center;
+  padding:.25rem 0;
+}
+
+/* ===== Download ===== */
 .download{max-width:700px;margin:0 auto 5rem;padding:0 1.5rem;text-align:center}
 .download .sub{color:var(--text-muted);margin-bottom:.75rem}
 .version-badge{display:inline-block;font-size:.85rem;color:var(--accent);border:1px solid var(--accent);border-radius:var(--radius-pill);padding:.15em .7em;margin-bottom:1.5rem;opacity:0;transition:opacity .3s var(--ease)}
@@ -399,6 +525,7 @@ footer a{color:var(--accent);font-weight:700}
 /* Responsive */
 @media(max-width:640px){
   .hero{padding-top:4rem}
-  .features-grid{grid-template-columns:1fr}
+  .pillars-grid{grid-template-columns:1fr}
   .platforms{grid-template-columns:repeat(2,1fr)}
+  .feature-list{grid-template-columns:1fr}
 }
