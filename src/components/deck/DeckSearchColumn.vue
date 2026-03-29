@@ -748,7 +748,7 @@ onUnmounted(() => {
 
         <template #append>
           <div v-if="isPreview && notes.length > 0" :class="$style.searchPreviewHint">
-            Press Enter to search server
+            Enterキーでサーバーを検索
           </div>
           <div v-else-if="isLoading && notes.length > 0" :class="$style.loadingMore">
             <LoadingSpinner />

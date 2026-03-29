@@ -101,7 +101,10 @@ let adapter: ServerAdapter | null = null
 onMounted(async () => {
   const account = accountsStore.accounts.find((a) => a.id === props.accountId)
   if (!account) {
-    error.value = new AppError('ACCOUNT_NOT_FOUND', 'Account not found')
+    error.value = new AppError(
+      'ACCOUNT_NOT_FOUND',
+      'アカウントが見つかりません',
+    )
     isLoading.value = false
     return
   }

@@ -311,7 +311,7 @@ async function handlePosted(editedNoteId?: string) {
           v-model="queryInput"
           :class="$style.lookupInput"
           type="text"
-          placeholder="URL or @user@host"
+          placeholder="URLまたは@ユーザー名@ホスト"
           @keydown="onKeydown"
         />
         <button

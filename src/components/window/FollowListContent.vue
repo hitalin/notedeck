@@ -6,6 +6,7 @@ import type {
   NormalizedUser,
   ServerAdapter,
 } from '@/adapters/types'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useNavigation } from '@/composables/useNavigation'
@@ -206,7 +207,7 @@ function navigateUser(userId: string) {
         </button>
       </div>
 
-      <div v-if="isLoading" :class="$style.stateMsg">読み込み中...</div>
+      <div v-if="isLoading" :class="$style.stateMsg"><LoadingSpinner /></div>
       <div v-else-if="users.length === 0" :class="$style.stateMsg">
         {{ activeTab === 'following' ? 'フォローしているユーザーはいません' : 'フォロワーはいません' }}
       </div>

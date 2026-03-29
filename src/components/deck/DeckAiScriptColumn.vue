@@ -295,7 +295,7 @@ onUnmounted(() => {
         class="_button"
         :class="[$style.headerRunBtn, { [$style.running]: running }]"
         :disabled="running"
-        title="Run (Ctrl+Enter)"
+        title="実行 (Ctrl+Enter)"
         @click.stop="run"
       >
         <i class="ti ti-player-play" />
@@ -371,7 +371,7 @@ onUnmounted(() => {
             v-if="!error && !output.length && !uiComponents.length"
             :class="$style.outputEmpty"
           >
-            Ctrl+Enter to run
+            Ctrl+Enterで実行
           </div>
         </div>
 
