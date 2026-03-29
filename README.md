@@ -24,7 +24,7 @@
 
 </div>
 
-<img width="1194" height="798" alt="スクリーンショット 2026-03-29 090439" src="https://github.com/user-attachments/assets/3624ffa4-7636-4770-9794-a3996715e6ca" />
+<img width="1196" height="789" alt="スクリーンショット 2026-03-29 101823" src="https://github.com/user-attachments/assets/618f4bba-498a-459e-bb58-40491ecbc950" />
 
 ## ダウンロード
 
