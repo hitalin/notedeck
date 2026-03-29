@@ -152,6 +152,8 @@ function openEditor(id: string) {
 </template>
 
 <style lang="scss" module>
+@use '@/styles/navMenu';
+
 .menuBackdrop {
   position: fixed;
   inset: 0;
@@ -304,26 +306,4 @@ function openEditor(id: string) {
   }
 }
 
-.menuEnter {
-  animation: menuIn 0.18s ease;
-}
-.menuLeave {
-  animation: menuOut 0.18s ease forwards;
-}
-
-@keyframes menuIn {
-  from { opacity: 0; transform: translateY(4px) scale(0.97); }
-}
-@keyframes menuOut {
-  to { opacity: 0; transform: translateY(4px) scale(0.97); }
-}
-
-@media (max-width: 500px) {
-  @keyframes menuIn {
-    from { opacity: 0; transform: translateY(8px) scale(0.97); }
-  }
-  @keyframes menuOut {
-    to { opacity: 0; transform: translateY(8px) scale(0.97); }
-  }
-}
 </style>

@@ -156,6 +156,8 @@ function modeIcon(key: string, active: boolean): string {
 </template>
 
 <style lang="scss" module>
+@use '@/styles/navMenu';
+
 .navAccountMenu {
   position: absolute;
   bottom: 100%;
@@ -245,12 +247,6 @@ function modeIcon(key: string, active: boolean): string {
   }
 }
 
-.menuEnter {
-  animation: menuIn 0.18s ease;
-}
-.menuLeave {
-  animation: menuOut 0.18s ease forwards;
-}
 .menuEnterRight {
   animation: menuInRight 0.18s ease;
 }
@@ -258,25 +254,10 @@ function modeIcon(key: string, active: boolean): string {
   animation: menuOutRight 0.18s ease forwards;
 }
 
-@keyframes menuIn {
-  from { opacity: 0; transform: translateY(4px) scale(0.97); }
-}
-@keyframes menuOut {
-  to { opacity: 0; transform: translateY(4px) scale(0.97); }
-}
 @keyframes menuInRight {
   from { opacity: 0; transform: translateX(-4px) scale(0.97); }
 }
 @keyframes menuOutRight {
   to { opacity: 0; transform: translateX(-4px) scale(0.97); }
-}
-
-@media (max-width: 500px) {
-  @keyframes menuIn {
-    from { opacity: 0; transform: translateY(8px) scale(0.97); }
-  }
-  @keyframes menuOut {
-    to { opacity: 0; transform: translateY(8px) scale(0.97); }
-  }
 }
 </style>
