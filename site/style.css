@@ -181,17 +181,6 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
 .pillar .pillar-lead{font-size:1rem;font-weight:700;margin-bottom:.5rem;color:var(--text)}
 .pillar p{color:var(--text-muted);font-size:.9rem;line-height:1.7}
 
-/* ===== Comparison table ===== */
-.comparison-table-wrapper{padding:1.5rem;overflow-x:auto}
-.comparison-table{width:100%;border-collapse:collapse;font-size:.9rem}
-.comparison-table th,.comparison-table td{padding:.65rem 1rem;text-align:center;border-bottom:1px solid var(--border)}
-.comparison-table thead th{font-weight:700;color:var(--text-muted);font-size:.85rem;padding-bottom:.75rem}
-.comparison-table thead th.highlight{color:var(--accent);font-size:.95rem}
-.comparison-table .row-label{text-align:left;font-weight:700;color:var(--text);white-space:nowrap}
-.comparison-table td.highlight{color:var(--accent)}
-.comparison-table tbody tr:last-child td{border-bottom:none}
-@media(max-width:640px){.comparison-table{font-size:.8rem}.comparison-table th,.comparison-table td{padding:.5rem .6rem}}
-
 /* ===== Guest CTA ===== */
 .guest-cta{display:flex;align-items:center;gap:1.5rem;padding:1.5rem 2rem}
 .guest-cta-icon{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(134,179,0,0.15),rgba(74,179,0,0.1));color:var(--accent)}
@@ -201,10 +190,11 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
 .guest-cta .btn{flex-shrink:0;white-space:nowrap}
 @media(max-width:640px){.guest-cta{flex-direction:column;text-align:center}.guest-cta .btn{align-self:center}}
 
+
 /* ===== Highlight rows (alternating left/right) ===== */
 .highlight-row{margin-bottom:3.5rem}
 .highlight-row:last-child{margin-bottom:0}
-.highlight-text{max-width:720px}
+.highlight-text{max-width:720px;padding:2rem;border-radius:var(--radius)}
 .highlight-row:nth-child(odd) .highlight-text{margin-right:auto}
 .highlight-row:nth-child(even) .highlight-text{margin-left:auto}
 .highlight-badge{display:inline-block;font-size:.75rem;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:.2em .7em;border-radius:var(--radius-pill);margin-bottom:.75rem;letter-spacing:.03em}
