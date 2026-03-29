@@ -225,7 +225,7 @@ function acceptCrossWindowDrop() {
       v-if="isCompact"
       class="_button"
       :class="$style.fab"
-      title="New Note"
+      title="新しいノート"
       @click="openCompose"
     >
       <i class="ti ti-pencil" />

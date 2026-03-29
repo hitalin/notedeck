@@ -2,6 +2,7 @@
 import { defineAsyncComponent, ref } from 'vue'
 import { MisskeyApi } from '@/adapters/misskey/api'
 import type { NormalizedNote } from '@/adapters/types'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import { invoke } from '@/utils/tauriInvoke'
 
@@ -325,11 +326,11 @@ async function handlePosted(editedNoteId?: string) {
     </template>
 
     <div v-if="!account" :class="$style.columnEmpty">
-      Account not found
+      アカウントが見つかりません
     </div>
 
-    <div v-else-if="isLoading" :class="$style.columnEmpty">
-      照会中...
+    <div v-else-if="isLoading" :class="$style.columnLoading">
+      <LoadingSpinner />
     </div>
 
     <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">

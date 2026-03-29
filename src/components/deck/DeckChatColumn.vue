@@ -681,7 +681,7 @@ onBeforeUnmount(() => {
     </template>
 
     <div v-if="!isCrossAccount && !account" :class="$style.columnEmpty">
-      Account not found
+      アカウントが見つかりません
     </div>
 
     <div v-else-if="error && viewMode === 'history'" :class="[$style.columnEmpty, $style.columnError]">
@@ -701,7 +701,7 @@ onBeforeUnmount(() => {
     <!-- History View: Cross-account -->
     <div v-if="isCrossAccount && viewMode === 'history'" :class="$style.chatBody">
       <div v-if="historyEntries.length === 0 && !isLoading" :class="$style.columnEmpty">
-        No conversations
+        会話はありません
       </div>
 
       <div v-else :class="$style.historyList">
@@ -735,7 +735,7 @@ onBeforeUnmount(() => {
     <!-- History View: Per-account -->
     <div v-else-if="!isCrossAccount && viewMode === 'history'" :class="$style.chatBody">
       <div v-if="chatHistory.length === 0 && !isLoading" :class="$style.columnEmpty">
-        No conversations
+        会話はありません
       </div>
 
       <div v-else :class="$style.historyList">

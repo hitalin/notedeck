@@ -142,7 +142,7 @@ onUnmounted(() => {
     </template>
 
     <div v-if="!account" :class="$style.columnEmpty">
-      Account not found
+      アカウントが見つかりません
     </div>
 
     <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">

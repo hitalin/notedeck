@@ -67,7 +67,7 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
     <button
       class="_button"
       :class="$style.addBtn"
-      title="Add column"
+      title="カラムを追加"
       @click="emit('toggle-add-menu')"
     >
       <i class="ti ti-plus" />

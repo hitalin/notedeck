@@ -499,7 +499,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
               viewBox="0 0 24 24"
               width="14"
               height="14"
-              :title="mode.label + ' Mode'"
+              :title="mode.label + 'モード'"
             >
               <path :d="mode.icon" fill="currentColor" />
             </svg>
@@ -507,7 +507,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
               v-if="effectiveNote.localOnly"
               class="ti ti-rocket-off"
               :class="$style.visibilityIcon"
-              title="Local only"
+              title="ローカルのみ"
             />
             <svg
               v-if="effectiveNote.visibility !== 'public'"

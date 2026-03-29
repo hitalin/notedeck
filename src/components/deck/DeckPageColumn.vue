@@ -20,6 +20,7 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import AiScriptToast from '@/components/common/AiScriptToast.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import { invoke } from '@/utils/tauriInvoke'
@@ -394,10 +395,10 @@ const pageEditUrl = computed(() => {
     </template>
 
     <template #header-meta>
-      <button v-if="mode !== 'list'" class="_button" :class="$style.headerRefresh" title="Back" @click.stop="goBack">
+      <button v-if="mode !== 'list'" class="_button" :class="$style.headerRefresh" title="戻る" @click.stop="goBack">
         <i class="ti ti-arrow-left" />
       </button>
-      <button v-else class="_button" :class="$style.headerRefresh" title="Refresh" :disabled="listLoading" @click.stop="fetchList()">
+      <button v-else class="_button" :class="$style.headerRefresh" title="更新" :disabled="listLoading" @click.stop="fetchList()">
         <i class="ti ti-refresh" :class="{ 'nd-spin': listLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
@@ -421,7 +422,7 @@ const pageEditUrl = computed(() => {
       </div>
 
       <div :class="$style.pageList">
-        <div v-if="listLoading" :class="$style.columnEmpty">読み込み中...</div>
+        <div v-if="listLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
         <div v-else-if="listError" :class="[$style.columnEmpty, $style.columnError]">{{ listError }}</div>
         <div v-else-if="listItems.length === 0" :class="$style.columnEmpty">ページが見つかりません</div>
         <button
@@ -447,7 +448,7 @@ const pageEditUrl = computed(() => {
     <!-- View mode -->
     <template v-else>
       <div :class="$style.pageViewScroll">
-        <div v-if="fetching" :class="$style.columnEmpty">Loading...</div>
+        <div v-if="fetching" :class="$style.columnLoading"><LoadingSpinner /></div>
         <div v-else-if="fetchError" :class="[$style.columnEmpty, $style.columnError]">{{ fetchError }}</div>
         <template v-else-if="page">
           <!-- Page header -->

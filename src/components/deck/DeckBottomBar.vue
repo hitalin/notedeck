@@ -75,7 +75,7 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
       <button
         class="_button"
         :class="$style.tab"
-        title="Add column"
+        title="カラムを追加"
         @click="emit('toggle-add-menu')"
       >
         <i class="ti ti-plus" />
@@ -87,7 +87,7 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
         <button
           class="_button"
           :class="[$style.actionBtn, $style.settingsBtn]"
-          title="Deck settings"
+          title="デッキ設定"
           @pointerdown.stop
           @click.stop="emit('update:show-settings-menu', !showSettingsMenu)"
         >

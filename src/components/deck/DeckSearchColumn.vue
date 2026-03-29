@@ -701,7 +701,7 @@ onUnmounted(() => {
     </template>
 
     <div v-if="!account && !isCrossAccount" :class="$style.columnEmpty">
-      Account not found
+      アカウントが見つかりません
     </div>
 
     <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
@@ -714,11 +714,11 @@ onUnmounted(() => {
       </div>
 
       <div v-else-if="!searchQuery.trim() && notes.length === 0" :class="$style.columnEmpty">
-        Enter a search query
+        検索クエリを入力
       </div>
 
       <div v-else-if="searchQuery.trim() && !isLoading && !isPreview && notes.length === 0" :class="$style.columnEmpty">
-        No results found
+        結果が見つかりません
       </div>
 
       <NoteScroller

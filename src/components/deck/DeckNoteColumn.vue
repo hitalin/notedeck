@@ -120,7 +120,7 @@ defineExpose({
     </template>
 
     <div v-if="!account" :class="$style.columnEmpty">
-      Account not found
+      アカウントが見つかりません
     </div>
 
     <div

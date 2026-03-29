@@ -79,7 +79,7 @@ onMounted(() => {
     </template>
 
     <div v-if="!account" :class="$style.columnEmpty">
-      Account not found
+      アカウントが見つかりません
     </div>
 
     <div v-else-if="ads.length === 0 && !isLoading" :class="$style.columnEmpty">
