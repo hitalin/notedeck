@@ -20,9 +20,9 @@ import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
-import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabSlide } from '@/composables/useTabSlide'
+import { useToast } from '@/stores/toast'
 import { invoke } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
@@ -128,7 +128,7 @@ function stringifyUiProps(props: Record<string, unknown>): string {
   }
   return JSON.stringify(cleaned, null, 2)
 }
-const toastRef = ref<InstanceType<typeof AiScriptToast> | null>(null)
+const { show: showToast } = useToast()
 const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
 let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
 
@@ -194,7 +194,7 @@ async function run() {
         dialogRef.value?.showDialog(title, text, type) ?? Promise.resolve(),
       onConfirm: (title, text) =>
         dialogRef.value?.showConfirm(title, text) ?? Promise.resolve(false),
-      onToast: (text, type) => toastRef.value?.show(text, type),
+      onToast: (text, type) => showToast(text, type),
     },
     {
       THIS_ID: props.column.id,
@@ -302,7 +302,6 @@ onUnmounted(() => {
       </button>
     </template>
 
-    <AiScriptToast ref="toastRef" />
     <AiScriptDialog ref="dialogRef" />
     <div ref="bodyRef" :class="$style.aisColBody" @keydown="onKeydown">
       <div

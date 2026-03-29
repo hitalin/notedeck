@@ -12,7 +12,7 @@ import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
-import AiScriptToast from '@/components/common/AiScriptToast.vue'
+import { useToast } from '@/stores/toast'
 import { invoke } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
@@ -46,7 +46,7 @@ const error = ref<string | null>(null)
 const running = ref(false)
 const showEditor = ref(!code.value)
 const interpreter = ref<Interpreter | null>(null)
-const toastRef = ref<InstanceType<typeof AiScriptToast> | null>(null)
+const { show: showToast } = useToast()
 const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
 let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
 
@@ -107,7 +107,7 @@ async function run() {
         dialogRef.value?.showDialog(title, text, type) ?? Promise.resolve(),
       onConfirm: (title, text) =>
         dialogRef.value?.showConfirm(title, text) ?? Promise.resolve(false),
-      onToast: (text, type) => toastRef.value?.show(text, type),
+      onToast: (text, type) => showToast(text, type),
     },
     {
       THIS_ID: props.widget.id,
@@ -171,7 +171,6 @@ onMounted(() => {
 
 <template>
   <div :class="$style.widgetApp">
-    <AiScriptToast ref="toastRef" />
     <AiScriptDialog ref="dialogRef" />
     <div :class="$style.appToolbar">
       <button :class="$style.toolBtn" @click="showEditor = !showEditor">

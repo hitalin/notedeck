@@ -19,10 +19,10 @@ import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
-import AiScriptToast from '@/components/common/AiScriptToast.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { getAccountAvatarUrl } from '@/stores/accounts'
+import { useToast } from '@/stores/toast'
 import { invoke } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
@@ -197,7 +197,7 @@ const uiComponents = ref<UiComponent[]>([])
 const consoleOutput = ref<{ text: string; isError: boolean }[]>([])
 const runError = ref<string | null>(null)
 const running = ref(false)
-const toastRef = ref<InstanceType<typeof AiScriptToast> | null>(null)
+const { show: showToast } = useToast()
 const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
 const interpreter = ref<Interpreter | null>(null)
 let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
@@ -287,7 +287,7 @@ async function executePage(detail: PageDetail) {
         dialogRef.value?.showDialog(title, text, type) ?? Promise.resolve(),
       onConfirm: (title, text) =>
         dialogRef.value?.showConfirm(title, text) ?? Promise.resolve(false),
-      onToast: (text, type) => toastRef.value?.show(text, type),
+      onToast: (text, type) => showToast(text, type),
     },
     {
       THIS_ID: detail.id,
@@ -388,7 +388,6 @@ const pageEditUrl = computed(() => {
 
 <template>
   <DeckColumn :column-id="column.id" :title="column.name ?? 'ページ'" :theme-vars="columnThemeVars" :web-ui-url="pageWebUrl">
-    <AiScriptToast ref="toastRef" />
     <AiScriptDialog ref="dialogRef" />
     <template #header-icon>
       <i class="ti ti-note" :class="$style.tlHeaderIcon" />

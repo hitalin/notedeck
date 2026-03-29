@@ -41,7 +41,7 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
     () => import('@/components/deck/DeckMentionsColumn.vue'),
   ),
   specified: defineAsyncComponent(
-    () => import('@/components/deck/DeckSpecifiedColumn.vue'),
+    () => import('@/components/deck/DeckMentionsColumn.vue'),
   ),
   chat: defineAsyncComponent(
     () => import('@/components/deck/DeckChatColumn.vue'),
