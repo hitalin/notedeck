@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import AvatarStack from '@/components/common/AvatarStack.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useNavigation } from '@/composables/useNavigation'
@@ -444,7 +445,7 @@ function close() {
 
       <!-- Step 3a: Item selection (list/antenna/channel/clip) -->
       <template v-else-if="selectConfig">
-        <div v-if="selectLoading" :class="$style.addPopupEmpty">読み込み中...</div>
+        <div v-if="selectLoading" :class="$style.addPopupLoading"><LoadingSpinner /></div>
         <div v-else-if="selectItems.length === 0" :class="$style.addPopupEmpty">{{ selectConfig.label }}が見つかりません</div>
         <button
           v-for="item in selectItems"
@@ -589,6 +590,13 @@ function close() {
   a {
     color: var(--nd-accent);
   }
+}
+
+.addPopupLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
 }
 
 .addUserSearch {

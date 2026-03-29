@@ -326,7 +326,7 @@ fetchGallery()
               </div>
             </button>
           </div>
-          <div v-if="loading" :class="$style.columnEmpty">読み込み中...</div>
+          <div v-if="loading" :class="$style.columnLoading"><LoadingSpinner /></div>
         </template>
       </div>
     </template>

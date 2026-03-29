@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ApiReference } from '@scalar/api-reference'
-import { computed, onMounted, ref } from 'vue'
 import '@scalar/api-reference/style.css'
+import { computed, onMounted, ref } from 'vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
@@ -49,7 +50,7 @@ const config = computed(() => ({
 
     <div :class="$style.docsContainer">
       <div v-if="error" :class="$style.docsError">{{ error }}</div>
-      <div v-else-if="!spec" :class="$style.docsLoading">読み込み中...</div>
+      <div v-else-if="!spec" :class="$style.docsLoading"><LoadingSpinner /></div>
       <ApiReference v-else :key="isDark ? 'dark' : 'light'" :configuration="config" />
     </div>
   </DeckColumn>
@@ -73,7 +74,5 @@ const config = computed(() => ({
   align-items: center;
   justify-content: center;
   height: 100%;
-  opacity: 0.4;
-  font-size: 0.85em;
 }
 </style>

@@ -804,7 +804,7 @@ onUnmounted(() => {
 
     <template #header-meta>
       <div v-if="isCrossAccount" :class="$style.headerAccount">
-        <AvatarStack :size="18" />
+        <AvatarStack :size="20" />
       </div>
       <div v-else-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
@@ -1369,28 +1369,6 @@ onUnmounted(() => {
   :deep(.avatar) {
     display: none;
   }
-}
-
-.columnEmpty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  font-size: 0.85em;
-}
-
-.columnError {
-  color: var(--nd-love);
-  opacity: 1;
-}
-
-.loadingMore {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
 }
 
 .followRequestActions {

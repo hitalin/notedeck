@@ -668,7 +668,7 @@ onBeforeUnmount(() => {
 
     <template #header-meta>
       <div v-if="isCrossAccount" :class="$style.headerAccount">
-        <AvatarStack :size="18" />
+        <AvatarStack :size="20" />
       </div>
       <div v-else-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
@@ -856,6 +856,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use './column-common.module.scss';
+
 .tlHeaderIcon {
   flex-shrink: 0;
   opacity: 0.7;
@@ -1189,28 +1191,6 @@ onBeforeUnmount(() => {
   overflow: auto;
   border-top: 1px solid var(--nd-divider, rgba(255, 255, 255, 0.05));
   background: var(--nd-panel);
-}
-
-.columnEmpty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  font-size: 0.85em;
-}
-
-.columnError {
-  color: var(--nd-love);
-  opacity: 1;
-}
-
-.loadingMore {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
 }
 
 /* Empty placeholder classes for dynamic binding */
