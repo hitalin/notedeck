@@ -38,13 +38,7 @@ const { visible, leaving } = useVaporTransition(show, {
 const backdropClass = computed(() => [
   $style.popupBackdrop,
   isCompact.value && $style.mobile,
-  leaving.value
-    ? isCompact.value
-      ? $style.sheetLeave
-      : $style.popupLeave
-    : isCompact.value
-      ? $style.sheetEnter
-      : $style.popupEnter,
+  isCompact.value && (leaving.value ? $style.sheetLeave : $style.sheetEnter),
 ])
 
 const contentClass = computed(() => [
@@ -105,8 +99,6 @@ defineExpose({ open })
 </template>
 
 <style lang="scss" module>
-@use '@/styles/popup';
-
 .popupBackdrop {
   position: fixed;
   inset: 0;
@@ -140,12 +132,6 @@ defineExpose({ open })
     padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
   }
 }
-
-/* Desktop popup backdrop */
-.popupEnter { animation: popupBdIn var(--nd-duration-base) var(--nd-ease-decel); }
-.popupLeave { animation: popupBdOut var(--nd-duration-base) ease-out forwards; }
-@keyframes popupBdIn { from { opacity: 0; } }
-@keyframes popupBdOut { to { opacity: 0; } }
 
 /* Desktop popup content — scale + fade */
 .popupContentEnter { animation: reactionPickerIn 0.2s var(--nd-ease-spring); }
