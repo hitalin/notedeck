@@ -182,6 +182,21 @@
     </div>
   </section>
 
+  <!-- Guest mode CTA -->
+  <section class="guest-cta fade-in">
+    <div class="guest-cta-inner glass">
+      <div class="guest-cta-icon">
+        <!-- Eye icon -->
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </div>
+      <div class="guest-cta-text">
+        <h3>まずは触ってみる？</h3>
+        <p>ゲストモードなら、アカウント登録なしで公開タイムラインをすぐ閲覧できます。気に入ったらログインするだけ。</p>
+      </div>
+      <a href="#download" class="btn btn-primary">ダウンロード</a>
+    </div>
+  </section>
+
   <!-- Features -->
   <section class="features" id="features">
     <h2 class="section-title fade-in">機能</h2>
@@ -196,6 +211,8 @@
           <li>16 種類以上のカラムタイプ</li>
           <li>クロスアカウント通知・検索の統合表示</li>
           <li>プロファイルでレイアウトを切り替え</li>
+          <li>カラムをポップアウトして別ウィンドウ化</li>
+          <li>PiP（常時手前）表示でマルチモニター活用</li>
           <li>ナビバーのカスタマイズ（VSCode 式）</li>
         </ul>
       </div>
@@ -225,6 +242,8 @@
         <ul class="feature-list">
           <li>メモリ約 40MB — Electron 製の 1/5</li>
           <li>起動 1 秒未満（DB・HTTP・ストリーム並列初期化）</li>
+          <li>3 段階画像キャッシュ（メモリ → ディスク → ネットワーク）</li>
+          <li>WebP 自動変換でデータ通信量を削減</li>
           <li>Frame Scheduler で Layout Thrashing を回避</li>
           <li>省メモリ〜高パフォーマンスのプリセット切り替え</li>
         </ul>
@@ -271,17 +290,64 @@
           <li>30 以上のビルトインコマンド</li>
           <li>コマンドパレットで即座にアクセス</li>
           <li>全キーバインドをカスタマイズ可能</li>
-          <li>ボスキーでウィンドウを即座に隠す</li>
+          <li>Boss Key（Ctrl+Shift+B）で即座にウィンドウを隠す</li>
+          <li>Quick Note（Ctrl+Alt+N）でどこからでも即投稿</li>
         </ul>
       </div>
     </div>
 
-    <!-- Feature: Fork support -->
+    <!-- Feature: Rich Preview -->
     <div class="feature-section fade-in">
       <div class="feature-text">
-        <div class="feature-badge">フォーク対応</div>
-        <h3>Misskey だけじゃない</h3>
-        <p>Misskey 本家に加え、Firefish・CherryPick・Sharkey・Iceshrimp など主要フォークに対応。サーバー種別は自動検出され、フォーク固有の API 差分はアダプター層が吸収します。サーバー広告もちゃんと表示 — エコシステムとの共生を大切にしています。</p>
+        <div class="feature-badge">リッチプレビュー</div>
+        <h3>リンクを貼るだけで、美しく展開</h3>
+        <p>YouTube・Spotify・ニコニコ動画・Pixiv・Amazon など 16 種の専用パーサーを内蔵。URL を貼るだけでサムネイル・タイトル・再生プレイヤーをリッチに展開します。MFM（Misskey Flavored Markdown）も完全対応 — ボールド・イタリック・コードブロックはもちろん、KaTeX 数式レンダリングまでネイティブ実装。</p>
+        <ul class="feature-list">
+          <li>16 種の OGP 専用パーサー（YouTube / Spotify / ニコ動 / Pixiv 等）</li>
+          <li>MFM 全構文に対応（関数記法・引用・中央揃え等）</li>
+          <li>KaTeX 数式レンダリング（学術・技術系にも）</li>
+          <li>Shiki によるコードブロック構文ハイライト</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Feature: Customize -->
+    <div class="feature-section fade-in">
+      <div class="feature-text">
+        <div class="feature-badge">カスタマイズ</div>
+        <h3>見た目も操作も、自分好みに</h3>
+        <p>Misskey テーマとの互換性を維持しつつ、デッキ背景画像（壁紙）も設定可能。プルトゥリフレッシュ、スワイプでのタブ切り替え、ハプティックフィードバックなど、触り心地まで調整。リアクション・リプライ・フォローはネイティブ OS 通知でお知らせ。</p>
+        <ul class="feature-list">
+          <li>Misskey テーマ互換 + デッキ壁紙</li>
+          <li>ダーク / ライト / OS 追従の自動切り替え</li>
+          <li>プルトゥリフレッシュ &amp; スワイプジェスチャ</li>
+          <li>ネイティブ OS 通知（バックグラウンド対応）</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Feature: Fork & Ecosystem -->
+    <div class="feature-section fade-in">
+      <div class="feature-text">
+        <div class="feature-badge">フォーク対応 &amp; エコシステム共生</div>
+        <h3>Misskey だけじゃない。サーバーも大切にする</h3>
+        <p>Misskey 本家に加え、Firefish・CherryPick・Sharkey・Iceshrimp など主要フォークに対応。サーバー種別は自動検出され、フォーク固有の API 差分はアダプター層が吸収します。</p>
+        <p>そして、NoteDeck は<strong>サーバー広告を正しく表示する</strong>数少ないサードパーティクライアントです。表示頻度もサーバー設定に準拠。「ただ乗り」ではなく、エコシステム全体の持続可能性に貢献します。</p>
+      </div>
+    </div>
+
+    <!-- Feature: Data ownership -->
+    <div class="feature-section fade-in">
+      <div class="feature-text">
+        <div class="feature-badge">データはあなたのもの</div>
+        <h3>サーバーが消えても、投稿は残る</h3>
+        <p>NoteDeck に蓄積されたノートはローカル DB に永続化。サーバーが閉鎖されても、あなたの投稿・お気に入り・リアクション履歴は手元に残ります。DB ファイルひとつコピーするだけで完全バックアップ。設定やレイアウトも JSON エクスポートで丸ごと移行できます。</p>
+        <ul class="feature-list">
+          <li>notecli.db のコピーで完全バックアップ</li>
+          <li>設定 JSON エクスポート / インポート</li>
+          <li>ログアウト後もデータ保持を選択可能</li>
+          <li>Misskey 最新の Chat API にも対応</li>
+        </ul>
       </div>
     </div>
 

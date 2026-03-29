@@ -389,6 +389,28 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
   .comparison-table th,.comparison-table td{padding:.5rem .6rem}
 }
 
+/* ===== Guest CTA ===== */
+.guest-cta{max-width:900px;margin:3rem auto;padding:0 1.5rem}
+.guest-cta-inner{
+  display:flex;align-items:center;gap:1.5rem;
+  padding:1.5rem 2rem;
+}
+.guest-cta-icon{
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  width:52px;height:52px;border-radius:14px;
+  background:linear-gradient(135deg,rgba(134,179,0,0.15),rgba(74,179,0,0.1));
+  color:var(--accent);
+}
+.guest-cta-text{flex:1}
+.guest-cta-text h3{font-size:1.05rem;font-weight:800;margin-bottom:.2rem}
+.guest-cta-text p{color:var(--text-muted);font-size:.88rem;line-height:1.6;margin:0}
+.guest-cta .btn{flex-shrink:0;white-space:nowrap}
+@media(max-width:640px){
+  .guest-cta-inner{flex-direction:column;text-align:center}
+  .guest-cta .btn{align-self:center}
+}
+
 /* ===== Features (detailed) ===== */
 .features{max-width:900px;margin:5rem auto;padding:0 1.5rem}
 .features .section-title{margin-bottom:3rem}
