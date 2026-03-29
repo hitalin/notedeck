@@ -8,6 +8,7 @@ import type {
 import MkAd from '@/components/common/MkAd.vue'
 import { useAds } from '@/composables/useAds'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
+import * as snapshotStore from '@/composables/useSnapshotStore'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabIndicator } from '@/composables/useTabIndicator'
 import { useTabSlide } from '@/composables/useTabSlide'
@@ -251,23 +252,18 @@ const { indicatorStyle: tabIndicatorStyle } = useTabIndicator(
 
 // --- TL switching ---
 
-interface TlSnapshot {
-  notes: NormalizedNote[]
-  scrollTop: number
-}
-const SNAPSHOT_MAX_NOTES = 30
-const tlSnapshots = new Map<TimelineType, TlSnapshot>()
-
 async function switchTl(type: TimelineType) {
   if (type === tlType.value) return
 
-  // Save current tab snapshot (limit stored notes to reduce memory)
+  // Save current tab snapshot via unified SnapshotStore
   const col = noteColumnRef.value
   if (col) {
-    tlSnapshots.set(tlType.value, {
-      notes: (col.notes ?? []).slice(0, SNAPSHOT_MAX_NOTES),
-      scrollTop: (col.scroller as HTMLElement | undefined)?.scrollTop ?? 0,
-    })
+    snapshotStore.save(
+      props.column.id,
+      tlType.value,
+      (col.notes ?? []).slice(),
+      (col.scroller as HTMLElement | undefined)?.scrollTop ?? 0,
+    )
   }
 
   tlType.value = type
@@ -275,7 +271,7 @@ async function switchTl(type: TimelineType) {
   refreshFilterKeys()
 
   // Restore snapshot if available, otherwise full reconnect
-  const snapshot = tlSnapshots.get(type)
+  const snapshot = snapshotStore.restore(props.column.id, type)
   if (snapshot && snapshot.notes.length > 0) {
     await col?.switchWithSnapshot(snapshot.notes, snapshot.scrollTop)
   } else {

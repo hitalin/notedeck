@@ -52,9 +52,21 @@ export function insertIntoSorted(
   batch: NormalizedNote[],
 ): NormalizedNote[] {
   if (batch.length === 0) return sorted
-  if (sorted.length === 0) return sortByCreatedAtDesc([...batch])
+  if (sorted.length === 0) {
+    if (batch.length <= 1) return batch
+    return sortByCreatedAtDesc([...batch])
+  }
   // Fast path: single-element batch (most common for streaming) needs no copy/sort
   if (batch.length === 1) return mergeSortedNotes(batch, sorted)
-  const sortedBatch = sortByCreatedAtDesc([...batch])
-  return mergeSortedNotes(sortedBatch, sorted)
+  // Skip copy+sort if batch is already in descending order
+  if (isDescending(batch)) return mergeSortedNotes(batch, sorted)
+  return mergeSortedNotes(sortByCreatedAtDesc([...batch]), sorted)
+}
+
+function isDescending(notes: NormalizedNote[]): boolean {
+  for (let i = 1; i < notes.length; i++) {
+    // biome-ignore lint/style/noNonNullAssertion: bounded loop
+    if (notes[i - 1]!.createdAt < notes[i]!.createdAt) return false
+  }
+  return true
 }

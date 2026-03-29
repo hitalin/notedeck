@@ -39,7 +39,7 @@ const {
   error,
   notes,
   focusedNoteId,
-  pendingNotes,
+  pendingCount,
   animatingIds,
   postForm,
   handlers,
@@ -147,13 +147,10 @@ defineExpose({
         </div>
       </div>
 
-      <div v-if="isLoggedOut && account && !isGuestAccount(account)" :class="$style.loggedOutBanner">
-        <i class="ti ti-logout" />ログアウト中
-      </div>
-      <div v-else-if="(isOffline || offlineModeStore.isOfflineMode) && !isLoggedOut" :class="$style.offlineBanner">
+      <div v-if="isOffline && !offlineModeStore.isOfflineMode && !isLoggedOut" :class="$style.offlineBanner">
         <i class="ti ti-cloud-off" />オフライン
       </div>
-      <div v-else-if="isPollingMode" :class="$style.pollingBanner">
+      <div v-else-if="isPollingMode && !isLoggedOut" :class="$style.pollingBanner">
         <i class="ti ti-bolt-off" />ポーリング
       </div>
 
@@ -166,12 +163,12 @@ defineExpose({
 
       <template v-if="!(isLoading && notes.length === 0)">
         <button
-          v-if="pendingNotes.length > 0"
+          v-if="pendingCount > 0"
           :class="$style.newNotesBanner"
           class="_button"
           @click="scrollToTop()"
         >
-          <i class="ti ti-arrow-up" />{{ pendingNotes.length
+          <i class="ti ti-arrow-up" />{{ pendingCount
           }}件の新しいノート
         </button>
 

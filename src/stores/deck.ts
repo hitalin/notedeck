@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, nextTick, ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
+import * as snapshotStore from '@/composables/useSnapshotStore'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useDeckWallpaperStore } from '@/stores/deckWallpaper'
@@ -235,6 +236,7 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   function removeColumn(id: string) {
+    snapshotStore.evictColumn(id)
     profileStore.mutateProfile((p) => {
       p.columns = p.columns.filter((c) => c.id !== id)
       p.layout = p.layout

@@ -6,6 +6,7 @@ import type {
 } from '@/adapters/types'
 import { useNoteStore } from '@/stores/notes'
 import { usePerformanceStore } from '@/stores/performance'
+import { insertIntoSorted } from '@/utils/sortNotes'
 import { invoke } from '@/utils/tauriInvoke'
 
 /** @deprecated Use usePerformanceStore().get('noteListMax') instead. Kept for test compatibility. */
@@ -68,21 +69,15 @@ export function useNoteList(options: UseNoteListOptions) {
   }
 
   /**
-   * Update notes without changing list structure.
-   * If the new notes have the same IDs in the same order, only update
-   * note content in the store (avoids list re-render).
-   * Returns true if a lightweight update was performed.
+   * Incrementally merge fetched notes into the current list.
+   * - Notes already displayed are updated in-place (no list re-render).
+   * - Genuinely new notes are inserted in sorted order.
    */
-  function mergeIfSameList(newNotes: NormalizedNote[]): boolean {
-    const currentIds = orderedIds.value
-    if (
-      currentIds.length === newNotes.length &&
-      currentIds.every((id, i) => id === newNotes[i]?.id)
-    ) {
-      noteStore.put(newNotes)
-      return true
-    }
-    return false
+  function mergeUpdate(newNotes: NormalizedNote[]): void {
+    const existing = newNotes.filter((n) => noteIds.has(n.id))
+    const brandNew = newNotes.filter((n) => !noteIds.has(n.id))
+    if (existing.length > 0) noteStore.put(existing)
+    if (brandNew.length > 0) setNotes(insertIntoSorted(notes.value, brandNew))
   }
 
   function onNoteUpdate(event: NoteUpdateEvent) {
@@ -137,7 +132,7 @@ export function useNoteList(options: UseNoteListOptions) {
     notes,
     noteIds,
     setNotes,
-    mergeIfSameList,
+    mergeUpdate,
     setOnNotesChanged,
     onNoteUpdate,
     handlePosted,

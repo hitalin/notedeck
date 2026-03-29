@@ -272,9 +272,6 @@ fetchGallery()
     <!-- Grid view -->
     <template v-else>
       <div :class="$style.galleryGridScroll" @scroll.passive="onScroll">
-        <div v-if="isLoggedOut" :class="$style.loggedOutBanner">
-          <i class="ti ti-logout" />ログアウト中
-        </div>
         <div v-if="loading && posts.length === 0 && !isLoggedOut" :class="$style.columnLoading"><LoadingSpinner /></div>
         <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
         <div v-else-if="posts.length === 0" :class="$style.columnEmpty">

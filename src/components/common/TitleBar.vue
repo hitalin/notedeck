@@ -131,10 +131,10 @@ async function onPipClick() {
       <img src="/favicon.svg" alt="" :class="$style.titlebarIcon" draggable="false" data-tauri-drag-region />
     </div>
     <div :class="$style.titlebarCenter" data-tauri-drag-region>
-      <!-- Open: inline command palette -->
-      <CommandPalette v-if="commandStore.isOpen" inline />
-      <!-- Closed: search bar button -->
-      <button v-else :class="$style.titlebarSearchBar" @click="commandStore.openWithInput('>')">
+      <!-- Open: command palette input replaces the search bar -->
+      <CommandPalette v-if="commandStore.isOpen" />
+      <!-- Closed: URI display / search trigger -->
+      <button v-else :class="$style.titlebarSearchBar" @click="commandStore.open()">
         <i :class="[$style.titlebarSearchIcon, 'ti', 'ti-search']" />
         <span :class="[$style.titlebarSearchText, { [$style.hasUri]: deckStore.activeColumnUri }]">{{ titleBarText }}</span>
         <kbd :class="$style.titlebarSearchKbd">Ctrl+K</kbd>

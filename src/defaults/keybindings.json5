@@ -37,11 +37,11 @@
   },
   {
     commandId: "add-column",
-    shortcuts: [],
+    shortcuts: [{ key: "a", ctrl: true, shift: true, scope: "global" }],
   },
   {
     commandId: "toggle-sidebar",
-    shortcuts: [],
+    shortcuts: [{ key: "\\", ctrl: true, scope: "global" }],
   },
   {
     commandId: "boss-key",
@@ -62,27 +62,27 @@
   },
   {
     commandId: "keybinds",
-    shortcuts: [],
+    shortcuts: [{ key: "k", ctrl: true, shift: true, scope: "global" }],
   },
   {
     commandId: "css-editor",
-    shortcuts: [],
+    shortcuts: [{ key: "u", ctrl: true, shift: true, scope: "global" }],
   },
   {
     commandId: "plugins",
-    shortcuts: [],
+    shortcuts: [{ key: "x", ctrl: true, shift: true, scope: "global" }],
   },
   {
     commandId: "login",
-    shortcuts: [],
+    shortcuts: [{ key: "l", ctrl: true, shift: true, alt: true, scope: "global" }],
   },
   {
     commandId: "chat",
-    shortcuts: [],
+    shortcuts: [{ key: "c", ctrl: true, shift: true, scope: "global" }],
   },
   {
     commandId: "ai",
-    shortcuts: [],
+    shortcuts: [{ key: "i", ctrl: true, shift: true, scope: "global" }],
   },
   {
     commandId: "close-all-floating-windows",
@@ -90,7 +90,7 @@
   },
   {
     commandId: "toggle-column-mute",
-    shortcuts: [],
+    shortcuts: [{ key: "m", scope: "body" }],
   },
 
   // ── Note navigation ──
@@ -135,11 +135,11 @@
   },
   {
     commandId: "note-edit",
-    shortcuts: [],
+    shortcuts: [{ key: "e", shift: true, scope: "body" }],
   },
   {
     commandId: "note-copy-link",
-    shortcuts: [],
+    shortcuts: [{ key: "y", scope: "body" }],
   },
   {
     commandId: "note-copy-content",
@@ -281,10 +281,44 @@
   },
   {
     commandId: "close-all-windows",
-    shortcuts: [],
+    shortcuts: [{ key: "w", ctrl: true, shift: true, scope: "global" }],
   },
   {
     commandId: "pip-window",
-    shortcuts: [],
+    shortcuts: [{ key: "p", ctrl: true, shift: true, scope: "global" }],
+  },
+
+  // ── Additional commands ──
+  {
+    commandId: "toggle-offline-mode",
+    shortcuts: [{ key: "o", ctrl: true, shift: true, alt: true, scope: "global" }],
+  },
+  {
+    commandId: "toggle-realtime-mode",
+    shortcuts: [{ key: "r", ctrl: true, shift: true, scope: "global" }],
+  },
+  {
+    commandId: "move-column-left",
+    shortcuts: [{ key: "h", ctrl: true, shift: true, scope: "global" }],
+  },
+  {
+    commandId: "move-column-right",
+    shortcuts: [{ key: "l", ctrl: true, shift: true, scope: "global" }],
+  },
+  {
+    commandId: "profile-new",
+    shortcuts: [{ key: "p", ctrl: true, shift: true, alt: true, scope: "global" }],
+  },
+  {
+    commandId: "theme-editor",
+    shortcuts: [{ key: "t", ctrl: true, shift: true, scope: "global" }],
+  },
+  {
+    commandId: "profile-editor",
+    shortcuts: [{ key: "e", ctrl: true, shift: true, scope: "global" }],
+  },
+  {
+    commandId: "devtools",
+    shortcuts: [{ key: "F12", scope: "global" }],
   },
 ]

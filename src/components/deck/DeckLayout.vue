@@ -45,7 +45,12 @@ const showProfileMenu = ref(false)
 const showSettingsMenu = ref(false)
 const mobileDrawerOpen = ref(false)
 const pendingFilePaths = ref<string[]>([])
-const activeColumnIndex = ref(0)
+const activeColumnIndex = computed(() => {
+  const id = deckStore.activeColumnId
+  if (!id) return 0
+  const idx = deckStore.windowLayout.findIndex((g) => g.includes(id))
+  return idx >= 0 ? idx : 0
+})
 const { updateAvailable, checkForUpdate } = useUpdater()
 const { ripples, remove: removeRipple } = useRippleEffect()
 
@@ -160,8 +165,6 @@ if (import.meta.env.PROD) {
 }
 
 function scrollToColumn(index: number) {
-  activeColumnIndex.value = index
-  // グループインデックスから先頭カラムIDを取得してアクティブカラムを更新
   const group = deckStore.windowLayout[index]
   const colId = group?.[0]
   if (colId) deckStore.setActiveColumn(colId)
@@ -200,10 +203,7 @@ function acceptCrossWindowDrop() {
       :class="[$style.mainArea, { [$style.withWallpaper]: deckStore.wallpaper != null }]"
       :style="wallpaperStyle"
     >
-      <DeckColumnsArea
-        ref="columnsAreaRef"
-        @active-column-index="activeColumnIndex = $event"
-      />
+      <DeckColumnsArea ref="columnsAreaRef" />
 
       <DeckBottomBar
         v-if="!isCompact"

@@ -550,9 +550,6 @@ fetchAchievements()
     </template>
 
     <div :class="$style.achievementsScroll">
-      <div v-if="isLoggedOut" :class="$style.loggedOutBanner">
-        <i class="ti ti-logout" />ログアウト中
-      </div>
       <div v-if="loading && achievements.length === 0 && !isLoggedOut" :class="$style.columnLoading"><LoadingSpinner /></div>
       <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
       <div v-else-if="achievements.length === 0 && !loading" :class="$style.columnEmpty">実績がありません</div>

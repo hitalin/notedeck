@@ -36,6 +36,12 @@ function resolveEffectiveNote(note: NormalizedNote): NormalizedNote {
 }
 
 export function prefetchNoteImages(notes: NormalizedNote[]): void {
+  // Skip prefetch in low-quality mode (images are blurred/hidden anyway)
+  try {
+    if (usePerformanceStore().get('cssBlurLevel') === 0) return
+  } catch {
+    // Store not ready yet — proceed with prefetch
+  }
   for (const note of notes) {
     const effective = resolveEffectiveNote(note)
     for (const file of effective.files) {

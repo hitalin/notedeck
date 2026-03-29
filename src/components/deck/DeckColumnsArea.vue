@@ -15,10 +15,6 @@ import { provideColumnVisibility } from '@/composables/useColumnVisibility'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
 
-const emit = defineEmits<{
-  'active-column-index': [index: number]
-}>()
-
 const COLUMN_COMPONENTS: Record<string, Component> = {
   timeline: defineAsyncComponent(() => import('./DeckTimelineColumn.vue')),
   list: defineAsyncComponent(() => import('./DeckListColumn.vue')),
@@ -230,25 +226,26 @@ function onColumnsWheel(e: WheelEvent) {
   scheduleScroll(dy)
 }
 
-// Scroll position → active group index
+// Scroll position → active column (single source of truth: activeColumnId in store)
 function onColumnsScroll() {
   if (!columnsRef.value) return
+  const layout = deckStore.windowLayout
+  let bestGroupIdx: number
   if (isCompact.value) {
     // Mobile: 1 group = full viewport width
     const w = columnsRef.value.clientWidth
     if (w === 0) return
-    emit('active-column-index', Math.round(columnsRef.value.scrollLeft / w))
+    bestGroupIdx = Math.round(columnsRef.value.scrollLeft / w)
   } else {
     // Desktop: スクロール位置に応じて検出ポイントをビューポート内でスライド
     // 左端→左寄り、中央→中央、右端→右寄り で両端のカラムにも自然に到達
     const el = columnsRef.value
-    const layout = deckStore.windowLayout
     const maxScroll = el.scrollWidth - el.clientWidth
     const progress = maxScroll > 0 ? el.scrollLeft / maxScroll : 0
     const viewPoint = el.scrollLeft + el.clientWidth * progress
     const sections = el.querySelectorAll<HTMLElement>(`:scope > section`)
 
-    let bestGroupIdx = 0
+    bestGroupIdx = 0
     let bestDist = Infinity
     for (let gi = 0; gi < layout.length; gi++) {
       const section = sections[gi]
@@ -261,8 +258,9 @@ function onColumnsScroll() {
         }
       }
     }
-    emit('active-column-index', bestGroupIdx)
   }
+  const colId = layout[bestGroupIdx]?.[0]
+  if (colId) deckStore.setActiveColumn(colId)
 }
 
 // Column pointer drag (swap / stack)
@@ -277,15 +275,29 @@ watch(
   () => deckStore.activeColumnId,
   (id) => {
     if (!id || !columnsRef.value) return
-    const el = columnsRef.value.querySelector(
-      `.stack-cell[data-column-id="${CSS.escape(id)}"]`,
-    )
-    if (el)
-      el.scrollIntoView({
-        behavior: isCompact.value ? 'instant' : 'smooth',
-        block: 'nearest',
-        inline: 'nearest',
-      })
+    if (isCompact.value) {
+      // Mobile: use scrollTo with pixel offset to work reliably with CSS snap scroll.
+      // scrollIntoView can be overridden by scroll-snap-type: x mandatory.
+      const index = deckStore.windowLayout.findIndex((group) =>
+        group.includes(id),
+      )
+      if (index >= 0) {
+        columnsRef.value.scrollTo({
+          left: index * columnsRef.value.clientWidth,
+          behavior: 'instant',
+        })
+      }
+    } else {
+      const el = columnsRef.value.querySelector(
+        `.stack-cell[data-column-id="${CSS.escape(id)}"]`,
+      )
+      if (el)
+        el.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'nearest',
+        })
+    }
   },
   { flush: 'post' },
 )

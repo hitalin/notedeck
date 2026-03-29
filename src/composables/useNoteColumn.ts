@@ -22,14 +22,13 @@ import {
   loadCachedTimeline,
   loadCachedTimelineBefore,
   purgeStaleCachedNotes,
-  restoreSnapshot,
-  saveSnapshot,
 } from '@/composables/useNoteColumnCache'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useNoteList } from '@/composables/useNoteList'
 import { useNoteScrollerRef } from '@/composables/useNoteScrollerRef'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
+import * as snapshotStore from '@/composables/useSnapshotStore'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import { isGuestAccount } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -96,7 +95,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     notes,
     noteIds,
     setNotes,
-    mergeIfSameList,
+    mergeUpdate,
     setOnNotesChanged,
     onNoteUpdate,
     handlePosted,
@@ -154,8 +153,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     (index) => noteScrollerRef.value?.scrollToIndex(index),
   )
 
-  const pendingNotes =
-    streamingBatch?.pendingNotes ?? shallowRef<NormalizedNote[]>([])
+  const pendingCount = streamingBatch?.pendingCount ?? ref(0)
   const animatingIds =
     streamingBatch?.animatingIds ?? shallowRef<ReadonlySet<string>>(new Set())
 
@@ -184,6 +182,56 @@ export function useNoteColumn(config: NoteColumnConfig) {
     }
   }
 
+  // --- Shared stage helpers ---
+
+  function getDedupKey(): string {
+    return `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
+  }
+
+  async function fetchAndDedup(
+    adapter: ServerAdapter,
+    opts: { sinceId?: string } = {},
+  ): Promise<NormalizedNote[]> {
+    return dedup(getDedupKey(), () => config.fetch(adapter, opts))
+  }
+
+  function verifyStaleNotes(
+    adapter: ServerAdapter,
+    cachedIds: string[],
+    freshIds: Set<string>,
+  ): void {
+    const accountId = config.getColumn().accountId
+    if (cachedIds.length === 0 || !accountId) return
+    const unverified = cachedIds.filter((id) => !freshIds.has(id))
+    if (unverified.length > 0) {
+      purgeStaleCachedNotes(
+        adapter,
+        unverified,
+        () => !!getAdapter(),
+        accountId,
+      )
+    }
+  }
+
+  async function handleFetchError(
+    e: unknown,
+    tryCacheFallback = false,
+  ): Promise<void> {
+    if (notes.value.length > 0) {
+      isOffline.value = true
+      return
+    }
+    if (tryCacheFallback) {
+      const filtered = await loadFilteredCache('fallback-cache')
+      if (filtered.length > 0) {
+        setNotes(filtered)
+        isOffline.value = true
+        return
+      }
+    }
+    error.value = AppError.from(e)
+  }
+
   // Handle token state transitions (logout / re-login)
   watch(
     () => account.value?.hasToken,
@@ -207,7 +255,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     // Restore snapshot from a previously unmounted instance (instant re-mount)
     const colId = config.getColumn().id
-    const snapshot = restoreSnapshot(colId)
+    const cacheKey = config.cache?.getKey()
+    const snapshot = cacheKey
+      ? snapshotStore.restoreAndConsume(colId, cacheKey)
+      : null
     if (snapshot) {
       setNotes(snapshot.notes)
       const savedScrollTop = snapshot.scrollTop
@@ -291,54 +342,22 @@ export function useNoteColumn(config: NoteColumnConfig) {
       const hasCached = cachedIds.length > 0
       const sinceId =
         !hasCached && notes.value.length > 0 ? notes.value[0]?.id : undefined
-      const dedupKey = `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
-      const fetched = await dedup(dedupKey, () =>
-        config.fetch(adapter, sinceId ? { sinceId } : {}),
-      )
+      const fetched = await fetchAndDedup(adapter, sinceId ? { sinceId } : {})
       const freshIds = new Set(fetched.map((n) => n.id))
 
       if (fetched.length > 0) {
-        if (hasCached) {
-          // Refresh cached note data with fresh API response
-          if (!mergeIfSameList(fetched)) setNotes(fetched)
-        } else if (sinceId) {
-          const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-          if (newNotes.length > 0)
-            setNotes(insertIntoSorted(notes.value, newNotes))
+        if (hasCached || sinceId) {
+          // Incrementally merge: update existing in-place, insert new
+          mergeUpdate(fetched)
         } else {
           setNotes(fetched)
         }
       }
 
       isOffline.value = false
-
-      // Background: verify cached notes not confirmed by fresh API fetch
-      const currentColumn = config.getColumn()
-      if (cachedIds.length > 0 && currentColumn.accountId) {
-        const unverified = cachedIds.filter((id) => !freshIds.has(id))
-        if (unverified.length > 0) {
-          purgeStaleCachedNotes(
-            adapter,
-            unverified,
-            () => !!getAdapter(),
-            currentColumn.accountId,
-          )
-        }
-      }
+      verifyStaleNotes(adapter, cachedIds, freshIds)
     } catch (e) {
-      if (notes.value.length > 0) {
-        // Cache is displayed — mark offline instead of showing error
-        isOffline.value = true
-      } else {
-        // No notes loaded yet — try cache before showing error
-        const filtered = await loadFilteredCache('fallback-cache')
-        if (filtered.length > 0) {
-          setNotes(filtered)
-          isOffline.value = true
-        } else {
-          error.value = AppError.from(e)
-        }
-      }
+      await handleFetchError(e, true)
     } finally {
       isLoading.value = false
     }
@@ -451,15 +470,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
     if (config.validate && !config.validate()) return
     const sinceId = notes.value[0]?.id
     try {
-      const fetched = await config.fetch(adapter, sinceId ? { sinceId } : {})
-      if (sinceId && fetched.length > 0) {
-        const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-        if (newNotes.length > 0) {
-          setNotes(insertIntoSorted(notes.value, newNotes))
-        }
-      } else if (fetched.length > 0) {
-        setNotes(fetched)
-      }
+      const fetched = await fetchAndDedup(adapter, sinceId ? { sinceId } : {})
+      if (fetched.length > 0) mergeUpdate(fetched)
       isOffline.value = false
     } catch (e) {
       logWarn('pull-refresh', e)
@@ -497,7 +509,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     let apiFailed = false
     const apiPromise = sinceId
-      ? config.fetch(adapter, { sinceId }).catch((e) => {
+      ? fetchAndDedup(adapter, { sinceId }).catch((e) => {
           logWarn('resume-api', e)
           apiFailed = true
           return [] as NormalizedNote[]
@@ -507,34 +519,18 @@ export function useNoteColumn(config: NoteColumnConfig) {
     const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
     isOffline.value = apiFailed
 
-    // Merge results: API results take priority, then filtered cache
-    const allNew = [...fetched, ...cached].filter((n) => !noteIds.has(n.id))
-    if (allNew.length > 0) {
-      // Deduplicate by id (API results first)
-      const seen = new Set<string>()
-      const deduped = allNew.filter((n) => {
-        if (seen.has(n.id)) return false
-        seen.add(n.id)
-        return true
-      })
-      setNotes(insertIntoSorted(notes.value, deduped))
-    }
+    // Merge: update existing in-place, insert new (API + cache combined)
+    const combined = [...fetched, ...cached]
+    if (combined.length > 0) mergeUpdate(combined)
 
     // Background: verify cached notes not confirmed by fresh API fetch
-    const resumeColumn = config.getColumn()
-    if (cached.length > 0 && adapter && resumeColumn.accountId) {
+    if (cached.length > 0) {
       const freshIds = new Set(fetched.map((n) => n.id))
-      const unverified = cached
-        .map((n) => n.id)
-        .filter((id) => !freshIds.has(id))
-      if (unverified.length > 0) {
-        purgeStaleCachedNotes(
-          adapter,
-          unverified,
-          () => !!getAdapter(),
-          resumeColumn.accountId,
-        )
-      }
+      verifyStaleNotes(
+        adapter,
+        cached.map((n) => n.id),
+        freshIds,
+      )
     }
   }
 
@@ -582,18 +578,11 @@ export function useNoteColumn(config: NoteColumnConfig) {
           if (filtered.length > 0) setNotes(filtered)
         }
         // Fetch latest from API
-        const dedupKey = `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
-        const fetched = await dedup(dedupKey, () => config.fetch(adapter, {}))
-        if (fetched.length > 0) {
-          if (!mergeIfSameList(fetched)) setNotes(fetched)
-        }
+        const fetched = await fetchAndDedup(adapter)
+        if (fetched.length > 0) mergeUpdate(fetched)
         isOffline.value = false
       } catch (e) {
-        if (notes.value.length > 0) {
-          isOffline.value = true
-        } else {
-          error.value = AppError.from(e)
-        }
+        await handleFetchError(e)
       } finally {
         isLoading.value = false
       }
@@ -626,17 +615,15 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     // Fetch diff from API to update snapshot with latest data
     const sinceId = snapshotNotes[0]?.id
+    const snapshotCacheKey = config.cache?.getKey() ?? 'default'
     try {
-      const dedupKey = `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
-      const fetched = await dedup(dedupKey, () =>
-        config.fetch(adapter, sinceId ? { sinceId } : {}),
-      )
+      const fetched = await fetchAndDedup(adapter, sinceId ? { sinceId } : {})
+      // Guard: discard if tab changed during async fetch
+      if ((config.cache?.getKey() ?? 'default') !== snapshotCacheKey) return
       if (fetched.length > 0) {
         const newNotes = fetched.filter((n) => !noteIds.has(n.id))
         if (newNotes.length > 0) {
-          // Route through pending queue to avoid jarring content shift.
-          // User sees "N件の新しいノート" banner and can tap to reveal.
-          streamingBatch.addPending(newNotes)
+          streamingBatch.addQueued(newNotes)
         }
       }
       isOffline.value = false
@@ -664,9 +651,15 @@ export function useNoteColumn(config: NoteColumnConfig) {
   onUnmounted(() => {
     window.removeEventListener('deck-resume', onResume)
     // Save snapshot for instant restore if column is re-mounted
-    if (notes.value.length > 0) {
+    const unmountCacheKey = config.cache?.getKey()
+    if (notes.value.length > 0 && unmountCacheKey) {
       const el = noteScrollerRef.value?.getElement?.()
-      saveSnapshot(config.getColumn().id, notes.value, el?.scrollTop ?? 0)
+      snapshotStore.save(
+        config.getColumn().id,
+        unmountCacheKey,
+        notes.value,
+        el?.scrollTop ?? 0,
+      )
     }
     disconnect()
     streamingBatch?.resetBatch()
@@ -684,7 +677,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     error,
     notes,
     focusedNoteId,
-    pendingNotes,
+    pendingCount,
     animatingIds,
     postForm,
     handlers,
