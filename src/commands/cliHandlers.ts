@@ -45,6 +45,7 @@ function parseFlags(
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i]
+    if (token === undefined) continue
     if (token.startsWith('--')) {
       const flagName = token.slice(2)
       const flagType = knownFlags[flagName]
