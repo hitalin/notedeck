@@ -14,6 +14,7 @@ import type {
   NormalizedDriveFile,
 } from '@/adapters/types'
 import AvatarStack from '@/components/common/AvatarStack.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
@@ -667,7 +668,7 @@ onBeforeUnmount(() => {
 
     <template #header-meta>
       <div v-if="isCrossAccount" :class="$style.headerAccount">
-        <AvatarStack :size="18" />
+        <AvatarStack :size="20" />
       </div>
       <div v-else-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
@@ -680,7 +681,7 @@ onBeforeUnmount(() => {
     </template>
 
     <div v-if="!isCrossAccount && !account" :class="$style.columnEmpty">
-      Account not found
+      アカウントが見つかりません
     </div>
 
     <div v-else-if="error && viewMode === 'history'" :class="[$style.columnEmpty, $style.columnError]">
@@ -700,7 +701,7 @@ onBeforeUnmount(() => {
     <!-- History View: Cross-account -->
     <div v-if="isCrossAccount && viewMode === 'history'" :class="$style.chatBody">
       <div v-if="historyEntries.length === 0 && !isLoading" :class="$style.columnEmpty">
-        No conversations
+        会話はありません
       </div>
 
       <div v-else :class="$style.historyList">
@@ -721,7 +722,7 @@ onBeforeUnmount(() => {
           </div>
           <div :class="$style.historyInfo">
             <div :class="$style.historyName">{{ entry.name }}</div>
-            <div :class="$style.historyPreview">{{ entry.message.text || '(file)' }}</div>
+            <div :class="$style.historyPreview">{{ entry.message.text || '(ファイル)' }}</div>
           </div>
           <div :class="$style.historyMeta">
             <span :class="$style.historyHost">{{ entry.serverHost }}</span>
@@ -734,7 +735,7 @@ onBeforeUnmount(() => {
     <!-- History View: Per-account -->
     <div v-else-if="!isCrossAccount && viewMode === 'history'" :class="$style.chatBody">
       <div v-if="chatHistory.length === 0 && !isLoading" :class="$style.columnEmpty">
-        No conversations
+        会話はありません
       </div>
 
       <div v-else :class="$style.historyList">
@@ -755,7 +756,7 @@ onBeforeUnmount(() => {
           </div>
           <div :class="$style.historyInfo">
             <div :class="$style.historyName">{{ entry.name }}</div>
-            <div :class="$style.historyPreview">{{ entry.message.text || '(file)' }}</div>
+            <div :class="$style.historyPreview">{{ entry.message.text || '(ファイル)' }}</div>
           </div>
         </button>
       </div>
@@ -768,7 +769,7 @@ onBeforeUnmount(() => {
         :class="$style.messagesContainer"
         @scroll.passive="handleScroll"
       >
-        <div v-if="isLoading" :class="$style.loadingMore">読み込み中...</div>
+        <div v-if="isLoading" :class="$style.loadingMore"><LoadingSpinner /></div>
         <MkChatMessage
           v-for="msg in messages"
           :key="msg.id"
@@ -855,39 +856,15 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
-.tlHeaderIcon {
-  flex-shrink: 0;
-  opacity: 0.7;
+@use './column-common.module.scss';
 
-  &.clickable {
-    cursor: pointer;
-    opacity: 0.8;
+.clickable {
+  cursor: pointer;
+  opacity: 0.8;
 
-    &:hover {
-      opacity: 1;
-    }
+  &:hover {
+    opacity: 1;
   }
-}
-
-.headerAccount {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.headerAvatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.headerFavicon {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  opacity: 0.7;
 }
 
 .chatBody {
@@ -1188,28 +1165,6 @@ onBeforeUnmount(() => {
   overflow: auto;
   border-top: 1px solid var(--nd-divider, rgba(255, 255, 255, 0.05));
   background: var(--nd-panel);
-}
-
-.columnEmpty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  font-size: 0.85em;
-}
-
-.columnError {
-  color: var(--nd-love);
-  opacity: 1;
-}
-
-.loadingMore {
-  text-align: center;
-  padding: 1rem;
-  font-size: 0.8em;
-  opacity: 0.4;
 }
 
 /* Empty placeholder classes for dynamic binding */

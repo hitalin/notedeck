@@ -93,6 +93,8 @@ defineExpose({ open, close, activateKeyboard })
 </template>
 
 <style lang="scss" module>
+@use '@/styles/popup';
+
 .popupBackdrop {
   position: fixed;
   inset: 0;
@@ -106,33 +108,6 @@ defineExpose({ open, close, activateKeyboard })
   max-width: 300px;
   padding: 6px 0;
   z-index: calc(var(--nd-z-popup) + 1);
-}
-
-// Vapor transition classes
-.enter {
-  animation: backdropIn var(--nd-duration-base) var(--nd-ease-decel);
-}
-.leave {
-  animation: backdropOut var(--nd-duration-base) ease-out forwards;
-}
-@keyframes backdropIn {
-  from { opacity: 0; }
-}
-@keyframes backdropOut {
-  to { opacity: 0; }
-}
-
-.contentEnter {
-  animation: popupIn 0.18s var(--nd-ease-spring);
-}
-.contentLeave {
-  animation: popupOut var(--nd-duration-base) var(--nd-ease-decel) forwards;
-}
-@keyframes popupIn {
-  from { opacity: 0; transform: scale(0.88) translateY(4px); }
-}
-@keyframes popupOut {
-  to { opacity: 0; transform: scale(0.92); }
 }
 
 </style>

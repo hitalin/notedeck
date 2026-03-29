@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import {
   formatFileSize,
@@ -303,7 +304,7 @@ fetchDrive()
         <div v-if="isLoggedOut" :class="$style.loggedOutBanner">
           <i class="ti ti-logout" />ログアウト中
         </div>
-        <div v-if="loading && !isLoggedOut" :class="$style.columnEmpty">読み込み中...</div>
+        <div v-if="loading && !isLoggedOut" :class="$style.columnLoading"><LoadingSpinner /></div>
         <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
         <template v-else-if="!isLoggedOut">
           <!-- Folders -->

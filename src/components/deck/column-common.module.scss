@@ -17,6 +17,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  margin-left: 4px;
   flex-shrink: 0;
 }
 
@@ -205,8 +206,8 @@
 }
 
 .loadingMore {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 1rem;
-  font-size: 0.8em;
-  opacity: 0.4;
 }

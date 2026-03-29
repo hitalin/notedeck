@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AvatarStack from '@/components/common/AvatarStack.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
@@ -14,16 +15,41 @@ const props = defineProps<{
   column: DeckColumnType
 }>()
 
+const isSpecified = computed(() => props.column.type === 'specified')
+
+const config = computed(() =>
+  isSpecified.value
+    ? {
+        title: 'ダイレクト',
+        icon: 'ti-mail',
+        emptyText: 'ダイレクトメッセージはありません',
+        cacheKey: 'specified' as const,
+      }
+    : {
+        title: 'あなた宛て',
+        icon: 'ti-at',
+        emptyText: 'メンションはありません',
+        cacheKey: 'mentions' as const,
+      },
+)
+
 const isCrossAccount = computed(() => props.column.accountId == null)
 
 // Single-account config
 const noteColumnConfig: NoteColumnConfig = {
   getColumn: () => props.column,
-  fetch: (adapter, opts) => adapter.api.getMentions(opts),
-  cache: { getKey: () => 'mentions' },
+  fetch: (adapter, opts) =>
+    isSpecified.value
+      ? adapter.api.getMentions({ ...opts, visibility: 'specified' })
+      : adapter.api.getMentions(opts),
+  cache: { getKey: () => config.value.cacheKey },
   streaming: {
     subscribe: (adapter, enqueue, callbacks) =>
-      adapter.stream.subscribeMentions(enqueue, callbacks),
+      isSpecified.value
+        ? adapter.stream.subscribeMentions((note) => {
+            if (note.visibility === 'specified') enqueue(note)
+          }, callbacks)
+        : adapter.stream.subscribeMentions(enqueue, callbacks),
   },
 }
 
@@ -46,7 +72,10 @@ const {
   handleScroll,
   removeNote,
 } = useCrossAccountNotes({
-  fetchNotes: (adapter, opts) => adapter.api.getMentions(opts),
+  fetchNotes: (adapter, opts) =>
+    isSpecified.value
+      ? adapter.api.getMentions({ ...opts, visibility: 'specified' })
+      : adapter.api.getMentions(opts),
   isCrossAccount: () => isCrossAccount.value,
   isLoading,
   error,
@@ -60,7 +89,7 @@ const {
   <DeckColumn
     v-if="isCrossAccount"
     :column-id="column.id"
-    :title="column.name || 'あなた宛て'"
+    :title="column.name || config.title"
     :theme-vars="columnThemeVars"
     refreshable
     :refreshing="isLoading"
@@ -68,7 +97,7 @@ const {
     @refresh="connectCrossAccount"
   >
     <template #header-icon>
-      <i class="ti ti-at" :class="$style.tlHeaderIcon" />
+      <i :class="['ti', config.icon, $style.tlHeaderIcon]" />
     </template>
 
     <template #header-meta>
@@ -81,7 +110,7 @@ const {
 
     <div v-else :class="$style.tlBody">
       <div v-if="notes.length === 0 && !isLoading" :class="$style.columnEmpty">
-        メンションはありません
+        {{ config.emptyText }}
       </div>
 
       <NoteScroller
@@ -110,7 +139,7 @@ const {
 
         <template #append>
           <div v-if="isLoading && notes.length > 0" :class="$style.loadingMore">
-            Loading...
+            <LoadingSpinner />
           </div>
         </template>
       </NoteScroller>
@@ -121,8 +150,8 @@ const {
   <DeckNoteColumn
     v-else
     :column="column"
-    title="あなた宛て"
-    icon="ti-at"
+    :title="config.title"
+    :icon="config.icon"
     sound-enabled
     :note-column-config="noteColumnConfig"
   />

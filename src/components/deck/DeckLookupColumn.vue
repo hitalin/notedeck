@@ -2,6 +2,7 @@
 import { defineAsyncComponent, ref } from 'vue'
 import { MisskeyApi } from '@/adapters/misskey/api'
 import type { NormalizedNote } from '@/adapters/types'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import { invoke } from '@/utils/tauriInvoke'
 
@@ -293,7 +294,7 @@ async function handlePosted(editedNoteId?: string) {
     :theme-vars="columnThemeVars"
   >
     <template #header-icon>
-      <i class="ti ti-world-search" :class="$style.lookupHeaderIcon" />
+      <i class="ti ti-world-search" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
@@ -310,7 +311,7 @@ async function handlePosted(editedNoteId?: string) {
           v-model="queryInput"
           :class="$style.lookupInput"
           type="text"
-          placeholder="URL or @user@host"
+          placeholder="URLまたは@ユーザー名@ホスト"
           @keydown="onKeydown"
         />
         <button
@@ -325,11 +326,11 @@ async function handlePosted(editedNoteId?: string) {
     </template>
 
     <div v-if="!account" :class="$style.columnEmpty">
-      Account not found
+      アカウントが見つかりません
     </div>
 
-    <div v-else-if="isLoading" :class="$style.columnEmpty">
-      照会中...
+    <div v-else-if="isLoading" :class="$style.columnLoading">
+      <LoadingSpinner />
     </div>
 
     <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
@@ -382,32 +383,7 @@ async function handlePosted(editedNoteId?: string) {
 </template>
 
 <style lang="scss" module>
-.lookupHeaderIcon {
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-
-.headerAccount {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 4px;
-  flex-shrink: 0;
-}
-
-.headerAvatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.headerFavicon {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  opacity: 0.7;
-}
+@use './column-common.module.scss';
 
 .lookupBar {
   display: flex;
@@ -521,20 +497,5 @@ async function handlePosted(editedNoteId?: string) {
 .lookupUserArrow {
   flex-shrink: 0;
   opacity: 0.3;
-}
-
-.columnEmpty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  font-size: 0.85em;
-}
-
-.columnError {
-  color: var(--nd-love);
-  opacity: 1;
 }
 </style>

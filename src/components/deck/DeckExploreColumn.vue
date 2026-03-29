@@ -262,10 +262,10 @@ function closeUserPopup() {
     </template>
 
     <template #header-meta>
-      <button v-if="selectedRole" class="_button" :class="$style.headerRefresh" title="Back" @click.stop="closeRole">
+      <button v-if="selectedRole" class="_button" :class="$style.headerRefresh" title="戻る" @click.stop="closeRole">
         <i class="ti ti-arrow-left" />
       </button>
-      <button v-else class="_button" :class="$style.headerRefresh" title="Refresh" :disabled="currentLoading" @click.stop="refresh">
+      <button v-else class="_button" :class="$style.headerRefresh" title="更新" :disabled="currentLoading" @click.stop="refresh">
         <i class="ti ti-refresh" :class="{ 'nd-spin': currentLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
@@ -275,7 +275,7 @@ function closeUserPopup() {
     </template>
 
     <div v-if="!account" :class="$style.columnEmpty">
-      Account not found
+      アカウントが見つかりません
     </div>
 
     <template v-else>
@@ -344,7 +344,7 @@ function closeUserPopup() {
       <!-- Users tab -->
       <template v-else-if="activeTab === 'users'">
         <div :class="$style.exploreList">
-          <div v-if="usersLoading" :class="$style.columnEmpty">読み込み中...</div>
+          <div v-if="usersLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
           <div v-else-if="usersError" :class="[$style.columnEmpty, $style.columnError]">{{ usersError }}</div>
           <div v-else-if="users.length === 0" :class="$style.columnEmpty">ユーザーが見つかりません</div>
           <button
@@ -382,7 +382,7 @@ function closeUserPopup() {
             <span>{{ selectedRole.name }}</span>
           </div>
           <div :class="$style.exploreList">
-            <div v-if="roleUsersLoading" :class="$style.columnEmpty">読み込み中...</div>
+            <div v-if="roleUsersLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
             <div v-else-if="roleUsersError" :class="[$style.columnEmpty, $style.columnError]">{{ roleUsersError }}</div>
             <div v-else-if="roleUsers.length === 0" :class="$style.columnEmpty">ユーザーがいません</div>
             <button
@@ -408,7 +408,7 @@ function closeUserPopup() {
         <!-- Roles list -->
         <template v-else>
           <div :class="$style.exploreList">
-            <div v-if="rolesLoading" :class="$style.columnEmpty">読み込み中...</div>
+            <div v-if="rolesLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
             <div v-else-if="rolesError" :class="[$style.columnEmpty, $style.columnError]">{{ rolesError }}</div>
             <div v-else-if="roles.length === 0" :class="$style.columnEmpty">ロールが見つかりません</div>
             <button

@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NoteDeck - マルチサーバー対応 Misskey デッキクライアント</title>
-  <meta name="description" content="複数の Misskey サーバーをひとつのデッキで。Windows, macOS, Linux, Android 対応のオープンソースクライアント。" />
+  <meta name="description" content="複数の Misskey サーバーをひとつのデッキで。ネイティブの軽さ、オフライン対応、ローカル全文検索。Windows, macOS, Linux, Android 対応のオープンソースクライアント。" />
   <meta property="og:title" content="NoteDeck" />
-  <meta property="og:description" content="複数の Misskey サーバーをひとつのデッキで。マルチサーバー対応 Misskey デッキクライアント。" />
+  <meta property="og:description" content="複数の Misskey サーバーをひとつのデッキで。ネイティブの速さとオフライン対応を兼ね備えたデッキクライアント。" />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://raw.githubusercontent.com/hitalin/notedeck/main/src-tauri/icons/128x128%402x.png" />
   <link rel="icon" href="https://raw.githubusercontent.com/hitalin/notedeck/main/src-tauri/icons/32x32.png" type="image/png" />
@@ -31,7 +31,9 @@
           <b>Note<span>Deck</span></b>
         </a>
         <div class="nav-items">
+          <a href="#why">特長</a>
           <a href="#features">機能</a>
+          <a href="#architecture">アーキテクチャ</a>
           <a href="#download">ダウンロード</a>
         </div>
         <div class="nav-right">
@@ -48,7 +50,9 @@
       </nav>
     </div>
     <div class="nav-mobile-drawer">
+      <a href="#why" class="nav-mobile-item" onclick="document.querySelector('.nav-root').classList.remove('nav-open')">特長</a>
       <a href="#features" class="nav-mobile-item" onclick="document.querySelector('.nav-root').classList.remove('nav-open')">機能</a>
+      <a href="#architecture" class="nav-mobile-item" onclick="document.querySelector('.nav-root').classList.remove('nav-open')">アーキテクチャ</a>
       <a href="#download" class="nav-mobile-item" onclick="document.querySelector('.nav-root').classList.remove('nav-open')">ダウンロード</a>
       <a href="https://github.com/hitalin/notedeck" class="nav-mobile-item" onclick="document.querySelector('.nav-root').classList.remove('nav-open')">GitHub</a>
     </div>
@@ -57,7 +61,6 @@
   <!-- Blobs -->
   <div class="blob blob-1"></div>
   <div class="blob blob-2"></div>
-  <div class="blob blob-3"></div>
 
   <!-- Hero -->
   <section class="hero">
@@ -67,7 +70,7 @@
       class="hero-icon"
     />
     <h1>Note<span>Deck</span></h1>
-    <p class="tagline">複数の Misskey サーバーをひとつのデッキで。<br />マルチサーバー対応デッキクライアント。</p>
+    <p class="tagline">ブラウザを超えた、デッキ体験。<br />複数の Misskey サーバーを、ひとつのネイティブアプリで。</p>
     <div class="hero-buttons">
       <a href="#download" class="btn btn-primary">ダウンロード</a>
       <a href="https://github.com/hitalin/notedeck" class="btn btn-secondary">
@@ -78,87 +81,328 @@
   </section>
 
   <!-- Screenshot -->
-  <div class="screenshot fade-in">
+  <div class="screenshot fade-in" data-direction="up">
     <div class="screenshot-wrapper glass">
-      <img
-        id="hero-screenshot"
-        alt="NoteDeck スクリーンショット"
-        loading="lazy"
-      />
+      <img id="hero-screenshot" alt="NoteDeck スクリーンショット" loading="lazy" />
     </div>
   </div>
 
-  <!-- Features -->
-  <section class="features" id="features">
-    <h2 class="section-title fade-in">機能</h2>
-    <div class="features-grid">
-      <div class="feature glass fade-in">
-        <h3>全鯖を一画面で</h3>
-        <p>複数サーバーに同時ログイン。HTL・通知・リスト・チャンネルをカラムに並べて、タブ切り替えなしで全体を把握。</p>
+  <!-- Why NoteDeck — 3 pillars -->
+  <section class="section-alt" id="why">
+    <div class="section-inner">
+      <h2 class="section-title fade-in" data-direction="up">なぜ NoteDeck？</h2>
+      <div class="pillars-grid">
+        <div class="pillar glass fade-in" data-direction="up">
+          <div class="pillar-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <h3>ネイティブの速さ</h3>
+          <p class="pillar-lead">ブラウザや VM のオーバーヘッドなし。<strong>圧倒的に軽量。</strong></p>
+          <p>Tauri v2 + Rust バックエンドによるネイティブバイナリ。ブラウザタブや Flutter ランタイムの重さとは無縁。起動も一瞬、バッテリーにも優しい。</p>
+        </div>
+        <div class="pillar glass fade-in" data-direction="up">
+          <div class="pillar-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          </div>
+          <h3>オフラインファースト</h3>
+          <p class="pillar-lead">ノートはローカル DB に蓄積。<strong>オフラインでも読める。</strong></p>
+          <p>流れたタイムラインもローカル SQLite に自動保存。全文検索で過去の投稿を即座に発見。ネットワークが切れても、蓄積したノートはいつでも閲覧可能。</p>
+        </div>
+        <div class="pillar glass fade-in" data-direction="up">
+          <div class="pillar-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </div>
+          <h3>全鯖をひとつのデッキで</h3>
+          <p class="pillar-lead">複数サーバーの通知・TL・検索を<strong>クロスアカウントで統合表示。</strong></p>
+          <p>misskey.io、にじみす、Firefish — 何鯖使っていても、ひとつのデッキにまとめて把握。アカウントごとにブラウザのタブを開く時代は終わり。</p>
+        </div>
       </div>
-      <div class="feature glass fade-in">
-        <h3>フォークもそのまま使える</h3>
-        <p>Misskey 本家に加え、Firefish・CherryPick など主要フォークに対応。サーバー広告もちゃんと表示します。</p>
+    </div>
+  </section>
+
+  <!-- Performance comparison -->
+  <section class="section-default">
+    <div class="section-inner section-narrow">
+      <h2 class="section-title fade-in" data-direction="up">ブラウザを超えるパフォーマンス</h2>
+      <p class="section-sub fade-in" data-direction="up">同じサーバーに接続した状態での比較（参考値）</p>
+      <div class="comparison-table-wrapper glass fade-in" data-direction="up">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Misskey Web UI</th>
+              <th>Aria（Flutter）</th>
+              <th class="highlight">NoteDeck</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="row-label">メモリ使用量</td><td>ブラウザタブ依存で重い</td><td>Flutter ランタイム分の負荷</td><td class="highlight"><strong>ネイティブで圧倒的に軽量</strong></td></tr>
+            <tr><td class="row-label">起動時間</td><td>ブラウザ依存</td><td>ランタイム初期化あり</td><td class="highlight"><strong>一瞬で起動</strong></td></tr>
+            <tr><td class="row-label">オフライン閲覧</td><td>不可</td><td>不可</td><td class="highlight"><strong>可能</strong></td></tr>
+            <tr><td class="row-label">ローカル全文検索</td><td>なし</td><td>なし</td><td class="highlight"><strong>FTS5</strong></td></tr>
+            <tr><td class="row-label">トークン保管</td><td>localStorage</td><td>localStorage</td><td class="highlight"><strong>OS キーチェーン</strong></td></tr>
+            <tr><td class="row-label">外部ツール連携</td><td>なし</td><td>なし</td><td class="highlight"><strong>REST API</strong></td></tr>
+          </tbody>
+        </table>
       </div>
-      <div class="feature glass fade-in">
-        <h3>ブラウザから解放される</h3>
-        <p>システムトレイ常駐、グローバルホットキー、マルチウィンドウ。タブに埋もれない、ネイティブアプリならではの快適さ。</p>
+    </div>
+  </section>
+
+  <!-- Guest mode CTA -->
+  <section class="section-alt">
+    <div class="section-inner section-narrow">
+      <div class="guest-cta glass fade-in" data-direction="up">
+        <div class="guest-cta-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <div class="guest-cta-text">
+          <h3>まずは触ってみる？</h3>
+          <p>ゲストモードなら、アカウント登録なしで公開タイムラインをすぐ閲覧できます。気に入ったらログインするだけ。</p>
+        </div>
+        <a href="#download" class="btn btn-primary">ダウンロード</a>
       </div>
-      <div class="feature glass fade-in">
-        <h3>ノートを手元に蓄積</h3>
-        <p>流れたノートもローカル DB に残る。全文検索で過去の投稿をすぐ見つけられる。設定はテキストファイルだから丸ごとバックアップも簡単。</p>
+    </div>
+  </section>
+
+  <!-- Features: Highlights -->
+  <section class="section-default" id="features">
+    <div class="section-inner">
+      <h2 class="section-title fade-in" data-direction="up">機能</h2>
+
+      <!-- Highlight: Deck UI -->
+      <div class="highlight-row fade-in" data-direction="left">
+        <div class="highlight-text">
+          <span class="highlight-badge">デッキ UI</span>
+          <h3>自由に並べる、自分だけのレイアウト</h3>
+          <p>HTL・LTL・通知・検索・リスト・アンテナ・チャンネル・チャット — あらゆるカラムを横に並べて一覧。カラム幅はドラッグで自由に調整、プロファイルとして保存すればワンクリックで切り替え。</p>
+          <ul class="highlight-list">
+            <li>16 種類以上のカラムタイプ</li>
+            <li>クロスアカウント通知・検索の統合表示</li>
+            <li>カラムをポップアウトして別ウィンドウ化</li>
+            <li>PiP（常時手前）表示でマルチモニター活用</li>
+          </ul>
+        </div>
       </div>
-      <div class="feature glass fade-in">
-        <h3>軽い。速い。</h3>
-        <p>Tauri v2 + Rust バックエンドで省メモリ・高速起動。重いクライアントに慣れた人ほど違いを感じるはず。</p>
+
+      <!-- Highlight: Offline -->
+      <div class="highlight-row fade-in" data-direction="right">
+        <div class="highlight-text">
+          <span class="highlight-badge">オフライン &amp; ローカル DB</span>
+          <h3>流れたノートも、ここに残る</h3>
+          <p>タイムラインに流れてきたノートは自動でローカル SQLite に蓄積。サーバーからノートが消えても、連合が切れても、手元のデータは残り続けます。</p>
+          <ul class="highlight-list">
+            <li>FTS5 全文検索 — 過去ノートを一瞬で発見</li>
+            <li>オフラインモード切り替えでバッテリー節約</li>
+            <li>DB ファイルコピーで丸ごとバックアップ</li>
+            <li>サーバーが消えても投稿は手元に残る</li>
+          </ul>
+        </div>
       </div>
-      <div class="feature glass fade-in">
-        <h3>オープンソース</h3>
-        <p>AGPL-3.0 で全コード公開。欲しい機能があれば PR も歓迎。<a href="https://github.com/sponsors/hitalin">Sponsors</a> で開発を支援できます。</p>
+
+      <!-- Highlight: Security -->
+      <div class="highlight-row fade-in" data-direction="left">
+        <div class="highlight-text">
+          <span class="highlight-badge">セキュリティ</span>
+          <h3>トークンは OS が守る</h3>
+          <p>ブラウザの localStorage にトークンを保存する Web クライアントとは設計が違います。NoteDeck はアクセストークンを OS のキーチェーン（macOS Keychain / Windows Credential Manager / Linux Secret Service）に暗号化保存。ブラウザ拡張や XSS によるトークン窃取は構造的に不可能です。</p>
+          <ul class="highlight-list">
+            <li>OS キーチェーンで暗号化保管</li>
+            <li>メモリ上のトークンは自動 zeroize</li>
+            <li>localhost API は DNS Rebinding 対策済み</li>
+            <li>SSRF 防止（プライベート IP 範囲をブロック）</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Highlight: API -->
+      <div class="highlight-row fade-in" data-direction="right">
+        <div class="highlight-text">
+          <span class="highlight-badge">拡張性</span>
+          <h3>外部ツールからデッキを操作</h3>
+          <p>NoteDeck はバックグラウンドで REST API サーバー（localhost:19820）を起動。ノート投稿、タイムライン取得、カラム操作、コマンド実行 — すべてを HTTP で制御可能。Raycast、Obsidian、StreamDeck、自作ボットとの連携が、OAuth なしで実現します。</p>
+          <ul class="highlight-list">
+            <li>20 以上の REST エンドポイント</li>
+            <li>OpenAPI 仕様 + 自動ドキュメント生成</li>
+            <li>SSE でリアルタイムイベント受信</li>
+            <li>AiScript プラグインでカラム動的生成</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Highlight: Hackable -->
+      <div class="highlight-row fade-in" data-direction="left">
+        <div class="highlight-text">
+          <span class="highlight-badge">Hackable</span>
+          <h3>Misskey 開発者なら、すぐ貢献できる</h3>
+          <p>フロントエンドは Misskey 本家と同じ <strong>Vue 3 + TypeScript</strong>。Misskey のコードが読める人なら、NoteDeck のコードもすぐに読めます。バックエンドの notecli は独立した Rust クレートとして分離設計されており、フロントエンドとバックエンドを独立して開発・テスト可能。</p>
+          <p>開発者ツール（DevTools）をアプリ内に内蔵し、localhost:19820 の <strong>API ドキュメントもアプリ内で閲覧可能</strong>。フォーク開発者やサーバー管理者にとっても、動作検証や拡張が容易な設計です。</p>
+          <ul class="highlight-list">
+            <li>Misskey 本家と同じ Vue 3 — 学習コストゼロ</li>
+            <li>notecli 分離設計 — フロント/バックエンド独立開発</li>
+            <li>DevTools 内蔵 — アプリ内でデバッグ完結</li>
+            <li>API ドキュメント内蔵（OpenAPI + Scalar UI）</li>
+            <li>AGPL-3.0 — フォーク・改変・再配布自由</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features: Grid -->
+  <section class="section-alt">
+    <div class="section-inner">
+      <h2 class="section-title fade-in" data-direction="up">さらに</h2>
+      <div class="features-grid">
+        <div class="feature-card glass fade-in" data-direction="up">
+          <div class="feature-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          </div>
+          <h4>キーボード駆動</h4>
+          <p>コマンドパレット（Ctrl+K）で 30 以上のコマンドを検索・実行。全キーバインドをカスタマイズ可能。</p>
+        </div>
+        <div class="feature-card glass fade-in" data-direction="up">
+          <div class="feature-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <h4>Boss Key &amp; Quick Note</h4>
+          <p>Ctrl+Shift+B でウィンドウを即隠し。Ctrl+Alt+N でどこからでも即投稿。グローバルホットキーはデスクトップならでは。</p>
+        </div>
+        <div class="feature-card glass fade-in" data-direction="up">
+          <div class="feature-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          </div>
+          <h4>フォーク対応</h4>
+          <p>Misskey 本家 + Firefish・CherryPick・Sharkey・Iceshrimp。サーバー種別は自動検出、API 差分はアダプター層が吸収。</p>
+        </div>
+        <div class="feature-card glass fade-in" data-direction="up">
+          <div class="feature-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          </div>
+          <h4>リッチプレビュー</h4>
+          <p>YouTube・Spotify・ニコ動・Pixiv・Amazon 等 16 種の専用 OGP パーサー。URL を貼るだけでリッチに展開。</p>
+        </div>
+        <div class="feature-card glass fade-in" data-direction="up">
+          <div class="feature-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          </div>
+          <h4>MFM &amp; KaTeX</h4>
+          <p>Misskey Flavored Markdown 全構文対応。KaTeX 数式レンダリング + Shiki コードハイライトもネイティブ実装。</p>
+        </div>
+        <div class="feature-card glass fade-in" data-direction="up">
+          <div class="feature-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </div>
+          <h4>サーバーとの共生</h4>
+          <p>サーバー広告を正しく表示する数少ないサードパーティクライアント。表示頻度もサーバー設定に準拠。</p>
+        </div>
+        <div class="feature-card glass fade-in" data-direction="up">
+          <div class="feature-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <h4>データはあなたのもの</h4>
+          <p>notecli.db コピーで完全バックアップ。設定 JSON エクスポート/インポート。ログアウト後もデータ保持を選択可能。</p>
+        </div>
+        <div class="feature-card glass fade-in" data-direction="up">
+          <div class="feature-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="0.5"/><circle cx="17.5" cy="10.5" r="0.5"/><circle cx="8.5" cy="7.5" r="0.5"/><circle cx="6.5" cy="12.5" r="0.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 011.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.555C21.965 6.012 17.461 2 12 2z"/></svg>
+          </div>
+          <h4>カスタマイズ</h4>
+          <p>Misskey テーマ互換 + デッキ壁紙。ダーク/ライト自動切り替え。ジェスチャ操作、ネイティブ OS 通知対応。</p>
+        </div>
+        <div class="feature-card glass fade-in" data-direction="up">
+          <div class="feature-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+          </div>
+          <h4>パフォーマンスチューニング</h4>
+          <p>省メモリ〜高パフォーマンスのプリセット。Adaptive Quality でフレームレート自動最適化。3 段階画像キャッシュ。</p>
+        </div>
+        <div class="feature-card glass fade-in" data-direction="up">
+          <div class="feature-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <h4>オープンソース</h4>
+          <p>AGPL-3.0 で全コード公開。バグ報告・PR 歓迎。<a href="https://github.com/sponsors/hitalin">Sponsors</a> で開発を支援。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture -->
+  <section class="section-default" id="architecture">
+    <div class="section-inner section-narrow">
+      <h2 class="section-title fade-in" data-direction="up">アーキテクチャ</h2>
+      <p class="section-sub fade-in" data-direction="up">ブラウザアプリには実現できない構造的な優位性</p>
+      <div class="arch-grid">
+        <div class="arch-layer glass fade-in" data-direction="left">
+          <div class="arch-label">フロントエンド</div>
+          <div class="arch-title">Vue 3 + TypeScript</div>
+          <div class="arch-desc">Vapor モード移行準備済み。CSS Containment、Frame Scheduler で描画最適化。Pinia による状態管理。</div>
+        </div>
+        <div class="arch-arrow fade-in" data-direction="up">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+        </div>
+        <div class="arch-layer glass fade-in" data-direction="right">
+          <div class="arch-label">Tauri v2 ブリッジ</div>
+          <div class="arch-title">Rust — 薄いラッパー</div>
+          <div class="arch-desc">グローバルホットキー、システムトレイ、OS キーチェーン、自動アップデート。WebView とプロセス分離でセキュリティを確保。</div>
+        </div>
+        <div class="arch-arrow fade-in" data-direction="up">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+        </div>
+        <div class="arch-layer arch-core glass fade-in" data-direction="left">
+          <div class="arch-label">コア</div>
+          <div class="arch-title">notecli — Rust ヘッドレスクライアント</div>
+          <div class="arch-desc">Misskey API + WebSocket ストリーミング + SQLite（FTS5）+ localhost HTTP API。Tauri なしでも単体動作する独立ライブラリ。</div>
+          <div class="arch-tags">
+            <span>reqwest</span><span>tokio</span><span>rusqlite</span><span>axum</span>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- Download -->
-  <section class="download fade-in" id="download">
-    <h2 class="section-title">ダウンロード</h2>
-    <p class="sub">お使いの環境に合わせてインストール</p>
-    <p class="version-badge" id="latest-version"></p>
-    <div class="platforms">
-      <a href="https://github.com/hitalin/notedeck/releases/latest" data-platform="windows" class="platform glass">
-        <svg viewBox="0 0 24 24"><path d="M3 12V6.75l8-1.25V12H3zm0 .5h8v6.5l-8-1.25V12.5zM11.5 5.34l9.5-1.34v8h-9.5V5.34zM11.5 12.5H21v7.5l-9.5-1.34V12.5z"/></svg>
-        <div class="os">Windows</div>
-        <div class="format">.exe</div>
-      </a>
-      <a href="https://github.com/hitalin/notedeck/releases/latest" data-platform="macos" class="platform glass">
-        <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-        <div class="os">macOS</div>
-        <div class="format">.dmg (Universal)</div>
-      </a>
-      <a href="https://github.com/hitalin/notedeck/releases/latest" data-platform="linux" class="platform glass">
-        <svg viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.368 1.884 1.43.868.07 1.723-.467 2.395-.722.67-.26 1.203-.394 1.587-.848.192-.227.313-.525.313-.847 0-.233-.063-.466-.194-.661-.12-.18-.255-.394-.32-.608-.065-.225.01-.393.13-.592.18-.275.39-.597.305-1.103-.012-.064-.03-.132-.05-.192.36-.36.59-.833.665-1.284a2.634 2.634 0 00-.04-1.14c-.053-.209-.158-.393-.193-.672a1.905 1.905 0 01.03-.574 3.824 3.824 0 00-.127-1.795c-.283-.717-.754-1.333-1.322-1.868-.283-.263-.588-.508-.898-.727-1.15-.871-2.21-1.778-2.634-3.237-.186-.605-.32-1.22-.47-1.867-.085-.347-.2-.7-.364-1.017a4.152 4.152 0 00-.655-.915c-.876-.97-2.22-1.38-3.559-1.4zm-.01 1.07c1.14.017 2.24.378 2.99 1.22.21.227.39.482.55.78.14.28.24.59.32.9.15.63.28 1.24.47 1.87.48 1.63 1.67 2.63 2.87 3.54.29.21.57.44.83.68.51.48.93 1.03 1.17 1.65.12.31.16.67.13 1.02-.03.37-.09.74.01 1.12.06.36.2.62.27.91.03.12.06.25.06.38 0 .27-.12.5-.26.69a2.725 2.725 0 00-.46.96c-.02.1-.03.2-.03.32 0 .08.01.15.02.22-.13.24-.32.44-.54.73-.12.18-.23.39-.28.64-.05.26-.03.5.02.73.06.21.18.42.31.61.09.13.15.27.18.38a.37.37 0 010 .17c-.02.12-.15.25-.32.39-.16.14-.39.28-.67.42-.57.27-1.3.48-1.82.51-.54.05-1.14-.38-1.42-.74a.8.8 0 01-.1-.2l-.01-.03c-.22-.39-.18-.78-.03-1.27.16-.53-.04-1-.11-1.33a3.384 3.384 0 00-.05-.15c-.11-.38-.3-.74-.62-.94-.33-.2-.69-.2-1.01-.12-.62.17-1.39-.02-2.14-.37-.38-.18-.76-.33-1.16-.41-.4-.08-.84-.1-1.28.05-.22.08-.39.21-.52.37-.13.18-.21.37-.27.56-.12.37-.15.78-.18 1.04-.02.19-.02.37-.06.52-.03.15-.09.24-.16.31a.698.698 0 01-.43.2c-.37.03-1.02-.13-1.73-.38-.35-.13-.56-.21-.7-.29a.458.458 0 01-.16-.15c-.07-.13-.06-.38.18-.89.1-.21.09-.45.04-.67-.05-.23-.13-.43-.19-.62-.12-.4-.17-.65-.12-.8.04-.14.17-.38.54-.6.36-.21.76-.34 1.08-.49.32-.14.6-.3.82-.55.24-.26.4-.54.55-.82.31-.57.46-1.15.45-1.6-.03-.92.16-1.76.47-2.61.54-1.55 1.68-3.13 2.55-4.17.82-1.07 1.16-2.19 1.24-3.3.07-1.28-.01-2.66.47-3.73.24-.54.58-.93 1.07-1.17a2.6 2.6 0 011.48-.33z"/></svg>
-        <div class="os">Linux</div>
-        <div class="format">.deb / .AppImage</div>
-      </a>
-      <a href="https://github.com/hitalin/notedeck/releases/latest" data-platform="android" class="platform glass">
-        <svg viewBox="0 0 24 24"><path d="M17.523 15.341a.96.96 0 100-1.922.96.96 0 000 1.922zm-11.046 0a.96.96 0 100-1.922.96.96 0 000 1.922zm11.4-6.028l1.996-3.458a.413.413 0 00-.151-.563.413.413 0 00-.563.151l-2.022 3.5A12.22 12.22 0 0012 8.072a12.22 12.22 0 00-5.137.871L4.841 5.443a.413.413 0 00-.563-.151.413.413 0 00-.151.563l1.996 3.458C2.691 11.283.342 14.59 0 18.5h24c-.342-3.91-2.691-7.217-6.123-9.187z"/></svg>
-        <div class="os">Android</div>
-        <div class="format">.apk</div>
-      </a>
-    </div>
-    <div class="install-alt glass">
-      <h3>パッケージマネージャー</h3>
-      <div class="install-cmd" data-cmd="winget install Hitalin.NoteDeck">
-        <div class="label">winget</div><code><span class="sh-prompt">$</span> <span class="sh-cmd">winget</span> <span class="sh-sub">install</span> <span class="sh-arg">Hitalin.NoteDeck</span></code>
-        <span class="copy-hint">click to copy</span>
+  <section class="section-alt" id="download">
+    <div class="section-inner section-narrow">
+      <h2 class="section-title fade-in" data-direction="up">ダウンロード</h2>
+      <p class="section-sub fade-in" data-direction="up">お使いの環境に合わせてインストール</p>
+      <p class="version-badge" id="latest-version"></p>
+      <div class="platforms fade-in" data-direction="up">
+        <a href="https://github.com/hitalin/notedeck/releases/latest" data-platform="windows" class="platform glass">
+          <svg viewBox="0 0 24 24"><path d="M3 12V6.75l8-1.25V12H3zm0 .5h8v6.5l-8-1.25V12.5zM11.5 5.34l9.5-1.34v8h-9.5V5.34zM11.5 12.5H21v7.5l-9.5-1.34V12.5z"/></svg>
+          <div class="os">Windows</div>
+          <div class="format">.exe</div>
+        </a>
+        <a href="https://github.com/hitalin/notedeck/releases/latest" data-platform="macos" class="platform glass">
+          <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          <div class="os">macOS</div>
+          <div class="format">.dmg (Universal)</div>
+        </a>
+        <a href="https://github.com/hitalin/notedeck/releases/latest" data-platform="linux" class="platform glass">
+          <svg viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.368 1.884 1.43.868.07 1.723-.467 2.395-.722.67-.26 1.203-.394 1.587-.848.192-.227.313-.525.313-.847 0-.233-.063-.466-.194-.661-.12-.18-.255-.394-.32-.608-.065-.225.01-.393.13-.592.18-.275.39-.597.305-1.103-.012-.064-.03-.132-.05-.192.36-.36.59-.833.665-1.284a2.634 2.634 0 00-.04-1.14c-.053-.209-.158-.393-.193-.672a1.905 1.905 0 01.03-.574 3.824 3.824 0 00-.127-1.795c-.283-.717-.754-1.333-1.322-1.868-.283-.263-.588-.508-.898-.727-1.15-.871-2.21-1.778-2.634-3.237-.186-.605-.32-1.22-.47-1.867-.085-.347-.2-.7-.364-1.017a4.152 4.152 0 00-.655-.915c-.876-.97-2.22-1.38-3.559-1.4zm-.01 1.07c1.14.017 2.24.378 2.99 1.22.21.227.39.482.55.78.14.28.24.59.32.9.15.63.28 1.24.47 1.87.48 1.63 1.67 2.63 2.87 3.54.29.21.57.44.83.68.51.48.93 1.03 1.17 1.65.12.31.16.67.13 1.02-.03.37-.09.74.01 1.12.06.36.2.62.27.91.03.12.06.25.06.38 0 .27-.12.5-.26.69a2.725 2.725 0 00-.46.96c-.02.1-.03.2-.03.32 0 .08.01.15.02.22-.13.24-.32.44-.54.73-.12.18-.23.39-.28.64-.05.26-.03.5.02.73.06.21.18.42.31.61.09.13.15.27.18.38a.37.37 0 010 .17c-.02.12-.15.25-.32.39-.16.14-.39.28-.67.42-.57.27-1.3.48-1.82.51-.54.05-1.14-.38-1.42-.74a.8.8 0 01-.1-.2l-.01-.03c-.22-.39-.18-.78-.03-1.27.16-.53-.04-1-.11-1.33a3.384 3.384 0 00-.05-.15c-.11-.38-.3-.74-.62-.94-.33-.2-.69-.2-1.01-.12-.62.17-1.39-.02-2.14-.37-.38-.18-.76-.33-1.16-.41-.4-.08-.84-.1-1.28.05-.22.08-.39.21-.52.37-.13.18-.21.37-.27.56-.12.37-.15.78-.18 1.04-.02.19-.02.37-.06.52-.03.15-.09.24-.16.31a.698.698 0 01-.43.2c-.37.03-1.02-.13-1.73-.38-.35-.13-.56-.21-.7-.29a.458.458 0 01-.16-.15c-.07-.13-.06-.38.18-.89.1-.21.09-.45.04-.67-.05-.23-.13-.43-.19-.62-.12-.4-.17-.65-.12-.8.04-.14.17-.38.54-.6.36-.21.76-.34 1.08-.49.32-.14.6-.3.82-.55.24-.26.4-.54.55-.82.31-.57.46-1.15.45-1.6-.03-.92.16-1.76.47-2.61.54-1.55 1.68-3.13 2.55-4.17.82-1.07 1.16-2.19 1.24-3.3.07-1.28-.01-2.66.47-3.73.24-.54.58-.93 1.07-1.17a2.6 2.6 0 011.48-.33z"/></svg>
+          <div class="os">Linux</div>
+          <div class="format">.deb / .AppImage</div>
+        </a>
+        <a href="https://github.com/hitalin/notedeck/releases/latest" data-platform="android" class="platform glass">
+          <svg viewBox="0 0 24 24"><path d="M17.523 15.341a.96.96 0 100-1.922.96.96 0 000 1.922zm-11.046 0a.96.96 0 100-1.922.96.96 0 000 1.922zm11.4-6.028l1.996-3.458a.413.413 0 00-.151-.563.413.413 0 00-.563.151l-2.022 3.5A12.22 12.22 0 0012 8.072a12.22 12.22 0 00-5.137.871L4.841 5.443a.413.413 0 00-.563-.151.413.413 0 00-.151.563l1.996 3.458C2.691 11.283.342 14.59 0 18.5h24c-.342-3.91-2.691-7.217-6.123-9.187z"/></svg>
+          <div class="os">Android</div>
+          <div class="format">.apk</div>
+        </a>
       </div>
-      <div class="install-cmd" data-cmd="yay -S misskey-notedeck-bin">
-        <div class="label">AUR</div><code><span class="sh-prompt">$</span> <span class="sh-cmd">yay</span> <span class="sh-flag">-S</span> <span class="sh-arg">misskey-notedeck-bin</span></code>
-        <span class="copy-hint">click to copy</span>
-      </div>
-      <div class="install-cmd" data-cmd="nix run github:hitalin/notedeck">
-        <div class="label">Nix</div><code><span class="sh-prompt">$</span> <span class="sh-cmd">nix</span> <span class="sh-sub">run</span> <span class="sh-arg">github:hitalin/notedeck</span></code>
-        <span class="copy-hint">click to copy</span>
+      <div class="install-alt glass fade-in" data-direction="up">
+        <h3>パッケージマネージャー</h3>
+        <div class="install-cmd" data-cmd="winget install Hitalin.NoteDeck">
+          <div class="label">winget</div><code><span class="sh-prompt">$</span> <span class="sh-cmd">winget</span> <span class="sh-sub">install</span> <span class="sh-arg">Hitalin.NoteDeck</span></code>
+          <span class="copy-hint">click to copy</span>
+        </div>
+        <div class="install-cmd" data-cmd="yay -S misskey-notedeck-bin">
+          <div class="label">AUR</div><code><span class="sh-prompt">$</span> <span class="sh-cmd">yay</span> <span class="sh-flag">-S</span> <span class="sh-arg">misskey-notedeck-bin</span></code>
+          <span class="copy-hint">click to copy</span>
+        </div>
+        <div class="install-cmd" data-cmd="nix run github:hitalin/notedeck">
+          <div class="label">Nix</div><code><span class="sh-prompt">$</span> <span class="sh-cmd">nix</span> <span class="sh-sub">run</span> <span class="sh-arg">github:hitalin/notedeck</span></code>
+          <span class="copy-hint">click to copy</span>
+        </div>
       </div>
     </div>
   </section>

@@ -429,7 +429,7 @@ onMounted(async () => {
             ref="filterBtnRef"
             class="_button tl-tab"
             :class="[$style.tlTab, $style.tlFilterBtn, { [$style.active]: hasActiveFilter }]"
-            title="Filter"
+            title="フィルター"
             @click.stop="toggleFilterMenu"
           >
             <i class="ti ti-filter" />
@@ -455,6 +455,8 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+@use './column-common.module.scss';
+
 .tlTabs {
   display: flex;
   position: relative;
@@ -518,6 +520,7 @@ onMounted(async () => {
   align-items: center;
 }
 
+/* tlHeaderIcon は column-common.module.scss から継承、font-size のみ拡張 */
 .tlHeaderIcon {
   font-size: 14px;
 }

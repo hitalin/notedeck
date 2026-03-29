@@ -3,6 +3,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type { NormalizedUserDetail } from '@/adapters/types'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -96,7 +97,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
     :style="{ ...themeVars, left: `${x}px`, top: `${y}px` }"
     @mouseleave="handleMouseLeave"
   >
-    <div v-if="isLoading" :class="$style.popupLoading">読み込み中...</div>
+    <div v-if="isLoading" :class="$style.popupLoading"><LoadingSpinner /></div>
     <template v-else-if="user">
       <div :class="$style.popupBanner">
         <div
@@ -136,7 +137,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
         <div v-if="user.isFollowed" :class="$style.popupBadge">フォローされています</div>
 
-        <button :class="$style.popupWebuiLink" @click.stop="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}`)">
+        <button class="_popupItem" @click.stop="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}`)">
           <i class="ti ti-external-link" />
           Web UIで開く
         </button>
@@ -242,23 +243,6 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   color: var(--nd-accent);
 }
 
-.popupWebuiLink {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 10px;
-  padding: 0;
-  border: none;
-  background: none;
-  font-size: 0.8em;
-  color: var(--nd-accent);
-  cursor: pointer;
-  opacity: 0.8;
-
-  &:hover {
-    opacity: 1;
-  }
-}
 
 .mobile {
   width: auto;

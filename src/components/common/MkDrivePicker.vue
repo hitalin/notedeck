@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { NormalizedDriveFile } from '@/adapters/types'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { isImage, safeUrl, useDriveFolder } from '@/composables/useDriveFolder'
 
 const props = defineProps<{
@@ -54,7 +55,7 @@ fetchDrive()
 
     <!-- Content -->
     <div :class="$style.dpContent">
-      <div v-if="loading" :class="$style.dpEmpty">読み込み中...</div>
+      <div v-if="loading" :class="$style.dpEmpty"><LoadingSpinner /></div>
       <div v-else-if="error" :class="[$style.dpEmpty, $style.dpError]">{{ error }}</div>
       <template v-else>
         <!-- Folders -->

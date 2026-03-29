@@ -120,7 +120,7 @@ defineExpose({
     </template>
 
     <div v-if="!account" :class="$style.columnEmpty">
-      Account not found
+      アカウントが見つかりません
     </div>
 
     <div
@@ -209,7 +209,7 @@ defineExpose({
               v-if="isLoading && notes.length > 0"
               :class="$style.loadingMore"
             >
-              Loading...
+              <LoadingSpinner />
             </div>
           </template>
         </NoteScroller>

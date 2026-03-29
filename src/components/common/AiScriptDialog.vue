@@ -82,6 +82,8 @@ defineExpose({ showDialog, showConfirm })
 </template>
 
 <style lang="scss" module>
+@use '@/styles/popup';
+
 .aisBackdrop {
   z-index: var(--nd-z-popup);
   background: var(--nd-modalBg);
@@ -158,31 +160,5 @@ defineExpose({ showDialog, showConfirm })
 .warning {}
 .error {}
 
-// Vapor transition classes
-.enter {
-  animation: backdropIn var(--nd-duration-base) var(--nd-ease-decel);
-}
-.leave {
-  animation: backdropOut var(--nd-duration-base) ease-out forwards;
-}
-@keyframes backdropIn {
-  from { opacity: 0; }
-}
-@keyframes backdropOut {
-  to { opacity: 0; }
-}
-
-.contentEnter {
-  animation: popupIn 0.2s var(--nd-ease-spring);
-}
-.contentLeave {
-  animation: popupOut var(--nd-duration-base) var(--nd-ease-decel) forwards;
-}
-@keyframes popupIn {
-  from { opacity: 0; transform: scale(0.85) translateY(8px); }
-}
-@keyframes popupOut {
-  to { opacity: 0; transform: scale(0.92) translateY(4px); }
-}
 </style>
 

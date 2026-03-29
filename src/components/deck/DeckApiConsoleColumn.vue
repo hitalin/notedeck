@@ -75,7 +75,7 @@ function onKeydown(e: KeyboardEvent) {
         class="_button"
         :class="[$style.headerRunBtn, { [$style.loading]: loading }]"
         :disabled="loading || !endpoint.trim() || !column.accountId"
-        title="Send (Ctrl+Enter)"
+        title="送信 (Ctrl+Enter)"
         @click.stop="execute"
       >
         <i class="ti ti-send" />
@@ -111,13 +111,13 @@ function onKeydown(e: KeyboardEvent) {
         <div v-if="!column.accountId" :class="$style.responseEmpty">
           アカウントが設定されていません
         </div>
-        <div v-else-if="isLoggedOut" :class="$style.responseError"><i class="ti ti-logout" /> ログアウト中</div>
+        <div v-else-if="isLoggedOut" :class="$style.responseError"><i class="ti ti-logout" />ログアウト中</div>
         <div v-else-if="error" :class="$style.responseError">{{ error }}</div>
         <div v-else-if="response !== null" :class="$style.responseBody">
           <pre>{{ response }}</pre>
         </div>
         <div v-else :class="$style.responseEmpty">
-          Ctrl+Enter to send
+          Ctrl+Enterで送信
         </div>
       </div>
     </div>
@@ -125,10 +125,7 @@ function onKeydown(e: KeyboardEvent) {
 </template>
 
 <style lang="scss" module>
-.tlHeaderIcon {
-  flex-shrink: 0;
-  opacity: 0.7;
-}
+@use './column-common.module.scss';
 
 .headerRunBtn {
   display: flex;

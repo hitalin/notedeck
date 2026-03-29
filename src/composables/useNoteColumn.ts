@@ -634,7 +634,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
       if (fetched.length > 0) {
         const newNotes = fetched.filter((n) => !noteIds.has(n.id))
         if (newNotes.length > 0) {
-          setNotes(insertIntoSorted(notes.value, newNotes))
+          // Route through pending queue to avoid jarring content shift.
+          // User sees "N件の新しいノート" banner and can tap to reveal.
+          streamingBatch.addPending(newNotes)
         }
       }
       isOffline.value = false

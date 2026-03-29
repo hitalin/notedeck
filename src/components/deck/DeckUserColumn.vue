@@ -86,7 +86,7 @@ const {
     </template>
 
     <div v-if="!account" :class="$style.columnEmpty">
-      Account not found
+      アカウントが見つかりません
     </div>
 
     <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
@@ -133,7 +133,7 @@ const {
 
           <template #append>
             <div v-if="isLoading && notes.length > 0" :class="$style.loadingMore">
-              Loading...
+              <LoadingSpinner />
             </div>
           </template>
         </NoteScroller>

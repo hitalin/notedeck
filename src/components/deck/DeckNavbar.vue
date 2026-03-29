@@ -422,15 +422,15 @@ defineExpose({
           <!-- Realtime mode -->
           <button
             class="_button"
-            :class="[$style.item, realtimeModeStore.isRealtime ? $style.realtimeActive : $style.pollingActive, { [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
+            :class="[$style.item, realtimeModeStore.enabled ? $style.realtimeActive : $style.pollingActive, { [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
             :disabled="offlineModeStore.isOfflineMode"
-            :title="realtimeModeStore.isRealtime ? 'ポーリングモードに切り替え' : 'リアルタイムモードに切り替え'"
+            :title="realtimeModeStore.enabled ? 'ポーリングモードに切り替え' : 'リアルタイムモードに切り替え'"
             @click="hapticLight(); toggleRealtimeMode()"
           >
             <div :class="$style.iconWrap">
-              <i :class="realtimeModeStore.isRealtime ? 'ti ti-bolt' : 'ti ti-bolt-off'" />
+              <i :class="realtimeModeStore.enabled ? 'ti ti-bolt' : 'ti ti-bolt-off'" />
             </div>
-            <span :class="$style.label">{{ realtimeModeStore.isRealtime ? 'リアルタイム' : 'ポーリング' }}</span>
+            <span :class="$style.label">{{ realtimeModeStore.enabled ? 'リアルタイム' : 'ポーリング' }}</span>
           </button>
 
           <!-- Post button -->

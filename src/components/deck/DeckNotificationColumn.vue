@@ -799,12 +799,12 @@ onUnmounted(() => {
     @header-click="scrollToTop"
   >
     <template #header-icon>
-      <i :class="$style.notifHeaderIcon" class="ti ti-bell" />
+      <i :class="$style.tlHeaderIcon" class="ti ti-bell" />
     </template>
 
     <template #header-meta>
       <div v-if="isCrossAccount" :class="$style.headerAccount">
-        <AvatarStack :size="18" />
+        <AvatarStack :size="20" />
       </div>
       <div v-else-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
@@ -813,7 +813,7 @@ onUnmounted(() => {
     </template>
 
     <div v-if="!isCrossAccount && !account" :class="$style.columnEmpty">
-      Account not found
+      アカウントが見つかりません
     </div>
 
     <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">
@@ -1054,7 +1054,7 @@ onUnmounted(() => {
 
         <template #append>
           <div v-if="isLoading && notifications.length > 0" :class="$style.loadingMore">
-            読み込み中...
+            <LoadingSpinner />
           </div>
         </template>
       </NoteScroller>
@@ -1091,32 +1091,6 @@ onUnmounted(() => {
 <style lang="scss" module>
 @use './column-common.module.scss';
 
-.notifHeaderIcon {
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-
-.headerAccount {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 4px;
-  flex-shrink: 0;
-}
-
-.headerAvatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.headerFavicon {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  opacity: 0.7;
-}
 
 
 .notifBody {
@@ -1369,28 +1343,6 @@ onUnmounted(() => {
   :deep(.avatar) {
     display: none;
   }
-}
-
-.columnEmpty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  font-size: 0.85em;
-}
-
-.columnError {
-  color: var(--nd-love);
-  opacity: 1;
-}
-
-.loadingMore {
-  text-align: center;
-  padding: 1rem;
-  font-size: 0.8em;
-  opacity: 0.4;
 }
 
 .followRequestActions {

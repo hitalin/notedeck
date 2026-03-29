@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { safeUrl } from '@/composables/useDriveFolder'
 import { getAccountAvatarUrl } from '@/stores/accounts'
@@ -274,7 +275,7 @@ fetchGallery()
         <div v-if="isLoggedOut" :class="$style.loggedOutBanner">
           <i class="ti ti-logout" />ログアウト中
         </div>
-        <div v-if="loading && posts.length === 0 && !isLoggedOut" :class="$style.columnEmpty">読み込み中...</div>
+        <div v-if="loading && posts.length === 0 && !isLoggedOut" :class="$style.columnLoading"><LoadingSpinner /></div>
         <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
         <div v-else-if="posts.length === 0" :class="$style.columnEmpty">
           ギャラリーの投稿がありません
@@ -325,7 +326,7 @@ fetchGallery()
               </div>
             </button>
           </div>
-          <div v-if="loading" :class="$style.columnEmpty">読み込み中...</div>
+          <div v-if="loading" :class="$style.columnLoading"><LoadingSpinner /></div>
         </template>
       </div>
     </template>

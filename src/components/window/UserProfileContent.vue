@@ -15,6 +15,7 @@ import type {
   ServerAdapter,
   UserList,
 } from '@/adapters/types'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
@@ -100,7 +101,10 @@ let adapter: ServerAdapter | null = null
 onMounted(async () => {
   const account = accountsStore.accounts.find((a) => a.id === props.accountId)
   if (!account) {
-    error.value = new AppError('ACCOUNT_NOT_FOUND', 'Account not found')
+    error.value = new AppError(
+      'ACCOUNT_NOT_FOUND',
+      'アカウントが見つかりません',
+    )
     isLoading.value = false
     return
   }
@@ -531,7 +535,7 @@ async function handlePosted(editedNoteId?: string) {
 
 <template>
   <div :class="$style.userProfileContent" @scroll.passive="onScroll">
-    <div v-if="isLoading" :class="$style.stateMessage">読み込み中...</div>
+    <div v-if="isLoading" :class="$style.stateMessage"><LoadingSpinner /></div>
 
     <div v-else-if="error" :class="[$style.stateMessage, $style.stateError]">
       <p>{{ error.message }}</p>
@@ -738,7 +742,7 @@ async function handlePosted(editedNoteId?: string) {
           />
 
           <div v-if="isLoadingNotes" :class="$style.stateMessage">
-            読み込み中...
+            <LoadingSpinner />
           </div>
 
           <div v-if="!isLoadingNotes && notes.length === 0" :class="$style.stateMessage">
