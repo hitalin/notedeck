@@ -22,9 +22,6 @@ const TitleBar = isTauri
   ? defineAsyncComponent(() => import('@/components/common/TitleBar.vue'))
   : null
 
-const CommandPalette = defineAsyncComponent(
-  () => import('@/components/common/CommandPalette.vue'),
-)
 const DeckWindowLayer = defineAsyncComponent(
   () => import('@/components/deck/DeckWindowLayer.vue'),
 )
@@ -130,10 +127,6 @@ onUnmounted(() => {
 
     <template v-if="!isPipWindow">
       <DeckWindowLayer />
-
-      <Teleport to="body">
-        <CommandPalette v-if="commandStore.isOpen && !isDesktop && isCompact" />
-      </Teleport>
     </template>
   </div>
 </template>
