@@ -125,6 +125,13 @@ watch(query, () => {
   selectedIndex.value = 0
 })
 
+watch(selectedIndex, () => {
+  nextTick(() => {
+    const el = document.querySelector('.palette-item.selected')
+    el?.scrollIntoView({ block: 'nearest' })
+  })
+})
+
 watch(
   () => commandStore.isOpen,
   (open) => {
@@ -195,7 +202,8 @@ function primaryShortcut(cmd: Command): string | null {
         </div>
         <!-- Command list -->
         <div v-else-if="flatList.length" class="palette-list">
-          <template v-for="group in filteredGroups" :key="group.category">
+          <template v-for="(group, gi) in filteredGroups" :key="group.category">
+            <div v-if="gi > 0" class="palette-separator" />
             <div class="palette-category">{{ group.label }}</div>
             <button
               v-for="cmd in group.commands"
@@ -257,7 +265,8 @@ function primaryShortcut(cmd: Command): string | null {
       </div>
       <!-- Normal command list -->
       <div v-else-if="flatList.length" class="palette-list">
-        <template v-for="group in filteredGroups" :key="group.category">
+        <template v-for="(group, gi) in filteredGroups" :key="group.category">
+          <div v-if="gi > 0" class="palette-separator" />
           <div class="palette-category">{{ group.label }}</div>
           <button
             v-for="cmd in group.commands"
@@ -342,6 +351,10 @@ function primaryShortcut(cmd: Command): string | null {
   border: none;
   flex-shrink: 0;
   line-height: 1.5;
+}
+
+.palette-inline-input-wrap:focus-within {
+  border-color: var(--nd-accent, #86b300);
 }
 
 .palette-dropdown {
@@ -456,6 +469,12 @@ function primaryShortcut(cmd: Command): string | null {
   max-height: calc(60vh - 50px);
 }
 
+.palette-separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--nd-divider, rgba(255, 255, 255, 0.06));
+}
+
 .palette-category {
   padding: 8px 14px 4px;
   font-size: 11px;
@@ -473,6 +492,7 @@ function primaryShortcut(cmd: Command): string | null {
   width: 100%;
   padding: 8px 14px;
   border: none;
+  border-left: 2px solid transparent;
   background: none;
   color: var(--nd-fg);
   font-size: 13px;
@@ -484,6 +504,7 @@ function primaryShortcut(cmd: Command): string | null {
 
 .palette-item.selected {
   background: var(--nd-accentedBg, rgba(134, 179, 0, 0.15));
+  border-left-color: var(--nd-accent, #86b300);
 }
 
 .palette-item:hover {
