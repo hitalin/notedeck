@@ -147,7 +147,7 @@ defineExpose({
         </div>
       </div>
 
-      <div v-if="isOffline && !offlineModeStore.isOfflineMode && !isLoggedOut" :class="$style.offlineBanner">
+      <div v-if="(isOffline || offlineModeStore.isOfflineMode) && !isLoggedOut" :class="$style.offlineBanner">
         <i class="ti ti-cloud-off" />オフライン
       </div>
       <div v-else-if="isPollingMode && !isLoggedOut" :class="$style.pollingBanner">

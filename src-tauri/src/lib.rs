@@ -203,7 +203,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::fetch_server_meta,
         commands::fetch_image_base64,
         commands::get_cli_commands,
-        commands::get_notecli_version,
+        commands::get_rustc_version,
         commands::get_openapi_spec,
         commands::open_devtools,
         commands::export_db,
@@ -438,8 +438,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         {
             let show_i = MenuItem::with_id(app, "show", "Show NoteDeck", true, None::<&str>)?;
             let offline_i = MenuItem::with_id(app, "offline", "Offline Mode", true, None::<&str>)?;
+            let realtime_i = MenuItem::with_id(app, "realtime", "Realtime Mode", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_i, &offline_i, &quit_i])?;
+            let menu = Menu::with_items(app, &[&show_i, &offline_i, &realtime_i, &quit_i])?;
 
             let icon = app
                 .default_window_icon()
@@ -459,6 +460,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     "offline" => {
                         let _ = app.emit("nd:toggle-offline-mode", ());
+                    }
+                    "realtime" => {
+                        let _ = app.emit("nd:toggle-realtime-mode", ());
                     }
                     "quit" => {
                         app.exit(0);

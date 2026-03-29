@@ -607,11 +607,17 @@ export function useNoteColumn(config: NoteColumnConfig) {
       return
     }
 
+    // Pause streaming to prevent auto-flush flicker during snapshot transition
+    streamingBatch.setPaused(true)
+
     // Swap subscription (stream/WebSocket stays connected)
     resubscribe(adapter)
     setNotes(snapshotNotes)
     await nextTick()
     if (scroller.value) scroller.value.scrollTop = scrollTop
+
+    // Sync isAtTop with restored scroll position (resetBatch forces it to true)
+    streamingBatch.isAtTop.value = scrollTop <= 10
 
     // Fetch diff from API to update snapshot with latest data
     const sinceId = snapshotNotes[0]?.id
@@ -630,6 +636,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
     } catch {
       // API failure with snapshot displayed — mark offline
       isOffline.value = true
+    } finally {
+      // Resume streaming after transition is complete
+      streamingBatch.setPaused(false)
     }
   }
 

@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import vue from '@vitejs/plugin-vue'
@@ -237,6 +238,15 @@ export default defineConfig({
       ).version,
     ),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+    __GIT_COMMIT__: JSON.stringify(
+      (() => {
+        try {
+          return execSync('git rev-parse HEAD').toString().trim()
+        } catch {
+          return 'unknown'
+        }
+      })(),
+    ),
     __VUE_OPTIONS_API__: false,
     __VUE_PROD_DEVTOOLS__: false,
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,

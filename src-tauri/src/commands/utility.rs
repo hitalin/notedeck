@@ -14,8 +14,8 @@ pub fn get_openapi_spec() -> serde_json::Value {
 }
 
 #[tauri::command]
-pub fn get_notecli_version() -> String {
-    option_env!("NOTECLI_GIT_HASH")
+pub fn get_rustc_version() -> String {
+    option_env!("RUSTC_VERSION_INFO")
         .unwrap_or("unknown")
         .to_string()
 }

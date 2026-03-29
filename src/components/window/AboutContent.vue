@@ -6,10 +6,11 @@ import { invoke } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../../package.json'
 
 const tauriVersion = ref('')
-const notecliCommit = ref('')
+const rustVersion = ref('')
 const copied = ref(false)
 
 const buildDate = __BUILD_DATE__
+const gitCommit = __GIT_COMMIT__
 
 function parseWebView(ua: string): string {
   const webkit = ua.match(/AppleWebKit\/([\d.]+)/)
@@ -36,7 +37,7 @@ onMounted(async () => {
     // Fallback for environments where Tauri API is unavailable
   }
   try {
-    notecliCommit.value = await invoke<string>('get_notecli_version')
+    rustVersion.value = await invoke<string>('get_rustc_version')
   } catch {
     // Fallback for environments where Tauri API is unavailable
   }
@@ -44,12 +45,10 @@ onMounted(async () => {
 
 const infoRows = [
   { label: 'Version', get: () => appVersion },
-  {
-    label: 'Commit',
-    get: () => (notecliCommit.value ? notecliCommit.value.slice(0, 7) : '...'),
-  },
+  { label: 'Commit', get: () => gitCommit.slice(0, 12) },
   { label: 'Date', get: () => buildDate },
   { label: 'Tauri', get: () => tauriVersion.value || '...' },
+  { label: 'Rust', get: () => rustVersion.value || '...' },
   { label: 'WebView', get: () => webView },
   { label: 'OS', get: () => os },
 ]
