@@ -16,7 +16,7 @@ const selectedIndex = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
 
 const cliMatch = computed(() => parseCliInput(query.value))
-const _cliMeta = computed(() =>
+const cliMeta = computed(() =>
   cliMatch.value ? getCliMeta(cliMatch.value.name) : undefined,
 )
 
@@ -75,7 +75,7 @@ const filteredGroups = computed<CommandGroup[]>(() => {
 
 const flatList = computed(() => filteredGroups.value.flatMap((g) => g.commands))
 
-function _onKeydown(e: KeyboardEvent) {
+function onKeydown(e: KeyboardEvent) {
   if (e.key === 'ArrowDown') {
     e.preventDefault()
     if (!cliMatch.value) {
@@ -112,7 +112,7 @@ function _onKeydown(e: KeyboardEvent) {
   }
 }
 
-function _runCommand(cmd: Command) {
+function runCommand(cmd: Command) {
   commandStore.close()
   cmd.execute()
 }
@@ -145,7 +145,7 @@ watch(
   },
 )
 
-function _primaryShortcut(cmd: Command): string | null {
+function primaryShortcut(cmd: Command): string | null {
   const s =
     cmd.shortcuts.find((s) => s.ctrl || s.shift || s.alt) ?? cmd.shortcuts[0]
   return s ? shortcutLabel(s) : null
