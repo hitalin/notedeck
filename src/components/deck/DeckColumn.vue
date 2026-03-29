@@ -204,40 +204,40 @@ function openAsPip() {
         <div v-if="menuVisible" ref="menuEl" :class="[$style.columnMenu, menuLeaving ? $style.menuLeave : $style.menuEnter]" class="_popupMenu" @pointerdown.stop>
           <!-- PiP menu -->
           <template v-if="isPipMode">
-            <button :class="$style.columnMenuItem" class="_button" @click="returnToDeck">
+            <button class="_popupItem" @click="returnToDeck">
               <i class="ti ti-arrow-back-up" />
               <span>デッキに戻す</span>
             </button>
             <div :class="$style.columnMenuDivider" />
-            <button :class="[$style.columnMenuItem, $style.columnMenuDanger]" class="_button" @click="close">
+            <button :class="$style.columnMenuDanger" class="_popupItem" @click="close">
               <i class="ti ti-x" />
               <span>閉じる</span>
             </button>
           </template>
           <!-- Deck menu -->
           <template v-else>
-            <button v-if="webUiUrl" :class="$style.columnMenuItem" class="_button" @click="onOpenWebUi">
+            <button v-if="webUiUrl" class="_popupItem" @click="onOpenWebUi">
               <i class="ti ti-external-link" />
               <span>Web UIで開く</span>
             </button>
-            <button v-if="canPopOut" :class="$style.columnMenuItem" class="_button" @click="popOut">
+            <button v-if="canPopOut" class="_popupItem" @click="popOut">
               <i class="ti ti-app-window" />
               <span>別ウィンドウで開く</span>
             </button>
-            <button v-if="canPopOut" :class="$style.columnMenuItem" class="_button" @click="openAsPip">
+            <button v-if="canPopOut" class="_popupItem" @click="openAsPip">
               <i class="ti ti-picture-in-picture" />
               <span>PiPウィンドウとして開く</span>
             </button>
-            <button v-if="canRecall" :class="$style.columnMenuItem" class="_button" @click="recallToMain">
+            <button v-if="canRecall" class="_popupItem" @click="recallToMain">
               <i class="ti ti-arrow-back-up" />
               <span>メインウィンドウに戻す</span>
             </button>
-            <button v-if="soundEnabled" :class="$style.columnMenuItem" class="_button" @click="toggleMute">
+            <button v-if="soundEnabled" class="_popupItem" @click="toggleMute">
               <i :class="isMuted ? 'ti ti-volume' : 'ti ti-volume-off'" />
               <span>{{ isMuted ? 'ミュート解除' : 'ミュート' }}</span>
             </button>
             <div :class="$style.columnMenuDivider" />
-            <button :class="[$style.columnMenuItem, $style.columnMenuDanger]" class="_button" @click="close">
+            <button :class="$style.columnMenuDanger" class="_popupItem" @click="close">
               <i class="ti ti-trash" />
               <span>カラムを削除</span>
             </button>
@@ -377,34 +377,6 @@ function openAsPip() {
   line-height: 1.35;
   font-weight: normal;
   font-size: 1rem;
-
-  .columnMenuItem {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 7px 22px;
-    font-size: 0.85em;
-    color: var(--nd-fg);
-    cursor: pointer;
-    position: relative;
-    transition: background var(--nd-duration-fast);
-
-    &:hover {
-      background: var(--nd-accent-hover);
-    }
-
-    i {
-      flex-shrink: 0;
-      width: 1em;
-      text-align: center;
-      opacity: 0.8;
-    }
-
-    span {
-      white-space: nowrap;
-    }
-  }
 
   .columnMenuDanger {
     color: var(--nd-love, #ff6b6b);
