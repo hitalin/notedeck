@@ -429,7 +429,7 @@ onMounted(async () => {
             ref="filterBtnRef"
             class="_button tl-tab"
             :class="[$style.tlTab, $style.tlFilterBtn, { [$style.active]: hasActiveFilter }]"
-            title="Filter"
+            title="フィルター"
             @click.stop="toggleFilterMenu"
           >
             <i class="ti ti-filter" />

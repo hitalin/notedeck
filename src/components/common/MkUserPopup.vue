@@ -3,6 +3,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type { NormalizedUserDetail } from '@/adapters/types'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -96,7 +97,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
     :style="{ ...themeVars, left: `${x}px`, top: `${y}px` }"
     @mouseleave="handleMouseLeave"
   >
-    <div v-if="isLoading" :class="$style.popupLoading">読み込み中...</div>
+    <div v-if="isLoading" :class="$style.popupLoading"><LoadingSpinner /></div>
     <template v-else-if="user">
       <div :class="$style.popupBanner">
         <div

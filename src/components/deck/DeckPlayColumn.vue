@@ -491,7 +491,7 @@ function reload() {
         <!-- Actions -->
         <div v-if="!running" :class="$style.playActions">
           <div :class="$style.playActionsRow">
-            <button class="_button" :class="$style.playActionBtn" title="Reload" @click="reload">
+            <button class="_button" :class="$style.playActionBtn" title="リロード" @click="reload">
               <i class="ti ti-reload" />
             </button>
           </div>

@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia'
 import { nextTick, ref, watch } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type { NoteReaction } from '@/adapters/types'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useNavigation } from '@/composables/useNavigation'
 import { useVaporTransition } from '@/composables/useVaporTransition'
@@ -145,7 +146,7 @@ defineExpose({ open })
 
         <!-- User list -->
         <div ref="scrollRef" :class="$style.userList" @scroll.passive="onScroll">
-          <div v-if="isLoading && users.length === 0" :class="$style.loading">読み込み中...</div>
+          <div v-if="isLoading && users.length === 0" :class="$style.loading"><LoadingSpinner /></div>
           <template v-else>
             <div v-if="users.length === 0" :class="$style.loading">リアクションなし</div>
             <button
@@ -172,7 +173,7 @@ defineExpose({ open })
                 <span :class="$style.userHandle">@{{ u.user.username }}</span>
               </div>
             </button>
-            <div v-if="isLoading && users.length > 0" :class="$style.loading">読み込み中...</div>
+            <div v-if="isLoading && users.length > 0" :class="$style.loading"><LoadingSpinner /></div>
           </template>
         </div>
       </div>
