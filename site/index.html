@@ -119,35 +119,6 @@
       </div>
     </div>
   </section>
-
-  <!-- Performance comparison -->
-  <section class="section-default">
-    <div class="section-inner section-narrow">
-      <h2 class="section-title fade-in" data-direction="up">ブラウザを超えるパフォーマンス</h2>
-      <p class="section-sub fade-in" data-direction="up">同じサーバーに接続した状態での比較（参考値）</p>
-      <div class="comparison-table-wrapper glass fade-in" data-direction="up">
-        <table class="comparison-table">
-          <thead>
-            <tr>
-              <th></th>
-              <th>Misskey Web UI</th>
-              <th>Aria（Flutter）</th>
-              <th class="highlight">NoteDeck</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td class="row-label">メモリ使用量</td><td>ブラウザタブ依存で重い</td><td>Flutter ランタイム分の負荷</td><td class="highlight"><strong>ネイティブで圧倒的に軽量</strong></td></tr>
-            <tr><td class="row-label">起動時間</td><td>ブラウザ依存</td><td>ランタイム初期化あり</td><td class="highlight"><strong>一瞬で起動</strong></td></tr>
-            <tr><td class="row-label">オフライン閲覧</td><td>不可</td><td>不可</td><td class="highlight"><strong>可能</strong></td></tr>
-            <tr><td class="row-label">ローカル全文検索</td><td>なし</td><td>なし</td><td class="highlight"><strong>FTS5</strong></td></tr>
-            <tr><td class="row-label">トークン保管</td><td>localStorage</td><td>localStorage</td><td class="highlight"><strong>OS キーチェーン</strong></td></tr>
-            <tr><td class="row-label">外部ツール連携</td><td>なし</td><td>なし</td><td class="highlight"><strong>REST API</strong></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
   <!-- Guest mode CTA -->
   <section class="section-alt">
     <div class="section-inner section-narrow">
@@ -171,7 +142,7 @@
 
       <!-- Highlight: Deck UI -->
       <div class="highlight-row fade-in" data-direction="left">
-        <div class="highlight-text">
+        <div class="highlight-text glass">
           <span class="highlight-badge">デッキ UI</span>
           <h3>自由に並べる、自分だけのレイアウト</h3>
           <p>HTL・LTL・通知・検索・リスト・アンテナ・チャンネル・チャット — あらゆるカラムを横に並べて一覧。カラム幅はドラッグで自由に調整、プロファイルとして保存すればワンクリックで切り替え。</p>
@@ -186,7 +157,7 @@
 
       <!-- Highlight: Offline -->
       <div class="highlight-row fade-in" data-direction="right">
-        <div class="highlight-text">
+        <div class="highlight-text glass">
           <span class="highlight-badge">オフライン &amp; ローカル DB</span>
           <h3>流れたノートも、ここに残る</h3>
           <p>タイムラインに流れてきたノートは自動でローカル SQLite に蓄積。サーバーからノートが消えても、連合が切れても、手元のデータは残り続けます。</p>
@@ -201,7 +172,7 @@
 
       <!-- Highlight: Security -->
       <div class="highlight-row fade-in" data-direction="left">
-        <div class="highlight-text">
+        <div class="highlight-text glass">
           <span class="highlight-badge">セキュリティ</span>
           <h3>トークンは OS が守る</h3>
           <p>ブラウザの localStorage にトークンを保存する Web クライアントとは設計が違います。NoteDeck はアクセストークンを OS のキーチェーン（macOS Keychain / Windows Credential Manager / Linux Secret Service）に暗号化保存。ブラウザ拡張や XSS によるトークン窃取は構造的に不可能です。</p>
@@ -216,7 +187,7 @@
 
       <!-- Highlight: API -->
       <div class="highlight-row fade-in" data-direction="right">
-        <div class="highlight-text">
+        <div class="highlight-text glass">
           <span class="highlight-badge">拡張性</span>
           <h3>外部ツールからデッキを操作</h3>
           <p>NoteDeck はバックグラウンドで REST API サーバー（localhost:19820）を起動。ノート投稿、タイムライン取得、カラム操作、コマンド実行 — すべてを HTTP で制御可能。Raycast、Obsidian、StreamDeck、自作ボットとの連携が、OAuth なしで実現します。</p>
@@ -231,7 +202,7 @@
 
       <!-- Highlight: Hackable -->
       <div class="highlight-row fade-in" data-direction="left">
-        <div class="highlight-text">
+        <div class="highlight-text glass">
           <span class="highlight-badge">Hackable</span>
           <h3>Misskey 開発者なら、すぐ貢献できる</h3>
           <p>フロントエンドは Misskey 本家と同じ <strong>Vue 3 + TypeScript</strong>。Misskey のコードが読める人なら、NoteDeck のコードもすぐに読めます。バックエンドの notecli は独立した Rust クレートとして分離設計されており、フロントエンドとバックエンドを独立して開発・テスト可能。</p>
