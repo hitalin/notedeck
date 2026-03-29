@@ -122,6 +122,16 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     }
   }
 
+  /** Add notes directly to the pending queue (used by tab-switch diff fetch) */
+  function addPending(newNotes: NormalizedNote[]) {
+    if (newNotes.length === 0) return
+    const deduped = newNotes.filter((n) => !options.noteIds.has(n.id))
+    if (deduped.length === 0) return
+    const merged = insertIntoSorted(pendingNotes.value, deduped)
+    pendingNotes.value =
+      merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+  }
+
   function resetBatch() {
     rafBuffer = []
     if (rafScheduled) {
@@ -142,6 +152,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     isAtTop,
     animatingIds,
     enqueueNote,
+    addPending,
     flushPending,
     handleScroll,
     scrollToTop,
