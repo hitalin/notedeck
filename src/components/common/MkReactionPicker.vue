@@ -444,7 +444,7 @@ onMounted(() => {
 .mobile {
   width: 100%;
   max-width: 100%;
-  max-height: 50dvh;
+  max-height: 50vh;
 
   .pickerSearchInput {
     padding: 10px 12px;

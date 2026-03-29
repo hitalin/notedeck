@@ -105,6 +105,8 @@ defineExpose({ open })
 </template>
 
 <style lang="scss" module>
+@use '@/styles/popup';
+
 .popupBackdrop {
   position: fixed;
   inset: 0;
@@ -113,16 +115,12 @@ defineExpose({ open })
 
   &.mobile {
     background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: flex-end;
-    /* Android: キーボード表示時に inset:0 だけでは全画面カバーできないケースがある */
-    height: 100dvh;
   }
 }
 
 .reactionPickerPopup {
   position: fixed;
-  translate: -100% 0;
+  transform: translateX(-100%);
   z-index: calc(var(--nd-z-popup) + 1);
   background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 96%, transparent);
   border-radius: 12px;
@@ -131,9 +129,11 @@ defineExpose({ open })
   contain: layout paint;
 
   .mobile & {
-    position: static;
-    translate: none;
     transform: none;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
@@ -147,11 +147,11 @@ defineExpose({ open })
 @keyframes popupBdIn { from { opacity: 0; } }
 @keyframes popupBdOut { to { opacity: 0; } }
 
-/* Desktop popup content — scale + fade (translate: -100% handles positioning) */
+/* Desktop popup content — scale + fade */
 .popupContentEnter { animation: reactionPickerIn 0.2s var(--nd-ease-spring); }
 .popupContentLeave { animation: reactionPickerOut var(--nd-duration-fast) var(--nd-ease-decel) forwards; }
-@keyframes reactionPickerIn { from { opacity: 0; transform: scale(0.85); } }
-@keyframes reactionPickerOut { to { opacity: 0; transform: scale(0.9); } }
+@keyframes reactionPickerIn { from { opacity: 0; transform: translateX(-100%) scale(0.85); } }
+@keyframes reactionPickerOut { to { opacity: 0; transform: translateX(-100%) scale(0.9); } }
 
 /* Mobile sheet backdrop */
 .sheetEnter { animation: sheetBdIn var(--nd-duration-base) var(--nd-ease-decel); }
@@ -159,10 +159,10 @@ defineExpose({ open })
 @keyframes sheetBdIn { from { opacity: 0; } }
 @keyframes sheetBdOut { to { opacity: 0; } }
 
-/* Mobile sheet content — iOS-style spring slide up */
+/* Mobile sheet content — slide up from bottom */
 .sheetContentEnter { animation: sheetIn 0.25s var(--nd-ease-spring); }
 .sheetContentLeave { animation: sheetOut 0.2s var(--nd-ease-decel) forwards; }
-@keyframes sheetIn { from { translate: 0 100%; } }
-@keyframes sheetOut { to { translate: 0 100%; } }
+@keyframes sheetIn { from { transform: translateY(100%); } }
+@keyframes sheetOut { to { transform: translateY(100%); } }
 
 </style>
