@@ -22,14 +22,13 @@ import {
   loadCachedTimeline,
   loadCachedTimelineBefore,
   purgeStaleCachedNotes,
-  restoreSnapshot,
-  saveSnapshot,
 } from '@/composables/useNoteColumnCache'
 import { useNoteFocus } from '@/composables/useNoteFocus'
 import { useNoteList } from '@/composables/useNoteList'
 import { useNoteScrollerRef } from '@/composables/useNoteScrollerRef'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
+import * as snapshotStore from '@/composables/useSnapshotStore'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import { isGuestAccount } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -206,7 +205,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     // Restore snapshot from a previously unmounted instance (instant re-mount)
     const colId = config.getColumn().id
-    const snapshot = restoreSnapshot(colId)
+    const cacheKey = config.cache?.getKey()
+    const snapshot = cacheKey
+      ? snapshotStore.restoreAndConsume(colId, cacheKey)
+      : null
     if (snapshot) {
       setNotes(snapshot.notes)
       const savedScrollTop = snapshot.scrollTop
@@ -664,9 +666,15 @@ export function useNoteColumn(config: NoteColumnConfig) {
   onUnmounted(() => {
     window.removeEventListener('deck-resume', onResume)
     // Save snapshot for instant restore if column is re-mounted
-    if (notes.value.length > 0) {
+    const unmountCacheKey = config.cache?.getKey()
+    if (notes.value.length > 0 && unmountCacheKey) {
       const el = noteScrollerRef.value?.getElement?.()
-      saveSnapshot(config.getColumn().id, notes.value, el?.scrollTop ?? 0)
+      snapshotStore.save(
+        config.getColumn().id,
+        unmountCacheKey,
+        notes.value,
+        el?.scrollTop ?? 0,
+      )
     }
     disconnect()
     streamingBatch?.resetBatch()

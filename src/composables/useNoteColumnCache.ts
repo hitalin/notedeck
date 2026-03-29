@@ -4,50 +4,6 @@ import { usePerformanceStore } from '@/stores/performance'
 import { catchLog } from '@/utils/logger'
 import { invoke } from '@/utils/tauriInvoke'
 
-// --- Snapshot management (singleton) ---
-
-interface ColumnSnapshot {
-  notes: NormalizedNote[]
-  scrollTop: number
-  savedAt: number
-}
-
-const columnSnapshots = new Map<string, ColumnSnapshot>()
-
-/** Save notes + scroll position for instant restore on re-mount. */
-export function saveSnapshot(
-  colId: string,
-  notes: NormalizedNote[],
-  scrollTop: number,
-): void {
-  const perfStore = usePerformanceStore()
-  const ttl = perfStore.get('snapshotTTL') * 60_000
-  // Evict expired snapshots on save to prevent accumulation
-  const now = Date.now()
-  for (const [id, snap] of columnSnapshots) {
-    if (now - snap.savedAt >= ttl) columnSnapshots.delete(id)
-  }
-  columnSnapshots.set(colId, {
-    notes: notes.slice(0, perfStore.get('snapshotMaxNotes')),
-    scrollTop,
-    savedAt: now,
-  })
-}
-
-/** Restore and consume a snapshot if it exists and hasn't expired. */
-export function restoreSnapshot(colId: string): ColumnSnapshot | null {
-  const perfStore = usePerformanceStore()
-  const ttl = perfStore.get('snapshotTTL') * 60_000
-  const snapshot = columnSnapshots.get(colId)
-  columnSnapshots.delete(colId)
-  if (snapshot && Date.now() - snapshot.savedAt < ttl) {
-    return snapshot
-  }
-  return null
-}
-
-// --- Cache invocations ---
-
 /** Load cached notes from SQLite. */
 export async function loadCachedTimeline(
   accountId: string,
