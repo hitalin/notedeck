@@ -2,12 +2,15 @@
 import { getTauriVersion } from '@tauri-apps/api/app'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { onMounted, ref } from 'vue'
+import { invoke } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../../package.json'
 
 const tauriVersion = ref('')
+const rustVersion = ref('')
 const copied = ref(false)
 
 const buildDate = __BUILD_DATE__
+const gitCommit = __GIT_COMMIT__
 
 function parseWebView(ua: string): string {
   const webkit = ua.match(/AppleWebKit\/([\d.]+)/)
@@ -33,12 +36,19 @@ onMounted(async () => {
   } catch {
     // Fallback for environments where Tauri API is unavailable
   }
+  try {
+    rustVersion.value = await invoke<string>('get_rustc_version')
+  } catch {
+    // Fallback for environments where Tauri API is unavailable
+  }
 })
 
 const infoRows = [
   { label: 'Version', get: () => appVersion },
+  { label: 'Commit', get: () => gitCommit.slice(0, 12) },
   { label: 'Date', get: () => buildDate },
   { label: 'Tauri', get: () => tauriVersion.value || '...' },
+  { label: 'Rust', get: () => rustVersion.value || '...' },
   { label: 'WebView', get: () => webView },
   { label: 'OS', get: () => os },
 ]
