@@ -154,8 +154,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     (index) => noteScrollerRef.value?.scrollToIndex(index),
   )
 
-  const pendingNotes =
-    streamingBatch?.pendingNotes ?? shallowRef<NormalizedNote[]>([])
+  const pendingCount = streamingBatch?.pendingCount ?? ref(0)
   const animatingIds =
     streamingBatch?.animatingIds ?? shallowRef<ReadonlySet<string>>(new Set())
 
@@ -626,17 +625,18 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     // Fetch diff from API to update snapshot with latest data
     const sinceId = snapshotNotes[0]?.id
+    const snapshotCacheKey = config.cache?.getKey() ?? 'default'
     try {
-      const dedupKey = `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
+      const dedupKey = `${config.getColumn().accountId}:${snapshotCacheKey}`
       const fetched = await dedup(dedupKey, () =>
         config.fetch(adapter, sinceId ? { sinceId } : {}),
       )
+      // Guard: discard if tab changed during async fetch
+      if ((config.cache?.getKey() ?? 'default') !== snapshotCacheKey) return
       if (fetched.length > 0) {
         const newNotes = fetched.filter((n) => !noteIds.has(n.id))
         if (newNotes.length > 0) {
-          // Route through pending queue to avoid jarring content shift.
-          // User sees "N件の新しいノート" banner and can tap to reveal.
-          streamingBatch.addPending(newNotes)
+          streamingBatch.addQueued(newNotes)
         }
       }
       isOffline.value = false
@@ -684,7 +684,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     error,
     notes,
     focusedNoteId,
-    pendingNotes,
+    pendingCount,
     animatingIds,
     postForm,
     handlers,

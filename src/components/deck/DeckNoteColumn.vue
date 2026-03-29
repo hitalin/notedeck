@@ -39,7 +39,7 @@ const {
   error,
   notes,
   focusedNoteId,
-  pendingNotes,
+  pendingCount,
   animatingIds,
   postForm,
   handlers,
@@ -163,12 +163,12 @@ defineExpose({
 
       <template v-if="!(isLoading && notes.length === 0)">
         <button
-          v-if="pendingNotes.length > 0"
+          v-if="pendingCount > 0"
           :class="$style.newNotesBanner"
           class="_button"
           @click="scrollToTop()"
         >
-          <i class="ti ti-arrow-up" />{{ pendingNotes.length
+          <i class="ti ti-arrow-up" />{{ pendingCount
           }}件の新しいノート
         </button>
 

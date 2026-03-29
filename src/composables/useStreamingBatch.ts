@@ -1,4 +1,4 @@
-import { onScopeDispose, ref, shallowRef } from 'vue'
+import { computed, onScopeDispose, ref, shallowRef } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
 import { useFrameScheduler } from '@/composables/useFrameScheduler'
 import { usePerformanceStore } from '@/stores/performance'
@@ -16,8 +16,15 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   const perfStore = usePerformanceStore()
   const { schedule, cancel } = useFrameScheduler()
   const MAX_NOTES = options.maxNotes ?? perfStore.get('noteListMax')
+  /** Streaming notes accumulated while the user is scrolled down */
   const pendingNotes = shallowRef<NormalizedNote[]>([])
+  /** Tab-switch diff-fetch notes — NOT auto-flushed, banner-tap only */
+  const queuedNotes = shallowRef<NormalizedNote[]>([])
   const isAtTop = ref(true)
+  /** Combined count for the "N件の新しいノート" banner */
+  const pendingCount = computed(
+    () => pendingNotes.value.length + queuedNotes.value.length,
+  )
   /** Set of note IDs currently playing the slide-in animation */
   const animatingIds = shallowRef<ReadonlySet<string>>(new Set())
   const _animTimers = new Set<ReturnType<typeof setTimeout>>()
@@ -110,6 +117,14 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
 
   function scrollToTop() {
     isAtTop.value = true
+    // Merge queued into pending for unified flush with animation
+    if (queuedNotes.value.length > 0) {
+      pendingNotes.value = insertIntoSorted(
+        pendingNotes.value,
+        queuedNotes.value,
+      )
+      queuedNotes.value = []
+    }
     flushPending()
     const el = options.scroller.value ?? undefined
     if (el) el.scrollTop = 0
@@ -120,15 +135,19 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     if (pendingNotes.value.some((n) => n.id === noteId)) {
       pendingNotes.value = pendingNotes.value.filter((n) => n.id !== noteId)
     }
+    if (queuedNotes.value.some((n) => n.id === noteId)) {
+      queuedNotes.value = queuedNotes.value.filter((n) => n.id !== noteId)
+    }
   }
 
-  /** Add notes directly to the pending queue (used by tab-switch diff fetch) */
-  function addPending(newNotes: NormalizedNote[]) {
+  /** Add notes to the deferred queue (tab-switch diff fetch).
+   *  Not auto-flushed — only revealed on explicit banner tap / scrollToTop. */
+  function addQueued(newNotes: NormalizedNote[]) {
     if (newNotes.length === 0) return
     const deduped = newNotes.filter((n) => !options.noteIds.has(n.id))
     if (deduped.length === 0) return
-    const merged = insertIntoSorted(pendingNotes.value, deduped)
-    pendingNotes.value =
+    const merged = insertIntoSorted(queuedNotes.value, deduped)
+    queuedNotes.value =
       merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
   }
 
@@ -142,6 +161,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     _animTimers.clear()
     animatingIds.value = new Set()
     pendingNotes.value = []
+    queuedNotes.value = []
     isAtTop.value = true
   }
 
@@ -149,10 +169,11 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
 
   return {
     pendingNotes,
+    pendingCount,
     isAtTop,
     animatingIds,
     enqueueNote,
-    addPending,
+    addQueued,
     flushPending,
     handleScroll,
     scrollToTop,
