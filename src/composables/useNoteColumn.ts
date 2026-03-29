@@ -95,7 +95,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     notes,
     noteIds,
     setNotes,
-    mergeIfSameList,
+    mergeUpdate,
     setOnNotesChanged,
     onNoteUpdate,
     handlePosted,
@@ -346,13 +346,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
       const freshIds = new Set(fetched.map((n) => n.id))
 
       if (fetched.length > 0) {
-        if (hasCached) {
-          // Refresh cached note data with fresh API response
-          if (!mergeIfSameList(fetched)) setNotes(fetched)
-        } else if (sinceId) {
-          const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-          if (newNotes.length > 0)
-            setNotes(insertIntoSorted(notes.value, newNotes))
+        if (hasCached || sinceId) {
+          // Incrementally merge: update existing in-place, insert new
+          mergeUpdate(fetched)
         } else {
           setNotes(fetched)
         }
@@ -474,15 +470,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
     if (config.validate && !config.validate()) return
     const sinceId = notes.value[0]?.id
     try {
-      const fetched = await config.fetch(adapter, sinceId ? { sinceId } : {})
-      if (sinceId && fetched.length > 0) {
-        const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-        if (newNotes.length > 0) {
-          setNotes(insertIntoSorted(notes.value, newNotes))
-        }
-      } else if (fetched.length > 0) {
-        setNotes(fetched)
-      }
+      const fetched = await fetchAndDedup(adapter, sinceId ? { sinceId } : {})
+      if (fetched.length > 0) mergeUpdate(fetched)
       isOffline.value = false
     } catch (e) {
       logWarn('pull-refresh', e)
@@ -520,7 +509,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     let apiFailed = false
     const apiPromise = sinceId
-      ? config.fetch(adapter, { sinceId }).catch((e) => {
+      ? fetchAndDedup(adapter, { sinceId }).catch((e) => {
           logWarn('resume-api', e)
           apiFailed = true
           return [] as NormalizedNote[]
@@ -530,18 +519,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
     const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
     isOffline.value = apiFailed
 
-    // Merge results: API results take priority, then filtered cache
-    const allNew = [...fetched, ...cached].filter((n) => !noteIds.has(n.id))
-    if (allNew.length > 0) {
-      // Deduplicate by id (API results first)
-      const seen = new Set<string>()
-      const deduped = allNew.filter((n) => {
-        if (seen.has(n.id)) return false
-        seen.add(n.id)
-        return true
-      })
-      setNotes(insertIntoSorted(notes.value, deduped))
-    }
+    // Merge: update existing in-place, insert new (API + cache combined)
+    const combined = [...fetched, ...cached]
+    if (combined.length > 0) mergeUpdate(combined)
 
     // Background: verify cached notes not confirmed by fresh API fetch
     if (cached.length > 0) {
@@ -599,9 +579,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
         }
         // Fetch latest from API
         const fetched = await fetchAndDedup(adapter)
-        if (fetched.length > 0) {
-          if (!mergeIfSameList(fetched)) setNotes(fetched)
-        }
+        if (fetched.length > 0) mergeUpdate(fetched)
         isOffline.value = false
       } catch (e) {
         await handleFetchError(e)
