@@ -203,7 +203,6 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::fetch_server_meta,
         commands::fetch_image_base64,
         commands::get_cli_commands,
-        commands::get_notecli_version,
         commands::get_openapi_spec,
         commands::open_devtools,
         commands::export_db,

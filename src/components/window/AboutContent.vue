@@ -2,11 +2,9 @@
 import { getTauriVersion } from '@tauri-apps/api/app'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { onMounted, ref } from 'vue'
-import { invoke } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../../package.json'
 
 const tauriVersion = ref('')
-const notecliCommit = ref('')
 const copied = ref(false)
 
 const buildDate = __BUILD_DATE__
@@ -35,19 +33,10 @@ onMounted(async () => {
   } catch {
     // Fallback for environments where Tauri API is unavailable
   }
-  try {
-    notecliCommit.value = await invoke<string>('get_notecli_version')
-  } catch {
-    // Fallback for environments where Tauri API is unavailable
-  }
 })
 
 const infoRows = [
   { label: 'Version', get: () => appVersion },
-  {
-    label: 'Commit',
-    get: () => (notecliCommit.value ? notecliCommit.value.slice(0, 7) : '...'),
-  },
   { label: 'Date', get: () => buildDate },
   { label: 'Tauri', get: () => tauriVersion.value || '...' },
   { label: 'WebView', get: () => webView },

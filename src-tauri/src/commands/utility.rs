@@ -14,13 +14,6 @@ pub fn get_openapi_spec() -> serde_json::Value {
 }
 
 #[tauri::command]
-pub fn get_notecli_version() -> String {
-    option_env!("NOTECLI_GIT_HASH")
-        .unwrap_or("unknown")
-        .to_string()
-}
-
-#[tauri::command]
 pub fn open_devtools(window: tauri::WebviewWindow) {
     window.open_devtools();
 }
