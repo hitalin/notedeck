@@ -259,15 +259,24 @@ function modeIcon(key: string, active: boolean): string {
 }
 
 @keyframes menuIn {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(4px) scale(0.97); }
 }
 @keyframes menuOut {
-  to { opacity: 0; transform: translateY(4px); }
+  to { opacity: 0; transform: translateY(4px) scale(0.97); }
 }
 @keyframes menuInRight {
-  from { opacity: 0; transform: translateX(-4px); }
+  from { opacity: 0; transform: translateX(-4px) scale(0.97); }
 }
 @keyframes menuOutRight {
-  to { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 0; transform: translateX(-4px) scale(0.97); }
+}
+
+@media (max-width: 500px) {
+  @keyframes menuIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  }
+  @keyframes menuOut {
+    to { opacity: 0; transform: translateY(8px) scale(0.97); }
+  }
 }
 </style>
