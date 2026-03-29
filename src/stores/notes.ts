@@ -66,7 +66,14 @@ export const useNoteStore = defineStore('notes', () => {
   }
 
   function get(id: string): NormalizedNote | undefined {
-    return noteMap.value.get(id)
+    const map = noteMap.value
+    const note = map.get(id)
+    // Refresh insertion order so recently accessed notes survive FIFO eviction
+    if (note) {
+      map.delete(id)
+      map.set(id, note)
+    }
+    return note
   }
 
   /** Resolve an ordered list of IDs into NormalizedNote[], with latest renote from store.
