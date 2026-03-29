@@ -14,6 +14,7 @@ import { initOgpListener } from '@/composables/useOgpPreview'
 import { useDeckStore } from '@/stores/deck'
 import { useOfflineModeStore } from '@/stores/offlineMode'
 import { usePluginsStore } from '@/stores/plugins'
+import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import { useUiStore } from '@/stores/ui'
 import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
@@ -120,6 +121,9 @@ export function useDeckInit(options: {
         })
         listen('nd:toggle-offline-mode', () => {
           useOfflineModeStore().toggle()
+        })
+        listen('nd:toggle-realtime-mode', () => {
+          useRealtimeModeStore().toggle()
         })
       })
 
