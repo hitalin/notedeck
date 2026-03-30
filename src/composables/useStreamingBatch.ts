@@ -127,7 +127,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     }
     flushPending()
     const el = options.scroller.value ?? undefined
-    if (el) el.scrollTop = 0
+    if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function removePending(noteId: string) {

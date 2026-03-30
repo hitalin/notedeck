@@ -429,7 +429,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
       streamingBatch.scrollToTop()
     } else {
       nextTick(() => {
-        if (scroller.value) scroller.value.scrollTop = 0
+        if (scroller.value)
+          scroller.value.scrollTo({ top: 0, behavior: 'smooth' })
       })
     }
   }

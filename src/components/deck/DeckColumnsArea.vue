@@ -323,7 +323,14 @@ function scrollToColumn(index: number) {
   }
 }
 
-defineExpose({ scrollToColumn, columnMap })
+function scrollColumnToTop(index: number) {
+  if (!columnsRef.value) return
+  const sections =
+    columnsRef.value.querySelectorAll<HTMLElement>(':scope > section')
+  sections[index]?.querySelector<HTMLElement>('.column-header')?.click()
+}
+
+defineExpose({ scrollToColumn, scrollColumnToTop, columnMap })
 </script>
 
 <template>
