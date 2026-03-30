@@ -10,14 +10,25 @@ const MAX_SWIPE = 120 // px — hard cap to prevent excessive displacement
 const SNAP_BACK_TIMEOUT = 340 // ms — safety fallback for transitionend (300ms CSS + buffer)
 const WHEEL_THRESHOLD = 50 // px — accumulated delta to trigger tab switch
 
-/** CSS class names shared with useTabSlide */
+/** Default CSS class names (shared with useTabSlide) */
 export const SWIPE_CLASSES = {
   swiping: 'nd-tab-swiping',
   snapBack: 'nd-tab-snap-back',
 } as const
 
-/** CSS custom property for swipe offset */
-const SWIPE_VAR = '--nd-swipe'
+/** Default CSS custom property for swipe offset */
+const DEFAULT_SWIPE_VAR = '--nd-swipe'
+
+export interface SwipeOptions {
+  /** CSS custom property name for swipe offset (default: '--nd-swipe') */
+  cssVar?: string
+  /** CSS class names for swiping/snap-back states */
+  classes?: { swiping: string; snapBack: string }
+  /** Enable horizontal wheel/trackpad to trigger swipe (default: true) */
+  wheel?: boolean
+  /** Check for horizontally scrollable children before swiping (default: true) */
+  checkHorizontalScroll?: boolean
+}
 
 /** Check if touch target is inside a horizontally scrollable element */
 function hasHorizontalScroll(
@@ -43,12 +54,6 @@ function rubberBand(distance: number): number {
   return sign * Math.min(SOFT_CAP + (abs - SOFT_CAP) * RUBBER_FACTOR, MAX_SWIPE)
 }
 
-/** Remove all swipe-related CSS state from an element */
-function clearSwipeState(el: HTMLElement) {
-  el.classList.remove(SWIPE_CLASSES.swiping, SWIPE_CLASSES.snapBack)
-  el.style.removeProperty(SWIPE_VAR)
-}
-
 /**
  * Swipe / horizontal wheel to switch tabs.
  *
@@ -63,11 +68,22 @@ export function useSwipeTab(
   targetRef: Ref<HTMLElement | null>,
   onSwipeLeft: () => boolean | undefined,
   onSwipeRight: () => boolean | undefined,
+  options?: SwipeOptions,
 ) {
   const perfStore = usePerformanceStore()
   const SWIPE_THRESHOLD = perfStore.get('swipeThreshold')
   const FLING_VELOCITY = perfStore.get('flingVelocity')
   const WHEEL_COOLDOWN = perfStore.get('wheelCooldown')
+
+  const SWIPE_VAR = options?.cssVar ?? DEFAULT_SWIPE_VAR
+  const classes = options?.classes ?? SWIPE_CLASSES
+  const enableWheel = options?.wheel !== false
+  const enableHScrollCheck = options?.checkHorizontalScroll !== false
+
+  function clearSwipeState(el: HTMLElement) {
+    el.classList.remove(classes.swiping, classes.snapBack)
+    el.style.removeProperty(SWIPE_VAR)
+  }
 
   let startX = 0
   let startY = 0
@@ -82,7 +98,8 @@ export function useSwipeTab(
     const touch = e.touches[0]
     if (!touch) return
     // Skip swipe if touch is inside a horizontally scrollable child (e.g. CodeMirror)
-    if (boundEl && hasHorizontalScroll(e.target, boundEl)) return
+    if (enableHScrollCheck && boundEl && hasHorizontalScroll(e.target, boundEl))
+      return
     startX = touch.clientX
     startY = touch.clientY
     startTime = Date.now()
@@ -91,7 +108,7 @@ export function useSwipeTab(
 
     if (boundEl) {
       // Clear any lingering snap-back state
-      boundEl.classList.remove(SWIPE_CLASSES.snapBack)
+      boundEl.classList.remove(classes.snapBack)
       boundEl.style.removeProperty(SWIPE_VAR)
     }
   }
@@ -120,7 +137,7 @@ export function useSwipeTab(
     ) {
       direction = absDx >= absDy ? 'horizontal' : 'vertical'
       if (direction === 'horizontal') {
-        boundEl?.classList.add(SWIPE_CLASSES.swiping)
+        boundEl?.classList.add(classes.swiping)
       }
     }
 
@@ -132,7 +149,7 @@ export function useSwipeTab(
   }
 
   function snapBack(el: HTMLElement) {
-    el.classList.add(SWIPE_CLASSES.snapBack)
+    el.classList.add(classes.snapBack)
     el.style.setProperty(SWIPE_VAR, '0px')
     let cleaned = false
     const cleanup = () => {
@@ -226,7 +243,7 @@ export function useSwipeTab(
     el.addEventListener('touchmove', onTouchMove, { passive: false })
     el.addEventListener('touchend', onTouchEnd, { passive: true })
     el.addEventListener('touchcancel', onTouchCancel, { passive: true })
-    el.addEventListener('wheel', onWheel, { passive: true })
+    if (enableWheel) el.addEventListener('wheel', onWheel, { passive: true })
   }
 
   function unbind() {
@@ -235,7 +252,7 @@ export function useSwipeTab(
     boundEl.removeEventListener('touchmove', onTouchMove)
     boundEl.removeEventListener('touchend', onTouchEnd)
     boundEl.removeEventListener('touchcancel', onTouchCancel)
-    boundEl.removeEventListener('wheel', onWheel)
+    if (enableWheel) boundEl.removeEventListener('wheel', onWheel)
     boundEl = null
   }
 
