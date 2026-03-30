@@ -59,7 +59,7 @@ useSwipeTab(
   {
     cssVar: '--nd-lb-swipe',
     classes: { swiping: 'nd-lb-swiping', snapBack: 'nd-lb-snap-back' },
-    wheel: false,
+    wheel: true,
     checkHorizontalScroll: false,
   },
 )
