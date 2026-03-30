@@ -208,7 +208,7 @@ function openAsPip() {
       </template>
 
       <!-- Grabber (Misskey 6-dot pattern, hidden in PiP) -->
-      <i v-if="!isPipMode" :class="$style.grabber" class="ti ti-grip-vertical" />
+      <i v-if="!isPipMode" :class="$style.grabber" class="column-grabber ti ti-grip-vertical" />
 
       <!-- Menu button (shared between PiP and Deck) -->
       <button ref="menuBtnEl" :class="$style.headerBtn" class="_button" title="メニュー" @click.stop="toggleMenu">
@@ -307,14 +307,10 @@ function openAsPip() {
   font-size: 0.9em;
   font-weight: bold;
   flex-shrink: 0;
-  cursor: grab;
+  cursor: default;
   user-select: none;
   z-index: 2;
   overflow: visible;
-
-  &:active {
-    cursor: grabbing;
-  }
 }
 
 .tabShape {
@@ -364,9 +360,14 @@ function openAsPip() {
   flex-shrink: 0;
   opacity: 0.5;
   cursor: grab;
+  padding: 4px;
 
   &:hover {
     opacity: 0.6;
+  }
+
+  &:active {
+    cursor: grabbing;
   }
 }
 

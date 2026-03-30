@@ -266,7 +266,7 @@ function onColumnsScroll() {
 // Column pointer drag (swap / stack)
 function onColumnPointerDown(colId: string, e: PointerEvent) {
   const target = e.target as HTMLElement
-  if (!target.closest('.column-header')) return
+  if (!target.closest('.column-grabber')) return
   columnDrag.startDrag(colId, e)
 }
 
