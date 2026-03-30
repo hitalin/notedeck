@@ -290,6 +290,7 @@ export interface NormalizedDriveFile {
   thumbnailUrl: string | null
   size: number
   isSensitive: boolean
+  comment?: string | null
 }
 
 export interface NoteReaction {

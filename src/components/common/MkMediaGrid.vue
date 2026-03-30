@@ -81,6 +81,10 @@ function isAudio(file: NormalizedDriveFile): boolean {
   return file.type.startsWith('audio/')
 }
 
+function isAnimatedImage(file: NormalizedDriveFile): boolean {
+  return file.type === 'image/gif' || file.type === 'image/apng'
+}
+
 function isPreviewable(file: NormalizedDriveFile): boolean {
   return isImage(file) || isVideo(file)
 }
@@ -254,6 +258,19 @@ onUnmounted(() => {
         <span>NSFW</span>
       </div>
 
+      <!-- Indicators (GIF / ALT / Sensitive) -->
+      <div v-if="!file.isSensitive || revealedIds.has(file.id)" :class="$style.indicators">
+        <span v-if="isAnimatedImage(file)" :class="$style.indicator">GIF</span>
+        <span v-if="file.comment" :class="$style.indicator">ALT</span>
+        <span v-if="file.isSensitive" :class="$style.indicatorWarn">
+          <svg viewBox="0 0 24 24" width="12" height="12">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+            <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </span>
+      </div>
+
       <!-- Revealed: show hide button -->
       <button
         v-if="file.isSensitive && revealedIds.has(file.id)"
@@ -409,49 +426,58 @@ onUnmounted(() => {
   display: grid;
   gap: 8px;
   margin-top: 8px;
-  border-radius: var(--nd-radius-md);
-  overflow: hidden;
   contain: content;
+  container-type: inline-size;
 }
 
 .mediaCount1 {
   grid-template-columns: 1fr;
-
-  > .mediaCell {
-    max-height: 460px;
-  }
+  grid-template-rows: 1fr;
+  min-height: 64px;
+  max-height: clamp(64px, 50cqh, min(360px, 50vh));
 }
 
 .mediaCount2 {
+  aspect-ratio: 16 / 9;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
 }
 
 .mediaCount3 {
-  grid-template-columns: 1fr 1fr;
+  aspect-ratio: 16 / 9;
+  grid-template-columns: 1fr 0.5fr;
   grid-template-rows: 1fr 1fr;
 
   > .mediaCell:first-child {
     grid-row: 1 / 3;
   }
+
+  > .mediaCell:nth-child(3) {
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+  }
 }
 
 .mediaCount4 {
+  aspect-ratio: 16 / 9;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
 }
 
 .mediaCountmany {
   grid-template-columns: 1fr 1fr;
+
+  > .mediaCell {
+    aspect-ratio: 16 / 9;
+  }
 }
 
 .mediaCell {
   position: relative;
   overflow: hidden;
+  border-radius: 8px;
   cursor: pointer;
   background: var(--nd-bg, rgba(0, 0, 0, 0.05));
-  min-height: 100px;
-  max-height: 300px;
-  aspect-ratio: 16 / 9;
   contain: layout;
 
   &::before {
@@ -473,7 +499,7 @@ onUnmounted(() => {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   content-visibility: auto;
   opacity: 0;
   transform: scale(0.98);
@@ -492,7 +518,7 @@ onUnmounted(() => {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .mediaPlaceholder {
@@ -513,6 +539,38 @@ onUnmounted(() => {
   .mediaVideo {
     filter: blur(var(--nd-blur));
   }
+}
+
+/* Indicators (GIF / ALT / Sensitive) */
+.indicators {
+  display: inline-flex;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  pointer-events: none;
+  opacity: 0.5;
+  gap: 6px;
+  z-index: 2;
+}
+
+.indicator {
+  background-color: black;
+  border-radius: 6px;
+  color: var(--nd-accent, #86b300);
+  display: inline-block;
+  font-weight: bold;
+  font-size: 0.8em;
+  padding: 2px 5px;
+}
+
+.indicatorWarn {
+  background-color: black;
+  border-radius: 6px;
+  color: var(--nd-warn, #c44);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 5px;
 }
 
 .sensitiveHideBtn {
@@ -682,12 +740,7 @@ onUnmounted(() => {
   }
 
   .mediaCell {
-    min-height: 80px;
-    max-height: 200px;
-  }
-
-  .mediaCount1 > .mediaCell {
-    max-height: 300px;
+    border-radius: 6px;
   }
 }
 </style>
