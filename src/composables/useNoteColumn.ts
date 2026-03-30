@@ -315,6 +315,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
       // Combined commands handle connect + subscribe in a single IPC round-trip.
       // Skip streaming for logged-out/guest accounts.
       if (account.value.hasToken && config.streaming && streamingBatch) {
+        // Pause streaming to prevent auto-flush flicker while API fetch is pending
+        streamingBatch.setPaused(true)
         adapter.stream.connect()
         adapter.stream.on('disconnected', () => {
           isOffline.value = true
@@ -359,6 +361,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
     } catch (e) {
       await handleFetchError(e, true)
     } finally {
+      // Resume streaming after initial data is displayed
+      streamingBatch?.setPaused(false)
       isLoading.value = false
     }
   }
@@ -425,7 +429,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
       streamingBatch.scrollToTop()
     } else {
       nextTick(() => {
-        if (scroller.value) scroller.value.scrollTop = 0
+        if (scroller.value)
+          scroller.value.scrollTo({ top: 0, behavior: 'smooth' })
       })
     }
   }
@@ -568,6 +573,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
       isLoading.value = false
     } else if (adapter && config.streaming && streamingBatch) {
       // Stream-preserving path: reuse adapter/WebSocket, swap subscription only
+      streamingBatch.setPaused(true)
       resubscribe(adapter)
       setNotes([])
       isLoading.value = true
@@ -584,6 +590,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
       } catch (e) {
         await handleFetchError(e)
       } finally {
+        streamingBatch.setPaused(false)
         isLoading.value = false
       }
     } else {

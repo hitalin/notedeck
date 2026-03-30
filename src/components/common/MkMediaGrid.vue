@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, shallowRef, watch } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import { isSafeUrl } from '@/utils/url'
 
 function safeMediaSrc(url: string | null | undefined): string | undefined {
@@ -18,6 +19,50 @@ const revealedIds = shallowRef(new Set<string>())
 const loadedIds = shallowRef(new Set<string>())
 const erroredIds = shallowRef(new Set<string>())
 const lightboxIndex = ref<number | null>(null)
+const lightboxContentRef = ref<HTMLElement | null>(null)
+
+// Lightbox slide-in animation direction tracking
+const lightboxSlideClass = ref<string | null>(null)
+
+watch(lightboxIndex, (cur, prev) => {
+  if (cur === null || prev === null) {
+    lightboxSlideClass.value = null
+    return
+  }
+  lightboxSlideClass.value =
+    cur > prev ? 'nd-lb-slide-left' : 'nd-lb-slide-right'
+})
+
+function onLightboxSlideEnd() {
+  lightboxSlideClass.value = null
+}
+
+useSwipeTab(
+  lightboxContentRef,
+  () => {
+    if (
+      lightboxIndex.value !== null &&
+      lightboxIndex.value < previewableFiles.value.length - 1
+    ) {
+      lightboxIndex.value++
+      return true
+    }
+    return false
+  },
+  () => {
+    if (lightboxIndex.value !== null && lightboxIndex.value > 0) {
+      lightboxIndex.value--
+      return true
+    }
+    return false
+  },
+  {
+    cssVar: '--nd-lb-swipe',
+    classes: { swiping: 'nd-lb-swiping', snapBack: 'nd-lb-snap-back' },
+    wheel: false,
+    checkHorizontalScroll: false,
+  },
+)
 const lightboxFile = computed(() =>
   lightboxIndex.value !== null
     ? (previewableFiles.value[lightboxIndex.value] ?? null)
@@ -257,21 +302,26 @@ onUnmounted(() => {
         </svg>
       </button>
 
-      <img
-        v-if="isImage(lightboxFile)"
-        :src="safeMediaSrc(lightboxFile.url)"
-        :alt="lightboxFile.name"
-        :class="$style.lightboxImage"
+      <div
+        ref="lightboxContentRef"
+        :class="[$style.lightboxContent, lightboxSlideClass]"
+        @animationend="onLightboxSlideEnd"
         @click.stop
-      />
-      <video
-        v-else-if="isVideo(lightboxFile)"
-        :src="safeMediaSrc(lightboxFile.url)"
-        :class="$style.lightboxVideo"
-        controls
-        autoplay
-        @click.stop
-      />
+      >
+        <img
+          v-if="isImage(lightboxFile)"
+          :src="safeMediaSrc(lightboxFile.url)"
+          :alt="lightboxFile.name"
+          :class="$style.lightboxImage"
+        />
+        <video
+          v-else-if="isVideo(lightboxFile)"
+          :src="safeMediaSrc(lightboxFile.url)"
+          :class="$style.lightboxVideo"
+          controls
+          autoplay
+        />
+      </div>
 
       <!-- Dot indicators -->
       <div v-if="previewableFiles.length > 1" :class="$style.lightboxDots" @click.stop>
@@ -488,6 +538,14 @@ onUnmounted(() => {
 }
 
 /* Lightbox */
+.lightboxContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  touch-action: pan-y;
+}
+
 .lightboxOverlay {
   position: fixed;
   inset: 0;
@@ -525,14 +583,12 @@ onUnmounted(() => {
   max-width: 90vw;
   max-height: 90vh;
   object-fit: contain;
-  cursor: default;
   border-radius: 4px;
 }
 
 .lightboxVideo {
   max-width: 90vw;
   max-height: 90vh;
-  cursor: default;
   border-radius: 4px;
 }
 
@@ -590,6 +646,34 @@ onUnmounted(() => {
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* Lightbox swipe & slide animation (global classes — not CSS Modules) */
+:global(.nd-lb-swiping) {
+  translate: var(--nd-lb-swipe, 0) 0;
+}
+
+:global(.nd-lb-snap-back) {
+  transition: translate 0.25s var(--nd-ease-spring);
+  translate: var(--nd-lb-swipe, 0) 0;
+}
+
+@keyframes nd-lb-slide-left-kf {
+  from { opacity: 0; translate: calc(40% + 12px) 0; }
+  to   { opacity: 1; translate: none; }
+}
+
+@keyframes nd-lb-slide-right-kf {
+  from { opacity: 0; translate: calc(-40% - 12px) 0; }
+  to   { opacity: 1; translate: none; }
+}
+
+:global(.nd-lb-slide-left) {
+  animation: nd-lb-slide-left-kf 0.2s var(--nd-ease-spring) both;
+}
+
+:global(.nd-lb-slide-right) {
+  animation: nd-lb-slide-right-kf 0.2s var(--nd-ease-spring) both;
 }
 
 @container (max-width: 500px) {

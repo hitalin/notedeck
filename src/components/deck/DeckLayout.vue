@@ -167,7 +167,14 @@ if (import.meta.env.PROD) {
 function scrollToColumn(index: number) {
   const group = deckStore.windowLayout[index]
   const colId = group?.[0]
-  if (colId) deckStore.setActiveColumn(colId)
+  if (!colId) return
+
+  if (colId === deckStore.activeColumnId) {
+    columnsAreaRef.value?.scrollColumnToTop(index)
+    return
+  }
+
+  deckStore.setActiveColumn(colId)
   columnsAreaRef.value?.scrollToColumn(index)
 }
 
