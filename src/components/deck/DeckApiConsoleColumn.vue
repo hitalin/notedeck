@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
@@ -52,6 +52,12 @@ async function execute() {
   }
 }
 
+const apiConsoleRef = useTemplateRef<HTMLElement>('apiConsoleRef')
+
+function scrollToTop() {
+  apiConsoleRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 function onKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     e.preventDefault()
@@ -65,6 +71,7 @@ function onKeydown(e: KeyboardEvent) {
     :column-id="column.id"
     :title="column.name ?? 'APIコンソール'"
     :theme-vars="columnThemeVars"
+    @header-click="scrollToTop"
   >
     <template #header-icon>
       <i class="ti ti-api" :class="$style.tlHeaderIcon" />
@@ -82,7 +89,7 @@ function onKeydown(e: KeyboardEvent) {
       </button>
     </template>
 
-    <div :class="$style.apiConsole" @keydown="onKeydown">
+    <div ref="apiConsoleRef" :class="$style.apiConsole" @keydown="onKeydown">
       <div :class="$style.inputSection">
         <div :class="$style.endpointRow">
           <span :class="$style.methodBadge">POST</span>

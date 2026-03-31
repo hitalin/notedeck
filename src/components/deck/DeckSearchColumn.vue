@@ -2,6 +2,7 @@
 import {
   computed,
   defineAsyncComponent,
+  nextTick,
   onMounted,
   onUnmounted,
   ref,
@@ -563,6 +564,19 @@ async function handlePosted(editedNoteId?: string) {
   }
 }
 
+function scrollToTop() {
+  nextTick(() => {
+    if (noteScrollerRef.value) {
+      noteScrollerRef.value.scrollToIndex(0, {
+        align: 'start',
+        behavior: 'smooth',
+      })
+    } else if (scroller.value) {
+      scroller.value.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  })
+}
+
 function handleScroll() {
   onScroll(loadMore)
 }
@@ -595,6 +609,7 @@ onUnmounted(() => {
     :column-id="column.id"
     title="検索"
     :theme-vars="columnThemeVars"
+    @header-click="scrollToTop"
   >
     <template #header-icon>
       <i :class="$style.tlHeaderIcon" class="ti ti-search" />

@@ -359,6 +359,20 @@ function goBack() {
   fetchList()
 }
 
+const playListRef = useTemplateRef<HTMLElement>('playListRef')
+const playReadyScrollRef = useTemplateRef<HTMLElement>('playReadyScrollRef')
+const playStartedScrollRef = useTemplateRef<HTMLElement>('playStartedScrollRef')
+
+function scrollToTop() {
+  const el =
+    mode.value === 'list'
+      ? playListRef.value
+      : mode.value === 'ready'
+        ? playReadyScrollRef.value
+        : playStartedScrollRef.value
+  el?.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 function reload() {
   // Reset and go back to ready screen
   resetRunState()
@@ -367,7 +381,7 @@ function reload() {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'Play'" :theme-vars="columnThemeVars">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'Play'" :theme-vars="columnThemeVars" @header-click="scrollToTop">
     <AiScriptDialog ref="dialogRef" />
     <template #header-icon>
       <i class="ti ti-player-play" :class="$style.tlHeaderIcon" />
@@ -400,7 +414,7 @@ function reload() {
         </button>
       </div>
 
-      <div :class="$style.playList">
+      <div ref="playListRef" :class="$style.playList">
         <div v-if="listLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
         <div v-else-if="listError" :class="[$style.columnEmpty, $style.columnError]">{{ listError }}</div>
         <div v-else-if="listItems.length === 0" :class="$style.columnEmpty">Playが見つかりません</div>
@@ -426,7 +440,7 @@ function reload() {
 
     <!-- Ready mode (before execution) -->
     <template v-else-if="mode === 'ready'">
-      <div :class="$style.playReadyScroll">
+      <div ref="playReadyScrollRef" :class="$style.playReadyScroll">
         <div v-if="fetching" :class="$style.columnLoading"><LoadingSpinner /></div>
         <div v-else-if="fetchError" :class="[$style.columnEmpty, $style.columnError]">{{ fetchError }}</div>
         <template v-else-if="flash">
@@ -461,7 +475,7 @@ function reload() {
 
     <!-- Started mode (executing / executed) -->
     <template v-else>
-      <div :class="$style.playStartedScroll">
+      <div ref="playStartedScrollRef" :class="$style.playStartedScroll">
         <!-- UI output -->
         <div v-if="uiComponents.length" :class="$style.playUi">
           <AiScriptUiRenderer

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, shallowRef } from 'vue'
+import { nextTick, ref, shallowRef, useTemplateRef } from 'vue'
 import type { DeckColumn } from '@/stores/deck'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckColumnComponent from './DeckColumn.vue'
@@ -78,6 +78,12 @@ async function sendMessage() {
   scrollToBottom()
 }
 
+const aiMessagesRef = useTemplateRef<HTMLElement>('aiMessagesRef')
+
+function scrollToTop() {
+  aiMessagesRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
@@ -87,7 +93,7 @@ function onKeydown(e: KeyboardEvent) {
 </script>
 
 <template>
-  <DeckColumnComponent :column-id="column.id" :title="column.name || 'AIチャット'">
+  <DeckColumnComponent :column-id="column.id" :title="column.name || 'AIチャット'" @header-click="scrollToTop">
     <template #header-icon>
       <i class="ti ti-sparkles" />
     </template>
@@ -101,7 +107,7 @@ function onKeydown(e: KeyboardEvent) {
 
     <div :class="$style.aiColumnBody">
       <!-- Messages -->
-      <div :class="$style.aiMessages">
+      <div ref="aiMessagesRef" :class="$style.aiMessages">
         <div v-if="messages.length === 0" :class="$style.aiEmpty">
           <div :class="$style.aiEmptyIcon">
             <i class="ti ti-sparkles" />

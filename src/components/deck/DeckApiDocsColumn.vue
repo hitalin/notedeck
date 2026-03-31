@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ApiReference } from '@scalar/api-reference'
 import '@scalar/api-reference/style.css'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -28,6 +28,12 @@ onMounted(async () => {
   }
 })
 
+const docsContainerRef = useTemplateRef<HTMLElement>('docsContainerRef')
+
+function scrollToTop() {
+  docsContainerRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 
 const config = computed(() => ({
@@ -43,12 +49,13 @@ const config = computed(() => ({
     :column-id="column.id"
     :title="column.name ?? 'APIドキュメント'"
     :theme-vars="columnThemeVars"
+    @header-click="scrollToTop"
   >
     <template #header-icon>
       <i class="ti ti-book tl-header-icon" />
     </template>
 
-    <div :class="$style.docsContainer">
+    <div ref="docsContainerRef" :class="$style.docsContainer">
       <div v-if="error" :class="$style.docsError">{{ error }}</div>
       <div v-else-if="!spec" :class="$style.docsLoading"><LoadingSpinner /></div>
       <ApiReference v-else :key="isDark ? 'dark' : 'light'" :configuration="config" />

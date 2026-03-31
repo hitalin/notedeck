@@ -151,6 +151,10 @@ function closePostForm() {
   postFormData.value = {}
 }
 
+function scrollToTop() {
+  bodyRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 // Split ratio (editor height fraction)
 const editorRatio = ref(0.6)
 const bodyRef = ref<HTMLElement>()
@@ -290,7 +294,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'スクラッチパッド'" :theme-vars="columnThemeVars">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'スクラッチパッド'" :theme-vars="columnThemeVars" @header-click="scrollToTop">
     <template #header-icon>
       <i class="ti ti-terminal-2 tl-header-icon" />
     </template>

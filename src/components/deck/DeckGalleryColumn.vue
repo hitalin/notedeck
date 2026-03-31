@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { safeUrl } from '@/composables/useDriveFolder'
@@ -157,6 +157,18 @@ function onScroll(e: Event) {
   }
 }
 
+const galleryGridScrollRef = useTemplateRef<HTMLElement>('galleryGridScrollRef')
+const galleryDetailScrollRef = useTemplateRef<HTMLElement>(
+  'galleryDetailScrollRef',
+)
+
+function scrollToTop() {
+  const el = detailPost.value
+    ? galleryDetailScrollRef.value
+    : galleryGridScrollRef.value
+  el?.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 const canGoBack = computed(() => detailPost.value !== null)
 
 function goBack() {
@@ -168,7 +180,7 @@ fetchGallery()
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'ギャラリー'" :theme-vars="columnThemeVars">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'ギャラリー'" :theme-vars="columnThemeVars" @header-click="scrollToTop">
     <template #header-icon>
       <i class="ti ti-icons" :class="$style.tlHeaderIcon" />
     </template>
@@ -187,7 +199,7 @@ fetchGallery()
 
     <!-- Detail view -->
     <template v-if="detailPost">
-      <div :class="$style.galleryDetailScroll">
+      <div ref="galleryDetailScrollRef" :class="$style.galleryDetailScroll">
         <div :class="$style.galleryDetail">
           <!-- Image viewer -->
           <div :class="$style.galleryDetailViewer">
@@ -271,7 +283,7 @@ fetchGallery()
 
     <!-- Grid view -->
     <template v-else>
-      <div :class="$style.galleryGridScroll" @scroll.passive="onScroll">
+      <div ref="galleryGridScrollRef" :class="$style.galleryGridScroll" @scroll.passive="onScroll">
         <div v-if="loading && posts.length === 0 && !isLoggedOut" :class="$style.columnLoading"><LoadingSpinner /></div>
         <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
         <div v-else-if="posts.length === 0" :class="$style.columnEmpty">

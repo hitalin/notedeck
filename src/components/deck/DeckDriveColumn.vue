@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
@@ -90,6 +90,16 @@ async function deleteFile() {
   } finally {
     deleting.value = false
   }
+}
+
+const driveGridScrollRef = useTemplateRef<HTMLElement>('driveGridScrollRef')
+const driveDetailScrollRef = useTemplateRef<HTMLElement>('driveDetailScrollRef')
+
+function scrollToTop() {
+  const el = detailFile.value
+    ? driveDetailScrollRef.value
+    : driveGridScrollRef.value
+  el?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 const canGoUp = computed(() => {
@@ -190,7 +200,7 @@ fetchDrive()
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'ドライブ'" :theme-vars="columnThemeVars">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'ドライブ'" :theme-vars="columnThemeVars" @header-click="scrollToTop">
     <template #header-icon>
       <i class="ti ti-cloud" :class="$style.tlHeaderIcon" />
     </template>
@@ -226,7 +236,7 @@ fetchDrive()
 
     <!-- Detail view -->
     <template v-if="detailFile">
-      <div :class="$style.driveDetailScroll">
+      <div ref="driveDetailScrollRef" :class="$style.driveDetailScroll">
         <div :class="$style.driveDetail">
           <div :class="$style.driveDetailPreview">
             <img
@@ -296,7 +306,7 @@ fetchDrive()
         </template>
       </div>
 
-      <div :class="$style.driveGridScroll">
+      <div ref="driveGridScrollRef" :class="$style.driveGridScroll">
         <div v-if="loading && !isLoggedOut" :class="$style.columnLoading"><LoadingSpinner /></div>
         <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
         <template v-else-if="!isLoggedOut">
