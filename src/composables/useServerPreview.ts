@@ -1,15 +1,9 @@
 import { type Ref, ref, watch } from 'vue'
-import type { ServerInfo, ServerSoftware } from '@/adapters/types'
+import { getRegisteredSoftware } from '@/adapters/registry'
+import type { ServerInfo } from '@/adapters/types'
 import { detectServer } from '@/core/server'
 
 export type ServerStatus = 'idle' | 'checking' | 'ok' | 'unsupported' | 'error'
-
-const SUPPORTED_SOFTWARE: ServerSoftware[] = [
-  'misskey',
-  'firefish',
-  'sharkey',
-  'iceshrimp',
-]
 
 export function useServerPreview(host: Ref<string>, debounceMs = 350) {
   const status = ref<ServerStatus>('idle')
@@ -50,7 +44,7 @@ export function useServerPreview(host: Ref<string>, debounceMs = 350) {
       const info = await detectServer(trimmedHost)
       if (generation !== abortGeneration) return
 
-      if (SUPPORTED_SOFTWARE.includes(info.software)) {
+      if (getRegisteredSoftware().includes(info.software)) {
         status.value = 'ok'
         serverInfo.value = info
       } else {

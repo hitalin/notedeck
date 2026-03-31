@@ -18,13 +18,7 @@ export const useServersStore = defineStore('servers', () => {
   // shallowRef + full Map replacement avoids deep reactivity on server info objects
   const servers = shallowRef(new Map<string, ServerInfo>())
 
-  const KNOWN_SOFTWARE = new Set<string>([
-    'misskey',
-    'firefish',
-    'sharkey',
-    'iceshrimp',
-    'unknown',
-  ])
+  const KNOWN_SOFTWARE = new Set<string>(['misskey', 'unknown'])
 
   function toServerSoftware(value: string): ServerSoftware {
     return KNOWN_SOFTWARE.has(value) ? (value as ServerSoftware) : 'unknown'
