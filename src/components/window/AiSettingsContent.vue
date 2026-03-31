@@ -10,6 +10,7 @@ import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import defaultAiPrompt from '@/defaults/AI.md?raw'
 import { isTauri, readAiSettings, writeAiSettings } from '@/utils/settingsFs'
+import { invoke } from '@/utils/tauriInvoke'
 
 const mdLang = markdown({ codeLanguages: languages })
 
@@ -296,21 +297,17 @@ async function testConnection() {
     const settings = currentSettings.value
     const url = `${settings.endpoint}${provider.testPath}`
 
-    const headers: Record<string, string> = {}
-    if (settings.apiKey) {
-      headers.Authorization = `Bearer ${settings.apiKey}`
-    }
-
-    const res = await fetch(url, {
-      headers,
-      signal: AbortSignal.timeout(5000),
-    })
-    if (res.ok) {
+    const result = await invoke<{
+      ok: boolean
+      status: number
+      message: string
+    }>('check_endpoint_health', { url, bearerToken: settings.apiKey || null })
+    if (result.ok) {
       testStatus.value = 'ok'
-      testMessage.value = '接続成功'
+      testMessage.value = result.message
     } else {
       testStatus.value = 'error'
-      testMessage.value = `HTTP ${res.status}`
+      testMessage.value = result.message
     }
   } catch (e) {
     testStatus.value = 'error'
