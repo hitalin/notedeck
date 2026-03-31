@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
-import type { MfmToken } from '../utils/mfm'
-import { parseTokens } from '../utils/mfm'
+import type { MfmToken } from '../utils/mfmParser'
+import { parseTokens } from '../utils/mfmParser'
 
 export interface MfmParseRequest {
   type: 'parse'
