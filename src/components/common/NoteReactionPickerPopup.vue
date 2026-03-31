@@ -12,7 +12,7 @@ import { useFocusTrap } from '@/composables/useFocusTrap'
 import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useUiStore } from '@/stores/ui'
-import { extractThemeVars } from '@/utils/themeVars'
+import { COLUMN_SELECTOR, extractThemeVars } from '@/utils/themeVars'
 import MkReactionPicker from './MkReactionPicker.vue'
 
 const props = defineProps<{
@@ -68,7 +68,7 @@ watch(show, (v) => {
 function open(e: MouseEvent) {
   const btn = e.currentTarget as HTMLElement
   const rect = btn.getBoundingClientRect()
-  const column = btn.closest('.deck-column') as HTMLElement | null
+  const column = btn.closest(COLUMN_SELECTOR) as HTMLElement | null
   const colRect = column?.getBoundingClientRect()
   const rightEdge = colRect ? colRect.right - 8 : rect.right
   pos.value = { x: rightEdge, y: rect.bottom + 4 }

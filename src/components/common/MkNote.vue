@@ -24,7 +24,7 @@ import { formatTime } from '@/utils/formatTime'
 import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { invoke } from '@/utils/tauriInvoke'
-import { extractThemeVars } from '@/utils/themeVars'
+import { extractColumnThemeVars } from '@/utils/themeVars'
 import MkAvatar from './MkAvatar.vue'
 import MkEmoji from './MkEmoji.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
@@ -141,8 +141,7 @@ function openRenoteMenu(e: MouseEvent) {
     return
   }
   const el = e.currentTarget as HTMLElement
-  const column = el.closest('.deck-column') as HTMLElement | null
-  if (column) renoteMenuTheme.value = extractThemeVars(column)
+  renoteMenuTheme.value = extractColumnThemeVars(el)
   const rect = el.getBoundingClientRect()
   let x = rect.left
   let y = rect.bottom + 4
@@ -223,8 +222,7 @@ const popupTheme = ref<Record<string, string>>({})
 function onAvatarMouseEnter(e: MouseEvent) {
   const el = e.currentTarget as HTMLElement
   const rect = el.getBoundingClientRect()
-  const column = el.closest('.deck-column') as HTMLElement | null
-  if (column) popupTheme.value = extractThemeVars(column)
+  popupTheme.value = extractColumnThemeVars(el)
   userPopup.show({ x: rect.right + 8, y: rect.top })
 }
 
@@ -341,8 +339,7 @@ async function onMentionHover(
   mentionHovering = true
   const el = e.currentTarget as HTMLElement
   const rect = el.getBoundingClientRect()
-  const column = el.closest('.deck-column') as HTMLElement | null
-  if (column) popupTheme.value = extractThemeVars(column)
+  popupTheme.value = extractColumnThemeVars(el)
   try {
     const user = await invoke<NormalizedUser>('api_lookup_user', {
       accountId: props.note._accountId,

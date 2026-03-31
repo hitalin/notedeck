@@ -14,7 +14,7 @@ import { usePortal } from '@/composables/usePortal'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { proxyUrl } from '@/utils/imageProxy'
-import { extractThemeVars } from '@/utils/themeVars'
+import { extractColumnThemeVars } from '@/utils/themeVars'
 import MkEmoji from './MkEmoji.vue'
 import MkMfm from './MkMfm.vue'
 
@@ -95,8 +95,7 @@ function onUserMouseEnter(e: MouseEvent, userId: string) {
   userPopupPos.value = { x: rect.right + 8, y: rect.top }
   userPopupUserId.value = userId
 
-  const column = el.closest('.deck-column') as HTMLElement | null
-  if (column) userPopupTheme.value = extractThemeVars(column)
+  userPopupTheme.value = extractColumnThemeVars(el)
 
   if (showUserPopup.value) return
 

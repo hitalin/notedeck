@@ -2,7 +2,7 @@
 import { defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { usePortal } from '@/composables/usePortal'
-import { extractThemeVars } from '@/utils/themeVars'
+import { extractColumnThemeVars } from '@/utils/themeVars'
 
 const MkReactionUsersPopup = defineAsyncComponent(
   () => import('./MkReactionUsersPopup.vue'),
@@ -35,8 +35,7 @@ function show(e: MouseEvent, r: string, url: string | null, count: number) {
   reaction.value = r
   reactionUrl.value = url
   totalCount.value = count
-  const column = el.closest('.deck-column') as HTMLElement | null
-  if (column) theme.value = extractThemeVars(column)
+  theme.value = extractColumnThemeVars(el)
   popup.show({ x: rect.left, y: rect.bottom + 4 })
 }
 

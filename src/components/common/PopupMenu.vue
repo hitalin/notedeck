@@ -4,7 +4,7 @@ import { nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
 import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
-import { extractThemeVars } from '@/utils/themeVars'
+import { COLUMN_SELECTOR, extractThemeVars } from '@/utils/themeVars'
 
 const props = withDefaults(
   defineProps<{
@@ -43,7 +43,7 @@ watch(visible, (v) => {
 function open(e: MouseEvent) {
   const el = e.currentTarget as HTMLElement | null
   const column = (el ?? (e.target as HTMLElement))?.closest(
-    '.deck-column',
+    COLUMN_SELECTOR,
   ) as HTMLElement | null
   if (column) menuTheme.value = extractThemeVars(column)
 

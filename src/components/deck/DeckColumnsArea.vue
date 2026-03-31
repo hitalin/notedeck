@@ -14,6 +14,7 @@ import { useColumnResize } from '@/composables/useColumnResize'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
+import { COLUMN_SELECTOR } from '@/utils/themeVars'
 
 const COLUMN_COMPONENTS: Record<string, Component> = {
   timeline: defineAsyncComponent(() => import('./DeckTimelineColumn.vue')),
@@ -212,7 +213,7 @@ function scheduleScroll(delta: number) {
 function onColumnsWheel(e: WheelEvent) {
   if (!columnsRef.value) return
   // カラム内 → ブラウザのネイティブ処理に任せる
-  if ((e.target as HTMLElement | null)?.closest('.deck-column')) return
+  if ((e.target as HTMLElement | null)?.closest(COLUMN_SELECTOR)) return
 
   // Shift+ホイール: Windows WebView2 では横スクロールが deltaX ではなく
   // shiftKey + deltaY として送られるため、deltaX に読み替える

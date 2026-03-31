@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
+import { useStreamingStore } from '@/stores/streaming'
 import { useUiStore } from '@/stores/ui'
 import {
   getStorageJson,
@@ -8,7 +9,6 @@ import {
   STORAGE_KEYS,
   setStorageJson,
 } from '@/utils/storage'
-import { invoke } from '@/utils/tauriInvoke'
 
 const STORAGE_KEY = STORAGE_KEYS.offlineMode
 
@@ -43,15 +43,7 @@ export const useOfflineModeStore = defineStore('offlineMode', () => {
     persist()
 
     // Disconnect all streaming connections
-    const accounts = useAccountsStore().accounts
-    for (const acc of accounts) {
-      if (acc.hasToken) {
-        // Fire-and-forget: ignore disconnect errors during offline transition
-        invoke('stream_disconnect', { accountId: acc.id }).catch(
-          /* noop */ () => undefined,
-        )
-      }
-    }
+    await useStreamingStore().disconnectAll(useAccountsStore().accounts)
   }
 
   async function disable(): Promise<void> {

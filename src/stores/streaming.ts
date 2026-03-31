@@ -41,10 +41,42 @@ export const useStreamingStore = defineStore('streaming', () => {
     triggerRef(states)
   }
 
+  /** Disconnect all accounts' streams (e.g. entering offline mode) */
+  async function disconnectAll(
+    accounts: { id: string; hasToken: boolean }[],
+  ): Promise<void> {
+    for (const acc of accounts) {
+      if (acc.hasToken) {
+        invoke('stream_disconnect', { accountId: acc.id }).catch(
+          () => undefined,
+        )
+      }
+    }
+  }
+
+  /** Set streaming mode for all accounts (realtime or polling) */
+  async function setModeAll(
+    accounts: { id: string; hasToken: boolean }[],
+    mode: 'realtime' | 'polling',
+    intervalMs?: number,
+  ): Promise<void> {
+    for (const acc of accounts) {
+      if (acc.hasToken) {
+        invoke('stream_set_mode', {
+          accountId: acc.id,
+          mode,
+          intervalMs,
+        }).catch(() => undefined)
+      }
+    }
+  }
+
   return {
     states,
     fetchOnlineStatus,
     getState,
     disconnect,
+    disconnectAll,
+    setModeAll,
   }
 })
