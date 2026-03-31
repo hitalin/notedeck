@@ -21,7 +21,7 @@ import { useUpdater } from '@/composables/useUpdater'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
-import { useIsCompactLayout } from '@/stores/ui'
+import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckBottomBar from './DeckBottomBar.vue'
 import DeckColumnsArea from './DeckColumnsArea.vue'
@@ -42,6 +42,7 @@ const {
   navigateToNotifications,
 } = useNavigation()
 const deckStore = useDeckStore()
+const uiStore = useUiStore()
 const accountsStore = useAccountsStore()
 const isCompact = useIsCompactLayout()
 const navbarRef = ref<InstanceType<typeof DeckNavbar> | null>(null)
@@ -119,9 +120,7 @@ const fileDrop = useFileDrop((paths, position) => {
         filePath: path,
         isSensitive: false,
       }).then(() => {
-        window.dispatchEvent(
-          new CustomEvent('drive-files-changed', { detail: { accountId } }),
-        )
+        uiStore.emitDriveFilesChanged(accountId)
       })
     }
     return

@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   ChannelSubscription,
@@ -13,6 +13,7 @@ import { useNoteStore } from '@/stores/notes'
 import { useOfflineModeStore } from '@/stores/offlineMode'
 import { useThemeStore } from '@/stores/theme'
 import { useToast } from '@/stores/toast'
+import { useUiStore } from '@/stores/ui'
 import { AppError } from '@/utils/errors'
 import { toggleFavorite } from '@/utils/toggleFavorite'
 import { toggleReaction } from '@/utils/toggleReaction'
@@ -93,11 +94,11 @@ export function useColumnSetup(
   }
 
   // Re-register stream event listeners on resume (handles Android background suspension)
-  function handleDeckResume() {
-    adapter?.stream.reconnect()
-  }
-  onMounted(() => window.addEventListener('deck-resume', handleDeckResume))
-  onUnmounted(() => window.removeEventListener('deck-resume', handleDeckResume))
+  const { deckResumeSignal } = useUiStore()
+  watch(
+    () => deckResumeSignal,
+    () => adapter?.stream.reconnect(),
+  )
 
   // Post form
   const showPostForm = ref(false)

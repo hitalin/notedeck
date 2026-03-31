@@ -49,7 +49,7 @@ export function useDeckInit(options: {
     if (document.hidden) {
       deckStore.flushSave()
     } else {
-      window.dispatchEvent(new CustomEvent('deck-resume'))
+      uiStore.emitDeckResume()
     }
   }
 
@@ -62,7 +62,7 @@ export function useDeckInit(options: {
   onMounted(() => {
     // Signal that deck layout structure is in the DOM — splash can dismiss now.
     // Data (notes) loads asynchronously; column frames are already visible.
-    window.dispatchEvent(new Event('nd:deck-mounted'))
+    uiStore.deckMounted = true
 
     handleResizeRef = () => options.navbarRef.value?.handleResize()
     window.addEventListener('resize', handleResizeRef)

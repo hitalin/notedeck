@@ -1,10 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
-import { getStorageJson, setStorageJson } from '@/utils/storage'
+import { useUiStore } from '@/stores/ui'
+import {
+  getStorageJson,
+  getStorageString,
+  STORAGE_KEYS,
+  setStorageJson,
+} from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
 
-const STORAGE_KEY = 'nd-offline-mode'
+const STORAGE_KEY = STORAGE_KEYS.offlineMode
 
 interface OfflineModeState {
   enabled: boolean
@@ -16,7 +22,7 @@ export const useOfflineModeStore = defineStore('offlineMode', () => {
   /** Restore persisted state from previous session. */
   function init(): void {
     // Migrate from old string-based format
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = getStorageString(STORAGE_KEY)
     if (raw === 'true' || raw === 'false') {
       const enabled = raw === 'true'
       isOfflineMode.value = enabled
@@ -46,17 +52,14 @@ export const useOfflineModeStore = defineStore('offlineMode', () => {
         )
       }
     }
-
-    window.dispatchEvent(new Event('nd:offline-mode-changed'))
   }
 
   async function disable(): Promise<void> {
     isOfflineMode.value = false
     persist()
 
-    // Trigger reconnection via existing deck-resume path
-    window.dispatchEvent(new Event('deck-resume'))
-    window.dispatchEvent(new Event('nd:offline-mode-changed'))
+    // Trigger reconnection via reactive deck-resume signal
+    useUiStore().emitDeckResume()
   }
 
   async function toggle(): Promise<void> {

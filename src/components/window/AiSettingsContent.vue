@@ -10,6 +10,7 @@ import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import defaultAiPrompt from '@/defaults/AI.md?raw'
 import { isTauri, readAiSettings, writeAiSettings } from '@/utils/settingsFs'
+import { STORAGE_KEYS } from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
 
 const mdLang = markdown({ codeLanguages: languages })
@@ -38,7 +39,7 @@ interface AiConfig {
 }
 
 const PROVIDER_KEYS: readonly ProviderKey[] = ['ollama', 'openai', 'custom']
-const STORAGE_KEY = 'nd-ai-settings'
+const STORAGE_KEY = STORAGE_KEYS.aiSettings
 
 // --- Provider schema (data-driven UI) ---
 

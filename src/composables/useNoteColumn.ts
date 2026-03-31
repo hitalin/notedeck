@@ -33,6 +33,7 @@ import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import { isGuestAccount } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useOfflineModeStore } from '@/stores/offlineMode'
+import { useUiStore } from '@/stores/ui'
 import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
 import { logWarn } from '@/utils/logger'
@@ -683,8 +684,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
     }
   }
 
+  const { deckResumeSignal } = useUiStore()
+  watch(
+    () => deckResumeSignal,
+    () => onResume(),
+  )
+
   onMounted(() => {
-    window.addEventListener('deck-resume', onResume)
     if (config.connectReady && !config.connectReady.value) {
       // Delay connect until the parent signals readiness (e.g. policy detection)
       const stop = watch(config.connectReady, (ready) => {
@@ -699,7 +705,6 @@ export function useNoteColumn(config: NoteColumnConfig) {
   })
 
   onUnmounted(() => {
-    window.removeEventListener('deck-resume', onResume)
     // Save snapshot for instant restore if column is re-mounted
     const unmountCacheKey = config.cache?.getKey()
     if (notes.value.length > 0 && unmountCacheKey) {

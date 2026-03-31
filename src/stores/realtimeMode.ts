@@ -72,7 +72,6 @@ export const useRealtimeModeStore = defineStore('realtimeMode', () => {
     enabled.value = value
     persist()
     applyToAllAccounts()
-    window.dispatchEvent(new Event('nd:realtime-mode-changed'))
   }
 
   function toggle(): void {

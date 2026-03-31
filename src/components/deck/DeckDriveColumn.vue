@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
@@ -13,6 +13,7 @@ import {
 } from '@/composables/useDriveFolder'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useUiStore } from '@/stores/ui'
 import { AppError } from '@/utils/errors'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
@@ -173,21 +174,16 @@ async function onFileSelected(e: Event) {
   }
 }
 
-// Listen for external drive-files-changed events (e.g. from file drop)
-function onDriveFilesChanged(e: Event) {
-  const detail = (e as CustomEvent).detail
-  if (detail?.accountId === props.column.accountId) {
-    fetchDrive()
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('drive-files-changed', onDriveFilesChanged)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('drive-files-changed', onDriveFilesChanged)
-})
+// Listen for external drive-files-changed signal (e.g. from file drop)
+const { driveFilesChanged } = useUiStore()
+watch(
+  () => driveFilesChanged,
+  (sig) => {
+    if (sig.accountId === props.column.accountId) {
+      fetchDrive()
+    }
+  },
+)
 
 // Initial load
 fetchDrive()
