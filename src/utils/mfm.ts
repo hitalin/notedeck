@@ -409,3 +409,19 @@ export function parseMfm(text: string): MfmToken[] {
 
   return tokens
 }
+
+/** Check if a text is already in the parse cache. */
+export function parseCacheHas(text: string): boolean {
+  return parseCache.has(text)
+}
+
+/** Inject pre-parsed tokens into the cache (e.g. from a Web Worker). */
+export function warmCache(text: string, tokens: MfmToken[]): void {
+  if (parseCache.has(text)) return
+  const cacheMax = getMfmCacheMax()
+  if (parseCache.size >= cacheMax) {
+    const first = parseCache.keys().next().value
+    if (first !== undefined) parseCache.delete(first)
+  }
+  parseCache.set(text, tokens)
+}
