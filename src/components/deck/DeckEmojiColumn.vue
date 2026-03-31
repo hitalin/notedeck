@@ -2,6 +2,10 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ServerEmoji } from '@/adapters/types'
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import {
+  type GridGroup,
+  useGridVirtualizer,
+} from '@/composables/useGridVirtualizer'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'
@@ -85,18 +89,28 @@ const filteredEmojis = computed(() => {
 })
 
 // Group emojis by category for display
-const groupedEmojis = computed(() => {
+const emojiGroups = computed<GridGroup<ServerEmoji>[]>(() => {
   const groups = new Map<string, ServerEmoji[]>()
   for (const e of filteredEmojis.value) {
     const cat = e.category || '未分類'
     if (!groups.has(cat)) groups.set(cat, [])
     groups.get(cat)?.push(e)
   }
-  return [...groups.entries()].sort((a, b) => {
-    if (a[0] === '未分類') return 1
-    if (b[0] === '未分類') return -1
-    return a[0].localeCompare(b[0])
-  })
+  return [...groups.entries()]
+    .sort((a, b) => {
+      if (a[0] === '未分類') return 1
+      if (b[0] === '未分類') return -1
+      return a[0].localeCompare(b[0])
+    })
+    .map(([label, items]) => ({ label: `${label} (${items.length})`, items }))
+})
+
+const { rows, virtualItems, totalSize } = useGridVirtualizer({
+  groups: emojiGroups,
+  scrollElement: scrollContainer,
+  itemWidth: 48,
+  headerHeight: 34,
+  rowHeight: 48,
 })
 
 function scrollToTop() {
@@ -212,22 +226,40 @@ onMounted(() => {
         絵文字が見つかりません
       </div>
 
-      <!-- Emoji grid grouped by category -->
+      <!-- Virtualized emoji grid -->
       <div v-else ref="scrollContainer" :class="$style.emojiScroller">
-        <div v-for="[cat, emojis] in groupedEmojis" :key="cat" :class="$style.emojiGroup">
-          <div :class="$style.emojiGroupLabel">{{ cat }} ({{ emojis.length }})</div>
-          <div :class="$style.emojiGrid">
-            <button
-              v-for="emoji in emojis"
-              :key="emoji.name"
-              class="_button"
-              :class="[$style.emojiCell, { [$style.copied]: copiedName === emoji.name }]"
-              :title="`:${emoji.name}:`"
-              @click="copyEmojiCode(emoji)"
-            >
-              <img :src="emoji.url" :alt="emoji.name" :class="$style.emojiImg" loading="lazy" />
-              <span v-if="copiedName === emoji.name" :class="$style.emojiCopiedBadge">Copied!</span>
-            </button>
+        <div :style="{ height: `${totalSize}px`, position: 'relative' }">
+          <div
+            v-for="vItem in virtualItems"
+            :key="vItem.index"
+            :style="{
+              position: 'absolute',
+              top: `${vItem.start}px`,
+              left: 0,
+              right: 0,
+              height: `${vItem.size}px`,
+            }"
+          >
+            <template v-if="rows[vItem.index]?.type === 'header'">
+              <div :class="$style.emojiGroupLabel">
+                {{ rows[vItem.index].label }}
+              </div>
+            </template>
+            <template v-else-if="rows[vItem.index]?.type === 'row'">
+              <div :class="$style.emojiGrid">
+                <button
+                  v-for="emoji in rows[vItem.index].items"
+                  :key="emoji.name"
+                  class="_button"
+                  :class="[$style.emojiCell, { [$style.copied]: copiedName === emoji.name }]"
+                  :title="`:${emoji.name}:`"
+                  @click="copyEmojiCode(emoji)"
+                >
+                  <img :src="emoji.url" :alt="emoji.name" :class="$style.emojiImg" loading="lazy" />
+                  <span v-if="copiedName === emoji.name" :class="$style.emojiCopiedBadge">Copied!</span>
+                </button>
+              </div>
+            </template>
           </div>
         </div>
       </div>
