@@ -12,6 +12,7 @@ import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useLongPress } from '@/composables/useLongPress'
 import { useNavigation } from '@/composables/useNavigation'
+import { provideNoteAccountId } from '@/composables/useNoteContext'
 import { usePortal } from '@/composables/usePortal'
 import { useRippleEffect } from '@/composables/useRippleEffect'
 import {
@@ -64,6 +65,8 @@ const allEmojis = computed(() => ({
 const isPureRenote = computed(
   () => props.note.renote && props.note.text === null,
 )
+
+provideNoteAccountId(props.note._accountId)
 
 const { canInteract, isGuest } = useAccountMode(() => props.note._accountId)
 const { spawn: spawnRipple } = useRippleEffect()
@@ -421,7 +424,6 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
           :text="note.user.name"
           :emojis="{ ...note.emojis, ...note.user.emojis }"
           :server-host="note._serverHost"
-          :account-id="note._accountId"
         />
         <template v-else>{{ note.user.username }}</template>
       </span>
@@ -449,7 +451,6 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
           :text="effectiveNote.reply!.user.name"
           :emojis="{ ...effectiveNote.reply!.emojis, ...effectiveNote.reply!.user.emojis }"
           :server-host="effectiveNote._serverHost"
-          :account-id="note._accountId"
         />
         <template v-else>{{ effectiveNote.reply!.user.username }}</template>
       </span>
@@ -458,7 +459,6 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
           :text="effectiveNote.reply!.cw ?? effectiveNote.reply!.text?.slice(0, 100) ?? ''"
           :emojis="{ ...effectiveNote.reply!.emojis, ...effectiveNote.reply!.reactionEmojis }"
           :server-host="effectiveNote._serverHost"
-          :account-id="note._accountId"
           compact
         />
       </span>
@@ -486,8 +486,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
               :text="effectiveNote.user.name"
               :emojis="allEmojis"
               :server-host="effectiveNote._serverHost"
-              :account-id="effectiveNote._accountId"
-              @mention-click="handleMentionClick"
+                  @mention-click="handleMentionClick"
               @mention-hover="onMentionHover"
               @mention-leave="onMentionLeave"
             />
@@ -556,8 +555,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
               :text="effectiveNote.cw"
               :emojis="effectiveNote.emojis"
               :server-host="effectiveNote._serverHost"
-              :account-id="effectiveNote._accountId"
-              @mention-click="handleMentionClick"
+                  @mention-click="handleMentionClick"
               @mention-hover="onMentionHover"
               @mention-leave="onMentionLeave"
             />
@@ -577,8 +575,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
                 :emojis="effectiveNote.emojis"
                 :reaction-emojis="effectiveNote.reactionEmojis"
                 :server-host="effectiveNote._serverHost"
-                :account-id="effectiveNote._accountId"
-                @mention-click="handleMentionClick"
+                      @mention-click="handleMentionClick"
                 @mention-hover="onMentionHover"
                 @mention-leave="onMentionLeave"
               />

@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { MisskeyApi } from '@/adapters/misskey/api'
 import type { NormalizedNote } from '@/adapters/types'
+import { useNoteAccountId } from '@/composables/useNoteContext'
 import { useAccountsStore } from '@/stores/accounts'
 import { usePerformanceStore } from '@/stores/performance'
 import { parseNoteUrl } from '@/utils/noteUrl'
@@ -13,8 +14,9 @@ const pendingEmbeds = new Map<string, Promise<NormalizedNote | null>>()
 
 const props = defineProps<{
   url: string
-  accountId?: string
 }>()
+
+const accountId = useNoteAccountId()
 
 const note = ref<NormalizedNote | null>(null)
 const loading = ref(false)
@@ -24,7 +26,6 @@ let observer: IntersectionObserver | null = null
 
 async function fetchNote() {
   const parsed = parseNoteUrl(props.url)
-  const accountId = props.accountId
   if (!parsed || !accountId) {
     failed.value = true
     return

@@ -5,6 +5,7 @@ import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
+import { provideNoteAccountId } from '@/composables/useNoteContext'
 import { usePortal } from '@/composables/usePortal'
 import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
 import { invoke } from '@/utils/tauriInvoke'
@@ -18,6 +19,8 @@ const props = defineProps<{
   serverHost?: string
   otherAvatarUrl?: string
 }>()
+
+if (props.accountId) provideNoteAccountId(props.accountId)
 
 const emit = defineEmits<{
   react: [messageId: string, reaction: string]
@@ -185,7 +188,7 @@ usePortal(lightboxPortalRef)
           {{ displayUser.name }}
         </div>
         <div v-if="message.text" :class="$style.chatText">
-          <MkMfm :text="message.text" :account-id="accountId" :server-host="serverHost" @mention-hover="onMentionHover" @mention-leave="onMentionLeave" />
+          <MkMfm :text="message.text" :server-host="serverHost" @mention-hover="onMentionHover" @mention-leave="onMentionLeave" />
         </div>
         <div v-if="message.file" :class="$style.chatFile">
           <img

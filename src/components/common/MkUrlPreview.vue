@@ -10,6 +10,7 @@ import {
   triggerRef,
   watch,
 } from 'vue'
+import { useNoteAccountId } from '@/composables/useNoteContext'
 import { useOgpPreview } from '@/composables/useOgpPreview'
 import { usePerformanceStore } from '@/stores/performance'
 import { proxyUrl } from '@/utils/imageProxy'
@@ -22,8 +23,9 @@ const MkNoteEmbed = defineAsyncComponent(() => import('./MkNoteEmbed.vue'))
 
 const props = defineProps<{
   url: string
-  accountId?: string
 }>()
+
+const accountId = useNoteAccountId()
 
 const mediaExtRe =
   /\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mp3|ogg|wav)(\?.*)?$/i
@@ -37,10 +39,7 @@ const shouldPreview = computed(() => {
   return true
 })
 
-const { data, loading, fetch, fetchUrl } = useOgpPreview(
-  props.url,
-  props.accountId,
-)
+const { data, loading, fetch, fetchUrl } = useOgpPreview(props.url, accountId)
 const el = ref<HTMLElement | null>(null)
 const imageError = ref(false)
 const sensitiveRevealed = ref(false)
@@ -123,7 +122,7 @@ function hostname(url: string): string {
 </script>
 
 <template>
-  <MkNoteEmbed v-if="isNoteUrl" :url="url" :account-id="accountId" />
+  <MkNoteEmbed v-if="isNoteUrl" :url="url" />
   <div v-else-if="shouldPreview" ref="el" :class="[$style.urlPreview, !loading && 'nd-content-appear']" @click="handleClick">
     <div v-if="loading" :class="$style.urlPreviewSkeleton">
       <div :class="$style.skeletonText">
