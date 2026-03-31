@@ -141,11 +141,22 @@ export function useNoteColumn(config: NoteColumnConfig) {
     setOnNotesChanged(sync)
   }
 
-  // Pause streaming batch when column scrolls off-screen
+  // Suspend streaming subscription when column scrolls off-screen,
+  // resubscribe + diff-fetch when it comes back into view.
   if (streamingBatch) {
     const { isVisible } = useColumnVisible(config.getColumn().id)
     watch(isVisible, (visible) => {
-      streamingBatch.setPaused(!visible)
+      if (!visible) {
+        streamingBatch.setPaused(true)
+        disposeSubscription()
+      } else {
+        const adapter = getAdapter()
+        if (adapter && config.streaming) {
+          resubscribe(adapter)
+          streamingBatch.setPaused(false)
+        }
+        onResume()
+      }
     })
   }
 
