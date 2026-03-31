@@ -95,8 +95,8 @@ export const useWindowsStore = defineStore('windows', () => {
     }
 
     const size = WINDOW_SIZES[type]
-    const viewW = document.documentElement.clientWidth
-    const viewH = document.documentElement.clientHeight
+    const viewW = globalThis.innerWidth || 800
+    const viewH = globalThis.innerHeight || 600
     const offset = (windows.value.length % 5) * 30
     const x = Math.max(50, (viewW - size.width) / 2 + offset)
     const y = Math.max(50, (viewH - size.maxHeight) / 2 + offset)

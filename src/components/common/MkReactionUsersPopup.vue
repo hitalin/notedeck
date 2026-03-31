@@ -95,7 +95,7 @@ function onUserMouseEnter(e: MouseEvent, userId: string) {
   userPopupPos.value = { x: rect.right + 8, y: rect.top }
   userPopupUserId.value = userId
 
-  const column = document.querySelector('.deck-column') as HTMLElement | null
+  const column = el.closest('.deck-column') as HTMLElement | null
   if (column) userPopupTheme.value = extractThemeVars(column)
 
   if (showUserPopup.value) return

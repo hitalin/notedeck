@@ -11,12 +11,12 @@ import {
   saveCurrentWindowLayout,
 } from '@/composables/useDeckWindow'
 import { initOgpListener } from '@/composables/useOgpPreview'
+import { destroyApiBridge, initApiBridge } from '@/core/apiBridge'
 import { useDeckStore } from '@/stores/deck'
 import { useOfflineModeStore } from '@/stores/offlineMode'
 import { usePluginsStore } from '@/stores/plugins'
 import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import { useUiStore } from '@/stores/ui'
-import { destroyApiBridge, initApiBridge } from '@/utils/apiBridge'
 import {
   initDesktopNotifications,
   onNotificationAction,

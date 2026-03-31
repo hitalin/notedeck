@@ -1,6 +1,2 @@
-import { useToast } from '@/stores/toast'
-
-export function showLoginPrompt(): void {
-  const toast = useToast()
-  toast.show('再ログインすると操作できます', 'info')
-}
+// Moved to @/composables/useLoginPrompt.ts — re-export for compatibility
+export { showLoginPrompt } from '@/composables/useLoginPrompt'
