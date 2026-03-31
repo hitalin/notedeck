@@ -119,7 +119,7 @@ const PROVIDER_FIELDS: Record<ProviderKey, FieldDef[]> = {
 
 // --- Config (delegated to composable) ---
 
-const { config, save: saveConfig } = useAiConfig()
+const { config, save: saveConfig, toFileConfig, mergeConfig } = useAiConfig()
 
 const expandedSections = reactive<Record<string, boolean>>({})
 
