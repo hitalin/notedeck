@@ -314,7 +314,7 @@ function findFirstSearchBlock(text: string): BlockMatch | null {
   }
 }
 
-function parseTokens(text: string): MfmToken[] {
+export function parseTokens(text: string): MfmToken[] {
   if (!text) return []
 
   const tokens: MfmToken[] = []
