@@ -6,6 +6,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
 import { mapWithConcurrency } from '@/utils/concurrency'
 import { AppError } from '@/utils/errors'
+import { createWorkerClient } from '@/utils/workerClient'
 import type { DedupResponse } from '@/workers/dedupWorker'
 
 export interface CrossAccountNotesOptions {
@@ -38,42 +39,22 @@ function collectFulfilled(
   return collected
 }
 
-let worker: Worker | null = null
-let requestId = 0
-const pending = new Map<number, (notes: NormalizedNote[]) => void>()
-
-function getDedupWorker(): Worker {
-  if (!worker) {
-    worker = new Worker(new URL('../workers/dedupWorker.ts', import.meta.url), {
-      type: 'module',
-    })
-    worker.onmessage = (event: MessageEvent<DedupResponse>) => {
-      const { id, notes } = event.data
-      const resolve = pending.get(id)
-      if (resolve) {
-        pending.delete(id)
-        resolve(notes)
-      }
-    }
-  }
-  return worker
-}
+const dedupWorker = createWorkerClient<DedupResponse>(
+  new URL('../workers/dedupWorker.ts', import.meta.url),
+)
 
 /** 既存IDを除外し、createdAt降順でソート（Worker で実行） */
 function dedupAsync(
   incoming: NormalizedNote[],
   existingIds?: Set<string>,
 ): Promise<NormalizedNote[]> {
-  return new Promise((resolve) => {
-    const id = requestId++
-    getDedupWorker().postMessage({
+  return dedupWorker
+    .post({
       type: 'dedup',
-      id,
       notes: incoming,
       existingIds: existingIds ? [...existingIds] : null,
     })
-    pending.set(id, resolve)
-  })
+    .then((res) => res.notes)
 }
 
 export function useCrossAccountNotes(options: CrossAccountNotesOptions) {

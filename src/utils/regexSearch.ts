@@ -1,4 +1,5 @@
 import type { NormalizedNote } from '@/adapters/types'
+import { createWorkerClient } from '@/utils/workerClient'
 import type { RegexSearchResponse } from '@/workers/regexSearchWorker'
 
 /**
@@ -62,27 +63,9 @@ export function filterNotesByRegex(
   return notes.filter((note) => noteMatchesRegex(note, regex))
 }
 
-let worker: Worker | null = null
-let requestId = 0
-const pending = new Map<number, (notes: NormalizedNote[]) => void>()
-
-function getRegexWorker(): Worker {
-  if (!worker) {
-    worker = new Worker(
-      new URL('../workers/regexSearchWorker.ts', import.meta.url),
-      { type: 'module' },
-    )
-    worker.onmessage = (event: MessageEvent<RegexSearchResponse>) => {
-      const { id, notes } = event.data
-      const resolve = pending.get(id)
-      if (resolve) {
-        pending.delete(id)
-        resolve(notes)
-      }
-    }
-  }
-  return worker
-}
+const regexWorker = createWorkerClient<RegexSearchResponse>(
+  new URL('../workers/regexSearchWorker.ts', import.meta.url),
+)
 
 /**
  * Worker で正規表現フィルタリングを実行（メインスレッドをブロックしない）。
@@ -94,11 +77,9 @@ export function filterNotesByRegexAsync(
 ): Promise<NormalizedNote[]> {
   const regex = safeRegex(pattern)
   if (!regex) return Promise.resolve(notes)
-  return new Promise((resolve) => {
-    const id = requestId++
-    getRegexWorker().postMessage({ type: 'filter', id, notes, pattern })
-    pending.set(id, resolve)
-  })
+  return regexWorker
+    .post({ type: 'filter', notes, pattern })
+    .then((res) => res.notes)
 }
 
 /** フィルタ条件の種別 */

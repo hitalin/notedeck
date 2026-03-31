@@ -1,30 +1,11 @@
 import type { NormalizedNote } from '@/adapters/types'
 import { parseCacheHas, warmCache } from '@/utils/mfm'
+import { createWorkerClient } from '@/utils/workerClient'
 import type { MfmParseResponse } from '@/workers/mfmWorker'
 
-let worker: Worker | null = null
-let requestId = 0
-const pending = new Map<
-  number,
-  (results: MfmParseResponse['results']) => void
->()
-
-function getWorker(): Worker {
-  if (!worker) {
-    worker = new Worker(new URL('../workers/mfmWorker.ts', import.meta.url), {
-      type: 'module',
-    })
-    worker.onmessage = (event: MessageEvent<MfmParseResponse>) => {
-      const { id, results } = event.data
-      const resolve = pending.get(id)
-      if (resolve) {
-        pending.delete(id)
-        resolve(results)
-      }
-    }
-  }
-  return worker
-}
+const mfmWorker = createWorkerClient<MfmParseResponse>(
+  new URL('../workers/mfmWorker.ts', import.meta.url),
+)
 
 /**
  * Prefetch MFM parse results for notes about to enter the viewport.
@@ -41,9 +22,7 @@ export function prefetchNoteMfm(notes: NormalizedNote[]): void {
   }
   if (texts.length === 0) return
 
-  const id = requestId++
-  getWorker().postMessage({ type: 'parse', id, texts })
-  pending.set(id, (results) => {
+  mfmWorker.post({ type: 'parse', texts }).then(({ results }) => {
     for (const { text, tokens } of results) {
       warmCache(text, tokens)
     }
