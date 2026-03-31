@@ -33,6 +33,7 @@ import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import { isGuestAccount } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useOfflineModeStore } from '@/stores/offlineMode'
+import { useToast } from '@/stores/toast'
 import { useUiStore } from '@/stores/ui'
 import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
@@ -113,6 +114,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
   const myNoteSound = isStreaming
     ? useNoteSound(() => account.value?.host, 'syuilo/n-cea-4va')
     : null
+  const toast = useToast()
   const streamingBatch = isStreaming
     ? useStreamingBatch({
         notes,
@@ -127,6 +129,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
           } else {
             noteSound?.play()
           }
+        },
+        onOverflow: () => {
+          toast.show('新着が多すぎるため一部をスキップしました', 'warning')
         },
       })
     : null
@@ -269,17 +274,21 @@ export function useNoteColumn(config: NoteColumnConfig) {
       })
     }
 
-    let cachedIds: string[] = []
-
     // Load cache when explicitly requested OR when account has no token
     const shouldLoadCache =
       (useCache || !account.value || !account.value.hasToken) && config.cache
-    if (shouldLoadCache) {
-      const filtered = await loadFilteredCache('load-cache')
-      if (filtered.length > 0) {
-        setNotes(filtered)
-        cachedIds = filtered.map((n) => n.id)
-      }
+
+    // Show cache immediately (non-blocking) so the user sees content while API fetches
+    const cachePromise = shouldLoadCache
+      ? loadFilteredCache('load-cache')
+      : Promise.resolve([] as NormalizedNote[])
+
+    // Display cached notes as soon as they arrive (don't wait for API)
+    const cachedNotes = await cachePromise
+    let cachedIds: string[] = []
+    if (cachedNotes.length > 0) {
+      setNotes(cachedNotes)
+      cachedIds = cachedNotes.map((n) => n.id)
     }
 
     // Only show skeleton if no cached notes are available
@@ -340,8 +349,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
         noteSound?.warmup()
       }
 
-      // When displaying cached notes, fetch full list to refresh stale data
-      // (cache may lack avatarUrl, reactionEmojis, etc.)
+      // Fetch fresh data from API (runs after cache is already displayed)
       const hasCached = cachedIds.length > 0
       const sinceId =
         !hasCached && notes.value.length > 0 ? notes.value[0]?.id : undefined
