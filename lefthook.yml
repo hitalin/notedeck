@@ -6,7 +6,7 @@ pre-commit:
       run: npx biome check --no-errors-on-unmatched {staged_files}
 
     - name: typecheck
-      run: npx vue-tsc --noEmit
+      run: npx vue-tsc -b --noEmit
 
 commit-msg:
   jobs:
