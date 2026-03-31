@@ -36,7 +36,7 @@ import { useDeckStore } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import {
   extractLiterals,
-  filterNotesByRegex,
+  filterNotesByRegexAsync,
   isValidRegex,
 } from '@/utils/regexSearch'
 import DeckColumn from './DeckColumn.vue'
@@ -216,7 +216,7 @@ async function searchLocalPerAccount(q: string, hint: string) {
     })
     if (searchQuery.value.trim() === q) {
       if (regexMode.value) {
-        local = filterNotesByRegex(local, q)
+        local = await filterNotesByRegexAsync(local, q)
       }
       notes.value = local
       isPreview.value = true
@@ -250,7 +250,7 @@ async function searchLocalCrossAccount(q: string, hint: string) {
         }
       }
       if (regexMode.value) {
-        merged = filterNotesByRegex(merged, q)
+        merged = await filterNotesByRegexAsync(merged, q)
       }
       notes.value = mergeNotes([], merged)
       isPreview.value = true
@@ -332,7 +332,7 @@ async function performSearchPerAccount(q: string, hint: string) {
         ascending: ascending.value,
       })
       if (regexMode.value) {
-        local = filterNotesByRegex(local, q)
+        local = await filterNotesByRegexAsync(local, q)
       }
       if (local.length > 0) {
         notes.value = local
@@ -353,7 +353,7 @@ async function performSearchPerAccount(q: string, hint: string) {
           untilDate: getUntilDateMs(),
         })
         if (regexMode.value) {
-          results = filterNotesByRegex(results, q)
+          results = await filterNotesByRegexAsync(results, q)
         }
         notes.value = mergeNotes(
           hasLocalResults.value ? notes.value : [],
@@ -393,7 +393,7 @@ async function performSearchCrossAccount(q: string, hint: string) {
         }
       }
       if (regexMode.value) {
-        merged = filterNotesByRegex(merged, q)
+        merged = await filterNotesByRegexAsync(merged, q)
       }
       if (merged.length > 0) {
         notes.value = mergeNotes([], merged)
@@ -424,7 +424,7 @@ async function performSearchCrossAccount(q: string, hint: string) {
         }
       }
       if (regexMode.value) {
-        merged = filterNotesByRegex(merged, q)
+        merged = await filterNotesByRegexAsync(merged, q)
       }
       notes.value = mergeNotes(hasLocalResults.value ? notes.value : [], merged)
     } catch (e) {
@@ -461,7 +461,7 @@ async function loadMorePerAccount() {
       untilDate: getUntilDateMs(),
     })
     if (regexMode.value) {
-      older = filterNotesByRegex(older, q)
+      older = await filterNotesByRegexAsync(older, q)
     }
     notes.value = mergeNotes(notes.value, older)
   } catch (e) {
@@ -505,7 +505,7 @@ async function loadMoreCrossAccount() {
       }
     }
     if (regexMode.value) {
-      older = filterNotesByRegex(older, q)
+      older = await filterNotesByRegexAsync(older, q)
     }
     notes.value = mergeNotes(notes.value, older)
   } catch (e) {
