@@ -18,7 +18,7 @@ function onSyncChange(e: Event) {
   <div :class="$style.themePanel">
     <div :class="$style.toggleArea">
       <div :class="$style.toggleInner">
-        <div :class="[$style.dayNightToggle, { [$style.checked]: isDark }]" @click="emit('toggle-dark')">
+        <button :class="[$style.dayNightToggle, { [$style.checked]: isDark }]" :aria-label="isDark ? 'ライトモードに切替' : 'ダークモードに切替'" @click="emit('toggle-dark')">
           <span :class="$style.labelBefore">ライト</span>
           <span :class="$style.labelAfter">ダーク</span>
           <span :class="$style.toggleHandler">
@@ -32,7 +32,7 @@ function onSyncChange(e: Event) {
           <span :class="[$style.star, $style.star4]" />
           <span :class="[$style.star, $style.star5]" />
           <span :class="[$style.star, $style.star6]" />
-        </div>
+        </button>
       </div>
     </div>
     <div :class="$style.syncArea">
@@ -74,6 +74,9 @@ function onSyncChange(e: Event) {
   width: 90px;
   height: 50px;
   margin: 4px;
+  padding: 0;
+  border: none;
+  font: inherit;
   background-color: #83d8ff;
   border-radius: 42px;
   transition: background-color 200ms cubic-bezier(0.445, 0.05, 0.55, 0.95);

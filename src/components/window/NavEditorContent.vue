@@ -259,9 +259,9 @@ async function importNav() {
             <div v-if="items.length === 0" :class="$style.empty">項目なし</div>
 
             <!-- Add divider button -->
-            <div :class="$style.navDividerTab" :title="'区切り線を追加'" @click="addDivider">
+            <button :class="$style.navDividerTab" :title="'区切り線を追加'" @click="addDivider">
               <i class="ti ti-separator" />
-            </div>
+            </button>
           </div>
         </div>
 
@@ -426,6 +426,11 @@ async function importNav() {
   width: 44px;
   height: 24px;
   margin: 2px auto;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
   border-radius: 12px;
   cursor: grab;
   user-select: none;

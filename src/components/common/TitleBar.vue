@@ -126,11 +126,11 @@ async function onPipClick() {
 </script>
 
 <template>
-  <div :class="[$style.titlebar, { [$style.mobile]: isCompact }]" data-tauri-drag-region>
+  <div :class="$style.titlebar" data-tauri-drag-region>
     <div :class="$style.titlebarLeft" data-tauri-drag-region>
       <img src="/favicon.svg" alt="" :class="$style.titlebarIcon" draggable="false" data-tauri-drag-region />
     </div>
-    <div :class="$style.titlebarCenter" data-tauri-drag-region>
+    <div v-if="!isCompact" :class="$style.titlebarCenter" data-tauri-drag-region>
       <!-- Open: command palette input replaces the search bar -->
       <CommandPalette v-if="commandStore.isOpen" />
       <!-- Closed: URI display / search trigger -->
@@ -333,9 +333,4 @@ async function onPipClick() {
 .titlebarSidebarBtn {}
 .titlebarWindowBtn {}
 
-.mobile {
-  .titlebarCenter {
-    display: none;
-  }
-}
 </style>

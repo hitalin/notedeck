@@ -267,11 +267,11 @@ usePortal(settingsMenuPortalRef)
             </button>
             <div v-if="themeGridOpen" :class="$style.themeSelectBody">
               <div :class="$style.themeGrid">
-                <div :class="[$style.themeItem, { [$style.selected]: selectedId == null }]" @click="selectTheme(null)">
+                <button :class="[$style.themeItem, { [$style.selected]: selectedId == null }]" @click="selectTheme(null)">
                   <ThemePreview :theme="builtinTheme" :class="$style.themeItemPreview" />
                   <div :class="$style.themeItemName">{{ builtinTheme.name }}</div>
-                </div>
-                <div
+                </button>
+                <button
                   v-for="theme in currentModeThemes"
                   :key="theme.id"
                   :class="[$style.themeItem, { [$style.selected]: selectedId === theme.id }]"
@@ -284,29 +284,29 @@ usePortal(settingsMenuPortalRef)
                     </button>
                   </div>
                   <div :class="$style.themeItemName">{{ theme.name }}</div>
-                </div>
+                </button>
               </div>
             </div>
           </div>
 
-          <div :class="$style.settingsMenuItem" @click="openToolWindow('themeEditor')">
+          <button :class="$style.settingsMenuItem" @click="openToolWindow('themeEditor')">
             <i class="ti ti-palette" />
             <span :class="$style.settingsMenuLabel">テーマ</span>
             <span v-if="selectedId != null" :class="$style.activeDot" />
-          </div>
-          <div :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
+          </button>
+          <button :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
             <i class="ti ti-code" />
             <span :class="$style.settingsMenuLabel">カスタムCSS</span>
             <span v-if="themeStore.customCss" :class="$style.activeDot" />
-          </div>
-          <div v-if="deckStore.wallpaper == null" :class="$style.settingsMenuItem" @click="pickWallpaper">
+          </button>
+          <button v-if="deckStore.wallpaper == null" :class="$style.settingsMenuItem" @click="pickWallpaper">
             <i class="ti ti-photo" />
             <span :class="$style.settingsMenuLabel">壁紙を設定</span>
-          </div>
-          <div v-else :class="$style.settingsMenuItem" @click="removeWallpaper">
+          </button>
+          <button v-else :class="$style.settingsMenuItem" @click="removeWallpaper">
             <i class="ti ti-photo-off" />
             <span :class="$style.settingsMenuLabel">壁紙を削除</span>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -326,28 +326,28 @@ usePortal(settingsMenuPortalRef)
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.settings }]" />
         </button>
         <div v-if="expandedSections.settings" :class="$style.categoryBody">
-          <div :class="$style.settingsMenuItem" @click="openToolWindow('navEditor')">
+          <button :class="$style.settingsMenuItem" @click="openToolWindow('navEditor')">
             <i class="ti ti-layout-sidebar-left-collapse" />
             <span :class="$style.settingsMenuLabel">ナビバー</span>
-          </div>
-          <div :class="$style.settingsMenuItem" @click="openToolWindow('plugins')">
+          </button>
+          <button :class="$style.settingsMenuItem" @click="openToolWindow('plugins')">
             <i class="ti ti-plug" />
             <span :class="$style.settingsMenuLabel">プラグイン</span>
-          </div>
-          <div :class="$style.settingsMenuItem" @click="openToolWindow('aiSettings')">
+          </button>
+          <button :class="$style.settingsMenuItem" @click="openToolWindow('aiSettings')">
             <i class="ti ti-robot" />
             <span :class="$style.settingsMenuLabel">AI</span>
-          </div>
-          <div v-if="!isMobilePlatform" :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
+          </button>
+          <button v-if="!isMobilePlatform" :class="$style.settingsMenuItem" @click="openToolWindow('keybinds')">
             <i class="ti ti-keyboard" />
             <span :class="$style.settingsMenuLabel">キーバインド</span>
             <span v-if="Object.keys(keybindsStore.overrides).length > 0" :class="$style.activeDot" />
-          </div>
-          <div :class="$style.settingsMenuItem" @click="openToolWindow('performanceEditor')">
+          </button>
+          <button :class="$style.settingsMenuItem" @click="openToolWindow('performanceEditor')">
             <i class="ti ti-gauge" />
             <span :class="$style.settingsMenuLabel">パフォーマンス</span>
             <span v-if="Object.keys(perfStore.overrides).length > 0" :class="$style.activeDot" />
-          </div>
+          </button>
         </div>
       </div>
 
@@ -404,17 +404,17 @@ usePortal(settingsMenuPortalRef)
           <div v-else-if="isChecking" :class="$style.updateSection">
             <span :class="$style.updateChecking">アップデートを確認中...</span>
           </div>
-          <div v-else :class="$style.settingsMenuItem" @click="checkForUpdate(true)">
+          <button v-else :class="$style.settingsMenuItem" @click="checkForUpdate(true)">
             <i class="ti ti-refresh" />
             <span :class="$style.settingsMenuLabel">アップデートを確認</span>
             <span v-if="isUpToDate" :class="$style.upToDateLabel">v{{ appVersion }} 最新</span>
             <span v-else :class="$style.upToDateLabel">v{{ appVersion }}</span>
-          </div>
+          </button>
         </template>
-        <div :class="$style.settingsMenuItem" @click="windowsStore.open('about')">
+        <button :class="$style.settingsMenuItem" @click="windowsStore.open('about')">
           <i class="ti ti-info-circle" />
           <span :class="$style.settingsMenuLabel">NoteDeck について</span>
-        </div>
+        </button>
       </div>
     </div>
   </div>
@@ -536,6 +536,11 @@ usePortal(settingsMenuPortalRef)
 
 .themeItem {
   cursor: pointer;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
   border: 2px solid var(--nd-divider);
   border-radius: var(--nd-radius-sm);
   overflow: hidden;
@@ -615,11 +620,16 @@ usePortal(settingsMenuPortalRef)
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   padding: 5px 16px;
+  border: none;
+  background: none;
   cursor: pointer;
+  font: inherit;
   font-size: 0.9em;
   line-height: 20px;
   color: var(--nd-fg);
+  text-align: left;
   position: relative;
 
   &::before {
