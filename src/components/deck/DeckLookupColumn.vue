@@ -266,6 +266,12 @@ async function handleDeleteAndEdit(target: NormalizedNote) {
   }
 }
 
+const lookupResultRef = useTemplateRef<HTMLElement>('lookupResultRef')
+
+function scrollToTop() {
+  lookupResultRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 function closePostForm() {
   showPostForm.value = false
   postFormReplyTo.value = undefined
@@ -296,6 +302,7 @@ async function handlePosted(editedNoteId?: string) {
     :column-id="column.id"
     :title="column.name ?? '照会'"
     :theme-vars="columnThemeVars"
+    @header-click="scrollToTop"
   >
     <template #header-icon>
       <i class="ti ti-world-search" :class="$style.tlHeaderIcon" />
@@ -345,7 +352,7 @@ async function handlePosted(editedNoteId?: string) {
       URLまたは@ユーザー名を入力して照会
     </div>
 
-    <div v-else-if="result.type === 'Note'" :class="$style.lookupResult">
+    <div v-else-if="result.type === 'Note'" ref="lookupResultRef" :class="$style.lookupResult">
       <MkNote
         :note="result.note"
         detailed
@@ -359,7 +366,7 @@ async function handlePosted(editedNoteId?: string) {
       />
     </div>
 
-    <div v-else-if="result.type === 'User'" :class="$style.lookupResult">
+    <div v-else-if="result.type === 'User'" ref="lookupResultRef" :class="$style.lookupResult">
       <button class="_button" :class="$style.lookupUserCard" @click="openUser">
         <img v-if="result.user.avatarUrl" :src="result.user.avatarUrl" :class="$style.lookupUserAvatar" />
         <div :class="$style.lookupUserInfo">

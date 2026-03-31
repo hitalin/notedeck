@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -35,18 +35,24 @@ function addFromTemplate(templateId: string) {
   showAddMenu.value = false
 }
 
+const widgetBodyRef = useTemplateRef<HTMLElement>('widgetBodyRef')
+
+function scrollToTop() {
+  widgetBodyRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 function removeWidget(widgetId: string) {
   deckStore.removeWidget(props.column.id, widgetId)
 }
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'ウィジェット'" :theme-vars="columnThemeVars" data-column-type="widget">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'ウィジェット'" :theme-vars="columnThemeVars" data-column-type="widget" @header-click="scrollToTop">
     <template #header-icon>
       <i class="ti ti-app-window" />
     </template>
 
-    <div :class="$style.widgetColumnBody">
+    <div ref="widgetBodyRef" :class="$style.widgetColumnBody">
       <div v-for="widget in widgets" :key="widget.id" :class="$style.widgetItem">
         <div :class="$style.widgetHeader">
           <span :class="$style.widgetLabel">

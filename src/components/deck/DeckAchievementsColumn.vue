@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { getAccountAvatarUrl } from '@/stores/accounts'
@@ -534,10 +534,18 @@ async function fetchAchievements() {
 }
 
 fetchAchievements()
+
+const achievementsScrollRef = useTemplateRef<HTMLElement>(
+  'achievementsScrollRef',
+)
+
+function scrollToTop() {
+  achievementsScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? '実績'" :theme-vars="columnThemeVars" refreshable :refreshing="loading" @refresh="fetchAchievements()">
+  <DeckColumn :column-id="column.id" :title="column.name ?? '実績'" :theme-vars="columnThemeVars" refreshable :refreshing="loading" @refresh="fetchAchievements()" @header-click="scrollToTop">
     <template #header-icon>
       <i class="ti ti-medal" :class="$style.tlHeaderIcon" />
     </template>
@@ -549,7 +557,7 @@ fetchAchievements()
       </div>
     </template>
 
-    <div :class="$style.achievementsScroll">
+    <div ref="achievementsScrollRef" :class="$style.achievementsScroll">
       <div v-if="loading && achievements.length === 0 && !isLoggedOut" :class="$style.columnLoading"><LoadingSpinner /></div>
       <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
       <div v-else-if="achievements.length === 0 && !loading" :class="$style.columnEmpty">実績がありません</div>

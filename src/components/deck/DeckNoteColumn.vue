@@ -9,6 +9,7 @@ const MkPostForm = defineAsyncComponent(
 )
 
 import { prefetchNoteImages } from '@/composables/useImagePrefetch'
+import { prefetchNoteMfm } from '@/composables/useMfmPrefetch'
 import {
   type NoteColumnConfig,
   useNoteColumn,
@@ -181,7 +182,7 @@ defineExpose({
           :items="notes"
           :focused-id="focusedNoteId"
           :animating-ids="animatingIds"
-          :prefetch="prefetchNoteImages"
+          :prefetch="(notes) => { prefetchNoteImages(notes); prefetchNoteMfm(notes) }"
           :class="$style.tlScroller"
           @scroll="handleScroll"
           @near-end="loadMore"

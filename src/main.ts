@@ -44,14 +44,8 @@ const app = createApp(App)
 const pinia = createPinia()
 app.use(pinia)
 
-// Global error handlers — catch uncaught Vue errors and unhandled rejections
-app.config.errorHandler = (err, instance, info) => {
-  console.error(`[vue] Uncaught error in ${info}:`, err)
-  if (import.meta.env.DEV && instance) {
-    console.debug('[vue] Component:', instance.$options.__name ?? instance)
-  }
-}
-
+// Global error handler — catch unhandled promise rejections
+// Vue component errors are caught by onErrorCaptured in App.vue (Vapor Mode compatible)
 window.addEventListener('unhandledrejection', (event) => {
   console.error('[unhandled] Promise rejection:', event.reason)
 })

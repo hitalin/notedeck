@@ -10,6 +10,8 @@ export interface UseStreamingBatchOptions {
   scroller: { value: HTMLElement | null }
   maxNotes?: number
   onNewNotes?: (notes: NormalizedNote[]) => void
+  /** Called once when the buffer overflows (emergency cap reached). */
+  onOverflow?: () => void
 }
 
 export function useStreamingBatch(options: UseStreamingBatchOptions) {
@@ -76,10 +78,19 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     }
   }
 
+  let _overflowNotified = false
+
   function enqueueNote(note: NormalizedNote) {
     if (_paused) return
     // Emergency cap: prevent unbounded buffer growth (e.g. from listener leaks)
-    if (rafBuffer.length >= MAX_NOTES * 2) return
+    if (rafBuffer.length >= MAX_NOTES * 2) {
+      if (!_overflowNotified) {
+        _overflowNotified = true
+        options.onOverflow?.()
+      }
+      return
+    }
+    _overflowNotified = false
     rafBuffer.push(note)
     if (!rafScheduled) {
       rafScheduled = true

@@ -379,6 +379,14 @@ const isOwnPage = computed(
     page.value && account.value && page.value.userId === account.value.userId,
 )
 
+const pageListRef = useTemplateRef<HTMLElement>('pageListRef')
+const pageViewScrollRef = useTemplateRef<HTMLElement>('pageViewScrollRef')
+
+function scrollToTop() {
+  const el = mode.value === 'list' ? pageListRef.value : pageViewScrollRef.value
+  el?.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 const pageWebUrl = computed(() => {
   if (!page.value || !serverUrl.value) return undefined
   return `${serverUrl.value}/@${page.value.user.username}/pages/${page.value.name}`
@@ -391,7 +399,7 @@ const pageEditUrl = computed(() => {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'ページ'" :theme-vars="columnThemeVars" :web-ui-url="pageWebUrl">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'ページ'" :theme-vars="columnThemeVars" :web-ui-url="pageWebUrl" @header-click="scrollToTop">
     <AiScriptDialog ref="dialogRef" />
     <template #header-icon>
       <i class="ti ti-note" :class="$style.tlHeaderIcon" />
@@ -424,7 +432,7 @@ const pageEditUrl = computed(() => {
         </button>
       </div>
 
-      <div :class="$style.pageList">
+      <div ref="pageListRef" :class="$style.pageList">
         <div v-if="listLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
         <div v-else-if="listError" :class="[$style.columnEmpty, $style.columnError]">{{ listError }}</div>
         <div v-else-if="listItems.length === 0" :class="$style.columnEmpty">ページが見つかりません</div>
@@ -450,7 +458,7 @@ const pageEditUrl = computed(() => {
 
     <!-- View mode -->
     <template v-else>
-      <div :class="$style.pageViewScroll">
+      <div ref="pageViewScrollRef" :class="$style.pageViewScroll">
         <div v-if="fetching" :class="$style.columnLoading"><LoadingSpinner /></div>
         <div v-else-if="fetchError" :class="[$style.columnEmpty, $style.columnError]">{{ fetchError }}</div>
         <template v-else-if="page">

@@ -2,6 +2,7 @@
 import {
   computed,
   defineAsyncComponent,
+  onErrorCaptured,
   onMounted,
   onUnmounted,
   watch,
@@ -33,6 +34,18 @@ const DeckWindowLayer = defineAsyncComponent(
 )
 
 const commandStore = useCommandStore()
+
+// Catch uncaught Vue errors from any descendant component (Vapor Mode compatible)
+onErrorCaptured((err, instance, info) => {
+  console.error(`[vue] Uncaught error in ${info}:`, err)
+  if (import.meta.env.DEV && instance) {
+    console.debug(
+      '[vue] Component:',
+      (instance.$options as { __name?: string }).__name ?? instance,
+    )
+  }
+  return false // prevent propagation
+})
 
 if (isTauri) {
   const { init: initKeyboard } = useKeyboard()

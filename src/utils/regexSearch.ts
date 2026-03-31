@@ -1,4 +1,6 @@
 import type { NormalizedNote } from '@/adapters/types'
+import { createWorkerClient } from '@/utils/workerClient'
+import type { RegexSearchResponse } from '@/workers/regexSearchWorker'
 
 /**
  * 正規表現パターンからリテラル部分を抽出し、FTS5/サーバー検索のヒントにする。
@@ -59,6 +61,25 @@ export function filterNotesByRegex(
   const regex = safeRegex(pattern)
   if (!regex) return notes
   return notes.filter((note) => noteMatchesRegex(note, regex))
+}
+
+const regexWorker = createWorkerClient<RegexSearchResponse>(
+  new URL('../workers/regexSearchWorker.ts', import.meta.url),
+)
+
+/**
+ * Worker で正規表現フィルタリングを実行（メインスレッドをブロックしない）。
+ * catastrophic backtracking からもメインスレッドを保護する。
+ */
+export function filterNotesByRegexAsync(
+  notes: NormalizedNote[],
+  pattern: string,
+): Promise<NormalizedNote[]> {
+  const regex = safeRegex(pattern)
+  if (!regex) return Promise.resolve(notes)
+  return regexWorker
+    .post({ type: 'filter', notes, pattern })
+    .then((res) => res.notes)
 }
 
 /** フィルタ条件の種別 */

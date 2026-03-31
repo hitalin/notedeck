@@ -6,6 +6,8 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
 import { mapWithConcurrency } from '@/utils/concurrency'
 import { AppError } from '@/utils/errors'
+import { createWorkerClient } from '@/utils/workerClient'
+import type { DedupResponse } from '@/workers/dedupWorker'
 
 export interface CrossAccountNotesOptions {
   /** API call to fetch notes for one account */
@@ -37,19 +39,22 @@ function collectFulfilled(
   return collected
 }
 
-/** 既存IDを除外し、createdAt降順でソート */
-function dedup(
+const dedupWorker = createWorkerClient<DedupResponse>(
+  new URL('../workers/dedupWorker.ts', import.meta.url),
+)
+
+/** 既存IDを除外し、createdAt降順でソート（Worker で実行） */
+function dedupAsync(
   incoming: NormalizedNote[],
   existingIds?: Set<string>,
-): NormalizedNote[] {
-  const seen = existingIds ?? new Set<string>()
-  return incoming
-    .filter((n) => {
-      if (seen.has(n.id)) return false
-      seen.add(n.id)
-      return true
+): Promise<NormalizedNote[]> {
+  return dedupWorker
+    .post({
+      type: 'dedup',
+      notes: incoming,
+      existingIds: existingIds ? [...existingIds] : null,
     })
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .then((res) => res.notes)
 }
 
 export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
@@ -96,7 +101,7 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
         3,
       )
 
-      notes.value = dedup(collectFulfilled(results))
+      notes.value = await dedupAsync(collectFulfilled(results))
     } catch (e) {
       error.value = AppError.from(e)
     } finally {
@@ -125,7 +130,7 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
       )
 
       const existingIds = new Set(notes.value.map((n) => n.id))
-      const newOlder = dedup(collectFulfilled(results), existingIds)
+      const newOlder = await dedupAsync(collectFulfilled(results), existingIds)
       notes.value = [...notes.value, ...newOlder]
     } catch (e) {
       error.value = AppError.from(e)
