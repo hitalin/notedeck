@@ -115,7 +115,9 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     }
   }
 
-  function scrollToTop() {
+  /** Flush all pending/queued notes into the list without scrolling.
+   *  Scroll is handled by the caller (useNoteColumn.scrollToTop). */
+  function flushToTop() {
     isAtTop.value = true
     // Merge queued into pending for unified flush with animation
     if (queuedNotes.value.length > 0) {
@@ -126,8 +128,6 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       queuedNotes.value = []
     }
     flushPending()
-    const el = options.scroller.value ?? undefined
-    if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function removePending(noteId: string) {
@@ -176,7 +176,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     addQueued,
     flushPending,
     handleScroll,
-    scrollToTop,
+    flushToTop,
     removePending,
     resetBatch,
     setPaused,

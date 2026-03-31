@@ -70,7 +70,14 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
   const { noteScrollerRef } = useNoteScrollerRef(scroller)
 
   function scrollToTop() {
-    scroller.value?.scrollTo({ top: 0, behavior: 'smooth' })
+    if (noteScrollerRef.value) {
+      noteScrollerRef.value.scrollToIndex(0, {
+        align: 'start',
+        behavior: 'smooth',
+      })
+    } else {
+      scroller.value?.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   async function connectCrossAccount() {

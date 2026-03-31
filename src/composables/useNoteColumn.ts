@@ -357,7 +357,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
           if (brandNew.length > 0) {
             streamingBatch.addQueued(brandNew)
             // Initial load: auto-flush with slide-in animation
-            streamingBatch.scrollToTop()
+            scrollToTop()
           }
         } else if (hasCached || sinceId) {
           // Non-streaming columns: merge directly (manual refresh button)
@@ -436,14 +436,17 @@ export function useNoteColumn(config: NoteColumnConfig) {
   }
 
   function scrollToTop() {
-    if (streamingBatch) {
-      streamingBatch.scrollToTop()
-    } else {
-      nextTick(() => {
-        if (scroller.value)
-          scroller.value.scrollTo({ top: 0, behavior: 'smooth' })
-      })
-    }
+    streamingBatch?.flushToTop()
+    nextTick(() => {
+      if (noteScrollerRef.value) {
+        noteScrollerRef.value.scrollToIndex(0, {
+          align: 'start',
+          behavior: 'smooth',
+        })
+      } else if (scroller.value) {
+        scroller.value.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    })
   }
 
   async function refresh() {
@@ -544,7 +547,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
         if (existing.length > 0) mergeUpdate(existing)
         if (brandNew.length > 0) {
           streamingBatch.addQueued(brandNew)
-          streamingBatch.scrollToTop()
+          scrollToTop()
         }
       } else {
         mergeUpdate(combined)
@@ -614,7 +617,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
           if (existing.length > 0) mergeUpdate(existing)
           if (brandNew.length > 0) {
             streamingBatch.addQueued(brandNew)
-            streamingBatch.scrollToTop()
+            scrollToTop()
           }
         }
         isOffline.value = false
