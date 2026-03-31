@@ -362,12 +362,18 @@ notecli tl -f json | jq '.[].text'
 
 ### Vue Vapor モード移行（[#52](https://github.com/hitalin/notedeck/issues/52)）
 
-Vue 3.6 で導入予定の Vapor モード（仮想DOMレス）への移行を計画中。
-コーディング制約（`<script setup>` 必須、`h()`/JSX 禁止等）は全コンポーネントで遵守済み。
+Vue 3.6 で導入予定の Vapor モード（仮想DOMレス）への移行準備が**完了**。
+既知の移行ブロッカーはゼロ。Vue 3.6 リリース時にそのまま有効化可能。
 
-**`<Transition>` / `<TransitionGroup>` 完全除去済み。** 全22箇所を composable（`useVaporTransition`, `useVaporTransitionSwitch`, `useVaporTransitionGroup` — すべて `useVaporTransition.ts` からエクスポート）+ CSS `@keyframes` に移行。leave animation は composable で DOM 除去を遅延させることで実現。
+**対応済み項目:**
 
-**`<Teleport>` も全箇所除去済み。** Vapor 非互換の組み込みコンポーネントは解消済み。
+- `<script setup>` 必須 — Options API / `export default {}` / `h()` / JSX の使用なし
+- `<Transition>` / `<TransitionGroup>` 完全除去済み（全22箇所を composable + CSS `@keyframes` に移行）
+- `<Teleport>` 全箇所除去済み（`usePortal()` composable に移行）
+- `getCurrentInstance()` / カスタムディレクティブ / mixins / extends の使用なし
+- `<Suspense>` / `<KeepAlive>` の使用なし
+- `app.config.errorHandler` → `onErrorCaptured` composable に移行済み
+- `__VUE_OPTIONS_API__: false` 設定済み
 
 ---
 
