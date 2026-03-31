@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, useTemplateRef } from 'vue'
 
+import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 
 const show = ref(false)
@@ -49,12 +50,15 @@ function close(result: boolean) {
 }
 
 defineExpose({ showDialog, showConfirm })
+
+const aisPortalRef = useTemplateRef<HTMLElement>('aisPortalRef')
+usePortal(aisPortalRef)
 </script>
 
 <template>
-  <Teleport to="body">
     <div
       v-if="visible"
+      ref="aisPortalRef"
       class="_dialogBackdrop"
       :class="[$style.aisBackdrop, entering && $style.enter, leaving && $style.leave]"
       @click.self="close(false)"
@@ -78,7 +82,6 @@ defineExpose({ showDialog, showConfirm })
         </div>
       </div>
     </div>
-  </Teleport>
 </template>
 
 <style lang="scss" module>

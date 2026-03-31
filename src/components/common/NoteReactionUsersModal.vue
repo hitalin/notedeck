@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, ref, useTemplateRef, watch } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type { NoteReaction } from '@/adapters/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useNavigation } from '@/composables/useNavigation'
+import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
@@ -26,6 +27,9 @@ const { isCompactLayout: isCompact } = storeToRefs(useUiStore())
 const { navigateToUser } = useNavigation()
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
+
+const modalPortalRef = useTemplateRef<HTMLElement>('modalPortalRef')
+usePortal(modalPortalRef)
 
 const show = ref(false)
 const selectedReaction = ref('')
@@ -112,16 +116,16 @@ defineExpose({ open })
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="visible"
-      :class="[
-        $style.backdrop,
-        isCompact && $style.mobile,
-        leaving ? (isCompact ? $style.sheetLeave : $style.popupLeave) : (isCompact ? $style.sheetEnter : $style.popupEnter),
-      ]"
-      @click="close"
-    >
+  <div
+    v-if="visible"
+    ref="modalPortalRef"
+    :class="[
+      $style.backdrop,
+      isCompact && $style.mobile,
+      leaving ? (isCompact ? $style.sheetLeave : $style.popupLeave) : (isCompact ? $style.sheetEnter : $style.popupEnter),
+    ]"
+    @click="close"
+  >
       <div
         ref="modalRef"
         :class="[
@@ -177,8 +181,7 @@ defineExpose({ open })
           </template>
         </div>
       </div>
-    </div>
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>

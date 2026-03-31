@@ -7,6 +7,7 @@ import {
   ref,
   shallowRef,
   triggerRef,
+  useTemplateRef,
   watch,
 } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
@@ -20,6 +21,7 @@ import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
+import { usePortal } from '@/composables/usePortal'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabSlide } from '@/composables/useTabSlide'
 import { useToast } from '@/stores/toast'
@@ -131,6 +133,9 @@ function stringifyUiProps(props: Record<string, unknown>): string {
 const { show: showToast } = useToast()
 const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
 let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
+
+const postPortalRef = useTemplateRef<HTMLElement>('postPortalRef')
+usePortal(postPortalRef)
 
 const showPostForm = ref(false)
 const postFormData = ref<PostFormRequest>({})
@@ -402,7 +407,7 @@ onUnmounted(() => {
     </div>
   </DeckColumn>
 
-  <Teleport v-if="showPostForm && props.column.accountId" to="body">
+  <div v-if="showPostForm && props.column.accountId" ref="postPortalRef">
     <MkPostForm
       :account-id="props.column.accountId"
       :initial-text="postFormData.text"
@@ -412,7 +417,7 @@ onUnmounted(() => {
       @close="closePostForm"
       @posted="closePostForm"
     />
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>

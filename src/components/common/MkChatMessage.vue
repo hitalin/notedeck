@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import type { ChatMessage, NormalizedUser } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
+import { usePortal } from '@/composables/usePortal'
 import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
 import { invoke } from '@/utils/tauriInvoke'
 
@@ -161,6 +162,12 @@ function onMentionLeave() {
 function closeMentionPopup() {
   mentionPopup.forceClose()
 }
+
+const mentionPortalRef = useTemplateRef<HTMLElement>('mentionPortalRef')
+usePortal(mentionPortalRef)
+
+const lightboxPortalRef = useTemplateRef<HTMLElement>('lightboxPortalRef')
+usePortal(lightboxPortalRef)
 </script>
 
 <template>
@@ -244,31 +251,28 @@ function closeMentionPopup() {
     </div>
   </div>
 
-  <Teleport to="body">
+  <div v-if="mentionPopup.isVisible.value && mentionUserId" ref="mentionPortalRef">
     <MkUserPopup
-      v-if="mentionPopup.isVisible.value && mentionUserId"
       :user-id="mentionUserId"
       :account-id="accountId!"
       :x="mentionPopup.position.value.x"
       :y="mentionPopup.position.value.y"
       @close="closeMentionPopup"
     />
-  </Teleport>
+  </div>
 
-  <Teleport to="body">
-    <div v-if="lightboxUrl" :class="$style.lightboxOverlay" @click="closeLightbox">
-      <button :class="$style.lightboxClose" @click="closeLightbox">
-        <svg viewBox="0 0 24 24" width="24" height="24">
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-        </svg>
-      </button>
-      <img
-        :src="lightboxUrl"
-        :class="$style.lightboxImage"
-        @click.stop
-      />
-    </div>
-  </Teleport>
+  <div v-if="lightboxUrl" ref="lightboxPortalRef" :class="$style.lightboxOverlay" @click="closeLightbox">
+    <button :class="$style.lightboxClose" @click="closeLightbox">
+      <svg viewBox="0 0 24 24" width="24" height="24">
+        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    </button>
+    <img
+      :src="lightboxUrl"
+      :class="$style.lightboxImage"
+      @click.stop
+    />
+  </div>
 </template>
 
 <style lang="scss" module>

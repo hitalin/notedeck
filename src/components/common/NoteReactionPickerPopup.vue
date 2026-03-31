@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, nextTick, ref, useCssModule, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  ref,
+  useCssModule,
+  useTemplateRef,
+  watch,
+} from 'vue'
 import { useFocusTrap } from '@/composables/useFocusTrap'
+import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useUiStore } from '@/stores/ui'
 import { extractThemeVars } from '@/utils/themeVars'
@@ -72,30 +80,32 @@ function close() {
   show.value = false
 }
 
+const pickerPortalRef = useTemplateRef<HTMLElement>('pickerPortalRef')
+usePortal(pickerPortalRef)
+
 defineExpose({ open })
 </script>
 
 <template>
-  <Teleport to="body">
+  <div
+    v-if="visible"
+    ref="pickerPortalRef"
+    :class="backdropClass"
+    @click="close"
+  >
     <div
-      v-if="visible"
-      :class="backdropClass"
-      @click="close"
+      ref="pickerRef"
+      :class="contentClass"
+      :style="isCompact ? theme : { ...theme, top: pos.y + 'px', left: pos.x + 'px' }"
+      @click.stop
     >
-      <div
-        ref="pickerRef"
-        :class="contentClass"
-        :style="isCompact ? theme : { ...theme, top: pos.y + 'px', left: pos.x + 'px' }"
-        @click.stop
-      >
-        <MkReactionPicker
-          :server-host="serverHost"
-          :account-id="accountId"
-          @pick="(r: string) => { emit('pick', r); close() }"
-        />
-      </div>
+      <MkReactionPicker
+        :server-host="serverHost"
+        :account-id="accountId"
+        @pick="(r: string) => { emit('pick', r); close() }"
+      />
     </div>
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useIntersectionObserver } from '@vueuse/core'
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import type {
   NormalizedNote,
   NormalizedUser,
@@ -12,6 +12,7 @@ import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useLongPress } from '@/composables/useLongPress'
 import { useNavigation } from '@/composables/useNavigation'
+import { usePortal } from '@/composables/usePortal'
 import { useRippleEffect } from '@/composables/useRippleEffect'
 import {
   useVaporTransition,
@@ -365,6 +366,17 @@ function closeMentionPopup() {
   mentionPopup.forceClose()
 }
 
+const renotePortalRef = useTemplateRef<HTMLElement>('renotePortalRef')
+usePortal(renotePortalRef)
+
+const userPopupPortalRef = useTemplateRef<HTMLElement>('userPopupPortalRef')
+usePortal(userPopupPortalRef)
+
+const mentionPopupPortalRef = useTemplateRef<HTMLElement>(
+  'mentionPopupPortalRef',
+)
+usePortal(mentionPopupPortalRef)
+
 function handleReactionClick(e: MouseEvent, reaction: string) {
   if (longPressed.value) return
   if (!canInteract.value) {
@@ -666,9 +678,9 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   </div>
 
   <!-- Renote popup menu -->
-  <Teleport to="body">
     <div
       v-if="renoteMenuVisible"
+      ref="renotePortalRef"
       :class="[$style.renoteBackdrop, renoteMenuLeaving ? $style.renotePopupLeave : $style.renotePopupEnter]"
       @click="closeRenoteMenu"
     >
@@ -692,11 +704,9 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
         </button>
       </div>
     </div>
-  </Teleport>
 
-  <Teleport to="body">
+  <div v-if="userPopup.isVisible.value" ref="userPopupPortalRef">
     <MkUserPopup
-      v-if="userPopup.isVisible.value"
       :user-id="effectiveNote.user.id"
       :account-id="note._accountId"
       :x="userPopup.position.value.x"
@@ -704,11 +714,10 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
       :theme-vars="popupTheme"
       @close="closeUserPopup"
     />
-  </Teleport>
+  </div>
 
-  <Teleport to="body">
+  <div v-if="mentionPopup.isVisible.value && mentionUserId" ref="mentionPopupPortalRef">
     <MkUserPopup
-      v-if="mentionPopup.isVisible.value && mentionUserId"
       :user-id="mentionUserId"
       :account-id="note._accountId"
       :x="mentionPopup.position.value.x"
@@ -716,7 +725,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
       :theme-vars="popupTheme"
       @close="closeMentionPopup"
     />
-  </Teleport>
+  </div>
 
   <NoteReactionUsersPopup
     ref="reactionUsersRef"

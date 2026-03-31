@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useTemplateRef } from 'vue'
+
+import { usePortal } from '@/composables/usePortal'
 import { useVaporTransitionGroup } from '@/composables/useVaporTransition'
 import { useToast } from '@/stores/toast'
 
@@ -7,11 +10,13 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
   enterDuration: 250,
   leaveDuration: 120,
 })
+
+const toastPortalRef = useTemplateRef<HTMLElement>('toastPortalRef')
+usePortal(toastPortalRef)
 </script>
 
 <template>
-  <Teleport to="body">
-    <div :class="$style.container">
+    <div ref="toastPortalRef" :class="$style.container">
       <div
         v-for="toast in rendered"
         :key="toast.id"
@@ -34,7 +39,6 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
         <span :class="$style.text">{{ toast.text }}</span>
       </div>
     </div>
-  </Teleport>
 </template>
 
 <style lang="scss" module>

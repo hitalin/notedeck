@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  ref,
+  useTemplateRef,
+} from 'vue'
 import { invoke } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
@@ -8,6 +14,7 @@ const MkPostForm = defineAsyncComponent(
 )
 
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { usePortal } from '@/composables/usePortal'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
@@ -40,6 +47,9 @@ const isLoading = ref(false)
 const error = ref<AppError | null>(null)
 const meta = ref<ServerMeta | null>(null)
 const scrollContainer = ref<HTMLElement | null>(null)
+const postPortalRef = useTemplateRef<HTMLElement>('postPortalRef')
+usePortal(postPortalRef)
+
 const showPostForm = ref(false)
 
 const isModifiedVersion = computed(() => {
@@ -290,14 +300,13 @@ onMounted(() => {
     </div>
   </DeckColumn>
 
-  <Teleport to="body">
+  <div v-if="showPostForm && column.accountId" ref="postPortalRef">
     <MkPostForm
-      v-if="showPostForm && column.accountId"
       :account-id="column.accountId"
       initial-text="I ❤ #Misskey"
       @close="closePostForm"
     />
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>

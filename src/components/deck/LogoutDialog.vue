@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { toRef } from 'vue'
+import { toRef, useTemplateRef } from 'vue'
 
+import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 
 const props = defineProps<{
@@ -18,12 +19,15 @@ const { visible, entering, leaving } = useVaporTransition(
   toRef(props, 'show'),
   { enterDuration: 200, leaveDuration: 200 },
 )
+
+const dialogPortalRef = useTemplateRef<HTMLElement>('dialogPortalRef')
+usePortal(dialogPortalRef)
 </script>
 
 <template>
-  <Teleport to="body">
     <div
       v-if="visible"
+      ref="dialogPortalRef"
       class="_dialogBackdrop"
       :class="[entering && $style.enter, leaving && $style.leave]"
       @click="emit('cancel')"
@@ -60,7 +64,6 @@ const { visible, entering, leaving } = useVaporTransition(
         </div>
       </div>
     </div>
-  </Teleport>
 </template>
 
 <style lang="scss" module>

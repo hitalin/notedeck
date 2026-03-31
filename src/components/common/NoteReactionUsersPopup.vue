@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref } from 'vue'
+import { defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import { useHoverPopup } from '@/composables/useHoverPopup'
+import { usePortal } from '@/composables/usePortal'
 import { extractThemeVars } from '@/utils/themeVars'
 
 const MkReactionUsersPopup = defineAsyncComponent(
@@ -43,24 +44,27 @@ function hide() {
   popup.hide()
 }
 
+const reactionUsersPortalRef = useTemplateRef<HTMLElement>(
+  'reactionUsersPortalRef',
+)
+usePortal(reactionUsersPortalRef)
+
 defineExpose({ show, hide })
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="popup.isVisible.value" :style="theme">
-      <MkReactionUsersPopup
-        :note-id="noteId"
-        :account-id="accountId"
-        :server-host="serverHost"
-        :reaction="reaction"
-        :reaction-url="reactionUrl"
-        :total-count="totalCount"
-        :x="popup.position.value.x"
-        :y="popup.position.value.y"
-        @close="popup.forceClose()"
-        @open-modal="(r: string) => { popup.forceClose(); emit('openModal', r) }"
-      />
-    </div>
-  </Teleport>
+  <div v-if="popup.isVisible.value" ref="reactionUsersPortalRef" :style="theme">
+    <MkReactionUsersPopup
+      :note-id="noteId"
+      :account-id="accountId"
+      :server-host="serverHost"
+      :reaction="reaction"
+      :reaction-url="reactionUrl"
+      :total-count="totalCount"
+      :x="popup.position.value.x"
+      :y="popup.position.value.y"
+      @close="popup.forceClose()"
+      @open-modal="(r: string) => { popup.forceClose(); emit('openModal', r) }"
+    />
+  </div>
 </template>

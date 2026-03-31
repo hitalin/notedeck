@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, ref, useTemplateRef, watch } from 'vue'
 
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
+import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { extractThemeVars } from '@/utils/themeVars'
 
@@ -70,12 +71,15 @@ function close() {
 }
 
 defineExpose({ open, close, activateKeyboard })
+
+const popupPortalRef = useTemplateRef<HTMLElement>('popupPortalRef')
+usePortal(popupPortalRef)
 </script>
 
 <template>
-  <Teleport to="body">
     <div
       v-if="visible"
+      ref="popupPortalRef"
       :class="[$style.popupBackdrop, entering && $style.enter, leaving && $style.leave]"
       @click="close"
     >
@@ -89,7 +93,6 @@ defineExpose({ open, close, activateKeyboard })
         <slot />
       </div>
     </div>
-  </Teleport>
 </template>
 
 <style lang="scss" module>

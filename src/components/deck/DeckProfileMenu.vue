@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
-import { computed, nextTick, ref, toRef, watch } from 'vue'
+import { computed, nextTick, ref, toRef, useTemplateRef, watch } from 'vue'
 
 import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
+import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
@@ -97,6 +98,9 @@ async function remove(id: string) {
   refreshProfileCommands()
 }
 
+const profileMenuPortalRef = useTemplateRef<HTMLElement>('profileMenuPortalRef')
+usePortal(profileMenuPortalRef)
+
 function openEditor(id: string) {
   windowsStore.open('profileEditor', { profileId: id })
   emit('close')
@@ -104,8 +108,8 @@ function openEditor(id: string) {
 </script>
 
 <template>
-  <Teleport to="body">
-  <div v-if="show" :class="$style.menuBackdrop" @pointerdown="emit('close')" />
+  <div v-if="show || menuVisible" ref="profileMenuPortalRef">
+    <div v-if="show" :class="$style.menuBackdrop" @pointerdown="emit('close')" />
     <div v-if="menuVisible" ref="menuEl" :class="[$style.profileMenu, { [$style.mobile]: isCompact }, menuLeaving ? $style.menuLeave : $style.menuEnter]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
       <div :class="$style.list">
         <div
@@ -148,7 +152,7 @@ function openEditor(id: string) {
       </div>
 
     </div>
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>

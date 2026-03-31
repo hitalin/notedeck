@@ -238,19 +238,18 @@ function removeWidget(widgetId: string) {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-</style>
 
-<style lang="scss">
 /* ウィジェットカラムのヘッダーはプレーンに（Misskey本家準拠） */
-.deck-column[data-column-type="widget"] {
-  .column-header {
+:global(.deck-column[data-column-type="widget"]) {
+  :global(.column-header) {
     background: var(--nd-panel);
     box-shadow: none;
     border-bottom: 1px solid var(--nd-divider);
   }
 
-  .color-indicator {
+  :global(.color-indicator) {
     display: none;
   }
 }
 </style>
+

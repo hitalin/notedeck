@@ -1,10 +1,19 @@
 <script setup lang="ts">
 import { relaunch } from '@tauri-apps/plugin-process'
 import type { CSSProperties, Ref } from 'vue'
-import { computed, nextTick, reactive, ref, toRef, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  reactive,
+  ref,
+  toRef,
+  useTemplateRef,
+  watch,
+} from 'vue'
 
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
+import { usePortal } from '@/composables/usePortal'
 import { useUpdater } from '@/composables/useUpdater'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { type ConfirmOptions, useConfirm } from '@/stores/confirm'
@@ -223,10 +232,15 @@ const importSettings = () =>
     },
     relaunch: true,
   })
+
+const settingsMenuPortalRef = useTemplateRef<HTMLElement>(
+  'settingsMenuPortalRef',
+)
+usePortal(settingsMenuPortalRef)
 </script>
 
 <template>
-  <Teleport to="body">
+  <div v-if="show || menuVisible" ref="settingsMenuPortalRef">
   <div v-if="show" :class="$style.menuBackdrop" @pointerdown="emit('close')" />
     <div v-if="menuVisible" ref="menuEl" :class="[$style.settingsMenu, { [$style.mobile]: isCompact }, menuLeaving ? $style.menuLeave : $style.menuEnter]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
       <div :class="$style.menuBody">
@@ -403,7 +417,7 @@ const importSettings = () =>
         </div>
       </div>
     </div>
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>
