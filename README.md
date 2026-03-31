@@ -8,6 +8,10 @@
 
 マルチサーバー対応 Misskey デッキクライアント
 
+> **対応範囲:** Misskey 本家および「Misskey を名乗り続けるフォーク」（yamisskey, misskey-tempura 等）に対応しています。
+> Misskey から名前が別物になったフォーク（Sharkey, CherryPick, Firefish, Iceshrimp 等）は対応していません。
+> 詳しくは [STRATEGY.md](STRATEGY.md#フォーク対応方針) を参照してください。
+
 [![CI](https://github.com/hitalin/notedeck/actions/workflows/ci.yml/badge.svg)](https://github.com/hitalin/notedeck/actions/workflows/ci.yml)
 [![GitHub Release](https://img.shields.io/github/v/release/hitalin/notedeck?style=flat-square)](https://github.com/hitalin/notedeck/releases/latest)
 [![winget](https://img.shields.io/badge/winget-Hitalin.NoteDeck-blue?style=flat-square&logo=windows)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/h/Hitalin/NoteDeck)
