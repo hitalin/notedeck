@@ -12,6 +12,8 @@ export function sortByCreatedAtDesc(notes: NormalizedNote[]): NormalizedNote[] {
 
 /**
  * Merge two already-sorted (desc) note arrays into one sorted array.
+ * Deduplicates by note id — when the same id appears in both arrays,
+ * the entry from `a` (typically the newer/fresher data) wins.
  * O(n + m) instead of O((n+m) log(n+m)).
  */
 export function mergeSortedNotes(
@@ -19,25 +21,38 @@ export function mergeSortedNotes(
   b: NormalizedNote[],
 ): NormalizedNote[] {
   const result: NormalizedNote[] = []
+  const seen = new Set<string>()
   let i = 0
   let j = 0
   let ai = a[0]
   let bj = b[0]
   while (ai && bj) {
     if (ai.createdAt >= bj.createdAt) {
-      result.push(ai)
+      if (!seen.has(ai.id)) {
+        seen.add(ai.id)
+        result.push(ai)
+      }
       ai = a[++i]
     } else {
-      result.push(bj)
+      if (!seen.has(bj.id)) {
+        seen.add(bj.id)
+        result.push(bj)
+      }
       bj = b[++j]
     }
   }
   while (ai) {
-    result.push(ai)
+    if (!seen.has(ai.id)) {
+      seen.add(ai.id)
+      result.push(ai)
+    }
     ai = a[++i]
   }
   while (bj) {
-    result.push(bj)
+    if (!seen.has(bj.id)) {
+      seen.add(bj.id)
+      result.push(bj)
+    }
     bj = b[++j]
   }
   return result
