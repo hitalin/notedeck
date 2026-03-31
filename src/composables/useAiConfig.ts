@@ -134,5 +134,5 @@ export function useAiConfig() {
     initFileStorage()
   }
 
-  return { config, save }
+  return { config, save, mergeConfig, toFileConfig }
 }

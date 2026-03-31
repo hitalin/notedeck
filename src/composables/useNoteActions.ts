@@ -79,7 +79,7 @@ export function useNoteActions(
     const adapter = await resolve(note)
     if (!adapter) return null
     try {
-      const renotes = await adapter.api.getNoteRenotes(note.id, 30)
+      const renotes = await adapter.api.getNoteRenotes(note.id, { limit: 30 })
       const account = accountsStore.accountMap.get(note._accountId)
       const mine = renotes.find(
         (r: NormalizedNote) => r.user.id === account?.userId,
