@@ -49,6 +49,26 @@ export const useUiStore = defineStore('ui', () => {
     sidebarOpen.value = !sidebarOpen.value
   }
 
+  // --- Reactive signals (replaces window.dispatchEvent event bus) ---
+
+  /** Incremented on deck resume (visibility change, offline→online). Watch to react. */
+  const deckResumeSignal = ref(0)
+  function emitDeckResume() {
+    deckResumeSignal.value++
+  }
+
+  /** Set to true when DeckLayout DOM is mounted. */
+  const deckMounted = ref(false)
+
+  /** Incremented when drive files change. Carries accountId. */
+  const driveFilesChanged = ref<{ accountId: string; ts: number }>({
+    accountId: '',
+    ts: 0,
+  })
+  function emitDriveFilesChanged(accountId: string) {
+    driveFilesChanged.value = { accountId, ts: Date.now() }
+  }
+
   return {
     isTauri,
     isDesktop,
@@ -57,6 +77,11 @@ export const useUiStore = defineStore('ui', () => {
     platformName,
     sidebarOpen,
     toggleSidebar,
+    deckResumeSignal,
+    emitDeckResume,
+    deckMounted,
+    driveFilesChanged,
+    emitDriveFilesChanged,
   }
 })
 

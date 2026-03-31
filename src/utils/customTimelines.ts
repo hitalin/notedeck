@@ -1,6 +1,12 @@
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
-import { invoke } from '@/utils/tauriInvoke'
+import {
+  getStorageJson,
+  removeStorage,
+  STORAGE_KEYS,
+  setStorageJson,
+} from './storage'
+import { invoke } from './tauriInvoke'
 
 export interface CustomTimelineInfo {
   type: string
@@ -46,22 +52,11 @@ interface CacheEntry<T> {
 }
 
 function readCache<T>(key: string): CacheEntry<T> | null {
-  try {
-    const raw = localStorage.getItem(key)
-    if (!raw) return null
-    return JSON.parse(raw) as CacheEntry<T>
-  } catch {
-    return null
-  }
+  return getStorageJson<CacheEntry<T> | null>(key, null)
 }
 
 function writeCache<T>(key: string, data: T): void {
-  try {
-    const entry: CacheEntry<T> = { data, updatedAt: Date.now() }
-    localStorage.setItem(key, JSON.stringify(entry))
-  } catch {
-    // localStorage full or unavailable — ignore
-  }
+  setStorageJson(key, { data, updatedAt: Date.now() } satisfies CacheEntry<T>)
 }
 
 // --- Custom timeline detection (per host) ---
@@ -85,7 +80,7 @@ async function fetchCustomTimelinesFromNetwork(
     })
   }
   customTlMemCache.set(host, customs)
-  writeCache(`nd:custom_tl:${host}`, customs)
+  writeCache(STORAGE_KEYS.customTimeline(host), customs)
   return customs
 }
 
@@ -102,7 +97,9 @@ export async function detectCustomTimelines(
   if (memCached) return memCached
 
   // 2. localStorage cache (SWR)
-  const stored = readCache<CustomTimelineInfo[]>(`nd:custom_tl:${host}`)
+  const stored = readCache<CustomTimelineInfo[]>(
+    STORAGE_KEYS.customTimeline(host),
+  )
   if (stored) {
     customTlMemCache.set(host, stored.data)
     if (Date.now() - stored.updatedAt >= POLICY_CACHE_TTL_MS) {
@@ -256,7 +253,7 @@ async function fetchPoliciesFromNetwork(
 
   const result = { available, denied, modes }
   availableTlCache.set(accountId, result)
-  writeCache(`nd:policies:${accountId}`, serializeAvailability(result))
+  writeCache(STORAGE_KEYS.policies(accountId), serializeAvailability(result))
   return result
 }
 
@@ -276,7 +273,9 @@ export async function detectAvailableTimelines(
   // Logged-out: use cached policies from authenticated session (preserves tabs)
   const account = useAccountsStore().accountMap.get(accountId)
   if (account && !account.hasToken) {
-    const stored = readCache<SerializedAvailability>(`nd:policies:${accountId}`)
+    const stored = readCache<SerializedAvailability>(
+      STORAGE_KEYS.policies(accountId),
+    )
     if (stored) {
       const result = deserializeAvailability(stored.data)
       availableTlCache.set(accountId, result)
@@ -293,7 +292,9 @@ export async function detectAvailableTimelines(
   }
 
   // 2. localStorage cache (SWR)
-  const stored = readCache<SerializedAvailability>(`nd:policies:${accountId}`)
+  const stored = readCache<SerializedAvailability>(
+    STORAGE_KEYS.policies(accountId),
+  )
   if (stored) {
     const result = deserializeAvailability(stored.data)
     // Apply runtime-denied on top of cached data
@@ -332,7 +333,7 @@ export async function detectAvailableTimelines(
 export function clearAvailableTlCache(accountId: string) {
   availableTlCache.delete(accountId)
   try {
-    localStorage.removeItem(`nd:policies:${accountId}`)
+    removeStorage(STORAGE_KEYS.policies(accountId))
   } catch {
     // localStorage unavailable — ignore
   }

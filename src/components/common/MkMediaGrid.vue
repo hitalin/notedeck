@@ -1,6 +1,14 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, shallowRef, watch } from 'vue'
+import {
+  computed,
+  onUnmounted,
+  ref,
+  shallowRef,
+  useTemplateRef,
+  watch,
+} from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
+import { usePortal } from '@/composables/usePortal'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { isSafeUrl } from '@/utils/url'
 
@@ -172,6 +180,9 @@ watch(lightboxIndex, (v) => {
 onUnmounted(() => {
   document.removeEventListener('keydown', onLightboxKeydown)
 })
+
+const lightboxPortalRef = useTemplateRef<HTMLElement>('lightboxPortalRef')
+usePortal(lightboxPortalRef)
 </script>
 
 <template>
@@ -287,8 +298,7 @@ onUnmounted(() => {
   </div>
 
   <!-- Lightbox -->
-  <Teleport to="body">
-    <div v-if="lightboxFile" :class="$style.lightboxOverlay" @click="closeLightbox">
+  <div v-if="lightboxFile" ref="lightboxPortalRef" :class="$style.lightboxOverlay" @click="closeLightbox">
       <button :class="$style.lightboxClose" @click="closeLightbox">
         <svg viewBox="0 0 24 24" width="24" height="24">
           <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
@@ -349,8 +359,7 @@ onUnmounted(() => {
           @click="lightboxIndex = i"
         />
       </div>
-    </div>
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>

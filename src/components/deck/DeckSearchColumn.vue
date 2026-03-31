@@ -6,6 +6,7 @@ import {
   onUnmounted,
   ref,
   shallowRef,
+  useTemplateRef,
   watch,
 } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
@@ -15,6 +16,7 @@ import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import RegexGuide from '@/components/common/RegexGuide.vue'
 import { useNavigation } from '@/composables/useNavigation'
+import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import { invoke } from '@/utils/tauriInvoke'
@@ -91,6 +93,12 @@ const { focusedNoteId } = useNoteFocus(
   undefined,
   (index) => noteScrollerRef.value?.scrollToIndex(index),
 )
+const regexGuidePortalRef = useTemplateRef<HTMLElement>('regexGuidePortalRef')
+usePortal(regexGuidePortalRef)
+
+const postPortalRef = useTemplateRef<HTMLElement>('postPortalRef')
+usePortal(postPortalRef)
+
 const searchQuery = ref(props.column.query ?? '')
 const searchInput = ref<HTMLInputElement | null>(null)
 const hasLocalResults = ref(false)
@@ -688,16 +696,15 @@ onUnmounted(() => {
         {{ regexError }}
       </div>
 
-      <Teleport to="body">
-        <div
-          v-if="regexGuideVisible"
-          :class="[$style.regexGuidePopup, regexGuideLeaving ? $style.regexGuideLeave : $style.regexGuideEnter]"
-          :style="{ top: regexGuidePos.top + 'px', right: regexGuidePos.right + 'px' }"
-          @click.stop
-        >
-          <RegexGuide @select="onFilterApply" />
-        </div>
-      </Teleport>
+      <div
+        v-if="regexGuideVisible"
+        ref="regexGuidePortalRef"
+        :class="[$style.regexGuidePopup, regexGuideLeaving ? $style.regexGuideLeave : $style.regexGuideEnter]"
+        :style="{ top: regexGuidePos.top + 'px', right: regexGuidePos.right + 'px' }"
+        @click.stop
+      >
+        <RegexGuide @select="onFilterApply" />
+      </div>
     </template>
 
     <div v-if="!account && !isCrossAccount" :class="$style.columnEmpty">
@@ -758,9 +765,8 @@ onUnmounted(() => {
     </div>
   </DeckColumn>
 
-  <Teleport to="body">
+  <div v-if="postForm.show.value && column.accountId && account?.hasToken" ref="postPortalRef">
     <MkPostForm
-      v-if="postForm.show.value && column.accountId && account?.hasToken"
       :account-id="column.accountId"
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"
@@ -771,7 +777,7 @@ onUnmounted(() => {
       @close="postForm.close"
       @posted="handlePosted"
     />
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>

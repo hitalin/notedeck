@@ -1,9 +1,4 @@
-export type ServerSoftware =
-  | 'misskey'
-  | 'firefish'
-  | 'sharkey'
-  | 'iceshrimp'
-  | 'unknown'
+export type ServerSoftware = 'misskey' | 'unknown'
 
 export interface ServerInfo {
   host: string
@@ -58,11 +53,7 @@ export const TIMELINE_FILTER_KEYS: Record<
 /** Fork-specific extra filter keys (merged with standard keys) */
 export const FORK_EXTRA_FILTERS: Partial<
   Record<ServerSoftware, (keyof TimelineFilter)[]>
-> = {
-  firefish: ['withBots'],
-  sharkey: ['withBots', 'withSensitive'],
-  iceshrimp: ['withBots'],
-}
+> = {}
 
 export interface TimelineOptions {
   limit?: number

@@ -12,6 +12,10 @@
 NoteDeck の成長は対応フォークの数に直結します。
 「自分の鯖の固有機能を NoteDeck で使いたい」という PR を歓迎します。
 
+**対応範囲:** Misskey 本家および「Misskey を名乗り続けるフォーク」が対象です。
+Misskey から名前が別物になったフォーク（Sharkey, CherryPick, Firefish, Iceshrimp 等）は対応していません。
+詳しくは [STRATEGY.md](STRATEGY.md#フォーク対応方針) を参照してください。
+
 詳しい手順は [DEVELOPMENT.md](DEVELOPMENT.md) の "Adding support for a new fork" を参照してください。
 
 ### コードの貢献

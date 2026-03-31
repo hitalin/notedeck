@@ -3,8 +3,8 @@ import { computed, ref } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useOfflineModeStore } from '@/stores/offlineMode'
 import { usePerformanceStore } from '@/stores/performance'
+import { useStreamingStore } from '@/stores/streaming'
 import { getStorageJson, setStorageJson } from '@/utils/storage'
-import { invoke } from '@/utils/tauriInvoke'
 
 const STORAGE_KEY = 'nd-realtime-mode'
 
@@ -57,22 +57,17 @@ export const useRealtimeModeStore = defineStore('realtimeMode', () => {
   function applyToAllAccounts(): void {
     const mode = enabled.value ? 'realtime' : 'polling'
     const intervalMs = enabled.value ? undefined : getPollingIntervalMs()
-    for (const acc of useAccountsStore().accounts) {
-      if (acc.hasToken) {
-        invoke('stream_set_mode', {
-          accountId: acc.id,
-          mode,
-          intervalMs,
-        }).catch(() => undefined)
-      }
-    }
+    useStreamingStore().setModeAll(
+      useAccountsStore().accounts,
+      mode,
+      intervalMs,
+    )
   }
 
   function setRealtimeMode(value: boolean): void {
     enabled.value = value
     persist()
     applyToAllAccounts()
-    window.dispatchEvent(new Event('nd:realtime-mode-changed'))
   }
 
   function toggle(): void {

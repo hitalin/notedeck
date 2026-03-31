@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, ref, useTemplateRef, watch } from 'vue'
 
 import { useFocusTrap } from '@/composables/useFocusTrap'
+import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useConfirm } from '@/stores/confirm'
 
@@ -26,12 +27,15 @@ watch(visible, (v) => {
   if (v) nextTick(activate)
   else deactivate()
 })
+
+const confirmPortalRef = useTemplateRef<HTMLElement>('confirmPortalRef')
+usePortal(confirmPortalRef)
 </script>
 
 <template>
-  <Teleport to="body">
     <div
       v-if="visible"
+      ref="confirmPortalRef"
       class="_dialogBackdrop"
       :class="[entering && $style.enter, leaving && $style.leave]"
       @click.self="resolve(false)"
@@ -62,7 +66,6 @@ watch(visible, (v) => {
         </div>
       </div>
     </div>
-  </Teleport>
 </template>
 
 <style lang="scss" module>

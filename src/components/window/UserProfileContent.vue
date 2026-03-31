@@ -6,6 +6,7 @@ import {
   onMounted,
   ref,
   shallowRef,
+  useTemplateRef,
   watch,
 } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
@@ -26,6 +27,7 @@ const MkPostForm = defineAsyncComponent(
 )
 
 import { useNavigation } from '@/composables/useNavigation'
+import { usePortal } from '@/composables/usePortal'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
@@ -54,6 +56,8 @@ const props = defineProps<{
 }>()
 
 const { navigateToUser: navToUser } = useNavigation()
+const portalRef = useTemplateRef<HTMLElement>('portalRef')
+usePortal(portalRef)
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const toast = useToast()
@@ -752,7 +756,7 @@ async function handlePosted(editedNoteId?: string) {
       </div>
     </template>
 
-    <Teleport to="body">
+    <div ref="portalRef">
       <MkPostForm
         v-if="showPostForm"
         :account-id="accountId"
@@ -875,7 +879,7 @@ async function handlePosted(editedNoteId?: string) {
           <img :class="$style.qrLogo" src="/misskey-logo.svg" alt="Misskey" />
         </div>
       </div>
-    </Teleport>
+    </div>
   </div>
 </template>
 

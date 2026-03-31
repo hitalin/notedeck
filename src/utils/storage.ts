@@ -82,6 +82,13 @@ export const STORAGE_KEYS = {
   offlineMode: 'nd-offline-mode',
   realtimeMode: 'nd-realtime-mode',
 
+  // AI settings
+  aiSettings: 'nd-ai-settings',
+
+  // Custom timelines (per-host / per-account)
+  customTimeline: (host: string) => `nd:custom_tl:${host}`,
+  policies: (accountId: string) => `nd:policies:${accountId}`,
+
   // Per-account (dynamic key builders)
   drafts: (accountId: string) => `nd-drafts-${accountId}`,
   notificationCache: (accountId: string) =>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
@@ -15,6 +15,7 @@ const MkUserPopup = defineAsyncComponent(
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteColumn } from '@/composables/useNoteColumn'
+import { usePortal } from '@/composables/usePortal'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl } from '@/stores/accounts'
@@ -224,6 +225,12 @@ const currentLoading = computed(() => {
   if (activeTab.value === 'users') return usersLoading.value
   return rolesLoading.value
 })
+
+const postPortalRef = useTemplateRef<HTMLElement>('postPortalRef')
+usePortal(postPortalRef)
+
+const userPopupPortalRef = useTemplateRef<HTMLElement>('userPopupPortalRef')
+usePortal(userPopupPortalRef)
 
 // --- User interaction ---
 const { navigateToUser } = useNavigation()
@@ -436,9 +443,8 @@ function closeUserPopup() {
     </template>
   </DeckColumn>
 
-  <Teleport to="body">
+  <div v-if="postForm.show.value && column.accountId && account?.hasToken" ref="postPortalRef">
     <MkPostForm
-      v-if="postForm.show.value && column.accountId && account?.hasToken"
       :account-id="column.accountId"
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"
@@ -449,15 +455,16 @@ function closeUserPopup() {
       @close="postForm.close"
       @posted="handlePosted"
     />
+  </div>
+  <div v-if="userPopup.isVisible.value && column.accountId" ref="userPopupPortalRef">
     <MkUserPopup
-      v-if="userPopup.isVisible.value && column.accountId"
       :user-id="hoverUserId"
       :account-id="column.accountId"
       :x="userPopup.position.value.x"
       :y="userPopup.position.value.y"
       @close="closeUserPopup"
     />
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>

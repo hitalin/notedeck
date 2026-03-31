@@ -4,12 +4,19 @@ import { languages } from '@codemirror/language-data'
 import { computed, reactive, ref, watch } from 'vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
+import {
+  type AiConfig,
+  defaultConfig,
+  PROVIDER_KEYS,
+  type ProviderKey,
+  type ProviderSettings,
+  useAiConfig,
+} from '@/composables/useAiConfig'
 import { useClickOutside } from '@/composables/useClickOutside'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
-import defaultAiPrompt from '@/defaults/AI.md?raw'
-import { isTauri, readAiSettings, writeAiSettings } from '@/utils/settingsFs'
+import { invoke } from '@/utils/tauriInvoke'
 
 const mdLang = markdown({ codeLanguages: languages })
 
@@ -17,27 +24,6 @@ const { tab, containerRef: editorRef } = useEditorTabs(
   ['api', 'prompt'] as const,
   'api',
 )
-
-// --- Type definitions ---
-
-interface ProviderSettings {
-  endpoint: string
-  apiKey: string
-  model: string
-}
-
-type ProviderKey = 'ollama' | 'openai' | 'custom'
-
-interface AiConfig {
-  provider: ProviderKey
-  ollama: ProviderSettings
-  openai: ProviderSettings
-  custom: ProviderSettings
-  systemPrompt: string
-}
-
-const PROVIDER_KEYS: readonly ProviderKey[] = ['ollama', 'openai', 'custom']
-const STORAGE_KEY = 'nd-ai-settings'
 
 // --- Provider schema (data-driven UI) ---
 
@@ -131,119 +117,14 @@ const PROVIDER_FIELDS: Record<ProviderKey, FieldDef[]> = {
   ],
 }
 
-// --- Config defaults & persistence ---
+// --- Config (delegated to composable) ---
 
-function defaultProviderSettings(): Record<ProviderKey, ProviderSettings> {
-  return {
-    ollama: {
-      endpoint: 'http://localhost:11434',
-      apiKey: '',
-      model: '',
-    },
-    openai: {
-      endpoint: 'https://api.openai.com/v1',
-      apiKey: '',
-      model: 'gpt-4o',
-    },
-    custom: { endpoint: '', apiKey: '', model: '' },
-  }
-}
-
-function defaultConfig(): AiConfig {
-  const providers = defaultProviderSettings()
-  return {
-    provider: 'ollama',
-    ...providers,
-    systemPrompt: defaultAiPrompt,
-  }
-}
-
-/** Strip apiKey from each provider for file backup. */
-function toFileConfig(c: AiConfig): Record<string, unknown> {
-  const result: Record<string, unknown> = {
-    provider: c.provider,
-    systemPrompt: c.systemPrompt,
-  }
-  for (const key of PROVIDER_KEYS) {
-    const { apiKey: _, ...safe } = c[key]
-    result[key] = safe
-  }
-  return result
-}
-
-function loadFromLocalStorage(): AiConfig {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<AiConfig>
-      return mergeConfig(defaultConfig(), parsed)
-    }
-  } catch {
-    /* ignore */
-  }
-  return defaultConfig()
-}
-
-/** Deep-merge partial config into defaults, preserving nested provider fields. */
-function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
-  const result = { ...base, ...partial }
-  for (const key of PROVIDER_KEYS) {
-    result[key] = { ...base[key], ...(partial[key] ?? {}) }
-  }
-  return result
-}
+const { config, save: saveConfig } = useAiConfig()
 
 const expandedSections = reactive<Record<string, boolean>>({})
 
 function toggleSection(key: string) {
   expandedSections[key] = !expandedSections[key]
-}
-
-const config = ref<AiConfig>(loadFromLocalStorage())
-const initialized = ref(false)
-
-function saveConfig() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config.value))
-  if (initialized.value) {
-    persistToFile().catch((e) =>
-      console.warn('[ai-settings] failed to persist to file:', e),
-    )
-  }
-}
-
-async function persistToFile(): Promise<void> {
-  const content = JSON.stringify(toFileConfig(config.value), null, 2)
-  await writeAiSettings(content)
-}
-
-async function initFileStorage(): Promise<void> {
-  const content = await readAiSettings()
-  if (content) {
-    try {
-      const parsed = JSON.parse(content) as Partial<AiConfig>
-      // Preserve localStorage secrets, merge file config
-      const secrets = Object.fromEntries(
-        PROVIDER_KEYS.map((k) => [k, config.value[k].apiKey]),
-      )
-      config.value = mergeConfig(defaultConfig(), parsed)
-      for (const k of PROVIDER_KEYS) {
-        config.value[k].apiKey = secrets[k] ?? ''
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(config.value))
-    } catch (e) {
-      console.warn('[ai-settings] failed to parse ai.json:', e)
-    }
-  }
-  initialized.value = true
-  if (!content && config.value !== defaultConfig()) {
-    persistToFile().catch((e) =>
-      console.warn('[ai-settings] migration to file failed:', e),
-    )
-  }
-}
-
-if (isTauri) {
-  initFileStorage()
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -296,21 +177,17 @@ async function testConnection() {
     const settings = currentSettings.value
     const url = `${settings.endpoint}${provider.testPath}`
 
-    const headers: Record<string, string> = {}
-    if (settings.apiKey) {
-      headers.Authorization = `Bearer ${settings.apiKey}`
-    }
-
-    const res = await fetch(url, {
-      headers,
-      signal: AbortSignal.timeout(5000),
-    })
-    if (res.ok) {
+    const result = await invoke<{
+      ok: boolean
+      status: number
+      message: string
+    }>('check_endpoint_health', { url, bearerToken: settings.apiKey || null })
+    if (result.ok) {
       testStatus.value = 'ok'
-      testMessage.value = '接続成功'
+      testMessage.value = result.message
     } else {
       testStatus.value = 'error'
-      testMessage.value = `HTTP ${res.status}`
+      testMessage.value = result.message
     }
   } catch (e) {
     testStatus.value = 'error'
@@ -505,10 +382,10 @@ function handleReset() {
           {{ config.systemPrompt.length }} 文字
         </div>
         <button
-          v-if="config.systemPrompt !== defaultAiPrompt"
+          v-if="config.systemPrompt !== defaultConfig().systemPrompt"
           class="_button"
           :class="$style.codeApplyBtn"
-          @click="config.systemPrompt = defaultAiPrompt"
+          @click="config.systemPrompt = defaultConfig().systemPrompt"
         >
           <i class="ti ti-restore" />
           デフォルトに戻す

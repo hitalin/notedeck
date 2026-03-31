@@ -7,6 +7,7 @@ import {
   ref,
   shallowRef,
   useCssModule,
+  useTemplateRef,
   watch,
 } from 'vue'
 import type {
@@ -28,6 +29,7 @@ import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteSound } from '@/composables/useNoteSound'
+import { usePortal } from '@/composables/usePortal'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabIndicator } from '@/composables/useTabIndicator'
@@ -53,6 +55,11 @@ const MkUserPopup = defineAsyncComponent(
 )
 
 const noteStore = useNoteStore()
+
+const userPopupPortalRef = useTemplateRef<HTMLElement>('userPopupPortalRef')
+usePortal(userPopupPortalRef)
+const postFormPortalRef = useTemplateRef<HTMLElement>('postFormPortalRef')
+usePortal(postFormPortalRef)
 
 const props = defineProps<{
   column: DeckColumnType
@@ -1060,20 +1067,18 @@ onUnmounted(() => {
     </div>
   </DeckColumn>
 
-  <Teleport to="body">
+  <div v-if="userPopup.isVisible.value" ref="userPopupPortalRef">
     <MkUserPopup
-      v-if="userPopup.isVisible.value"
       :user-id="hoveredUserId"
       :account-id="hoveredAccountId"
       :x="userPopup.position.value.x"
       :y="userPopup.position.value.y"
       @close="closeUserPopup"
     />
-  </Teleport>
+  </div>
 
-  <Teleport to="body">
+  <div v-if="postForm.show.value && column.accountId" ref="postFormPortalRef">
     <MkPostForm
-      v-if="postForm.show.value && column.accountId"
       :account-id="column.accountId"
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"
@@ -1084,7 +1089,7 @@ onUnmounted(() => {
       @close="postForm.close"
       @posted="handlePosted"
     />
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>

@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   NormalizedNote,
@@ -23,6 +30,7 @@ const MkPostForm = defineAsyncComponent(
 
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useNavigation } from '@/composables/useNavigation'
+import { usePortal } from '@/composables/usePortal'
 import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -161,6 +169,9 @@ async function handleReaction(reaction: string, target: NormalizedNote) {
     error.value = AppError.from(e)
   }
 }
+
+const postFormPortalRef = useTemplateRef<HTMLElement>('postFormPortalRef')
+usePortal(postFormPortalRef)
 
 const showPostForm = ref(false)
 const postFormReplyTo = ref<NormalizedNote | undefined>()
@@ -464,9 +475,8 @@ async function handlePosted(editedNoteId?: string) {
       </div>
     </div>
 
-    <Teleport to="body">
+    <div v-if="showPostForm" ref="postFormPortalRef">
       <MkPostForm
-        v-if="showPostForm"
         :account-id="accountId"
         :reply-to="postFormReplyTo"
         :renote-id="postFormRenoteId"
@@ -474,7 +484,7 @@ async function handlePosted(editedNoteId?: string) {
         @close="closePostForm"
         @posted="handlePosted"
       />
-    </Teleport>
+    </div>
   </div>
 </template>
 

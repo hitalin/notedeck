@@ -196,7 +196,7 @@ onMounted(() => {
           :key="req.id"
           :class="$style.frItem"
         >
-          <div :class="$style.frUser" @click="getRequestAccountId(req) && navToUser(getRequestAccountId(req)!, req.follower.id)">
+          <div :class="$style.frUser" role="button" tabindex="0" @click="getRequestAccountId(req) && navToUser(getRequestAccountId(req)!, req.follower.id)" @keydown.enter="getRequestAccountId(req) && navToUser(getRequestAccountId(req)!, req.follower.id)">
             <MkAvatar
               :avatar-url="req.follower.avatarUrl"
               :decorations="req.follower.avatarDecorations"

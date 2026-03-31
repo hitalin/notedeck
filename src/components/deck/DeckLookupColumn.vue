@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref } from 'vue'
+import { defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import { MisskeyApi } from '@/adapters/misskey/api'
 import type { NormalizedNote } from '@/adapters/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
@@ -12,6 +12,7 @@ const MkPostForm = defineAsyncComponent(
 
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNavigation } from '@/composables/useNavigation'
+import { usePortal } from '@/composables/usePortal'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
@@ -47,6 +48,9 @@ type LookupResult =
 const result = ref<LookupResult | null>(null)
 
 // Post form state
+const postPortalRef = useTemplateRef<HTMLElement>('postPortalRef')
+usePortal(postPortalRef)
+
 const showPostForm = ref(false)
 const postFormReplyTo = ref<NormalizedNote | undefined>()
 const postFormRenoteId = ref<string | undefined>()
@@ -369,9 +373,8 @@ async function handlePosted(editedNoteId?: string) {
     </div>
   </DeckColumn>
 
-  <Teleport to="body">
+  <div v-if="showPostForm && column.accountId" ref="postPortalRef">
     <MkPostForm
-      v-if="showPostForm && column.accountId"
       :account-id="column.accountId"
       :reply-to="postFormReplyTo"
       :renote-id="postFormRenoteId"
@@ -379,7 +382,7 @@ async function handlePosted(editedNoteId?: string) {
       @close="closePostForm"
       @posted="handlePosted"
     />
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>

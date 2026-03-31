@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, onUnmounted } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  onUnmounted,
+  watch,
+} from 'vue'
 import { useRoute } from 'vue-router'
 import { useCommandStore } from '@/commands/registry'
 import { useKeyboard } from '@/composables/useKeyboard'
@@ -76,13 +82,15 @@ onMounted(async () => {
   // Dismiss splash when deck layout structure is mounted (not data load).
   // This shows column frames immediately; notes fill in asynchronously.
   const splashTimeout = setTimeout(dismissSplash, 500)
-  window.addEventListener(
-    'nd:deck-mounted',
-    () => {
-      clearTimeout(splashTimeout)
-      dismissSplash()
+  const stopWatchMounted = watch(
+    () => uiStore.deckMounted,
+    (mounted) => {
+      if (mounted) {
+        clearTimeout(splashTimeout)
+        dismissSplash()
+        stopWatchMounted()
+      }
     },
-    { once: true },
   )
 
   // Defer theme account fetching (network I/O) to after first paint

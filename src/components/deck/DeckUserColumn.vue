@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, useTemplateRef } from 'vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
@@ -9,6 +9,7 @@ const MkPostForm = defineAsyncComponent(
 )
 
 import { useNoteColumn } from '@/composables/useNoteColumn'
+import { usePortal } from '@/composables/usePortal'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import DeckColumn from './DeckColumn.vue'
@@ -62,6 +63,9 @@ const {
     return { notes: fetched, mode: 'replace' as const }
   },
 })
+
+const postFormPortalRef = useTemplateRef<HTMLElement>('postFormPortalRef')
+usePortal(postFormPortalRef)
 </script>
 
 <template>
@@ -141,9 +145,8 @@ const {
     </div>
   </DeckColumn>
 
-  <Teleport to="body">
+  <div v-if="postForm.show.value && column.accountId && account?.hasToken" ref="postFormPortalRef">
     <MkPostForm
-      v-if="postForm.show.value && column.accountId && account?.hasToken"
       :account-id="column.accountId"
       :reply-to="postForm.replyTo.value"
       :renote-id="postForm.renoteId.value"
@@ -154,7 +157,7 @@ const {
       @close="postForm.close"
       @posted="handlePosted"
     />
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>

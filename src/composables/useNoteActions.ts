@@ -74,6 +74,39 @@ export function useNoteActions(
     }
   }
 
+  /** Check if the current user has renoted a note. Returns the renote ID if found. */
+  async function checkMyRenote(note: NormalizedNote): Promise<string | null> {
+    const adapter = await resolve(note)
+    if (!adapter) return null
+    try {
+      const renotes = await adapter.api.getNoteRenotes(note.id, 30)
+      const account = accountsStore.accountMap.get(note._accountId)
+      const mine = renotes.find(
+        (r: NormalizedNote) => r.user.id === account?.userId,
+      )
+      return mine?.id ?? null
+    } catch {
+      return null
+    }
+  }
+
+  /** Delete own renote with optimistic update. */
+  async function handleUnrenote(
+    note: NormalizedNote,
+    myRenoteId: string,
+  ): Promise<void> {
+    const adapter = await resolve(note)
+    if (!adapter) return
+    note.renoteCount = Math.max(0, (note.renoteCount ?? 1) - 1)
+    onMutated(note)
+    try {
+      await adapter.api.deleteNote(myRenoteId)
+    } catch {
+      note.renoteCount = (note.renoteCount ?? 0) + 1
+      onMutated(note)
+    }
+  }
+
   function handleReply(note: NormalizedNote) {
     if (!canWrite(note._accountId)) return
     hapticLight()
@@ -174,6 +207,8 @@ export function useNoteActions(
     handlers: {
       reaction: handleReaction,
       renote: handleRenote,
+      checkMyRenote,
+      unrenote: handleUnrenote,
       reply: handleReply,
       quote: handleQuote,
       delete: handleDelete,

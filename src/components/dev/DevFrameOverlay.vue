@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
+import { usePortal } from '@/composables/usePortal'
 import { frameTelemetry } from '@/engine/telemetry/frameTelemetry'
 
 /**
@@ -8,6 +9,9 @@ import { frameTelemetry } from '@/engine/telemetry/frameTelemetry'
  * FPS, フレーム時間 (EMA), P95, Jank カウントをリアルタイム表示。
  * import.meta.env.DEV でのみレンダリングされる前提。
  */
+
+const overlayPortalRef = useTemplateRef<HTMLElement>('overlayPortalRef')
+usePortal(overlayPortalRef)
 
 const visible = ref(false)
 const fps = frameTelemetry.fps
@@ -38,8 +42,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="visible" :class="$style.overlay">
+  <div v-if="visible" ref="overlayPortalRef" :class="$style.overlay">
       <div :class="$style.row">
         <span :class="$style.label">FPS</span>
         <span :class="[$style.value, fps < 50 && $style.warn, fps < 30 && $style.bad]">
@@ -67,7 +70,6 @@ onUnmounted(() => {
         <span :class="$style.value">{{ quality }}</span>
       </div>
     </div>
-  </Teleport>
 </template>
 
 <style module lang="scss">

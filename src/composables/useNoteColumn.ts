@@ -33,6 +33,7 @@ import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import { isGuestAccount } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useOfflineModeStore } from '@/stores/offlineMode'
+import { useUiStore } from '@/stores/ui'
 import { dedup } from '@/utils/dedup'
 import { AppError } from '@/utils/errors'
 import { logWarn } from '@/utils/logger'
@@ -357,7 +358,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
           if (brandNew.length > 0) {
             streamingBatch.addQueued(brandNew)
             // Initial load: auto-flush with slide-in animation
-            streamingBatch.scrollToTop()
+            scrollToTop()
           }
         } else if (hasCached || sinceId) {
           // Non-streaming columns: merge directly (manual refresh button)
@@ -436,14 +437,17 @@ export function useNoteColumn(config: NoteColumnConfig) {
   }
 
   function scrollToTop() {
-    if (streamingBatch) {
-      streamingBatch.scrollToTop()
-    } else {
-      nextTick(() => {
-        if (scroller.value)
-          scroller.value.scrollTo({ top: 0, behavior: 'smooth' })
-      })
-    }
+    streamingBatch?.flushToTop()
+    nextTick(() => {
+      if (noteScrollerRef.value) {
+        noteScrollerRef.value.scrollToIndex(0, {
+          align: 'start',
+          behavior: 'smooth',
+        })
+      } else if (scroller.value) {
+        scroller.value.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    })
   }
 
   async function refresh() {
@@ -544,7 +548,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
         if (existing.length > 0) mergeUpdate(existing)
         if (brandNew.length > 0) {
           streamingBatch.addQueued(brandNew)
-          streamingBatch.scrollToTop()
+          scrollToTop()
         }
       } else {
         mergeUpdate(combined)
@@ -614,7 +618,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
           if (existing.length > 0) mergeUpdate(existing)
           if (brandNew.length > 0) {
             streamingBatch.addQueued(brandNew)
-            streamingBatch.scrollToTop()
+            scrollToTop()
           }
         }
         isOffline.value = false
@@ -680,8 +684,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
     }
   }
 
+  const { deckResumeSignal } = useUiStore()
+  watch(
+    () => deckResumeSignal,
+    () => onResume(),
+  )
+
   onMounted(() => {
-    window.addEventListener('deck-resume', onResume)
     if (config.connectReady && !config.connectReady.value) {
       // Delay connect until the parent signals readiness (e.g. policy detection)
       const stop = watch(config.connectReady, (ready) => {
@@ -696,7 +705,6 @@ export function useNoteColumn(config: NoteColumnConfig) {
   })
 
   onUnmounted(() => {
-    window.removeEventListener('deck-resume', onResume)
     // Save snapshot for instant restore if column is re-mounted
     const unmountCacheKey = config.cache?.getKey()
     if (notes.value.length > 0 && unmountCacheKey) {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref } from 'vue'
+import { defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import { useHoverPopup } from '@/composables/useHoverPopup'
-import { extractThemeVars } from '@/utils/themeVars'
+import { usePortal } from '@/composables/usePortal'
+import { extractColumnThemeVars } from '@/utils/themeVars'
 
 const MkReactionUsersPopup = defineAsyncComponent(
   () => import('./MkReactionUsersPopup.vue'),
@@ -34,8 +35,7 @@ function show(e: MouseEvent, r: string, url: string | null, count: number) {
   reaction.value = r
   reactionUrl.value = url
   totalCount.value = count
-  const column = el.closest('.deck-column') as HTMLElement | null
-  if (column) theme.value = extractThemeVars(column)
+  theme.value = extractColumnThemeVars(el)
   popup.show({ x: rect.left, y: rect.bottom + 4 })
 }
 
@@ -43,24 +43,27 @@ function hide() {
   popup.hide()
 }
 
+const reactionUsersPortalRef = useTemplateRef<HTMLElement>(
+  'reactionUsersPortalRef',
+)
+usePortal(reactionUsersPortalRef)
+
 defineExpose({ show, hide })
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="popup.isVisible.value" :style="theme">
-      <MkReactionUsersPopup
-        :note-id="noteId"
-        :account-id="accountId"
-        :server-host="serverHost"
-        :reaction="reaction"
-        :reaction-url="reactionUrl"
-        :total-count="totalCount"
-        :x="popup.position.value.x"
-        :y="popup.position.value.y"
-        @close="popup.forceClose()"
-        @open-modal="(r: string) => { popup.forceClose(); emit('openModal', r) }"
-      />
-    </div>
-  </Teleport>
+  <div v-if="popup.isVisible.value" ref="reactionUsersPortalRef" :style="theme">
+    <MkReactionUsersPopup
+      :note-id="noteId"
+      :account-id="accountId"
+      :server-host="serverHost"
+      :reaction="reaction"
+      :reaction-url="reactionUrl"
+      :total-count="totalCount"
+      :x="popup.position.value.x"
+      :y="popup.position.value.y"
+      @close="popup.forceClose()"
+      @open-modal="(r: string) => { popup.forceClose(); emit('openModal', r) }"
+    />
+  </div>
 </template>

@@ -16,6 +16,16 @@ export function registerAdapter(
   registry.set(software, factory)
 }
 
+/**
+ * Resolve a nodeinfo software name to a registered ServerSoftware.
+ * Misskey を名乗るフォーク（名前に "misskey" を含む）のみ 'misskey' として認識。
+ */
+export function resolveSoftware(name: string): ServerSoftware {
+  const n = name.toLowerCase()
+  if (n === 'misskey' || n.includes('misskey')) return 'misskey'
+  return 'unknown'
+}
+
 export function createAdapter(
   info: ServerInfo,
   accountId: string,

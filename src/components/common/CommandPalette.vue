@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { createCliHandlers } from '@/commands/cliHandlers'
 import { getCliMeta, parseCliInput } from '@/commands/cliParser'
 import type { Command } from '@/commands/registry'
 import { useCommandStore } from '@/commands/registry'
 import { useNavigation } from '@/composables/useNavigation'
+import { usePortal } from '@/composables/usePortal'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useUiStore } from '@/stores/ui'
@@ -18,6 +19,11 @@ const selectedIndex = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
 const inputWrapRef = ref<HTMLElement | null>(null)
 const dropdownPos = ref({ top: 0, left: 0, width: 0 })
+
+const overlayRef = useTemplateRef<HTMLElement>('overlayRef')
+const dropdownRef = useTemplateRef<HTMLElement>('dropdownRef')
+usePortal(overlayRef)
+usePortal(dropdownRef)
 
 const cliMatch = computed(() => parseCliInput(query.value))
 const cliMeta = computed(() =>
@@ -79,6 +85,8 @@ const filteredGroups = computed<CommandGroup[]>(() => {
 
 const flatList = computed(() => filteredGroups.value.flatMap((g) => g.commands))
 
+const listRef = useTemplateRef<HTMLElement>('listRef')
+
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'ArrowDown') {
     e.preventDefault()
@@ -138,7 +146,7 @@ watch(query, () => {
 
 watch(selectedIndex, () => {
   nextTick(() => {
-    const el = document.querySelector('.palette-item.selected')
+    const el = listRef.value?.querySelector('[data-selected]')
     el?.scrollIntoView({ block: 'nearest' })
   })
 })
@@ -180,90 +188,87 @@ function primaryShortcut(cmd: Command): string | null {
   <!--
     VS Code integrated architecture:
     - Input lives in the titlebar (inline, same position as URI display)
-    - Dropdown list is Teleported to body (avoids ancestor overflow clipping)
+    - Dropdown list is portaled to body (avoids ancestor overflow clipping)
   -->
 
-  <!-- Background overlay (Teleported) -->
-  <Teleport to="body">
-    <div class="palette-overlay-bg" @click="commandStore.close()" />
-  </Teleport>
+  <!-- Background overlay (portaled) -->
+  <div ref="overlayRef" :class="$style.overlayBg" @click="commandStore.close()" />
 
   <!-- Input: lives in the titlebar DOM, replaces URI display -->
-  <div ref="inputWrapRef" class="palette-input-wrap" @keydown="onKeydown">
-    <i class="ti ti-search palette-input-icon" />
+  <div ref="inputWrapRef" :class="$style.inputWrap" @keydown="onKeydown">
+    <i :class="['ti ti-search', $style.inputIcon]" />
     <input
       ref="inputRef"
       v-model="query"
-      class="palette-input"
+      :class="$style.input"
       placeholder="コマンドを入力..."
       spellcheck="false"
     />
-    <kbd class="palette-input-kbd">Esc</kbd>
+    <kbd :class="$style.inputKbd">Esc</kbd>
   </div>
 
-  <!-- Dropdown list (Teleported to body — scroll works regardless of ancestors) -->
-  <Teleport to="body">
-    <div
-      class="palette-dropdown"
-      :style="{
-        top: dropdownPos.top + 'px',
-        left: dropdownPos.left + 'px',
-        width: dropdownPos.width + 'px',
-      }"
-      @click.stop
-      @keydown="onKeydown"
-    >
-      <!-- CLI mode -->
-      <div v-if="cliMatch && cliMeta" class="palette-cli">
-        <div class="palette-cli-row">
-          <i :class="'ti ti-' + cliMeta.icon" class="palette-item-icon" />
-          <span
-            v-if="cliMeta.needsArgs && !cliMatch.args.trim()"
-            class="palette-cli-hint"
-          >
-            {{ cliMeta.usage }}
-          </span>
-          <span v-else class="palette-cli-action">
-            ↵ Enterで実行:
-            <strong>{{ cliMatch.name }}</strong>
-            {{ cliMatch.args }}
-          </span>
-        </div>
-        <div class="palette-cli-desc">{{ cliMeta.about }}</div>
+  <!-- Dropdown list (portaled to body — scroll works regardless of ancestors) -->
+  <div
+    ref="dropdownRef"
+    :class="$style.dropdown"
+    :style="{
+      top: dropdownPos.top + 'px',
+      left: dropdownPos.left + 'px',
+      width: dropdownPos.width + 'px',
+    }"
+    @click.stop
+    @keydown="onKeydown"
+  >
+    <!-- CLI mode -->
+    <div v-if="cliMatch && cliMeta" :class="$style.cli">
+      <div :class="$style.cliRow">
+        <i :class="['ti ti-' + cliMeta.icon, $style.itemIcon]" />
+        <span
+          v-if="cliMeta.needsArgs && !cliMatch.args.trim()"
+          :class="$style.cliHint"
+        >
+          {{ cliMeta.usage }}
+        </span>
+        <span v-else :class="$style.cliAction">
+          ↵ Enterで実行:
+          <strong>{{ cliMatch.name }}</strong>
+          {{ cliMatch.args }}
+        </span>
       </div>
-
-      <!-- Command list -->
-      <div v-else-if="flatList.length" class="palette-list">
-        <template v-for="(group, gi) in filteredGroups" :key="group.category">
-          <div v-if="gi > 0" class="palette-separator" />
-          <div class="palette-category">{{ group.label }}</div>
-          <button
-            v-for="cmd in group.commands"
-            :key="cmd.id"
-            class="palette-item"
-            :class="{ selected: flatList[selectedIndex]?.id === cmd.id }"
-            @click="runCommand(cmd)"
-            @mouseenter="selectedIndex = flatList.indexOf(cmd)"
-          >
-            <i :class="'ti ti-' + cmd.icon" class="palette-item-icon" />
-            <span class="palette-item-label">{{ cmd.label }}</span>
-            <kbd v-if="primaryShortcut(cmd)" class="palette-item-kbd">
-              {{ primaryShortcut(cmd) }}
-            </kbd>
-          </button>
-        </template>
-      </div>
-
-      <div v-else class="palette-empty">一致するコマンドがありません</div>
+      <div :class="$style.cliDesc">{{ cliMeta.about }}</div>
     </div>
-  </Teleport>
+
+    <!-- Command list -->
+    <div v-else-if="flatList.length" ref="listRef" :class="$style.list">
+      <template v-for="(group, gi) in filteredGroups" :key="group.category">
+        <div v-if="gi > 0" :class="$style.separator" />
+        <div :class="$style.category">{{ group.label }}</div>
+        <button
+          v-for="cmd in group.commands"
+          :key="cmd.id"
+          :class="[$style.item, { [$style.selected]: flatList[selectedIndex]?.id === cmd.id }]"
+          :data-selected="flatList[selectedIndex]?.id === cmd.id ? '' : undefined"
+          @click="runCommand(cmd)"
+          @mouseenter="selectedIndex = flatList.indexOf(cmd)"
+        >
+          <i :class="['ti ti-' + cmd.icon, $style.itemIcon]" />
+          <span :class="$style.itemLabel">{{ cmd.label }}</span>
+          <kbd v-if="primaryShortcut(cmd)" :class="$style.itemKbd">
+            {{ primaryShortcut(cmd) }}
+          </kbd>
+        </button>
+      </template>
+    </div>
+
+    <div v-else :class="$style.empty">一致するコマンドがありません</div>
+  </div>
 </template>
 
-<style scoped>
+<style module lang="scss">
 /* ========================================
    Background overlay
    ======================================== */
-.palette-overlay-bg {
+.overlayBg {
   position: fixed;
   inset: 0;
   z-index: 2549;
@@ -274,7 +279,7 @@ function primaryShortcut(cmd: Command): string | null {
    Input (lives in titlebar, same slot as URI)
    Matches TitleBar .titlebarSearchBar dimensions.
    ======================================== */
-.palette-input-wrap {
+.inputWrap {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -287,13 +292,13 @@ function primaryShortcut(cmd: Command): string | null {
   color: var(--nd-fg);
 }
 
-.palette-input-icon {
+.inputIcon {
   font-size: 12px;
   opacity: 0.5;
   flex-shrink: 0;
 }
 
-.palette-input {
+.input {
   flex: 1;
   background: none;
   border: none;
@@ -303,14 +308,14 @@ function primaryShortcut(cmd: Command): string | null {
   font-family: inherit;
   line-height: 20px;
   min-width: 0;
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.4;
+  }
 }
 
-.palette-input::placeholder {
-  color: var(--nd-fg);
-  opacity: 0.4;
-}
-
-.palette-input-kbd {
+.inputKbd {
   font-size: 10px;
   padding: 0 4px;
   border-radius: 3px;
@@ -323,9 +328,9 @@ function primaryShortcut(cmd: Command): string | null {
 }
 
 /* ========================================
-   Dropdown (Teleported to body, position: fixed)
+   Dropdown (portaled to body, position: fixed)
    ======================================== */
-.palette-dropdown {
+.dropdown {
   position: fixed;
   z-index: 2550;
   background: var(--nd-popup, #252526);
@@ -339,34 +344,34 @@ function primaryShortcut(cmd: Command): string | null {
 /* ========================================
    List (scroll container)
    ======================================== */
-.palette-list {
+.list {
   max-height: calc(20 * 22px);
   overflow-y: auto;
   padding: 4px 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+  }
 }
 
-.palette-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.palette-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.palette-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 3px;
-}
-
-.palette-separator {
+.separator {
   height: 1px;
   margin: 4px 0;
   background: rgba(255, 255, 255, 0.06);
 }
 
-.palette-category {
+.category {
   padding: 8px 14px 4px;
   font-size: 11px;
   font-weight: 600;
@@ -376,7 +381,7 @@ function primaryShortcut(cmd: Command): string | null {
   opacity: 0.4;
 }
 
-.palette-item {
+.item {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -391,18 +396,18 @@ function primaryShortcut(cmd: Command): string | null {
   cursor: pointer;
   text-align: left;
   transition: background 0.08s;
+
+  &.selected {
+    background: var(--nd-accentedBg, rgba(134, 179, 0, 0.15));
+    border-left-color: var(--nd-accent, #86b300);
+  }
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.palette-item.selected {
-  background: var(--nd-accentedBg, rgba(134, 179, 0, 0.15));
-  border-left-color: var(--nd-accent, #86b300);
-}
-
-.palette-item:hover {
-  background: var(--nd-buttonHoverBg);
-}
-
-.palette-item-icon {
+.itemIcon {
   font-size: 16px;
   opacity: 0.6;
   width: 20px;
@@ -410,11 +415,11 @@ function primaryShortcut(cmd: Command): string | null {
   flex-shrink: 0;
 }
 
-.palette-item-label {
+.itemLabel {
   flex: 1;
 }
 
-.palette-item-kbd {
+.itemKbd {
   font-size: 11px;
   padding: 2px 6px;
   border-radius: 4px;
@@ -425,7 +430,7 @@ function primaryShortcut(cmd: Command): string | null {
   white-space: nowrap;
 }
 
-.palette-empty {
+.empty {
   padding: 20px 14px;
   text-align: center;
   color: var(--nd-fg);
@@ -433,11 +438,11 @@ function primaryShortcut(cmd: Command): string | null {
   font-size: 13px;
 }
 
-.palette-cli {
+.cli {
   padding: 12px 14px;
 }
 
-.palette-cli-row {
+.cliRow {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -445,16 +450,16 @@ function primaryShortcut(cmd: Command): string | null {
   color: var(--nd-fg);
 }
 
-.palette-cli-hint {
+.cliHint {
   opacity: 0.5;
   font-family: monospace;
 }
 
-.palette-cli-action strong {
+.cliAction strong {
   color: var(--nd-accent);
 }
 
-.palette-cli-desc {
+.cliDesc {
   margin-top: 6px;
   padding-left: 30px;
   font-size: 12px;

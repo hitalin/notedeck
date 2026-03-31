@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { type Ast, Interpreter, Parser } from '@syuilo/aiscript'
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
 import { createInterpreterOptions } from '@/aiscript/common'
 import {
@@ -12,6 +19,7 @@ import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
+import { usePortal } from '@/composables/usePortal'
 import { useToast } from '@/stores/toast'
 import { invoke } from '@/utils/tauriInvoke'
 
@@ -49,6 +57,9 @@ const interpreter = ref<Interpreter | null>(null)
 const { show: showToast } = useToast()
 const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
 let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
+
+const postFormPortalRef = useTemplateRef<HTMLElement>('postFormPortalRef')
+usePortal(postFormPortalRef)
 
 const showPostForm = ref(false)
 const postFormData = ref<PostFormRequest>({})
@@ -198,7 +209,7 @@ onMounted(() => {
     />
   </div>
 
-  <Teleport v-if="showPostForm && props.accountId" to="body">
+  <div v-if="showPostForm && props.accountId" ref="postFormPortalRef">
     <MkPostForm
       :account-id="props.accountId"
       :initial-text="postFormData.text"
@@ -208,7 +219,7 @@ onMounted(() => {
       @close="closePostForm"
       @posted="closePostForm"
     />
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>

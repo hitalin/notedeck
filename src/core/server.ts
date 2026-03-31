@@ -1,3 +1,4 @@
+import { resolveSoftware } from '@/adapters/registry'
 import type {
   ServerFeatures,
   ServerInfo,
@@ -59,12 +60,7 @@ async function fetchServerMeta(
 }
 
 function detectSoftware(name: string): ServerSoftware {
-  const n = name.toLowerCase()
-  if (n === 'firefish' || n === 'calckey') return 'firefish'
-  if (n === 'sharkey') return 'sharkey'
-  if (n === 'iceshrimp' || n === 'iceshrimp.net') return 'iceshrimp'
-  if (n === 'misskey' || n.includes('misskey')) return 'misskey'
-  return 'unknown'
+  return resolveSoftware(name)
 }
 
 /**

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { type Ast, type Interpreter } from '@syuilo/aiscript'
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
 import {
   createAiScriptInterpreter,
@@ -26,6 +26,7 @@ const MkPostForm = defineAsyncComponent(
 )
 
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { usePortal } from '@/composables/usePortal'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl } from '@/stores/accounts'
@@ -186,6 +187,9 @@ const interpreter = ref<Interpreter | null>(null)
 let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
 
 // --- Post form ---
+const postPortalRef = useTemplateRef<HTMLElement>('postPortalRef')
+usePortal(postPortalRef)
+
 const showPostForm = ref(false)
 const postFormData = ref<PostFormRequest>({})
 
@@ -509,7 +513,7 @@ function reload() {
     </template>
   </DeckColumn>
 
-  <Teleport v-if="showPostForm && props.column.accountId" to="body">
+  <div v-if="showPostForm && props.column.accountId" ref="postPortalRef">
     <MkPostForm
       :account-id="props.column.accountId"
       :initial-text="postFormData.text"
@@ -519,7 +523,7 @@ function reload() {
       @close="closePostForm"
       @posted="closePostForm"
     />
-  </Teleport>
+  </div>
 </template>
 
 <style lang="scss" module>

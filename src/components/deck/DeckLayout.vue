@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { convertFileSrc } from '@tauri-apps/api/core'
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  ref,
+  useTemplateRef,
+} from 'vue'
 import AppConfirm from '@/components/common/AppConfirm.vue'
 import AppToast from '@/components/common/AppToast.vue'
 import MkRippleEffect from '@/components/common/MkRippleEffect.vue'
@@ -8,13 +14,14 @@ import { useDeckInit } from '@/composables/useDeckInit'
 import { requestMoveColumn } from '@/composables/useDeckWindow'
 import { useFileDrop } from '@/composables/useFileDrop'
 import { useNavigation } from '@/composables/useNavigation'
+import { usePortal } from '@/composables/usePortal'
 import { useRippleEffect } from '@/composables/useRippleEffect'
 import { provideScrollDirection } from '@/composables/useScrollDirection'
 import { useUpdater } from '@/composables/useUpdater'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
-import { useIsCompactLayout } from '@/stores/ui'
+import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckBottomBar from './DeckBottomBar.vue'
 import DeckColumnsArea from './DeckColumnsArea.vue'
@@ -35,6 +42,7 @@ const {
   navigateToNotifications,
 } = useNavigation()
 const deckStore = useDeckStore()
+const uiStore = useUiStore()
 const accountsStore = useAccountsStore()
 const isCompact = useIsCompactLayout()
 const navbarRef = ref<InstanceType<typeof DeckNavbar> | null>(null)
@@ -45,6 +53,10 @@ const showProfileMenu = ref(false)
 const showSettingsMenu = ref(false)
 const mobileDrawerOpen = ref(false)
 const pendingFilePaths = ref<string[]>([])
+const addMenuPortalRef = useTemplateRef<HTMLElement>('addMenuPortalRef')
+const composePortalRef = useTemplateRef<HTMLElement>('composePortalRef')
+usePortal(addMenuPortalRef)
+usePortal(composePortalRef)
 const activeColumnIndex = computed(() => {
   const id = deckStore.activeColumnId
   if (!id) return 0
@@ -108,9 +120,7 @@ const fileDrop = useFileDrop((paths, position) => {
         filePath: path,
         isSensitive: false,
       }).then(() => {
-        window.dispatchEvent(
-          new CustomEvent('drive-files-changed', { detail: { accountId } }),
-        )
+        uiStore.emitDriveFilesChanged(accountId)
       })
     }
     return
@@ -257,24 +267,22 @@ function acceptCrossWindowDrop() {
     />
 
     <!-- Add column popup -->
-    <Teleport to="body">
+    <div v-if="addMenuT.visible.value" ref="addMenuPortalRef">
       <AddColumnDialog
-        v-if="addMenuT.visible.value"
         :class="[addMenuT.entering.value && $style.modalEnter, addMenuT.leaving.value && $style.modalLeave]"
         @close="showAddMenu = false"
       />
-    </Teleport>
+    </div>
 
-    <Teleport to="body">
+    <div v-if="composeT.visible.value" ref="composePortalRef">
       <MkPostForm
-        v-if="composeT.visible.value"
         :class="[composeT.entering.value && $style.modalEnter, composeT.leaving.value && $style.modalLeave]"
         :account-id="accountsStore.accounts[0]!.id"
         :initial-file-paths="pendingFilePaths"
         @close="closeCompose"
         @posted="closeCompose"
       />
-    </Teleport>
+    </div>
 
     <!-- File drop overlay -->
     <div
@@ -434,14 +442,3 @@ function acceptCrossWindowDrop() {
 @keyframes modalOut { to { opacity: 0; } }
 </style>
 
-<style>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity var(--nd-duration-slow) ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-</style>

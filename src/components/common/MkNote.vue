@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useIntersectionObserver } from '@vueuse/core'
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import type {
   NormalizedNote,
   NormalizedUser,
@@ -12,6 +12,8 @@ import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useLongPress } from '@/composables/useLongPress'
 import { useNavigation } from '@/composables/useNavigation'
+import { provideNoteAccountId } from '@/composables/useNoteContext'
+import { usePortal } from '@/composables/usePortal'
 import { useRippleEffect } from '@/composables/useRippleEffect'
 import {
   useVaporTransition,
@@ -23,7 +25,7 @@ import { formatTime } from '@/utils/formatTime'
 import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { invoke } from '@/utils/tauriInvoke'
-import { extractThemeVars } from '@/utils/themeVars'
+import { extractColumnThemeVars } from '@/utils/themeVars'
 import MkAvatar from './MkAvatar.vue'
 import MkEmoji from './MkEmoji.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
@@ -63,6 +65,8 @@ const allEmojis = computed(() => ({
 const isPureRenote = computed(
   () => props.note.renote && props.note.text === null,
 )
+
+provideNoteAccountId(props.note._accountId)
 
 const { canInteract, isGuest } = useAccountMode(() => props.note._accountId)
 const { spawn: spawnRipple } = useRippleEffect()
@@ -140,8 +144,7 @@ function openRenoteMenu(e: MouseEvent) {
     return
   }
   const el = e.currentTarget as HTMLElement
-  const column = el.closest('.deck-column') as HTMLElement | null
-  if (column) renoteMenuTheme.value = extractThemeVars(column)
+  renoteMenuTheme.value = extractColumnThemeVars(el)
   const rect = el.getBoundingClientRect()
   let x = rect.left
   let y = rect.bottom + 4
@@ -222,8 +225,7 @@ const popupTheme = ref<Record<string, string>>({})
 function onAvatarMouseEnter(e: MouseEvent) {
   const el = e.currentTarget as HTMLElement
   const rect = el.getBoundingClientRect()
-  const column = el.closest('.deck-column') as HTMLElement | null
-  if (column) popupTheme.value = extractThemeVars(column)
+  popupTheme.value = extractColumnThemeVars(el)
   userPopup.show({ x: rect.right + 8, y: rect.top })
 }
 
@@ -340,8 +342,7 @@ async function onMentionHover(
   mentionHovering = true
   const el = e.currentTarget as HTMLElement
   const rect = el.getBoundingClientRect()
-  const column = el.closest('.deck-column') as HTMLElement | null
-  if (column) popupTheme.value = extractThemeVars(column)
+  popupTheme.value = extractColumnThemeVars(el)
   try {
     const user = await invoke<NormalizedUser>('api_lookup_user', {
       accountId: props.note._accountId,
@@ -364,6 +365,17 @@ function onMentionLeave() {
 function closeMentionPopup() {
   mentionPopup.forceClose()
 }
+
+const renotePortalRef = useTemplateRef<HTMLElement>('renotePortalRef')
+usePortal(renotePortalRef)
+
+const userPopupPortalRef = useTemplateRef<HTMLElement>('userPopupPortalRef')
+usePortal(userPopupPortalRef)
+
+const mentionPopupPortalRef = useTemplateRef<HTMLElement>(
+  'mentionPopupPortalRef',
+)
+usePortal(mentionPopupPortalRef)
 
 function handleReactionClick(e: MouseEvent, reaction: string) {
   if (longPressed.value) return
@@ -412,7 +424,6 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
           :text="note.user.name"
           :emojis="{ ...note.emojis, ...note.user.emojis }"
           :server-host="note._serverHost"
-          :account-id="note._accountId"
         />
         <template v-else>{{ note.user.username }}</template>
       </span>
@@ -440,7 +451,6 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
           :text="effectiveNote.reply!.user.name"
           :emojis="{ ...effectiveNote.reply!.emojis, ...effectiveNote.reply!.user.emojis }"
           :server-host="effectiveNote._serverHost"
-          :account-id="note._accountId"
         />
         <template v-else>{{ effectiveNote.reply!.user.username }}</template>
       </span>
@@ -449,7 +459,6 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
           :text="effectiveNote.reply!.cw ?? effectiveNote.reply!.text?.slice(0, 100) ?? ''"
           :emojis="{ ...effectiveNote.reply!.emojis, ...effectiveNote.reply!.reactionEmojis }"
           :server-host="effectiveNote._serverHost"
-          :account-id="note._accountId"
           compact
         />
       </span>
@@ -477,8 +486,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
               :text="effectiveNote.user.name"
               :emojis="allEmojis"
               :server-host="effectiveNote._serverHost"
-              :account-id="effectiveNote._accountId"
-              @mention-click="handleMentionClick"
+                  @mention-click="handleMentionClick"
               @mention-hover="onMentionHover"
               @mention-leave="onMentionLeave"
             />
@@ -547,8 +555,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
               :text="effectiveNote.cw"
               :emojis="effectiveNote.emojis"
               :server-host="effectiveNote._serverHost"
-              :account-id="effectiveNote._accountId"
-              @mention-click="handleMentionClick"
+                  @mention-click="handleMentionClick"
               @mention-hover="onMentionHover"
               @mention-leave="onMentionLeave"
             />
@@ -568,8 +575,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
                 :emojis="effectiveNote.emojis"
                 :reaction-emojis="effectiveNote.reactionEmojis"
                 :server-host="effectiveNote._serverHost"
-                :account-id="effectiveNote._accountId"
-                @mention-click="handleMentionClick"
+                      @mention-click="handleMentionClick"
                 @mention-hover="onMentionHover"
                 @mention-leave="onMentionLeave"
               />
@@ -666,9 +672,9 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   </div>
 
   <!-- Renote popup menu -->
-  <Teleport to="body">
     <div
       v-if="renoteMenuVisible"
+      ref="renotePortalRef"
       :class="[$style.renoteBackdrop, renoteMenuLeaving ? $style.renotePopupLeave : $style.renotePopupEnter]"
       @click="closeRenoteMenu"
     >
@@ -692,11 +698,9 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
         </button>
       </div>
     </div>
-  </Teleport>
 
-  <Teleport to="body">
+  <div v-if="userPopup.isVisible.value" ref="userPopupPortalRef">
     <MkUserPopup
-      v-if="userPopup.isVisible.value"
       :user-id="effectiveNote.user.id"
       :account-id="note._accountId"
       :x="userPopup.position.value.x"
@@ -704,11 +708,10 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
       :theme-vars="popupTheme"
       @close="closeUserPopup"
     />
-  </Teleport>
+  </div>
 
-  <Teleport to="body">
+  <div v-if="mentionPopup.isVisible.value && mentionUserId" ref="mentionPopupPortalRef">
     <MkUserPopup
-      v-if="mentionPopup.isVisible.value && mentionUserId"
       :user-id="mentionUserId"
       :account-id="note._accountId"
       :x="mentionPopup.position.value.x"
@@ -716,7 +719,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
       :theme-vars="popupTheme"
       @close="closeMentionPopup"
     />
-  </Teleport>
+  </div>
 
   <NoteReactionUsersPopup
     ref="reactionUsersRef"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, ref, shallowRef } from 'vue'
 import type { DeckColumn } from '@/stores/deck'
+import { invoke } from '@/utils/tauriInvoke'
 import DeckColumnComponent from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -27,8 +28,11 @@ const providerStatus = ref<'connected' | 'disconnected' | 'checking'>(
 async function checkProvider() {
   providerStatus.value = 'checking'
   try {
-    const res = await fetch('http://localhost:11434/api/tags')
-    providerStatus.value = res.ok ? 'connected' : 'disconnected'
+    const result = await invoke<{ ok: boolean }>('check_endpoint_health', {
+      url: 'http://localhost:11434/api/tags',
+      bearerToken: null,
+    })
+    providerStatus.value = result.ok ? 'connected' : 'disconnected'
   } catch {
     providerStatus.value = 'disconnected'
   }
