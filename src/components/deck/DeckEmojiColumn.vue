@@ -157,6 +157,16 @@ watch(searchQuery, () => {
 onMounted(() => {
   loadEmojis()
 })
+
+function getHeaderLabel(index: number): string {
+  const row = rows.value[index]
+  return row?.type === 'header' ? row.label : ''
+}
+
+function getRowItems(index: number): ServerEmoji[] {
+  const row = rows.value[index]
+  return row?.type === 'row' ? row.items : []
+}
 </script>
 
 <template>
@@ -242,13 +252,13 @@ onMounted(() => {
           >
             <template v-if="rows[vItem.index]?.type === 'header'">
               <div :class="$style.emojiGroupLabel">
-                {{ rows[vItem.index].label }}
+                {{ getHeaderLabel(vItem.index) }}
               </div>
             </template>
             <template v-else-if="rows[vItem.index]?.type === 'row'">
               <div :class="$style.emojiGrid">
                 <button
-                  v-for="emoji in rows[vItem.index].items"
+                  v-for="emoji in getRowItems(vItem.index)"
                   :key="emoji.name"
                   class="_button"
                   :class="[$style.emojiCell, { [$style.copied]: copiedName === emoji.name }]"
