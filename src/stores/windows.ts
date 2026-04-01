@@ -49,7 +49,7 @@ export const WINDOW_SIZES: Record<
   // About
   about: { width: 380, maxHeight: 480 },
   // Nav editor
-  navEditor: { width: 400, maxHeight: 650 },
+  navEditor: { width: 400, maxHeight: 700 },
   // Performance editor
   performanceEditor: { width: 420, maxHeight: 750 },
 }
