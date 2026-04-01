@@ -481,7 +481,6 @@ usePortal(settingsMenuPortalRef)
 
 .categoryBody {
   padding-bottom: 4px;
-  padding-left: 12px;
 }
 
 /* -- Theme selection grid -- */
