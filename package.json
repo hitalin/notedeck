@@ -2,7 +2,7 @@
   "name": "notedeck",
   "description": "Misskey IDE — integrated environment for browsing, posting, searching, and connecting",
   "private": true,
-  "version": "0.9.12",
+  "version": "0.9.13",
   "type": "module",
   "scripts": {
     "dev": "vite",
