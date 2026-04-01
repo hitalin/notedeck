@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import MkAd from '@/components/common/MkAd.vue'
 import { useAds } from '@/composables/useAds'
+import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -24,6 +25,7 @@ const { columnThemeVars } = useColumnTheme(() => props.column)
 const serverIconUrl = ref<string | undefined>()
 const isLoading = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
+useColumnPullScroller(scrollContainer)
 
 const { ads, serverHost, fetchAds, muteAd } = useAds(
   () => props.column.accountId ?? undefined,
@@ -63,6 +65,7 @@ onMounted(() => {
     :title="column.name ?? '広告'"
     :theme-vars="columnThemeVars"
     @header-click="scrollToTop"
+    :pull-refresh="load"
     @refresh="load"
   >
     <template #header-icon>

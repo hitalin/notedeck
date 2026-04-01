@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import MkMfm from '@/components/common/MkMfm.vue'
+import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -39,6 +40,7 @@ const isLoading = ref(false)
 const error = ref<AppError | null>(null)
 const announcements = ref<Announcement[]>([])
 const scrollContainer = ref<HTMLElement | null>(null)
+useColumnPullScroller(scrollContainer)
 
 const ICON_MAP: Record<string, string> = {
   info: 'info-circle',
@@ -116,6 +118,7 @@ onUnmounted(() => {
     title="お知らせ"
     :theme-vars="columnThemeVars"
     @header-click="scrollToTop"
+    :pull-refresh="fetchAnnouncements"
     @refresh="fetchAnnouncements"
   >
     <template #header-icon>

@@ -13,6 +13,7 @@ const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
+import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { usePortal } from '@/composables/usePortal'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
@@ -47,6 +48,7 @@ const isLoading = ref(false)
 const error = ref<AppError | null>(null)
 const meta = ref<ServerMeta | null>(null)
 const scrollContainer = ref<HTMLElement | null>(null)
+useColumnPullScroller(scrollContainer)
 const postPortalRef = useTemplateRef<HTMLElement>('postPortalRef')
 usePortal(postPortalRef)
 
@@ -174,6 +176,7 @@ onMounted(() => {
     :title="column.name ?? 'Misskeyについて'"
     :theme-vars="columnThemeVars"
     @header-click="scrollToTop"
+    :pull-refresh="fetchMeta"
     @refresh="fetchMeta"
   >
     <template #header-icon>

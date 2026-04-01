@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { safeUrl } from '@/composables/useDriveFolder'
 import { getAccountAvatarUrl } from '@/stores/accounts'
@@ -158,6 +159,7 @@ function onScroll(e: Event) {
 }
 
 const galleryGridScrollRef = useTemplateRef<HTMLElement>('galleryGridScrollRef')
+useColumnPullScroller(galleryGridScrollRef)
 const galleryDetailScrollRef = useTemplateRef<HTMLElement>(
   'galleryDetailScrollRef',
 )
@@ -180,7 +182,7 @@ fetchGallery()
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'ギャラリー'" :theme-vars="columnThemeVars" @header-click="scrollToTop" @refresh="fetchGallery()">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'ギャラリー'" :theme-vars="columnThemeVars" :pull-refresh="fetchGallery" @header-click="scrollToTop" @refresh="fetchGallery()">
     <template #header-icon>
       <i class="ti ti-icons" :class="$style.tlHeaderIcon" />
     </template>

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, provide, ref, watch } from 'vue'
 import {
   popOutColumnToWindow,
   requestMoveColumn,
 } from '@/composables/useDeckWindow'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
@@ -20,7 +21,19 @@ const props = defineProps<{
   themeVars?: Record<string, string>
   soundEnabled?: boolean
   webUiUrl?: string
+  pullRefresh?: () => Promise<void>
 }>()
+
+// --- Pull-to-refresh (unified) ---
+const pullScrollerRef = ref<HTMLElement | null>(null)
+provide('deckPullScrollerTarget', pullScrollerRef)
+
+const { isPulling, isPulledEnough, isRefreshing, displayHeight } =
+  usePullToRefresh(pullScrollerRef, async () => {
+    if (props.pullRefresh) await props.pullRefresh()
+  })
+
+const showPullFrame = computed(() => !!props.pullRefresh && isPulling.value)
 
 const isPipMode = window.location.pathname === '/pip'
 const pipColumnConfig = inject<(() => DeckColumnType | null) | undefined>(
@@ -267,6 +280,21 @@ function openAsPip() {
       <div v-else-if="offlineModeStore.isOfflineMode && !isLoggedOut" :class="$style.offlineBanner">
         <i class="ti ti-cloud-off" />オフライン
       </div>
+      <div
+        v-if="showPullFrame"
+        :class="$style.pullFrame"
+        :style="`--frame-min-height: ${displayHeight()}px`"
+      >
+        <div :class="$style.pullFrameContent">
+          <i v-if="isRefreshing" class="ti ti-loader-2 nd-spin" />
+          <i v-else class="ti ti-arrow-bar-to-down" :class="{ refresh: isPulledEnough }" />
+          <div :class="$style.pullText">
+            <template v-if="isPulledEnough">離してリフレッシュ</template>
+            <template v-else-if="isRefreshing">リフレッシュ中…</template>
+            <template v-else>下に引いてリフレッシュ</template>
+          </div>
+        </div>
+      </div>
       <slot />
     </div>
 
@@ -436,6 +464,44 @@ function openAsPip() {
 .loggedOutBanner {
   @extend %statusBanner;
   background: color-mix(in srgb, var(--nd-error) 70%, transparent);
+}
+
+/* Pull-to-refresh indicator */
+.pullFrame {
+  position: relative;
+  overflow: clip;
+  width: 100%;
+  min-height: var(--frame-min-height, 0px);
+  mask-image: linear-gradient(90deg, #000 0%, #000 80%, transparent);
+  -webkit-mask-image: -webkit-linear-gradient(90deg, #000 0%, #000 80%, transparent);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.pullFrameContent {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  margin: 5px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  > :global(.ti) {
+    margin: 6px 0;
+    transition: transform 0.25s;
+  }
+
+  > :global(.refresh) {
+    rotate: 180deg;
+  }
+}
+
+.pullText {
+  margin: 5px 0;
+  font-size: 90%;
+  color: var(--nd-fg);
+  opacity: 0.7;
 }
 
 @keyframes slide-down {

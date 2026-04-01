@@ -2,6 +2,7 @@
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import {
   formatFileSize,
@@ -94,6 +95,7 @@ async function deleteFile() {
 
 const driveGridScrollRef = useTemplateRef<HTMLElement>('driveGridScrollRef')
 const driveDetailScrollRef = useTemplateRef<HTMLElement>('driveDetailScrollRef')
+useColumnPullScroller(driveGridScrollRef)
 
 function scrollToTop() {
   const el = detailFile.value
@@ -200,7 +202,7 @@ fetchDrive()
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'ドライブ'" :theme-vars="columnThemeVars" @header-click="scrollToTop" @refresh="fetchDrive()">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'ドライブ'" :theme-vars="columnThemeVars" :pull-refresh="fetchDrive" @header-click="scrollToTop" @refresh="fetchDrive()">
     <template #header-icon>
       <i class="ti ti-cloud" :class="$style.tlHeaderIcon" />
     </template>

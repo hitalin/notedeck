@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import DOMPurify from 'dompurify'
 import { computed, onMounted, ref } from 'vue'
+import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -57,6 +58,7 @@ const error = ref<AppError | null>(null)
 const meta = ref<ServerMeta | null>(null)
 const stats = ref<ServerStats | null>(null)
 const scrollContainer = ref<HTMLElement | null>(null)
+useColumnPullScroller(scrollContainer)
 const rulesOpen = ref(false)
 
 function scrollToTop() {
@@ -142,6 +144,7 @@ onMounted(() => {
     :title="column.name ?? 'サーバー情報'"
     :theme-vars="columnThemeVars"
     @header-click="scrollToTop"
+    :pull-refresh="fetchServerInfo"
     @refresh="fetchServerInfo"
   >
     <template #header-icon>

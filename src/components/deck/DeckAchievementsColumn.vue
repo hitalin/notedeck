@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -538,6 +539,7 @@ fetchAchievements()
 const achievementsScrollRef = useTemplateRef<HTMLElement>(
   'achievementsScrollRef',
 )
+useColumnPullScroller(achievementsScrollRef)
 
 function scrollToTop() {
   achievementsScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -545,7 +547,7 @@ function scrollToTop() {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? '実績'" :theme-vars="columnThemeVars" @refresh="fetchAchievements()" @header-click="scrollToTop">
+  <DeckColumn :column-id="column.id" :title="column.name ?? '実績'" :theme-vars="columnThemeVars" :pull-refresh="fetchAchievements" @refresh="fetchAchievements()" @header-click="scrollToTop">
     <template #header-icon>
       <i class="ti ti-medal" :class="$style.tlHeaderIcon" />
     </template>

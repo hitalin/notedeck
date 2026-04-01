@@ -25,6 +25,7 @@ const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
+import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { usePortal } from '@/composables/usePortal'
 import { useSwipeTab } from '@/composables/useSwipeTab'
@@ -360,6 +361,7 @@ function goBack() {
 }
 
 const playListRef = useTemplateRef<HTMLElement>('playListRef')
+useColumnPullScroller(playListRef)
 const playReadyScrollRef = useTemplateRef<HTMLElement>('playReadyScrollRef')
 const playStartedScrollRef = useTemplateRef<HTMLElement>('playStartedScrollRef')
 
@@ -381,7 +383,7 @@ function reload() {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'Play'" :theme-vars="columnThemeVars" @header-click="scrollToTop" @refresh="fetchList()">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'Play'" :theme-vars="columnThemeVars" :pull-refresh="fetchList" @header-click="scrollToTop" @refresh="fetchList()">
     <AiScriptDialog ref="dialogRef" />
     <template #header-icon>
       <i class="ti ti-player-play" :class="$style.tlHeaderIcon" />
