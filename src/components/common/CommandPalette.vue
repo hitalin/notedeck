@@ -102,6 +102,9 @@ const flatQuickPickList = computed(() =>
 async function selectQuickPickItem(item: QuickPickItem) {
   if (item.children) {
     const children = await item.children()
+    // Skip push if palette was closed during async (e.g. finalizeAddColumn)
+    // or if children is empty (direct finalization)
+    if (!commandStore.isOpen || children.length === 0) return
     commandStore.pushQuickPick({
       title: item.label,
       placeholder: `${item.label}を検索...`,
