@@ -138,8 +138,10 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   flex: 0 0 auto;
   display: flex;
   align-items: stretch;
-  background: var(--nd-navBg);
-  border-top: 1px solid var(--nd-divider);
+  margin-left: calc(-1 * (var(--nd-nav-resize-handle) + var(--nd-nav-border)));
+  padding-left: calc(var(--nd-nav-resize-handle) + var(--nd-nav-border));
+  background: color-mix(in srgb, var(--nd-navBg) 50%, var(--nd-deckBg, #1a1a1a));
+  box-shadow: 0 -0.5px 0 0 var(--nd-divider);
 }
 
 .left {

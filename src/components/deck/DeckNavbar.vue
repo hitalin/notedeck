@@ -627,7 +627,7 @@ defineExpose({
   background: color(from var(--nd-navBg) srgb r g b / 0.5);
   backdrop-filter: var(--nd-vibrancy);
   -webkit-backdrop-filter: var(--nd-vibrancy);
-  border-right: 1px solid var(--nd-divider);
+  border-right: var(--nd-nav-border) solid var(--nd-divider);
   position: relative;
   z-index: 1;
   container-type: inline-size;
@@ -985,7 +985,7 @@ defineExpose({
 }
 
 .resizeHandle {
-  flex: 0 0 6px;
+  flex: 0 0 var(--nd-nav-resize-handle);
   cursor: col-resize;
   background: transparent;
   transition: background var(--nd-duration-base);

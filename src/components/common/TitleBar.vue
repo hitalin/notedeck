@@ -226,7 +226,7 @@ async function onPipClick() {
   display: flex;
   align-items: center;
   height: 32px;
-  background: var(--nd-navBg);
+  background: color-mix(in srgb, var(--nd-navBg) 50%, var(--nd-deckBg, #1a1a1a));
   user-select: none;
   flex-shrink: 0;
 }

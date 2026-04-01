@@ -24,11 +24,11 @@
   --nd-panelHeaderBg: #2d2d2d;
   --nd-panelHeaderFg: rgb(199, 209, 216);
   --nd-panelBorder: solid 1px var(--nd-divider);
-  --nd-windowHeader: rgba(45, 45, 45, 0.85);
-  --nd-popup: #363636;
+  --nd-windowHeader: rgba(38, 38, 38, 0.85);
+  --nd-popup: #2d2d2d;
   --nd-shadow: rgba(0, 0, 0, 0.3);
-  --nd-header: rgba(45, 45, 45, 0.7);
-  --nd-navBg: #363636;
+  --nd-header: rgba(38, 38, 38, 0.7);
+  --nd-navBg: #262626;
   --nd-navFg: rgb(199, 209, 216);
   --nd-navActive: #86b300;
   --nd-navIndicator: #86b300;
@@ -110,6 +110,8 @@
   --nd-radius-md: 8px;
   --nd-radius-full: 999px;
   --nd-margin: 10px;
+  --nd-nav-resize-handle: 6px;
+  --nd-nav-border: 0.5px;
   --nd-columnGap: 6px;
   --nd-blur: 15px;
   --nd-blur-panel: 10px;
