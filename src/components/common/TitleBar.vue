@@ -11,17 +11,18 @@ import { useCommandStore } from '@/commands/registry'
 import { useColumnHistory } from '@/composables/useColumnHistory'
 import { openDeckWindow } from '@/composables/useDeckWindow'
 import { openPipWindow } from '@/composables/usePipWindow'
-import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 
 const CommandPalette = defineAsyncComponent(
   () => import('@/components/common/CommandPalette.vue'),
 )
+const TitleBarMenu = defineAsyncComponent(
+  () => import('@/components/common/TitleBarMenu.vue'),
+)
 
 const appWindow = getCurrentWindow()
 const commandStore = useCommandStore()
-const accountsStore = useAccountsStore()
 const deckStore = useDeckStore()
 const { platformName, isDesktop } = useUiStore()
 const isCompact = useIsCompactLayout()
@@ -125,11 +126,18 @@ function openNewWindow() {
 async function onPipClick() {
   await openPipWindow()
 }
+
+const menuRef = ref<InstanceType<typeof TitleBarMenu> | null>(null)
 </script>
 
 <template>
   <div :class="$style.titlebar" data-tauri-drag-region>
-    <div :class="$style.titlebarLeft" data-tauri-drag-region />
+    <div :class="$style.titlebarLeft" data-tauri-drag-region>
+      <button :class="$style.titlebarBtn" title="メニュー" @click="menuRef?.toggleMenu()">
+        <i class="ti ti-menu-2" />
+      </button>
+    </div>
+    <TitleBarMenu ref="menuRef" />
     <div v-if="!isCompact" :class="$style.titlebarCenter" data-tauri-drag-region>
       <div :class="$style.navButtons">
         <button
@@ -226,7 +234,7 @@ async function onPipClick() {
   display: flex;
   align-items: center;
   height: 32px;
-  background: var(--nd-navBg);
+  background: color-mix(in srgb, var(--nd-navBg) 50%, var(--nd-deckBg, #1a1a1a));
   user-select: none;
   flex-shrink: 0;
 }
@@ -241,27 +249,23 @@ async function onPipClick() {
 .navButtons {
   position: absolute;
   right: 100%;
-  top: 50%;
-  translate: 0 -50%;
+  top: 0;
   display: flex;
   align-items: center;
-  gap: 2px;
-  margin-right: 4px;
+  height: 100%;
 }
 
 .navBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 24px;
+  width: 46px;
+  height: 100%;
   border: none;
-  border-radius: var(--nd-radius-sm);
   background: transparent;
   color: var(--nd-fg);
   opacity: 0.6;
   cursor: pointer;
-  font-size: 14px;
   transition: background var(--nd-duration-fast), opacity var(--nd-duration-fast);
 
   &:hover:not(:disabled) {
@@ -275,7 +279,6 @@ async function onPipClick() {
   cursor: default;
 }
 
-
 .titlebarCenter {
   display: flex;
   align-items: center;
@@ -283,6 +286,7 @@ async function onPipClick() {
   min-width: 0;
   max-width: 600px;
   width: 600px;
+  height: 100%;
   padding: 0 12px;
   position: relative;
   flex-shrink: 1;
@@ -386,5 +390,4 @@ async function onPipClick() {
 }
 
 .titlebarWindowBtn {}
-
 </style>

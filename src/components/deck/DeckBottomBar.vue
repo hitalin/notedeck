@@ -135,11 +135,15 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
 <style lang="scss" module>
 @use '@/styles/buttons' as *;
 .root {
+  --bar-item-size: 42px;
+  --bar-icon-size: 16px;
   flex: 0 0 auto;
   display: flex;
   align-items: stretch;
-  background: var(--nd-navBg);
-  border-top: 1px solid var(--nd-divider);
+  margin-left: calc(-1 * (var(--nd-nav-resize-handle) + var(--nd-nav-border)));
+  padding-left: calc(var(--nd-nav-resize-handle) + var(--nd-nav-border));
+  background: color-mix(in srgb, var(--nd-navBg) 50%, var(--nd-deckBg, #1a1a1a));
+  box-shadow: 0 -0.5px 0 0 var(--nd-divider);
 }
 
 .left {
@@ -178,7 +182,7 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   }
 
   .ti {
-    font-size: 16px;
+    font-size: var(--bar-icon-size);
     flex-shrink: 0;
     color: var(--nd-accent);
   }
@@ -212,9 +216,9 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  min-width: 42px;
+  min-width: var(--bar-item-size);
   padding: 10px 8px;
-  font-size: 16px;
+  font-size: var(--bar-icon-size);
   color: var(--nd-fg);
   opacity: 0.4;
   --column-badge-border: var(--nd-navBg);
@@ -268,8 +272,9 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  aspect-ratio: 1;
+  width: var(--bar-item-size);
+  height: var(--bar-item-size);
+  font-size: var(--bar-icon-size);
   color: var(--nd-fg);
   opacity: 0.5;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);

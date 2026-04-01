@@ -506,11 +506,10 @@ function primaryShortcut(cmd: Command): string | null {
   position: fixed;
   z-index: 2550;
   background: var(--nd-popup, #252526);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0 0 var(--nd-radius-sm) var(--nd-radius-sm);
-  box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 8px 36px rgba(0, 0, 0, 0.4);
 }
 
 /* ========================================
@@ -539,26 +538,24 @@ function primaryShortcut(cmd: Command): string | null {
 
 .separator {
   height: 1px;
-  margin: 4px 0;
+  margin: 2px 0;
   background: rgba(255, 255, 255, 0.06);
 }
 
 .category {
-  padding: 8px 14px 4px;
+  padding: 6px 12px 2px;
   font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 400;
   color: var(--nd-fg);
-  opacity: 0.4;
+  opacity: 0.5;
 }
 
 .item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  padding: 8px 14px;
+  padding: 4px 12px;
   border: none;
   border-left: 2px solid transparent;
   background: none;
@@ -567,22 +564,23 @@ function primaryShortcut(cmd: Command): string | null {
   font-family: inherit;
   cursor: pointer;
   text-align: left;
-  transition: background 0.08s;
+  line-height: 22px;
 
   &.selected {
-    background: var(--nd-accentedBg, rgba(134, 179, 0, 0.15));
+    background: color-mix(in srgb, var(--nd-accent) 18%, transparent);
     border-left-color: var(--nd-accent, #86b300);
+    color: var(--nd-fgHighlighted, #fff);
   }
 
-  &:hover {
-    background: var(--nd-buttonHoverBg);
+  &:hover:not(.selected) {
+    background: rgba(255, 255, 255, 0.04);
   }
 }
 
 .itemIcon {
-  font-size: 16px;
-  opacity: 0.6;
-  width: 20px;
+  font-size: 14px;
+  opacity: 0.5;
+  width: 18px;
   text-align: center;
   flex-shrink: 0;
 }
@@ -593,17 +591,18 @@ function primaryShortcut(cmd: Command): string | null {
 
 .itemKbd {
   font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  opacity: 0.5;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  border-bottom-width: 1px;
+  opacity: 0.6;
   font-family: inherit;
-  border: none;
   white-space: nowrap;
 }
 
 .empty {
-  padding: 20px 14px;
+  padding: 14px 12px;
   text-align: center;
   color: var(--nd-fg);
   opacity: 0.4;
@@ -616,8 +615,8 @@ function primaryShortcut(cmd: Command): string | null {
 .quickPickHeader {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 14px 4px;
+  gap: 6px;
+  padding: 6px 12px 2px;
 }
 
 .backBtn {
@@ -668,13 +667,13 @@ function primaryShortcut(cmd: Command): string | null {
 }
 
 .cli {
-  padding: 12px 14px;
+  padding: 10px 12px;
 }
 
 .cliRow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-size: 13px;
   color: var(--nd-fg);
 }
@@ -689,8 +688,8 @@ function primaryShortcut(cmd: Command): string | null {
 }
 
 .cliDesc {
-  margin-top: 6px;
-  padding-left: 30px;
+  margin-top: 4px;
+  padding-left: 26px;
   font-size: 12px;
   color: var(--nd-fg);
   opacity: 0.45;

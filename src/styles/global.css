@@ -24,11 +24,11 @@
   --nd-panelHeaderBg: #2d2d2d;
   --nd-panelHeaderFg: rgb(199, 209, 216);
   --nd-panelBorder: solid 1px var(--nd-divider);
-  --nd-windowHeader: rgba(45, 45, 45, 0.85);
-  --nd-popup: #363636;
+  --nd-windowHeader: rgba(38, 38, 38, 0.85);
+  --nd-popup: #2d2d2d;
   --nd-shadow: rgba(0, 0, 0, 0.3);
-  --nd-header: rgba(45, 45, 45, 0.7);
-  --nd-navBg: #363636;
+  --nd-header: rgba(38, 38, 38, 0.7);
+  --nd-navBg: #262626;
   --nd-navFg: rgb(199, 209, 216);
   --nd-navActive: #86b300;
   --nd-navIndicator: #86b300;
@@ -51,8 +51,8 @@
   --nd-infoWarnFg: #ffbd3e;
   --nd-folderHeaderBg: rgba(255, 255, 255, 0.05);
   --nd-folderHeaderHoverBg: rgba(255, 255, 255, 0.1);
-  --nd-buttonBg: rgba(255, 255, 255, 0.05);
-  --nd-buttonHoverBg: rgba(255, 255, 255, 0.08);
+  --nd-buttonBg: rgba(255, 255, 255, 0.08);
+  --nd-buttonHoverBg: rgba(255, 255, 255, 0.12);
   --nd-buttonGradateA: #86b300;
   --nd-buttonGradateB: #9fb300;
   --nd-switchBg: rgba(255, 255, 255, 0.15);
@@ -70,7 +70,7 @@
   --nd-codeString: #ffb675;
   --nd-codeNumber: #cfff9e;
   --nd-codeBoolean: #c59eff;
-  --nd-deckBg: #000;
+  --nd-deckBg: #1a1a1a;
   /* Notification event colors (Misskey native) */
   --nd-eventReaction: #e99a0b;
   --nd-eventReply: #007aff;
@@ -92,24 +92,34 @@
   --nd-accent-subtle: color-mix(in srgb, var(--nd-accent) 10%, transparent);
   --nd-love-hover: color-mix(in srgb, var(--nd-love) 15%, transparent);
   --nd-love-subtle: color-mix(in srgb, var(--nd-love) 10%, transparent);
-  /* Shadow depth (Misskey: 0px 4px 32px var(--shadow)) */
-  --nd-shadow-s: 0 2px 8px var(--nd-shadow);
-  --nd-shadow-m: 0 4px 32px var(--nd-shadow);
-  --nd-shadow-l: 0 8px 32px var(--nd-shadow);
+  /* Shadow depth — Apple dual-layer: near contact + distant ambient */
+  --nd-shadow-contact: rgba(0, 0, 0, 0.08);
+  --nd-shadow-ambient: rgba(0, 0, 0, 0.15);
+  --nd-shadow-s:
+    0 1px 2px var(--nd-shadow-contact),
+    0 2px 6px color-mix(in srgb, var(--nd-shadow-ambient) 80%, transparent);
+  --nd-shadow-m:
+    0 2px 4px var(--nd-shadow-contact),
+    0 4px 16px var(--nd-shadow-ambient);
+  --nd-shadow-l:
+    0 4px 8px var(--nd-shadow-contact),
+    0 12px 28px color-mix(in srgb, var(--nd-shadow-ambient) 120%, transparent);
   /* Non-theme layout constants */
   --nd-radius: 12px;
   --nd-radius-sm: 6px;
   --nd-radius-md: 8px;
   --nd-radius-full: 999px;
   --nd-margin: 10px;
-  --nd-columnGap: 2px;
-  --nd-blur: 2px;
-  --nd-blur-panel: 1px;
-  --nd-blur-content: 1px;
+  --nd-nav-resize-handle: 6px;
+  --nd-nav-border: 0.5px;
+  --nd-columnGap: 6px;
+  --nd-blur: 15px;
+  --nd-blur-panel: 10px;
+  --nd-blur-content: 10px;
   /* Transition duration
      Apple pattern: enter slightly longer than leave for natural weight */
-  --nd-duration-fast: 0.15s;
-  --nd-duration-base: 0.2s;
+  --nd-duration-fast: 0.1s;
+  --nd-duration-base: 0.15s;
   --nd-duration-slow: 0.28s;
   --nd-duration-slower: 0.38s;
   --nd-duration-tl-enter: 0.5s; /* Timeline note insertion — Misskey uses 0.7s */
@@ -126,8 +136,12 @@
   --nd-ease-slide: cubic-bezier(0.23, 1, 0.32, 1);  /* Timeline slide-in, tooltip */
   --nd-ease-menu: cubic-bezier(0.16, 1, 0.3, 1);    /* Context menu, popup */
   /* Active press scale — slightly more noticeable for tactile feel */
-  --nd-active-scale: 0.96;
-  --nd-active-scale-heavy: 0.92; /* Destructive / heavy actions (delete, report) */
+  --nd-active-scale: 0.97;
+  --nd-active-scale-sm: 0.93; /* Small inline buttons (note footer etc.) */
+  --nd-active-scale-heavy: 0.94; /* Destructive / heavy actions (delete, report) */
+  /* Header vibrancy */
+  --nd-header-opacity: 0.75;
+  --nd-hairline: rgba(255, 255, 255, 0.08);
   /* Vibrancy (Apple-style saturated blur) */
   --nd-vibrancy: blur(var(--nd-blur));
   --nd-vibrancy-panel: blur(var(--nd-blur-panel));
@@ -164,10 +178,13 @@ html[data-platform="ios"] {
 
 html {
   height: 100%;
-  font-family: 'Hiragino Maru Gothic Pro', 'BIZ UDGothic', Roboto,
-    HelveticaNeue, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Hiragino Sans', 'Hiragino Maru Gothic Pro', 'BIZ UDGothic',
+    Roboto, HelveticaNeue, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background-color: var(--nd-bg);
   color: var(--nd-fg);
   accent-color: var(--nd-accent);
