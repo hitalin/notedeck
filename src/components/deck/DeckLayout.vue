@@ -7,6 +7,7 @@ import {
   ref,
   useTemplateRef,
 } from 'vue'
+import { useCommandStore } from '@/commands/registry'
 import AppConfirm from '@/components/common/AppConfirm.vue'
 import AppToast from '@/components/common/AppToast.vue'
 import MkRippleEffect from '@/components/common/MkRippleEffect.vue'
@@ -41,6 +42,7 @@ const {
   navigateToSearch,
   navigateToNotifications,
 } = useNavigation()
+const commandStore = useCommandStore()
 const deckStore = useDeckStore()
 const uiStore = useUiStore()
 const accountsStore = useAccountsStore()
@@ -88,7 +90,11 @@ function closeCompose() {
 }
 
 function toggleAddMenu() {
-  showAddMenu.value = !showAddMenu.value
+  if (uiStore.isDesktop && !isCompact.value) {
+    commandStore.openWithInput('+')
+  } else {
+    showAddMenu.value = !showAddMenu.value
+  }
 }
 
 // File drop handling

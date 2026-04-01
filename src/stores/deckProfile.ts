@@ -2,7 +2,12 @@ import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 
-import type { DeckColumn, DeckProfile, DeckWindowLayout } from '@/stores/deck'
+import type {
+  DeckColumn,
+  DeckProfile,
+  DeckWindowLayout,
+  NavItem,
+} from '@/stores/deck'
 import * as settingsFs from '@/utils/settingsFs'
 import {
   getStorageJson,
@@ -37,6 +42,7 @@ function fromFileFormat(
     layout: (data.layout as string[][]) || [],
     createdAt: (data.createdAt as number) || Date.now(),
     windows: data.windows as DeckWindowLayout[] | undefined,
+    navItems: data.navItems as NavItem[] | undefined,
   }
 }
 

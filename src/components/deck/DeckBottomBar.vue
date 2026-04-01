@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useCommandStore } from '@/commands/registry'
 import ColumnBadges from '@/components/common/ColumnBadges.vue'
 import { useColumnTabs } from '@/composables/useColumnTabs'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { useUiStore } from '@/stores/ui'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
 
@@ -27,7 +29,33 @@ const emit = defineEmits<{
   'scroll-to-column': [index: number]
 }>()
 
+const { isDesktop } = useUiStore()
+const commandStore = useCommandStore()
 const deckStore = useDeckStore()
+
+function onProfileClick() {
+  if (isDesktop) {
+    commandStore.openWithInput('#')
+  } else {
+    emit('update:show-profile-menu', !props.showProfileMenu)
+  }
+}
+
+function onSettingsClick() {
+  if (isDesktop) {
+    commandStore.openWithInput('*')
+  } else {
+    emit('update:show-settings-menu', !props.showSettingsMenu)
+  }
+}
+
+function onAddColumnClick() {
+  if (isDesktop) {
+    commandStore.openWithInput('+')
+  } else {
+    emit('toggle-add-menu')
+  }
+}
 
 const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   useColumnTabs(
@@ -47,7 +75,7 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
           :class="$style.profileIndicator"
           title="プロファイル切替"
           @pointerdown.stop
-          @click.stop="emit('update:show-profile-menu', !showProfileMenu)"
+          @click.stop="onProfileClick()"
         >
           <i class="ti ti-layout" />
           <span :class="$style.profileName">{{ deckStore.currentProfileName ?? 'プロファイル' }}</span>
@@ -76,7 +104,7 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
         class="_button"
         :class="$style.tab"
         title="カラムを追加"
-        @click="emit('toggle-add-menu')"
+        @click="onAddColumnClick()"
       >
         <i class="ti ti-plus" />
       </button>
@@ -89,7 +117,7 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
           :class="[$style.actionBtn, $style.settingsBtn]"
           title="デッキ設定"
           @pointerdown.stop
-          @click.stop="emit('update:show-settings-menu', !showSettingsMenu)"
+          @click.stop="onSettingsClick()"
         >
           <i class="ti ti-settings" />
         </button>

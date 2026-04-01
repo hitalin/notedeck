@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef, triggerRef } from 'vue'
+import type { QuickPickStep } from './quickPick'
 
 export interface Shortcut {
   /** KeyboardEvent.key の値 ('k', 'p', 'Escape' 等) */
@@ -34,6 +35,9 @@ export const useCommandStore = defineStore('commands', () => {
   const initialInput = ref<string | null>(null)
   /** When set, only commands matching this predicate are shown */
   const commandFilter = ref<((cmd: Command) => boolean) | null>(null)
+  const quickPickStack = ref<QuickPickStep[]>([])
+  /** Query text for the current Quick Pick step (reset on push/pop) */
+  const quickPickQuery = ref('')
 
   function register(command: Command) {
     commands.value.set(command.id, command)
@@ -80,6 +84,22 @@ export const useCommandStore = defineStore('commands', () => {
   function close() {
     isOpen.value = false
     commandFilter.value = null
+    clearQuickPick()
+  }
+
+  function pushQuickPick(step: QuickPickStep) {
+    quickPickStack.value.push(step)
+    quickPickQuery.value = ''
+  }
+
+  function popQuickPick() {
+    quickPickStack.value.pop()
+    quickPickQuery.value = ''
+  }
+
+  function clearQuickPick() {
+    quickPickStack.value.length = 0
+    quickPickQuery.value = ''
   }
 
   function toggle() {
@@ -95,6 +115,8 @@ export const useCommandStore = defineStore('commands', () => {
     isOpen,
     initialInput,
     commandFilter,
+    quickPickStack,
+    quickPickQuery,
     register,
     unregister,
     getEnabled,
@@ -104,5 +126,8 @@ export const useCommandStore = defineStore('commands', () => {
     openWithFilter,
     close,
     toggle,
+    pushQuickPick,
+    popQuickPick,
+    clearQuickPick,
   }
 })
