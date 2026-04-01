@@ -116,8 +116,6 @@ export const DEFAULT_NAV_ITEMS: NavItem[] = [
   { type: 'specified', accountId: null },
   { type: 'chat', accountId: null },
   { type: 'search', accountId: null },
-  { type: 'divider' },
-  { type: 'ai', accountId: null },
 ]
 
 export function isNavDivider(item: NavItem): item is { type: 'divider' } {
