@@ -56,7 +56,7 @@ const prefixItems = computed<QuickPickItem[]>(() => {
     case 'addColumn':
       return getColumnTypeItems()
     case 'account':
-      return [] // Phase 5
+      return [] // アカウント操作はNavAccountMenuで維持
     default:
       return []
   }

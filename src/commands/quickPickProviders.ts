@@ -13,6 +13,7 @@ import { useDeckStore } from '@/stores/deck'
 import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
+import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { invoke } from '@/utils/tauriInvoke'
 import type { QuickPickItem } from './quickPick'
@@ -31,6 +32,35 @@ export function getSettingsItems(): QuickPickItem[] {
       icon: 'moon',
       group: 'アピアランス',
       action: () => useThemeStore().toggleTheme(),
+    },
+    {
+      id: 'toggle-os-theme-sync',
+      label: 'デバイスのダークモードに同期',
+      icon: 'device-desktop',
+      group: 'アピアランス',
+      description: useThemeStore().manualMode == null ? 'オン' : 'オフ',
+      action: () => {
+        const themeStore = useThemeStore()
+        if (themeStore.manualMode == null) {
+          themeStore.pinCurrentMode()
+        } else {
+          themeStore.resetToOsTheme()
+        }
+      },
+    },
+    {
+      id: 'select-dark-theme',
+      label: 'ダークテーマで使うテーマ',
+      icon: 'moon',
+      group: 'アピアランス',
+      children: () => getThemeSelectItems('dark'),
+    },
+    {
+      id: 'select-light-theme',
+      label: 'ライトテーマで使うテーマ',
+      icon: 'sun',
+      group: 'アピアランス',
+      children: () => getThemeSelectItems('light'),
     },
     {
       id: 'theme-editor',
@@ -162,6 +192,38 @@ async function backupWithConfirm(
   if (result) await relaunch()
 }
 
+function getThemeSelectItems(mode: 'dark' | 'light'): QuickPickItem[] {
+  const themeStore = useThemeStore()
+  const builtin = mode === 'dark' ? DARK_THEME : LIGHT_THEME
+  const selectedId =
+    mode === 'dark'
+      ? themeStore.selectedDarkThemeId
+      : themeStore.selectedLightThemeId
+  const installed = themeStore.installedThemes.filter((t) => t.base === mode)
+
+  const items: QuickPickItem[] = [
+    {
+      id: 'theme-builtin',
+      label: builtin.name,
+      icon: mode === 'dark' ? 'moon' : 'sun',
+      description: selectedId == null ? '選択中' : undefined,
+      action: () => themeStore.selectTheme(null, mode),
+    },
+  ]
+
+  for (const theme of installed) {
+    items.push({
+      id: `theme-${theme.id}`,
+      label: theme.name,
+      icon: mode === 'dark' ? 'moon' : 'sun',
+      description: selectedId === theme.id ? '選択中' : undefined,
+      action: () => themeStore.selectTheme(theme.id, mode),
+    })
+  }
+
+  return items
+}
+
 // ============================================================
 // Profiles (Phase 3)
 // ============================================================
@@ -177,11 +239,7 @@ export function getProfileItems(): QuickPickItem[] {
     label: p.name,
     icon: 'layout',
     description: p.id === activeId ? '現在のプロファイル' : undefined,
-    action: () => {
-      if (p.id !== activeId) {
-        switchProfileWithWindows(p.id)
-      }
-    },
+    children: () => getProfileActions(p.id, p.id === activeId),
   }))
 
   items.push({
@@ -194,13 +252,50 @@ export function getProfileItems(): QuickPickItem[] {
     },
   })
 
+  return items
+}
+
+function getProfileActions(
+  profileId: string,
+  isActive: boolean,
+): QuickPickItem[] {
+  const items: QuickPickItem[] = []
+
+  if (!isActive) {
+    items.push({
+      id: `profile-switch-${profileId}`,
+      label: '切替',
+      icon: 'switch-horizontal',
+      action: () => switchProfileWithWindows(profileId),
+    })
+  }
+
   items.push({
-    id: 'profile-editor',
-    label: 'プロファイルエディタ',
+    id: `profile-edit-${profileId}`,
+    label: '編集',
     icon: 'edit',
-    description: '並び替え・名前変更',
-    action: () => useWindowsStore().open('profileEditor'),
+    action: () => useWindowsStore().open('profileEditor', { profileId }),
   })
+
+  if (!isActive) {
+    items.push({
+      id: `profile-delete-${profileId}`,
+      label: '削除',
+      icon: 'trash',
+      action: async () => {
+        const { confirm } = useConfirm()
+        const ok = await confirm({
+          title: 'プロファイルを削除',
+          message: 'このプロファイルを削除しますか？',
+          okLabel: '削除',
+          type: 'danger',
+        })
+        if (!ok) return
+        useDeckStore().deleteProfile(profileId)
+        refreshProfileCommands()
+      },
+    })
+  }
 
   return items
 }
