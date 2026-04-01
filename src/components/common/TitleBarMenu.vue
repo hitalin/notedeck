@@ -80,11 +80,6 @@ function clearConeGuard() {
 }
 
 // ── Actions ──
-function execCommand(cmd: string) {
-  document.execCommand(cmd)
-  closeMenu()
-}
-
 const zoomLevel = ref(1)
 
 async function setZoom(delta: number) {
@@ -109,34 +104,6 @@ defineExpose({ toggleMenu })
     @click="closeMenu"
   >
     <div ref="menuPanelRef" :class="$style.panel" @click.stop @mousemove="onMenuMouseMove">
-      <div
-        :class="$style.categoryItem"
-        @mouseenter="onCategoryEnter('edit')"
-        @click="onCategoryEnter('edit')"
-      >
-        <button class="_popupItem" :class="[activeCategory === 'edit' && $style.itemActive]">
-          <i class="ti ti-pencil" />
-          <span>編集</span>
-          <i class="ti ti-chevron-right" :class="$style.chevron" />
-        </button>
-        <div v-if="activeCategory === 'edit'" :class="$style.sub">
-          <button class="_popupItem" @click="execCommand('cut')">
-            <i class="ti ti-cut" />
-            <span>切り取り</span>
-            <kbd :class="$style.kbd">Ctrl+X</kbd>
-          </button>
-          <button class="_popupItem" @click="execCommand('copy')">
-            <i class="ti ti-copy" />
-            <span>コピー</span>
-            <kbd :class="$style.kbd">Ctrl+C</kbd>
-          </button>
-          <button class="_popupItem" @click="execCommand('paste')">
-            <i class="ti ti-clipboard" />
-            <span>貼り付け</span>
-            <kbd :class="$style.kbd">Ctrl+V</kbd>
-          </button>
-        </div>
-      </div>
       <div
         :class="$style.categoryItem"
         @mouseenter="onCategoryEnter('view')"
