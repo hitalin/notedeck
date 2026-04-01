@@ -1,6 +1,8 @@
+import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { ServerSoftware } from '@/adapters/types'
+import { readAccountOrder, writeAccountOrder } from '@/utils/settingsFs'
 import { removeStorage, STORAGE_KEYS } from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
 
@@ -66,10 +68,28 @@ export const useAccountsStore = defineStore('accounts', () => {
   let loadPromise: Promise<void> | null = null
   let earlyUnlisten: (() => void) | null = null
 
+  /** Cached order loaded from file (set once before applyAccounts runs). */
+  let savedOrderIds: string[] | null = null
+
   function applyAccounts(stored: Account[]): void {
-    accounts.value = stored
+    if (savedOrderIds && savedOrderIds.length > 0) {
+      const byId = new Map(stored.map((a) => [a.id, a]))
+      const ordered: Account[] = []
+      for (const id of savedOrderIds) {
+        const acc = byId.get(id)
+        if (acc) {
+          ordered.push(acc)
+          byId.delete(id)
+        }
+      }
+      // Append any new accounts not in saved order
+      for (const acc of byId.values()) ordered.push(acc)
+      accounts.value = ordered
+    } else {
+      accounts.value = stored
+    }
     if (stored.length > 0 && !activeAccountId.value) {
-      activeAccountId.value = stored[0]?.id ?? null
+      activeAccountId.value = accounts.value[0]?.id ?? null
     }
     isLoaded.value = true
   }
@@ -94,6 +114,13 @@ export const useAccountsStore = defineStore('accounts', () => {
     if (loadPromise) return loadPromise
     listenEarlyAccounts()
     loadPromise = (async () => {
+      // Load saved order from file before applying accounts
+      try {
+        const raw = await readAccountOrder()
+        if (raw) savedOrderIds = JSON5.parse(raw)
+      } catch {
+        /* missing or corrupt file, use default order */
+      }
       const stored = await invoke<Account[]>('load_accounts')
       if (!isLoaded.value) applyAccounts(stored)
       cleanupEarlyListener()
@@ -138,6 +165,23 @@ export const useAccountsStore = defineStore('accounts', () => {
     }
   }
 
+  function saveAccountOrder(): void {
+    const ids = accounts.value.map((a) => a.id)
+    writeAccountOrder(JSON5.stringify(ids, null, 2)).catch(() => {
+      /* write failure, ignore */
+    })
+  }
+
+  function reorderAccount(fromIndex: number, toIndex: number): void {
+    const arr = [...accounts.value]
+    const [moved] = arr.splice(fromIndex, 1)
+    if (moved) {
+      arr.splice(toIndex, 0, moved)
+      accounts.value = arr
+      saveAccountOrder()
+    }
+  }
+
   function getModeVersion(accountId: string): number {
     return modeVersionByAccount.value[accountId] ?? 0
   }
@@ -161,6 +205,7 @@ export const useAccountsStore = defineStore('accounts', () => {
     removeAccount,
     logoutAccount,
     switchAccount,
+    reorderAccount,
     modeVersionByAccount,
     getModeVersion,
     bumpModeVersion,

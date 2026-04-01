@@ -182,6 +182,16 @@ export async function writeAiSettings(content: string): Promise<void> {
   return writeRootSettingsFile('ai.json', content)
 }
 
+// --- Account order helpers ---
+
+export async function readAccountOrder(): Promise<string> {
+  return readRootSettingsFile('account-order.json5')
+}
+
+export async function writeAccountOrder(content: string): Promise<void> {
+  return writeRootSettingsFile('account-order.json5', content)
+}
+
 // --- Performance helpers ---
 
 export async function readPerformance(): Promise<string> {

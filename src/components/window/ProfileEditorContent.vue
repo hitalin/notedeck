@@ -3,6 +3,8 @@ import { json } from '@codemirror/lang-json'
 import JSON5 from 'json5'
 import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
+import type { ReorderableItem } from '@/components/common/ReorderableList.vue'
+import ReorderableList from '@/components/common/ReorderableList.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import {
   COLUMN_ICONS,
@@ -105,6 +107,20 @@ function groupServerIconUrl(group: string[]): string | null {
   return col ? columnServerIconUrl(col) : null
 }
 
+// --- Mobile: ReorderableList items ---
+const reorderableGroups = computed<ReorderableItem[]>(() =>
+  deckStore.windowLayout.map((group) => {
+    const col = groupPrimaryColumn(group)
+    return {
+      icon: col ? columnIcon(col) : 'layout-columns',
+      label: groupLabel(group),
+      avatarUrl: groupAvatarUrl(group),
+      serverIconUrl: groupServerIconUrl(group),
+      stackCount: group.length,
+    }
+  }),
+)
+
 // --- Add column via inline AddColumnDialog ---
 const showAddColumn = ref(false)
 
@@ -115,30 +131,31 @@ function onColumnSelected(config: Omit<DeckColumn, 'id'>) {
 
 // --- Drag and drop (reorder layout groups) ---
 
+function onGroupReorder(fromIdx: number, toIdx: number) {
+  // Convert windowLayout indices to layout indices
+  const wl = deckStore.windowLayout
+  const fromGroup = wl[fromIdx]
+  const toGroup = wl[toIdx]
+  if (!fromGroup || !toGroup) return
+
+  const fullLayout = deckStore.layout
+  const fromLayoutIdx = fullLayout.indexOf(fromGroup)
+  const toLayoutIdx = fullLayout.indexOf(toGroup)
+  if (fromLayoutIdx < 0 || toLayoutIdx < 0) return
+
+  // Move in full layout
+  const newLayout = fullLayout.map((g) => [...g])
+  const [moved] = newLayout.splice(fromLayoutIdx, 1)
+  if (moved) {
+    newLayout.splice(toLayoutIdx, 0, moved)
+    deckStore.applyLayout(newLayout)
+    deckStore.flushSave()
+  }
+}
+
 const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
-  axis: 'x',
   dataAttr: 'group-idx',
-  onReorder(fromIdx, toIdx) {
-    // Convert windowLayout indices to layout indices
-    const wl = deckStore.windowLayout
-    const fromGroup = wl[fromIdx]
-    const toGroup = wl[toIdx]
-    if (!fromGroup || !toGroup) return
-
-    const fullLayout = deckStore.layout
-    const fromLayoutIdx = fullLayout.indexOf(fromGroup)
-    const toLayoutIdx = fullLayout.indexOf(toGroup)
-    if (fromLayoutIdx < 0 || toLayoutIdx < 0) return
-
-    // Move in full layout
-    const newLayout = fullLayout.map((g) => [...g])
-    const [moved] = newLayout.splice(fromLayoutIdx, 1)
-    if (moved) {
-      newLayout.splice(toLayoutIdx, 0, moved)
-      deckStore.applyLayout(newLayout)
-      deckStore.flushSave()
-    }
-  },
+  onReorder: onGroupReorder,
 })
 
 function removeGroup(groupIdx: number) {
@@ -284,31 +301,15 @@ async function importFromClipboard() {
         </button>
 
         <template v-if="expandedSections.columns">
-        <!-- Mobile: row-based list with move buttons -->
-        <div v-if="isCompact" :class="$style.mobileList">
-          <div
-            v-for="(group, groupIdx) in deckStore.windowLayout"
-            :key="`${groupIdx}:${group.join(',')}`"
-            :class="$style.mobileRow"
-          >
-            <i class="ti ti-grip-vertical" :class="$style.mobileGrip" />
-            <span :class="$style.mobileIcon">
-              <i v-if="groupPrimaryColumn(group)" :class="'ti ti-' + columnIcon(groupPrimaryColumn(group)!)" />
-            </span>
-            <span :class="$style.mobileLabel">{{ groupLabel(group) }}</span>
-            <span v-if="group.length > 1" :class="$style.mobileStackBadge">{{ group.length }}</span>
-            <span v-if="groupServerIconUrl(group) || groupAvatarUrl(group)" :class="$style.mobileBadges">
-              <img v-if="groupAvatarUrl(group)" :src="groupAvatarUrl(group)!" :class="$style.mobileBadgeImg" />
-              <img v-if="groupServerIconUrl(group)" :src="groupServerIconUrl(group)!" :class="$style.mobileBadgeImg" />
-            </span>
-            <button class="_button" :class="$style.mobileRemoveBtn" @click="removeGroup(groupIdx)">
-              <i class="ti ti-x" />
-            </button>
-          </div>
-          <div v-if="deckStore.windowLayout.length === 0" :class="$style.emptyMessage">
-            カラムがありません
-          </div>
-        </div>
+        <!-- Mobile: row-based list with drag & drop -->
+        <ReorderableList
+          v-if="isCompact"
+          :items="reorderableGroups"
+          data-attr="group-idx"
+          empty-text="カラムがありません"
+          @reorder="onGroupReorder"
+          @remove="removeGroup"
+        />
 
         <!-- Desktop: icon grid with drag & drop -->
         <div v-else :class="$style.columnPreview">
@@ -653,101 +654,6 @@ async function importFromClipboard() {
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
-}
-
-// ── Mobile: row-based list ──
-
-.mobileList {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px 8px;
-}
-
-.mobileRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  background: var(--nd-panel);
-  border-radius: var(--nd-radius-sm);
-  min-height: 44px;
-}
-
-.mobileGrip {
-  flex-shrink: 0;
-  font-size: 14px;
-  color: var(--nd-fg);
-  opacity: 0.25;
-}
-
-.mobileIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  font-size: 1em;
-  color: var(--nd-fg);
-}
-
-.mobileLabel {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobileStackBadge {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 9px;
-  background: var(--nd-accent);
-  color: var(--nd-bg);
-  font-size: 10px;
-  font-weight: bold;
-  line-height: 18px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.mobileBadges {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.mobileBadgeImg {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.mobileRemoveBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  margin-left: 4px;
-  border-radius: var(--nd-radius-sm);
-  color: var(--nd-fg);
-  opacity: 0.35;
-  transition: opacity var(--nd-duration-fast), color var(--nd-duration-fast), background var(--nd-duration-fast);
-
-  &:hover {
-    opacity: 1;
-    color: var(--nd-love, #ec4137);
-    background: color-mix(in srgb, var(--nd-love, #ec4137) 10%, transparent);
-  }
 }
 
 .emptyMessage {

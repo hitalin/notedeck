@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
 import JSON5 from 'json5'
-import { defineAsyncComponent, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import ColumnBadges from '@/components/common/ColumnBadges.vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
+import type { ReorderableItem } from '@/components/common/ReorderableList.vue'
+import ReorderableList from '@/components/common/ReorderableList.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
@@ -12,8 +14,8 @@ import { usePointerReorder } from '@/composables/usePointerReorder'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import {
+  type ColumnType,
   DEFAULT_NAV_ITEMS,
-  isNavDivider,
   type NavItem,
   useDeckStore,
 } from '@/stores/deck'
@@ -33,14 +35,14 @@ const deckStore = useDeckStore()
 const isCompact = useIsCompactLayout()
 const jsonLang = json()
 
-function itemAvatarUrl(item: NavItem): string | null {
-  if (isNavDivider(item) || !item.accountId) return null
+function itemAvatarUrl(item: NavColumnItem): string | null {
+  if (!item.accountId) return null
   const account = accountsStore.accounts.find((a) => a.id === item.accountId)
   return account ? getAccountAvatarUrl(account) : null
 }
 
-function itemServerIconUrl(item: NavItem): string | null {
-  if (isNavDivider(item) || !item.accountId) return null
+function itemServerIconUrl(item: NavColumnItem): string | null {
+  if (!item.accountId) return null
   const account = accountsStore.accounts.find((a) => a.id === item.accountId)
   if (!account) return null
   const server = serversStore.servers.get(account.host)
@@ -53,18 +55,22 @@ const { tab, containerRef: contentRef } = useEditorTabs(
   'visual',
 )
 
-function getItemIcon(item: NavItem): string {
-  if (isNavDivider(item)) return 'ti-separator'
+function getItemIcon(item: NavColumnItem): string {
   return `ti-${COLUMN_ICONS[item.type] ?? 'layout-grid'}`
 }
 
-function getItemLabel(item: NavItem): string {
-  if (isNavDivider(item)) return '区切り線'
+function getItemLabel(item: NavColumnItem): string {
   return COLUMN_LABELS[item.type] ?? item.type
 }
 
 // ── Visual tab state ──
-const items = ref<NavItem[]>(structuredClone(deckStore.navItems))
+type NavColumnItem = { type: ColumnType; accountId: string | null }
+
+const items = ref<NavColumnItem[]>(
+  structuredClone(deckStore.navItems).filter(
+    (item): item is NavColumnItem => item.type !== 'divider',
+  ),
+)
 
 watch(items, (v) => deckStore.setNavItems(v), { deep: true })
 
@@ -72,22 +78,29 @@ function removeItem(index: number) {
   items.value.splice(index, 1)
 }
 
-function addDivider() {
-  items.value.push({ type: 'divider' })
+// ── Mobile: ReorderableList items ──
+const reorderableItems = computed<ReorderableItem[]>(() =>
+  items.value.map((item) => ({
+    icon: COLUMN_ICONS[item.type] ?? 'layout-grid',
+    label: getItemLabel(item),
+    avatarUrl: itemAvatarUrl(item),
+    serverIconUrl: itemServerIconUrl(item),
+  })),
+)
+
+function onMobileReorder(fromIdx: number, toIdx: number) {
+  const arr = [...items.value]
+  const [moved] = arr.splice(fromIdx, 1)
+  if (moved) {
+    arr.splice(toIdx, 0, moved)
+    items.value = arr
+  }
 }
 
-// ── Pointer-based drag & drop ──
+// ── Pointer-based drag & drop (desktop) ──
 const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
-  axis: 'y',
   dataAttr: 'nav-idx',
-  onReorder(fromIdx, toIdx) {
-    const arr = [...items.value]
-    const [moved] = arr.splice(fromIdx, 1)
-    if (moved) {
-      arr.splice(toIdx, 0, moved)
-      items.value = arr
-    }
-  },
+  onReorder: onMobileReorder,
 })
 
 // ── Add via AddColumnDialog ──
@@ -130,7 +143,9 @@ function applyFromCode() {
       codeError.value = '配列が必要です'
       return
     }
-    items.value = parsed as NavItem[]
+    items.value = (parsed as NavItem[]).filter(
+      (item): item is NavColumnItem => item.type !== 'divider',
+    )
     codeError.value = null
   } catch (e) {
     codeError.value = e instanceof Error ? e.message : '無効な JSON5'
@@ -144,7 +159,9 @@ const { confirming: confirmingReset, trigger: triggerReset } =
 
 function handleReset() {
   triggerReset(() => {
-    items.value = structuredClone(DEFAULT_NAV_ITEMS)
+    items.value = structuredClone(DEFAULT_NAV_ITEMS).filter(
+      (item): item is NavColumnItem => item.type !== 'divider',
+    )
   })
 }
 
@@ -162,7 +179,9 @@ async function importNav() {
     const text = await navigator.clipboard.readText()
     const parsed = JSON5.parse(text)
     if (!Array.isArray(parsed)) return
-    items.value = parsed as NavItem[]
+    items.value = (parsed as NavItem[]).filter(
+      (item): item is NavColumnItem => item.type !== 'divider',
+    )
   } catch {
     /* clipboard access denied or invalid */
   }
@@ -189,32 +208,12 @@ async function importNav() {
           <span :class="$style.mobileSectionBadge">{{ items.length }}</span>
         </div>
 
-        <div :class="$style.mobileList">
-          <div
-            v-for="(item, i) in items"
-            :key="i"
-            :class="[$style.mobileRow, { [$style.mobileRowDivider]: isNavDivider(item) }]"
-          >
-            <i class="ti ti-grip-vertical" :class="$style.mobileGrip" />
-            <span :class="$style.mobileIcon">
-              <i :class="['ti', getItemIcon(item)]" />
-            </span>
-            <span :class="$style.mobileLabel">{{ getItemLabel(item) }}</span>
-            <span v-if="!isNavDivider(item) && (itemServerIconUrl(item) || itemAvatarUrl(item))" :class="$style.mobileBadges">
-              <img v-if="itemAvatarUrl(item)" :src="itemAvatarUrl(item)!" :class="$style.mobileBadgeImg" />
-              <img v-if="itemServerIconUrl(item)" :src="itemServerIconUrl(item)!" :class="$style.mobileBadgeImg" />
-            </span>
-            <button class="_button" :class="$style.mobileRemoveBtn" @click="removeItem(i)">
-              <i class="ti ti-x" />
-            </button>
-          </div>
-          <div v-if="items.length === 0" :class="$style.empty">項目なし</div>
-        </div>
-
-        <button class="_button" :class="$style.mobileAddDivider" @click="addDivider">
-          <i class="ti ti-plus" />
-          区切り線を追加
-        </button>
+        <ReorderableList
+          :items="reorderableItems"
+          data-attr="nav-idx"
+          @reorder="onMobileReorder"
+          @remove="removeItem"
+        />
 
         <div :class="$style.mobileSectionHeader">
           <i class="ti ti-plus" />
@@ -233,37 +232,21 @@ async function importNav() {
         <div :class="$style.previewPane">
 
           <div :class="$style.navPreview">
-            <template v-for="(item, i) in items" :key="i">
-              <div v-if="isNavDivider(item)"
-                :data-nav-idx="i"
-                :class="[$style.navDividerTab, { [$style.dragging]: dragFromIndex === i, [$style.dragOver]: dragOverIndex === i }]"
-                :title="'区切り線'"
-                @pointerdown="startDrag(i, $event)"
-              >
-                <div :class="$style.navDividerLine" />
-                <button class="_button" :class="$style.tabRemoveBtn" @click.stop="removeItem(i)">
-                  <i class="ti ti-x" />
-                </button>
-              </div>
-              <div v-else
-                :data-nav-idx="i"
-                :class="[$style.navTab, { [$style.dragging]: dragFromIndex === i, [$style.dragOver]: dragOverIndex === i }]"
-                :title="getItemLabel(item)"
-                @pointerdown="startDrag(i, $event)"
-              >
-                <i :class="['ti', getItemIcon(item)]" />
-                <ColumnBadges :account-id="item.accountId" :size="10" />
-                <button class="_button" :class="$style.tabRemoveBtn" @click.stop="removeItem(i)">
-                  <i class="ti ti-x" />
-                </button>
-              </div>
-            </template>
+            <div
+              v-for="(item, i) in items"
+              :key="i"
+              :data-nav-idx="i"
+              :class="[$style.navTab, { [$style.dragging]: dragFromIndex === i, [$style.dragOver]: dragOverIndex === i }]"
+              :title="getItemLabel(item)"
+              @pointerdown="startDrag(i, $event)"
+            >
+              <i :class="['ti', getItemIcon(item)]" />
+              <ColumnBadges :account-id="item.accountId" :size="10" />
+              <button class="_button" :class="$style.tabRemoveBtn" @click.stop="removeItem(i)">
+                <i class="ti ti-x" />
+              </button>
+            </div>
             <div v-if="items.length === 0" :class="$style.empty">項目なし</div>
-
-            <!-- Add divider button -->
-            <button :class="$style.navDividerTab" :title="'区切り線を追加'" @click="addDivider">
-              <i class="ti ti-separator" />
-            </button>
           </div>
         </div>
 
@@ -420,44 +403,6 @@ async function importNav() {
   }
 }
 
-.navDividerTab {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 24px;
-  margin: 2px auto;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  color: inherit;
-  border-radius: 12px;
-  cursor: grab;
-  user-select: none;
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-
-  &.dragging {
-    opacity: 0.3;
-    cursor: grabbing;
-  }
-
-  &.dragOver {
-    outline: 2px solid var(--nd-accent);
-    outline-offset: 1px;
-  }
-}
-
-.navDividerLine {
-  width: 24px;
-  height: 1px;
-  background: var(--nd-divider);
-}
-
 .tabRemoveBtn {
   position: absolute;
   top: -2px;
@@ -474,8 +419,7 @@ async function importNav() {
   opacity: 0;
   transition: opacity var(--nd-duration-fast);
 
-  .navTab:hover &,
-  .navDividerTab:hover & {
+  .navTab:hover & {
     opacity: 1;
   }
 
@@ -512,108 +456,6 @@ async function importNav() {
   margin-left: auto;
   font-weight: normal;
   opacity: 0.8;
-}
-
-.mobileList {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px 8px;
-}
-
-.mobileRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  background: var(--nd-panel);
-  border-radius: var(--nd-radius-sm);
-  min-height: 44px;
-
-  &.mobileRowDivider {
-    opacity: 0.6;
-  }
-}
-
-.mobileGrip {
-  flex-shrink: 0;
-  font-size: 14px;
-  color: var(--nd-fg);
-  opacity: 0.25;
-}
-
-.mobileIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  font-size: 1em;
-  color: var(--nd-fg);
-}
-
-.mobileLabel {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobileBadges {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.mobileBadgeImg {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.mobileRemoveBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  margin-left: 4px;
-  border-radius: var(--nd-radius-sm);
-  color: var(--nd-fg);
-  opacity: 0.35;
-  transition: opacity var(--nd-duration-fast), color var(--nd-duration-fast), background var(--nd-duration-fast);
-
-  &:hover {
-    opacity: 1;
-    color: var(--nd-love, #ec4137);
-    background: color-mix(in srgb, var(--nd-love, #ec4137) 10%, transparent);
-  }
-}
-
-.mobileAddDivider {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  margin: 0 8px;
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  opacity: 0.4;
-  border: 1px dashed var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  transition: opacity var(--nd-duration-fast), border-color var(--nd-duration-fast);
-
-  &:hover {
-    opacity: 0.7;
-    border-color: var(--nd-accent);
-  }
 }
 
 .empty {

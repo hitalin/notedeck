@@ -1,8 +1,6 @@
 import { ref } from 'vue'
 
 export interface PointerReorderOptions {
-  /** Axis for the drag threshold check. Default: 'y'. */
-  axis?: 'x' | 'y'
   /** data-* attribute name on draggable elements (e.g. 'nav-idx' → data-nav-idx). */
   dataAttr: string
   /** Minimum pointer movement (px) before drag begins. Default: 5. */
@@ -12,7 +10,7 @@ export interface PointerReorderOptions {
 }
 
 export function usePointerReorder(options: PointerReorderOptions) {
-  const { axis = 'y', dataAttr, threshold = 5, onReorder } = options
+  const { dataAttr, threshold = 5, onReorder } = options
 
   const dragFromIndex = ref<number | null>(null)
   const dragOverIndex = ref<number | null>(null)
@@ -33,7 +31,8 @@ export function usePointerReorder(options: PointerReorderOptions) {
     cleanupPending?.()
 
     e.preventDefault()
-    const start = axis === 'x' ? e.clientX : e.clientY
+    const startX = e.clientX
+    const startY = e.clientY
 
     function cleanup() {
       document.removeEventListener('pointermove', onMove)
@@ -42,8 +41,9 @@ export function usePointerReorder(options: PointerReorderOptions) {
     }
 
     function onMove(ev: PointerEvent) {
-      const current = axis === 'x' ? ev.clientX : ev.clientY
-      if (Math.abs(current - start) < threshold) return
+      const dx = ev.clientX - startX
+      const dy = ev.clientY - startY
+      if (Math.abs(dx) + Math.abs(dy) < threshold) return
       cleanup()
       beginDrag(index)
     }
