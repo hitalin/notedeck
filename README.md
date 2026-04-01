@@ -6,7 +6,7 @@
 
 **複数の Misskey サーバーをひとつのデッキで。**
 
-マルチサーバー対応 Misskey デッキクライアント
+Misskey 統合環境 (IDE) — 閲覧・投稿・検索・連携をひとつに
 
 > **対応範囲:** Misskey 本家および「Misskey を名乗り続けるフォーク」（yamisskey, misskey-tempura 等）に対応しています。
 > Misskey から名前が別物になったフォーク（Sharkey, CherryPick, Firefish, Iceshrimp 等）は対応していません。

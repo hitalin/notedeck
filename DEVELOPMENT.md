@@ -1,6 +1,6 @@
 # NoteDeck Development Guide
 
-Multi-server Misskey deck client with fork support. 設計思想・方針は [DESIGN.md](DESIGN.md) を参照。
+Multi-server Misskey IDE (Integrated Environment) with fork support. 設計思想・方針は [DESIGN.md](DESIGN.md) を参照。
 
 ## Tech Stack
 
