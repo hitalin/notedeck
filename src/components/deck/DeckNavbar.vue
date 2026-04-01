@@ -351,17 +351,35 @@ defineExpose({
       :style="isCompact ? undefined : { flexBasis: navWidth + 'px' }"
     >
       <div :class="$style.body">
-        <!-- App icon -->
-        <div :class="[$style.section, $style.appIconSection]">
+        <!-- Top header -->
+        <div :class="$style.top">
           <button
             class="_button"
-            :class="$style.appIconBtn"
+            :class="$style.instanceBtn"
             title="NoteDeck について"
             @click="windowsStore.open('about')"
           >
-            <img src="/favicon.svg" :class="$style.appIconImg" alt="NoteDeck" />
-            <span :class="$style.label">NoteDeck</span>
+            <img src="/favicon.svg" :class="$style.instanceIcon" alt="NoteDeck" />
             <span v-if="props.updateAvailable" :class="$style.updateDot" />
+          </button>
+          <button
+            v-if="!navCollapsed && !isCompact"
+            class="_button"
+            :class="[$style.topBtn, offlineModeStore.isOfflineMode ? $style.offlineActive : $style.onlineActive]"
+            :title="offlineModeStore.isOfflineMode ? 'オンラインモードに切り替え' : 'オフラインモードに切り替え'"
+            @click="hapticLight(); toggleOfflineMode()"
+          >
+            <i :class="offlineModeStore.isOfflineMode ? 'ti ti-wifi-off' : 'ti ti-wifi'" />
+          </button>
+          <button
+            v-if="!navCollapsed && !isCompact"
+            class="_button"
+            :class="[$style.topBtn, realtimeModeStore.enabled ? $style.realtimeActive : $style.pollingActive, { [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
+            :disabled="offlineModeStore.isOfflineMode"
+            :title="realtimeModeStore.enabled ? 'ポーリングモードに切り替え' : 'リアルタイムモードに切り替え'"
+            @click="hapticLight(); toggleRealtimeMode()"
+          >
+            <i :class="realtimeModeStore.enabled ? 'ti ti-bolt' : 'ti ti-bolt-off'" />
           </button>
         </div>
 
@@ -421,32 +439,32 @@ defineExpose({
           </div>
           <div v-if="isCompact" :class="$style.divider" />
 
-          <!-- Offline mode -->
-          <button
-            class="_button"
-            :class="[$style.item, offlineModeStore.isOfflineMode ? $style.offlineActive : $style.onlineActive]"
-            :title="offlineModeStore.isOfflineMode ? 'オンラインモードに切り替え' : 'オフラインモードに切り替え'"
-            @click="hapticLight(); toggleOfflineMode()"
-          >
-            <div :class="$style.iconWrap">
-              <i :class="offlineModeStore.isOfflineMode ? 'ti ti-wifi-off' : 'ti ti-wifi'" />
-            </div>
-            <span :class="$style.label">{{ offlineModeStore.isOfflineMode ? 'オフライン' : 'オンライン' }}</span>
-          </button>
-
-          <!-- Realtime mode -->
-          <button
-            class="_button"
-            :class="[$style.item, realtimeModeStore.enabled ? $style.realtimeActive : $style.pollingActive, { [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
-            :disabled="offlineModeStore.isOfflineMode"
-            :title="realtimeModeStore.enabled ? 'ポーリングモードに切り替え' : 'リアルタイムモードに切り替え'"
-            @click="hapticLight(); toggleRealtimeMode()"
-          >
-            <div :class="$style.iconWrap">
-              <i :class="realtimeModeStore.enabled ? 'ti ti-bolt' : 'ti ti-bolt-off'" />
-            </div>
-            <span :class="$style.label">{{ realtimeModeStore.enabled ? 'リアルタイム' : 'ポーリング' }}</span>
-          </button>
+          <!-- Offline/Realtime mode (collapsed & mobile only) -->
+          <template v-if="navCollapsed || isCompact">
+            <button
+              class="_button"
+              :class="[$style.item, offlineModeStore.isOfflineMode ? $style.offlineActive : $style.onlineActive]"
+              :title="offlineModeStore.isOfflineMode ? 'オンラインモードに切り替え' : 'オフラインモードに切り替え'"
+              @click="hapticLight(); toggleOfflineMode()"
+            >
+              <div :class="$style.iconWrap">
+                <i :class="offlineModeStore.isOfflineMode ? 'ti ti-wifi-off' : 'ti ti-wifi'" />
+              </div>
+              <span :class="$style.label">{{ offlineModeStore.isOfflineMode ? 'オフライン' : 'オンライン' }}</span>
+            </button>
+            <button
+              class="_button"
+              :class="[$style.item, realtimeModeStore.enabled ? $style.realtimeActive : $style.pollingActive, { [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
+              :disabled="offlineModeStore.isOfflineMode"
+              :title="realtimeModeStore.enabled ? 'ポーリングモードに切り替え' : 'リアルタイムモードに切り替え'"
+              @click="hapticLight(); toggleRealtimeMode()"
+            >
+              <div :class="$style.iconWrap">
+                <i :class="realtimeModeStore.enabled ? 'ti ti-bolt' : 'ti ti-bolt-off'" />
+              </div>
+              <span :class="$style.label">{{ realtimeModeStore.enabled ? 'リアルタイム' : 'ポーリング' }}</span>
+            </button>
+          </template>
 
           <!-- Post button -->
           <button
@@ -608,32 +626,44 @@ defineExpose({
   }
 }
 
-.appIconSection {
-  flex-shrink: 0;
-}
-
-.appIconBtn {
-  position: relative;
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 14px;
-  line-height: 2.85rem;
-  border-radius: var(--nd-radius-full);
-  color: var(--nd-navFg, var(--nd-fg));
-  font-size: 0.95em;
-  font-weight: 700;
-  transition: background var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
+  height: 44px;
+  flex-shrink: 0;
 }
 
-.appIconImg {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
+.instanceBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.instanceIcon {
+  width: 28px;
+  aspect-ratio: 1;
+  border-radius: 6px;
+}
+
+.topBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--nd-navFg, var(--nd-fg));
+
+  :global(.ti) {
+    font-size: 28px;
+    opacity: 0.7;
+  }
+
+  &:hover :global(.ti) {
+    opacity: 1;
+  }
 }
 
 .topScroll {
@@ -1058,13 +1088,14 @@ defineExpose({
     display: none;
   }
 
-  .appIconBtn {
+  .top {
+    padding-left: 0;
     justify-content: center;
-    padding: 0;
-    width: 44px;
-    height: 44px;
-    margin: 2px auto;
-    border-radius: 50%;
+  }
+
+  .instanceIcon {
+    width: 30px;
+    border-radius: 6px;
   }
 
   .item {
