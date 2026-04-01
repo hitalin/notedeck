@@ -9,6 +9,7 @@ import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { usePointerReorder } from '@/composables/usePointerReorder'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import {
   DEFAULT_NAV_ITEMS,
@@ -16,6 +17,7 @@ import {
   type NavItem,
   useDeckStore,
 } from '@/stores/deck'
+import { useServersStore } from '@/stores/servers'
 import { useIsCompactLayout } from '@/stores/ui'
 
 const AddColumnDialog = defineAsyncComponent(
@@ -25,9 +27,25 @@ const CodeEditor = defineAsyncComponent(
   () => import('@/components/deck/widgets/CodeEditor.vue'),
 )
 
+const accountsStore = useAccountsStore()
+const serversStore = useServersStore()
 const deckStore = useDeckStore()
 const isCompact = useIsCompactLayout()
 const jsonLang = json()
+
+function itemAvatarUrl(item: NavItem): string | null {
+  if (isNavDivider(item) || !item.accountId) return null
+  const account = accountsStore.accounts.find((a) => a.id === item.accountId)
+  return account ? getAccountAvatarUrl(account) : null
+}
+
+function itemServerIconUrl(item: NavItem): string | null {
+  if (isNavDivider(item) || !item.accountId) return null
+  const account = accountsStore.accounts.find((a) => a.id === item.accountId)
+  if (!account) return null
+  const server = serversStore.servers.get(account.host)
+  return server?.iconUrl ?? `https://${account.host}/favicon.ico`
+}
 
 // ── Tab management ──
 const { tab, containerRef: contentRef } = useEditorTabs(
@@ -52,17 +70,6 @@ watch(items, (v) => deckStore.setNavItems(v), { deep: true })
 
 function removeItem(index: number) {
   items.value.splice(index, 1)
-}
-
-function moveItem(index: number, direction: -1 | 1) {
-  const target = index + direction
-  if (target < 0 || target >= items.value.length) return
-  const arr = [...items.value]
-  const [moved] = arr.splice(index, 1)
-  if (moved) {
-    arr.splice(target, 0, moved)
-    items.value = arr
-  }
 }
 
 function addDivider() {
@@ -193,15 +200,10 @@ async function importNav() {
               <i :class="['ti', getItemIcon(item)]" />
             </span>
             <span :class="$style.mobileLabel">{{ getItemLabel(item) }}</span>
-            <ColumnBadges v-if="!isNavDivider(item)" :account-id="item.accountId" :size="10" />
-            <div :class="$style.mobileMoveGroup">
-              <button class="_button" :class="$style.mobileMoveBtn" :disabled="i === 0" @click="moveItem(i, -1)">
-                <i class="ti ti-chevron-up" />
-              </button>
-              <button class="_button" :class="$style.mobileMoveBtn" :disabled="i === items.length - 1" @click="moveItem(i, 1)">
-                <i class="ti ti-chevron-down" />
-              </button>
-            </div>
+            <span v-if="!isNavDivider(item) && (itemServerIconUrl(item) || itemAvatarUrl(item))" :class="$style.mobileBadges">
+              <img v-if="itemAvatarUrl(item)" :src="itemAvatarUrl(item)!" :class="$style.mobileBadgeImg" />
+              <img v-if="itemServerIconUrl(item)" :src="itemServerIconUrl(item)!" :class="$style.mobileBadgeImg" />
+            </span>
             <button class="_button" :class="$style.mobileRemoveBtn" @click="removeItem(i)">
               <i class="ti ti-x" />
             </button>
@@ -561,33 +563,18 @@ async function importNav() {
   white-space: nowrap;
 }
 
-.mobileMoveGroup {
+.mobileBadges {
   display: flex;
   align-items: center;
+  gap: 4px;
   flex-shrink: 0;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-bg);
 }
 
-.mobileMoveBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  transition: opacity var(--nd-duration-fast), background var(--nd-duration-fast);
-
-  &:hover {
-    opacity: 1;
-    background: var(--nd-buttonHoverBg);
-  }
-
-  &:disabled {
-    opacity: 0.15;
-    pointer-events: none;
-  }
+.mobileBadgeImg {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .mobileRemoveBtn {

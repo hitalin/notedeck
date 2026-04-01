@@ -13,23 +13,36 @@ export interface WorkerClient<TRes extends WorkerResponse> {
   post: (data: Record<string, unknown>) => Promise<TRes>
 }
 
+interface PendingCallbacks<TRes> {
+  resolve: (data: TRes) => void
+  reject: (reason: unknown) => void
+}
+
 export function createWorkerClient<TRes extends WorkerResponse>(
   url: URL,
 ): WorkerClient<TRes> {
   let worker: Worker | null = null
   let requestId = 0
-  const pending = new Map<number, (data: TRes) => void>()
+  const pending = new Map<number, PendingCallbacks<TRes>>()
 
   function getWorker(): Worker {
     if (!worker) {
       worker = new Worker(url, { type: 'module' })
       worker.onmessage = (event: MessageEvent<TRes>) => {
         const { id } = event.data
-        const resolve = pending.get(id)
-        if (resolve) {
+        const cb = pending.get(id)
+        if (cb) {
           pending.delete(id)
-          resolve(event.data)
+          cb.resolve(event.data)
         }
+      }
+      worker.onerror = (event) => {
+        console.error('[WorkerClient] Worker failed to load:', event.message)
+        for (const [id, cb] of pending) {
+          pending.delete(id)
+          cb.reject(new Error(`Worker error: ${event.message}`))
+        }
+        worker = null
       }
     }
     return worker
@@ -37,10 +50,10 @@ export function createWorkerClient<TRes extends WorkerResponse>(
 
   return {
     post(data) {
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         const id = requestId++
+        pending.set(id, { resolve, reject })
         getWorker().postMessage({ ...data, id })
-        pending.set(id, resolve)
       })
     },
   }

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, inject, onBeforeUnmount, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, provide, ref, watch } from 'vue'
 import {
   popOutColumnToWindow,
   requestMoveColumn,
 } from '@/composables/useDeckWindow'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
@@ -20,11 +21,19 @@ const props = defineProps<{
   themeVars?: Record<string, string>
   soundEnabled?: boolean
   webUiUrl?: string
-  /** Show a shared refresh button in the header (hidden on mobile native) */
-  refreshable?: boolean
-  /** Show spin animation on the refresh button */
-  refreshing?: boolean
+  pullRefresh?: () => Promise<void>
 }>()
+
+// --- Pull-to-refresh (unified) ---
+const pullScrollerRef = ref<HTMLElement | null>(null)
+provide('deckPullScrollerTarget', pullScrollerRef)
+
+const { isPulling, isPulledEnough, isRefreshing, displayHeight } =
+  usePullToRefresh(pullScrollerRef, async () => {
+    if (props.pullRefresh) await props.pullRefresh()
+  })
+
+const showPullFrame = computed(() => !!props.pullRefresh && isPulling.value)
 
 const isPipMode = window.location.pathname === '/pip'
 const pipColumnConfig = inject<(() => DeckColumnType | null) | undefined>(
@@ -136,6 +145,16 @@ function recallToMain() {
   requestMoveColumn(props.columnId, null)
 }
 
+// Titlebar reload button: refresh this column when it's the active one
+watch(
+  () => deckStore.refreshTrigger,
+  () => {
+    if (deckStore.activeColumnId === props.columnId) {
+      emit('refresh')
+    }
+  },
+)
+
 const isMuted = computed(
   () => deckStore.getColumn(props.columnId)?.soundMuted ?? false,
 )
@@ -194,21 +213,11 @@ function openAsPip() {
       <span :class="$style.headerTitle" :data-tauri-drag-region="isPipMode ? '' : undefined">{{ title }}</span>
 
       <template v-if="!isPipMode">
-        <button
-          v-if="refreshable && !isMobilePlatform"
-          :class="$style.headerRefresh"
-          class="_button"
-          title="更新"
-          :disabled="refreshing"
-          @click.stop="emit('refresh')"
-        >
-          <i class="ti ti-refresh" :class="{ 'nd-spin': refreshing }" />
-        </button>
         <slot name="header-meta" />
       </template>
 
-      <!-- Grabber (Misskey 6-dot pattern, hidden in PiP) -->
-      <i v-if="!isPipMode" :class="$style.grabber" class="column-grabber ti ti-grip-vertical" />
+      <!-- Grabber (Misskey 6-dot pattern, hidden in PiP, mobile, and compact layout) -->
+      <i v-if="!isPipMode && !isMobilePlatform && !isCompact" :class="$style.grabber" class="column-grabber ti ti-grip-vertical" />
 
       <!-- Menu button (shared between PiP and Deck) -->
       <button ref="menuBtnEl" :class="$style.headerBtn" class="_button" title="メニュー" @click.stop="toggleMenu">
@@ -270,6 +279,21 @@ function openAsPip() {
       </div>
       <div v-else-if="offlineModeStore.isOfflineMode && !isLoggedOut" :class="$style.offlineBanner">
         <i class="ti ti-cloud-off" />オフライン
+      </div>
+      <div
+        v-if="showPullFrame"
+        :class="$style.pullFrame"
+        :style="`--frame-min-height: ${displayHeight()}px`"
+      >
+        <div :class="$style.pullFrameContent">
+          <i v-if="isRefreshing" class="ti ti-loader-2 nd-spin" />
+          <i v-else class="ti ti-arrow-bar-to-down" :class="{ refresh: isPulledEnough }" />
+          <div :class="$style.pullText">
+            <template v-if="isPulledEnough">離してリフレッシュ</template>
+            <template v-else-if="isRefreshing">リフレッシュ中…</template>
+            <template v-else>下に引いてリフレッシュ</template>
+          </div>
+        </div>
       </div>
       <slot />
     </div>
@@ -338,23 +362,6 @@ function openAsPip() {
   white-space: nowrap;
   font-size: 0.85em;
 }
-
-.headerRefresh {
-  flex-shrink: 0;
-  opacity: 0.6;
-  font-size: 14px;
-  padding: 2px;
-  transition: opacity var(--nd-duration-slow);
-
-  &:hover {
-    opacity: 1;
-  }
-
-  &:disabled {
-    opacity: 0.3;
-  }
-}
-
 
 .grabber {
   flex-shrink: 0;
@@ -457,6 +464,44 @@ function openAsPip() {
 .loggedOutBanner {
   @extend %statusBanner;
   background: color-mix(in srgb, var(--nd-error) 70%, transparent);
+}
+
+/* Pull-to-refresh indicator */
+.pullFrame {
+  position: relative;
+  overflow: clip;
+  width: 100%;
+  min-height: var(--frame-min-height, 0px);
+  mask-image: linear-gradient(90deg, #000 0%, #000 80%, transparent);
+  -webkit-mask-image: -webkit-linear-gradient(90deg, #000 0%, #000 80%, transparent);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.pullFrameContent {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  margin: 5px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  > :global(.ti) {
+    margin: 6px 0;
+    transition: transform 0.25s;
+  }
+
+  > :global(.refresh) {
+    rotate: 180deg;
+  }
+}
+
+.pullText {
+  margin: 5px 0;
+  font-size: 90%;
+  color: var(--nd-fg);
+  opacity: 0.7;
 }
 
 @keyframes slide-down {

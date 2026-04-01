@@ -4,6 +4,7 @@ import type { NormalizedUser } from '@/adapters/types'
 import AvatarStack from '@/components/common/AvatarStack.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
+import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNavigation } from '@/composables/useNavigation'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
@@ -39,6 +40,7 @@ const error = ref<AppError | null>(null)
 const requests = ref<FollowRequest[]>([])
 const actionStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 const scrollContainer = ref<HTMLElement | null>(null)
+useColumnPullScroller(scrollContainer)
 
 function scrollToTop() {
   scrollContainer.value?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -155,9 +157,8 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name || 'フォローリクエスト'"
     :theme-vars="columnThemeVars"
-    refreshable
-    :refreshing="isLoading"
     @header-click="scrollToTop"
+    :pull-refresh="fetchRequests"
     @refresh="fetchRequests"
   >
     <template #header-icon>

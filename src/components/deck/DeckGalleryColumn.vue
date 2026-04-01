@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { safeUrl } from '@/composables/useDriveFolder'
 import { getAccountAvatarUrl } from '@/stores/accounts'
@@ -158,6 +159,7 @@ function onScroll(e: Event) {
 }
 
 const galleryGridScrollRef = useTemplateRef<HTMLElement>('galleryGridScrollRef')
+useColumnPullScroller(galleryGridScrollRef)
 const galleryDetailScrollRef = useTemplateRef<HTMLElement>(
   'galleryDetailScrollRef',
 )
@@ -180,7 +182,7 @@ fetchGallery()
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'ギャラリー'" :theme-vars="columnThemeVars" @header-click="scrollToTop">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'ギャラリー'" :theme-vars="columnThemeVars" :pull-refresh="fetchGallery" @header-click="scrollToTop" @refresh="fetchGallery()">
     <template #header-icon>
       <i class="ti ti-icons" :class="$style.tlHeaderIcon" />
     </template>
@@ -188,9 +190,6 @@ fetchGallery()
     <template #header-meta>
       <button v-if="canGoBack" class="_button" :class="$style.headerRefresh" title="戻る" @click.stop="goBack">
         <i class="ti ti-arrow-left" />
-      </button>
-      <button v-if="!detailPost" class="_button" :class="$style.headerRefresh" title="更新" :disabled="loading" @click.stop="fetchGallery()">
-        <i class="ti ti-refresh" :class="{ 'nd-spin': loading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />

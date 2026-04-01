@@ -56,7 +56,7 @@ function onSyncChange(e: Event) {
 
 .toggleArea {
   position: relative;
-  padding: 22px 0;
+  padding: 26px 0;
   text-align: center;
 }
 
@@ -77,8 +77,9 @@ function onSyncChange(e: Event) {
   padding: 0;
   border: none;
   font: inherit;
+  text-align: left;
   background-color: #83d8ff;
-  border-radius: 42px;
+  border-radius: 84px;
   transition: background-color 200ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
 
   &.checked {
@@ -99,7 +100,7 @@ function onSyncChange(e: Event) {
 }
 
 .labelBefore {
-  left: -56px;
+  left: -58px;
   color: var(--nd-accent);
 
   .checked & {
@@ -108,7 +109,7 @@ function onSyncChange(e: Event) {
 }
 
 .labelAfter {
-  right: -52px;
+  right: -56px;
   color: var(--nd-fg);
 
   .checked & {
@@ -127,7 +128,7 @@ function onSyncChange(e: Event) {
   background-color: #ffcf96;
   border-radius: 50px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  transition: transform 400ms cubic-bezier(0.34, 1.1, 0.64, 1), background-color 400ms cubic-bezier(0.34, 1.1, 0.64, 1);
+  transition: all 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
   transform: rotate(-45deg);
 
   .checked & {
@@ -157,46 +158,46 @@ function onSyncChange(e: Event) {
   width: 30px;
   height: 3px;
   background-color: #fff;
-  transition: transform 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95), opacity 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
+  transition: all 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
   border-radius: 50%;
 }
 
 .star1 {
   top: 10px; left: 35px; z-index: 0;
-  .checked & { transform: scale(0.067, 0.67); }
+  .checked & { width: 2px; height: 2px; }
 }
 
 .star2 {
   top: 18px; left: 28px; z-index: 1;
-  .checked & { transform: scale(0.133, 1.33) translate3d(-5px, 0, 0); }
+  .checked & { width: 4px; height: 4px; transform: translate3d(-5px, 0, 0); }
 }
 
 .star3 {
   top: 27px; left: 40px; z-index: 0;
-  .checked & { transform: scale(0.067, 0.67) translate3d(-7px, 0, 0); }
+  .checked & { width: 2px; height: 2px; transform: translate3d(-7px, 0, 0); }
 }
 
 .star4, .star5, .star6 {
   opacity: 0;
-  transition: opacity 300ms 0ms cubic-bezier(0.445, 0.05, 0.55, 0.95), transform 300ms 0ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
+  transition: all 300ms 0ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
 }
 
 .star4 {
   top: 16px; left: 11px; z-index: 0; width: 2px; height: 2px;
   transform: translate3d(3px, 0, 0);
-  .checked & { opacity: 1; transform: translate3d(0, 0, 0); transition: opacity 300ms 200ms cubic-bezier(0.445, 0.05, 0.55, 0.95), transform 300ms 200ms cubic-bezier(0.445, 0.05, 0.55, 0.95); }
+  .checked & { opacity: 1; transform: translate3d(0, 0, 0); transition: all 300ms 200ms cubic-bezier(0.445, 0.05, 0.55, 0.95); }
 }
 
 .star5 {
   top: 32px; left: 17px; z-index: 0; width: 3px; height: 3px;
   transform: translate3d(3px, 0, 0);
-  .checked & { opacity: 1; transform: translate3d(0, 0, 0); transition: opacity 300ms 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95), transform 300ms 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95); }
+  .checked & { opacity: 1; transform: translate3d(0, 0, 0); transition: all 300ms 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95); }
 }
 
 .star6 {
   top: 36px; left: 28px; z-index: 0; width: 2px; height: 2px;
   transform: translate3d(3px, 0, 0);
-  .checked & { opacity: 1; transform: translate3d(0, 0, 0); transition: opacity 300ms 400ms cubic-bezier(0.445, 0.05, 0.55, 0.95), transform 300ms 400ms cubic-bezier(0.445, 0.05, 0.55, 0.95); }
+  .checked & { opacity: 1; transform: translate3d(0, 0, 0); transition: all 300ms 400ms cubic-bezier(0.445, 0.05, 0.55, 0.95); }
 }
 
 .active { /* modifier */ }

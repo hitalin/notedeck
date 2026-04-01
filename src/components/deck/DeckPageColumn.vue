@@ -29,6 +29,7 @@ const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
+import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { usePortal } from '@/composables/usePortal'
 import { useSwipeTab } from '@/composables/useSwipeTab'
@@ -380,6 +381,7 @@ const isOwnPage = computed(
 )
 
 const pageListRef = useTemplateRef<HTMLElement>('pageListRef')
+useColumnPullScroller(pageListRef)
 const pageViewScrollRef = useTemplateRef<HTMLElement>('pageViewScrollRef')
 
 function scrollToTop() {
@@ -399,7 +401,7 @@ const pageEditUrl = computed(() => {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'ページ'" :theme-vars="columnThemeVars" :web-ui-url="pageWebUrl" @header-click="scrollToTop">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'ページ'" :theme-vars="columnThemeVars" :web-ui-url="pageWebUrl" :pull-refresh="fetchList" @header-click="scrollToTop" @refresh="fetchList()">
     <AiScriptDialog ref="dialogRef" />
     <template #header-icon>
       <i class="ti ti-note" :class="$style.tlHeaderIcon" />
@@ -408,9 +410,6 @@ const pageEditUrl = computed(() => {
     <template #header-meta>
       <button v-if="mode !== 'list'" class="_button" :class="$style.headerRefresh" title="戻る" @click.stop="goBack">
         <i class="ti ti-arrow-left" />
-      </button>
-      <button v-else class="_button" :class="$style.headerRefresh" title="更新" :disabled="listLoading" @click.stop="fetchList()">
-        <i class="ti ti-refresh" :class="{ 'nd-spin': listLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />

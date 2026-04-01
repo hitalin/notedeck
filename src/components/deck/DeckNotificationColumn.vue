@@ -23,6 +23,7 @@ import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
+import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
@@ -30,7 +31,6 @@ import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { usePortal } from '@/composables/usePortal'
-import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabIndicator } from '@/composables/useTabIndicator'
 import { useTabSlide } from '@/composables/useTabSlide'
@@ -233,9 +233,16 @@ const filteredNotifications = computed(() => {
   )
 })
 
-const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(
-  null,
-)
+const noteScrollerRef = ref<{
+  getElement: () => HTMLElement | null
+  scrollToIndex: (
+    index: number,
+    opts?: {
+      align?: 'auto' | 'start' | 'center' | 'end'
+      behavior?: ScrollBehavior
+    },
+  ) => void
+} | null>(null)
 watch(
   noteScrollerRef,
   () => {
@@ -249,7 +256,14 @@ let rafBuffer: NormalizedNotification[] = []
 let rafId: number | null = null
 
 function scrollToTop() {
-  scroller.value?.scrollTo({ top: 0, behavior: 'smooth' })
+  if (noteScrollerRef.value) {
+    noteScrollerRef.value.scrollToIndex(0, {
+      align: 'start',
+      behavior: 'smooth',
+    })
+  } else if (scroller.value) {
+    scroller.value.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 }
 
 function flushRafBuffer() {
@@ -740,8 +754,7 @@ async function pullRefresh() {
   }
 }
 
-const { isPulling, isPulledEnough, isRefreshing, pullDistance, displayHeight } =
-  usePullToRefresh(scroller, pullRefresh)
+useColumnPullScroller(scroller)
 
 // Tab slide animation
 const notifTabIndex = computed(() =>
@@ -803,6 +816,7 @@ onUnmounted(() => {
     title="通知"
     :theme-vars="columnThemeVars"
     sound-enabled
+    :pull-refresh="pullRefresh"
     @header-click="scrollToTop"
   >
     <template #header-icon>
@@ -846,22 +860,6 @@ onUnmounted(() => {
     </div>
 
     <div v-else :class="$style.notifBody">
-      <div
-        v-if="isPulling"
-        :class="$style.pullFrame"
-        :style="`--frame-min-height: ${displayHeight()}px`"
-      >
-        <div :class="$style.pullFrameContent">
-          <i v-if="isRefreshing" class="ti ti-loader-2 nd-spin" />
-          <i v-else class="ti ti-arrow-bar-to-down" :class="{ refresh: isPulledEnough }" />
-          <div :class="$style.pullText">
-            <template v-if="isPulledEnough">離してリフレッシュ</template>
-            <template v-else-if="isRefreshing">リフレッシュ中…</template>
-            <template v-else>下に引いてリフレッシュ</template>
-          </div>
-        </div>
-      </div>
-
       <div v-if="isLoading && notifications.length === 0" :class="$style.columnLoading">
         <LoadingSpinner />
       </div>

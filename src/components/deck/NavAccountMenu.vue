@@ -41,6 +41,7 @@ const emit = defineEmits<{
 const { navigateToUser } = useNavigation()
 
 const menuRef = ref<HTMLElement | null>(null)
+const fixedStyle = ref<Record<string, string>>({})
 const { activate: activateKeyboard, deactivate: deactivateKeyboard } =
   useMenuKeyboard({
     containerRef: menuRef,
@@ -51,8 +52,29 @@ const { activate: activateKeyboard, deactivate: deactivateKeyboard } =
 watch(
   () => props.show,
   (v) => {
-    if (v) nextTick(activateKeyboard)
-    else deactivateKeyboard()
+    if (v) {
+      if (props.navCollapsed && !isCompact.value) {
+        nextTick(() => {
+          const parent = menuRef.value?.parentElement
+          if (parent) {
+            const rect = parent.getBoundingClientRect()
+            fixedStyle.value = {
+              position: 'fixed',
+              left: `${rect.right + 4}px`,
+              bottom: `${window.innerHeight - rect.bottom}px`,
+              top: 'auto',
+              right: 'auto',
+              margin: '0',
+            }
+          }
+        })
+      } else {
+        fixedStyle.value = {}
+      }
+      nextTick(activateKeyboard)
+    } else {
+      deactivateKeyboard()
+    }
   },
 )
 
@@ -83,11 +105,12 @@ function modeIcon(key: string, active: boolean): string {
       class="_popupMenu"
       :class="[
         $style.navAccountMenu,
-        { [$style.menuRight]: navCollapsed, [$style.mobile]: isCompact },
+        { [$style.menuRight]: navCollapsed && !fixedStyle.position, [$style.mobile]: isCompact },
         menuLeaving
           ? (navCollapsed ? $style.menuLeaveRight : $style.menuLeave)
           : (navCollapsed ? $style.menuEnterRight : $style.menuEnter),
       ]"
+      :style="navCollapsed && !isCompact ? fixedStyle : undefined"
       @click.stop
     >
       <!-- Mode toggles (auth required) -->

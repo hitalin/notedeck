@@ -73,8 +73,6 @@ usePortal(postFormPortalRef)
     :column-id="column.id"
     :title="column.name || 'ユーザー'"
     :theme-vars="columnThemeVars"
-    refreshable
-    :refreshing="isLoading"
     @header-click="scrollToTop()"
     @refresh="refresh"
   >

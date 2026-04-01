@@ -493,6 +493,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
             <template v-else>{{ effectiveNote.user.username }}</template>
           </span>
           <span :class="$style.username">@{{ effectiveNote.user.username }}{{ effectiveNote.user.host ? `@${effectiveNote.user.host}` : '' }}</span>
+          <span v-if="effectiveNote.user.isBot" :class="$style.isBot">Bot</span>
           <span :class="$style.info">
             <span :class="$style.time">{{ formatTime(effectiveNote.createdAt) }}</span>
             <span
@@ -959,6 +960,16 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   opacity: 0.7;
 }
 
+.isBot {
+  flex-shrink: 0;
+  align-self: center;
+  margin: 0 0.5em 0 0;
+  padding: 1px 6px;
+  font-size: 80%;
+  border: solid 0.5px var(--nd-divider);
+  border-radius: 3px;
+}
+
 /* Server badge (instance ticker) */
 .instanceTicker {
   display: flex;
@@ -969,7 +980,6 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   border-radius: 3px;
   font-size: 0.75em;
   line-height: 1.4;
-  width: fit-content;
   overflow: hidden;
 }
 
@@ -1353,6 +1363,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 
 @container (max-width: 350px) {
   .footerButton { margin-right: 12px; }
+
 }
 
 @container (max-width: 300px) {

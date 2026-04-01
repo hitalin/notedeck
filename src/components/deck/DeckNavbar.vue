@@ -18,6 +18,7 @@ import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import { useServersStore } from '@/stores/servers'
 import { useStreamingStore } from '@/stores/streaming'
 import { useIsCompactLayout } from '@/stores/ui'
+import { useWindowsStore } from '@/stores/windows'
 import {
   clearAvailableTlCache,
   detectAvailableTimelines,
@@ -51,6 +52,7 @@ const { confirm } = useConfirm()
 const deckStore = useDeckStore()
 const offlineModeStore = useOfflineModeStore()
 const realtimeModeStore = useRealtimeModeStore()
+const windowsStore = useWindowsStore()
 const isCompact = useIsCompactLayout()
 const { totalUnread, markAllAsRead } = useUnreadNotifications()
 const { totalUnread: chatUnread, resetAll: resetChatUnread } = useUnreadChat()
@@ -166,6 +168,7 @@ const navWidth = ref(
   document.documentElement.clientWidth <= 1279 ? MIN_WIDTH : DEFAULT_WIDTH,
 )
 const isResizing = ref(false)
+const subButtonsHovered = ref(false)
 const navCollapsed = computed(() => navWidth.value <= MIN_WIDTH)
 watch(
   navCollapsed,
@@ -348,32 +351,63 @@ defineExpose({
       :style="isCompact ? undefined : { flexBasis: navWidth + 'px' }"
     >
       <div :class="$style.body">
-        <!-- Top section -->
-        <div :class="$style.section">
-          <template v-for="(navItem, navIdx) in deckStore.navItems" :key="navIdx">
-            <div v-if="isNavDivider(navItem)" :class="$style.divider" />
-            <button
-              v-else
-              class="_button"
-              :class="[$style.item, { [$style.sidebarActive]: sidebarType === navItem.type }]"
-              :title="navLabel(navItem.type)"
-              @click="hapticLight(); closeDrawerAndDo(getNavAction(navItem))"
-            >
-              <div :class="$style.iconWrap">
-                <i :class="['ti', navIcon(navItem.type)]" />
-                <span v-if="getNavBadge(navItem) > 0" :key="getNavBadge(navItem)" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
-                <ColumnBadges :account-id="navItem.accountId" :size="12" />
-              </div>
-              <span :class="$style.label">{{ navLabel(navItem.type) }}</span>
-            </button>
-          </template>
+        <!-- Top header -->
+        <div :class="$style.top">
+          <button
+            class="_button"
+            :class="$style.instanceBtn"
+            title="NoteDeck について"
+            @click="windowsStore.open('about')"
+          >
+            <img src="/favicon.svg" :class="$style.instanceIcon" alt="NoteDeck" />
+            <span v-if="props.updateAvailable" :class="$style.updateDot" />
+          </button>
+          <button
+            v-if="!navCollapsed || isCompact"
+            class="_button"
+            :class="[$style.topBtn, offlineModeStore.isOfflineMode ? $style.offlineActive : $style.onlineActive]"
+            :title="offlineModeStore.isOfflineMode ? 'オンラインモードに切り替え' : 'オフラインモードに切り替え'"
+            @click="hapticLight(); toggleOfflineMode()"
+          >
+            <i :class="offlineModeStore.isOfflineMode ? 'ti ti-wifi-off' : 'ti ti-wifi'" />
+          </button>
+          <button
+            v-if="!navCollapsed || isCompact"
+            class="_button"
+            :class="[$style.topBtn, realtimeModeStore.enabled ? $style.realtimeActive : $style.pollingActive, { [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
+            :disabled="offlineModeStore.isOfflineMode"
+            :title="realtimeModeStore.enabled ? 'ポーリングモードに切り替え' : 'リアルタイムモードに切り替え'"
+            @click="hapticLight(); toggleRealtimeMode()"
+          >
+            <i :class="realtimeModeStore.enabled ? 'ti ti-bolt' : 'ti ti-bolt-off'" />
+          </button>
         </div>
 
-        <!-- Spacer -->
-        <div :class="$style.spacer" />
+        <!-- Nav items (scrollable) -->
+        <div :class="$style.topScroll">
+          <div :class="$style.section">
+            <template v-for="(navItem, navIdx) in deckStore.navItems" :key="navIdx">
+              <div v-if="isNavDivider(navItem)" :class="$style.divider" />
+              <button
+                v-else
+                class="_button"
+                :class="[$style.item, { [$style.sidebarActive]: sidebarType === navItem.type }]"
+                :title="navLabel(navItem.type)"
+                @click="hapticLight(); closeDrawerAndDo(getNavAction(navItem))"
+              >
+                <div :class="$style.iconWrap">
+                  <i :class="['ti', navIcon(navItem.type)]" />
+                  <span v-if="getNavBadge(navItem) > 0" :key="getNavBadge(navItem)" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
+                  <ColumnBadges :account-id="navItem.accountId" :size="12" />
+                </div>
+                <span :class="$style.label">{{ navLabel(navItem.type) }}</span>
+              </button>
+            </template>
+          </div>
+        </div>
 
-        <!-- Bottom section: post button → accounts -->
-        <div :class="$style.section">
+        <!-- Bottom fixed section: buttons -->
+        <div :class="[$style.section, $style.bottomSection]">
           <!-- Mobile-only: profile & settings -->
           <div v-if="isCompact" :class="$style.mobileOnly">
             <div :class="$style.menuWrap">
@@ -399,39 +433,38 @@ defineExpose({
               >
                 <i class="ti ti-settings" />
                 <span :class="$style.label">設定</span>
-                <span v-if="props.updateAvailable" :class="$style.updateDot" />
               </button>
               <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" @close-all="emit('update:showSettingsMenu', false); emit('update:mobileDrawerOpen', false)" />
             </div>
           </div>
           <div v-if="isCompact" :class="$style.divider" />
 
-          <!-- Offline mode -->
-          <button
-            class="_button"
-            :class="[$style.item, offlineModeStore.isOfflineMode ? $style.offlineActive : $style.onlineActive]"
-            :title="offlineModeStore.isOfflineMode ? 'オンラインモードに切り替え' : 'オフラインモードに切り替え'"
-            @click="hapticLight(); toggleOfflineMode()"
-          >
-            <div :class="$style.iconWrap">
-              <i :class="offlineModeStore.isOfflineMode ? 'ti ti-wifi-off' : 'ti ti-wifi'" />
-            </div>
-            <span :class="$style.label">{{ offlineModeStore.isOfflineMode ? 'オフライン' : 'オンライン' }}</span>
-          </button>
-
-          <!-- Realtime mode -->
-          <button
-            class="_button"
-            :class="[$style.item, realtimeModeStore.enabled ? $style.realtimeActive : $style.pollingActive, { [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
-            :disabled="offlineModeStore.isOfflineMode"
-            :title="realtimeModeStore.enabled ? 'ポーリングモードに切り替え' : 'リアルタイムモードに切り替え'"
-            @click="hapticLight(); toggleRealtimeMode()"
-          >
-            <div :class="$style.iconWrap">
-              <i :class="realtimeModeStore.enabled ? 'ti ti-bolt' : 'ti ti-bolt-off'" />
-            </div>
-            <span :class="$style.label">{{ realtimeModeStore.enabled ? 'リアルタイム' : 'ポーリング' }}</span>
-          </button>
+          <!-- Offline/Realtime mode (collapsed desktop only) -->
+          <template v-if="navCollapsed && !isCompact">
+            <button
+              class="_button"
+              :class="[$style.item, offlineModeStore.isOfflineMode ? $style.offlineActive : $style.onlineActive]"
+              :title="offlineModeStore.isOfflineMode ? 'オンラインモードに切り替え' : 'オフラインモードに切り替え'"
+              @click="hapticLight(); toggleOfflineMode()"
+            >
+              <div :class="$style.iconWrap">
+                <i :class="offlineModeStore.isOfflineMode ? 'ti ti-wifi-off' : 'ti ti-wifi'" />
+              </div>
+              <span :class="$style.label">{{ offlineModeStore.isOfflineMode ? 'オフライン' : 'オンライン' }}</span>
+            </button>
+            <button
+              class="_button"
+              :class="[$style.item, realtimeModeStore.enabled ? $style.realtimeActive : $style.pollingActive, { [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
+              :disabled="offlineModeStore.isOfflineMode"
+              :title="realtimeModeStore.enabled ? 'ポーリングモードに切り替え' : 'リアルタイムモードに切り替え'"
+              @click="hapticLight(); toggleRealtimeMode()"
+            >
+              <div :class="$style.iconWrap">
+                <i :class="realtimeModeStore.enabled ? 'ti ti-bolt' : 'ti ti-bolt-off'" />
+              </div>
+              <span :class="$style.label">{{ realtimeModeStore.enabled ? 'リアルタイム' : 'ポーリング' }}</span>
+            </button>
+          </template>
 
           <!-- Post button -->
           <button
@@ -443,8 +476,10 @@ defineExpose({
             <i class="ti ti-pencil" />
             <span :class="$style.label">ノート</span>
           </button>
+        </div>
 
-          <!-- Account avatars -->
+        <!-- Account avatars (scrollable) -->
+        <div :class="$style.accountSection">
           <div :class="$style.accountStack">
             <div :class="$style.accountScroll">
               <div
@@ -506,22 +541,41 @@ defineExpose({
               </button>
             </div>
           </div>
-
-
-
         </div>
       </div>
 
-      <!-- Collapse toggle -->
-      <button v-if="!isCompact" :class="$style.toggle" title="サイドバー切替" @click="toggleNav">
-        <i :class="navCollapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left'" />
-      </button>
+      <!-- Sub buttons (protruding tab) -->
+      <div v-if="!isCompact" :class="$style.subButtons" @mouseenter="subButtonsHovered = true" @mouseleave="subButtonsHovered = false">
+        <div :class="$style.subButton">
+          <svg viewBox="0 0 16 64" :class="$style.subButtonShape">
+            <g transform="matrix(0.333333,0,0,0.222222,0.000895785,21.3333)">
+              <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" fill="var(--nd-navBg)" />
+            </g>
+          </svg>
+          <button class="_button" :class="$style.subButtonClickable" title="ナビバー編集" @click="windowsStore.open('navEditor')">
+            <i class="ti ti-settings-2" :class="$style.subButtonIcon" />
+          </button>
+        </div>
+        <div :class="$style.subButtonGapFill" />
+        <div :class="$style.subButtonGapFillDivider" />
+        <div :class="$style.subButton">
+          <svg viewBox="0 0 16 64" :class="$style.subButtonShape">
+            <g transform="matrix(0.333333,0,0,0.222222,0.000895785,21.3333)">
+              <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" fill="var(--nd-navBg)" />
+            </g>
+          </svg>
+          <button class="_button" :class="$style.subButtonClickable" title="サイドバー切替" @click="toggleNav">
+            <i :class="[navCollapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left', $style.subButtonIcon]" />
+          </button>
+        </div>
+      </div>
     </nav>
 
     <!-- Resize handle -->
     <div
       v-if="!isCompact"
       :class="[$style.resizeHandle, { [$style.resizeActive]: isResizing }]"
+      :style="subButtonsHovered ? { pointerEvents: 'none' } : undefined"
       @mousedown="startResize"
     />
 
@@ -563,6 +617,58 @@ defineExpose({
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  direction: rtl;
+
+  > * {
+    direction: ltr;
+  }
+}
+
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.instanceBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.instanceIcon {
+  width: 20px;
+  aspect-ratio: 1;
+  border-radius: 4px;
+}
+
+.topBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--nd-navFg, var(--nd-fg));
+
+  :global(.ti) {
+    font-size: 20px;
+    opacity: 0.7;
+  }
+
+  &:hover :global(.ti) {
+    opacity: 1;
+  }
+}
+
+.topScroll {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   direction: rtl;
@@ -578,9 +684,18 @@ defineExpose({
   padding: 10px 6px;
 }
 
-.spacer {
-  flex: 1;
+.bottomSection {
+  flex-shrink: 0;
 }
+
+.accountSection {
+  flex-shrink: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 6px 10px;
+}
+
 
 .divider {
   height: 1px;
@@ -708,6 +823,8 @@ defineExpose({
 .accountStack {
   position: relative;
   margin-top: 8px;
+  flex: 1;
+  min-height: 0;
 }
 
 .accountScroll {
@@ -863,33 +980,82 @@ defineExpose({
   opacity: 0.6;
 }
 
-.toggle {
+.subButtons {
+  --sub-button-width: 20px;
+
   position: absolute;
   right: 0;
-  top: 50%;
-  translate: 50% -50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 40px;
-  border-radius: 0 6px 6px 0;
-  background: var(--nd-panel);
-  border: 1px solid var(--nd-divider);
-  border-left: none;
-  color: var(--nd-fg);
-  opacity: 0;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
-  z-index: 10;
+  bottom: 80px;
+  translate: 100% 0;
+  z-index: 11;
+}
 
-  .navbar:hover & {
-    opacity: 0.5;
+.subButton {
+  display: block;
+  position: relative;
+  width: var(--sub-button-width);
+  height: 50px;
+  align-content: center;
+}
+
+.subButtonShape {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  margin: auto;
+  width: var(--sub-button-width);
+  height: calc(var(--sub-button-width) * 4);
+  pointer-events: none;
+}
+
+.subButtonClickable {
+  position: absolute;
+  z-index: 1;
+  display: block;
+  max-width: unset;
+  width: 24px;
+  height: 42px;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  margin: auto;
+  font-size: 13px;
+  color: var(--nd-navFg, var(--nd-fg));
+  cursor: pointer;
+
+  :global(.ti) {
+    opacity: 0.7;
   }
 
-  &:hover {
+  &:hover :global(.ti) {
     opacity: 1;
   }
+}
+
+.subButtonIcon {
+  margin-left: -4px;
+}
+
+.subButtonGapFill {
+  position: relative;
+  width: var(--sub-button-width);
+  height: 64px;
+  margin-top: -32px;
+  margin-bottom: -32px;
+  pointer-events: none;
+  background: var(--nd-navBg);
+}
+
+.subButtonGapFillDivider {
+  position: relative;
+  z-index: 1;
+  margin-left: -2px;
+  width: 14px;
+  height: 1px;
+  background: var(--nd-divider);
+  pointer-events: none;
 }
 
 .accountWrap {
@@ -922,6 +1088,16 @@ defineExpose({
     display: none;
   }
 
+  .top {
+    padding-left: 0;
+    justify-content: center;
+  }
+
+  .instanceIcon {
+    width: 20px;
+    border-radius: 4px;
+  }
+
   .item {
     justify-content: center;
     padding: 0;
@@ -944,7 +1120,14 @@ defineExpose({
 
   .accountStack {
     position: static;
-    margin-top: 12px;
+    margin-top: 0;
+    overflow-y: auto;
+    overflow-x: visible;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   .accountScroll {

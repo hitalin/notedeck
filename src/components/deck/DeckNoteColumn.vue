@@ -93,8 +93,6 @@ defineExpose({
     :theme-vars="columnThemeVars"
     :web-ui-url="webUiUrl"
     :sound-enabled="soundEnabled"
-    :refreshable="!isStreaming"
-    :refreshing="isLoading"
     @header-click="scrollToTop()"
     @refresh="refresh"
   >

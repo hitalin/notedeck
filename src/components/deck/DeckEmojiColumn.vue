@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ServerEmoji } from '@/adapters/types'
+import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import {
   type GridGroup,
@@ -32,6 +33,7 @@ const serverIconUrl = ref<string | undefined>()
 const isLoading = ref(false)
 const error = ref<AppError | null>(null)
 const scrollContainer = ref<HTMLElement | null>(null)
+useColumnPullScroller(scrollContainer)
 const searchQuery = ref('')
 const selectedCategory = ref<string | null>(null)
 const copiedName = ref<string | null>(null)
@@ -174,9 +176,8 @@ function getRowItems(index: number): ServerEmoji[] {
     :column-id="column.id"
     :title="column.name ?? 'カスタム絵文字'"
     :theme-vars="columnThemeVars"
-    refreshable
-    :refreshing="isLoading"
     @header-click="scrollToTop"
+    :pull-refresh="loadEmojis"
     @refresh="loadEmojis"
   >
     <template #header-icon>

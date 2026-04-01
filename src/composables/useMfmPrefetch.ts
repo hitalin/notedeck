@@ -22,9 +22,14 @@ export function prefetchNoteMfm(notes: NormalizedNote[]): void {
   }
   if (texts.length === 0) return
 
-  mfmWorker.post({ type: 'parse', texts }).then(({ results }) => {
-    for (const { text, tokens } of results) {
-      warmCache(text, tokens)
-    }
-  })
+  mfmWorker
+    .post({ type: 'parse', texts })
+    .then(({ results }) => {
+      for (const { text, tokens } of results) {
+        warmCache(text, tokens)
+      }
+    })
+    .catch(() => {
+      // Worker blocked by CSP — MFM will be parsed on-demand in the main thread
+    })
 }
