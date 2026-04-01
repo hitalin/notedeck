@@ -43,7 +43,22 @@ const dedupWorker = createWorkerClient<DedupResponse>(
   new URL('../workers/dedupWorker.ts', import.meta.url),
 )
 
-/** 既存IDを除外し、createdAt降順でソート（Worker で実行） */
+/** メインスレッドフォールバック（Worker が CSP 等でブロックされた場合） */
+function dedupMain(
+  incoming: NormalizedNote[],
+  existingIds?: Set<string>,
+): NormalizedNote[] {
+  const seen = existingIds ?? new Set<string>()
+  return incoming
+    .filter((n) => {
+      if (seen.has(n.id)) return false
+      seen.add(n.id)
+      return true
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+/** 既存IDを除外し、createdAt降順でソート（Worker で実行、失敗時メインスレッド） */
 function dedupAsync(
   incoming: NormalizedNote[],
   existingIds?: Set<string>,
@@ -55,6 +70,7 @@ function dedupAsync(
       existingIds: existingIds ? [...existingIds] : null,
     })
     .then((res) => res.notes)
+    .catch(() => dedupMain(incoming, existingIds))
 }
 
 export function useCrossAccountNotes(options: CrossAccountNotesOptions) {

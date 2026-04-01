@@ -80,6 +80,7 @@ export function filterNotesByRegexAsync(
   return regexWorker
     .post({ type: 'filter', notes, pattern })
     .then((res) => res.notes)
+    .catch(() => filterNotesByRegex(notes, pattern))
 }
 
 /** フィルタ条件の種別 */
