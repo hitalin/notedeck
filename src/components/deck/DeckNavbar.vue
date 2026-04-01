@@ -363,7 +363,7 @@ defineExpose({
             <span v-if="props.updateAvailable" :class="$style.updateDot" />
           </button>
           <button
-            v-if="!navCollapsed && !isCompact"
+            v-if="!navCollapsed || isCompact"
             class="_button"
             :class="[$style.topBtn, offlineModeStore.isOfflineMode ? $style.offlineActive : $style.onlineActive]"
             :title="offlineModeStore.isOfflineMode ? 'オンラインモードに切り替え' : 'オフラインモードに切り替え'"
@@ -372,7 +372,7 @@ defineExpose({
             <i :class="offlineModeStore.isOfflineMode ? 'ti ti-wifi-off' : 'ti ti-wifi'" />
           </button>
           <button
-            v-if="!navCollapsed && !isCompact"
+            v-if="!navCollapsed || isCompact"
             class="_button"
             :class="[$style.topBtn, realtimeModeStore.enabled ? $style.realtimeActive : $style.pollingActive, { [$style.itemDisabled]: offlineModeStore.isOfflineMode }]"
             :disabled="offlineModeStore.isOfflineMode"
@@ -439,8 +439,8 @@ defineExpose({
           </div>
           <div v-if="isCompact" :class="$style.divider" />
 
-          <!-- Offline/Realtime mode (collapsed & mobile only) -->
-          <template v-if="navCollapsed || isCompact">
+          <!-- Offline/Realtime mode (collapsed desktop only) -->
+          <template v-if="navCollapsed && !isCompact">
             <button
               class="_button"
               :class="[$style.item, offlineModeStore.isOfflineMode ? $style.offlineActive : $style.onlineActive]"
