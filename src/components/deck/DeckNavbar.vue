@@ -852,7 +852,7 @@ defineExpose({
 .accountScroll {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   padding: 4px 4px;
   overflow-x: auto;
   scrollbar-width: none;
