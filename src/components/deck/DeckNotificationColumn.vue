@@ -233,9 +233,16 @@ const filteredNotifications = computed(() => {
   )
 })
 
-const noteScrollerRef = ref<{ getElement: () => HTMLElement | null } | null>(
-  null,
-)
+const noteScrollerRef = ref<{
+  getElement: () => HTMLElement | null
+  scrollToIndex: (
+    index: number,
+    opts?: {
+      align?: 'auto' | 'start' | 'center' | 'end'
+      behavior?: ScrollBehavior
+    },
+  ) => void
+} | null>(null)
 watch(
   noteScrollerRef,
   () => {
@@ -249,7 +256,14 @@ let rafBuffer: NormalizedNotification[] = []
 let rafId: number | null = null
 
 function scrollToTop() {
-  scroller.value?.scrollTo({ top: 0, behavior: 'smooth' })
+  if (noteScrollerRef.value) {
+    noteScrollerRef.value.scrollToIndex(0, {
+      align: 'start',
+      behavior: 'smooth',
+    })
+  } else if (scroller.value) {
+    scroller.value.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 }
 
 function flushRafBuffer() {
