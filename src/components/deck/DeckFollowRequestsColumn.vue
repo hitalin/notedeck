@@ -155,8 +155,6 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name || 'フォローリクエスト'"
     :theme-vars="columnThemeVars"
-    refreshable
-    :refreshing="isLoading"
     @header-click="scrollToTop"
     @refresh="fetchRequests"
   >

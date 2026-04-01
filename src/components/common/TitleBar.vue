@@ -8,6 +8,7 @@ import {
   ref,
 } from 'vue'
 import { useCommandStore } from '@/commands/registry'
+import { useColumnHistory } from '@/composables/useColumnHistory'
 import { openDeckWindow } from '@/composables/useDeckWindow'
 import { openPipWindow } from '@/composables/usePipWindow'
 import { useAccountsStore } from '@/stores/accounts'
@@ -24,6 +25,7 @@ const accountsStore = useAccountsStore()
 const deckStore = useDeckStore()
 const { platformName, isDesktop } = useUiStore()
 const isCompact = useIsCompactLayout()
+const { canGoBack, canGoForward, goBack, goForward } = useColumnHistory()
 
 const platformLabel: Record<string, string> = {
   windows: 'Windows',
@@ -129,10 +131,35 @@ async function onPipClick() {
   <div :class="$style.titlebar" data-tauri-drag-region>
     <div :class="$style.titlebarLeft" data-tauri-drag-region />
     <div v-if="!isCompact" :class="$style.titlebarCenter" data-tauri-drag-region>
+      <div :class="$style.navButtons">
+        <button
+          :class="[$style.navBtn, { [$style.navBtnDisabled]: !canGoBack }]"
+          :disabled="!canGoBack"
+          title="戻る"
+          @click="goBack"
+        >
+          <i class="ti ti-arrow-left" />
+        </button>
+        <button
+          :class="[$style.navBtn, { [$style.navBtnDisabled]: !canGoForward }]"
+          :disabled="!canGoForward"
+          title="進む"
+          @click="goForward"
+        >
+          <i class="ti ti-arrow-right" />
+        </button>
+        <button
+          :class="$style.navBtn"
+          title="リロード"
+          @click="deckStore.refreshActiveColumn()"
+        >
+          <i class="ti ti-reload" />
+        </button>
+      </div>
       <!-- Open: command palette input replaces the search bar -->
-      <CommandPalette v-if="commandStore.isOpen" />
+      <CommandPalette v-if="commandStore.isOpen" :class="$style.centerBar" />
       <!-- Closed: URI display / search trigger -->
-      <button v-else :class="$style.titlebarSearchBar" @click="commandStore.open()">
+      <button v-else :class="[$style.titlebarSearchBar, $style.centerBar]" @click="commandStore.open()">
         <i :class="[$style.titlebarSearchIcon, 'ti', 'ti-search']" />
         <span :class="[$style.titlebarSearchText, { [$style.hasUri]: deckStore.activeColumnUri }]">{{ titleBarText }}</span>
         <kbd :class="$style.titlebarSearchKbd">Ctrl+K</kbd>
@@ -211,15 +238,59 @@ async function onPipClick() {
   flex: 1;
 }
 
+.navButtons {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  translate: 0 -50%;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 4px;
+}
+
+.navBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  border: none;
+  border-radius: var(--nd-radius-sm);
+  background: transparent;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background var(--nd-duration-fast), opacity var(--nd-duration-fast);
+
+  &:hover:not(:disabled) {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.navBtnDisabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
 
 .titlebarCenter {
   display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
   max-width: 600px;
   width: 600px;
   padding: 0 12px;
   position: relative;
   flex-shrink: 1;
+}
+
+.centerBar {
+  flex: 1;
+  min-width: 0;
 }
 
 .titlebarSearchBar {

@@ -142,6 +142,12 @@ export const useDeckStore = defineStore('deck', () => {
 
   const navCollapsed = ref(false)
   const activeColumnId = ref<string | null>(null)
+  /** Incremented to trigger a refresh on the active column */
+  const refreshTrigger = ref(0)
+
+  function refreshActiveColumn() {
+    refreshTrigger.value++
+  }
   /** This window's sub-window ID (null = main window) */
   const currentWindowId = ref<string | null>(null)
   /** Column ID being dragged from another window (for cross-window D&D overlay) */
@@ -526,6 +532,8 @@ export const useDeckStore = defineStore('deck', () => {
     getWindowLayouts: profileStore.getWindowLayouts,
     columnMap,
     crossWindowDragColumnId,
+    refreshTrigger,
+    refreshActiveColumn,
     startSync,
     stopSync,
   }

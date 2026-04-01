@@ -381,7 +381,7 @@ function reload() {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'Play'" :theme-vars="columnThemeVars" @header-click="scrollToTop">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'Play'" :theme-vars="columnThemeVars" @header-click="scrollToTop" @refresh="fetchList()">
     <AiScriptDialog ref="dialogRef" />
     <template #header-icon>
       <i class="ti ti-player-play" :class="$style.tlHeaderIcon" />
@@ -390,9 +390,6 @@ function reload() {
     <template #header-meta>
       <button v-if="mode !== 'list'" class="_button" :class="$style.headerRefresh" title="戻る" @click.stop="goBack">
         <i class="ti ti-arrow-left" />
-      </button>
-      <button v-else class="_button" :class="$style.headerRefresh" title="更新" :disabled="listLoading" @click.stop="fetchList()">
-        <i class="ti ti-refresh" :class="{ 'nd-spin': listLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />

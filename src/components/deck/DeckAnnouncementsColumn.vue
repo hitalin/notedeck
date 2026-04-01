@@ -115,8 +115,6 @@ onUnmounted(() => {
     :column-id="column.id"
     title="お知らせ"
     :theme-vars="columnThemeVars"
-    refreshable
-    :refreshing="isLoading"
     @header-click="scrollToTop"
     @refresh="fetchAnnouncements"
   >

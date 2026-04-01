@@ -91,8 +91,6 @@ const {
     :column-id="column.id"
     :title="column.name || config.title"
     :theme-vars="columnThemeVars"
-    refreshable
-    :refreshing="isLoading"
     @header-click="scrollToTop"
     @refresh="connectCrossAccount"
   >

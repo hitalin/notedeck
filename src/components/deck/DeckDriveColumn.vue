@@ -200,7 +200,7 @@ fetchDrive()
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'ドライブ'" :theme-vars="columnThemeVars" @header-click="scrollToTop">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'ドライブ'" :theme-vars="columnThemeVars" @header-click="scrollToTop" @refresh="fetchDrive()">
     <template #header-icon>
       <i class="ti ti-cloud" :class="$style.tlHeaderIcon" />
     </template>
@@ -217,9 +217,6 @@ fetchDrive()
       </button>
       <button v-if="!detailFile && !selectMode" class="_button" :class="$style.headerRefresh" title="アップロード" :disabled="uploading" @click.stop="openFilePicker">
         <i class="ti ti-upload" />
-      </button>
-      <button v-if="!detailFile && !selectMode" class="_button" :class="$style.headerRefresh" title="更新" :disabled="loading" @click.stop="fetchDrive()">
-        <i class="ti ti-refresh" :class="{ 'nd-spin': loading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />

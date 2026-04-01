@@ -141,8 +141,6 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name ?? 'サーバー情報'"
     :theme-vars="columnThemeVars"
-    refreshable
-    :refreshing="isLoading"
     @header-click="scrollToTop"
     @refresh="fetchServerInfo"
   >

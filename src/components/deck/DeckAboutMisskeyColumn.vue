@@ -173,8 +173,6 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name ?? 'Misskeyについて'"
     :theme-vars="columnThemeVars"
-    refreshable
-    :refreshing="isLoading"
     @header-click="scrollToTop"
     @refresh="fetchMeta"
   >

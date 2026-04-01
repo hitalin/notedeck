@@ -545,7 +545,7 @@ function scrollToTop() {
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? '実績'" :theme-vars="columnThemeVars" refreshable :refreshing="loading" @refresh="fetchAchievements()" @header-click="scrollToTop">
+  <DeckColumn :column-id="column.id" :title="column.name ?? '実績'" :theme-vars="columnThemeVars" @refresh="fetchAchievements()" @header-click="scrollToTop">
     <template #header-icon>
       <i class="ti ti-medal" :class="$style.tlHeaderIcon" />
     </template>

@@ -263,6 +263,7 @@ function closeUserPopup() {
     :title="column.name || 'みつける'"
     :theme-vars="columnThemeVars"
     @header-click="activeTab === 'notes' ? scrollToTop() : undefined"
+    @refresh="refresh"
   >
     <template #header-icon>
       <i class="ti ti-compass" :class="$style.tlHeaderIcon" />
@@ -271,9 +272,6 @@ function closeUserPopup() {
     <template #header-meta>
       <button v-if="selectedRole" class="_button" :class="$style.headerRefresh" title="戻る" @click.stop="closeRole">
         <i class="ti ti-arrow-left" />
-      </button>
-      <button v-else class="_button" :class="$style.headerRefresh" title="更新" :disabled="currentLoading" @click.stop="refresh">
-        <i class="ti ti-refresh" :class="{ 'nd-spin': currentLoading }" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />

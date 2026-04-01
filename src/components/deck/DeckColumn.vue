@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, inject, onBeforeUnmount, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
 import {
   popOutColumnToWindow,
   requestMoveColumn,
@@ -20,10 +20,6 @@ const props = defineProps<{
   themeVars?: Record<string, string>
   soundEnabled?: boolean
   webUiUrl?: string
-  /** Show a shared refresh button in the header (hidden on mobile native) */
-  refreshable?: boolean
-  /** Show spin animation on the refresh button */
-  refreshing?: boolean
 }>()
 
 const isPipMode = window.location.pathname === '/pip'
@@ -136,6 +132,16 @@ function recallToMain() {
   requestMoveColumn(props.columnId, null)
 }
 
+// Titlebar reload button: refresh this column when it's the active one
+watch(
+  () => deckStore.refreshTrigger,
+  () => {
+    if (deckStore.activeColumnId === props.columnId) {
+      emit('refresh')
+    }
+  },
+)
+
 const isMuted = computed(
   () => deckStore.getColumn(props.columnId)?.soundMuted ?? false,
 )
@@ -194,16 +200,6 @@ function openAsPip() {
       <span :class="$style.headerTitle" :data-tauri-drag-region="isPipMode ? '' : undefined">{{ title }}</span>
 
       <template v-if="!isPipMode">
-        <button
-          v-if="refreshable && !isMobilePlatform"
-          :class="$style.headerRefresh"
-          class="_button"
-          title="更新"
-          :disabled="refreshing"
-          @click.stop="emit('refresh')"
-        >
-          <i class="ti ti-refresh" :class="{ 'nd-spin': refreshing }" />
-        </button>
         <slot name="header-meta" />
       </template>
 
@@ -338,23 +334,6 @@ function openAsPip() {
   white-space: nowrap;
   font-size: 0.85em;
 }
-
-.headerRefresh {
-  flex-shrink: 0;
-  opacity: 0.6;
-  font-size: 14px;
-  padding: 2px;
-  transition: opacity var(--nd-duration-slow);
-
-  &:hover {
-    opacity: 1;
-  }
-
-  &:disabled {
-    opacity: 0.3;
-  }
-}
-
 
 .grabber {
   flex-shrink: 0;

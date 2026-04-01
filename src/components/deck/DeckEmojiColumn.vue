@@ -174,8 +174,6 @@ function getRowItems(index: number): ServerEmoji[] {
     :column-id="column.id"
     :title="column.name ?? 'カスタム絵文字'"
     :theme-vars="columnThemeVars"
-    refreshable
-    :refreshing="isLoading"
     @header-click="scrollToTop"
     @refresh="loadEmojis"
   >

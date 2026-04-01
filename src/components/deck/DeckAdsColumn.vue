@@ -62,8 +62,6 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name ?? '広告'"
     :theme-vars="columnThemeVars"
-    refreshable
-    :refreshing="isLoading"
     @header-click="scrollToTop"
     @refresh="load"
   >
