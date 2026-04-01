@@ -270,8 +270,9 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  aspect-ratio: 1;
+  width: 42px;
+  height: 42px;
+  font-size: 16px;
   color: var(--nd-fg);
   opacity: 0.5;
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
