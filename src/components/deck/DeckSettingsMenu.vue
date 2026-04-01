@@ -14,7 +14,6 @@ import {
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
 import { usePortal } from '@/composables/usePortal'
-import { useUpdater } from '@/composables/useUpdater'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { type ConfirmOptions, useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
@@ -26,7 +25,6 @@ import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { hapticSelection } from '@/utils/haptics'
 import { invoke } from '@/utils/tauriInvoke'
-import { version as appVersion } from '../../../package.json'
 import DayNightToggle from './DayNightToggle.vue'
 
 const props = defineProps<{
@@ -38,16 +36,6 @@ const emit = defineEmits<{
   close: []
   'close-all': []
 }>()
-
-const {
-  isChecking,
-  isUpToDate,
-  updateAvailable,
-  updateVersion,
-  isInstalling,
-  checkForUpdate,
-  installUpdate,
-} = useUpdater()
 
 const isCompact = useIsCompactLayout()
 const { visible: menuVisible, leaving: menuLeaving } = useVaporTransition(
@@ -385,32 +373,6 @@ usePortal(settingsMenuPortalRef)
       </div>
 
       </div>
-      <div :class="$style.menuFooter">
-        <div :class="$style.settingsMenuDivider" />
-        <template v-if="!isMobilePlatform">
-          <div v-if="updateAvailable" :class="$style.updateSection">
-            <div :class="$style.updateInfo">
-              <span :class="$style.updateVersion">v{{ appVersion }} → v{{ updateVersion }}</span>
-            </div>
-            <button :class="$style.updateBtn" :disabled="isInstalling" @click="installUpdate">
-              {{ isInstalling ? 'インストール中...' : 'アップデート' }}
-            </button>
-          </div>
-          <div v-else-if="isChecking" :class="$style.updateSection">
-            <span :class="$style.updateChecking">アップデートを確認中...</span>
-          </div>
-          <button v-else :class="$style.settingsMenuItem" @click="checkForUpdate(true)">
-            <i class="ti ti-refresh" />
-            <span :class="$style.settingsMenuLabel">アップデートを確認</span>
-            <span v-if="isUpToDate" :class="$style.upToDateLabel">v{{ appVersion }} 最新</span>
-            <span v-else :class="$style.upToDateLabel">v{{ appVersion }}</span>
-          </button>
-        </template>
-        <button :class="$style.settingsMenuItem" @click="windowsStore.open('about')">
-          <i class="ti ti-info-circle" />
-          <span :class="$style.settingsMenuLabel">NoteDeck について</span>
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -441,10 +403,6 @@ usePortal(settingsMenuPortalRef)
   overflow-x: hidden;
   overflow-y: auto;
   min-height: 0;
-}
-
-.menuFooter {
-  flex-shrink: 0;
 }
 
 /* -- Category accordion -- */
@@ -701,58 +659,6 @@ usePortal(settingsMenuPortalRef)
 
 .settingsMenuLabel {
   position: relative;
-}
-
-.updateSection {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-}
-
-.updateInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-.updateVersion {
-  font-size: 0.8em;
-  color: var(--nd-accent);
-  font-weight: 500;
-}
-
-.updateChecking {
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  opacity: 0.5;
-}
-
-.updateBtn {
-  flex-shrink: 0;
-  padding: 4px 12px;
-  border: none;
-  border-radius: 4px;
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent, #fff);
-  font-size: 0.8em;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover:not(:disabled) {
-    opacity: 0.85;
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-}
-
-.upToDateLabel {
-  font-size: 0.75em;
-  color: var(--nd-accent);
-  margin-left: auto;
 }
 
 .mobile {

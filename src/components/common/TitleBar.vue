@@ -127,9 +127,7 @@ async function onPipClick() {
 
 <template>
   <div :class="$style.titlebar" data-tauri-drag-region>
-    <div :class="$style.titlebarLeft" data-tauri-drag-region>
-      <img src="/favicon.svg" alt="" :class="$style.titlebarIcon" draggable="false" data-tauri-drag-region />
-    </div>
+    <div :class="$style.titlebarLeft" data-tauri-drag-region />
     <div v-if="!isCompact" :class="$style.titlebarCenter" data-tauri-drag-region>
       <!-- Open: command palette input replaces the search bar -->
       <CommandPalette v-if="commandStore.isOpen" />
@@ -213,12 +211,6 @@ async function onPipClick() {
   flex: 1;
 }
 
-.titlebarIcon {
-  width: 18px;
-  height: 18px;
-  margin-left: 10px;
-  border-radius: 4px;
-}
 
 .titlebarCenter {
   display: flex;

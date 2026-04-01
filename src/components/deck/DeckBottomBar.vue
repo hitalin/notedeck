@@ -92,7 +92,6 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
           @click.stop="emit('update:show-settings-menu', !showSettingsMenu)"
         >
           <i class="ti ti-settings" />
-          <span v-if="updateAvailable" :class="$style.updateDot" />
         </button>
         <DeckSettingsMenu
           :show="showSettingsMenu"

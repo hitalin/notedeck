@@ -2,12 +2,24 @@
 import { getTauriVersion } from '@tauri-apps/api/app'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { onMounted, ref } from 'vue'
+import { useUpdater } from '@/composables/useUpdater'
+import { useUiStore } from '@/stores/ui'
 import { invoke } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../../package.json'
 
 const tauriVersion = ref('')
 const rustVersion = ref('')
 const copied = ref(false)
+const uiStore = useUiStore()
+const {
+  isChecking,
+  isUpToDate,
+  updateAvailable,
+  updateVersion,
+  isInstalling,
+  checkForUpdate,
+  installUpdate,
+} = useUpdater()
 
 const buildDate = __BUILD_DATE__
 const gitCommit = __GIT_COMMIT__
@@ -88,6 +100,21 @@ function reportBug() {
     </div>
 
     <div :class="$style.actions">
+      <template v-if="!uiStore.isMobilePlatform">
+        <div v-if="updateAvailable" :class="$style.actionGroup">
+          <span :class="$style.updateVersion">v{{ appVersion }} → v{{ updateVersion }}</span>
+          <button class="_button" :class="[$style.actionBtn, $style.updateBtn]" :disabled="isInstalling" @click="installUpdate">
+            <i class="ti ti-download" />
+            {{ isInstalling ? 'インストール中...' : 'アップデート' }}
+          </button>
+        </div>
+        <div v-else :class="$style.actionGroup">
+          <button class="_button" :class="[$style.actionBtn, { [$style.feedback]: isUpToDate }]" :disabled="isChecking" @click="checkForUpdate(true)">
+            <i :class="isChecking ? 'ti ti-loader-2' : isUpToDate ? 'ti ti-check' : 'ti ti-refresh'" />
+            {{ isChecking ? '確認中...' : isUpToDate ? '最新バージョンです' : 'アップデートを確認' }}
+          </button>
+        </div>
+      </template>
       <div :class="$style.actionGroup">
         <button class="_button" :class="[$style.actionBtn, { [$style.feedback]: copied }]" @click="copyInfo">
           <i :class="copied ? 'ti ti-check' : 'ti ti-copy'" />
@@ -152,6 +179,18 @@ function reportBug() {
 .aboutValue {
   color: var(--nd-fg);
   user-select: all;
+}
+
+.updateVersion {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--nd-accent);
+  padding: 0 8px;
+}
+
+.updateBtn {
+  background: var(--nd-accent) !important;
+  color: var(--nd-fgOnAccent, #fff) !important;
 }
 
 .actions { @include action-bar; }

@@ -351,7 +351,21 @@ defineExpose({
       :style="isCompact ? undefined : { flexBasis: navWidth + 'px' }"
     >
       <div :class="$style.body">
-        <!-- Top section (scrollable) -->
+        <!-- App icon -->
+        <div :class="[$style.section, $style.appIconSection]">
+          <button
+            class="_button"
+            :class="$style.appIconBtn"
+            title="NoteDeck について"
+            @click="windowsStore.open('about')"
+          >
+            <img src="/favicon.svg" :class="$style.appIconImg" alt="NoteDeck" />
+            <span :class="$style.label">NoteDeck</span>
+            <span v-if="props.updateAvailable" :class="$style.updateDot" />
+          </button>
+        </div>
+
+        <!-- Nav items (scrollable) -->
         <div :class="$style.topScroll">
           <div :class="$style.section">
             <template v-for="(navItem, navIdx) in deckStore.navItems" :key="navIdx">
@@ -401,7 +415,6 @@ defineExpose({
               >
                 <i class="ti ti-settings" />
                 <span :class="$style.label">設定</span>
-                <span v-if="props.updateAvailable" :class="$style.updateDot" />
               </button>
               <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" @close-all="emit('update:showSettingsMenu', false); emit('update:mobileDrawerOpen', false)" />
             </div>
@@ -593,6 +606,34 @@ defineExpose({
   > * {
     direction: ltr;
   }
+}
+
+.appIconSection {
+  flex-shrink: 0;
+}
+
+.appIconBtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  line-height: 2.85rem;
+  border-radius: var(--nd-radius-full);
+  color: var(--nd-navFg, var(--nd-fg));
+  font-size: 0.95em;
+  font-weight: 700;
+  transition: background var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.appIconImg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
 }
 
 .topScroll {
@@ -1015,6 +1056,15 @@ defineExpose({
 
   .label {
     display: none;
+  }
+
+  .appIconBtn {
+    justify-content: center;
+    padding: 0;
+    width: 44px;
+    height: 44px;
+    margin: 2px auto;
+    border-radius: 50%;
   }
 
   .item {
