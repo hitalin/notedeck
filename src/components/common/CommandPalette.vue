@@ -2,6 +2,12 @@
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { createCliHandlers } from '@/commands/cliHandlers'
 import { getCliMeta, parseCliInput } from '@/commands/cliParser'
+import type { QuickPickItem } from '@/commands/quickPick'
+import {
+  getColumnTypeItems,
+  getProfileItems,
+  getSettingsItems,
+} from '@/commands/quickPickProviders'
 import type { Command } from '@/commands/registry'
 import { useCommandStore } from '@/commands/registry'
 import { useNavigation } from '@/composables/useNavigation'
@@ -19,6 +25,100 @@ const selectedIndex = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
 const inputWrapRef = ref<HTMLElement | null>(null)
 const dropdownPos = ref({ top: 0, left: 0, width: 0 })
+
+// --- Quick Pick / Prefix mode ---
+type PaletteMode = 'addColumn' | 'profile' | 'settings' | 'account'
+
+const PREFIX_MAP: Record<string, PaletteMode> = {
+  '+': 'addColumn',
+  '#': 'profile',
+  '*': 'settings',
+  '@': 'account',
+}
+
+const activePrefix = computed<PaletteMode | null>(() => {
+  if (commandStore.quickPickStack.length > 0) return null
+  const first = query.value[0]
+  return first ? (PREFIX_MAP[first] ?? null) : null
+})
+
+const prefixQuery = computed(() =>
+  activePrefix.value ? query.value.slice(1) : query.value,
+)
+
+/** Items for prefix-triggered mode (no Quick Pick stack yet) */
+const prefixItems = computed<QuickPickItem[]>(() => {
+  switch (activePrefix.value) {
+    case 'settings':
+      return getSettingsItems()
+    case 'profile':
+      return getProfileItems()
+    case 'addColumn':
+      return getColumnTypeItems()
+    case 'account':
+      return [] // Phase 5
+    default:
+      return []
+  }
+})
+
+const currentQuickPickStep = computed(
+  () => commandStore.quickPickStack.at(-1) ?? null,
+)
+
+/** Quick Pick items grouped by group field, filtered by fuzzy search */
+interface QuickPickGroup {
+  group: string
+  items: QuickPickItem[]
+}
+
+const filteredQuickPickGroups = computed<QuickPickGroup[]>(() => {
+  // Use prefix items when in prefix mode, otherwise use Quick Pick stack
+  const items = currentQuickPickStep.value
+    ? currentQuickPickStep.value.items
+    : prefixItems.value
+
+  if (items.length === 0) return []
+
+  const q = currentQuickPickStep.value
+    ? commandStore.quickPickQuery
+    : prefixQuery.value
+  const matched = q ? items.filter((item) => fuzzyMatch(q, item.label)) : items
+
+  const map = new Map<string, QuickPickItem[]>()
+  for (const item of matched) {
+    const g = item.group ?? ''
+    const list = map.get(g) ?? []
+    list.push(item)
+    map.set(g, list)
+  }
+
+  const groups: QuickPickGroup[] = []
+  for (const [group, items] of map) {
+    groups.push({ group, items })
+  }
+  return groups
+})
+
+const flatQuickPickList = computed(() =>
+  filteredQuickPickGroups.value.flatMap((g) => g.items),
+)
+
+async function selectQuickPickItem(item: QuickPickItem) {
+  if (item.children) {
+    const children = await item.children()
+    commandStore.pushQuickPick({
+      title: item.label,
+      placeholder: `${item.label}を検索...`,
+      items: children,
+    })
+    selectedIndex.value = 0
+    nextTick(() => inputRef.value?.focus())
+  } else if (item.action) {
+    commandStore.close()
+    item.action()
+  }
+}
 
 const overlayRef = useTemplateRef<HTMLElement>('overlayRef')
 const dropdownRef = useTemplateRef<HTMLElement>('dropdownRef')
@@ -88,9 +188,17 @@ const flatList = computed(() => filteredGroups.value.flatMap((g) => g.commands))
 const listRef = useTemplateRef<HTMLElement>('listRef')
 
 function onKeydown(e: KeyboardEvent) {
+  const inQuickPick =
+    currentQuickPickStep.value != null || activePrefix.value != null
+
   if (e.key === 'ArrowDown') {
     e.preventDefault()
-    if (!cliMatch.value) {
+    if (inQuickPick) {
+      selectedIndex.value = Math.min(
+        selectedIndex.value + 1,
+        flatQuickPickList.value.length - 1,
+      )
+    } else if (!cliMatch.value) {
       selectedIndex.value = Math.min(
         selectedIndex.value + 1,
         flatList.value.length - 1,
@@ -98,12 +206,15 @@ function onKeydown(e: KeyboardEvent) {
     }
   } else if (e.key === 'ArrowUp') {
     e.preventDefault()
-    if (!cliMatch.value) {
+    if (inQuickPick || !cliMatch.value) {
       selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
     }
   } else if (e.key === 'Enter') {
     e.preventDefault()
-    if (cliMatch.value) {
+    if (inQuickPick) {
+      const item = flatQuickPickList.value[selectedIndex.value]
+      if (item) selectQuickPickItem(item)
+    } else if (cliMatch.value) {
       const { name, args } = cliMatch.value
       const meta = getCliMeta(name)
       if (meta?.needsArgs && !args.trim()) return
@@ -117,6 +228,13 @@ function onKeydown(e: KeyboardEvent) {
         commandStore.close()
         cmd.execute()
       }
+    }
+  } else if (e.key === 'Backspace') {
+    // Pop Quick Pick stack when input is empty
+    if (currentQuickPickStep.value && commandStore.quickPickQuery === '') {
+      e.preventDefault()
+      commandStore.popQuickPick()
+      selectedIndex.value = 0
     }
   } else if (e.key === 'Escape') {
     e.preventDefault()
@@ -140,9 +258,23 @@ function updateDropdownPos() {
   }
 }
 
-watch(query, () => {
+watch(query, (val) => {
   selectedIndex.value = 0
+  // Sync query to quickPickQuery when in Quick Pick mode
+  if (currentQuickPickStep.value != null) {
+    commandStore.quickPickQuery = val
+  }
 })
+
+watch(
+  () => commandStore.quickPickStack.length,
+  () => {
+    // Reset input when Quick Pick stack changes
+    query.value = ''
+    selectedIndex.value = 0
+    nextTick(() => inputRef.value?.focus())
+  },
+)
 
 watch(selectedIndex, () => {
   nextTick(() => {
@@ -177,6 +309,11 @@ watch(
   { immediate: true },
 )
 
+const inputPlaceholder = computed(() => {
+  if (currentQuickPickStep.value) return currentQuickPickStep.value.placeholder
+  return 'コマンドを入力...'
+})
+
 function primaryShortcut(cmd: Command): string | null {
   const s =
     cmd.shortcuts.find((s) => s.ctrl || s.shift || s.alt) ?? cmd.shortcuts[0]
@@ -201,7 +338,7 @@ function primaryShortcut(cmd: Command): string | null {
       ref="inputRef"
       v-model="query"
       :class="$style.input"
-      placeholder="コマンドを入力..."
+      :placeholder="inputPlaceholder"
       spellcheck="false"
     />
     <kbd :class="$style.inputKbd">Esc</kbd>
@@ -219,8 +356,45 @@ function primaryShortcut(cmd: Command): string | null {
     @click.stop
     @keydown="onKeydown"
   >
+    <!-- Quick Pick mode (prefix or stacked) -->
+    <template v-if="currentQuickPickStep || activePrefix">
+      <div v-if="currentQuickPickStep" :class="$style.quickPickHeader">
+        <button
+          v-if="commandStore.quickPickStack.length > 1"
+          :class="$style.backBtn"
+          @click="commandStore.popQuickPick(); selectedIndex = 0"
+        >
+          <i class="ti ti-arrow-left" />
+        </button>
+        <span :class="$style.quickPickTitle">{{ currentQuickPickStep.title }}</span>
+      </div>
+      <div v-if="currentQuickPickStep?.loading" :class="$style.empty">読み込み中...</div>
+      <div v-else-if="flatQuickPickList.length" ref="listRef" :class="$style.list">
+        <template v-for="(group, gi) in filteredQuickPickGroups" :key="group.group">
+          <div v-if="gi > 0" :class="$style.separator" />
+          <div v-if="group.group" :class="$style.category">{{ group.group }}</div>
+          <button
+            v-for="item in group.items"
+            :key="item.id"
+            :class="[$style.item, { [$style.selected]: flatQuickPickList[selectedIndex]?.id === item.id }]"
+            :data-selected="flatQuickPickList[selectedIndex]?.id === item.id ? '' : undefined"
+            @click="selectQuickPickItem(item)"
+            @mouseenter="selectedIndex = flatQuickPickList.indexOf(item)"
+          >
+            <i :class="['ti ti-' + item.icon, $style.itemIcon]" />
+            <div :class="$style.itemContent">
+              <span :class="$style.itemLabel">{{ item.label }}</span>
+              <span v-if="item.description" :class="$style.itemDesc">{{ item.description }}</span>
+            </div>
+            <i v-if="item.children" :class="['ti ti-chevron-right', $style.itemChevron]" />
+          </button>
+        </template>
+      </div>
+      <div v-else :class="$style.empty">一致する項目がありません</div>
+    </template>
+
     <!-- CLI mode -->
-    <div v-if="cliMatch && cliMeta" :class="$style.cli">
+    <div v-else-if="cliMatch && cliMeta" :class="$style.cli">
       <div :class="$style.cliRow">
         <i :class="['ti ti-' + cliMeta.icon, $style.itemIcon]" />
         <span
@@ -436,6 +610,63 @@ function primaryShortcut(cmd: Command): string | null {
   color: var(--nd-fg);
   opacity: 0.4;
   font-size: 13px;
+}
+
+/* ========================================
+   Quick Pick header
+   ======================================== */
+.quickPickHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 4px;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: var(--nd-radius-sm);
+  background: none;
+  color: var(--nd-fg);
+  cursor: pointer;
+  opacity: 0.5;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
+}
+
+.quickPickTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--nd-fg);
+  opacity: 0.6;
+}
+
+.itemContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.itemDesc {
+  font-size: 11px;
+  opacity: 0.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemChevron {
+  font-size: 14px;
+  opacity: 0.3;
+  flex-shrink: 0;
 }
 
 .cli {
