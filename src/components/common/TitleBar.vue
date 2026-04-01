@@ -241,27 +241,23 @@ async function onPipClick() {
 .navButtons {
   position: absolute;
   right: 100%;
-  top: 50%;
-  translate: 0 -50%;
+  top: 0;
   display: flex;
   align-items: center;
-  gap: 2px;
-  margin-right: 4px;
+  height: 100%;
 }
 
 .navBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 24px;
+  width: 46px;
+  height: 100%;
   border: none;
-  border-radius: var(--nd-radius-sm);
   background: transparent;
   color: var(--nd-fg);
   opacity: 0.6;
   cursor: pointer;
-  font-size: 14px;
   transition: background var(--nd-duration-fast), opacity var(--nd-duration-fast);
 
   &:hover:not(:disabled) {
@@ -283,6 +279,7 @@ async function onPipClick() {
   min-width: 0;
   max-width: 600px;
   width: 600px;
+  height: 100%;
   padding: 0 12px;
   position: relative;
   flex-shrink: 1;
