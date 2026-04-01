@@ -123,10 +123,6 @@ function addColumnForAccount(accountId: string | null) {
     fetchSelectItems(config, accountId)
     return
   }
-  if (type === 'user') {
-    addUserAccountId.value = accountId
-    return
-  }
   const extra = COLUMN_EXTRA_PROPS[type]
   finalizeColumn({
     type,
@@ -216,50 +212,6 @@ function addSelectableColumn(itemId: string, itemName: string) {
   } as Omit<DeckColumn, 'id'>)
 }
 
-// User column creation
-const addUserAccountId = ref<string | null>(null)
-const userSearchInput = ref('')
-const userSearchError = ref<string | null>(null)
-const searchingUser = ref(false)
-
-async function searchAndAddUserColumn() {
-  if (!addUserAccountId.value || !userSearchInput.value.trim()) return
-  const raw = userSearchInput.value.trim().replace(/^@/, '')
-  const parts = raw.split('@')
-  const username = parts[0] || ''
-  const host = parts[1] || null
-  if (!username) return
-
-  searchingUser.value = true
-  userSearchError.value = null
-  try {
-    const user = await invoke<{
-      id: string
-      username: string
-      host: string | null
-    }>('api_lookup_user', {
-      accountId: addUserAccountId.value,
-      username,
-      host,
-    })
-    const displayName = user.host
-      ? `@${user.username}@${user.host}`
-      : `@${user.username}`
-    finalizeColumn({
-      type: 'user',
-      name: displayName,
-      width: 360,
-      accountId: addUserAccountId.value,
-      userId: user.id,
-      active: true,
-    })
-  } catch {
-    userSearchError.value = 'ユーザーが見つかりません'
-  } finally {
-    searchingUser.value = false
-  }
-}
-
 const dialogRef = ref<HTMLElement | null>(null)
 const { activate: activateTrap } = useFocusTrap(dialogRef, {
   onEscape: () => close(),
@@ -275,18 +227,15 @@ function close() {
 <template>
   <div ref="dialogRef" :class="[mode === 'pip' ? $style.addInline : $style.addOverlay]" @click="mode !== 'pip' && close()">
     <div :class="[mode === 'pip' ? $style.addPopupInline : $style.addPopup, isCompact && $style.mobile]" @click.stop>
-      <div v-if="!(mode === 'pip' && !addColumnType && !selectConfig && !addUserAccountId)" :class="[$style.addPopupHeader, mode === 'pip' && $style.addPopupHeaderPip]">
-        <button v-if="addColumnType && !selectConfig && !addUserAccountId" class="_button" :class="$style.addBackBtn" @click="addColumnType = null">
+      <div v-if="!(mode === 'pip' && !addColumnType && !selectConfig)" :class="[$style.addPopupHeader, mode === 'pip' && $style.addPopupHeaderPip]">
+        <button v-if="addColumnType && !selectConfig" class="_button" :class="$style.addBackBtn" @click="addColumnType = null">
           <i class="ti ti-chevron-left" />
         </button>
         <button v-else-if="selectConfig" class="_button" :class="$style.addBackBtn" @click="selectConfig = null; selectItems = []; selectAccountId = null">
           <i class="ti ti-chevron-left" />
         </button>
-        <button v-else-if="addUserAccountId" class="_button" :class="$style.addBackBtn" @click="addUserAccountId = null; userSearchInput = ''; userSearchError = null">
-          <i class="ti ti-chevron-left" />
-        </button>
         <span :class="$style.addPopupTitle">
-          {{ selectConfig ? `${selectConfig.label}を選択` : addUserAccountId ? 'ユーザーを検索' : addColumnType ? 'アカウントを選択' : 'カラムを追加' }}
+          {{ selectConfig ? `${selectConfig.label}を選択` : addColumnType ? 'アカウントを選択' : 'カラムを追加' }}
         </span>
       </div>
 
@@ -459,30 +408,6 @@ function close() {
         </button>
       </template>
 
-      <!-- Step 3d: User search (for user columns) -->
-      <template v-else-if="addUserAccountId">
-        <div :class="$style.addUserSearch">
-          <input
-            v-model="userSearchInput"
-            :class="$style.addUserInput"
-            type="text"
-            placeholder="@ユーザー名 or @ユーザー名@ホスト"
-            @keydown.enter="searchAndAddUserColumn"
-          />
-          <button
-            class="_button"
-            :class="$style.addUserSubmit"
-            :disabled="searchingUser || !userSearchInput.trim()"
-            @click="searchAndAddUserColumn"
-          >
-            {{ searchingUser ? '...' : '追加' }}
-          </button>
-        </div>
-        <div v-if="userSearchError" :class="$style.addPopupEmpty" style="color: var(--nd-love);">
-          {{ userSearchError }}
-        </div>
-      </template>
-
       <!-- Step 2: Account selection -->
       <template v-else>
         <div v-if="accountsStore.accounts.length === 0" :class="$style.addPopupEmpty">
@@ -597,42 +522,6 @@ function close() {
   align-items: center;
   justify-content: center;
   padding: 2rem;
-}
-
-.addUserSearch {
-  display: flex;
-  gap: 8px;
-  padding: 12px 16px;
-}
-
-.addUserInput {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-bg);
-  color: var(--nd-fg);
-  font-size: 0.85em;
-  outline: none;
-
-  &:focus {
-    border-color: var(--nd-accent);
-  }
-}
-
-.addUserSubmit {
-  padding: 8px 16px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-accent);
-  color: #fff;
-  font-size: 0.85em;
-  font-weight: bold;
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
 }
 
 .addAccountBtn {
