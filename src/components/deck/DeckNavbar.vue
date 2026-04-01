@@ -620,7 +620,8 @@ defineExpose({
 .accountSection {
   flex-shrink: 1;
   min-height: 0;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   padding: 0 6px 10px;
 }
 
@@ -751,6 +752,8 @@ defineExpose({
 .accountStack {
   position: relative;
   margin-top: 8px;
+  flex: 1;
+  min-height: 0;
 }
 
 .accountScroll {
@@ -1037,18 +1040,19 @@ defineExpose({
   .accountStack {
     position: static;
     margin-top: 0;
-  }
-
-  .accountScroll {
-    flex-direction: column;
     overflow-y: auto;
-    overflow-x: hidden;
-    gap: 4px;
+    overflow-x: visible;
     scrollbar-width: none;
 
     &::-webkit-scrollbar {
       display: none;
     }
+  }
+
+  .accountScroll {
+    flex-direction: column;
+    overflow: visible;
+    gap: 4px;
   }
 
   .accountWrap {
