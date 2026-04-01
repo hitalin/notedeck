@@ -168,6 +168,7 @@ const navWidth = ref(
   document.documentElement.clientWidth <= 1279 ? MIN_WIDTH : DEFAULT_WIDTH,
 )
 const isResizing = ref(false)
+const subButtonsHovered = ref(false)
 const navCollapsed = computed(() => navWidth.value <= MIN_WIDTH)
 watch(
   navCollapsed,
@@ -350,32 +351,31 @@ defineExpose({
       :style="isCompact ? undefined : { flexBasis: navWidth + 'px' }"
     >
       <div :class="$style.body">
-        <!-- Top section -->
-        <div :class="$style.section">
-          <template v-for="(navItem, navIdx) in deckStore.navItems" :key="navIdx">
-            <div v-if="isNavDivider(navItem)" :class="$style.divider" />
-            <button
-              v-else
-              class="_button"
-              :class="[$style.item, { [$style.sidebarActive]: sidebarType === navItem.type }]"
-              :title="navLabel(navItem.type)"
-              @click="hapticLight(); closeDrawerAndDo(getNavAction(navItem))"
-            >
-              <div :class="$style.iconWrap">
-                <i :class="['ti', navIcon(navItem.type)]" />
-                <span v-if="getNavBadge(navItem) > 0" :key="getNavBadge(navItem)" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
-                <ColumnBadges :account-id="navItem.accountId" :size="12" />
-              </div>
-              <span :class="$style.label">{{ navLabel(navItem.type) }}</span>
-            </button>
-          </template>
+        <!-- Top section (scrollable) -->
+        <div :class="$style.topScroll">
+          <div :class="$style.section">
+            <template v-for="(navItem, navIdx) in deckStore.navItems" :key="navIdx">
+              <div v-if="isNavDivider(navItem)" :class="$style.divider" />
+              <button
+                v-else
+                class="_button"
+                :class="[$style.item, { [$style.sidebarActive]: sidebarType === navItem.type }]"
+                :title="navLabel(navItem.type)"
+                @click="hapticLight(); closeDrawerAndDo(getNavAction(navItem))"
+              >
+                <div :class="$style.iconWrap">
+                  <i :class="['ti', navIcon(navItem.type)]" />
+                  <span v-if="getNavBadge(navItem) > 0" :key="getNavBadge(navItem)" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
+                  <ColumnBadges :account-id="navItem.accountId" :size="12" />
+                </div>
+                <span :class="$style.label">{{ navLabel(navItem.type) }}</span>
+              </button>
+            </template>
+          </div>
         </div>
 
-        <!-- Spacer -->
-        <div :class="$style.spacer" />
-
-        <!-- Bottom section: post button → accounts -->
-        <div :class="$style.section">
+        <!-- Bottom fixed section: buttons -->
+        <div :class="[$style.section, $style.bottomSection]">
           <!-- Mobile-only: profile & settings -->
           <div v-if="isCompact" :class="$style.mobileOnly">
             <div :class="$style.menuWrap">
@@ -445,8 +445,10 @@ defineExpose({
             <i class="ti ti-pencil" />
             <span :class="$style.label">ノート</span>
           </button>
+        </div>
 
-          <!-- Account avatars -->
+        <!-- Account avatars (scrollable) -->
+        <div :class="$style.accountSection">
           <div :class="$style.accountStack">
             <div :class="$style.accountScroll">
               <div
@@ -508,18 +510,15 @@ defineExpose({
               </button>
             </div>
           </div>
-
-
-
         </div>
       </div>
 
       <!-- Sub buttons (protruding tab) -->
-      <div v-if="!isCompact" :class="$style.subButtons">
+      <div v-if="!isCompact" :class="$style.subButtons" @mouseenter="subButtonsHovered = true" @mouseleave="subButtonsHovered = false">
         <div :class="$style.subButton">
           <svg viewBox="0 0 16 64" :class="$style.subButtonShape">
             <g transform="matrix(0.333333,0,0,0.222222,0.000895785,21.3333)">
-              <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" style="fill: var(--nd-navBg);" />
+              <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" fill="var(--nd-navBg)" />
             </g>
           </svg>
           <button class="_button" :class="$style.subButtonClickable" title="ナビバー編集" @click="windowsStore.open('navEditor')">
@@ -531,7 +530,7 @@ defineExpose({
         <div :class="$style.subButton">
           <svg viewBox="0 0 16 64" :class="$style.subButtonShape">
             <g transform="matrix(0.333333,0,0,0.222222,0.000895785,21.3333)">
-              <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" style="fill: var(--nd-navBg);" />
+              <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" fill="var(--nd-navBg)" />
             </g>
           </svg>
           <button class="_button" :class="$style.subButtonClickable" title="サイドバー切替" @click="toggleNav">
@@ -545,6 +544,7 @@ defineExpose({
     <div
       v-if="!isCompact"
       :class="[$style.resizeHandle, { [$style.resizeActive]: isResizing }]"
+      :style="subButtonsHovered ? { pointerEvents: 'none' } : undefined"
       @mousedown="startResize"
     />
 
@@ -586,6 +586,18 @@ defineExpose({
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  direction: rtl;
+
+  > * {
+    direction: ltr;
+  }
+}
+
+.topScroll {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   direction: rtl;
@@ -601,9 +613,17 @@ defineExpose({
   padding: 10px 6px;
 }
 
-.spacer {
-  flex: 1;
+.bottomSection {
+  flex-shrink: 0;
 }
+
+.accountSection {
+  flex-shrink: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 6px 10px;
+}
+
 
 .divider {
   height: 1px;
@@ -1016,13 +1036,19 @@ defineExpose({
 
   .accountStack {
     position: static;
-    margin-top: 12px;
+    margin-top: 0;
   }
 
   .accountScroll {
     flex-direction: column;
-    overflow: visible;
+    overflow-y: auto;
+    overflow-x: hidden;
     gap: 4px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   .accountWrap {
