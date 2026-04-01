@@ -144,7 +144,7 @@ $menu-bg: color-mix(in srgb, var(--nd-navBg) 50%, var(--nd-deckBg, #1a1a1a));
   position: fixed;
   inset: 0;
   z-index: var(--nd-z-popup);
-  background: transparent;
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .enter {
