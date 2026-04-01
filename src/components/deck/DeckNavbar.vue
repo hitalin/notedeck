@@ -631,7 +631,7 @@ defineExpose({
   top: 0;
   z-index: 1;
   display: flex;
-  height: 44px;
+  height: 36px;
   flex-shrink: 0;
 }
 
@@ -644,9 +644,9 @@ defineExpose({
 }
 
 .instanceIcon {
-  width: 28px;
+  width: 20px;
   aspect-ratio: 1;
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .topBtn {
@@ -657,7 +657,7 @@ defineExpose({
   color: var(--nd-navFg, var(--nd-fg));
 
   :global(.ti) {
-    font-size: 28px;
+    font-size: 20px;
     opacity: 0.7;
   }
 
