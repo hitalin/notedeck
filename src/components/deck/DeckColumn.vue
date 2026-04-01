@@ -207,8 +207,8 @@ function openAsPip() {
         <slot name="header-meta" />
       </template>
 
-      <!-- Grabber (Misskey 6-dot pattern, hidden in PiP) -->
-      <i v-if="!isPipMode" :class="$style.grabber" class="column-grabber ti ti-grip-vertical" />
+      <!-- Grabber (Misskey 6-dot pattern, hidden in PiP, mobile, and compact layout) -->
+      <i v-if="!isPipMode && !isMobilePlatform && !isCompact" :class="$style.grabber" class="column-grabber ti ti-grip-vertical" />
 
       <!-- Menu button (shared between PiP and Deck) -->
       <button ref="menuBtnEl" :class="$style.headerBtn" class="_button" title="メニュー" @click.stop="toggleMenu">
