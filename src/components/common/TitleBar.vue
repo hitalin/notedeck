@@ -171,14 +171,6 @@ async function onPipClick() {
           <i :class="isCompactSize ? 'ti ti-device-desktop' : 'ti ti-device-mobile'" />
         </button>
       </template>
-      <button
-        v-if="!isCompact"
-        :class="[$style.titlebarBtn, $style.titlebarSidebarBtn, { [$style.titlebarBtnActive]: !deckStore.navCollapsed }]"
-        title="サイドバー切替"
-        @click="commandStore.execute('toggle-sidebar')"
-      >
-        <i class="ti ti-layout-sidebar" />
-      </button>
       <template v-if="isDesktop">
         <button :class="[$style.titlebarBtn, $style.titlebarWindowBtn]" title="最小化" @click="minimize">
           <svg width="10" height="10" viewBox="0 0 10 10">
@@ -330,7 +322,6 @@ async function onPipClick() {
   }
 }
 
-.titlebarSidebarBtn {}
 .titlebarWindowBtn {}
 
 </style>

@@ -18,6 +18,7 @@ import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import { useServersStore } from '@/stores/servers'
 import { useStreamingStore } from '@/stores/streaming'
 import { useIsCompactLayout } from '@/stores/ui'
+import { useWindowsStore } from '@/stores/windows'
 import {
   clearAvailableTlCache,
   detectAvailableTimelines,
@@ -51,6 +52,7 @@ const { confirm } = useConfirm()
 const deckStore = useDeckStore()
 const offlineModeStore = useOfflineModeStore()
 const realtimeModeStore = useRealtimeModeStore()
+const windowsStore = useWindowsStore()
 const isCompact = useIsCompactLayout()
 const { totalUnread, markAllAsRead } = useUnreadNotifications()
 const { totalUnread: chatUnread, resetAll: resetChatUnread } = useUnreadChat()
@@ -512,10 +514,31 @@ defineExpose({
         </div>
       </div>
 
-      <!-- Collapse toggle -->
-      <button v-if="!isCompact" :class="$style.toggle" title="サイドバー切替" @click="toggleNav">
-        <i :class="navCollapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left'" />
-      </button>
+      <!-- Sub buttons (protruding tab) -->
+      <div v-if="!isCompact" :class="$style.subButtons">
+        <div :class="$style.subButton">
+          <svg viewBox="0 0 16 64" :class="$style.subButtonShape">
+            <g transform="matrix(0.333333,0,0,0.222222,0.000895785,21.3333)">
+              <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" style="fill: var(--nd-navBg);" />
+            </g>
+          </svg>
+          <button class="_button" :class="$style.subButtonClickable" title="ナビバー編集" @click="windowsStore.open('navEditor')">
+            <i class="ti ti-settings-2" :class="$style.subButtonIcon" />
+          </button>
+        </div>
+        <div :class="$style.subButtonGapFill" />
+        <div :class="$style.subButtonGapFillDivider" />
+        <div :class="$style.subButton">
+          <svg viewBox="0 0 16 64" :class="$style.subButtonShape">
+            <g transform="matrix(0.333333,0,0,0.222222,0.000895785,21.3333)">
+              <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" style="fill: var(--nd-navBg);" />
+            </g>
+          </svg>
+          <button class="_button" :class="$style.subButtonClickable" title="サイドバー切替" @click="toggleNav">
+            <i :class="[navCollapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left', $style.subButtonIcon]" />
+          </button>
+        </div>
+      </div>
     </nav>
 
     <!-- Resize handle -->
@@ -863,33 +886,82 @@ defineExpose({
   opacity: 0.6;
 }
 
-.toggle {
+.subButtons {
+  --sub-button-width: 20px;
+
   position: absolute;
   right: 0;
-  top: 50%;
-  translate: 50% -50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 40px;
-  border-radius: 0 6px 6px 0;
-  background: var(--nd-panel);
-  border: 1px solid var(--nd-divider);
-  border-left: none;
-  color: var(--nd-fg);
-  opacity: 0;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
-  z-index: 10;
+  bottom: 80px;
+  translate: 100% 0;
+  z-index: 11;
+}
 
-  .navbar:hover & {
-    opacity: 0.5;
+.subButton {
+  display: block;
+  position: relative;
+  width: var(--sub-button-width);
+  height: 50px;
+  align-content: center;
+}
+
+.subButtonShape {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  margin: auto;
+  width: var(--sub-button-width);
+  height: calc(var(--sub-button-width) * 4);
+  pointer-events: none;
+}
+
+.subButtonClickable {
+  position: absolute;
+  z-index: 1;
+  display: block;
+  max-width: unset;
+  width: 24px;
+  height: 42px;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  margin: auto;
+  font-size: 13px;
+  color: var(--nd-navFg, var(--nd-fg));
+  cursor: pointer;
+
+  :global(.ti) {
+    opacity: 0.7;
   }
 
-  &:hover {
+  &:hover :global(.ti) {
     opacity: 1;
   }
+}
+
+.subButtonIcon {
+  margin-left: -4px;
+}
+
+.subButtonGapFill {
+  position: relative;
+  width: var(--sub-button-width);
+  height: 64px;
+  margin-top: -32px;
+  margin-bottom: -32px;
+  pointer-events: none;
+  background: var(--nd-navBg);
+}
+
+.subButtonGapFillDivider {
+  position: relative;
+  z-index: 1;
+  margin-left: -2px;
+  width: 14px;
+  height: 1px;
+  background: var(--nd-divider);
+  pointer-events: none;
 }
 
 .accountWrap {

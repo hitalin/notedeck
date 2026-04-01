@@ -172,7 +172,6 @@ function openToolWindow(
     | 'cssEditor'
     | 'keybinds'
     | 'themeEditor'
-    | 'navEditor'
     | 'plugins'
     | 'aiSettings'
     | 'performanceEditor',
@@ -326,10 +325,6 @@ usePortal(settingsMenuPortalRef)
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.settings }]" />
         </button>
         <div v-if="expandedSections.settings" :class="$style.categoryBody">
-          <button :class="$style.settingsMenuItem" @click="openToolWindow('navEditor')">
-            <i class="ti ti-layout-sidebar-left-collapse" />
-            <span :class="$style.settingsMenuLabel">ナビバー</span>
-          </button>
           <button :class="$style.settingsMenuItem" @click="openToolWindow('plugins')">
             <i class="ti ti-plug" />
             <span :class="$style.settingsMenuLabel">プラグイン</span>
