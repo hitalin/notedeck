@@ -88,17 +88,17 @@ export const useCommandStore = defineStore('commands', () => {
   }
 
   function pushQuickPick(step: QuickPickStep) {
-    quickPickStack.value = [...quickPickStack.value, step]
+    quickPickStack.value.push(step)
     quickPickQuery.value = ''
   }
 
   function popQuickPick() {
-    quickPickStack.value = quickPickStack.value.slice(0, -1)
+    quickPickStack.value.pop()
     quickPickQuery.value = ''
   }
 
   function clearQuickPick() {
-    quickPickStack.value = []
+    quickPickStack.value.length = 0
     quickPickQuery.value = ''
   }
 

@@ -14,11 +14,9 @@ import { useNavigation } from '@/composables/useNavigation'
 import { usePortal } from '@/composables/usePortal'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
-import { useUiStore } from '@/stores/ui'
 import { fuzzyMatch } from '@/utils/fuzzyMatch'
 import { shortcutLabel } from '@/utils/shortcutLabel'
 
-const { isDesktop } = useUiStore()
 const commandStore = useCommandStore()
 const query = ref('')
 const selectedIndex = ref(0)
@@ -27,13 +25,12 @@ const inputWrapRef = ref<HTMLElement | null>(null)
 const dropdownPos = ref({ top: 0, left: 0, width: 0 })
 
 // --- Quick Pick / Prefix mode ---
-type PaletteMode = 'addColumn' | 'profile' | 'settings' | 'account'
+type PaletteMode = 'addColumn' | 'profile' | 'settings'
 
 const PREFIX_MAP: Record<string, PaletteMode> = {
   '+': 'addColumn',
   '#': 'profile',
   '*': 'settings',
-  '@': 'account',
 }
 
 const activePrefix = computed<PaletteMode | null>(() => {
@@ -55,8 +52,6 @@ const prefixItems = computed<QuickPickItem[]>(() => {
       return getProfileItems()
     case 'addColumn':
       return getColumnTypeItems()
-    case 'account':
-      return [] // アカウント操作はNavAccountMenuで維持
     default:
       return []
   }

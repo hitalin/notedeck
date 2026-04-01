@@ -330,102 +330,47 @@ const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
   'followRequests',
 ])
 
-interface ColumnTypeDef {
-  type: ColumnType
-  label: string
-  icon: string
-  group: string
-}
-
-const COLUMN_TYPE_DEFS: ColumnTypeDef[] = [
-  // Account
+/** カラムタイプの表示順とグループ定義。label/icon は COLUMN_LABELS/COLUMN_ICONS から取得 */
+const COLUMN_TYPE_GROUPS: { group: string; types: ColumnType[] }[] = [
   {
-    type: 'timeline',
-    label: 'タイムライン',
-    icon: 'home',
     group: 'アカウント',
+    types: [
+      'timeline',
+      'notifications',
+      'drive',
+      'followRequests',
+      'list',
+      'antenna',
+      'favorites',
+      'clip',
+      'mentions',
+      'specified',
+      'chat',
+      'achievements',
+    ],
   },
-  { type: 'notifications', label: '通知', icon: 'bell', group: 'アカウント' },
-  { type: 'drive', label: 'ドライブ', icon: 'cloud', group: 'アカウント' },
   {
-    type: 'followRequests',
-    label: 'フォローリクエスト',
-    icon: 'user-plus',
-    group: 'アカウント',
-  },
-  { type: 'list', label: 'リスト', icon: 'list', group: 'アカウント' },
-  {
-    type: 'antenna',
-    label: 'アンテナ',
-    icon: 'antenna-bars-5',
-    group: 'アカウント',
-  },
-  { type: 'favorites', label: 'お気に入り', icon: 'star', group: 'アカウント' },
-  { type: 'clip', label: 'クリップ', icon: 'paperclip', group: 'アカウント' },
-  { type: 'mentions', label: 'メンション', icon: 'at', group: 'アカウント' },
-  { type: 'specified', label: 'ダイレクト', icon: 'mail', group: 'アカウント' },
-  { type: 'chat', label: 'チャット', icon: 'messages', group: 'アカウント' },
-  { type: 'achievements', label: '実績', icon: 'medal', group: 'アカウント' },
-  // Server
-  {
-    type: 'serverInfo',
-    label: 'サーバー情報',
-    icon: 'server',
     group: 'サーバー',
+    types: [
+      'serverInfo',
+      'aboutMisskey',
+      'emoji',
+      'ads',
+      'explore',
+      'announcements',
+      'search',
+      'lookup',
+      'channel',
+      'gallery',
+      'play',
+      'page',
+      'user',
+    ],
   },
   {
-    type: 'aboutMisskey',
-    label: 'Misskeyについて',
-    icon: 'info-circle',
-    group: 'サーバー',
-  },
-  {
-    type: 'emoji',
-    label: 'カスタム絵文字',
-    icon: 'mood-smile',
-    group: 'サーバー',
-  },
-  { type: 'ads', label: '広告', icon: 'ad-2', group: 'サーバー' },
-  { type: 'explore', label: 'みつける', icon: 'compass', group: 'サーバー' },
-  {
-    type: 'announcements',
-    label: 'お知らせ',
-    icon: 'speakerphone',
-    group: 'サーバー',
-  },
-  { type: 'search', label: '検索', icon: 'search', group: 'サーバー' },
-  { type: 'lookup', label: 'URI照会', icon: 'world-search', group: 'サーバー' },
-  {
-    type: 'channel',
-    label: 'チャンネル',
-    icon: 'device-tv',
-    group: 'サーバー',
-  },
-  { type: 'gallery', label: 'ギャラリー', icon: 'icons', group: 'サーバー' },
-  {
-    type: 'play',
-    label: 'Misskey Play',
-    icon: 'player-play',
-    group: 'サーバー',
-  },
-  { type: 'page', label: 'ページ', icon: 'note', group: 'サーバー' },
-  { type: 'user', label: 'ユーザー', icon: 'user', group: 'サーバー' },
-  // Tools
-  {
-    type: 'widget',
-    label: 'ウィジェット',
-    icon: 'app-window',
     group: 'ツール',
+    types: ['widget', 'aiscript', 'apiConsole', 'apiDocs', 'ai'],
   },
-  {
-    type: 'aiscript',
-    label: 'スクラッチパッド',
-    icon: 'terminal-2',
-    group: 'ツール',
-  },
-  { type: 'apiConsole', label: 'APIコンソール', icon: 'api', group: 'ツール' },
-  { type: 'apiDocs', label: 'APIドキュメント', icon: 'book', group: 'ツール' },
-  { type: 'ai', label: 'AIチャット', icon: 'sparkles', group: 'ツール' },
 ]
 
 const COLUMN_EXTRA_PROPS: Partial<
@@ -451,16 +396,18 @@ const SELECTABLE_CONFIGS: SelectableConfig[] = [
 ]
 
 export function getColumnTypeItems(): QuickPickItem[] {
-  return COLUMN_TYPE_DEFS.map((def) => ({
-    id: `col-${def.type}`,
-    label: def.label,
-    icon: def.icon,
-    group: def.group,
-    children: () => buildAccountStep(def.type),
-  }))
+  return COLUMN_TYPE_GROUPS.flatMap(({ group, types }) =>
+    types.map((type) => ({
+      id: `col-${type}`,
+      label: COLUMN_LABELS[type] ?? type,
+      icon: COLUMN_ICONS[type] ?? 'dots',
+      group,
+      children: () => buildAccountStep(type),
+    })),
+  )
 }
 
-function buildAccountStep(type: ColumnType): QuickPickItem[] {
+async function buildAccountStep(type: ColumnType): Promise<QuickPickItem[]> {
   const accountsStore = useAccountsStore()
 
   // apiDocs: account-independent
@@ -514,46 +461,35 @@ function buildAccountStep(type: ColumnType): QuickPickItem[] {
   return items
 }
 
-function buildDetailStep(
+async function buildDetailStep(
   type: ColumnType,
   accountId: string | null,
-): QuickPickItem[] {
+): Promise<QuickPickItem[]> {
   const config = SELECTABLE_CONFIGS.find((c) => c.type === type)
 
   if (config && accountId) {
-    // Return a loading placeholder — will be replaced by async children
-    return [
-      {
-        id: 'loading-trigger',
-        label: `${COLUMN_LABELS[type] ?? type}を読み込み中...`,
-        icon: COLUMN_ICONS[type] ?? 'dots',
-        children: async () => {
-          const items = await invoke<{ id: string; name: string }[]>(
-            config.apiCommand,
-            { accountId },
-          )
-          return items.map((item) => ({
-            id: `select-${item.id}`,
-            label: item.name,
-            icon: COLUMN_ICONS[type] ?? 'dots',
-            action: () => {
-              useDeckStore().addColumn({
-                type,
-                name: item.name,
-                width: 360,
-                accountId,
-                [config.idKey]: item.id,
-                active: true,
-              } as Omit<DeckColumn, 'id'>)
-            },
-          }))
-        },
+    const items = await invoke<{ id: string; name: string }[]>(
+      config.apiCommand,
+      { accountId },
+    )
+    return items.map((item) => ({
+      id: `select-${item.id}`,
+      label: item.name,
+      icon: COLUMN_ICONS[type] ?? 'dots',
+      action: () => {
+        useDeckStore().addColumn({
+          type,
+          name: item.name,
+          width: 360,
+          accountId,
+          [config.idKey]: item.id,
+          active: true,
+        } as Omit<DeckColumn, 'id'>)
       },
-    ]
+    }))
   }
 
-  // TODO: user type needs text input — for now fallback to direct column add
-  // Direct finalization for non-selectable types
+  // user type needs text input — fallback to direct column add
   finalizeAddColumn(type, accountId)
   return []
 }
