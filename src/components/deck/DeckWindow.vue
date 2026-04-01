@@ -36,6 +36,7 @@ const BASE_TITLES: Record<string, string> = {
   about: 'NoteDeck について',
   navEditor: 'ナビバー',
   performanceEditor: 'パフォーマンス',
+  'account-manager': 'アカウント管理',
 }
 
 const windowTitle = computed(() => {
@@ -64,6 +65,7 @@ const icons: Record<string, string> = {
   about: 'ti ti-info-circle',
   navEditor: 'ti ti-layout-sidebar-left-collapse',
   performanceEditor: 'ti ti-gauge',
+  'account-manager': 'ti ti-users-group',
 }
 
 const isMinimized = computed(() => props.window.minimized)

@@ -47,6 +47,9 @@ const NavEditorContent = defineAsyncComponent(
 const PerformanceEditorContent = defineAsyncComponent(
   () => import('@/components/window/PerformanceEditorContent.vue'),
 )
+const AccountManagerContent = defineAsyncComponent(
+  () => import('@/components/window/AccountManagerContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -142,6 +145,10 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       <AboutContent v-if="win.type === 'about'" />
       <NavEditorContent v-if="win.type === 'navEditor'" />
       <PerformanceEditorContent v-if="win.type === 'performanceEditor'" />
+      <AccountManagerContent
+        v-if="win.type === 'account-manager'"
+        @close="closeWindow(win.id)"
+      />
     </DeckWindow>
   </div>
 </template>

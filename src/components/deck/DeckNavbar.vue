@@ -532,6 +532,16 @@ defineExpose({
               <button
                 class="_button"
                 :class="$style.accountBtn"
+                title="アカウント管理"
+                @click="closeDrawerAndDo(() => windowsStore.open('account-manager'))"
+              >
+                <div :class="$style.addAccountIcon">
+                  <i class="ti ti-settings" />
+                </div>
+              </button>
+              <button
+                class="_button"
+                :class="$style.accountBtn"
                 title="アカウント追加"
                 @click="closeDrawerAndDo(navigateToLogin)"
               >
