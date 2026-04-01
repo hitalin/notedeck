@@ -31,16 +31,18 @@ function formatExpiry(iso: string): string {
     <div
       v-for="(choice, i) in poll.choices"
       :key="i"
-      :class="[$style.pollChoice, { [$style.voted]: choice.isVoted }]"
+      :class="$style.pollChoice"
     >
-      <div :class="$style.pollBar" :style="{ '--nd-poll-ratio': percentage(choice.votes) / 100 }" />
+      <div :class="$style.pollBar" :style="{ width: percentage(choice.votes) + '%' }" />
       <div :class="$style.pollContent">
-        <span :class="$style.pollText">{{ choice.text }}</span>
+        <span :class="$style.pollText">
+          <svg v-if="choice.isVoted" viewBox="0 0 24 24" width="12" height="12" style="margin-right: 4px; vertical-align: -1px;">
+            <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          {{ choice.text }}
+        </span>
         <span :class="$style.pollPct">{{ percentage(choice.votes) }}%</span>
       </div>
-      <svg v-if="choice.isVoted" :class="$style.pollCheck" viewBox="0 0 24 24" width="14" height="14">
-        <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
     </div>
     <div :class="$style.pollFooter">
       <span :class="$style.pollTotal">{{ totalVotes }}票</span>
@@ -57,44 +59,38 @@ function formatExpiry(iso: string): string {
   margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .pollChoice {
   position: relative;
-  border-radius: var(--nd-radius-sm);
-  overflow: hidden;
-  background: var(--nd-buttonBg);
+  border-radius: 4px;
+  overflow: clip;
+  background: var(--nd-accentedBg);
   min-height: 35px;
   display: flex;
   align-items: center;
-
-  &.voted .pollBar {
-    background: var(--nd-accent);
-    opacity: 0.3;
-  }
+  cursor: pointer;
 }
 
 .pollBar {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
   height: 100%;
-  background: var(--nd-accentedBg);
-  transform: scaleX(var(--nd-poll-ratio, 0));
-  transform-origin: left;
-  transition: transform var(--nd-duration-slower) ease;
+  background: var(--nd-accent);
+  background: linear-gradient(90deg, var(--nd-buttonGradateA), var(--nd-buttonGradateB));
+  transition: width 1s ease;
 }
 
 .pollContent {
   position: relative;
   z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 4px 12px;
+  display: inline-block;
+  padding: 3px 5px;
+  background: var(--nd-panel);
+  border-radius: 3px;
+  margin: 4px;
 }
 
 .pollText {
@@ -107,13 +103,6 @@ function formatExpiry(iso: string): string {
   opacity: 0.7;
   flex-shrink: 0;
   margin-left: 8px;
-}
-
-.pollCheck {
-  position: absolute;
-  right: 10px;
-  color: var(--nd-accent);
-  z-index: 1;
 }
 
 .pollFooter {
