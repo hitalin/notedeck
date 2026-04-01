@@ -681,6 +681,11 @@ usePortal(settingsMenuPortalRef)
     padding: 10px 16px;
     min-height: 44px;
   }
+
+  .categoryHeader {
+    padding: 10px 16px;
+    min-height: 44px;
+  }
 }
 
 </style>
