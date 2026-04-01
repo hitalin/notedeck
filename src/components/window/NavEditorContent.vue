@@ -193,9 +193,10 @@ async function importNav() {
           <div
             v-for="(item, i) in items"
             :key="i"
-            :class="[$style.mobileRow, { [$style.mobileRowDivider]: isNavDivider(item) }]"
+            :data-nav-idx="i"
+            :class="[$style.mobileRow, { [$style.mobileRowDivider]: isNavDivider(item), [$style.mobileRowDragging]: dragFromIndex === i, [$style.mobileRowDragOver]: dragOverIndex === i }]"
           >
-            <i class="ti ti-grip-vertical" :class="$style.mobileGrip" />
+            <i class="ti ti-grip-vertical" :class="$style.mobileGrip" @pointerdown="startDrag(i, $event)" />
             <span :class="$style.mobileIcon">
               <i :class="['ti', getItemIcon(item)]" />
             </span>
@@ -533,6 +534,15 @@ async function importNav() {
   &.mobileRowDivider {
     opacity: 0.6;
   }
+
+  &.mobileRowDragging {
+    opacity: 0.3;
+  }
+
+  &.mobileRowDragOver {
+    outline: 2px solid var(--nd-accent);
+    outline-offset: -2px;
+  }
 }
 
 .mobileGrip {
@@ -540,6 +550,10 @@ async function importNav() {
   font-size: 14px;
   color: var(--nd-fg);
   opacity: 0.25;
+  cursor: grab;
+  touch-action: none;
+  padding: 8px 4px;
+  margin: -8px -4px;
 }
 
 .mobileIcon {
