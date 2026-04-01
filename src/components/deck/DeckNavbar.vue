@@ -1094,8 +1094,8 @@ defineExpose({
   }
 
   .instanceIcon {
-    width: 30px;
-    border-radius: 6px;
+    width: 20px;
+    border-radius: 4px;
   }
 
   .item {
