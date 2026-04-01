@@ -93,15 +93,17 @@
   --nd-love-hover: color-mix(in srgb, var(--nd-love) 15%, transparent);
   --nd-love-subtle: color-mix(in srgb, var(--nd-love) 10%, transparent);
   /* Shadow depth — Apple dual-layer: near contact + distant ambient */
+  --nd-shadow-contact: rgba(0, 0, 0, 0.08);
+  --nd-shadow-ambient: rgba(0, 0, 0, 0.15);
   --nd-shadow-s:
-    0 1px 2px rgba(0, 0, 0, 0.08),
-    0 2px 6px rgba(0, 0, 0, 0.12);
+    0 1px 2px var(--nd-shadow-contact),
+    0 2px 6px color-mix(in srgb, var(--nd-shadow-ambient) 80%, transparent);
   --nd-shadow-m:
-    0 2px 4px rgba(0, 0, 0, 0.08),
-    0 4px 16px rgba(0, 0, 0, 0.15);
+    0 2px 4px var(--nd-shadow-contact),
+    0 4px 16px var(--nd-shadow-ambient);
   --nd-shadow-l:
-    0 4px 8px rgba(0, 0, 0, 0.08),
-    0 12px 28px rgba(0, 0, 0, 0.18);
+    0 4px 8px var(--nd-shadow-contact),
+    0 12px 28px color-mix(in srgb, var(--nd-shadow-ambient) 120%, transparent);
   /* Non-theme layout constants */
   --nd-radius: 12px;
   --nd-radius-sm: 6px;
@@ -133,7 +135,11 @@
   --nd-ease-menu: cubic-bezier(0.16, 1, 0.3, 1);    /* Context menu, popup */
   /* Active press scale — slightly more noticeable for tactile feel */
   --nd-active-scale: 0.97;
+  --nd-active-scale-sm: 0.93; /* Small inline buttons (note footer etc.) */
   --nd-active-scale-heavy: 0.94; /* Destructive / heavy actions (delete, report) */
+  /* Header vibrancy */
+  --nd-header-opacity: 0.75;
+  --nd-hairline: rgba(255, 255, 255, 0.08);
   /* Vibrancy (Apple-style saturated blur) */
   --nd-vibrancy: blur(var(--nd-blur));
   --nd-vibrancy-panel: blur(var(--nd-blur-panel));

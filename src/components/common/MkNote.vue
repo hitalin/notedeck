@@ -1223,7 +1223,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   transition: background var(--nd-duration-fast), color var(--nd-duration-fast), transform var(--nd-duration-fast) var(--nd-ease-spring);
 
   &:active {
-    transform: scale(0.93);
+    transform: scale(var(--nd-active-scale-sm));
     transition: transform 0.06s ease-out;
   }
 
