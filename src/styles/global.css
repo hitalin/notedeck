@@ -51,8 +51,8 @@
   --nd-infoWarnFg: #ffbd3e;
   --nd-folderHeaderBg: rgba(255, 255, 255, 0.05);
   --nd-folderHeaderHoverBg: rgba(255, 255, 255, 0.1);
-  --nd-buttonBg: rgba(255, 255, 255, 0.05);
-  --nd-buttonHoverBg: rgba(255, 255, 255, 0.08);
+  --nd-buttonBg: rgba(255, 255, 255, 0.08);
+  --nd-buttonHoverBg: rgba(255, 255, 255, 0.12);
   --nd-buttonGradateA: #86b300;
   --nd-buttonGradateB: #9fb300;
   --nd-switchBg: rgba(255, 255, 255, 0.15);
@@ -70,7 +70,7 @@
   --nd-codeString: #ffb675;
   --nd-codeNumber: #cfff9e;
   --nd-codeBoolean: #c59eff;
-  --nd-deckBg: #000;
+  --nd-deckBg: #1a1a1a;
   /* Notification event colors (Misskey native) */
   --nd-eventReaction: #e99a0b;
   --nd-eventReply: #007aff;
@@ -102,14 +102,14 @@
   --nd-radius-md: 8px;
   --nd-radius-full: 999px;
   --nd-margin: 10px;
-  --nd-columnGap: 2px;
-  --nd-blur: 2px;
-  --nd-blur-panel: 1px;
-  --nd-blur-content: 1px;
+  --nd-columnGap: 6px;
+  --nd-blur: 15px;
+  --nd-blur-panel: 10px;
+  --nd-blur-content: 10px;
   /* Transition duration
      Apple pattern: enter slightly longer than leave for natural weight */
-  --nd-duration-fast: 0.15s;
-  --nd-duration-base: 0.2s;
+  --nd-duration-fast: 0.1s;
+  --nd-duration-base: 0.15s;
   --nd-duration-slow: 0.28s;
   --nd-duration-slower: 0.38s;
   --nd-duration-tl-enter: 0.5s; /* Timeline note insertion — Misskey uses 0.7s */

@@ -326,7 +326,9 @@ function openAsPip() {
   height: 38px;
   line-height: 38px;
   padding: 0 8px 0 30px;
-  background: var(--nd-panelHeaderBg);
+  background: color(from var(--nd-panelHeaderBg) srgb r g b / 0.75);
+  backdrop-filter: blur(var(--nd-blur));
+  -webkit-backdrop-filter: blur(var(--nd-blur));
   color: var(--nd-panelHeaderFg);
   font-size: 0.9em;
   font-weight: bold;
@@ -335,6 +337,7 @@ function openAsPip() {
   user-select: none;
   z-index: 2;
   overflow: visible;
+  box-shadow: 0 0.5px 0 0 rgba(255, 255, 255, 0.08);
 }
 
 .tabShape {
