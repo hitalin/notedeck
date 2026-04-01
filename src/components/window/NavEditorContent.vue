@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
 import JSON5 from 'json5'
-import { defineAsyncComponent, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import ColumnBadges from '@/components/common/ColumnBadges.vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
+import type { ReorderableItem } from '@/components/common/ReorderableList.vue'
+import ReorderableList from '@/components/common/ReorderableList.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
@@ -76,17 +78,32 @@ function addDivider() {
   items.value.push({ type: 'divider' })
 }
 
-// ── Pointer-based drag & drop ──
+// ── Mobile: ReorderableList items ──
+const reorderableItems = computed<ReorderableItem[]>(() =>
+  items.value.map((item) => ({
+    icon: isNavDivider(item)
+      ? 'separator'
+      : (COLUMN_ICONS[item.type] ?? 'layout-grid'),
+    label: getItemLabel(item),
+    avatarUrl: itemAvatarUrl(item),
+    serverIconUrl: itemServerIconUrl(item),
+    dimmed: isNavDivider(item),
+  })),
+)
+
+function onMobileReorder(fromIdx: number, toIdx: number) {
+  const arr = [...items.value]
+  const [moved] = arr.splice(fromIdx, 1)
+  if (moved) {
+    arr.splice(toIdx, 0, moved)
+    items.value = arr
+  }
+}
+
+// ── Pointer-based drag & drop (desktop) ──
 const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
   dataAttr: 'nav-idx',
-  onReorder(fromIdx, toIdx) {
-    const arr = [...items.value]
-    const [moved] = arr.splice(fromIdx, 1)
-    if (moved) {
-      arr.splice(toIdx, 0, moved)
-      items.value = arr
-    }
-  },
+  onReorder: onMobileReorder,
 })
 
 // ── Add via AddColumnDialog ──
@@ -188,28 +205,12 @@ async function importNav() {
           <span :class="$style.mobileSectionBadge">{{ items.length }}</span>
         </div>
 
-        <div :class="$style.mobileList">
-          <div
-            v-for="(item, i) in items"
-            :key="i"
-            :data-nav-idx="i"
-            :class="[$style.mobileRow, { [$style.mobileRowDivider]: isNavDivider(item), [$style.mobileRowDragging]: dragFromIndex === i, [$style.mobileRowDragOver]: dragOverIndex === i }]"
-          >
-            <i class="ti ti-grip-vertical" :class="$style.mobileGrip" @pointerdown="startDrag(i, $event)" />
-            <span :class="$style.mobileIcon">
-              <i :class="['ti', getItemIcon(item)]" />
-            </span>
-            <span :class="$style.mobileLabel">{{ getItemLabel(item) }}</span>
-            <span v-if="!isNavDivider(item) && (itemServerIconUrl(item) || itemAvatarUrl(item))" :class="$style.mobileBadges">
-              <img v-if="itemAvatarUrl(item)" :src="itemAvatarUrl(item)!" :class="$style.mobileBadgeImg" />
-              <img v-if="itemServerIconUrl(item)" :src="itemServerIconUrl(item)!" :class="$style.mobileBadgeImg" />
-            </span>
-            <button class="_button" :class="$style.mobileRemoveBtn" @click="removeItem(i)">
-              <i class="ti ti-x" />
-            </button>
-          </div>
-          <div v-if="items.length === 0" :class="$style.empty">項目なし</div>
-        </div>
+        <ReorderableList
+          :items="reorderableItems"
+          data-attr="nav-idx"
+          @reorder="onMobileReorder"
+          @remove="removeItem"
+        />
 
         <button class="_button" :class="$style.mobileAddDivider" @click="addDivider">
           <i class="ti ti-plus" />
@@ -512,102 +513,6 @@ async function importNav() {
   margin-left: auto;
   font-weight: normal;
   opacity: 0.8;
-}
-
-.mobileList {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px 8px;
-}
-
-.mobileRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  background: var(--nd-panel);
-  border-radius: var(--nd-radius-sm);
-  min-height: 44px;
-
-  &.mobileRowDivider {
-    opacity: 0.6;
-  }
-
-  &.mobileRowDragging {
-    opacity: 0.3;
-  }
-
-  &.mobileRowDragOver {
-    outline: 2px solid var(--nd-accent);
-    outline-offset: -2px;
-  }
-}
-
-.mobileGrip {
-  flex-shrink: 0;
-  font-size: 14px;
-  color: var(--nd-fg);
-  opacity: 0.25;
-  cursor: grab;
-  touch-action: none;
-  padding: 8px 4px;
-  margin: -8px -4px;
-}
-
-.mobileIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  font-size: 1em;
-  color: var(--nd-fg);
-}
-
-.mobileLabel {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobileBadges {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.mobileBadgeImg {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.mobileRemoveBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  margin-left: 4px;
-  border-radius: var(--nd-radius-sm);
-  color: var(--nd-fg);
-  opacity: 0.35;
-  transition: opacity var(--nd-duration-fast), color var(--nd-duration-fast), background var(--nd-duration-fast);
-
-  &:hover {
-    opacity: 1;
-    color: var(--nd-love, #ec4137);
-    background: color-mix(in srgb, var(--nd-love, #ec4137) 10%, transparent);
-  }
 }
 
 .mobileAddDivider {
