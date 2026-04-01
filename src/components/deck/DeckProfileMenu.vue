@@ -5,6 +5,7 @@ import { computed, nextTick, ref, toRef, useTemplateRef, watch } from 'vue'
 import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
+import { usePointerReorder } from '@/composables/usePointerReorder'
 import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useConfirm } from '@/stores/confirm'
@@ -105,6 +106,13 @@ function openEditor(id: string) {
   windowsStore.open('profileEditor', { profileId: id })
   emit('close')
 }
+
+const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
+  dataAttr: 'profile-idx',
+  onReorder(fromIdx, toIdx) {
+    profileStore.reorderProfiles(fromIdx, toIdx)
+  },
+})
 </script>
 
 <template>
@@ -113,13 +121,15 @@ function openEditor(id: string) {
     <div v-if="menuVisible" ref="menuEl" :class="[$style.profileMenu, { [$style.mobile]: isCompact }, menuLeaving ? $style.menuLeave : $style.menuEnter]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
       <div :class="$style.list">
         <div
-          v-for="p in profiles"
+          v-for="(p, i) in profiles"
           :key="p.id"
-          :class="[$style.item, { [$style.active]: p.id === deckStore.windowProfileId }]"
+          :data-profile-idx="i"
+          :class="[$style.item, { [$style.active]: p.id === deckStore.windowProfileId, [$style.dragging]: dragFromIndex === i, [$style.dragOver]: dragOverIndex === i }]"
           tabindex="0"
           @click="apply(p.id)"
           @keydown.enter="apply(p.id)"
         >
+          <i class="ti ti-grip-vertical" :class="$style.grip" @pointerdown="startDrag(i, $event)" />
           <span :class="$style.name">{{ p.name }}</span>
           <button
             class="_button"
@@ -209,6 +219,28 @@ function openEditor(id: string) {
   &::before {
     background: var(--nd-accent-subtle);
   }
+}
+
+.dragging {
+  opacity: 0.3;
+}
+
+.dragOver {
+  outline: 2px solid var(--nd-accent);
+  outline-offset: -2px;
+  border-radius: var(--nd-radius-sm);
+}
+
+.grip {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--nd-fg);
+  opacity: 0.2;
+  cursor: grab;
+  touch-action: none;
+  padding: 8px 4px;
+  margin: -8px -4px;
+  position: relative;
 }
 
 .name {

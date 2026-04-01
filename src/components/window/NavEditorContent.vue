@@ -78,7 +78,6 @@ function addDivider() {
 
 // ── Pointer-based drag & drop ──
 const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
-  axis: 'y',
   dataAttr: 'nav-idx',
   onReorder(fromIdx, toIdx) {
     const arr = [...items.value]

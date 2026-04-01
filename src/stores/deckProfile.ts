@@ -387,6 +387,14 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     }
   }
 
+  function reorderProfiles(fromIndex: number, toIndex: number) {
+    const profiles = [...profilesData.value]
+    const [moved] = profiles.splice(fromIndex, 1)
+    if (!moved) return
+    profiles.splice(toIndex, 0, moved)
+    saveProfiles(profiles)
+  }
+
   function renameProfile(profileId: string, newName: string) {
     const profile = profilesData.value.find((p) => p.id === profileId)
     if (!profile) return
@@ -586,6 +594,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     saveWindowLayout,
     removeWindowLayout,
     getWindowLayouts,
+    reorderProfiles,
     // Legacy compat
     saveActiveProfileId,
     loadActiveProfileId,

@@ -116,7 +116,6 @@ function onColumnSelected(config: Omit<DeckColumn, 'id'>) {
 // --- Drag and drop (reorder layout groups) ---
 
 const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
-  axis: 'x',
   dataAttr: 'group-idx',
   onReorder(fromIdx, toIdx) {
     // Convert windowLayout indices to layout indices
@@ -289,9 +288,10 @@ async function importFromClipboard() {
           <div
             v-for="(group, groupIdx) in deckStore.windowLayout"
             :key="`${groupIdx}:${group.join(',')}`"
-            :class="$style.mobileRow"
+            :data-group-idx="groupIdx"
+            :class="[$style.mobileRow, { [$style.mobileRowDragging]: dragFromIndex === groupIdx, [$style.mobileRowDragOver]: dragOverIndex === groupIdx }]"
           >
-            <i class="ti ti-grip-vertical" :class="$style.mobileGrip" />
+            <i class="ti ti-grip-vertical" :class="$style.mobileGrip" @pointerdown="startDrag(groupIdx, $event)" />
             <span :class="$style.mobileIcon">
               <i v-if="groupPrimaryColumn(group)" :class="'ti ti-' + columnIcon(groupPrimaryColumn(group)!)" />
             </span>
@@ -674,11 +674,26 @@ async function importFromClipboard() {
   min-height: 44px;
 }
 
+.mobileRow {
+  &.mobileRowDragging {
+    opacity: 0.3;
+  }
+
+  &.mobileRowDragOver {
+    outline: 2px solid var(--nd-accent);
+    outline-offset: -2px;
+  }
+}
+
 .mobileGrip {
   flex-shrink: 0;
   font-size: 14px;
   color: var(--nd-fg);
   opacity: 0.25;
+  cursor: grab;
+  touch-action: none;
+  padding: 8px 4px;
+  margin: -8px -4px;
 }
 
 .mobileIcon {
