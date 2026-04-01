@@ -149,29 +149,6 @@ function removeGroup(groupIdx: number) {
   }
 }
 
-function moveGroup(groupIdx: number, direction: -1 | 1) {
-  const wl = deckStore.windowLayout
-  const target = groupIdx + direction
-  if (target < 0 || target >= wl.length) return
-
-  const fromGroup = wl[groupIdx]
-  const toGroup = wl[target]
-  if (!fromGroup || !toGroup) return
-
-  const fullLayout = deckStore.layout
-  const fromLayoutIdx = fullLayout.indexOf(fromGroup)
-  const toLayoutIdx = fullLayout.indexOf(toGroup)
-  if (fromLayoutIdx < 0 || toLayoutIdx < 0) return
-
-  const newLayout = fullLayout.map((g) => [...g])
-  const [moved] = newLayout.splice(fromLayoutIdx, 1)
-  if (moved) {
-    newLayout.splice(toLayoutIdx, 0, moved)
-    deckStore.applyLayout(newLayout)
-    deckStore.flushSave()
-  }
-}
-
 // --- Profile name editing ---
 
 function onProfileNameChange(event: Event) {
@@ -320,14 +297,10 @@ async function importFromClipboard() {
             </span>
             <span :class="$style.mobileLabel">{{ groupLabel(group) }}</span>
             <span v-if="group.length > 1" :class="$style.mobileStackBadge">{{ group.length }}</span>
-            <div :class="$style.mobileMoveGroup">
-              <button class="_button" :class="$style.mobileMoveBtn" :disabled="groupIdx === 0" @click="moveGroup(groupIdx, -1)">
-                <i class="ti ti-chevron-left" />
-              </button>
-              <button class="_button" :class="$style.mobileMoveBtn" :disabled="groupIdx === deckStore.windowLayout.length - 1" @click="moveGroup(groupIdx, 1)">
-                <i class="ti ti-chevron-right" />
-              </button>
-            </div>
+            <span v-if="groupServerIconUrl(group) || groupAvatarUrl(group)" :class="$style.mobileBadges">
+              <img v-if="groupAvatarUrl(group)" :src="groupAvatarUrl(group)!" :class="$style.mobileBadgeImg" />
+              <img v-if="groupServerIconUrl(group)" :src="groupServerIconUrl(group)!" :class="$style.mobileBadgeImg" />
+            </span>
             <button class="_button" :class="$style.mobileRemoveBtn" @click="removeGroup(groupIdx)">
               <i class="ti ti-x" />
             </button>
@@ -743,33 +716,18 @@ async function importFromClipboard() {
   flex-shrink: 0;
 }
 
-.mobileMoveGroup {
+.mobileBadges {
   display: flex;
   align-items: center;
+  gap: 4px;
   flex-shrink: 0;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-bg);
 }
 
-.mobileMoveBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  transition: opacity var(--nd-duration-fast), background var(--nd-duration-fast);
-
-  &:hover {
-    opacity: 1;
-    background: var(--nd-buttonHoverBg);
-  }
-
-  &:disabled {
-    opacity: 0.15;
-    pointer-events: none;
-  }
+.mobileBadgeImg {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .mobileRemoveBtn {
