@@ -1220,10 +1220,10 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   cursor: pointer;
   color: color-mix(in srgb, var(--nd-panel) 30%, var(--nd-fg) 70%);
   font-size: 1em;
-  transition: background var(--nd-duration-fast);
+  transition: background var(--nd-duration-fast), color var(--nd-duration-fast), transform var(--nd-duration-fast) var(--nd-ease-spring);
 
   &:active {
-    transform: scale(0.88);
+    transform: scale(0.93);
     transition: transform 0.06s ease-out;
   }
 
@@ -1324,7 +1324,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 
 /* Divider between notes */
 .noteRoot + .noteRoot {
-  border-top: 1px solid var(--nd-divider);
+  border-top: 0.5px solid var(--nd-divider);
 }
 
 /* Container query responsive breakpoints */
