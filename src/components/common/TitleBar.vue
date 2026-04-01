@@ -129,7 +129,11 @@ async function onPipClick() {
 
 <template>
   <div :class="$style.titlebar" data-tauri-drag-region>
-    <div :class="$style.titlebarLeft" data-tauri-drag-region />
+    <div :class="$style.titlebarLeft" data-tauri-drag-region>
+      <button :class="$style.titlebarBtn" title="メニュー">
+        <i class="ti ti-menu-2" />
+      </button>
+    </div>
     <div v-if="!isCompact" :class="$style.titlebarCenter" data-tauri-drag-region>
       <div :class="$style.navButtons">
         <button
