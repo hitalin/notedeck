@@ -90,7 +90,7 @@ function closeCompose() {
 }
 
 function toggleAddMenu() {
-  if (uiStore.isDesktop) {
+  if (uiStore.isDesktop && !isCompact.value) {
     commandStore.openWithInput('+')
   } else {
     showAddMenu.value = !showAddMenu.value
