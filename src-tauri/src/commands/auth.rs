@@ -65,6 +65,10 @@ pub async fn auth_start(
     {
         let mut pairs = auth_url.query_pairs_mut();
         pairs.append_pair("name", "notedeck");
+        pairs.append_pair(
+            "icon",
+            "https://raw.githubusercontent.com/hitalin/notedeck/main/src-tauri/icons/128x128.png",
+        );
         if !is_wsl() {
             let callback = format!("notedeck://auth/callback?session={session_id}");
             pairs.append_pair("callback", &callback);
