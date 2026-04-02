@@ -15,12 +15,14 @@ const widgets: WidgetDefinition[] = [
     label: 'AiScript Console',
     icon: 'ti-terminal-2',
     component: WidgetAiScriptConsole,
+    category: 'aiscript',
   },
   {
     type: 'aiscriptApp',
     label: 'AiScript App',
     icon: 'ti-apps',
     component: WidgetAiScriptApp,
+    category: 'aiscript',
   },
 ]
 
