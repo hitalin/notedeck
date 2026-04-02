@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { MisskeyAuth } from '@/adapters/misskey/auth'
 import type { AuthSession } from '@/adapters/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
@@ -64,6 +65,7 @@ async function startLogin() {
   try {
     step.value = 'waiting'
     currentSession = await auth.startAuth(trimmedHost)
+    await setupDeepLinkListener()
     await openUrl(currentSession.url)
   } catch (e) {
     step.value = 'error'
@@ -108,16 +110,34 @@ async function startGuest() {
   }
 }
 
+// Deep-link callback: auto-complete login when browser redirects back
+let unlistenDeepLink: UnlistenFn | null = null
+
+async function setupDeepLinkListener() {
+  unlistenDeepLink?.()
+  unlistenDeepLink = await listen<string>('nd:auth-callback', (event) => {
+    if (currentSession && event.payload === currentSession.sessionId) {
+      completeLogin()
+    }
+  })
+}
+
 function reset() {
   step.value = 'input'
   errorMessage.value = ''
   currentSession = null
+  unlistenDeepLink?.()
+  unlistenDeepLink = null
 }
 
 onMounted(() => {
   if (props.initialHost) {
     startLogin()
   }
+})
+
+onUnmounted(() => {
+  unlistenDeepLink?.()
 })
 </script>
 

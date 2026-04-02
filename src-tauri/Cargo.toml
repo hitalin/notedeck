@@ -41,6 +41,7 @@ utoipa = { version = "5", features = ["axum_extras"] }
 tauri-plugin-os = "2"
 tauri-plugin-haptics = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-deep-link = "2"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = [

@@ -46,6 +46,11 @@
   },
   "plugins": {
     "opener": {},
+    "deep-link": {
+      "desktop": {
+        "schemes": ["notedeck"]
+      }
+    },
     "updater": {
       "endpoints": [
         "https://github.com/hitalin/notedeck/releases/latest/download/latest.json"
