@@ -400,6 +400,30 @@ summary,
 
 /* ---- Dialog (shared modal shell) ---- */
 
+/* Native <dialog> reset & styling */
+dialog._nativeDialog {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+}
+
+dialog._nativeDialog::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Center dialog content via flexbox on the dialog element itself */
+dialog._nativeDialog[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Legacy backdrop — kept until all dialogs are migrated */
 ._dialogBackdrop {
   position: fixed;
   inset: 0;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, useTemplateRef } from 'vue'
+import { ref } from 'vue'
 
-import { usePortal } from '@/composables/usePortal'
+import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 
 const show = ref(false)
@@ -51,17 +51,19 @@ function close(result: boolean) {
 
 defineExpose({ showDialog, showConfirm })
 
-const aisPortalRef = useTemplateRef<HTMLElement>('aisPortalRef')
-usePortal(aisPortalRef)
+const dialogRef = ref<HTMLDialogElement | null>(null)
+useNativeDialog(dialogRef, visible, {
+  onCancel: () => close(false),
+  leaveDuration: 200,
+})
 </script>
 
 <template>
-    <div
+    <dialog
       v-if="visible"
-      ref="aisPortalRef"
-      class="_dialogBackdrop"
+      ref="dialogRef"
+      class="_nativeDialog"
       :class="[$style.aisBackdrop, entering && $style.enter, leaving && $style.leave]"
-      @click.self="close(false)"
     >
       <div
         :class="[$style.aisDialog, $style[dialogType], entering && $style.contentEnter, leaving && $style.contentLeave]"
@@ -81,15 +83,16 @@ usePortal(aisPortalRef)
           </template>
         </div>
       </div>
-    </div>
+    </dialog>
 </template>
 
 <style lang="scss" module>
 @use '@/styles/popup';
 
 .aisBackdrop {
-  z-index: var(--nd-z-popup);
-  background: var(--nd-modalBg);
+  &::backdrop {
+    background: var(--nd-modalBg);
+  }
 }
 
 .aisDialog {

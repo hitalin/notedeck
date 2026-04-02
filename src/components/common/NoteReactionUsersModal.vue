@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { nextTick, ref, useTemplateRef, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { createAdapter } from '@/adapters/registry'
 import type { NoteReaction } from '@/adapters/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
-import { useFocusTrap } from '@/composables/useFocusTrap'
+import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useNavigation } from '@/composables/useNavigation'
-import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
@@ -28,32 +27,24 @@ const { navigateToUser } = useNavigation()
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 
-const modalPortalRef = useTemplateRef<HTMLElement>('modalPortalRef')
-usePortal(modalPortalRef)
-
 const show = ref(false)
 const selectedReaction = ref('')
 const users = ref<NoteReaction[]>([])
 const isLoading = ref(false)
 const hasMore = ref(false)
 const scrollRef = ref<HTMLElement | null>(null)
-const modalRef = ref<HTMLElement | null>(null)
+const dialogRef = ref<HTMLDialogElement | null>(null)
 
 const LIMIT = 20
-
-const { activate: activateTrap, deactivate: deactivateTrap } = useFocusTrap(
-  modalRef,
-  { onEscape: () => close() },
-)
 
 const { visible, leaving } = useVaporTransition(show, {
   enterDuration: 200,
   leaveDuration: 200,
 })
 
-watch(show, (v) => {
-  if (v) nextTick(activateTrap)
-  else deactivateTrap()
+useNativeDialog(dialogRef, visible, {
+  onCancel: () => close(),
+  leaveDuration: 200,
 })
 
 watch(selectedReaction, () => {
@@ -116,23 +107,21 @@ defineExpose({ open })
 </script>
 
 <template>
-  <div
+  <dialog
     v-if="visible"
-    ref="modalPortalRef"
+    ref="dialogRef"
+    class="_nativeDialog"
     :class="[
       $style.backdrop,
       isCompact && $style.mobile,
       leaving ? (isCompact ? $style.sheetLeave : $style.popupLeave) : (isCompact ? $style.sheetEnter : $style.popupEnter),
     ]"
-    @click="close"
   >
       <div
-        ref="modalRef"
         :class="[
           $style.modal,
           leaving ? (isCompact ? $style.sheetContentLeave : $style.popupContentLeave) : (isCompact ? $style.sheetContentEnter : $style.popupContentEnter),
         ]"
-        @click.stop
       >
         <!-- Reaction tabs -->
         <div :class="$style.tabs">
@@ -181,19 +170,11 @@ defineExpose({ open })
           </template>
         </div>
       </div>
-  </div>
+  </dialog>
 </template>
 
 <style lang="scss" module>
 .backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: var(--nd-z-popup);
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
   &.mobile {
     align-items: flex-end;
     justify-content: stretch;
@@ -201,8 +182,6 @@ defineExpose({ open })
 }
 
 .modal {
-  position: relative;
-  z-index: calc(var(--nd-z-popup) + 1);
   width: 360px;
   max-height: 480px;
   display: flex;

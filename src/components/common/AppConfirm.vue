@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { nextTick, ref, useTemplateRef, watch } from 'vue'
+import { ref } from 'vue'
 
-import { useFocusTrap } from '@/composables/useFocusTrap'
-import { usePortal } from '@/composables/usePortal'
+import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useConfirm } from '@/stores/confirm'
 
@@ -13,38 +12,29 @@ const { visible, entering, leaving } = useVaporTransition(show, {
   leaveDuration: 200,
 })
 
-const dialogRef = ref<HTMLElement | null>(null)
-const { activate, deactivate } = useFocusTrap(dialogRef, {
+const dialogRef = ref<HTMLDialogElement | null>(null)
+
+useNativeDialog(dialogRef, visible, {
   get initialFocus() {
     return options.value.type === 'danger'
       ? '._button:first-child'
       : '._button:last-child'
   },
-  onEscape: () => resolve(false),
+  onCancel: () => resolve(false),
+  leaveDuration: 200,
 })
-
-watch(visible, (v) => {
-  if (v) nextTick(activate)
-  else deactivate()
-})
-
-const confirmPortalRef = useTemplateRef<HTMLElement>('confirmPortalRef')
-usePortal(confirmPortalRef)
 </script>
 
 <template>
-    <div
+    <dialog
       v-if="visible"
-      ref="confirmPortalRef"
-      class="_dialogBackdrop"
+      ref="dialogRef"
+      class="_nativeDialog"
       :class="[entering && $style.enter, leaving && $style.leave]"
-      @click.self="resolve(false)"
     >
       <div
-        ref="dialogRef"
         class="_dialog nd-popup-content"
         :class="[entering && $style.contentEnter, leaving && $style.contentLeave]"
-        @click.stop
       >
         <div :class="$style.header">
           <div :class="$style.title">{{ options.title }}</div>
@@ -65,7 +55,7 @@ usePortal(confirmPortalRef)
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
 </template>
 
 <style lang="scss" module>
