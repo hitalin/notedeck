@@ -33,12 +33,12 @@ pub fn run() {
 }
 
 fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
-    // Limit tokio worker threads to reduce idle memory (~2MB stack per thread).
-    // Default is num_cpus which is excessive for a desktop app.
+    // Limit tokio worker threads (~2MB stack per thread).
+    // 4 threads balance concurrency (multi-server WS + OGP + DB) vs memory.
     // Leak the runtime so the handle remains valid for the app's lifetime.
     let runtime = Box::leak(Box::new(
         tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(2)
+            .worker_threads(4)
             .enable_all()
             .build()?,
     ));
@@ -253,8 +253,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
         // Shared HTTP client (struct construction — fast, no I/O)
         let shared_http = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(5))
-            .pool_max_idle_per_host(3)
+            .timeout(std::time::Duration::from_secs(10))
+            .pool_max_idle_per_host(8)
             .pool_idle_timeout(std::time::Duration::from_secs(60))
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
             .redirect(reqwest::redirect::Policy::limited(5))
@@ -348,9 +348,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             // Stage 2: Signal full AppState — unblocks commands needing MisskeyClient.
             app_state.initialize(db.clone(), client.clone());
 
-            // OGP cache
-            let ogp_cache = ogp::OgpCache::with_client(db.clone(), shared_http.clone(), shared_perf_bg.clone());
-            app_handle.manage(ogp_cache.clone());
+            // OGP cache (lazy-loaded on first access via ensure_loaded())
+            app_handle.manage(ogp::OgpCache::with_client(db.clone(), shared_http.clone(), shared_perf_bg.clone()));
 
             // Image cache
             let image_cache = std::sync::Arc::new(
@@ -381,9 +380,6 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                 tauri::async_runtime::block_on(async { ready_rx.await.ok() });
             }
             let _ = tauri::Emitter::emit(&app_handle, "nd:backend-ready", ());
-            tauri::async_runtime::spawn(async move {
-                ogp_cache.pre_warm().await;
-            });
         });
 
         // Periodic credential cache cleanup (every 5 minutes)

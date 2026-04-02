@@ -199,6 +199,7 @@ defineSlots<{
   height: 100%;
   overscroll-behavior: contain;
   position: relative;
+  contain: layout style;
 
   /* Scroll-edge fade: subtle shadow that appears when content is scrollable */
   &::after {

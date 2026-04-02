@@ -36,11 +36,19 @@ export const useUiStore = defineStore('ui', () => {
   const sidebarOpen = ref(true)
 
   const isNarrowViewport = ref(window.innerWidth <= MOBILE_BREAKPOINT)
+  let resizeTimer: ReturnType<typeof setTimeout> | null = null
   const onResize = () => {
-    isNarrowViewport.value = window.innerWidth <= MOBILE_BREAKPOINT
+    if (resizeTimer) return
+    resizeTimer = setTimeout(() => {
+      resizeTimer = null
+      isNarrowViewport.value = window.innerWidth <= MOBILE_BREAKPOINT
+    }, 100)
   }
   window.addEventListener('resize', onResize)
-  onScopeDispose(() => window.removeEventListener('resize', onResize))
+  onScopeDispose(() => {
+    window.removeEventListener('resize', onResize)
+    if (resizeTimer) clearTimeout(resizeTimer)
+  })
 
   /** ビューポート幅ベースのレイアウト判定（タブレット横持ち等では false） */
   const isCompactLayout = computed(() => isNarrowViewport.value)

@@ -1,11 +1,11 @@
 [package]
 name = "notedeck"
-version = "0.9.13"
+version = "0.9.14"
 description = "Misskey IDE — integrated environment for browsing, posting, searching, and connecting"
 edition = "2021"
 
 [dependencies]
-notecli = { git = "https://github.com/hitalin/notecli.git", rev = "9a4486e" }
+notecli = { git = "https://github.com/hitalin/notecli.git", rev = "415fd34" }
 tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
@@ -25,7 +25,7 @@ subtle = "2"
 rand = "0.9"
 axum = "0.8"
 tower-http = { version = "0.6", features = ["cors"] }
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-webpki-roots", "rustls-tls-native-roots", "stream", "json"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots", "stream", "json"] }
 url = "2"
 sha2 = "0.10"
 lru = "0.12"

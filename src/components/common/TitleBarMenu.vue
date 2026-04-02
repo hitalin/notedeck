@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { getCurrentWebview } from '@tauri-apps/api/webview'
-import { ref } from 'vue'
+import { disable, enable, isEnabled } from '@tauri-apps/plugin-autostart'
+import { revealItemInDir } from '@tauri-apps/plugin-opener'
+import { onMounted, ref } from 'vue'
+
 import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
+import { getSettingsDir } from '@/utils/settingsFs'
 
 const menuOpen = ref(false)
 const activeCategory = ref<string | null>(null)
@@ -79,6 +83,36 @@ function clearConeGuard() {
   }
 }
 
+// ── Autostart ──
+const autostartEnabled = ref(false)
+
+onMounted(async () => {
+  try {
+    autostartEnabled.value = await isEnabled()
+  } catch {
+    // autostart not available (e.g. web)
+  }
+})
+
+async function toggleAutostart() {
+  try {
+    if (autostartEnabled.value) {
+      await disable()
+    } else {
+      await enable()
+    }
+    autostartEnabled.value = await isEnabled()
+  } catch {
+    // ignore
+  }
+}
+
+async function openSettingsDir() {
+  const dir = await getSettingsDir()
+  if (dir) await revealItemInDir(dir)
+  closeMenu()
+}
+
 // ── Actions ──
 const zoomLevel = ref(1)
 
@@ -104,6 +138,29 @@ defineExpose({ toggleMenu })
     @click="closeMenu"
   >
     <div ref="menuPanelRef" :class="$style.panel" @click.stop @mousemove="onMenuMouseMove">
+      <div
+        :class="$style.categoryItem"
+        @mouseenter="onCategoryEnter('file')"
+        @click="onCategoryEnter('file')"
+      >
+        <button class="_popupItem" :class="[activeCategory === 'file' && $style.itemActive]">
+          <i class="ti ti-file" />
+          <span>ファイル</span>
+          <i class="ti ti-chevron-right" :class="$style.chevron" />
+        </button>
+        <div v-if="activeCategory === 'file'" :class="$style.sub">
+          <button class="_popupItem" @click="openSettingsDir">
+            <i class="ti ti-folder-open" />
+            <span>設定フォルダを開く</span>
+          </button>
+          <div class="_popupDivider" />
+          <button class="_popupItem" @click="toggleAutostart">
+            <i class="ti ti-power" />
+            <span>OS起動時に自動起動</span>
+            <i :class="[autostartEnabled ? 'ti ti-check' : 'ti ti-minus', $style.kbd]" />
+          </button>
+        </div>
+      </div>
       <div
         :class="$style.categoryItem"
         @mouseenter="onCategoryEnter('view')"

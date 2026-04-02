@@ -37,7 +37,9 @@ export function useMultiAccountAdapters() {
 
   function cleanup() {
     for (const adapter of adapters.values()) {
-      adapter.stream.disconnect()
+      // Use cleanup() instead of disconnect() to avoid closing the shared
+      // Rust-side WebSocket — other columns may still use the same connection.
+      adapter.stream.cleanup()
     }
     adapters.clear()
     pending.clear()

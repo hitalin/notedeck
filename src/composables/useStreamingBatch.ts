@@ -34,19 +34,30 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   let rafScheduled = false
   let _paused = false
 
+  /** IDs waiting to be cleared from animatingIds, batched into a single timer */
+  let _pendingClearIds: Set<string> | null = null
+  let _clearTimer: ReturnType<typeof setTimeout> | null = null
+
   function enableAnimation(batchIds: string[]) {
     if (batchIds.length === 0) return
     const next = new Set(animatingIds.value)
     for (const id of batchIds) next.add(id)
     animatingIds.value = next
 
-    const timer = setTimeout(() => {
-      _animTimers.delete(timer)
+    // Batch all pending clears into a single timer to reduce allocations
+    if (!_pendingClearIds) _pendingClearIds = new Set()
+    for (const id of batchIds) _pendingClearIds.add(id)
+
+    if (_clearTimer) clearTimeout(_clearTimer)
+    _clearTimer = setTimeout(() => {
+      _clearTimer = null
+      if (!_pendingClearIds || _pendingClearIds.size === 0) return
       const after = new Set(animatingIds.value)
-      for (const id of batchIds) after.delete(id)
+      for (const id of _pendingClearIds) after.delete(id)
+      _pendingClearIds = null
       animatingIds.value = after
     }, perfStore.get('noteAnimationDuration'))
-    _animTimers.add(timer)
+    _animTimers.add(_clearTimer)
   }
 
   function syncNoteIds() {
@@ -170,6 +181,8 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     }
     for (const t of _animTimers) clearTimeout(t)
     _animTimers.clear()
+    _pendingClearIds = null
+    _clearTimer = null
     animatingIds.value = new Set()
     pendingNotes.value = []
     queuedNotes.value = []
