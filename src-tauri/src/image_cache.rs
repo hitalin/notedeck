@@ -19,8 +19,8 @@ const NEGATIVE_TTL_SERVER: Duration = Duration::from_secs(2 * 60); // 5xx: 2min
 const NEGATIVE_TTL_NETWORK: Duration = Duration::from_secs(5); // timeout/conn: 5s
 
 // Fallback defaults (used when perf_config is not available, e.g. in tests)
-const DEFAULT_MEMORY_CACHE_MAX_ITEM: usize = 64 * 1024;
-const DEFAULT_MEMORY_CACHE_MAX_TOTAL: usize = 4 * 1024 * 1024;
+const DEFAULT_MEMORY_CACHE_MAX_ITEM: usize = 256 * 1024;
+const DEFAULT_MEMORY_CACHE_MAX_TOTAL: usize = 32 * 1024 * 1024;
 const DEFAULT_MAX_CONCURRENT_FETCHES: usize = 30;
 #[allow(dead_code)]
 const DEFAULT_CIRCUIT_BREAKER_THRESHOLD: u32 = 5;
