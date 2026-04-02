@@ -118,8 +118,8 @@ pub async fn save_image_to_file(app: tauri::AppHandle, url: String) -> Result<bo
 
     // Derive filename from URL
     let file_name = url
-        .split('/')
-        .last()
+        .rsplit('/')
+        .next()
         .unwrap_or("image")
         .split('?')
         .next()
