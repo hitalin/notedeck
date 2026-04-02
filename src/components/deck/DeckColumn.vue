@@ -5,6 +5,7 @@ import {
   popOutColumnToWindow,
   requestMoveColumn,
 } from '@/composables/useDeckWindow'
+import { usePortal } from '@/composables/usePortal'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
@@ -74,10 +75,22 @@ const { visible: menuVisible, leaving: menuLeaving } = useVaporTransition(
 )
 const menuBtnEl = ref<HTMLElement | null>(null)
 const menuEl = ref<HTMLElement | null>(null)
+usePortal(menuEl)
+const menuPos = ref<{ top: string; right: string }>({ top: '0', right: '0' })
+
+function updateMenuPosition() {
+  if (!menuBtnEl.value) return
+  const rect = menuBtnEl.value.getBoundingClientRect()
+  menuPos.value = {
+    top: `${rect.bottom + 4}px`,
+    right: `${document.documentElement.clientWidth - rect.right}px`,
+  }
+}
 
 function toggleMenu() {
   showMenu.value = !showMenu.value
   if (showMenu.value) {
+    updateMenuPosition()
     requestAnimationFrame(() => {
       document.addEventListener('pointerdown', onMenuOutsideClick)
     })
@@ -223,50 +236,6 @@ function openAsPip() {
       <button ref="menuBtnEl" :class="$style.headerBtn" class="_button" title="メニュー" @click.stop="toggleMenu">
         <i class="ti ti-dots" />
       </button>
-
-      <!-- Column action menu -->
-        <div v-if="menuVisible" ref="menuEl" :class="[$style.columnMenu, menuLeaving ? $style.menuLeave : $style.menuEnter]" class="_popupMenu" @pointerdown.stop>
-          <!-- PiP menu -->
-          <template v-if="isPipMode">
-            <button class="_popupItem" @click="returnToDeck">
-              <i class="ti ti-arrow-back-up" />
-              <span>デッキに戻す</span>
-            </button>
-            <div :class="$style.columnMenuDivider" />
-            <button :class="$style.columnMenuDanger" class="_popupItem" @click="close">
-              <i class="ti ti-x" />
-              <span>閉じる</span>
-            </button>
-          </template>
-          <!-- Deck menu -->
-          <template v-else>
-            <button v-if="webUiUrl" class="_popupItem" @click="onOpenWebUi">
-              <i class="ti ti-external-link" />
-              <span>Web UIで開く</span>
-            </button>
-            <button v-if="canPopOut" class="_popupItem" @click="popOut">
-              <i class="ti ti-app-window" />
-              <span>別ウィンドウで開く</span>
-            </button>
-            <button v-if="canPopOut" class="_popupItem" @click="openAsPip">
-              <i class="ti ti-picture-in-picture" />
-              <span>PiPウィンドウとして開く</span>
-            </button>
-            <button v-if="canRecall" class="_popupItem" @click="recallToMain">
-              <i class="ti ti-arrow-back-up" />
-              <span>メインウィンドウに戻す</span>
-            </button>
-            <button v-if="soundEnabled" class="_popupItem" @click="toggleMute">
-              <i :class="isMuted ? 'ti ti-volume' : 'ti ti-volume-off'" />
-              <span>{{ isMuted ? 'ミュート解除' : 'ミュート' }}</span>
-            </button>
-            <div :class="$style.columnMenuDivider" />
-            <button :class="$style.columnMenuDanger" class="_popupItem" @click="close">
-              <i class="ti ti-trash" />
-              <span>カラムを削除</span>
-            </button>
-          </template>
-        </div>
     </header>
 
     <div :class="$style.columnSubHeader">
@@ -296,6 +265,50 @@ function openAsPip() {
         </div>
       </div>
       <slot />
+    </div>
+
+    <!-- Column action menu (usePortal moves this to body to escape contain/overflow) -->
+    <div v-if="menuVisible" ref="menuEl" :class="[$style.columnMenu, menuLeaving ? $style.menuLeave : $style.menuEnter]" class="_popupMenu" :style="{ position: 'fixed', top: menuPos.top, right: menuPos.right }" @pointerdown.stop>
+      <!-- PiP menu -->
+      <template v-if="isPipMode">
+        <button class="_popupItem" @click="returnToDeck">
+          <i class="ti ti-arrow-back-up" />
+          <span>デッキに戻す</span>
+        </button>
+        <div :class="$style.columnMenuDivider" />
+        <button :class="$style.columnMenuDanger" class="_popupItem" @click="close">
+          <i class="ti ti-x" />
+          <span>閉じる</span>
+        </button>
+      </template>
+      <!-- Deck menu -->
+      <template v-else>
+        <button v-if="webUiUrl" class="_popupItem" @click="onOpenWebUi">
+          <i class="ti ti-external-link" />
+          <span>Web UIで開く</span>
+        </button>
+        <button v-if="canPopOut" class="_popupItem" @click="popOut">
+          <i class="ti ti-app-window" />
+          <span>別ウィンドウで開く</span>
+        </button>
+        <button v-if="canPopOut" class="_popupItem" @click="openAsPip">
+          <i class="ti ti-picture-in-picture" />
+          <span>PiPウィンドウとして開く</span>
+        </button>
+        <button v-if="canRecall" class="_popupItem" @click="recallToMain">
+          <i class="ti ti-arrow-back-up" />
+          <span>メインウィンドウに戻す</span>
+        </button>
+        <button v-if="soundEnabled" class="_popupItem" @click="toggleMute">
+          <i :class="isMuted ? 'ti ti-volume' : 'ti ti-volume-off'" />
+          <span>{{ isMuted ? 'ミュート解除' : 'ミュート' }}</span>
+        </button>
+        <div :class="$style.columnMenuDivider" />
+        <button :class="$style.columnMenuDanger" class="_popupItem" @click="close">
+          <i class="ti ti-trash" />
+          <span>カラムを削除</span>
+        </button>
+      </template>
     </div>
 
   </section>
@@ -400,9 +413,6 @@ function openAsPip() {
 /* Column action menu — nested for specificity 0,2,0 to beat
    ._button (0,1,0) regardless of CSS chunk load order (Windows WebView2). */
 .columnMenu {
-  top: 100%;
-  right: 4px;
-  margin-top: 4px;
   min-width: 180px;
   max-width: 260px;
   cursor: default;
