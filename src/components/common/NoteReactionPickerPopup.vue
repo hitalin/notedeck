@@ -1,15 +1,8 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import {
-  computed,
-  nextTick,
-  ref,
-  useCssModule,
-  useTemplateRef,
-  watch,
-} from 'vue'
-import { useFocusTrap } from '@/composables/useFocusTrap'
-import { usePortal } from '@/composables/usePortal'
+import { computed, ref, useCssModule } from 'vue'
+import { useNativeDialog } from '@/composables/useNativeDialog'
+import { useNativePopover } from '@/composables/useNativePopover'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useUiStore } from '@/stores/ui'
 import { COLUMN_SELECTOR, extractThemeVars } from '@/utils/themeVars'
@@ -30,24 +23,33 @@ const show = ref(false)
 const pos = ref({ x: 0, y: 0 })
 const theme = ref<Record<string, string>>({})
 const pickerRef = ref<HTMLElement | null>(null)
-
-const { activate: activateTrap, deactivate: deactivateTrap } = useFocusTrap(
-  pickerRef,
-  {
-    onEscape: () => close(),
-  },
-)
+const dialogRef = ref<HTMLDialogElement | null>(null)
 
 const { visible, leaving } = useVaporTransition(show, {
   enterDuration: 200,
   leaveDuration: 200,
 })
 
-const backdropClass = computed(() => [
-  $style.popupBackdrop,
-  isCompact.value && $style.mobile,
-  isCompact.value && (leaving.value ? $style.sheetLeave : $style.sheetEnter),
-])
+// Desktop: popover (top layer, outside-click dismiss)
+useNativePopover(
+  pickerRef,
+  computed(() => visible.value && !isCompact.value),
+  {
+    onClose: () => close(),
+    leaveDuration: 200,
+    dismissOnOutsideClick: true,
+  },
+)
+
+// Mobile: dialog (top layer + dark backdrop)
+useNativeDialog(
+  dialogRef,
+  computed(() => visible.value && isCompact.value),
+  {
+    onCancel: () => close(),
+    leaveDuration: 200,
+  },
+)
 
 const contentClass = computed(() => [
   $style.reactionPickerPopup,
@@ -59,11 +61,6 @@ const contentClass = computed(() => [
       ? $style.sheetContentEnter
       : $style.popupContentEnter,
 ])
-
-watch(show, (v) => {
-  if (v) nextTick(activateTrap)
-  else deactivateTrap()
-})
 
 function open(e: MouseEvent) {
   const btn = e.currentTarget as HTMLElement
@@ -80,24 +77,38 @@ function close() {
   show.value = false
 }
 
-const pickerPortalRef = useTemplateRef<HTMLElement>('pickerPortalRef')
-usePortal(pickerPortalRef)
-
 defineExpose({ open })
 </script>
 
 <template>
+  <!-- Desktop: popover -->
   <div
-    v-if="visible"
-    ref="pickerPortalRef"
-    :class="backdropClass"
-    @click="close"
+    v-if="visible && !isCompact"
+    ref="pickerRef"
+    popover="manual"
+    :class="contentClass"
+    :style="{ ...theme, top: pos.y + 'px', left: pos.x + 'px' }"
+  >
+    <MkReactionPicker
+      :server-host="serverHost"
+      :account-id="accountId"
+      @pick="(r: string) => { emit('pick', r); close() }"
+    />
+  </div>
+
+  <!-- Mobile: dialog (bottom sheet with dark backdrop) -->
+  <dialog
+    v-if="visible && isCompact"
+    ref="dialogRef"
+    class="_nativeDialog"
+    :class="[
+      $style.mobileBackdrop,
+      leaving ? $style.sheetLeave : $style.sheetEnter,
+    ]"
   >
     <div
-      ref="pickerRef"
       :class="contentClass"
-      :style="isCompact ? theme : { ...theme, top: pos.y + 'px', left: pos.x + 'px' }"
-      @click.stop
+      :style="theme"
     >
       <MkReactionPicker
         :server-host="serverHost"
@@ -105,42 +116,32 @@ defineExpose({ open })
         @pick="(r: string) => { emit('pick', r); close() }"
       />
     </div>
-  </div>
+  </dialog>
 </template>
 
 <style lang="scss" module>
-.popupBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: var(--nd-z-popup);
-  background: transparent;
-
-  &.mobile {
-    background: rgba(0, 0, 0, 0.4);
-  }
-}
-
 .reactionPickerPopup {
   position: fixed;
   transform: translateX(-100%);
-  z-index: calc(var(--nd-z-popup) + 1);
   background: color-mix(in srgb, var(--nd-popup, var(--nd-panel)) 96%, transparent);
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   contain: layout paint;
 
-  .mobile & {
+  .mobileBackdrop & {
+    position: static;
     transform: none;
-    top: auto;
-    left: 0;
-    right: 0;
-    bottom: 0;
     width: 100%;
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
     padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
   }
+}
+
+.mobileBackdrop {
+  align-items: flex-end;
+  justify-content: stretch;
 }
 
 /* Desktop popup content — scale + fade */
