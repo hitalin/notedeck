@@ -348,9 +348,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             // Stage 2: Signal full AppState — unblocks commands needing MisskeyClient.
             app_state.initialize(db.clone(), client.clone());
 
-            // OGP cache
-            let ogp_cache = ogp::OgpCache::with_client(db.clone(), shared_http.clone(), shared_perf_bg.clone());
-            app_handle.manage(ogp_cache.clone());
+            // OGP cache (lazy-loaded on first access via ensure_loaded())
+            app_handle.manage(ogp::OgpCache::with_client(db.clone(), shared_http.clone(), shared_perf_bg.clone()));
 
             // Image cache
             let image_cache = std::sync::Arc::new(
@@ -381,9 +380,6 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                 tauri::async_runtime::block_on(async { ready_rx.await.ok() });
             }
             let _ = tauri::Emitter::emit(&app_handle, "nd:backend-ready", ());
-            tauri::async_runtime::spawn(async move {
-                ogp_cache.pre_warm().await;
-            });
         });
 
         // Periodic credential cache cleanup (every 5 minutes)

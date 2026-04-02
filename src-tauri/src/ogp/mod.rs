@@ -129,12 +129,6 @@ pub struct OgpCache {
 }
 
 impl OgpCache {
-    /// Pre-warm the in-memory cache from disk.
-    /// Call from app setup to avoid blocking the first API request.
-    pub async fn pre_warm(&self) {
-        self.ensure_loaded().await;
-    }
-
     /// Create with a default HTTP client (used in tests).
     #[allow(dead_code)]
     pub fn new(db: Arc<notecli::db::Database>) -> Self {
