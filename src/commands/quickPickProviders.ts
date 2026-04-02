@@ -319,6 +319,8 @@ const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
   'lookup',
   'play',
   'page',
+  'widget',
+  'aiscript',
 ])
 
 const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
@@ -329,6 +331,8 @@ const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
   'specified',
   'followRequests',
 ])
+
+const ACCOUNT_OPTIONAL_TYPES = new Set<ColumnType>(['widget', 'aiscript'])
 
 /** カラムタイプの表示順とグループ定義。label/icon は COLUMN_LABELS/COLUMN_ICONS から取得 */
 const COLUMN_TYPE_GROUPS: { group: string; types: ColumnType[] }[] = [
@@ -379,6 +383,7 @@ const COLUMN_EXTRA_PROPS: Partial<
   widget: { widgets: [] },
   aiscript: { aiscriptCode: '<: "Hello, AiScript!"' },
   apiDocs: { accountId: null, width: 990 },
+  ai: { accountId: null },
   timeline: { tl: 'home', name: null },
 }
 
@@ -410,8 +415,8 @@ export function getColumnTypeItems(): QuickPickItem[] {
 async function buildAccountStep(type: ColumnType): Promise<QuickPickItem[]> {
   const accountsStore = useAccountsStore()
 
-  // apiDocs: account-independent
-  if (type === 'apiDocs') {
+  // Account-independent types: skip account selection
+  if (type === 'apiDocs' || type === 'ai') {
     finalizeAddColumn(type, null)
     return []
   }
@@ -421,9 +426,12 @@ async function buildAccountStep(type: ColumnType): Promise<QuickPickItem[]> {
     (a) => !(authRequired && isGuestAccount(a)),
   )
 
-  // Single account: auto-select
+  // Account-optional types: always show selection so user can choose "no account"
+  const forceShowSelection = ACCOUNT_OPTIONAL_TYPES.has(type)
+
+  // Single account: auto-select (unless account-optional)
   const account = accounts[0]
-  if (accounts.length === 1 && account) {
+  if (!forceShowSelection && accounts.length === 1 && account) {
     if (!account.hasToken && authRequired) {
       showLoginPrompt()
       return []
@@ -431,7 +439,7 @@ async function buildAccountStep(type: ColumnType): Promise<QuickPickItem[]> {
     return buildDetailStep(type, account.id)
   }
 
-  // Multiple accounts: show selection
+  // Multiple accounts (or account-optional): show selection
   const items: QuickPickItem[] = []
 
   if (CROSS_ACCOUNT_TYPES.has(type)) {
@@ -439,6 +447,15 @@ async function buildAccountStep(type: ColumnType): Promise<QuickPickItem[]> {
       id: 'account-all',
       label: '全アカウント',
       icon: 'users',
+      children: () => buildDetailStep(type, null),
+    })
+  }
+
+  if (ACCOUNT_OPTIONAL_TYPES.has(type)) {
+    items.push({
+      id: 'account-none',
+      label: 'アカウントなし',
+      icon: 'circle-off',
       children: () => buildDetailStep(type, null),
     })
   }

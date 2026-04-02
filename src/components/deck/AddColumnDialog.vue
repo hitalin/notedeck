@@ -66,6 +66,8 @@ const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
   'lookup',
   'play',
   'page',
+  'widget',
+  'aiscript',
 ])
 
 /** Column types that support cross-account mode (accountId: null) */
@@ -78,6 +80,9 @@ const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
   'followRequests',
 ])
 
+/** Column types that can optionally work without an account */
+const ACCOUNT_OPTIONAL_TYPES = new Set<ColumnType>(['widget', 'aiscript'])
+
 /** Whether the selected column type requires authentication */
 const requiresAuth = computed(() => {
   if (!addColumnType.value) return false
@@ -87,10 +92,12 @@ const requiresAuth = computed(() => {
 function selectColumnType(type: ColumnType) {
   addColumnType.value = type
   // Account-independent types: skip account selection
-  if (type === 'apiDocs') {
+  if (type === 'apiDocs' || type === 'ai') {
     addColumnForAccount(null)
     return
   }
+  // Account-optional types: always show selection screen so user can choose "no account"
+  if (ACCOUNT_OPTIONAL_TYPES.has(type)) return
   // Auto-select if only one valid account
   const authRequired = !GUEST_ALLOWED_TYPES.has(type)
   const accounts = accountsStore.accounts.filter(
@@ -113,6 +120,7 @@ const COLUMN_EXTRA_PROPS: Partial<
   widget: { widgets: [] },
   aiscript: { aiscriptCode: '<: "Hello, AiScript!"' },
   apiDocs: { accountId: null, width: 990 },
+  ai: { accountId: null },
   timeline: { tl: 'home', name: null },
 }
 
@@ -431,6 +439,15 @@ function close() {
         >
           <AvatarStack :size="28" />
           <span>全アカウント</span>
+        </button>
+        <button
+          v-if="addColumnType && ACCOUNT_OPTIONAL_TYPES.has(addColumnType)"
+          class="_button"
+          :class="$style.addAccountBtn"
+          @click="addColumnForAccount(null)"
+        >
+          <i class="ti ti-circle-off" style="font-size: 28px; opacity: 0.5;" />
+          <span>アカウントなし</span>
         </button>
         <button
           v-for="account in accountsStore.accounts"
