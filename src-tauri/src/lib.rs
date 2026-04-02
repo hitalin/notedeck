@@ -210,6 +210,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::open_devtools,
         commands::export_db,
         commands::import_db,
+        commands::save_image_to_file,
         commands::list_settings_files,
         commands::read_settings_file,
         commands::write_settings_file,
