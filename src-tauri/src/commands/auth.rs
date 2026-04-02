@@ -60,22 +60,8 @@ pub async fn auth_start(
         }
     }
     let permission_str = perms.join(",");
-    let mut auth_url = url::Url::parse(&format!("https://{host}/miauth/{session_id}"))
-        .map_err(|e| NoteDeckError::InvalidInput(format!("Invalid host URL: {e}")))?;
-    {
-        let mut pairs = auth_url.query_pairs_mut();
-        pairs.append_pair("name", "notedeck");
-        pairs.append_pair(
-            "icon",
-            "https://raw.githubusercontent.com/hitalin/notedeck/main/src-tauri/icons/128x128.png",
-        );
-        if !is_wsl() {
-            let callback = format!("notedeck://auth/callback?session={session_id}");
-            pairs.append_pair("callback", &callback);
-        }
-        pairs.append_pair("permission", &permission_str);
-    }
-    let url = auth_url.to_string();
+    let url =
+        format!("https://{host}/miauth/{session_id}?name=notedeck&permission={permission_str}");
     tracker.register(&session_id, &host);
     Ok(AuthSession {
         session_id,
@@ -134,18 +120,4 @@ pub async fn auth_complete_and_save(
 
     Ok(AccountPublic::new(&saved, true))
     // account, saved が drop → token が zeroize される
-}
-
-/// Detect WSL environment (custom URL schemes don't work across the WSL/Windows boundary)
-fn is_wsl() -> bool {
-    #[cfg(target_os = "linux")]
-    {
-        std::fs::read_to_string("/proc/version")
-            .map(|v| v.contains("microsoft") || v.contains("Microsoft"))
-            .unwrap_or(false)
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        false
-    }
 }

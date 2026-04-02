@@ -7,7 +7,6 @@
     "global-shortcut:default",
     "autostart:default",
     "updater:default",
-    "process:default",
-    "deep-link:default"
+    "process:default"
   ]
 }
