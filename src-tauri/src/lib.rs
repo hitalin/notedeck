@@ -1,6 +1,7 @@
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::{Listener, Manager};
+#[cfg(not(mobile))]
+use std::sync::atomic::{AtomicBool, Ordering};
 #[cfg(not(mobile))]
 use tauri::{
     menu::{Menu, MenuItem},
@@ -286,7 +287,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                             "nd:auth-callback",
                             session_id.to_string(),
                         );
-                        // Show and focus the main window
+                        // Show and focus the main window (desktop only)
+                        #[cfg(not(mobile))]
                         if let Some(w) = deep_link_handle.get_webview_window("main") {
                             let _ = w.show();
                             let _ = w.set_focus();
