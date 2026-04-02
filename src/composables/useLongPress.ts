@@ -1,4 +1,4 @@
-import { nextTick, ref } from 'vue'
+import { nextTick, onScopeDispose, ref } from 'vue'
 
 const IS_TOUCH = navigator.maxTouchPoints > 0
 
@@ -54,6 +54,8 @@ export function useLongPress(
     clear()
     longPressed.value = false
   }
+
+  onScopeDispose(clear)
 
   return {
     longPressed,

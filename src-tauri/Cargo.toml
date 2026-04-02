@@ -1,6 +1,6 @@
 [package]
 name = "notedeck"
-version = "0.9.16"
+version = "0.9.17"
 description = "Misskey IDE — integrated environment for browsing, posting, searching, and connecting"
 edition = "2021"
 
@@ -41,8 +41,6 @@ utoipa = { version = "5", features = ["axum_extras"] }
 tauri-plugin-os = "2"
 tauri-plugin-haptics = "2"
 tauri-plugin-dialog = "2"
-tauri-plugin-deep-link = "2"
-tauri-plugin-single-instance = { version = "2", features = ["deep-link"], optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = [
@@ -53,7 +51,7 @@ windows = { version = "0.61", features = [
 
 [features]
 default = ["desktop"]
-desktop = ["tauri/tray-icon", "dep:tauri-plugin-global-shortcut", "dep:tauri-plugin-autostart", "dep:tauri-plugin-updater", "dep:tauri-plugin-process", "dep:tauri-plugin-single-instance"]
+desktop = ["tauri/tray-icon", "dep:tauri-plugin-global-shortcut", "dep:tauri-plugin-autostart", "dep:tauri-plugin-updater", "dep:tauri-plugin-process"]
 
 [dev-dependencies]
 tempfile = "3"
