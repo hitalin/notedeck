@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, inject, onBeforeUnmount, provide, ref, watch } from 'vue'
+import { computed, inject, provide, ref, watch } from 'vue'
 import {
   popOutColumnToWindow,
   requestMoveColumn,
 } from '@/composables/useDeckWindow'
-import { usePortal } from '@/composables/usePortal'
+import { useNativePopover } from '@/composables/useNativePopover'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
@@ -75,8 +75,13 @@ const { visible: menuVisible, leaving: menuLeaving } = useVaporTransition(
 )
 const menuBtnEl = ref<HTMLElement | null>(null)
 const menuEl = ref<HTMLElement | null>(null)
-usePortal(menuEl)
 const menuPos = ref<{ top: string; right: string }>({ top: '0', right: '0' })
+
+useNativePopover(menuEl, menuVisible, {
+  onClose: () => closeMenu(),
+  leaveDuration: 180,
+  dismissOnOutsideClick: true,
+})
 
 function updateMenuPosition() {
   if (!menuBtnEl.value) return
@@ -91,34 +96,12 @@ function toggleMenu() {
   showMenu.value = !showMenu.value
   if (showMenu.value) {
     updateMenuPosition()
-    requestAnimationFrame(() => {
-      document.addEventListener('pointerdown', onMenuOutsideClick)
-    })
-  } else {
-    document.removeEventListener('pointerdown', onMenuOutsideClick)
   }
 }
 
 function closeMenu() {
   showMenu.value = false
-  document.removeEventListener('pointerdown', onMenuOutsideClick)
 }
-
-function onMenuOutsideClick(e: PointerEvent) {
-  const target = e.target as Node
-  if (
-    menuEl.value &&
-    !menuEl.value.contains(target) &&
-    menuBtnEl.value &&
-    !menuBtnEl.value.contains(target)
-  ) {
-    closeMenu()
-  }
-}
-
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onMenuOutsideClick)
-})
 
 async function close() {
   closeMenu()
@@ -268,7 +251,7 @@ function openAsPip() {
     </div>
 
     <!-- Column action menu (usePortal moves this to body to escape contain/overflow) -->
-    <div v-if="menuVisible" ref="menuEl" :class="[$style.columnMenu, menuLeaving ? $style.menuLeave : $style.menuEnter]" class="_popupMenu" :style="{ position: 'fixed', top: menuPos.top, right: menuPos.right }" @pointerdown.stop>
+    <div v-if="menuVisible" ref="menuEl" popover="manual" :class="[$style.columnMenu, menuLeaving ? $style.menuLeave : $style.menuEnter]" class="_popupMenu" :style="{ ...themeVars, position: 'fixed', top: menuPos.top, right: menuPos.right }" @pointerdown.stop>
       <!-- PiP menu -->
       <template v-if="isPipMode">
         <button class="_popupItem" @click="returnToDeck">
