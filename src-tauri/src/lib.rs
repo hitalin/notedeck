@@ -275,7 +275,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // parse the session ID and emit it so LoginContent can auto-complete.
         let deep_link_handle = app.handle().clone();
         app.listen("deep-link://new-url", move |event: tauri::Event| {
-            if let Some(urls) = serde_json::from_str::<Vec<String>>(event.payload()).ok() {
+            if let Ok(urls) = serde_json::from_str::<Vec<String>>(event.payload()) {
                 for raw in urls {
                     if let Some(session_id) = raw
                         .strip_prefix("notedeck://auth/callback?session=")
