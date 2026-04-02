@@ -8,9 +8,11 @@ import {
   watch,
 } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
+import { useLongPress } from '@/composables/useLongPress'
 import { usePortal } from '@/composables/usePortal'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { isSafeUrl, openSafeUrl } from '@/utils/url'
+import PopupMenu from './PopupMenu.vue'
 
 function safeMediaSrc(url: string | null | undefined): string | undefined {
   if (!url) return undefined
@@ -183,6 +185,67 @@ onUnmounted(() => {
 
 const lightboxPortalRef = useTemplateRef<HTMLElement>('lightboxPortalRef')
 usePortal(lightboxPortalRef)
+
+// Long-press context menu for lightbox images
+const lightboxMenuRef = ref<InstanceType<typeof PopupMenu>>()
+const canShare = typeof navigator.share === 'function'
+
+const { handlers: longPressHandlers } = useLongPress((e) => {
+  lightboxMenuRef.value?.open(e)
+})
+
+async function copyImage() {
+  const file = lightboxFile.value
+  if (!file?.url || !isSafeUrl(file.url)) return
+  try {
+    const res = await fetch(file.url)
+    const blob = await res.blob()
+    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
+  } catch {
+    // Fallback: copy URL as text
+    try {
+      await navigator.clipboard.writeText(file.url)
+    } catch {
+      // Clipboard not available
+    }
+  }
+  lightboxMenuRef.value?.close()
+}
+
+async function downloadImage() {
+  const file = lightboxFile.value
+  if (!file?.url || !isSafeUrl(file.url)) return
+  try {
+    const res = await fetch(file.url)
+    const blob = await res.blob()
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = file.name || file.url.split('/').pop() || 'image'
+    a.click()
+    URL.revokeObjectURL(a.href)
+  } catch {
+    await openSafeUrl(file.url)
+  }
+  lightboxMenuRef.value?.close()
+}
+
+async function shareImage() {
+  const file = lightboxFile.value
+  if (!file?.url) return
+  try {
+    await navigator.share({ url: file.url })
+  } catch {
+    // User cancelled
+  }
+  lightboxMenuRef.value?.close()
+}
+
+async function openInBrowser() {
+  const file = lightboxFile.value
+  if (!file?.url) return
+  await openSafeUrl(file.url)
+  lightboxMenuRef.value?.close()
+}
 </script>
 
 <template>
@@ -341,6 +404,7 @@ usePortal(lightboxPortalRef)
           :alt="lightboxFile.name"
           :class="$style.lightboxImage"
           draggable="false"
+          v-bind="longPressHandlers"
         />
         <video
           v-else-if="isVideo(lightboxFile)"
@@ -360,6 +424,26 @@ usePortal(lightboxPortalRef)
           @click="lightboxIndex = i"
         />
       </div>
+
+      <!-- Long-press context menu -->
+      <PopupMenu ref="lightboxMenuRef">
+        <button class="_popupItem" @click="copyImage">
+          <i class="ti ti-copy" />
+          画像をコピー
+        </button>
+        <button class="_popupItem" @click="downloadImage">
+          <i class="ti ti-download" />
+          画像をダウンロード
+        </button>
+        <button v-if="canShare" class="_popupItem" @click="shareImage">
+          <i class="ti ti-share" />
+          画像を共有
+        </button>
+        <button class="_popupItem" @click="openInBrowser">
+          <i class="ti ti-external-link" />
+          ブラウザで開く
+        </button>
+      </PopupMenu>
   </div>
 </template>
 
