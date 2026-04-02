@@ -86,23 +86,29 @@ function initHighlighter(): Promise<void> {
   if (initPromise) return initPromise
 
   initPromise = (async () => {
-    const [shikiCore, themeModule, aiscriptGrammar, ...langModules] =
-      await Promise.all([
-        import('shiki'),
-        import('shiki/dist/themes/dark-plus.mjs'),
-        import('@/assets/aiscript.tmLanguage.json'),
-        // Core languages — most common in Misskey posts
-        import('shiki/dist/langs/bash.mjs'),
-        import('shiki/dist/langs/css.mjs'),
-        import('shiki/dist/langs/html.mjs'),
-        import('shiki/dist/langs/javascript.mjs'),
-        import('shiki/dist/langs/json.mjs'),
-        import('shiki/dist/langs/markdown.mjs'),
-        import('shiki/dist/langs/rust.mjs'),
-        import('shiki/dist/langs/sql.mjs'),
-        import('shiki/dist/langs/typescript.mjs'),
-        import('shiki/dist/langs/yaml.mjs'),
-      ])
+    const [
+      shikiCore,
+      shikiEngine,
+      themeModule,
+      aiscriptGrammar,
+      ...langModules
+    ] = await Promise.all([
+      import('shiki/core'),
+      import('shiki/engine/javascript'),
+      import('shiki/dist/themes/dark-plus.mjs'),
+      import('@/assets/aiscript.tmLanguage.json'),
+      // Core languages — most common in Misskey posts
+      import('shiki/dist/langs/bash.mjs'),
+      import('shiki/dist/langs/css.mjs'),
+      import('shiki/dist/langs/html.mjs'),
+      import('shiki/dist/langs/javascript.mjs'),
+      import('shiki/dist/langs/json.mjs'),
+      import('shiki/dist/langs/markdown.mjs'),
+      import('shiki/dist/langs/rust.mjs'),
+      import('shiki/dist/langs/sql.mjs'),
+      import('shiki/dist/langs/typescript.mjs'),
+      import('shiki/dist/langs/yaml.mjs'),
+    ])
 
     highlighter = shikiCore.createHighlighterCoreSync({
       themes: [themeModule.default],
@@ -110,7 +116,7 @@ function initHighlighter(): Promise<void> {
         ...langModules.map((m) => m.default),
         aiscriptGrammar.default as unknown as LanguageRegistration,
       ],
-      engine: shikiCore.createJavaScriptRegexEngine(),
+      engine: shikiEngine.createJavaScriptRegexEngine(),
     })
     const mod = await import('dompurify')
     purify = mod.default
