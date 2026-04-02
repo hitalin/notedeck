@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tauri::Manager;
+use tauri::{Listener, Manager};
 #[cfg(not(mobile))]
 use tauri::{
     menu::{Menu, MenuItem},
@@ -56,7 +56,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_haptics::init())
-        .plugin(tauri_plugin_dialog::init());
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_deep_link::init());
 
     #[cfg(not(mobile))]
     {
@@ -268,6 +269,32 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
+
+        // Deep link handler: forward auth callback URLs to the frontend.
+        // When Misskey redirects to notedeck://auth/callback?session={id},
+        // parse the session ID and emit it so LoginContent can auto-complete.
+        let deep_link_handle = app.handle().clone();
+        app.listen("deep-link://new-url", move |event: tauri::Event| {
+            if let Ok(urls) = serde_json::from_str::<Vec<String>>(event.payload()) {
+                for raw in urls {
+                    if let Some(session_id) = raw
+                        .strip_prefix("notedeck://auth/callback?session=")
+                        .or_else(|| raw.strip_prefix("notedeck://auth/callback/?session="))
+                    {
+                        let _ = tauri::Emitter::emit(
+                            &deep_link_handle,
+                            "nd:auth-callback",
+                            session_id.to_string(),
+                        );
+                        // Show and focus the main window
+                        if let Some(w) = deep_link_handle.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                }
+            }
+        });
 
         // Generate API token (256-bit CSPRNG) and write to file
         let api_token: String = rand::random::<[u8; 32]>()

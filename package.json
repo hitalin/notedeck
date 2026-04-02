@@ -2,7 +2,7 @@
   "name": "notedeck",
   "description": "Misskey IDE — integrated environment for browsing, posting, searching, and connecting",
   "private": true,
-  "version": "0.9.14",
+  "version": "0.9.15",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -44,6 +44,7 @@
     "@tabler/icons-webfont": "^3.37.1",
     "@tanstack/vue-virtual": "^3.13.23",
     "@tauri-apps/plugin-autostart": "^2.5.1",
+    "@tauri-apps/plugin-deep-link": "^2.4.7",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-global-shortcut": "^2.3.1",
     "@tauri-apps/plugin-haptics": "^2.3.2",

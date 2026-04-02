@@ -33,6 +33,7 @@ import { useDeckStore } from '@/stores/deck'
 import AiScriptEditor from './AiScriptEditor.vue'
 import type { PostFormRequest } from './AiScriptUiRenderer.vue'
 import AiScriptUiRenderer from './AiScriptUiRenderer.vue'
+import { widgetTemplates } from './templates'
 
 const props = defineProps<{
   widget: WidgetConfig
@@ -53,6 +54,21 @@ const uiComponents = ref<UiComponent[]>([])
 const error = ref<string | null>(null)
 const running = ref(false)
 const showEditor = ref(!code.value)
+const showTemplatePicker = ref(!code.value)
+
+function applyTemplate(templateId: string) {
+  const tmpl = widgetTemplates.find((t) => t.id === templateId)
+  if (!tmpl) return
+  code.value = tmpl.code
+  showTemplatePicker.value = false
+  showEditor.value = false
+  if (tmpl.autoRun) run()
+}
+
+function skipTemplate() {
+  showTemplatePicker.value = false
+  showEditor.value = true
+}
 const interpreter = ref<Interpreter | null>(null)
 const { show: showToast } = useToast()
 const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
@@ -183,30 +199,50 @@ onMounted(() => {
 <template>
   <div :class="$style.widgetApp">
     <AiScriptDialog ref="dialogRef" />
-    <div :class="$style.appToolbar">
-      <button :class="$style.toolBtn" @click="showEditor = !showEditor">
-        <i :class="showEditor ? 'ti ti-chevron-up' : 'ti ti-code'" />
+
+    <div v-if="showTemplatePicker" :class="$style.templatePicker">
+      <div :class="$style.templateHeader">テンプレートから作成</div>
+      <button
+        v-for="tmpl in widgetTemplates"
+        :key="tmpl.id"
+        :class="$style.templateItem"
+        :title="tmpl.description"
+        @click="applyTemplate(tmpl.id)"
+      >
+        <i :class="'ti ' + tmpl.icon" />
+        {{ tmpl.label }}
       </button>
-      <button :class="[$style.toolBtn, $style.run]" :disabled="running" @click="run">
-        <i class="ti ti-player-play" />
+      <button :class="[$style.templateItem, $style.templateSkip]" @click="skipTemplate">
+        空のエディタで始める
       </button>
     </div>
 
-    <AiScriptEditor
-      v-if="showEditor"
-      v-model="code"
-      placeholder="AiScript App code..."
-    />
+    <template v-else>
+      <div :class="$style.appToolbar">
+        <button :class="$style.toolBtn" @click="showEditor = !showEditor">
+          <i :class="showEditor ? 'ti ti-chevron-up' : 'ti ti-code'" />
+        </button>
+        <button :class="[$style.toolBtn, $style.run]" :disabled="running" @click="run">
+          <i class="ti ti-player-play" />
+        </button>
+      </div>
 
-    <div v-if="error" :class="$style.appError">{{ error }}</div>
+      <AiScriptEditor
+        v-if="showEditor"
+        v-model="code"
+        placeholder="AiScript App code..."
+      />
 
-    <AiScriptUiRenderer
-      v-if="uiComponents.length"
-      :components="uiComponents"
-      :interpreter="(interpreter as Interpreter | null)"
-      :server-url="serverUrl"
-      @post="handlePost"
-    />
+      <div v-if="error" :class="$style.appError">{{ error }}</div>
+
+      <AiScriptUiRenderer
+        v-if="uiComponents.length"
+        :components="uiComponents"
+        :interpreter="(interpreter as Interpreter | null)"
+        :server-url="serverUrl"
+        @post="handlePost"
+      />
+    </template>
   </div>
 
   <div v-if="showPostForm && props.accountId" ref="postFormPortalRef">
@@ -282,4 +318,47 @@ onMounted(() => {
 
 // Keep for dynamic binding
 .run {}
+
+.templatePicker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.templateHeader {
+  padding: 4px 4px 2px;
+  font-size: 0.75em;
+  font-weight: 600;
+  opacity: 0.45;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.templateItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  cursor: pointer;
+  font-size: 0.85em;
+  text-align: left;
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &.templateSkip {
+    justify-content: center;
+    opacity: 0.5;
+    margin-top: 4px;
+  }
+}
+
+// Keep for dynamic binding
+.templateSkip {}
 </style>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref, useTemplateRef } from 'vue'
+import { defineAsyncComponent, ref } from 'vue'
 import { useHoverPopup } from '@/composables/useHoverPopup'
-import { usePortal } from '@/composables/usePortal'
+import { useNativePopover } from '@/composables/useNativePopover'
 import { extractColumnThemeVars } from '@/utils/themeVars'
 
 const MkReactionUsersPopup = defineAsyncComponent(
@@ -43,16 +43,16 @@ function hide() {
   popup.hide()
 }
 
-const reactionUsersPortalRef = useTemplateRef<HTMLElement>(
-  'reactionUsersPortalRef',
-)
-usePortal(reactionUsersPortalRef)
+const popoverRef = ref<HTMLElement | null>(null)
+useNativePopover(popoverRef, popup.isVisible, {
+  leaveDuration: 0,
+})
 
 defineExpose({ show, hide })
 </script>
 
 <template>
-  <div v-if="popup.isVisible.value" ref="reactionUsersPortalRef" :style="theme">
+  <div v-if="popup.isVisible.value" ref="popoverRef" popover="manual" :style="theme">
     <MkReactionUsersPopup
       :note-id="noteId"
       :account-id="accountId"

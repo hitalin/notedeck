@@ -1,16 +1,10 @@
 <script setup lang="ts">
-import {
-  defineAsyncComponent,
-  onMounted,
-  onUnmounted,
-  ref,
-  useTemplateRef,
-  watch,
-} from 'vue'
+import { defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
+
 import { createAdapter } from '@/adapters/registry'
 import type { NoteReaction } from '@/adapters/types'
+import { useNativePopover } from '@/composables/useNativePopover'
 import { useNavigation } from '@/composables/useNavigation'
-import { usePortal } from '@/composables/usePortal'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { proxyUrl } from '@/utils/imageProxy'
@@ -118,8 +112,10 @@ function closeUserPopup() {
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') emit('close')
 }
-const userPopupPortalRef = useTemplateRef<HTMLElement>('userPopupPortalRef')
-usePortal(userPopupPortalRef)
+const userPopupPopoverRef = ref<HTMLElement | null>(null)
+useNativePopover(userPopupPopoverRef, showUserPopup, {
+  leaveDuration: 0,
+})
 
 onMounted(() => document.addEventListener('keydown', onKeydown))
 onUnmounted(() => {
@@ -188,7 +184,7 @@ onUnmounted(() => {
     </template>
   </div>
 
-  <div v-if="showUserPopup" ref="userPopupPortalRef" :style="userPopupTheme">
+  <div v-if="showUserPopup" ref="userPopupPopoverRef" popover="manual" :style="userPopupTheme">
     <MkUserPopup
       :key="userPopupUserId"
       :user-id="userPopupUserId"

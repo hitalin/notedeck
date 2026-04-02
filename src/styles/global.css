@@ -292,6 +292,20 @@ summary,
     opacity var(--nd-duration-base);
 }
 
+/* ---- Popover API reset ---- */
+/* Override UA :popover-open defaults (inset: 0; margin: auto; border; padding) */
+
+[popover],
+[popover]:popover-open {
+  border: none;
+  margin: 0;
+  padding: 0;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+}
+
 /* ---- Popup (shared panel — no backdrop-filter to save GPU memory) ---- */
 
 ._popup {
@@ -400,6 +414,30 @@ summary,
 
 /* ---- Dialog (shared modal shell) ---- */
 
+/* Native <dialog> reset & styling */
+dialog._nativeDialog {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+}
+
+dialog._nativeDialog::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Center dialog content via flexbox on the dialog element itself */
+dialog._nativeDialog[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Legacy backdrop — kept until all dialogs are migrated */
 ._dialogBackdrop {
   position: fixed;
   inset: 0;

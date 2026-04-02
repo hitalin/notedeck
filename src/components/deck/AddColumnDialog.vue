@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import AvatarStack from '@/components/common/AvatarStack.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { COLUMN_LABELS } from '@/composables/useColumnTabs'
-import { useFocusTrap } from '@/composables/useFocusTrap'
+import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useNavigation } from '@/composables/useNavigation'
 import {
   getAccountAvatarUrl,
@@ -66,6 +66,8 @@ const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
   'lookup',
   'play',
   'page',
+  'widget',
+  'aiscript',
 ])
 
 /** Column types that support cross-account mode (accountId: null) */
@@ -78,6 +80,9 @@ const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
   'followRequests',
 ])
 
+/** Column types that can optionally work without an account */
+const ACCOUNT_OPTIONAL_TYPES = new Set<ColumnType>(['widget', 'aiscript'])
+
 /** Whether the selected column type requires authentication */
 const requiresAuth = computed(() => {
   if (!addColumnType.value) return false
@@ -87,10 +92,12 @@ const requiresAuth = computed(() => {
 function selectColumnType(type: ColumnType) {
   addColumnType.value = type
   // Account-independent types: skip account selection
-  if (type === 'apiDocs') {
+  if (type === 'apiDocs' || type === 'ai') {
     addColumnForAccount(null)
     return
   }
+  // Account-optional types: always show selection screen so user can choose "no account"
+  if (ACCOUNT_OPTIONAL_TYPES.has(type)) return
   // Auto-select if only one valid account
   const authRequired = !GUEST_ALLOWED_TYPES.has(type)
   const accounts = accountsStore.accounts.filter(
@@ -113,6 +120,7 @@ const COLUMN_EXTRA_PROPS: Partial<
   widget: { widgets: [] },
   aiscript: { aiscriptCode: '<: "Hello, AiScript!"' },
   apiDocs: { accountId: null, width: 990 },
+  ai: { accountId: null },
   timeline: { tl: 'home', name: null },
 }
 
@@ -212,12 +220,14 @@ function addSelectableColumn(itemId: string, itemName: string) {
   } as Omit<DeckColumn, 'id'>)
 }
 
-const dialogRef = ref<HTMLElement | null>(null)
-const { activate: activateTrap } = useFocusTrap(dialogRef, {
-  onEscape: () => close(),
-})
+const dialogRef = ref<HTMLDialogElement | null>(null)
+const showDialog = ref(true)
 
-onMounted(activateTrap)
+if (props.mode !== 'pip') {
+  useNativeDialog(dialogRef, showDialog, {
+    onCancel: () => close(),
+  })
+}
 
 function close() {
   emit('close')
@@ -225,8 +235,12 @@ function close() {
 </script>
 
 <template>
-  <div ref="dialogRef" :class="[mode === 'pip' ? $style.addInline : $style.addOverlay]" @click="mode !== 'pip' && close()">
-    <div :class="[mode === 'pip' ? $style.addPopupInline : $style.addPopup, isCompact && $style.mobile]" @click.stop>
+  <component
+    :is="mode !== 'pip' ? 'dialog' : 'div'"
+    ref="dialogRef"
+    :class="[mode === 'pip' ? $style.addInline : [$style.addOverlay, '_nativeDialog']]"
+  >
+    <div :class="[mode === 'pip' ? $style.addPopupInline : $style.addPopup, isCompact && $style.mobile]">
       <div v-if="!(mode === 'pip' && !addColumnType && !selectConfig)" :class="[$style.addPopupHeader, mode === 'pip' && $style.addPopupHeaderPip]">
         <button v-if="addColumnType && !selectConfig" class="_button" :class="$style.addBackBtn" @click="addColumnType = null">
           <i class="ti ti-chevron-left" />
@@ -427,6 +441,15 @@ function close() {
           <span>全アカウント</span>
         </button>
         <button
+          v-if="addColumnType && ACCOUNT_OPTIONAL_TYPES.has(addColumnType)"
+          class="_button"
+          :class="$style.addAccountBtn"
+          @click="addColumnForAccount(null)"
+        >
+          <i class="ti ti-circle-off" style="font-size: 28px; opacity: 0.5;" />
+          <span>アカウントなし</span>
+        </button>
+        <button
           v-for="account in accountsStore.accounts"
           :key="account.id"
           class="_button"
@@ -439,18 +462,14 @@ function close() {
         </button>
       </template>
     </div>
-  </div>
+  </component>
 </template>
 
 <style lang="scss" module>
 .addOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: var(--nd-z-overlay);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--nd-modalBg);
+  &::backdrop {
+    background: var(--nd-modalBg);
+  }
 
   @media (prefers-reduced-motion: no-preference) {
     > .addPopup {

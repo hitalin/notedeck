@@ -8,6 +8,7 @@ const SOFT_CAP = 80 // px — full-speed tracking up to here
 const RUBBER_FACTOR = 0.3 // diminishing returns past SOFT_CAP (iOS-style)
 const MAX_SWIPE = 120 // px — hard cap to prevent excessive displacement
 const SNAP_BACK_TIMEOUT = 340 // ms — safety fallback for transitionend (300ms CSS + buffer)
+const LONG_PRESS_TIMEOUT = 500 // ms — yield to browser after hold (e.g. context menu)
 const WHEEL_THRESHOLD = 50 // px — accumulated delta to trigger tab switch
 
 /** Default CSS class names (shared with useTabSlide) */
@@ -91,8 +92,16 @@ export function useSwipeTab(
   let tracking = false
   let direction: 'horizontal' | 'vertical' | null = null
   let boundEl: HTMLElement | null = null
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null
 
   // --- Touch ---
+
+  function clearLongPressTimer() {
+    if (longPressTimer !== null) {
+      clearTimeout(longPressTimer)
+      longPressTimer = null
+    }
+  }
 
   function onTouchStart(e: TouchEvent) {
     const touch = e.touches[0]
@@ -105,6 +114,15 @@ export function useSwipeTab(
     startTime = Date.now()
     tracking = true
     direction = null
+
+    // If user holds without moving, yield to browser (e.g. native context menu)
+    clearLongPressTimer()
+    longPressTimer = setTimeout(() => {
+      longPressTimer = null
+      if (tracking && direction === null) {
+        tracking = false
+      }
+    }, LONG_PRESS_TIMEOUT)
 
     if (boundEl) {
       // Clear any lingering snap-back state
@@ -135,6 +153,8 @@ export function useSwipeTab(
       direction === null &&
       (absDx > DIRECTION_THRESHOLD || absDy > DIRECTION_THRESHOLD)
     ) {
+      // Movement detected — no longer a long press
+      clearLongPressTimer()
       direction = absDx >= absDy ? 'horizontal' : 'vertical'
       if (direction === 'horizontal') {
         boundEl?.classList.add(classes.swiping)
@@ -162,6 +182,7 @@ export function useSwipeTab(
   }
 
   function onTouchEnd(e: TouchEvent) {
+    clearLongPressTimer()
     if (!tracking) return
     tracking = false
 
@@ -197,6 +218,7 @@ export function useSwipeTab(
   }
 
   function onTouchCancel() {
+    clearLongPressTimer()
     if (!tracking) return
     tracking = false
     if (boundEl && direction === 'horizontal') clearSwipeState(boundEl)

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { toRef, useTemplateRef } from 'vue'
+import { ref, toRef } from 'vue'
 
-import { usePortal } from '@/composables/usePortal'
+import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 
 const props = defineProps<{
@@ -20,22 +20,23 @@ const { visible, entering, leaving } = useVaporTransition(
   { enterDuration: 200, leaveDuration: 200 },
 )
 
-const dialogPortalRef = useTemplateRef<HTMLElement>('dialogPortalRef')
-usePortal(dialogPortalRef)
+const dialogRef = ref<HTMLDialogElement | null>(null)
+useNativeDialog(dialogRef, visible, {
+  onCancel: () => emit('cancel'),
+  leaveDuration: 200,
+})
 </script>
 
 <template>
-    <div
+    <dialog
       v-if="visible"
-      ref="dialogPortalRef"
-      class="_dialogBackdrop"
+      ref="dialogRef"
+      class="_nativeDialog"
       :class="[entering && $style.enter, leaving && $style.leave]"
-      @click="emit('cancel')"
     >
       <div
         class="_dialog nd-popup-content"
         :class="[entering && $style.contentEnter, leaving && $style.contentLeave]"
-        @click.stop
       >
         <div :class="$style.header">
           <i :class="[$style.icon, isGuest ? 'ti ti-user-off' : 'ti ti-logout']" />
@@ -63,7 +64,7 @@ usePortal(dialogPortalRef)
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
 </template>
 
 <style lang="scss" module>

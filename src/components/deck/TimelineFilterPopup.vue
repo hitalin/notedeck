@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onUnmounted, toRef, useTemplateRef, watch } from 'vue'
+import { ref, toRef } from 'vue'
 import type { TimelineFilter } from '@/adapters/types'
-import { usePortal } from '@/composables/usePortal'
+import { useNativePopover } from '@/composables/useNativePopover'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 
 const props = defineProps<{
@@ -17,13 +17,17 @@ const { visible, leaving } = useVaporTransition(toRef(props, 'show'), {
   leaveDuration: 200,
 })
 
-const portalRef = useTemplateRef<HTMLElement>('portalRef')
-usePortal(portalRef)
-
 const emit = defineEmits<{
   close: []
   toggle: [key: keyof TimelineFilter]
 }>()
+
+const popoverRef = ref<HTMLElement | null>(null)
+
+useNativePopover(popoverRef, visible, {
+  onClose: () => emit('close'),
+  leaveDuration: 200,
+})
 
 const FILTER_LABELS: Record<keyof TimelineFilter, string> = {
   withRenotes: 'リノート',
@@ -38,31 +42,13 @@ function isFilterActive(key: keyof TimelineFilter): boolean {
   if (key === 'withFiles') return v === true
   return v === false
 }
-
-function handleClose() {
-  emit('close')
-}
-
-watch(
-  () => props.show,
-  (val) => {
-    if (val) {
-      setTimeout(() => {
-        document.addEventListener('click', handleClose, { once: true })
-      }, 0)
-    }
-  },
-)
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClose)
-})
 </script>
 
 <template>
   <div
     v-if="visible"
-    ref="portalRef"
+    ref="popoverRef"
+    popover="auto"
     :class="[$style.filterPopup, leaving ? $style.filterPopupLeave : $style.filterPopupEnter, '_popup']"
     :style="{ ...themeVars, top: position.top + 'px', left: position.left + 'px' }"
     @click.stop
@@ -90,7 +76,6 @@ onUnmounted(() => {
 <style lang="scss" module>
 .filterPopup {
   position: fixed;
-  z-index: calc(var(--nd-z-popup) + 1);
   width: 220px;
   padding: 8px 0;
   color: var(--nd-fg, #fff);
