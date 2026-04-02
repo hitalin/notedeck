@@ -225,7 +225,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         perf_config::get_performance_config,
     ]);
 
+    #[cfg(not(mobile))]
     let has_tray = Arc::new(AtomicBool::new(false));
+    #[cfg(not(mobile))]
     let has_tray_for_setup = has_tray.clone();
 
     builder = builder.setup(move |app| {
