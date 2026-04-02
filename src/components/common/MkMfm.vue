@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import DOMPurify from 'dompurify'
 import { computed, defineAsyncComponent, useCssModule } from 'vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { highlightCode, highlighterLoaded } from '@/utils/highlight'
@@ -61,11 +60,23 @@ function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-// KaTeX is loaded on demand — most notes don't contain math
+// KaTeX + DOMPurify are loaded on demand — most notes don't contain math
 let katexModule: typeof import('katex') | null = null
-const katexReady = import('katex').then((m) => {
-  katexModule = m
-})
+let domPurifyModule: typeof import('dompurify') | null = null
+let mathLoadPromise: Promise<void> | null = null
+
+function ensureMathLoaded(): Promise<void> {
+  if (katexModule && domPurifyModule) return Promise.resolve()
+  if (!mathLoadPromise) {
+    mathLoadPromise = Promise.all([import('katex'), import('dompurify')]).then(
+      ([k, d]) => {
+        katexModule = k
+        domPurifyModule = d
+      },
+    )
+  }
+  return mathLoadPromise
+}
 
 const KATEX_ALLOWED_TAGS = [
   'span',
@@ -117,9 +128,9 @@ const KATEX_ALLOWED_ATTR = [
 ]
 
 function renderKatex(formula: string, displayMode: boolean): string {
-  if (!katexModule) {
+  if (!katexModule || !domPurifyModule) {
     // Trigger load (will re-render on next update)
-    katexReady.then()
+    ensureMathLoaded()
     return escapeHtml(formula)
   }
   try {
@@ -129,7 +140,7 @@ function renderKatex(formula: string, displayMode: boolean): string {
       trust: false,
       strict: 'error',
     })
-    return DOMPurify.sanitize(html, {
+    return domPurifyModule.default.sanitize(html, {
       ALLOWED_TAGS: KATEX_ALLOWED_TAGS,
       ALLOWED_ATTR: KATEX_ALLOWED_ATTR,
     })

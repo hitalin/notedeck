@@ -118,10 +118,21 @@ class FrameTelemetryImpl {
     }
   }
 
+  /** Scratch buffer for P95 calculation — reused to avoid allocation per call. */
+  private _p95Scratch: number[] = []
+
   private _calculateP95(): number {
-    const sorted = [...this._frameTimeHistory].sort((a, b) => a - b)
-    const idx = Math.floor(sorted.length * 0.95)
-    return sorted[idx] ?? 16.6
+    const src = this._frameTimeHistory
+    const len = src.length
+    if (len === 0) return 16.6
+    const k = Math.floor(len * 0.95)
+    // Reuse scratch buffer to avoid allocating a new array every second
+    const buf = this._p95Scratch
+    buf.length = len
+    for (let i = 0; i < len; i++) buf[i] = src[i] ?? 16.6
+    // Partial quickselect — O(n) average instead of O(n log n) full sort
+    quickselect(buf, k, 0, len - 1)
+    return buf[k] ?? 16.6
   }
 
   private _evaluateQuality(stats: FrameStats): void {
@@ -155,6 +166,30 @@ class FrameTelemetryImpl {
     } else {
       this._stableSeconds = 0
     }
+  }
+}
+
+/** In-place partial sort: after return, arr[k] holds the k-th smallest value.
+ *  Average O(n), worst O(n²) — fine for small buffers (100–500 elements). */
+function quickselect(arr: number[], k: number, lo: number, hi: number): void {
+  while (lo < hi) {
+    const pivot = arr[lo + ((hi - lo) >> 1)] ?? 0
+    let i = lo
+    let j = hi
+    while (i <= j) {
+      while ((arr[i] ?? 0) < pivot) i++
+      while ((arr[j] ?? 0) > pivot) j--
+      if (i <= j) {
+        const tmp = arr[i] ?? 0
+        arr[i] = arr[j] ?? 0
+        arr[j] = tmp
+        i++
+        j--
+      }
+    }
+    if (k <= j) hi = j
+    else if (k >= i) lo = i
+    else return
   }
 }
 
