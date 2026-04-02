@@ -255,16 +255,17 @@ async function run() {
 // Vertical resize
 let resizing = false
 
-function startResize(e: MouseEvent) {
+function startResize(e: PointerEvent) {
   e.preventDefault()
   resizing = true
   document.body.style.userSelect = 'none'
   document.body.style.cursor = 'row-resize'
-  document.addEventListener('mousemove', onResize)
-  document.addEventListener('mouseup', stopResize)
+  document.addEventListener('pointermove', onResize)
+  document.addEventListener('pointerup', stopResize)
+  document.addEventListener('pointercancel', stopResize)
 }
 
-function onResize(e: MouseEvent) {
+function onResize(e: PointerEvent) {
   if (!resizing || !bodyRef.value) return
   const rect = bodyRef.value.getBoundingClientRect()
   const ratio = (e.clientY - rect.top) / rect.height
@@ -275,8 +276,9 @@ function stopResize() {
   resizing = false
   document.body.style.userSelect = ''
   document.body.style.cursor = ''
-  document.removeEventListener('mousemove', onResize)
-  document.removeEventListener('mouseup', stopResize)
+  document.removeEventListener('pointermove', onResize)
+  document.removeEventListener('pointerup', stopResize)
+  document.removeEventListener('pointercancel', stopResize)
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -325,7 +327,7 @@ onUnmounted(() => {
         />
       </div>
 
-      <div :class="$style.resizeHandle" @mousedown="startResize">
+      <div :class="$style.resizeHandle" @pointerdown="startResize">
         <div :class="$style.resizeGrip" />
       </div>
 

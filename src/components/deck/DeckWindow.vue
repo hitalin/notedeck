@@ -79,7 +79,7 @@ let dragStartY = 0
 let dragStartWinX = 0
 let dragStartWinY = 0
 
-function onHeaderMouseDown(e: MouseEvent) {
+function onHeaderPointerDown(e: PointerEvent) {
   if ((e.target as HTMLElement).closest('button')) return
   e.preventDefault()
   isDragging.value = true
@@ -90,12 +90,13 @@ function onHeaderMouseDown(e: MouseEvent) {
   dragX.value = props.window.x
   dragY.value = props.window.y
   document.body.style.userSelect = 'none'
-  document.addEventListener('mousemove', onMouseMove)
-  document.addEventListener('mouseup', onMouseUp)
+  document.addEventListener('pointermove', onPointerMove)
+  document.addEventListener('pointerup', onPointerUp)
+  document.addEventListener('pointercancel', onPointerUp)
   windowsStore.bringToFront(props.window.id)
 }
 
-function onMouseMove(e: MouseEvent) {
+function onPointerMove(e: PointerEvent) {
   const dx = e.clientX - dragStartX
   const dy = e.clientY - dragStartY
   const vw = document.documentElement.clientWidth
@@ -107,12 +108,13 @@ function onMouseMove(e: MouseEvent) {
   dragY.value = Math.max(0, Math.min(dragStartWinY + dy, vh - 50))
 }
 
-function onMouseUp() {
+function onPointerUp() {
   windowsStore.updatePosition(props.window.id, dragX.value, dragY.value)
   isDragging.value = false
   document.body.style.userSelect = ''
-  document.removeEventListener('mousemove', onMouseMove)
-  document.removeEventListener('mouseup', onMouseUp)
+  document.removeEventListener('pointermove', onPointerMove)
+  document.removeEventListener('pointerup', onPointerUp)
+  document.removeEventListener('pointercancel', onPointerUp)
 }
 
 function onWindowMouseDown() {
@@ -133,7 +135,7 @@ function onWindowMouseDown() {
     }"
     @mousedown="onWindowMouseDown"
   >
-    <div :class="$style.windowHeader" @mousedown="onHeaderMouseDown">
+    <div :class="$style.windowHeader" @pointerdown="onHeaderPointerDown">
       <i :class="[icons[window.type], $style.windowIcon]" />
       <span :class="$style.windowTitle">{{ windowTitle }}</span>
       <button class="_button" :class="$style.windowBtn" title="最小化" @click="windowsStore.toggleMinimize(window.id)">

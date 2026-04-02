@@ -300,17 +300,18 @@ function handleResize() {
 }
 
 // Navbar drag resize
-function startResize(e: MouseEvent) {
+function startResize(e: PointerEvent) {
   e.preventDefault()
   isResizing.value = true
   document.body.style.userSelect = 'none'
   document.body.style.cursor = 'col-resize'
-  document.addEventListener('mousemove', onResize)
-  document.addEventListener('mouseup', stopResize)
+  document.addEventListener('pointermove', onResize)
+  document.addEventListener('pointerup', stopResize)
+  document.addEventListener('pointercancel', stopResize)
 }
 
 let resizeRafId = 0
-function onResize(e: MouseEvent) {
+function onResize(e: PointerEvent) {
   cancelAnimationFrame(resizeRafId)
   resizeRafId = requestAnimationFrame(() => {
     const w = e.clientX
@@ -326,8 +327,9 @@ function stopResize() {
   isResizing.value = false
   document.body.style.userSelect = ''
   document.body.style.cursor = ''
-  document.removeEventListener('mousemove', onResize)
-  document.removeEventListener('mouseup', stopResize)
+  document.removeEventListener('pointermove', onResize)
+  document.removeEventListener('pointerup', stopResize)
+  document.removeEventListener('pointercancel', stopResize)
 }
 
 defineExpose({
@@ -598,7 +600,7 @@ defineExpose({
       v-if="!isCompact"
       :class="[$style.resizeHandle, { [$style.resizeActive]: isResizing }]"
       :style="subButtonsHovered ? { pointerEvents: 'none' } : undefined"
-      @mousedown="startResize"
+      @pointerdown="startResize"
     />
 
     <LogoutDialog
@@ -1214,6 +1216,7 @@ defineExpose({
   flex-basis: 250px !important;
   padding-top: max(var(--nd-safe-area-top, env(safe-area-inset-top)), 12px);
   padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
+  padding-left: env(safe-area-inset-left, 0px);
   translate: -100% 0;
   transition: translate 0.15s ease;
   box-shadow: none;

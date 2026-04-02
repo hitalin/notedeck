@@ -34,7 +34,18 @@ export function useClipboardFeedback(duration = 2000) {
   }
 
   async function copyToClipboard(text: string) {
-    await navigator.clipboard.writeText(text)
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // Fallback for mobile WebView where clipboard API may be restricted
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.cssText = 'position:fixed;opacity:0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
     showCopied()
   }
 

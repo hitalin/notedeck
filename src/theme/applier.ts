@@ -15,6 +15,17 @@ export function applyTheme(compiled: CompiledProps): void {
     const isLight = isLightColor(bg)
     root.style.setProperty('color-scheme', isLight ? 'light' : 'dark')
     root.dataset.colorScheme = isLight ? 'light' : 'dark'
+
+    // Sync mobile status bar color via <meta name="theme-color">
+    let meta = document.querySelector<HTMLMetaElement>(
+      'meta[name="theme-color"]',
+    )
+    if (!meta) {
+      meta = document.createElement('meta')
+      meta.name = 'theme-color'
+      document.head.appendChild(meta)
+    }
+    meta.content = bg
   }
 }
 

@@ -179,7 +179,7 @@ export function useNoteFocus(
             note.url ??
             note.uri ??
             `https://${note._serverHost}/notes/${note.id}`
-          navigator.clipboard.writeText(url)
+          navigator.clipboard.writeText(url).catch(() => undefined)
           useToast().show('リンクをコピーしました', 'info')
         }
         break
@@ -187,7 +187,7 @@ export function useNoteFocus(
       case 'copy-content': {
         const note = getFocusedNote()
         if (note?.text) {
-          navigator.clipboard.writeText(note.text)
+          navigator.clipboard.writeText(note.text).catch(() => undefined)
           useToast().show('内容をコピーしました', 'info')
         }
         break

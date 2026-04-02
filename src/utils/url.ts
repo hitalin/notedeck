@@ -8,6 +8,15 @@ export function isSafeUrl(url: string): boolean {
   }
 }
 
+/** Open a URL via Tauri opener if it passes safety check. */
+export async function openSafeUrl(
+  url: string | null | undefined,
+): Promise<void> {
+  if (!url || !isSafeUrl(url)) return
+  const { openUrl } = await import('@tauri-apps/plugin-opener')
+  await openUrl(url)
+}
+
 /** Sanitize a URL for use in CSS url(). Returns 'none' for invalid/unsafe URLs. */
 export function safeCssUrl(url: string | null | undefined): string {
   if (!url) return 'none'

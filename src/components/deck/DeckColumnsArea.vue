@@ -380,7 +380,7 @@ defineExpose({ scrollToColumn, scrollColumnToTop, columnMap })
       <div
         v-if="!isCompact"
         :class="[$style.colResizeHandle, { [$style.active]: resizingColId === group[0] }]"
-        @mousedown="startColumnResize(group[0]!, $event)"
+        @pointerdown="startColumnResize(group[0]!, $event)"
       />
       <div
         v-if="dropInsertIndex === groupIndex + 1"

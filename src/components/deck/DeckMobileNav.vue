@@ -81,6 +81,8 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   align-items: stretch;
   flex: 0 0 auto;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
   background: var(--nd-navBg);
   color: var(--nd-navFg);
   border-top: solid 0.5px var(--nd-divider);

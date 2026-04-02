@@ -106,7 +106,7 @@ watch(
         const rect = props.anchor.getBoundingClientRect()
         fixedStyle.value = {
           position: 'fixed',
-          bottom: `${window.innerHeight - rect.top + 4}px`,
+          bottom: `${(window.visualViewport?.height ?? window.innerHeight) - rect.top + 4}px`,
           right: `${window.innerWidth - rect.right}px`,
         }
       } else {
