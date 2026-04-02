@@ -630,6 +630,7 @@ function onKeydown(e: KeyboardEvent) {
           v-model="cw"
           :class="$style.cwInput"
           placeholder="閲覧注意"
+          autocomplete="off"
         />
       </div>
 
@@ -641,6 +642,10 @@ function onKeydown(e: KeyboardEvent) {
           :class="$style.textArea"
           :maxlength="MAX_TEXT_LENGTH"
           :placeholder="replyTo ? '返信...' : renoteId ? '引用...' : '今どんな気分？'"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="sentences"
+          spellcheck="false"
           @keydown="onKeydown"
           @input="acOnTextInput"
           @compositionstart="acOnCompositionStart"
@@ -979,18 +984,18 @@ function onKeydown(e: KeyboardEvent) {
     }
 
     .footer {
-      padding: 0 6px 6px;
+      padding: 0 4px 4px;
       font-size: 0.9em;
     }
 
     .footerLeft {
-      grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
-      grid-auto-rows: 32px;
+      grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+      grid-auto-rows: 44px;
     }
 
     .footerRight {
-      grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
-      grid-auto-rows: 32px;
+      grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+      grid-auto-rows: 44px;
     }
 
     .submitBtn {
@@ -1605,7 +1610,7 @@ function onKeydown(e: KeyboardEvent) {
 /* ── Footer ── */
 .footer {
   display: flex;
-  padding: 0 16px 16px;
+  padding: 0 4px 4px;
   font-size: 1em;
 }
 
@@ -1613,8 +1618,8 @@ function onKeydown(e: KeyboardEvent) {
   flex: 1;
   display: grid;
   grid-auto-flow: row;
-  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
-  grid-auto-rows: 40px;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  grid-auto-rows: 44px;
 }
 
 .footerRight {
@@ -1622,8 +1627,8 @@ function onKeydown(e: KeyboardEvent) {
   margin-left: auto;
   display: grid;
   grid-auto-flow: row;
-  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
-  grid-auto-rows: 40px;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  grid-auto-rows: 44px;
   direction: rtl;
 }
 
@@ -1637,7 +1642,7 @@ function onKeydown(e: KeyboardEvent) {
   justify-content: center;
   padding: 0;
   margin: 0;
-  font-size: 1em;
+  font-size: 1.15em;
   width: 100%;
   height: 100%;
   border-radius: var(--nd-radius-sm);
@@ -2027,12 +2032,9 @@ function onKeydown(e: KeyboardEvent) {
     min-height: 80px;
   }
 
-  .footer {
-    padding: 0 8px 8px;
-  }
-
   .footerLeft,
   .footerRight {
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
     grid-auto-rows: 44px;
   }
 
@@ -2047,7 +2049,7 @@ function onKeydown(e: KeyboardEvent) {
   }
 
   .footerLeft {
-    grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
   }
 
   .headerRight {
