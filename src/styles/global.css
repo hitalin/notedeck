@@ -351,6 +351,11 @@ summary,
   }
 }
 
+._popupItem:focus-visible {
+  outline: none;
+  background: var(--nd-buttonHoverBg);
+}
+
 ._popupItem:active:not(:disabled) {
   transform: scale(var(--nd-active-scale));
   transition: transform 0.08s ease-out;

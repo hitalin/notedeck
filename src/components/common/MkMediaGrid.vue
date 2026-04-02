@@ -8,9 +8,11 @@ import {
   watch,
 } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
+import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useLongPress } from '@/composables/useLongPress'
 import { usePortal } from '@/composables/usePortal'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { invoke } from '@/utils/tauriInvoke'
 import { isSafeUrl, openSafeUrl } from '@/utils/url'
 import PopupMenu from './PopupMenu.vue'
 
@@ -189,10 +191,16 @@ usePortal(lightboxPortalRef)
 // Long-press context menu for lightbox images
 const lightboxMenuRef = ref<InstanceType<typeof PopupMenu>>()
 const canShare = typeof navigator.share === 'function'
+const { copyToClipboard } = useClipboardFeedback()
 
 const { handlers: longPressHandlers } = useLongPress((e) => {
   lightboxMenuRef.value?.open(e)
 })
+
+function onLightboxContextMenu(e: MouseEvent) {
+  e.preventDefault()
+  lightboxMenuRef.value?.open(e)
+}
 
 async function copyImage() {
   const file = lightboxFile.value
@@ -203,11 +211,7 @@ async function copyImage() {
     await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
   } catch {
     // Fallback: copy URL as text
-    try {
-      await navigator.clipboard.writeText(file.url)
-    } catch {
-      // Clipboard not available
-    }
+    await copyToClipboard(file.url)
   }
   lightboxMenuRef.value?.close()
 }
@@ -215,17 +219,14 @@ async function copyImage() {
 async function downloadImage() {
   const file = lightboxFile.value
   if (!file?.url || !isSafeUrl(file.url)) return
-  try {
-    const res = await fetch(file.url)
-    const blob = await res.blob()
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = file.name || file.url.split('/').pop() || 'image'
-    a.click()
-    URL.revokeObjectURL(a.href)
-  } catch {
-    await openSafeUrl(file.url)
-  }
+  await invoke('save_image_to_file', { url: file.url })
+  lightboxMenuRef.value?.close()
+}
+
+async function copyImageLink() {
+  const file = lightboxFile.value
+  if (!file?.url) return
+  await copyToClipboard(file.url)
   lightboxMenuRef.value?.close()
 }
 
@@ -405,6 +406,7 @@ async function openInBrowser() {
           :class="$style.lightboxImage"
           draggable="false"
           v-bind="longPressHandlers"
+          @contextmenu="onLightboxContextMenu"
         />
         <video
           v-else-if="isVideo(lightboxFile)"
@@ -426,7 +428,7 @@ async function openInBrowser() {
       </div>
 
       <!-- Long-press context menu -->
-      <PopupMenu ref="lightboxMenuRef">
+      <PopupMenu ref="lightboxMenuRef" @click.stop>
         <button class="_popupItem" @click="copyImage">
           <i class="ti ti-copy" />
           画像をコピー
@@ -434,6 +436,10 @@ async function openInBrowser() {
         <button class="_popupItem" @click="downloadImage">
           <i class="ti ti-download" />
           画像をダウンロード
+        </button>
+        <button class="_popupItem" @click="copyImageLink">
+          <i class="ti ti-link" />
+          画像のリンクをコピー
         </button>
         <button v-if="canShare" class="_popupItem" @click="shareImage">
           <i class="ti ti-share" />

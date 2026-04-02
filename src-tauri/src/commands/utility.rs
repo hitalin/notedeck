@@ -111,6 +111,67 @@ pub async fn import_db(app: tauri::AppHandle) -> Result<bool> {
     Ok(true)
 }
 
+/// Download an image from URL and save to a user-chosen location via save dialog.
+#[tauri::command]
+pub async fn save_image_to_file(app: tauri::AppHandle, url: String) -> Result<bool> {
+    use tauri_plugin_dialog::DialogExt;
+
+    // Derive filename from URL
+    let file_name = url
+        .split('/')
+        .last()
+        .unwrap_or("image")
+        .split('?')
+        .next()
+        .unwrap_or("image")
+        .to_string();
+
+    let ext = file_name
+        .rsplit('.')
+        .next()
+        .unwrap_or("png")
+        .to_lowercase();
+
+    let filter_label = match ext.as_str() {
+        "jpg" | "jpeg" => "JPEG Image",
+        "png" => "PNG Image",
+        "gif" => "GIF Image",
+        "webp" => "WebP Image",
+        "avif" => "AVIF Image",
+        "svg" => "SVG Image",
+        _ => "Image",
+    };
+
+    let dest = app
+        .dialog()
+        .file()
+        .set_file_name(&file_name)
+        .add_filter(filter_label, &[&ext])
+        .blocking_save_file();
+
+    let Some(dest) = dest else {
+        return Ok(false); // user cancelled
+    };
+
+    let dest_path = dest
+        .as_path()
+        .ok_or_else(|| NoteDeckError::InvalidInput("Invalid destination path".to_string()))?;
+
+    // Download image
+    let response = reqwest::get(&url)
+        .await
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to download image: {e}")))?;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to read image data: {e}")))?;
+
+    std::fs::write(dest_path, &bytes)
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to save image: {e}")))?;
+
+    Ok(true)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
