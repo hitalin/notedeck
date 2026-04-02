@@ -340,6 +340,7 @@ usePortal(lightboxPortalRef)
           :src="safeMediaSrc(lightboxFile.url)"
           :alt="lightboxFile.name"
           :class="$style.lightboxImage"
+          draggable="false"
         />
         <video
           v-else-if="isVideo(lightboxFile)"
@@ -651,6 +652,11 @@ usePortal(lightboxPortalRef)
   max-height: 90vh;
   object-fit: contain;
   border-radius: 4px;
+  /* Allow native long-press context menu on mobile WebView */
+  -webkit-touch-callout: default;
+  -webkit-user-select: auto;
+  user-select: auto;
+  touch-action: auto;
 }
 
 .lightboxVideo {
