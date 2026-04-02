@@ -11,6 +11,7 @@ import { useCommandStore } from '@/commands/registry'
 import AppConfirm from '@/components/common/AppConfirm.vue'
 import AppToast from '@/components/common/AppToast.vue'
 import MkRippleEffect from '@/components/common/MkRippleEffect.vue'
+import { useBackButton } from '@/composables/useBackButton'
 import { useDeckInit } from '@/composables/useDeckInit'
 import { requestMoveColumn } from '@/composables/useDeckWindow'
 import { useFileDrop } from '@/composables/useFileDrop'
@@ -20,6 +21,7 @@ import { useRippleEffect } from '@/composables/useRippleEffect'
 import { provideScrollDirection } from '@/composables/useScrollDirection'
 import { useUpdater } from '@/composables/useUpdater'
 import { useVaporTransition } from '@/composables/useVaporTransition'
+import { useVisualViewport } from '@/composables/useVisualViewport'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
@@ -67,6 +69,18 @@ const activeColumnIndex = computed(() => {
 })
 const { updateAvailable, checkForUpdate } = useUpdater()
 const { ripples, remove: removeRipple } = useRippleEffect()
+useVisualViewport()
+
+// Android back button: close overlays instead of exiting
+if (uiStore.isMobilePlatform) {
+  useBackButton(mobileDrawerOpen, () => {
+    mobileDrawerOpen.value = false
+  })
+  useBackButton(showCompose, closeCompose)
+  useBackButton(showAddMenu, () => {
+    showAddMenu.value = false
+  })
+}
 
 const wallpaperStyle = computed(() =>
   deckStore.wallpaper != null
@@ -338,6 +352,8 @@ function acceptCrossWindowDrop() {
 .mobile {
   flex-direction: column;
   padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
   background: var(--nd-navBg);
 }
 
@@ -362,7 +378,7 @@ function acceptCrossWindowDrop() {
   justify-content: center;
   position: fixed;
   right: calc(16px + env(safe-area-inset-right));
-  bottom: calc(var(--nd-mobileNavHeight, 0px) + 12px);
+  bottom: calc(var(--nd-mobileNavHeight, 0px) + 12px + (100vh - var(--nd-vv-height, 100vh)));
   z-index: var(--nd-z-overlay);
   width: 56px;
   height: 56px;

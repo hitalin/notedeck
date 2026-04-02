@@ -69,7 +69,18 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             .plugin(tauri_plugin_autostart::init(
                 MacosLauncher::LaunchAgent,
                 Some(vec!["--minimized"]),
-            ));
+            ))
+            .plugin(
+                tauri_plugin_single_instance::Builder::new()
+                    .callback(|app, _args, _cwd| {
+                        // deep-link feature handles URL forwarding automatically
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    })
+                    .build(),
+            );
     }
 
     builder = builder.invoke_handler(tauri::generate_handler![

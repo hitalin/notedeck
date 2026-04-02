@@ -107,8 +107,30 @@ function openInWebUI() {
   if (url && isSafeUrl(url)) openUrl(url)
 }
 
+const canShare = typeof navigator.share === 'function'
+
+async function shareNote() {
+  const url = noteWebUrl.value
+  try {
+    await navigator.share({ url })
+  } catch {
+    // User cancelled or share failed — ignore
+  }
+  close()
+}
+
 async function copyAndClose(text: string) {
-  await navigator.clipboard.writeText(text)
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.cssText = 'position:fixed;opacity:0'
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+  }
   close()
 }
 
@@ -276,6 +298,10 @@ defineExpose({ open })
       <button class="_popupItem" @click="copyAndClose(noteWebUrl)">
         <i class="ti ti-link" />
         リンクをコピー
+      </button>
+      <button v-if="canShare" class="_popupItem" @click="shareNote">
+        <i class="ti ti-share" />
+        共有
       </button>
       <template v-if="noteActions.length > 0">
         <div class="_popupDivider" />

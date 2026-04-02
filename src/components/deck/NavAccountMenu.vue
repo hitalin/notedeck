@@ -61,7 +61,7 @@ watch(
             fixedStyle.value = {
               position: 'fixed',
               left: `${rect.right + 4}px`,
-              bottom: `${window.innerHeight - rect.bottom}px`,
+              bottom: `${(window.visualViewport?.height ?? window.innerHeight) - rect.bottom}px`,
               top: 'auto',
               right: 'auto',
               margin: '0',

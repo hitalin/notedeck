@@ -10,7 +10,7 @@ import {
 import type { NormalizedDriveFile } from '@/adapters/types'
 import { usePortal } from '@/composables/usePortal'
 import { useSwipeTab } from '@/composables/useSwipeTab'
-import { isSafeUrl } from '@/utils/url'
+import { isSafeUrl, openSafeUrl } from '@/utils/url'
 
 function safeMediaSrc(url: string | null | undefined): string | undefined {
   if (!url) return undefined
@@ -207,14 +207,14 @@ usePortal(lightboxPortalRef)
 
   <!-- Banner: Other files (download link, like Misskey's MkMediaBanner) -->
   <div v-for="file in otherFiles" :key="file.id" :class="$style.mediaBanner">
-    <a :href="safeMediaSrc(file.url)" :download="file.name" :class="$style.bannerDownload" @click.stop>
+    <button :class="$style.bannerDownload" @click.stop="openSafeUrl(file.url)">
       <svg viewBox="0 0 24 24" width="20" height="20">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
         <polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
         <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
       </svg>
       <b>{{ file.name }}</b>
-    </a>
+    </button>
   </div>
 
   <!-- Grid: Previewable files only (image + video) -->
@@ -340,6 +340,7 @@ usePortal(lightboxPortalRef)
           :src="safeMediaSrc(lightboxFile.url)"
           :alt="lightboxFile.name"
           :class="$style.lightboxImage"
+          draggable="false"
         />
         <video
           v-else-if="isVideo(lightboxFile)"
@@ -417,6 +418,11 @@ usePortal(lightboxPortalRef)
   font-size: 0.8em;
   color: var(--nd-fg);
   text-decoration: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
   white-space: nowrap;
   overflow: hidden;
 
@@ -651,6 +657,11 @@ usePortal(lightboxPortalRef)
   max-height: 90vh;
   object-fit: contain;
   border-radius: 4px;
+  /* Allow native long-press context menu on mobile WebView */
+  -webkit-touch-callout: default;
+  -webkit-user-select: auto;
+  user-select: auto;
+  touch-action: auto;
 }
 
 .lightboxVideo {
