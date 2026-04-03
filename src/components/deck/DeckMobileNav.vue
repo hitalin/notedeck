@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import ColumnBadges from '@/components/common/ColumnBadges.vue'
+import { useColumnBadge } from '@/composables/useColumnBadge'
 import { useColumnTabs } from '@/composables/useColumnTabs'
-import type { DeckColumn } from '@/stores/deck'
+import type { ColumnType, DeckColumn } from '@/stores/deck'
 
 const props = defineProps<{
   columns: DeckColumn[]
@@ -33,13 +34,20 @@ watch(
   { immediate: true },
 )
 
-const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
-  useColumnTabs(
-    () => props.columns,
-    () => props.layout,
-    () => props.activeColumnIndex,
-    mobileNavRef,
-  )
+const { getBadge } = useColumnBadge()
+
+const {
+  visibleGroups,
+  groupPrimaryId,
+  columnType,
+  columnIcon,
+  columnAccountId,
+} = useColumnTabs(
+  () => props.columns,
+  () => props.layout,
+  () => props.activeColumnIndex,
+  mobileNavRef,
+)
 </script>
 
 <template>
@@ -62,6 +70,7 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
         <div :class="$style.iconWrap">
           <i :class="'ti ti-' + columnIcon(groupPrimaryId(group))" />
           <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
+          <span v-if="getBadge(columnType(groupPrimaryId(group)) as ColumnType) > 0" :key="getBadge(columnType(groupPrimaryId(group)) as ColumnType)" :class="$style.badge">{{ getBadge(columnType(groupPrimaryId(group)) as ColumnType) > 99 ? '99+' : getBadge(columnType(groupPrimaryId(group)) as ColumnType) }}</span>
           <ColumnBadges :account-id="columnAccountId(groupPrimaryId(group))" :size="14" />
         </div>
       </button>
@@ -159,5 +168,6 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
 }
 
 .stackBadge { @include nav-stack-badge; }
+.badge { @include nav-badge; }
 
 </style>

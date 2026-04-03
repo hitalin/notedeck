@@ -2,8 +2,9 @@
 import { ref } from 'vue'
 import { useCommandStore } from '@/commands/registry'
 import ColumnBadges from '@/components/common/ColumnBadges.vue'
+import { useColumnBadge } from '@/composables/useColumnBadge'
 import { useColumnTabs } from '@/composables/useColumnTabs'
-import type { DeckColumn } from '@/stores/deck'
+import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 
 const props = defineProps<{
@@ -33,13 +34,20 @@ function onAddColumnClick() {
   commandStore.openWithInput('+')
 }
 
-const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
-  useColumnTabs(
-    () => props.columns,
-    () => props.layout,
-    () => props.activeColumnIndex,
-    tabsScrollRef,
-  )
+const { getBadge, clearBadge } = useColumnBadge()
+
+const {
+  visibleGroups,
+  groupPrimaryId,
+  columnType,
+  columnIcon,
+  columnAccountId,
+} = useColumnTabs(
+  () => props.columns,
+  () => props.layout,
+  () => props.activeColumnIndex,
+  tabsScrollRef,
+)
 </script>
 
 <template>
@@ -62,11 +70,12 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
         :key="groupPrimaryId(group)"
         class="_button"
         :class="[$style.tab, { [$style.tabActive]: activeColumnIndex === gi }]"
-        @click="emit('scroll-to-column', gi)"
+        @click="clearBadge(columnType(groupPrimaryId(group)) as ColumnType); emit('scroll-to-column', gi)"
       >
         <div :class="$style.iconWrap">
           <i :class="'ti ti-' + columnIcon(groupPrimaryId(group))" />
           <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
+          <span v-if="getBadge(columnType(groupPrimaryId(group)) as ColumnType) > 0" :key="getBadge(columnType(groupPrimaryId(group)) as ColumnType)" :class="$style.badge">{{ getBadge(columnType(groupPrimaryId(group)) as ColumnType) > 99 ? '99+' : getBadge(columnType(groupPrimaryId(group)) as ColumnType) }}</span>
           <ColumnBadges :account-id="columnAccountId(groupPrimaryId(group))" :size="14" />
         </div>
       </button>
@@ -207,6 +216,7 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
 }
 
 .stackBadge { @include nav-stack-badge; }
+.badge { @include nav-badge; }
 
 .actionBtn {
   display: flex;

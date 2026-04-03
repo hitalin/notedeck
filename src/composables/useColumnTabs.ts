@@ -105,6 +105,11 @@ export function useColumnTabs(
     return COLUMN_ICONS[col.type] ?? COLUMN_ICONS.timeline ?? ''
   }
 
+  function columnType(colId: string): string {
+    const col = columnMap.value.get(colId)
+    return col?.type ?? 'timeline'
+  }
+
   function columnAccountId(colId: string): string | null {
     const col = columnMap.value.get(colId)
     return col?.accountId ?? null
@@ -129,6 +134,7 @@ export function useColumnTabs(
   return {
     visibleGroups,
     groupPrimaryId,
+    columnType,
     columnIcon,
     columnAccountId,
   }

@@ -1,5 +1,11 @@
 import { useCommandStore } from '@/commands/registry'
+import { useNavigation } from '@/composables/useNavigation'
 import type { NoteAction } from '@/composables/useNoteFocus'
+import {
+  getAccountLabel,
+  isGuestAccount,
+  useAccountsStore,
+} from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
@@ -140,7 +146,105 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     icon: 'user',
     category: 'account',
     shortcuts: keybindsStore.getShortcuts('account-menu'),
-    execute: handlers.toggleAccountMenu,
+    execute: () => {
+      const accountsStore = useAccountsStore()
+      const { navigateToUser } = useNavigation()
+      const windowsStore = useWindowsStore()
+
+      const openUrl = async (url: string) => {
+        const { openUrl: open } = await import('@tauri-apps/plugin-opener')
+        return open(url)
+      }
+
+      commandStore.open()
+      commandStore.pushQuickPick({
+        title: 'アカウント',
+        placeholder: 'アカウントを選択…',
+        items: [
+          ...accountsStore.accounts.map((acc) => ({
+            id: acc.id,
+            label: getAccountLabel(acc),
+            icon: isGuestAccount(acc) ? 'user-off' : 'user',
+            description: acc.host,
+            children: () => {
+              const items = []
+              if (!isGuestAccount(acc)) {
+                items.push({
+                  id: `${acc.id}-profile`,
+                  label: 'プロフィール',
+                  icon: 'user',
+                  action: () => {
+                    commandStore.close()
+                    navigateToUser(acc.id, acc.userId)
+                  },
+                })
+                if (acc.hasToken) {
+                  items.push({
+                    id: `${acc.id}-settings`,
+                    label: '設定',
+                    icon: 'settings',
+                    action: () => {
+                      commandStore.close()
+                      openUrl(`https://${acc.host}/settings`)
+                    },
+                  })
+                }
+              }
+              if (acc.hasToken) {
+                items.push({
+                  id: `${acc.id}-logout`,
+                  label: 'ログアウト',
+                  icon: 'logout',
+                  action: () => {
+                    commandStore.close()
+                    handlers.toggleAccountMenu()
+                  },
+                })
+              } else if (isGuestAccount(acc)) {
+                items.push({
+                  id: `${acc.id}-delete`,
+                  label: 'データを削除',
+                  icon: 'trash',
+                  action: () => {
+                    commandStore.close()
+                    handlers.toggleAccountMenu()
+                  },
+                })
+              } else {
+                items.push({
+                  id: `${acc.id}-relogin`,
+                  label: '再ログイン',
+                  icon: 'login',
+                  action: () => {
+                    commandStore.close()
+                    windowsStore.open('login', { host: acc.host })
+                  },
+                })
+              }
+              return items
+            },
+          })),
+          {
+            id: 'account-add',
+            label: 'アカウント追加',
+            icon: 'user-plus',
+            action: () => {
+              commandStore.close()
+              windowsStore.open('login')
+            },
+          },
+          {
+            id: 'account-manage',
+            label: 'アカウント管理',
+            icon: 'settings',
+            action: () => {
+              commandStore.close()
+              windowsStore.open('account-manager')
+            },
+          },
+        ],
+      })
+    },
   })
 
   commandStore.register({

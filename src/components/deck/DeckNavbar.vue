@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue'
+import { useCommandStore } from '@/commands/registry'
 import ColumnBadges from '@/components/common/ColumnBadges.vue'
+import { useColumnBadge } from '@/composables/useColumnBadge'
 import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useNavigation } from '@/composables/useNavigation'
-import { useUnreadChat } from '@/composables/useUnreadChat'
-import { useUnreadNotifications } from '@/composables/useUnreadNotifications'
 import {
   type Account,
   getAccountLabel,
@@ -49,13 +49,13 @@ const emit = defineEmits<{
 const $style = useCssModule()
 const { navigateToLogin, navigateToPlugins } = useNavigation()
 const { confirm } = useConfirm()
+const commandStore = useCommandStore()
 const deckStore = useDeckStore()
 const offlineModeStore = useOfflineModeStore()
 const realtimeModeStore = useRealtimeModeStore()
 const windowsStore = useWindowsStore()
 const isCompact = useIsCompactLayout()
-const { totalUnread, markAllAsRead } = useUnreadNotifications()
-const { totalUnread: chatUnread, resetAll: resetChatUnread } = useUnreadChat()
+const { getBadge, clearBadge } = useColumnBadge()
 
 const accountAttentionCount = computed(
   () =>
@@ -108,22 +108,14 @@ function getNavAction(item: NavItem): () => void {
       /* divider has no action */
     }
   return () => {
-    if (item.type === 'notifications') markAllAsRead()
-    if (item.type === 'chat') resetChatUnread()
+    clearBadge(item.type)
     deckStore.toggleSidebarColumn(item.type, item.accountId)
   }
 }
 
 function getNavBadge(item: NavItem): number {
   if (isNavDivider(item)) return 0
-  switch (item.type) {
-    case 'notifications':
-      return totalUnread.value
-    case 'chat':
-      return chatUnread.value
-    default:
-      return 0
-  }
+  return getBadge(item.type)
 }
 
 function closeDrawerAndDo(fn: () => void) {
@@ -319,6 +311,10 @@ function logoutDeleteAll() {
 }
 
 function toggleFirstAccountMenu() {
+  if (!isCompact.value) {
+    commandStore.execute('account-menu')
+    return
+  }
   showAccountPopup.value = !showAccountPopup.value
   if (!showAccountPopup.value) accountMenuId.value = null
 }
@@ -518,7 +514,7 @@ defineExpose({
               :class="$style.item"
               title="アカウント"
               @pointerdown.stop
-              @click.stop="showAccountPopup = !showAccountPopup; accountMenuId = null"
+              @click.stop="isCompact ? (showAccountPopup = !showAccountPopup, accountMenuId = null) : commandStore.execute('account-menu')"
             >
               <div :class="$style.iconWrap">
                 <i class="ti ti-user" />
