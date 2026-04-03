@@ -28,7 +28,7 @@ Misskey 統合環境 (IDE) — 閲覧・投稿・検索・連携をひとつに
 
 </div>
 
-<img width="1195" height="794" alt="スクリーンショット 2026-04-01 175815" src="https://github.com/user-attachments/assets/6346ff59-d1ad-492f-83d7-9a4692356a5a" />
+<img width="1197" height="799" alt="スクリーンショット 2026-04-03 132101" src="https://github.com/user-attachments/assets/a7fa8f67-f3f5-44dd-ae20-17e952668400" />
 
 ## ダウンロード
 
