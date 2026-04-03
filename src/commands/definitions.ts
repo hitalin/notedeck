@@ -259,6 +259,24 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
   })
 
   commandStore.register({
+    id: 'profile-menu',
+    label: 'プロファイル切替',
+    icon: 'layout',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('profile-menu'),
+    execute: () => commandStore.openWithInput('~'),
+  })
+
+  commandStore.register({
+    id: 'settings-menu',
+    label: '設定メニュー',
+    icon: 'settings',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('settings-menu'),
+    execute: () => commandStore.openWithInput('*'),
+  })
+
+  commandStore.register({
     id: 'toggle-dark-mode',
     label: 'ダーク/ライトモード切替',
     icon: 'sun-moon',
@@ -447,11 +465,11 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     })
   }
 
-  // Quick reactions (1-9 keys send pinned reactions to focused note)
-  for (let i = 1; i <= 9; i++) {
+  // Quick reactions (0-9 keys send pinned reactions to focused note)
+  for (let i = 0; i <= 9; i++) {
     commandStore.register({
       id: `quick-react-${i}`,
-      label: `クイックリアクション ${i}`,
+      label: `クイックリアクション ${i || 10}`,
       icon: 'mood-plus',
       category: 'note',
       shortcuts: keybindsStore.getShortcuts(`quick-react-${i}`),
@@ -720,8 +738,8 @@ const COLUMN_COMMAND_IDS = [
 ] as const
 
 const QUICK_REACT_IDS = Array.from(
-  { length: 9 },
-  (_, i) => `quick-react-${i + 1}`,
+  { length: 10 },
+  (_, i) => `quick-react-${i}`,
 ) as readonly string[]
 
 const WINDOW_COMMAND_IDS = [
@@ -748,6 +766,8 @@ export function unregisterDefaultCommands() {
     'add-column',
     'toggle-sidebar',
     'account-menu',
+    'profile-menu',
+    'settings-menu',
     'toggle-dark-mode',
     'toggle-offline-mode',
     'toggle-realtime-mode',

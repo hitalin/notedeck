@@ -1,14 +1,29 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import type { NormalizedDriveFile, NormalizedNote } from '@/adapters/types'
+import { invoke } from '@tauri-apps/api/core'
+import {
+  computed,
+  defineAsyncComponent,
+  nextTick,
+  onMounted,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue'
+import type {
+  NormalizedDriveFile,
+  NormalizedNote,
+  NormalizedUser,
+} from '@/adapters/types'
 import {
   getPluginHandlers,
   setPluginAccountContext,
 } from '@/aiscript/plugin-api'
 import { useAutocomplete } from '@/composables/useAutocomplete'
+import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePopupControl } from '@/composables/usePopupControl'
+import { usePortal } from '@/composables/usePortal'
 import { usePostFormState } from '@/composables/usePostFormState'
 import {
   getAccountAvatarUrl,
@@ -17,11 +32,15 @@ import {
 } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
+import { parseMfm } from '@/utils/mfm'
+import { extractColumnThemeVars } from '@/utils/themeVars'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
 import MkMediaGrid from './MkMediaGrid.vue'
 import MkMfm from './MkMfm.vue'
 import MkReactionPicker from './MkReactionPicker.vue'
+
+const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
 
 const props = defineProps<{
   accountId: string
@@ -283,6 +302,45 @@ function closePopups() {
   acDismiss()
 }
 
+// --- Mention hover popup in preview ---
+const previewMentionPopup = useHoverPopup()
+const previewMentionUserId = ref('')
+const previewMentionTheme = ref<Record<string, string>>()
+let previewMentionHovering = false
+
+async function onPreviewMentionHover(
+  e: MouseEvent,
+  username: string,
+  host: string | null,
+) {
+  previewMentionHovering = true
+  const el = e.currentTarget as HTMLElement
+  const rect = el.getBoundingClientRect()
+  previewMentionTheme.value = extractColumnThemeVars(el)
+  try {
+    const user = await invoke<NormalizedUser>('api_lookup_user', {
+      accountId: activeAccountId.value,
+      username,
+      host: host ?? null,
+    })
+    if (!previewMentionHovering) return
+    previewMentionUserId.value = user.id
+    previewMentionPopup.show({ x: rect.right + 8, y: rect.top })
+  } catch {
+    // lookup failed
+  }
+}
+
+function onPreviewMentionLeave() {
+  previewMentionHovering = false
+  previewMentionPopup.hide()
+}
+
+const previewMentionPortalRef = useTemplateRef<HTMLElement>(
+  'previewMentionPortalRef',
+)
+usePortal(previewMentionPortalRef)
+
 onMounted(async () => {
   await initAdapter()
   if (props.editNote) {
@@ -294,6 +352,43 @@ onMounted(async () => {
     visibility.value = props.editNote.visibility
   } else if (props.replyTo) {
     visibility.value = props.replyTo.visibility
+    const myUserId = account.value?.userId
+    const mentions: string[] = []
+    const seen = new Set<string>()
+
+    // 1. Reply target user
+    const replyUser = props.replyTo.user
+    if (replyUser.id !== myUserId) {
+      const acct = replyUser.host
+        ? `@${replyUser.username}@${replyUser.host}`
+        : `@${replyUser.username}`
+      mentions.push(acct)
+      seen.add(acct.toLowerCase())
+    }
+
+    // 2. Mentions in the reply target's text (reply chain participants)
+    if (props.replyTo.text) {
+      for (const token of parseMfm(props.replyTo.text)) {
+        if (token.type !== 'mention') continue
+        const acct = token.acct
+        const lower = acct.toLowerCase()
+        if (seen.has(lower)) continue
+        // Skip self
+        const isSelf = token.host
+          ? token.username.toLowerCase() ===
+              account.value?.username?.toLowerCase() &&
+            token.host.toLowerCase() === account.value?.host?.toLowerCase()
+          : token.username.toLowerCase() ===
+            account.value?.username?.toLowerCase()
+        if (isSelf) continue
+        seen.add(lower)
+        mentions.push(acct)
+      }
+    }
+
+    if (mentions.length > 0) {
+      text.value = `${mentions.join(' ')} `
+    }
   }
   if (props.initialText) text.value = props.initialText
   if (props.initialCw) {
@@ -679,7 +774,10 @@ function onKeydown(e: KeyboardEvent) {
               :text="text"
               :emojis="{}"
               :server-host="account?.host"
-              :account-id="activeAccountId"
+              :my-username="account?.username"
+              :my-host="account?.host"
+              @mention-hover="onPreviewMentionHover"
+              @mention-leave="onPreviewMentionLeave"
             />
           </div>
           <div v-else :class="$style.previewEmpty">テキストを入力するとプレビューが表示されます</div>
@@ -905,6 +1003,18 @@ function onKeydown(e: KeyboardEvent) {
       @pick="onDriveFilesPicked"
       @close="showDrivePicker = false"
     />
+
+    <!-- Mention hover popup in preview -->
+    <div v-if="previewMentionPopup.isVisible.value && previewMentionUserId" ref="previewMentionPortalRef">
+      <MkUserPopup
+        :user-id="previewMentionUserId"
+        :account-id="activeAccountId!"
+        :x="previewMentionPopup.position.value.x"
+        :y="previewMentionPopup.position.value.y"
+        :theme-vars="previewMentionTheme"
+        @close="previewMentionPopup.forceClose()"
+      />
+    </div>
   </div>
 </template>
 

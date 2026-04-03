@@ -115,6 +115,9 @@ const emit = defineEmits<{
 
 const { navigateToNote: navToNote, navigateToUser: navToUser } = useNavigation()
 const accountsStore = useAccountsStore()
+const myAccount = computed(() =>
+  accountsStore.accountMap.get(props.note._accountId),
+)
 const { resolveEmoji: resolveEmojiRaw, reactionUrl: reactionUrlRaw } =
   useEmojiResolver()
 const instanceIconUrl = computed(() => {
@@ -556,7 +559,9 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
               :text="effectiveNote.cw"
               :emojis="effectiveNote.emojis"
               :server-host="effectiveNote._serverHost"
-                  @mention-click="handleMentionClick"
+              :my-username="myAccount?.username"
+              :my-host="myAccount?.host"
+              @mention-click="handleMentionClick"
               @mention-hover="onMentionHover"
               @mention-leave="onMentionLeave"
             />
@@ -576,7 +581,9 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
                 :emojis="effectiveNote.emojis"
                 :reaction-emojis="effectiveNote.reactionEmojis"
                 :server-host="effectiveNote._serverHost"
-                      @mention-click="handleMentionClick"
+                :my-username="myAccount?.username"
+                :my-host="myAccount?.host"
+                @mention-click="handleMentionClick"
                 @mention-hover="onMentionHover"
                 @mention-leave="onMentionLeave"
               />
