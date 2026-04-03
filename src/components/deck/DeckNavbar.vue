@@ -2,6 +2,7 @@
 import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue'
 import { useCommandStore } from '@/commands/registry'
 import ColumnBadges from '@/components/common/ColumnBadges.vue'
+import { useAccountActions } from '@/composables/useAccountActions'
 import { useColumnBadge } from '@/composables/useColumnBadge'
 import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useNavigation } from '@/composables/useNavigation'
@@ -48,6 +49,7 @@ const emit = defineEmits<{
 
 const $style = useCssModule()
 const { navigateToLogin, navigateToPlugins } = useNavigation()
+const accountActions = useAccountActions()
 const { confirm } = useConfirm()
 const commandStore = useCommandStore()
 const deckStore = useDeckStore()
@@ -298,21 +300,15 @@ function showLogoutDialog(id: string) {
 
 function logoutKeepData() {
   if (!logoutTargetId.value) return
-  const id = logoutTargetId.value
-  streamingStore.disconnect(id)
-  accountsStore.logoutAccount(id)
+  const acc = accountsStore.accountMap.get(logoutTargetId.value)
+  if (acc) accountActions.logoutKeepData(acc)
   logoutTargetId.value = null
 }
 
 function logoutDeleteAll() {
   if (!logoutTargetId.value) return
-  const id = logoutTargetId.value
-  for (const col of deckStore.columns) {
-    if (col.accountId === id) {
-      deckStore.removeColumn(col.id)
-    }
-  }
-  accountsStore.removeAccount(id)
+  const acc = accountsStore.accountMap.get(logoutTargetId.value)
+  if (acc) accountActions.deleteAccountData(acc)
   logoutTargetId.value = null
 }
 

@@ -1,0 +1,107 @@
+import {
+  type Account,
+  getAccountLabel,
+  isGuestAccount,
+  useAccountsStore,
+} from '@/stores/accounts'
+import { useConfirm } from '@/stores/confirm'
+import { useDeckStore } from '@/stores/deck'
+import { useStreamingStore } from '@/stores/streaming'
+import { useWindowsStore } from '@/stores/windows'
+import { showLoginPrompt } from '@/utils/loginPrompt'
+
+export function useAccountActions() {
+  const accountsStore = useAccountsStore()
+  const streamingStore = useStreamingStore()
+  const deckStore = useDeckStore()
+  const windowsStore = useWindowsStore()
+  const { confirm } = useConfirm()
+
+  function openProfile(acc: Account) {
+    windowsStore.open('user-profile', { accountId: acc.id, userId: acc.userId })
+  }
+
+  async function openSettings(acc: Account) {
+    if (!acc.hasToken) {
+      showLoginPrompt()
+      return
+    }
+    const { openUrl } = await import('@tauri-apps/plugin-opener')
+    openUrl(`https://${acc.host}/settings`)
+  }
+
+  async function openAdmin(acc: Account) {
+    const { openUrl } = await import('@tauri-apps/plugin-opener')
+    openUrl(`https://${acc.host}/admin`)
+  }
+
+  /** トークンを無効化し、ローカルデータは保持する */
+  function logoutKeepData(acc: Account) {
+    streamingStore.disconnect(acc.id)
+    accountsStore.logoutAccount(acc.id)
+  }
+
+  /** アカウントとカラムをすべて削除する */
+  function deleteAccountData(acc: Account) {
+    for (const col of deckStore.columns) {
+      if (col.accountId === acc.id) {
+        deckStore.removeColumn(col.id)
+      }
+    }
+    accountsStore.removeAccount(acc.id)
+  }
+
+  /** ログアウト確認ダイアログを表示し実行する */
+  async function logout(acc: Account) {
+    if (isGuestAccount(acc)) {
+      const ok = await confirm({
+        title: 'ゲストを削除',
+        message: 'このゲストアカウントを削除しますか？',
+        okLabel: '削除',
+        type: 'danger',
+      })
+      if (ok) deleteAccountData(acc)
+      return
+    }
+    const ok = await confirm({
+      title: 'ログアウト',
+      message: `${getAccountLabel(acc)} からログアウトしますか？\nローカルデータはこのデバイスに残ります。`,
+      okLabel: 'ログアウト',
+      type: 'danger',
+    })
+    if (ok) logoutKeepData(acc)
+  }
+
+  /** データ全削除確認ダイアログを表示し実行する */
+  async function deleteAccount(acc: Account) {
+    const ok = await confirm({
+      title: 'データを削除',
+      message: `${getAccountLabel(acc)} のローカルデータをすべて削除しますか？`,
+      okLabel: '削除',
+      type: 'danger',
+    })
+    if (ok) deleteAccountData(acc)
+  }
+
+  function relogin(acc: Account) {
+    windowsStore.open('login', { initialHost: acc.host })
+  }
+
+  function addAccount() {
+    windowsStore.open('login')
+  }
+
+  return {
+    openProfile,
+    openSettings,
+    openAdmin,
+    logoutKeepData,
+    deleteAccountData,
+    logout,
+    deleteAccount,
+    relogin,
+    addAccount,
+    isGuestAccount,
+    getAccountLabel,
+  }
+}

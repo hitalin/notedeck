@@ -1,11 +1,7 @@
 import { useCommandStore } from '@/commands/registry'
-import { useNavigation } from '@/composables/useNavigation'
+import { useAccountActions } from '@/composables/useAccountActions'
 import type { NoteAction } from '@/composables/useNoteFocus'
-import {
-  getAccountLabel,
-  isGuestAccount,
-  useAccountsStore,
-} from '@/stores/accounts'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
@@ -148,13 +144,8 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     shortcuts: keybindsStore.getShortcuts('account-menu'),
     execute: () => {
       const accountsStore = useAccountsStore()
-      const { navigateToUser } = useNavigation()
+      const actions = useAccountActions()
       const windowsStore = useWindowsStore()
-
-      const openUrl = async (url: string) => {
-        const { openUrl: open } = await import('@tauri-apps/plugin-opener')
-        return open(url)
-      }
 
       commandStore.open()
       commandStore.pushQuickPick({
@@ -163,19 +154,19 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
         items: [
           ...accountsStore.accounts.map((acc) => ({
             id: acc.id,
-            label: getAccountLabel(acc),
-            icon: isGuestAccount(acc) ? 'user-off' : 'user',
-            description: acc.host,
+            label: actions.getAccountLabel(acc),
+            icon: actions.isGuestAccount(acc) ? 'user-off' : 'user',
+            avatarUrl: getAccountAvatarUrl(acc),
             children: () => {
               const items = []
-              if (!isGuestAccount(acc)) {
+              if (!actions.isGuestAccount(acc)) {
                 items.push({
                   id: `${acc.id}-profile`,
                   label: 'プロフィール',
                   icon: 'user',
                   action: () => {
                     commandStore.close()
-                    navigateToUser(acc.id, acc.userId)
+                    actions.openProfile(acc)
                   },
                 })
                 if (acc.hasToken) {
@@ -185,7 +176,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
                     icon: 'settings',
                     action: () => {
                       commandStore.close()
-                      openUrl(`https://${acc.host}/settings`)
+                      actions.openSettings(acc)
                     },
                   })
                 }
@@ -197,17 +188,17 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
                   icon: 'logout',
                   action: () => {
                     commandStore.close()
-                    handlers.toggleAccountMenu()
+                    actions.logout(acc)
                   },
                 })
-              } else if (isGuestAccount(acc)) {
+              } else if (actions.isGuestAccount(acc)) {
                 items.push({
                   id: `${acc.id}-delete`,
                   label: 'データを削除',
                   icon: 'trash',
                   action: () => {
                     commandStore.close()
-                    handlers.toggleAccountMenu()
+                    actions.deleteAccount(acc)
                   },
                 })
               } else {
@@ -217,7 +208,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
                   icon: 'login',
                   action: () => {
                     commandStore.close()
-                    windowsStore.open('login', { host: acc.host })
+                    actions.relogin(acc)
                   },
                 })
               }
@@ -230,7 +221,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
             icon: 'user-plus',
             action: () => {
               commandStore.close()
-              windowsStore.open('login')
+              actions.addAccount()
             },
           },
           {
