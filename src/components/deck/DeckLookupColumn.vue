@@ -16,7 +16,7 @@ import { usePortal } from '@/composables/usePortal'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
-import { parseNoteUrl } from '@/utils/noteUrl'
+import { parseNoteUrl, parseUserQuery } from '@/utils/noteUrl'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -89,15 +89,9 @@ async function performLookup() {
 
   try {
     // Check if input is @user or @user@host format
-    const raw = q.replace(/^@/, '')
-    const parts = raw.split('@')
-    if (
-      parts[0] &&
-      /^[a-zA-Z0-9_]+$/.test(parts[0]) &&
-      (q.startsWith('@') || (parts.length === 2 && parts[1]))
-    ) {
-      const username = parts[0]
-      const host = parts[1] || null
+    const userQuery = parseUserQuery(q)
+    if (userQuery) {
+      const { username, host } = userQuery
       const user = await invoke<{
         id: string
         username: string
