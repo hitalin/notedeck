@@ -3,6 +3,7 @@ import { refreshProfileCommands } from '@/commands/definitions'
 import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
 import {
+  getAccountAvatarUrl,
   getAccountLabel,
   isGuestAccount,
   useAccountsStore,
@@ -14,6 +15,7 @@ import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
+import { proxyThumbUrl } from '@/utils/imageProxy'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { invoke } from '@/utils/tauriInvoke'
 import type { QuickPickItem } from './quickPick'
@@ -465,6 +467,7 @@ async function buildAccountStep(type: ColumnType): Promise<QuickPickItem[]> {
       id: `account-${account.id}`,
       label: getAccountLabel(account),
       icon: 'user',
+      avatarUrl: proxyThumbUrl(getAccountAvatarUrl(account), 18),
       children: () => {
         if (!account.hasToken && authRequired) {
           showLoginPrompt()

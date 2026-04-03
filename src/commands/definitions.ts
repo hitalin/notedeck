@@ -10,6 +10,7 @@ import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import { useThemeStore } from '@/stores/theme'
 import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
+import { proxyThumbUrl } from '@/utils/imageProxy'
 
 export interface CommandHandlers {
   openCompose: () => void
@@ -156,7 +157,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
             id: acc.id,
             label: actions.getAccountLabel(acc),
             icon: actions.isGuestAccount(acc) ? 'user-off' : 'user',
-            avatarUrl: getAccountAvatarUrl(acc),
+            avatarUrl: proxyThumbUrl(getAccountAvatarUrl(acc), 18),
             children: () => {
               const items = []
               if (!actions.isGuestAccount(acc)) {
