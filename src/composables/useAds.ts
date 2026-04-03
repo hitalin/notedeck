@@ -18,9 +18,10 @@ function getMutedAds(): string[] {
 
 export function useAds(
   getAccountId: () => string | undefined,
-  options?: { filterPlace?: boolean },
+  options?: { filterPlace?: boolean; ignoreMute?: boolean },
 ) {
   const filterPlace = options?.filterPlace ?? true
+  const ignoreMute = options?.ignoreMute ?? false
   const ads = ref<ServerAd[]>([])
   const notesPerOneAd = ref(0)
   const serverHost = ref('')
@@ -70,8 +71,8 @@ export function useAds(
     ads.value = rawAds.filter((ad) => {
       if (filterPlace && ad.place !== 'horizontal' && ad.place !== 'square')
         return false
-      if ((ad.dayOfWeek & dayBit) === 0) return false
-      if (muted.includes(ad.id)) return false
+      if (ad.dayOfWeek !== 0 && (ad.dayOfWeek & dayBit) === 0) return false
+      if (!ignoreMute && muted.includes(ad.id)) return false
       return true
     })
     notesPerOneAd.value = interval

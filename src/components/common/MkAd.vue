@@ -4,10 +4,14 @@ import { ref } from 'vue'
 import type { ServerAd } from '@/adapters/types'
 import { isSafeUrl } from '@/utils/url'
 
-const props = defineProps<{
-  ad: ServerAd
-  serverHost: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    ad: ServerAd
+    serverHost: string
+    showMuteButton?: boolean
+  }>(),
+  { showMuteButton: true },
+)
 
 const emit = defineEmits<{
   mute: [adId: string]
@@ -32,7 +36,7 @@ function reduceFrequency() {
     <div :class="$style.adWrapper">
       <a :class="$style.adLink" @click.prevent="onClick">
         <img :src="ad.imageUrl" :class="$style.adImage" loading="lazy" />
-        <button :class="$style.adInfoBtn" @click.prevent.stop="showMenu = !showMenu">
+        <button v-if="showMuteButton" :class="$style.adInfoBtn" @click.prevent.stop="showMenu = !showMenu">
           <i class="ti ti-info-circle" :class="$style.adInfoIcon" />
         </button>
       </a>
