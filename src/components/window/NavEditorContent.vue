@@ -240,8 +240,10 @@ async function importNav() {
               :title="getItemLabel(item)"
               @pointerdown="startDrag(i, $event)"
             >
-              <i :class="['ti', getItemIcon(item)]" />
-              <ColumnBadges :account-id="item.accountId" :size="10" />
+              <div :class="$style.iconWrap">
+                <i :class="['ti', getItemIcon(item)]" />
+                <ColumnBadges :account-id="item.accountId" :size="14" />
+              </div>
               <button class="_button" :class="$style.tabRemoveBtn" @click.stop="removeItem(i)">
                 <i class="ti ti-x" />
               </button>
@@ -377,14 +379,9 @@ async function importNav() {
   border-radius: 50%;
   cursor: grab;
   user-select: none;
+  --column-badge-border: var(--nd-panel);
   transition:
     background var(--nd-duration-base);
-
-  :global(.ti) {
-    font-size: 1.5em;
-    opacity: 0.7;
-    transition: opacity var(--nd-duration-base);
-  }
 
   &:hover {
     background: var(--nd-buttonHoverBg);
@@ -402,6 +399,16 @@ async function importNav() {
   &.dragOver {
     outline: 2px solid var(--nd-accent);
     outline-offset: 1px;
+  }
+}
+
+.iconWrap {
+  @include nav-icon-wrap;
+
+  :global(.ti) {
+    @include nav-icon;
+    opacity: 0.7;
+    transition: opacity var(--nd-duration-base);
   }
 }
 

@@ -2,6 +2,7 @@
 import { json } from '@codemirror/lang-json'
 import JSON5 from 'json5'
 import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
+import ColumnBadges from '@/components/common/ColumnBadges.vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import type { ReorderableItem } from '@/components/common/ReorderableList.vue'
 import ReorderableList from '@/components/common/ReorderableList.vue'
@@ -325,14 +326,11 @@ async function importFromClipboard() {
             :title="groupLabel(group)"
             @pointerdown="startDrag(groupIdx, $event)"
           >
-            <i v-if="groupPrimaryColumn(group)" :class="'ti ti-' + columnIcon(groupPrimaryColumn(group)!)" />
-            <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
-            <span v-if="groupServerIconUrl(group)" :class="$style.serverBadge">
-              <img :src="groupServerIconUrl(group)!" :class="$style.badgeImg" />
-            </span>
-            <span v-if="groupAvatarUrl(group)" :class="$style.accountBadge">
-              <img :src="groupAvatarUrl(group)!" :class="$style.badgeImg" />
-            </span>
+            <div :class="$style.iconWrap">
+              <i v-if="groupPrimaryColumn(group)" :class="'ti ti-' + columnIcon(groupPrimaryColumn(group)!)" />
+              <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
+              <ColumnBadges :account-id="groupPrimaryColumn(group)?.accountId" :size="14" />
+            </div>
             <button
               class="_button"
               :class="$style.removeBtn"
@@ -546,12 +544,12 @@ async function importFromClipboard() {
   justify-content: center;
   width: 42px;
   height: 42px;
-  font-size: 16px;
   color: var(--nd-fg);
   opacity: 0.6;
   border-radius: var(--nd-radius-sm);
   cursor: grab;
   user-select: none;
+  --column-badge-border: var(--nd-panel);
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 
   &:hover {
@@ -582,21 +580,21 @@ async function importFromClipboard() {
   }
 }
 
-.stackBadge {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  min-width: 14px;
-  height: 14px;
-  padding: 0 3px;
-  border-radius: 7px;
-  background: var(--nd-accent);
-  color: var(--nd-bg);
-  font-size: 9px;
-  font-weight: bold;
-  line-height: 14px;
-  text-align: center;
+.iconWrap {
+  @include nav-icon-wrap;
+
+  :global(.ti) {
+    @include nav-icon;
+    opacity: 0.7;
+    transition: opacity var(--nd-duration-base);
+  }
+
+  .columnTab:hover & :global(.ti) {
+    opacity: 1;
+  }
 }
+
+.stackBadge { @include nav-stack-badge; }
 
 .removeBtn {
   position: absolute;
@@ -622,38 +620,6 @@ async function importFromClipboard() {
   &:hover {
     filter: brightness(0.85);
   }
-}
-
-// Mirrors badge styles in DeckBottomBar
-.serverBadge,
-.accountBadge {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 1.5px solid var(--nd-panel);
-  background: var(--nd-panel);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.serverBadge {
-  top: 2px;
-  right: 2px;
-}
-
-.accountBadge {
-  bottom: 2px;
-  left: 2px;
-}
-
-.badgeImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
 }
 
 .emptyMessage {
