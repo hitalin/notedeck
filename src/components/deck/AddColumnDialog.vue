@@ -208,7 +208,7 @@ const selectItems = ref<SelectableItem[]>([])
 const selectLoading = ref(false)
 const selectConfig = ref<SelectableConfig | null>(null)
 
-// Search input for searchable configs (user, channel)
+// Unified search input for searchable configs (user, channel, etc.)
 const searchQuery = ref('')
 let searchDebounce: ReturnType<typeof setTimeout> | undefined
 
@@ -232,15 +232,22 @@ watch(userSearching, (v) => {
   if (selectConfig.value?.type === 'user') selectLoading.value = v
 })
 
-// Generic search for non-user searchable configs (channel, etc.)
+// Dispatch search by config type
 watch(searchQuery, (val) => {
   if (searchDebounce) clearTimeout(searchDebounce)
   const config = selectConfig.value
-  if (!config?.searchCommand || config.type === 'user') return
+  if (!config?.searchCommand) return
+
+  // User: delegate to useUserSearch composable
+  if (config.type === 'user') {
+    userSearchQuery.value = val
+    return
+  }
+
+  // Generic: server-side search with fallback to initial list
   const q = val.trim()
   const accountId = selectAccountId.value
   if (!q || !accountId) {
-    // Restore initial items when search is cleared
     if (accountId) fetchInitialItems(config, accountId)
     return
   }
@@ -281,9 +288,9 @@ async function fetchSelectItems(config: SelectableConfig, accountId: string) {
   selectConfig.value = config
   selectAccountId.value = accountId
   searchQuery.value = ''
+  userSearchQuery.value = ''
   if (config.type === 'user') {
     // User: search-only, no initial list
-    userSearchQuery.value = ''
     selectItems.value = []
     selectLoading.value = false
     return
@@ -341,7 +348,7 @@ function close() {
         <button v-if="addColumnType && !selectConfig" class="_button" :class="$style.addBackBtn" @click="addColumnType = null">
           <i class="ti ti-chevron-left" />
         </button>
-        <button v-else-if="selectConfig" class="_button" :class="$style.addBackBtn" @click="selectConfig = null; selectItems = []; selectAccountId = null; searchQuery = ''; userSearchQuery = ''">
+        <button v-else-if="selectConfig" class="_button" :class="$style.addBackBtn" @click="selectConfig = null; selectItems = []; selectAccountId = null; searchQuery = ''">
           <i class="ti ti-chevron-left" />
         </button>
         <span :class="$style.addPopupTitle">
@@ -507,7 +514,7 @@ function close() {
         <div v-if="selectConfig.searchCommand" :class="$style.selectSearchBar">
           <i class="ti ti-search" :class="$style.selectSearchIcon" />
           <input
-            v-model="selectConfig.type === 'user' ? userSearchQuery : searchQuery"
+            v-model="searchQuery"
             :class="$style.selectSearchInput"
             type="text"
             :placeholder="`${selectConfig.label}を検索...`"
@@ -515,7 +522,7 @@ function close() {
           <i v-if="selectLoading" class="ti ti-loader-2 nd-spin" :class="$style.selectSearchIcon" />
         </div>
         <div v-if="!selectConfig.searchCommand && selectLoading" :class="$style.addPopupLoading"><LoadingSpinner /></div>
-        <div v-else-if="!selectLoading && selectItems.length === 0 && (!selectConfig.searchCommand || (selectConfig.type === 'user' ? userSearchQuery.trim() : searchQuery.trim()))" :class="$style.addPopupEmpty">{{ selectConfig.label }}が見つかりません</div>
+        <div v-else-if="!selectLoading && selectItems.length === 0 && (!selectConfig.searchCommand || searchQuery.trim())" :class="$style.addPopupEmpty">{{ selectConfig.label }}が見つかりません</div>
         <button
           v-for="item in selectItems"
           :key="item.id"
