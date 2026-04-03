@@ -5,56 +5,32 @@ import ColumnBadges from '@/components/common/ColumnBadges.vue'
 import { useColumnTabs } from '@/composables/useColumnTabs'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
-import { useUiStore } from '@/stores/ui'
-import DeckProfileMenu from './DeckProfileMenu.vue'
-import DeckSettingsMenu from './DeckSettingsMenu.vue'
 
 const props = defineProps<{
-  showProfileMenu: boolean
-  showSettingsMenu: boolean
-  updateAvailable: boolean
   columns: DeckColumn[]
   layout: string[][]
   activeColumnIndex: number
 }>()
 
-const profileWrapRef = ref<HTMLElement>()
-const settingsWrapRef = ref<HTMLElement>()
 const tabsScrollRef = ref<HTMLElement>()
 
 const emit = defineEmits<{
-  'toggle-add-menu': []
-  'update:show-profile-menu': [value: boolean]
-  'update:show-settings-menu': [value: boolean]
   'scroll-to-column': [index: number]
 }>()
 
-const { isDesktop } = useUiStore()
 const commandStore = useCommandStore()
 const deckStore = useDeckStore()
 
 function onProfileClick() {
-  if (isDesktop) {
-    commandStore.openWithInput('#')
-  } else {
-    emit('update:show-profile-menu', !props.showProfileMenu)
-  }
+  commandStore.openWithInput('#')
 }
 
 function onSettingsClick() {
-  if (isDesktop) {
-    commandStore.openWithInput('*')
-  } else {
-    emit('update:show-settings-menu', !props.showSettingsMenu)
-  }
+  commandStore.openWithInput('*')
 }
 
 function onAddColumnClick() {
-  if (isDesktop) {
-    commandStore.openWithInput('+')
-  } else {
-    emit('toggle-add-menu')
-  }
+  commandStore.openWithInput('+')
 }
 
 const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
@@ -69,23 +45,15 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
 <template>
   <div :class="$style.root">
     <div :class="$style.left">
-      <div ref="profileWrapRef" :class="$style.menuWrap">
-        <button
-          class="_button"
-          :class="$style.profileIndicator"
-          title="プロファイル切替"
-          @pointerdown.stop
-          @click.stop="onProfileClick()"
-        >
-          <i class="ti ti-layout" />
-          <span :class="$style.profileName">{{ deckStore.currentProfileName ?? 'プロファイル' }}</span>
-        </button>
-        <DeckProfileMenu
-          :show="showProfileMenu"
-          :anchor="profileWrapRef"
-          @close="emit('update:show-profile-menu', false)"
-        />
-      </div>
+      <button
+        class="_button"
+        :class="$style.profileIndicator"
+        title="プロファイル切替"
+        @click="onProfileClick()"
+      >
+        <i class="ti ti-layout" />
+        <span :class="$style.profileName">{{ deckStore.currentProfileName ?? 'プロファイル' }}</span>
+      </button>
     </div>
 
     <div ref="tabsScrollRef" :class="$style.tabsScroll">
@@ -111,23 +79,14 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
     </div>
 
     <div :class="$style.right">
-      <div ref="settingsWrapRef" :class="$style.menuWrap">
-        <button
-          class="_button"
-          :class="[$style.actionBtn, $style.settingsBtn]"
-          title="デッキ設定"
-          @pointerdown.stop
-          @click.stop="onSettingsClick()"
-        >
-          <i class="ti ti-settings" />
-        </button>
-        <DeckSettingsMenu
-          :show="showSettingsMenu"
-          :anchor="settingsWrapRef"
-          @close="emit('update:show-settings-menu', false)"
-          @close-all="emit('update:show-settings-menu', false)"
-        />
-      </div>
+      <button
+        class="_button"
+        :class="[$style.actionBtn, $style.settingsBtn]"
+        title="デッキ設定"
+        @click="onSettingsClick()"
+      >
+        <i class="ti ti-settings" />
+      </button>
     </div>
   </div>
 </template>
@@ -157,11 +116,6 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   align-items: center;
   height: 100%;
   padding-right: 4px;
-}
-
-.menuWrap {
-  position: relative;
-  height: 100%;
 }
 
 .profileIndicator {

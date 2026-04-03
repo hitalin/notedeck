@@ -104,7 +104,7 @@ function closeCompose() {
 }
 
 function toggleAddMenu() {
-  if (uiStore.isDesktop && !isCompact.value) {
+  if (!isCompact.value) {
     commandStore.openWithInput('+')
   } else {
     showAddMenu.value = !showAddMenu.value
@@ -247,13 +247,7 @@ function acceptCrossWindowDrop() {
         :columns="columns"
         :layout="deckStore.windowLayout"
         :active-column-index="activeColumnIndex"
-        :show-profile-menu="showProfileMenu"
-        :show-settings-menu="showSettingsMenu"
-        :update-available="updateAvailable"
         @scroll-to-column="scrollToColumn"
-        @toggle-add-menu="toggleAddMenu"
-        @update:show-profile-menu="showProfileMenu = $event"
-        @update:show-settings-menu="showSettingsMenu = $event"
       />
     </div>
 
