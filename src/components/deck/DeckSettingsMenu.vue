@@ -165,7 +165,7 @@ function openToolWindow(
     | 'performanceEditor',
 ) {
   windowsStore.open(type)
-  emit('close-all')
+  emit('close')
 }
 
 const { confirm } = useConfirm()
