@@ -52,7 +52,7 @@ watch(
         const rect = props.anchor.getBoundingClientRect()
         fixedStyle.value = {
           position: 'fixed',
-          bottom: `${(window.visualViewport?.height ?? window.innerHeight) - rect.top + 4}px`,
+          bottom: `${window.innerHeight - rect.top + 4}px`,
           left: `${rect.left}px`,
         }
       } else {
@@ -191,9 +191,9 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 16px;
+  padding: 4px 12px;
   cursor: pointer;
-  font-size: 0.9em;
+  font-size: 0.85em;
   line-height: 20px;
   color: var(--nd-fg);
   position: relative;
@@ -304,10 +304,6 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
 /* Mobile overrides */
 .mobile {
   &.profileMenu {
-    position: fixed;
-    bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
-    left: 8px;
-    right: auto;
     width: 234px;
     max-width: none;
     min-width: 0;
@@ -317,10 +313,10 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
   }
 
   .item {
-    padding: 10px 16px;
+    padding: 8px 12px;
     min-height: 44px;
-    font-size: 0.95em;
-    gap: 12px;
+    font-size: 0.85em;
+    gap: 8px;
   }
 
   .action {

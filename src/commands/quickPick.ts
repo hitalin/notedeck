@@ -2,6 +2,8 @@ export interface QuickPickItem {
   id: string
   label: string
   icon: string
+  /** アバター画像URL（指定時は icon の代わりに表示） */
+  avatarUrl?: string
   /** 2行目のサブテキスト */
   description?: string
   /** カテゴリグループ */

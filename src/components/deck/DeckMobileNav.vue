@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import ColumnBadges from '@/components/common/ColumnBadges.vue'
+import { useColumnBadge } from '@/composables/useColumnBadge'
 import { useColumnTabs } from '@/composables/useColumnTabs'
-import type { DeckColumn } from '@/stores/deck'
+import type { ColumnType, DeckColumn } from '@/stores/deck'
 
 const props = defineProps<{
   columns: DeckColumn[]
@@ -33,13 +34,20 @@ watch(
   { immediate: true },
 )
 
-const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
-  useColumnTabs(
-    () => props.columns,
-    () => props.layout,
-    () => props.activeColumnIndex,
-    mobileNavRef,
-  )
+const { getBadge } = useColumnBadge()
+
+const {
+  visibleGroups,
+  groupPrimaryId,
+  columnType,
+  columnIcon,
+  columnAccountId,
+} = useColumnTabs(
+  () => props.columns,
+  () => props.layout,
+  () => props.activeColumnIndex,
+  mobileNavRef,
+)
 </script>
 
 <template>
@@ -59,9 +67,12 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
         :class="[$style.tab, { [$style.active]: activeColumnIndex === gi }]"
         @click="emit('scroll-to-column', gi)"
       >
-        <i :class="'ti ti-' + columnIcon(groupPrimaryId(group))" />
-        <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
-        <ColumnBadges :account-id="columnAccountId(groupPrimaryId(group))" :size="14" />
+        <div :class="$style.iconWrap">
+          <i :class="'ti ti-' + columnIcon(groupPrimaryId(group))" />
+          <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
+          <span v-if="getBadge(columnType(groupPrimaryId(group)) as ColumnType) > 0" :key="getBadge(columnType(groupPrimaryId(group)) as ColumnType)" :class="$style.badge">{{ getBadge(columnType(groupPrimaryId(group)) as ColumnType) > 99 ? '99+' : getBadge(columnType(groupPrimaryId(group)) as ColumnType) }}</span>
+          <ColumnBadges :account-id="columnAccountId(groupPrimaryId(group))" :size="14" />
+        </div>
       </button>
     </div>
     <button
@@ -76,6 +87,8 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
+
 .root {
   display: flex;
   align-items: stretch;
@@ -113,6 +126,8 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   }
 }
 
+.iconWrap { @include nav-icon-wrap; }
+
 .tab {
   position: relative;
   display: flex;
@@ -121,15 +136,12 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   flex: 0 0 auto;
   min-width: 42px;
   padding: 12px 8px;
-  font-size: 15px;
   color: var(--nd-fg);
   opacity: 0.45;
   transition: opacity var(--nd-duration-slow), color var(--nd-duration-slow);
   --column-badge-border: var(--nd-navBg);
-  --column-badge-server-top: 5px;
-  --column-badge-server-right: calc(50% - 16px);
-  --column-badge-account-bottom: 4px;
-  --column-badge-account-left: calc(50% - 16px);
+
+  :global(.ti) { @include nav-icon; }
 
   &:active {
     opacity: 0.7;
@@ -155,20 +167,7 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   }
 }
 
-.stackBadge {
-  position: absolute;
-  top: 5px;
-  left: calc(50% - 16px);
-  min-width: 12px;
-  height: 12px;
-  padding: 0 2px;
-  border-radius: 6px;
-  background: var(--nd-accent);
-  color: var(--nd-bg);
-  font-size: 8px;
-  font-weight: bold;
-  line-height: 12px;
-  text-align: center;
-}
+.stackBadge { @include nav-stack-badge; }
+.badge { @include nav-badge; }
 
 </style>

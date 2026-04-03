@@ -91,12 +91,12 @@ const usernameInitial = computed(
 }
 
 .serverBadge {
-  top: var(--column-badge-server-top, -2px);
+  top: var(--column-badge-server-top, -4px);
   right: var(--column-badge-server-right, -4px);
 }
 
 .accountBadge {
-  bottom: var(--column-badge-account-bottom, -2px);
+  bottom: var(--column-badge-account-bottom, -4px);
   left: var(--column-badge-account-left, -4px);
 }
 

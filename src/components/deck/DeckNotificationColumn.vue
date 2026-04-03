@@ -39,6 +39,7 @@ import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
 import { usePerformanceStore } from '@/stores/performance'
 import { useServersStore } from '@/stores/servers'
+import { useToast } from '@/stores/toast'
 import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
@@ -55,6 +56,7 @@ const MkUserPopup = defineAsyncComponent(
 )
 
 const noteStore = useNoteStore()
+const toast = useToast()
 
 const userPopupPortalRef = useTemplateRef<HTMLElement>('userPopupPortalRef')
 usePortal(userPopupPortalRef)
@@ -732,7 +734,15 @@ async function handleFollowRequest(
       [notif.id]: action,
     }
   } catch (e) {
-    error.value = AppError.from(e)
+    const appErr = AppError.from(e)
+    if (appErr.message.includes('NO_SUCH_FOLLOW_REQUEST')) {
+      followRequestStates.value = {
+        ...followRequestStates.value,
+        [notif.id]: action,
+      }
+    } else {
+      toast.show(appErr.message, 'error')
+    }
   }
 }
 
@@ -1208,13 +1218,13 @@ onUnmounted(() => {
 .notifServerBadge {
   position: absolute;
   top: -2px;
-  right: -2px;
+  right: -4px;
   width: 18px;
   height: 18px;
   border-radius: 50%;
   object-fit: contain;
   background: var(--nd-panel);
-  box-shadow: 0 0 0 2px var(--nd-panel);
+  box-shadow: 0 0 0 3px var(--nd-panel);
 }
 
 .notifSubIcon {

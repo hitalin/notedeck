@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, useCssModule, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue'
+import { useCommandStore } from '@/commands/registry'
 import ColumnBadges from '@/components/common/ColumnBadges.vue'
+import { useAccountActions } from '@/composables/useAccountActions'
+import { useColumnBadge } from '@/composables/useColumnBadge'
 import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useNavigation } from '@/composables/useNavigation'
-import { useUnreadChat } from '@/composables/useUnreadChat'
-import { useUnreadNotifications } from '@/composables/useUnreadNotifications'
 import {
   type Account,
   getAccountLabel,
@@ -48,14 +49,21 @@ const emit = defineEmits<{
 
 const $style = useCssModule()
 const { navigateToLogin, navigateToPlugins } = useNavigation()
+const accountActions = useAccountActions()
 const { confirm } = useConfirm()
+const commandStore = useCommandStore()
 const deckStore = useDeckStore()
 const offlineModeStore = useOfflineModeStore()
 const realtimeModeStore = useRealtimeModeStore()
 const windowsStore = useWindowsStore()
 const isCompact = useIsCompactLayout()
-const { totalUnread, markAllAsRead } = useUnreadNotifications()
-const { totalUnread: chatUnread, resetAll: resetChatUnread } = useUnreadChat()
+const { getBadge, clearBadge } = useColumnBadge()
+
+const accountAttentionCount = computed(
+  () =>
+    accountsStore.accounts.filter((a) => !a.hasToken && !isGuestAccount(a))
+      .length,
+)
 
 async function toggleOfflineMode() {
   const isOn = offlineModeStore.isOfflineMode
@@ -102,27 +110,21 @@ function getNavAction(item: NavItem): () => void {
       /* divider has no action */
     }
   return () => {
-    if (item.type === 'notifications') markAllAsRead()
-    if (item.type === 'chat') resetChatUnread()
+    clearBadge(item.type)
     deckStore.toggleSidebarColumn(item.type, item.accountId)
   }
 }
 
 function getNavBadge(item: NavItem): number {
   if (isNavDivider(item)) return 0
-  switch (item.type) {
-    case 'notifications':
-      return totalUnread.value
-    case 'chat':
-      return chatUnread.value
-    default:
-      return 0
-  }
+  return getBadge(item.type)
 }
 
 function closeDrawerAndDo(fn: () => void) {
   emit('update:mobileDrawerOpen', false)
-  fn()
+  // nextTick で遅延: ドロワーの useBackButton (history.back()) が
+  // 先に処理されてから fn を実行し、popstate 競合を回避する
+  nextTick(fn)
 }
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
@@ -169,6 +171,8 @@ const navWidth = ref(
 )
 const isResizing = ref(false)
 const subButtonsHovered = ref(false)
+const profileBtnRef = ref<HTMLElement | null>(null)
+const settingsBtnRef = ref<HTMLElement | null>(null)
 const navCollapsed = computed(() => navWidth.value <= MIN_WIDTH)
 watch(
   navCollapsed,
@@ -184,29 +188,57 @@ function toggleNav() {
 
 // Account menu
 const accountMenuId = ref<string | null>(null)
+const showAccountPopup = ref(false)
+const accountMenuStyle = ref<Record<string, string>>({})
+const selectedAccount = computed(() =>
+  accountsStore.accounts.find((a) => a.id === accountMenuId.value),
+)
 const accountModes = ref<Record<string, Record<string, boolean>>>({})
 const accountIsAdmin = ref<Record<string, boolean>>({})
 const togglingMode = ref(false)
 const modeError = ref<string | null>(null)
 
-function toggleAccountMenu(id: string) {
+function updateAccountMenuPosition(e?: MouseEvent) {
+  if (!e) return
+  const el = e.currentTarget as HTMLElement
+  const rect = el.getBoundingClientRect()
+  accountMenuStyle.value = {
+    position: 'fixed',
+    top: `${rect.top - 10 - rect.height / 2 + (isCompact.value ? rect.height * 0.7 : 0)}px`,
+    left: `${rect.right}px`,
+    bottom: 'auto',
+    right: 'auto',
+    margin: '0',
+    contain: 'none',
+    zIndex: 'var(--nd-z-popup)',
+  }
+}
+
+function toggleAccountMenu(id: string, e?: MouseEvent) {
   if (accountMenuId.value === id) {
     accountMenuId.value = null
     return
   }
+  updateAccountMenuPosition(e)
   accountMenuId.value = id
   modeError.value = null
   loadAccountModes(id)
 }
 
-function onDocumentClick(e: MouseEvent) {
-  if (!accountMenuId.value) return
-  const target = e.target as HTMLElement
-  if (
-    target.closest(`.${$style.account}`) ||
-    target.closest('.nav-account-menu')
-  )
+function openAccountMenu(id: string, e?: MouseEvent) {
+  if (accountMenuId.value === id) return
+  updateAccountMenuPosition(e)
+  accountMenuId.value = id
+  modeError.value = null
+  loadAccountModes(id)
+}
+
+function onDocumentClick() {
+  if (showAccountPopup.value) {
+    showAccountPopup.value = false
+    accountMenuId.value = null
     return
+  }
   accountMenuId.value = null
 }
 
@@ -268,27 +300,25 @@ function showLogoutDialog(id: string) {
 
 function logoutKeepData() {
   if (!logoutTargetId.value) return
-  const id = logoutTargetId.value
-  streamingStore.disconnect(id)
-  accountsStore.logoutAccount(id)
+  const acc = accountsStore.accountMap.get(logoutTargetId.value)
+  if (acc) accountActions.logoutKeepData(acc)
   logoutTargetId.value = null
 }
 
 function logoutDeleteAll() {
   if (!logoutTargetId.value) return
-  const id = logoutTargetId.value
-  for (const col of deckStore.columns) {
-    if (col.accountId === id) {
-      deckStore.removeColumn(col.id)
-    }
-  }
-  accountsStore.removeAccount(id)
+  const acc = accountsStore.accountMap.get(logoutTargetId.value)
+  if (acc) accountActions.deleteAccountData(acc)
   logoutTargetId.value = null
 }
 
 function toggleFirstAccountMenu() {
-  const first = accountsStore.accounts[0]
-  if (first) toggleAccountMenu(first.id)
+  if (!isCompact.value) {
+    commandStore.execute('account-menu')
+    return
+  }
+  showAccountPopup.value = !showAccountPopup.value
+  if (!showAccountPopup.value) accountMenuId.value = null
 }
 
 function handleResize() {
@@ -400,7 +430,7 @@ defineExpose({
                 <div :class="$style.iconWrap">
                   <i :class="['ti', navIcon(navItem.type)]" />
                   <span v-if="getNavBadge(navItem) > 0" :key="getNavBadge(navItem)" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
-                  <ColumnBadges :account-id="navItem.accountId" :size="12" />
+                  <ColumnBadges :account-id="navItem.accountId" />
                 </div>
                 <span :class="$style.label">{{ navLabel(navItem.type) }}</span>
               </button>
@@ -414,6 +444,7 @@ defineExpose({
           <div v-if="isCompact" :class="$style.mobileOnly">
             <div :class="$style.menuWrap">
               <button
+                ref="profileBtnRef"
                 class="_button"
                 :class="$style.item"
                 title="プロファイル"
@@ -423,10 +454,11 @@ defineExpose({
                 <i class="ti ti-layout" />
                 <span :class="$style.label">プロファイル</span>
               </button>
-              <DeckProfileMenu :show="props.showProfileMenu" @close="emit('update:showProfileMenu', false)" />
+              <DeckProfileMenu :show="props.showProfileMenu" :anchor="profileBtnRef" @close="emit('update:showProfileMenu', false)" />
             </div>
             <div :class="$style.menuWrap">
               <button
+                ref="settingsBtnRef"
                 class="_button"
                 :class="$style.item"
                 title="設定"
@@ -436,7 +468,7 @@ defineExpose({
                 <i class="ti ti-settings" />
                 <span :class="$style.label">設定</span>
               </button>
-              <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" @close-all="emit('update:showSettingsMenu', false); emit('update:mobileDrawerOpen', false)" />
+              <DeckSettingsMenu :show="props.showSettingsMenu" :anchor="settingsBtnRef" @close="emit('update:showSettingsMenu', false)" @close-all="emit('update:showSettingsMenu', false); emit('update:mobileDrawerOpen', false)" />
             </div>
           </div>
           <div v-if="isCompact" :class="$style.divider" />
@@ -478,22 +510,37 @@ defineExpose({
             <i class="ti ti-pencil" />
             <span :class="$style.label">ノート</span>
           </button>
-        </div>
 
-        <!-- Account avatars (scrollable) -->
-        <div :class="$style.accountSection">
-          <div :class="$style.accountStack">
-            <div :class="$style.accountScroll">
+          <!-- Account button -->
+          <div :class="$style.menuWrap">
+            <button
+              class="_button"
+              :class="$style.item"
+              title="アカウント"
+              @pointerdown.stop
+              @click.stop="isCompact ? (showAccountPopup = !showAccountPopup, accountMenuId = null) : commandStore.execute('account-menu')"
+            >
+              <div :class="$style.iconWrap">
+                <i class="ti ti-user" />
+                <span v-if="accountAttentionCount > 0" :key="accountAttentionCount" :class="$style.badge">{{ accountAttentionCount > 99 ? '99+' : accountAttentionCount }}</span>
+              </div>
+              <span :class="$style.label">アカウント</span>
+            </button>
+            <div
+              v-if="showAccountPopup"
+              :class="$style.accountPopup"
+              @click.stop="accountMenuId = null"
+            >
               <div
                 v-for="acc in accountsStore.accounts"
                 :key="acc.id"
-                :class="$style.accountWrap"
+                :class="$style.accountPopupItem"
+                @mouseenter="openAccountMenu(acc.id, $event)"
+                @click.stop="toggleAccountMenu(acc.id, $event)"
               >
-                <button
-                  class="_button"
-                  :class="$style.accountBtn"
+                <div
+                  :class="[$style.accountPopupBtn, { [$style.accountPopupBtnActive]: accountMenuId === acc.id }]"
                   :title="getAccountLabel(acc)"
-                  @click.stop="toggleAccountMenu(acc.id)"
                 >
                   <div :class="$style.avatarWrap">
                     <img
@@ -516,42 +563,45 @@ defineExpose({
                       :class="[$style.onlineIndicator, onlineStatusClass(acc.id)]"
                     />
                   </div>
-                </button>
-                <NavAccountMenu
-                  :show="accountMenuId === acc.id"
-                  :account="acc"
-                  :nav-collapsed="navCollapsed"
-                  :modes="accountModes[acc.id] ?? {}"
-                  :toggling-mode="togglingMode"
-                  :mode-error="modeError"
-                  :is-admin="accountIsAdmin[acc.id] ?? false"
-                  @toggle-mode="toggleAccountMode(acc.id, $event)"
-                  @logout="showLogoutDialog(acc.id)"
-                  @relogin="(host: string) => closeDrawerAndDo(() => navigateToLogin(host))"
-                  @close="accountMenuId = null"
-                />
+                  <span :class="$style.accountPopupName">{{ getAccountLabel(acc) }}</span>
+                  <i class="ti ti-chevron-right" :class="$style.accountPopupChevron" />
+                </div>
               </div>
+              <div :class="$style.accountPopupDivider" />
               <button
                 class="_button"
-                :class="$style.accountBtn"
-                title="アカウント管理"
-                @click="closeDrawerAndDo(() => windowsStore.open('account-manager'))"
+                :class="$style.accountPopupBtn"
+                @click="showAccountPopup = false; closeDrawerAndDo(navigateToLogin)"
               >
-                <div :class="$style.addAccountIcon">
-                  <i class="ti ti-settings" />
-                </div>
+                <div :class="$style.accountPopupIcon"><i class="ti ti-plus" /></div>
+                <span>アカウント追加</span>
               </button>
               <button
                 class="_button"
-                :class="$style.accountBtn"
-                title="アカウント追加"
-                @click="closeDrawerAndDo(navigateToLogin)"
+                :class="$style.accountPopupBtn"
+                @click="showAccountPopup = false; closeDrawerAndDo(() => windowsStore.open('account-manager'))"
               >
-                <div :class="$style.addAccountIcon">
-                  <i class="ti ti-plus" />
-                </div>
+                <div :class="$style.accountPopupIcon"><i class="ti ti-settings" /></div>
+                <span>アカウント管理</span>
               </button>
             </div>
+            <!-- NavAccountMenu: position:fixed で右横に配置（overflow制約を回避） -->
+            <NavAccountMenu
+              v-if="showAccountPopup && selectedAccount"
+              :key="accountMenuId!"
+              show
+              :account="selectedAccount"
+              :nav-collapsed="false"
+              :modes="accountModes[selectedAccount.id] ?? {}"
+              :toggling-mode="togglingMode"
+              :mode-error="modeError"
+              :is-admin="accountIsAdmin[selectedAccount.id] ?? false"
+              :style="accountMenuStyle"
+              @toggle-mode="toggleAccountMode(selectedAccount.id, $event)"
+              @logout="showAccountPopup = false; showLogoutDialog(selectedAccount.id)"
+              @relogin="(host: string) => { showAccountPopup = false; closeDrawerAndDo(() => navigateToLogin(host)) }"
+              @close="accountMenuId = null"
+            />
           </div>
         </div>
       </div>
@@ -561,7 +611,7 @@ defineExpose({
         <div :class="$style.subButton">
           <svg viewBox="0 0 16 64" :class="$style.subButtonShape">
             <g transform="matrix(0.333333,0,0,0.222222,0.000895785,21.3333)">
-              <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" fill="var(--nd-navBg)" fill-opacity="0.5" />
+              <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" fill="var(--nd-navBg)" />
             </g>
           </svg>
           <button class="_button" :class="$style.subButtonClickable" title="ナビバー編集" @click="windowsStore.open('navEditor')">
@@ -573,7 +623,7 @@ defineExpose({
         <div :class="$style.subButton">
           <svg viewBox="0 0 16 64" :class="$style.subButtonShape">
             <g transform="matrix(0.333333,0,0,0.222222,0.000895785,21.3333)">
-              <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" fill="var(--nd-navBg)" fill-opacity="0.5" />
+              <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" fill="var(--nd-navBg)" />
             </g>
           </svg>
           <button class="_button" :class="$style.subButtonClickable" title="サイドバー切替" @click="toggleNav">
@@ -586,7 +636,7 @@ defineExpose({
       <div v-if="isCompact && props.mobileDrawerOpen" :class="$style.mobileSubButton">
         <svg viewBox="0 0 16 64" :class="$style.subButtonShape">
           <g transform="matrix(0.333333,0,0,0.222222,0.000895785,21.3333)">
-            <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" fill="var(--nd-navBg)" fill-opacity="0.5" />
+            <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" fill="var(--nd-navBg)" />
           </g>
         </svg>
         <button class="_button" :class="$style.subButtonClickable" title="ナビバー編集" @click="closeDrawerAndDo(() => windowsStore.open('navEditor'))">
@@ -712,15 +762,6 @@ defineExpose({
   flex-shrink: 0;
 }
 
-.accountSection {
-  flex-shrink: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 0 6px 10px;
-}
-
-
 .divider {
   height: 1px;
   background: var(--nd-divider);
@@ -751,9 +792,9 @@ defineExpose({
   }
 
   :global(.ti) {
+    @include nav-icon;
     flex-shrink: 0;
     width: 32px;
-    font-size: 1.5em;
     text-align: center;
     opacity: 0.7;
   }
@@ -805,88 +846,69 @@ defineExpose({
   pointer-events: none;
 }
 
-.iconWrap {
-  position: relative;
-  display: inline-flex;
-  flex-shrink: 0;
-}
-
-.badge {
-  position: absolute;
-  top: -8px;
-  right: -10px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: var(--nd-radius-full);
-  background: var(--nd-indicator, #e53935);
-  color: #fff;
-  font-size: 10px;
-  font-weight: bold;
-  line-height: 16px;
-  text-align: center;
-  pointer-events: none;
-  box-sizing: border-box;
-  animation: nd-badge-in 0.7s ease both;
-}
-
-/* Misskey global-bounce style: 3-step overshoot for satisfying pop-in */
-@keyframes nd-badge-in {
-  0%   { transform: scale(0); opacity: 0; }
-  19%  { transform: scale(1.15); opacity: 1; }
-  48%  { transform: scale(0.95); }
-  100% { transform: scale(1); }
-}
+.iconWrap { @include nav-icon-wrap; }
+.badge { @include nav-badge; }
 
 .label {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-// Account buttons
-.accountStack {
-  position: relative;
-  margin-top: 8px;
-  flex: 1;
-  min-height: 0;
+// Account popup — menuWrap 内で上方向に展開
+.accountPopup {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 4px;
+  padding: 6px 0;
+  z-index: var(--nd-z-menu);
+  min-width: 200px;
+  background: var(--nd-navBg);
+  border-radius: var(--nd-radius-md);
+  box-shadow: var(--nd-shadow-m);
 }
 
-.accountScroll {
-  display: flex;
-  align-items: center;
-  justify-content: safe center;
-  padding: 4px 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
+.accountPopupItem {
+  position: relative;
 }
 
-.accountBtn {
-  position: relative;
+.accountPopupBtn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  padding: 6px;
-  border-radius: var(--nd-radius-sm);
-  overflow: visible;
-  opacity: 0.6;
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
+  gap: 8px;
+  padding: 4px 12px;
+  width: 100%;
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--nd-duration-fast);
 
   &:hover {
-    opacity: 1;
     background: var(--nd-buttonHoverBg);
-  }
-
-  &:active {
-    transform: scale(0.95);
   }
 }
 
-.addAccountIcon {
+.accountPopupBtnActive {
+  background: var(--nd-buttonHoverBg);
+  color: var(--nd-fgHighlighted);
+}
+
+.accountPopupChevron {
+  margin-left: auto;
+  font-size: 0.75em;
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.accountPopupName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.accountPopupIcon {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -896,6 +918,13 @@ defineExpose({
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   font-size: 14px;
+  flex-shrink: 0;
+}
+
+.accountPopupDivider {
+  height: 1px;
+  background: var(--nd-divider);
+  margin: 4px 0;
 }
 
 .avatarWrap {
@@ -933,7 +962,7 @@ defineExpose({
   width: 20%;
   height: 20%;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--nd-navBg);
+  box-shadow: 0 0 0 3px var(--nd-navBg);
 }
 
 .statusOnline {
@@ -1071,7 +1100,7 @@ defineExpose({
   margin-top: -32px;
   margin-bottom: -32px;
   pointer-events: none;
-  background: color(from var(--nd-navBg) srgb r g b / 0.5);
+  background: var(--nd-navBg);
 }
 
 .subButtonGapFillDivider {
@@ -1084,11 +1113,6 @@ defineExpose({
   pointer-events: none;
 }
 
-.accountWrap {
-  // 展開時: position: static → メニューはaccountStack基準
-  // 折りたたみ時: position: relative → メニューはアカウント位置基準（コンテナクエリで切替）
-}
-
 .mobileOnly {
   display: flex;
   flex-direction: column;
@@ -1096,6 +1120,8 @@ defineExpose({
 
 .menuWrap {
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .updateDot { @include update-dot; }
@@ -1131,61 +1157,21 @@ defineExpose({
     height: 44px;
     margin: 2px auto;
     border-radius: 50%;
-    font-size: 1rem;
 
-    :global(.ti) {
-      font-size: 1.5em;
-    }
+    :global(.ti) { @include nav-icon; }
   }
 
-  .account {
-    padding: 8px;
-    width: auto;
-    border-radius: var(--nd-radius-full);
-  }
-
-  .accountStack {
-    position: static;
-    margin-top: 0;
-    overflow-y: auto;
-    overflow-x: visible;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
-  .accountScroll {
-    flex-direction: column;
-    overflow: visible;
-    gap: 4px;
-  }
-
-  .accountWrap {
-    position: relative;
-  }
-
-  .accountBtn {
-    padding: 4px;
-    border-radius: 50%;
+  .accountPopup {
+    bottom: 0;
+    left: 100%;
+    right: auto;
+    margin-bottom: 0;
+    margin-left: 4px;
   }
 
   .section {
     padding: 8px 0 0;
     align-items: center;
-  }
-
-  .avatar {
-    width: 32px;
-    height: 32px;
-  }
-
-  .serverBadge {
-    width: 16px;
-    height: 16px;
-    top: -2px;
-    right: -4px;
   }
 
   .postBtn {
@@ -1195,11 +1181,8 @@ defineExpose({
     margin: 0 auto;
     border-radius: 50%;
     justify-content: center;
-    font-size: 1rem;
 
-    :global(.ti) {
-      font-size: 1.5em;
-    }
+    :global(.ti) { @include nav-icon; }
   }
 }
 

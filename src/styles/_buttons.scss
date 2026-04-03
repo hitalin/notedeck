@@ -75,6 +75,59 @@
   gap: 6px;
 }
 
+// Nav / bottom-bar icon wrapper — centres the main icon and lets
+// sub-badges (ColumnBadges, stackBadge, count badge) overlap its four corners.
+@mixin nav-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+// Main icon size shared by navbar items, bottom bar tabs, and mobile nav tabs.
+@mixin nav-icon($size: 22px) {
+  font-size: $size;
+}
+
+// Numeric count badge (BR quadrant) — notification count, attention count, etc.
+// Positioned like an avatar decoration: slightly outside the icon boundary.
+@mixin nav-badge {
+  position: absolute;
+  bottom: -6px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--nd-radius-full);
+  background: var(--nd-indicator, #e53935);
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+  box-sizing: border-box;
+  animation: nd-badge-in 0.7s ease both;
+}
+
+// Stack count badge (TL quadrant) — number of stacked columns.
+// Same "avatar decoration" offset as nav-badge.
+@mixin nav-stack-badge {
+  position: absolute;
+  top: -4px;
+  left: -6px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--nd-accent);
+  color: var(--nd-bg);
+  font-size: 9px;
+  font-weight: bold;
+  line-height: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+
 // Update notification dot (small accent circle on settings icon etc.)
 @mixin update-dot($top: 8px, $right: 8px) {
   position: absolute;

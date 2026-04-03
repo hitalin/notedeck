@@ -10,6 +10,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
+import { useToast } from '@/stores/toast'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { invoke } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
@@ -33,6 +34,7 @@ const serversStore = useServersStore()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
 const isLoggedOut = computed(() => account.value?.hasToken === false)
+const toast = useToast()
 
 const serverIconUrl = ref<string | undefined>()
 const isLoading = ref(false)
@@ -125,7 +127,12 @@ async function handleAction(
     })
     actionStates.value = { ...actionStates.value, [req.id]: action }
   } catch (e) {
-    error.value = AppError.from(e)
+    const appErr = AppError.from(e)
+    if (appErr.message.includes('NO_SUCH_FOLLOW_REQUEST')) {
+      actionStates.value = { ...actionStates.value, [req.id]: action }
+    } else {
+      toast.show(appErr.message, 'error')
+    }
   }
 }
 

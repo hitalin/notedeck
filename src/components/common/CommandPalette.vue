@@ -379,7 +379,8 @@ function primaryShortcut(cmd: Command): string | null {
             @click="selectQuickPickItem(item)"
             @mouseenter="selectedIndex = flatQuickPickList.indexOf(item)"
           >
-            <i :class="['ti ti-' + item.icon, $style.itemIcon]" />
+            <img v-if="item.avatarUrl" :src="item.avatarUrl" :class="$style.itemAvatar" />
+            <i v-else :class="['ti ti-' + item.icon, $style.itemIcon]" />
             <div :class="$style.itemContent">
               <span :class="$style.itemLabel">{{ item.label }}</span>
               <span v-if="item.description" :class="$style.itemDesc">{{ item.description }}</span>
@@ -583,6 +584,14 @@ function primaryShortcut(cmd: Command): string | null {
   width: 18px;
   text-align: center;
   flex-shrink: 0;
+}
+
+.itemAvatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
 }
 
 .itemLabel {
