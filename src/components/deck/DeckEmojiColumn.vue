@@ -400,6 +400,8 @@ function getRowItems(index: number): ServerEmoji[] {
   align-items: center;
   justify-content: center;
   aspect-ratio: 1;
+  border: none;
+  outline: none;
   border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-base);
   cursor: pointer;

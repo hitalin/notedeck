@@ -278,6 +278,17 @@ pub async fn api_get_channels(
 }
 
 #[tauri::command]
+pub async fn api_search_channels(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    query: String,
+) -> Result<Vec<Channel>> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client.search_channels(&host, &token, &query).await
+}
+
+#[tauri::command]
 pub async fn api_get_channel_notes(
     app_state: State<'_, AppState>,
     account_id: String,

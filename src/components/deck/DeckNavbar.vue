@@ -100,8 +100,9 @@ function navIcon(type: string): string {
   return `ti-${COLUMN_ICONS[type] ?? 'layout-grid'}`
 }
 
-function navLabel(type: string): string {
-  return COLUMN_LABELS[type] ?? type
+function navLabel(item: NavItem): string {
+  if (isNavDivider(item)) return ''
+  return item.label || COLUMN_LABELS[item.type] || item.type
 }
 
 function getNavAction(item: NavItem): () => void {
@@ -111,7 +112,10 @@ function getNavAction(item: NavItem): () => void {
     }
   return () => {
     clearBadge(item.type)
-    deckStore.toggleSidebarColumn(item.type, item.accountId)
+    deckStore.toggleSidebarColumn(item.type, item.accountId, {
+      ...item.columnProps,
+      ...(item.label ? { name: item.label } : {}),
+    })
   }
 }
 
@@ -435,7 +439,7 @@ defineExpose({
                 v-else
                 class="_button"
                 :class="[$style.item, { [$style.sidebarActive]: sidebarType === navItem.type }]"
-                :title="navLabel(navItem.type)"
+                :title="navLabel(navItem)"
                 @click="hapticLight(); closeDrawerAndDo(getNavAction(navItem))"
               >
                 <div :class="$style.iconWrap">
@@ -443,7 +447,7 @@ defineExpose({
                   <span v-if="getNavBadge(navItem) > 0" :key="getNavBadge(navItem)" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
                   <ColumnBadges :account-id="navItem.accountId" />
                 </div>
-                <span :class="$style.label">{{ navLabel(navItem.type) }}</span>
+                <span :class="$style.label">{{ navLabel(navItem) }}</span>
               </button>
             </template>
           </div>

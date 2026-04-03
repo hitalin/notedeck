@@ -27,9 +27,9 @@ const isLoading = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
 useColumnPullScroller(scrollContainer)
 
-const { ads, serverHost, fetchAds, muteAd } = useAds(
+const { ads, serverHost, fetchAds } = useAds(
   () => props.column.accountId ?? undefined,
-  { filterPlace: false },
+  { filterPlace: false, ignoreMute: true },
 )
 
 function scrollToTop() {
@@ -48,10 +48,6 @@ async function load() {
   } finally {
     isLoading.value = false
   }
-}
-
-function onMuteAd(adId: string) {
-  muteAd(adId)
 }
 
 onMounted(() => {
@@ -93,7 +89,7 @@ onMounted(() => {
         :key="ad.id"
         :ad="ad"
         :server-host="serverHost"
-        @mute="onMuteAd"
+        :show-mute-button="false"
       />
     </div>
   </DeckColumn>

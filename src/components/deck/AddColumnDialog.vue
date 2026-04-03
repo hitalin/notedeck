@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import AvatarStack from '@/components/common/AvatarStack.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useNavigation } from '@/composables/useNavigation'
+import { formatUserHandle, useUserSearch } from '@/composables/useUserSearch'
 import {
   getAccountAvatarUrl,
   getAccountLabel,
@@ -142,10 +143,11 @@ function addColumnForAccount(accountId: string | null) {
   } as Omit<DeckColumn, 'id'>)
 }
 
-// Selectable column types (list, antenna, channel, clip)
+// Selectable column types (list, antenna, channel, clip, user)
 interface SelectableItem {
   id: string
   name: string
+  avatarUrl?: string
 }
 
 interface SelectableConfig {
@@ -154,6 +156,10 @@ interface SelectableConfig {
   icon: string
   apiCommand: string
   idKey: string
+  /** When set, shows a search input. Items are fetched via this command with { accountId, query }. */
+  searchCommand?: string
+  /** Column name derived from selected item (default: item.name) */
+  formatName?: (item: SelectableItem) => string
 }
 
 const SELECTABLE_CONFIGS: SelectableConfig[] = [
@@ -177,6 +183,7 @@ const SELECTABLE_CONFIGS: SelectableConfig[] = [
     icon: 'ti-device-tv',
     apiCommand: 'api_get_channels',
     idKey: 'channelId',
+    searchCommand: 'api_search_channels',
   },
   {
     type: 'clip',
@@ -185,6 +192,15 @@ const SELECTABLE_CONFIGS: SelectableConfig[] = [
     apiCommand: 'api_get_clips',
     idKey: 'clipId',
   },
+  {
+    type: 'user',
+    label: 'ユーザー',
+    icon: 'ti-user',
+    apiCommand: 'api_search_users_by_query',
+    idKey: 'userId',
+    searchCommand: 'api_search_users_by_query',
+    formatName: (item) => item.name,
+  },
 ]
 
 const selectAccountId = ref<string | null>(null)
@@ -192,9 +208,69 @@ const selectItems = ref<SelectableItem[]>([])
 const selectLoading = ref(false)
 const selectConfig = ref<SelectableConfig | null>(null)
 
-async function fetchSelectItems(config: SelectableConfig, accountId: string) {
-  selectConfig.value = config
-  selectAccountId.value = accountId
+// Unified search input for searchable configs (user, channel, etc.)
+const searchQuery = ref('')
+let searchDebounce: ReturnType<typeof setTimeout> | undefined
+
+// User search via shared composable
+const {
+  query: userSearchQuery,
+  results: userSearchResults,
+  searching: userSearching,
+} = useUserSearch(() => selectAccountId.value)
+
+watch(userSearchResults, (users) => {
+  if (selectConfig.value?.type !== 'user') return
+  selectItems.value = users.map((u) => ({
+    id: u.id,
+    name: formatUserHandle(u),
+    avatarUrl: u.avatarUrl ?? undefined,
+  }))
+})
+
+watch(userSearching, (v) => {
+  if (selectConfig.value?.type === 'user') selectLoading.value = v
+})
+
+// Dispatch search by config type
+watch(searchQuery, (val) => {
+  if (searchDebounce) clearTimeout(searchDebounce)
+  const config = selectConfig.value
+  if (!config?.searchCommand) return
+
+  // User: delegate to useUserSearch composable
+  if (config.type === 'user') {
+    userSearchQuery.value = val
+    return
+  }
+
+  // Generic: server-side search with fallback to initial list
+  const q = val.trim()
+  const accountId = selectAccountId.value
+  if (!q || !accountId) {
+    if (accountId) fetchInitialItems(config, accountId)
+    return
+  }
+  searchDebounce = setTimeout(() => searchSelectItems(config, q), 300)
+})
+
+async function searchSelectItems(config: SelectableConfig, query: string) {
+  if (!config.searchCommand || !selectAccountId.value) return
+  selectLoading.value = true
+  try {
+    selectItems.value = await invoke<SelectableItem[]>(config.searchCommand, {
+      accountId: selectAccountId.value,
+      query,
+    })
+  } catch (e) {
+    console.error(`[deck] failed to search ${config.type}s:`, e)
+    selectItems.value = []
+  } finally {
+    selectLoading.value = false
+  }
+}
+
+async function fetchInitialItems(config: SelectableConfig, accountId: string) {
   selectLoading.value = true
   try {
     selectItems.value = await invoke<SelectableItem[]>(config.apiCommand, {
@@ -208,14 +284,41 @@ async function fetchSelectItems(config: SelectableConfig, accountId: string) {
   }
 }
 
-function addSelectableColumn(itemId: string, itemName: string) {
+async function fetchSelectItems(config: SelectableConfig, accountId: string) {
+  selectConfig.value = config
+  selectAccountId.value = accountId
+  searchQuery.value = ''
+  userSearchQuery.value = ''
+  if (config.type === 'user') {
+    // User: search-only, no initial list
+    selectItems.value = []
+    selectLoading.value = false
+    return
+  }
+  selectLoading.value = true
+  try {
+    selectItems.value = await invoke<SelectableItem[]>(config.apiCommand, {
+      accountId,
+    })
+  } catch (e) {
+    console.error(`[deck] failed to fetch ${config.type}s:`, e)
+    selectItems.value = []
+  } finally {
+    selectLoading.value = false
+  }
+}
+
+function addSelectableColumn(item: SelectableItem) {
   if (!selectAccountId.value || !selectConfig.value) return
+  const name = selectConfig.value.formatName
+    ? selectConfig.value.formatName(item)
+    : item.name
   finalizeColumn({
     type: selectConfig.value.type,
-    name: itemName,
+    name,
     width: 360,
     accountId: selectAccountId.value,
-    [selectConfig.value.idKey]: itemId,
+    [selectConfig.value.idKey]: item.id,
     active: true,
   } as Omit<DeckColumn, 'id'>)
 }
@@ -245,7 +348,7 @@ function close() {
         <button v-if="addColumnType && !selectConfig" class="_button" :class="$style.addBackBtn" @click="addColumnType = null">
           <i class="ti ti-chevron-left" />
         </button>
-        <button v-else-if="selectConfig" class="_button" :class="$style.addBackBtn" @click="selectConfig = null; selectItems = []; selectAccountId = null">
+        <button v-else-if="selectConfig" class="_button" :class="$style.addBackBtn" @click="selectConfig = null; selectItems = []; selectAccountId = null; searchQuery = ''">
           <i class="ti ti-chevron-left" />
         </button>
         <span :class="$style.addPopupTitle">
@@ -406,18 +509,29 @@ function close() {
         </div>
       </template>
 
-      <!-- Step 3a: Item selection (list/antenna/channel/clip) -->
+      <!-- Step 3a: Item selection (list/antenna/channel/clip/user) -->
       <template v-else-if="selectConfig">
-        <div v-if="selectLoading" :class="$style.addPopupLoading"><LoadingSpinner /></div>
-        <div v-else-if="selectItems.length === 0" :class="$style.addPopupEmpty">{{ selectConfig.label }}が見つかりません</div>
+        <div v-if="selectConfig.searchCommand" :class="$style.selectSearchBar">
+          <i class="ti ti-search" :class="$style.selectSearchIcon" />
+          <input
+            v-model="searchQuery"
+            :class="$style.selectSearchInput"
+            type="text"
+            :placeholder="`${selectConfig.label}を検索...`"
+          />
+          <i v-if="selectLoading" class="ti ti-loader-2 nd-spin" :class="$style.selectSearchIcon" />
+        </div>
+        <div v-if="!selectConfig.searchCommand && selectLoading" :class="$style.addPopupLoading"><LoadingSpinner /></div>
+        <div v-else-if="!selectLoading && selectItems.length === 0 && (!selectConfig.searchCommand || searchQuery.trim())" :class="$style.addPopupEmpty">{{ selectConfig.label }}が見つかりません</div>
         <button
           v-for="item in selectItems"
           :key="item.id"
           class="_button"
           :class="$style.addTypeBtn"
-          @click="addSelectableColumn(item.id, item.name)"
+          @click="addSelectableColumn(item)"
         >
-          <i :class="'ti ' + selectConfig.icon" />
+          <img v-if="item.avatarUrl" :src="item.avatarUrl" :class="$style.selectItemAvatar" />
+          <i v-else :class="'ti ' + selectConfig.icon" />
           <span>{{ item.name }}</span>
         </button>
       </template>
@@ -660,6 +774,48 @@ function close() {
 
 .chevronOpen {
   transform: rotate(0deg);
+}
+
+.selectSearchBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--nd-divider);
+}
+
+.selectSearchIcon {
+  flex-shrink: 0;
+  opacity: 0.4;
+}
+
+.selectSearchInput {
+  flex: 1;
+  min-width: 0;
+  background: var(--nd-buttonBg);
+  border: none;
+  border-radius: var(--nd-radius-sm);
+  padding: 8px 12px;
+  font-size: 0.9em;
+  color: var(--nd-fg);
+  outline: none;
+
+  &:focus {
+    box-shadow: 0 0 0 2px var(--nd-accent);
+  }
+
+  &::placeholder {
+    color: var(--nd-fg);
+    opacity: 0.4;
+  }
+}
+
+.selectItemAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
 }
 
 @keyframes addPopupIn {

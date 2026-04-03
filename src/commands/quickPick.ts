@@ -19,4 +19,7 @@ export interface QuickPickStep {
   placeholder: string
   items: QuickPickItem[]
   loading?: boolean
+  /** When set, query changes trigger this callback instead of client-side fuzzy filter.
+   *  The callback should update `items` on the step directly. */
+  onQueryChange?: (query: string) => void
 }

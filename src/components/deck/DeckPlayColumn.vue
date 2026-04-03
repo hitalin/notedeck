@@ -424,14 +424,14 @@ function reload() {
           :class="$style.playCard"
           @click="openPlay(item.id)"
         >
-          <div :class="$style.playCardTitle">{{ item.title }}</div>
-          <div :class="$style.playCardMeta">
-            <span :class="$style.playCardAuthor">@{{ item.user.username }}</span>
-            <span v-if="item.likedCount > 0" :class="$style.playCardLikes">
-              <i class="ti ti-heart" /> {{ item.likedCount }}
-            </span>
+          <div :class="$style.playCardInfo">
+            <div :class="$style.playCardTitle">{{ item.title }}</div>
+            <div v-if="item.summary" :class="$style.playCardSummary">{{ item.summary }}</div>
+            <div :class="$style.playCardMeta">
+              <img :src="item.user.avatarUrl || '/avatar-default.svg'" :class="$style.playCardAvatar" @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'" />
+              <span :class="$style.playCardAuthor">{{ item.user.name || item.user.username }}</span>
+            </div>
           </div>
-          <div v-if="item.summary" :class="$style.playCardSummary">{{ item.summary }}</div>
         </button>
       </div>
       </div>
@@ -592,8 +592,6 @@ function reload() {
 
 .playCard {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
   width: 100%;
   padding: 12px 14px;
   text-align: left;
@@ -608,28 +606,18 @@ function reload() {
   }
 }
 
+.playCardInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .playCardTitle {
   font-size: 0.9em;
   font-weight: 600;
   color: var(--nd-fgHighlighted);
-}
-
-.playCardMeta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.75em;
-  opacity: 0.6;
-}
-
-.playCardAuthor {
-  /* placeholder */
-}
-
-.playCardLikes {
-  display: flex;
-  align-items: center;
-  gap: 2px;
 }
 
 .playCardSummary {
@@ -639,6 +627,25 @@ function reload() {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.playCardMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75em;
+  opacity: 0.6;
+}
+
+.playCardAvatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.playCardAuthor {
+  /* placeholder */
 }
 
 /* --- Ready mode --- */

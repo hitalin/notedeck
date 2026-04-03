@@ -75,10 +75,16 @@ const filteredQuickPickGroups = computed<QuickPickGroup[]>(() => {
 
   if (items.length === 0) return []
 
+  // Skip client-side filter when step has onQueryChange (server-side search)
+  const serverSearch = currentQuickPickStep.value?.onQueryChange
   const q = currentQuickPickStep.value
     ? commandStore.quickPickQuery
     : prefixQuery.value
-  const matched = q ? items.filter((item) => fuzzyMatch(q, item.label)) : items
+  const matched = serverSearch
+    ? items
+    : q
+      ? items.filter((item) => fuzzyMatch(q, item.label))
+      : items
 
   const map = new Map<string, QuickPickItem[]>()
   for (const item of matched) {
@@ -294,8 +300,12 @@ function onKeydown(e: KeyboardEvent) {
       }
     }
   } else if (e.key === 'Backspace') {
-    // Pop Quick Pick stack when input is empty
-    if (currentQuickPickStep.value && commandStore.quickPickQuery === '') {
+    // Pop Quick Pick stack when input is empty (skip for server-search steps)
+    if (
+      currentQuickPickStep.value &&
+      commandStore.quickPickQuery === '' &&
+      !currentQuickPickStep.value.onQueryChange
+    ) {
       e.preventDefault()
       commandStore.popQuickPick()
       selectedIndex.value = 0
@@ -352,6 +362,7 @@ watch(query, (val) => {
   // Sync query to quickPickQuery when in Quick Pick mode
   if (currentQuickPickStep.value != null) {
     commandStore.quickPickQuery = val
+    currentQuickPickStep.value.onQueryChange?.(val)
   }
 })
 

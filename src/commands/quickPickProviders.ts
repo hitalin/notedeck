@@ -1,7 +1,9 @@
 import { relaunch } from '@tauri-apps/plugin-process'
+import { reactive } from 'vue'
 import { refreshProfileCommands } from '@/commands/definitions'
 import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
+import { formatUserHandle, searchUsers } from '@/composables/useUserSearch'
 import {
   getAccountAvatarUrl,
   getAccountLabel,
@@ -409,12 +411,18 @@ interface SelectableConfig {
   type: ColumnType
   apiCommand: string
   idKey: string
+  searchCommand?: string
 }
 
 const SELECTABLE_CONFIGS: SelectableConfig[] = [
   { type: 'list', apiCommand: 'api_get_user_lists', idKey: 'listId' },
   { type: 'antenna', apiCommand: 'api_get_antennas', idKey: 'antennaId' },
-  { type: 'channel', apiCommand: 'api_get_channels', idKey: 'channelId' },
+  {
+    type: 'channel',
+    apiCommand: 'api_get_channels',
+    idKey: 'channelId',
+    searchCommand: 'api_search_channels',
+  },
   { type: 'clip', apiCommand: 'api_get_clips', idKey: 'clipId' },
 ]
 
@@ -504,6 +512,11 @@ async function buildDetailStep(
   const config = SELECTABLE_CONFIGS.find((c) => c.type === type)
 
   if (config && accountId) {
+    // Searchable config: build step with search input + initial items
+    if (config.searchCommand) {
+      buildSearchableStep(config, accountId)
+      return []
+    }
     const items = await invoke<{ id: string; name: string }[]>(
       config.apiCommand,
       { accountId },
@@ -525,9 +538,133 @@ async function buildDetailStep(
     }))
   }
 
-  // user type needs text input — fallback to direct column add
+  // User type: server-side search via onQueryChange
+  if (type === 'user' && accountId) {
+    buildUserSearchStep(accountId)
+    return []
+  }
+
   finalizeAddColumn(type, accountId)
   return []
+}
+
+/** Build a searchable Quick Pick step with initial items + server-side search */
+function buildSearchableStep(config: SelectableConfig, accountId: string) {
+  const commandStore = useCommandStore()
+  const icon = COLUMN_ICONS[config.type] ?? 'dots'
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined
+
+  function itemToQuickPick(item: { id: string; name: string }): QuickPickItem {
+    return {
+      id: `select-${item.id}`,
+      label: item.name,
+      icon,
+      action: () => {
+        useDeckStore().addColumn({
+          type: config.type,
+          name: item.name,
+          width: 360,
+          accountId,
+          [config.idKey]: item.id,
+          active: true,
+        } as Omit<DeckColumn, 'id'>)
+        useCommandStore().close()
+      },
+    }
+  }
+
+  const step = reactive({
+    title: `${COLUMN_LABELS[config.type] ?? config.type}を選択`,
+    placeholder: `${COLUMN_LABELS[config.type] ?? config.type}を検索...`,
+    items: [] as QuickPickItem[],
+    loading: true,
+    onQueryChange(q: string) {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      if (!q.trim()) {
+        // Restore initial items
+        fetchItems(config.apiCommand)
+        return
+      }
+      const cmd = config.searchCommand
+      if (!cmd) return
+      debounceTimer = setTimeout(() => fetchItems(cmd, q), 300)
+    },
+  })
+
+  async function fetchItems(command: string, query?: string) {
+    step.loading = true
+    try {
+      const params: Record<string, unknown> = { accountId }
+      if (query) params.query = query
+      const items = await invoke<{ id: string; name: string }[]>(
+        command,
+        params,
+      )
+      step.items = items.map(itemToQuickPick)
+    } catch {
+      step.items = []
+    } finally {
+      step.loading = false
+    }
+  }
+
+  commandStore.pushQuickPick(step)
+  // Fetch initial items
+  fetchItems(config.apiCommand)
+}
+
+function buildUserSearchStep(accountId: string) {
+  const commandStore = useCommandStore()
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined
+
+  const step = reactive({
+    title: 'ユーザーを選択',
+    placeholder: 'ユーザーを検索...',
+    items: [] as QuickPickItem[],
+    loading: false,
+    onQueryChange(q: string) {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      if (!q.trim()) {
+        step.items = []
+        return
+      }
+      debounceTimer = setTimeout(async () => {
+        step.loading = true
+        try {
+          const users = await searchUsers(accountId, q)
+          step.items = users.map((u) => {
+            const handle = formatUserHandle(u)
+            return {
+              id: `user-${u.id}`,
+              label: u.name || handle,
+              description: u.name ? handle : undefined,
+              icon: 'user',
+              avatarUrl: u.avatarUrl
+                ? proxyThumbUrl(u.avatarUrl, 28)
+                : undefined,
+              action: () => {
+                useDeckStore().addColumn({
+                  type: 'user',
+                  name: handle,
+                  width: 360,
+                  accountId,
+                  userId: u.id,
+                  active: true,
+                } as Omit<DeckColumn, 'id'>)
+                useCommandStore().close()
+              },
+            }
+          })
+        } catch {
+          step.items = []
+        } finally {
+          step.loading = false
+        }
+      }, 300)
+    },
+  })
+
+  commandStore.pushQuickPick(step)
 }
 
 function finalizeAddColumn(type: ColumnType, accountId: string | null) {

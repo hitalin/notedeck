@@ -70,6 +70,7 @@
 
 .tlScroller {
   flex: 1;
+  min-height: 0;
   overflow-x: clip;
   overscroll-behavior: contain;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;

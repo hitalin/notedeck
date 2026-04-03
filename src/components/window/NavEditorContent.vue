@@ -60,11 +60,11 @@ function getItemIcon(item: NavColumnItem): string {
 }
 
 function getItemLabel(item: NavColumnItem): string {
-  return COLUMN_LABELS[item.type] ?? item.type
+  return item.label || COLUMN_LABELS[item.type] || item.type
 }
 
 // ── Visual tab state ──
-type NavColumnItem = { type: ColumnType; accountId: string | null }
+type NavColumnItem = Exclude<NavItem, { type: 'divider' }>
 
 const items = ref<NavColumnItem[]>(
   structuredClone(deckStore.navItems).filter(
@@ -105,10 +105,15 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
 
 // ── Add via AddColumnDialog ──
 function onColumnSelected(config: Omit<DeckColumn, 'id'>) {
-  items.value.push({
-    type: config.type,
-    accountId: config.accountId,
-  })
+  // Extract extra column properties (channelId, userId, etc.)
+  const { type, accountId, name, width, active, sidebar, ...rest } = config
+  const item: NavItem = {
+    type,
+    accountId: accountId ?? null,
+    label: name ?? undefined,
+    ...(Object.keys(rest).length > 0 ? { columnProps: rest } : {}),
+  }
+  items.value.push(item)
 }
 
 // ── Code tab ──

@@ -107,7 +107,14 @@ function genColumnId(): string {
 
 export type NavItem =
   | { type: 'divider' }
-  | { type: ColumnType; accountId: string | null }
+  | {
+      type: ColumnType
+      accountId: string | null
+      /** Display label override (e.g. channel name, @user@host) */
+      label?: string
+      /** Extra column properties (e.g. channelId, userId) */
+      columnProps?: Partial<DeckColumn>
+    }
 
 export const DEFAULT_NAV_ITEMS: NavItem[] = [
   { type: 'notifications', accountId: null },
@@ -214,7 +221,11 @@ export const useDeckStore = defineStore('deck', () => {
     return col
   }
 
-  function toggleSidebarColumn(type: ColumnType, accountId: string | null) {
+  function toggleSidebarColumn(
+    type: ColumnType,
+    accountId: string | null,
+    extraProps?: Partial<DeckColumn>,
+  ) {
     const existing = columns.value.find((c) => c.sidebar)
     if (existing && existing.type === type) {
       removeColumn(existing.id)
@@ -222,7 +233,7 @@ export const useDeckStore = defineStore('deck', () => {
     }
     if (existing) {
       // In-place update: swap type without destroying DOM / layout.
-      updateColumn(existing.id, { type, accountId, name: null })
+      updateColumn(existing.id, { type, accountId, name: null, ...extraProps })
       // Force watch re-trigger even if the same column is already active
       activeColumnId.value = null
       nextTick(() => {
@@ -236,6 +247,7 @@ export const useDeckStore = defineStore('deck', () => {
       width: 360,
       accountId,
       sidebar: true,
+      ...extraProps,
     })
   }
 

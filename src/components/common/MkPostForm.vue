@@ -14,10 +14,6 @@ import type {
   NormalizedNote,
   NormalizedUser,
 } from '@/adapters/types'
-import {
-  getPluginHandlers,
-  setPluginAccountContext,
-} from '@/aiscript/plugin-api'
 import { useAutocomplete } from '@/composables/useAutocomplete'
 import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useMentionSearch } from '@/composables/useMentionSearch'
@@ -225,21 +221,6 @@ function pickEmoji(reaction: string) {
 // --- Hashtag ---
 function insertHashtag() {
   insertAtCursor(textareaRef.value, '#')
-}
-
-// --- Plugin post_form_action ---
-const postFormActions = computed(() => getPluginHandlers('post_form_action'))
-
-function runPostFormAction(
-  action: ReturnType<typeof getPluginHandlers>[number],
-) {
-  if (!activeAccountId.value) return
-  setPluginAccountContext(action.pluginInstallId, activeAccountId.value)
-  const form = { text: text.value, cw: cw.value }
-  action.handler(form, (key: unknown, value: unknown) => {
-    if (key === 'text' && typeof value === 'string') text.value = value
-    if (key === 'cw' && typeof value === 'string') cw.value = value
-  })
 }
 
 // --- MFM menu ---
@@ -965,17 +946,6 @@ function onKeydown(e: KeyboardEvent) {
             <i class="ti ti-trash" />
           </button>
 
-          <!-- Plugin actions -->
-          <button
-            v-for="action in postFormActions"
-            :key="action.pluginInstallId + action.title"
-            class="_button"
-            :class="$style.footerBtn"
-            :title="action.title"
-            @click="runPostFormAction(action)"
-          >
-            <i class="ti ti-plug" />
-          </button>
         </div>
         <div :class="$style.footerRight">
           <!-- Emoji -->
@@ -1054,6 +1024,7 @@ function onKeydown(e: KeyboardEvent) {
     box-shadow: none;
     max-width: none;
     margin: 0;
+    flex-shrink: 0;
     border-bottom: 1px solid var(--nd-divider);
 
     .header {
@@ -2206,7 +2177,7 @@ function onKeydown(e: KeyboardEvent) {
     align-items: stretch;
   }
 
-  .postForm {
+  .postForm:not(.postFormInline) {
     max-width: none;
     margin: 0;
     border-radius: 0;

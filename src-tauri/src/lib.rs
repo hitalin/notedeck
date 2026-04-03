@@ -97,6 +97,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         commands::api_get_clips,
         commands::api_get_clip_notes,
         commands::api_get_channels,
+        commands::api_search_channels,
         commands::api_get_channel_notes,
         commands::api_get_note,
         commands::api_create_note,

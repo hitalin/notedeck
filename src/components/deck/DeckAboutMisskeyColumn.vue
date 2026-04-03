@@ -250,7 +250,7 @@ onMounted(() => {
       <div v-if="isModifiedVersion" :class="$style.aboutSection">
         <div :class="$style.modifiedNotice">
           <i class="ti ti-info-circle" />
-          <span>このサーバーはMisskeyの改変版 ({{ meta.name || account.host }}) を使用しています。</span>
+          <span>このサーバーはMisskeyの改変版を使用しています。</span>
         </div>
         <div :class="$style.aboutLinks">
           <button v-if="meta.repositoryUrl" class="_button" :class="$style.aboutLink" @click="openLink(meta.repositoryUrl!)">
