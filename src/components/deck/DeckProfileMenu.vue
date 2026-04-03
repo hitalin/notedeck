@@ -52,7 +52,7 @@ watch(
         const rect = props.anchor.getBoundingClientRect()
         fixedStyle.value = {
           position: 'fixed',
-          bottom: `${(window.visualViewport?.height ?? window.innerHeight) - rect.top + 4}px`,
+          bottom: `${window.innerHeight - rect.top + 4}px`,
           left: `${rect.left}px`,
         }
       } else {

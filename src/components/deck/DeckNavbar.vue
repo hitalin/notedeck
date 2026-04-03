@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, useCssModule, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue'
 import ColumnBadges from '@/components/common/ColumnBadges.vue'
 import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useNavigation } from '@/composables/useNavigation'
@@ -122,7 +122,9 @@ function getNavBadge(item: NavItem): number {
 
 function closeDrawerAndDo(fn: () => void) {
   emit('update:mobileDrawerOpen', false)
-  fn()
+  // nextTick で遅延: ドロワーの useBackButton (history.back()) が
+  // 先に処理されてから fn を実行し、popstate 競合を回避する
+  nextTick(fn)
 }
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()

@@ -21,7 +21,6 @@ import { useRippleEffect } from '@/composables/useRippleEffect'
 import { provideScrollDirection } from '@/composables/useScrollDirection'
 import { useUpdater } from '@/composables/useUpdater'
 import { useVaporTransition } from '@/composables/useVaporTransition'
-import { useVisualViewport } from '@/composables/useVisualViewport'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
@@ -69,7 +68,6 @@ const activeColumnIndex = computed(() => {
 })
 const { updateAvailable, checkForUpdate } = useUpdater()
 const { ripples, remove: removeRipple } = useRippleEffect()
-useVisualViewport()
 
 // Android back button: close overlays instead of exiting
 if (uiStore.isMobilePlatform) {
@@ -372,7 +370,7 @@ function acceptCrossWindowDrop() {
   justify-content: center;
   position: fixed;
   right: calc(16px + env(safe-area-inset-right));
-  bottom: calc(var(--nd-mobileNavHeight, 0px) + 12px + (100vh - var(--nd-vv-height, 100vh)));
+  bottom: calc(var(--nd-mobileNavHeight, 0px) + 12px);
   z-index: var(--nd-z-overlay);
   width: 56px;
   height: 56px;
