@@ -15,6 +15,10 @@ Misskey 統合環境 (IDE) — 閲覧・投稿・検索・連携をひとつに
 [![Nix Flake](https://img.shields.io/badge/nix-flake-blue?style=flat-square&logo=nixos)](https://github.com/hitalin/notedeck)
 [![License](https://img.shields.io/github/license/hitalin/notedeck?style=flat-square)](https://github.com/hitalin/notedeck/blob/main/LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/hitalin/notedeck?style=flat-square)](https://github.com/hitalin/notedeck/stargazers)
+[![GitHub Downloads](https://img.shields.io/github/downloads/hitalin/notedeck/total?style=flat-square)](https://github.com/hitalin/notedeck/releases)
+[![GitHub last commit](https://img.shields.io/github/last-commit/hitalin/notedeck?style=flat-square)](https://github.com/hitalin/notedeck/commits)
+[![GitHub Issues](https://img.shields.io/github/issues/hitalin/notedeck?style=flat-square)](https://github.com/hitalin/notedeck/issues)
+[![Made with Tauri](https://img.shields.io/badge/Made%20with-Tauri-ffc131?style=flat-square&logo=tauri)](https://tauri.app)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](https://github.com/hitalin/notedeck/pulls)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/hitalin/notedeck)
 
