@@ -122,8 +122,6 @@ function getNavBadge(item: NavItem): number {
 
 function closeDrawerAndDo(fn: () => void) {
   emit('update:mobileDrawerOpen', false)
-  // nextTick で遅延: ドロワーの useBackButton (history.back()) が
-  // 先に処理されてから fn を実行し、popstate 競合を回避する
   nextTick(fn)
 }
 const accountsStore = useAccountsStore()
