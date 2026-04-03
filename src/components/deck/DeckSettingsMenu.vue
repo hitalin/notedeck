@@ -662,10 +662,6 @@ usePortal(settingsMenuPortalRef)
 }
 
 .mobile {
-  position: fixed;
-  bottom: calc(50px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
-  left: 8px;
-  right: auto;
   width: 234px;
   max-width: calc(100vw - 16px);
   min-width: 0;

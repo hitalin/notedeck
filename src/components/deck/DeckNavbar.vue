@@ -169,6 +169,8 @@ const navWidth = ref(
 )
 const isResizing = ref(false)
 const subButtonsHovered = ref(false)
+const profileBtnRef = ref<HTMLElement | null>(null)
+const settingsBtnRef = ref<HTMLElement | null>(null)
 const navCollapsed = computed(() => navWidth.value <= MIN_WIDTH)
 watch(
   navCollapsed,
@@ -442,6 +444,7 @@ defineExpose({
           <div v-if="isCompact" :class="$style.mobileOnly">
             <div :class="$style.menuWrap">
               <button
+                ref="profileBtnRef"
                 class="_button"
                 :class="$style.item"
                 title="プロファイル"
@@ -451,10 +454,11 @@ defineExpose({
                 <i class="ti ti-layout" />
                 <span :class="$style.label">プロファイル</span>
               </button>
-              <DeckProfileMenu :show="props.showProfileMenu" @close="emit('update:showProfileMenu', false)" />
+              <DeckProfileMenu :show="props.showProfileMenu" :anchor="profileBtnRef" @close="emit('update:showProfileMenu', false)" />
             </div>
             <div :class="$style.menuWrap">
               <button
+                ref="settingsBtnRef"
                 class="_button"
                 :class="$style.item"
                 title="設定"
@@ -464,7 +468,7 @@ defineExpose({
                 <i class="ti ti-settings" />
                 <span :class="$style.label">設定</span>
               </button>
-              <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" @close-all="emit('update:showSettingsMenu', false); emit('update:mobileDrawerOpen', false)" />
+              <DeckSettingsMenu :show="props.showSettingsMenu" :anchor="settingsBtnRef" @close="emit('update:showSettingsMenu', false)" @close-all="emit('update:showSettingsMenu', false); emit('update:mobileDrawerOpen', false)" />
             </div>
           </div>
           <div v-if="isCompact" :class="$style.divider" />
