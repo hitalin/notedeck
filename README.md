@@ -32,11 +32,9 @@ Misskey 統合環境 (IDE) — 閲覧・投稿・検索・連携をひとつに
 
 </div>
 
-<img width="1197" height="799" alt="スクリーンショット 2026-04-03 132101" src="https://github.com/user-attachments/assets/a7fa8f67-f3f5-44dd-ae20-17e952668400" />
+<img width="1197" height="799" alt="NoteDeck" src="https://github.com/user-attachments/assets/a7fa8f67-f3f5-44dd-ae20-17e952668400" />
 
-## ダウンロード
-
-[**最新版をダウンロード**](https://github.com/hitalin/notedeck/releases/latest)
+## Install
 
 | Windows | macOS | Linux | Android |
 |---|---|---|---|
@@ -44,7 +42,7 @@ Misskey 統合環境 (IDE) — 閲覧・投稿・検索・連携をひとつに
 
 **Windows (winget)**
 
-```bash
+```
 winget install Hitalin.NoteDeck
 ```
 
@@ -63,10 +61,6 @@ nix run github:hitalin/notedeck
 ## 貢献する
 
 PR を歓迎します。詳しくは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
-
-- **開発を始める** — [DEVELOPMENT.md](DEVELOPMENT.md) に環境構築からアーキテクチャまで記載
-- **フォーク対応の追加** — [DEVELOPMENT.md](DEVELOPMENT.md#adding-support-for-a-new-fork) の手順に沿って PR
-- **バグ報告・機能提案** — [Issues](https://github.com/hitalin/notedeck/issues)（テンプレートあり）
 
 ## 支援する
 
