@@ -2177,7 +2177,7 @@ function onKeydown(e: KeyboardEvent) {
     align-items: stretch;
   }
 
-  .postForm {
+  .postForm:not(.postFormInline) {
     max-width: none;
     margin: 0;
     border-radius: 0;
