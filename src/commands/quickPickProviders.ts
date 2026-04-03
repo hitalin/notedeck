@@ -411,12 +411,18 @@ interface SelectableConfig {
   type: ColumnType
   apiCommand: string
   idKey: string
+  searchCommand?: string
 }
 
 const SELECTABLE_CONFIGS: SelectableConfig[] = [
   { type: 'list', apiCommand: 'api_get_user_lists', idKey: 'listId' },
   { type: 'antenna', apiCommand: 'api_get_antennas', idKey: 'antennaId' },
-  { type: 'channel', apiCommand: 'api_get_channels', idKey: 'channelId' },
+  {
+    type: 'channel',
+    apiCommand: 'api_get_channels',
+    idKey: 'channelId',
+    searchCommand: 'api_search_channels',
+  },
   { type: 'clip', apiCommand: 'api_get_clips', idKey: 'clipId' },
 ]
 
@@ -506,6 +512,11 @@ async function buildDetailStep(
   const config = SELECTABLE_CONFIGS.find((c) => c.type === type)
 
   if (config && accountId) {
+    // Searchable config: build step with search input + initial items
+    if (config.searchCommand) {
+      buildSearchableStep(config, accountId)
+      return []
+    }
     const items = await invoke<{ id: string; name: string }[]>(
       config.apiCommand,
       { accountId },
@@ -535,6 +546,71 @@ async function buildDetailStep(
 
   finalizeAddColumn(type, accountId)
   return []
+}
+
+/** Build a searchable Quick Pick step with initial items + server-side search */
+function buildSearchableStep(config: SelectableConfig, accountId: string) {
+  const commandStore = useCommandStore()
+  const icon = COLUMN_ICONS[config.type] ?? 'dots'
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined
+
+  function itemToQuickPick(item: { id: string; name: string }): QuickPickItem {
+    return {
+      id: `select-${item.id}`,
+      label: item.name,
+      icon,
+      action: () => {
+        useDeckStore().addColumn({
+          type: config.type,
+          name: item.name,
+          width: 360,
+          accountId,
+          [config.idKey]: item.id,
+          active: true,
+        } as Omit<DeckColumn, 'id'>)
+        useCommandStore().close()
+      },
+    }
+  }
+
+  const step = reactive({
+    title: `${COLUMN_LABELS[config.type] ?? config.type}を選択`,
+    placeholder: `${COLUMN_LABELS[config.type] ?? config.type}を検索...`,
+    items: [] as QuickPickItem[],
+    loading: true,
+    onQueryChange(q: string) {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      if (!q.trim()) {
+        // Restore initial items
+        fetchItems(config.apiCommand)
+        return
+      }
+      const cmd = config.searchCommand
+      if (!cmd) return
+      debounceTimer = setTimeout(() => fetchItems(cmd, q), 300)
+    },
+  })
+
+  async function fetchItems(command: string, query?: string) {
+    step.loading = true
+    try {
+      const params: Record<string, unknown> = { accountId }
+      if (query) params.query = query
+      const items = await invoke<{ id: string; name: string }[]>(
+        command,
+        params,
+      )
+      step.items = items.map(itemToQuickPick)
+    } catch {
+      step.items = []
+    } finally {
+      step.loading = false
+    }
+  }
+
+  commandStore.pushQuickPick(step)
+  // Fetch initial items
+  fetchItems(config.apiCommand)
 }
 
 function buildUserSearchStep(accountId: string) {

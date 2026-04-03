@@ -156,8 +156,8 @@ interface SelectableConfig {
   icon: string
   apiCommand: string
   idKey: string
-  /** When true, shows a search input instead of fetching all items at once */
-  searchable?: boolean
+  /** When set, shows a search input. Items are fetched via this command with { accountId, query }. */
+  searchCommand?: string
   /** Column name derived from selected item (default: item.name) */
   formatName?: (item: SelectableItem) => string
 }
@@ -183,6 +183,7 @@ const SELECTABLE_CONFIGS: SelectableConfig[] = [
     icon: 'ti-device-tv',
     apiCommand: 'api_get_channels',
     idKey: 'channelId',
+    searchCommand: 'api_search_channels',
   },
   {
     type: 'clip',
@@ -197,7 +198,7 @@ const SELECTABLE_CONFIGS: SelectableConfig[] = [
     icon: 'ti-user',
     apiCommand: 'api_search_users_by_query',
     idKey: 'userId',
-    searchable: true,
+    searchCommand: 'api_search_users_by_query',
     formatName: (item) => item.name,
   },
 ]
@@ -206,6 +207,10 @@ const selectAccountId = ref<string | null>(null)
 const selectItems = ref<SelectableItem[]>([])
 const selectLoading = ref(false)
 const selectConfig = ref<SelectableConfig | null>(null)
+
+// Search input for searchable configs (user, channel)
+const searchQuery = ref('')
+let searchDebounce: ReturnType<typeof setTimeout> | undefined
 
 // User search via shared composable
 const {
@@ -227,11 +232,58 @@ watch(userSearching, (v) => {
   if (selectConfig.value?.type === 'user') selectLoading.value = v
 })
 
+// Generic search for non-user searchable configs (channel, etc.)
+watch(searchQuery, (val) => {
+  if (searchDebounce) clearTimeout(searchDebounce)
+  const config = selectConfig.value
+  if (!config?.searchCommand || config.type === 'user') return
+  const q = val.trim()
+  const accountId = selectAccountId.value
+  if (!q || !accountId) {
+    // Restore initial items when search is cleared
+    if (accountId) fetchInitialItems(config, accountId)
+    return
+  }
+  searchDebounce = setTimeout(() => searchSelectItems(config, q), 300)
+})
+
+async function searchSelectItems(config: SelectableConfig, query: string) {
+  if (!config.searchCommand || !selectAccountId.value) return
+  selectLoading.value = true
+  try {
+    selectItems.value = await invoke<SelectableItem[]>(config.searchCommand, {
+      accountId: selectAccountId.value,
+      query,
+    })
+  } catch (e) {
+    console.error(`[deck] failed to search ${config.type}s:`, e)
+    selectItems.value = []
+  } finally {
+    selectLoading.value = false
+  }
+}
+
+async function fetchInitialItems(config: SelectableConfig, accountId: string) {
+  selectLoading.value = true
+  try {
+    selectItems.value = await invoke<SelectableItem[]>(config.apiCommand, {
+      accountId,
+    })
+  } catch (e) {
+    console.error(`[deck] failed to fetch ${config.type}s:`, e)
+    selectItems.value = []
+  } finally {
+    selectLoading.value = false
+  }
+}
+
 async function fetchSelectItems(config: SelectableConfig, accountId: string) {
   selectConfig.value = config
   selectAccountId.value = accountId
-  if (config.searchable) {
-    // Searchable configs don't fetch all items upfront
+  searchQuery.value = ''
+  if (config.type === 'user') {
+    // User: search-only, no initial list
+    userSearchQuery.value = ''
     selectItems.value = []
     selectLoading.value = false
     return
@@ -289,7 +341,7 @@ function close() {
         <button v-if="addColumnType && !selectConfig" class="_button" :class="$style.addBackBtn" @click="addColumnType = null">
           <i class="ti ti-chevron-left" />
         </button>
-        <button v-else-if="selectConfig" class="_button" :class="$style.addBackBtn" @click="selectConfig = null; selectItems = []; selectAccountId = null; userSearchQuery = ''">
+        <button v-else-if="selectConfig" class="_button" :class="$style.addBackBtn" @click="selectConfig = null; selectItems = []; selectAccountId = null; searchQuery = ''; userSearchQuery = ''">
           <i class="ti ti-chevron-left" />
         </button>
         <span :class="$style.addPopupTitle">
@@ -452,18 +504,18 @@ function close() {
 
       <!-- Step 3a: Item selection (list/antenna/channel/clip/user) -->
       <template v-else-if="selectConfig">
-        <div v-if="selectConfig.searchable" :class="$style.selectSearchBar">
+        <div v-if="selectConfig.searchCommand" :class="$style.selectSearchBar">
           <i class="ti ti-search" :class="$style.selectSearchIcon" />
           <input
-            v-model="userSearchQuery"
+            v-model="selectConfig.type === 'user' ? userSearchQuery : searchQuery"
             :class="$style.selectSearchInput"
             type="text"
             :placeholder="`${selectConfig.label}を検索...`"
           />
           <i v-if="selectLoading" class="ti ti-loader-2 nd-spin" :class="$style.selectSearchIcon" />
         </div>
-        <div v-if="!selectConfig.searchable && selectLoading" :class="$style.addPopupLoading"><LoadingSpinner /></div>
-        <div v-else-if="!selectLoading && selectItems.length === 0 && (!selectConfig.searchable || userSearchQuery.trim())" :class="$style.addPopupEmpty">{{ selectConfig.label }}が見つかりません</div>
+        <div v-if="!selectConfig.searchCommand && selectLoading" :class="$style.addPopupLoading"><LoadingSpinner /></div>
+        <div v-else-if="!selectLoading && selectItems.length === 0 && (!selectConfig.searchCommand || (selectConfig.type === 'user' ? userSearchQuery.trim() : searchQuery.trim()))" :class="$style.addPopupEmpty">{{ selectConfig.label }}が見つかりません</div>
         <button
           v-for="item in selectItems"
           :key="item.id"
