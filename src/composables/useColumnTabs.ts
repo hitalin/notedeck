@@ -60,7 +60,7 @@ export const COLUMN_LABELS: Record<string, string> = {
   achievements: '実績',
   apiConsole: 'APIコンソール',
   apiDocs: 'APIドキュメント',
-  lookup: 'ルックアップ',
+  lookup: '照会',
   serverInfo: 'サーバー情報',
   ads: '広告',
   aboutMisskey: 'Misskeyについて',
