@@ -83,6 +83,7 @@ const columnDrag = useColumnDrag(deckStore, {
   colResizeHandle: $style.colResizeHandle,
 })
 const isCompact = useIsCompactLayout()
+let suppressScrollSync = false
 
 const columnMap = computed(() => deckStore.columnMap)
 
@@ -229,7 +230,7 @@ function onColumnsWheel(e: WheelEvent) {
 
 // Scroll position → active column (single source of truth: activeColumnId in store)
 function onColumnsScroll() {
-  if (!columnsRef.value) return
+  if (!columnsRef.value || suppressScrollSync) return
   const layout = deckStore.windowLayout
   let bestGroupIdx: number
   if (isCompact.value) {
@@ -299,6 +300,33 @@ watch(
           inline: 'nearest',
         })
     }
+  },
+  { flush: 'post' },
+)
+
+// Compact ↔ Desktop 切替時: アクティブカラムの位置にスクロールを合わせる
+watch(
+  isCompact,
+  (compact) => {
+    const id = deckStore.activeColumnId
+    if (!compact || !id || !columnsRef.value) return
+    const index = deckStore.windowLayout.findIndex((group) =>
+      group.includes(id),
+    )
+    if (index < 0) return
+    // CSS snap によるスクロールイベントで activeColumnId が上書きされるのを防ぐ
+    suppressScrollSync = true
+    requestAnimationFrame(() => {
+      if (!columnsRef.value) return
+      columnsRef.value.scrollTo({
+        left: index * columnsRef.value.clientWidth,
+        behavior: 'instant',
+      })
+      // スクロール完了後にガードを解除
+      requestAnimationFrame(() => {
+        suppressScrollSync = false
+      })
+    })
   },
   { flush: 'post' },
 )
