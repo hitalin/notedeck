@@ -57,6 +57,12 @@ const isCompact = useIsCompactLayout()
 const { totalUnread, markAllAsRead } = useUnreadNotifications()
 const { totalUnread: chatUnread, resetAll: resetChatUnread } = useUnreadChat()
 
+const accountAttentionCount = computed(
+  () =>
+    accountsStore.accounts.filter((a) => !a.hasToken && !isGuestAccount(a))
+      .length,
+)
+
 async function toggleOfflineMode() {
   const isOn = offlineModeStore.isOfflineMode
   const ok = await confirm({
@@ -186,6 +192,11 @@ function toggleNav() {
 
 // Account menu
 const accountMenuId = ref<string | null>(null)
+const showAccountPopup = ref(false)
+const accountMenuStyle = ref<Record<string, string>>({})
+const selectedAccount = computed(() =>
+  accountsStore.accounts.find((a) => a.id === accountMenuId.value),
+)
 const accountModes = ref<Record<string, Record<string, boolean>>>({})
 const accountIsAdmin = ref<Record<string, boolean>>({})
 const togglingMode = ref(false)
@@ -201,14 +212,33 @@ function toggleAccountMenu(id: string) {
   loadAccountModes(id)
 }
 
-function onDocumentClick(e: MouseEvent) {
-  if (!accountMenuId.value) return
-  const target = e.target as HTMLElement
-  if (
-    target.closest(`.${$style.account}`) ||
-    target.closest('.nav-account-menu')
-  )
+function openAccountMenu(id: string, e?: MouseEvent) {
+  if (accountMenuId.value === id) return
+  if (e) {
+    const el = e.currentTarget as HTMLElement
+    const rect = el.getBoundingClientRect()
+    accountMenuStyle.value = {
+      position: 'fixed',
+      top: `${rect.top - 10 - rect.height / 2}px`,
+      left: `${rect.right}px`,
+      bottom: 'auto',
+      right: 'auto',
+      margin: '0',
+      contain: 'none',
+      zIndex: 'var(--nd-z-popup)',
+    }
+  }
+  accountMenuId.value = id
+  modeError.value = null
+  loadAccountModes(id)
+}
+
+function onDocumentClick() {
+  if (showAccountPopup.value) {
+    showAccountPopup.value = false
+    accountMenuId.value = null
     return
+  }
   accountMenuId.value = null
 }
 
@@ -289,8 +319,8 @@ function logoutDeleteAll() {
 }
 
 function toggleFirstAccountMenu() {
-  const first = accountsStore.accounts[0]
-  if (first) toggleAccountMenu(first.id)
+  showAccountPopup.value = !showAccountPopup.value
+  if (!showAccountPopup.value) accountMenuId.value = null
 }
 
 function handleResize() {
@@ -402,7 +432,7 @@ defineExpose({
                 <div :class="$style.iconWrap">
                   <i :class="['ti', navIcon(navItem.type)]" />
                   <span v-if="getNavBadge(navItem) > 0" :key="getNavBadge(navItem)" :class="$style.badge">{{ getNavBadge(navItem) > 99 ? '99+' : getNavBadge(navItem) }}</span>
-                  <ColumnBadges :account-id="navItem.accountId" :size="12" />
+                  <ColumnBadges :account-id="navItem.accountId" />
                 </div>
                 <span :class="$style.label">{{ navLabel(navItem.type) }}</span>
               </button>
@@ -480,22 +510,37 @@ defineExpose({
             <i class="ti ti-pencil" />
             <span :class="$style.label">ノート</span>
           </button>
-        </div>
 
-        <!-- Account avatars (scrollable) -->
-        <div :class="$style.accountSection">
-          <div :class="$style.accountStack">
-            <div :class="$style.accountScroll">
+          <!-- Account button -->
+          <div :class="$style.menuWrap">
+            <button
+              class="_button"
+              :class="$style.item"
+              title="アカウント"
+              @pointerdown.stop
+              @click.stop="showAccountPopup = !showAccountPopup; accountMenuId = null"
+            >
+              <div :class="$style.iconWrap">
+                <i class="ti ti-user" />
+                <span v-if="accountAttentionCount > 0" :key="accountAttentionCount" :class="$style.badge">{{ accountAttentionCount > 99 ? '99+' : accountAttentionCount }}</span>
+              </div>
+              <span :class="$style.label">アカウント</span>
+            </button>
+            <div
+              v-if="showAccountPopup"
+              :class="$style.accountPopup"
+              @click.stop="accountMenuId = null"
+            >
               <div
                 v-for="acc in accountsStore.accounts"
                 :key="acc.id"
-                :class="$style.accountWrap"
+                :class="$style.accountPopupItem"
+                @mouseenter="openAccountMenu(acc.id, $event)"
+                @click.stop="openAccountMenu(acc.id, $event)"
               >
-                <button
-                  class="_button"
-                  :class="$style.accountBtn"
+                <div
+                  :class="[$style.accountPopupBtn, { [$style.accountPopupBtnActive]: accountMenuId === acc.id }]"
                   :title="getAccountLabel(acc)"
-                  @click.stop="toggleAccountMenu(acc.id)"
                 >
                   <div :class="$style.avatarWrap">
                     <img
@@ -518,42 +563,45 @@ defineExpose({
                       :class="[$style.onlineIndicator, onlineStatusClass(acc.id)]"
                     />
                   </div>
-                </button>
-                <NavAccountMenu
-                  :show="accountMenuId === acc.id"
-                  :account="acc"
-                  :nav-collapsed="navCollapsed"
-                  :modes="accountModes[acc.id] ?? {}"
-                  :toggling-mode="togglingMode"
-                  :mode-error="modeError"
-                  :is-admin="accountIsAdmin[acc.id] ?? false"
-                  @toggle-mode="toggleAccountMode(acc.id, $event)"
-                  @logout="showLogoutDialog(acc.id)"
-                  @relogin="(host: string) => closeDrawerAndDo(() => navigateToLogin(host))"
-                  @close="accountMenuId = null"
-                />
+                  <span :class="$style.accountPopupName">{{ getAccountLabel(acc) }}</span>
+                  <i class="ti ti-chevron-right" :class="$style.accountPopupChevron" />
+                </div>
               </div>
+              <div :class="$style.accountPopupDivider" />
               <button
                 class="_button"
-                :class="$style.accountBtn"
-                title="アカウント管理"
-                @click="closeDrawerAndDo(() => windowsStore.open('account-manager'))"
+                :class="$style.accountPopupBtn"
+                @click="showAccountPopup = false; closeDrawerAndDo(navigateToLogin)"
               >
-                <div :class="$style.addAccountIcon">
-                  <i class="ti ti-settings" />
-                </div>
+                <div :class="$style.accountPopupIcon"><i class="ti ti-plus" /></div>
+                <span>アカウント追加</span>
               </button>
               <button
                 class="_button"
-                :class="$style.accountBtn"
-                title="アカウント追加"
-                @click="closeDrawerAndDo(navigateToLogin)"
+                :class="$style.accountPopupBtn"
+                @click="showAccountPopup = false; closeDrawerAndDo(() => windowsStore.open('account-manager'))"
               >
-                <div :class="$style.addAccountIcon">
-                  <i class="ti ti-plus" />
-                </div>
+                <div :class="$style.accountPopupIcon"><i class="ti ti-settings" /></div>
+                <span>アカウント管理</span>
               </button>
             </div>
+            <!-- NavAccountMenu: position:fixed で右横に配置（overflow制約を回避） -->
+            <NavAccountMenu
+              v-if="showAccountPopup && selectedAccount"
+              :key="accountMenuId!"
+              show
+              :account="selectedAccount"
+              :nav-collapsed="false"
+              :modes="accountModes[selectedAccount.id] ?? {}"
+              :toggling-mode="togglingMode"
+              :mode-error="modeError"
+              :is-admin="accountIsAdmin[selectedAccount.id] ?? false"
+              :style="accountMenuStyle"
+              @toggle-mode="toggleAccountMode(selectedAccount.id, $event)"
+              @logout="showAccountPopup = false; showLogoutDialog(selectedAccount.id)"
+              @relogin="(host: string) => { showAccountPopup = false; closeDrawerAndDo(() => navigateToLogin(host)) }"
+              @close="accountMenuId = null"
+            />
           </div>
         </div>
       </div>
@@ -714,15 +762,6 @@ defineExpose({
   flex-shrink: 0;
 }
 
-.accountSection {
-  flex-shrink: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 0 6px 10px;
-}
-
-
 .divider {
   height: 1px;
   background: var(--nd-divider);
@@ -753,9 +792,9 @@ defineExpose({
   }
 
   :global(.ti) {
+    @include nav-icon;
     flex-shrink: 0;
     width: 32px;
-    font-size: 1.5em;
     text-align: center;
     opacity: 0.7;
   }
@@ -807,88 +846,69 @@ defineExpose({
   pointer-events: none;
 }
 
-.iconWrap {
-  position: relative;
-  display: inline-flex;
-  flex-shrink: 0;
-}
-
-.badge {
-  position: absolute;
-  top: -8px;
-  right: -10px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: var(--nd-radius-full);
-  background: var(--nd-indicator, #e53935);
-  color: #fff;
-  font-size: 10px;
-  font-weight: bold;
-  line-height: 16px;
-  text-align: center;
-  pointer-events: none;
-  box-sizing: border-box;
-  animation: nd-badge-in 0.7s ease both;
-}
-
-/* Misskey global-bounce style: 3-step overshoot for satisfying pop-in */
-@keyframes nd-badge-in {
-  0%   { transform: scale(0); opacity: 0; }
-  19%  { transform: scale(1.15); opacity: 1; }
-  48%  { transform: scale(0.95); }
-  100% { transform: scale(1); }
-}
+.iconWrap { @include nav-icon-wrap; }
+.badge { @include nav-badge; }
 
 .label {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-// Account buttons
-.accountStack {
-  position: relative;
-  margin-top: 8px;
-  flex: 1;
-  min-height: 0;
+// Account popup — menuWrap 内で上方向に展開
+.accountPopup {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 4px;
+  padding: 6px 0;
+  z-index: var(--nd-z-menu);
+  min-width: 200px;
+  background: var(--nd-navBg);
+  border-radius: var(--nd-radius-md);
+  box-shadow: var(--nd-shadow-m);
 }
 
-.accountScroll {
-  display: flex;
-  align-items: center;
-  justify-content: safe center;
-  padding: 4px 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
+.accountPopupItem {
+  position: relative;
 }
 
-.accountBtn {
-  position: relative;
+.accountPopupBtn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  padding: 6px;
-  border-radius: var(--nd-radius-sm);
-  overflow: visible;
-  opacity: 0.6;
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base), transform var(--nd-duration-fast) var(--nd-ease-spring);
+  gap: 8px;
+  padding: 4px 12px;
+  width: 100%;
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--nd-duration-fast);
 
   &:hover {
-    opacity: 1;
     background: var(--nd-buttonHoverBg);
-  }
-
-  &:active {
-    transform: scale(0.95);
   }
 }
 
-.addAccountIcon {
+.accountPopupBtnActive {
+  background: var(--nd-buttonHoverBg);
+  color: var(--nd-fgHighlighted);
+}
+
+.accountPopupChevron {
+  margin-left: auto;
+  font-size: 0.75em;
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.accountPopupName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.accountPopupIcon {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -898,6 +918,13 @@ defineExpose({
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   font-size: 14px;
+  flex-shrink: 0;
+}
+
+.accountPopupDivider {
+  height: 1px;
+  background: var(--nd-divider);
+  margin: 4px 0;
 }
 
 .avatarWrap {
@@ -935,7 +962,7 @@ defineExpose({
   width: 20%;
   height: 20%;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--nd-navBg);
+  box-shadow: 0 0 0 3px var(--nd-navBg);
 }
 
 .statusOnline {
@@ -1086,11 +1113,6 @@ defineExpose({
   pointer-events: none;
 }
 
-.accountWrap {
-  // 展開時: position: static → メニューはaccountStack基準
-  // 折りたたみ時: position: relative → メニューはアカウント位置基準（コンテナクエリで切替）
-}
-
 .mobileOnly {
   display: flex;
   flex-direction: column;
@@ -1098,6 +1120,8 @@ defineExpose({
 
 .menuWrap {
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .updateDot { @include update-dot; }
@@ -1133,61 +1157,21 @@ defineExpose({
     height: 44px;
     margin: 2px auto;
     border-radius: 50%;
-    font-size: 1rem;
 
-    :global(.ti) {
-      font-size: 1.5em;
-    }
+    :global(.ti) { @include nav-icon; }
   }
 
-  .account {
-    padding: 8px;
-    width: auto;
-    border-radius: var(--nd-radius-full);
-  }
-
-  .accountStack {
-    position: static;
-    margin-top: 0;
-    overflow-y: auto;
-    overflow-x: visible;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
-  .accountScroll {
-    flex-direction: column;
-    overflow: visible;
-    gap: 4px;
-  }
-
-  .accountWrap {
-    position: relative;
-  }
-
-  .accountBtn {
-    padding: 4px;
-    border-radius: 50%;
+  .accountPopup {
+    bottom: 0;
+    left: 100%;
+    right: auto;
+    margin-bottom: 0;
+    margin-left: 4px;
   }
 
   .section {
     padding: 8px 0 0;
     align-items: center;
-  }
-
-  .avatar {
-    width: 32px;
-    height: 32px;
-  }
-
-  .serverBadge {
-    width: 16px;
-    height: 16px;
-    top: -2px;
-    right: -4px;
   }
 
   .postBtn {
@@ -1197,11 +1181,8 @@ defineExpose({
     margin: 0 auto;
     border-radius: 50%;
     justify-content: center;
-    font-size: 1rem;
 
-    :global(.ti) {
-      font-size: 1.5em;
-    }
+    :global(.ti) { @include nav-icon; }
   }
 }
 

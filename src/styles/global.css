@@ -557,6 +557,14 @@ dialog._nativeDialog[open] {
   -webkit-user-select: none;
 }
 
+/* Badge pop-in animation (used by nav-badge mixin) */
+@keyframes nd-badge-in {
+  0%   { transform: scale(0); opacity: 0; }
+  19%  { transform: scale(1.15); opacity: 1; }
+  48%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
 .nd-dragging {
   cursor: grabbing;
 }

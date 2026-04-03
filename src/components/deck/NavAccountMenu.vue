@@ -39,7 +39,6 @@ const emit = defineEmits<{
 }>()
 
 const { navigateToUser } = useNavigation()
-
 const menuRef = ref<HTMLElement | null>(null)
 const fixedStyle = ref<Record<string, string>>({})
 const { activate: activateKeyboard, deactivate: deactivateKeyboard } =
@@ -141,10 +140,6 @@ function modeIcon(key: string, active: boolean): string {
           <span>設定</span>
           <i class="ti ti-external-link" />
         </button>
-        <button class="_button" :class="$style.navAccountMenuItem" @click="account.hasToken ? openUrl(`https://${account.host}/games`) : showLoginPrompt()">
-          <span>Misskey Games</span>
-          <i class="ti ti-external-link" />
-        </button>
       </template>
       <button v-if="isAdmin" class="_button" :class="$style.navAccountMenuItem" @click="openUrl(`https://${account.host}/admin`)">
         <span>コントロールパネル</span>
@@ -206,7 +201,7 @@ function modeIcon(key: string, active: boolean): string {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 4px 12px;
   cursor: pointer;
   transition: background var(--nd-duration-fast);
   font-size: 0.85em;
@@ -232,7 +227,7 @@ function modeIcon(key: string, active: boolean): string {
 .navAccountMenuDivider {
   height: 1px;
   background: var(--nd-divider);
-  margin: 4px 10px;
+  margin: 4px 0;
 }
 
 .navAccountMenuError {

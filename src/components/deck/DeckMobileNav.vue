@@ -59,9 +59,11 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
         :class="[$style.tab, { [$style.active]: activeColumnIndex === gi }]"
         @click="emit('scroll-to-column', gi)"
       >
-        <i :class="'ti ti-' + columnIcon(groupPrimaryId(group))" />
-        <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
-        <ColumnBadges :account-id="columnAccountId(groupPrimaryId(group))" :size="14" />
+        <div :class="$style.iconWrap">
+          <i :class="'ti ti-' + columnIcon(groupPrimaryId(group))" />
+          <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
+          <ColumnBadges :account-id="columnAccountId(groupPrimaryId(group))" :size="14" />
+        </div>
       </button>
     </div>
     <button
@@ -76,6 +78,8 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
+
 .root {
   display: flex;
   align-items: stretch;
@@ -113,6 +117,8 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   }
 }
 
+.iconWrap { @include nav-icon-wrap; }
+
 .tab {
   position: relative;
   display: flex;
@@ -121,15 +127,12 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   flex: 0 0 auto;
   min-width: 42px;
   padding: 12px 8px;
-  font-size: 15px;
   color: var(--nd-fg);
   opacity: 0.45;
   transition: opacity var(--nd-duration-slow), color var(--nd-duration-slow);
   --column-badge-border: var(--nd-navBg);
-  --column-badge-server-top: 3px;
-  --column-badge-server-right: calc(50% - 16px);
-  --column-badge-account-bottom: 3px;
-  --column-badge-account-left: calc(50% - 16px);
+
+  :global(.ti) { @include nav-icon; }
 
   &:active {
     opacity: 0.7;
@@ -155,20 +158,6 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   }
 }
 
-.stackBadge {
-  position: absolute;
-  top: 4px;
-  left: calc(50% - 16px);
-  min-width: 14px;
-  height: 14px;
-  padding: 0 3px;
-  border-radius: 7px;
-  background: var(--nd-accent);
-  color: var(--nd-bg);
-  font-size: 9px;
-  font-weight: bold;
-  line-height: 14px;
-  text-align: center;
-}
+.stackBadge { @include nav-stack-badge; }
 
 </style>
