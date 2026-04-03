@@ -202,7 +202,7 @@ function updateAccountMenuPosition(e?: MouseEvent) {
   const rect = el.getBoundingClientRect()
   accountMenuStyle.value = {
     position: 'fixed',
-    top: `${rect.top - 10 - rect.height / 2}px`,
+    top: `${rect.top - 10 - rect.height / 2 + (isCompact.value ? rect.height * 0.7 : 0)}px`,
     left: `${rect.right}px`,
     bottom: 'auto',
     right: 'auto',
