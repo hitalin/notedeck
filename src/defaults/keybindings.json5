@@ -52,6 +52,14 @@
     shortcuts: [{ key: "a", scope: "body" }],
   },
   {
+    commandId: "profile-menu",
+    shortcuts: [{ key: "g", scope: "body" }],
+  },
+  {
+    commandId: "settings-menu",
+    shortcuts: [{ key: ",", ctrl: true, scope: "global" }],
+  },
+  {
     commandId: "toggle-dark-mode",
     shortcuts: [{ key: "d", scope: "body" }],
   },
@@ -104,7 +112,10 @@
   },
   {
     commandId: "note-reply",
-    shortcuts: [{ key: "r", scope: "body" }],
+    shortcuts: [
+      { key: "r", scope: "body" },
+      { key: "ArrowLeft", scope: "body" },
+    ],
   },
   {
     commandId: "note-react",
@@ -115,7 +126,10 @@
   },
   {
     commandId: "note-renote",
-    shortcuts: [{ key: "q", scope: "body" }],
+    shortcuts: [
+      { key: "q", scope: "body" },
+      { key: "ArrowRight", scope: "body" },
+    ],
   },
   {
     commandId: "note-bookmark",
@@ -123,7 +137,10 @@
   },
   {
     commandId: "note-open",
-    shortcuts: [{ key: "Enter", scope: "body" }],
+    shortcuts: [
+      { key: "Enter", scope: "body" },
+      { key: "o", scope: "body" },
+    ],
   },
   {
     commandId: "note-cw",
@@ -228,6 +245,10 @@
   {
     commandId: "quick-react-9",
     shortcuts: [{ key: "9", scope: "body" }],
+  },
+  {
+    commandId: "quick-react-0",
+    shortcuts: [{ key: "0", scope: "body" }],
   },
 
   // ── Deck profiles ──

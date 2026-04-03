@@ -23,7 +23,7 @@ const commandStore = useCommandStore()
 const deckStore = useDeckStore()
 
 function onProfileClick() {
-  commandStore.openWithInput('#')
+  commandStore.openWithInput('~')
 }
 
 function onSettingsClick() {

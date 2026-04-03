@@ -99,6 +99,29 @@ const flatQuickPickList = computed(() =>
   filteredQuickPickGroups.value.flatMap((g) => g.items),
 )
 
+/** selectedIndex が属するグループのインデックス */
+const currentGroupIndex = computed(() => {
+  const groups = filteredQuickPickGroups.value
+  if (groups.length <= 1) return 0
+  let offset = 0
+  for (let i = 0; i < groups.length; i++) {
+    const size = groups[i]?.items.length ?? 0
+    if (selectedIndex.value < offset + size) return i
+    offset += size
+  }
+  return groups.length - 1
+})
+
+/** 現在グループの先頭の flatQuickPickList 上のインデックス */
+const currentGroupStartIndex = computed(() => {
+  const groups = filteredQuickPickGroups.value
+  let offset = 0
+  for (let i = 0; i < currentGroupIndex.value; i++) {
+    offset += groups[i]?.items.length ?? 0
+  }
+  return offset
+})
+
 async function selectQuickPickItem(item: QuickPickItem) {
   if (item.children) {
     const children = await item.children()
@@ -185,28 +208,71 @@ const flatList = computed(() => filteredGroups.value.flatMap((g) => g.commands))
 
 const listRef = useTemplateRef<HTMLElement>('listRef')
 
+function moveDown(list: readonly unknown[]) {
+  selectedIndex.value = Math.min(selectedIndex.value + 1, list.length - 1)
+}
+
+function moveUp() {
+  selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
+}
+
+function jumpToGroup(direction: 1 | -1) {
+  const groups = filteredQuickPickGroups.value
+  if (groups.length <= 1) return
+  const nextIdx =
+    (currentGroupIndex.value + direction + groups.length) % groups.length
+  let offset = 0
+  for (let i = 0; i < nextIdx; i++) {
+    offset += groups[i]?.items.length ?? 0
+  }
+  selectedIndex.value = offset
+}
+
 function onKeydown(e: KeyboardEvent) {
   const inQuickPick =
     currentQuickPickStep.value != null || activePrefix.value != null
 
+  // --- Ctrl+N / Ctrl+P: Emacs風ナビゲーション ---
+  if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+    if (e.key === 'n') {
+      e.preventDefault()
+      if (inQuickPick) moveDown(flatQuickPickList.value)
+      else if (!cliMatch.value) moveDown(flatList.value)
+      return
+    }
+    if (e.key === 'p') {
+      e.preventDefault()
+      if (inQuickPick || !cliMatch.value) moveUp()
+      return
+    }
+    // Ctrl+G: Emacs keyboard-quit — 戻る/閉じる
+    if (e.key === 'g') {
+      e.preventDefault()
+      if (currentQuickPickStep.value) {
+        commandStore.popQuickPick()
+        selectedIndex.value = 0
+      } else {
+        commandStore.close()
+      }
+      return
+    }
+  }
+
+  // --- Tab / Shift+Tab: グループ間ジャンプ ---
+  if (e.key === 'Tab' && inQuickPick) {
+    e.preventDefault()
+    jumpToGroup(e.shiftKey ? -1 : 1)
+    return
+  }
+
+  // --- ArrowDown / ArrowUp ---
   if (e.key === 'ArrowDown') {
     e.preventDefault()
-    if (inQuickPick) {
-      selectedIndex.value = Math.min(
-        selectedIndex.value + 1,
-        flatQuickPickList.value.length - 1,
-      )
-    } else if (!cliMatch.value) {
-      selectedIndex.value = Math.min(
-        selectedIndex.value + 1,
-        flatList.value.length - 1,
-      )
-    }
+    if (inQuickPick) moveDown(flatQuickPickList.value)
+    else if (!cliMatch.value) moveDown(flatList.value)
   } else if (e.key === 'ArrowUp') {
     e.preventDefault()
-    if (inQuickPick || !cliMatch.value) {
-      selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
-    }
+    if (inQuickPick || !cliMatch.value) moveUp()
   } else if (e.key === 'Enter') {
     e.preventDefault()
     if (inQuickPick) {
@@ -237,6 +303,25 @@ function onKeydown(e: KeyboardEvent) {
   } else if (e.key === 'Escape') {
     e.preventDefault()
     commandStore.close()
+  } else if (e.altKey && e.key >= '0' && e.key <= '9') {
+    // Alt+0-9: グループ相対で候補を直接選択
+    const num = e.key === '0' ? 10 : Number.parseInt(e.key, 10)
+    const hasGroups = filteredQuickPickGroups.value.length > 1
+    if (inQuickPick) {
+      const baseIdx = hasGroups ? currentGroupStartIndex.value : 0
+      const item = flatQuickPickList.value[baseIdx + num - 1]
+      if (item) {
+        e.preventDefault()
+        selectQuickPickItem(item)
+      }
+    } else {
+      const cmd = flatList.value[num - 1]
+      if (cmd) {
+        e.preventDefault()
+        commandStore.close()
+        cmd.execute()
+      }
+    }
   }
 }
 
@@ -312,6 +397,13 @@ const inputPlaceholder = computed(() => {
   return 'コマンドを入力...'
 })
 
+/** グループ内の相対インデックスからヒントラベルを返す（1-9, 0 で10番目、11以上は null） */
+function hintLabel(groupItemIndex: number): string | null {
+  if (groupItemIndex < 9) return `Alt+${groupItemIndex + 1}`
+  if (groupItemIndex === 9) return 'Alt+0'
+  return null
+}
+
 function primaryShortcut(cmd: Command): string | null {
   const s =
     cmd.shortcuts.find((s) => s.ctrl || s.shift || s.alt) ?? cmd.shortcuts[0]
@@ -372,7 +464,7 @@ function primaryShortcut(cmd: Command): string | null {
           <div v-if="gi > 0" :class="$style.separator" />
           <div v-if="group.group" :class="$style.category">{{ group.group }}</div>
           <button
-            v-for="item in group.items"
+            v-for="(item, ii) in group.items"
             :key="item.id"
             :class="[$style.item, { [$style.selected]: flatQuickPickList[selectedIndex]?.id === item.id }]"
             :data-selected="flatQuickPickList[selectedIndex]?.id === item.id ? '' : undefined"
@@ -385,6 +477,12 @@ function primaryShortcut(cmd: Command): string | null {
               <span :class="$style.itemLabel">{{ item.label }}</span>
               <span v-if="item.description" :class="$style.itemDesc">{{ item.description }}</span>
             </div>
+            <kbd
+              v-if="gi === currentGroupIndex && hintLabel(ii)"
+              :class="$style.itemKbd"
+            >
+              {{ hintLabel(ii) }}
+            </kbd>
             <i v-if="item.children" :class="['ti ti-chevron-right', $style.itemChevron]" />
           </button>
         </template>
