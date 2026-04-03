@@ -303,23 +303,29 @@ function onKeydown(e: KeyboardEvent) {
   } else if (e.key === 'Escape') {
     e.preventDefault()
     commandStore.close()
-  } else if (e.altKey && e.key >= '0' && e.key <= '9') {
-    // Alt+0-9: グループ相対で候補を直接選択
-    const num = e.key === '0' ? 10 : Number.parseInt(e.key, 10)
-    const hasGroups = filteredQuickPickGroups.value.length > 1
-    if (inQuickPick) {
-      const baseIdx = hasGroups ? currentGroupStartIndex.value : 0
-      const item = flatQuickPickList.value[baseIdx + num - 1]
-      if (item) {
-        e.preventDefault()
-        selectQuickPickItem(item)
-      }
-    } else {
-      const cmd = flatList.value[num - 1]
-      if (cmd) {
-        e.preventDefault()
-        commandStore.close()
-        cmd.execute()
+  } else if (e.altKey) {
+    // Alt+キー: グループ相対で候補を直接選択 (1-9, 0, a-z)
+    let idx = -1
+    if (e.key >= '1' && e.key <= '9') idx = Number.parseInt(e.key, 10) - 1
+    else if (e.key === '0') idx = 9
+    else if (e.key >= 'a' && e.key <= 'z') idx = e.key.charCodeAt(0) - 97 + 10
+
+    if (idx >= 0) {
+      const hasGroups = filteredQuickPickGroups.value.length > 1
+      if (inQuickPick) {
+        const baseIdx = hasGroups ? currentGroupStartIndex.value : 0
+        const item = flatQuickPickList.value[baseIdx + idx]
+        if (item) {
+          e.preventDefault()
+          selectQuickPickItem(item)
+        }
+      } else {
+        const cmd = flatList.value[idx]
+        if (cmd) {
+          e.preventDefault()
+          commandStore.close()
+          cmd.execute()
+        }
       }
     }
   }
@@ -397,11 +403,17 @@ const inputPlaceholder = computed(() => {
   return 'コマンドを入力...'
 })
 
-/** グループ内の相対インデックスからヒントラベルを返す（1-9, 0 で10番目、11以上は null） */
-function hintLabel(groupItemIndex: number): string | null {
-  if (groupItemIndex < 9) return `Alt+${groupItemIndex + 1}`
-  if (groupItemIndex === 9) return 'Alt+0'
+/** グループ内インデックス → ヒントキー文字（1-9, 0, a-z） */
+function hintKey(groupItemIndex: number): string | null {
+  if (groupItemIndex < 9) return `${groupItemIndex + 1}`
+  if (groupItemIndex === 9) return '0'
+  if (groupItemIndex < 36) return String.fromCharCode(97 + groupItemIndex - 10) // a-z
   return null
+}
+
+function hintLabel(groupItemIndex: number): string | null {
+  const key = hintKey(groupItemIndex)
+  return key ? `Alt+${key}` : null
 }
 
 function primaryShortcut(cmd: Command): string | null {
