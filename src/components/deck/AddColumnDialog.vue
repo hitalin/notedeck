@@ -593,11 +593,11 @@ function close() {
 .addTypeBtn {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  padding: 14px 24px;
-  min-height: 44px;
-  font-size: 0.9em;
+  padding: 0 24px;
+  line-height: 2.85rem;
+  font-size: 0.95em;
   font-weight: bold;
   color: var(--nd-fgHighlighted);
   transition: background var(--nd-duration-base);
@@ -610,9 +610,12 @@ function close() {
     border-top: 1px solid var(--nd-divider);
   }
 
-  .ti {
+  :global(.ti) {
+    flex-shrink: 0;
+    width: 32px;
+    font-size: 1.5rem;
+    text-align: center;
     opacity: 0.7;
-    font-size: 18px;
   }
 }
 
