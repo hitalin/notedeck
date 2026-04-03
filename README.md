@@ -8,10 +8,6 @@
 
 Misskey 統合環境 (IDE) — 閲覧・投稿・検索・連携をひとつに
 
-> **対応範囲:** Misskey 本家および「Misskey を名乗り続けるフォーク」（yamisskey, misskey-tempura 等）に対応しています。
-> Misskey から名前が別物になったフォーク（Sharkey, CherryPick, Firefish, Iceshrimp 等）は対応していません。
-> 詳しくは [STRATEGY.md](STRATEGY.md#フォーク対応方針) を参照してください。
-
 [![CI](https://github.com/hitalin/notedeck/actions/workflows/ci.yml/badge.svg)](https://github.com/hitalin/notedeck/actions/workflows/ci.yml)
 [![GitHub Release](https://img.shields.io/github/v/release/hitalin/notedeck?style=flat-square)](https://github.com/hitalin/notedeck/releases/latest)
 [![winget](https://img.shields.io/badge/winget-Hitalin.NoteDeck-blue?style=flat-square&logo=windows)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/h/Hitalin/NoteDeck)
@@ -22,9 +18,17 @@ Misskey 統合環境 (IDE) — 閲覧・投稿・検索・連携をひとつに
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](https://github.com/hitalin/notedeck/pulls)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/hitalin/notedeck)
 
-[ダウンロード](https://github.com/hitalin/notedeck/releases/latest) ·
+[Download](https://github.com/hitalin/notedeck/releases/latest) ·
 [Issues](https://github.com/hitalin/notedeck/issues) ·
-[Roadmap](ROADMAP.md)
+[Roadmap](ROADMAP.md) ·
+[Strategy](STRATEGY.md) ·
+[Architecture](ARCHITECTURE.md) ·
+[Design](DESIGN.md) ·
+[Development](DEVELOPMENT.md) ·
+[Performance](PERFORMANCE.md) ·
+[Contributing](CONTRIBUTING.md) ·
+[Security](SECURITY.md) ·
+[Code of Conduct](CODE_OF_CONDUCT.md)
 
 </div>
 
@@ -55,12 +59,6 @@ yay -S misskey-notedeck-bin
 ```bash
 nix run github:hitalin/notedeck
 ```
-
-> [!NOTE]
-> Windows / Android ではインストール時にセキュリティ警告が表示されることがあります。
-> これはアプリがコード署名されていないためで、マルウェアではありません。
-> ソースコードは公開されており、ビルドは GitHub Actions で自動化されています。
-> プロジェクトの成長に伴い、正式なコード署名の導入を予定しています。
 
 ## 貢献する
 
