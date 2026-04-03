@@ -416,7 +416,7 @@ usePortal(settingsMenuPortalRef)
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 10px 16px;
+  padding: 4px 12px;
   font-size: 0.85em;
   font-weight: bold;
   color: var(--nd-fg);
@@ -573,12 +573,12 @@ usePortal(settingsMenuPortalRef)
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 5px 16px;
+  padding: 4px 12px;
   border: none;
   background: none;
   cursor: pointer;
   font: inherit;
-  font-size: 0.9em;
+  font-size: 0.85em;
   line-height: 20px;
   color: var(--nd-fg);
   text-align: left;
@@ -605,7 +605,7 @@ usePortal(settingsMenuPortalRef)
 .settingsMenuDivider {
   height: 1px;
   background: var(--nd-divider);
-  margin: 4px 12px;
+  margin: 4px 0;
 }
 
 .dataGroup {
@@ -674,12 +674,12 @@ usePortal(settingsMenuPortalRef)
   }
 
   .settingsMenuItem {
-    padding: 10px 16px;
+    padding: 8px 12px;
     min-height: 44px;
   }
 
   .categoryHeader {
-    padding: 10px 16px;
+    padding: 8px 12px;
     min-height: 44px;
   }
 }

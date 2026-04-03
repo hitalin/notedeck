@@ -191,9 +191,9 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 16px;
+  padding: 4px 12px;
   cursor: pointer;
-  font-size: 0.9em;
+  font-size: 0.85em;
   line-height: 20px;
   color: var(--nd-fg);
   position: relative;
@@ -313,10 +313,10 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
   }
 
   .item {
-    padding: 10px 16px;
+    padding: 8px 12px;
     min-height: 44px;
-    font-size: 0.95em;
-    gap: 12px;
+    font-size: 0.85em;
+    gap: 8px;
   }
 
   .action {
