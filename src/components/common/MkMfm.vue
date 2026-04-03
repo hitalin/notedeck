@@ -17,6 +17,8 @@ const props = defineProps<{
   reactionEmojis?: Record<string, string>
   serverHost?: string
   compact?: boolean
+  myUsername?: string
+  myHost?: string
 }>()
 
 const emit = defineEmits<{
@@ -27,6 +29,17 @@ const emit = defineEmits<{
 
 const { resolveEmoji: resolveEmojiRaw } = useEmojiResolver()
 const style = useCssModule()
+
+function isMentionMe(username: string, host: string | null): boolean {
+  if (!props.myUsername) return false
+  if (username.toLowerCase() !== props.myUsername.toLowerCase()) return false
+  // Local mention matches if myHost is the same server or host is null
+  if (!host) return !props.myHost || props.myHost === props.serverHost
+  return (
+    host.toLowerCase() ===
+    (props.myHost ?? props.serverHost ?? '').toLowerCase()
+  )
+}
 
 const resolvedTokens = computed(() => {
   if (props.tokens) return props.tokens
@@ -333,8 +346,8 @@ function fnStyle(
 <template>
   <span class="mfm" :class="$style.mfm"><template v-for="(token, i) in resolvedTokens" :key="i"><!--
     --><!-- URL --><span v-if="token.type === 'url'" :class="$style.mfmUrlBlock"><a :href="isSafeUrl(token.value) ? token.value : '#'" :class="$style.mfmUrl" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><MkUrlPreview v-if="!compact" :url="token.value" /></span><!--
-    --><!-- Link --><a v-else-if="token.type === 'link'" :href="isSafeUrl(token.url) ? token.url : '#'" :class="$style.mfmUrl" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.url)"><MkMfm :tokens="token.label" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></a><!--
-    --><!-- Mention --><span v-else-if="token.type === 'mention'" :class="$style.mfmMention" @click.stop="emit('mentionClick', token.username, token.host)" @mouseenter="emit('mentionHover', $event, token.username, token.host)" @mouseleave="emit('mentionLeave')">{{ token.acct }}</span><!--
+    --><!-- Link --><a v-else-if="token.type === 'link'" :href="isSafeUrl(token.url) ? token.url : '#'" :class="$style.mfmUrl" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.url)"><MkMfm :tokens="token.label" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></a><!--
+    --><!-- Mention --><span v-else-if="token.type === 'mention'" :class="isMentionMe(token.username, token.host) ? $style.mfmMentionMe : $style.mfmMention" @click.stop="emit('mentionClick', token.username, token.host)" @mouseenter="emit('mentionHover', $event, token.username, token.host)" @mouseleave="emit('mentionLeave')">{{ token.acct }}</span><!--
     --><!-- Hashtag --><span v-else-if="token.type === 'hashtag'" :class="$style.mfmHashtag" @click.stop>#{{ token.value }}</span><!--
     --><!-- Bold --><b v-else-if="token.type === 'bold'">{{ token.value }}</b><!--
     --><!-- Italic --><i v-else-if="token.type === 'italic'">{{ token.value }}</i><!--
@@ -344,11 +357,11 @@ function fnStyle(
     --><!-- Custom Emoji (resolved) --><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="proxyUrl(emojiUrls[token.shortcode]!)" :alt="`:${token.shortcode}:`" class="custom-emoji" :class="$style.customEmoji" decoding="async" loading="lazy" @error="(e: Event) => { const img = e.target as HTMLImageElement; if (!img.src.endsWith('/emoji-unknown.svg')) img.src = '/emoji-unknown.svg' }" /><!--
     --><!-- Custom Emoji (unresolved — show fallback icon) --><img v-else-if="token.type === 'customEmoji'" src="/emoji-unknown.svg" :alt="`:${token.shortcode}:`" :title="`:${token.shortcode}:`" class="custom-emoji" :class="$style.customEmoji" /><!--
     --><!-- Unicode Emoji --><MkEmoji v-else-if="token.type === 'unicodeEmoji'" :emoji="token.value" class="twemoji" :class="$style.twemoji" /><!--
-    --><!-- MFM Function --><span v-else-if="token.type === 'fn'" :class="fnClass(token)" :style="fnStyle(token)"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
-    --><!-- Small --><small v-else-if="token.type === 'small'" :class="$style.mfmSmall"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></small><!--
-    --><!-- Center --><span v-else-if="token.type === 'center'" :class="$style.mfmCenter"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
+    --><!-- MFM Function --><span v-else-if="token.type === 'fn'" :class="fnClass(token)" :style="fnStyle(token)"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
+    --><!-- Small --><small v-else-if="token.type === 'small'" :class="$style.mfmSmall"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></small><!--
+    --><!-- Center --><span v-else-if="token.type === 'center'" :class="$style.mfmCenter"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
     --><!-- Plain --><span v-else-if="token.type === 'plain'">{{ token.value }}</span><!--
-    --><!-- Quote --><blockquote v-else-if="token.type === 'quote'" :class="$style.mfmQuote"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></blockquote><!--
+    --><!-- Quote --><blockquote v-else-if="token.type === 'quote'" :class="$style.mfmQuote"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></blockquote><!--
     --><!-- Search --><div v-else-if="token.type === 'search'" :class="$style.mfmSearch"><input :class="$style.mfmSearchInput" type="text" :value="token.query" readonly /><button :class="$style.mfmSearchButton" @click.stop="openUrl(`https://www.google.com/search?q=${encodeURIComponent(token.query)}`)">検索</button></div><!--
     --><!-- Math Inline --><span v-else-if="token.type === 'mathInline'" :class="$style.mfmMath" v-html="renderKatex(token.value, false)"></span><!--
     --><!-- Math Block --><div v-else-if="token.type === 'mathBlock'" :class="$style.mfmMathBlock" v-html="renderKatex(token.value, true)"></div><!--
@@ -380,6 +393,16 @@ function fnStyle(
 .mfmMention {
   color: var(--nd-mention);
   cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.mfmMentionMe {
+  color: var(--nd-mentionMe);
+  cursor: pointer;
+  font-weight: 600;
 
   &:hover {
     text-decoration: underline;

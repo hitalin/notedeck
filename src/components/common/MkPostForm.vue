@@ -32,6 +32,7 @@ import {
 } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
+import { parseMfm } from '@/utils/mfm'
 import { extractColumnThemeVars } from '@/utils/themeVars'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
@@ -351,13 +352,42 @@ onMounted(async () => {
     visibility.value = props.editNote.visibility
   } else if (props.replyTo) {
     visibility.value = props.replyTo.visibility
-    // Auto-insert @mention for reply target (skip self-reply)
+    const myUserId = account.value?.userId
+    const mentions: string[] = []
+    const seen = new Set<string>()
+
+    // 1. Reply target user
     const replyUser = props.replyTo.user
-    if (replyUser.id !== account.value?.userId) {
-      const mention = replyUser.host
-        ? `@${replyUser.username}@${replyUser.host} `
-        : `@${replyUser.username} `
-      text.value = mention
+    if (replyUser.id !== myUserId) {
+      const acct = replyUser.host
+        ? `@${replyUser.username}@${replyUser.host}`
+        : `@${replyUser.username}`
+      mentions.push(acct)
+      seen.add(acct.toLowerCase())
+    }
+
+    // 2. Mentions in the reply target's text (reply chain participants)
+    if (props.replyTo.text) {
+      for (const token of parseMfm(props.replyTo.text)) {
+        if (token.type !== 'mention') continue
+        const acct = token.acct
+        const lower = acct.toLowerCase()
+        if (seen.has(lower)) continue
+        // Skip self
+        const isSelf = token.host
+          ? token.username.toLowerCase() ===
+              account.value?.username?.toLowerCase() &&
+            token.host.toLowerCase() === account.value?.host?.toLowerCase()
+          : token.username.toLowerCase() ===
+            account.value?.username?.toLowerCase()
+        if (isSelf) continue
+        seen.add(lower)
+        mentions.push(acct)
+      }
+    }
+
+    if (mentions.length > 0) {
+      text.value = `${mentions.join(' ')} `
     }
   }
   if (props.initialText) text.value = props.initialText
@@ -744,6 +774,8 @@ function onKeydown(e: KeyboardEvent) {
               :text="text"
               :emojis="{}"
               :server-host="account?.host"
+              :my-username="account?.username"
+              :my-host="account?.host"
               @mention-hover="onPreviewMentionHover"
               @mention-leave="onPreviewMentionLeave"
             />
