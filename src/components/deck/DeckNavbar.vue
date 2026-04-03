@@ -196,11 +196,28 @@ const accountIsAdmin = ref<Record<string, boolean>>({})
 const togglingMode = ref(false)
 const modeError = ref<string | null>(null)
 
-function toggleAccountMenu(id: string) {
+function updateAccountMenuPosition(e?: MouseEvent) {
+  if (!e) return
+  const el = e.currentTarget as HTMLElement
+  const rect = el.getBoundingClientRect()
+  accountMenuStyle.value = {
+    position: 'fixed',
+    top: `${rect.top - 10 - rect.height / 2}px`,
+    left: `${rect.right}px`,
+    bottom: 'auto',
+    right: 'auto',
+    margin: '0',
+    contain: 'none',
+    zIndex: 'var(--nd-z-popup)',
+  }
+}
+
+function toggleAccountMenu(id: string, e?: MouseEvent) {
   if (accountMenuId.value === id) {
     accountMenuId.value = null
     return
   }
+  updateAccountMenuPosition(e)
   accountMenuId.value = id
   modeError.value = null
   loadAccountModes(id)
@@ -208,20 +225,7 @@ function toggleAccountMenu(id: string) {
 
 function openAccountMenu(id: string, e?: MouseEvent) {
   if (accountMenuId.value === id) return
-  if (e) {
-    const el = e.currentTarget as HTMLElement
-    const rect = el.getBoundingClientRect()
-    accountMenuStyle.value = {
-      position: 'fixed',
-      top: `${rect.top - 10 - rect.height / 2}px`,
-      left: `${rect.right}px`,
-      bottom: 'auto',
-      right: 'auto',
-      margin: '0',
-      contain: 'none',
-      zIndex: 'var(--nd-z-popup)',
-    }
-  }
+  updateAccountMenuPosition(e)
   accountMenuId.value = id
   modeError.value = null
   loadAccountModes(id)
@@ -536,7 +540,7 @@ defineExpose({
                 :key="acc.id"
                 :class="$style.accountPopupItem"
                 @mouseenter="openAccountMenu(acc.id, $event)"
-                @click.stop="openAccountMenu(acc.id, $event)"
+                @click.stop="toggleAccountMenu(acc.id, $event)"
               >
                 <div
                   :class="[$style.accountPopupBtn, { [$style.accountPopupBtnActive]: accountMenuId === acc.id }]"
