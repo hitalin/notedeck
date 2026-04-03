@@ -1024,6 +1024,7 @@ function onKeydown(e: KeyboardEvent) {
     box-shadow: none;
     max-width: none;
     margin: 0;
+    flex-shrink: 0;
     border-bottom: 1px solid var(--nd-divider);
 
     .header {
