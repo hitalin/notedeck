@@ -443,13 +443,11 @@ const pageEditUrl = computed(() => {
           @click="openPage(item.id)"
         >
           <div :class="$style.pageCardTitle">{{ item.title }}</div>
-          <div :class="$style.pageCardMeta">
-            <span :class="$style.pageCardAuthor">@{{ item.user.username }}</span>
-            <span v-if="item.likedCount > 0" :class="$style.pageCardLikes">
-              <i class="ti ti-heart" /> {{ item.likedCount }}
-            </span>
-          </div>
           <div v-if="item.summary" :class="$style.pageCardSummary">{{ item.summary }}</div>
+          <div :class="$style.pageCardMeta">
+            <img v-if="item.user.avatarUrl" :src="item.user.avatarUrl" :class="$style.pageCardAvatar" />
+            <span :class="$style.pageCardAuthor">{{ item.user.name || item.user.username }}</span>
+          </div>
         </button>
       </div>
       </div>
@@ -634,24 +632,6 @@ const pageEditUrl = computed(() => {
   color: var(--nd-fgHighlighted);
 }
 
-.pageCardMeta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.75em;
-  opacity: 0.6;
-}
-
-.pageCardAuthor {
-  /* placeholder for specificity */
-}
-
-.pageCardLikes {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
 .pageCardSummary {
   font-size: 0.8em;
   opacity: 0.7;
@@ -659,6 +639,25 @@ const pageEditUrl = computed(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.pageCardMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75em;
+  opacity: 0.6;
+}
+
+.pageCardAvatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.pageCardAuthor {
+  /* placeholder for specificity */
 }
 
 /* --- View mode --- */
