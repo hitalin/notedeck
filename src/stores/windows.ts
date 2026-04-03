@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { pushOverlay } from '@/composables/useBackButton'
+import { useUiStore } from '@/stores/ui'
 
 export type WindowType =
   | 'note-detail'
@@ -61,6 +63,7 @@ export const useWindowsStore = defineStore('windows', () => {
   const windows = ref<DeckWindow[]>([])
   let windowCounter = 0
   let topZIndex = 1500
+  const overlayCleanups = new Map<string, () => void>()
 
   const hasModal = computed(() => windows.value.some((w) => w.modal))
 
@@ -120,10 +123,18 @@ export const useWindowsStore = defineStore('windows', () => {
       maximized: false,
     }
     windows.value.push(win)
+    if (useUiStore().isMobilePlatform) {
+      overlayCleanups.set(
+        id,
+        pushOverlay(() => close(id)),
+      )
+    }
     return id
   }
 
   function close(id: string) {
+    overlayCleanups.get(id)?.()
+    overlayCleanups.delete(id)
     windows.value = windows.value.filter((w) => w.id !== id)
   }
 
@@ -157,6 +168,8 @@ export const useWindowsStore = defineStore('windows', () => {
   }
 
   function closeAll() {
+    for (const cleanup of overlayCleanups.values()) cleanup()
+    overlayCleanups.clear()
     windows.value = []
   }
 

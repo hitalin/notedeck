@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, onUnmounted } from 'vue'
-import { useBackButton } from '@/composables/useBackButton'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useThemeStore } from '@/stores/theme'
-import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import DeckWindow from './DeckWindow.vue'
 
@@ -89,18 +87,6 @@ function onKeydown(e: KeyboardEvent) {
 
 onMounted(() => document.addEventListener('keydown', onKeydown))
 onUnmounted(() => document.removeEventListener('keydown', onKeydown))
-
-// Android back button: close topmost window
-const uiStore = useUiStore()
-if (uiStore.isMobilePlatform) {
-  const hasWindows = computed(() => windowsStore.windows.length > 0)
-  useBackButton(hasWindows, () => {
-    const topWin = [...windowsStore.windows].sort(
-      (a, b) => b.zIndex - a.zIndex,
-    )[0]
-    if (topWin) windowsStore.close(topWin.id)
-  })
-}
 </script>
 
 <template>
