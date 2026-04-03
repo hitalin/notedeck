@@ -1218,13 +1218,13 @@ onUnmounted(() => {
 .notifServerBadge {
   position: absolute;
   top: -2px;
-  right: -2px;
+  right: -4px;
   width: 18px;
   height: 18px;
   border-radius: 50%;
   object-fit: contain;
   background: var(--nd-panel);
-  box-shadow: 0 0 0 2px var(--nd-panel);
+  box-shadow: 0 0 0 3px var(--nd-panel);
 }
 
 .notifSubIcon {

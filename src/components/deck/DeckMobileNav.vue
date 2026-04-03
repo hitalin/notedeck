@@ -126,9 +126,9 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
   opacity: 0.45;
   transition: opacity var(--nd-duration-slow), color var(--nd-duration-slow);
   --column-badge-border: var(--nd-navBg);
-  --column-badge-server-top: 5px;
+  --column-badge-server-top: 3px;
   --column-badge-server-right: calc(50% - 16px);
-  --column-badge-account-bottom: 4px;
+  --column-badge-account-bottom: 3px;
   --column-badge-account-left: calc(50% - 16px);
 
   &:active {
@@ -157,17 +157,17 @@ const { visibleGroups, groupPrimaryId, columnIcon, columnAccountId } =
 
 .stackBadge {
   position: absolute;
-  top: 5px;
+  top: 4px;
   left: calc(50% - 16px);
-  min-width: 12px;
-  height: 12px;
-  padding: 0 2px;
-  border-radius: 6px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
   background: var(--nd-accent);
   color: var(--nd-bg);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: bold;
-  line-height: 12px;
+  line-height: 14px;
   text-align: center;
 }
 
