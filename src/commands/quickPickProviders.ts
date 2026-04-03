@@ -121,19 +121,35 @@ export function getSettingsItems(): QuickPickItem[] {
       group: '設定',
       action: () => useWindowsStore().open('performanceEditor'),
     },
-    // Backup
+    // Data
+    {
+      id: 'clear-all-cache',
+      label: '全キャッシュ削除',
+      icon: 'eraser',
+      group: 'データ',
+      action: async () => {
+        const { confirm } = useConfirm()
+        const ok = await confirm({
+          title: 'キャッシュ削除',
+          message: 'ノートキャッシュとOGPキャッシュをすべて削除しますか？',
+          okLabel: '削除',
+          type: 'danger',
+        })
+        if (ok) await invoke('clear_all_cache')
+      },
+    },
     {
       id: 'export-db',
       label: 'DBエクスポート',
       icon: 'database-export',
-      group: 'バックアップ',
+      group: 'データ',
       action: () => invoke('export_db'),
     },
     {
       id: 'import-db',
       label: 'DBインポート',
       icon: 'database-import',
-      group: 'バックアップ',
+      group: 'データ',
       action: () =>
         backupWithConfirm(
           'import_db',
@@ -145,14 +161,14 @@ export function getSettingsItems(): QuickPickItem[] {
       id: 'export-settings',
       label: '設定エクスポート',
       icon: 'file-export',
-      group: 'バックアップ',
+      group: 'データ',
       action: () => invoke('export_settings_json'),
     },
     {
       id: 'import-settings',
       label: '設定インポート',
       icon: 'file-import',
-      group: 'バックアップ',
+      group: 'データ',
       action: () =>
         backupWithConfirm(
           'import_settings_json',

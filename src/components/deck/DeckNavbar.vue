@@ -312,6 +312,19 @@ function logoutDeleteAll() {
   logoutTargetId.value = null
 }
 
+async function clearAccountCache(accountId: string) {
+  const acc = accountsStore.accountMap.get(accountId)
+  if (!acc) return
+  const ok = await confirm({
+    title: 'キャッシュ削除',
+    message: `${getAccountLabel(acc)} のキャッシュを削除しますか？`,
+    okLabel: '削除',
+    type: 'danger',
+  })
+  if (!ok) return
+  await invoke('clear_account_cache', { accountId })
+}
+
 function toggleFirstAccountMenu() {
   if (!isCompact.value) {
     commandStore.execute('account-menu')
@@ -600,6 +613,7 @@ defineExpose({
               @toggle-mode="toggleAccountMode(selectedAccount.id, $event)"
               @logout="showAccountPopup = false; showLogoutDialog(selectedAccount.id)"
               @relogin="(host: string) => { showAccountPopup = false; closeDrawerAndDo(() => navigateToLogin(host)) }"
+              @clear-cache="showAccountPopup = false; clearAccountCache(selectedAccount.id)"
               @close="accountMenuId = null"
             />
           </div>
