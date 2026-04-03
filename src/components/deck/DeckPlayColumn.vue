@@ -424,14 +424,17 @@ function reload() {
           :class="$style.playCard"
           @click="openPlay(item.id)"
         >
-          <div :class="$style.playCardTitle">{{ item.title }}</div>
-          <div :class="$style.playCardMeta">
-            <span :class="$style.playCardAuthor">@{{ item.user.username }}</span>
-            <span v-if="item.likedCount > 0" :class="$style.playCardLikes">
-              <i class="ti ti-heart" /> {{ item.likedCount }}
-            </span>
+          <img :src="item.user.avatarUrl || '/avatar-default.svg'" :class="$style.playCardAvatar" @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'" />
+          <div :class="$style.playCardInfo">
+            <div :class="$style.playCardTitle">{{ item.title }}</div>
+            <div :class="$style.playCardMeta">
+              <span :class="$style.playCardAuthor">@{{ item.user.username }}</span>
+              <span v-if="item.likedCount > 0" :class="$style.playCardLikes">
+                <i class="ti ti-heart" /> {{ item.likedCount }}
+              </span>
+            </div>
+            <div v-if="item.summary" :class="$style.playCardSummary">{{ item.summary }}</div>
           </div>
-          <div v-if="item.summary" :class="$style.playCardSummary">{{ item.summary }}</div>
         </button>
       </div>
       </div>
@@ -592,8 +595,7 @@ function reload() {
 
 .playCard {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 10px;
   width: 100%;
   padding: 12px 14px;
   text-align: left;
@@ -601,11 +603,27 @@ function reload() {
   transition: background var(--nd-duration-base);
   contain: layout style paint;
   content-visibility: auto;
-  contain-intrinsic-size: auto 65px;
+  contain-intrinsic-size: auto 75px;
 
   &:hover {
     background: var(--nd-buttonHoverBg);
   }
+}
+
+.playCardAvatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.playCardInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .playCardTitle {
