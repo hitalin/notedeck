@@ -213,6 +213,25 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
                   },
                 })
               }
+              items.push({
+                id: `${acc.id}-clear-cache`,
+                label: 'キャッシュ削除',
+                icon: 'eraser',
+                action: async () => {
+                  commandStore.close()
+                  const { confirm } = useConfirm()
+                  const ok = await confirm({
+                    title: 'キャッシュ削除',
+                    message: `${actions.getAccountLabel(acc)} のキャッシュを削除しますか？`,
+                    okLabel: '削除',
+                    type: 'danger',
+                  })
+                  if (ok) {
+                    const { invoke } = await import('@/utils/tauriInvoke')
+                    await invoke('clear_account_cache', { accountId: acc.id })
+                  }
+                },
+              })
               return items
             },
           })),
@@ -264,6 +283,27 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('toggle-realtime-mode'),
     execute: () => useRealtimeModeStore().toggle(),
+  })
+
+  commandStore.register({
+    id: 'clear-all-cache',
+    label: '全キャッシュ削除',
+    icon: 'eraser',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('clear-all-cache'),
+    execute: async () => {
+      const { confirm } = useConfirm()
+      const ok = await confirm({
+        title: 'キャッシュ削除',
+        message: 'ノートキャッシュとOGPキャッシュをすべて削除しますか？',
+        okLabel: '削除',
+        type: 'danger',
+      })
+      if (ok) {
+        const { invoke } = await import('@/utils/tauriInvoke')
+        await invoke('clear_all_cache')
+      }
+    },
   })
 
   // Note-level shortcuts (dispatched as CustomEvents to active column)

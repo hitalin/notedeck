@@ -1,11 +1,11 @@
 [package]
 name = "notedeck"
-version = "0.9.18"
+version = "0.9.19"
 description = "Misskey IDE — integrated environment for browsing, posting, searching, and connecting"
 edition = "2021"
 
 [dependencies]
-notecli = { git = "https://github.com/hitalin/notecli.git", rev = "415fd34" }
+notecli = { git = "https://github.com/hitalin/notecli.git", rev = "5455284" }
 tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"

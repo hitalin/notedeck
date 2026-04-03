@@ -558,8 +558,13 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     const fileProfiles = await loadProfilesFromFiles()
 
     if (fileProfiles.length > 0) {
-      profilesData.value = fileProfiles
-      setStorageJson(STORAGE_KEYS.deckProfiles, fileProfiles)
+      // Merge: file profiles are authoritative, but keep in-memory-only
+      // profiles that were created before file I/O completed.
+      const fileIds = new Set(fileProfiles.map((p) => p.id))
+      const memOnly = profilesData.value.filter((p) => !fileIds.has(p.id))
+      const merged = [...fileProfiles, ...memOnly]
+      profilesData.value = merged
+      setStorageJson(STORAGE_KEYS.deckProfiles, merged)
       profileVersion.value++
     }
     initialized.value = true

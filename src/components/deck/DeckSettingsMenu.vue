@@ -165,7 +165,7 @@ function openToolWindow(
     | 'performanceEditor',
 ) {
   windowsStore.open(type)
-  emit('close-all')
+  emit('close')
 }
 
 const { confirm } = useConfirm()
@@ -219,6 +219,28 @@ const importSettings = () =>
     },
     relaunch: true,
   })
+
+const isClearingCache = ref(false)
+const cacheError = ref('')
+
+async function clearAllCache() {
+  const ok = await confirm({
+    title: 'キャッシュ削除',
+    message: 'ノートキャッシュとOGPキャッシュをすべて削除しますか？',
+    okLabel: '削除',
+    type: 'danger',
+  })
+  if (!ok) return
+  isClearingCache.value = true
+  cacheError.value = ''
+  try {
+    await invoke('clear_all_cache')
+  } catch (e) {
+    cacheError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    isClearingCache.value = false
+  }
+}
 
 const settingsMenuPortalRef = useTemplateRef<HTMLElement>(
   'settingsMenuPortalRef',
@@ -334,16 +356,26 @@ usePortal(settingsMenuPortalRef)
         </div>
       </div>
 
-      <!-- バックアップ -->
+      <!-- データ -->
       <div :class="$style.categorySection">
-        <button :class="$style.categoryHeader" @click="toggleSection('backup')">
-          <i class="ti ti-database-export" />
-          <span>バックアップ</span>
-          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.backup }]" />
+        <button :class="$style.categoryHeader" @click="toggleSection('data')">
+          <i class="ti ti-database" />
+          <span>データ</span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.data }]" />
         </button>
-        <div v-if="expandedSections.backup" :class="$style.categoryBody">
+        <div v-if="expandedSections.data" :class="$style.categoryBody">
           <div :class="$style.dataGroup">
-            <span :class="$style.dataGroupLabel"><i class="ti ti-database" /> DBバックアップ</span>
+            <span :class="$style.dataGroupLabel"><i class="ti ti-eraser" /> キャッシュ</span>
+            <div :class="$style.dataBtnRow">
+              <button class="_button" :class="$style.dataBtn" :disabled="isClearingCache" @click="clearAllCache">
+                <i class="ti ti-trash" />
+                {{ isClearingCache ? '処理中...' : '全キャッシュ削除' }}
+              </button>
+            </div>
+            <div v-if="cacheError" :class="$style.backupError">{{ cacheError }}</div>
+          </div>
+          <div :class="$style.dataGroup">
+            <span :class="$style.dataGroupLabel"><i class="ti ti-database-export" /> DBバックアップ</span>
             <div :class="$style.dataBtnRow">
               <button class="_button" :class="$style.dataBtn" :disabled="isImportingDb" @click="importDb">
                 <i class="ti ti-clipboard-text" />

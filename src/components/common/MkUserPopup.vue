@@ -137,6 +137,11 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
         <div v-if="user.isFollowed" :class="$style.popupBadge">フォローされています</div>
 
+        <div v-if="user.host" :class="$style.remoteBadge">
+          <i class="ti ti-info-circle" />
+          リモートユーザー
+        </div>
+
         <button class="_popupItem" @click.stop="openUrl(`https://${account?.host}/@${user.username}${user.host ? `@${user.host}` : ''}`)">
           <i class="ti ti-external-link" />
           Web UIで開く
@@ -243,6 +248,16 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   color: var(--nd-accent);
 }
 
+.remoteBadge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 0.8em;
+  color: var(--nd-infoFg);
+  background: var(--nd-infoBg);
+  opacity: 0.8;
+}
 
 .mobile {
   width: auto;

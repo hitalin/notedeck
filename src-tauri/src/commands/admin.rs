@@ -50,6 +50,50 @@ pub async fn logout_account(
     Ok(())
 }
 
+// --- Cache management ---
+
+#[derive(serde::Serialize)]
+pub struct CacheStats {
+    pub note_count: i64,
+    pub db_size_bytes: i64,
+}
+
+#[tauri::command]
+pub async fn cache_stats(app_state: State<'_, AppState>) -> Result<CacheStats> {
+    let db = app_state.db().await;
+    let (note_count, db_size_bytes) = db.cache_stats()?;
+    Ok(CacheStats {
+        note_count,
+        db_size_bytes,
+    })
+}
+
+#[tauri::command]
+pub async fn account_cache_count(
+    app_state: State<'_, AppState>,
+    account_id: String,
+) -> Result<i64> {
+    let db = app_state.db().await;
+    db.account_cache_count(&account_id)
+}
+
+#[tauri::command]
+pub async fn clear_account_cache(
+    app_state: State<'_, AppState>,
+    account_id: String,
+) -> Result<u64> {
+    let db = app_state.db().await;
+    db.clear_account_cache(&account_id)
+}
+
+#[tauri::command]
+pub async fn clear_all_cache(app_state: State<'_, AppState>) -> Result<u64> {
+    let db = app_state.db().await;
+    let notes = db.clear_all_notes_cache()?;
+    let _ogp = db.clear_ogp_cache()?;
+    Ok(notes)
+}
+
 // --- Guest / Anonymous API ---
 
 /// Create a guest (unauthenticated) account for browsing public timelines.

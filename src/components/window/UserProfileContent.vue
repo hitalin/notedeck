@@ -43,7 +43,7 @@ import { proxyUrl } from '@/utils/imageProxy'
 import { invoke } from '@/utils/tauriInvoke'
 import { toggleFollow } from '@/utils/toggleFollow'
 import { toggleReaction } from '@/utils/toggleReaction'
-import { safeCssUrl } from '@/utils/url'
+import { openSafeUrl, safeCssUrl } from '@/utils/url'
 
 const openUrl = async (url: string) => {
   const { openUrl: open } = await import('@tauri-apps/plugin-opener')
@@ -99,6 +99,14 @@ const account = computed(() =>
   accountsStore.accounts.find((a) => a.id === props.accountId),
 )
 const isOwnProfile = computed(() => account.value?.userId === props.userId)
+const remoteProfileUrl = computed(() => {
+  if (!user.value?.host) return null
+  return user.value.url || `https://${user.value.host}/@${user.value.username}`
+})
+
+function openRemoteProfile() {
+  openSafeUrl(remoteProfileUrl.value)
+}
 
 let adapter: ServerAdapter | null = null
 
@@ -546,6 +554,15 @@ async function handlePosted(editedNoteId?: string) {
     </div>
 
     <template v-else-if="user">
+      <!-- Remote user caution -->
+      <div v-if="user.host" :class="$style.remoteCaution">
+        <i class="ti ti-alert-triangle" style="margin-right: 8px;" />
+        リモートユーザーのため、情報が不完全です。
+        <a v-if="remoteProfileUrl" :class="$style.remoteCautionLink" href="#" @click.prevent="openRemoteProfile">
+          リモートで表示
+        </a>
+      </div>
+
       <div :class="$style.profileContainer">
         <!-- Banner area -->
         <div :class="$style.bannerArea">
@@ -1041,6 +1058,24 @@ async function handlePosted(editedNoteId?: string) {
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.remoteCaution {
+  font-size: 0.8em;
+  padding: 16px;
+  background: var(--nd-infoWarnBg);
+  color: var(--nd-infoWarnFg);
+  border-radius: var(--nd-radius);
+  overflow: clip;
+}
+
+.remoteCautionLink {
+  margin-left: 4px;
+  color: var(--nd-accent);
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 .roles {

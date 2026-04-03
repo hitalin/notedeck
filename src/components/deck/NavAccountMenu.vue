@@ -35,6 +35,7 @@ const emit = defineEmits<{
   'toggle-mode': [key: string]
   logout: []
   relogin: [host: string]
+  'clear-cache': []
   close: []
 }>()
 
@@ -148,6 +149,10 @@ function modeIcon(key: string, active: boolean): string {
 
       <!-- Account actions -->
       <div v-if="hasUpperSection" :class="$style.navAccountMenuDivider" />
+      <button class="_button" :class="$style.navAccountMenuItem" @click="emit('clear-cache')">
+        <span>キャッシュ削除</span>
+        <i class="ti ti-eraser" />
+      </button>
       <template v-if="account.hasToken">
         <button class="_button" :class="[$style.navAccountMenuItem, $style.navAccountLogout]" @click="emit('logout')">
           <span>ログアウト</span>

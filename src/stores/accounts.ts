@@ -151,6 +151,7 @@ export const useAccountsStore = defineStore('accounts', () => {
     // Clean up localStorage caches associated with this account
     removeStorage(STORAGE_KEYS.drafts(id))
     removeStorage(STORAGE_KEYS.notificationCache(id))
+    removeStorage(STORAGE_KEYS.policies(id))
   }
 
   async function logoutAccount(id: string): Promise<void> {
