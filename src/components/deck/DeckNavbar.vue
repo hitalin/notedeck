@@ -122,9 +122,21 @@ function getNavBadge(item: NavItem): number {
 
 function closeDrawerAndDo(fn: () => void) {
   emit('update:mobileDrawerOpen', false)
-  // nextTick で遅延: ドロワーの useBackButton (history.back()) が
-  // 先に処理されてから fn を実行し、popstate 競合を回避する
-  nextTick(fn)
+  // ドロワーの useBackButton が history.back() を呼ぶ。
+  // popstate はマクロタスクで発火するため nextTick（マイクロタスク）では不十分。
+  // popstate が処理された後に fn を実行し、
+  // DeckWindowLayer の useBackButton がウィンドウを即閉じする競合を回避する。
+  let done = false
+  const run = () => {
+    if (done) return
+    done = true
+    window.removeEventListener('popstate', onPop)
+    nextTick(fn)
+  }
+  const onPop = () => run()
+  window.addEventListener('popstate', onPop, { once: true })
+  // popstate が発火しないケースのフォールバック
+  setTimeout(run, 100)
 }
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
