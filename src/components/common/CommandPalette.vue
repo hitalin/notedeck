@@ -29,7 +29,7 @@ type PaletteMode = 'addColumn' | 'profile' | 'settings'
 
 const PREFIX_MAP: Record<string, PaletteMode> = {
   '+': 'addColumn',
-  '#': 'profile',
+  '~': 'profile',
   '*': 'settings',
 }
 
