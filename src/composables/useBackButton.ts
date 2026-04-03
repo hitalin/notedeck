@@ -1,40 +1,82 @@
 import { onUnmounted, type Ref, watch } from 'vue'
 
-/**
- * Handle Android back button / gesture by closing overlay UI.
- *
- * When a tracked overlay opens, a history entry is pushed.
- * When Android fires `popstate` (back button), the overlay is closed
- * instead of navigating away / exiting the app.
- */
-export function useBackButton(overlayRef: Ref<boolean>, close: () => void) {
-  const marker = `nd-overlay-${Math.random().toString(36).slice(2, 8)}`
-  let pushed = false
+// --- モジュールレベル シングルトン ---
 
-  function onPopState(e: PopStateEvent) {
-    if (e.state === marker) return
-    if (pushed && overlayRef.value) {
-      pushed = false
-      close()
+interface OverlayEntry {
+  id: string
+  close: () => void
+}
+
+const MARKER = 'nd-overlay'
+const stack: OverlayEntry[] = []
+let historyActive = false
+let ignoringPop = false
+
+function handlePopState() {
+  if (ignoringPop) {
+    ignoringPop = false
+    return
+  }
+  historyActive = false
+  const top = stack.pop()
+  if (top) top.close()
+  // 残りがあれば再 push
+  if (stack.length > 0) {
+    history.pushState(MARKER, '')
+    historyActive = true
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', handlePopState)
+}
+
+// --- Public API ---
+
+/**
+ * Overlay を登録し、Android back button で閉じられるようにする。
+ * 戻り値は解除関数（冪等）。
+ */
+export function pushOverlay(close: () => void): () => void {
+  const id = `nd-${Math.random().toString(36).slice(2, 8)}`
+  stack.push({ id, close })
+  if (!historyActive) {
+    history.pushState(MARKER, '')
+    historyActive = true
+  }
+  let removed = false
+  return () => {
+    if (removed) return
+    removed = true
+    const idx = stack.findIndex((e) => e.id === id)
+    if (idx === -1) return // back 操作で既に pop 済み
+    stack.splice(idx, 1)
+    if (stack.length === 0 && historyActive) {
+      ignoringPop = true
+      historyActive = false
+      history.back()
     }
   }
+}
+
+/**
+ * Composable: ref を監視して overlay を自動登録/解除する。
+ * Android back button / gesture でオーバーレイ UI を閉じる。
+ */
+export function useBackButton(overlayRef: Ref<boolean>, close: () => void) {
+  let unregister: (() => void) | null = null
 
   watch(overlayRef, (open) => {
     if (open) {
-      history.pushState(marker, '')
-      pushed = true
-    } else if (pushed) {
-      pushed = false
-      history.back()
+      unregister = pushOverlay(close)
+    } else {
+      unregister?.()
+      unregister = null
     }
   })
 
-  window.addEventListener('popstate', onPopState)
   onUnmounted(() => {
-    window.removeEventListener('popstate', onPopState)
-    if (pushed) {
-      pushed = false
-      history.back()
-    }
+    unregister?.()
+    unregister = null
   })
 }

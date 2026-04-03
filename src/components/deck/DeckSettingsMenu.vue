@@ -327,11 +327,11 @@ usePortal(settingsMenuPortalRef)
         @change="onFileSelected"
       />
 
-      <!-- 設定 -->
+      <!-- 環境設定 -->
       <div :class="$style.categorySection">
         <button :class="$style.categoryHeader" @click="toggleSection('settings')">
           <i class="ti ti-settings" />
-          <span>設定</span>
+          <span>環境設定</span>
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.settings }]" />
         </button>
         <div v-if="expandedSections.settings" :class="$style.categoryBody">
