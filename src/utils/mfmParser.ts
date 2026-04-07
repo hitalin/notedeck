@@ -59,7 +59,7 @@ const inlinePatterns: PatternDef[] = [
     }),
   },
   {
-    regex: /https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%\u0080-\uFFFF]+/g,
+    regex: /https?:\/\/[.,a-zA-Z0-9_/:%#@$&?!~=+\-[\]()]+/g,
     parse: (m) => ({ type: 'url', value: g(m, 0) }),
   },
   {

@@ -26,26 +26,42 @@ describe('parseMfm', () => {
     expect(tokens[0]?.type).toBe('url')
   })
 
-  it('parses URL with Japanese path (e.g. Wikipedia)', () => {
+  it('bare URL stops before Japanese characters (mfm-js compat, #307)', () => {
     const tokens = parseMfm('https://ja.wikipedia.org/wiki/シナモン')
-    expect(tokens).toHaveLength(1)
+    expect(tokens).toHaveLength(2)
     expect(tokens[0]).toEqual({
       type: 'url',
-      value: 'https://ja.wikipedia.org/wiki/シナモン',
+      value: 'https://ja.wikipedia.org/wiki/',
     })
   })
 
-  it('parses URL with non-ASCII characters in surrounding text', () => {
-    const tokens = parseMfm(
-      'これは https://ja.wikipedia.org/wiki/シナモン の記事',
-    )
-    expect(tokens).toHaveLength(3)
-    expect(tokens[0]).toEqual({ type: 'text', value: 'これは ' })
-    expect(tokens[1]).toEqual({
+  it('does not include trailing Japanese text as part of URL (#307)', () => {
+    const tokens = parseMfm('https://example.comあ')
+    expect(tokens).toHaveLength(2)
+    expect(tokens[0]).toEqual({ type: 'url', value: 'https://example.com' })
+    expect(tokens[1]).toEqual({ type: 'text', value: 'あ' })
+  })
+
+  it('does not include trailing Japanese after path as part of URL (#307)', () => {
+    const tokens = parseMfm('https://ja.wikipedia.org/wiki/hogeあ')
+    expect(tokens).toHaveLength(2)
+    expect(tokens[0]).toEqual({
       type: 'url',
-      value: 'https://ja.wikipedia.org/wiki/シナモン',
+      value: 'https://ja.wikipedia.org/wiki/hoge',
     })
-    expect(tokens[2]).toEqual({ type: 'text', value: ' の記事' })
+    expect(tokens[1]).toEqual({ type: 'text', value: 'あ' })
+  })
+
+  it('parses percent-encoded non-ASCII URL correctly', () => {
+    const tokens = parseMfm(
+      'https://ja.wikipedia.org/wiki/%E3%82%B7%E3%83%8A%E3%83%A2%E3%83%B3',
+    )
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]).toEqual({
+      type: 'url',
+      value:
+        'https://ja.wikipedia.org/wiki/%E3%82%B7%E3%83%8A%E3%83%A2%E3%83%B3',
+    })
   })
 
   // Mentions
