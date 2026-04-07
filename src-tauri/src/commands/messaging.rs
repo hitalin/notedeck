@@ -7,6 +7,7 @@ use super::{get_credentials, AppState, Result};
 // --- Notifications ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_notifications(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -20,6 +21,7 @@ pub async fn api_get_notifications(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_notifications_grouped(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -33,6 +35,7 @@ pub async fn api_get_notifications_grouped(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_unread_notification_count(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -45,6 +48,7 @@ pub async fn api_get_unread_notification_count(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_mark_all_notifications_as_read(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -59,6 +63,7 @@ pub async fn api_mark_all_notifications_as_read(
 // --- Unread chat ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_unread_chat(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -71,6 +76,7 @@ pub async fn api_get_unread_chat(
 // --- Chat ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_chat_history(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -85,6 +91,7 @@ pub async fn api_get_chat_history(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_chat_user_messages(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -108,6 +115,7 @@ pub async fn api_get_chat_user_messages(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_chat_room_messages(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -131,6 +139,7 @@ pub async fn api_get_chat_room_messages(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_create_chat_message(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -160,6 +169,7 @@ pub async fn api_create_chat_message(
 // --- Chat reactions ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_react_chat_message(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -174,6 +184,7 @@ pub async fn api_react_chat_message(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_unreact_chat_message(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -190,6 +201,7 @@ pub async fn api_unreact_chat_message(
 // --- Legacy messaging ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_create_messaging_message(
     app_state: State<'_, AppState>,
     account_id: String,

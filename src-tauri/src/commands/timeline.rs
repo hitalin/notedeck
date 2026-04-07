@@ -21,6 +21,7 @@ const MAX_OGP_CONCURRENT: usize = 20;
 // --- Timelines ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_timeline(
     app: tauri::AppHandle,
     app_state: State<'_, AppState>,
@@ -110,6 +111,7 @@ fn spawn_ogp_prefetch(
 // --- Lists / Antennas ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_user_lists(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -120,6 +122,7 @@ pub async fn api_get_user_lists(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_antennas(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -130,6 +133,7 @@ pub async fn api_get_antennas(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_antenna_notes(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -158,6 +162,7 @@ pub async fn api_get_antenna_notes(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_favorites(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -184,6 +189,7 @@ pub async fn api_get_favorites(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_featured_notes(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -198,6 +204,7 @@ pub async fn api_get_featured_notes(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_mentions(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -228,6 +235,7 @@ pub async fn api_get_mentions(
 // --- Clips ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_clips(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -238,6 +246,7 @@ pub async fn api_get_clips(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_clip_notes(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -268,6 +277,7 @@ pub async fn api_get_clip_notes(
 // --- Channels ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_channels(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -278,6 +288,7 @@ pub async fn api_get_channels(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_search_channels(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -289,6 +300,7 @@ pub async fn api_search_channels(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_channel_notes(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -319,6 +331,7 @@ pub async fn api_get_channel_notes(
 // --- Notes ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_note(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -330,6 +343,7 @@ pub async fn api_get_note(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_create_note(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -385,6 +399,7 @@ pub async fn api_create_note(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_update_note(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -397,6 +412,7 @@ pub async fn api_update_note(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_delete_note(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -410,6 +426,7 @@ pub async fn api_delete_note(
 // --- Reactions ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_create_reaction(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -424,6 +441,7 @@ pub async fn api_create_reaction(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_delete_reaction(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -435,6 +453,7 @@ pub async fn api_delete_reaction(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_note_reactions(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -460,6 +479,7 @@ pub async fn api_get_note_reactions(
 // --- Favorites ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_create_favorite(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -471,6 +491,7 @@ pub async fn api_create_favorite(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_delete_favorite(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -484,6 +505,7 @@ pub async fn api_delete_favorite(
 // --- Pin/Unpin ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_pin_note(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -495,6 +517,7 @@ pub async fn api_pin_note(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_unpin_note(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -506,6 +529,7 @@ pub async fn api_unpin_note(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_user_pinned_note_ids(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -521,6 +545,7 @@ pub async fn api_get_user_pinned_note_ids(
 // --- Clip operations ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_add_note_to_clip(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -537,6 +562,7 @@ pub async fn api_add_note_to_clip(
 // --- Note thread ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_note_children(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -557,6 +583,7 @@ pub async fn api_get_note_children(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_note_renotes(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -581,6 +608,7 @@ pub async fn api_get_note_renotes(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_note_conversation(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -603,6 +631,7 @@ pub async fn api_get_note_conversation(
 // --- Search ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_search_notes(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -630,6 +659,7 @@ pub async fn api_search_notes(
 // --- Upload ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_upload_file(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -656,6 +686,7 @@ pub async fn api_upload_file(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_upload_file_from_path(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -693,6 +724,7 @@ pub async fn api_upload_file_from_path(
 // --- Cache ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_cached_timeline(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -708,6 +740,7 @@ pub async fn api_get_cached_timeline(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_cached_timeline_before(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -728,6 +761,7 @@ pub async fn api_get_cached_timeline_before(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_cache_date_range(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -738,6 +772,7 @@ pub async fn api_get_cache_date_range(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_search_notes_local(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -764,6 +799,7 @@ pub async fn api_search_notes_local(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_delete_cached_note(
     app_state: State<'_, AppState>,
     note_id: String,
@@ -779,6 +815,7 @@ const MAX_VERIFY_CONCURRENT: usize = 20;
 /// Returns a map of note_id → fresh NormalizedNote for notes that still exist.
 /// Missing notes (404) are omitted from the result.
 #[tauri::command]
+#[specta::specta]
 pub async fn api_verify_notes(
     app_state: State<'_, AppState>,
     account_id: String,

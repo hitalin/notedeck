@@ -5,7 +5,7 @@ description = "Misskey IDE — integrated environment for browsing, posting, sea
 edition = "2021"
 
 [dependencies]
-notecli = { git = "https://github.com/hitalin/notecli.git", rev = "94adebb" }
+notecli = { git = "https://github.com/hitalin/notecli.git", rev = "5536ca2", features = ["specta"] }
 tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
@@ -17,6 +17,9 @@ bytes = "1"
 futures-util = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+specta = { version = "=2.0.0-rc.22", features = ["derive", "serde_json"] }
+tauri-specta = { version = "=2.0.0-rc.21", features = ["derive", "typescript"] }
+specta-typescript = "0.0.9"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 uuid = { version = "1", features = ["v4"] }

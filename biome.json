@@ -55,6 +55,7 @@
   "files": {
     "includes": [
       "src/**/*.ts",
+      "!src/bindings.ts",
       "src/**/*.vue",
       "tests/**/*.ts",
       "vite.config.ts",

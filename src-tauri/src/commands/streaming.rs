@@ -17,6 +17,7 @@ async fn ensure_stream_connected(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_connect(
     app_state: State<'_, AppState>,
     streaming: State<'_, StreamingManager>,
@@ -28,6 +29,7 @@ pub async fn stream_connect(
 
 /// Connect + subscribe in a single IPC round-trip (timeline).
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_connect_and_subscribe_timeline(
     app_state: State<'_, AppState>,
     streaming: State<'_, StreamingManager>,
@@ -44,6 +46,7 @@ pub async fn stream_connect_and_subscribe_timeline(
 
 /// Connect + subscribe in a single IPC round-trip (antenna).
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_connect_and_subscribe_antenna(
     app_state: State<'_, AppState>,
     streaming: State<'_, StreamingManager>,
@@ -57,6 +60,7 @@ pub async fn stream_connect_and_subscribe_antenna(
 
 /// Connect + subscribe in a single IPC round-trip (channel).
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_connect_and_subscribe_channel(
     app_state: State<'_, AppState>,
     streaming: State<'_, StreamingManager>,
@@ -69,6 +73,7 @@ pub async fn stream_connect_and_subscribe_channel(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_disconnect(
     streaming: State<'_, StreamingManager>,
     account_id: String,
@@ -80,6 +85,7 @@ pub async fn stream_disconnect(
 /// Switch between realtime (WebSocket) and polling (HTTP) mode.
 /// Subscriptions are preserved across the switch.
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_set_mode(
     app_state: State<'_, AppState>,
     streaming: State<'_, StreamingManager>,
@@ -95,6 +101,7 @@ pub async fn stream_set_mode(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_subscribe_timeline(
     streaming: State<'_, StreamingManager>,
     account_id: String,
@@ -107,6 +114,7 @@ pub async fn stream_subscribe_timeline(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_subscribe_antenna(
     streaming: State<'_, StreamingManager>,
     account_id: String,
@@ -116,6 +124,7 @@ pub async fn stream_subscribe_antenna(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_subscribe_channel(
     streaming: State<'_, StreamingManager>,
     account_id: String,
@@ -125,6 +134,7 @@ pub async fn stream_subscribe_channel(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_subscribe_chat_user(
     streaming: State<'_, StreamingManager>,
     account_id: String,
@@ -134,6 +144,7 @@ pub async fn stream_subscribe_chat_user(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_subscribe_chat_room(
     streaming: State<'_, StreamingManager>,
     account_id: String,
@@ -143,6 +154,7 @@ pub async fn stream_subscribe_chat_room(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_subscribe_main(
     streaming: State<'_, StreamingManager>,
     account_id: String,
@@ -151,6 +163,7 @@ pub async fn stream_subscribe_main(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_unsubscribe(
     streaming: State<'_, StreamingManager>,
     account_id: String,
@@ -160,6 +173,7 @@ pub async fn stream_unsubscribe(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_sub_note(
     streaming: State<'_, StreamingManager>,
     account_id: String,
@@ -169,6 +183,7 @@ pub async fn stream_sub_note(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn stream_unsub_note(
     streaming: State<'_, StreamingManager>,
     account_id: String,
