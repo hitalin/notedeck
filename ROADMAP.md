@@ -320,12 +320,8 @@ NoteDeck は `Cargo.toml` で git 依存として参照。
 
 ### 未完了
 
-- [ ] **ノートの Markdown 保存** — ノート右クリック →「Markdown で保存」。
-  ローカルファイルに直接書き出し。L3 エクスポートの単一ノート版
 - [ ] **添付ファイル一括ダウンロード** — 特定ユーザー / カラムの全添付ファイルを
   `~/Downloads/notedeck/{user}/` にバッチ保存
-- [ ] **ノートコピー形式拡充** — MFM / Markdown 形式でのコピーを追加。
-  MFM は Misskey 再投稿用、Markdown は PKM・AI 向け
 - [ ] **リッチテキスト → MFM 変換** — Word やブラウザからリッチテキストをコピペ →
   太字・リンク等を MFM 記法に自動変換
 
@@ -463,8 +459,6 @@ ActivityPub の正規 URI（`note.uri`）で同一ノートを特定し、全サ
 NoteDeck は Misskey クライアントであり、PKM ツールではない。
 ノートの整理・知識化は Obsidian / Logseq 等の専門ツールに委ね、NoteDeck はデータの橋渡しに徹する。
 
-- [ ] **Markdown エクスポート** — ノート・検索結果単位で Markdown ファイルに書き出し。
-  Obsidian / Logseq / Notion / HackMD 等に直接保存可能
 - [x] **JSON エクスポート** — `export_settings_json` / `import_settings_json` で
   GUI 設定の一括バックアップ・復元を実装済み。DB バックアップと合わせて全データ対応
 - [ ] **PKM 連携（Obsidian / Logseq）** — ノートメニュー →「PKM に送る」で直接保存。
