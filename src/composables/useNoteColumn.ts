@@ -82,6 +82,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     setSubscription,
     disposeSubscription,
     disconnect,
+    onStreamEvent,
     postForm,
     handlers,
     scroller,
@@ -339,13 +340,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
         // Pause streaming to prevent auto-flush flicker while API fetch is pending
         streamingBatch.setPaused(true)
         adapter.stream.connect()
-        adapter.stream.on('disconnected', () => {
+        onStreamEvent('disconnected', () => {
           isOffline.value = true
         })
-        adapter.stream.on('reconnecting', () => {
+        onStreamEvent('reconnecting', () => {
           isOffline.value = true
         })
-        adapter.stream.on('connected', () => {
+        onStreamEvent('connected', () => {
           isOffline.value = false
         })
         setSubscription(

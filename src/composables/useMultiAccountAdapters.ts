@@ -1,51 +1,37 @@
-import { onUnmounted } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type { ServerAdapter } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 
 /**
  * Lazily creates and caches per-account adapters for cross-account features.
- * Automatically cleans up streams on unmount.
+ *
+ * Delegates to the global adapter cache in useInitAdapter.ts.
+ * Local Map tracks which adapters this composable instance has used
+ * so callers can iterate over them if needed.
  */
 export function useMultiAccountAdapters() {
   const accountsStore = useAccountsStore()
 
+  // Local reference set — the actual caching is handled by initAdapterFor()
   const adapters = new Map<string, ServerAdapter>()
-  const pending = new Map<string, Promise<ServerAdapter | null>>()
 
   async function getOrCreate(accountId: string): Promise<ServerAdapter | null> {
     const cached = adapters.get(accountId)
     if (cached) return cached
-    const inflight = pending.get(accountId)
-    if (inflight) return inflight
 
-    const promise = (async () => {
-      const acc = accountsStore.accounts.find((a) => a.id === accountId)
-      if (!acc) return null
-      const { adapter } = await initAdapterFor(acc.host, acc.id)
-      adapters.set(accountId, adapter)
-      return adapter
-    })()
+    const acc = accountsStore.accounts.find((a) => a.id === accountId)
+    if (!acc) return null
 
-    pending.set(accountId, promise)
-    try {
-      return await promise
-    } finally {
-      pending.delete(accountId)
-    }
+    const { adapter } = await initAdapterFor(acc.host, acc.id)
+    adapters.set(accountId, adapter)
+    return adapter
   }
 
   function cleanup() {
-    for (const adapter of adapters.values()) {
-      // Use cleanup() instead of disconnect() to avoid closing the shared
-      // Rust-side WebSocket — other columns may still use the same connection.
-      adapter.stream.cleanup()
-    }
+    // Adapters are shared globally — do NOT call stream.cleanup() here
+    // as it would destroy handlers for other columns using the same adapter.
     adapters.clear()
-    pending.clear()
   }
-
-  onUnmounted(cleanup)
 
   return { getOrCreate, cleanup }
 }

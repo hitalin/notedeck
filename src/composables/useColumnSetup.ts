@@ -61,6 +61,11 @@ export function useColumnSetup(
 
   let adapter: ServerAdapter | null = null
   let subscription: ChannelSubscription | null = null
+  // Track stream event handlers registered by this column so we can remove them on disconnect
+  const streamHandlers: {
+    event: 'connected' | 'disconnected' | 'reconnecting'
+    handler: () => void
+  }[] = []
 
   async function initAdapter(opts?: {
     hasToken?: boolean
@@ -87,9 +92,27 @@ export function useColumnSetup(
     subscription = null
   }
 
+  /** Register a stream event handler tracked for cleanup on disconnect */
+  function onStreamEvent(
+    event: 'connected' | 'disconnected' | 'reconnecting',
+    handler: () => void,
+  ) {
+    adapter?.stream.on(event, handler)
+    streamHandlers.push({ event, handler })
+  }
+
+  function removeStreamHandlers() {
+    for (const { event, handler } of streamHandlers) {
+      adapter?.stream.off(event, handler)
+    }
+    streamHandlers.length = 0
+  }
+
   function disconnect() {
     disposeSubscription()
-    adapter?.stream.cleanup()
+    removeStreamHandlers()
+    // adapter is shared across columns (cached by accountId) — do NOT call
+    // stream.cleanup() here as it would destroy handlers for other columns.
     adapter = null
   }
 
@@ -267,6 +290,7 @@ export function useColumnSetup(
     setSubscription,
     disposeSubscription,
     disconnect,
+    onStreamEvent,
     setOnNotesMutated,
     // Post form
     postForm: {
