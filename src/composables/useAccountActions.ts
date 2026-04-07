@@ -9,6 +9,7 @@ import { useDeckStore } from '@/stores/deck'
 import { useStreamingStore } from '@/stores/streaming'
 import { useWindowsStore } from '@/stores/windows'
 import { showLoginPrompt } from '@/utils/loginPrompt'
+import { removeStorage, STORAGE_KEYS } from '@/utils/storage'
 
 export function useAccountActions() {
   const accountsStore = useAccountsStore()
@@ -39,6 +40,8 @@ export function useAccountActions() {
   function logoutKeepData(acc: Account) {
     streamingStore.disconnect(acc.id)
     accountsStore.logoutAccount(acc.id)
+    removeStorage(STORAGE_KEYS.shellCache)
+    removeStorage(STORAGE_KEYS.shellCacheVersion)
   }
 
   /** アカウントとカラムをすべて削除する */
@@ -49,6 +52,8 @@ export function useAccountActions() {
       }
     }
     accountsStore.removeAccount(acc.id)
+    removeStorage(STORAGE_KEYS.shellCache)
+    removeStorage(STORAGE_KEYS.shellCacheVersion)
   }
 
   /** ログアウト確認ダイアログを表示し実行する */
