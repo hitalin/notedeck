@@ -41,6 +41,10 @@ import {
 } from '@/utils/regexSearch'
 import DeckColumn from './DeckColumn.vue'
 
+function collectFulfilled<T>(results: PromiseSettledResult<T[]>[]): T[] {
+  return results.flatMap((r) => (r.status === 'fulfilled' ? r.value : []))
+}
+
 const props = defineProps<{
   column: DeckColumnType
 }>()
@@ -247,12 +251,7 @@ async function searchLocalCrossAccount(q: string, hint: string) {
       ),
     )
     if (searchQuery.value.trim() === q) {
-      let merged: NormalizedNote[] = []
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value) {
-          merged.push(...r.value)
-        }
-      }
+      let merged = collectFulfilled(results)
       if (regexMode.value) {
         merged = await filterNotesByRegexAsync(merged, q)
       }
@@ -394,12 +393,7 @@ async function performSearchCrossAccount(q: string, hint: string) {
             .then((r) => unwrap(r) as NormalizedNote[]),
         ),
       )
-      let merged: NormalizedNote[] = []
-      for (const r of localResults) {
-        if (r.status === 'fulfilled' && r.value) {
-          merged.push(...r.value)
-        }
-      }
+      let merged = collectFulfilled(localResults)
       if (regexMode.value) {
         merged = await filterNotesByRegexAsync(merged, q)
       }
@@ -425,12 +419,7 @@ async function performSearchCrossAccount(q: string, hint: string) {
           })
         }),
       )
-      let merged: NormalizedNote[] = []
-      for (const r of serverResults) {
-        if (r.status === 'fulfilled' && r.value) {
-          merged.push(...r.value)
-        }
-      }
+      let merged = collectFulfilled(serverResults)
       if (regexMode.value) {
         merged = await filterNotesByRegexAsync(merged, q)
       }
@@ -506,12 +495,7 @@ async function loadMoreCrossAccount() {
       }),
     )
 
-    let older: NormalizedNote[] = []
-    for (const r of results) {
-      if (r.status === 'fulfilled' && r.value) {
-        older.push(...r.value)
-      }
-    }
+    let older = collectFulfilled(results)
     if (regexMode.value) {
       older = await filterNotesByRegexAsync(older, q)
     }

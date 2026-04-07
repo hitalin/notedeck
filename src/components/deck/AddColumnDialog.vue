@@ -167,15 +167,18 @@ interface SelectableConfig {
   createDefaults?: Record<string, unknown>
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: bindings の Result 型と SelectableItem の橋渡し
+function unwrapSelectItems(result: any): SelectableItem[] {
+  return unwrap(result) as unknown as SelectableItem[]
+}
+
 const SELECTABLE_CONFIGS: SelectableConfig[] = [
   {
     type: 'list',
     label: 'リスト',
     icon: 'ti-list',
     apiFn: (accountId) =>
-      commands
-        .apiGetUserLists(accountId)
-        .then((r) => unwrap(r) as unknown as SelectableItem[]),
+      commands.apiGetUserLists(accountId).then(unwrapSelectItems),
     idKey: 'listId',
     createEndpoint: 'users/lists/create',
   },
@@ -184,9 +187,7 @@ const SELECTABLE_CONFIGS: SelectableConfig[] = [
     label: 'アンテナ',
     icon: 'ti-antenna-bars-5',
     apiFn: (accountId) =>
-      commands
-        .apiGetAntennas(accountId)
-        .then((r) => unwrap(r) as unknown as SelectableItem[]),
+      commands.apiGetAntennas(accountId).then(unwrapSelectItems),
     idKey: 'antennaId',
     createEndpoint: 'antennas/create',
     createDefaults: {
@@ -204,23 +205,17 @@ const SELECTABLE_CONFIGS: SelectableConfig[] = [
     label: 'チャンネル',
     icon: 'ti-device-tv',
     apiFn: (accountId) =>
-      commands
-        .apiGetChannels(accountId)
-        .then((r) => unwrap(r) as unknown as SelectableItem[]),
+      commands.apiGetChannels(accountId).then(unwrapSelectItems),
     idKey: 'channelId',
     searchFn: (accountId, query) =>
-      commands
-        .apiSearchChannels(accountId, query)
-        .then((r) => unwrap(r) as unknown as SelectableItem[]),
+      commands.apiSearchChannels(accountId, query).then(unwrapSelectItems),
   },
   {
     type: 'clip',
     label: 'クリップ',
     icon: 'ti-paperclip',
     apiFn: (accountId) =>
-      commands
-        .apiGetClips(accountId)
-        .then((r) => unwrap(r) as unknown as SelectableItem[]),
+      commands.apiGetClips(accountId).then(unwrapSelectItems),
     idKey: 'clipId',
     createEndpoint: 'clips/create',
   },
@@ -231,12 +226,12 @@ const SELECTABLE_CONFIGS: SelectableConfig[] = [
     apiFn: (accountId) =>
       commands
         .apiSearchUsersByQuery(accountId, '', null)
-        .then((r) => unwrap(r) as unknown as SelectableItem[]),
+        .then(unwrapSelectItems),
     idKey: 'userId',
     searchFn: (accountId, query) =>
       commands
         .apiSearchUsersByQuery(accountId, query, null)
-        .then((r) => unwrap(r) as unknown as SelectableItem[]),
+        .then(unwrapSelectItems),
     formatName: (item) => item.name,
   },
 ]
