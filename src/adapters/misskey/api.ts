@@ -6,7 +6,6 @@ import type {
   Channel,
   ChatMessage,
   Clip,
-  CreateAntennaParams,
   CreateNoteParams,
   FollowRelation,
   NormalizedDriveFile,
@@ -538,47 +537,6 @@ export class MisskeyApi implements ApiAdapter {
     unwrapAny(await commands.apiAddNoteToClip(this.accountId, clipId, noteId))
   }
 
-  async removeNoteFromClip(clipId: string, noteId: string): Promise<void> {
-    this.requireAuth()
-    unwrapAny(
-      await commands.apiRequest(this.accountId, 'clips/remove-note', {
-        clipId,
-        noteId,
-      }),
-    )
-  }
-
-  async createClip(params: {
-    name: string
-    description?: string
-    isPublic?: boolean
-  }): Promise<Clip> {
-    this.requireAuth()
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'clips/create', params),
-    )
-  }
-
-  async updateClip(
-    clipId: string,
-    params: { name?: string; description?: string; isPublic?: boolean },
-  ): Promise<Clip> {
-    this.requireAuth()
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'clips/update', {
-        clipId,
-        ...params,
-      }),
-    )
-  }
-
-  async deleteClip(clipId: string): Promise<void> {
-    this.requireAuth()
-    unwrapAny(
-      await commands.apiRequest(this.accountId, 'clips/delete', { clipId }),
-    )
-  }
-
   async addUserToList(listId: string, userId: string): Promise<void> {
     this.requireAuth()
     unwrapAny(await commands.apiAddUserToList(this.accountId, listId, userId))
@@ -588,68 +546,6 @@ export class MisskeyApi implements ApiAdapter {
     this.requireAuth()
     unwrapAny(
       await commands.apiRemoveUserFromList(this.accountId, listId, userId),
-    )
-  }
-
-  async createList(name: string): Promise<UserList> {
-    this.requireAuth()
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'users/lists/create', { name }),
-    )
-  }
-
-  async updateList(
-    listId: string,
-    params: { name?: string },
-  ): Promise<UserList> {
-    this.requireAuth()
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'users/lists/update', {
-        listId,
-        ...params,
-      }),
-    )
-  }
-
-  async deleteList(listId: string): Promise<void> {
-    this.requireAuth()
-    unwrapAny(
-      await commands.apiRequest(this.accountId, 'users/lists/delete', {
-        listId,
-      }),
-    )
-  }
-
-  async createAntenna(params: CreateAntennaParams): Promise<Antenna> {
-    this.requireAuth()
-    return unwrapAny(
-      await commands.apiRequest(
-        this.accountId,
-        'antennas/create',
-        params as never,
-      ),
-    )
-  }
-
-  async updateAntenna(
-    antennaId: string,
-    params: { name?: string },
-  ): Promise<Antenna> {
-    this.requireAuth()
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'antennas/update', {
-        antennaId,
-        ...params,
-      }),
-    )
-  }
-
-  async deleteAntenna(antennaId: string): Promise<void> {
-    this.requireAuth()
-    unwrapAny(
-      await commands.apiRequest(this.accountId, 'antennas/delete', {
-        antennaId,
-      }),
     )
   }
 

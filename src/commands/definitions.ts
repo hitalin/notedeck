@@ -1,16 +1,18 @@
 import { useCommandStore } from '@/commands/registry'
 import { useAccountActions } from '@/composables/useAccountActions'
-import { ENTITY_CONFIGS, type EntityType } from '@/composables/useEntityCrud'
+import {
+  ENTITY_CONFIGS,
+  type EntityType,
+  useEntityCrud,
+} from '@/composables/useEntityCrud'
 import type { NoteAction } from '@/composables/useNoteFocus'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { useOfflineModeStore } from '@/stores/offlineMode'
-import { usePrompt } from '@/stores/prompt'
 import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import { useThemeStore } from '@/stores/theme'
-import { useToast } from '@/stores/toast'
 import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import { proxyThumbUrl } from '@/utils/imageProxy'
@@ -517,7 +519,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     },
   })
 
-  // Rename / delete clip/list/antenna via ENTITY_CONFIGS
+  // Rename / delete clip/list/antenna — delegates to useEntityCrud
   function getActiveEntityColumn() {
     const id = deckStore.activeColumnId
     if (!id) return null
@@ -533,33 +535,11 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     category: 'column',
     shortcuts: [],
     enabled: () => !!getActiveEntityColumn(),
-    execute: async () => {
+    execute: () => {
       const col = getActiveEntityColumn()
       if (!col) return
-      const cfg = ENTITY_CONFIGS[col.type as EntityType]
-      const { prompt } = usePrompt()
-      const newName = await prompt({
-        title: `${cfg.label}名を変更`,
-        defaultValue: col.name ?? '',
-      })
-      if (!newName) return
-      try {
-        const entityId = (col as unknown as Record<string, unknown>)[
-          cfg.idKey
-        ] as string
-        if (!entityId || !col.accountId) return
-        const { commands, unwrap } = await import('@/utils/tauriInvoke')
-        unwrap(
-          await commands.apiRequest(col.accountId, cfg.updateEndpoint, {
-            [cfg.idKey]: entityId,
-            name: newName,
-          }),
-        )
-        deckStore.updateColumn(col.id, { name: newName })
-        useToast().show(`${cfg.label}名を変更しました`)
-      } catch {
-        useToast().show(`${cfg.label}名の変更に失敗しました`, 'error')
-      }
+      const { rename } = useEntityCrud(col.type as EntityType, () => col)
+      rename(() => {})
     },
   })
 
@@ -570,34 +550,11 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     category: 'column',
     shortcuts: [],
     enabled: () => !!getActiveEntityColumn(),
-    execute: async () => {
+    execute: () => {
       const col = getActiveEntityColumn()
       if (!col) return
-      const cfg = ENTITY_CONFIGS[col.type as EntityType]
-      const { confirm } = useConfirm()
-      const ok = await confirm({
-        title: `${cfg.label}を削除`,
-        message: `この${cfg.label}をサーバーから削除しますか？この操作は取り消せません。`,
-        okLabel: '削除',
-        type: 'danger',
-      })
-      if (!ok) return
-      try {
-        const entityId = (col as unknown as Record<string, unknown>)[
-          cfg.idKey
-        ] as string
-        if (!entityId || !col.accountId) return
-        const { commands, unwrap } = await import('@/utils/tauriInvoke')
-        unwrap(
-          await commands.apiRequest(col.accountId, cfg.deleteEndpoint, {
-            [cfg.idKey]: entityId,
-          }),
-        )
-        deckStore.removeColumn(col.id)
-        useToast().show(`${cfg.label}を削除しました`)
-      } catch {
-        useToast().show(`${cfg.label}の削除に失敗しました`, 'error')
-      }
+      const { deleteEntity } = useEntityCrud(col.type as EntityType, () => col)
+      deleteEntity(() => {})
     },
   })
 
