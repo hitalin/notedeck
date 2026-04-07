@@ -405,8 +405,7 @@ defineExpose({
   flex-direction: column;
   contain: layout style paint;
   /* Staggered entrance: each column fades in with a slight upward slide.
-     --col-idx is set inline; animation triggers when #app.nd-app-ready starts.
-     forwards → 完了後にコンポジタレイヤーを解放 */
+     --col-idx is set inline; forwards → 完了後にコンポジタレイヤーを解放 */
   animation: nd-col-enter var(--nd-duration-slower) var(--nd-ease-spring) forwards;
   animation-delay: calc(var(--col-idx, 0) * 40ms + 50ms);
 }

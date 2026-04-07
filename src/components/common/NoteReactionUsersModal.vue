@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { ref, watch } from 'vue'
-import { createAdapter } from '@/adapters/registry'
+import { initAdapterFor } from '@/adapters/initAdapter'
 import type { NoteReaction } from '@/adapters/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useNavigation } from '@/composables/useNavigation'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useAccountsStore } from '@/stores/accounts'
-import { useServersStore } from '@/stores/servers'
 import { useUiStore } from '@/stores/ui'
 import { proxyUrl } from '@/utils/imageProxy'
 import MkEmoji from './MkEmoji.vue'
@@ -25,7 +24,6 @@ const props = defineProps<{
 const { isCompactLayout: isCompact } = storeToRefs(useUiStore())
 const { navigateToUser } = useNavigation()
 const accountsStore = useAccountsStore()
-const serversStore = useServersStore()
 
 const show = ref(false)
 const selectedReaction = ref('')
@@ -59,8 +57,10 @@ async function fetchReactions(untilId?: string) {
   try {
     const account = accountsStore.accounts.find((a) => a.id === props.accountId)
     if (!account) return
-    const serverInfo = await serversStore.getServerInfo(account.host)
-    const adapter = createAdapter(serverInfo, account.id)
+    const { adapter } = await initAdapterFor(account.host, account.id, {
+      pinnedReactions: false,
+      hasToken: account.hasToken,
+    })
     const result = await adapter.api.getNoteReactions(
       props.noteId,
       selectedReaction.value,

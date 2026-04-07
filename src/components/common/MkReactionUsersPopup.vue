@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 
-import { createAdapter } from '@/adapters/registry'
+import { initAdapterFor } from '@/adapters/initAdapter'
 import type { NoteReaction } from '@/adapters/types'
 import { useNativePopover } from '@/composables/useNativePopover'
 import { useNavigation } from '@/composables/useNavigation'
 import { useAccountsStore } from '@/stores/accounts'
-import { useServersStore } from '@/stores/servers'
 import { proxyUrl } from '@/utils/imageProxy'
 import { extractColumnThemeVars } from '@/utils/themeVars'
 import MkEmoji from './MkEmoji.vue'
@@ -33,7 +32,6 @@ const emit = defineEmits<{
 }>()
 
 const { navigateToUser } = useNavigation()
-const serversStore = useServersStore()
 const accountsStore = useAccountsStore()
 
 const reactions = ref<NoteReaction[]>([])
@@ -52,8 +50,10 @@ async function fetchReactions() {
   try {
     const account = accountsStore.accounts.find((a) => a.id === props.accountId)
     if (!account) return
-    const serverInfo = await serversStore.getServerInfo(account.host)
-    const adapter = createAdapter(serverInfo, account.id)
+    const { adapter } = await initAdapterFor(account.host, account.id, {
+      pinnedReactions: false,
+      hasToken: account.hasToken,
+    })
     reactions.value = await adapter.api.getNoteReactions(
       props.noteId,
       props.reaction,
