@@ -24,7 +24,7 @@ import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { hapticSelection } from '@/utils/haptics'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DayNightToggle from './DayNightToggle.vue'
 
 const props = defineProps<{
@@ -178,14 +178,14 @@ const backupError = ref('')
 
 async function backupAction(
   loading: Ref<boolean>,
-  command: string,
+  action: () => Promise<unknown>,
   opts?: { confirmOpts?: ConfirmOptions; relaunch?: boolean },
 ) {
   if (opts?.confirmOpts && !(await confirm(opts.confirmOpts))) return
   loading.value = true
   backupError.value = ''
   try {
-    const result = await invoke<boolean>(command)
+    const result = await action()
     if (result && opts?.relaunch) {
       await relaunch()
     }
@@ -196,29 +196,40 @@ async function backupAction(
   }
 }
 
-const exportDb = () => backupAction(isExporting, 'export_db')
+const exportDb = () =>
+  backupAction(isExporting, () => commands.exportDb().then((r) => unwrap(r)))
 const importDb = () =>
-  backupAction(isImportingDb, 'import_db', {
-    confirmOpts: {
-      title: 'DBインポート',
-      message: '現在のDBが上書きされます。',
-      okLabel: 'インポート',
-      type: 'danger',
+  backupAction(
+    isImportingDb,
+    () => commands.importDb().then((r) => unwrap(r)),
+    {
+      confirmOpts: {
+        title: 'DBインポート',
+        message: '現在のDBが上書きされます。',
+        okLabel: 'インポート',
+        type: 'danger',
+      },
+      relaunch: true,
     },
-    relaunch: true,
-  })
+  )
 const exportSettings = () =>
-  backupAction(isExportingSettings, 'export_settings_json')
+  backupAction(isExportingSettings, () =>
+    commands.exportSettingsJson().then((r) => unwrap(r)),
+  )
 const importSettings = () =>
-  backupAction(isImportingSettings, 'import_settings_json', {
-    confirmOpts: {
-      title: '設定インポート',
-      message: '現在の設定が上書きされます。',
-      okLabel: 'インポート',
-      type: 'danger',
+  backupAction(
+    isImportingSettings,
+    () => commands.importSettingsJson().then((r) => unwrap(r)),
+    {
+      confirmOpts: {
+        title: '設定インポート',
+        message: '現在の設定が上書きされます。',
+        okLabel: 'インポート',
+        type: 'danger',
+      },
+      relaunch: true,
     },
-    relaunch: true,
-  })
+  )
 
 const isClearingCache = ref(false)
 const cacheError = ref('')
@@ -234,7 +245,7 @@ async function clearAllCache() {
   isClearingCache.value = true
   cacheError.value = ''
   try {
-    await invoke('clear_all_cache')
+    unwrap(await commands.clearAllCache())
   } catch (e) {
     cacheError.value = e instanceof Error ? e.message : String(e)
   } finally {

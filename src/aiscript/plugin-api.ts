@@ -1,7 +1,8 @@
 import { type Ast, type Interpreter, utils, values } from '@syuilo/aiscript'
 import type { Value, VFn } from '@syuilo/aiscript/interpreter/value.js'
+import type { JsonValue } from '@/bindings'
 import type { PluginConfigDef, PluginMeta } from '@/stores/plugins'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import { createAiScriptEnv } from './api'
 import {
   createAiScriptInterpreter,
@@ -341,11 +342,9 @@ function createPluginSpecificEnv(
       paramsVal?.type === 'obj'
         ? (utils.valToJs(paramsVal) as Record<string, unknown>)
         : {}
-    const result = await invoke('api_request', {
-      accountId,
-      endpoint,
-      params,
-    })
+    const result = unwrap(
+      await commands.apiRequest(accountId, endpoint, params as JsonValue),
+    )
     return utils.jsToVal(result)
   })
 

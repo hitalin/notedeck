@@ -24,7 +24,7 @@ import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
 import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
 import { showLoginPrompt } from '@/utils/loginPrompt'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import { extractColumnThemeVars } from '@/utils/themeVars'
 import MkAvatar from './MkAvatar.vue'
 import MkEmoji from './MkEmoji.vue'
@@ -163,11 +163,9 @@ function openRenoteMenu(e: MouseEvent) {
 
   // Check if already renoted
   myRenoteId.value = null
-  invoke<NormalizedNote[]>('api_get_note_renotes', {
-    accountId: props.note._accountId,
-    noteId: effectiveNote.value.id,
-    limit: 30,
-  })
+  commands
+    .apiGetNoteRenotes(props.note._accountId, effectiveNote.value.id, 30)
+    .then((r) => unwrap(r))
     .then((renotes) => {
       const account = accountsStore.accountMap.get(props.note._accountId)
       const mine = renotes.find((r) => r.user.id === account?.userId)
@@ -194,10 +192,7 @@ async function handleUnrenote() {
   isRenoted.value = false
   myRenoteId.value = null
   try {
-    await invoke('api_delete_note', {
-      accountId: props.note._accountId,
-      noteId: renoteId,
-    })
+    unwrap(await commands.apiDeleteNote(props.note._accountId, renoteId))
   } catch {
     effectiveNote.value.renoteCount = (effectiveNote.value.renoteCount ?? 0) + 1
     isRenoted.value = true
@@ -321,11 +316,13 @@ const {
 
 async function handleMentionClick(username: string, host: string | null) {
   try {
-    const user = await invoke<NormalizedUser>('api_lookup_user', {
-      accountId: props.note._accountId,
-      username,
-      host: host ?? null,
-    })
+    const user = unwrap(
+      await commands.apiLookupUser(
+        props.note._accountId,
+        username,
+        host ?? null,
+      ),
+    )
     navToUser(props.note._accountId, user.id)
   } catch (e) {
     console.warn('[MkNote] failed to lookup user:', username, host, e)
@@ -347,11 +344,13 @@ async function onMentionHover(
   const rect = el.getBoundingClientRect()
   popupTheme.value = extractColumnThemeVars(el)
   try {
-    const user = await invoke<NormalizedUser>('api_lookup_user', {
-      accountId: props.note._accountId,
-      username,
-      host: host ?? null,
-    })
+    const user = unwrap(
+      await commands.apiLookupUser(
+        props.note._accountId,
+        username,
+        host ?? null,
+      ),
+    )
     if (!mentionHovering) return
     mentionUserId.value = user.id
     mentionPopup.show({ x: rect.right + 8, y: rect.top })

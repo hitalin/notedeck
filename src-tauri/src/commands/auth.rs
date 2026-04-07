@@ -8,6 +8,7 @@ use notecli::models::{Account, AccountPublic, AuthSession};
 use super::{export_account_list, validate_host, AppState, AuthSessionTracker, Result};
 
 #[tauri::command]
+#[specta::specta]
 pub async fn auth_start(
     tracker: State<'_, AuthSessionTracker>,
     host: String,
@@ -72,6 +73,7 @@ pub async fn auth_start(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn auth_complete_and_save(
     app: tauri::AppHandle,
     tracker: State<'_, AuthSessionTracker>,

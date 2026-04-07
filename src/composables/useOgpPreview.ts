@@ -2,7 +2,7 @@ import { listen } from '@tauri-apps/api/event'
 import { ref } from 'vue'
 import { usePerformanceStore } from '@/stores/performance'
 import type { OgpData } from '@/utils/ogp'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const ogpCache = new Map<string, OgpData | null>()
 
@@ -74,14 +74,13 @@ export function useOgpPreview(initialUrl: string, accountId?: string) {
 
     let promise = pendingRequests.get(targetUrl)
     if (!promise) {
-      promise = invoke<OgpData>('fetch_ogp', {
-        url: targetUrl,
-        accountId: accountId ?? null,
-      })
+      promise = commands
+        .fetchOgp(targetUrl, accountId ?? null)
         .then((result) => {
-          setOgpCache(targetUrl, result)
+          const data = unwrap(result) as OgpData
+          setOgpCache(targetUrl, data)
           pendingRequests.delete(targetUrl)
-          return result
+          return data
         })
         .catch(() => {
           setOgpCache(targetUrl, null)

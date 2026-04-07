@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
+import type { JsonValue } from '@/bindings'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -38,11 +39,13 @@ async function execute() {
   }
 
   try {
-    const result = await invoke('api_request', {
-      accountId: props.column.accountId,
-      endpoint: endpoint.value.trim(),
-      params: parsedParams,
-    })
+    const result = unwrap(
+      await commands.apiRequest(
+        props.column.accountId,
+        endpoint.value.trim(),
+        parsedParams as Record<string, JsonValue>,
+      ),
+    )
     response.value = JSON.stringify(result, null, 2)
   } catch (e) {
     const appErr = AppError.from(e)

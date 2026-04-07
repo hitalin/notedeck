@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { executeAiScript } from '@/aiscript/execute'
+import type { JsonValue } from '@/bindings'
 import type { WidgetConfig } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import AiScriptEditor from './AiScriptEditor.vue'
 
 const props = defineProps<{
@@ -40,11 +41,11 @@ async function run() {
     },
     api: props.accountId
       ? async (endpoint, params) => {
-          return invoke('api_request', {
-            accountId: props.accountId,
-            endpoint,
-            params,
-          })
+          const accId = props.accountId
+          if (!accId) return
+          return unwrap(
+            await commands.apiRequest(accId, endpoint, params as JsonValue),
+          )
         }
       : undefined,
     storagePrefix: `console-${props.widget.id}`,

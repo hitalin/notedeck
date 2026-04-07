@@ -10,6 +10,7 @@ use super::{get_credentials, get_credentials_or_anon, validate_host, AppState, R
 // --- Server metadata ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_endpoints(
     app_state: State<'_, AppState>,
     host: String,
@@ -20,6 +21,7 @@ pub async fn api_get_endpoints(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_endpoint_params(
     app_state: State<'_, AppState>,
     host: String,
@@ -40,6 +42,7 @@ pub async fn api_get_endpoint_params(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_user_policies(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -50,6 +53,7 @@ pub async fn api_get_user_policies(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_update_user_setting(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -68,6 +72,7 @@ pub async fn api_update_user_setting(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_server_emojis(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -78,6 +83,7 @@ pub async fn api_get_server_emojis(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_pinned_reactions(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -88,6 +94,7 @@ pub async fn api_get_pinned_reactions(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_server_stats(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -98,6 +105,7 @@ pub async fn api_get_server_stats(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_meta_detail(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -110,6 +118,7 @@ pub async fn api_get_meta_detail(
 // --- Roles ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_roles(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -120,6 +129,7 @@ pub async fn api_get_roles(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_role_users(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -143,6 +153,7 @@ pub async fn api_get_role_users(
 // --- Announcements ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_announcements(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -162,6 +173,7 @@ pub async fn api_get_announcements(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_read_announcement(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -177,6 +189,7 @@ pub async fn api_read_announcement(
 // --- Pages ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_pages(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -198,6 +211,7 @@ pub async fn api_get_pages(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_page(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -209,6 +223,7 @@ pub async fn api_get_page(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_like_page(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -220,6 +235,7 @@ pub async fn api_like_page(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_unlike_page(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -233,6 +249,7 @@ pub async fn api_unlike_page(
 // --- Gallery ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_gallery_posts(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -252,6 +269,7 @@ pub async fn api_get_gallery_posts(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_like_gallery_post(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -263,6 +281,7 @@ pub async fn api_like_gallery_post(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_unlike_gallery_post(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -276,6 +295,7 @@ pub async fn api_unlike_gallery_post(
 // --- Flash (Play) ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_flashes(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -296,6 +316,7 @@ pub async fn api_get_flashes(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_flash(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -307,6 +328,7 @@ pub async fn api_get_flash(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_like_flash(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -318,6 +340,7 @@ pub async fn api_like_flash(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_unlike_flash(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -331,6 +354,7 @@ pub async fn api_unlike_flash(
 // --- Drive ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_drive_folders(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -350,6 +374,7 @@ pub async fn api_get_drive_folders(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_drive_files(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -371,6 +396,7 @@ pub async fn api_get_drive_files(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_delete_drive_file(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -384,6 +410,7 @@ pub async fn api_delete_drive_file(
 // --- Generic API proxy ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_request(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -418,6 +445,7 @@ pub async fn api_request(
 // --- Theme ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_fetch_account_theme(
     app_state: State<'_, AppState>,
     account_id: String,

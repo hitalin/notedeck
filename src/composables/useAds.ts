@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import type { ServerAd } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const REFRESH_INTERVAL = 10 * 60 * 1000 // 10 minutes
 
@@ -46,10 +46,9 @@ export function useAds(
         if (!account) return
 
         // Ads are included in /api/meta response (not a separate endpoint)
-        const meta = await invoke<Record<string, unknown>>(
-          'api_get_meta_detail',
-          { accountId },
-        )
+        const meta = unwrap(
+          await commands.apiGetMetaDetail(accountId),
+        ) as Record<string, unknown>
         interval =
           typeof meta.notesPerOneAd === 'number' ? meta.notesPerOneAd : 0
         rawAds = Array.isArray(meta.ads) ? (meta.ads as ServerAd[]) : []

@@ -50,6 +50,23 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('[unhandled] Promise rejection:', event.reason)
 })
 
+// Suppress ResizeObserver loop warnings.
+// TanStack Virtual's internal ResizeObserver cascades when dynamic-height items
+// (images loading, content expanding) cause layout recalculations within the same frame.
+// This is a known, harmless limitation of the ResizeObserver spec with virtual scrollers.
+// See: https://github.com/TanStack/virtual/issues/426
+const _roError = 'ResizeObserver loop'
+window.addEventListener('error', (e) => {
+  if (e.message?.startsWith(_roError)) e.stopImmediatePropagation()
+})
+window.addEventListener('unhandledrejection', (e) => {
+  if (
+    typeof e.reason?.message === 'string' &&
+    e.reason.message.startsWith(_roError)
+  )
+    e.preventDefault()
+})
+
 if (isTauri) {
   // Apply cached theme before mount to prevent FOUC
   const themeStore = useThemeStore()

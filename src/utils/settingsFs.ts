@@ -1,4 +1,4 @@
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 export const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
 
@@ -19,7 +19,7 @@ export function sanitizeFilename(name: string): string {
 
 export async function listSettingsFiles(subdir: string): Promise<string[]> {
   if (!isTauri) return []
-  return invoke<string[]>('list_settings_files', { subdir })
+  return unwrap(await commands.listSettingsFiles(subdir))
 }
 
 export async function readSettingsFile(
@@ -27,7 +27,7 @@ export async function readSettingsFile(
   name: string,
 ): Promise<string> {
   if (!isTauri) return ''
-  return invoke<string>('read_settings_file', { subdir, name })
+  return unwrap(await commands.readSettingsFile(subdir, name))
 }
 
 export async function writeSettingsFile(
@@ -36,7 +36,7 @@ export async function writeSettingsFile(
   content: string,
 ): Promise<void> {
   if (!isTauri) return
-  return invoke('write_settings_file', { subdir, name, content })
+  unwrap(await commands.writeSettingsFile(subdir, name, content))
 }
 
 export async function deleteSettingsFile(
@@ -44,7 +44,7 @@ export async function deleteSettingsFile(
   name: string,
 ): Promise<void> {
   if (!isTauri) return
-  return invoke('delete_settings_file', { subdir, name })
+  unwrap(await commands.deleteSettingsFile(subdir, name))
 }
 
 export async function renameSettingsFile(
@@ -53,16 +53,12 @@ export async function renameSettingsFile(
   newName: string,
 ): Promise<void> {
   if (!isTauri) return
-  return invoke('rename_settings_file', {
-    subdir,
-    oldName,
-    newName,
-  })
+  unwrap(await commands.renameSettingsFile(subdir, oldName, newName))
 }
 
 export async function getSettingsDir(): Promise<string> {
   if (!isTauri) return ''
-  return invoke<string>('get_settings_dir')
+  return unwrap(await commands.getSettingsDir())
 }
 
 // --- Profile-specific helpers ---
@@ -105,7 +101,7 @@ export async function renameProfile(
 
 async function readRootSettingsFile(name: string): Promise<string> {
   if (!isTauri) return ''
-  return invoke<string>('read_root_settings_file', { name })
+  return unwrap(await commands.readRootSettingsFile(name))
 }
 
 async function writeRootSettingsFile(
@@ -113,7 +109,7 @@ async function writeRootSettingsFile(
   content: string,
 ): Promise<void> {
   if (!isTauri) return
-  return invoke('write_root_settings_file', { name, content })
+  unwrap(await commands.writeRootSettingsFile(name, content))
 }
 
 // --- Theme-specific helpers ---

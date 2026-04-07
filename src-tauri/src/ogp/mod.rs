@@ -17,7 +17,7 @@ use crate::perf_config::SharedPerfConfig;
 const DEFAULT_MAX_ENTRIES: usize = 64;
 const MAX_HTML_SIZE: usize = 2 * 1024 * 1024;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct Player {
     pub url: String,
     pub width: Option<u32>,
@@ -26,7 +26,7 @@ pub struct Player {
     pub allow: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct SummaryData {
     pub title: Option<String>,
     pub description: Option<String>,

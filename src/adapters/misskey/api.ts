@@ -1,5 +1,5 @@
 import { AppError } from '@/utils/errors'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import type {
   Antenna,
   ApiAdapter,
@@ -24,6 +24,18 @@ import type {
   UserRelation,
 } from '../types'
 
+/**
+ * bindings.ts と adapters/types.ts で同名の型が別定義されているため、
+ * unwrap() の戻り値を any にキャストして型不一致を回避する。
+ * 以前の invoke() が any を返していたのと同等の安全性。
+ */
+function unwrapAny(
+  result: { status: string; data?: unknown; error?: unknown },
+  // biome-ignore lint/suspicious/noExplicitAny: bridge between bindings and adapter types
+): any {
+  return unwrap(result as Parameters<typeof unwrap>[0])
+}
+
 export class MisskeyApi implements ApiAdapter {
   private accountId: string
   private hasToken: boolean
@@ -42,41 +54,31 @@ export class MisskeyApi implements ApiAdapter {
     options: TimelineOptions = {},
   ): Promise<NormalizedNote[]> {
     // OGP prefetch is handled asynchronously on the Rust side via Tauri events
-    return invoke('api_get_timeline', {
-      accountId: this.accountId,
-      timelineType: type,
-      options: {
+    return unwrapAny(
+      await commands.apiGetTimeline(this.accountId, type, {
         limit: options.limit ?? 20,
         sinceId: options.sinceId ?? null,
         untilId: options.untilId ?? null,
-        filters: options.filters ?? null,
+        filters: (options.filters ?? null) as never,
         listId: options.listId ?? null,
-      },
-    })
+      }),
+    )
   }
 
   async getNote(noteId: string): Promise<NormalizedNote> {
-    return invoke('api_get_note', {
-      accountId: this.accountId,
-      noteId,
-    })
+    return unwrapAny(await commands.apiGetNote(this.accountId, noteId))
   }
 
   async createReaction(noteId: string, reaction: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_create_reaction', {
-      accountId: this.accountId,
-      noteId,
-      reaction,
-    })
+    unwrapAny(
+      await commands.apiCreateReaction(this.accountId, noteId, reaction),
+    )
   }
 
   async deleteReaction(noteId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_delete_reaction', {
-      accountId: this.accountId,
-      noteId,
-    })
+    unwrapAny(await commands.apiDeleteReaction(this.accountId, noteId))
   }
 
   async getNoteReactions(
@@ -85,30 +87,27 @@ export class MisskeyApi implements ApiAdapter {
     limit?: number,
     untilId?: string,
   ): Promise<NoteReaction[]> {
-    return invoke('api_get_note_reactions', {
-      accountId: this.accountId,
-      noteId,
-      reactionType: reactionType ?? null,
-      limit: limit ?? null,
-      untilId: untilId ?? null,
-    })
+    return unwrapAny(
+      await commands.apiGetNoteReactions(
+        this.accountId,
+        noteId,
+        reactionType ?? null,
+        limit ?? null,
+        untilId ?? null,
+      ),
+    )
   }
 
   async updateNote(noteId: string, params: CreateNoteParams): Promise<void> {
     this.requireAuth()
-    return invoke('api_update_note', {
-      accountId: this.accountId,
-      noteId,
-      params,
-    })
+    unwrapAny(
+      await commands.apiUpdateNote(this.accountId, noteId, params as never),
+    )
   }
 
   async deleteNote(noteId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_delete_note', {
-      accountId: this.accountId,
-      noteId,
-    })
+    unwrapAny(await commands.apiDeleteNote(this.accountId, noteId))
   }
 
   async uploadFile(
@@ -118,13 +117,15 @@ export class MisskeyApi implements ApiAdapter {
     isSensitive = false,
   ): Promise<NormalizedDriveFile> {
     this.requireAuth()
-    return invoke('api_upload_file', {
-      accountId: this.accountId,
-      fileName,
-      fileData,
-      contentType,
-      isSensitive,
-    })
+    return unwrapAny(
+      await commands.apiUploadFile(
+        this.accountId,
+        fileName,
+        fileData,
+        contentType,
+        isSensitive,
+      ),
+    )
   }
 
   async uploadFileFromPath(
@@ -132,64 +133,47 @@ export class MisskeyApi implements ApiAdapter {
     isSensitive = false,
   ): Promise<NormalizedDriveFile> {
     this.requireAuth()
-    return invoke('api_upload_file_from_path', {
-      accountId: this.accountId,
-      filePath,
-      isSensitive,
-    })
+    return unwrapAny(
+      await commands.apiUploadFileFromPath(
+        this.accountId,
+        filePath,
+        isSensitive,
+      ),
+    )
   }
 
   async createFavorite(noteId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_create_favorite', {
-      accountId: this.accountId,
-      noteId,
-    })
+    unwrapAny(await commands.apiCreateFavorite(this.accountId, noteId))
   }
 
   async deleteFavorite(noteId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_delete_favorite', {
-      accountId: this.accountId,
-      noteId,
-    })
+    unwrapAny(await commands.apiDeleteFavorite(this.accountId, noteId))
   }
 
   async pinNote(noteId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_pin_note', {
-      accountId: this.accountId,
-      noteId,
-    })
+    unwrapAny(await commands.apiPinNote(this.accountId, noteId))
   }
 
   async unpinNote(noteId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_unpin_note', {
-      accountId: this.accountId,
-      noteId,
-    })
+    unwrapAny(await commands.apiUnpinNote(this.accountId, noteId))
   }
 
   async getUserPinnedNoteIds(userId: string): Promise<string[]> {
-    return invoke('api_get_user_pinned_note_ids', {
-      accountId: this.accountId,
-      userId,
-    })
+    return unwrapAny(
+      await commands.apiGetUserPinnedNoteIds(this.accountId, userId),
+    )
   }
 
   async getUser(userId: string): Promise<NormalizedUser> {
-    return invoke('api_get_user', {
-      accountId: this.accountId,
-      userId,
-    })
+    return unwrapAny(await commands.apiGetUser(this.accountId, userId))
   }
 
   async getUserDetail(userId: string): Promise<NormalizedUserDetail> {
-    return invoke('api_get_user_detail', {
-      accountId: this.accountId,
-      userId,
-    })
+    return unwrapAny(await commands.apiGetUserDetail(this.accountId, userId))
   }
 
   async getUserNotes(
@@ -211,27 +195,21 @@ export class MisskeyApi implements ApiAdapter {
       if (withFiles != null) params.withFiles = withFiles
       if (withChannelNotes != null) params.withChannelNotes = withChannelNotes
 
-      const raw = await invoke<{ id: string }[]>(
-        'api_get_user_notes_filtered',
-        {
-          accountId: this.accountId,
-          params,
-        },
+      const raw: { id: string }[] = unwrapAny(
+        await commands.apiGetUserNotesFiltered(this.accountId, params as never),
       )
       if (!raw.length) return []
       return Promise.all(raw.map((n) => this.getNote(n.id)))
     }
 
-    return invoke('api_get_user_notes', {
-      accountId: this.accountId,
-      userId,
-      options: {
+    return unwrapAny(
+      await commands.apiGetUserNotes(this.accountId, userId, {
         limit: pagination.limit ?? 20,
         sinceId: pagination.sinceId ?? null,
         untilId: pagination.untilId ?? null,
         filters: null,
-      },
-    })
+      } as never),
+    )
   }
 
   async getUserFeaturedNotes(
@@ -239,14 +217,13 @@ export class MisskeyApi implements ApiAdapter {
     options: PaginationOptions = {},
   ): Promise<NormalizedNote[]> {
     try {
-      const raw = await invoke<{ id: string }[]>(
-        'api_get_user_featured_notes',
-        {
-          accountId: this.accountId,
+      const raw: { id: string }[] = unwrapAny(
+        await commands.apiGetUserFeaturedNotes(
+          this.accountId,
           userId,
-          limit: options.limit ?? 30,
-          untilId: options.untilId ?? null,
-        },
+          options.limit ?? 30,
+          options.untilId ?? null,
+        ),
       )
       if (!raw.length) return []
       return Promise.all(raw.map((n) => this.getNote(n.id)))
@@ -258,270 +235,260 @@ export class MisskeyApi implements ApiAdapter {
   async createNote(params: CreateNoteParams): Promise<NormalizedNote> {
     this.requireAuth()
     const { channelId, ...noteParams } = params
-    return invoke('api_create_note', {
-      accountId: this.accountId,
-      params: noteParams,
-      channelId: channelId ?? null,
-    })
+    return unwrapAny(
+      await commands.apiCreateNote(
+        this.accountId,
+        noteParams as never,
+        channelId ?? null,
+      ),
+    )
   }
 
   async getServerEmojis(): Promise<ServerEmoji[]> {
-    return invoke('api_get_server_emojis', {
-      accountId: this.accountId,
-    })
+    return unwrapAny(await commands.apiGetServerEmojis(this.accountId))
   }
 
   async getPinnedReactions(): Promise<string[]> {
-    return invoke('api_get_pinned_reactions', {
-      accountId: this.accountId,
-    })
+    return unwrapAny(await commands.apiGetPinnedReactions(this.accountId))
   }
 
   async getNotifications(
     options: PaginationOptions = {},
   ): Promise<NormalizedNotification[]> {
-    return invoke('api_get_notifications', {
-      accountId: this.accountId,
-      options: {
+    return unwrapAny(
+      await commands.apiGetNotifications(this.accountId, {
         limit: options.limit ?? 20,
         sinceId: options.sinceId ?? null,
         untilId: options.untilId ?? null,
-      },
-    })
+      } as never),
+    )
   }
 
   async getNotificationsGrouped(
     options: PaginationOptions = {},
   ): Promise<NormalizedNotification[]> {
-    return invoke('api_get_notifications_grouped', {
-      accountId: this.accountId,
-      options: {
+    return unwrapAny(
+      await commands.apiGetNotificationsGrouped(this.accountId, {
         limit: options.limit ?? 20,
         sinceId: options.sinceId ?? null,
         untilId: options.untilId ?? null,
-      },
-    })
+      } as never),
+    )
   }
 
   async searchNotes(
     query: string,
     options: SearchOptions = {},
   ): Promise<NormalizedNote[]> {
-    return invoke('api_search_notes', {
-      accountId: this.accountId,
-      query,
-      options: {
+    return unwrapAny(
+      await commands.apiSearchNotes(this.accountId, query, {
         limit: options.limit ?? 20,
         sinceId: options.sinceId ?? null,
         untilId: options.untilId ?? null,
         sinceDate: options.sinceDate ?? null,
         untilDate: options.untilDate ?? null,
-      },
-    })
+      }),
+    )
   }
 
   async getNoteChildren(
     noteId: string,
     options: PaginationOptions = {},
   ): Promise<NormalizedNote[]> {
-    return invoke('api_get_note_children', {
-      accountId: this.accountId,
-      noteId,
-      limit: options.limit ?? 30,
-    })
+    return unwrapAny(
+      await commands.apiGetNoteChildren(
+        this.accountId,
+        noteId,
+        options.limit ?? 30,
+      ),
+    )
   }
 
   async getNoteRenotes(
     noteId: string,
     options: PaginationOptions = {},
   ): Promise<NormalizedNote[]> {
-    return invoke('api_get_note_renotes', {
-      accountId: this.accountId,
-      noteId,
-      limit: options.limit ?? 30,
-    })
+    return unwrapAny(
+      await commands.apiGetNoteRenotes(
+        this.accountId,
+        noteId,
+        options.limit ?? 30,
+      ),
+    )
   }
 
   async getNoteConversation(
     noteId: string,
     options: PaginationOptions = {},
   ): Promise<NormalizedNote[]> {
-    return invoke('api_get_note_conversation', {
-      accountId: this.accountId,
-      noteId,
-      limit: options.limit ?? 30,
-    })
+    return unwrapAny(
+      await commands.apiGetNoteConversation(
+        this.accountId,
+        noteId,
+        options.limit ?? 30,
+      ),
+    )
   }
 
   async lookupUser(
     username: string,
     host?: string | null,
   ): Promise<NormalizedUser> {
-    return invoke('api_lookup_user', {
-      accountId: this.accountId,
-      username,
-      host: host ?? null,
-    })
+    return unwrapAny(
+      await commands.apiLookupUser(this.accountId, username, host ?? null),
+    )
   }
 
   async followUser(userId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_follow_user', {
-      accountId: this.accountId,
-      userId,
-    })
+    unwrapAny(await commands.apiFollowUser(this.accountId, userId))
   }
 
   async unfollowUser(userId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_unfollow_user', {
-      accountId: this.accountId,
-      userId,
-    })
+    unwrapAny(await commands.apiUnfollowUser(this.accountId, userId))
   }
 
   async acceptFollowRequest(userId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_accept_follow_request', {
-      accountId: this.accountId,
-      userId,
-    })
+    unwrapAny(await commands.apiAcceptFollowRequest(this.accountId, userId))
   }
 
   async rejectFollowRequest(userId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_reject_follow_request', {
-      accountId: this.accountId,
-      userId,
-    })
+    unwrapAny(await commands.apiRejectFollowRequest(this.accountId, userId))
   }
 
   async getUserLists(): Promise<UserList[]> {
-    return invoke('api_get_user_lists', {
-      accountId: this.accountId,
-    })
+    return unwrapAny(await commands.apiGetUserLists(this.accountId))
   }
 
   async getAntennas(): Promise<Antenna[]> {
-    return invoke('api_get_antennas', {
-      accountId: this.accountId,
-    })
+    return unwrapAny(await commands.apiGetAntennas(this.accountId))
   }
 
   async getAntennaNotes(
     antennaId: string,
     options: PaginationOptions = {},
   ): Promise<NormalizedNote[]> {
-    return invoke('api_get_antenna_notes', {
-      accountId: this.accountId,
-      antennaId,
-      limit: options.limit ?? 20,
-      sinceId: options.sinceId ?? null,
-      untilId: options.untilId ?? null,
-    })
+    return unwrapAny(
+      await commands.apiGetAntennaNotes(
+        this.accountId,
+        antennaId,
+        options.limit ?? 20,
+        options.sinceId ?? null,
+        options.untilId ?? null,
+      ),
+    )
   }
 
   async getMentions(
     options: PaginationOptions & { visibility?: string } = {},
   ): Promise<NormalizedNote[]> {
-    return invoke('api_get_mentions', {
-      accountId: this.accountId,
-      limit: options.limit ?? 20,
-      sinceId: options.sinceId ?? null,
-      untilId: options.untilId ?? null,
-      visibility: options.visibility ?? null,
-    })
+    return unwrapAny(
+      await commands.apiGetMentions(
+        this.accountId,
+        options.limit ?? 20,
+        options.sinceId ?? null,
+        options.untilId ?? null,
+        options.visibility ?? null,
+      ),
+    )
   }
 
   async getFavorites(
     options: PaginationOptions = {},
   ): Promise<NormalizedNote[]> {
-    return invoke('api_get_favorites', {
-      accountId: this.accountId,
-      limit: options.limit ?? 20,
-      sinceId: options.sinceId ?? null,
-      untilId: options.untilId ?? null,
-    })
+    return unwrapAny(
+      await commands.apiGetFavorites(
+        this.accountId,
+        options.limit ?? 20,
+        options.sinceId ?? null,
+        options.untilId ?? null,
+      ),
+    )
   }
 
   async getFeaturedNotes(
     options: { limit?: number } = {},
   ): Promise<NormalizedNote[]> {
-    return invoke('api_get_featured_notes', {
-      accountId: this.accountId,
-      limit: options.limit ?? 30,
-    })
+    return unwrapAny(
+      await commands.apiGetFeaturedNotes(this.accountId, options.limit ?? 30),
+    )
   }
 
   async getClips(): Promise<Clip[]> {
-    return invoke('api_get_clips', {
-      accountId: this.accountId,
-    })
+    return unwrapAny(await commands.apiGetClips(this.accountId))
   }
 
   async getClipNotes(
     clipId: string,
     options: PaginationOptions = {},
   ): Promise<NormalizedNote[]> {
-    return invoke('api_get_clip_notes', {
-      accountId: this.accountId,
-      clipId,
-      limit: options.limit ?? 20,
-      sinceId: options.sinceId ?? null,
-      untilId: options.untilId ?? null,
-    })
+    return unwrapAny(
+      await commands.apiGetClipNotes(
+        this.accountId,
+        clipId,
+        options.limit ?? 20,
+        options.sinceId ?? null,
+        options.untilId ?? null,
+      ),
+    )
   }
 
   async getChannels(): Promise<Channel[]> {
-    return invoke('api_get_channels', {
-      accountId: this.accountId,
-    })
+    return unwrapAny(await commands.apiGetChannels(this.accountId))
   }
 
   async getChannelNotes(
     channelId: string,
     options: PaginationOptions = {},
   ): Promise<NormalizedNote[]> {
-    return invoke('api_get_channel_notes', {
-      accountId: this.accountId,
-      channelId,
-      limit: options.limit ?? 20,
-      sinceId: options.sinceId ?? null,
-      untilId: options.untilId ?? null,
-    })
+    return unwrapAny(
+      await commands.apiGetChannelNotes(
+        this.accountId,
+        channelId,
+        options.limit ?? 20,
+        options.sinceId ?? null,
+        options.untilId ?? null,
+      ),
+    )
   }
 
   async getChatHistory(limit?: number): Promise<ChatMessage[]> {
-    return invoke('api_get_chat_history', {
-      accountId: this.accountId,
-      limit: limit ?? 100,
-    })
+    return unwrapAny(
+      await commands.apiGetChatHistory(this.accountId, limit ?? 100, null),
+    )
   }
 
   async getChatUserMessages(
     userId: string,
     options: PaginationOptions = {},
   ): Promise<ChatMessage[]> {
-    return invoke('api_get_chat_user_messages', {
-      accountId: this.accountId,
-      userId,
-      limit: options.limit ?? 30,
-      sinceId: options.sinceId ?? null,
-      untilId: options.untilId ?? null,
-    })
+    return unwrapAny(
+      await commands.apiGetChatUserMessages(
+        this.accountId,
+        userId,
+        options.limit ?? 30,
+        options.sinceId ?? null,
+        options.untilId ?? null,
+      ),
+    )
   }
 
   async getChatRoomMessages(
     roomId: string,
     options: PaginationOptions = {},
   ): Promise<ChatMessage[]> {
-    return invoke('api_get_chat_room_messages', {
-      accountId: this.accountId,
-      roomId,
-      limit: options.limit ?? 30,
-      sinceId: options.sinceId ?? null,
-      untilId: options.untilId ?? null,
-    })
+    return unwrapAny(
+      await commands.apiGetChatRoomMessages(
+        this.accountId,
+        roomId,
+        options.limit ?? 30,
+        options.sinceId ?? null,
+        options.untilId ?? null,
+      ),
+    )
   }
 
   async createChatMessage(params: {
@@ -530,110 +497,89 @@ export class MisskeyApi implements ApiAdapter {
     text: string
   }): Promise<ChatMessage> {
     this.requireAuth()
-    return invoke('api_create_chat_message', {
-      accountId: this.accountId,
-      userId: params.userId ?? null,
-      roomId: params.roomId ?? null,
-      text: params.text,
-    })
+    return unwrapAny(
+      await commands.apiCreateChatMessage(
+        this.accountId,
+        params.userId ?? null,
+        params.roomId ?? null,
+        params.text,
+      ),
+    )
   }
 
   async muteUser(userId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_mute_user', {
-      accountId: this.accountId,
-      userId,
-    })
+    unwrapAny(await commands.apiMuteUser(this.accountId, userId))
   }
 
   async unmuteUser(userId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_unmute_user', {
-      accountId: this.accountId,
-      userId,
-    })
+    unwrapAny(await commands.apiUnmuteUser(this.accountId, userId))
   }
 
   async blockUser(userId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_block_user', {
-      accountId: this.accountId,
-      userId,
-    })
+    unwrapAny(await commands.apiBlockUser(this.accountId, userId))
   }
 
   async unblockUser(userId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_unblock_user', {
-      accountId: this.accountId,
-      userId,
-    })
+    unwrapAny(await commands.apiUnblockUser(this.accountId, userId))
   }
 
   async reportUser(userId: string, comment: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_report_user', {
-      accountId: this.accountId,
-      userId,
-      comment,
-    })
+    unwrapAny(await commands.apiReportUser(this.accountId, userId, comment))
   }
 
   async addNoteToClip(clipId: string, noteId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_add_note_to_clip', {
-      accountId: this.accountId,
-      clipId,
-      noteId,
-    })
+    unwrapAny(await commands.apiAddNoteToClip(this.accountId, clipId, noteId))
   }
 
   async addUserToList(listId: string, userId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_add_user_to_list', {
-      accountId: this.accountId,
-      listId,
-      userId,
-    })
+    unwrapAny(await commands.apiAddUserToList(this.accountId, listId, userId))
   }
 
   async removeUserFromList(listId: string, userId: string): Promise<void> {
     this.requireAuth()
-    return invoke('api_remove_user_from_list', {
-      accountId: this.accountId,
-      listId,
-      userId,
-    })
+    unwrapAny(
+      await commands.apiRemoveUserFromList(this.accountId, listId, userId),
+    )
   }
 
   async getFollowing(
     userId: string,
     options: { limit?: number; untilId?: string } = {},
   ): Promise<FollowRelation[]> {
-    return invoke('api_get_following', {
-      accountId: this.accountId,
-      userId,
-      limit: options.limit ?? 30,
-      untilId: options.untilId ?? null,
-    })
+    return unwrapAny(
+      await commands.apiGetFollowing(
+        this.accountId,
+        userId,
+        options.limit ?? 30,
+        options.untilId ?? null,
+      ),
+    )
   }
 
   async getFollowers(
     userId: string,
     options: { limit?: number; untilId?: string } = {},
   ): Promise<FollowRelation[]> {
-    return invoke('api_get_followers', {
-      accountId: this.accountId,
-      userId,
-      limit: options.limit ?? 30,
-      untilId: options.untilId ?? null,
-    })
+    return unwrapAny(
+      await commands.apiGetFollowers(
+        this.accountId,
+        userId,
+        options.limit ?? 30,
+        options.untilId ?? null,
+      ),
+    )
   }
 
   async getUserRelations(userIds: string[]): Promise<UserRelation[]> {
-    return invoke('api_get_user_relations', {
-      accountId: this.accountId,
-      userIds,
-    })
+    return unwrapAny(
+      await commands.apiGetUserRelations(this.accountId, userIds),
+    )
   }
 }

@@ -8,7 +8,7 @@ import { useHoverPopup } from '@/composables/useHoverPopup'
 import { provideNoteAccountId } from '@/composables/useNoteContext'
 import { usePortal } from '@/composables/usePortal'
 import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
 
@@ -144,11 +144,9 @@ async function onMentionHover(
   mentionHovering = true
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
   try {
-    const user = await invoke<NormalizedUser>('api_lookup_user', {
-      accountId: props.accountId,
-      username,
-      host: host ?? null,
-    })
+    const user = unwrap(
+      await commands.apiLookupUser(props.accountId, username, host ?? null),
+    )
     if (!mentionHovering) return
     mentionUserId.value = user.id
     mentionPopup.show({ x: rect.right + 8, y: rect.top })

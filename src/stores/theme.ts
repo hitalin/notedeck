@@ -20,7 +20,7 @@ import {
   setStorageJson,
   setStorageString,
 } from '@/utils/storage'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 // Moved inside defineStore below to isolate per-window instance.
 // (Module-level Maps leak data between Tauri multi-window contexts.)
@@ -335,9 +335,9 @@ export const useThemeStore = defineStore('theme', () => {
     fetchingAccounts.add(accountId)
 
     try {
-      const data = await invoke<ThemeResponse>('api_fetch_account_theme', {
-        accountId,
-      })
+      const data = unwrap(
+        await commands.apiFetchAccountTheme(accountId),
+      ) as ThemeResponse
       const entry: { dark?: MisskeyTheme; light?: MisskeyTheme } = {}
 
       // Try each source in priority order: sync > base > meta

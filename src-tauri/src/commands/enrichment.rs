@@ -8,6 +8,7 @@ use super::{get_credentials, AppState, Result};
 // --- OGP Preview ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn fetch_ogp(
     ogp_cache: State<'_, crate::ogp::OgpCache>,
     app_state: State<'_, AppState>,
@@ -37,6 +38,7 @@ pub async fn fetch_ogp(
 // --- Server Discovery (unauthenticated, CORS-free) ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn fetch_nodeinfo(
     app_state: State<'_, AppState>,
     host: String,
@@ -46,6 +48,7 @@ pub async fn fetch_nodeinfo(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn fetch_server_meta(
     app_state: State<'_, AppState>,
     host: String,
@@ -55,6 +58,7 @@ pub async fn fetch_server_meta(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn fetch_image_base64(
     http: State<'_, reqwest::Client>,
     url: String,
@@ -81,7 +85,7 @@ pub async fn fetch_image_base64(
 
 // --- Generic HTTP health check ---
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, specta::Type)]
 pub struct HealthCheckResult {
     pub ok: bool,
     pub status: u16,
@@ -89,6 +93,7 @@ pub struct HealthCheckResult {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn check_endpoint_health(
     http: State<'_, reqwest::Client>,
     url: String,

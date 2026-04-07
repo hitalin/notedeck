@@ -1,7 +1,7 @@
 import { nextTick, type Ref, ref } from 'vue'
 import type { NormalizedUser, ServerEmoji } from '@/adapters/types'
 import { useEmojisStore } from '@/stores/emojis'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 /** MFM function names supported by the renderer */
 const mfmFunctionNames = [
@@ -146,11 +146,9 @@ export function useAutocomplete(
   async function searchMention(query: string) {
     if (!activeAccountId.value) return []
     try {
-      return await invoke<NormalizedUser[]>('api_search_users_by_query', {
-        accountId: activeAccountId.value,
-        query,
-        limit: 10,
-      })
+      return unwrap(
+        await commands.apiSearchUsersByQuery(activeAccountId.value, query, 10),
+      ) as unknown as NormalizedUser[]
     } catch {
       return []
     }
@@ -159,11 +157,9 @@ export function useAutocomplete(
   async function searchHashtag(query: string) {
     if (!activeAccountId.value) return []
     try {
-      return await invoke<string[]>('api_search_hashtags', {
-        accountId: activeAccountId.value,
-        query,
-        limit: 10,
-      })
+      return unwrap(
+        await commands.apiSearchHashtags(activeAccountId.value, query, 10),
+      )
     } catch {
       return []
     }

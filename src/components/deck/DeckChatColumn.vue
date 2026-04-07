@@ -13,6 +13,7 @@ import type {
   ChatMessage,
   NormalizedDriveFile,
 } from '@/adapters/types'
+import type { JsonValue } from '@/bindings'
 import AvatarStack from '@/components/common/AvatarStack.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
@@ -25,7 +26,7 @@ import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -132,11 +133,9 @@ async function connectPerAccount() {
 
     let roomHistory: ChatMessage[] = []
     if (props.column.accountId) {
-      roomHistory = await invoke<ChatMessage[]>('api_get_chat_history', {
-        accountId: props.column.accountId,
-        limit: 100,
-        room: true,
-      })
+      roomHistory = unwrap(
+        await commands.apiGetChatHistory(props.column.accountId, 100, true),
+      ) as unknown as ChatMessage[]
     }
 
     chatHistory.value = [...userHistory, ...roomHistory].sort(
@@ -170,11 +169,9 @@ async function connectCrossAccount() {
         const userHistory = await adapter.api.getChatHistory()
         let roomHistory: ChatMessage[] = []
         try {
-          roomHistory = await invoke<ChatMessage[]>('api_get_chat_history', {
-            accountId: acc.id,
-            limit: 100,
-            room: true,
-          })
+          roomHistory = unwrap(
+            await commands.apiGetChatHistory(acc.id, 100, true),
+          ) as unknown as ChatMessage[]
         } catch {
           // room chat not supported
         }
@@ -402,10 +399,9 @@ async function sendMessage() {
     if (currentRoomId.value) params.roomId = currentRoomId.value
     if (attachedFile.value) params.fileId = attachedFile.value.id
 
-    const sent = await invoke<ChatMessage>('api_create_messaging_message', {
-      accountId: accId,
-      params,
-    })
+    const sent = unwrap(
+      await commands.apiCreateMessagingMessage(accId, params as JsonValue),
+    ) as unknown as ChatMessage
     messageText.value = ''
     attachedFile.value = null
     if (!messages.value.some((m) => m.id === sent.id)) {
@@ -502,11 +498,7 @@ async function handleReact(messageId: string, reaction: string) {
   }
 
   try {
-    await invoke('api_react_chat_message', {
-      accountId: accId,
-      messageId,
-      reaction,
-    })
+    unwrap(await commands.apiReactChatMessage(accId, messageId, reaction))
     // Optimistically add reaction to local state
     updateMessageReaction(messageId, reaction, true)
   } catch (e) {
@@ -519,11 +511,7 @@ async function handleUnreact(messageId: string, reaction: string) {
   if (!accId) return
 
   try {
-    await invoke('api_unreact_chat_message', {
-      accountId: accId,
-      messageId,
-      reaction,
-    })
+    unwrap(await commands.apiUnreactChatMessage(accId, messageId, reaction))
     updateMessageReaction(messageId, reaction, false)
   } catch (e) {
     error.value = AppError.from(e)

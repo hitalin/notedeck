@@ -28,7 +28,7 @@ import {
   detectAvailableTimelines,
 } from '@/utils/customTimelines'
 import { AppError } from '@/utils/errors'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 export function usePostFormState(
   props: {
@@ -125,13 +125,11 @@ export function usePostFormState(
     const [availabilityResult, policiesResult, userInfoResult] =
       await Promise.allSettled([
         detectAvailableTimelines(acc.id),
-        invoke<Record<string, boolean>>('api_get_user_policies', {
-          accountId: acc.id,
-        }),
-        invoke<{
+        commands.apiGetUserPolicies(acc.id).then(unwrap),
+        commands.apiGetSelf(acc.id).then(unwrap) as Promise<{
           defaultNoteVisibility?: string
           defaultNoteLocalOnly?: boolean
-        }>('api_get_self', { accountId: acc.id }),
+        }>,
       ])
 
     // Apply mode flags

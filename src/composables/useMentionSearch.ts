@@ -1,6 +1,6 @@
 import { onScopeDispose, type Ref, ref } from 'vue'
 import type { NormalizedUser } from '@/adapters/types'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 export function useMentionSearch(activeAccountId: Ref<string>) {
   const showMentionPopup = ref(false)
@@ -28,14 +28,9 @@ export function useMentionSearch(activeAccountId: Ref<string>) {
       if (!activeAccountId.value) return
       mentionSearching.value = true
       try {
-        mentionResults.value = await invoke<NormalizedUser[]>(
-          'api_search_users_by_query',
-          {
-            accountId: activeAccountId.value,
-            query: q,
-            limit: 10,
-          },
-        )
+        mentionResults.value = unwrap(
+          await commands.apiSearchUsersByQuery(activeAccountId.value, q, 10),
+        ) as unknown as NormalizedUser[]
       } catch {
         mentionResults.value = []
       } finally {

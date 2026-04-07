@@ -17,11 +17,12 @@ import {
 } from '@/aiscript/notedeck-api'
 import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
+import type { JsonValue } from '@/bindings'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import { usePortal } from '@/composables/usePortal'
 import { useToast } from '@/stores/toast'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -106,13 +107,12 @@ async function run() {
   error.value = null
   uiComponents.value = []
 
-  const apiOption = props.accountId
+  const accId = props.accountId
+  const apiOption = accId
     ? async (endpoint: string, params: Record<string, unknown>) => {
-        return invoke('api_request', {
-          accountId: props.accountId,
-          endpoint,
-          params,
-        })
+        return unwrap(
+          await commands.apiRequest(accId, endpoint, params as JsonValue),
+        )
       }
     : undefined
 

@@ -9,6 +9,7 @@ use super::{get_credentials, get_credentials_or_anon, validate_host, AppState, R
 // --- User profile ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_user(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -20,6 +21,7 @@ pub async fn api_get_user(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_user_detail(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -31,6 +33,7 @@ pub async fn api_get_user_detail(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_user_notes(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -55,6 +58,7 @@ pub async fn api_get_user_notes(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_user_notes_filtered(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -68,6 +72,7 @@ pub async fn api_get_user_notes_filtered(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_user_featured_notes(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -89,6 +94,7 @@ pub async fn api_get_user_featured_notes(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_user_achievements(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -102,6 +108,7 @@ pub async fn api_get_user_achievements(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_lookup_user(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -120,6 +127,7 @@ pub async fn api_lookup_user(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_self(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -132,6 +140,7 @@ pub async fn api_get_self(
 // --- Follow / Unfollow ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_follow_user(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -143,6 +152,7 @@ pub async fn api_follow_user(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_unfollow_user(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -154,6 +164,7 @@ pub async fn api_unfollow_user(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_accept_follow_request(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -165,6 +176,7 @@ pub async fn api_accept_follow_request(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_reject_follow_request(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -176,6 +188,7 @@ pub async fn api_reject_follow_request(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_follow_requests(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -191,6 +204,7 @@ pub async fn api_get_follow_requests(
 // --- Follow list & relations ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_following(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -212,6 +226,7 @@ pub async fn api_get_following(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_followers(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -233,6 +248,7 @@ pub async fn api_get_followers(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_get_user_relations(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -246,6 +262,7 @@ pub async fn api_get_user_relations(
 // --- Mute / Block ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_mute_user(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -257,6 +274,7 @@ pub async fn api_mute_user(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_unmute_user(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -268,6 +286,7 @@ pub async fn api_unmute_user(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_block_user(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -279,6 +298,7 @@ pub async fn api_block_user(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_unblock_user(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -292,6 +312,7 @@ pub async fn api_unblock_user(
 // --- Report ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_report_user(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -306,6 +327,7 @@ pub async fn api_report_user(
 // --- User list operations ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_add_user_to_list(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -320,6 +342,7 @@ pub async fn api_add_user_to_list(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_remove_user_from_list(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -336,6 +359,7 @@ pub async fn api_remove_user_from_list(
 // --- Search ---
 
 #[tauri::command]
+#[specta::specta]
 #[allow(clippy::too_many_arguments)]
 pub async fn api_search_users(
     app_state: State<'_, AppState>,
@@ -366,6 +390,7 @@ pub async fn api_search_users(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_search_users_by_query(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -380,6 +405,7 @@ pub async fn api_search_users_by_query(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_search_hashtags(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -396,6 +422,7 @@ pub async fn api_search_hashtags(
 // --- ActivityPub resolve ---
 
 #[tauri::command]
+#[specta::specta]
 pub async fn api_ap_show(
     app_state: State<'_, AppState>,
     account_id: String,

@@ -7,7 +7,7 @@ import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -521,10 +521,9 @@ async function fetchAchievements() {
   error.value = null
 
   try {
-    const result = await invoke<Achievement[]>('api_get_user_achievements', {
-      accountId: props.column.accountId,
-      userId: acc.userId,
-    })
+    const result = unwrap(
+      await commands.apiGetUserAchievements(props.column.accountId, acc.userId),
+    ) as unknown as Achievement[]
     achievements.value = result
   } catch (e) {
     const appErr = AppError.from(e)

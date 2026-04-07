@@ -7,7 +7,7 @@ import type {
 import { useNoteStore } from '@/stores/notes'
 import { usePerformanceStore } from '@/stores/performance'
 import { insertIntoSorted } from '@/utils/sortNotes'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands } from '@/utils/tauriInvoke'
 
 /** @deprecated Use usePerformanceStore().get('noteListMax') instead. Kept for test compatibility. */
 export const NOTE_LIST_MAX = 200
@@ -85,7 +85,7 @@ export function useNoteList(options: UseNoteListOptions) {
       // noteStore.remove() triggers global onDelete listeners,
       // which clean up orderedIds/noteIds in ALL columns
       noteStore.remove(event.noteId)
-      invoke('api_delete_cached_note', { noteId: event.noteId }).catch((e) => {
+      commands.apiDeleteCachedNote(event.noteId).catch((e) => {
         if (import.meta.env.DEV)
           console.debug('[delete-cached-note] ignored:', e)
       })
@@ -117,7 +117,7 @@ export function useNoteList(options: UseNoteListOptions) {
 
     if (await options.deleteHandler(note)) {
       noteStore.remove(id)
-      invoke('api_delete_cached_note', { noteId: id }).catch((e) => {
+      commands.apiDeleteCachedNote(id).catch((e) => {
         if (import.meta.env.DEV)
           console.debug('[delete-cached-note] ignored:', e)
       })

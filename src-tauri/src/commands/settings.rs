@@ -67,6 +67,7 @@ fn resolve_path(app: &tauri::AppHandle, subdir: &str, name: &str) -> Result<Path
 
 /// List files in a settings subdirectory.
 #[tauri::command]
+#[specta::specta]
 pub fn list_settings_files(app: tauri::AppHandle, subdir: &str) -> Result<Vec<String>> {
     validate_subdir(subdir)?;
     let dir = settings_base_dir(&app)?.join(subdir);
@@ -89,6 +90,7 @@ pub fn list_settings_files(app: tauri::AppHandle, subdir: &str) -> Result<Vec<St
 
 /// Read a settings file as a UTF-8 string.
 #[tauri::command]
+#[specta::specta]
 pub fn read_settings_file(app: tauri::AppHandle, subdir: &str, name: &str) -> Result<String> {
     let path = resolve_path(&app, subdir, name)?;
     fs::read_to_string(&path)
@@ -97,6 +99,7 @@ pub fn read_settings_file(app: tauri::AppHandle, subdir: &str, name: &str) -> Re
 
 /// Write a settings file (creates parent directories if needed).
 #[tauri::command]
+#[specta::specta]
 pub fn write_settings_file(
     app: tauri::AppHandle,
     subdir: &str,
@@ -119,6 +122,7 @@ pub fn write_settings_file(
 
 /// Delete a settings file.
 #[tauri::command]
+#[specta::specta]
 pub fn delete_settings_file(app: tauri::AppHandle, subdir: &str, name: &str) -> Result<()> {
     let path = resolve_path(&app, subdir, name)?;
     if path.exists() {
@@ -131,6 +135,7 @@ pub fn delete_settings_file(app: tauri::AppHandle, subdir: &str, name: &str) -> 
 
 /// Rename a settings file within the same subdirectory.
 #[tauri::command]
+#[specta::specta]
 pub fn rename_settings_file(
     app: tauri::AppHandle,
     subdir: &str,
@@ -172,6 +177,7 @@ fn resolve_root_path(app: &tauri::AppHandle, name: &str) -> Result<PathBuf> {
 
 /// Read a root-level settings file as a UTF-8 string.
 #[tauri::command]
+#[specta::specta]
 pub fn read_root_settings_file(app: tauri::AppHandle, name: &str) -> Result<String> {
     let path = resolve_root_path(&app, name)?;
     if !path.exists() {
@@ -183,6 +189,7 @@ pub fn read_root_settings_file(app: tauri::AppHandle, name: &str) -> Result<Stri
 
 /// Write a root-level settings file.
 #[tauri::command]
+#[specta::specta]
 pub fn write_root_settings_file(app: tauri::AppHandle, name: &str, content: &str) -> Result<()> {
     let path = resolve_root_path(&app, name)?;
     fs::write(&path, content).map_err(|e| {
@@ -192,6 +199,7 @@ pub fn write_root_settings_file(app: tauri::AppHandle, name: &str, content: &str
 
 /// Get the settings directory path (so users can open it in file manager).
 #[tauri::command]
+#[specta::specta]
 pub fn get_settings_dir(app: tauri::AppHandle) -> Result<String> {
     Ok(settings_base_dir(&app)?.to_string_lossy().to_string())
 }
@@ -201,6 +209,7 @@ const BACKUP_SUBDIRS: &[&str] = &["profiles", "themes", "plugins"];
 
 /// Export all settings files to a JSON bundle via save dialog.
 #[tauri::command]
+#[specta::specta]
 pub async fn export_settings_json(app: tauri::AppHandle) -> Result<bool> {
     use std::collections::BTreeMap;
     use tauri_plugin_dialog::DialogExt;
@@ -266,6 +275,7 @@ pub async fn export_settings_json(app: tauri::AppHandle) -> Result<bool> {
 
 /// Import settings from a JSON bundle via open dialog.
 #[tauri::command]
+#[specta::specta]
 pub async fn import_settings_json(app: tauri::AppHandle) -> Result<bool> {
     use std::collections::BTreeMap;
     use tauri_plugin_dialog::DialogExt;

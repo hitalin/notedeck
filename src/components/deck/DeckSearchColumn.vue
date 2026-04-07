@@ -20,7 +20,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { getAccountAvatarUrl } from '@/stores/accounts'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -40,6 +40,10 @@ import {
   isValidRegex,
 } from '@/utils/regexSearch'
 import DeckColumn from './DeckColumn.vue'
+
+function collectFulfilled<T>(results: PromiseSettledResult<T[]>[]): T[] {
+  return results.flatMap((r) => (r.status === 'fulfilled' ? r.value : []))
+}
 
 const props = defineProps<{
   column: DeckColumnType
@@ -206,14 +210,16 @@ async function searchLocal(q: string) {
 async function searchLocalPerAccount(q: string, hint: string) {
   if (!props.column.accountId) return
   try {
-    let local = await invoke<NormalizedNote[]>('api_search_notes_local', {
-      accountId: props.column.accountId,
-      query: hint,
-      limit: regexMode.value ? 50 : 10,
-      sinceDate: getSinceDateISO() ?? null,
-      untilDate: getUntilDateISO() ?? null,
-      ascending: ascending.value,
-    })
+    let local = unwrap(
+      await commands.apiSearchNotesLocal(
+        props.column.accountId,
+        hint,
+        regexMode.value ? 50 : 10,
+        getSinceDateISO() ?? null,
+        getUntilDateISO() ?? null,
+        ascending.value,
+      ),
+    ) as NormalizedNote[]
     if (searchQuery.value.trim() === q) {
       if (regexMode.value) {
         local = await filterNotesByRegexAsync(local, q)
@@ -232,23 +238,20 @@ async function searchLocalCrossAccount(q: string, hint: string) {
   try {
     const results = await Promise.allSettled(
       accounts.map((acc) =>
-        invoke<NormalizedNote[]>('api_search_notes_local', {
-          accountId: acc.id,
-          query: hint,
-          limit: regexMode.value ? 50 : 10,
-          sinceDate: getSinceDateISO() ?? null,
-          untilDate: getUntilDateISO() ?? null,
-          ascending: ascending.value,
-        }),
+        commands
+          .apiSearchNotesLocal(
+            acc.id,
+            hint,
+            regexMode.value ? 50 : 10,
+            getSinceDateISO() ?? null,
+            getUntilDateISO() ?? null,
+            ascending.value,
+          )
+          .then((r) => unwrap(r) as NormalizedNote[]),
       ),
     )
     if (searchQuery.value.trim() === q) {
-      let merged: NormalizedNote[] = []
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value) {
-          merged.push(...r.value)
-        }
-      }
+      let merged = collectFulfilled(results)
       if (regexMode.value) {
         merged = await filterNotesByRegexAsync(merged, q)
       }
@@ -323,14 +326,16 @@ async function performSearchPerAccount(q: string, hint: string) {
   // Local search first (instant) if not already showing preview
   if (!hasLocalResults.value && props.column.accountId && hint) {
     try {
-      let local = await invoke<NormalizedNote[]>('api_search_notes_local', {
-        accountId: props.column.accountId,
-        query: hint,
-        limit: regexMode.value ? 100 : undefined,
-        sinceDate: getSinceDateISO() ?? null,
-        untilDate: getUntilDateISO() ?? null,
-        ascending: ascending.value,
-      })
+      let local = unwrap(
+        await commands.apiSearchNotesLocal(
+          props.column.accountId,
+          hint,
+          regexMode.value ? 100 : null,
+          getSinceDateISO() ?? null,
+          getUntilDateISO() ?? null,
+          ascending.value,
+        ),
+      ) as NormalizedNote[]
       if (regexMode.value) {
         local = await filterNotesByRegexAsync(local, q)
       }
@@ -376,22 +381,19 @@ async function performSearchCrossAccount(q: string, hint: string) {
     try {
       const localResults = await Promise.allSettled(
         accounts.map((acc) =>
-          invoke<NormalizedNote[]>('api_search_notes_local', {
-            accountId: acc.id,
-            query: hint,
-            limit: regexMode.value ? 100 : undefined,
-            sinceDate: getSinceDateISO() ?? null,
-            untilDate: getUntilDateISO() ?? null,
-            ascending: ascending.value,
-          }),
+          commands
+            .apiSearchNotesLocal(
+              acc.id,
+              hint,
+              regexMode.value ? 100 : null,
+              getSinceDateISO() ?? null,
+              getUntilDateISO() ?? null,
+              ascending.value,
+            )
+            .then((r) => unwrap(r) as NormalizedNote[]),
         ),
       )
-      let merged: NormalizedNote[] = []
-      for (const r of localResults) {
-        if (r.status === 'fulfilled' && r.value) {
-          merged.push(...r.value)
-        }
-      }
+      let merged = collectFulfilled(localResults)
       if (regexMode.value) {
         merged = await filterNotesByRegexAsync(merged, q)
       }
@@ -417,12 +419,7 @@ async function performSearchCrossAccount(q: string, hint: string) {
           })
         }),
       )
-      let merged: NormalizedNote[] = []
-      for (const r of serverResults) {
-        if (r.status === 'fulfilled' && r.value) {
-          merged.push(...r.value)
-        }
-      }
+      let merged = collectFulfilled(serverResults)
       if (regexMode.value) {
         merged = await filterNotesByRegexAsync(merged, q)
       }
@@ -498,12 +495,7 @@ async function loadMoreCrossAccount() {
       }),
     )
 
-    let older: NormalizedNote[] = []
-    for (const r of results) {
-      if (r.status === 'fulfilled' && r.value) {
-        older.push(...r.value)
-      }
-    }
+    let older = collectFulfilled(results)
     if (regexMode.value) {
       older = await filterNotesByRegexAsync(older, q)
     }

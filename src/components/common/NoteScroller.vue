@@ -34,11 +34,14 @@ const scrollContainer = ref<HTMLElement | null>(null)
 
 // Dynamic estimateSize — exponential moving average (EMA) of measured item heights.
 // Converges fast during bootstrap (first 10), then tracks recent height trends.
+// Update is deferred to next frame to break ResizeObserver feedback loops:
+//   measureElement → dynamicEstimate change → estimateSize change → layout → ResizeObserver re-fire
 const EMA_ALPHA = 0.3
 const BOOTSTRAP_COUNT = 10
 let _emaValue = props.estimatedHeight
 let _measuredCount = 0
 const dynamicEstimate = ref(props.estimatedHeight)
+let _estimateRafScheduled = false
 
 const virtualizerOptions = computed(() => ({
   count: props.items.length,
@@ -123,7 +126,15 @@ function measureElement(el: unknown) {
   } else {
     _emaValue = EMA_ALPHA * h + (1 - EMA_ALPHA) * _emaValue
   }
-  dynamicEstimate.value = Math.round(_emaValue)
+  // Defer reactive update to next frame to avoid ResizeObserver loop:
+  // same-frame estimateSize change would trigger re-layout → re-observe → loop
+  if (!_estimateRafScheduled) {
+    _estimateRafScheduled = true
+    requestAnimationFrame(() => {
+      _estimateRafScheduled = false
+      dynamicEstimate.value = Math.round(_emaValue)
+    })
+  }
 }
 
 // Near-end detection for load-more, throttled to 200ms.

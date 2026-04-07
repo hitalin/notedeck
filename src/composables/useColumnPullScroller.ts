@@ -8,6 +8,7 @@ import { inject, type Ref, watch } from 'vue'
 export function useColumnPullScroller(scrollerRef: Ref<HTMLElement | null>) {
   const target = inject<Ref<HTMLElement | null> | undefined>(
     'deckPullScrollerTarget',
+    undefined,
   )
   if (target) {
     watch(

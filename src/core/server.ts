@@ -4,11 +4,13 @@ import type {
   ServerInfo,
   ServerSoftware,
 } from '@/adapters/types'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 interface NodeInfoSoftware {
   name: string
   version: string
+  /** nodeinfo 2.1 で追加。例: "https://github.com/misskey-dev/misskey" */
+  repository?: string
 }
 
 interface NodeInfo {
@@ -21,7 +23,10 @@ export async function detectServer(host: string): Promise<ServerInfo> {
     fetchNodeInfo(host),
     fetchServerMeta(host),
   ])
-  const software = detectSoftware(nodeinfo.software.name)
+  const software = detectSoftware(
+    nodeinfo.software.name,
+    nodeinfo.software.repository,
+  )
 
   return {
     host,
@@ -34,17 +39,17 @@ export async function detectServer(host: string): Promise<ServerInfo> {
 }
 
 async function fetchNodeInfo(host: string): Promise<NodeInfo> {
-  const data = await invoke<NodeInfo>('fetch_nodeinfo', { host })
-  return data
+  return unwrap(await commands.fetchNodeinfo(host)) as unknown as NodeInfo
 }
 
 async function fetchServerMeta(
   host: string,
 ): Promise<{ iconUrl: string; themeColor: string | null }> {
   try {
-    const data = await invoke<Record<string, unknown>>('fetch_server_meta', {
-      host,
-    })
+    const data = unwrap(await commands.fetchServerMeta(host)) as Record<
+      string,
+      unknown
+    >
     const url = (data.iconUrl ?? data.faviconUrl) as string | undefined
     const iconUrl = url
       ? url.startsWith('http')
@@ -59,8 +64,8 @@ async function fetchServerMeta(
   }
 }
 
-function detectSoftware(name: string): ServerSoftware {
-  return resolveSoftware(name)
+function detectSoftware(name: string, repositoryUrl?: string): ServerSoftware {
+  return resolveSoftware(name, repositoryUrl)
 }
 
 /**
@@ -100,11 +105,17 @@ function detectFeatures(
 ): ServerFeatures {
   const features = defaultFeatures()
 
-  if (software === 'misskey') {
+  // Misskey 本家: バージョンベースの capability 検出
+  if (software === 'misskey-dev/misskey') {
     features.scheduledNotes = isVersionAtLeast(version, 2025, 10, 0)
     features.groupedNotifications = isVersionAtLeast(version, 2024, 2, 0)
     features.notesShowPartialBulk = isVersionAtLeast(version, 2025, 5, 1)
   }
+
+  // フォーク固有の capability はここに追加。
+  // カスタム TL や modeFlags は customTimelines.ts のポリシー検出で動的に対応済み。
+  // 静的に宣言が必要な capability のみここで設定する。
+  // 手順: DEVELOPMENT.md の "Fork support" を参照。
 
   return features
 }

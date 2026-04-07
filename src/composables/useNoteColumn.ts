@@ -208,6 +208,33 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   // --- Shared stage helpers ---
 
+  /**
+   * Split incoming notes into existing (in-place update) and brand-new (enqueue for animation).
+   * For non-streaming columns, falls back to simple mergeUpdate.
+   * When `replace` is true, replaces all notes instead of merging (initial load without cache).
+   */
+  function mergeOrEnqueue(
+    incoming: NormalizedNote[],
+    opts?: { replace?: boolean },
+  ): void {
+    if (incoming.length === 0) return
+    if (opts?.replace) {
+      setNotes(incoming)
+      return
+    }
+    if (streamingBatch) {
+      const existing = incoming.filter((n) => noteIds.has(n.id))
+      const brandNew = incoming.filter((n) => !noteIds.has(n.id))
+      if (existing.length > 0) mergeUpdate(existing)
+      if (brandNew.length > 0) {
+        streamingBatch.addQueued(brandNew)
+        scrollToTop()
+      }
+    } else {
+      mergeUpdate(incoming)
+    }
+  }
+
   function getDedupKey(): string {
     return `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
   }
@@ -375,23 +402,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
       const freshIds = new Set(fetched.map((n) => n.id))
 
       if (fetched.length > 0) {
-        if ((hasCached || sinceId) && streamingBatch) {
-          // Update existing notes in-place (avatar, reactions, etc.)
-          // Route brand-new notes through streaming batch for animated insertion
-          const existing = fetched.filter((n) => noteIds.has(n.id))
-          const brandNew = fetched.filter((n) => !noteIds.has(n.id))
-          if (existing.length > 0) mergeUpdate(existing)
-          if (brandNew.length > 0) {
-            streamingBatch.addQueued(brandNew)
-            // Initial load: auto-flush with slide-in animation
-            scrollToTop()
-          }
-        } else if (hasCached || sinceId) {
-          // Non-streaming columns: merge directly (manual refresh button)
-          mergeUpdate(fetched)
-        } else {
-          setNotes(fetched)
-        }
+        mergeOrEnqueue(fetched, {
+          replace: !hasCached && !sinceId,
+        })
       }
 
       isOffline.value = false
@@ -566,20 +579,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     isOffline.value = apiFailed
 
     // Merge: update existing in-place, route new notes through streaming batch
-    const combined = [...fetched, ...cached]
-    if (combined.length > 0) {
-      if (streamingBatch) {
-        const existing = combined.filter((n) => noteIds.has(n.id))
-        const brandNew = combined.filter((n) => !noteIds.has(n.id))
-        if (existing.length > 0) mergeUpdate(existing)
-        if (brandNew.length > 0) {
-          streamingBatch.addQueued(brandNew)
-          scrollToTop()
-        }
-      } else {
-        mergeUpdate(combined)
-      }
-    }
+    mergeOrEnqueue([...fetched, ...cached])
 
     // Background: verify cached notes not confirmed by fresh API fetch
     if (cached.length > 0) {
@@ -638,15 +638,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
         }
         // Fetch latest from API
         const fetched = await fetchAndDedup(adapter)
-        if (fetched.length > 0) {
-          const existing = fetched.filter((n) => noteIds.has(n.id))
-          const brandNew = fetched.filter((n) => !noteIds.has(n.id))
-          if (existing.length > 0) mergeUpdate(existing)
-          if (brandNew.length > 0) {
-            streamingBatch.addQueued(brandNew)
-            scrollToTop()
-          }
-        }
+        mergeOrEnqueue(fetched)
         isOffline.value = false
       } catch (e) {
         await handleFetchError(e)
@@ -694,12 +686,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
       const fetched = await fetchAndDedup(adapter, sinceId ? { sinceId } : {})
       // Guard: discard if tab changed during async fetch
       if ((config.cache?.getKey() ?? 'default') !== snapshotCacheKey) return
-      if (fetched.length > 0) {
-        const newNotes = fetched.filter((n) => !noteIds.has(n.id))
-        if (newNotes.length > 0) {
-          streamingBatch.addQueued(newNotes)
-        }
-      }
+      // Snapshot already has existing notes — only enqueue brand-new ones
+      mergeOrEnqueue(fetched)
       isOffline.value = false
     } catch {
       // API failure with snapshot displayed — mark offline

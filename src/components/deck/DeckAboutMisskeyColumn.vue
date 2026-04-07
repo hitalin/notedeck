@@ -7,7 +7,7 @@ import {
   ref,
   useTemplateRef,
 } from 'vue'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -155,9 +155,9 @@ async function fetchMeta() {
     const info = await serversStore.getServerInfo(acc.host)
     serverIconUrl.value = info.iconUrl
 
-    meta.value = await invoke<ServerMeta>('api_get_meta_detail', {
-      accountId: acc.id,
-    })
+    meta.value = unwrap(
+      await commands.apiGetMetaDetail(acc.id),
+    ) as unknown as ServerMeta
   } catch (e) {
     error.value = AppError.from(e)
   } finally {

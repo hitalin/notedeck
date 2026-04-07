@@ -8,7 +8,7 @@ import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
 import { proxyUrl } from '@/utils/imageProxy'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 interface ServerMeta {
@@ -116,16 +116,12 @@ async function fetchServerInfo() {
     serverIconUrl.value = info.iconUrl
 
     const [metaResult, statsResult] = await Promise.all([
-      invoke<ServerMeta>('api_get_meta_detail', {
-        accountId: acc.id,
-      }),
-      invoke<ServerStats>('api_get_server_stats', {
-        accountId: acc.id,
-      }),
+      commands.apiGetMetaDetail(acc.id),
+      commands.apiGetServerStats(acc.id),
     ])
 
-    meta.value = metaResult
-    stats.value = statsResult
+    meta.value = unwrap(metaResult) as unknown as ServerMeta
+    stats.value = unwrap(statsResult) as unknown as ServerStats
   } catch (e) {
     error.value = AppError.from(e)
   } finally {

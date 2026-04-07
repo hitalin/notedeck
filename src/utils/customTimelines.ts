@@ -6,7 +6,7 @@ import {
   STORAGE_KEYS,
   setStorageJson,
 } from './storage'
-import { invoke } from './tauriInvoke'
+import { commands, unwrap } from './tauriInvoke'
 
 export interface CustomTimelineInfo {
   type: string
@@ -67,7 +67,7 @@ const customTlMemCache = new Map<string, CustomTimelineInfo[]>()
 async function fetchCustomTimelinesFromNetwork(
   host: string,
 ): Promise<CustomTimelineInfo[]> {
-  const endpoints = await invoke<string[]>('api_get_endpoints', { host })
+  const endpoints = unwrap(await commands.apiGetEndpoints(host))
   const customs: CustomTimelineInfo[] = []
   for (const ep of endpoints) {
     const match = ep.match(/^notes\/(.+)-timeline$/)
@@ -198,9 +198,10 @@ async function fetchPoliciesFromNetwork(
   const modes: Record<string, boolean> = {}
   const available: TimelineType[] = ['home']
 
-  const data = await invoke<Record<string, boolean>>('api_get_user_policies', {
-    accountId,
-  })
+  const data = unwrap(await commands.apiGetUserPolicies(accountId)) as Record<
+    string,
+    boolean
+  >
 
   // Separate mode flags from policies
   const policies: Record<string, boolean> = {}
@@ -406,10 +407,7 @@ export async function detectFilterKeys(
   if (cached) return cached
 
   try {
-    const params = await invoke<string[]>('api_get_endpoint_params', {
-      host,
-      endpoint,
-    })
+    const params = unwrap(await commands.apiGetEndpointParams(host, endpoint))
     const keys = KNOWN_FILTER_KEYS.filter((k) =>
       FILTER_PARAM_ALIASES[k].some((alias) => params.includes(alias)),
     )

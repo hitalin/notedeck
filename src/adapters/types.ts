@@ -1,4 +1,19 @@
-export type ServerSoftware = 'misskey' | 'unknown'
+/**
+ * Misskey 系フォークの識別子。owner/repo 形式で一意に特定する。
+ * nodeinfo の software.name から resolveSoftware() で解決されるが、
+ * "misskey" と名乗りつつ独自改変しているフォークは自動検出できないため、
+ * デフォルトは 'misskey-dev/misskey' にフォールバックする。
+ *
+ * 新しいフォークを追加する場合:
+ * 1. ここにリテラルを追加
+ * 2. registry.ts の resolveSoftware() に検出ルールを追加
+ * 3. server.ts の detectFeatures() にフォーク固有の capability を設定
+ */
+export type ServerSoftware =
+  | 'misskey-dev/misskey'
+  | 'yamisskey-dev/yamisskey'
+  | 'lqvp/misskey-tepura'
+  | 'unknown'
 
 export interface ServerInfo {
   host: string
@@ -96,6 +111,19 @@ export interface Antenna {
 export interface Clip {
   id: string
   name: string
+  description?: string | null
+  isPublic?: boolean
+}
+
+export interface CreateAntennaParams {
+  name: string
+  src?: string
+  keywords?: string[][]
+  excludeKeywords?: string[][]
+  users?: string[]
+  caseSensitive?: boolean
+  withReplies?: boolean
+  withFile?: boolean
 }
 
 export interface Channel {

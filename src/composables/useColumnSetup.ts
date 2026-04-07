@@ -1,17 +1,16 @@
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   ChannelSubscription,
   NormalizedNote,
   ServerAdapter,
 } from '@/adapters/types'
+import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { useScrollDirection } from '@/composables/useScrollDirection'
-import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
 import { useOfflineModeStore } from '@/stores/offlineMode'
-import { useThemeStore } from '@/stores/theme'
 import { useToast } from '@/stores/toast'
 import { useUiStore } from '@/stores/ui'
 import { AppError } from '@/utils/errors'
@@ -41,18 +40,7 @@ export function useColumnSetup(
       customMutatedFn?.()
     }
   }
-  const accountsStore = useAccountsStore()
-  const themeStore = useThemeStore()
-
-  const account = computed(() =>
-    accountsStore.accounts.find((a) => a.id === getColumn().accountId),
-  )
-
-  const columnThemeVars = computed(() => {
-    const accountId = getColumn().accountId
-    if (!accountId) return undefined
-    return themeStore.getStyleVarsForAccount(accountId)
-  })
+  const { account, columnThemeVars } = useColumnTheme(getColumn)
 
   const serverIconUrl = ref<string | undefined>()
 

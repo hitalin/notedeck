@@ -4,7 +4,7 @@ use tokio::sync::RwLock;
 
 /// Performance configuration shared across the application.
 /// All fields are dynamically updatable at runtime via Tauri commands.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct PerformanceConfig {
     pub memory_cache_max_total: usize,
     pub memory_cache_max_item: usize,
@@ -35,6 +35,7 @@ pub type SharedPerfConfig = Arc<RwLock<PerformanceConfig>>;
 
 /// Tauri command: update performance config at runtime.
 #[tauri::command]
+#[specta::specta]
 pub async fn update_performance_config(
     config: PerformanceConfig,
     state: tauri::State<'_, SharedPerfConfig>,
@@ -46,6 +47,7 @@ pub async fn update_performance_config(
 
 /// Tauri command: get current performance config.
 #[tauri::command]
+#[specta::specta]
 pub async fn get_performance_config(
     state: tauri::State<'_, SharedPerfConfig>,
 ) -> Result<PerformanceConfig, String> {

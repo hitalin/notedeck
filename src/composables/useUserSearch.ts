@@ -1,6 +1,6 @@
 import { ref, watch } from 'vue'
 import type { NormalizedUser } from '@/adapters/types'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 /**
  * Core search: fuzzy search + exact lookup in parallel.
@@ -14,11 +14,9 @@ export async function searchUsers(
   if (!q) return []
 
   const [searchResult, lookupResult] = await Promise.allSettled([
-    invoke<NormalizedUser[]>('api_search_users_by_query', {
-      accountId,
-      query: q,
-      limit: 8,
-    }),
+    commands
+      .apiSearchUsersByQuery(accountId, q, 8)
+      .then((r) => unwrap(r) as unknown as NormalizedUser[]),
     tryLookupUser(accountId, q),
   ])
 
@@ -74,11 +72,9 @@ async function tryLookupUser(
   const host = parts[1] || null
   if (!username) return null
   try {
-    return await invoke<NormalizedUser>('api_lookup_user', {
-      accountId,
-      username,
-      host,
-    })
+    return unwrap(
+      await commands.apiLookupUser(accountId, username, host),
+    ) as unknown as NormalizedUser
   } catch {
     return null
   }

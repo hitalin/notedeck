@@ -1,5 +1,10 @@
 import { useCommandStore } from '@/commands/registry'
 import { useAccountActions } from '@/composables/useAccountActions'
+import {
+  ENTITY_CONFIGS,
+  type EntityType,
+  useEntityCrud,
+} from '@/composables/useEntityCrud'
 import type { NoteAction } from '@/composables/useNoteFocus'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
@@ -227,8 +232,10 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
                     type: 'danger',
                   })
                   if (ok) {
-                    const { invoke } = await import('@/utils/tauriInvoke')
-                    await invoke('clear_account_cache', { accountId: acc.id })
+                    const { commands, unwrap } = await import(
+                      '@/utils/tauriInvoke'
+                    )
+                    unwrap(await commands.clearAccountCache(acc.id))
                   }
                 },
               })
@@ -318,8 +325,8 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
         type: 'danger',
       })
       if (ok) {
-        const { invoke } = await import('@/utils/tauriInvoke')
-        await invoke('clear_all_cache')
+        const { commands, unwrap } = await import('@/utils/tauriInvoke')
+        unwrap(await commands.clearAllCache())
       }
     },
   })
@@ -512,6 +519,45 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     },
   })
 
+  // Rename / delete clip/list/antenna — delegates to useEntityCrud
+  function getActiveEntityColumn() {
+    const id = deckStore.activeColumnId
+    if (!id) return null
+    const col = deckStore.getColumn(id)
+    if (!col || !(col.type in ENTITY_CONFIGS)) return null
+    return col
+  }
+
+  commandStore.register({
+    id: 'rename-entity',
+    label: '名前を変更',
+    icon: 'edit',
+    category: 'column',
+    shortcuts: [],
+    enabled: () => !!getActiveEntityColumn(),
+    execute: () => {
+      const col = getActiveEntityColumn()
+      if (!col) return
+      const { rename } = useEntityCrud(col.type as EntityType, () => col)
+      rename(() => {})
+    },
+  })
+
+  commandStore.register({
+    id: 'delete-entity',
+    label: 'サーバーから削除',
+    icon: 'trash',
+    category: 'column',
+    shortcuts: [],
+    enabled: () => !!getActiveEntityColumn(),
+    execute: () => {
+      const col = getActiveEntityColumn()
+      if (!col) return
+      const { deleteEntity } = useEntityCrud(col.type as EntityType, () => col)
+      deleteEntity(() => {})
+    },
+  })
+
   // Column mute toggle
   commandStore.register({
     id: 'toggle-column-mute',
@@ -661,8 +707,8 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
       category: 'general',
       shortcuts: keybindsStore.getShortcuts('devtools'),
       execute: () => {
-        import('@tauri-apps/api/core').then(({ invoke }) => {
-          invoke('open_devtools')
+        import('@/utils/tauriInvoke').then(({ commands }) => {
+          commands.openDevtools()
         })
       },
     })
@@ -773,6 +819,8 @@ export function unregisterDefaultCommands() {
     'toggle-realtime-mode',
     'profile-new',
     'close-column',
+    'rename-entity',
+    'delete-entity',
     'keybinds',
     'css-editor',
     'plugins',

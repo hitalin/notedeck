@@ -22,7 +22,7 @@ import type {
   NoteTreeNode,
 } from '@/components/common/MkNoteTree.vue'
 import MkNoteTree from '@/components/common/MkNoteTree.vue'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -212,9 +212,13 @@ async function handleDelete(target: NormalizedNote) {
     await adapter.api.deleteNote(target.id)
     const id = target.id
     noteStore.remove(id)
-    invoke('api_delete_cached_note', { noteId: id }).catch((e) => {
-      if (import.meta.env.DEV) console.debug('[delete-cached-note] ignored:', e)
-    })
+    commands
+      .apiDeleteCachedNote(id)
+      .then((r) => unwrap(r))
+      .catch((e) => {
+        if (import.meta.env.DEV)
+          console.debug('[delete-cached-note] ignored:', e)
+      })
     if (id === note.value?.id) {
       emit('close')
     } else {
@@ -236,9 +240,13 @@ async function handleDeleteAndEdit(target: NormalizedNote) {
     await adapter.api.deleteNote(target.id)
     const id = target.id
     noteStore.remove(id)
-    invoke('api_delete_cached_note', { noteId: id }).catch((e) => {
-      if (import.meta.env.DEV) console.debug('[delete-cached-note] ignored:', e)
-    })
+    commands
+      .apiDeleteCachedNote(id)
+      .then((r) => unwrap(r))
+      .catch((e) => {
+        if (import.meta.env.DEV)
+          console.debug('[delete-cached-note] ignored:', e)
+      })
     if (id === note.value?.id) {
       // Reopen post form for the focal note
       postFormReplyTo.value = target.replyId

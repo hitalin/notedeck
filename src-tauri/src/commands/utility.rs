@@ -4,16 +4,19 @@ use tauri::Manager;
 use super::Result;
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_cli_commands() -> Vec<notecli::cli::CliCommandInfo> {
     notecli::cli::command_metadata()
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_openapi_spec() -> serde_json::Value {
     serde_json::to_value(crate::http_server::openapi_spec()).unwrap_or_default()
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_rustc_version() -> String {
     option_env!("RUSTC_VERSION_INFO")
         .unwrap_or("unknown")
@@ -21,6 +24,7 @@ pub fn get_rustc_version() -> String {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn open_devtools(window: tauri::WebviewWindow) {
     window.open_devtools();
 }
@@ -39,6 +43,7 @@ fn validate_sqlite_file(path: &std::path::Path) -> Result<()> {
 
 /// Export notecli.db to a user-chosen location via save dialog.
 #[tauri::command]
+#[specta::specta]
 pub async fn export_db(app: tauri::AppHandle) -> Result<bool> {
     use tauri_plugin_dialog::DialogExt;
 
@@ -76,6 +81,7 @@ pub async fn export_db(app: tauri::AppHandle) -> Result<bool> {
 /// Replaces the current database file. Caller should relaunch the app afterwards
 /// so that Rust re-opens the new DB with a fresh connection.
 #[tauri::command]
+#[specta::specta]
 pub async fn import_db(app: tauri::AppHandle) -> Result<bool> {
     use tauri_plugin_dialog::DialogExt;
 
@@ -113,6 +119,7 @@ pub async fn import_db(app: tauri::AppHandle) -> Result<bool> {
 
 /// Download an image from URL and save to a user-chosen location via save dialog.
 #[tauri::command]
+#[specta::specta]
 pub async fn save_image_to_file(app: tauri::AppHandle, url: String) -> Result<bool> {
     use tauri_plugin_dialog::DialogExt;
 

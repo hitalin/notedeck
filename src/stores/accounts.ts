@@ -5,7 +5,7 @@ import type { ServerSoftware } from '@/adapters/types'
 import { destroyAdapter } from '@/composables/useInitAdapter'
 import { readAccountOrder, writeAccountOrder } from '@/utils/settingsFs'
 import { removeStorage, STORAGE_KEYS } from '@/utils/storage'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 export interface Account {
   id: string
@@ -122,7 +122,7 @@ export const useAccountsStore = defineStore('accounts', () => {
       } catch {
         /* missing or corrupt file, use default order */
       }
-      const stored = await invoke<Account[]>('load_accounts')
+      const stored = unwrap(await commands.loadAccounts()) as Account[]
       if (!isLoaded.value) applyAccounts(stored)
       cleanupEarlyListener()
     })()
@@ -145,7 +145,7 @@ export const useAccountsStore = defineStore('accounts', () => {
 
   async function removeAccount(id: string): Promise<void> {
     destroyAdapter(id)
-    await invoke('delete_account', { id })
+    unwrap(await commands.deleteAccount(id))
     accounts.value = accounts.value.filter((a) => a.id !== id)
     if (activeAccountId.value === id) {
       activeAccountId.value = accounts.value[0]?.id ?? null
@@ -158,7 +158,7 @@ export const useAccountsStore = defineStore('accounts', () => {
 
   async function logoutAccount(id: string): Promise<void> {
     destroyAdapter(id)
-    await invoke('logout_account', { id })
+    unwrap(await commands.logoutAccount(id))
     const account = accounts.value.find((a) => a.id === id)
     if (account) account.hasToken = false
   }

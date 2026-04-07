@@ -8,7 +8,7 @@ import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 interface Announcement {
@@ -71,14 +71,9 @@ async function fetchAnnouncements() {
     const info = await serversStore.getServerInfo(acc.host)
     serverIconUrl.value = info.iconUrl
 
-    announcements.value = await invoke<Announcement[]>(
-      'api_get_announcements',
-      {
-        accountId: acc.id,
-        limit: 20,
-        isActive: true,
-      },
-    )
+    announcements.value = unwrap(
+      await commands.apiGetAnnouncements(acc.id, 20, true),
+    ) as unknown as Announcement[]
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -92,10 +87,7 @@ async function markAsRead(announcement: Announcement) {
   if (!acc) return
 
   try {
-    await invoke('api_read_announcement', {
-      accountId: acc.id,
-      announcementId: announcement.id,
-    })
+    unwrap(await commands.apiReadAnnouncement(acc.id, announcement.id))
     announcement.isRead = true
     announcements.value = [...announcements.value]
   } catch {

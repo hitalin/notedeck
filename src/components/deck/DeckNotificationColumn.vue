@@ -45,7 +45,7 @@ import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { proxyUrl } from '@/utils/imageProxy'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import { char2twemojiUrl } from '@/utils/twemoji'
 import DeckColumn from './DeckColumn.vue'
 
@@ -681,9 +681,12 @@ async function removeNote(note: NormalizedNote) {
   )
   saveCache()
   noteStore.remove(id)
-  invoke('api_delete_cached_note', { noteId: id }).catch((e) => {
-    if (import.meta.env.DEV) console.debug('[delete-cached-note] ignored:', e)
-  })
+  commands
+    .apiDeleteCachedNote(id)
+    .then((r) => unwrap(r))
+    .catch((e) => {
+      if (import.meta.env.DEV) console.debug('[delete-cached-note] ignored:', e)
+    })
 }
 
 async function handlePosted(editedNoteId?: string) {
