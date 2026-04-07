@@ -17,6 +17,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 export const useServersStore = defineStore('servers', () => {
   // shallowRef + full Map replacement avoids deep reactivity on server info objects
   const servers = shallowRef(new Map<string, ServerInfo>())
+  const pending = new Map<string, Promise<ServerInfo>>()
 
   const KNOWN_SOFTWARE = new Set<string>(['misskey', 'unknown'])
 
@@ -86,24 +87,36 @@ export const useServersStore = defineStore('servers', () => {
     const cached = servers.value.get(host)
     if (cached) return cached
 
-    // Return DB cache immediately if available (SWR: stale-while-revalidate)
-    const stored = await invoke<StoredServer | null>('get_server', { host })
-    if (stored) {
-      const info = parseStoredServer(stored)
-      if (info) {
-        setServer(host, info)
-        if (Date.now() - stored.updatedAt >= CACHE_TTL_MS) {
-          revalidateInBackground(host)
-        }
-        return info
-      }
-    }
+    const inflight = pending.get(host)
+    if (inflight) return inflight
 
-    // No DB cache (first login) — network required
-    const info = await detectServer(host)
-    setServer(host, info)
-    await persistServer(info)
-    return info
+    const loadPromise = (async () => {
+      // Return DB cache immediately if available (SWR: stale-while-revalidate)
+      const stored = await invoke<StoredServer | null>('get_server', { host })
+      if (stored) {
+        const info = parseStoredServer(stored)
+        if (info) {
+          setServer(host, info)
+          if (Date.now() - stored.updatedAt >= CACHE_TTL_MS) {
+            revalidateInBackground(host)
+          }
+          return info
+        }
+      }
+
+      // No DB cache (first login) — network required
+      const info = await detectServer(host)
+      setServer(host, info)
+      await persistServer(info)
+      return info
+    })()
+
+    pending.set(host, loadPromise)
+    try {
+      return await loadPromise
+    } finally {
+      pending.delete(host)
+    }
   }
 
   function getServer(host: string): ServerInfo | undefined {

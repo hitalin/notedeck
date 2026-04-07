@@ -55,6 +55,7 @@ export interface PerformanceConfig {
   notificationPollInterval: number
   chatPollInterval: number
   // Realtime (continued)
+  maxLiveColumns: number
   columnUnloadDelay: number
   snapshotMaxNotes: number
   snapshotTTL: number
@@ -385,6 +386,16 @@ export const FIELD_META: Record<PerformanceKey, FieldMeta> = {
     label: 'チャットポーリング間隔',
     description: 'チャット未読の確認間隔',
   },
+  maxLiveColumns: {
+    min: 1,
+    max: 10,
+    step: 1,
+    unit: '本',
+    category: 'realtime',
+    label: '同時 live カラム数',
+    description:
+      'ストリーミング接続を維持するカラムの上限。超過分は一時停止される',
+  },
   columnUnloadDelay: {
     min: 1000,
     max: 30000,
@@ -564,6 +575,7 @@ export const SLIDER_LOW: PerformanceConfig = {
   streamPollingInterval: 30,
   notificationPollInterval: 300,
   chatPollInterval: 300,
+  maxLiveColumns: 2,
   columnUnloadDelay: 1500,
   snapshotMaxNotes: 15,
   snapshotTTL: 3,
@@ -614,6 +626,7 @@ export const SLIDER_HIGH: PerformanceConfig = {
   streamPollingInterval: 5,
   notificationPollInterval: 60,
   chatPollInterval: 60,
+  maxLiveColumns: 5,
   columnUnloadDelay: 15000,
   snapshotMaxNotes: 80,
   snapshotTTL: 20,

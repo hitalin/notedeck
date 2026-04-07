@@ -206,19 +206,17 @@ body {
   overscroll-behavior: none;
 }
 
-/* Entrance animation: #app slides up and fades in while splash dissolves.
-   The animation is paused until JS adds .nd-app-ready, so the first frame
-   (opacity:0 translateY:8px) acts as the initial hidden state. */
-@keyframes nd-app-enter {
-  from { opacity: 0; translate: 0 8px; }
-  to   { opacity: 1; translate: none; }
-}
 #app {
   height: 100%;
-  animation: nd-app-enter .35s cubic-bezier(.16,1,.3,1) both paused;
 }
-#app.nd-app-ready {
-  animation-play-state: running;
+/* Shell cache: hide #app until CSS bundle loads (FOUC prevention).
+   index.html sets visibility:hidden; this rule overrides it once CSS is ready. */
+html[data-shell-cached] #app {
+  visibility: visible;
+}
+/* Skip entrance animations when restoring from UI shell cache. */
+html[data-shell-cached] * {
+  animation: none !important;
 }
 a {
   color: var(--nd-link);

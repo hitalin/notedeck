@@ -2,6 +2,7 @@ import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { ServerSoftware } from '@/adapters/types'
+import { destroyAdapter } from '@/composables/useInitAdapter'
 import { readAccountOrder, writeAccountOrder } from '@/utils/settingsFs'
 import { removeStorage, STORAGE_KEYS } from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
@@ -143,6 +144,7 @@ export const useAccountsStore = defineStore('accounts', () => {
   }
 
   async function removeAccount(id: string): Promise<void> {
+    destroyAdapter(id)
     await invoke('delete_account', { id })
     accounts.value = accounts.value.filter((a) => a.id !== id)
     if (activeAccountId.value === id) {
@@ -155,6 +157,7 @@ export const useAccountsStore = defineStore('accounts', () => {
   }
 
   async function logoutAccount(id: string): Promise<void> {
+    destroyAdapter(id)
     await invoke('logout_account', { id })
     const account = accounts.value.find((a) => a.id === id)
     if (account) account.hasToken = false

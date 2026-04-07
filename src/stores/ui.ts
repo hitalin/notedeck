@@ -65,7 +65,7 @@ export const useUiStore = defineStore('ui', () => {
     deckResumeSignal.value++
   }
 
-  /** Set to true when DeckLayout DOM is mounted. */
+  /** Set to true when DeckLayout DOM is mounted (used to dismiss splash). */
   const deckMounted = ref(false)
 
   /** Incremented when drive files change. Carries accountId. */

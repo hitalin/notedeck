@@ -14,6 +14,7 @@ import { listenPipEvents } from '@/composables/usePipWindow'
 import { useTheme } from '@/composables/useTheme'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
+import { STORAGE_KEYS } from '@/utils/storage'
 
 const uiStore = useUiStore()
 const { isTauri, isDesktop } = uiStore
@@ -55,24 +56,40 @@ if (isTauri) {
 // Listen for PiP IPC events (main window only)
 let cleanupPipListener: (() => void) | null = null
 
-const splashShownAt = performance.now()
+// Cache UI shell on unload for instant display on next launch (Linear-style).
+function saveShellCache() {
+  if (isPipWindow.value) return
+  try {
+    const app = document.getElementById('app')
+    if (!app) return
+    const html = app.innerHTML
+    if (html.length > 2_000_000) return // Skip if too large for localStorage
+    localStorage.setItem(STORAGE_KEYS.shellCache, html)
+    localStorage.setItem(STORAGE_KEYS.shellCacheVersion, __APP_VERSION__)
+  } catch {
+    // Storage full or other error — skip silently
+  }
+}
+window.addEventListener('beforeunload', saveShellCache)
 
+// Dismiss splash screen (shown only when no shell cache exists).
 function dismissSplash() {
   const el = document.getElementById('nd-splash')
   if (!el) return
-  // Ensure splash is visible for at least 150ms to avoid a flash-like flicker.
-  const elapsed = performance.now() - splashShownAt
-  const delay = Math.max(0, 150 - elapsed)
-  setTimeout(() => {
-    // Start #app entrance animation in sync with splash fade-out
-    document.getElementById('app')?.classList.add('nd-app-ready')
-    el.classList.add('nd-splash-leaving')
-    el.addEventListener('transitionend', () => el.remove(), { once: true })
-    setTimeout(() => el.remove(), 400)
-  }, delay)
+  el.classList.add('nd-splash-leaving')
+  el.addEventListener('transitionend', () => el.remove(), { once: true })
+  setTimeout(() => el.remove(), 400)
 }
 
 onMounted(async () => {
+  // Invalidate shell cache if app version changed (CSS Modules hashes may differ)
+  const cachedVersion = localStorage.getItem(STORAGE_KEYS.shellCacheVersion)
+  if (cachedVersion && cachedVersion !== __APP_VERSION__) {
+    localStorage.removeItem(STORAGE_KEYS.shellCache)
+    localStorage.removeItem(STORAGE_KEYS.shellCacheVersion)
+  }
+  // Clear shell-cached flag so entrance animations are re-enabled
+  delete document.documentElement.dataset.shellCached
   // Set platform attributes on html element for CSS targeting (independent of viewport width)
   const { platformName } = uiStore
   if (platformName) {
@@ -81,7 +98,6 @@ onMounted(async () => {
   document.documentElement.dataset.env = isTauri ? 'tauri' : 'web'
 
   // Show window immediately (visible: false in tauri.conf.json to avoid WebView2 flash).
-  // Splash screen covers FOUT, so no need to wait for fonts.
   // NOTE: setDecorations(false) は呼ばない。config で既に false であり、
   // Windows で再度呼ぶとウィンドウスタイル再計算で非クライアント領域が復活する。
   if (isTauri) {
@@ -92,19 +108,20 @@ onMounted(async () => {
     await getCurrentWindow().show().catch(catchIgnore('window.show'))
   }
 
-  // Dismiss splash when deck layout structure is mounted (not data load).
-  // This shows column frames immediately; notes fill in asynchronously.
-  const splashTimeout = setTimeout(dismissSplash, 500)
-  const stopWatchMounted = watch(
-    () => uiStore.deckMounted,
-    (mounted) => {
-      if (mounted) {
-        clearTimeout(splashTimeout)
-        dismissSplash()
-        stopWatchMounted()
-      }
-    },
-  )
+  // Dismiss splash when deck is mounted (only exists on first launch without cache)
+  if (document.getElementById('nd-splash')) {
+    const splashTimeout = setTimeout(dismissSplash, 500)
+    const stopWatch = watch(
+      () => uiStore.deckMounted,
+      (mounted) => {
+        if (mounted) {
+          clearTimeout(splashTimeout)
+          dismissSplash()
+          stopWatch()
+        }
+      },
+    )
+  }
 
   // Defer theme account fetching (network I/O) to after first paint
   useTheme()

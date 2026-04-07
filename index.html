@@ -5,13 +5,63 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>NoteDeck</title>
-    <link rel="stylesheet" href="/splash.css" />
+    <style>
+      #nd-splash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:var(--nd-bg,#232323);transition:opacity .3s cubic-bezier(.16,1,.3,1)}
+      #nd-splash.nd-splash-leaving{opacity:0}
+      #nd-splash.nd-splash-leaving svg{transform:scale(.8);opacity:0}
+      #nd-splash svg{transition:transform .3s cubic-bezier(.16,1,.3,1),opacity .2s ease-out}
+      @keyframes nd-heartbeat{0%{transform:scale(1)}15%{transform:scale(1.25)}30%,100%{transform:scale(1)}}
+      #nd-splash svg{animation:nd-heartbeat 1.6s ease-in-out infinite}
+      @media(prefers-reduced-motion:reduce){#nd-splash svg{animation:none;transition:none}#nd-splash{transition:none}}
+      html[data-shell-cached] #app{visibility:hidden}
+    </style>
   </head>
   <body>
-    <div id="nd-splash">
-      <svg width="48" height="48" viewBox="0 0 512 512"><defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#aad635"/><stop offset="100%" stop-color="#7ab800"/></linearGradient></defs><g fill="url(#fg)"><rect x="72" y="136" width="100" height="280" rx="36"/><rect x="206" y="136" width="100" height="280" rx="36"/><rect x="340" y="136" width="100" height="280" rx="36"/><polygon points="136,136 189,224 242,136"/><polygon points="270,136 323,224 376,136"/></g></svg>
-    </div>
     <div id="app"></div>
+    <script>
+      // Linear-style instant display: restore cached UI shell, or show splash.
+      (function () {
+        var root = document.documentElement
+        try {
+          // 1. Restore theme CSS variables (same data themeStore.init reads later)
+          var compiled = localStorage.getItem('nd-theme-compiled')
+          if (compiled) {
+            var vars = JSON.parse(compiled)
+            for (var k in vars) {
+              if (Object.prototype.hasOwnProperty.call(vars, k)) {
+                root.style.setProperty('--nd-' + k, vars[k])
+              }
+            }
+            if (vars.bg) {
+              var hex = vars.bg.replace('#', '')
+              if (hex.length === 6) {
+                var r = parseInt(hex.slice(0, 2), 16)
+                var g = parseInt(hex.slice(2, 4), 16)
+                var b = parseInt(hex.slice(4, 6), 16)
+                var isLight = (r * 299 + g * 587 + b * 114) / 1000 > 128
+                root.style.setProperty('color-scheme', isLight ? 'light' : 'dark')
+                root.dataset.colorScheme = isLight ? 'light' : 'dark'
+              }
+            }
+          }
+          // 2. Restore cached HTML shell — or fall back to splash screen
+          var shell = localStorage.getItem('nd-shell-cache')
+          if (shell) {
+            document.getElementById('app').innerHTML = shell
+            root.dataset.shellCached = ''
+          }
+        } catch (e) {
+          // Corrupt cache — fall through to splash
+        }
+        // 3. Show splash only when no cache is available (first launch)
+        if (!root.dataset.shellCached) {
+          var splash = document.createElement('div')
+          splash.id = 'nd-splash'
+          splash.innerHTML = '<svg width="48" height="48" viewBox="0 0 512 512"><defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#aad635"/><stop offset="100%" stop-color="#7ab800"/></linearGradient></defs><g fill="url(#fg)"><rect x="72" y="136" width="100" height="280" rx="36"/><rect x="206" y="136" width="100" height="280" rx="36"/><rect x="340" y="136" width="100" height="280" rx="36"/><polygon points="136,136 189,224 242,136"/><polygon points="270,136 323,224 376,136"/></g></svg>'
+          document.body.prepend(splash)
+        }
+      })()
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

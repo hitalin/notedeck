@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { createAdapter } from '@/adapters/registry'
+import { initAdapterFor } from '@/adapters/initAdapter'
 import type { NormalizedUserDetail } from '@/adapters/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useAccountsStore } from '@/stores/accounts'
-import { useServersStore } from '@/stores/servers'
 import { useIsCompactLayout } from '@/stores/ui'
 import { formatCount } from '@/utils/format'
 import { proxyUrl } from '@/utils/imageProxy'
@@ -32,7 +31,6 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const serversStore = useServersStore()
 const accountsStore = useAccountsStore()
 const isCompact = useIsCompactLayout()
 
@@ -56,8 +54,10 @@ onMounted(async () => {
     if (!promise) {
       const acc = accountsStore.accounts.find((a) => a.id === props.accountId)
       if (!acc) return
-      const serverInfo = await serversStore.getServerInfo(acc.host)
-      const adapter = createAdapter(serverInfo, acc.id)
+      const { adapter } = await initAdapterFor(acc.host, acc.id, {
+        pinnedReactions: false,
+        hasToken: acc.hasToken,
+      })
       promise = adapter.api.getUserDetail(props.userId)
       pendingUserDetails.set(cacheKey, promise)
     }

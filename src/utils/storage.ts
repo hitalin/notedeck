@@ -82,6 +82,10 @@ export const STORAGE_KEYS = {
   offlineMode: 'nd-offline-mode',
   realtimeMode: 'nd-realtime-mode',
 
+  // UI shell cache (Linear-style instant display)
+  shellCache: 'nd-shell-cache',
+  shellCacheVersion: 'nd-shell-cache-version',
+
   // AI settings
   aiSettings: 'nd-ai-settings',
 
