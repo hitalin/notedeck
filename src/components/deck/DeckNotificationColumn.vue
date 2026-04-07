@@ -43,6 +43,7 @@ import { useToast } from '@/stores/toast'
 import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
+import { proxyUrl } from '@/utils/imageProxy'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
 import { char2twemojiUrl } from '@/utils/twemoji'
@@ -309,7 +310,7 @@ function getCachedTwemojiUrl(reaction: string): string | null {
   const url =
     reaction.startsWith(':') && reaction.endsWith(':')
       ? null
-      : char2twemojiUrl(reaction)
+      : (proxyUrl(char2twemojiUrl(reaction)) ?? null)
   twemojiUrlLookup.set(reaction, url)
   return url
 }
