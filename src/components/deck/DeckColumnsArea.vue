@@ -293,12 +293,21 @@ watch(
       const el = columnsRef.value.querySelector(
         `.stack-cell[data-column-id="${CSS.escape(id)}"]`,
       )
-      if (el)
+      if (el) {
+        suppressScrollSync = true
         el.scrollIntoView({
           behavior: 'smooth',
           block: 'nearest',
           inline: 'nearest',
         })
+        columnsRef.value.addEventListener(
+          'scrollend',
+          () => {
+            suppressScrollSync = false
+          },
+          { once: true },
+        )
+      }
     }
   },
   { flush: 'post' },
@@ -344,11 +353,22 @@ function scrollToColumn(index: number) {
   } else {
     const sections =
       columnsRef.value.querySelectorAll<HTMLElement>(`:scope > section`)
-    sections[index]?.scrollIntoView({
+    const target = sections[index]
+    if (!target) return
+    // smooth scroll 中に onColumnsScroll が activeColumnId を上書きするのを防ぐ
+    suppressScrollSync = true
+    target.scrollIntoView({
       behavior: 'smooth',
       inline: 'start',
       block: 'nearest',
     })
+    columnsRef.value.addEventListener(
+      'scrollend',
+      () => {
+        suppressScrollSync = false
+      },
+      { once: true },
+    )
   }
 }
 
