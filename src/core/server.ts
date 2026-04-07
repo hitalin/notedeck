@@ -9,6 +9,8 @@ import { invoke } from '@/utils/tauriInvoke'
 interface NodeInfoSoftware {
   name: string
   version: string
+  /** nodeinfo 2.1 で追加。例: "https://github.com/misskey-dev/misskey" */
+  repository?: string
 }
 
 interface NodeInfo {
@@ -21,7 +23,10 @@ export async function detectServer(host: string): Promise<ServerInfo> {
     fetchNodeInfo(host),
     fetchServerMeta(host),
   ])
-  const software = detectSoftware(nodeinfo.software.name)
+  const software = detectSoftware(
+    nodeinfo.software.name,
+    nodeinfo.software.repository,
+  )
 
   return {
     host,
@@ -59,8 +64,8 @@ async function fetchServerMeta(
   }
 }
 
-function detectSoftware(name: string): ServerSoftware {
-  return resolveSoftware(name)
+function detectSoftware(name: string, repositoryUrl?: string): ServerSoftware {
+  return resolveSoftware(name, repositoryUrl)
 }
 
 /**
@@ -100,11 +105,16 @@ function detectFeatures(
 ): ServerFeatures {
   const features = defaultFeatures()
 
-  if (software === 'misskey') {
+  // Misskey 本家: バージョンベースの capability 検出
+  if (software === 'misskey-dev/misskey') {
     features.scheduledNotes = isVersionAtLeast(version, 2025, 10, 0)
     features.groupedNotifications = isVersionAtLeast(version, 2024, 2, 0)
     features.notesShowPartialBulk = isVersionAtLeast(version, 2025, 5, 1)
   }
+
+  // フォーク固有の capability をここに追加。
+  // 例: if (software === 'yamisskey-dev/yamisskey') { features.bubble = true }
+  // 例: if (software === 'lqvp/misskey-tepura') { features.someFeature = true }
 
   return features
 }

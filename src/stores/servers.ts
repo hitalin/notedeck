@@ -19,7 +19,12 @@ export const useServersStore = defineStore('servers', () => {
   const servers = shallowRef(new Map<string, ServerInfo>())
   const pending = new Map<string, Promise<ServerInfo>>()
 
-  const KNOWN_SOFTWARE = new Set<string>(['misskey', 'unknown'])
+  const KNOWN_SOFTWARE = new Set<string>([
+    'misskey-dev/misskey',
+    'yamisskey-dev/yamisskey',
+    'lqvp/misskey-tepura',
+    'unknown',
+  ])
 
   function toServerSoftware(value: string): ServerSoftware {
     return KNOWN_SOFTWARE.has(value) ? (value as ServerSoftware) : 'unknown'
