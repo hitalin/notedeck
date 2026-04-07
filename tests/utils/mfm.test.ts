@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { type MfmToken, parseMfm } from '@/utils/mfm'
+import { type MfmToken, parseTokens as parseMfm } from '@/utils/mfmParser'
 
 describe('parseMfm', () => {
   it('returns empty array for empty string', () => {
@@ -26,26 +26,42 @@ describe('parseMfm', () => {
     expect(tokens[0]?.type).toBe('url')
   })
 
-  it('parses URL with Japanese path (e.g. Wikipedia)', () => {
+  it('bare URL stops before Japanese characters (mfm-js compat, #307)', () => {
     const tokens = parseMfm('https://ja.wikipedia.org/wiki/シナモン')
-    expect(tokens).toHaveLength(1)
+    expect(tokens).toHaveLength(2)
     expect(tokens[0]).toEqual({
       type: 'url',
-      value: 'https://ja.wikipedia.org/wiki/シナモン',
+      value: 'https://ja.wikipedia.org/wiki/',
     })
   })
 
-  it('parses URL with non-ASCII characters in surrounding text', () => {
-    const tokens = parseMfm(
-      'これは https://ja.wikipedia.org/wiki/シナモン の記事',
-    )
-    expect(tokens).toHaveLength(3)
-    expect(tokens[0]).toEqual({ type: 'text', value: 'これは ' })
-    expect(tokens[1]).toEqual({
+  it('does not include trailing Japanese text as part of URL (#307)', () => {
+    const tokens = parseMfm('https://example.comあ')
+    expect(tokens).toHaveLength(2)
+    expect(tokens[0]).toEqual({ type: 'url', value: 'https://example.com' })
+    expect(tokens[1]).toEqual({ type: 'text', value: 'あ' })
+  })
+
+  it('does not include trailing Japanese after path as part of URL (#307)', () => {
+    const tokens = parseMfm('https://ja.wikipedia.org/wiki/hogeあ')
+    expect(tokens).toHaveLength(2)
+    expect(tokens[0]).toEqual({
       type: 'url',
-      value: 'https://ja.wikipedia.org/wiki/シナモン',
+      value: 'https://ja.wikipedia.org/wiki/hoge',
     })
-    expect(tokens[2]).toEqual({ type: 'text', value: ' の記事' })
+    expect(tokens[1]).toEqual({ type: 'text', value: 'あ' })
+  })
+
+  it('parses percent-encoded non-ASCII URL correctly', () => {
+    const tokens = parseMfm(
+      'https://ja.wikipedia.org/wiki/%E3%82%B7%E3%83%8A%E3%83%A2%E3%83%B3',
+    )
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]).toEqual({
+      type: 'url',
+      value:
+        'https://ja.wikipedia.org/wiki/%E3%82%B7%E3%83%8A%E3%83%A2%E3%83%B3',
+    })
   })
 
   // Mentions
@@ -95,17 +111,59 @@ describe('parseMfm', () => {
   })
 
   // Bold
-  it('parses bold', () => {
+  it('parses bold **text**', () => {
     const tokens = parseMfm('this is **bold** text')
     expect(tokens).toHaveLength(3)
-    expect(tokens[1]).toEqual({ type: 'bold', value: 'bold' })
+    expect(tokens[1]).toEqual({
+      type: 'bold',
+      children: [{ type: 'text', value: 'bold' }],
+    })
+  })
+
+  it('parses bold __text__', () => {
+    const tokens = parseMfm('this is __bold__ text')
+    expect(tokens).toHaveLength(3)
+    expect(tokens[1]).toEqual({
+      type: 'bold',
+      children: [{ type: 'text', value: 'bold' }],
+    })
+  })
+
+  it('parses <b> tag', () => {
+    const tokens = parseMfm('<b>bold</b>')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]).toEqual({
+      type: 'bold',
+      children: [{ type: 'text', value: 'bold' }],
+    })
   })
 
   // Italic
-  it('parses italic', () => {
+  it('parses italic *text*', () => {
     const tokens = parseMfm('this is *italic* text')
     expect(tokens).toHaveLength(3)
-    expect(tokens[1]).toEqual({ type: 'italic', value: 'italic' })
+    expect(tokens[1]).toEqual({
+      type: 'italic',
+      children: [{ type: 'text', value: 'italic' }],
+    })
+  })
+
+  it('parses italic _text_', () => {
+    const tokens = parseMfm('this is _italic_ text')
+    expect(tokens).toHaveLength(3)
+    expect(tokens[1]).toEqual({
+      type: 'italic',
+      children: [{ type: 'text', value: 'italic' }],
+    })
+  })
+
+  it('parses <i> tag', () => {
+    const tokens = parseMfm('<i>italic</i>')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]).toEqual({
+      type: 'italic',
+      children: [{ type: 'text', value: 'italic' }],
+    })
   })
 
   it('does not confuse bold with italic', () => {
@@ -116,15 +174,42 @@ describe('parseMfm', () => {
     const italic = tokens.find(
       (t): t is MfmToken & { type: 'italic' } => t.type === 'italic',
     )
-    expect(bold?.value).toBe('bold')
-    expect(italic?.value).toBe('italic')
+    expect(bold?.children).toEqual([{ type: 'text', value: 'bold' }])
+    expect(italic?.children).toEqual([{ type: 'text', value: 'italic' }])
+  })
+
+  // Big (***text***)
+  it('parses ***big*** as bold + italic', () => {
+    const tokens = parseMfm('***big!***')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]).toEqual({
+      type: 'bold',
+      children: [
+        {
+          type: 'italic',
+          children: [{ type: 'text', value: 'big!' }],
+        },
+      ],
+    })
   })
 
   // Strikethrough
-  it('parses strikethrough', () => {
+  it('parses strikethrough ~~text~~', () => {
     const tokens = parseMfm('this is ~~deleted~~ text')
     expect(tokens).toHaveLength(3)
-    expect(tokens[1]).toEqual({ type: 'strike', value: 'deleted' })
+    expect(tokens[1]).toEqual({
+      type: 'strike',
+      children: [{ type: 'text', value: 'deleted' }],
+    })
+  })
+
+  it('parses <s> tag', () => {
+    const tokens = parseMfm('<s>strike</s>')
+    expect(tokens).toHaveLength(1)
+    expect(tokens[0]).toEqual({
+      type: 'strike',
+      children: [{ type: 'text', value: 'strike' }],
+    })
   })
 
   // Inline code
@@ -344,8 +429,10 @@ describe('parseMfm', () => {
     const tokens = parseMfm('> **bold** text')
     expect(tokens).toHaveLength(1)
     const quote = tokens[0] as MfmToken & { type: 'quote' }
-    const types = quote.children.map((t) => t.type)
-    expect(types).toContain('bold')
+    expect(quote.children[0]).toEqual({
+      type: 'bold',
+      children: [{ type: 'text', value: 'bold' }],
+    })
   })
 
   it('parses blockquote with text before and after', () => {
@@ -425,5 +512,45 @@ describe('parseMfm', () => {
     expect(tokens[0]).toEqual({ type: 'text', value: 'before\n' })
     expect(tokens[1]).toEqual({ type: 'mathBlock', value: 'E=mc^2' })
     expect(tokens[2]).toEqual({ type: 'text', value: 'after' })
+  })
+
+  // $[ruby] and $[unixtime] are parsed as fn tokens
+  it('parses $[ruby text reading]', () => {
+    const tokens = parseMfm('$[ruby ルビ るび]')
+    expect(tokens).toHaveLength(1)
+    const fn = tokens[0] as MfmToken & { type: 'fn' }
+    expect(fn.name).toBe('ruby')
+    expect(fn.children).toEqual([{ type: 'text', value: 'ルビ るび' }])
+  })
+
+  it('parses $[unixtime timestamp]', () => {
+    const tokens = parseMfm('$[unixtime 1775228400]')
+    expect(tokens).toHaveLength(1)
+    const fn = tokens[0] as MfmToken & { type: 'fn' }
+    expect(fn.name).toBe('unixtime')
+    expect(fn.children).toEqual([{ type: 'text', value: '1775228400' }])
+  })
+
+  // Invalid/unknown function names
+  it('parses $[invalid content] as fn token', () => {
+    const tokens = parseMfm('$[invalid x]')
+    expect(tokens).toHaveLength(1)
+    const fn = tokens[0] as MfmToken & { type: 'fn' }
+    expect(fn.name).toBe('invalid')
+    expect(fn.children).toEqual([{ type: 'text', value: 'x' }])
+  })
+
+  // Nested content in bold/italic/strike
+  it('parses nested MFM inside <b> tag', () => {
+    const tokens = parseMfm('<b>hello :emoji: world</b>')
+    expect(tokens).toHaveLength(1)
+    const bold = tokens[0] as MfmToken & { type: 'bold' }
+    expect(bold.children).toHaveLength(3)
+    expect(bold.children[0]).toEqual({ type: 'text', value: 'hello ' })
+    expect(bold.children[1]).toEqual({
+      type: 'customEmoji',
+      shortcode: 'emoji',
+    })
+    expect(bold.children[2]).toEqual({ type: 'text', value: ' world' })
   })
 })

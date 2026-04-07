@@ -7,6 +7,7 @@ import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
 import { useRecentEmojisStore } from '@/stores/recentEmojis'
 import { useIsCompactLayout } from '@/stores/ui'
 import { hapticLight } from '@/utils/haptics'
+import { proxyUrl } from '@/utils/imageProxy'
 import { char2twemojiUrl } from '@/utils/twemoji'
 import MkReactionPickerSection from './MkReactionPickerSection.vue'
 
@@ -111,6 +112,10 @@ function resolveEmojiUrl(reaction: string): string | null {
 
 function isCustomEmoji(reaction: string): boolean {
   return reaction.startsWith(':') && reaction.endsWith(':')
+}
+
+function twemojiSrc(char: string): string {
+  return proxyUrl(char2twemojiUrl(char)) ?? char2twemojiUrl(char)
 }
 
 function pickEmoji(emoji: string) {
@@ -224,7 +229,7 @@ onMounted(() => {
               :class="$style.pickerEmojiBtn"
               @click="pickEmoji(emoji)"
             >
-              <img :src="char2twemojiUrl(emoji)" :alt="emoji" :class="$style.pickerTwemoji" decoding="async" loading="lazy" />
+              <img :src="twemojiSrc(emoji)" :alt="emoji" :class="$style.pickerTwemoji" decoding="async" loading="lazy" />
             </button>
           </div>
         </template>
@@ -251,7 +256,7 @@ onMounted(() => {
               />
               <img
                 v-else
-                :src="char2twemojiUrl(reaction)"
+                :src="twemojiSrc(reaction)"
                 :alt="reaction"
                 :class="$style.pickerTwemoji"
                 decoding="async"
@@ -284,7 +289,7 @@ onMounted(() => {
               />
               <img
                 v-else
-                :src="char2twemojiUrl(reaction)"
+                :src="twemojiSrc(reaction)"
                 :alt="reaction"
                 :class="$style.pickerTwemoji"
                 decoding="async"
@@ -332,7 +337,7 @@ onMounted(() => {
               :class="$style.pickerEmojiBtn"
               @click="pickEmoji(emoji)"
             >
-              <img :src="char2twemojiUrl(emoji)" :alt="emoji" :class="$style.pickerTwemoji" decoding="async" loading="lazy" />
+              <img :src="twemojiSrc(emoji)" :alt="emoji" :class="$style.pickerTwemoji" decoding="async" loading="lazy" />
             </button>
           </div>
         </MkReactionPickerSection>

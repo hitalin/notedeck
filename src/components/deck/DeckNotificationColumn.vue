@@ -43,6 +43,7 @@ import { useToast } from '@/stores/toast'
 import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
+import { proxyUrl } from '@/utils/imageProxy'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 import { invoke } from '@/utils/tauriInvoke'
 import { char2twemojiUrl } from '@/utils/twemoji'
@@ -309,7 +310,7 @@ function getCachedTwemojiUrl(reaction: string): string | null {
   const url =
     reaction.startsWith(':') && reaction.endsWith(':')
       ? null
-      : char2twemojiUrl(reaction)
+      : (proxyUrl(char2twemojiUrl(reaction)) ?? null)
   twemojiUrlLookup.set(reaction, url)
   return url
 }
@@ -920,7 +921,7 @@ onUnmounted(() => {
                       <span :class="$style.notifUserName">
                         <template v-for="(u, i) in groupedUsers(notif).slice(0, 2)" :key="u.id">
                           <template v-if="i > 0">, </template>
-                          <MkMfm v-if="u.name" :text="u.name" :emojis="u.emojis" :server-host="notif._serverHost" />
+                          <MkMfm v-if="u.name" :text="u.name" :emojis="u.emojis" :server-host="notif._serverHost" plain />
                           <template v-else>{{ u.username }}</template>
                         </template>
                         <template v-if="groupedUsers(notif).length > 2"> 他{{ groupedUsers(notif).length - 2 }}人</template>
@@ -996,7 +997,7 @@ onUnmounted(() => {
                   <div :class="$style.notifHeader">
                     <div :class="$style.notifMeta">
                       <span v-if="notif.user" :class="$style.notifUserName">
-                        <MkMfm v-if="notif.user.name" :text="notif.user.name" :emojis="notif.user.emojis" :server-host="notif._serverHost" />
+                        <MkMfm v-if="notif.user.name" :text="notif.user.name" :emojis="notif.user.emojis" :server-host="notif._serverHost" plain />
                         <template v-else>{{ notif.user.username }}</template>
                       </span>
                       <span :class="$style.notifLabel">{{ notificationLabel(notif.type) }}</span>

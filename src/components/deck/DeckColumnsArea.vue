@@ -11,7 +11,9 @@ import {
 } from 'vue'
 import { useColumnDrag } from '@/composables/useColumnDrag'
 import { useColumnResize } from '@/composables/useColumnResize'
+import { useColumnScroll } from '@/composables/useColumnScroll'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
+import { useHorizontalWheel } from '@/composables/useHorizontalWheel'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
 import { COLUMN_SELECTOR } from '@/utils/themeVars'
@@ -83,7 +85,6 @@ const columnDrag = useColumnDrag(deckStore, {
   colResizeHandle: $style.colResizeHandle,
 })
 const isCompact = useIsCompactLayout()
-let suppressScrollSync = false
 
 const columnMap = computed(() => deckStore.columnMap)
 
@@ -97,21 +98,22 @@ const { resizingColId, startColumnResize, WIDE_COLUMN_TYPES } = useColumnResize(
 const colVisibility = provideColumnVisibility()
 const columnsRef = ref<HTMLElement | null>(null)
 
-// Windows horizontal wheel: listen for Tauri event from hwheel_hook
-let unlistenHWheel: (() => void) | null = null
+// Scroll ↔ active column synchronization
+const columnScroll = useColumnScroll({
+  containerRef: columnsRef,
+  isCompact,
+  windowLayout: computed(() => deckStore.windowLayout),
+  onActiveColumnDetected: (id) => deckStore.setActiveColumn(id),
+})
+
+// Horizontal wheel → horizontal scroll conversion
+const horizontalWheel = useHorizontalWheel({
+  containerRef: columnsRef,
+  columnSelector: COLUMN_SELECTOR,
+})
 
 onMounted(async () => {
-  // Passive wheel listener — lets the browser optimize scroll on the compositor thread
-  columnsRef.value?.addEventListener('wheel', onColumnsWheel, { passive: true })
-
-  // Windows hwheel: Tauri イベント経由で受信 → 同じ rAF バッチに合流
-  if ((window as unknown as Record<string, unknown>).__TAURI_INTERNALS__) {
-    const { listen } = await import('@tauri-apps/api/event')
-    unlistenHWheel = await listen<number>('nd:hwheel', (ev) => {
-      scheduleScroll(ev.payload)
-    })
-  }
-
+  await horizontalWheel.attach()
   colVisibility.setup(columnsRef)
 
   // Preload chunks for the user's configured column types (production only —
@@ -124,9 +126,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  columnsRef.value?.removeEventListener('wheel', onColumnsWheel)
-  if (rafId) cancelAnimationFrame(rafId)
-  unlistenHWheel?.()
+  horizontalWheel.detach()
   colVisibility.disconnect()
 })
 
@@ -142,6 +142,26 @@ watch(
     }
   },
   { flush: 'post', deep: true, immediate: true },
+)
+
+// Store → scroll: single watcher for all activation paths
+watch(
+  () => deckStore.activeColumnId,
+  (id) => {
+    if (id) columnScroll.scrollToColumnId(id)
+  },
+  { flush: 'post' },
+)
+
+// Compact ↔ Desktop 切替時: アクティブカラムの位置にスクロールを合わせる
+watch(
+  isCompact,
+  (compact) => {
+    const id = deckStore.activeColumnId
+    if (!compact || !id) return
+    columnScroll.snapToColumnId(id)
+  },
+  { flush: 'post' },
 )
 
 // Drop insert placeholder
@@ -190,81 +210,6 @@ function cellDropZone(colId: string): string | undefined {
   return dt.position
 }
 
-// --- Horizontal scroll: passive wheel + rAF batch ---
-let pendingScroll = 0
-let rafId = 0
-
-function scheduleScroll(delta: number) {
-  pendingScroll += delta
-  if (!rafId) {
-    rafId = requestAnimationFrame(() => {
-      if (columnsRef.value) {
-        columnsRef.value.scrollLeft += pendingScroll
-      }
-      pendingScroll = 0
-      rafId = 0
-    })
-  }
-}
-
-// Passive wheel handler — no preventDefault() needed:
-// - deltaX: browser scrolls .columns natively via overflow-x: auto
-// - deltaY inside column: browser scrolls column vertically
-// - deltaY outside column: convert to horizontal scroll via rAF batch
-function onColumnsWheel(e: WheelEvent) {
-  if (!columnsRef.value) return
-  // カラム内 → ブラウザのネイティブ処理に任せる
-  if ((e.target as HTMLElement | null)?.closest(COLUMN_SELECTOR)) return
-
-  // Shift+ホイール: Windows WebView2 では横スクロールが deltaX ではなく
-  // shiftKey + deltaY として送られるため、deltaX に読み替える
-  const dx = e.shiftKey && e.deltaX === 0 ? e.deltaY : e.deltaX
-  const dy = e.shiftKey && e.deltaX === 0 ? 0 : e.deltaY
-
-  // deltaX 主体 → ブラウザが overflow-x: auto で処理
-  if (Math.abs(dx) > Math.abs(dy)) return
-
-  // deltaY 主体 + カラム外 → 横スクロールに変換（rAF バッチ）
-  scheduleScroll(dy)
-}
-
-// Scroll position → active column (single source of truth: activeColumnId in store)
-function onColumnsScroll() {
-  if (!columnsRef.value || suppressScrollSync) return
-  const layout = deckStore.windowLayout
-  let bestGroupIdx: number
-  if (isCompact.value) {
-    // Mobile: 1 group = full viewport width
-    const w = columnsRef.value.clientWidth
-    if (w === 0) return
-    bestGroupIdx = Math.round(columnsRef.value.scrollLeft / w)
-  } else {
-    // Desktop: スクロール位置に応じて検出ポイントをビューポート内でスライド
-    // 左端→左寄り、中央→中央、右端→右寄り で両端のカラムにも自然に到達
-    const el = columnsRef.value
-    const maxScroll = el.scrollWidth - el.clientWidth
-    const progress = maxScroll > 0 ? el.scrollLeft / maxScroll : 0
-    const viewPoint = el.scrollLeft + el.clientWidth * progress
-    const sections = el.querySelectorAll<HTMLElement>(`:scope > section`)
-
-    bestGroupIdx = 0
-    let bestDist = Infinity
-    for (let gi = 0; gi < layout.length; gi++) {
-      const section = sections[gi]
-      if (section) {
-        const sectionCenter = section.offsetLeft + section.offsetWidth / 2
-        const dist = Math.abs(sectionCenter - viewPoint)
-        if (dist < bestDist) {
-          bestDist = dist
-          bestGroupIdx = gi
-        }
-      }
-    }
-  }
-  const colId = layout[bestGroupIdx]?.[0]
-  if (colId) deckStore.setActiveColumn(colId)
-}
-
 // Column pointer drag (swap / stack)
 function onColumnPointerDown(colId: string, e: PointerEvent) {
   const target = e.target as HTMLElement
@@ -272,101 +217,17 @@ function onColumnPointerDown(colId: string, e: PointerEvent) {
   columnDrag.startDrag(colId, e)
 }
 
-// Scroll to column when activeColumnId changes (keyboard nav, addColumn, etc.)
-watch(
-  () => deckStore.activeColumnId,
-  (id) => {
-    if (!id || !columnsRef.value) return
-    if (isCompact.value) {
-      // Mobile: use scrollTo with pixel offset to work reliably with CSS snap scroll.
-      // scrollIntoView can be overridden by scroll-snap-type: x mandatory.
-      const index = deckStore.windowLayout.findIndex((group) =>
-        group.includes(id),
-      )
-      if (index >= 0) {
-        columnsRef.value.scrollTo({
-          left: index * columnsRef.value.clientWidth,
-          behavior: 'instant',
-        })
-      }
-    } else {
-      const el = columnsRef.value.querySelector(
-        `.stack-cell[data-column-id="${CSS.escape(id)}"]`,
-      )
-      if (el)
-        el.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest',
-          inline: 'nearest',
-        })
-    }
-  },
-  { flush: 'post' },
-)
-
-// Compact ↔ Desktop 切替時: アクティブカラムの位置にスクロールを合わせる
-watch(
-  isCompact,
-  (compact) => {
-    const id = deckStore.activeColumnId
-    if (!compact || !id || !columnsRef.value) return
-    const index = deckStore.windowLayout.findIndex((group) =>
-      group.includes(id),
-    )
-    if (index < 0) return
-    // CSS snap によるスクロールイベントで activeColumnId が上書きされるのを防ぐ
-    suppressScrollSync = true
-    requestAnimationFrame(() => {
-      if (!columnsRef.value) return
-      columnsRef.value.scrollTo({
-        left: index * columnsRef.value.clientWidth,
-        behavior: 'instant',
-      })
-      // スクロール完了後にガードを解除
-      requestAnimationFrame(() => {
-        suppressScrollSync = false
-      })
-    })
-  },
-  { flush: 'post' },
-)
-
-// Scroll to group by group index
-function scrollToColumn(index: number) {
-  if (!columnsRef.value) return
-  if (isCompact.value) {
-    // Mobile: タブタップ時は instant で即座に切り替え
-    // （smooth だとハイライト線とカラム表示がずれて見える）
-    columnsRef.value.scrollTo({
-      left: index * columnsRef.value.clientWidth,
-      behavior: 'instant',
-    })
-  } else {
-    const sections =
-      columnsRef.value.querySelectorAll<HTMLElement>(`:scope > section`)
-    sections[index]?.scrollIntoView({
-      behavior: 'smooth',
-      inline: 'start',
-      block: 'nearest',
-    })
-  }
-}
-
-function scrollColumnToTop(index: number) {
-  if (!columnsRef.value) return
-  const sections =
-    columnsRef.value.querySelectorAll<HTMLElement>(':scope > section')
-  sections[index]?.querySelector<HTMLElement>('.column-header')?.click()
-}
-
-defineExpose({ scrollToColumn, scrollColumnToTop, columnMap })
+defineExpose({
+  scrollColumnToTop: columnScroll.scrollColumnToTop,
+  columnMap,
+})
 </script>
 
 <template>
   <div
     ref="columnsRef"
     :class="[$style.columns, { [$style.swipeMode]: isCompact }]"
-    @scroll.passive="onColumnsScroll"
+    @scroll.passive="columnScroll.onScroll"
   >
     <div
       v-if="dropInsertIndex === 0"

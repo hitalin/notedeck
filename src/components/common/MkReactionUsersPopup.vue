@@ -167,7 +167,7 @@ onUnmounted(() => {
           <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
           <div :class="$style.userInfo">
             <span :class="$style.userName">
-              <MkMfm v-if="r.user.name" :text="r.user.name" :emojis="r.user.emojis" :server-host="serverHost" />
+              <MkMfm v-if="r.user.name" :text="r.user.name" :emojis="r.user.emojis" :server-host="serverHost" plain />
               <template v-else>{{ r.user.username }}</template>
             </span>
             <span :class="$style.userHandle">@{{ r.user.username }}</span>

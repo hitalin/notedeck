@@ -753,7 +753,7 @@ function reload() {
 
 .playConsole {
   padding: 8px 10px;
-  margin: 0 12px;
+  margin: 0 12px 12px;
   border-radius: var(--nd-radius-sm);
   background: var(--nd-bg);
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
@@ -776,7 +776,7 @@ function reload() {
 
 .playError {
   padding: 8px 10px;
-  margin: 0 12px;
+  margin: 0 12px 12px;
   border-radius: var(--nd-radius-sm);
   background: var(--nd-love-subtle);
   color: var(--nd-love);

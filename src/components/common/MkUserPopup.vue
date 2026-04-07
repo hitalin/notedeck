@@ -119,7 +119,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
         <div :class="$style.popupNameArea">
           <div :class="$style.popupName">
-            <MkMfm v-if="user.name" :text="user.name" :emojis="user.emojis" :server-host="account?.host" />
+            <MkMfm v-if="user.name" :text="user.name" :emojis="user.emojis" :server-host="account?.host" plain />
             <template v-else>{{ user.username }}</template>
           </div>
           <div :class="$style.popupUsername">@{{ user.username }}{{ user.host ? `@${user.host}` : '' }}</div>

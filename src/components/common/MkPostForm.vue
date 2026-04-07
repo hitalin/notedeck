@@ -394,6 +394,19 @@ watch(
   },
 )
 
+let overlayPointerDown = false
+
+function onOverlayPointerDown(e: PointerEvent) {
+  overlayPointerDown = e.target === e.currentTarget
+}
+
+function onOverlayClick(e: MouseEvent) {
+  if (overlayPointerDown && e.target === e.currentTarget) {
+    emit('close')
+  }
+  overlayPointerDown = false
+}
+
 function onKeydown(e: KeyboardEvent) {
   if (acHandleKeydown(e)) return
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -406,7 +419,7 @@ function onKeydown(e: KeyboardEvent) {
 </script>
 
 <template>
-  <div :class="[inline ? $style.postInlineWrapper : $style.postOverlay, { [$style.mobile]: isCompact }]" @click="!inline && emit('close')">
+  <div :class="[inline ? $style.postInlineWrapper : $style.postOverlay, { [$style.mobile]: isCompact }]" @pointerdown="!inline && onOverlayPointerDown($event)" @click="!inline && onOverlayClick($event)">
     <div data-post-form :class="[$style.postForm, { [$style.postFormInline]: inline }]" :style="formThemeVars" @click.stop="closePopups">
       <!-- Header -->
       <header :class="$style.header">
@@ -672,7 +685,7 @@ function onKeydown(e: KeyboardEvent) {
         />
         <div :class="$style.replyContent">
           <span :class="$style.replyUser">
-            <MkMfm v-if="replyTo.user.name" :text="replyTo.user.name" :emojis="replyTo.user.emojis" :server-host="replyTo._serverHost" />
+            <MkMfm v-if="replyTo.user.name" :text="replyTo.user.name" :emojis="replyTo.user.emojis" :server-host="replyTo._serverHost" plain />
             <template v-else>{{ replyTo.user.username }}</template>
           </span>
           <span :class="$style.replyHandle">@{{ replyTo.user.username }}</span>

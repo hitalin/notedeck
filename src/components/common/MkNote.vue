@@ -427,6 +427,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
           :text="note.user.name"
           :emojis="{ ...note.emojis, ...note.user.emojis }"
           :server-host="note._serverHost"
+          plain
         />
         <template v-else>{{ note.user.username }}</template>
       </span>
@@ -454,6 +455,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
           :text="effectiveNote.reply!.user.name"
           :emojis="{ ...effectiveNote.reply!.emojis, ...effectiveNote.reply!.user.emojis }"
           :server-host="effectiveNote._serverHost"
+          plain
         />
         <template v-else>{{ effectiveNote.reply!.user.username }}</template>
       </span>
@@ -489,7 +491,8 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
               :text="effectiveNote.user.name"
               :emojis="allEmojis"
               :server-host="effectiveNote._serverHost"
-                  @mention-click="handleMentionClick"
+              plain
+              @mention-click="handleMentionClick"
               @mention-hover="onMentionHover"
               @mention-leave="onMentionLeave"
             />
@@ -608,7 +611,14 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 
           <!-- Quote renote (when note has text + renote) -->
           <div v-if="note.renote && note.text !== null" :class="$style.quote" @click.stop>
-            <MkNote :note="note.renote" embedded />
+            <MkNote v-if="!embedded" :note="note.renote" embedded />
+            <a
+              v-else
+              :class="$style.quoteLink"
+              @click.prevent="navToNote(note._accountId, note.renote!.id)"
+            >
+              RN: ...
+            </a>
           </div>
         </div>
 
@@ -1105,6 +1115,18 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
     padding: 16px;
     border: dashed 1px var(--nd-renote);
     border-radius: var(--nd-radius-md);
+  }
+}
+
+.quoteLink {
+  display: block;
+  padding: 4px 8px;
+  color: var(--fg-light);
+  font-size: 0.9em;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
   }
 }
 

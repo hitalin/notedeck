@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { proxyUrl } from '@/utils/imageProxy'
 import { char2twemojiUrl } from '@/utils/twemoji'
 
 const props = defineProps<{ emoji: string }>()
-const url = computed(() => char2twemojiUrl(props.emoji))
+const url = computed(() => proxyUrl(char2twemojiUrl(props.emoji)))
 const failed = ref(false)
 </script>
 

@@ -64,7 +64,10 @@ export function filterNotesByRegex(
 }
 
 const regexWorker = createWorkerClient<RegexSearchResponse>(
-  new URL('../workers/regexSearchWorker.ts', import.meta.url),
+  () =>
+    new Worker(new URL('../workers/regexSearchWorker.ts', import.meta.url), {
+      type: 'module',
+    }),
 )
 
 /**

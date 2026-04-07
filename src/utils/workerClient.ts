@@ -19,7 +19,7 @@ interface PendingCallbacks<TRes> {
 }
 
 export function createWorkerClient<TRes extends WorkerResponse>(
-  url: URL,
+  factory: () => Worker,
 ): WorkerClient<TRes> {
   let worker: Worker | null = null
   let requestId = 0
@@ -27,7 +27,7 @@ export function createWorkerClient<TRes extends WorkerResponse>(
 
   function getWorker(): Worker {
     if (!worker) {
-      worker = new Worker(url, { type: 'module' })
+      worker = factory()
       worker.onmessage = (event: MessageEvent<TRes>) => {
         const { id } = event.data
         const cb = pending.get(id)

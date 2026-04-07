@@ -312,6 +312,7 @@ async function openInBrowser() {
           preload="metadata"
           controls
           @click.stop
+          @loadeddata="onImageLoaded(file.id)"
           @error="onImageError(file.id)"
         />
         <div v-else :class="$style.mediaPlaceholder">
