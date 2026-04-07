@@ -301,13 +301,9 @@ function fnStyle(
       }
       break
     case 'x2':
-      s.fontSize = '200%'
-      break
     case 'x3':
-      s.fontSize = '300%'
-      break
     case 'x4':
-      s.fontSize = '400%'
+      // font-size is handled by CSS classes (mfmX2/X3/X4) with nesting limits
       break
     case 'font':
       if (args.serif) s.fontFamily = 'serif'
@@ -342,6 +338,72 @@ function fnStyle(
 
   return Object.keys(s).length > 0 ? s : undefined
 }
+
+const knownFns = new Set([
+  'spin',
+  'shake',
+  'bounce',
+  'jelly',
+  'tada',
+  'jump',
+  'twitch',
+  'rainbow',
+  'sparkle',
+  'blur',
+  'flip',
+  'rotate',
+  'scale',
+  'position',
+  'fg',
+  'bg',
+  'x2',
+  'x3',
+  'x4',
+  'font',
+  'border',
+])
+
+function isFnKnown(token: MfmToken & { type: 'fn' }): boolean {
+  return knownFns.has(token.name)
+}
+
+function fnZoomClass(token: MfmToken & { type: 'fn' }): string | undefined {
+  if (token.name === 'x2' || token.name === 'x3' || token.name === 'x4') {
+    return style[`mfm${token.name.toUpperCase()}`]
+  }
+  return undefined
+}
+
+function rubyParts(token: MfmToken & { type: 'fn' }): [string, string] | null {
+  if (token.children.length !== 1 || token.children[0]?.type !== 'text')
+    return null
+  const text = token.children[0].value
+  const spaceIdx = text.lastIndexOf(' ')
+  if (spaceIdx <= 0) return null
+  return [text.slice(0, spaceIdx), text.slice(spaceIdx + 1)]
+}
+
+function unixtimeISO(token: MfmToken & { type: 'fn' }): string {
+  const ts = unixtimeValue(token)
+  return ts ? new Date(ts * 1000).toISOString() : ''
+}
+
+function unixtimeDisplay(token: MfmToken & { type: 'fn' }): string {
+  const ts = unixtimeValue(token)
+  if (!ts) return '?'
+  try {
+    return new Date(ts * 1000).toLocaleString()
+  } catch {
+    return '?'
+  }
+}
+
+function unixtimeValue(token: MfmToken & { type: 'fn' }): number | null {
+  if (token.children.length !== 1 || token.children[0]?.type !== 'text')
+    return null
+  const n = Number(token.children[0].value)
+  return Number.isFinite(n) ? n : null
+}
 </script>
 
 <template>
@@ -350,15 +412,18 @@ function fnStyle(
     --><!-- Link --><a v-else-if="token.type === 'link'" :href="isSafeUrl(token.url) ? token.url : '#'" :class="$style.mfmUrl" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.url)"><MkMfm :tokens="token.label" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></a><!--
     --><!-- Mention --><span v-else-if="token.type === 'mention'" :class="isMentionMe(token.username, token.host) ? $style.mfmMentionMe : $style.mfmMention" @click.stop="emit('mentionClick', token.username, token.host)" @mouseenter="emit('mentionHover', $event, token.username, token.host)" @mouseleave="emit('mentionLeave')">{{ token.acct }}</span><!--
     --><!-- Hashtag --><span v-else-if="token.type === 'hashtag'" :class="$style.mfmHashtag" @click.stop>#{{ token.value }}</span><!--
-    --><!-- Bold --><b v-else-if="token.type === 'bold'">{{ token.value }}</b><!--
-    --><!-- Italic --><i v-else-if="token.type === 'italic'">{{ token.value }}</i><!--
-    --><!-- Strike --><s v-else-if="token.type === 'strike'">{{ token.value }}</s><!--
+    --><!-- Bold --><b v-else-if="token.type === 'bold'"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></b><!--
+    --><!-- Italic --><i v-else-if="token.type === 'italic'"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></i><!--
+    --><!-- Strike --><s v-else-if="token.type === 'strike'"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></s><!--
     --><!-- Code Block --><div v-else-if="token.type === 'codeBlock'" :key="`cb-${i}-${highlighterLoaded}`" :class="$style.mfmCodeBlock" v-html="highlightCode(token.value, token.lang)"></div><!--
     --><!-- Inline Code --><code v-else-if="token.type === 'inlineCode'" :class="$style.mfmCode">{{ token.value }}</code><!--
     --><!-- Custom Emoji (resolved) --><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="proxyUrl(emojiUrls[token.shortcode]!)" :alt="`:${token.shortcode}:`" class="custom-emoji" :class="plain ? $style.customEmojiPlain : $style.customEmoji" decoding="async" loading="lazy" @error="(e: Event) => { const img = e.target as HTMLImageElement; if (!img.src.endsWith('/emoji-unknown.svg')) img.src = '/emoji-unknown.svg' }" /><!--
     --><!-- Custom Emoji (unresolved — show fallback icon) --><img v-else-if="token.type === 'customEmoji'" src="/emoji-unknown.svg" :alt="`:${token.shortcode}:`" :title="`:${token.shortcode}:`" class="custom-emoji" :class="plain ? $style.customEmojiPlain : $style.customEmoji" /><!--
     --><!-- Unicode Emoji --><MkEmoji v-else-if="token.type === 'unicodeEmoji'" :emoji="token.value" class="twemoji" :class="$style.twemoji" /><!--
-    --><!-- MFM Function --><span v-else-if="token.type === 'fn'" :class="fnClass(token)" :style="fnStyle(token)"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
+    --><!-- MFM Function: ruby --><ruby v-else-if="token.type === 'fn' && token.name === 'ruby' && rubyParts(token)">{{ rubyParts(token)![0] }}<rp>(</rp><rt>{{ rubyParts(token)![1] }}</rt><rp>)</rp></ruby><!--
+    --><!-- MFM Function: unixtime --><time v-else-if="token.type === 'fn' && token.name === 'unixtime'" :datetime="unixtimeISO(token)">{{ unixtimeDisplay(token) }}</time><!--
+    --><!-- MFM Function: known --><span v-else-if="token.type === 'fn' && isFnKnown(token)" :class="[fnClass(token), fnZoomClass(token)]" :style="fnStyle(token)"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
+    --><!-- MFM Function: unknown → show children --><span v-else-if="token.type === 'fn'"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
     --><!-- Small --><small v-else-if="token.type === 'small'" :class="$style.mfmSmall"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></small><!--
     --><!-- Center --><span v-else-if="token.type === 'center'" :class="$style.mfmCenter"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
     --><!-- Plain --><span v-else-if="token.type === 'plain'">{{ token.value }}</span><!--
@@ -541,6 +606,25 @@ function fnStyle(
     margin: auto;
     width: fit-content;
     overflow: clip;
+  }
+}
+
+/* Zoom (x2/x3/x4) — Misskey-compatible nesting limit */
+.mfmX2 { --mfm-zoom-size: 200%; }
+.mfmX3 { --mfm-zoom-size: 400%; }
+.mfmX4 { --mfm-zoom-size: 600%; }
+
+.mfmX2, .mfmX3, .mfmX4 {
+  font-size: var(--mfm-zoom-size);
+
+  .mfmX2, .mfmX3, .mfmX4 {
+    /* only half effective */
+    font-size: calc(var(--mfm-zoom-size) / 2 + 50%);
+
+    .mfmX2, .mfmX3, .mfmX4 {
+      /* disabled */
+      font-size: 100%;
+    }
   }
 }
 

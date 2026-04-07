@@ -13,9 +13,9 @@ export type MfmToken =
   | { type: 'link'; label: MfmToken[]; url: string }
   | { type: 'mention'; username: string; host: string | null; acct: string }
   | { type: 'hashtag'; value: string }
-  | { type: 'bold'; value: string }
-  | { type: 'italic'; value: string }
-  | { type: 'strike'; value: string }
+  | { type: 'bold'; children: MfmToken[] }
+  | { type: 'italic'; children: MfmToken[] }
+  | { type: 'strike'; children: MfmToken[] }
   | { type: 'inlineCode'; value: string }
   | { type: 'customEmoji'; shortcode: string }
   | { type: 'unicodeEmoji'; value: string; url: string }
@@ -70,16 +70,33 @@ const inlinePatterns: PatternDef[] = [
     }),
   },
   {
+    regex: /\*\*\*(.+?)\*\*\*/g,
+    parse: (m) => ({
+      type: 'bold',
+      children: [
+        { type: 'italic', children: parseTokens(g(m, 1)) } as MfmToken,
+      ],
+    }),
+  },
+  {
     regex: /\*\*(.+?)\*\*/g,
-    parse: (m) => ({ type: 'bold', value: g(m, 1) }),
+    parse: (m) => ({ type: 'bold', children: parseTokens(g(m, 1)) }),
+  },
+  {
+    regex: /__(.+?)__/g,
+    parse: (m) => ({ type: 'bold', children: parseTokens(g(m, 1)) }),
   },
   {
     regex: /(?<!\*)\*([^*\n]+?)\*(?!\*)/g,
-    parse: (m) => ({ type: 'italic', value: g(m, 1) }),
+    parse: (m) => ({ type: 'italic', children: parseTokens(g(m, 1)) }),
+  },
+  {
+    regex: /(?<!_)_([^_\n]+?)_(?!_)/g,
+    parse: (m) => ({ type: 'italic', children: parseTokens(g(m, 1)) }),
   },
   {
     regex: /~~(.+?)~~/g,
-    parse: (m) => ({ type: 'strike', value: g(m, 1) }),
+    parse: (m) => ({ type: 'strike', children: parseTokens(g(m, 1)) }),
   },
   {
     regex: /(?<=^|[\s(])@(\w+)(?:@([\w.-]+))?/g,
@@ -264,11 +281,20 @@ function parseFnBlock(
   }
 }
 
+const tagTypeMap: Record<string, MfmToken['type']> = {
+  small: 'small',
+  center: 'center',
+  plain: 'plain',
+  b: 'bold',
+  i: 'italic',
+  s: 'strike',
+}
+
 function parseTagBlock(
   text: string,
   pos: number,
 ): { end: number; token: MfmToken } | null {
-  for (const tag of ['small', 'center', 'plain'] as const) {
+  for (const tag of ['small', 'center', 'plain', 'b', 'i', 's'] as const) {
     const open = `<${tag}>`
     if (!text.startsWith(open, pos)) continue
     const close = `</${tag}>`
@@ -279,7 +305,13 @@ function parseTagBlock(
     if (tag === 'plain') {
       return { end, token: { type: 'plain', value: content } }
     }
-    return { end, token: { type: tag, children: parseTokens(content) } }
+    const type = tagTypeMap[tag] as
+      | 'small'
+      | 'center'
+      | 'bold'
+      | 'italic'
+      | 'strike'
+    return { end, token: { type, children: parseTokens(content) } }
   }
   return null
 }
@@ -341,6 +373,9 @@ export function parseTokens(text: string): MfmToken[] {
       findFirstBlock(remaining, '<small>', parseTagBlock),
       findFirstBlock(remaining, '<center>', parseTagBlock),
       findFirstBlock(remaining, '<plain>', parseTagBlock),
+      findFirstBlock(remaining, '<b>', parseTagBlock),
+      findFirstBlock(remaining, '<i>', parseTagBlock),
+      findFirstBlock(remaining, '<s>', parseTagBlock),
       findFirstBlock(remaining, '>', parseQuoteBlock),
       findFirstBlock(remaining, '\\[', parseMathBlock),
       findFirstSearchBlock(remaining),
