@@ -35,7 +35,11 @@ export default defineConfig({
         ...shared,
         test: {
           name: 'unit',
-          include: ['src/**/*.test.ts', 'tests/utils/**/*.test.ts'],
+          include: [
+            'src/**/*.test.ts',
+            'tests/utils/**/*.test.ts',
+            'tests/core/**/*.test.ts',
+          ],
           exclude: ['src/**/*.dom.test.ts'],
           environment: 'node',
         },

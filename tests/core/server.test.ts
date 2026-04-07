@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { detectServer } from '@/core/server'
 
-vi.mock('@tauri-apps/api/core', () => ({
+vi.mock('@/utils/tauriInvoke', () => ({
   invoke: vi.fn(),
 }))
 
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@/utils/tauriInvoke'
 
 describe('server detection', () => {
   afterEach(() => {
@@ -31,16 +31,23 @@ describe('server detection', () => {
     const info = await detectServer('example.com')
 
     expect(info.host).toBe('example.com')
-    expect(info.software).toBe('misskey')
+    expect(info.software).toBe('misskey-dev/misskey')
     expect(info.version).toBe('2025.1.0')
     expect(info.features.reactions).toBe(true)
   })
 
-  it('treats misskey forks as misskey', async () => {
+  it('detects yamisskey server', async () => {
     mockInvoke('yamisskey')
-    const info = await detectServer('yami.example.com')
+    const info = await detectServer('yami.ski')
 
-    expect(info.software).toBe('misskey')
+    expect(info.software).toBe('yamisskey-dev/yamisskey')
+  })
+
+  it('detects misskey-tepura server', async () => {
+    mockInvoke('misskey-tepura')
+    const info = await detectServer('misskey.vip')
+
+    expect(info.software).toBe('lqvp/misskey-tepura')
   })
 
   it('returns unknown for non-misskey software', async () => {

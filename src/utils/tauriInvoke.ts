@@ -10,7 +10,9 @@
 
 import { invoke as tauriInvoke } from '@tauri-apps/api/core'
 
-const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
+const isTauri =
+  typeof window !== 'undefined' &&
+  ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)
 
 /**
  * ブラウザ単体開発時（pnpm dev）のモック invoke。
