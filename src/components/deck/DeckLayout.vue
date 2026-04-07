@@ -203,7 +203,6 @@ function scrollToColumn(index: number) {
   }
 
   deckStore.setActiveColumn(colId)
-  columnsAreaRef.value?.scrollToColumn(index)
 }
 
 // columnMap for DeckMobileNav (computed from store directly)
