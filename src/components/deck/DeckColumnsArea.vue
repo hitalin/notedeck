@@ -14,6 +14,8 @@ import { useColumnResize } from '@/composables/useColumnResize'
 import { useColumnScroll } from '@/composables/useColumnScroll'
 import { provideColumnVisibility } from '@/composables/useColumnVisibility'
 import { useHorizontalWheel } from '@/composables/useHorizontalWheel'
+import * as snapshotStore from '@/composables/useSnapshotStore'
+import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
 import { COLUMN_SELECTOR } from '@/utils/themeVars'
@@ -111,6 +113,47 @@ const horizontalWheel = useHorizontalWheel({
   containerRef: columnsRef,
   columnSelector: COLUMN_SELECTOR,
 })
+
+// Derive a snapshot cache key from column config (mirrors each column's cache.getKey())
+function getColumnCacheKey(col: DeckColumn): string | null {
+  switch (col.type) {
+    case 'timeline':
+      return col.tl ?? null
+    case 'antenna':
+      return col.antennaId ? `antenna:${col.antennaId}` : null
+    case 'channel':
+      return col.channelId ? `channel:${col.channelId}` : null
+    case 'clip':
+      return col.clipId ? `clip:${col.clipId}` : null
+    case 'user':
+      return col.userId ? `user:${col.userId}` : null
+    case 'list':
+      return col.listId ? `list:${col.listId}` : null
+    case 'favorites':
+      return 'favorites'
+    case 'mentions':
+    case 'specified':
+      return 'mentions'
+    case 'explore':
+      return 'explore'
+    default:
+      return null
+  }
+}
+
+/** Get snapshot preview lines for an unmounted column shell */
+function getShellPreview(colId: string): string[] {
+  const col = columnMap.value.get(colId)
+  if (!col) return []
+  const cacheKey = getColumnCacheKey(col)
+  if (!cacheKey) return []
+  const snap = snapshotStore.restore(colId, cacheKey)
+  if (!snap) return []
+  return snap.notes.slice(0, 4).map((n) => {
+    const text = n.cw ?? n.text ?? ''
+    return text.length > 60 ? `${text.slice(0, 60)}…` : text
+  })
+}
 
 const eagerMountRadius = computed(() => (isCompact.value ? 0 : 1))
 
@@ -310,10 +353,19 @@ defineExpose({
           >
             <div :class="$style.columnShellHeader" />
             <div :class="$style.columnShellBody">
-              <div :class="$style.columnShellLine" />
-              <div :class="[$style.columnShellLine, $style.columnShellLineWide]" />
-              <div :class="$style.columnShellCard" />
-              <div :class="$style.columnShellCard" />
+              <template v-if="getShellPreview(colId).length > 0">
+                <div
+                  v-for="(line, i) in getShellPreview(colId)"
+                  :key="i"
+                  :class="$style.columnShellPreview"
+                >{{ line || '\u00A0' }}</div>
+              </template>
+              <template v-else>
+                <div :class="$style.columnShellLine" />
+                <div :class="[$style.columnShellLine, $style.columnShellLineWide]" />
+                <div :class="$style.columnShellCard" />
+                <div :class="$style.columnShellCard" />
+              </template>
             </div>
           </div>
         </div>
@@ -481,6 +533,18 @@ defineExpose({
 @keyframes nd-shell-shimmer {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
+}
+
+.columnShellPreview {
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-bottom: 1px solid color-mix(in srgb, var(--nd-divider, currentColor) 15%, transparent);
 }
 
 .dragSource {
