@@ -40,7 +40,10 @@ function collectFulfilled(
 }
 
 const dedupWorker = createWorkerClient<DedupResponse>(
-  new URL('../workers/dedupWorker.ts', import.meta.url),
+  () =>
+    new Worker(new URL('../workers/dedupWorker.ts', import.meta.url), {
+      type: 'module',
+    }),
 )
 
 /** メインスレッドフォールバック（Worker が CSP 等でブロックされた場合） */

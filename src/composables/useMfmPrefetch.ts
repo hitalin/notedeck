@@ -4,7 +4,10 @@ import { createWorkerClient } from '@/utils/workerClient'
 import type { MfmParseResponse } from '@/workers/mfmWorker'
 
 const mfmWorker = createWorkerClient<MfmParseResponse>(
-  new URL('../workers/mfmWorker.ts', import.meta.url),
+  () =>
+    new Worker(new URL('../workers/mfmWorker.ts', import.meta.url), {
+      type: 'module',
+    }),
 )
 
 /**
