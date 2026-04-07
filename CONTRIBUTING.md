@@ -16,7 +16,8 @@ NoteDeck の成長は対応フォークの数に直結します。
 Misskey から名前が別物になったフォーク（Sharkey, CherryPick, Firefish, Iceshrimp 等）は対応していません。
 詳しくは [STRATEGY.md](STRATEGY.md#フォーク対応方針) を参照してください。
 
-詳しい手順は [DEVELOPMENT.md](DEVELOPMENT.md) の "Adding support for a new fork" を参照してください。
+多くのフォーク固有機能（カスタム TL、モードフラグ等）はコード変更なしで動的に検出されます。
+静的な capability 宣言が必要な場合の具体的な手順は [DEVELOPMENT.md — Fork support](DEVELOPMENT.md#fork-support) を参照してください。
 
 ### コードの貢献
 

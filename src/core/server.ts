@@ -112,9 +112,10 @@ function detectFeatures(
     features.notesShowPartialBulk = isVersionAtLeast(version, 2025, 5, 1)
   }
 
-  // フォーク固有の capability をここに追加。
-  // 例: if (software === 'yamisskey-dev/yamisskey') { features.bubble = true }
-  // 例: if (software === 'lqvp/misskey-tepura') { features.someFeature = true }
+  // フォーク固有の capability はここに追加。
+  // カスタム TL や modeFlags は customTimelines.ts のポリシー検出で動的に対応済み。
+  // 静的に宣言が必要な capability のみここで設定する。
+  // 手順: DEVELOPMENT.md の "Fork support" を参照。
 
   return features
 }
