@@ -611,7 +611,14 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 
           <!-- Quote renote (when note has text + renote) -->
           <div v-if="note.renote && note.text !== null" :class="$style.quote" @click.stop>
-            <MkNote :note="note.renote" embedded />
+            <MkNote v-if="!embedded" :note="note.renote" embedded />
+            <a
+              v-else
+              :class="$style.quoteLink"
+              @click.prevent="navToNote(note._accountId, note.renote!.id)"
+            >
+              RN: ...
+            </a>
           </div>
         </div>
 
@@ -1108,6 +1115,18 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
     padding: 16px;
     border: dashed 1px var(--nd-renote);
     border-radius: var(--nd-radius-md);
+  }
+}
+
+.quoteLink {
+  display: block;
+  padding: 4px 8px;
+  color: var(--fg-light);
+  font-size: 0.9em;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
   }
 }
 
