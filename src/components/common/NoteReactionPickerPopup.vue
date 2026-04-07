@@ -107,6 +107,8 @@ defineExpose({ open })
     ]"
   >
     <div
+      autofocus
+      tabindex="-1"
       :class="contentClass"
       :style="theme"
     >
