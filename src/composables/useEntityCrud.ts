@@ -3,14 +3,17 @@ import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { usePrompt } from '@/stores/prompt'
 import { useToast } from '@/stores/toast'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 export type EntityType = 'clip' | 'list' | 'antenna'
+
+type EntityIdKey = 'clipId' | 'listId' | 'antennaId'
 
 export const ENTITY_CONFIGS: Record<
   EntityType,
   {
     label: string
-    idKey: string
+    idKey: EntityIdKey
     updateEndpoint: string
     deleteEndpoint: string
   }
@@ -42,10 +45,8 @@ export function useEntityCrud(type: EntityType, getColumn: () => DeckColumn) {
   const { prompt } = usePrompt()
   const toast = useToast()
 
-  function getEntityId() {
-    return (getColumn() as unknown as Record<string, unknown>)[config.idKey] as
-      | string
-      | undefined
+  function getEntityId(): string | undefined {
+    return getColumn()[config.idKey]
   }
 
   async function rename(closeMenu: () => void) {
@@ -59,12 +60,12 @@ export function useEntityCrud(type: EntityType, getColumn: () => DeckColumn) {
     try {
       const entityId = getEntityId()
       if (!entityId || !col.accountId) return
-      const { invoke } = await import('@/utils/tauriInvoke')
-      await invoke('api_request', {
-        accountId: col.accountId,
-        endpoint: config.updateEndpoint,
-        params: { [config.idKey]: entityId, name: newName },
-      })
+      unwrap(
+        await commands.apiRequest(col.accountId, config.updateEndpoint, {
+          [config.idKey]: entityId,
+          name: newName,
+        }),
+      )
       deckStore.updateColumn(col.id, { name: newName })
       toast.show(`${config.label}名を変更しました`)
     } catch {
@@ -85,12 +86,11 @@ export function useEntityCrud(type: EntityType, getColumn: () => DeckColumn) {
     try {
       const entityId = getEntityId()
       if (!entityId || !col.accountId) return
-      const { invoke } = await import('@/utils/tauriInvoke')
-      await invoke('api_request', {
-        accountId: col.accountId,
-        endpoint: config.deleteEndpoint,
-        params: { [config.idKey]: entityId },
-      })
+      unwrap(
+        await commands.apiRequest(col.accountId, config.deleteEndpoint, {
+          [config.idKey]: entityId,
+        }),
+      )
       deckStore.removeColumn(col.id)
       toast.show(`${config.label}を削除しました`)
     } catch {

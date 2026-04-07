@@ -15,6 +15,7 @@ import {
 import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
+import { logWarn } from '@/utils/logger'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
@@ -297,7 +298,7 @@ async function searchSelectItems(config: SelectableConfig, query: string) {
   try {
     selectItems.value = await config.searchFn(selectAccountId.value, query)
   } catch (e) {
-    console.error(`[deck] failed to search ${config.type}s:`, e)
+    logWarn(`deck-search-${config.type}`, e)
     selectItems.value = []
   } finally {
     selectLoading.value = false
@@ -309,7 +310,7 @@ async function fetchInitialItems(config: SelectableConfig, accountId: string) {
   try {
     selectItems.value = await config.apiFn(accountId)
   } catch (e) {
-    console.error(`[deck] failed to fetch ${config.type}s:`, e)
+    logWarn(`deck-fetch-${config.type}`, e)
     selectItems.value = []
   } finally {
     selectLoading.value = false
@@ -331,7 +332,7 @@ async function fetchSelectItems(config: SelectableConfig, accountId: string) {
   try {
     selectItems.value = await config.apiFn(accountId)
   } catch (e) {
-    console.error(`[deck] failed to fetch ${config.type}s:`, e)
+    logWarn(`deck-fetch-${config.type}`, e)
     selectItems.value = []
   } finally {
     selectLoading.value = false
@@ -370,7 +371,7 @@ async function createNewItem() {
       active: true,
     } as Omit<DeckColumn, 'id'>)
   } catch (e) {
-    console.error(`[deck] failed to create ${config.type}:`, e)
+    logWarn(`deck-create-${config.type}`, e)
   } finally {
     createLoading.value = false
     showCreateForm.value = false
