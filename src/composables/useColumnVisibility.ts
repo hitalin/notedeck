@@ -19,13 +19,24 @@ type MountedMap = Map<string, boolean>
 
 const COLUMN_MOUNTED_KEY: InjectionKey<MountedMap> = Symbol('columnMounted')
 
+/**
+ * Live budget: tracks which columns are allowed to have active streaming.
+ * Only the closest `maxLiveColumns` visible columns (by distance from active)
+ * are considered "live". Others are "suspended" (mounted but paused).
+ */
+type LiveMap = Map<string, boolean>
+
+const COLUMN_LIVE_KEY: InjectionKey<LiveMap> = Symbol('columnLive')
+
 /** Provide column visibility tracking from DeckLayout. */
 export function provideColumnVisibility() {
   const perfStore = usePerformanceStore()
   const map: VisibilityMap = reactive(new Map())
   const mounted: MountedMap = reactive(new Map())
+  const live: LiveMap = reactive(new Map())
   provide(COLUMN_VISIBILITY_KEY, map)
   provide(COLUMN_MOUNTED_KEY, mounted)
+  provide(COLUMN_LIVE_KEY, live)
 
   // Track pending unload timers per column
   const unloadTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -58,6 +69,7 @@ export function provideColumnVisibility() {
                 // Only unmount if still not visible
                 if (!map.get(colId)) {
                   mounted.set(colId, false)
+                  live.delete(colId)
                 }
               }, perfStore.get('columnUnloadDelay'))
               unloadTimers.set(colId, timer)
@@ -71,10 +83,10 @@ export function provideColumnVisibility() {
 
   function observe(el: Element) {
     observer?.observe(el)
-    // New columns start mounted
+    // New columns start unmounted unless the consumer opts into eager mount.
     const colId = (el as HTMLElement).dataset.columnId
     if (colId && !mounted.has(colId)) {
-      mounted.set(colId, true)
+      mounted.set(colId, false)
     }
   }
 
@@ -90,15 +102,57 @@ export function provideColumnVisibility() {
 
   /** Check if a column should have its DOM mounted (for use in the providing component). */
   function isColumnMounted(columnId: string): boolean {
-    return mounted.get(columnId) ?? true
+    return mounted.get(columnId) ?? false
   }
 
-  return { setup, observe, disconnect, isColumnMounted }
+  /**
+   * Recompute which columns are "live" (streaming allowed) based on the
+   * maxLiveColumns budget. Called by DeckColumnsArea when the active column
+   * or visibility changes.
+   *
+   * @param orderedColumnIds - All column IDs in display order (left to right)
+   * @param activeColumnId - The currently active column
+   */
+  function updateLiveBudget(
+    orderedColumnIds: string[],
+    activeColumnId: string | null,
+  ): void {
+    const maxLive = perfStore.get('maxLiveColumns')
+    const activeIndex = activeColumnId
+      ? orderedColumnIds.indexOf(activeColumnId)
+      : 0
+
+    // Collect visible+mounted columns with their distance from active
+    const candidates: { id: string; distance: number }[] = []
+    for (let i = 0; i < orderedColumnIds.length; i++) {
+      const id = orderedColumnIds[i]
+      if (id && mounted.get(id)) {
+        candidates.push({ id, distance: Math.abs(i - activeIndex) })
+      }
+    }
+
+    // Sort by distance (closest first), take maxLive
+    candidates.sort((a, b) => a.distance - b.distance)
+    const liveSet = new Set(candidates.slice(0, maxLive).map((c) => c.id))
+
+    // Update live map
+    for (const id of orderedColumnIds) {
+      if (liveSet.has(id)) {
+        live.set(id, true)
+      } else if (live.has(id)) {
+        live.set(id, false)
+      }
+    }
+  }
+
+  return { setup, observe, disconnect, isColumnMounted, updateLiveBudget }
 }
 
 /** Inject column visibility state. Returns true when column is visible or unknown. */
 export function useColumnVisible(columnId: string) {
   const map = inject(COLUMN_VISIBILITY_KEY, null)
+  const liveMap = inject(COLUMN_LIVE_KEY, null)
   const isVisible = computed(() => map?.get(columnId) ?? true)
-  return { isVisible }
+  const isLive = computed(() => liveMap?.get(columnId) ?? true)
+  return { isVisible, isLive }
 }

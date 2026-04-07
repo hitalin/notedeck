@@ -142,12 +142,18 @@ export function useNoteColumn(config: NoteColumnConfig) {
     setOnNotesChanged(sync)
   }
 
-  // Suspend streaming subscription when column scrolls off-screen,
-  // resubscribe + diff-fetch when it comes back into view.
+  // Suspend streaming when column is off-screen or exceeds the live budget.
+  // - isVisible=false: fully paused + unsubscribed (off-screen)
+  // - isVisible=true but isLive=false: paused (over budget, DOM preserved)
+  // - isVisible=true and isLive=true: fully active
   if (streamingBatch) {
-    const { isVisible } = useColumnVisible(config.getColumn().id)
-    watch(isVisible, (visible) => {
+    const { isVisible, isLive } = useColumnVisible(config.getColumn().id)
+    watch([isVisible, isLive], ([visible, live]) => {
       if (!visible) {
+        streamingBatch.setPaused(true)
+        disposeSubscription()
+      } else if (!live) {
+        // Over live budget: pause streaming but keep DOM
         streamingBatch.setPaused(true)
         disposeSubscription()
       } else {

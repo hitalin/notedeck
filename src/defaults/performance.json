@@ -31,6 +31,7 @@
   "streamPollingInterval": 15,
   "notificationPollInterval": 120,
   "chatPollInterval": 120,
+  "maxLiveColumns": 3,
   "columnUnloadDelay": 3000,
   "snapshotMaxNotes": 30,
   "snapshotTTL": 5,

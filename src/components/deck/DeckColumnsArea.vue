@@ -112,17 +112,42 @@ const horizontalWheel = useHorizontalWheel({
   columnSelector: COLUMN_SELECTOR,
 })
 
+const eagerMountRadius = computed(() => (isCompact.value ? 0 : 1))
+
+const activeGroupIndex = computed(() => {
+  const activeId = deckStore.activeColumnId
+  if (!activeId) return 0
+  const idx = deckStore.windowLayout.findIndex((group) =>
+    group.includes(activeId),
+  )
+  return idx >= 0 ? idx : 0
+})
+
+function isPriorityGroup(groupIndex: number): boolean {
+  return Math.abs(groupIndex - activeGroupIndex.value) <= eagerMountRadius.value
+}
+
+function shouldMountColumn(colId: string, groupIndex: number): boolean {
+  return isPriorityGroup(groupIndex) || colVisibility.isColumnMounted(colId)
+}
+
+function preloadVisiblePriorityGroups() {
+  if (!import.meta.env.PROD) return
+  for (const [groupIndex, group] of deckStore.windowLayout.entries()) {
+    if (!isPriorityGroup(groupIndex)) continue
+    for (const colId of group) {
+      const col = columnMap.value.get(colId)
+      if (col) COLUMN_PRELOADERS[col.type]?.()
+    }
+  }
+}
+
 onMounted(async () => {
   await horizontalWheel.attach()
   colVisibility.setup(columnsRef)
 
-  // Preload chunks for the user's configured column types (production only —
-  // in dev, each import() triggers on-demand transpilation which is slow on WSL2)
-  if (import.meta.env.PROD) {
-    for (const col of deckStore.columns) {
-      COLUMN_PRELOADERS[col.type]?.()
-    }
-  }
+  // Preload only the active/nearby groups first.
+  preloadVisiblePriorityGroups()
 })
 
 onUnmounted(() => {
@@ -148,9 +173,23 @@ watch(
 watch(
   () => deckStore.activeColumnId,
   (id) => {
-    if (id) columnScroll.scrollToColumnId(id)
+    if (id) {
+      columnScroll.scrollToColumnId(id)
+      preloadVisiblePriorityGroups()
+    }
   },
   { flush: 'post' },
+)
+
+// Live budget: recompute which columns are allowed to stream
+// when active column or layout changes
+watch(
+  [() => deckStore.activeColumnId, () => deckStore.windowLayout],
+  () => {
+    const allColIds = deckStore.windowLayout.flat()
+    colVisibility.updateLiveBudget(allColIds, deckStore.activeColumnId)
+  },
+  { flush: 'post', deep: true, immediate: true },
 )
 
 // Compact ↔ Desktop 切替時: アクティブカラムの位置にスクロールを合わせる
@@ -256,7 +295,7 @@ defineExpose({
         >
           <component
             v-if="
-              colVisibility.isColumnMounted(colId) &&
+              shouldMountColumn(colId, groupIndex) &&
               columnMap.get(colId) &&
               COLUMN_COMPONENTS[columnMap.get(colId)!.type]
             "
@@ -264,6 +303,19 @@ defineExpose({
             :key="colId"
             :column="columnMap.get(colId)!"
           />
+          <div
+            v-else
+            :class="$style.columnShell"
+            aria-hidden="true"
+          >
+            <div :class="$style.columnShellHeader" />
+            <div :class="$style.columnShellBody">
+              <div :class="$style.columnShellLine" />
+              <div :class="[$style.columnShellLine, $style.columnShellLineWide]" />
+              <div :class="$style.columnShellCard" />
+              <div :class="$style.columnShellCard" />
+            </div>
+          </div>
         </div>
       </section>
       <div
@@ -363,6 +415,72 @@ defineExpose({
     border-top: 3px solid var(--nd-accent);
     border-radius: 0 0 10px 10px;
   }
+}
+
+.columnShell {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--nd-panel) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nd-divider, currentColor) 30%, transparent);
+}
+
+.columnShellHeader {
+  height: 38px;
+  flex-shrink: 0;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--nd-panelHeaderBg, var(--nd-panel)) 85%, transparent),
+      color-mix(in srgb, var(--nd-panelHeaderBg, var(--nd-panel)) 60%, transparent),
+      color-mix(in srgb, var(--nd-panelHeaderBg, var(--nd-panel)) 85%, transparent)
+    );
+  background-size: 200% 100%;
+  animation: nd-shell-shimmer 1.6s linear infinite;
+}
+
+.columnShellBody {
+  flex: 1;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.columnShellLine,
+.columnShellCard {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--nd-panel) 75%, transparent),
+      color-mix(in srgb, var(--nd-panel) 55%, transparent),
+      color-mix(in srgb, var(--nd-panel) 75%, transparent)
+    );
+  background-size: 200% 100%;
+  animation: nd-shell-shimmer 1.6s linear infinite;
+}
+
+.columnShellLine {
+  height: 10px;
+  border-radius: 999px;
+  width: 58%;
+}
+
+.columnShellLineWide {
+  width: 82%;
+}
+
+.columnShellCard {
+  height: 96px;
+  border-radius: 12px;
+}
+
+@keyframes nd-shell-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
 }
 
 .dragSource {
