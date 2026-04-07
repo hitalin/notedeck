@@ -16,7 +16,7 @@ import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const props = defineProps<{
   mode?: 'deck' | 'pip'
@@ -154,12 +154,16 @@ interface SelectableConfig {
   type: ColumnType
   label: string
   icon: string
-  apiCommand: string
+  apiFn: (accountId: string) => Promise<SelectableItem[]>
   idKey: string
-  /** When set, shows a search input. Items are fetched via this command with { accountId, query }. */
-  searchCommand?: string
+  /** When set, shows a search input. Items are fetched via this function with (accountId, query). */
+  searchFn?: (accountId: string, query: string) => Promise<SelectableItem[]>
   /** Column name derived from selected item (default: item.name) */
   formatName?: (item: SelectableItem) => string
+  /** Misskey API endpoint for creating new items (e.g. 'clips/create') */
+  createEndpoint?: string
+  /** Default params to merge when creating (e.g. antenna defaults) */
+  createDefaults?: Record<string, unknown>
 }
 
 const SELECTABLE_CONFIGS: SelectableConfig[] = [
@@ -167,38 +171,71 @@ const SELECTABLE_CONFIGS: SelectableConfig[] = [
     type: 'list',
     label: 'リスト',
     icon: 'ti-list',
-    apiCommand: 'api_get_user_lists',
+    apiFn: (accountId) =>
+      commands
+        .apiGetUserLists(accountId)
+        .then((r) => unwrap(r) as unknown as SelectableItem[]),
     idKey: 'listId',
+    createEndpoint: 'users/lists/create',
   },
   {
     type: 'antenna',
     label: 'アンテナ',
     icon: 'ti-antenna-bars-5',
-    apiCommand: 'api_get_antennas',
+    apiFn: (accountId) =>
+      commands
+        .apiGetAntennas(accountId)
+        .then((r) => unwrap(r) as unknown as SelectableItem[]),
     idKey: 'antennaId',
+    createEndpoint: 'antennas/create',
+    createDefaults: {
+      src: 'all',
+      keywords: [['']],
+      excludeKeywords: [['']],
+      users: [],
+      caseSensitive: false,
+      withReplies: false,
+      withFile: false,
+    },
   },
   {
     type: 'channel',
     label: 'チャンネル',
     icon: 'ti-device-tv',
-    apiCommand: 'api_get_channels',
+    apiFn: (accountId) =>
+      commands
+        .apiGetChannels(accountId)
+        .then((r) => unwrap(r) as unknown as SelectableItem[]),
     idKey: 'channelId',
-    searchCommand: 'api_search_channels',
+    searchFn: (accountId, query) =>
+      commands
+        .apiSearchChannels(accountId, query)
+        .then((r) => unwrap(r) as unknown as SelectableItem[]),
   },
   {
     type: 'clip',
     label: 'クリップ',
     icon: 'ti-paperclip',
-    apiCommand: 'api_get_clips',
+    apiFn: (accountId) =>
+      commands
+        .apiGetClips(accountId)
+        .then((r) => unwrap(r) as unknown as SelectableItem[]),
     idKey: 'clipId',
+    createEndpoint: 'clips/create',
   },
   {
     type: 'user',
     label: 'ユーザー',
     icon: 'ti-user',
-    apiCommand: 'api_search_users_by_query',
+    apiFn: (accountId) =>
+      commands
+        .apiSearchUsersByQuery(accountId, '', null)
+        .then((r) => unwrap(r) as unknown as SelectableItem[]),
     idKey: 'userId',
-    searchCommand: 'api_search_users_by_query',
+    searchFn: (accountId, query) =>
+      commands
+        .apiSearchUsersByQuery(accountId, query, null)
+        .then((r) => unwrap(r) as unknown as SelectableItem[]),
     formatName: (item) => item.name,
   },
 ]
@@ -236,7 +273,7 @@ watch(userSearching, (v) => {
 watch(searchQuery, (val) => {
   if (searchDebounce) clearTimeout(searchDebounce)
   const config = selectConfig.value
-  if (!config?.searchCommand) return
+  if (!config?.searchFn) return
 
   // User: delegate to useUserSearch composable
   if (config.type === 'user') {
@@ -255,13 +292,10 @@ watch(searchQuery, (val) => {
 })
 
 async function searchSelectItems(config: SelectableConfig, query: string) {
-  if (!config.searchCommand || !selectAccountId.value) return
+  if (!config.searchFn || !selectAccountId.value) return
   selectLoading.value = true
   try {
-    selectItems.value = await invoke<SelectableItem[]>(config.searchCommand, {
-      accountId: selectAccountId.value,
-      query,
-    })
+    selectItems.value = await config.searchFn(selectAccountId.value, query)
   } catch (e) {
     console.error(`[deck] failed to search ${config.type}s:`, e)
     selectItems.value = []
@@ -273,9 +307,7 @@ async function searchSelectItems(config: SelectableConfig, query: string) {
 async function fetchInitialItems(config: SelectableConfig, accountId: string) {
   selectLoading.value = true
   try {
-    selectItems.value = await invoke<SelectableItem[]>(config.apiCommand, {
-      accountId,
-    })
+    selectItems.value = await config.apiFn(accountId)
   } catch (e) {
     console.error(`[deck] failed to fetch ${config.type}s:`, e)
     selectItems.value = []
@@ -297,14 +329,52 @@ async function fetchSelectItems(config: SelectableConfig, accountId: string) {
   }
   selectLoading.value = true
   try {
-    selectItems.value = await invoke<SelectableItem[]>(config.apiCommand, {
-      accountId,
-    })
+    selectItems.value = await config.apiFn(accountId)
   } catch (e) {
     console.error(`[deck] failed to fetch ${config.type}s:`, e)
     selectItems.value = []
   } finally {
     selectLoading.value = false
+  }
+}
+
+// --- Inline create for list/antenna/clip ---
+const showCreateForm = ref(false)
+const createName = ref('')
+const createLoading = ref(false)
+
+async function createNewItem() {
+  const config = selectConfig.value
+  const accountId = selectAccountId.value
+  if (!config?.createEndpoint || !accountId) return
+  const name = createName.value.trim()
+  if (!name) return
+  createLoading.value = true
+  try {
+    const created = unwrap(
+      await commands.apiRequest(accountId, config.createEndpoint, {
+        name,
+        ...config.createDefaults,
+      }),
+    ) as unknown as SelectableItem
+    // Add column with the newly created item
+    const colName = config.formatName
+      ? config.formatName(created)
+      : created.name
+    finalizeColumn({
+      type: config.type,
+      name: colName,
+      width: 360,
+      accountId,
+      [config.idKey]: created.id,
+      active: true,
+    } as Omit<DeckColumn, 'id'>)
+  } catch (e) {
+    console.error(`[deck] failed to create ${config.type}:`, e)
+  } finally {
+    createLoading.value = false
+    showCreateForm.value = false
+    createName.value = ''
   }
 }
 
@@ -511,7 +581,7 @@ function close() {
 
       <!-- Step 3a: Item selection (list/antenna/channel/clip/user) -->
       <template v-else-if="selectConfig">
-        <div v-if="selectConfig.searchCommand" :class="$style.selectSearchBar">
+        <div v-if="selectConfig.searchFn" :class="$style.selectSearchBar">
           <i class="ti ti-search" :class="$style.selectSearchIcon" />
           <input
             v-model="searchQuery"
@@ -521,8 +591,41 @@ function close() {
           />
           <i v-if="selectLoading" class="ti ti-loader-2 nd-spin" :class="$style.selectSearchIcon" />
         </div>
-        <div v-if="!selectConfig.searchCommand && selectLoading" :class="$style.addPopupLoading"><LoadingSpinner /></div>
-        <div v-else-if="!selectLoading && selectItems.length === 0 && (!selectConfig.searchCommand || searchQuery.trim())" :class="$style.addPopupEmpty">{{ selectConfig.label }}が見つかりません</div>
+
+        <!-- Inline create form -->
+        <div v-if="selectConfig.createEndpoint && showCreateForm" :class="$style.createForm">
+          <form @submit.prevent="createNewItem">
+            <input
+              v-model="createName"
+              :class="$style.createInput"
+              type="text"
+              :placeholder="`${selectConfig.label}名を入力...`"
+              :disabled="createLoading"
+            />
+            <div :class="$style.createActions">
+              <button type="button" class="_button" :class="$style.createCancelBtn" @click="showCreateForm = false; createName = ''">
+                キャンセル
+              </button>
+              <button type="submit" class="_button" :class="$style.createSubmitBtn" :disabled="!createName.trim() || createLoading">
+                <i v-if="createLoading" class="ti ti-loader-2 nd-spin" />
+                <template v-else>作成</template>
+              </button>
+            </div>
+          </form>
+        </div>
+        <!-- Create button -->
+        <button
+          v-else-if="selectConfig.createEndpoint"
+          class="_button"
+          :class="[$style.addTypeBtn, $style.createBtn]"
+          @click="showCreateForm = true"
+        >
+          <i class="ti ti-plus" />
+          <span>新しい{{ selectConfig.label }}を作成</span>
+        </button>
+
+        <div v-if="!selectConfig.searchFn && selectLoading" :class="$style.addPopupLoading"><LoadingSpinner /></div>
+        <div v-else-if="!selectLoading && selectItems.length === 0 && (!selectConfig.searchFn || searchQuery.trim())" :class="$style.addPopupEmpty">{{ selectConfig.label }}が見つかりません</div>
         <button
           v-for="item in selectItems"
           :key="item.id"
@@ -816,6 +919,70 @@ function close() {
   border-radius: 50%;
   flex-shrink: 0;
   object-fit: cover;
+}
+
+.createBtn {
+  color: var(--nd-accent);
+  opacity: 0.85;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.createForm {
+  padding: 8px 12px;
+}
+
+.createInput {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
+  color: var(--nd-fg);
+  font-size: 0.9em;
+  outline: none;
+
+  &:focus {
+    border-color: var(--nd-accent);
+  }
+}
+
+.createActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.createCancelBtn {
+  padding: 4px 12px;
+  border-radius: var(--nd-radius-sm);
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  opacity: 0.7;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.createSubmitBtn {
+  padding: 4px 12px;
+  border-radius: var(--nd-radius-sm);
+  font-size: 0.85em;
+  background: var(--nd-accent);
+  color: var(--nd-fgOnAccent);
+
+  &:hover {
+    opacity: 0.9;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }
 
 @keyframes addPopupIn {

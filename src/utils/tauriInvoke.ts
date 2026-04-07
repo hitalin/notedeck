@@ -1,27 +1,35 @@
 /**
- * Re-export Tauri's invoke for centralized import path.
+ * Typed invoke wrapper powered by tauri-specta bindings.
+ *
+ * `commands` — auto-generated typed command object (dev ビルドで src/bindings.ts に出力).
+ * `unwrap()` — Result<T, E> を従来の invoke 互換に変換（成功時 T、失敗時 throw）.
  *
  * "[TAURI] Couldn't find callback id" warnings during HMR/reload are harmless
- * Tauri-side messages that cannot be suppressed from JS. A previous attempt to
- * block invoke calls via a "disposing" flag caused all API calls to silently
- * fail when beforeunload fired without an actual unload, resulting in
- * spontaneous mass logouts.
+ * Tauri-side messages that cannot be suppressed from JS.
  */
 
 import { invoke as tauriInvoke } from '@tauri-apps/api/core'
+import type { Result } from '@/bindings'
+
+export { commands } from '@/bindings'
+
+/**
+ * Unwrap a tauri-specta Result into the raw value, throwing on error.
+ * Compatible with existing try/catch patterns used throughout the codebase.
+ */
+export function unwrap<T, E = unknown>(result: Result<T, E>): T {
+  if (result.status === 'ok') return result.data
+  throw result.error
+}
 
 const isTauri =
   typeof window !== 'undefined' &&
   ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)
 
 /**
- * ブラウザ単体開発時（pnpm dev）のモック invoke。
- * Tauri 環境では本物の invoke をそのまま使う。
- * モックハンドラは mockHandlers に追加可能。
+ * @deprecated Use `commands.*` from `@/utils/tauriInvoke` instead.
  */
-const mockHandlers: Record<string, (args: unknown) => unknown> = {
-  // 例: get_credentials_or_anon: () => ({ type: 'anon' }),
-}
+const mockHandlers: Record<string, (args: unknown) => unknown> = {}
 
 function mockInvoke(cmd: string, args?: unknown): Promise<unknown> {
   const handler = mockHandlers[cmd]
@@ -32,13 +40,15 @@ function mockInvoke(cmd: string, args?: unknown): Promise<unknown> {
   return Promise.resolve(null)
 }
 
+/**
+ * @deprecated Use `commands.*` from `@/utils/tauriInvoke` instead.
+ */
 export const invoke: typeof tauriInvoke = isTauri
   ? tauriInvoke
   : (mockInvoke as typeof tauriInvoke)
 
 /**
- * ブラウザ開発時にモックハンドラを登録する。
- * テストや開発用 setup スクリプトから利用。
+ * @deprecated Use `commands.*` from `@/utils/tauriInvoke` instead.
  */
 export function registerMockHandler(
   cmd: string,

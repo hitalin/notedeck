@@ -40,7 +40,7 @@ import {
   formatDate,
 } from '@/utils/format'
 import { proxyUrl } from '@/utils/imageProxy'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import { toggleFollow } from '@/utils/toggleFollow'
 import { toggleReaction } from '@/utils/toggleReaction'
 import { openSafeUrl, safeCssUrl } from '@/utils/url'
@@ -247,9 +247,7 @@ const qrCodeContainerEl = ref<HTMLDivElement | null>(null)
 
 async function fetchImageAsDataUrl(url: string): Promise<string | undefined> {
   try {
-    return (
-      (await invoke<string | null>('fetch_image_base64', { url })) ?? undefined
-    )
+    return unwrap(await commands.fetchImageBase64(url)) ?? undefined
   } catch {
     return undefined
   }

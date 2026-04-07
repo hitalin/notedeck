@@ -16,7 +16,7 @@ import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useUiStore } from '@/stores/ui'
 import { AppError } from '@/utils/errors'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -80,10 +80,12 @@ async function deleteFile() {
   deleting.value = true
   deleteError.value = null
   try {
-    await invoke('api_delete_drive_file', {
-      accountId: props.column.accountId,
-      fileId: detailFile.value.id,
-    })
+    unwrap(
+      await commands.apiDeleteDriveFile(
+        props.column.accountId,
+        detailFile.value.id,
+      ),
+    )
     files.value = files.value.filter((f) => f.id !== detailFile.value?.id)
     detailFile.value = null
   } catch (e) {
@@ -133,10 +135,7 @@ async function batchDelete() {
   const idsToDelete = [...selectedIds.value]
   try {
     for (const fileId of idsToDelete) {
-      await invoke('api_delete_drive_file', {
-        accountId: props.column.accountId,
-        fileId,
-      })
+      unwrap(await commands.apiDeleteDriveFile(props.column.accountId, fileId))
       files.value = files.value.filter((f) => f.id !== fileId)
     }
     deselectAll()
@@ -171,13 +170,15 @@ async function onFileSelected(e: Event) {
   try {
     for (const file of input.files) {
       const buf = await file.arrayBuffer()
-      await invoke('api_upload_file', {
-        accountId: props.column.accountId,
-        fileName: file.name,
-        fileData: [...new Uint8Array(buf)],
-        contentType: file.type || 'application/octet-stream',
-        isSensitive: false,
-      })
+      unwrap(
+        await commands.apiUploadFile(
+          props.column.accountId,
+          file.name,
+          [...new Uint8Array(buf)],
+          file.type || 'application/octet-stream',
+          false,
+        ),
+      )
     }
     fetchDrive()
   } finally {

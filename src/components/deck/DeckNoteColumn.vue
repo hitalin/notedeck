@@ -122,6 +122,10 @@ defineExpose({
       <slot name="header-extra" />
     </template>
 
+    <template #menu-items="{ closeMenu }">
+      <slot name="menu-items" :close-menu="closeMenu" />
+    </template>
+
     <div v-if="!account" :class="$style.columnEmpty">
       アカウントが見つかりません
     </div>

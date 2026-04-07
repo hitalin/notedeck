@@ -10,7 +10,7 @@ import {
 } from '@/engine/telemetry/frameTelemetry'
 import { isTauri, readPerformance, writePerformance } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 /** All tunable performance keys. */
 export interface PerformanceConfig {
@@ -793,8 +793,8 @@ export const usePerformanceStore = defineStore('performance', () => {
   async function syncToRust(): Promise<void> {
     if (!isTauri) return
     const c = config.value
-    await invoke('update_performance_config', {
-      config: {
+    unwrap(
+      await commands.updatePerformanceConfig({
         memory_cache_max_total: c.memoryCacheMaxMB * 1024 * 1024,
         memory_cache_max_item: c.memoryCacheMaxItemKB * 1024,
         max_concurrent_fetches: c.maxConcurrentFetches,
@@ -803,8 +803,8 @@ export const usePerformanceStore = defineStore('performance', () => {
         circuit_breaker_threshold: c.circuitBreakerThreshold,
         circuit_breaker_duration: c.circuitBreakerDuration,
         image_cache_ttl_days: c.imageCacheTTLDays,
-      },
-    })
+      }),
+    )
   }
 
   async function initFileStorage(): Promise<void> {

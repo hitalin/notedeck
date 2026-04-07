@@ -7,7 +7,7 @@ import { safeUrl } from '@/composables/useDriveFolder'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -65,11 +65,13 @@ async function fetchGallery(older = false) {
       older && posts.value.length > 0
         ? posts.value[posts.value.length - 1]?.id
         : undefined
-    const result = await invoke<GalleryPost[]>('api_get_gallery_posts', {
-      accountId: props.column.accountId,
-      limit: 20,
-      untilId: untilId ?? null,
-    })
+    const result = unwrap(
+      await commands.apiGetGalleryPosts(
+        props.column.accountId,
+        20,
+        untilId ?? null,
+      ),
+    ) as unknown as GalleryPost[]
     if (older) {
       posts.value.push(...result)
     } else {
@@ -113,13 +115,21 @@ async function toggleLike() {
   if (!detailPost.value || !props.column.accountId || liking.value) return
   liking.value = true
   try {
-    const command = detailPost.value.isLiked
-      ? 'api_unlike_gallery_post'
-      : 'api_like_gallery_post'
-    await invoke(command, {
-      accountId: props.column.accountId,
-      postId: detailPost.value.id,
-    })
+    if (detailPost.value.isLiked) {
+      unwrap(
+        await commands.apiUnlikeGalleryPost(
+          props.column.accountId,
+          detailPost.value.id,
+        ),
+      )
+    } else {
+      unwrap(
+        await commands.apiLikeGalleryPost(
+          props.column.accountId,
+          detailPost.value.id,
+        ),
+      )
+    }
     detailPost.value.isLiked = !detailPost.value.isLiked
     detailPost.value.likedCount += detailPost.value.isLiked ? 1 : -1
     const idx = posts.value.findIndex((p) => p.id === detailPost.value?.id)

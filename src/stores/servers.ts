@@ -1,16 +1,9 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
 import type { ServerInfo, ServerSoftware } from '@/adapters/types'
+import type { StoredServer } from '@/bindings'
 import { detectServer } from '@/core/server'
-import { invoke } from '@/utils/tauriInvoke'
-
-interface StoredServer {
-  host: string
-  software: string
-  version: string
-  featuresJson: string
-  updatedAt: number
-}
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 
@@ -52,8 +45,8 @@ export const useServersStore = defineStore('servers', () => {
   }
 
   async function persistServer(info: ServerInfo): Promise<void> {
-    await invoke('upsert_server', {
-      server: {
+    unwrap(
+      await commands.upsertServer({
         host: info.host,
         software: info.software,
         version: info.version,
@@ -63,8 +56,8 @@ export const useServersStore = defineStore('servers', () => {
           _themeColor: info.themeColor,
         }),
         updatedAt: Date.now(),
-      },
-    })
+      }),
+    )
   }
 
   function revalidateInBackground(host: string) {
@@ -79,7 +72,7 @@ export const useServersStore = defineStore('servers', () => {
   }
 
   async function loadCachedServers(): Promise<void> {
-    const stored = await invoke<StoredServer[]>('load_servers')
+    const stored = unwrap(await commands.loadServers())
     const next = new Map(servers.value)
     for (const s of stored) {
       const info = parseStoredServer(s)
@@ -97,7 +90,7 @@ export const useServersStore = defineStore('servers', () => {
 
     const loadPromise = (async () => {
       // Return DB cache immediately if available (SWR: stale-while-revalidate)
-      const stored = await invoke<StoredServer | null>('get_server', { host })
+      const stored = unwrap(await commands.getServer(host))
       if (stored) {
         const info = parseStoredServer(stored)
         if (info) {

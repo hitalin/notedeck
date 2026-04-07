@@ -4,7 +4,7 @@ import { MisskeyApi } from '@/adapters/misskey/api'
 import type { NormalizedNote } from '@/adapters/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -92,13 +92,15 @@ async function performLookup() {
     const userQuery = parseUserQuery(q)
     if (userQuery) {
       const { username, host } = userQuery
-      const user = await invoke<{
+      const user = unwrap(
+        await commands.apiLookupUser(accountId, username, host),
+      ) as unknown as {
         id: string
         username: string
         host: string | null
         name: string | null
         avatarUrl: string | null
-      }>('api_lookup_user', { accountId, username, host })
+      }
       result.value = {
         type: 'User',
         user: {
@@ -123,7 +125,7 @@ async function performLookup() {
     }
 
     // Use ap/show for remote URLs or any URI
-    const res = await invoke<{
+    const res = unwrap(await commands.apiApShow(accountId, q)) as unknown as {
       type: string
       object?: {
         id: string
@@ -132,10 +134,7 @@ async function performLookup() {
         name?: string | null
         avatarUrl?: string | null
       }
-    }>('api_ap_show', {
-      accountId,
-      uri: q,
-    })
+    }
 
     if (res.type === 'Note' && res.object?.id) {
       const note = await api.getNote(res.object.id)

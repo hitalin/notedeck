@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import {
   computed,
   defineAsyncComponent,
@@ -29,6 +28,7 @@ import {
 import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { parseMfm } from '@/utils/mfm'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import { extractColumnThemeVars } from '@/utils/themeVars'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
@@ -299,11 +299,13 @@ async function onPreviewMentionHover(
   const rect = el.getBoundingClientRect()
   previewMentionTheme.value = extractColumnThemeVars(el)
   try {
-    const user = await invoke<NormalizedUser>('api_lookup_user', {
-      accountId: activeAccountId.value,
-      username,
-      host: host ?? null,
-    })
+    const user = unwrap(
+      await commands.apiLookupUser(
+        activeAccountId.value,
+        username,
+        host ?? null,
+      ),
+    )
     if (!previewMentionHovering) return
     previewMentionUserId.value = user.id
     previewMentionPopup.show({ x: rect.right + 8, y: rect.top })

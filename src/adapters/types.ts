@@ -111,6 +111,19 @@ export interface Antenna {
 export interface Clip {
   id: string
   name: string
+  description?: string | null
+  isPublic?: boolean
+}
+
+export interface CreateAntennaParams {
+  name: string
+  src?: string
+  keywords?: string[][]
+  excludeKeywords?: string[][]
+  users?: string[]
+  caseSensitive?: boolean
+  withReplies?: boolean
+  withFile?: boolean
 }
 
 export interface Channel {
@@ -480,8 +493,25 @@ export interface ApiAdapter {
   unblockUser(userId: string): Promise<void>
   reportUser(userId: string, comment: string): Promise<void>
   addNoteToClip(clipId: string, noteId: string): Promise<void>
+  removeNoteFromClip(clipId: string, noteId: string): Promise<void>
+  createClip(params: {
+    name: string
+    description?: string
+    isPublic?: boolean
+  }): Promise<Clip>
+  updateClip(
+    clipId: string,
+    params: { name?: string; description?: string; isPublic?: boolean },
+  ): Promise<Clip>
+  deleteClip(clipId: string): Promise<void>
   addUserToList(listId: string, userId: string): Promise<void>
   removeUserFromList(listId: string, userId: string): Promise<void>
+  createList(name: string): Promise<UserList>
+  updateList(listId: string, params: { name?: string }): Promise<UserList>
+  deleteList(listId: string): Promise<void>
+  createAntenna(params: CreateAntennaParams): Promise<Antenna>
+  updateAntenna(antennaId: string, params: { name?: string }): Promise<Antenna>
+  deleteAntenna(antennaId: string): Promise<void>
   getFollowing(
     userId: string,
     options?: { limit?: number; untilId?: string },

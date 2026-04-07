@@ -15,11 +15,12 @@ import {
 } from '@/aiscript/notedeck-api'
 import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
+import type { JsonValue } from '@/bindings'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useToast } from '@/stores/toast'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -95,13 +96,9 @@ async function fetchList(tab?: Tab) {
   }
 
   try {
-    const raw = await invoke<
-      FlashSummary[] | { id: string; flash: FlashSummary }[]
-    >('api_get_flashes', {
-      accountId: props.column.accountId,
-      endpoint: endpointMap[t],
-      limit: 30,
-    })
+    const raw = unwrap(
+      await commands.apiGetFlashes(props.column.accountId, endpointMap[t], 30),
+    ) as unknown as FlashSummary[] | { id: string; flash: FlashSummary }[]
     // flash/my-likes returns { id, flash } wrapper objects
     listItems.value =
       t === 'likes'
@@ -215,10 +212,9 @@ async function openPlay(flashId: string) {
   resetRunState()
 
   try {
-    flash.value = await invoke<FlashDetail>('api_get_flash', {
-      accountId: props.column.accountId,
-      flashId,
-    })
+    flash.value = unwrap(
+      await commands.apiGetFlash(props.column.accountId, flashId),
+    ) as unknown as FlashDetail
   } catch (e) {
     fetchError.value = AppError.from(e).message
   } finally {
@@ -247,15 +243,15 @@ function resetRunState() {
 }
 
 async function executePlay(detail: FlashDetail) {
+  const accId = props.column.accountId
+  if (!accId) return
   const apiOption = async (
     endpoint: string,
     params: Record<string, unknown>,
   ) => {
-    return invoke('api_request', {
-      accountId: props.column.accountId,
-      endpoint,
-      params,
-    })
+    return unwrap(
+      await commands.apiRequest(accId, endpoint, params as JsonValue),
+    )
   }
 
   const code = sanitizeCode(detail.script)
@@ -332,12 +328,16 @@ async function executePlay(detail: FlashDetail) {
 
 async function toggleLike() {
   if (!flash.value || !props.column.accountId) return
-  const command = flash.value.isLiked ? 'api_unlike_flash' : 'api_like_flash'
   try {
-    await invoke(command, {
-      accountId: props.column.accountId,
-      flashId: flash.value.id,
-    })
+    if (flash.value.isLiked) {
+      unwrap(
+        await commands.apiUnlikeFlash(props.column.accountId, flash.value.id),
+      )
+    } else {
+      unwrap(
+        await commands.apiLikeFlash(props.column.accountId, flash.value.id),
+      )
+    }
     flash.value.isLiked = !flash.value.isLiked
     flash.value.likedCount += flash.value.isLiked ? 1 : -1
   } catch {

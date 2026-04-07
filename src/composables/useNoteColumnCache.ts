@@ -2,7 +2,7 @@ import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
 import { useNoteStore } from '@/stores/notes'
 import { usePerformanceStore } from '@/stores/performance'
 import { catchLog } from '@/utils/logger'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 /** Load cached notes from SQLite. */
 export async function loadCachedTimeline(
@@ -12,11 +12,13 @@ export async function loadCachedTimeline(
 ): Promise<NormalizedNote[]> {
   const effectiveLimit =
     limit ?? usePerformanceStore().get('cachedTimelineLimit')
-  return invoke<NormalizedNote[]>('api_get_cached_timeline', {
-    accountId,
-    timelineType,
-    limit: effectiveLimit,
-  })
+  return unwrap(
+    await commands.apiGetCachedTimeline(
+      accountId,
+      timelineType,
+      effectiveLimit,
+    ),
+  ) as unknown as NormalizedNote[]
 }
 
 /** Load older cached notes before a given timestamp. */
@@ -28,12 +30,14 @@ export async function loadCachedTimelineBefore(
 ): Promise<NormalizedNote[]> {
   const effectiveLimit =
     limit ?? usePerformanceStore().get('cachedTimelineLimit')
-  return invoke<NormalizedNote[]>('api_get_cached_timeline_before', {
-    accountId,
-    timelineType,
-    before,
-    limit: effectiveLimit,
-  })
+  return unwrap(
+    await commands.apiGetCachedTimelineBefore(
+      accountId,
+      timelineType,
+      before,
+      effectiveLimit,
+    ),
+  ) as unknown as NormalizedNote[]
 }
 
 /**
@@ -51,10 +55,9 @@ export async function purgeStaleCachedNotes(
 
   const noteStore = useNoteStore()
   try {
-    const verified = await invoke<Record<string, NormalizedNote>>(
-      'api_verify_notes',
-      { accountId, noteIds: idsToVerify },
-    )
+    const verified = unwrap(
+      await commands.apiVerifyNotes(accountId, idsToVerify),
+    ) as Record<string, NormalizedNote>
 
     if (!isStillMounted()) return
 
@@ -69,9 +72,7 @@ export async function purgeStaleCachedNotes(
     for (const id of idsToVerify) {
       if (!verifiedIds.has(id)) {
         noteStore.remove(id)
-        invoke('api_delete_cached_note', { noteId: id }).catch(
-          catchLog('delete-cached-note'),
-        )
+        commands.apiDeleteCachedNote(id).catch(catchLog('delete-cached-note'))
       }
     }
   } catch {

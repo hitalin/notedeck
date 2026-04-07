@@ -1,9 +1,9 @@
 import { useUnreadCounter } from '@/composables/useUnreadCounter'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 async function fetchUnreadCount(accountId: string): Promise<number> {
   try {
-    const result = await invoke<boolean>('api_get_unread_chat', { accountId })
+    const result = unwrap(await commands.apiGetUnreadChat(accountId))
     return result ? 1 : 0
   } catch {
     return 0

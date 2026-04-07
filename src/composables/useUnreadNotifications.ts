@@ -1,12 +1,10 @@
 import { useUnreadCounter } from '@/composables/useUnreadCounter'
 import { useAccountsStore } from '@/stores/accounts'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 async function fetchUnreadCount(accountId: string): Promise<number> {
   try {
-    return await invoke<number>('api_get_unread_notification_count', {
-      accountId,
-    })
+    return unwrap(await commands.apiGetUnreadNotificationCount(accountId))
   } catch {
     return 0
   }
@@ -35,9 +33,7 @@ export function useUnreadNotifications() {
     for (const acc of accountsStore.accounts) {
       if (!acc.hasToken) continue
       try {
-        await invoke('api_mark_all_notifications_as_read', {
-          accountId: acc.id,
-        })
+        unwrap(await commands.apiMarkAllNotificationsAsRead(acc.id))
       } catch {
         // non-critical
       }

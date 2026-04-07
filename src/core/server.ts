@@ -4,7 +4,7 @@ import type {
   ServerInfo,
   ServerSoftware,
 } from '@/adapters/types'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 interface NodeInfoSoftware {
   name: string
@@ -39,17 +39,17 @@ export async function detectServer(host: string): Promise<ServerInfo> {
 }
 
 async function fetchNodeInfo(host: string): Promise<NodeInfo> {
-  const data = await invoke<NodeInfo>('fetch_nodeinfo', { host })
-  return data
+  return unwrap(await commands.fetchNodeinfo(host)) as unknown as NodeInfo
 }
 
 async function fetchServerMeta(
   host: string,
 ): Promise<{ iconUrl: string; themeColor: string | null }> {
   try {
-    const data = await invoke<Record<string, unknown>>('fetch_server_meta', {
-      host,
-    })
+    const data = unwrap(await commands.fetchServerMeta(host)) as Record<
+      string,
+      unknown
+    >
     const url = (data.iconUrl ?? data.faviconUrl) as string | undefined
     const iconUrl = url
       ? url.startsWith('http')

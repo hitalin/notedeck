@@ -12,7 +12,7 @@ import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useLongPress } from '@/composables/useLongPress'
 import { usePortal } from '@/composables/usePortal'
 import { useSwipeTab } from '@/composables/useSwipeTab'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import { isSafeUrl, openSafeUrl } from '@/utils/url'
 import PopupMenu from './PopupMenu.vue'
 
@@ -219,7 +219,7 @@ async function copyImage() {
 async function downloadImage() {
   const file = lightboxFile.value
   if (!file?.url || !isSafeUrl(file.url)) return
-  await invoke('save_image_to_file', { url: file.url })
+  unwrap(await commands.saveImageToFile(file.url))
   lightboxMenuRef.value?.close()
 }
 

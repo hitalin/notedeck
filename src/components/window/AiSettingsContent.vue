@@ -16,7 +16,7 @@ import { useClickOutside } from '@/composables/useClickOutside'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const mdLang = markdown({ codeLanguages: languages })
 
@@ -177,11 +177,13 @@ async function testConnection() {
     const settings = currentSettings.value
     const url = `${settings.endpoint}${provider.testPath}`
 
-    const result = await invoke<{
+    const result = unwrap(
+      await commands.checkEndpointHealth(url, settings.apiKey || null),
+    ) as unknown as {
       ok: boolean
       status: number
       message: string
-    }>('check_endpoint_health', { url, bearerToken: settings.apiKey || null })
+    }
     if (result.ok) {
       testStatus.value = 'ok'
       testMessage.value = result.message

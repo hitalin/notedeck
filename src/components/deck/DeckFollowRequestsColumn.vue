@@ -12,7 +12,7 @@ import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 interface FollowRequest {
@@ -67,10 +67,9 @@ async function fetchRequestsPerAccount() {
     const info = await serversStore.getServerInfo(acc.host)
     serverIconUrl.value = info.iconUrl
 
-    requests.value = await invoke<FollowRequest[]>('api_get_follow_requests', {
-      accountId: acc.id,
-      limit: 30,
-    })
+    requests.value = unwrap(
+      await commands.apiGetFollowRequests(acc.id, 30),
+    ) as unknown as FollowRequest[]
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -86,10 +85,9 @@ async function fetchRequestsCrossAccount() {
   try {
     const results = await Promise.allSettled(
       accounts.map(async (acc) => {
-        const reqs = await invoke<FollowRequest[]>('api_get_follow_requests', {
-          accountId: acc.id,
-          limit: 30,
-        })
+        const reqs = unwrap(
+          await commands.apiGetFollowRequests(acc.id, 30),
+        ) as unknown as FollowRequest[]
         return reqs.map((r) => ({ ...r, _accountId: acc.id }))
       }),
     )
@@ -117,14 +115,11 @@ async function handleAction(
   if (!accountId) return
 
   try {
-    const command =
-      action === 'accepted'
-        ? 'api_accept_follow_request'
-        : 'api_reject_follow_request'
-    await invoke(command, {
-      accountId,
-      userId: req.follower.id,
-    })
+    if (action === 'accepted') {
+      unwrap(await commands.apiAcceptFollowRequest(accountId, req.follower.id))
+    } else {
+      unwrap(await commands.apiRejectFollowRequest(accountId, req.follower.id))
+    }
     actionStates.value = { ...actionStates.value, [req.id]: action }
   } catch (e) {
     const appErr = AppError.from(e)

@@ -17,13 +17,14 @@ import {
 import { applyPageViewInterruptors } from '@/aiscript/plugin-api'
 import { sanitizeCode } from '@/aiscript/sanitize'
 import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
+import type { JsonValue } from '@/bindings'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import { useToast } from '@/stores/toast'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -99,13 +100,9 @@ async function fetchList(tab?: Tab) {
   }
 
   try {
-    const raw = await invoke<
-      PageSummary[] | { id: string; page: PageSummary }[]
-    >('api_get_pages', {
-      accountId: props.column.accountId,
-      endpoint: endpointMap[t],
-      limit: 30,
-    })
+    const raw = unwrap(
+      await commands.apiGetPages(props.column.accountId, endpointMap[t], 30),
+    ) as unknown as PageSummary[] | { id: string; page: PageSummary }[]
     // i/page-likes returns { id, page } wrapper objects
     listItems.value =
       t === 'likes'
@@ -230,10 +227,9 @@ async function openPage(pageId: string) {
   resetRunState()
 
   try {
-    const detail = await invoke<PageDetail>('api_get_page', {
-      accountId: props.column.accountId,
-      pageId,
-    })
+    const detail = unwrap(
+      await commands.apiGetPage(props.column.accountId, pageId),
+    ) as unknown as PageDetail
     page.value = applyPageViewInterruptors(detail)
     // If the page has a script, execute it
     if (detail.script) {
@@ -259,15 +255,15 @@ function resetRunState() {
 }
 
 async function executePage(detail: PageDetail) {
+  const accId = props.column.accountId
+  if (!accId) return
   const apiOption = async (
     endpoint: string,
     params: Record<string, unknown>,
   ) => {
-    return invoke('api_request', {
-      accountId: props.column.accountId,
-      endpoint,
-      params,
-    })
+    return unwrap(
+      await commands.apiRequest(accId, endpoint, params as JsonValue),
+    )
   }
 
   const code = sanitizeCode(detail.script)
@@ -344,12 +340,14 @@ async function executePage(detail: PageDetail) {
 
 async function toggleLike() {
   if (!page.value || !props.column.accountId) return
-  const command = page.value.isLiked ? 'api_unlike_page' : 'api_like_page'
   try {
-    await invoke(command, {
-      accountId: props.column.accountId,
-      pageId: page.value.id,
-    })
+    if (page.value.isLiked) {
+      unwrap(
+        await commands.apiUnlikePage(props.column.accountId, page.value.id),
+      )
+    } else {
+      unwrap(await commands.apiLikePage(props.column.accountId, page.value.id))
+    }
     page.value.isLiked = !page.value.isLiked
     page.value.likedCount += page.value.isLiked ? 1 : -1
   } catch {

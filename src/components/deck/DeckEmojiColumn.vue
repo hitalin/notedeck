@@ -12,7 +12,7 @@ import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -139,9 +139,7 @@ async function loadEmojis() {
     serverIconUrl.value = info.iconUrl
 
     if (!emojisStore.has(acc.host)) {
-      const emojis = await invoke<ServerEmoji[]>('api_get_server_emojis', {
-        accountId: acc.id,
-      })
+      const emojis = unwrap(await commands.apiGetServerEmojis(acc.id))
       emojisStore.set(acc.host, emojis)
     }
   } catch (e) {

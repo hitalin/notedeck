@@ -14,12 +14,13 @@ import { useConfirm } from '@/stores/confirm'
 import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useDeckProfileStore } from '@/stores/deckProfile'
+import { usePrompt } from '@/stores/prompt'
 import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { proxyThumbUrl } from '@/utils/imageProxy'
 import { showLoginPrompt } from '@/utils/loginPrompt'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import type { QuickPickItem } from './quickPick'
 import { useCommandStore } from './registry'
 
@@ -137,7 +138,7 @@ export function getSettingsItems(): QuickPickItem[] {
           okLabel: '削除',
           type: 'danger',
         })
-        if (ok) await invoke('clear_all_cache')
+        if (ok) unwrap(await commands.clearAllCache())
       },
     },
     {
@@ -145,7 +146,9 @@ export function getSettingsItems(): QuickPickItem[] {
       label: 'DBエクスポート',
       icon: 'database-export',
       group: 'データ',
-      action: () => invoke('export_db'),
+      action: async () => {
+        unwrap(await commands.exportDb())
+      },
     },
     {
       id: 'import-db',
@@ -154,7 +157,7 @@ export function getSettingsItems(): QuickPickItem[] {
       group: 'データ',
       action: () =>
         backupWithConfirm(
-          'import_db',
+          'importDb',
           'DBインポート',
           '現在のDBが上書きされます。',
         ),
@@ -164,7 +167,9 @@ export function getSettingsItems(): QuickPickItem[] {
       label: '設定エクスポート',
       icon: 'file-export',
       group: 'データ',
-      action: () => invoke('export_settings_json'),
+      action: async () => {
+        unwrap(await commands.exportSettingsJson())
+      },
     },
     {
       id: 'import-settings',
@@ -173,7 +178,7 @@ export function getSettingsItems(): QuickPickItem[] {
       group: 'データ',
       action: () =>
         backupWithConfirm(
-          'import_settings_json',
+          'importSettingsJson',
           '設定インポート',
           '現在の設定が上書きされます。',
         ),
@@ -196,7 +201,7 @@ function pickWallpaperFile() {
 }
 
 async function backupWithConfirm(
-  command: string,
+  command: 'importDb' | 'importSettingsJson',
   title: string,
   message: string,
 ) {
@@ -208,7 +213,7 @@ async function backupWithConfirm(
     type: 'danger',
   })
   if (!ok) return
-  const result = await invoke<boolean>(command)
+  const result = unwrap(await commands[command]())
   if (result) await relaunch()
 }
 
@@ -412,19 +417,75 @@ interface SelectableConfig {
   apiCommand: string
   idKey: string
   searchCommand?: string
+  /** Misskey API endpoint for creating new items */
+  createEndpoint?: string
+  /** Default params to merge when creating */
+  createDefaults?: Record<string, unknown>
 }
 
 const SELECTABLE_CONFIGS: SelectableConfig[] = [
-  { type: 'list', apiCommand: 'api_get_user_lists', idKey: 'listId' },
-  { type: 'antenna', apiCommand: 'api_get_antennas', idKey: 'antennaId' },
+  {
+    type: 'list',
+    apiCommand: 'apiGetUserLists',
+    idKey: 'listId',
+    createEndpoint: 'users/lists/create',
+  },
+  {
+    type: 'antenna',
+    apiCommand: 'apiGetAntennas',
+    idKey: 'antennaId',
+    createEndpoint: 'antennas/create',
+    createDefaults: {
+      src: 'all',
+      keywords: [['']],
+      excludeKeywords: [['']],
+      users: [],
+      caseSensitive: false,
+      withReplies: false,
+      withFile: false,
+    },
+  },
   {
     type: 'channel',
-    apiCommand: 'api_get_channels',
+    apiCommand: 'apiGetChannels',
     idKey: 'channelId',
-    searchCommand: 'api_search_channels',
+    searchCommand: 'apiSearchChannels',
   },
-  { type: 'clip', apiCommand: 'api_get_clips', idKey: 'clipId' },
+  {
+    type: 'clip',
+    apiCommand: 'apiGetClips',
+    idKey: 'clipId',
+    createEndpoint: 'clips/create',
+  },
 ]
+
+type ListCommand =
+  | 'apiGetUserLists'
+  | 'apiGetAntennas'
+  | 'apiGetChannels'
+  | 'apiGetClips'
+  | 'apiSearchChannels'
+
+async function invokeListCommand(
+  command: string,
+  accountId: string,
+  query?: string,
+): Promise<{ id: string; name: string }[]> {
+  switch (command as ListCommand) {
+    case 'apiGetUserLists':
+      return unwrap(await commands.apiGetUserLists(accountId))
+    case 'apiGetAntennas':
+      return unwrap(await commands.apiGetAntennas(accountId))
+    case 'apiGetChannels':
+      return unwrap(await commands.apiGetChannels(accountId))
+    case 'apiGetClips':
+      return unwrap(await commands.apiGetClips(accountId))
+    case 'apiSearchChannels':
+      return unwrap(await commands.apiSearchChannels(accountId, query ?? ''))
+    default:
+      return []
+  }
+}
 
 export function getColumnTypeItems(): QuickPickItem[] {
   return COLUMN_TYPE_GROUPS.flatMap(({ group, types }) =>
@@ -517,25 +578,39 @@ async function buildDetailStep(
       buildSearchableStep(config, accountId)
       return []
     }
-    const items = await invoke<{ id: string; name: string }[]>(
-      config.apiCommand,
-      { accountId },
-    )
-    return items.map((item) => ({
-      id: `select-${item.id}`,
-      label: item.name,
-      icon: COLUMN_ICONS[type] ?? 'dots',
-      action: () => {
-        useDeckStore().addColumn({
-          type,
-          name: item.name,
-          width: 360,
-          accountId,
-          [config.idKey]: item.id,
-          active: true,
-        } as Omit<DeckColumn, 'id'>)
-      },
-    }))
+    const items = await invokeListCommand(config.apiCommand, accountId)
+    const icon = COLUMN_ICONS[type] ?? 'dots'
+    const label = COLUMN_LABELS[type] ?? type
+    const result: QuickPickItem[] = []
+
+    // Add "create new" option if supported
+    if (config.createEndpoint) {
+      result.push({
+        id: `create-new-${type}`,
+        label: `新しい${label}を作成`,
+        icon: 'plus',
+        action: () => createNewItem(config, accountId),
+      })
+    }
+
+    for (const item of items) {
+      result.push({
+        id: `select-${item.id}`,
+        label: item.name,
+        icon,
+        action: () => {
+          useDeckStore().addColumn({
+            type,
+            name: item.name,
+            width: 360,
+            accountId,
+            [config.idKey]: item.id,
+            active: true,
+          } as Omit<DeckColumn, 'id'>)
+        },
+      })
+    }
+    return result
   }
 
   // User type: server-side search via onQueryChange
@@ -594,12 +669,7 @@ function buildSearchableStep(config: SelectableConfig, accountId: string) {
   async function fetchItems(command: string, query?: string) {
     step.loading = true
     try {
-      const params: Record<string, unknown> = { accountId }
-      if (query) params.query = query
-      const items = await invoke<{ id: string; name: string }[]>(
-        command,
-        params,
-      )
+      const items = await invokeListCommand(command, accountId, query)
       step.items = items.map(itemToQuickPick)
     } catch {
       step.items = []
@@ -665,6 +735,37 @@ function buildUserSearchStep(accountId: string) {
   })
 
   commandStore.pushQuickPick(step)
+}
+
+async function createNewItem(config: SelectableConfig, accountId: string) {
+  if (!config.createEndpoint) return
+  const commandStore = useCommandStore()
+  commandStore.close()
+  const label = COLUMN_LABELS[config.type] ?? config.type
+  const { prompt } = usePrompt()
+  const name = await prompt({
+    title: `新しい${label}を作成`,
+    placeholder: `${label}名を入力...`,
+  })
+  if (!name) return
+  try {
+    const created = unwrap(
+      await commands.apiRequest(accountId, config.createEndpoint, {
+        name,
+        ...config.createDefaults,
+      }),
+    ) as { id: string; name: string }
+    useDeckStore().addColumn({
+      type: config.type,
+      name: created.name,
+      width: 360,
+      accountId,
+      [config.idKey]: created.id,
+      active: true,
+    } as Omit<DeckColumn, 'id'>)
+  } catch (e) {
+    console.error(`[command] failed to create ${config.type}:`, e)
+  }
 }
 
 function finalizeAddColumn(type: ColumnType, accountId: string | null) {

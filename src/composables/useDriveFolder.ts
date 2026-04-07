@@ -1,7 +1,7 @@
 import { computed, ref, shallowRef } from 'vue'
 import type { DriveFolder, NormalizedDriveFile } from '@/adapters/types'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import { isSafeUrl } from '@/utils/url'
 
 export interface UseDriveFolderOptions {
@@ -26,16 +26,12 @@ export function useDriveFolder(options: UseDriveFolderOptions) {
 
     try {
       const [folderResult, fileResult] = await Promise.all([
-        invoke<DriveFolder[]>('api_get_drive_folders', {
-          accountId,
-          folderId: targetFolderId,
-          limit: 50,
-        }),
-        invoke<NormalizedDriveFile[]>('api_get_drive_files', {
-          accountId,
-          folderId: targetFolderId,
-          limit: 50,
-        }),
+        commands
+          .apiGetDriveFolders(accountId, targetFolderId, 50)
+          .then((r) => unwrap(r) as unknown as DriveFolder[]),
+        commands
+          .apiGetDriveFiles(accountId, targetFolderId, 50, null)
+          .then((r) => unwrap(r) as unknown as NormalizedDriveFile[]),
       ])
       folders.value = folderResult
       files.value = fileResult

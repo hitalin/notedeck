@@ -4,7 +4,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { onMounted, ref } from 'vue'
 import { useUpdater } from '@/composables/useUpdater'
 import { useUiStore } from '@/stores/ui'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../../package.json'
 
 const tauriVersion = ref('')
@@ -49,7 +49,7 @@ onMounted(async () => {
     // Fallback for environments where Tauri API is unavailable
   }
   try {
-    rustVersion.value = await invoke<string>('get_rustc_version')
+    rustVersion.value = await commands.getRustcVersion()
   } catch {
     // Fallback for environments where Tauri API is unavailable
   }

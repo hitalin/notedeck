@@ -27,7 +27,7 @@ import {
 import { AppError } from '@/utils/errors'
 import { hapticLight, hapticMedium } from '@/utils/haptics'
 import { proxyThumbUrl } from '@/utils/imageProxy'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
 import LogoutDialog from './LogoutDialog.vue'
@@ -255,9 +255,7 @@ async function loadAccountModes(id: string) {
     // non-critical
   }
   try {
-    const me = await invoke<Record<string, unknown>>('api_get_self', {
-      accountId: id,
-    })
+    const me = unwrap(await commands.apiGetSelf(id)) as Record<string, unknown>
     accountIsAdmin.value = {
       ...accountIsAdmin.value,
       [id]: me.isAdmin === true || me.isModerator === true,
@@ -273,7 +271,7 @@ async function toggleAccountMode(accountId: string, key: string) {
   try {
     const modes = accountModes.value[accountId] ?? {}
     const newValue = !modes[key]
-    await invoke('api_update_user_setting', { accountId, key, value: newValue })
+    unwrap(await commands.apiUpdateUserSetting(accountId, key, newValue))
     accountModes.value = {
       ...accountModes.value,
       [accountId]: { ...modes, [key]: newValue },
@@ -324,7 +322,7 @@ async function clearAccountCache(accountId: string) {
     type: 'danger',
   })
   if (!ok) return
-  await invoke('clear_account_cache', { accountId })
+  unwrap(await commands.clearAccountCache(accountId))
 }
 
 function toggleFirstAccountMenu() {

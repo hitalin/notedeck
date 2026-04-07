@@ -286,6 +286,7 @@ function openAsPip() {
           <i :class="isMuted ? 'ti ti-volume' : 'ti ti-volume-off'" />
           <span>{{ isMuted ? 'ミュート解除' : 'ミュート' }}</span>
         </button>
+        <slot name="menu-items" :close-menu="closeMenu" />
         <div :class="$style.columnMenuDivider" />
         <button :class="$style.columnMenuDanger" class="_popupItem" @click="close">
           <i class="ti ti-trash" />

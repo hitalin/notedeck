@@ -11,7 +11,7 @@ import type { Account } from '@/stores/accounts'
 import { useAccountsStore } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
 import { AppError } from '@/utils/errors'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const props = defineProps<{
   initialHost?: string
@@ -76,10 +76,9 @@ async function completeLogin() {
 
   try {
     const serverInfo = await detectServer(currentSession.host)
-    const account = await invoke<Account>('auth_complete_and_save', {
-      session: currentSession,
-      software: serverInfo.software,
-    })
+    const account = unwrap(
+      await commands.authCompleteAndSave(currentSession, serverInfo.software),
+    ) as unknown as Account
 
     accountsStore.addAccount(account)
     emit('success')
@@ -96,10 +95,9 @@ async function startGuest() {
   try {
     step.value = 'guestLoading'
     const serverInfo = await detectServer(trimmedHost)
-    const account = await invoke<Account>('create_guest_account', {
-      host: trimmedHost,
-      software: serverInfo.software,
-    })
+    const account = unwrap(
+      await commands.createGuestAccount(trimmedHost, serverInfo.software),
+    ) as unknown as Account
     accountsStore.addAccount(account)
     emit('success')
   } catch (e) {

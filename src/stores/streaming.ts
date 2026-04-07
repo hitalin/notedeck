@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { shallowRef, triggerRef } from 'vue'
-import type { NormalizedUserDetail } from '@/adapters/types'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 export type OnlineStatus = 'online' | 'active' | 'offline' | 'unknown'
 
@@ -15,11 +14,8 @@ export const useStreamingStore = defineStore('streaming', () => {
     userId: string,
   ): Promise<void> {
     try {
-      const detail = await invoke<NormalizedUserDetail>('api_get_user_detail', {
-        accountId,
-        userId,
-      })
-      const status = detail.onlineStatus
+      const detail = unwrap(await commands.apiGetUserDetail(accountId, userId))
+      const status = detail.onlineStatus as OnlineStatus | null
       // API success = server reachable.
       // 'unknown' means hidden status — for own account, treat as 'online'
       states.value[accountId] =
@@ -47,9 +43,7 @@ export const useStreamingStore = defineStore('streaming', () => {
   ): Promise<void> {
     for (const acc of accounts) {
       if (acc.hasToken) {
-        invoke('stream_disconnect', { accountId: acc.id }).catch(
-          () => undefined,
-        )
+        commands.streamDisconnect(acc.id).catch(() => undefined)
       }
     }
   }
@@ -62,11 +56,9 @@ export const useStreamingStore = defineStore('streaming', () => {
   ): Promise<void> {
     for (const acc of accounts) {
       if (acc.hasToken) {
-        invoke('stream_set_mode', {
-          accountId: acc.id,
-          mode,
-          intervalMs,
-        }).catch(() => undefined)
+        commands
+          .streamSetMode(acc.id, mode, intervalMs ?? null)
+          .catch(() => undefined)
       }
     }
   }

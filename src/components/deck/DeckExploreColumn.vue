@@ -3,7 +3,7 @@ import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -88,13 +88,17 @@ async function fetchUsers() {
   usersLoading.value = true
   usersError.value = null
   try {
-    users.value = await invoke<UserSummary[]>('api_search_users', {
-      accountId: props.column.accountId,
-      sort: '+follower',
-      state: 'alive',
-      origin: 'combined',
-      limit: 30,
-    })
+    users.value = unwrap(
+      await commands.apiSearchUsers(
+        props.column.accountId,
+        null,
+        'combined',
+        '+follower',
+        'alive',
+        30,
+        null,
+      ),
+    ) as unknown as UserSummary[]
     usersFetched.value = true
   } catch (e) {
     usersError.value = AppError.from(e).message
@@ -131,9 +135,9 @@ async function fetchRoles() {
   rolesLoading.value = true
   rolesError.value = null
   try {
-    const allRoles = await invoke<RoleSummary[]>('api_get_roles', {
-      accountId: props.column.accountId,
-    })
+    const allRoles = unwrap(
+      await commands.apiGetRoles(props.column.accountId),
+    ) as unknown as RoleSummary[]
     roles.value = allRoles
       .filter((r) => r.target === 'manual')
       .sort((a, b) => b.displayOrder - a.displayOrder)
@@ -152,14 +156,9 @@ async function openRole(role: RoleSummary) {
   roleUsersError.value = null
   roleUsers.value = []
   try {
-    const result = await invoke<{ id: string; user: UserSummary }[]>(
-      'api_get_role_users',
-      {
-        accountId: props.column.accountId,
-        roleId: role.id,
-        limit: 30,
-      },
-    )
+    const result = unwrap(
+      await commands.apiGetRoleUsers(props.column.accountId, role.id, 30, null),
+    ) as unknown as { id: string; user: UserSummary }[]
     roleUsers.value = result.map((entry) => entry.user)
   } catch (e) {
     roleUsersError.value = AppError.from(e).message

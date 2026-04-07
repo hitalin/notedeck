@@ -1,7 +1,7 @@
 import type { NoteVisibility } from '@/adapters/types'
 import type { useAccountsStore } from '@/stores/accounts'
 import type { useDeckStore } from '@/stores/deck'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 export interface CliHandlerDeps {
   deckStore: ReturnType<typeof useDeckStore>
@@ -91,17 +91,24 @@ export function createCliHandlers(
         VALID_VISIBILITIES.includes(flags.visibility as NoteVisibility)
           ? (flags.visibility as NoteVisibility)
           : 'public'
-      await invoke('api_create_note', {
-        accountId,
-        params: {
-          text: rest,
-          cw: (flags.cw as string) ?? null,
-          visibility,
-          replyId: (flags['reply-to'] as string) ?? null,
-          localOnly: flags['local-only'] === true ? true : null,
-        },
-        channelId: null,
-      })
+      unwrap(
+        await commands.apiCreateNote(
+          accountId,
+          {
+            text: rest,
+            cw: (flags.cw as string) ?? null,
+            visibility,
+            replyId: (flags['reply-to'] as string) ?? null,
+            renoteId: null,
+            localOnly: flags['local-only'] === true ? true : null,
+            modeFlags: null,
+            fileIds: null,
+            poll: null,
+            scheduledAt: null,
+          },
+          null,
+        ),
+      )
     },
 
     search: (args) => {
@@ -212,7 +219,7 @@ export function createCliHandlers(
     delete: async (args) => {
       const accountId = activeAccountId()
       if (!accountId || !args.trim()) return
-      await invoke('api_delete_note', { accountId, noteId: args.trim() })
+      unwrap(await commands.apiDeleteNote(accountId, args.trim()))
     },
 
     update: async (args) => {
@@ -227,14 +234,20 @@ export function createCliHandlers(
       if (!noteId || !afterId) return
       const { flags, rest } = parseFlags(afterId, { cw: 'value' })
       if (!rest) return
-      await invoke('api_update_note', {
-        accountId,
-        noteId,
-        params: {
+      unwrap(
+        await commands.apiUpdateNote(accountId, noteId, {
           text: rest,
           cw: (flags.cw as string) ?? null,
-        },
-      })
+          visibility: null,
+          replyId: null,
+          renoteId: null,
+          localOnly: null,
+          modeFlags: null,
+          fileIds: null,
+          poll: null,
+          scheduledAt: null,
+        }),
+      )
     },
 
     react: async (args) => {
@@ -243,28 +256,38 @@ export function createCliHandlers(
       // Format: react <note_id> <reaction>
       const parts = args.trim().split(/\s+/)
       if (parts.length < 2) return
-      const noteId = parts[0]
+      const noteId = parts[0] as string
       const reaction = parts.slice(1).join(' ')
-      await invoke('api_create_reaction', { accountId, noteId, reaction })
+      unwrap(await commands.apiCreateReaction(accountId, noteId, reaction))
     },
 
     unreact: async (args) => {
       const accountId = activeAccountId()
       if (!accountId || !args.trim()) return
-      await invoke('api_delete_reaction', { accountId, noteId: args.trim() })
+      unwrap(await commands.apiDeleteReaction(accountId, args.trim()))
     },
 
     renote: async (args) => {
       const accountId = activeAccountId()
       if (!accountId || !args.trim()) return
-      await invoke('api_create_note', {
-        accountId,
-        params: {
-          renoteId: args.trim(),
-          visibility: 'public',
-        },
-        channelId: null,
-      })
+      unwrap(
+        await commands.apiCreateNote(
+          accountId,
+          {
+            text: null,
+            cw: null,
+            renoteId: args.trim(),
+            visibility: 'public',
+            replyId: null,
+            localOnly: null,
+            modeFlags: null,
+            fileIds: null,
+            poll: null,
+            scheduledAt: null,
+          },
+          null,
+        ),
+      )
     },
 
     user: (args) => {
@@ -288,25 +311,25 @@ export function createCliHandlers(
     follow: async (args) => {
       const accountId = activeAccountId()
       if (!accountId || !args.trim()) return
-      await invoke('api_follow_user', { accountId, userId: args.trim() })
+      unwrap(await commands.apiFollowUser(accountId, args.trim()))
     },
 
     unfollow: async (args) => {
       const accountId = activeAccountId()
       if (!accountId || !args.trim()) return
-      await invoke('api_unfollow_user', { accountId, userId: args.trim() })
+      unwrap(await commands.apiUnfollowUser(accountId, args.trim()))
     },
 
     favorite: async (args) => {
       const accountId = activeAccountId()
       if (!accountId || !args.trim()) return
-      await invoke('api_create_favorite', { accountId, noteId: args.trim() })
+      unwrap(await commands.apiCreateFavorite(accountId, args.trim()))
     },
 
     unfavorite: async (args) => {
       const accountId = activeAccountId()
       if (!accountId || !args.trim()) return
-      await invoke('api_delete_favorite', { accountId, noteId: args.trim() })
+      unwrap(await commands.apiDeleteFavorite(accountId, args.trim()))
     },
 
     emojis: () => {

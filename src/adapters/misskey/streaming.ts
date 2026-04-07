@@ -1,5 +1,5 @@
 import { listen } from '@tauri-apps/api/event'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import type {
   ChannelSubscription,
   ChatMessage,
@@ -70,8 +70,10 @@ export class MisskeyStream implements StreamAdapter {
   connect(): void {
     this.registerListeners()
 
-    invoke('stream_connect', { accountId: this.accountId })
-      .then(() => {
+    commands
+      .streamConnect(this.accountId)
+      .then((result) => {
+        unwrap(result)
         this._state = 'connected'
         this.emit('connected')
       })
@@ -91,8 +93,10 @@ export class MisskeyStream implements StreamAdapter {
     this.registerListeners()
 
     // Ensure Rust-side connection is alive (idempotent — returns Ok if already connected)
-    invoke('stream_connect', { accountId: this.accountId })
-      .then(() => {
+    commands
+      .streamConnect(this.accountId)
+      .then((result) => {
+        unwrap(result)
         this._state = 'connected'
         this.emit('connected')
       })
@@ -206,31 +210,24 @@ export class MisskeyStream implements StreamAdapter {
 
   disconnect(): void {
     this.cleanup()
-    invoke('stream_disconnect', { accountId: this.accountId }).catch((e) => {
+    commands.streamDisconnect(this.accountId).catch((e) => {
       console.warn('[stream] disconnect failed:', e)
     })
     this.emit('disconnected')
   }
 
   private createSubscription(
-    command: string,
-    args: Record<string, unknown>,
+    subscribe: () => Promise<string>,
     register: (id: string) => void,
     unregister: (id: string) => void,
   ): ChannelSubscription {
     let subscriptionId: string | null = null
     let disposed = false
 
-    const subscribePromise = invoke<string>(command, {
-      accountId: this.accountId,
-      ...args,
-    })
+    const subscribePromise = subscribe()
       .then((id) => {
         if (disposed) {
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId: id,
-          }).catch((e) => {
+          commands.streamUnsubscribe(this.accountId, id).catch((e) => {
             if (import.meta.env.DEV)
               console.debug('[stream] late unsubscribe ignored:', e)
           })
@@ -241,7 +238,7 @@ export class MisskeyStream implements StreamAdapter {
         return id
       })
       .catch((e) => {
-        console.error(`[stream] ${command} failed:`, e)
+        console.error('[stream] subscribe failed:', e)
         return null
       })
 
@@ -250,20 +247,16 @@ export class MisskeyStream implements StreamAdapter {
         disposed = true
         if (subscriptionId) {
           unregister(subscriptionId)
-          invoke('stream_unsubscribe', {
-            accountId: this.accountId,
-            subscriptionId,
-          }).catch((e) => {
-            console.warn('[stream] unsubscribe failed:', e)
-          })
+          commands
+            .streamUnsubscribe(this.accountId, subscriptionId)
+            .catch((e) => {
+              console.warn('[stream] unsubscribe failed:', e)
+            })
         } else {
           subscribePromise.then((id) => {
             if (id) {
               unregister(id)
-              invoke('stream_unsubscribe', {
-                accountId: this.accountId,
-                subscriptionId: id,
-              }).catch((e) => {
+              commands.streamUnsubscribe(this.accountId, id).catch((e) => {
                 console.warn('[stream] unsubscribe failed:', e)
               })
             }
@@ -282,8 +275,14 @@ export class MisskeyStream implements StreamAdapter {
     },
   ): ChannelSubscription {
     return this.createSubscription(
-      'stream_connect_and_subscribe_timeline',
-      { timelineType: type, listId: options?.listId ?? null },
+      async () =>
+        unwrap(
+          await commands.streamConnectAndSubscribeTimeline(
+            this.accountId,
+            type,
+            options?.listId ?? null,
+          ),
+        ),
       (id) => {
         this.noteHandlers.set(id, handler)
         if (options?.onNoteUpdated)
@@ -302,8 +301,13 @@ export class MisskeyStream implements StreamAdapter {
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription {
     return this.createSubscription(
-      'stream_connect_and_subscribe_antenna',
-      { antennaId },
+      async () =>
+        unwrap(
+          await commands.streamConnectAndSubscribeAntenna(
+            this.accountId,
+            antennaId,
+          ),
+        ),
       (id) => {
         this.noteHandlers.set(id, handler)
         if (options?.onNoteUpdated)
@@ -322,8 +326,13 @@ export class MisskeyStream implements StreamAdapter {
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription {
     return this.createSubscription(
-      'stream_connect_and_subscribe_channel',
-      { channelId },
+      async () =>
+        unwrap(
+          await commands.streamConnectAndSubscribeChannel(
+            this.accountId,
+            channelId,
+          ),
+        ),
       (id) => {
         this.noteHandlers.set(id, handler)
         if (options?.onNoteUpdated)
@@ -340,8 +349,7 @@ export class MisskeyStream implements StreamAdapter {
     handler: (event: MainChannelEvent) => void,
   ): ChannelSubscription {
     return this.createSubscription(
-      'stream_subscribe_main',
-      {},
+      async () => unwrap(await commands.streamSubscribeMain(this.accountId)),
       (id) => {
         this.notifHandlers.set(id, handler)
         this.mainHandlers.set(id, handler)
@@ -358,8 +366,7 @@ export class MisskeyStream implements StreamAdapter {
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription {
     return this.createSubscription(
-      'stream_subscribe_main',
-      {},
+      async () => unwrap(await commands.streamSubscribeMain(this.accountId)),
       (id) => {
         this.mentionHandlers.set(id, handler)
         if (options?.onNoteUpdated)
@@ -378,8 +385,8 @@ export class MisskeyStream implements StreamAdapter {
     options?: { onDeleted?: (messageId: string) => void },
   ): ChannelSubscription {
     return this.createSubscription(
-      'stream_subscribe_chat_user',
-      { otherId },
+      async () =>
+        unwrap(await commands.streamSubscribeChatUser(this.accountId, otherId)),
       (id) => {
         this.chatMessageHandlers.set(id, handler)
         if (options?.onDeleted)
@@ -398,8 +405,8 @@ export class MisskeyStream implements StreamAdapter {
     options?: { onDeleted?: (messageId: string) => void },
   ): ChannelSubscription {
     return this.createSubscription(
-      'stream_subscribe_chat_room',
-      { roomId },
+      async () =>
+        unwrap(await commands.streamSubscribeChatRoom(this.accountId, roomId)),
       (id) => {
         this.chatMessageHandlers.set(id, handler)
         if (options?.onDeleted)
@@ -414,20 +421,14 @@ export class MisskeyStream implements StreamAdapter {
 
   subNote(noteId: string, handler: (event: NoteUpdateEvent) => void): void {
     this.noteCaptureHandlers.set(noteId, handler)
-    invoke('stream_sub_note', {
-      accountId: this.accountId,
-      noteId,
-    }).catch((e) => {
+    commands.streamSubNote(this.accountId, noteId).catch((e) => {
       console.warn('[stream] subNote failed:', e)
     })
   }
 
   unsubNote(noteId: string): void {
     this.noteCaptureHandlers.delete(noteId)
-    invoke('stream_unsub_note', {
-      accountId: this.accountId,
-      noteId,
-    }).catch((e) => {
+    commands.streamUnsubNote(this.accountId, noteId).catch((e) => {
       console.warn('[stream] unsubNote failed:', e)
     })
   }

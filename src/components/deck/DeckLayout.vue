@@ -9,6 +9,7 @@ import {
 } from 'vue'
 import { useCommandStore } from '@/commands/registry'
 import AppConfirm from '@/components/common/AppConfirm.vue'
+import AppPrompt from '@/components/common/AppPrompt.vue'
 import AppToast from '@/components/common/AppToast.vue'
 import MkRippleEffect from '@/components/common/MkRippleEffect.vue'
 import { useBackButton } from '@/composables/useBackButton'
@@ -24,7 +25,7 @@ import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
-import { invoke } from '@/utils/tauriInvoke'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckBottomBar from './DeckBottomBar.vue'
 import DeckColumnsArea from './DeckColumnsArea.vue'
 import DeckMobileNav from './DeckMobileNav.vue'
@@ -133,11 +134,8 @@ const fileDrop = useFileDrop((paths, position) => {
   if (col?.type === 'drive' && col.accountId) {
     const accountId = col.accountId
     for (const path of paths) {
-      invoke('api_upload_file_from_path', {
-        accountId,
-        filePath: path,
-        isSensitive: false,
-      }).then(() => {
+      commands.apiUploadFileFromPath(accountId, path, false).then((r) => {
+        unwrap(r)
         uiStore.emitDriveFilesChanged(accountId)
       })
     }
@@ -308,6 +306,7 @@ function acceptCrossWindowDrop() {
 
     <AppToast />
     <AppConfirm />
+    <AppPrompt />
 
     <!-- Misskey-style ripple effects (reaction celebration particles) -->
     <MkRippleEffect
