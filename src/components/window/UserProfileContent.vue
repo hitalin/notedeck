@@ -582,7 +582,7 @@ async function handlePosted(editedNoteId?: string) {
           <!-- Name overlay on banner (desktop) -->
           <div :class="$style.bannerTitle">
             <div :class="$style.bannerName">
-              <MkMfm v-if="user.name" :text="user.name" :emojis="user.emojis" :server-host="account?.host" />
+              <MkMfm v-if="user.name" :text="user.name" :emojis="user.emojis" :server-host="account?.host" plain />
               <template v-else>{{ user.username }}</template>
             </div>
             <div :class="$style.bannerBottom">
@@ -634,7 +634,7 @@ async function handlePosted(editedNoteId?: string) {
         <!-- Mobile title (shown below avatar on narrow screens) -->
         <div :class="$style.mobileTitle">
           <div :class="$style.mobileName">
-            <MkMfm v-if="user.name" :text="user.name" :emojis="user.emojis" :server-host="account?.host" />
+            <MkMfm v-if="user.name" :text="user.name" :emojis="user.emojis" :server-host="account?.host" plain />
             <template v-else>{{ user.username }}</template>
           </div>
           <div :class="$style.mobileUsername">@{{ user.username }}{{ user.host ? `@${user.host}` : '' }}</div>
@@ -887,7 +887,7 @@ async function handlePosted(editedNoteId?: string) {
             <img v-if="user?.avatarUrl" :src="proxyUrl(user.avatarUrl)" :class="$style.qrAvatar" />
             <div :class="$style.qrUserInfo">
               <div :class="$style.qrName">
-                <MkMfm v-if="user?.name" :text="user.name" :emojis="user?.emojis" :server-host="account?.host" />
+                <MkMfm v-if="user?.name" :text="user.name" :emojis="user?.emojis" :server-host="account?.host" plain />
                 <template v-else>{{ user?.username }}</template>
               </div>
               <div :class="$style.qrAcct">@{{ user?.username }}@{{ account?.host }}</div>

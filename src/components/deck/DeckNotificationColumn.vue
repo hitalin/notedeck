@@ -921,7 +921,7 @@ onUnmounted(() => {
                       <span :class="$style.notifUserName">
                         <template v-for="(u, i) in groupedUsers(notif).slice(0, 2)" :key="u.id">
                           <template v-if="i > 0">, </template>
-                          <MkMfm v-if="u.name" :text="u.name" :emojis="u.emojis" :server-host="notif._serverHost" />
+                          <MkMfm v-if="u.name" :text="u.name" :emojis="u.emojis" :server-host="notif._serverHost" plain />
                           <template v-else>{{ u.username }}</template>
                         </template>
                         <template v-if="groupedUsers(notif).length > 2"> 他{{ groupedUsers(notif).length - 2 }}人</template>
@@ -997,7 +997,7 @@ onUnmounted(() => {
                   <div :class="$style.notifHeader">
                     <div :class="$style.notifMeta">
                       <span v-if="notif.user" :class="$style.notifUserName">
-                        <MkMfm v-if="notif.user.name" :text="notif.user.name" :emojis="notif.user.emojis" :server-host="notif._serverHost" />
+                        <MkMfm v-if="notif.user.name" :text="notif.user.name" :emojis="notif.user.emojis" :server-host="notif._serverHost" plain />
                         <template v-else>{{ notif.user.username }}</template>
                       </span>
                       <span :class="$style.notifLabel">{{ notificationLabel(notif.type) }}</span>

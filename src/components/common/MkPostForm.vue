@@ -672,7 +672,7 @@ function onKeydown(e: KeyboardEvent) {
         />
         <div :class="$style.replyContent">
           <span :class="$style.replyUser">
-            <MkMfm v-if="replyTo.user.name" :text="replyTo.user.name" :emojis="replyTo.user.emojis" :server-host="replyTo._serverHost" />
+            <MkMfm v-if="replyTo.user.name" :text="replyTo.user.name" :emojis="replyTo.user.emojis" :server-host="replyTo._serverHost" plain />
             <template v-else>{{ replyTo.user.username }}</template>
           </span>
           <span :class="$style.replyHandle">@{{ replyTo.user.username }}</span>

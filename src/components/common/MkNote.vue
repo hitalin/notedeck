@@ -427,6 +427,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
           :text="note.user.name"
           :emojis="{ ...note.emojis, ...note.user.emojis }"
           :server-host="note._serverHost"
+          plain
         />
         <template v-else>{{ note.user.username }}</template>
       </span>
@@ -454,6 +455,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
           :text="effectiveNote.reply!.user.name"
           :emojis="{ ...effectiveNote.reply!.emojis, ...effectiveNote.reply!.user.emojis }"
           :server-host="effectiveNote._serverHost"
+          plain
         />
         <template v-else>{{ effectiveNote.reply!.user.username }}</template>
       </span>
@@ -489,7 +491,8 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
               :text="effectiveNote.user.name"
               :emojis="allEmojis"
               :server-host="effectiveNote._serverHost"
-                  @mention-click="handleMentionClick"
+              plain
+              @mention-click="handleMentionClick"
               @mention-hover="onMentionHover"
               @mention-leave="onMentionLeave"
             />

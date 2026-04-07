@@ -17,6 +17,7 @@ const props = defineProps<{
   reactionEmojis?: Record<string, string>
   serverHost?: string
   compact?: boolean
+  plain?: boolean
   myUsername?: string
   myHost?: string
 }>()
@@ -354,8 +355,8 @@ function fnStyle(
     --><!-- Strike --><s v-else-if="token.type === 'strike'">{{ token.value }}</s><!--
     --><!-- Code Block --><div v-else-if="token.type === 'codeBlock'" :key="`cb-${i}-${highlighterLoaded}`" :class="$style.mfmCodeBlock" v-html="highlightCode(token.value, token.lang)"></div><!--
     --><!-- Inline Code --><code v-else-if="token.type === 'inlineCode'" :class="$style.mfmCode">{{ token.value }}</code><!--
-    --><!-- Custom Emoji (resolved) --><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="proxyUrl(emojiUrls[token.shortcode]!)" :alt="`:${token.shortcode}:`" class="custom-emoji" :class="$style.customEmoji" decoding="async" loading="lazy" @error="(e: Event) => { const img = e.target as HTMLImageElement; if (!img.src.endsWith('/emoji-unknown.svg')) img.src = '/emoji-unknown.svg' }" /><!--
-    --><!-- Custom Emoji (unresolved — show fallback icon) --><img v-else-if="token.type === 'customEmoji'" src="/emoji-unknown.svg" :alt="`:${token.shortcode}:`" :title="`:${token.shortcode}:`" class="custom-emoji" :class="$style.customEmoji" /><!--
+    --><!-- Custom Emoji (resolved) --><img v-else-if="token.type === 'customEmoji' && emojiUrls[token.shortcode]" :src="proxyUrl(emojiUrls[token.shortcode]!)" :alt="`:${token.shortcode}:`" class="custom-emoji" :class="plain ? $style.customEmojiPlain : $style.customEmoji" decoding="async" loading="lazy" @error="(e: Event) => { const img = e.target as HTMLImageElement; if (!img.src.endsWith('/emoji-unknown.svg')) img.src = '/emoji-unknown.svg' }" /><!--
+    --><!-- Custom Emoji (unresolved — show fallback icon) --><img v-else-if="token.type === 'customEmoji'" src="/emoji-unknown.svg" :alt="`:${token.shortcode}:`" :title="`:${token.shortcode}:`" class="custom-emoji" :class="plain ? $style.customEmojiPlain : $style.customEmoji" /><!--
     --><!-- Unicode Emoji --><MkEmoji v-else-if="token.type === 'unicodeEmoji'" :emoji="token.value" class="twemoji" :class="$style.twemoji" /><!--
     --><!-- MFM Function --><span v-else-if="token.type === 'fn'" :class="fnClass(token)" :style="fnStyle(token)"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></span><!--
     --><!-- Small --><small v-else-if="token.type === 'small'" :class="$style.mfmSmall"><MkMfm :tokens="token.children" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></small><!--
@@ -453,6 +454,12 @@ function fnStyle(
   min-width: 2em;
   width: auto;
   vertical-align: middle;
+  object-fit: contain;
+}
+
+.customEmojiPlain {
+  height: 1.25em;
+  vertical-align: -0.25em;
   object-fit: contain;
 }
 

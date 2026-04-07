@@ -180,7 +180,7 @@ function navigateUser(userId: string) {
         <div :class="$style.cardInfo">
           <div :class="$style.cardNameRow">
             <span :class="$style.cardName">
-              <MkMfm v-if="u.name" :text="u.name" :emojis="u.emojis" :server-host="account?.host" />
+              <MkMfm v-if="u.name" :text="u.name" :emojis="u.emojis" :server-host="account?.host" plain />
               <template v-else>{{ u.username }}</template>
             </span>
             <span v-if="u.isBot" :class="$style.cardBadge">Bot</span>

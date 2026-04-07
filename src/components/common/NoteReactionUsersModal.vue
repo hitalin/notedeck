@@ -160,7 +160,7 @@ defineExpose({ open })
               <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
               <div :class="$style.userInfo">
                 <span :class="$style.userName">
-                  <MkMfm v-if="u.user.name" :text="u.user.name" :emojis="u.user.emojis" :server-host="serverHost" />
+                  <MkMfm v-if="u.user.name" :text="u.user.name" :emojis="u.user.emojis" :server-host="serverHost" plain />
                   <template v-else>{{ u.user.username }}</template>
                 </span>
                 <span :class="$style.userHandle">@{{ u.user.username }}</span>
