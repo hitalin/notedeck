@@ -322,9 +322,6 @@ NoteDeck は `Cargo.toml` で git 依存として参照。
 
 - [ ] **添付ファイル一括ダウンロード** — 特定ユーザー / カラムの全添付ファイルを
   `~/Downloads/notedeck/{user}/` にバッチ保存
-- [ ] **リッチテキスト → MFM 変換** — Word やブラウザからリッチテキストをコピペ →
-  太字・リンク等を MFM 記法に自動変換
-
 ### Misskey Web UI 互換（未完了）
 
 Misskey 本家 Web UI と食い違うポイント。アプリ独自のデッキ UI 等は除外。
