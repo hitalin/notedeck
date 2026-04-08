@@ -537,6 +537,13 @@ export class MisskeyApi implements ApiAdapter {
     unwrapAny(await commands.apiAddNoteToClip(this.accountId, clipId, noteId))
   }
 
+  async removeNoteFromClip(clipId: string, noteId: string): Promise<void> {
+    this.requireAuth()
+    unwrapAny(
+      await commands.apiRemoveNoteFromClip(this.accountId, clipId, noteId),
+    )
+  }
+
   async addUserToList(listId: string, userId: string): Promise<void> {
     this.requireAuth()
     unwrapAny(await commands.apiAddUserToList(this.accountId, listId, userId))

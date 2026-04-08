@@ -142,6 +142,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             commands::api_unblock_user,
             commands::api_report_user,
             commands::api_add_note_to_clip,
+            commands::api_remove_note_from_clip,
             commands::api_add_user_to_list,
             commands::api_remove_user_from_list,
             commands::api_get_following,

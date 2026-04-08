@@ -568,6 +568,14 @@ async apiAddNoteToClip(accountId: string, clipId: string, noteId: string) : Prom
     else return { status: "error", error: e  as any };
 }
 },
+async apiRemoveNoteFromClip(accountId: string, clipId: string, noteId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_remove_note_from_clip", { accountId, clipId, noteId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async apiAddUserToList(accountId: string, listId: string, userId: string) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_add_user_to_list", { accountId, listId, userId }) };

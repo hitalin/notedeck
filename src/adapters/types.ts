@@ -495,6 +495,7 @@ export interface ApiAdapter {
   unblockUser(userId: string): Promise<void>
   reportUser(userId: string, comment: string): Promise<void>
   addNoteToClip(clipId: string, noteId: string): Promise<void>
+  removeNoteFromClip(clipId: string, noteId: string): Promise<void>
   addUserToList(listId: string, userId: string): Promise<void>
   removeUserFromList(listId: string, userId: string): Promise<void>
   getFollowing(

@@ -559,6 +559,21 @@ pub async fn api_add_note_to_clip(
         .await
 }
 
+#[tauri::command]
+#[specta::specta]
+pub async fn api_remove_note_from_clip(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    clip_id: String,
+    note_id: String,
+) -> Result<()> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .remove_note_from_clip(&host, &token, &clip_id, &note_id)
+        .await
+}
+
 // --- Note thread ---
 
 #[tauri::command]

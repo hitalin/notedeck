@@ -139,7 +139,7 @@ export function useColumnSetup(
     } catch (e) {
       const err = AppError.from(e)
       console.error('[reaction]', err.code, err.message)
-      toast.show('リアクションに失敗しました', 'error')
+      toast.show(`リアクションに失敗しました（${err.displayCode}）`, 'error')
     }
   }
 
@@ -155,7 +155,7 @@ export function useColumnSetup(
       notify()
       const err = AppError.from(e)
       console.error('[renote]', err.code, err.message)
-      toast.show('リノートに失敗しました', 'error')
+      toast.show(`リノートに失敗しました（${err.displayCode}）`, 'error')
     }
   }
 
@@ -181,7 +181,7 @@ export function useColumnSetup(
     } catch (e) {
       const err = AppError.from(e)
       console.error('[delete]', err.code, err.message)
-      toast.show('削除に失敗しました', 'error')
+      toast.show(`削除に失敗しました（${err.displayCode}）`, 'error')
       return false
     }
   }
@@ -213,7 +213,7 @@ export function useColumnSetup(
     } catch (e) {
       const err = AppError.from(e)
       console.error('[deleteAndEdit]', err.code, err.message)
-      toast.show('削除に失敗しました', 'error')
+      toast.show(`削除に失敗しました（${err.displayCode}）`, 'error')
     }
   }
 
@@ -224,7 +224,7 @@ export function useColumnSetup(
     } catch (e) {
       const err = AppError.from(e)
       console.error('[bookmark]', err.code, err.message)
-      toast.show('ブックマークに失敗しました', 'error')
+      toast.show(`ブックマークに失敗しました（${err.displayCode}）`, 'error')
     }
   }
 
