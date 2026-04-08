@@ -30,6 +30,15 @@ export class AppError extends Error {
     return this.code === 'AUTH' || this.code === 'ACCOUNT_NOT_FOUND'
   }
 
+  /** toast 用のエラーコード。API エラーなら Misskey コードを抽出 */
+  get displayCode(): string {
+    if (this.code === 'API') {
+      const match = this.message.match(/^[^:]+:\s*([A-Z_]+)/)
+      if (match?.[1]) return match[1]
+    }
+    return this.code
+  }
+
   /** Parse an error from Tauri invoke rejection or any thrown value */
   static from(e: unknown): AppError {
     if (e instanceof AppError) return e
