@@ -1235,6 +1235,7 @@ onUnmounted(() => {
 
 .notifSubIcon {
   position: absolute;
+  z-index: 2;
   bottom: -2px;
   right: -2px;
   font-size: 11px;
@@ -1253,6 +1254,7 @@ onUnmounted(() => {
 
 .notifSubIconEmoji {
   position: absolute;
+  z-index: 2;
   bottom: -2px;
   right: -2px;
   width: 20px;
