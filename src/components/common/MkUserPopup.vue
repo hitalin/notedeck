@@ -113,6 +113,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
           :decorations="user.avatarDecorations"
           :size="56"
           indicator
+          :is-cat="user.isCat"
           :online-status="user.onlineStatus"
           :class="$style.popupAvatar"
         />

@@ -176,7 +176,7 @@ function navigateUser(userId: string) {
         :class="$style.userCard"
         @click="navigateUser(u.id)"
       >
-        <MkAvatar :avatar-url="u.avatarUrl" :decorations="u.avatarDecorations" :size="48" />
+        <MkAvatar :avatar-url="u.avatarUrl" :decorations="u.avatarDecorations" :size="48" :is-cat="u.isCat" />
         <div :class="$style.cardInfo">
           <div :class="$style.cardNameRow">
             <span :class="$style.cardName">

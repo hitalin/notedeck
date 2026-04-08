@@ -176,6 +176,7 @@ export interface ChatUser {
   username: string
   host?: string
   avatarUrl?: string
+  isCat?: boolean
   avatarDecorations?: AvatarDecoration[]
   emojis?: Record<string, string>
 }
@@ -242,6 +243,7 @@ export interface NormalizedUser {
   name: string | null
   avatarUrl: string | null
   isBot?: boolean
+  isCat?: boolean
   avatarDecorations?: AvatarDecoration[]
   emojis?: Record<string, string>
   instance?: UserInstance

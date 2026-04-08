@@ -204,6 +204,7 @@ onMounted(() => {
               :avatar-url="req.follower.avatarUrl"
               :decorations="req.follower.avatarDecorations"
               :size="42"
+              :is-cat="req.follower.isCat"
             />
             <div :class="$style.frUserInfo">
               <span :class="$style.frDisplayName">

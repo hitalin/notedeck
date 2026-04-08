@@ -596,6 +596,7 @@ async function handlePosted(editedNoteId?: string) {
             :decorations="user.avatarDecorations"
             :size="120"
             indicator
+            :is-cat="user.isCat"
             :online-status="user.onlineStatus"
             :class="$style.userAvatar"
           />
