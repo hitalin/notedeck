@@ -1,3 +1,6 @@
+use std::collections::HashSet;
+use std::sync::Mutex;
+
 use notecli::streaming::FrontendEmitter;
 use serde::Serialize;
 use serde_json::Value;
@@ -14,8 +17,15 @@ struct StreamEventWrapper<'a> {
 #[cfg(target_os = "android")]
 const NOTIFICATION_CHANNEL_ID: &str = "notedeck_notifications";
 
+/// Maximum number of notification IDs to keep for deduplication.
+/// When exceeded, the set is cleared to prevent unbounded growth.
+const DEDUP_MAX_IDS: usize = 500;
+
 pub struct TauriEmitter {
     app: AppHandle,
+    /// Tracks recently shown notification IDs to prevent duplicate OS notifications
+    /// when multiple subscriptions exist for the same account.
+    recent_notif_ids: Mutex<HashSet<String>>,
 }
 
 impl TauriEmitter {
@@ -28,7 +38,10 @@ impl TauriEmitter {
                 .build();
             let _ = app.notification().create_channel(channel);
         }
-        Self { app }
+        Self {
+            app,
+            recent_notif_ids: Mutex::new(HashSet::new()),
+        }
     }
 
     fn send_native_notification(&self, payload: &Value) {
@@ -36,6 +49,18 @@ impl TauriEmitter {
             Some(n) => n,
             None => return,
         };
+
+        // Deduplicate by notification ID — multiple subscriptions for the same
+        // account can trigger this function more than once for a single notification.
+        if let Some(id) = notification.get("id").and_then(|v| v.as_str()) {
+            let mut seen = self.recent_notif_ids.lock().unwrap();
+            if !seen.insert(id.to_string()) {
+                return;
+            }
+            if seen.len() > DEDUP_MAX_IDS {
+                seen.clear();
+            }
+        }
 
         let notif_type = notification
             .get("type")
