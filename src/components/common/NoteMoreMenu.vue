@@ -6,10 +6,15 @@ import {
   getPluginHandlers,
   setPluginAccountContext,
 } from '@/aiscript/plugin-api'
+import { useCommandStore } from '@/commands/registry'
 import { useAccountMode } from '@/composables/useAccountMode'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
+import { useConfirm } from '@/stores/confirm'
+import { usePrompt } from '@/stores/prompt'
 import { useToast } from '@/stores/toast'
+import { AppError } from '@/utils/errors'
 import { showLoginPrompt } from '@/utils/loginPrompt'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import { isSafeUrl } from '@/utils/url'
 import PopupMenu from './PopupMenu.vue'
 
@@ -29,17 +34,18 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const { confirm } = useConfirm()
+const { prompt } = usePrompt()
 const { getOrCreate } = useMultiAccountAdapters()
+const commandStore = useCommandStore()
 const { canInteract, isGuest } = useAccountMode(() => props.note._accountId)
 
 const popupMenuRef = ref<InstanceType<typeof PopupMenu>>()
 const showDeleteConfirm = ref(false)
 const showDeleteAndEditConfirm = ref(false)
-const showClipList = ref(false)
 const showMuteConfirm = ref(false)
 const showReportForm = ref(false)
 const reportComment = ref('')
-const clips = ref<Clip[]>([])
 const localIsFavorited = ref(props.isFavorited)
 const localIsPinned = ref(props.isPinned)
 
@@ -47,14 +53,12 @@ type MenuView =
   | 'main'
   | 'deleteConfirm'
   | 'deleteAndEditConfirm'
-  | 'clipList'
   | 'muteConfirm'
   | 'reportForm'
 
 const currentView = computed<MenuView>(() => {
   if (showDeleteConfirm.value) return 'deleteConfirm'
   if (showDeleteAndEditConfirm.value) return 'deleteAndEditConfirm'
-  if (showClipList.value) return 'clipList'
   if (showMuteConfirm.value) return 'muteConfirm'
   if (showReportForm.value) return 'reportForm'
   return 'main'
@@ -92,7 +96,6 @@ function close() {
 function resetSubViews() {
   showDeleteConfirm.value = false
   showDeleteAndEditConfirm.value = false
-  showClipList.value = false
   showMuteConfirm.value = false
   showReportForm.value = false
   reportComment.value = ''
@@ -134,26 +137,96 @@ async function copyAndClose(text: string) {
   close()
 }
 
-async function openClipList() {
+async function addToClip(clipId: string, clipName: string) {
+  const adapter = await getOrCreate(props.note._accountId)
+  if (!adapter) return
   try {
-    const adapter = await getOrCreate(props.note._accountId)
-    if (!adapter) return
-    clips.value = await adapter.api.getClips()
-    showClipList.value = true
-  } catch {
-    toast.show('クリップの取得に失敗しました', 'error')
+    await adapter.api.addNoteToClip(clipId, props.note.id)
+    toast.show('クリップに追加しました')
+  } catch (e) {
+    const err = AppError.from(e)
+    if (err.displayCode === 'ALREADY_CLIPPED') {
+      const ok = await confirm({
+        title: 'クリップ解除',
+        message: `このノートは既に「${clipName}」にクリップされています。クリップを解除しますか？`,
+        type: 'danger',
+        okLabel: '解除',
+      })
+      if (ok) {
+        try {
+          await adapter.api.removeNoteFromClip(clipId, props.note.id)
+          toast.show('クリップから解除しました')
+        } catch (e2) {
+          const err2 = AppError.from(e2)
+          console.error('[clip:remove]', err2.code, err2.message)
+          toast.show(
+            `クリップの解除に失敗しました（${err2.displayCode}）`,
+            'error',
+          )
+        }
+      }
+    } else {
+      console.error('[clip:add]', err.code, err.message)
+      toast.show(
+        `クリップへの追加に失敗しました（${err.displayCode}）`,
+        'error',
+      )
+    }
   }
 }
 
-async function addToClip(clipId: string) {
+async function createClipAndAdd() {
+  commandStore.close()
+  const name = await prompt({
+    title: '新しいクリップを作成',
+    placeholder: 'クリップ名を入力...',
+  })
+  if (!name) return
   try {
-    const adapter = await getOrCreate(props.note._accountId)
-    if (!adapter) return
-    await adapter.api.addNoteToClip(clipId, props.note.id)
-    toast.show('クリップに追加しました')
-    close()
-  } catch {
-    toast.show('クリップへの追加に失敗しました', 'error')
+    const created = unwrap(
+      await commands.apiRequest(props.note._accountId, 'clips/create', {
+        name,
+      }),
+    ) as unknown as Clip
+    await addToClip(created.id, created.name)
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[clip:create]', err.code, err.message)
+    toast.show(`クリップの作成に失敗しました（${err.displayCode}）`, 'error')
+  }
+}
+
+async function openClipQuickPick() {
+  close()
+  try {
+    const clipList = unwrap(await commands.apiGetClips(props.note._accountId))
+    const items = [
+      {
+        id: 'create-new-clip',
+        label: '新しいクリップを作成',
+        icon: 'plus',
+        action: () => createClipAndAdd(),
+      },
+      ...clipList.map((clip) => ({
+        id: `clip-${clip.id}`,
+        label: clip.name,
+        icon: 'paperclip',
+        action: () => {
+          commandStore.close()
+          addToClip(clip.id, clip.name)
+        },
+      })),
+    ]
+    commandStore.pushQuickPick({
+      title: 'クリップに追加',
+      placeholder: 'クリップを選択...',
+      items,
+    })
+    commandStore.open()
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[clip:list]', err.code, err.message)
+    toast.show(`クリップの取得に失敗しました（${err.displayCode}）`, 'error')
   }
 }
 
@@ -164,8 +237,10 @@ async function muteUser() {
     await adapter.api.muteUser(props.note.user.id)
     toast.show('ミュートしました')
     close()
-  } catch {
-    toast.show('ミュートに失敗しました', 'error')
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:mute]', err.code, err.message)
+    toast.show(`ミュートに失敗しました（${err.displayCode}）`, 'error')
   }
 }
 
@@ -177,8 +252,10 @@ async function submitReport() {
     await adapter.api.reportUser(props.note.user.id, reportComment.value)
     toast.show('通報しました')
     close()
-  } catch {
-    toast.show('通報に失敗しました', 'error')
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:report]', err.code, err.message)
+    toast.show(`通報に失敗しました（${err.displayCode}）`, 'error')
   }
 }
 
@@ -213,26 +290,7 @@ defineExpose({ open })
       </button>
     </template>
 
-    <!-- Clip list -->
-    <template v-else-if="currentView === 'clipList'">
-      <button class="_popupItem" @click="backToMain">
-        <i class="ti ti-arrow-left" />
-        戻る
-      </button>
-      <div class="_popupDivider" />
-      <template v-if="clips.length > 0">
-        <button
-          v-for="clip in clips"
-          :key="clip.id"
-          class="_popupItem"
-          @click="addToClip(clip.id)"
-        >
-          <i class="ti ti-paperclip" />
-          {{ clip.name }}
-        </button>
-      </template>
-      <div v-else class="_popupConfirmText">クリップがありません</div>
-    </template>
+
 
     <!-- Mute confirm -->
     <template v-else-if="currentView === 'muteConfirm'">
@@ -282,7 +340,7 @@ defineExpose({ open })
         <i class="ti ti-star" />
         {{ localIsFavorited ? 'お気に入り解除' : 'お気に入り' }}
       </button>
-      <button v-if="!isGuest" class="_popupItem" @click="canInteract ? openClipList() : (showLoginPrompt(), close())">
+      <button v-if="!isGuest" class="_popupItem" @click="canInteract ? openClipQuickPick() : (showLoginPrompt(), close())">
         <i class="ti ti-paperclip" />
         クリップに追加
       </button>

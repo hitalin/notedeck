@@ -474,6 +474,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
         :decorations="effectiveNote.user.avatarDecorations"
         :size="58"
         :alt="effectiveNote.user.username ?? undefined"
+        :is-cat="effectiveNote.user.isCat"
         :class="$style.avatar"
         @click="navigateToUser(effectiveNote.user.id, $event)"
         @mouseenter="onAvatarMouseEnter"

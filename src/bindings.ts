@@ -568,6 +568,14 @@ async apiAddNoteToClip(accountId: string, clipId: string, noteId: string) : Prom
     else return { status: "error", error: e  as any };
 }
 },
+async apiRemoveNoteFromClip(accountId: string, clipId: string, noteId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_remove_note_from_clip", { accountId, clipId, noteId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async apiAddUserToList(accountId: string, listId: string, userId: string) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_add_user_to_list", { accountId, listId, userId }) };
@@ -1361,7 +1369,7 @@ reactions?: ReactionInfo[] | null;
 users?: NormalizedUser[] | null }
 export type NormalizedPoll = { choices: NormalizedPollChoice[]; multiple?: boolean; expiresAt: string | null }
 export type NormalizedPollChoice = { text: string; votes?: number; isVoted?: boolean }
-export type NormalizedUser = { id: string; username: string; host: string | null; name: string | null; avatarUrl: string | null; isBot?: boolean; avatarDecorations?: AvatarDecoration[]; emojis?: Partial<{ [key in string]: string }>; instance?: UserInstance | null }
+export type NormalizedUser = { id: string; username: string; host: string | null; name: string | null; avatarUrl: string | null; isBot?: boolean; isCat?: boolean; avatarDecorations?: AvatarDecoration[]; emojis?: Partial<{ [key in string]: string }>; instance?: UserInstance | null }
 export type NormalizedUserDetail = { id: string; username: string; host: string | null; name: string | null; avatarUrl: string | null; bannerUrl: string | null; description: string | null; followersCount?: number; followingCount?: number; notesCount?: number; isBot?: boolean; isCat?: boolean; isFollowing?: boolean; isFollowed?: boolean; createdAt?: string; avatarDecorations?: AvatarDecoration[]; emojis?: Partial<{ [key in string]: string }>; roles?: UserRole[]; fields?: UserField[]; url?: string | null; birthday?: string | null; location?: string | null; onlineStatus?: string | null; followingVisibility?: string | null; followersVisibility?: string | null }
 /**
  * Performance configuration shared across the application.

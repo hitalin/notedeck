@@ -12,6 +12,7 @@ import MkMfm from '@/components/common/MkMfm.vue'
 import { useNavigation } from '@/composables/useNavigation'
 import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 import { useToast } from '@/stores/toast'
+import { AppError } from '@/utils/errors'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 
 const props = defineProps<{
@@ -47,8 +48,10 @@ onMounted(async () => {
     })
     adapter = result.adapter
     await loadUsers()
-  } catch {
-    toast.show('読み込みに失敗しました', 'error')
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[follow:init]', err.code, err.message)
+    toast.show(`読み込みに失敗しました（${err.displayCode}）`, 'error')
   }
 })
 
@@ -88,8 +91,10 @@ async function loadUsers(untilId?: string) {
         fetchRelations(fetched)
       }
     }
-  } catch {
-    toast.show('取得に失敗しました', 'error')
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[follow:load]', err.code, err.message)
+    toast.show(`取得に失敗しました（${err.displayCode}）`, 'error')
   } finally {
     isLoading.value = false
   }
@@ -136,8 +141,10 @@ async function toggleFollow(targetUser: NormalizedUser) {
       await adapter.api.followUser(targetUser.id)
       followingIds.value = new Set([...followingIds.value, targetUser.id])
     }
-  } catch {
-    toast.show('操作に失敗しました', 'error')
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[follow:toggle]', err.code, err.message)
+    toast.show(`操作に失敗しました（${err.displayCode}）`, 'error')
   } finally {
     const next = new Set(followLoadingIds.value)
     next.delete(targetUser.id)
@@ -176,7 +183,7 @@ function navigateUser(userId: string) {
         :class="$style.userCard"
         @click="navigateUser(u.id)"
       >
-        <MkAvatar :avatar-url="u.avatarUrl" :decorations="u.avatarDecorations" :size="48" />
+        <MkAvatar :avatar-url="u.avatarUrl" :decorations="u.avatarDecorations" :size="48" :is-cat="u.isCat" />
         <div :class="$style.cardInfo">
           <div :class="$style.cardNameRow">
             <span :class="$style.cardName">

@@ -12,6 +12,7 @@ import {
 } from 'vue'
 import type {
   ApiAdapter,
+  ChannelSubscription,
   NormalizedNote,
   NormalizedNotification,
   NormalizedUser,
@@ -91,6 +92,8 @@ const {
 } = useColumnSetup(() => props.column)
 
 const isLoggedOut = computed(() => account.value?.hasToken === false)
+
+const crossSubscriptions: ChannelSubscription[] = []
 
 const { navigateToUser: navToUser } = useNavigation()
 const noteSound = useNoteSound(() => account.value?.host, 'syuilo/n-ea')
@@ -541,21 +544,29 @@ async function connectCrossAccount(useCache = false) {
     notifications.value = mergeNotifications(allNotifs, cached)
     saveCache()
 
+    // Dispose previous cross-account subscriptions before re-subscribing
+    for (const sub of crossSubscriptions) {
+      sub.dispose()
+    }
+    crossSubscriptions.length = 0
+
     // Set up streaming for each account
     for (const acc of accounts) {
       const adapter = await multiAdapters.getOrCreate(acc.id)
       if (!adapter) continue
       adapter.stream.connect()
-      adapter.stream.subscribeMain((event) => {
-        if (event.type === 'notification') {
-          const notification = event.body as NormalizedNotification
-          if (!props.column.soundMuted) noteSound.play()
-          rafBuffer.push(notification)
-          if (rafId === null) {
-            rafId = requestAnimationFrame(flushRafBuffer)
+      crossSubscriptions.push(
+        adapter.stream.subscribeMain((event) => {
+          if (event.type === 'notification') {
+            const notification = event.body as NormalizedNotification
+            if (!props.column.soundMuted) noteSound.play()
+            rafBuffer.push(notification)
+            if (rafId === null) {
+              rafId = requestAnimationFrame(flushRafBuffer)
+            }
           }
-        }
-      })
+        }),
+      )
     }
   } catch (e) {
     if (cached.length > 0) {
@@ -814,6 +825,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   flushCache()
+  for (const sub of crossSubscriptions) {
+    sub.dispose()
+  }
+  crossSubscriptions.length = 0
   disconnect()
   if (rafId !== null) {
     cancelAnimationFrame(rafId)
@@ -905,6 +920,7 @@ onUnmounted(() => {
                       :decorations="entry.user.avatarDecorations"
                       :size="42"
                       :alt="entry.user.username ?? undefined"
+                      :is-cat="entry.user.isCat"
                       :class="$style.notifUserAvatar"
                       @click="onGroupedAvatarClick(notif._accountId, entry.user.id, $event)"
                       @mouseenter="onGroupedAvatarMouseEnter(notif._accountId, entry.user.id, $event)"
@@ -973,6 +989,7 @@ onUnmounted(() => {
                     :decorations="notif.user.avatarDecorations"
                     :size="42"
                     :alt="notif.user.username ?? undefined"
+                    :is-cat="notif.user.isCat"
                     :class="$style.notifUserAvatar"
                     @click="onNotifAvatarClick(notif, $event)"
                     @mouseenter="onNotifAvatarMouseEnter(notif, $event)"
@@ -1233,6 +1250,7 @@ onUnmounted(() => {
 
 .notifSubIcon {
   position: absolute;
+  z-index: 2;
   bottom: -2px;
   right: -2px;
   font-size: 11px;
@@ -1251,6 +1269,7 @@ onUnmounted(() => {
 
 .notifSubIconEmoji {
   position: absolute;
+  z-index: 2;
   bottom: -2px;
   right: -2px;
   width: 20px;

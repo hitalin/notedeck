@@ -3,6 +3,7 @@ import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { usePrompt } from '@/stores/prompt'
 import { useToast } from '@/stores/toast'
+import { AppError } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 export type EntityType = 'clip' | 'list' | 'antenna'
@@ -68,8 +69,13 @@ export function useEntityCrud(type: EntityType, getColumn: () => DeckColumn) {
       )
       deckStore.updateColumn(col.id, { name: newName })
       toast.show(`${config.label}名を変更しました`)
-    } catch {
-      toast.show(`${config.label}名の変更に失敗しました`, 'error')
+    } catch (e) {
+      const err = AppError.from(e)
+      console.error('[entity:rename]', err.code, err.message)
+      toast.show(
+        `${config.label}名の変更に失敗しました（${err.displayCode}）`,
+        'error',
+      )
     }
   }
 
@@ -93,8 +99,13 @@ export function useEntityCrud(type: EntityType, getColumn: () => DeckColumn) {
       )
       deckStore.removeColumn(col.id)
       toast.show(`${config.label}を削除しました`)
-    } catch {
-      toast.show(`${config.label}の削除に失敗しました`, 'error')
+    } catch (e) {
+      const err = AppError.from(e)
+      console.error('[entity:delete]', err.code, err.message)
+      toast.show(
+        `${config.label}の削除に失敗しました（${err.displayCode}）`,
+        'error',
+      )
     }
   }
 

@@ -10,6 +10,7 @@ const props = withDefaults(
     size?: number
     alt?: string
     indicator?: boolean
+    isCat?: boolean
     onlineStatus?: 'online' | 'active' | 'offline' | 'unknown' | null
   }>(),
   {
@@ -17,6 +18,7 @@ const props = withDefaults(
     size: 58,
     alt: undefined,
     indicator: false,
+    isCat: false,
     onlineStatus: null,
   },
 )
@@ -59,10 +61,8 @@ const avatarSrcset = computed(() => {
 function onAvatarError(e: Event) {
   const img = e.target as HTMLImageElement
   if (!proxyFailed.value && img.src !== props.avatarUrl) {
-    // Proxy failed → try direct URL
     proxyFailed.value = true
   } else if (!allFailed.value) {
-    // Direct URL also failed → show default avatar
     allFailed.value = true
   }
 }
@@ -115,6 +115,18 @@ const statusClass = computed(() =>
       @error="onAvatarError"
     />
     <img
+      v-if="props.isCat"
+      src="/cat-ear-left.svg"
+      :class="[$style.avatarDecoration, $style.catEarLeft]"
+      decoding="async"
+    />
+    <img
+      v-if="props.isCat"
+      src="/cat-ear-right.svg"
+      :class="[$style.avatarDecoration, $style.catEarRight]"
+      decoding="async"
+    />
+    <img
       v-for="(d, i) in props.decorations"
       :key="d.id"
       :src="proxyUrl(d.url)"
@@ -131,6 +143,22 @@ const statusClass = computed(() =>
 </template>
 
 <style lang="scss" module>
+@keyframes earWiggleLeft {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-16deg); }
+  50% { transform: rotate(8deg); }
+  75% { transform: rotate(-6deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes earWiggleRight {
+  0% { transform: rotate(0deg); }
+  30% { transform: rotate(16deg); }
+  55% { transform: rotate(-8deg); }
+  75% { transform: rotate(6deg); }
+  100% { transform: rotate(0deg); }
+}
+
 .mkAvatar {
   position: relative;
   display: inline-block;
@@ -143,6 +171,14 @@ const statusClass = computed(() =>
 
   &:hover {
     transform: scale(1.05);
+
+    > .catEarLeft {
+      animation: earWiggleLeft 1s ease-in-out infinite;
+    }
+
+    > .catEarRight {
+      animation: earWiggleRight 1s ease-in-out infinite;
+    }
   }
 }
 
@@ -160,6 +196,14 @@ const statusClass = computed(() =>
   width: 200%;
   pointer-events: none;
   z-index: 1;
+}
+
+.catEarLeft {
+  transform-origin: 35.5% 32%;
+}
+
+.catEarRight {
+  transform-origin: 64.5% 32%;
 }
 
 .onlineIndicator {

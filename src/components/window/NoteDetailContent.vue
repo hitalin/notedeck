@@ -426,6 +426,7 @@ async function handlePosted(editedNoteId?: string) {
               :avatar-url="rn.user.avatarUrl"
               :decorations="rn.user.avatarDecorations"
               :size="36"
+              :is-cat="rn.user.isCat"
             />
             <span :class="$style.renoteUserName">
               {{ rn.user.name || rn.user.username }}
@@ -457,6 +458,7 @@ async function handlePosted(editedNoteId?: string) {
                 :avatar-url="r.user.avatarUrl"
                 :decorations="r.user.avatarDecorations"
                 :size="36"
+                :is-cat="r.user.isCat"
               />
               <span :class="$style.reactionUserName">
                 {{ r.user.name || r.user.username }}

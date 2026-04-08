@@ -374,8 +374,10 @@ async function handleMuteUser() {
     await adapter.api.muteUser(user.value.id)
     toast.show('ミュートしました')
     closeUserMenu()
-  } catch {
-    toast.show('ミュートに失敗しました', 'error')
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:mute]', err.code, err.message)
+    toast.show(`ミュートに失敗しました（${err.displayCode}）`, 'error')
   }
 }
 
@@ -385,8 +387,10 @@ async function handleBlockUser() {
     await adapter.api.blockUser(user.value.id)
     toast.show('ブロックしました')
     closeUserMenu()
-  } catch {
-    toast.show('ブロックに失敗しました', 'error')
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:block]', err.code, err.message)
+    toast.show(`ブロックに失敗しました（${err.displayCode}）`, 'error')
   }
 }
 
@@ -396,8 +400,10 @@ async function handleReportUser() {
     await adapter.api.reportUser(user.value.id, reportComment.value)
     toast.show('通報しました')
     closeUserMenu()
-  } catch {
-    toast.show('通報に失敗しました', 'error')
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:report]', err.code, err.message)
+    toast.show(`通報に失敗しました（${err.displayCode}）`, 'error')
   }
 }
 
@@ -406,8 +412,10 @@ async function openListPicker() {
   try {
     userLists.value = await adapter.api.getUserLists()
     showListPicker.value = true
-  } catch {
-    toast.show('リストの取得に失敗しました', 'error')
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[list:fetch]', err.code, err.message)
+    toast.show(`リストの取得に失敗しました（${err.displayCode}）`, 'error')
   }
 }
 
@@ -417,8 +425,10 @@ async function addToList(listId: string) {
     await adapter.api.addUserToList(listId, user.value.id)
     toast.show('リストに追加しました')
     closeUserMenu()
-  } catch {
-    toast.show('リストへの追加に失敗しました', 'error')
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[list:add]', err.code, err.message)
+    toast.show(`リストへの追加に失敗しました（${err.displayCode}）`, 'error')
   }
 }
 
@@ -596,6 +606,7 @@ async function handlePosted(editedNoteId?: string) {
             :decorations="user.avatarDecorations"
             :size="120"
             indicator
+            :is-cat="user.isCat"
             :online-status="user.onlineStatus"
             :class="$style.userAvatar"
           />

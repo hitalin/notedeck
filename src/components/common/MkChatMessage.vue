@@ -44,6 +44,7 @@ const displayUser = computed(() => {
     avatarDecorations: u.avatarDecorations ?? [],
     username: u.username,
     host: u.host ?? null,
+    isCat: u.isCat,
   }
 })
 
@@ -179,6 +180,7 @@ usePortal(lightboxPortalRef)
       :avatar-url="displayUser.avatarUrl"
       :decorations="displayUser.avatarDecorations"
       :size="32"
+      :is-cat="displayUser.isCat"
     />
     <div :class="$style.chatBubbleWrapper">
       <div :class="$style.chatBubble">

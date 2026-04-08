@@ -53,8 +53,9 @@ export function useNoteActions(
     try {
       await toggleReaction(adapter.api, note, reaction, () => onMutated(note))
     } catch (e) {
-      console.error('[note:reaction]', AppError.from(e).message)
-      toast.show('リアクションに失敗しました', 'error')
+      const err = AppError.from(e)
+      console.error('[note:reaction]', err.code, err.message)
+      toast.show(`リアクションに失敗しました（${err.displayCode}）`, 'error')
     }
   }
 
@@ -69,8 +70,9 @@ export function useNoteActions(
     } catch (e) {
       note.renoteCount = Math.max(0, (note.renoteCount ?? 1) - 1)
       onMutated(note)
-      console.error('[note:renote]', AppError.from(e).message)
-      toast.show('リノートに失敗しました', 'error')
+      const err = AppError.from(e)
+      console.error('[note:renote]', err.code, err.message)
+      toast.show(`リノートに失敗しました（${err.displayCode}）`, 'error')
     }
   }
 
@@ -133,8 +135,9 @@ export function useNoteActions(
       await adapter.api.deleteNote(note.id)
       return true
     } catch (e) {
-      console.error('[note:delete]', AppError.from(e).message)
-      toast.show('削除に失敗しました', 'error')
+      const err = AppError.from(e)
+      console.error('[note:delete]', err.code, err.message)
+      toast.show(`削除に失敗しました（${err.displayCode}）`, 'error')
       return false
     }
   }
@@ -155,8 +158,9 @@ export function useNoteActions(
     try {
       await toggleFavorite(adapter.api, note, () => onMutated(note))
     } catch (e) {
-      console.error('[note:bookmark]', AppError.from(e).message)
-      toast.show('ブックマークに失敗しました', 'error')
+      const err = AppError.from(e)
+      console.error('[note:bookmark]', err.code, err.message)
+      toast.show(`ブックマークに失敗しました（${err.displayCode}）`, 'error')
     }
   }
 
@@ -176,8 +180,9 @@ export function useNoteActions(
       postFormInitialVisibility.value = note.visibility
       showPostForm.value = true
     } catch (e) {
-      console.error('[note:deleteAndEdit]', AppError.from(e).message)
-      toast.show('削除に失敗しました', 'error')
+      const err = AppError.from(e)
+      console.error('[note:deleteAndEdit]', err.code, err.message)
+      toast.show(`削除に失敗しました（${err.displayCode}）`, 'error')
     }
   }
 

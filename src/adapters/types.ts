@@ -176,6 +176,7 @@ export interface ChatUser {
   username: string
   host?: string
   avatarUrl?: string
+  isCat?: boolean
   avatarDecorations?: AvatarDecoration[]
   emojis?: Record<string, string>
 }
@@ -242,6 +243,7 @@ export interface NormalizedUser {
   name: string | null
   avatarUrl: string | null
   isBot?: boolean
+  isCat?: boolean
   avatarDecorations?: AvatarDecoration[]
   emojis?: Record<string, string>
   instance?: UserInstance
@@ -493,6 +495,7 @@ export interface ApiAdapter {
   unblockUser(userId: string): Promise<void>
   reportUser(userId: string, comment: string): Promise<void>
   addNoteToClip(clipId: string, noteId: string): Promise<void>
+  removeNoteFromClip(clipId: string, noteId: string): Promise<void>
   addUserToList(listId: string, userId: string): Promise<void>
   removeUserFromList(listId: string, userId: string): Promise<void>
   getFollowing(
