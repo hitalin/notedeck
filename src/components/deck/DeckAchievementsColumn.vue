@@ -610,11 +610,8 @@ function scrollToTop() {
 }
 
 .achievementsScroll {
+  composes: columnScroller from './column-common.module.scss';
   position: relative;
-  flex: 1;
-  overflow-y: auto;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
 }
 
 .achievementsGrid {

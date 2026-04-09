@@ -443,11 +443,8 @@ fetchDrive()
 
 /* --- Grid scroll --- */
 .driveGridScroll {
+  composes: columnScroller from './column-common.module.scss';
   position: relative;
-  flex: 1;
-  overflow-y: auto;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
 }
 
 /* --- Folder items --- */
@@ -589,10 +586,7 @@ fetchDrive()
 
 /* --- Detail view --- */
 .driveDetailScroll {
-  flex: 1;
-  overflow-y: auto;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
+  composes: columnScroller from './column-common.module.scss';
 }
 
 .driveDetail {

@@ -588,13 +588,7 @@ function reload() {
 }
 
 .playList {
-  flex: 1;
-  min-height: 0;
-  overflow-x: clip;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
+  composes: columnScroller from './column-common.module.scss';
 }
 
 .playCard {
@@ -658,13 +652,7 @@ function reload() {
 /* --- Ready mode --- */
 
 .playReadyScroll {
-  flex: 1;
-  min-height: 0;
-  overflow-x: clip;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
+  composes: columnScroller from './column-common.module.scss';
 }
 
 .playReady {
@@ -749,15 +737,9 @@ function reload() {
 /* --- Started mode --- */
 
 .playStartedScroll {
-  flex: 1;
-  min-height: 0;
+  composes: columnScroller from './column-common.module.scss';
   display: flex;
   flex-direction: column;
-  overflow-x: clip;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
 }
 
 .playUi {

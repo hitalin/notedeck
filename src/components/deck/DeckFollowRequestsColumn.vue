@@ -255,21 +255,11 @@ onMounted(() => {
 @use './column-common.module.scss';
 
 .frBody {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  composes: tlBody from './column-common.module.scss';
 }
 
 .frScroller {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: clip;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
+  composes: columnScroller from './column-common.module.scss';
 }
 
 .frItem {
