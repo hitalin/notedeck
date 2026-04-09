@@ -1,6 +1,6 @@
 [package]
 name = "notedeck"
-version = "0.9.27"
+version = "0.9.28"
 description = "Misskey IDE — integrated deck environment for browsing, posting, searching, and connecting"
 edition = "2021"
 
