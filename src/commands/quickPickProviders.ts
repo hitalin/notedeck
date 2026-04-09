@@ -355,6 +355,7 @@ const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
   'mentions',
   'specified',
   'followRequests',
+  'lookup',
 ])
 
 const ACCOUNT_OPTIONAL_TYPES = new Set<ColumnType>(['widget', 'aiscript'])
