@@ -79,9 +79,9 @@ const PROFILE_TABS: { key: ProfileTab; label: string; icon: string }[] = [
 ]
 const jsonLang = json()
 
-// Top-level editor-style tabs (overview = current profile, raw = JSON view)
+// Top-level editor-style tabs (overview = current profile, notes = notes only, raw = JSON view)
 const { tab: topTab, containerRef: profileRef } = useEditorTabs(
-  ['overview', 'raw'] as const,
+  ['overview', 'notes', 'raw'] as const,
   'overview',
 )
 
@@ -681,14 +681,15 @@ async function handlePosted(editedNoteId?: string) {
         v-model="topTab"
         :tabs="[
           { value: 'overview', icon: 'home', label: '概要' },
+          { value: 'notes', icon: 'pencil', label: 'ノート' },
           { value: 'raw', icon: 'code', label: 'Raw' },
         ]"
       />
 
       <div ref="profileRef" :class="$style.tabContent" @scroll.passive="onScroll">
-        <div v-show="topTab === 'overview'">
+        <div v-show="topTab === 'overview' || topTab === 'notes'">
       <!-- Remote user caution -->
-      <div v-if="user.host" :class="$style.remoteCaution">
+      <div v-if="user.host && topTab === 'overview'" :class="$style.remoteCaution">
         <i class="ti ti-alert-triangle" style="margin-right: 8px;" />
         リモートユーザーのため、情報が不完全です。
         <a v-if="remoteProfileUrl" :class="$style.remoteCautionLink" href="#" @click.prevent="openRemoteProfile">
@@ -697,6 +698,8 @@ async function handlePosted(editedNoteId?: string) {
       </div>
 
       <div :class="$style.profileContainer">
+        <!-- Profile details (overview only) -->
+        <div v-show="topTab === 'overview'">
         <!-- Banner area -->
         <div :class="$style.bannerArea">
           <div
@@ -843,9 +846,10 @@ async function handlePosted(editedNoteId?: string) {
             <span>フォロワー</span>
           </button>
         </div>
+        </div>
 
-        <!-- Pinned notes -->
-        <div v-if="pinnedNotes.length > 0" :class="$style.pinnedSection">
+        <!-- Pinned notes (overview only) -->
+        <div v-if="pinnedNotes.length > 0 && topTab === 'overview'" :class="$style.pinnedSection">
           <div :class="$style.pinnedHeader">
             <i class="ti ti-pin" />
             ピン留め
