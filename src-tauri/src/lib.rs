@@ -133,6 +133,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             commands::api_get_cached_timeline_before,
             commands::api_get_cache_date_range,
             commands::api_search_notes_local,
+            commands::api_find_notes_by_uri,
             commands::api_pin_note,
             commands::api_unpin_note,
             commands::api_get_user_pinned_note_ids,

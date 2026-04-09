@@ -1,25 +1,37 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref, useTemplateRef } from 'vue'
+import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import { MisskeyApi } from '@/adapters/misskey/api'
 import type { NormalizedNote } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import type {
+  NoteTreeHandlers,
+  NoteTreeNode,
+} from '@/components/common/MkNoteTree.vue'
+import MkNoteTree from '@/components/common/MkNoteTree.vue'
+import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
+import { useNavigation } from '@/composables/useNavigation'
+import { usePortal } from '@/composables/usePortal'
+import { useServerImages } from '@/composables/useServerImages'
+import {
+  getNoteUri,
+  type MergedThread,
+  mergeThreadFragments,
+  type ThreadFragment,
+} from '@/engine/threadMerge'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
+import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useServersStore } from '@/stores/servers'
+import { mapWithConcurrency } from '@/utils/concurrency'
+import { parseNoteUrl, parseUserQuery } from '@/utils/noteUrl'
 import { commands, unwrap } from '@/utils/tauriInvoke'
+import DeckColumn from './DeckColumn.vue'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
-
-import { useColumnTheme } from '@/composables/useColumnTheme'
-import { useNavigation } from '@/composables/useNavigation'
-import { usePortal } from '@/composables/usePortal'
-import { useServerImages } from '@/composables/useServerImages'
-import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
-import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { useServersStore } from '@/stores/servers'
-import { parseNoteUrl, parseUserQuery } from '@/utils/noteUrl'
-import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -32,9 +44,15 @@ const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const { navigateToUser } = useNavigation()
 
+const isCrossAccount = computed(() => props.column.accountId == null)
+const multiAdapters = useMultiAccountAdapters()
+
 const queryInput = ref('')
 const isLoading = ref(false)
+const isProbing = ref(false)
+const probeProgress = ref(0)
 const error = ref<string | null>(null)
+const mergedThread = ref<MergedThread | null>(null)
 
 type LookupResult =
   | { type: 'Note'; note: NormalizedNote }
@@ -50,6 +68,71 @@ type LookupResult =
     }
 
 const result = ref<LookupResult | null>(null)
+const ancestors = ref<NormalizedNote[]>([])
+const children = ref<NormalizedNote[]>([])
+
+function buildTree(
+  notes: NormalizedNote[],
+  rootNoteId: string,
+): NoteTreeNode[] {
+  const childrenMap = new Map<string, NoteTreeNode[]>()
+  for (const n of notes) {
+    const parentId = n.replyId ?? rootNoteId
+    if (!childrenMap.has(parentId)) childrenMap.set(parentId, [])
+    childrenMap.get(parentId)?.push({ note: n, children: [] })
+  }
+
+  function attachChildren(node: NoteTreeNode): NoteTreeNode {
+    node.children = childrenMap.get(node.note.id) ?? []
+    for (const child of node.children) attachChildren(child)
+    return node
+  }
+
+  const roots = childrenMap.get(rootNoteId) ?? []
+  for (const root of roots) attachChildren(root)
+  return roots
+}
+
+const childrenTree = computed<NoteTreeNode[]>(() => {
+  if (result.value?.type !== 'Note') return []
+  return buildTree(children.value, result.value.note.id)
+})
+
+const treeHandlers = computed<NoteTreeHandlers>(() => ({
+  react: handleReaction,
+  reply: handleReply,
+  renote: handleRenote,
+  quote: handleQuote,
+  deleteFn: handleDelete,
+  edit: handleEdit,
+  deleteAndEdit: handleDeleteAndEdit,
+}))
+
+/** cross-account: MergedThreadNode[] → NoteTreeNode[] に変換 */
+const mergedChildrenTree = computed<NoteTreeNode[]>(() => {
+  if (!mergedThread.value) return []
+  return mergedThread.value.children.map(
+    function toTreeNode(node): NoteTreeNode {
+      return {
+        note: node.note,
+        children: node.children.map(toTreeNode),
+      }
+    },
+  )
+})
+
+const noop = () => {
+  /* cross-account では未対応 */
+}
+const crossAccountTreeHandlers = computed<NoteTreeHandlers>(() => ({
+  react: handleReactionCrossAccount,
+  reply: noop,
+  renote: handleRenoteCrossAccount,
+  quote: noop,
+  deleteFn: handleDeleteCrossAccount,
+  edit: noop,
+  deleteAndEdit: noop,
+}))
 
 // Post form state
 const postPortalRef = useTemplateRef<HTMLElement>('postPortalRef')
@@ -75,11 +158,20 @@ if (account.value) {
 
 async function performLookup() {
   const q = queryInput.value.trim()
-  if (!q || !props.column.accountId) return
+  if (!q) return
+
+  if (isCrossAccount.value) {
+    await performLookupCrossAccount(q)
+    return
+  }
+
+  if (!props.column.accountId) return
 
   isLoading.value = true
   error.value = null
   result.value = null
+  ancestors.value = []
+  children.value = []
 
   const acc = accountsStore.accountMap.get(props.column.accountId)
   if (!acc) {
@@ -124,6 +216,7 @@ async function performLookup() {
     if (parsed && parsed.host === acc.host) {
       const note = await api.getNote(parsed.noteId)
       result.value = { type: 'Note', note }
+      loadThread(api, note.id)
       isLoading.value = false
       return
     }
@@ -143,6 +236,7 @@ async function performLookup() {
     if (res.type === 'Note' && res.object?.id) {
       const note = await api.getNote(res.object.id)
       result.value = { type: 'Note', note }
+      loadThread(api, note.id)
     } else if (res.type === 'User' && res.object?.id) {
       result.value = {
         type: 'User',
@@ -161,6 +255,176 @@ async function performLookup() {
     error.value = '照会できませんでした'
   } finally {
     isLoading.value = false
+  }
+}
+
+/** ノート照会後にスレッド（ancestors / children）をバックグラウンドで取得 */
+async function loadThread(api: MisskeyApi, noteId: string) {
+  try {
+    const [conv, replies] = await Promise.all([
+      api.getNoteConversation(noteId).catch(() => [] as NormalizedNote[]),
+      api.getNoteChildren(noteId).catch(() => [] as NormalizedNote[]),
+    ])
+    ancestors.value = conv.reverse()
+    children.value = replies
+  } catch {
+    // スレッド取得失敗は無視（ノート自体は表示済み）
+  }
+}
+
+async function performLookupCrossAccount(q: string) {
+  isLoading.value = true
+  error.value = null
+  result.value = null
+  ancestors.value = []
+  children.value = []
+  mergedThread.value = null
+  isProbing.value = false
+  probeProgress.value = 0
+
+  const accounts = accountsStore.accounts.filter((a) => a.hasToken)
+  if (accounts.length === 0) {
+    error.value = 'ログイン済みアカウントがありません'
+    isLoading.value = false
+    return
+  }
+
+  // ユーザー照会は cross-account 非対応（ノート専用）
+  if (parseUserQuery(q)) {
+    error.value = 'ユーザー照会は単一アカウントモードで行ってください'
+    isLoading.value = false
+    return
+  }
+
+  const focalUri = q
+  const allFragments: ThreadFragment[] = []
+
+  // Phase 1: ローカル DB 横断検索（即座）
+  try {
+    const cached = unwrap(
+      await commands.apiFindNotesByUri(focalUri),
+    ) as unknown as NormalizedNote[]
+    if (cached.length > 0) {
+      for (const note of cached) {
+        allFragments.push({ note, sourceAccountId: note._accountId })
+      }
+      mergedThread.value = mergeThreadFragments(allFragments, focalUri)
+      isLoading.value = false
+    }
+  } catch {
+    // DB 検索失敗は無視（Phase 2 で照会する）
+  }
+
+  // Phase 2: 全アカウントで ap/show 並列照会
+  let completed = 0
+  isProbing.value = true
+
+  const results = await mapWithConcurrency(
+    accounts,
+    async (acc) => {
+      const fragments: ThreadFragment[] = []
+      try {
+        const adapter = await multiAdapters.getOrCreate(acc.id)
+        if (!adapter) return fragments
+
+        // ap/show でノートを解決
+        let localNoteId: string | null = null
+
+        // 同一サーバーの URL ならパースして直接取得
+        const parsed = parseNoteUrl(q)
+        if (parsed && parsed.host === acc.host) {
+          localNoteId = parsed.noteId
+        } else {
+          const apResult = unwrap(
+            await commands.apiApShow(acc.id, focalUri),
+          ) as unknown as {
+            type: string
+            object?: { id: string }
+          }
+          if (apResult.type === 'Note' && apResult.object?.id) {
+            localNoteId = apResult.object.id
+          }
+        }
+
+        if (!localNoteId) return fragments
+
+        // ノート + スレッドを取得
+        const [note, conv, replies] = await Promise.all([
+          adapter.api.getNote(localNoteId),
+          adapter.api
+            .getNoteConversation(localNoteId)
+            .catch(() => [] as NormalizedNote[]),
+          adapter.api
+            .getNoteChildren(localNoteId)
+            .catch(() => [] as NormalizedNote[]),
+        ])
+
+        fragments.push({ note, sourceAccountId: acc.id })
+        for (const n of conv) {
+          fragments.push({ note: n, sourceAccountId: acc.id })
+        }
+        for (const n of replies) {
+          fragments.push({ note: n, sourceAccountId: acc.id })
+        }
+      } catch {
+        // このアカウントでは照会失敗 — 正常（サーバーに到達していない等）
+      } finally {
+        completed++
+        probeProgress.value = completed / accounts.length
+
+        // プログレッシブ更新
+        if (fragments.length > 0) {
+          allFragments.push(...fragments)
+          mergedThread.value = mergeThreadFragments(allFragments, focalUri)
+          // 最初の結果が来たらローディング解除
+          if (isLoading.value) isLoading.value = false
+        }
+      }
+      return fragments
+    },
+    3,
+  )
+
+  isProbing.value = false
+  isLoading.value = false
+
+  if (allFragments.length === 0) {
+    error.value = '照会できませんでした'
+  }
+}
+
+/** cross-account 時: note._accountId でアダプタを逆引きして操作 */
+async function handleReactionCrossAccount(
+  reaction: string,
+  target: NormalizedNote,
+) {
+  const adapter = await multiAdapters.getOrCreate(target._accountId)
+  if (!adapter) return
+  const { toggleReaction } = await import('@/utils/toggleReaction')
+  try {
+    await toggleReaction(adapter.api, target, reaction)
+  } catch {
+    // ignore
+  }
+}
+
+async function handleRenoteCrossAccount(target: NormalizedNote) {
+  const adapter = await multiAdapters.getOrCreate(target._accountId)
+  if (!adapter) return
+  try {
+    await adapter.api.createNote({ renoteId: target.id })
+  } catch {
+    // ignore
+  }
+}
+
+async function handleDeleteCrossAccount(target: NormalizedNote) {
+  const adapter = await multiAdapters.getOrCreate(target._accountId)
+  if (!adapter) return
+  try {
+    await adapter.api.deleteNote(target.id)
+  } catch {
+    // ignore
   }
 }
 
@@ -233,8 +497,18 @@ async function handleDelete(target: NormalizedNote) {
   const api = new MisskeyApi(accountId, acc.host, acc.hasToken)
   try {
     await api.deleteNote(target.id)
-    if (result.value?.type === 'Note' && result.value.note.id === target.id) {
+    const id = target.id
+    if (result.value?.type === 'Note' && result.value.note.id === id) {
       result.value = null
+      ancestors.value = []
+      children.value = []
+    } else {
+      children.value = children.value.filter(
+        (n) => n.id !== id && n.renoteId !== id,
+      )
+      ancestors.value = ancestors.value.filter(
+        (n) => n.id !== id && n.renoteId !== id,
+      )
     }
   } catch {
     // ignore
@@ -306,7 +580,10 @@ async function handlePosted(editedNoteId?: string) {
     </template>
 
     <template #header-meta>
-      <div v-if="account" :class="$style.headerAccount">
+      <div v-if="isCrossAccount" :class="$style.headerAccount">
+        <i class="ti ti-git-merge" :class="$style.headerCrossIcon" />
+      </div>
+      <div v-else-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
@@ -333,31 +610,93 @@ async function handlePosted(editedNoteId?: string) {
       </div>
     </template>
 
-    <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
+    <!-- ===== Cross-account mode ===== -->
+    <template v-if="isCrossAccount">
+      <div v-if="isLoading && !mergedThread" :class="$style.columnLoading">
+        <LoadingSpinner />
+      </div>
 
-    <div v-else-if="isLoading" :class="$style.columnLoading">
-      <LoadingSpinner />
-    </div>
+      <ColumnEmptyState v-else-if="error" :message="error" is-error :image-url="serverErrorImageUrl" />
 
-    <ColumnEmptyState v-else-if="error" :message="error" is-error :image-url="serverErrorImageUrl" />
+      <ColumnEmptyState v-else-if="!mergedThread" message="URLを入力して照会" :image-url="serverInfoImageUrl" />
 
-    <ColumnEmptyState v-else-if="!result" message="URLまたは@ユーザー名を入力して照会" :image-url="serverInfoImageUrl" />
+      <div v-else ref="lookupResultRef" :class="$style.lookupResult">
+        <div v-if="isProbing" :class="$style.probeProgress">
+          <div :class="$style.probeBar" :style="{ width: probeProgress * 100 + '%' }" />
+        </div>
+        <div v-if="mergedThread.ancestors.length > 0" :class="$style.ancestors">
+          <MkNote
+            v-for="node in mergedThread.ancestors"
+            :key="getNoteUri(node.note)"
+            :note="node.note"
+            @react="handleReactionCrossAccount"
+            @renote="handleRenoteCrossAccount"
+            @delete="handleDeleteCrossAccount"
+          />
+        </div>
+        <MkNote
+          :note="mergedThread.focal.note"
+          detailed
+          @react="handleReactionCrossAccount"
+          @renote="handleRenoteCrossAccount"
+          @delete="handleDeleteCrossAccount"
+        />
+        <MkNoteTree
+          v-if="mergedThread.children.length > 0"
+          :nodes="mergedChildrenTree"
+          :account-id="mergedThread.focal.note._accountId"
+          :handlers="crossAccountTreeHandlers"
+        />
+      </div>
+    </template>
 
-    <div v-else-if="result.type === 'Note'" ref="lookupResultRef" :class="$style.lookupResult">
-      <MkNote
-        :note="result.note"
-        detailed
-        @react="handleReaction"
-        @reply="handleReply"
-        @renote="handleRenote"
-        @quote="handleQuote"
-        @delete="handleDelete"
-        @edit="handleEdit"
-        @delete-and-edit="handleDeleteAndEdit"
-      />
-    </div>
+    <!-- ===== Per-account mode ===== -->
+    <template v-else>
+      <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
 
-    <div v-else-if="result.type === 'User'" ref="lookupResultRef" :class="$style.lookupResult">
+      <div v-else-if="isLoading" :class="$style.columnLoading">
+        <LoadingSpinner />
+      </div>
+
+      <ColumnEmptyState v-else-if="error" :message="error" is-error :image-url="serverErrorImageUrl" />
+
+      <ColumnEmptyState v-else-if="!result" message="URLまたは@ユーザー名を入力して照会" :image-url="serverInfoImageUrl" />
+
+      <div v-else-if="result.type === 'Note'" ref="lookupResultRef" :class="$style.lookupResult">
+        <div v-if="ancestors.length > 0" :class="$style.ancestors">
+          <MkNote
+            v-for="ancestor in ancestors"
+            :key="ancestor.id"
+            :note="ancestor"
+            @react="handleReaction"
+            @reply="handleReply"
+            @renote="handleRenote"
+            @quote="handleQuote"
+            @delete="handleDelete"
+            @edit="handleEdit"
+            @delete-and-edit="handleDeleteAndEdit"
+          />
+        </div>
+        <MkNote
+          :note="result.note"
+          detailed
+          @react="handleReaction"
+          @reply="handleReply"
+          @renote="handleRenote"
+          @quote="handleQuote"
+          @delete="handleDelete"
+          @edit="handleEdit"
+          @delete-and-edit="handleDeleteAndEdit"
+        />
+        <MkNoteTree
+          v-if="childrenTree.length > 0 && column.accountId"
+          :nodes="childrenTree"
+          :account-id="column.accountId"
+          :handlers="treeHandlers"
+        />
+      </div>
+
+      <div v-else-if="result.type === 'User'" ref="lookupResultRef" :class="$style.lookupResult">
       <button class="_button" :class="$style.lookupUserCard" @click="openUser">
         <img v-if="result.user.avatarUrl" :src="result.user.avatarUrl" :class="$style.lookupUserAvatar" />
         <div :class="$style.lookupUserInfo">
@@ -368,7 +707,8 @@ async function handlePosted(editedNoteId?: string) {
         </div>
         <i class="ti ti-chevron-right" :class="$style.lookupUserArrow" />
       </button>
-    </div>
+      </div>
+    </template>
   </DeckColumn>
 
   <div v-if="showPostForm && column.accountId" ref="postPortalRef">
@@ -449,6 +789,27 @@ async function handlePosted(editedNoteId?: string) {
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
 }
+
+.ancestors {
+  opacity: 0.85;
+}
+
+.probeProgress {
+  height: 2px;
+  background: var(--nd-divider);
+}
+
+.probeBar {
+  height: 100%;
+  background: var(--nd-accent);
+  transition: width 0.3s ease;
+}
+
+.headerCrossIcon {
+  font-size: 0.9em;
+  opacity: 0.7;
+}
+
 
 .lookupUserCard {
   display: flex;

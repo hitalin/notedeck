@@ -496,6 +496,14 @@ async apiSearchNotesLocal(accountId: string, query: string, limit: number | null
     else return { status: "error", error: e  as any };
 }
 },
+async apiFindNotesByUri(uri: string) : Promise<Result<NormalizedNote[], { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_find_notes_by_uri", { uri }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async apiPinNote(accountId: string, noteId: string) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_pin_note", { accountId, noteId }) };
