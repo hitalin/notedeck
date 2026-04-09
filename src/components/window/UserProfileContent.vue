@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { json } from '@codemirror/lang-json'
 import {
   computed,
   defineAsyncComponent,
@@ -16,6 +17,8 @@ import type {
   ServerAdapter,
   UserList,
 } from '@/adapters/types'
+import type { JsonValue } from '@/bindings'
+import EditorTabs from '@/components/common/EditorTabs.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
@@ -25,7 +28,12 @@ import PopupMenu from '@/components/common/PopupMenu.vue'
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
+const CodeEditor = defineAsyncComponent(
+  () => import('@/components/deck/widgets/CodeEditor.vue'),
+)
 
+import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
+import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useNavigation } from '@/composables/useNavigation'
 import { usePortal } from '@/composables/usePortal'
 import { useAccountsStore } from '@/stores/accounts'
@@ -69,6 +77,13 @@ const PROFILE_TABS: { key: ProfileTab; label: string; icon: string }[] = [
   { key: 'all', label: '全て', icon: 'ti ti-notebook' },
   { key: 'files', label: 'ファイル付き', icon: 'ti ti-photo' },
 ]
+const jsonLang = json()
+
+// Top-level editor-style tabs (overview = current profile, raw = JSON view)
+const { tab: topTab, containerRef: profileRef } = useEditorTabs(
+  ['overview', 'raw'] as const,
+  'overview',
+)
 
 const user = ref<NormalizedUserDetail | null>(null)
 const canSeeFollowing = computed(() => {
@@ -99,6 +114,79 @@ const account = computed(() =>
   accountsStore.accounts.find((a) => a.id === props.accountId),
 )
 const isOwnProfile = computed(() => account.value?.userId === props.userId)
+
+// Raw tab: unmodified users/show API response.
+// When viewing own profile, Misskey returns MeDetailed schema which includes
+// sensitive fields (email, mutedWords, 2FA status, etc.). Mask them by default
+// and expose a reveal toggle so copy/screenshots stay safe unless opted in.
+const SENSITIVE_RAW_KEYS = new Set<string>([
+  // Account / security
+  'email',
+  'emailVerified',
+  'twoFactorEnabled',
+  'twoFactorBackupCodesStock',
+  'securityKeys',
+  'securityKeysList',
+  'usePasswordLessLogin',
+  // Mute / block preferences
+  'mutedWords',
+  'hardMutedWords',
+  'mutedInstances',
+  'mutingNotificationTypes',
+  // Notification / email preferences
+  'emailNotificationTypes',
+  'receiveAnnouncementEmail',
+  // Role / policies
+  'policies',
+  // Unread counters (behavior inference)
+  'hasUnreadAnnouncement',
+  'hasUnreadAntenna',
+  'hasUnreadChannel',
+  'hasUnreadMentions',
+  'hasUnreadNotification',
+  'hasUnreadSpecifiedNotes',
+  'unreadAnnouncements',
+  'unreadNotificationsCount',
+  // Personal content preferences
+  'alwaysMarkNsfw',
+  'autoSensitive',
+  'noCrawle',
+  'preventAiLearning',
+  'injectFeaturedNote',
+  'loggedInDays',
+  'hasPendingReceivedFollowRequest',
+  'achievements',
+])
+
+function maskSensitive(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(maskSensitive)
+  if (value && typeof value === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      result[k] = SENSITIVE_RAW_KEYS.has(k) ? '<hidden>' : maskSensitive(v)
+    }
+    return result
+  }
+  return value
+}
+
+const rawUserObj = shallowRef<unknown>(null)
+const isLoadingRaw = ref(false)
+const rawError = ref<string | null>(null)
+const showSensitive = ref(false)
+const { copied: rawCopied, copyToClipboard } = useClipboardFeedback()
+
+const isMaskingActive = computed(
+  () => isOwnProfile.value && !showSensitive.value,
+)
+
+const displayedRawJson = computed(() => {
+  if (rawUserObj.value == null) return ''
+  const obj = isMaskingActive.value
+    ? maskSensitive(rawUserObj.value)
+    : rawUserObj.value
+  return JSON.stringify(obj, null, 2)
+})
 const remoteProfileUrl = computed(() => {
   if (!user.value?.host) return null
   return user.value.url || `https://${user.value.host}/@${user.value.username}`
@@ -220,8 +308,35 @@ async function loadMoreNotes() {
   }
 }
 
+async function loadRawUserJson() {
+  if (rawUserObj.value != null) return
+  isLoadingRaw.value = true
+  rawError.value = null
+  try {
+    rawUserObj.value = unwrap(
+      await commands.apiRequest(props.accountId, 'users/show', {
+        userId: props.userId,
+      } as Record<string, JsonValue>),
+    )
+  } catch (e) {
+    rawError.value = AppError.from(e).message
+  } finally {
+    isLoadingRaw.value = false
+  }
+}
+
 watch(activeTab, () => {
   loadTabNotes()
+})
+
+// Auto-reset the sensitive-reveal flag when leaving the Raw tab so a casual
+// screen share / screenshot later can't accidentally leak secrets.
+watch(topTab, (tab) => {
+  if (tab === 'raw') {
+    loadRawUserJson()
+  } else {
+    showSensitive.value = false
+  }
 })
 
 let lastScrollCheck = 0
@@ -554,7 +669,7 @@ async function handlePosted(editedNoteId?: string) {
 </script>
 
 <template>
-  <div :class="$style.userProfileContent" @scroll.passive="onScroll">
+  <div :class="$style.userProfileContent">
     <div v-if="isLoading" :class="$style.stateMessage"><LoadingSpinner /></div>
 
     <div v-else-if="error" :class="[$style.stateMessage, $style.stateError]">
@@ -562,6 +677,16 @@ async function handlePosted(editedNoteId?: string) {
     </div>
 
     <template v-else-if="user">
+      <EditorTabs
+        v-model="topTab"
+        :tabs="[
+          { value: 'overview', icon: 'home', label: '概要' },
+          { value: 'raw', icon: 'code', label: 'Raw' },
+        ]"
+      />
+
+      <div ref="profileRef" :class="$style.tabContent" @scroll.passive="onScroll">
+        <div v-show="topTab === 'overview'">
       <!-- Remote user caution -->
       <div v-if="user.host" :class="$style.remoteCaution">
         <i class="ti ti-alert-triangle" style="margin-right: 8px;" />
@@ -780,6 +905,52 @@ async function handlePosted(editedNoteId?: string) {
           </div>
         </div>
       </div>
+        </div>
+
+        <div v-show="topTab === 'raw'" :class="$style.rawPane">
+          <div :class="$style.rawHeader">
+            <button
+              v-if="isOwnProfile"
+              class="_button"
+              :class="[$style.rawActionBtn, { [$style.rawRevealActive]: showSensitive }]"
+              :disabled="isLoadingRaw || !rawUserObj"
+              :title="showSensitive ? '機密情報を隠す' : '機密情報を表示'"
+              @click="showSensitive = !showSensitive"
+            >
+              <i :class="showSensitive ? 'ti ti-eye-off' : 'ti ti-eye'" />
+              {{ showSensitive ? '隠す' : '機密を表示' }}
+            </button>
+            <button
+              class="_button"
+              :class="$style.rawActionBtn"
+              :disabled="!displayedRawJson || isLoadingRaw"
+              :title="rawCopied ? 'コピーしました' : '表示中の JSON をコピー'"
+              @click="copyToClipboard(displayedRawJson)"
+            >
+              <i :class="rawCopied ? 'ti ti-check' : 'ti ti-copy'" />
+              {{ rawCopied ? 'コピーしました' : 'コピー' }}
+            </button>
+          </div>
+
+          <div v-if="isLoadingRaw" :class="$style.stateMessage">
+            <LoadingSpinner />
+          </div>
+          <div
+            v-else-if="rawError"
+            :class="[$style.stateMessage, $style.stateError]"
+          >
+            {{ rawError }}
+          </div>
+          <CodeEditor
+            v-else-if="displayedRawJson"
+            :model-value="displayedRawJson"
+            :language="jsonLang"
+            :read-only="true"
+            :auto-height="true"
+            :class="$style.rawCodeEditor"
+          />
+        </div>
+      </div>
     </template>
 
     <div ref="portalRef">
@@ -910,10 +1081,19 @@ async function handlePosted(editedNoteId?: string) {
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
 .userProfileContent {
-  height: 100%;
-  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--nd-bg);
+}
+
+.tabContent {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .profileContainer {
@@ -1214,6 +1394,41 @@ async function handlePosted(editedNoteId?: string) {
   opacity: 1;
 }
 
+.rawPane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.rawHeader {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.rawActionBtn {
+  @include btn-secondary;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  &.rawRevealActive {
+    background: var(--nd-love-subtle);
+    color: var(--nd-love);
+
+    &:hover {
+      background: var(--nd-love-hover);
+    }
+  }
+}
+
+.rawCodeEditor {
+  min-height: 300px;
+}
+
 .badge {
   font-size: 0.75em;
   padding: 2px 8px;
@@ -1479,4 +1694,5 @@ async function handlePosted(editedNoteId?: string) {
 /* Empty placeholder classes for dynamic binding */
 .active {}
 .following {}
+.rawRevealActive {}
 </style>
