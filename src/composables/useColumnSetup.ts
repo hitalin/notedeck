@@ -8,6 +8,7 @@ import type {
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { useScrollDirection } from '@/composables/useScrollDirection'
+import { useServerImages } from '@/composables/useServerImages'
 import type { DeckColumn } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
 import { useOfflineModeStore } from '@/stores/offlineMode'
@@ -43,6 +44,8 @@ export function useColumnSetup(
   const { account, columnThemeVars } = useColumnTheme(getColumn)
 
   const serverIconUrl = ref<string | undefined>()
+  const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
+    useServerImages(getColumn)
 
   const isLoading = ref(false)
   const error = ref<AppError | null>(null)
@@ -270,6 +273,9 @@ export function useColumnSetup(
     account,
     columnThemeVars,
     serverIconUrl,
+    serverInfoImageUrl,
+    serverNotFoundImageUrl,
+    serverErrorImageUrl,
     isLoading,
     error,
     // Adapter lifecycle

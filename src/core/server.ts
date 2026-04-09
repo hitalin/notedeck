@@ -35,6 +35,9 @@ export async function detectServer(host: string): Promise<ServerInfo> {
     features: detectFeatures(software, nodeinfo.software.version),
     iconUrl: serverMeta.iconUrl,
     themeColor: serverMeta.themeColor,
+    infoImageUrl: serverMeta.infoImageUrl,
+    notFoundImageUrl: serverMeta.notFoundImageUrl,
+    serverErrorImageUrl: serverMeta.serverErrorImageUrl,
   }
 }
 
@@ -42,9 +45,20 @@ async function fetchNodeInfo(host: string): Promise<NodeInfo> {
   return unwrap(await commands.fetchNodeinfo(host)) as unknown as NodeInfo
 }
 
-async function fetchServerMeta(
-  host: string,
-): Promise<{ iconUrl: string; themeColor: string | null }> {
+interface ServerMetaResult {
+  iconUrl: string
+  themeColor: string | null
+  infoImageUrl?: string
+  notFoundImageUrl?: string
+  serverErrorImageUrl?: string
+}
+
+function resolveUrl(host: string, raw: unknown): string | undefined {
+  if (typeof raw !== 'string' || !raw) return undefined
+  return raw.startsWith('http') ? raw : `https://${host}${raw}`
+}
+
+async function fetchServerMeta(host: string): Promise<ServerMetaResult> {
   try {
     const data = unwrap(await commands.fetchServerMeta(host)) as Record<
       string,
@@ -58,7 +72,13 @@ async function fetchServerMeta(
       : `https://${host}/favicon.ico`
     const themeColor =
       typeof data.themeColor === 'string' ? data.themeColor : null
-    return { iconUrl, themeColor }
+    return {
+      iconUrl,
+      themeColor,
+      infoImageUrl: resolveUrl(host, data.infoImageUrl),
+      notFoundImageUrl: resolveUrl(host, data.notFoundImageUrl),
+      serverErrorImageUrl: resolveUrl(host, data.serverErrorImageUrl),
+    }
   } catch {
     return { iconUrl: `https://${host}/favicon.ico`, themeColor: null }
   }

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useServerImages } from '@/composables/useServerImages'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
@@ -31,6 +33,8 @@ const props = defineProps<{
 }>()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
+  useServerImages(() => props.column)
 const serversStore = useServersStore()
 
 const isLoggedOut = computed(() => account.value?.hasToken === false)
@@ -124,21 +128,21 @@ onUnmounted(() => {
       </div>
     </template>
 
-    <div v-if="!account" :class="$style.columnEmpty">
-      アカウントが見つかりません
-    </div>
+    <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
 
-    <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error.isAuth ? AUTH_ERROR_MESSAGE : error.message }}
-    </div>
+    <ColumnEmptyState
+      v-else-if="error && !isLoggedOut"
+      :message="error.isAuth ? AUTH_ERROR_MESSAGE : error.message"
+      :image-url="serverErrorImageUrl"
+      is-error
+    />
 
     <div v-else :class="$style.announcementsBody">
-      <div
+      <ColumnEmptyState
         v-if="announcements.length === 0 && !isLoading"
-        :class="$style.columnEmpty"
-      >
-        お知らせはありません
-      </div>
+        message="お知らせはありません"
+        :image-url="serverInfoImageUrl"
+      />
 
       <div v-else ref="scrollContainer" :class="$style.announcementsScroller">
         <div

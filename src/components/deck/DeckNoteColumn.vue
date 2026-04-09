@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, useTemplateRef } from 'vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
@@ -21,20 +22,33 @@ import { useOfflineModeStore } from '@/stores/offlineMode'
 import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import DeckColumn from './DeckColumn.vue'
 
-const props = defineProps<{
-  column: DeckColumnType
-  title: string
-  icon: string
-  webUiPath?: string
-  soundEnabled?: boolean
-  showInlinePostForm?: boolean
-  noteColumnConfig: NoteColumnConfig
-}>()
+const props = withDefaults(
+  defineProps<{
+    column: DeckColumnType
+    title: string
+    icon: string
+    webUiPath?: string
+    soundEnabled?: boolean
+    showInlinePostForm?: boolean
+    noteColumnConfig: NoteColumnConfig
+    /** 空状態のメッセージ（デフォルト: まだノートがありません） */
+    emptyMessage?: string
+    /** 空状態に「ノートを書く」CTA を表示するか */
+    showEmptyCta?: boolean
+  }>(),
+  {
+    emptyMessage: 'まだノートがありません',
+    showEmptyCta: false,
+  },
+)
 
 const {
   account,
   columnThemeVars,
   serverIconUrl,
+  serverInfoImageUrl,
+  serverNotFoundImageUrl,
+  serverErrorImageUrl,
   isLoading,
   isOffline,
   isLoggedOut,
@@ -83,6 +97,9 @@ defineExpose({
   switchWithSnapshot,
   notes,
   columnThemeVars,
+  serverInfoImageUrl,
+  serverNotFoundImageUrl,
+  serverErrorImageUrl,
 })
 </script>
 
@@ -126,16 +143,18 @@ defineExpose({
       <slot name="menu-items" :close-menu="closeMenu" />
     </template>
 
-    <div v-if="!account" :class="$style.columnEmpty">
-      アカウントが見つかりません
-    </div>
+    <ColumnEmptyState
+      v-if="!account"
+      :message="'アカウントが見つかりません'"
+      :image-url="serverNotFoundImageUrl"
+    />
 
-    <div
+    <ColumnEmptyState
       v-else-if="error"
-      :class="[$style.columnEmpty, $style.columnError]"
-    >
-      {{ error.message }}
-    </div>
+      :message="error.message"
+      :image-url="serverErrorImageUrl"
+      is-error
+    />
 
     <div v-else :class="$style.tlBody">
       <div
@@ -168,7 +187,16 @@ defineExpose({
         <LoadingSpinner />
       </div>
 
-      <template v-if="!(isLoading && notes.length === 0)">
+      <ColumnEmptyState
+        v-if="!isLoading && notes.length === 0"
+        :message="emptyMessage"
+        :image-url="serverInfoImageUrl"
+        :cta-label="showEmptyCta && account?.hasToken ? 'ノートを書く' : undefined"
+        cta-icon="ti-pencil"
+        @cta="postForm.show.value = true"
+      />
+
+      <template v-if="!(isLoading && notes.length === 0) && notes.length > 0">
         <button
           v-if="pendingCount > 0"
           :class="$style.newNotesBanner"

@@ -26,7 +26,14 @@ export const useServersStore = defineStore('servers', () => {
   function parseStoredServer(stored: StoredServer): ServerInfo | null {
     const parsed = JSON.parse(stored.featuresJson)
     if (!parsed) return null
-    const { _iconUrl, _themeColor, ...features } = parsed
+    const {
+      _iconUrl,
+      _themeColor,
+      _infoImageUrl,
+      _notFoundImageUrl,
+      _serverErrorImageUrl,
+      ...features
+    } = parsed
     const info: ServerInfo = {
       host: stored.host,
       software: toServerSoftware(stored.software),
@@ -35,6 +42,10 @@ export const useServersStore = defineStore('servers', () => {
     }
     if ('_iconUrl' in parsed) info.iconUrl = _iconUrl
     if ('_themeColor' in parsed) info.themeColor = _themeColor
+    if ('_infoImageUrl' in parsed) info.infoImageUrl = _infoImageUrl
+    if ('_notFoundImageUrl' in parsed) info.notFoundImageUrl = _notFoundImageUrl
+    if ('_serverErrorImageUrl' in parsed)
+      info.serverErrorImageUrl = _serverErrorImageUrl
     return info
   }
 
@@ -54,6 +65,9 @@ export const useServersStore = defineStore('servers', () => {
           ...info.features,
           _iconUrl: info.iconUrl,
           _themeColor: info.themeColor,
+          _infoImageUrl: info.infoImageUrl,
+          _notFoundImageUrl: info.notFoundImageUrl,
+          _serverErrorImageUrl: info.serverErrorImageUrl,
         }),
         updatedAt: Date.now(),
       }),
@@ -83,7 +97,13 @@ export const useServersStore = defineStore('servers', () => {
 
   async function getServerInfo(host: string): Promise<ServerInfo> {
     const cached = servers.value.get(host)
-    if (cached) return cached
+    if (cached) {
+      // インメモリキャッシュに画像 URL がない場合はバックグラウンド更新
+      if (cached.infoImageUrl === undefined) {
+        revalidateInBackground(host)
+      }
+      return cached
+    }
 
     const inflight = pending.get(host)
     if (inflight) return inflight
@@ -95,7 +115,11 @@ export const useServersStore = defineStore('servers', () => {
         const info = parseStoredServer(stored)
         if (info) {
           setServer(host, info)
-          if (Date.now() - stored.updatedAt >= CACHE_TTL_MS) {
+          // 古いキャッシュ or 画像 URL が未取得の場合はバックグラウンド更新
+          const needsRefresh =
+            Date.now() - stored.updatedAt >= CACHE_TTL_MS ||
+            info.infoImageUrl === undefined
+          if (needsRefresh) {
             revalidateInBackground(host)
           }
           return info

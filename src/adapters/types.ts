@@ -22,6 +22,10 @@ export interface ServerInfo {
   features: ServerFeatures
   iconUrl?: string
   themeColor?: string | null
+  /** Misskey /api/meta から取得するカスタム画像 URL（サーバーごとに異なる） */
+  infoImageUrl?: string
+  notFoundImageUrl?: string
+  serverErrorImageUrl?: string
 }
 
 export interface ServerFeatures {

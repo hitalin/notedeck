@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ServerEmoji } from '@/adapters/types'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import {
   type GridGroup,
   useGridVirtualizer,
 } from '@/composables/useGridVirtualizer'
+import { useServerImages } from '@/composables/useServerImages'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'
@@ -28,6 +30,8 @@ const account = computed(() =>
 )
 
 const { columnThemeVars } = useColumnTheme(() => props.column)
+const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
+  useServerImages(() => props.column)
 
 const serverIconUrl = ref<string | undefined>()
 const isLoading = ref(false)
@@ -190,13 +194,9 @@ function getRowItems(index: number): ServerEmoji[] {
       </div>
     </template>
 
-    <div v-if="!account" :class="$style.columnEmpty">
-      アカウントが見つかりません
-    </div>
+    <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
 
-    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error.message }}
-    </div>
+    <ColumnEmptyState v-else-if="error" :message="error.message" is-error :image-url="serverErrorImageUrl" />
 
     <div v-else :class="$style.emojiBody">
       <!-- Search -->
@@ -231,9 +231,7 @@ function getRowItems(index: number): ServerEmoji[] {
         </button>
       </div>
 
-      <div v-if="filteredEmojis.length === 0 && !isLoading" :class="$style.columnEmpty">
-        絵文字が見つかりません
-      </div>
+      <ColumnEmptyState v-if="filteredEmojis.length === 0 && !isLoading" message="絵文字が見つかりません" :image-url="serverInfoImageUrl" />
 
       <!-- Virtualized emoji grid -->
       <div v-else ref="scrollContainer" :class="$style.emojiScroller">

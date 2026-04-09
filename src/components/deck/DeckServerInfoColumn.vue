@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import DOMPurify from 'dompurify'
 import { computed, onMounted, ref } from 'vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useServerImages } from '@/composables/useServerImages'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
@@ -51,6 +53,8 @@ const account = computed(() =>
 )
 
 const { columnThemeVars } = useColumnTheme(() => props.column)
+const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
+  useServerImages(() => props.column)
 
 const serverIconUrl = ref<string | undefined>()
 const isLoading = ref(false)
@@ -154,13 +158,9 @@ onMounted(() => {
       </div>
     </template>
 
-    <div v-if="!account" :class="$style.columnEmpty">
-      アカウントが見つかりません
-    </div>
+    <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
 
-    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error.message }}
-    </div>
+    <ColumnEmptyState v-else-if="error" :message="error.message" is-error :image-url="serverErrorImageUrl" />
 
     <div v-else-if="meta" ref="scrollContainer" :class="$style.serverInfoBody">
       <!-- Banner (Misskey style: bg image + icon overlay + gradient name) -->
@@ -351,9 +351,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-else :class="$style.columnEmpty">
-      サーバー情報を取得できませんでした
-    </div>
+    <ColumnEmptyState v-else message="サーバー情報を取得できませんでした" :image-url="serverInfoImageUrl" />
   </DeckColumn>
 </template>
 

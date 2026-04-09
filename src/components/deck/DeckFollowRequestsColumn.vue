@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import type { NormalizedUser } from '@/adapters/types'
-import AvatarStack from '@/components/common/AvatarStack.vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNavigation } from '@/composables/useNavigation'
+import { useServerImages } from '@/composables/useServerImages'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
@@ -33,6 +34,8 @@ const { navigateToUser: navToUser } = useNavigation()
 const serversStore = useServersStore()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
+  useServerImages(() => props.column)
 const isLoggedOut = computed(() => account.value?.hasToken === false)
 const toast = useToast()
 
@@ -168,30 +171,27 @@ onMounted(() => {
     </template>
 
     <template #header-meta>
-      <!-- Cross-account: AvatarStack -->
-      <AvatarStack v-if="isCrossAccount" :size="20" />
-      <!-- Single-account: account avatar + favicon -->
-      <div v-else-if="account" :class="$style.headerAccount">
+      <div v-if="!isCrossAccount && account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
     </template>
 
-    <div v-if="!isCrossAccount && !account" :class="$style.columnEmpty">
-      アカウントが見つかりません
-    </div>
+    <ColumnEmptyState v-if="!isCrossAccount && !account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
 
-    <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error.isAuth ? AUTH_ERROR_MESSAGE : error.message }}
-    </div>
+    <ColumnEmptyState
+      v-else-if="error && !isLoggedOut"
+      :message="error.isAuth ? AUTH_ERROR_MESSAGE : error.message"
+      is-error
+      :image-url="serverErrorImageUrl"
+    />
 
     <div v-else :class="$style.frBody">
-      <div
+      <ColumnEmptyState
         v-if="requests.length === 0 && !isLoading"
-        :class="$style.columnEmpty"
-      >
-        フォローリクエストはありません
-      </div>
+        message="フォローリクエストはありません"
+        :image-url="serverInfoImageUrl"
+      />
 
       <div v-else ref="scrollContainer" :class="$style.frScroller">
         <div
