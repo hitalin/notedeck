@@ -24,6 +24,7 @@ import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import PopupMenu from '@/components/common/PopupMenu.vue'
+import UserProfileFileGrid from '@/components/window/UserProfileFileGrid.vue'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -79,9 +80,9 @@ const PROFILE_TABS: { key: ProfileTab; label: string; icon: string }[] = [
 ]
 const jsonLang = json()
 
-// Top-level editor-style tabs (overview = current profile, notes = notes only, raw = JSON view)
+// Top-level editor-style tabs (overview / notes / files grid / raw JSON)
 const { tab: topTab, containerRef: profileRef } = useEditorTabs(
-  ['overview', 'notes', 'raw'] as const,
+  ['overview', 'notes', 'files', 'raw'] as const,
   'overview',
 )
 
@@ -109,6 +110,12 @@ const isLoading = ref(true)
 const isLoadingNotes = ref(false)
 const hasMoreNotes = ref(true)
 const error = ref<AppError | null>(null)
+
+// Files top-tab (image/video grid). 内タブの activeTab='files' とは別物。
+const filesNotes = shallowRef<NormalizedNote[]>([])
+const isLoadingFiles = ref(false)
+const hasMoreFiles = ref(true)
+const filesLoaded = ref(false)
 
 const account = computed(() =>
   accountsStore.accounts.find((a) => a.id === props.accountId),
@@ -325,6 +332,48 @@ async function loadRawUserJson() {
   }
 }
 
+async function loadFilesTab() {
+  if (!adapter || filesLoaded.value) return
+  filesLoaded.value = true
+  isLoadingFiles.value = true
+  try {
+    const fetched = await adapter.api.getUserNotes(props.userId, {
+      limit: 20,
+      withFiles: true,
+    })
+    filesNotes.value = fetched
+    hasMoreFiles.value = fetched.length > 0
+  } catch (e) {
+    error.value = AppError.from(e)
+  } finally {
+    isLoadingFiles.value = false
+  }
+}
+
+async function loadMoreFilesTab() {
+  if (!adapter || isLoadingFiles.value || !hasMoreFiles.value) return
+  if (filesNotes.value.length >= MAX_PROFILE_NOTES) return
+  const last = filesNotes.value.at(-1)
+  if (!last) return
+  isLoadingFiles.value = true
+  try {
+    const older = await adapter.api.getUserNotes(props.userId, {
+      limit: 20,
+      untilId: last.id,
+      withFiles: true,
+    })
+    if (older.length === 0) {
+      hasMoreFiles.value = false
+    } else {
+      filesNotes.value = [...filesNotes.value, ...older]
+    }
+  } catch (e) {
+    error.value = AppError.from(e)
+  } finally {
+    isLoadingFiles.value = false
+  }
+}
+
 watch(activeTab, () => {
   loadTabNotes()
 })
@@ -334,6 +383,8 @@ watch(activeTab, () => {
 watch(topTab, (tab) => {
   if (tab === 'raw') {
     loadRawUserJson()
+  } else if (tab === 'files') {
+    loadFilesTab()
   } else {
     showSensitive.value = false
   }
@@ -346,7 +397,11 @@ function onScroll(e: Event) {
   lastScrollCheck = now
   const el = e.target as HTMLElement
   if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
-    loadMoreNotes()
+    if (topTab.value === 'files') {
+      loadMoreFilesTab()
+    } else {
+      loadMoreNotes()
+    }
   }
 }
 
@@ -682,6 +737,7 @@ async function handlePosted(editedNoteId?: string) {
         :tabs="[
           { value: 'overview', icon: 'home', label: '概要' },
           { value: 'notes', icon: 'pencil', label: 'ノート' },
+          { value: 'files', icon: 'photo', label: 'ファイル' },
           { value: 'raw', icon: 'code', label: 'Raw' },
         ]"
       />
@@ -909,6 +965,16 @@ async function handlePosted(editedNoteId?: string) {
           </div>
         </div>
       </div>
+        </div>
+
+        <div v-show="topTab === 'files'" :class="$style.filesPane">
+          <UserProfileFileGrid :account-id="accountId" :notes="filesNotes" />
+          <div v-if="isLoadingFiles" :class="$style.stateMessage">
+            <LoadingSpinner />
+          </div>
+          <div v-if="!isLoadingFiles && filesNotes.length === 0" :class="$style.stateMessage">
+            ファイルはありません
+          </div>
         </div>
 
         <div v-show="topTab === 'raw'" :class="$style.rawPane">
@@ -1403,6 +1469,17 @@ async function handlePosted(editedNoteId?: string) {
   flex-direction: column;
   gap: 8px;
   padding: 12px;
+}
+
+.filesPane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .rawHeader {

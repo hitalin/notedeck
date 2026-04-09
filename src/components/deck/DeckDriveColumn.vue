@@ -3,6 +3,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import MkFileGrid from '@/components/common/MkFileGrid.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import {
@@ -328,51 +329,26 @@ fetchDrive()
           </button>
 
           <!-- File grid -->
-          <div :class="$style.driveGrid">
+          <MkFileGrid
+            :files="files"
+            :select-mode="selectMode"
+            :selected-ids="selectedIds"
+            @file-click="onFileClick"
+          >
             <button
               v-if="!selectMode"
               class="_button"
-              :class="[$style.driveGridCell, $style.driveUploadCell]"
+              :class="$style.driveUploadCell"
               :disabled="uploading"
               @click="openFilePicker"
             >
-              <div :class="[$style.driveGridThumb, $style.driveUploadThumb]">
+              <div :class="$style.driveUploadThumb">
                 <i v-if="uploading" class="ti ti-loader-2 nd-spin" />
                 <i v-else class="ti ti-plus" />
               </div>
-              <div :class="$style.driveGridLabel">アップロード</div>
+              <div :class="$style.driveUploadLabel">アップロード</div>
             </button>
-            <button
-              v-for="file in files"
-              :key="file.id"
-              class="_button"
-              :class="[$style.driveGridCell, { [$style.selected]: selectMode && selectedIds.has(file.id) }]"
-              @click="onFileClick(file)"
-            >
-              <div :class="$style.driveGridThumb">
-                <img
-                  v-if="isImage(file) && !file.isSensitive"
-                  :src="safeUrl(file.thumbnailUrl) || safeUrl(file.url)"
-                  :alt="file.name"
-                  :class="$style.driveGridImg"
-                  loading="lazy"
-                />
-                <div v-else-if="file.isSensitive" :class="$style.driveGridPlaceholder">
-                  <i class="ti ti-eye-off" />
-                </div>
-                <div v-else :class="$style.driveGridPlaceholder">
-                  <i :class="isVideo(file) ? 'ti ti-video' : isAudio(file) ? 'ti ti-music' : 'ti ti-file'" />
-                </div>
-                <div v-if="isVideo(file) && !file.isSensitive" :class="$style.driveGridBadge">
-                  <i class="ti ti-player-play" />
-                </div>
-                <div v-if="selectMode" :class="[$style.driveSelectCheck, { [$style.checked]: selectedIds.has(file.id) }]">
-                  <i class="ti ti-check" />
-                </div>
-              </div>
-              <div :class="$style.driveGridLabel">{{ file.name }}</div>
-            </button>
-          </div>
+          </MkFileGrid>
         </template>
       </div>
 
@@ -488,78 +464,26 @@ fetchDrive()
   flex-shrink: 0;
 }
 
-/* --- File grid --- */
-.driveGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 2px;
-  padding: 2px;
-}
-
-.driveGridCell {
+/* --- Upload cell (file grid is provided by MkFileGrid) --- */
+.driveUploadCell {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: opacity var(--nd-duration-base);
-  contain: layout style paint;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 120px;
 
-  &:hover {
-    opacity: 0.8;
+  &:hover .driveUploadThumb {
+    opacity: 1;
+    background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
+  }
+
+  &:disabled .driveUploadThumb {
+    opacity: 0.3;
   }
 }
 
-.driveGridThumb {
+.driveUploadThumb {
   position: relative;
   aspect-ratio: 1;
-  overflow: hidden;
-  background: var(--nd-bg);
-}
-
-.driveGridImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.driveGridPlaceholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  opacity: 0.3;
-}
-
-.driveGridBadge {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--nd-overlayDark);
-  color: #fff;
-  font-size: 12px;
-}
-
-.driveGridLabel {
-  padding: 4px 6px;
-  font-size: 0.65em;
-  color: var(--nd-fg);
-  opacity: 0.7;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
-}
-
-.driveUploadThumb {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -572,15 +496,15 @@ fetchDrive()
   transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
 }
 
-.driveUploadCell {
-  &:hover .driveUploadThumb {
-    opacity: 1;
-    background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
-  }
-
-  &:disabled .driveUploadThumb {
-    opacity: 0.3;
-  }
+.driveUploadLabel {
+  padding: 4px 6px;
+  font-size: 0.65em;
+  color: var(--nd-fg);
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
 }
 
 
@@ -694,34 +618,6 @@ fetchDrive()
 .headerBtnActive {
   color: var(--nd-accent);
   opacity: 1;
-}
-
-.driveSelectCheck {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.7);
-  background: rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: transparent;
-  font-size: 12px;
-  transition: background var(--nd-duration-base), border-color var(--nd-duration-base), color var(--nd-duration-base);
-
-  &.checked {
-    background: var(--nd-accent);
-    border-color: var(--nd-accent);
-    color: #fff;
-  }
-}
-
-.selected .driveGridThumb {
-  outline: 3px solid var(--nd-accent);
-  outline-offset: -3px;
 }
 
 .driveActionBar {
