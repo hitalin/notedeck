@@ -6,7 +6,7 @@
 
 **複数の Misskey サーバーをひとつのデッキで。**
 
-Misskey 統合環境 (IDE) — 閲覧・投稿・検索・連携をひとつに
+Misskey 統合デッキ環境 (IDE: Integrated Deck Environment) — 閲覧・投稿・検索・連携をひとつに
 
 [![CI](https://github.com/hitalin/notedeck/actions/workflows/ci.yml/badge.svg)](https://github.com/hitalin/notedeck/actions/workflows/ci.yml)
 [![GitHub Release](https://img.shields.io/github/v/release/hitalin/notedeck?style=flat-square)](https://github.com/hitalin/notedeck/releases/latest)

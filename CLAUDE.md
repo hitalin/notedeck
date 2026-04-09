@@ -1,6 +1,6 @@
 # NoteDeck — Claude Code 設定
 
-Misskey 統合環境 (IDE)。閲覧・投稿・検索・連携をひとつに統合したマルチサーバー対応アプリ。Tauri v2 + Vue 3 + TypeScript + Pinia。
+Misskey 統合デッキ環境 (IDE: Integrated Deck Environment)。閲覧・投稿・検索・連携をひとつに統合したマルチサーバー対応アプリ。Tauri v2 + Vue 3 + TypeScript + Pinia。
 
 ## 環境セットアップ
 
