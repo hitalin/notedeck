@@ -20,7 +20,9 @@ import type {
 import type { JsonValue } from '@/bindings'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import MkAchievementsGrid from '@/components/common/MkAchievementsGrid.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
+import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import PopupMenu from '@/components/common/PopupMenu.vue'
@@ -35,12 +37,14 @@ const CodeEditor = defineAsyncComponent(
 
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useNavigation } from '@/composables/useNavigation'
 import { usePortal } from '@/composables/usePortal'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
 import { useWindowsStore } from '@/stores/windows'
+import type { Achievement } from '@/utils/achievements'
 import { AppError } from '@/utils/errors'
 import {
   displayUrl,
@@ -71,6 +75,15 @@ const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const toast = useToast()
 
+// Declared up-front because `topTabs` (below) reads `isOwnProfile` inside its
+// computed getter, and `useEditorTabs` triggers an immediate getter call via
+// its internal watch when wiring up tabIndex — accessing the const before its
+// declaration would throw a TDZ ReferenceError at mount time.
+const account = computed(() =>
+  accountsStore.accounts.find((a) => a.id === props.accountId),
+)
+const isOwnProfile = computed(() => account.value?.userId === props.userId)
+
 type ProfileTab = 'highlight' | 'notes' | 'all' | 'files'
 const PROFILE_TABS: { key: ProfileTab; label: string; icon: string }[] = [
   { key: 'highlight', label: 'ハイライト', icon: 'ti ti-bolt' },
@@ -80,9 +93,47 @@ const PROFILE_TABS: { key: ProfileTab; label: string; icon: string }[] = [
 ]
 const jsonLang = json()
 
-// Top-level editor-style tabs (overview / notes / files grid / raw JSON)
-const { tab: topTab, containerRef: profileRef } = useEditorTabs(
-  ['overview', 'notes', 'files', 'raw'] as const,
+// Top-level editor-style tabs (overview / notes / files grid / reactions /
+// achievements / raw JSON). `reactions` is only surfaced when the user has
+// opted-in via Misskey's publicReactions privacy setting (own profile always
+// exposes it regardless).
+type TopTab =
+  | 'overview'
+  | 'notes'
+  | 'files'
+  | 'reactions'
+  | 'achievements'
+  | 'raw'
+interface TopTabDef {
+  value: TopTab
+  icon: string
+  label: string
+}
+// Driven by users/show `publicReactions`; populated after the raw profile
+// fetch completes. Defaults to false so the tab stays hidden until we know.
+const publicReactions = ref(false)
+const topTabDefs = computed<TopTabDef[]>(() => {
+  const defs: TopTabDef[] = [
+    { value: 'overview', icon: 'home', label: '概要' },
+    { value: 'notes', icon: 'pencil', label: 'ノート' },
+    { value: 'files', icon: 'photo', label: 'ファイル' },
+  ]
+  if (publicReactions.value || isOwnProfile.value) {
+    defs.push({
+      value: 'reactions',
+      icon: 'mood-smile',
+      label: 'リアクション',
+    })
+  }
+  defs.push({ value: 'achievements', icon: 'medal', label: '実績' })
+  defs.push({ value: 'raw', icon: 'code', label: 'Raw' })
+  return defs
+})
+const topTabs = computed<readonly TopTab[]>(() =>
+  topTabDefs.value.map((t) => t.value),
+)
+const { tab: topTab, containerRef: profileRef } = useEditorTabs<TopTab>(
+  topTabs,
   'overview',
 )
 
@@ -117,10 +168,36 @@ const isLoadingFiles = ref(false)
 const hasMoreFiles = ref(true)
 const filesLoaded = ref(false)
 
-const account = computed(() =>
-  accountsStore.accounts.find((a) => a.id === props.accountId),
-)
-const isOwnProfile = computed(() => account.value?.userId === props.userId)
+// Achievements top-tab
+const achievements = ref<Achievement[]>([])
+const isLoadingAchievements = ref(false)
+const achievementsError = ref<string | null>(null)
+const achievementsLoaded = ref(false)
+
+// Reactions top-tab. Each entry pairs a reaction type with the note it was
+// attached to. Loaded on first tab activation and paginated via scroll.
+interface UserReactionEntry {
+  id: string
+  createdAt: string
+  type: string
+  note: NormalizedNote
+}
+const reactionEntries = shallowRef<UserReactionEntry[]>([])
+const isLoadingReactions = ref(false)
+const hasMoreReactions = ref(true)
+const reactionsLoaded = ref(false)
+const reactionsError = ref<string | null>(null)
+const REACTIONS_PAGE_SIZE = 20
+const { reactionUrl: reactionUrlRaw } = useEmojiResolver()
+
+function getReactionEntryUrl(entry: UserReactionEntry): string | null {
+  return reactionUrlRaw(
+    entry.type,
+    entry.note.emojis,
+    entry.note.reactionEmojis,
+    entry.note._serverHost,
+  )
+}
 
 // Raw tab: unmodified users/show API response.
 // When viewing own profile, Misskey returns MeDetailed schema which includes
@@ -244,6 +321,13 @@ onMounted(async () => {
       }
     }
     await loadTabNotes()
+    // Kick off users/show in the background to discover the publicReactions
+    // privacy flag (and prime the Raw tab cache). Skip for own profile since
+    // we always expose the tab there and the fetch will happen lazily if the
+    // user opens Raw.
+    if (!isOwnProfile.value) {
+      loadRawUserJson()
+    }
   } catch (e) {
     error.value = AppError.from(e)
   } finally {
@@ -320,15 +404,114 @@ async function loadRawUserJson() {
   isLoadingRaw.value = true
   rawError.value = null
   try {
-    rawUserObj.value = unwrap(
+    const raw = unwrap(
       await commands.apiRequest(props.accountId, 'users/show', {
         userId: props.userId,
       } as Record<string, JsonValue>),
     )
+    rawUserObj.value = raw
+    // Mirror the privacy flag so the reactions tab can appear without a
+    // second users/show round-trip.
+    if (raw && typeof raw === 'object' && 'publicReactions' in raw) {
+      publicReactions.value =
+        (raw as { publicReactions?: unknown }).publicReactions === true
+    }
   } catch (e) {
     rawError.value = AppError.from(e).message
   } finally {
     isLoadingRaw.value = false
+  }
+}
+
+async function fetchUserReactions(
+  untilId?: string,
+): Promise<UserReactionEntry[]> {
+  if (!adapter) return []
+  const params: Record<string, JsonValue> = {
+    userId: props.userId,
+    limit: REACTIONS_PAGE_SIZE,
+  }
+  if (untilId) params.untilId = untilId
+  const raw = unwrap(
+    await commands.apiRequest(props.accountId, 'users/reactions', params),
+  ) as unknown
+  if (!Array.isArray(raw)) return []
+
+  // users/reactions returns NoteReaction-with-note objects; normalize each
+  // note via the adapter so MkNote can render them like any other feed item.
+  const entries: UserReactionEntry[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const rec = item as Record<string, unknown>
+    const id = typeof rec.id === 'string' ? rec.id : null
+    const createdAt = typeof rec.createdAt === 'string' ? rec.createdAt : null
+    const type = typeof rec.type === 'string' ? rec.type : null
+    const note = rec.note as { id?: unknown } | undefined
+    const noteId =
+      note && typeof note === 'object' && typeof note.id === 'string'
+        ? note.id
+        : null
+    if (!id || !createdAt || !type || !noteId) continue
+    try {
+      const normalized = await adapter.api.getNote(noteId)
+      entries.push({ id, createdAt, type, note: normalized })
+    } catch {
+      // Note may have been deleted — skip silently so the list keeps flowing.
+    }
+  }
+  return entries
+}
+
+async function loadReactionsTab() {
+  if (reactionsLoaded.value) return
+  reactionsLoaded.value = true
+  isLoadingReactions.value = true
+  reactionsError.value = null
+  try {
+    const fetched = await fetchUserReactions()
+    reactionEntries.value = fetched
+    hasMoreReactions.value = fetched.length > 0
+  } catch (e) {
+    reactionsError.value = AppError.from(e).message
+    reactionsLoaded.value = false
+  } finally {
+    isLoadingReactions.value = false
+  }
+}
+
+async function loadMoreReactions() {
+  if (isLoadingReactions.value || !hasMoreReactions.value) return
+  const last = reactionEntries.value.at(-1)
+  if (!last) return
+  isLoadingReactions.value = true
+  try {
+    const older = await fetchUserReactions(last.id)
+    if (older.length === 0) {
+      hasMoreReactions.value = false
+    } else {
+      reactionEntries.value = [...reactionEntries.value, ...older]
+    }
+  } catch (e) {
+    reactionsError.value = AppError.from(e).message
+  } finally {
+    isLoadingReactions.value = false
+  }
+}
+
+async function loadAchievements() {
+  if (achievementsLoaded.value) return
+  achievementsLoaded.value = true
+  isLoadingAchievements.value = true
+  achievementsError.value = null
+  try {
+    achievements.value = unwrap(
+      await commands.apiGetUserAchievements(props.accountId, props.userId),
+    ) as unknown as Achievement[]
+  } catch (e) {
+    achievementsError.value = AppError.from(e).message
+    achievementsLoaded.value = false
+  } finally {
+    isLoadingAchievements.value = false
   }
 }
 
@@ -385,8 +568,23 @@ watch(topTab, (tab) => {
     loadRawUserJson()
   } else if (tab === 'files') {
     loadFilesTab()
+  } else if (tab === 'reactions') {
+    loadReactionsTab()
+    showSensitive.value = false
+  } else if (tab === 'achievements') {
+    loadAchievements()
+    showSensitive.value = false
   } else {
     showSensitive.value = false
+  }
+})
+
+// If the visible tab set shrinks (e.g. publicReactions resolved to false
+// after the user was lingering on the speculative 'reactions' tab) drop back
+// to overview so we never render a hidden-tab state.
+watch(topTabs, (tabs) => {
+  if (!tabs.includes(topTab.value)) {
+    topTab.value = 'overview'
   }
 })
 
@@ -399,7 +597,9 @@ function onScroll(e: Event) {
   if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
     if (topTab.value === 'files') {
       loadMoreFilesTab()
-    } else {
+    } else if (topTab.value === 'reactions') {
+      loadMoreReactions()
+    } else if (topTab.value === 'overview' || topTab.value === 'notes') {
       loadMoreNotes()
     }
   }
@@ -732,15 +932,7 @@ async function handlePosted(editedNoteId?: string) {
     </div>
 
     <template v-else-if="user">
-      <EditorTabs
-        v-model="topTab"
-        :tabs="[
-          { value: 'overview', icon: 'home', label: '概要' },
-          { value: 'notes', icon: 'pencil', label: 'ノート' },
-          { value: 'files', icon: 'photo', label: 'ファイル' },
-          { value: 'raw', icon: 'code', label: 'Raw' },
-        ]"
-      />
+      <EditorTabs v-model="topTab" :tabs="topTabDefs" />
 
       <div ref="profileRef" :class="$style.tabContent" @scroll.passive="onScroll">
         <div v-show="topTab === 'overview' || topTab === 'notes'">
@@ -975,6 +1167,81 @@ async function handlePosted(editedNoteId?: string) {
           <div v-if="!isLoadingFiles && filesNotes.length === 0" :class="$style.stateMessage">
             ファイルはありません
           </div>
+        </div>
+
+        <div v-show="topTab === 'reactions'" :class="$style.reactionsPane">
+          <div
+            v-for="entry in reactionEntries"
+            :key="entry.id"
+            :class="$style.reactionItem"
+          >
+            <div :class="$style.reactionItemHeader">
+              <MkAvatar
+                :avatar-url="user.avatarUrl"
+                :size="24"
+                :is-cat="user.isCat"
+                :class="$style.reactionItemAvatar"
+              />
+              <span :class="$style.reactionItemEmoji">
+                <img
+                  v-if="getReactionEntryUrl(entry)"
+                  :src="proxyUrl(getReactionEntryUrl(entry)!)"
+                  :alt="entry.type"
+                  :title="entry.type"
+                  decoding="async"
+                  loading="lazy"
+                />
+                <MkEmoji v-else :emoji="entry.type" />
+              </span>
+              <span :class="$style.reactionItemTime">
+                {{ formatDate(entry.createdAt) }}
+              </span>
+            </div>
+            <MkNote
+              :note="entry.note"
+              :pinned-note-ids="pinnedNoteIds"
+              @react="handleReaction"
+              @reply="handleReply"
+              @renote="handleRenote"
+              @quote="handleQuote"
+              @delete="handleDelete"
+              @edit="handleEdit"
+              @delete-and-edit="handleDeleteAndEdit"
+              @pin="handlePin"
+            />
+          </div>
+
+          <div v-if="isLoadingReactions" :class="$style.stateMessage">
+            <LoadingSpinner />
+          </div>
+          <div
+            v-else-if="reactionsError"
+            :class="[$style.stateMessage, $style.stateError]"
+          >
+            {{ reactionsError }}
+          </div>
+          <div
+            v-else-if="reactionEntries.length === 0"
+            :class="$style.stateMessage"
+          >
+            リアクションはありません
+          </div>
+        </div>
+
+        <div v-show="topTab === 'achievements'" :class="$style.achievementsPane">
+          <div v-if="isLoadingAchievements" :class="$style.stateMessage">
+            <LoadingSpinner />
+          </div>
+          <div
+            v-else-if="achievementsError"
+            :class="[$style.stateMessage, $style.stateError]"
+          >
+            {{ achievementsError }}
+          </div>
+          <div v-else-if="achievements.length === 0" :class="$style.stateMessage">
+            実績がありません
+          </div>
+          <MkAchievementsGrid v-else :achievements="achievements" />
         </div>
 
         <div v-show="topTab === 'raw'" :class="$style.rawPane">
@@ -1469,6 +1736,72 @@ async function handlePosted(editedNoteId?: string) {
   flex-direction: column;
   gap: 8px;
   padding: 12px;
+}
+
+.achievementsPane {
+  padding: 4px;
+}
+
+.reactionsPane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.reactionItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: solid 0.5px var(--nd-divider);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.reactionItemHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.reactionItemAvatar {
+  flex-shrink: 0;
+}
+
+.reactionItemEmoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 24px;
+  line-height: 1;
+
+  img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+  }
+
+  :deep(.twemoji) {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+.reactionItemTime {
+  margin-left: auto;
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  opacity: 0.6;
 }
 
 .filesPane {
