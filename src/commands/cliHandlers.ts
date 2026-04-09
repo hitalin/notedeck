@@ -324,12 +324,14 @@ export function createCliHandlers(
       const accountId = activeAccountId()
       if (!accountId || !args.trim()) return
       unwrap(await commands.apiCreateFavorite(accountId, args.trim()))
+      deps.deckStore.invalidateColumnByKey('favorites')
     },
 
     unfavorite: async (args) => {
       const accountId = activeAccountId()
       if (!accountId || !args.trim()) return
       unwrap(await commands.apiDeleteFavorite(accountId, args.trim()))
+      deps.deckStore.invalidateColumnByKey('favorites')
     },
 
     emojis: () => {

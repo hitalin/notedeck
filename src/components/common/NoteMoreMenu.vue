@@ -10,6 +10,7 @@ import { useCommandStore } from '@/commands/registry'
 import { useAccountMode } from '@/composables/useAccountMode'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useConfirm } from '@/stores/confirm'
+import { useDeckStore } from '@/stores/deck'
 import { usePrompt } from '@/stores/prompt'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
@@ -142,6 +143,7 @@ async function addToClip(clipId: string, clipName: string) {
   if (!adapter) return
   try {
     await adapter.api.addNoteToClip(clipId, props.note.id)
+    useDeckStore().invalidateColumnByKey(`clip:${clipId}`)
     toast.show('クリップに追加しました')
   } catch (e) {
     const err = AppError.from(e)
@@ -155,6 +157,7 @@ async function addToClip(clipId: string, clipName: string) {
       if (ok) {
         try {
           await adapter.api.removeNoteFromClip(clipId, props.note.id)
+          useDeckStore().invalidateColumnByKey(`clip:${clipId}`)
           toast.show('クリップから解除しました')
         } catch (e2) {
           const err2 = AppError.from(e2)

@@ -9,7 +9,8 @@ import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { useScrollDirection } from '@/composables/useScrollDirection'
 import { useServerImages } from '@/composables/useServerImages'
-import type { DeckColumn } from '@/stores/deck'
+import { useConfirm } from '@/stores/confirm'
+import { type DeckColumn, useDeckStore } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
 import { useOfflineModeStore } from '@/stores/offlineMode'
 import { useToast } from '@/stores/toast'
@@ -224,10 +225,43 @@ export function useColumnSetup(
     if (!adapter || checkOffline()) return
     try {
       await toggleFavorite(adapter.api, note, notifyMutationFor(note))
+      useDeckStore().invalidateColumnByKey('favorites')
     } catch (e) {
       const err = AppError.from(e)
-      console.error('[bookmark]', err.code, err.message)
-      toast.show(`ブックマークに失敗しました（${err.displayCode}）`, 'error')
+      if (err.displayCode === 'ALREADY_FAVORITED') {
+        const { confirm } = useConfirm()
+        const ok = await confirm({
+          title: 'お気に入り解除',
+          message:
+            'このノートは既にお気に入りに追加されています。お気に入りを解除しますか？',
+          type: 'danger',
+          okLabel: '解除',
+        })
+        if (ok) {
+          try {
+            note.isFavorited = true
+            notifyMutationFor(note)()
+            await adapter.api.deleteFavorite(note.id)
+            note.isFavorited = false
+            notifyMutationFor(note)()
+            useDeckStore().invalidateColumnByKey('favorites')
+          } catch (e2) {
+            const err2 = AppError.from(e2)
+            console.error('[bookmark:unfavorite]', err2.code, err2.message)
+            toast.show(
+              `お気に入り解除に失敗しました（${err2.displayCode}）`,
+              'error',
+            )
+          }
+        } else {
+          // Sync local state: server says it's favorited
+          note.isFavorited = true
+          notifyMutationFor(note)()
+        }
+      } else {
+        console.error('[bookmark]', err.code, err.message)
+        toast.show(`ブックマークに失敗しました（${err.displayCode}）`, 'error')
+      }
     }
   }
 
