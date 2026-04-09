@@ -13,7 +13,7 @@
       #nd-splash svg{animation:nd-jelly 2s ease-in-out infinite,nd-glow 2.5s ease-in-out infinite}
       /* 待機: ジェリー揺れ + レインボーグロー */
       @keyframes nd-jelly{0%,100%{transform:scale(1,1)}20%{transform:scale(1.06,.94)}40%{transform:scale(.94,1.06)}60%{transform:scale(1.03,.97)}80%{transform:scale(.97,1.03)}}
-      @keyframes nd-glow{0%,100%{filter:none}20%{filter:drop-shadow(0 0 16px #aad63580)}40%{filter:drop-shadow(0 0 16px #ff6b9d80)}60%{filter:drop-shadow(0 0 16px #6bc5ff80)}80%{filter:drop-shadow(0 0 16px #ffb86b80)}}
+      @keyframes nd-glow{0%,100%{filter:none}50%{filter:drop-shadow(0 0 16px #86b30060)}}
       @media(prefers-reduced-motion:reduce){#nd-splash svg{animation:none;transition:none}#nd-splash{transition:none}}
       html[data-shell-cached] #app{visibility:hidden}
     </style>
