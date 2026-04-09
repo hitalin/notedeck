@@ -12,7 +12,7 @@ import {
 } from '@codemirror/commands'
 import { bracketMatching, indentOnInput } from '@codemirror/language'
 import { lintGutter } from '@codemirror/lint'
-import { type Extension } from '@codemirror/state'
+import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers } from '@codemirror/view'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { aiscriptTheme } from '@/aiscript/codemirror/theme'
@@ -23,9 +23,18 @@ const props = withDefaults(
     language: Extension
     linter?: Extension
     maxHeight?: string
+    readOnly?: boolean
+    /**
+     * Grow the editor to fit its content instead of scrolling internally.
+     * Use this when the editor is placed inside an already-scrolling parent
+     * so there is a single outer scroll container (no nested scrolling).
+     */
+    autoHeight?: boolean
   }>(),
   {
     maxHeight: 'none',
+    readOnly: false,
+    autoHeight: false,
   },
 )
 
@@ -64,6 +73,7 @@ onMounted(() => {
     ]),
     updateListener,
   ]
+  if (props.readOnly) extensions.push(EditorState.readOnly.of(true))
   if (props.linter) extensions.push(props.linter)
 
   view = new EditorView({
@@ -95,7 +105,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="editorRef" :class="$style.codeEditor" :style="maxHeight !== 'none' ? { maxHeight } : undefined" />
+  <div
+    ref="editorRef"
+    :class="[$style.codeEditor, { [$style.autoHeight]: autoHeight }]"
+    :style="maxHeight !== 'none' ? { maxHeight } : undefined"
+  />
 </template>
 
 <style lang="scss" module>
@@ -117,6 +131,16 @@ onUnmounted(() => {
   :deep(.cm-scroller) {
     font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
     overflow: auto;
+  }
+
+  // Content-height mode: let the editor grow with its content so an outer
+  // parent provides the single scroll container.
+  &.autoHeight {
+    overflow: visible;
+
+    :deep(.cm-editor) {
+      height: auto;
+    }
   }
 }
 </style>

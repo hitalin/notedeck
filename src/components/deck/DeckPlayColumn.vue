@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { type Ast, type Interpreter } from '@syuilo/aiscript'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
 import {
@@ -384,10 +385,25 @@ function reload() {
   resetRunState()
   mode.value = 'ready'
 }
+
+const isOwnPlay = computed(
+  () =>
+    flash.value && account.value && flash.value.userId === account.value.userId,
+)
+
+const playWebUrl = computed(() => {
+  if (!flash.value || !serverUrl.value) return undefined
+  return `${serverUrl.value}/play/${flash.value.id}`
+})
+
+const playEditUrl = computed(() => {
+  if (!isOwnPlay.value || !playWebUrl.value) return undefined
+  return `${playWebUrl.value}/edit`
+})
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'Play'" :theme-vars="columnThemeVars" :pull-refresh="fetchList" @header-click="scrollToTop" @refresh="fetchList()">
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'Play'" :theme-vars="columnThemeVars" :web-ui-url="playWebUrl" :pull-refresh="fetchList" @header-click="scrollToTop" @refresh="fetchList()">
     <AiScriptDialog ref="dialogRef" />
     <template #header-icon>
       <i class="ti ti-player-play" :class="$style.tlHeaderIcon" />
@@ -470,6 +486,16 @@ function reload() {
               <div>
                 <i class="ti ti-clock" /> Created: {{ flashCreatedDate }}
               </div>
+            </div>
+            <div v-if="playEditUrl" :class="$style.playFooterActions">
+              <button
+                class="_button"
+                :class="$style.playActionBtn"
+                @click="playEditUrl && openUrl(playEditUrl)"
+              >
+                <i class="ti ti-pencil" />
+                編集
+              </button>
             </div>
           </div>
         </template>
@@ -732,6 +758,12 @@ function reload() {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.playFooterActions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
 }
 
 /* --- Started mode --- */
