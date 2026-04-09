@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useIntersectionObserver } from '@vueuse/core'
-import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
+import { computed, defineAsyncComponent, ref, useTemplateRef, watch } from 'vue'
 import type {
   NormalizedNote,
   NormalizedUser,
@@ -24,6 +24,7 @@ import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
 import { formatTime } from '@/utils/formatTime'
 import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
 import { showLoginPrompt } from '@/utils/loginPrompt'
+import { spawnReactionEffect } from '@/utils/reactionEffect'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import { extractColumnThemeVars } from '@/utils/themeVars'
 import MkAvatar from './MkAvatar.vue'
@@ -314,6 +315,27 @@ const {
   leaveDuration: 200,
 })
 
+// Spawn floating effect when reaction count increases (Misskey-compatible)
+let prevReactionCounts = new Map<string, number>(
+  Object.entries(effectiveNote.value.reactions),
+)
+watch(
+  () => effectiveNote.value.reactions,
+  (reactions) => {
+    for (const [reaction, count] of Object.entries(reactions)) {
+      const prev = prevReactionCounts.get(reaction) ?? 0
+      if (count > prev) {
+        const btn = reactionsAreaRef.value?.querySelector<HTMLElement>(
+          `[data-reaction="${CSS.escape(reaction)}"]`,
+        )
+        if (btn) spawnReactionEffect(btn)
+      }
+    }
+    prevReactionCounts = new Map(Object.entries(reactions))
+  },
+  { deep: true },
+)
+
 async function handleMentionClick(username: string, host: string | null) {
   try {
     const user = unwrap(
@@ -385,13 +407,28 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
     showLoginPrompt()
     return
   }
-  // Spawn ripple at click position for Misskey-style celebration
+  const btn = e.currentTarget as HTMLElement
   const isRemoving = effectiveNote.value.myReaction === reaction
   if (!isRemoving) {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const rect = btn.getBoundingClientRect()
     spawnRipple(rect.left + rect.width / 2, rect.top + rect.height / 2)
+    spawnReactionEffect(btn)
   }
   emit('react', reaction, effectiveNote.value)
+}
+
+function handlePickerReaction(reaction: string) {
+  emit('react', reaction, effectiveNote.value)
+  // Wait for optimistic update (RAF) + Vue render to complete,
+  // then spawn floating effect on the newly created button.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const btn = reactionsAreaRef.value?.querySelector<HTMLElement>(
+        `[data-reaction="${CSS.escape(reaction)}"]`,
+      )
+      if (btn) spawnReactionEffect(btn)
+    })
+  })
 }
 </script>
 
@@ -773,7 +810,7 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
     ref="reactionPickerRef"
     :server-host="effectiveNote._serverHost"
     :account-id="note._accountId"
-    @pick="(r: string) => emit('react', r, effectiveNote)"
+    @pick="handlePickerReaction"
   />
 </template>
 
@@ -782,8 +819,6 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
   position: relative;
   font-size: 1.05em;
   contain: content;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 500px;
   container-type: inline-size;
 
   &:not(.detailed) {
@@ -1402,28 +1437,25 @@ function handleReactionClick(e: MouseEvent, reaction: string) {
 }
 
 .reactionEnter {
-  animation: reaction-enter 0.35s var(--nd-ease-spring-bouncy) both;
+  animation: reaction-enter 0.2s cubic-bezier(0, .5, .5, 1) both;
 }
 
 .reactionLeave {
-  animation: reaction-leave 0.15s var(--nd-ease-decel) both;
+  animation: reaction-leave 0.2s cubic-bezier(0, .5, .5, 1) both;
   position: absolute;
 }
 
 @keyframes reaction-enter {
   from {
     opacity: 0;
-    transform: scale(0) rotate(-8deg);
-  }
-  50% {
-    opacity: 1;
+    transform: scale(0.7);
   }
 }
 
 @keyframes reaction-leave {
   to {
     opacity: 0;
-    transform: scale(0.5);
+    transform: scale(0.7);
   }
 }
 

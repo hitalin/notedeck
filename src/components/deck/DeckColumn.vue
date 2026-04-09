@@ -512,7 +512,7 @@ function openAsPip() {
   .columnHeader {
     height: 40px;
     line-height: 40px;
-    padding: 0 12px 0 32px;
+    padding: 0 4px 0 32px;
   }
   .headerBtn {
     width: 36px;

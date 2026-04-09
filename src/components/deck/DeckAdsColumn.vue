@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import MkAd from '@/components/common/MkAd.vue'
 import { useAds } from '@/composables/useAds'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useServerImages } from '@/composables/useServerImages'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
@@ -21,6 +23,8 @@ const account = computed(() =>
 )
 
 const { columnThemeVars } = useColumnTheme(() => props.column)
+const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
+  useServerImages(() => props.column)
 
 const serverIconUrl = ref<string | undefined>()
 const isLoading = ref(false)
@@ -75,13 +79,9 @@ onMounted(() => {
       </div>
     </template>
 
-    <div v-if="!account" :class="$style.columnEmpty">
-      アカウントが見つかりません
-    </div>
+    <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
 
-    <div v-else-if="ads.length === 0 && !isLoading" :class="$style.columnEmpty">
-      広告はありません
-    </div>
+    <ColumnEmptyState v-else-if="ads.length === 0 && !isLoading" message="広告はありません" :image-url="serverInfoImageUrl" />
 
     <div v-else ref="scrollContainer" :class="$style.adsBody">
       <MkAd

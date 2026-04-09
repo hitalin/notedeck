@@ -2,7 +2,7 @@
   "name": "notedeck",
   "description": "Misskey IDE — integrated environment for browsing, posting, searching, and connecting",
   "private": true,
-  "version": "0.9.26",
+  "version": "0.9.27",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -23,6 +23,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "changelog": "git log $(git describe --tags --abbrev=0 2>/dev/null || echo '')..HEAD --pretty=format:'- %s' --no-merges",
+    "icons": "tauri icon src-tauri/icons/icon.svg -o src-tauri/icons",
     "clean": "rm -rf dist src-tauri/target"
   },
   "dependencies": {

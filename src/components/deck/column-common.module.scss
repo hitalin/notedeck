@@ -1,11 +1,10 @@
 /* === Column common styles === */
 
 /* Scroll item optimization —
-   Skips rendering of offscreen items within a scrollable column.
-   Apply these 3 properties to any v-for list item inside a scroll container:
-     contain: layout style paint;
-     content-visibility: auto;
-     contain-intrinsic-size: auto <estimated-height>; */
+   Apply `contain: layout style paint` to v-for items inside a scroll container.
+   NOTE: Do NOT use `content-visibility: auto` inside virtualized lists —
+   it conflicts with @tanstack/virtual's measureElement (offsetHeight returns
+   contain-intrinsic-size instead of actual height, corrupting position calc). */
 
 /* Header */
 .tlHeaderIcon {

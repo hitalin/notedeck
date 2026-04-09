@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useServerImages } from '@/composables/useServerImages'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
@@ -15,6 +17,8 @@ const props = defineProps<{
 }>()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
+  useServerImages(() => props.column)
 const isLoggedOut = computed(() => account.value?.hasToken === false)
 
 interface Achievement {
@@ -560,8 +564,8 @@ function scrollToTop() {
 
     <div ref="achievementsScrollRef" :class="$style.achievementsScroll">
       <div v-if="loading && achievements.length === 0 && !isLoggedOut" :class="$style.columnLoading"><LoadingSpinner /></div>
-      <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
-      <div v-else-if="achievements.length === 0 && !loading" :class="$style.columnEmpty">実績がありません</div>
+      <ColumnEmptyState v-else-if="error && !isLoggedOut" :message="error" is-error :image-url="serverErrorImageUrl" />
+      <ColumnEmptyState v-else-if="achievements.length === 0 && !loading" message="実績がありません" :image-url="serverInfoImageUrl" />
       <template v-else>
         <div :class="$style.achievementsGrid">
           <div

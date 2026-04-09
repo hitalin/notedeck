@@ -17,7 +17,7 @@ import type {
   NormalizedNotification,
   NormalizedUser,
 } from '@/adapters/types'
-import AvatarStack from '@/components/common/AvatarStack.vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
@@ -79,6 +79,9 @@ const {
   account,
   columnThemeVars,
   serverIconUrl,
+  serverInfoImageUrl,
+  serverNotFoundImageUrl,
+  serverErrorImageUrl,
   isLoading,
   error,
   initAdapter,
@@ -853,10 +856,7 @@ onUnmounted(() => {
     </template>
 
     <template #header-meta>
-      <div v-if="isCrossAccount" :class="$style.headerAccount">
-        <AvatarStack :size="20" />
-      </div>
-      <div v-else-if="account" :class="$style.headerAccount">
+      <div v-if="!isCrossAccount && account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
@@ -880,13 +880,18 @@ onUnmounted(() => {
       </div>
     </template>
 
-    <div v-if="!isCrossAccount && !account" :class="$style.columnEmpty">
-      アカウントが見つかりません
-    </div>
+    <ColumnEmptyState
+      v-if="!isCrossAccount && !account"
+      message="アカウントが見つかりません"
+      :image-url="serverNotFoundImageUrl"
+    />
 
-    <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error.isAuth ? AUTH_ERROR_MESSAGE : error.message }}
-    </div>
+    <ColumnEmptyState
+      v-else-if="error && !isLoggedOut"
+      :message="error.isAuth ? AUTH_ERROR_MESSAGE : error.message"
+      :image-url="serverErrorImageUrl"
+      is-error
+    />
 
     <div v-else :class="$style.notifBody">
       <div v-if="isLoading && notifications.length === 0" :class="$style.columnLoading">

@@ -14,7 +14,7 @@ import type {
   NormalizedDriveFile,
 } from '@/adapters/types'
 import type { JsonValue } from '@/bindings'
-import AvatarStack from '@/components/common/AvatarStack.vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
@@ -39,6 +39,9 @@ const {
   account,
   columnThemeVars,
   serverIconUrl,
+  serverInfoImageUrl,
+  serverNotFoundImageUrl,
+  serverErrorImageUrl,
   isLoading,
   error,
   initAdapter,
@@ -655,10 +658,7 @@ onBeforeUnmount(() => {
     </template>
 
     <template #header-meta>
-      <div v-if="isCrossAccount" :class="$style.headerAccount">
-        <AvatarStack :size="20" />
-      </div>
-      <div v-else-if="account" :class="$style.headerAccount">
+      <div v-if="!isCrossAccount && account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img
           :class="$style.headerFavicon"
@@ -668,13 +668,18 @@ onBeforeUnmount(() => {
       </div>
     </template>
 
-    <div v-if="!isCrossAccount && !account" :class="$style.columnEmpty">
-      アカウントが見つかりません
-    </div>
+    <ColumnEmptyState
+      v-if="!isCrossAccount && !account"
+      message="アカウントが見つかりません"
+      :image-url="serverNotFoundImageUrl"
+    />
 
-    <div v-else-if="error && viewMode === 'history'" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error.message }}
-    </div>
+    <ColumnEmptyState
+      v-else-if="error && viewMode === 'history'"
+      :message="error.message"
+      :image-url="serverErrorImageUrl"
+      is-error
+    />
 
     <!-- Per-account progress (cross-account) -->
     <div v-if="isCrossAccount && loadProgress.length > 0" :class="$style.chatProgress">
@@ -688,9 +693,7 @@ onBeforeUnmount(() => {
 
     <!-- History View: Cross-account -->
     <div v-if="isCrossAccount && viewMode === 'history'" :class="$style.chatBody">
-      <div v-if="historyEntries.length === 0 && !isLoading" :class="$style.columnEmpty">
-        会話はありません
-      </div>
+      <ColumnEmptyState v-if="historyEntries.length === 0 && !isLoading" message="会話はありません" :image-url="serverInfoImageUrl" />
 
       <div v-else :class="$style.historyList">
         <button
@@ -722,9 +725,7 @@ onBeforeUnmount(() => {
 
     <!-- History View: Per-account -->
     <div v-else-if="!isCrossAccount && viewMode === 'history'" :class="$style.chatBody">
-      <div v-if="chatHistory.length === 0 && !isLoading" :class="$style.columnEmpty">
-        会話はありません
-      </div>
+      <ColumnEmptyState v-if="chatHistory.length === 0 && !isLoading" message="会話はありません" :image-url="serverInfoImageUrl" />
 
       <div v-else :class="$style.historyList">
         <button

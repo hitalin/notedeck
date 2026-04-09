@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
@@ -12,6 +13,7 @@ import {
   safeUrl,
   useDriveFolder,
 } from '@/composables/useDriveFolder'
+import { useServerImages } from '@/composables/useServerImages'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useUiStore } from '@/stores/ui'
@@ -24,6 +26,8 @@ const props = defineProps<{
 }>()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
+  useServerImages(() => props.column)
 const isLoggedOut = computed(() => account.value?.hasToken === false)
 
 const {
@@ -308,7 +312,7 @@ fetchDrive()
 
       <div ref="driveGridScrollRef" :class="$style.driveGridScroll">
         <div v-if="loading && !isLoggedOut" :class="$style.columnLoading"><LoadingSpinner /></div>
-        <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
+        <ColumnEmptyState v-else-if="error && !isLoggedOut" :message="error" is-error :image-url="serverErrorImageUrl" />
         <template v-else-if="!isLoggedOut">
           <!-- Folders -->
           <button

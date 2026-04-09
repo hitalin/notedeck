@@ -6,12 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>NoteDeck</title>
     <style>
-      #nd-splash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:var(--nd-bg,#232323);transition:opacity .3s cubic-bezier(.16,1,.3,1)}
+      #nd-splash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:var(--nd-bg,#232323);transition:opacity .3s cubic-bezier(.16,1,.3,1);overflow:hidden}
       #nd-splash.nd-splash-leaving{opacity:0}
       #nd-splash.nd-splash-leaving svg{transform:scale(.8);opacity:0}
       #nd-splash svg{transition:transform .3s cubic-bezier(.16,1,.3,1),opacity .2s ease-out}
-      @keyframes nd-heartbeat{0%{transform:scale(1)}15%{transform:scale(1.25)}30%,100%{transform:scale(1)}}
-      #nd-splash svg{animation:nd-heartbeat 1.6s ease-in-out infinite}
+      #nd-splash svg{animation:nd-jelly 2s ease-in-out infinite,nd-glow 2.5s ease-in-out infinite}
+      /* 待機: ジェリー揺れ + レインボーグロー */
+      @keyframes nd-jelly{0%,100%{transform:scale(1,1)}20%{transform:scale(1.06,.94)}40%{transform:scale(.94,1.06)}60%{transform:scale(1.03,.97)}80%{transform:scale(.97,1.03)}}
+      @keyframes nd-glow{0%,100%{filter:none}50%{filter:drop-shadow(0 0 16px #86b30060)}}
       @media(prefers-reduced-motion:reduce){#nd-splash svg{animation:none;transition:none}#nd-splash{transition:none}}
       html[data-shell-cached] #app{visibility:hidden}
     </style>

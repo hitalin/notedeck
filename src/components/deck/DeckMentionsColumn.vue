@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import AvatarStack from '@/components/common/AvatarStack.vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
@@ -56,6 +56,9 @@ const noteColumnConfig: NoteColumnConfig = {
 // Cross-account state
 const {
   columnThemeVars,
+  serverInfoImageUrl,
+  serverNotFoundImageUrl,
+  serverErrorImageUrl,
   isLoading,
   error,
   handlers,
@@ -98,18 +101,19 @@ const {
       <i :class="['ti', config.icon, $style.tlHeaderIcon]" />
     </template>
 
-    <template #header-meta>
-      <AvatarStack :size="20" />
-    </template>
-
-    <div v-if="error" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error.message }}
-    </div>
+    <ColumnEmptyState
+      v-if="error"
+      :message="error.message"
+      is-error
+      :image-url="serverErrorImageUrl"
+    />
 
     <div v-else :class="$style.tlBody">
-      <div v-if="notes.length === 0 && !isLoading" :class="$style.columnEmpty">
-        {{ config.emptyText }}
-      </div>
+      <ColumnEmptyState
+        v-if="notes.length === 0 && !isLoading"
+        :message="config.emptyText"
+        :image-url="serverInfoImageUrl"
+      />
 
       <NoteScroller
         v-else

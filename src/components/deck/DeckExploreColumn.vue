@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
@@ -38,6 +39,9 @@ const {
   account,
   columnThemeVars,
   serverIconUrl,
+  serverInfoImageUrl,
+  serverNotFoundImageUrl,
+  serverErrorImageUrl,
   isLoading,
   error,
   notes,
@@ -278,9 +282,11 @@ function closeUserPopup() {
       </div>
     </template>
 
-    <div v-if="!account" :class="$style.columnEmpty">
-      アカウントが見つかりません
-    </div>
+    <ColumnEmptyState
+      v-if="!account"
+      message="アカウントが見つかりません"
+      :image-url="serverNotFoundImageUrl"
+    />
 
     <template v-else>
       <div ref="columnContentRef" :class="$style.exploreContent">
@@ -299,9 +305,7 @@ function closeUserPopup() {
 
       <!-- Notes tab -->
       <template v-if="activeTab === 'notes'">
-        <div v-if="error" :class="[$style.columnEmpty, $style.columnError]">
-          {{ error.message }}
-        </div>
+        <ColumnEmptyState v-if="error" :message="error.message" :image-url="serverErrorImageUrl" is-error />
 
         <div v-else :class="$style.tlBody">
           <div
@@ -349,8 +353,8 @@ function closeUserPopup() {
       <template v-else-if="activeTab === 'users'">
         <div :class="$style.exploreList">
           <div v-if="usersLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
-          <div v-else-if="usersError" :class="[$style.columnEmpty, $style.columnError]">{{ usersError }}</div>
-          <div v-else-if="users.length === 0" :class="$style.columnEmpty">ユーザーが見つかりません</div>
+          <ColumnEmptyState v-else-if="usersError" :message="usersError" :image-url="serverErrorImageUrl" is-error />
+          <ColumnEmptyState v-else-if="users.length === 0" message="ユーザーが見つかりません" :image-url="serverInfoImageUrl" />
           <button
             v-for="user in users"
             :key="user.id"
@@ -387,8 +391,8 @@ function closeUserPopup() {
           </div>
           <div :class="$style.exploreList">
             <div v-if="roleUsersLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
-            <div v-else-if="roleUsersError" :class="[$style.columnEmpty, $style.columnError]">{{ roleUsersError }}</div>
-            <div v-else-if="roleUsers.length === 0" :class="$style.columnEmpty">ユーザーがいません</div>
+            <ColumnEmptyState v-else-if="roleUsersError" :message="roleUsersError" :image-url="serverErrorImageUrl" is-error />
+            <ColumnEmptyState v-else-if="roleUsers.length === 0" message="ユーザーがいません" :image-url="serverInfoImageUrl" />
             <button
               v-for="user in roleUsers"
               :key="user.id"
@@ -413,8 +417,8 @@ function closeUserPopup() {
         <template v-else>
           <div :class="$style.exploreList">
             <div v-if="rolesLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
-            <div v-else-if="rolesError" :class="[$style.columnEmpty, $style.columnError]">{{ rolesError }}</div>
-            <div v-else-if="roles.length === 0" :class="$style.columnEmpty">ロールが見つかりません</div>
+            <ColumnEmptyState v-else-if="rolesError" :message="rolesError" :image-url="serverErrorImageUrl" is-error />
+            <ColumnEmptyState v-else-if="roles.length === 0" message="ロールが見つかりません" :image-url="serverInfoImageUrl" />
             <button
               v-for="role in roles"
               :key="role.id"

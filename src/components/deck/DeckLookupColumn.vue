@@ -2,6 +2,7 @@
 import { defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import { MisskeyApi } from '@/adapters/misskey/api'
 import type { NormalizedNote } from '@/adapters/types'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -13,6 +14,7 @@ const MkPostForm = defineAsyncComponent(
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNavigation } from '@/composables/useNavigation'
 import { usePortal } from '@/composables/usePortal'
+import { useServerImages } from '@/composables/useServerImages'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
@@ -24,6 +26,8 @@ const props = defineProps<{
 }>()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
+  useServerImages(() => props.column)
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const { navigateToUser } = useNavigation()
@@ -329,21 +333,15 @@ async function handlePosted(editedNoteId?: string) {
       </div>
     </template>
 
-    <div v-if="!account" :class="$style.columnEmpty">
-      アカウントが見つかりません
-    </div>
+    <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
 
     <div v-else-if="isLoading" :class="$style.columnLoading">
       <LoadingSpinner />
     </div>
 
-    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error }}
-    </div>
+    <ColumnEmptyState v-else-if="error" :message="error" is-error :image-url="serverErrorImageUrl" />
 
-    <div v-else-if="!result" :class="$style.columnEmpty">
-      URLまたは@ユーザー名を入力して照会
-    </div>
+    <ColumnEmptyState v-else-if="!result" message="URLまたは@ユーザー名を入力して照会" :image-url="serverInfoImageUrl" />
 
     <div v-else-if="result.type === 'Note'" ref="lookupResultRef" :class="$style.lookupResult">
       <MkNote

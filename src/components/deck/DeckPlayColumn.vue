@@ -18,6 +18,7 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import type { JsonValue } from '@/bindings'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useToast } from '@/stores/toast'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -29,6 +30,7 @@ const MkPostForm = defineAsyncComponent(
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { usePortal } from '@/composables/usePortal'
+import { useServerImages } from '@/composables/useServerImages'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl } from '@/stores/accounts'
@@ -47,6 +49,8 @@ const deckStore = useDeckStore()
 const commandStore = useCommandStore()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
+  useServerImages(() => props.column)
 const serverUrl = computed(() =>
   account.value ? `https://${account.value.host}` : '',
 )
@@ -415,8 +419,8 @@ function reload() {
 
       <div ref="playListRef" :class="$style.playList">
         <div v-if="listLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
-        <div v-else-if="listError" :class="[$style.columnEmpty, $style.columnError]">{{ listError }}</div>
-        <div v-else-if="listItems.length === 0" :class="$style.columnEmpty">Playが見つかりません</div>
+        <ColumnEmptyState v-else-if="listError" :message="listError" is-error :image-url="serverErrorImageUrl" />
+        <ColumnEmptyState v-else-if="listItems.length === 0" message="Playが見つかりません" :image-url="serverInfoImageUrl" />
         <button
           v-for="item in listItems"
           :key="item.id"
@@ -441,7 +445,7 @@ function reload() {
     <template v-else-if="mode === 'ready'">
       <div ref="playReadyScrollRef" :class="$style.playReadyScroll">
         <div v-if="fetching" :class="$style.columnLoading"><LoadingSpinner /></div>
-        <div v-else-if="fetchError" :class="[$style.columnEmpty, $style.columnError]">{{ fetchError }}</div>
+        <ColumnEmptyState v-else-if="fetchError" :message="fetchError" is-error :image-url="serverErrorImageUrl" />
         <template v-else-if="flash">
           <div :class="$style.playReady">
             <div :class="$style.playReadyTitle">{{ flash.title }}</div>

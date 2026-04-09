@@ -11,7 +11,7 @@ import {
   watch,
 } from 'vue'
 import type { NormalizedNote } from '@/adapters/types'
-import AvatarStack from '@/components/common/AvatarStack.vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
@@ -58,6 +58,9 @@ const {
   account,
   columnThemeVars,
   serverIconUrl,
+  serverInfoImageUrl,
+  serverNotFoundImageUrl,
+  serverErrorImageUrl,
   isLoading,
   error,
   initAdapter,
@@ -608,10 +611,7 @@ onUnmounted(() => {
     </template>
 
     <template #header-meta>
-      <div v-if="isCrossAccount" :class="$style.headerAccount">
-        <AvatarStack :size="20" />
-      </div>
-      <div v-else-if="account" :class="$style.headerAccount">
+      <div v-if="!isCrossAccount && account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
         <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
       </div>
@@ -714,26 +714,35 @@ onUnmounted(() => {
       </div>
     </template>
 
-    <div v-if="!account && !isCrossAccount" :class="$style.columnEmpty">
-      アカウントが見つかりません
-    </div>
+    <ColumnEmptyState
+      v-if="!account && !isCrossAccount"
+      message="アカウントが見つかりません"
+      :image-url="serverNotFoundImageUrl"
+    />
 
-    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
-      {{ error.message }}
-    </div>
+    <ColumnEmptyState
+      v-else-if="error"
+      :message="error.message"
+      :image-url="serverErrorImageUrl"
+      is-error
+    />
 
     <div v-else :class="$style.searchBody">
       <div v-if="isLoading && notes.length === 0" :class="$style.columnLoading">
         <LoadingSpinner />
       </div>
 
-      <div v-else-if="!searchQuery.trim() && notes.length === 0" :class="$style.columnEmpty">
-        検索クエリを入力
-      </div>
+      <ColumnEmptyState
+        v-else-if="!searchQuery.trim() && notes.length === 0"
+        message="検索クエリを入力"
+        :image-url="serverInfoImageUrl"
+      />
 
-      <div v-else-if="searchQuery.trim() && !isLoading && !isPreview && notes.length === 0" :class="$style.columnEmpty">
-        結果が見つかりません
-      </div>
+      <ColumnEmptyState
+        v-else-if="searchQuery.trim() && !isLoading && !isPreview && notes.length === 0"
+        message="結果が見つかりませんでした"
+        :image-url="serverNotFoundImageUrl"
+      />
 
       <NoteScroller
         v-else

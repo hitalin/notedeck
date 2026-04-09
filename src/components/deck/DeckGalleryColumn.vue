@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { safeUrl } from '@/composables/useDriveFolder'
+import { useServerImages } from '@/composables/useServerImages'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
@@ -15,6 +17,8 @@ const props = defineProps<{
 }>()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
+  useServerImages(() => props.column)
 const isLoggedOut = computed(() => account.value?.hasToken === false)
 
 interface GalleryPost {
@@ -294,10 +298,8 @@ fetchGallery()
     <template v-else>
       <div ref="galleryGridScrollRef" :class="$style.galleryGridScroll" @scroll.passive="onScroll">
         <div v-if="loading && posts.length === 0 && !isLoggedOut" :class="$style.columnLoading"><LoadingSpinner /></div>
-        <div v-else-if="error && !isLoggedOut" :class="[$style.columnEmpty, $style.columnError]">{{ error }}</div>
-        <div v-else-if="posts.length === 0" :class="$style.columnEmpty">
-          ギャラリーの投稿がありません
-        </div>
+        <ColumnEmptyState v-else-if="error && !isLoggedOut" :message="error" is-error :image-url="serverErrorImageUrl" />
+        <ColumnEmptyState v-else-if="posts.length === 0" message="ギャラリーの投稿がありません" :image-url="serverInfoImageUrl" />
         <template v-else>
           <div :class="$style.galleryGrid">
             <button
