@@ -31,7 +31,7 @@ import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import * as snapshotStore from '@/composables/useSnapshotStore'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import { isGuestAccount } from '@/stores/accounts'
-import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { type DeckColumn as DeckColumnType, useDeckStore } from '@/stores/deck'
 import { useOfflineModeStore } from '@/stores/offlineMode'
 import { useToast } from '@/stores/toast'
 import { useUiStore } from '@/stores/ui'
@@ -706,6 +706,19 @@ export function useNoteColumn(config: NoteColumnConfig) {
     () => deckResumeSignal,
     () => onResume(),
   )
+
+  // Non-streaming columns: watch cache-key invalidation signal (clip/favorites mutations)
+  if (!isStreaming && config.cache) {
+    const { columnInvalidation } = useDeckStore()
+    const cacheConfig = config.cache
+    watch(
+      () => {
+        const key = cacheConfig.getKey()
+        return key ? columnInvalidation[key] : undefined
+      },
+      () => refresh(),
+    )
+  }
 
   onMounted(() => {
     if (config.connectReady && !config.connectReady.value) {

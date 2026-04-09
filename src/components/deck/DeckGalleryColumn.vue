@@ -358,11 +358,8 @@ fetchGallery()
 
 /* --- Grid scroll --- */
 .galleryGridScroll {
+  composes: columnScroller from './column-common.module.scss';
   position: relative;
-  flex: 1;
-  overflow-y: auto;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
 }
 
 /* --- Grid --- */
@@ -478,10 +475,7 @@ fetchGallery()
 
 /* --- Detail view --- */
 .galleryDetailScroll {
-  flex: 1;
-  overflow-y: auto;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
+  composes: columnScroller from './column-common.module.scss';
 }
 
 .galleryDetail {

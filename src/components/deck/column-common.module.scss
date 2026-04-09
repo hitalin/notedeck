@@ -77,6 +77,14 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Non-virtual scroller — same as .tlScroller but with overflow-y: auto.
+   Virtual-scroll columns (DeckNoteColumn) use .tlScroller where @tanstack/virtual
+   manages overflow internally; adding overflow-y: auto would cause double scrollbars. */
+.columnScroller {
+  composes: tlScroller;
+  overflow-y: auto;
+}
+
 /* Empty & error states */
 .columnEmpty {
   display: flex;

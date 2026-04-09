@@ -604,10 +604,7 @@ const pageEditUrl = computed(() => {
 }
 
 .pageList {
-  flex: 1;
-  overflow-y: auto;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
+  composes: columnScroller from './column-common.module.scss';
 }
 
 .pageCard {
@@ -665,12 +662,9 @@ const pageEditUrl = computed(() => {
 /* --- View mode --- */
 
 .pageViewScroll {
-  flex: 1;
+  composes: columnScroller from './column-common.module.scss';
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
 }
 
 .pageHeader {

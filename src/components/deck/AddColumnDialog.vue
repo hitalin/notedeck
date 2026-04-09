@@ -80,6 +80,7 @@ const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
   'mentions',
   'specified',
   'followRequests',
+  'lookup',
 ])
 
 /** Column types that can optionally work without an account */

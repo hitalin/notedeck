@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, reactive, ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import * as snapshotStore from '@/composables/useSnapshotStore'
 import { useAccountsStore } from '@/stores/accounts'
@@ -123,6 +123,7 @@ export const DEFAULT_NAV_ITEMS: NavItem[] = [
   { type: 'specified', accountId: null },
   { type: 'chat', accountId: null },
   { type: 'search', accountId: null },
+  { type: 'lookup', accountId: null },
 ]
 
 export function isNavDivider(item: NavItem): item is { type: 'divider' } {
@@ -154,6 +155,13 @@ export const useDeckStore = defineStore('deck', () => {
 
   function refreshActiveColumn() {
     refreshTrigger.value++
+  }
+
+  /** Cache-key based invalidation signal for non-streaming columns (clip, favorites) */
+  const columnInvalidation = reactive<Record<string, number>>({})
+
+  function invalidateColumnByKey(cacheKey: string) {
+    columnInvalidation[cacheKey] = (columnInvalidation[cacheKey] ?? 0) + 1
   }
   /** This window's sub-window ID (null = main window) */
   const currentWindowId = ref<string | null>(null)
@@ -546,6 +554,8 @@ export const useDeckStore = defineStore('deck', () => {
     crossWindowDragColumnId,
     refreshTrigger,
     refreshActiveColumn,
+    columnInvalidation,
+    invalidateColumnByKey,
     startSync,
     stopSync,
   }

@@ -508,10 +508,7 @@ function closeUserPopup() {
 
 /* --- List --- */
 .exploreList {
-  flex: 1;
-  overflow-y: auto;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
+  composes: columnScroller from './column-common.module.scss';
 }
 
 /* --- User card --- */

@@ -539,7 +539,9 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
       const col = getActiveEntityColumn()
       if (!col) return
       const { rename } = useEntityCrud(col.type as EntityType, () => col)
-      rename(() => {})
+      rename(() => {
+        // no-op callback
+      })
     },
   })
 
@@ -554,7 +556,9 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
       const col = getActiveEntityColumn()
       if (!col) return
       const { deleteEntity } = useEntityCrud(col.type as EntityType, () => col)
-      deleteEntity(() => {})
+      deleteEntity(() => {
+        // no-op callback
+      })
     },
   })
 

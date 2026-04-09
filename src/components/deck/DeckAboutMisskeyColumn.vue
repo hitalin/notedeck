@@ -314,13 +314,7 @@ onMounted(() => {
 @use "./column-common.module.scss";
 
 .aboutBody {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: clip;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
+  composes: columnScroller from './column-common.module.scss';
 }
 
 /* Hero */

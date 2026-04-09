@@ -2,7 +2,7 @@
 
 ## ポジショニング
 
-NoteDeck は Misskey とそのフォークに対応した**マルチプラットフォーム対応の Misskey 統合環境 (IDE)** である。
+NoteDeck は Misskey とそのフォークに対応した**マルチプラットフォーム対応の Misskey 統合デッキ環境 (IDE: Integrated Deck Environment)** である。
 閲覧（ブラウザ）・投稿（エディタ）・検索（データベース）・連携（API ハブ）をひとつのアプリに統合し、
 notecli（Rust コアエンジン）の上に WebView ベースの統合フロントエンドを提供する。
 

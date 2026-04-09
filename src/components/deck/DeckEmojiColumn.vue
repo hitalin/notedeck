@@ -284,11 +284,7 @@ function getRowItems(index: number): ServerEmoji[] {
 }
 
 .emojiBody {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  composes: tlBody from './column-common.module.scss';
 }
 
 .emojiSearch {
@@ -359,12 +355,7 @@ function getRowItems(index: number): ServerEmoji[] {
 }
 
 .emojiScroller {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: clip;
-  scrollbar-color: var(--nd-scrollbarHandle) transparent;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
+  composes: columnScroller from './column-common.module.scss';
 }
 
 .emojiGroup {

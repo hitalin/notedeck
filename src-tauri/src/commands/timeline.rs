@@ -788,6 +788,16 @@ pub async fn api_get_cache_date_range(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn api_find_notes_by_uri(
+    app_state: State<'_, AppState>,
+    uri: String,
+) -> Result<Vec<NormalizedNote>> {
+    let db = app_state.db().await;
+    db.find_notes_by_uri(&uri)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn api_search_notes_local(
     app_state: State<'_, AppState>,
     account_id: String,
