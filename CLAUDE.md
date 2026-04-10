@@ -52,7 +52,7 @@ pnpm typecheck    # vue-tsc --noEmit
 - **IDE 系カラム**: Workspace Explorer（VSCode Explorer 相当）、Stream Inspector（WebSocket イベントのリアルタイム監視）
 - **インスペクタウィンドウ**: ノート/通知/ユーザーの Raw JSON 表示、settings.json Raw JSON エディタ。共通コンポーネント `RawJsonView` + `useSensitiveMask` で機密マスキング対応
 - **ナビバー**: VSCode Activity Bar 式。カラムのトグルボタン。ボタン構成はカスタマイズ可能（`NavItem` 型でプロファイルに永続化）
-- **設定永続化**: スカラー設定は `settings.json` に統合（`useSettingsStore`）。`ai.json` / `keybinds.json5` / `performance.json` は dual-write で `settings.json` に統合済み
+- **設定永続化**: 全設定は `settings.json` に一元化（`useSettingsStore` が単一 source of truth）。旧ファイル（`ai.json` / `keybinds.json5` / `performance.json`）は初回起動時の移行読込のみで、新規書込は `settings.json` のみ
 - 詳細は [DEVELOPMENT.md](DEVELOPMENT.md) 参照
 
 ## リリース手順
