@@ -143,16 +143,11 @@ onUnmounted(() => {
 
 function selectRow(entry: StreamEventEntry) {
   selectedId.value = entry.id
-  paused.value = true
 }
 
 function clearBuffer() {
   buffer.value = []
   selectedId.value = null
-}
-
-function resume() {
-  paused.value = false
 }
 
 // --- Display helpers ---
@@ -205,7 +200,7 @@ function scrollToTop() {
         class="_button"
         :class="[$style.headerBtn, paused && $style.headerBtnActive]"
         :title="paused ? '再開' : '一時停止'"
-        @click.stop="paused ? resume() : (paused = true)"
+        @click.stop="paused = !paused"
       >
         <i :class="paused ? 'ti ti-player-play' : 'ti ti-player-pause'" />
       </button>
@@ -231,13 +226,6 @@ function scrollToTop() {
         >
           {{ KIND_LABELS[kind] ?? kind }}
         </button>
-      </div>
-
-      <!-- Paused indicator -->
-      <div v-if="paused" :class="$style.pausedBar">
-        <i class="ti ti-player-pause" />
-        一時停止中
-        <button class="_button" :class="$style.resumeBtn" @click="resume">再開</button>
       </div>
 
       <!-- Event list -->
@@ -340,24 +328,6 @@ function scrollToTop() {
   opacity: 1;
   border-color: var(--nd-accent);
   color: var(--nd-accent);
-}
-
-.pausedBar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  font-size: 0.75em;
-  color: var(--nd-warn, #f0ad4e);
-  background: rgba(240, 173, 78, 0.1);
-  flex-shrink: 0;
-}
-
-.resumeBtn {
-  margin-left: auto;
-  font-size: 0.85em;
-  color: var(--nd-accent);
-  text-decoration: underline;
 }
 
 .list {
