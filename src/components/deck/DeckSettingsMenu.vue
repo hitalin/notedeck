@@ -351,8 +351,41 @@ usePortal(settingsMenuPortalRef)
         @change="onFileSelected"
       />
 
-      <!-- 環境設定 -->
-      <div :class="$style.categorySection">
+      <!-- 環境設定 (モバイル: フラットに展開) -->
+      <template v-if="isCompact">
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" @click="openToolWindow('plugins')">
+            <i class="ti ti-plug" />
+            <span>プラグイン</span>
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+          </button>
+        </div>
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" @click="openToolWindow('aiSettings')">
+            <i class="ti ti-robot" />
+            <span>AI</span>
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+          </button>
+        </div>
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" @click="openToolWindow('performanceEditor')">
+            <i class="ti ti-gauge" />
+            <span>パフォーマンス</span>
+            <span v-if="Object.keys(perfStore.overrides).length > 0" :class="$style.activeDot" />
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+          </button>
+        </div>
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" @click="openToolWindow('cssEditor')">
+            <i class="ti ti-code" />
+            <span>カスタムCSS</span>
+            <span v-if="themeStore.customCss" :class="$style.activeDot" />
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+          </button>
+        </div>
+      </template>
+      <!-- 環境設定 (デスクトップ: アコーディオン) -->
+      <div v-else :class="$style.categorySection">
         <button :class="$style.categoryHeader" @click="toggleSection('settings')">
           <i class="ti ti-settings" />
           <span>環境設定</span>
