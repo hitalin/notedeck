@@ -542,6 +542,7 @@ const COLUMN_TYPE_GROUPS: { group: string; types: ColumnType[] }[] = [
   {
     group: 'ツール',
     types: [
+      'workspaceExplorer',
       'widget',
       'aiscript',
       'apiConsole',
@@ -560,6 +561,7 @@ const COLUMN_EXTRA_PROPS: Partial<
   apiDocs: { accountId: null, width: 990 },
   ai: { accountId: null },
   streamInspector: { accountId: null },
+  workspaceExplorer: { accountId: null },
   timeline: { tl: 'home', name: null },
 }
 
@@ -654,7 +656,12 @@ async function buildAccountStep(type: ColumnType): Promise<QuickPickItem[]> {
   const accountsStore = useAccountsStore()
 
   // Account-independent types: skip account selection
-  if (type === 'apiDocs' || type === 'ai' || type === 'streamInspector') {
+  if (
+    type === 'apiDocs' ||
+    type === 'ai' ||
+    type === 'streamInspector' ||
+    type === 'workspaceExplorer'
+  ) {
     finalizeAddColumn(type, null)
     return []
   }

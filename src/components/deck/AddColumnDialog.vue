@@ -95,7 +95,12 @@ const requiresAuth = computed(() => {
 function selectColumnType(type: ColumnType) {
   addColumnType.value = type
   // Account-independent types: skip account selection
-  if (type === 'apiDocs' || type === 'ai' || type === 'streamInspector') {
+  if (
+    type === 'apiDocs' ||
+    type === 'ai' ||
+    type === 'streamInspector' ||
+    type === 'workspaceExplorer'
+  ) {
     addColumnForAccount(null)
     return
   }
@@ -125,6 +130,7 @@ const COLUMN_EXTRA_PROPS: Partial<
   apiDocs: { accountId: null, width: 990 },
   ai: { accountId: null },
   streamInspector: { accountId: null },
+  workspaceExplorer: { accountId: null },
   timeline: { tl: 'home', name: null },
 }
 
