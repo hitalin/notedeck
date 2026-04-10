@@ -49,10 +49,14 @@ function itemServerIconUrl(item: NavColumnItem): string | null {
   return server?.iconUrl ?? `https://${account.host}/favicon.ico`
 }
 
+const props = defineProps<{
+  initialTab?: string
+}>()
+
 // ── Tab management ──
 const { tab, containerRef: contentRef } = useEditorTabs(
   ['visual', 'code'] as const,
-  'visual',
+  (props.initialTab as 'visual' | 'code') ?? 'visual',
 )
 
 function getItemIcon(item: NavColumnItem): string {

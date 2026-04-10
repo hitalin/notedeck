@@ -44,12 +44,16 @@ function toggleSection(key: string) {
   expandedSections[key] = !expandedSections[key]
 }
 
+const props = defineProps<{
+  initialTab?: string
+}>()
+
 const codeContent = ref('')
 const codeError = ref<string | null>(null)
 
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['visual', 'code'] as const,
-  'visual',
+  (props.initialTab as 'visual' | 'code') ?? 'visual',
 )
 
 function columnLabel(col: DeckColumn): string {

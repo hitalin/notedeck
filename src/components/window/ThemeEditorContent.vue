@@ -27,13 +27,14 @@ const jsonLinter = createJson5Linter()
 
 const props = defineProps<{
   initialThemeId?: string
+  initialTab?: string
 }>()
 
 const themeStore = useThemeStore()
 
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['visual', 'code'] as const,
-  'visual',
+  (props.initialTab as 'visual' | 'code') ?? 'visual',
 )
 
 const themeName = ref('My Theme')

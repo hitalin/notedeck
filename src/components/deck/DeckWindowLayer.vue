@@ -155,22 +155,34 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         @success="closeWindow(win.id)"
       />
       <PluginsContent v-if="win.type === 'plugins'" />
-      <KeybindsContent v-if="win.type === 'keybinds'" />
-      <CssEditorContent v-if="win.type === 'cssEditor'" />
+      <KeybindsContent
+        v-if="win.type === 'keybinds'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
+      <CssEditorContent
+        v-if="win.type === 'cssEditor'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
       <ThemeEditorContent
         v-if="win.type === 'themeEditor'"
         :initial-theme-id="(win.props.initialThemeId as string | undefined)"
+        :initial-tab="(win.props.initialTab as string | undefined)"
       />
       <ProfileEditorContent
         v-if="win.type === 'profileEditor'"
         :profile-id="(win.props.profileId as string)"
+        :initial-tab="(win.props.initialTab as string | undefined)"
       />
       <AiSettingsContent v-if="win.type === 'aiSettings'" />
       <AboutContent v-if="win.type === 'about'" />
-      <NavEditorContent v-if="win.type === 'navEditor'" />
+      <NavEditorContent
+        v-if="win.type === 'navEditor'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
       <PerformanceEditorContent v-if="win.type === 'performanceEditor'" />
       <AccountManagerContent
         v-if="win.type === 'account-manager'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
         @close="closeWindow(win.id)"
       />
       <SettingsEditorContent v-if="win.type === 'settingsEditor'" />

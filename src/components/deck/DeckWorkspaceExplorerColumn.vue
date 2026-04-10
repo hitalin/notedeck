@@ -69,7 +69,7 @@ function openThemeFile(id: string) {
   if (!theme) return
   const mode: 'dark' | 'light' = theme.base ?? 'dark'
   themeStore.selectTheme(id, mode)
-  windowsStore.open('themeEditor')
+  windowsStore.open('themeEditor', { initialTab: 'code' })
 }
 
 function addTheme() {
@@ -87,7 +87,7 @@ function addPlugin() {
 
 // profiles/
 function openProfileFile(id: string) {
-  windowsStore.open('profileEditor', { profileId: id })
+  windowsStore.open('profileEditor', { profileId: id, initialTab: 'code' })
 }
 
 function addProfile() {
@@ -96,7 +96,7 @@ function addProfile() {
 
 // accounts/
 function openAccountFile() {
-  windowsStore.open('account-manager')
+  windowsStore.open('account-manager', { initialTab: 'code' })
 }
 
 function addAccount() {
@@ -109,15 +109,15 @@ function openSettings() {
 }
 
 function openUserCss() {
-  windowsStore.open('cssEditor')
+  windowsStore.open('cssEditor', { initialTab: 'code' })
 }
 
 function openKeybinds() {
-  windowsStore.open('keybinds')
+  windowsStore.open('keybinds', { initialTab: 'code' })
 }
 
 function openNavJson() {
-  windowsStore.open('navEditor')
+  windowsStore.open('navEditor', { initialTab: 'code' })
 }
 
 interface FileTypeInfo {

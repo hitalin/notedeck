@@ -37,10 +37,14 @@ const jsonLinter = linter(
 
 const keybindsStore = useKeybindsStore()
 
+const props = defineProps<{
+  initialTab?: string
+}>()
+
 // ── Tab management ──
 const { tab, containerRef: contentRef } = useEditorTabs(
   ['visual', 'code'] as const,
-  'visual',
+  (props.initialTab as 'visual' | 'code') ?? 'visual',
 )
 
 // ── Visual tab: category-based GUI ──
