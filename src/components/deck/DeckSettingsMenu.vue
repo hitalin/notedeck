@@ -163,9 +163,15 @@ function openToolWindow(
     | 'plugins'
     | 'aiSettings'
     | 'performanceEditor',
+  props: Record<string, unknown> = {},
 ) {
-  windowsStore.open(type)
+  windowsStore.open(type, props)
   emit('close')
+}
+
+function editTheme(id: string, e: Event) {
+  e.stopPropagation()
+  openToolWindow('themeEditor', { initialThemeId: id })
 }
 
 const { confirm } = useConfirm()
@@ -299,9 +305,14 @@ usePortal(settingsMenuPortalRef)
                 >
                   <div :class="$style.themeItemPreviewWrap">
                     <ThemePreview :theme="theme" :class="$style.themeItemPreview" />
-                    <button class="_button" :class="$style.themeRemoveBtn" @click.stop="removeTheme(theme.id)">
-                      <i class="ti ti-x" />
-                    </button>
+                    <div :class="$style.themeItemActions">
+                      <button class="_button" :class="$style.themeEditBtn" title="編集" @click="editTheme(theme.id, $event)">
+                        <i class="ti ti-pencil" />
+                      </button>
+                      <button class="_button" :class="$style.themeRemoveBtn" @click.stop="removeTheme(theme.id)">
+                        <i class="ti ti-x" />
+                      </button>
+                    </div>
                   </div>
                   <div :class="$style.themeItemName">{{ theme.name }}</div>
                 </button>
@@ -563,30 +574,44 @@ usePortal(settingsMenuPortalRef)
   border-bottom: 1px solid var(--nd-divider);
 }
 
-.themeRemoveBtn {
+.themeItemActions {
   position: absolute;
   top: 2px;
   right: 2px;
+  display: flex;
+  gap: 2px;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity var(--nd-duration-fast);
+
+  .themeItem:hover & {
+    opacity: 1;
+  }
+}
+
+.themeEditBtn,
+.themeRemoveBtn {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--nd-error, #ec4137);
   color: #fff;
   font-size: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1;
-  opacity: 0;
-  transition: opacity var(--nd-duration-fast), filter var(--nd-duration-base);
-
-  .themeItem:hover & {
-    opacity: 1;
-  }
+  transition: filter var(--nd-duration-base);
 
   &:hover {
     filter: brightness(0.85);
   }
+}
+
+.themeEditBtn {
+  background: var(--nd-accent, #86b300);
+}
+
+.themeRemoveBtn {
+  background: var(--nd-error, #ec4137);
 }
 
 .themeItemName {

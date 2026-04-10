@@ -72,7 +72,7 @@ export function getSettingsItems(): QuickPickItem[] {
       label: 'テーマエディタ',
       icon: 'palette',
       group: 'アピアランス',
-      action: () => useWindowsStore().open('themeEditor'),
+      children: () => getThemeEditorItems(),
     },
     {
       id: 'css-editor',
@@ -247,6 +247,67 @@ function getThemeSelectItems(mode: 'dark' | 'light'): QuickPickItem[] {
   }
 
   return items
+}
+
+function getThemeEditorItems(): QuickPickItem[] {
+  const themeStore = useThemeStore()
+  const items: QuickPickItem[] = [
+    {
+      id: 'theme-new',
+      label: '新規テーマ作成',
+      icon: 'plus',
+      action: () => useWindowsStore().open('themeEditor'),
+    },
+  ]
+
+  for (const theme of themeStore.installedThemes) {
+    items.push({
+      id: `theme-manage-${theme.id}`,
+      label: theme.name,
+      icon: theme.base === 'dark' ? 'moon' : 'sun',
+      children: () => getThemeActions(theme.id),
+    })
+  }
+
+  return items
+}
+
+function getThemeActions(themeId: string): QuickPickItem[] {
+  const themeStore = useThemeStore()
+  const theme = themeStore.installedThemes.find((t) => t.id === themeId)
+  if (!theme) return []
+  const mode = theme.base ?? 'dark'
+
+  return [
+    {
+      id: `theme-apply-${themeId}`,
+      label: '適用',
+      icon: 'check',
+      action: () => themeStore.selectTheme(themeId, mode),
+    },
+    {
+      id: `theme-edit-${themeId}`,
+      label: '編集',
+      icon: 'pencil',
+      action: () =>
+        useWindowsStore().open('themeEditor', { initialThemeId: themeId }),
+    },
+    {
+      id: `theme-delete-${themeId}`,
+      label: '削除',
+      icon: 'trash',
+      action: async () => {
+        const { confirm } = useConfirm()
+        const ok = await confirm({
+          title: 'テーマを削除',
+          message: `「${theme.name}」を削除しますか？`,
+          okLabel: '削除',
+          type: 'danger',
+        })
+        if (ok) themeStore.removeTheme(themeId)
+      },
+    },
+  ]
 }
 
 // ============================================================
