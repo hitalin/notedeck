@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
 import JSON5 from 'json5'
-import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  nextTick,
+  ref,
+  toRaw,
+  watch,
+} from 'vue'
 import ColumnBadges from '@/components/common/ColumnBadges.vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import type { ReorderableItem } from '@/components/common/ReorderableList.vue'
@@ -71,7 +78,7 @@ function getItemLabel(item: NavColumnItem): string {
 type NavColumnItem = Exclude<NavItem, { type: 'divider' }>
 
 const items = ref<NavColumnItem[]>(
-  structuredClone(deckStore.navItems).filter(
+  structuredClone(toRaw(deckStore.navItems)).filter(
     (item): item is NavColumnItem => item.type !== 'divider',
   ),
 )
