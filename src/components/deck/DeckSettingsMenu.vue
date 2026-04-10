@@ -162,7 +162,9 @@ function openToolWindow(
     | 'themeEditor'
     | 'plugins'
     | 'aiSettings'
-    | 'performanceEditor',
+    | 'performanceEditor'
+    | 'appearanceEditor'
+    | 'backup',
   props: Record<string, unknown> = {},
 ) {
   windowsStore.open(type, props)
@@ -272,6 +274,14 @@ usePortal(settingsMenuPortalRef)
       <div :class="$style.menuBody">
       <!-- アピアランス -->
       <div :class="$style.categorySection">
+        <!-- モバイル: ウィンドウで開く -->
+        <button v-if="isCompact" :class="$style.categoryHeader" @click="openToolWindow('appearanceEditor')">
+          <i class="ti ti-brush" />
+          <span>アピアランス</span>
+          <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+        </button>
+        <!-- デスクトップ: アコーディオン -->
+        <template v-else>
         <button :class="$style.categoryHeader" @click="toggleSection('appearance')">
           <i class="ti ti-brush" />
           <span>アピアランス</span>
@@ -329,9 +339,11 @@ usePortal(settingsMenuPortalRef)
             <span :class="$style.settingsMenuLabel">壁紙を削除</span>
           </button>
         </div>
+        </template>
       </div>
 
       <input
+        v-if="!isCompact"
         ref="fileInput"
         type="file"
         accept="image/*"
@@ -373,8 +385,25 @@ usePortal(settingsMenuPortalRef)
         </div>
       </div>
 
-      <!-- データ -->
-      <div :class="$style.categorySection">
+      <!-- データ (モバイル: バックアップとキャッシュを分割) -->
+      <template v-if="isCompact">
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" @click="openToolWindow('backup')">
+            <i class="ti ti-database" />
+            <span>バックアップ</span>
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+          </button>
+        </div>
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" :disabled="isClearingCache" @click="clearAllCache">
+            <i class="ti ti-eraser" />
+            <span>{{ isClearingCache ? 'キャッシュ削除中...' : 'キャッシュ削除' }}</span>
+          </button>
+          <div v-if="cacheError" :class="$style.backupError">{{ cacheError }}</div>
+        </div>
+      </template>
+      <!-- データ (デスクトップ: 従来のアコーディオン) -->
+      <div v-else :class="$style.categorySection">
         <button :class="$style.categoryHeader" @click="toggleSection('data')">
           <i class="ti ti-database" />
           <span>データ</span>
@@ -521,6 +550,12 @@ usePortal(settingsMenuPortalRef)
 
 .chevronOpen {
   transform: rotate(0deg);
+}
+
+.chevronNav {
+  margin-left: auto;
+  font-size: 0.9em;
+  opacity: 0.5;
 }
 
 .themeSelectBody {
