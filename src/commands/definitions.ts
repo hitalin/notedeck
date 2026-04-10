@@ -607,6 +607,15 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
   })
 
   commandStore.register({
+    id: 'workspace-explorer',
+    label: 'エクスプローラーを開閉',
+    icon: 'files',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('workspace-explorer'),
+    execute: () => deckStore.toggleSidebarColumn('workspaceExplorer', null),
+  })
+
+  commandStore.register({
     id: 'login',
     label: 'アカウント追加',
     icon: 'user-plus',

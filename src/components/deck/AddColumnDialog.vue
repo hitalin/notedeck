@@ -552,6 +552,10 @@ function close() {
             <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedCategories.tools }]" />
           </button>
           <template v-if="expandedCategories.tools">
+            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('workspaceExplorer')">
+              <i class="ti ti-files" />
+              <span>エクスプローラー</span>
+            </button>
             <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('widget')">
               <i class="ti ti-app-window" />
               <span>ウィジェット</span>

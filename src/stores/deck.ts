@@ -41,6 +41,7 @@ export type ColumnType =
   | 'ads'
   | 'aboutMisskey'
   | 'emoji'
+  | 'workspaceExplorer'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
@@ -117,6 +118,7 @@ export type NavItem =
     }
 
 export const DEFAULT_NAV_ITEMS: NavItem[] = [
+  { type: 'workspaceExplorer', accountId: null },
   { type: 'notifications', accountId: null },
   { type: 'followRequests', accountId: null },
   { type: 'mentions', accountId: null },
