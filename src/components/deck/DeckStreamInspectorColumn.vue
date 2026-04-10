@@ -455,7 +455,6 @@ function scrollToTop() {
 
 .rowKind {
   color: var(--nd-accent);
-  min-width: 56px;
   flex-shrink: 0;
 }
 
