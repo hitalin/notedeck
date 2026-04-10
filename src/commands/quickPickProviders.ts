@@ -76,13 +76,6 @@ export function getSettingsItems(): QuickPickItem[] {
       children: () => getThemeEditorItems(),
     },
     {
-      id: 'css-editor',
-      label: 'カスタムCSS',
-      icon: 'code',
-      group: 'アピアランス',
-      action: () => useWindowsStore().open('cssEditor'),
-    },
-    {
       id: 'set-wallpaper',
       label: '壁紙を設定',
       icon: 'photo',
@@ -96,41 +89,48 @@ export function getSettingsItems(): QuickPickItem[] {
       group: 'アピアランス',
       action: () => useDeckStore().clearWallpaper(),
     },
-    // Settings
+    // Environment settings
     {
       id: 'plugins',
       label: 'プラグイン',
       icon: 'plug',
-      group: '設定',
+      group: '環境設定',
       children: () => getPluginEditorItems(),
     },
     {
       id: 'ai-settings',
       label: 'AI設定',
-      icon: 'sparkles',
-      group: '設定',
+      icon: 'robot',
+      group: '環境設定',
       action: () => useWindowsStore().open('aiSettings'),
     },
     {
       id: 'keybinds',
       label: 'キーバインド',
       icon: 'keyboard',
-      group: '設定',
+      group: '環境設定',
       action: () => useWindowsStore().open('keybinds'),
     },
     {
       id: 'performance',
       label: 'パフォーマンス',
       icon: 'gauge',
-      group: '設定',
+      group: '環境設定',
       action: () => useWindowsStore().open('performanceEditor'),
     },
-    // Data
+    {
+      id: 'css-editor',
+      label: 'カスタムCSS',
+      icon: 'code',
+      group: '環境設定',
+      action: () => useWindowsStore().open('cssEditor'),
+    },
+    // Cache
     {
       id: 'clear-all-cache',
       label: '全キャッシュ削除',
       icon: 'eraser',
-      group: 'データ',
+      group: 'キャッシュ',
       action: async () => {
         const { confirm } = useConfirm()
         const ok = await confirm({
@@ -146,7 +146,7 @@ export function getSettingsItems(): QuickPickItem[] {
       id: 'export-db',
       label: 'DBエクスポート',
       icon: 'database-export',
-      group: 'データ',
+      group: 'バックアップ',
       action: async () => {
         unwrap(await commands.exportDb())
       },
@@ -155,7 +155,7 @@ export function getSettingsItems(): QuickPickItem[] {
       id: 'import-db',
       label: 'DBインポート',
       icon: 'database-import',
-      group: 'データ',
+      group: 'バックアップ',
       action: () =>
         backupWithConfirm(
           'importDb',
@@ -167,7 +167,7 @@ export function getSettingsItems(): QuickPickItem[] {
       id: 'export-settings',
       label: '設定エクスポート',
       icon: 'file-export',
-      group: 'データ',
+      group: 'バックアップ',
       action: async () => {
         unwrap(await commands.exportSettingsJson())
       },
@@ -176,7 +176,7 @@ export function getSettingsItems(): QuickPickItem[] {
       id: 'import-settings',
       label: '設定インポート',
       icon: 'file-import',
-      group: 'データ',
+      group: 'バックアップ',
       action: () =>
         backupWithConfirm(
           'importSettingsJson',
