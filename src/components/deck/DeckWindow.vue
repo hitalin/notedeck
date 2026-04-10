@@ -38,7 +38,7 @@ const BASE_TITLES: Record<string, string> = {
   navEditor: 'ナビバー',
   performanceEditor: 'パフォーマンス',
   'account-manager': 'アカウント管理',
-  settingsEditor: 'notedeck.json',
+  settingsEditor: 'settings.json',
 }
 
 const windowTitle = computed(() => {

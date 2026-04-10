@@ -617,7 +617,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'settings-editor',
-    label: 'notedeck.json を編集',
+    label: 'settings.json を編集',
     icon: 'braces',
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('settings-editor'),

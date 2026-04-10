@@ -167,7 +167,7 @@ const ALLOWED_ROOT_FILES: &[&str] = &[
     "ai.json",
     "performance.json",
     "account-order.json5",
-    "notedeck.json",
+    "settings.json",
 ];
 
 /// Resolve the full path for a root-level settings file (under notedeck/).
@@ -211,12 +211,16 @@ pub fn get_settings_dir(app: tauri::AppHandle) -> Result<String> {
     Ok(settings_base_dir(&app)?.to_string_lossy().to_string())
 }
 
-/// Read `notedeck.json` (VSCode `settings.json` equivalent — single source of truth
+/// Read `settings.json` (VSCode `settings.json` equivalent — single source of truth
 /// for scalar preferences). Returns empty string if the file does not exist (first run).
+///
+/// Note: The Tauri command name stays `read_notedeck_json` for backwards-compatible
+/// bindings. The file on disk is `settings.json` to avoid collision with the export
+/// bundle filename `notedeck.json`.
 #[tauri::command]
 #[specta::specta]
 pub fn read_notedeck_json(app: tauri::AppHandle) -> Result<String> {
-    let path = settings_base_dir(&app)?.join("notedeck.json");
+    let path = settings_base_dir(&app)?.join("settings.json");
     if !path.exists() {
         return Ok(String::new());
     }
@@ -225,11 +229,11 @@ pub fn read_notedeck_json(app: tauri::AppHandle) -> Result<String> {
     })
 }
 
-/// Write `notedeck.json`. Creates the settings directory if missing.
+/// Write `settings.json`. Creates the settings directory if missing.
 #[tauri::command]
 #[specta::specta]
 pub fn write_notedeck_json(app: tauri::AppHandle, content: &str) -> Result<()> {
-    let path = settings_base_dir(&app)?.join("notedeck.json");
+    let path = settings_base_dir(&app)?.join("settings.json");
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| {
             NoteDeckError::InvalidInput(format!(

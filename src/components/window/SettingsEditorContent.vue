@@ -86,7 +86,7 @@ const statusClass = computed(() => {
   <div :class="$style.content">
     <div :class="$style.hint">
       <i class="ti ti-braces" />
-      notedeck.json を直接編集 — 変更は自動保存されます
+      settings.json を直接編集 — 変更は自動保存されます
     </div>
 
     <CodeEditor

@@ -1277,8 +1277,12 @@ async writeRootSettingsFile(name: string, content: string) : Promise<Result<null
 }
 },
 /**
- * Read `notedeck.json` (VSCode `settings.json` equivalent — single source of truth
+ * Read `settings.json` (VSCode `settings.json` equivalent — single source of truth
  * for scalar preferences). Returns empty string if the file does not exist (first run).
+ * 
+ * Note: The Tauri command name stays `read_notedeck_json` for backwards-compatible
+ * bindings. The file on disk is `settings.json` to avoid collision with the export
+ * bundle filename `notedeck.json`.
  */
 async readNotedeckJson() : Promise<Result<string, { code: string; message: string }>> {
     try {
@@ -1289,7 +1293,7 @@ async readNotedeckJson() : Promise<Result<string, { code: string; message: strin
 }
 },
 /**
- * Write `notedeck.json`. Creates the settings directory if missing.
+ * Write `settings.json`. Creates the settings directory if missing.
  */
 async writeNotedeckJson(content: string) : Promise<Result<null, { code: string; message: string }>> {
     try {

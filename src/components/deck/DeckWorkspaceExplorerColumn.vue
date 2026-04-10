@@ -240,7 +240,7 @@ const folders = computed<TreeFolder[]>(() => [
 const singletonFiles: TreeFile[] = [
   {
     id: 'notedeck',
-    name: 'notedeck.json',
+    name: 'settings.json',
     ...fileTypeFor('notedeck.json'),
     onClick: openSettings,
   },
