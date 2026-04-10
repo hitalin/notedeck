@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
+import { computed, nextTick, reactive, ref, useTemplateRef, watch } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { getAccountLabel, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -37,13 +37,27 @@ const expanded = reactive<Record<string, boolean>>({
   accounts: true,
 })
 
+// 選択中の行のキー (null = 未選択)。visibleRows 計算と template の
+// selected クラス適用の両方で参照される。
+const selectedKey = ref<string | null>(null)
+
 function toggle(key: string) {
+  const willCollapse = expanded[key]
   expanded[key] = !expanded[key]
+  // フォルダを畳む時、その中のファイルが選択されていたら
+  // 選択をフォルダ自体に移す (VSCode 同等の挙動)
+  if (willCollapse && selectedKey.value?.startsWith(`file:${key}:`)) {
+    selectedKey.value = `folder:${key}`
+  }
 }
 
 function collapseAll() {
   for (const key of Object.keys(expanded)) {
     expanded[key] = false
+  }
+  // 畳まれて見えなくなった選択は一旦クリア
+  if (selectedKey.value?.startsWith('file:')) {
+    selectedKey.value = null
   }
 }
 
@@ -103,16 +117,44 @@ function openNavJson() {
   windowsStore.open('navEditor')
 }
 
+interface FileTypeInfo {
+  icon: string
+  colorClass: string
+}
+
+/**
+ * ファイル名の拡張子から VSCode Material Icon Theme 風のアイコン + 色を返す。
+ * 拡張子ベースで一貫性を保つ (`.json` は常に同じ見た目)。
+ */
+function fileTypeFor(filename: string): FileTypeInfo {
+  if (filename.endsWith('.json5')) {
+    return { icon: 'ti-braces', colorClass: 'iconJson5' }
+  }
+  if (filename.endsWith('.json')) {
+    return { icon: 'ti-braces', colorClass: 'iconJson' }
+  }
+  if (filename.endsWith('.is')) {
+    return { icon: 'ti-file-code', colorClass: 'iconIs' }
+  }
+  if (filename.endsWith('.css')) {
+    return { icon: 'ti-brush', colorClass: 'iconCss' }
+  }
+  return { icon: 'ti-file', colorClass: '' }
+}
+
 interface TreeFile {
   id: string
   name: string
   icon: string
+  colorClass: string
   onClick: () => void
 }
 
 interface TreeFolder {
   key: string
   label: string
+  icon: string
+  colorClass: string
   addTitle: string
   onAdd: () => void
   items: TreeFile[]
@@ -122,50 +164,70 @@ const folders = computed<TreeFolder[]>(() => [
   {
     key: 'themes',
     label: 'themes',
+    icon: 'ti-palette',
+    colorClass: 'folderThemes',
     addTitle: '新しいテーマを作成',
     onAdd: addTheme,
-    items: themes.value.map((t) => ({
-      id: t.id,
-      name: `${t.name || t.id}.json5`,
-      icon: 'ti-palette',
-      onClick: () => openThemeFile(t.id),
-    })),
+    items: themes.value.map((t) => {
+      const name = `${t.name || t.id}.json5`
+      return {
+        id: t.id,
+        name,
+        ...fileTypeFor(name),
+        onClick: () => openThemeFile(t.id),
+      }
+    }),
   },
   {
     key: 'plugins',
     label: 'plugins',
+    icon: 'ti-plug',
+    colorClass: 'folderPlugins',
     addTitle: 'プラグインを追加',
     onAdd: addPlugin,
-    items: plugins.value.map((p) => ({
-      id: p.installId,
-      name: `${p.name || p.installId}.is`,
-      icon: 'ti-puzzle',
-      onClick: () => openPluginFile(),
-    })),
+    items: plugins.value.map((p) => {
+      const name = `${p.name || p.installId}.is`
+      return {
+        id: p.installId,
+        name,
+        ...fileTypeFor(name),
+        onClick: () => openPluginFile(),
+      }
+    }),
   },
   {
     key: 'profiles',
     label: 'profiles',
+    icon: 'ti-layout-2',
+    colorClass: 'folderProfiles',
     addTitle: '新しいプロファイルを作成',
     onAdd: addProfile,
-    items: profiles.value.map((p) => ({
-      id: p.id,
-      name: `${p.name}.json`,
-      icon: 'ti-layout-2',
-      onClick: () => openProfileFile(p.id),
-    })),
+    items: profiles.value.map((p) => {
+      const name = `${p.name}.json`
+      return {
+        id: p.id,
+        name,
+        ...fileTypeFor(name),
+        onClick: () => openProfileFile(p.id),
+      }
+    }),
   },
   {
     key: 'accounts',
     label: 'accounts',
+    icon: 'ti-users',
+    colorClass: 'folderAccounts',
     addTitle: 'アカウントを追加',
     onAdd: addAccount,
-    items: accounts.value.map((a) => ({
-      id: a.id,
-      name: getAccountLabel(a),
-      icon: 'ti-user',
-      onClick: () => openAccountFile(),
-    })),
+    items: accounts.value.map((a) => {
+      const name = `${getAccountLabel(a)}.json`
+      return {
+        id: a.id,
+        name,
+        ...fileTypeFor(name),
+        onClick: () => openAccountFile(),
+      }
+    }),
   },
 ])
 
@@ -173,22 +235,219 @@ const singletonFiles: TreeFile[] = [
   {
     id: 'keybinds',
     name: 'keybinds.json',
-    icon: 'ti-keyboard',
+    ...fileTypeFor('keybinds.json'),
     onClick: openKeybinds,
   },
   {
     id: 'user.css',
     name: 'user.css',
-    icon: 'ti-brush',
+    ...fileTypeFor('user.css'),
     onClick: openUserCss,
   },
   {
     id: 'nav',
     name: 'nav.json',
-    icon: 'ti-menu-2',
+    ...fileTypeFor('nav.json'),
     onClick: openNavJson,
   },
 ]
+
+// --- Row key helpers (selection + visibleRows の統一 ID) ---
+const rowKeyFolder = (folderKey: string) => `folder:${folderKey}`
+const rowKeyFile = (folderKey: string, fileId: string) =>
+  `file:${folderKey}:${fileId}`
+const rowKeyRootFile = (fileId: string) => `root:${fileId}`
+const rowKeyEmpty = (folderKey: string) => `empty:${folderKey}`
+
+// --- Visible rows (flat list for keyboard navigation) ---
+interface VisibleRow {
+  key: string
+  kind: 'folder' | 'file' | 'rootFile' | 'empty'
+  folderKey?: string
+  folder?: TreeFolder
+  file?: TreeFile
+}
+
+const visibleRows = computed<VisibleRow[]>(() => {
+  const rows: VisibleRow[] = []
+  for (const folder of folders.value) {
+    rows.push({
+      key: rowKeyFolder(folder.key),
+      kind: 'folder',
+      folderKey: folder.key,
+      folder,
+    })
+    if (!expanded[folder.key]) continue
+    if (folder.items.length === 0) {
+      rows.push({
+        key: rowKeyEmpty(folder.key),
+        kind: 'empty',
+        folderKey: folder.key,
+      })
+      continue
+    }
+    for (const item of folder.items) {
+      rows.push({
+        key: rowKeyFile(folder.key, item.id),
+        kind: 'file',
+        folderKey: folder.key,
+        file: item,
+      })
+    }
+  }
+  for (const file of singletonFiles) {
+    rows.push({
+      key: rowKeyRootFile(file.id),
+      kind: 'rootFile',
+      file,
+    })
+  }
+  return rows
+})
+
+// --- Selection + row click helpers ---
+function onFolderRowClick(folder: TreeFolder) {
+  selectedKey.value = rowKeyFolder(folder.key)
+  toggle(folder.key)
+}
+
+function onFileRowClick(folderKey: string, file: TreeFile) {
+  selectedKey.value = rowKeyFile(folderKey, file.id)
+  file.onClick()
+}
+
+function onRootFileRowClick(file: TreeFile) {
+  selectedKey.value = rowKeyRootFile(file.id)
+  file.onClick()
+}
+
+// --- Keyboard navigation ---
+const treeEl = useTemplateRef<HTMLElement>('treeEl')
+
+function currentRowIndex(): number {
+  if (!selectedKey.value) return -1
+  return visibleRows.value.findIndex((r) => r.key === selectedKey.value)
+}
+
+function moveSelection(delta: number) {
+  const rows = visibleRows.value
+  if (rows.length === 0) return
+  let idx = currentRowIndex()
+  if (idx < 0) {
+    idx = delta > 0 ? 0 : rows.length - 1
+  } else {
+    idx = Math.max(0, Math.min(rows.length - 1, idx + delta))
+  }
+  // 空行 (empty folder placeholder) はスキップ
+  while (rows[idx]?.kind === 'empty' && idx > 0 && idx < rows.length - 1) {
+    idx += delta > 0 ? 1 : -1
+  }
+  const target = rows[idx]
+  if (!target || target.kind === 'empty') return
+  selectedKey.value = target.key
+}
+
+function selectFirst() {
+  const rows = visibleRows.value
+  if (rows.length === 0) return
+  selectedKey.value = rows.find((r) => r.kind !== 'empty')?.key ?? null
+}
+
+function selectLast() {
+  const rows = visibleRows.value
+  if (rows.length === 0) return
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i]
+    if (row && row.kind !== 'empty') {
+      selectedKey.value = row.key
+      return
+    }
+  }
+}
+
+function activateSelected() {
+  const row = visibleRows.value.find((r) => r.key === selectedKey.value)
+  if (!row) return
+  if (row.kind === 'folder' && row.folderKey) {
+    toggle(row.folderKey)
+    return
+  }
+  if ((row.kind === 'file' || row.kind === 'rootFile') && row.file) {
+    row.file.onClick()
+  }
+}
+
+function expandOrMoveToFirstChild() {
+  const row = visibleRows.value.find((r) => r.key === selectedKey.value)
+  if (!row || row.kind !== 'folder' || !row.folder || !row.folderKey) return
+  if (!expanded[row.folderKey]) {
+    expanded[row.folderKey] = true
+    return
+  }
+  const firstItem = row.folder.items[0]
+  if (firstItem) {
+    selectedKey.value = rowKeyFile(row.folderKey, firstItem.id)
+  }
+}
+
+function collapseOrMoveToParent() {
+  const row = visibleRows.value.find((r) => r.key === selectedKey.value)
+  if (!row) return
+  if (row.kind === 'folder' && row.folderKey && expanded[row.folderKey]) {
+    expanded[row.folderKey] = false
+    return
+  }
+  if (row.kind === 'file' && row.folderKey) {
+    selectedKey.value = rowKeyFolder(row.folderKey)
+  }
+}
+
+function onKeydown(e: KeyboardEvent) {
+  // 修飾キー付きはスキップ (コマンドパレット等と競合しないため)
+  if (e.ctrlKey || e.metaKey || e.altKey) return
+  switch (e.key) {
+    case 'ArrowDown':
+      e.preventDefault()
+      moveSelection(1)
+      break
+    case 'ArrowUp':
+      e.preventDefault()
+      moveSelection(-1)
+      break
+    case 'ArrowRight':
+      e.preventDefault()
+      expandOrMoveToFirstChild()
+      break
+    case 'ArrowLeft':
+      e.preventDefault()
+      collapseOrMoveToParent()
+      break
+    case 'Enter':
+    case ' ':
+      e.preventDefault()
+      activateSelected()
+      break
+    case 'Home':
+      e.preventDefault()
+      selectFirst()
+      break
+    case 'End':
+      e.preventDefault()
+      selectLast()
+      break
+  }
+}
+
+// 選択変更時に該当行を可視範囲にスクロール
+watch(selectedKey, (key) => {
+  if (!key || !treeEl.value) return
+  nextTick(() => {
+    const row = treeEl.value?.querySelector<HTMLElement>(
+      `[data-row-key="${CSS.escape(key)}"]`,
+    )
+    row?.scrollIntoView({ block: 'nearest' })
+  })
+})
 </script>
 
 <template>
@@ -213,15 +472,26 @@ const singletonFiles: TreeFile[] = [
         </button>
       </div>
 
-      <div :class="$style.tree">
+      <div
+        ref="treeEl"
+        :class="$style.tree"
+        tabindex="0"
+        @keydown="onKeydown"
+      >
         <template
           v-for="folder in folders"
           :key="folder.key"
         >
           <!-- folder row -->
           <div
-            :class="[$style.row, $style.folderRow]"
-            @click="toggle(folder.key)"
+            :data-row-key="`folder:${folder.key}`"
+            :title="`${folder.label}/`"
+            :class="[
+              $style.row,
+              $style.folderRow,
+              { [$style.selected]: selectedKey === `folder:${folder.key}` },
+            ]"
+            @click="onFolderRowClick(folder)"
           >
             <i
               class="ti ti-chevron-right"
@@ -229,7 +499,7 @@ const singletonFiles: TreeFile[] = [
             />
             <i
               class="ti"
-              :class="[expanded[folder.key] ? 'ti-folder-open' : 'ti-folder', $style.folderIcon]"
+              :class="[folder.icon, $style.folderIcon, $style[folder.colorClass]]"
             />
             <span :class="$style.name">{{ folder.label }}</span>
             <button
@@ -247,10 +517,19 @@ const singletonFiles: TreeFile[] = [
             <div
               v-for="item in folder.items"
               :key="item.id"
-              :class="[$style.row, $style.fileRow]"
-              @click="item.onClick()"
+              :data-row-key="`file:${folder.key}:${item.id}`"
+              :title="`${folder.label}/${item.name}`"
+              :class="[
+                $style.row,
+                $style.fileRow,
+                { [$style.selected]: selectedKey === `file:${folder.key}:${item.id}` },
+              ]"
+              @click="onFileRowClick(folder.key, item)"
             >
-              <i class="ti" :class="[item.icon, $style.fileIcon]" />
+              <i
+                class="ti"
+                :class="[item.icon, $style.fileIcon, $style[item.colorClass]]"
+              />
               <span :class="$style.name">{{ item.name }}</span>
             </div>
             <div
@@ -266,10 +545,19 @@ const singletonFiles: TreeFile[] = [
         <div
           v-for="file in singletonFiles"
           :key="file.id"
-          :class="[$style.row, $style.rootFileRow]"
-          @click="file.onClick()"
+          :data-row-key="`root:${file.id}`"
+          :title="file.name"
+          :class="[
+            $style.row,
+            $style.rootFileRow,
+            { [$style.selected]: selectedKey === `root:${file.id}` },
+          ]"
+          @click="onRootFileRowClick(file)"
         >
-          <i class="ti" :class="[file.icon, $style.fileIcon]" />
+          <i
+            class="ti"
+            :class="[file.icon, $style.fileIcon, $style[file.colorClass]]"
+          />
           <span :class="$style.name">{{ file.name }}</span>
         </div>
       </div>
@@ -326,6 +614,7 @@ const singletonFiles: TreeFile[] = [
   flex: 1;
   overflow-y: auto;
   padding-bottom: 8px;
+  outline: none; // tabindex focus 時のデフォルト枠線を消す
 }
 
 .row {
@@ -339,6 +628,18 @@ const singletonFiles: TreeFile[] = [
   &:hover {
     background: var(--nd-panelHighlight);
   }
+}
+
+// 選択中の行 (ホバーより強い背景)
+.selected,
+.selected:hover {
+  background: var(--nd-panelHighlight2);
+}
+
+// ツリーがキーボードフォーカスを持つ時、選択行をさらに強調
+.tree:focus-visible .selected,
+.tree:focus .selected {
+  background: color-mix(in srgb, var(--nd-accent) 22%, transparent);
 }
 
 .folderRow {
@@ -447,5 +748,42 @@ const singletonFiles: TreeFile[] = [
     opacity: 0.6;
     pointer-events: none;
   }
+}
+
+// --- Material Icon Theme 風の拡張子別カラー ---
+// 順序重要: .fileIcon / .folderIcon の後に置くことで color を上書き
+
+// ファイル: 拡張子ベース
+.iconJson {
+  color: #d7ac4a; // yellow-gold (VSCode JSON braces 相当)
+}
+
+.iconJson5 {
+  color: #e09434; // orange-gold (.json と区別)
+}
+
+.iconIs {
+  color: #b97bd5; // purple (AiScript の主観色)
+}
+
+.iconCss {
+  color: #5294e2; // sky blue
+}
+
+// フォルダ: 意味ベース (Material Icon Theme 流)
+.folderThemes {
+  color: #e0538b; // pink (テーマ = 外観)
+}
+
+.folderPlugins {
+  color: #b97bd5; // purple (.is と統一)
+}
+
+.folderProfiles {
+  color: #5294e2; // blue (.css と統一しつつレイアウト感)
+}
+
+.folderAccounts {
+  color: #66bb6a; // green (identity)
 }
 </style>
