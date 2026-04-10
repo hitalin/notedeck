@@ -921,7 +921,7 @@ function onRenameKeydown(e: KeyboardEvent): void {
 
 .fileRow {
   gap: 4px;
-  padding-left: 28px;
+  padding-left: 36px;
 }
 
 .rootFileRow {
