@@ -39,7 +39,8 @@ const BASE_TITLES: Record<string, string> = {
   navEditor: 'ナビバー',
   performanceEditor: 'パフォーマンス',
   'account-manager': 'アカウント管理',
-  settingsEditor: 'settings.json5',
+  appearanceEditor: 'アピアランス',
+  backup: 'バックアップ',
 }
 
 const windowTitle = computed(() => {
@@ -71,7 +72,8 @@ const icons: Record<string, string> = {
   navEditor: 'ti ti-layout-sidebar-left-collapse',
   performanceEditor: 'ti ti-gauge',
   'account-manager': 'ti ti-users-group',
-  settingsEditor: 'ti ti-braces',
+  appearanceEditor: 'ti ti-brush',
+  backup: 'ti ti-package-export',
 }
 
 const isMinimized = computed(() => props.window.minimized)

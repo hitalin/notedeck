@@ -56,8 +56,11 @@ const PerformanceEditorContent = defineAsyncComponent(
 const AccountManagerContent = defineAsyncComponent(
   () => import('@/components/window/AccountManagerContent.vue'),
 )
-const SettingsEditorContent = defineAsyncComponent(
-  () => import('@/components/window/SettingsEditorContent.vue'),
+const AppearanceEditorContent = defineAsyncComponent(
+  () => import('@/components/window/AppearanceEditorContent.vue'),
+)
+const BackupContent = defineAsyncComponent(
+  () => import('@/components/window/BackupContent.vue'),
 )
 
 const windowsStore = useWindowsStore()
@@ -195,7 +198,14 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         :initial-tab="(win.props.initialTab as string | undefined)"
         @close="closeWindow(win.id)"
       />
-      <SettingsEditorContent v-if="win.type === 'settingsEditor'" />
+      <AppearanceEditorContent
+        v-if="win.type === 'appearanceEditor'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
+      <BackupContent
+        v-if="win.type === 'backup'"
+        :initial-tab="(win.props.initialTab as 'notedeck' | 'db' | undefined)"
+      />
     </DeckWindow>
   </div>
 </template>

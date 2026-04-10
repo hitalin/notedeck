@@ -30,6 +30,7 @@ const plugins = computed(() => pluginsStore.plugins)
 const profiles = computed(() => deckProfileStore.getProfiles())
 
 const expanded = reactive<Record<string, boolean>>({
+  notedeck: true,
   themes: true,
   plugins: true,
   profiles: true,
@@ -42,10 +43,20 @@ const selectedKey = ref<string | null>(null)
 function toggle(key: string) {
   const willCollapse = expanded[key]
   expanded[key] = !expanded[key]
-  // フォルダを畳む時、その中のファイルが選択されていたら
-  // 選択をフォルダ自体に移す (VSCode 同等の挙動)
-  if (willCollapse && selectedKey.value?.startsWith(`file:${key}:`)) {
-    selectedKey.value = `folder:${key}`
+  if (willCollapse) {
+    if (key === 'notedeck') {
+      // notedeck/ を畳む時、notecli.db 以外の選択を notedeck に移す
+      const sel = selectedKey.value
+      if (
+        sel &&
+        sel !== rowKeyFolder('notedeck') &&
+        sel !== rowKeyRootFile('notecli.db')
+      ) {
+        selectedKey.value = rowKeyFolder('notedeck')
+      }
+    } else if (selectedKey.value?.startsWith(`file:${key}:`)) {
+      selectedKey.value = `folder:${key}`
+    }
   }
 }
 
@@ -53,8 +64,13 @@ function collapseAll() {
   for (const key of Object.keys(expanded)) {
     expanded[key] = false
   }
-  // 畳まれて見えなくなった選択は一旦クリア
-  if (selectedKey.value?.startsWith('file:')) {
+  // 畳まれて見えなくなった選択は一旦クリア (notecli.db は残す)
+  const sel = selectedKey.value
+  if (
+    sel &&
+    sel !== rowKeyFolder('notedeck') &&
+    sel !== rowKeyRootFile('notecli.db')
+  ) {
     selectedKey.value = null
   }
 }
@@ -100,7 +116,7 @@ function openAccountFile() {
 
 // Singleton files
 function openSettings() {
-  windowsStore.open('settingsEditor')
+  windowsStore.open('appearanceEditor', { initialTab: 'code' })
 }
 
 function openUserCss() {
@@ -127,6 +143,15 @@ function openAiSettings() {
   windowsStore.open('aiSettings', { initialTab: 'api' })
 }
 
+// Backup / Import / Export
+function openNotedeckBackup() {
+  windowsStore.open('backup', { initialTab: 'notedeck' })
+}
+
+function openNotecliDbBackup() {
+  windowsStore.open('backup', { initialTab: 'db' })
+}
+
 interface FileTypeInfo {
   icon: string
   colorClass: string
@@ -151,6 +176,9 @@ function fileTypeFor(filename: string): FileTypeInfo {
   }
   if (filename.endsWith('.md')) {
     return { icon: 'ti-markdown', colorClass: 'iconMd' }
+  }
+  if (filename.endsWith('.db')) {
+    return { icon: 'ti-database', colorClass: 'iconDb' }
   }
   return { icon: 'ti-file', colorClass: '' }
 }
@@ -230,8 +258,8 @@ const folders = computed<TreeFolder[]>(() => [
 const singletonFiles: TreeFile[] = [
   {
     id: 'notedeck',
-    name: 'settings.json5',
-    ...fileTypeFor('settings.json5'),
+    name: 'appearance.json5',
+    ...fileTypeFor('appearance.json5'),
     onClick: openSettings,
   },
   {
@@ -278,6 +306,13 @@ const singletonFiles: TreeFile[] = [
   },
 ]
 
+const notecliDbFile: TreeFile = {
+  id: 'notecli.db',
+  name: 'notecli.db',
+  ...fileTypeFor('notecli.db'),
+  onClick: openNotecliDbBackup,
+}
+
 // --- Row key helpers (selection + visibleRows の統一 ID) ---
 const rowKeyFolder = (folderKey: string) => `folder:${folderKey}`
 const rowKeyFile = (folderKey: string, fileId: string) =>
@@ -296,38 +331,58 @@ interface VisibleRow {
 
 const visibleRows = computed<VisibleRow[]>(() => {
   const rows: VisibleRow[] = []
-  for (const folder of folders.value) {
-    rows.push({
-      key: rowKeyFolder(folder.key),
-      kind: 'folder',
-      folderKey: folder.key,
-      folder,
-    })
-    if (!expanded[folder.key]) continue
-    if (folder.items.length === 0) {
+
+  // notedeck/ ルートフォルダ
+  rows.push({
+    key: rowKeyFolder('notedeck'),
+    kind: 'folder',
+    folderKey: 'notedeck',
+  })
+
+  if (expanded.notedeck) {
+    // サブフォルダ (themes, plugins, profiles)
+    for (const folder of folders.value) {
       rows.push({
-        key: rowKeyEmpty(folder.key),
-        kind: 'empty',
+        key: rowKeyFolder(folder.key),
+        kind: 'folder',
         folderKey: folder.key,
+        folder,
       })
-      continue
+      if (!expanded[folder.key]) continue
+      if (folder.items.length === 0) {
+        rows.push({
+          key: rowKeyEmpty(folder.key),
+          kind: 'empty',
+          folderKey: folder.key,
+        })
+        continue
+      }
+      for (const item of folder.items) {
+        rows.push({
+          key: rowKeyFile(folder.key, item.id),
+          kind: 'file',
+          folderKey: folder.key,
+          file: item,
+        })
+      }
     }
-    for (const item of folder.items) {
+    // notedeck/ 直下の設定ファイル
+    for (const file of singletonFiles) {
       rows.push({
-        key: rowKeyFile(folder.key, item.id),
-        kind: 'file',
-        folderKey: folder.key,
-        file: item,
+        key: rowKeyRootFile(file.id),
+        kind: 'rootFile',
+        file,
       })
     }
   }
-  for (const file of singletonFiles) {
-    rows.push({
-      key: rowKeyRootFile(file.id),
-      kind: 'rootFile',
-      file,
-    })
-  }
+
+  // notecli.db (notedeck/ と並列)
+  rows.push({
+    key: rowKeyRootFile('notecli.db'),
+    kind: 'rootFile',
+    file: notecliDbFile,
+  })
+
   return rows
 })
 
@@ -405,26 +460,49 @@ function activateSelected() {
 
 function expandOrMoveToFirstChild() {
   const row = visibleRows.value.find((r) => r.key === selectedKey.value)
-  if (!row || row.kind !== 'folder' || !row.folder || !row.folderKey) return
+  if (!row || row.kind !== 'folder' || !row.folderKey) return
   if (!expanded[row.folderKey]) {
     expanded[row.folderKey] = true
     return
   }
-  const firstItem = row.folder.items[0]
-  if (firstItem) {
-    selectedKey.value = rowKeyFile(row.folderKey, firstItem.id)
+  // notedeck/ → 最初のサブフォルダへ
+  if (row.folderKey === 'notedeck') {
+    const firstFolder = folders.value[0]
+    if (firstFolder) {
+      selectedKey.value = rowKeyFolder(firstFolder.key)
+    }
+    return
+  }
+  // サブフォルダ → 最初のファイルへ
+  if (row.folder) {
+    const firstItem = row.folder.items[0]
+    if (firstItem) {
+      selectedKey.value = rowKeyFile(row.folderKey, firstItem.id)
+    }
   }
 }
 
 function collapseOrMoveToParent() {
   const row = visibleRows.value.find((r) => r.key === selectedKey.value)
   if (!row) return
+  // フォルダ展開中 → 折りたたむ
   if (row.kind === 'folder' && row.folderKey && expanded[row.folderKey]) {
     expanded[row.folderKey] = false
     return
   }
+  // サブフォルダ (折りたたみ済) → notedeck/ へ
+  if (row.kind === 'folder' && row.folderKey && row.folderKey !== 'notedeck') {
+    selectedKey.value = rowKeyFolder('notedeck')
+    return
+  }
+  // サブフォルダ内のファイル → 親フォルダへ
   if (row.kind === 'file' && row.folderKey) {
     selectedKey.value = rowKeyFolder(row.folderKey)
+    return
+  }
+  // notedeck/ 直下の設定ファイル → notedeck/ へ
+  if (row.kind === 'rootFile' && row.file?.id !== 'notecli.db') {
+    selectedKey.value = rowKeyFolder('notedeck')
   }
 }
 
@@ -515,6 +593,16 @@ function showContextMenu(e: MouseEvent, actions: ContextAction[]): void {
 function onContextAction(action: ContextAction): void {
   closeContextMenu()
   action.handler()
+}
+
+function onNotedeckFolderContextMenu(e: MouseEvent): void {
+  showContextMenu(e, [
+    {
+      label: 'エクスポート / インポート',
+      icon: 'ti-package-export',
+      handler: openNotedeckBackup,
+    },
+  ])
 }
 
 function onFolderContextMenu(e: MouseEvent, folder: TreeFolder): void {
@@ -724,101 +812,154 @@ function onRenameKeydown(e: KeyboardEvent): void {
         tabindex="0"
         @keydown="onKeydown"
       >
-        <template
-          v-for="folder in folders"
-          :key="folder.key"
+        <!-- notedeck/ ルートフォルダ -->
+        <div
+          data-row-key="folder:notedeck"
+          title="notedeck/"
+          :class="[
+            $style.row,
+            $style.folderRow,
+            { [$style.selected]: selectedKey === 'folder:notedeck' },
+          ]"
+          @click="() => { selectedKey = 'folder:notedeck'; toggle('notedeck') }"
+          @contextmenu.prevent="onNotedeckFolderContextMenu($event)"
         >
-          <!-- folder row -->
-          <div
-            :data-row-key="`folder:${folder.key}`"
-            :title="`${folder.label}/`"
-            :class="[
-              $style.row,
-              $style.folderRow,
-              { [$style.selected]: selectedKey === `folder:${folder.key}` },
-            ]"
-            @click="onFolderRowClick(folder)"
-            @contextmenu.prevent="onFolderContextMenu($event, folder)"
+          <i
+            class="ti ti-chevron-right"
+            :class="[$style.chevron, { [$style.chevronExpanded]: expanded.notedeck }]"
+          />
+          <i
+            class="ti ti-folder"
+            :class="[$style.folderIcon, $style.folderNotedeck]"
+          />
+          <span :class="$style.name">notedeck</span>
+          <button
+            type="button"
+            :class="$style.inlineAction"
+            title="エクスポート / インポート"
+            @click.stop="openNotedeckBackup()"
           >
-            <i
-              class="ti ti-chevron-right"
-              :class="[$style.chevron, { [$style.chevronExpanded]: expanded[folder.key] }]"
-            />
-            <i
-              class="ti"
-              :class="[folder.icon, $style.folderIcon, $style[folder.colorClass]]"
-            />
-            <span :class="$style.name">{{ folder.label }}</span>
-            <button
-              type="button"
-              :class="$style.inlineAction"
-              :title="folder.addTitle"
-              @click.stop="folder.onAdd()"
-            >
-              <i class="ti ti-plus" />
-            </button>
-          </div>
+            <i class="ti ti-package-export" />
+          </button>
+        </div>
 
-          <!-- folder contents -->
-          <div v-if="expanded[folder.key]" :class="$style.folderBody">
+        <!-- notedeck/ 配下 -->
+        <div v-if="expanded.notedeck" :class="$style.notedeckBody">
+          <template
+            v-for="folder in folders"
+            :key="folder.key"
+          >
+            <!-- sub-folder row -->
             <div
-              v-for="item in folder.items"
-              :key="item.id"
-              :data-row-key="`file:${folder.key}:${item.id}`"
-              :title="`${folder.label}/${item.name}`"
+              :data-row-key="`folder:${folder.key}`"
+              :title="`notedeck/${folder.label}/`"
               :class="[
                 $style.row,
-                $style.fileRow,
-                { [$style.selected]: selectedKey === `file:${folder.key}:${item.id}` },
+                $style.subFolderRow,
+                { [$style.selected]: selectedKey === `folder:${folder.key}` },
               ]"
-              @click="onFileRowClick(folder.key, item)"
-              @contextmenu.prevent="onFileContextMenu($event, folder.key, item)"
-              @dblclick.prevent="(folder.key === 'themes' || folder.key === 'plugins' || folder.key === 'profiles') && startRename(`file:${folder.key}:${item.id}`, item.name)"
+              @click="onFolderRowClick(folder)"
+              @contextmenu.prevent="onFolderContextMenu($event, folder)"
             >
               <i
+                class="ti ti-chevron-right"
+                :class="[$style.chevron, { [$style.chevronExpanded]: expanded[folder.key] }]"
+              />
+              <i
                 class="ti"
-                :class="[item.icon, $style.fileIcon, $style[item.colorClass]]"
+                :class="[folder.icon, $style.folderIcon, $style[folder.colorClass]]"
               />
-              <!-- Inline rename input -->
-              <input
-                v-if="renamingKey === `file:${folder.key}:${item.id}`"
-                v-model="renameInput"
-                data-rename-input
-                :class="$style.renameInput"
-                @keydown="onRenameKeydown"
-                @blur="confirmRename"
-                @click.stop
-              />
-              <span v-else :class="$style.name">{{ item.name }}</span>
+              <span :class="$style.name">{{ folder.label }}</span>
+              <button
+                type="button"
+                :class="$style.inlineAction"
+                :title="folder.addTitle"
+                @click.stop="folder.onAdd()"
+              >
+                <i class="ti ti-plus" />
+              </button>
             </div>
-            <div
-              v-if="folder.items.length === 0"
-              :class="[$style.row, $style.fileRow, $style.emptyRow]"
-            >
-              (空)
-            </div>
-          </div>
-        </template>
 
-        <!-- singleton files at root -->
+            <!-- sub-folder contents -->
+            <div v-if="expanded[folder.key]" :class="$style.subFolderBody">
+              <div
+                v-for="item in folder.items"
+                :key="item.id"
+                :data-row-key="`file:${folder.key}:${item.id}`"
+                :title="`notedeck/${folder.label}/${item.name}`"
+                :class="[
+                  $style.row,
+                  $style.deepFileRow,
+                  { [$style.selected]: selectedKey === `file:${folder.key}:${item.id}` },
+                ]"
+                @click="onFileRowClick(folder.key, item)"
+                @contextmenu.prevent="onFileContextMenu($event, folder.key, item)"
+                @dblclick.prevent="(folder.key === 'themes' || folder.key === 'plugins' || folder.key === 'profiles') && startRename(`file:${folder.key}:${item.id}`, item.name)"
+              >
+                <i
+                  class="ti"
+                  :class="[item.icon, $style.fileIcon, $style[item.colorClass]]"
+                />
+                <!-- Inline rename input -->
+                <input
+                  v-if="renamingKey === `file:${folder.key}:${item.id}`"
+                  v-model="renameInput"
+                  data-rename-input
+                  :class="$style.renameInput"
+                  @keydown="onRenameKeydown"
+                  @blur="confirmRename"
+                  @click.stop
+                />
+                <span v-else :class="$style.name">{{ item.name }}</span>
+              </div>
+              <div
+                v-if="folder.items.length === 0"
+                :class="[$style.row, $style.deepFileRow, $style.emptyRow]"
+              >
+                (空)
+              </div>
+            </div>
+          </template>
+
+          <!-- notedeck/ 直下の設定ファイル -->
+          <div
+            v-for="file in singletonFiles"
+            :key="file.id"
+            :data-row-key="`root:${file.id}`"
+            :title="`notedeck/${file.name}`"
+            :class="[
+              $style.row,
+              $style.notedeckFileRow,
+              { [$style.selected]: selectedKey === `root:${file.id}` },
+            ]"
+            @click="onRootFileRowClick(file)"
+            @contextmenu.prevent="onRootFileContextMenu($event, file)"
+          >
+            <i
+              class="ti"
+              :class="[file.icon, $style.fileIcon, $style[file.colorClass]]"
+            />
+            <span :class="$style.name">{{ file.name }}</span>
+          </div>
+        </div>
+
+        <!-- notecli.db (notedeck/ と並列) -->
         <div
-          v-for="file in singletonFiles"
-          :key="file.id"
-          :data-row-key="`root:${file.id}`"
-          :title="file.name"
+          data-row-key="root:notecli.db"
+          title="notecli.db"
           :class="[
             $style.row,
             $style.rootFileRow,
-            { [$style.selected]: selectedKey === `root:${file.id}` },
+            { [$style.selected]: selectedKey === 'root:notecli.db' },
           ]"
-          @click="onRootFileRowClick(file)"
-          @contextmenu.prevent="onRootFileContextMenu($event, file)"
+          @click="() => { selectedKey = 'root:notecli.db'; openNotecliDbBackup() }"
+          @contextmenu.prevent="showContextMenu($event, [{ label: 'バックアップ / インポート', icon: 'ti-database-export', handler: openNotecliDbBackup }])"
         >
           <i
-            class="ti"
-            :class="[file.icon, $style.fileIcon, $style[file.colorClass]]"
+            class="ti ti-database"
+            :class="[$style.fileIcon, $style.iconDb]"
           />
-          <span :class="$style.name">{{ file.name }}</span>
+          <span :class="$style.name">notecli.db</span>
         </div>
       </div>
 
@@ -919,11 +1060,25 @@ function onRenameKeydown(e: KeyboardEvent): void {
   gap: 2px;
 }
 
-.fileRow {
-  gap: 4px;
-  padding-left: 36px;
+// notedeck/ 配下のサブフォルダ (themes, plugins, profiles)
+.subFolderRow {
+  gap: 2px;
+  padding-left: 22px;
 }
 
+// サブフォルダ内のファイル (notedeck/themes/xxx.json5 等)
+.deepFileRow {
+  gap: 4px;
+  padding-left: 54px;
+}
+
+// notedeck/ 直下の設定ファイル (settings.json5 等)
+.notedeckFileRow {
+  gap: 4px;
+  padding-left: 40px;
+}
+
+// ルートレベルのファイル (notecli.db)
 .rootFileRow {
   gap: 4px;
   padding-left: 26px;
@@ -980,7 +1135,8 @@ function onRenameKeydown(e: KeyboardEvent): void {
   opacity: 0;
   transition: opacity 0.1s, background 0.1s;
 
-  .folderRow:hover & {
+  .folderRow:hover &,
+  .subFolderRow:hover & {
     opacity: 0.7;
   }
 
@@ -1006,14 +1162,31 @@ function onRenameKeydown(e: KeyboardEvent): void {
   }
 }
 
-.folderBody {
+// notedeck/ 配下のインデントガイド
+.notedeckBody {
   position: relative;
 
-  // VSCode 風のインデントガイド (薄い縦線)
   &::before {
     content: '';
     position: absolute;
     left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--nd-divider);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+}
+
+// サブフォルダ配下のインデントガイド
+.subFolderBody {
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 29px;
     top: 0;
     bottom: 0;
     width: 1px;
@@ -1060,8 +1233,16 @@ function onRenameKeydown(e: KeyboardEvent): void {
   color: #5294e2; // blue (.css と統一しつつレイアウト感)
 }
 
+.folderNotedeck {
+  color: #42a5f5; // blue (アプリルート)
+}
+
 .folderAccounts {
   color: #66bb6a; // green (identity)
+}
+
+.iconDb {
+  color: #78909c; // blue-grey (database)
 }
 
 // --- Inline rename ---

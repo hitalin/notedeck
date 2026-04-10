@@ -617,11 +617,11 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'settings-editor',
-    label: 'settings.json を編集',
-    icon: 'braces',
+    label: 'アピアランス',
+    icon: 'brush',
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('settings-editor'),
-    execute: () => useWindowsStore().open('settingsEditor'),
+    execute: () => useWindowsStore().open('appearanceEditor'),
   })
 
   commandStore.register({

@@ -20,7 +20,8 @@ export type WindowType =
   | 'navEditor'
   | 'performanceEditor'
   | 'account-manager'
-  | 'settingsEditor'
+  | 'appearanceEditor'
+  | 'backup'
 
 export interface DeckWindow {
   id: string
@@ -63,7 +64,9 @@ export const WINDOW_SIZES: Record<
   // Account manager
   'account-manager': { width: 400, maxHeight: 600 },
   // Settings JSON editor
-  settingsEditor: { width: 500, maxHeight: 700 },
+  appearanceEditor: { width: 400, maxHeight: 700 },
+  // Backup / Import / Export
+  backup: { width: 440, maxHeight: 550 },
 }
 
 export const useWindowsStore = defineStore('windows', () => {
@@ -96,7 +99,8 @@ export const useWindowsStore = defineStore('windows', () => {
     'profileEditor',
     'performanceEditor',
     'account-manager',
-    'settingsEditor',
+    'appearanceEditor',
+    'backup',
   ])
 
   function open(type: WindowType, props: Record<string, unknown> = {}): string {

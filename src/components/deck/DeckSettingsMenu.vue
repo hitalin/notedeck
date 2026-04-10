@@ -320,16 +320,6 @@ usePortal(settingsMenuPortalRef)
             </div>
           </div>
 
-          <button :class="$style.settingsMenuItem" @click="openToolWindow('themeEditor')">
-            <i class="ti ti-palette" />
-            <span :class="$style.settingsMenuLabel">テーマ</span>
-            <span v-if="selectedId != null" :class="$style.activeDot" />
-          </button>
-          <button :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
-            <i class="ti ti-code" />
-            <span :class="$style.settingsMenuLabel">カスタムCSS</span>
-            <span v-if="themeStore.customCss" :class="$style.activeDot" />
-          </button>
           <button v-if="deckStore.wallpaper == null" :class="$style.settingsMenuItem" @click="pickWallpaper">
             <i class="ti ti-photo" />
             <span :class="$style.settingsMenuLabel">壁紙を設定</span>
@@ -374,6 +364,11 @@ usePortal(settingsMenuPortalRef)
             <i class="ti ti-gauge" />
             <span :class="$style.settingsMenuLabel">パフォーマンス</span>
             <span v-if="Object.keys(perfStore.overrides).length > 0" :class="$style.activeDot" />
+          </button>
+          <button :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
+            <i class="ti ti-code" />
+            <span :class="$style.settingsMenuLabel">カスタムCSS</span>
+            <span v-if="themeStore.customCss" :class="$style.activeDot" />
           </button>
         </div>
       </div>
