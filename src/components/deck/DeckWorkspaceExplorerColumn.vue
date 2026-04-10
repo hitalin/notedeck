@@ -509,6 +509,12 @@ function onFolderContextMenu(e: MouseEvent, folder: TreeFolder): void {
   ])
 }
 
+function onRootFileContextMenu(e: MouseEvent, file: TreeFile): void {
+  showContextMenu(e, [
+    { label: '開く', icon: 'ti-external-link', handler: file.onClick },
+  ])
+}
+
 function onFileContextMenu(
   e: MouseEvent,
   folderKey: string,
@@ -518,8 +524,12 @@ function onFileContextMenu(
     { label: '開く', icon: 'ti-external-link', handler: file.onClick },
   ]
 
-  // Rename (profiles only — themes don't have simple rename, accounts are identity-bound)
-  if (folderKey === 'profiles') {
+  // Rename (accounts are identity-bound, so excluded)
+  if (
+    folderKey === 'themes' ||
+    folderKey === 'plugins' ||
+    folderKey === 'profiles'
+  ) {
     actions.push({
       label: '名前を変更',
       icon: 'ti-pencil',
@@ -613,7 +623,13 @@ function startRename(rowKey: string, currentName: string): void {
 
 function startRenameForSelected(): void {
   const row = visibleRows.value.find((r) => r.key === selectedKey.value)
-  if (!row || !row.file || row.folderKey !== 'profiles') return
+  if (!row || !row.file) return
+  if (
+    row.folderKey !== 'themes' &&
+    row.folderKey !== 'plugins' &&
+    row.folderKey !== 'profiles'
+  )
+    return
   startRename(row.key, row.file.name)
 }
 
@@ -634,10 +650,13 @@ async function confirmRename(): Promise<void> {
   const folderKey = match[1]
   const fileId = match[2]
 
-  if (folderKey === 'profiles') {
+  if (folderKey === 'themes') {
+    themeStore.renameTheme(fileId, newName)
+  } else if (folderKey === 'plugins') {
+    pluginsStore.renamePlugin(fileId, newName)
+  } else if (folderKey === 'profiles') {
     deckProfileStore.renameProfile(fileId, newName)
   }
-  // Future: other folder types
 
   renamingKey.value = null
   renameInput.value = ''
@@ -736,7 +755,7 @@ function onRenameKeydown(e: KeyboardEvent): void {
               ]"
               @click="onFileRowClick(folder.key, item)"
               @contextmenu.prevent="onFileContextMenu($event, folder.key, item)"
-              @dblclick.prevent="folder.key === 'profiles' && startRename(`file:${folder.key}:${item.id}`, item.name)"
+              @dblclick.prevent="(folder.key === 'themes' || folder.key === 'plugins' || folder.key === 'profiles') && startRename(`file:${folder.key}:${item.id}`, item.name)"
             >
               <i
                 class="ti"
@@ -775,6 +794,7 @@ function onRenameKeydown(e: KeyboardEvent): void {
             { [$style.selected]: selectedKey === `root:${file.id}` },
           ]"
           @click="onRootFileRowClick(file)"
+          @contextmenu.prevent="onRootFileContextMenu($event, file)"
         >
           <i
             class="ti"

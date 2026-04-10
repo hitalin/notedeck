@@ -302,6 +302,25 @@ export const useThemeStore = defineStore('theme', () => {
     }
   }
 
+  function renameTheme(themeId: string, newName: string): void {
+    const theme = installedThemes.value.find((t) => t.id === themeId)
+    if (!theme) return
+
+    const oldFilename = settingsFs.themeFilename(theme.name || theme.id)
+    theme.name = newName
+    const newFilename = settingsFs.themeFilename(newName)
+
+    setStorageJson(STORAGE_KEYS.themeInstalledThemes, installedThemes.value)
+
+    if (initialized.value && oldFilename !== newFilename) {
+      // Delete old file and write new one (theme id stays the same, only name changes)
+      Promise.all([
+        settingsFs.deleteTheme(oldFilename),
+        themeFileSync.persistSingleTheme(theme),
+      ]).catch((e) => console.warn('[theme] failed to rename theme file:', e))
+    }
+  }
+
   function selectTheme(id: string | null, mode: 'dark' | 'light'): void {
     // computed setter → settingsStore.set() → settings.json persist
     if (mode === 'dark') {
@@ -511,6 +530,7 @@ export const useThemeStore = defineStore('theme', () => {
     pinCurrentMode,
     installTheme,
     removeTheme,
+    renameTheme,
     selectTheme,
     setCustomCss,
     fetchAccountTheme,
