@@ -69,10 +69,10 @@ window.addEventListener('unhandledrejection', (e) => {
 })
 
 if (isTauri) {
-  // Load settings.json (scalar preferences). Fire-and-forget — stores that use
-  // useSetting() will reactively update when load() completes. Same pattern as
-  // useAccountsStore().loadAccounts() below.
-  useSettingsStore().load()
+  // Load settings.json (scalar preferences) BEFORE any store init.
+  // All stores read from settingsStore as the single source of truth,
+  // so it must be loaded before they initialize. ~1-5ms for local file I/O.
+  await useSettingsStore().load()
 
   // Apply cached theme before mount to prevent FOUC
   const themeStore = useThemeStore()

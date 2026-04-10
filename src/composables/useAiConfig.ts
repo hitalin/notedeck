@@ -1,7 +1,7 @@
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import defaultAiPrompt from '@/defaults/AI.md?raw'
 import { useSettingsStore } from '@/stores/settings'
-import { isTauri, readAiSettings, writeAiSettings } from '@/utils/settingsFs'
+import { isTauri, readAiSettings } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 // --- Type definitions ---
@@ -81,11 +81,11 @@ function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
 }
 
 /** Strip apiKey from each provider for file backup. */
-function toFileConfig(c: AiConfig): Record<string, unknown> {
-  const result: Record<string, unknown> = {
+function toFileConfig(c: AiConfig): AiFileConfig {
+  const result = {
     provider: c.provider,
     systemPrompt: c.systemPrompt,
-  }
+  } as AiFileConfig
   for (const key of PROVIDER_KEYS) {
     const { apiKey: _, ...safe } = c[key]
     result[key] = safe
@@ -93,103 +93,70 @@ function toFileConfig(c: AiConfig): Record<string, unknown> {
   return result
 }
 
+/** Read API keys from localStorage (never stored in files). */
+function loadApiKeys(): Record<ProviderKey, string> {
+  const stored = getStorageJson<Partial<AiConfig> | null>(STORAGE_KEY, null)
+  if (!stored) return { ollama: '', openai: '', custom: '' }
+  return {
+    ollama: stored.ollama?.apiKey ?? '',
+    openai: stored.openai?.apiKey ?? '',
+    custom: stored.custom?.apiKey ?? '',
+  }
+}
+
 // --- Composable ---
 
 export function useAiConfig() {
   const settingsStore = useSettingsStore()
 
-  function load(): AiConfig {
-    const stored = getStorageJson<Partial<AiConfig> | null>(STORAGE_KEY, null)
-    return stored ? mergeConfig(defaultConfig(), stored) : defaultConfig()
+  // Build initial config: settingsStore (non-API parts) + localStorage (API keys)
+  function buildConfig(): AiConfig {
+    const stored = settingsStore.get('ai')
+    const base = stored
+      ? mergeConfig(defaultConfig(), stored as Partial<AiConfig>)
+      : defaultConfig()
+    const keys = loadApiKeys()
+    for (const k of PROVIDER_KEYS) {
+      base[k].apiKey = keys[k]
+    }
+    return base
   }
 
-  const config = ref<AiConfig>(load())
+  const config = ref<AiConfig>(buildConfig())
   const initialized = ref(false)
 
-  /**
-   * Mirror the current config (without API keys) to settings.json so AI
-   * settings are included in backup / cross-device sync. API keys remain
-   * in localStorage only — they are **never** written to any file.
-   *
-   * Guarded by `settingsStore.initialized` to avoid racing the initial load.
-   */
-  function mirrorToSettingsStore(): void {
-    if (!settingsStore.initialized) return
-    settingsStore.set('ai', toFileConfig(config.value) as AiFileConfig)
-  }
-
   function save(): void {
+    // Non-API parts → settingsStore (single source of truth → settings.json)
+    settingsStore.set('ai', toFileConfig(config.value))
+    // API keys → localStorage only (security)
     setStorageJson(STORAGE_KEY, config.value)
-    mirrorToSettingsStore()
-    if (initialized.value) {
-      persistToFile().catch((e) =>
-        console.warn('[ai-settings] failed to persist to file:', e),
-      )
-    }
   }
 
-  async function persistToFile(): Promise<void> {
-    const content = JSON.stringify(toFileConfig(config.value), null, 2)
-    await writeAiSettings(content)
-  }
-
+  /**
+   * Legacy migration: read ai.json once and seed settingsStore if it doesn't
+   * already have AI config (first run after migration).
+   */
   async function initFileStorage(): Promise<void> {
-    const content = await readAiSettings()
-    if (content) {
-      try {
-        const parsed = JSON.parse(content) as Partial<AiConfig>
-        const secrets = Object.fromEntries(
-          PROVIDER_KEYS.map((k) => [k, config.value[k].apiKey]),
-        )
-        config.value = mergeConfig(defaultConfig(), parsed)
-        for (const k of PROVIDER_KEYS) {
-          config.value[k].apiKey = secrets[k] ?? ''
+    if (!settingsStore.get('ai')) {
+      const content = await readAiSettings()
+      if (content) {
+        try {
+          const parsed = JSON.parse(content) as Partial<AiConfig>
+          const fileConfig = toFileConfig(mergeConfig(defaultConfig(), parsed))
+          settingsStore.set('ai', fileConfig)
+          // Re-build config from the newly seeded settingsStore
+          config.value = buildConfig()
+        } catch (e) {
+          console.warn('[ai-settings] failed to parse ai.json:', e)
         }
-        setStorageJson(STORAGE_KEY, config.value)
-      } catch (e) {
-        console.warn('[ai-settings] failed to parse ai.json:', e)
       }
     }
     initialized.value = true
-    if (!content && config.value !== defaultConfig()) {
-      persistToFile().catch((e) =>
-        console.warn('[ai-settings] migration to file failed:', e),
-      )
-    }
   }
 
   if (isTauri) {
     initFileStorage()
   }
-
-  /**
-   * Reconcile with settings.json once settingsStore finishes loading:
-   * - If settings.json has `ai` config, merge it into the local config
-   *   (API keys from localStorage are preserved)
-   * - Otherwise, seed settings.json from the current local config
-   */
-  watch(
-    () => settingsStore.initialized,
-    (done) => {
-      if (!done) return
-      const stored = settingsStore.get('ai')
-      if (stored != null) {
-        // Preserve API keys from current local state
-        const secrets = Object.fromEntries(
-          PROVIDER_KEYS.map((k) => [k, config.value[k].apiKey]),
-        )
-        config.value = mergeConfig(defaultConfig(), stored as Partial<AiConfig>)
-        for (const k of PROVIDER_KEYS) {
-          config.value[k].apiKey = secrets[k] ?? ''
-        }
-        setStorageJson(STORAGE_KEY, config.value)
-      } else {
-        // Seed settings.json from current local state (one-time migration)
-        mirrorToSettingsStore()
-      }
-    },
-    { immediate: true },
-  )
 
   return { config, save, mergeConfig, toFileConfig }
 }

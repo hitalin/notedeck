@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 import { detectQualitySync } from '@/composables/useAdaptiveQuality'
 import defaultsJson from '@/defaults/performance.json'
@@ -9,8 +9,7 @@ import {
   type QualityLevel,
 } from '@/engine/telemetry/frameTelemetry'
 import { useSettingsStore } from '@/stores/settings'
-import { isTauri, readPerformance, writePerformance } from '@/utils/settingsFs'
-import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
+import { isTauri, readPerformance } from '@/utils/settingsFs'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 /** All tunable performance keys. */
@@ -689,9 +688,19 @@ const CSS_BASE_DURATIONS: Record<string, number> = {
 export const usePerformanceStore = defineStore('performance', () => {
   const settingsStore = useSettingsStore()
 
-  const overrides = ref<Partial<PerformanceConfig>>(
-    getStorageJson<Partial<PerformanceConfig>>(STORAGE_KEYS.performance, {}),
-  )
+  type PerfSettingsKey = `performance.${PerformanceKey}`
+
+  /** Overrides computed from settingsStore (single source of truth). */
+  const overrides = computed<Partial<PerformanceConfig>>(() => {
+    const result: Partial<PerformanceConfig> = {}
+    for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
+      const v = settingsStore.get(`performance.${key}` as PerfSettingsKey)
+      if (v !== undefined) {
+        result[key] = v as PerformanceConfig[typeof key]
+      }
+    }
+    return result
+  })
   const initialized = ref(false)
   /** Merged config: overrides on top of defaults. */
   const config = computed<PerformanceConfig>(() => ({
@@ -775,92 +784,12 @@ export const usePerformanceStore = defineStore('performance', () => {
     }
   }
 
-  function saveOverrides() {
-    setStorageJson(STORAGE_KEYS.performance, overrides.value)
-    mirrorOverridesToSettingsStore()
+  /** Apply CSS + Rust side effects after any override change. */
+  function applySideEffects(): void {
     syncCssProperties()
-    if (initialized.value) {
-      persistToFile().catch((e) =>
-        console.warn('[performance] failed to persist to file:', e),
-      )
-    }
     syncToRust().catch((e) =>
-      console.warn('[performance] failed to sync to Rust:', e),
+      console.warn('[performance] Rust sync failed:', e),
     )
-  }
-
-  /**
-   * Mirror the current `overrides` into `settingsStore` under `performance.*`
-   * dot-notation keys. This is a dual-write step — the primary source remains
-   * `performance.json` (for compatibility with existing init paths), but
-   * settings.json gets every override so it's included in backups and
-   * cross-device sync (see DESIGN.md "settings.json" section).
-   *
-   * Guarded by `settingsStore.initialized` so we don't race against the
-   * initial `settingsStore.load()` that would overwrite these writes.
-   *
-   * Each key is set individually. Missing keys (defaults) are set to
-   * `undefined` so they're excluded from the persisted JSON.
-   */
-  function mirrorOverridesToSettingsStore(): void {
-    if (!settingsStore.initialized) return
-    type PerfSettingsKey = `performance.${PerformanceKey}`
-    const keys = Object.keys(DEFAULTS) as PerformanceKey[]
-    for (const key of keys) {
-      const settingsKey = `performance.${key}` as PerfSettingsKey
-      const current = overrides.value[key]
-      settingsStore.set(settingsKey, current)
-    }
-  }
-
-  /**
-   * When `settingsStore.load()` completes, reconcile performance state:
-   * - If settings.json has any `performance.*` values, adopt them as the
-   *   source of truth (e.g. cross-device sync or backup restore case).
-   * - Otherwise, mirror the current local overrides into settingsStore
-   *   (one-time seeding from existing `performance.json`).
-   */
-  watch(
-    () => settingsStore.initialized,
-    (done) => {
-      if (!done) return
-      const keys = Object.keys(DEFAULTS) as PerformanceKey[]
-      type PerfSettingsKey = `performance.${PerformanceKey}`
-
-      const settingsValues: Partial<PerformanceConfig> = {}
-      let hasAny = false
-      for (const key of keys) {
-        const v = settingsStore.get(`performance.${key}` as PerfSettingsKey)
-        if (v !== undefined) {
-          settingsValues[key] = v as PerformanceConfig[typeof key]
-          hasAny = true
-        }
-      }
-
-      if (hasAny) {
-        // settings.json has values — adopt them
-        overrides.value = settingsValues
-        setStorageJson(STORAGE_KEYS.performance, overrides.value)
-        syncCssProperties()
-        if (initialized.value) {
-          persistToFile().catch((e) =>
-            console.warn('[performance] reconcile persist failed:', e),
-          )
-        }
-        syncToRust().catch((e) =>
-          console.warn('[performance] reconcile Rust sync failed:', e),
-        )
-      } else {
-        // Seed settingsStore from local overrides (one-time migration)
-        mirrorOverridesToSettingsStore()
-      }
-    },
-    { immediate: true },
-  )
-
-  async function persistToFile(): Promise<void> {
-    const content = JSON.stringify(overrides.value, null, 2)
-    await writePerformance(content)
   }
 
   async function syncToRust(): Promise<void> {
@@ -880,23 +809,35 @@ export const usePerformanceStore = defineStore('performance', () => {
     )
   }
 
+  /**
+   * Legacy migration: read performance.json once and seed settingsStore
+   * if it doesn't already have performance.* keys (first run after migration).
+   */
   async function initFileStorage(): Promise<void> {
-    const content = await readPerformance()
-    if (content) {
-      try {
-        const parsed = JSON.parse(content) as Partial<PerformanceConfig>
-        overrides.value = parsed
-        setStorageJson(STORAGE_KEYS.performance, parsed)
-      } catch (e) {
-        console.warn('[performance] failed to parse performance.json:', e)
+    // Only seed if settingsStore doesn't have any performance keys yet
+    const hasPerf = Object.keys(DEFAULTS).some(
+      (key) =>
+        settingsStore.get(
+          `performance.${key as PerformanceKey}` as PerfSettingsKey,
+        ) !== undefined,
+    )
+    if (!hasPerf) {
+      const content = await readPerformance()
+      if (content) {
+        try {
+          const parsed = JSON.parse(content) as Partial<PerformanceConfig>
+          for (const [k, v] of Object.entries(parsed)) {
+            settingsStore.set(
+              `performance.${k}` as PerfSettingsKey,
+              v as number,
+            )
+          }
+        } catch (e) {
+          console.warn('[performance] failed to parse performance.json:', e)
+        }
       }
     }
     initialized.value = true
-    if (!content && Object.keys(overrides.value).length > 0) {
-      persistToFile().catch((e) =>
-        console.warn('[performance] migration to file failed:', e),
-      )
-    }
     // Initial sync to Rust
     syncToRust().catch((e) =>
       console.warn('[performance] initial Rust sync failed:', e),
@@ -937,22 +878,25 @@ export const usePerformanceStore = defineStore('performance', () => {
   function set<K extends PerformanceKey>(key: K, value: PerformanceConfig[K]) {
     const meta = FIELD_META[key]
     const clamped = Math.max(meta.min, Math.min(meta.max, value as number))
+    const settingsKey = `performance.${key}` as PerfSettingsKey
     if (clamped === DEFAULTS[key]) {
-      delete overrides.value[key]
+      settingsStore.set(settingsKey, undefined)
     } else {
-      overrides.value[key] = clamped as PerformanceConfig[K]
+      settingsStore.set(settingsKey, clamped)
     }
-    saveOverrides()
+    applySideEffects()
   }
 
   function resetKey(key: PerformanceKey) {
-    delete overrides.value[key]
-    saveOverrides()
+    settingsStore.set(`performance.${key}` as PerfSettingsKey, undefined)
+    applySideEffects()
   }
 
   function resetAll() {
-    overrides.value = {}
-    saveOverrides()
+    for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
+      settingsStore.set(`performance.${key}` as PerfSettingsKey, undefined)
+    }
+    applySideEffects()
   }
 
   /** CSS rendering property presets for auto-quality adjustment.
@@ -978,26 +922,28 @@ export const usePerformanceStore = defineStore('performance', () => {
     const css = CSS_QUALITY_PRESETS[quality]
     for (const [k, v] of Object.entries(css)) {
       const key = k as PerformanceKey
+      const settingsKey = `performance.${key}` as PerfSettingsKey
       if (v === DEFAULTS[key]) {
-        delete overrides.value[key]
+        settingsStore.set(settingsKey, undefined)
       } else {
-        overrides.value[key] = v as never
+        settingsStore.set(settingsKey, v as number)
       }
     }
-    saveOverrides()
+    applySideEffects()
   }
 
   /** Apply slider position t ∈ [0, 1] — interpolates all values linearly. */
   function applySlider(t: number) {
     const target = interpolateConfig(t)
-    const partial: Partial<PerformanceConfig> = {}
     for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
+      const settingsKey = `performance.${key}` as PerfSettingsKey
       if (target[key] !== DEFAULTS[key]) {
-        partial[key] = target[key] as never
+        settingsStore.set(settingsKey, target[key] as number)
+      } else {
+        settingsStore.set(settingsKey, undefined)
       }
     }
-    overrides.value = partial
-    saveOverrides()
+    applySideEffects()
   }
 
   /** Current slider position (0–1), or null if config doesn't match any interpolation point. */

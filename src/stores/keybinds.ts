@@ -1,12 +1,11 @@
 import JSON5 from 'json5'
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { Shortcut } from '@/commands/registry'
 import defaultKeybindsJson5 from '@/defaults/keybindings.json5?raw'
 import { useSettingsStore } from '@/stores/settings'
-import { isTauri, readKeybinds, writeKeybinds } from '@/utils/settingsFs'
-import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
+import { isTauri, readKeybinds } from '@/utils/settingsFs'
 
 export interface KeybindEntry {
   commandId: string
@@ -18,80 +17,31 @@ const DEFAULT_KEYBINDS: KeybindEntry[] = JSON5.parse(defaultKeybindsJson5)
 export const useKeybindsStore = defineStore('keybinds', () => {
   const settingsStore = useSettingsStore()
 
-  // ユーザーカスタマイズ: commandId → shortcuts の上書き
-  // null = デフォルトを使用、空配列 = キーバインドを無効化
-  const overrides = ref<Record<string, Shortcut[]>>(
-    getStorageJson<Record<string, Shortcut[]>>(STORAGE_KEYS.keybinds, {}),
-  )
+  // settingsStore が single source of truth。
+  // overrides は computed で settingsStore.get('keybinds') を読む。
+  const overrides = computed<Record<string, Shortcut[]>>({
+    get: () => settingsStore.get('keybinds') ?? {},
+    set: (v) => settingsStore.set('keybinds', v),
+  })
   const initialized = ref(false)
 
   /**
-   * Mirror overrides to settings.json for backup / cross-device sync.
-   * Guarded by settingsStore.initialized to avoid racing the initial load.
+   * Legacy migration: read keybinds.json5 once and seed settingsStore
+   * if it doesn't already have keybinds (first run after migration).
    */
-  function mirrorToSettingsStore(): void {
-    if (!settingsStore.initialized) return
-    settingsStore.set('keybinds', overrides.value)
-  }
-
-  function saveOverrides() {
-    setStorageJson(STORAGE_KEYS.keybinds, overrides.value)
-    mirrorToSettingsStore()
-    if (initialized.value) {
-      persistToFile().catch((e) =>
-        console.warn('[keybinds] failed to persist to file:', e),
-      )
-    }
-  }
-
-  // Reconcile with settings.json once settingsStore finishes loading.
-  watch(
-    () => settingsStore.initialized,
-    (done) => {
-      if (!done) return
-      const stored = settingsStore.get('keybinds')
-      if (stored != null && Object.keys(stored).length > 0) {
-        // settings.json has keybinds — adopt (cross-device / backup restore)
-        overrides.value = stored
-        setStorageJson(STORAGE_KEYS.keybinds, stored)
-        if (initialized.value) {
-          persistToFile().catch((e) =>
-            console.warn('[keybinds] reconcile persist failed:', e),
-          )
-        }
-      } else if (Object.keys(overrides.value).length > 0) {
-        // Seed settings.json from local overrides (one-time migration)
-        mirrorToSettingsStore()
-      }
-    },
-    { immediate: true },
-  )
-
-  /** Write overrides to keybinds.json5 file. */
-  async function persistToFile(): Promise<void> {
-    const content = JSON5.stringify(overrides.value, null, 2)
-    await writeKeybinds(content)
-  }
-
-  /** Load from file and initialize. Files are source of truth. */
   async function initFileStorage(): Promise<void> {
-    const content = await readKeybinds()
-    if (content) {
-      try {
-        const parsed = JSON5.parse(content) as Record<string, Shortcut[]>
-        overrides.value = parsed
-        setStorageJson(STORAGE_KEYS.keybinds, parsed)
-      } catch (e) {
-        console.warn('[keybinds] failed to parse keybinds.json5:', e)
+    if (!settingsStore.get('keybinds')) {
+      const content = await readKeybinds()
+      if (content) {
+        try {
+          const parsed = JSON5.parse(content) as Record<string, Shortcut[]>
+          settingsStore.set('keybinds', parsed)
+        } catch (e) {
+          console.warn('[keybinds] failed to parse keybinds.json5:', e)
+        }
       }
     }
     initialized.value = true
-    // Migrate: localStorage has overrides but no file exists
-    if (!content && Object.keys(overrides.value).length > 0) {
-      persistToFile().catch((e) =>
-        console.warn('[keybinds] migration to file failed:', e),
-      )
-    }
   }
 
   /** Initialize file-based storage (call once at startup). */
@@ -119,18 +69,17 @@ export const useKeybindsStore = defineStore('keybinds', () => {
   }
 
   function setShortcuts(commandId: string, shortcuts: Shortcut[]) {
-    overrides.value[commandId] = shortcuts
-    saveOverrides()
+    // WritableComputed setter → settingsStore.set() → settings.json persist
+    overrides.value = { ...overrides.value, [commandId]: shortcuts }
   }
 
   function resetToDefault(commandId: string) {
-    delete overrides.value[commandId]
-    saveOverrides()
+    const { [commandId]: _, ...rest } = overrides.value
+    overrides.value = rest
   }
 
   function resetAll() {
     overrides.value = {}
-    saveOverrides()
   }
 
   function isCustomized(commandId: string): boolean {

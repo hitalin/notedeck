@@ -94,8 +94,7 @@ function syncVisualFromCode() {
         return
       }
     }
-    perfStore.overrides = parsed
-    perfStore.resetAll() // clear, then re-apply
+    perfStore.resetAll() // clear, then re-apply from parsed
     for (const [k, v] of Object.entries(parsed)) {
       perfStore.set(k as PerformanceKey, v as number)
     }
