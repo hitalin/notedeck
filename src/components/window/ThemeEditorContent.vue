@@ -413,7 +413,10 @@ watch(
   (id) => {
     if (!id) return
     const theme = themeStore.installedThemes.find((t) => t.id === id)
-    if (theme) loadFromInstalled(theme)
+    if (theme) {
+      loadFromInstalled(theme)
+      if (tab.value === 'code') syncCodeFromVisual()
+    }
   },
   { immediate: true },
 )
