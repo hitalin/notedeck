@@ -93,13 +93,24 @@ function toggleKind(kind: string) {
 type CleanupFn = () => void
 const cleanups: CleanupFn[] = []
 
+// Dedup: skip events with identical kind + subscriptionId within a short window.
+// Guards against Rust-side double-emit or overlapping Tauri listeners.
+let lastEventKey = ''
+let lastEventTs = 0
+const DEDUP_WINDOW_MS = 50
+
 function makeRawHandler(label: string) {
   return (event: RawStreamEvent) => {
     if (paused.value) return
     if (!enabledKinds.value.has(event.kind)) return
+    const now = Date.now()
+    const key = `${event.kind}:${event.payload.subscriptionId ?? ''}:${label}`
+    if (key === lastEventKey && now - lastEventTs < DEDUP_WINDOW_MS) return
+    lastEventKey = key
+    lastEventTs = now
     const entry: StreamEventEntry = {
       id: nextId++,
-      ts: Date.now(),
+      ts: now,
       kind: event.kind,
       accountLabel: label,
       payload: event.payload,
@@ -371,7 +382,7 @@ function scrollToTop() {
 .list {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: auto;
 }
 
 .row {
@@ -382,6 +393,7 @@ function scrollToTop() {
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
   cursor: pointer;
   border-bottom: 1px solid transparent;
+  white-space: nowrap;
   transition: background var(--nd-duration-fast);
 
   &:hover {
