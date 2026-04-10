@@ -145,7 +145,7 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string }> = {
   profile: { label: 'プロファイル', icon: 'ti-id-badge-2' },
 }
 
-const expandedSections = reactive<Record<string, boolean>>({})
+const expandedSections = reactive<Record<string, boolean>>({ general: true })
 
 function toggleSection(key: string) {
   expandedSections[key] = !expandedSections[key]

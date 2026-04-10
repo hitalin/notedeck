@@ -37,7 +37,7 @@ const categories = computed(() => {
   return cats
 })
 
-const expandedSections = ref<string[]>([])
+const expandedSections = ref<string[]>(['emoji'])
 
 function toggleSection(catKey: string) {
   const idx = expandedSections.value.indexOf(catKey)

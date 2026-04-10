@@ -86,11 +86,8 @@ function addPlugin() {
 }
 
 // profiles/
-async function openProfileFile(id: string) {
-  const { switchProfileWithWindows } = await import(
-    '@/composables/useDeckWindow'
-  )
-  await switchProfileWithWindows(id)
+function openProfileFile(id: string) {
+  windowsStore.open('profileEditor', { profileId: id })
 }
 
 function addProfile() {

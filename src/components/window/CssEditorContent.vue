@@ -67,7 +67,7 @@ function parsePresetsFromCss(cssStr: string) {
 }
 parsePresetsFromCss(cssCode.value)
 
-const expandedSections = reactive<Record<string, boolean>>({})
+const expandedSections = reactive<Record<string, boolean>>({ font: true })
 
 function toggleSection(key: string) {
   expandedSections[key] = !expandedSections[key]

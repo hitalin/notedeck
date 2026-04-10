@@ -121,7 +121,7 @@ const PROVIDER_FIELDS: Record<ProviderKey, FieldDef[]> = {
 
 const { config, save: saveConfig, toFileConfig, mergeConfig } = useAiConfig()
 
-const expandedSections = reactive<Record<string, boolean>>({})
+const expandedSections = reactive<Record<string, boolean>>({ provider: true })
 
 function toggleSection(key: string) {
   expandedSections[key] = !expandedSections[key]
