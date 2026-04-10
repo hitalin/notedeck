@@ -241,7 +241,7 @@ const singletonFiles: TreeFile[] = [
   {
     id: 'notedeck',
     name: 'settings.json',
-    ...fileTypeFor('notedeck.json'),
+    ...fileTypeFor('settings.json'),
     onClick: openSettings,
   },
   {

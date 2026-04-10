@@ -69,7 +69,7 @@ window.addEventListener('unhandledrejection', (e) => {
 })
 
 if (isTauri) {
-  // Load notedeck.json (scalar preferences). Fire-and-forget — stores that use
+  // Load settings.json (scalar preferences). Fire-and-forget — stores that use
   // useSetting() will reactively update when load() completes. Same pattern as
   // useAccountsStore().loadAccounts() below.
   useSettingsStore().load()

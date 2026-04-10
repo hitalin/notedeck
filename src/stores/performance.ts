@@ -793,8 +793,8 @@ export const usePerformanceStore = defineStore('performance', () => {
    * Mirror the current `overrides` into `settingsStore` under `performance.*`
    * dot-notation keys. This is a dual-write step — the primary source remains
    * `performance.json` (for compatibility with existing init paths), but
-   * notedeck.json gets every override so it's included in backups and
-   * cross-device sync (see DESIGN.md "notedeck.json" section).
+   * settings.json gets every override so it's included in backups and
+   * cross-device sync (see DESIGN.md "settings.json" section).
    *
    * Guarded by `settingsStore.initialized` so we don't race against the
    * initial `settingsStore.load()` that would overwrite these writes.
@@ -815,7 +815,7 @@ export const usePerformanceStore = defineStore('performance', () => {
 
   /**
    * When `settingsStore.load()` completes, reconcile performance state:
-   * - If notedeck.json has any `performance.*` values, adopt them as the
+   * - If settings.json has any `performance.*` values, adopt them as the
    *   source of truth (e.g. cross-device sync or backup restore case).
    * - Otherwise, mirror the current local overrides into settingsStore
    *   (one-time seeding from existing `performance.json`).
@@ -838,7 +838,7 @@ export const usePerformanceStore = defineStore('performance', () => {
       }
 
       if (hasAny) {
-        // notedeck.json has values — adopt them
+        // settings.json has values — adopt them
         overrides.value = settingsValues
         setStorageJson(STORAGE_KEYS.performance, overrides.value)
         syncCssProperties()

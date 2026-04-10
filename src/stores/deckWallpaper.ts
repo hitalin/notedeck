@@ -8,7 +8,7 @@ const LEGACY_STORAGE_KEY = STORAGE_KEYS.deckWallpaper
 /**
  * Read the legacy localStorage wallpaper (base64 data URL) once, for
  * (a) fallback before settingsStore.load() completes and
- * (b) one-time migration into notedeck.json.
+ * (b) one-time migration into settings.json.
  */
 function loadLegacyWallpaper(): string | null {
   return getStorageString(LEGACY_STORAGE_KEY)
@@ -19,7 +19,7 @@ export const useDeckWallpaperStore = defineStore('deckWallpaper', () => {
 
   const legacyValue = loadLegacyWallpaper()
 
-  // One-time migration: when settingsStore finishes loading, if notedeck.json
+  // One-time migration: when settingsStore finishes loading, if settings.json
   // doesn't yet have `deck.wallpaper`, seed it from legacy localStorage
   // and clear the legacy key. Note: wallpapers can be several hundred KB as
   // base64 data URLs, so the debounced persist write pushes a sizeable payload

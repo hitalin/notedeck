@@ -7,7 +7,7 @@ import {
 } from '@/settings/schema'
 
 // `@/stores/settings` は isTauri と commands を import する。テストでは両方モック
-// して notedeck.json の read/write を制御可能にする。
+// して settings.json の read/write を制御可能にする。
 vi.mock('@/utils/settingsFs', () => ({
   isTauri: true,
 }))
@@ -89,7 +89,7 @@ describe('useSettingsStore', () => {
     expect(store.get('modes.offline')).toBe(DEFAULT_SETTINGS['modes.offline'])
   })
 
-  it('load() parses existing notedeck.json content', async () => {
+  it('load() parses existing settings.json content', async () => {
     vi.mocked(commands.readNotedeckJson).mockResolvedValue({
       status: 'ok',
       data: JSON.stringify({

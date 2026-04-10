@@ -14,7 +14,7 @@ interface LegacyState {
 
 /**
  * Load any existing value from legacy localStorage. Used once for migration
- * into `notedeck.json` and as a fallback before settingsStore.load() completes.
+ * into `settings.json` and as a fallback before settingsStore.load() completes.
  *
  * Two historical formats are supported:
  * - `"true"` / `"false"` (very old — pre-JSON)
@@ -36,10 +36,10 @@ export const useOfflineModeStore = defineStore('offlineMode', () => {
 
   // Snapshot legacy localStorage at store-init time for (a) fallback during
   // the brief window before settingsStore.load() completes and (b) one-time
-  // migration into notedeck.json.
+  // migration into settings.json.
   const legacyValue = loadLegacyState()
 
-  // One-time migration: when settingsStore finishes loading, if notedeck.json
+  // One-time migration: when settingsStore finishes loading, if settings.json
   // doesn't yet have `modes.offline`, seed it from the legacy localStorage
   // value (if any) and clear the legacy key.
   watch(
@@ -59,7 +59,7 @@ export const useOfflineModeStore = defineStore('offlineMode', () => {
     { immediate: true },
   )
 
-  /** App-wide offline mode. Backed by notedeck.json `modes.offline`. */
+  /** App-wide offline mode. Backed by settings.json `modes.offline`. */
   const isOfflineMode = computed<boolean>({
     get: () => {
       const v = settingsStore.get('modes.offline')

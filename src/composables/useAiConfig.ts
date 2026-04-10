@@ -26,7 +26,7 @@ export interface AiConfig {
  * File / settings-backed shape of AI config.
  *
  * **API keys are intentionally excluded** — they live in localStorage only
- * for security (not in `ai.json`, not in `notedeck.json`, not in backups).
+ * for security (not in `ai.json`, not in `settings.json`, not in backups).
  */
 export type AiFileConfig = Omit<AiConfig, 'ollama' | 'openai' | 'custom'> & {
   ollama: Omit<ProviderSettings, 'apiKey'>
@@ -107,7 +107,7 @@ export function useAiConfig() {
   const initialized = ref(false)
 
   /**
-   * Mirror the current config (without API keys) to notedeck.json so AI
+   * Mirror the current config (without API keys) to settings.json so AI
    * settings are included in backup / cross-device sync. API keys remain
    * in localStorage only — they are **never** written to any file.
    *
@@ -163,10 +163,10 @@ export function useAiConfig() {
   }
 
   /**
-   * Reconcile with notedeck.json once settingsStore finishes loading:
-   * - If notedeck.json has `ai` config, merge it into the local config
+   * Reconcile with settings.json once settingsStore finishes loading:
+   * - If settings.json has `ai` config, merge it into the local config
    *   (API keys from localStorage are preserved)
-   * - Otherwise, seed notedeck.json from the current local config
+   * - Otherwise, seed settings.json from the current local config
    */
   watch(
     () => settingsStore.initialized,
@@ -184,7 +184,7 @@ export function useAiConfig() {
         }
         setStorageJson(STORAGE_KEY, config.value)
       } else {
-        // Seed notedeck.json from current local state (one-time migration)
+        // Seed settings.json from current local state (one-time migration)
         mirrorToSettingsStore()
       }
     },

@@ -164,8 +164,8 @@ NoteDeck は `Cargo.toml` で git 依存として参照。
   GUI 設定（デッキレイアウト・テーマ・キーバインド等）もJSONバンドルで一括バックアップ可能。
   設定メニュー →「DBバックアップ」「設定バックアップ」でファイル保存ダイアログ経由のエクスポート。
   **次段**: localStorage-only scalar 設定 (`theme.manual` / `modes.*` / `deck.wallpaper` 等) を
-  `notedeck.json` (VSCode `settings.json` 相当の統合ファイル) に集約し、バックアップの網羅性を完成させる
-  ([DESIGN.md](DESIGN.md) の「notedeck.json」節参照)
+  `settings.json` (VSCode `settings.json` 相当の統合ファイル) に集約し、バックアップの網羅性を完成させる
+  ([DESIGN.md](DESIGN.md) の「settings.json」節参照)
 - [x] **完全オフライン動作** — キャッシュ済みノートの閲覧・検索はネットワーク不要。
   飛行機の中でも過去の TL を読み返せる。
   アプリレベルのオフラインモード（ナビバー / コマンドパレット / システムトレイから切替）で

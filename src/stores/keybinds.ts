@@ -26,7 +26,7 @@ export const useKeybindsStore = defineStore('keybinds', () => {
   const initialized = ref(false)
 
   /**
-   * Mirror overrides to notedeck.json for backup / cross-device sync.
+   * Mirror overrides to settings.json for backup / cross-device sync.
    * Guarded by settingsStore.initialized to avoid racing the initial load.
    */
   function mirrorToSettingsStore(): void {
@@ -44,14 +44,14 @@ export const useKeybindsStore = defineStore('keybinds', () => {
     }
   }
 
-  // Reconcile with notedeck.json once settingsStore finishes loading.
+  // Reconcile with settings.json once settingsStore finishes loading.
   watch(
     () => settingsStore.initialized,
     (done) => {
       if (!done) return
       const stored = settingsStore.get('keybinds')
       if (stored != null && Object.keys(stored).length > 0) {
-        // notedeck.json has keybinds — adopt (cross-device / backup restore)
+        // settings.json has keybinds — adopt (cross-device / backup restore)
         overrides.value = stored
         setStorageJson(STORAGE_KEYS.keybinds, stored)
         if (initialized.value) {
@@ -60,7 +60,7 @@ export const useKeybindsStore = defineStore('keybinds', () => {
           )
         }
       } else if (Object.keys(overrides.value).length > 0) {
-        // Seed notedeck.json from local overrides (one-time migration)
+        // Seed settings.json from local overrides (one-time migration)
         mirrorToSettingsStore()
       }
     },

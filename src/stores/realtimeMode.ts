@@ -20,7 +20,7 @@ interface VeryLegacyState {
 
 /**
  * Load the existing value from localStorage (legacy storage) so we can
- * migrate it into `notedeck.json` once settingsStore finishes loading.
+ * migrate it into `settings.json` once settingsStore finishes loading.
  *
  * Returns null if no legacy value exists.
  */
@@ -48,10 +48,10 @@ export const useRealtimeModeStore = defineStore('realtimeMode', () => {
 
   // Snapshot any legacy localStorage value at store init time. It's used as
   // (a) the fallback during the brief window before settingsStore.load() completes
-  // (b) the source for one-time migration into notedeck.json
+  // (b) the source for one-time migration into settings.json
   const legacyValue = loadLegacyState()
 
-  // One-time migration: when settingsStore finishes loading, if notedeck.json
+  // One-time migration: when settingsStore finishes loading, if settings.json
   // doesn't yet have `modes.realtime`, seed it from the legacy localStorage value
   // (if any) and clear the legacy key.
   watch(
@@ -71,7 +71,7 @@ export const useRealtimeModeStore = defineStore('realtimeMode', () => {
     { immediate: true },
   )
 
-  /** App-wide realtime (WebSocket) vs polling mode. Backed by notedeck.json. */
+  /** App-wide realtime (WebSocket) vs polling mode. Backed by settings.json. */
   const enabled = computed<boolean>({
     get: () => {
       const v = settingsStore.get('modes.realtime')

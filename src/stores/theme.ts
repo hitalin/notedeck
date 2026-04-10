@@ -176,11 +176,11 @@ export const useThemeStore = defineStore('theme', () => {
       initialized.value = true
     }
 
-    // Reconcile with notedeck.json (source of truth for backup / cross-device sync).
+    // Reconcile with settings.json (source of truth for backup / cross-device sync).
     // init() reads localStorage synchronously for FOUC prevention; this watch
     // fires once settingsStore.load() completes and either:
-    //   (a) updates local refs from notedeck.json (cross-device sync), or
-    //   (b) seeds notedeck.json from local values (one-time migration).
+    //   (a) updates local refs from settings.json (cross-device sync), or
+    //   (b) seeds settings.json from local values (one-time migration).
     watch(
       () => settingsStore.initialized,
       (done) => {

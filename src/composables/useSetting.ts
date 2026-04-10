@@ -2,7 +2,7 @@
  * `useSetting` — v-model 互換のリアクティブアクセサを返す composable。
  *
  * useSettingsStore を直接使うより宣言的で、デフォルト値のフォールバックも
- * まとめて扱える。set() 側は store の debounced persist 経由で notedeck.json に
+ * まとめて扱える。set() 側は store の debounced persist 経由で settings.json に
  * 書き戻される。
  *
  * @example

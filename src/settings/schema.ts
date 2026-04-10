@@ -3,7 +3,7 @@ import type { AiFileConfig } from '@/composables/useAiConfig'
 import type { PerformanceConfig } from '@/stores/performance'
 
 /**
- * `performance.json` 由来の設定を notedeck.json に dot-notation で持つための
+ * `performance.json` 由来の設定を settings.json に dot-notation で持つための
  * mapped type。`PerformanceConfig` が変わると自動で追従する。
  *
  * 例: `performance.noteStoreMax`, `performance.cssBlurLevel` 等。
@@ -13,12 +13,12 @@ type PerformanceFlatKeys = {
 }
 
 /**
- * notedeck.json の型定義。VSCode `settings.json` と同じく、トップレベルは
+ * settings.json の型定義。VSCode `settings.json` と同じく、トップレベルは
  * フラット dot-notation キー空間 (`theme.manual`, `modes.realtime`,
  * `performance.<key>` 等)。
  *
  * 設計原則・長期ゴールは [DESIGN.md](../../DESIGN.md) の
- * 「notedeck.json — VSCode settings.json 相当の統合設定ファイル」節を参照。
+ * 「settings.json — VSCode settings.json 相当の統合設定ファイル」節を参照。
  *
  * 段階的移行のため、一部のキーは現段階では dual-write (localStorage /
  * 既存ファイルとの併用) 状態にある。詳細は DESIGN.md のマイグレーション節。
