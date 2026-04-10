@@ -2,7 +2,6 @@
 import { computed, nextTick, reactive, ref, useTemplateRef, watch } from 'vue'
 import PopupMenu from '@/components/common/PopupMenu.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
-import { getAccountLabel, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckProfileStore } from '@/stores/deckProfile'
@@ -20,7 +19,6 @@ const { columnThemeVars } = useColumnTheme(() => props.column)
 const themeStore = useThemeStore()
 const pluginsStore = usePluginsStore()
 const deckProfileStore = useDeckProfileStore()
-const accountsStore = useAccountsStore()
 const windowsStore = useWindowsStore()
 
 // プラグインは lazy load なので明示的にロードトリガー (idempotent)
@@ -30,7 +28,6 @@ pluginsStore.ensureLoaded()
 const themes = computed(() => themeStore.installedThemes)
 const plugins = computed(() => pluginsStore.plugins)
 const profiles = computed(() => deckProfileStore.getProfiles())
-const accounts = computed(() => accountsStore.accounts)
 
 const expanded = reactive<Record<string, boolean>>({
   themes: true,
@@ -222,15 +219,14 @@ const folders = computed<TreeFolder[]>(() => [
     colorClass: 'folderAccounts',
     addTitle: 'アカウントを追加',
     onAdd: addAccount,
-    items: accounts.value.map((a) => {
-      const name = `${getAccountLabel(a)}.json`
-      return {
-        id: a.id,
-        name,
-        ...fileTypeFor(name),
+    items: [
+      {
+        id: 'account-order',
+        name: 'account-order.json5',
+        ...fileTypeFor('account-order.json5'),
         onClick: () => openAccountFile(),
-      }
-    }),
+      },
+    ],
   },
 ])
 
