@@ -68,7 +68,7 @@ export const COLUMN_LABELS: Record<string, string> = {
   aboutMisskey: 'Misskeyについて',
   emoji: 'カスタム絵文字',
   workspaceExplorer: 'エクスプローラー',
-  streamInspector: 'ストリームインスペクタ',
+  streamInspector: 'ストリーム',
 }
 
 export const TL_ICONS: Record<string, string> = {
