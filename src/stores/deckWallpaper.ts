@@ -1,32 +1,29 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import {
-  getStorageString,
-  STORAGE_KEYS,
-  setStorageString,
-} from '@/utils/storage'
+import { computed } from 'vue'
+import { useSettingsStore } from '@/stores/settings'
 
 export const useDeckWallpaperStore = defineStore('deckWallpaper', () => {
-  const wallpaper = ref<string | null>(null)
+  const settingsStore = useSettingsStore()
 
-  function setWallpaper(url: string) {
+  /** Wallpaper base64 data URL, or null when no wallpaper is set. */
+  const wallpaper = computed<string | null>({
+    get: () => settingsStore.get('deck.wallpaper') ?? null,
+    set: (v) => {
+      settingsStore.set('deck.wallpaper', v)
+    },
+  })
+
+  function setWallpaper(url: string): void {
     wallpaper.value = url
-    setStorageString(STORAGE_KEYS.deckWallpaper, url)
   }
 
-  function clearWallpaper() {
+  function clearWallpaper(): void {
     wallpaper.value = null
-    setStorageString(STORAGE_KEYS.deckWallpaper, null)
-  }
-
-  function loadWallpaper() {
-    wallpaper.value = getStorageString(STORAGE_KEYS.deckWallpaper)
   }
 
   return {
     wallpaper,
     setWallpaper,
     clearWallpaper,
-    loadWallpaper,
   }
 })

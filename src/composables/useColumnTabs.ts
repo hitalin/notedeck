@@ -32,6 +32,8 @@ export const COLUMN_ICONS: Record<string, string> = {
   ads: 'ad-2',
   aboutMisskey: 'info-circle',
   emoji: 'mood-smile',
+  workspaceExplorer: 'files',
+  streamInspector: 'activity-heartbeat',
 }
 
 export const COLUMN_LABELS: Record<string, string> = {
@@ -51,7 +53,7 @@ export const COLUMN_LABELS: Record<string, string> = {
   aiscript: 'スクラッチパッド',
   play: 'Misskey Play',
   page: 'ページ',
-  ai: 'AI',
+  ai: 'AIチャット',
   announcements: 'お知らせ',
   drive: 'ドライブ',
   explore: 'みつける',
@@ -65,6 +67,8 @@ export const COLUMN_LABELS: Record<string, string> = {
   ads: '広告',
   aboutMisskey: 'Misskeyについて',
   emoji: 'カスタム絵文字',
+  workspaceExplorer: 'エクスプローラー',
+  streamInspector: 'ストリーム',
 }
 
 export const TL_ICONS: Record<string, string> = {

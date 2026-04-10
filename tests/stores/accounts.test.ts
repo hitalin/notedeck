@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Account } from '@/stores/accounts'

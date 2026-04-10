@@ -540,6 +540,12 @@ export type MainChannelEvent = {
   body: unknown
 }
 
+/** Raw stream event envelope as emitted by the Tauri bridge. */
+export interface RawStreamEvent {
+  kind: string
+  payload: Record<string, unknown>
+}
+
 export interface StreamAdapter {
   connect(): void
   /** Re-register event listeners and ensure the connection is alive (idempotent). */
@@ -588,6 +594,9 @@ export interface StreamAdapter {
     handler: () => void,
   ): void
   off(event: string, handler: () => void): void
+  /** Subscribe to raw stream event envelopes (for inspector / debugging). */
+  onRawEvent(handler: (event: RawStreamEvent) => void): void
+  offRawEvent(handler: (event: RawStreamEvent) => void): void
 }
 
 export interface ServerAdapter {

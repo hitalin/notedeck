@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
+import { useSettingsStore } from '@/stores/settings'
 import * as themeFileSync from '@/stores/themeFileSync'
 import { applyTheme } from '@/theme/applier'
 import {
@@ -15,7 +16,6 @@ import * as settingsFs from '@/utils/settingsFs'
 import {
   getStorageJson,
   getStorageString,
-  removeStorage,
   STORAGE_KEYS,
   setStorageJson,
   setStorageString,
@@ -85,13 +85,30 @@ function parseMetaTheme(
 }
 
 export const useThemeStore = defineStore('theme', () => {
+  const settingsStore = useSettingsStore()
+
   // Per-store-instance caches (isolated per window)
   const compiledCache = new Map<string, CompiledProps>()
   const fetchingAccounts = new Set<string>()
 
   const currentSource = ref<ThemeSource | null>(null)
-  // 'dark' | 'light' | null (null = follow OS)
-  const manualMode = ref<'dark' | 'light' | null>(null)
+
+  // settingsStore が single source of truth。FOUC 防止は compiled cache
+  // (nd-theme-compiled) が担うので、これらの computed は await 済みの
+  // settingsStore から正確な値を返す。
+  const manualMode = computed<'dark' | 'light' | null>({
+    get: () => settingsStore.get('theme.manual') ?? null,
+    set: (v) => settingsStore.set('theme.manual', v),
+  })
+  const selectedDarkThemeId = computed<string | null>({
+    get: () => settingsStore.get('theme.selectedDarkThemeId') ?? null,
+    set: (v) => settingsStore.set('theme.selectedDarkThemeId', v),
+  })
+  const selectedLightThemeId = computed<string | null>({
+    get: () => settingsStore.get('theme.selectedLightThemeId') ?? null,
+    set: (v) => settingsStore.set('theme.selectedLightThemeId', v),
+  })
+
   // shallowRef + full Map replacement ensures Vue always detects changes
   const accountThemeCache = shallowRef(
     new Map<string, { dark?: MisskeyTheme; light?: MisskeyTheme }>(),
@@ -99,16 +116,16 @@ export const useThemeStore = defineStore('theme', () => {
 
   // User-installed custom themes
   const installedThemes = ref<MisskeyTheme[]>([])
-  // Selected theme IDs per mode (null = builtin)
-  const selectedDarkThemeId = ref<string | null>(null)
-  const selectedLightThemeId = ref<string | null>(null)
   // Custom CSS
   const customCss = ref('')
   // Whether file-based storage has been initialized
   const initialized = ref(false)
 
   function init(): void {
-    // Restore compiled CSS from localStorage first (sync, FOUC prevention)
+    // Restore compiled CSS from localStorage first (sync, FOUC prevention).
+    // This is NOT a source of truth — just a rendering cache to avoid a
+    // white flash. The actual theme preference comes from settingsStore
+    // (already loaded via await in main.ts).
     const storedCompiled = getStorageJson<CompiledProps | null>(
       STORAGE_KEYS.themeCompiled,
       null,
@@ -117,20 +134,10 @@ export const useThemeStore = defineStore('theme', () => {
       applyTheme(storedCompiled)
     }
 
-    // Restore manual theme preference
-    const storedManual = getStorageString(STORAGE_KEYS.themeManual)
-    if (storedManual === 'dark' || storedManual === 'light') {
-      manualMode.value = storedManual
-    }
-
-    // Restore installed themes & selections
+    // Restore installed themes (still localStorage-based, not in settingsStore)
     installedThemes.value = getStorageJson<MisskeyTheme[]>(
       STORAGE_KEYS.themeInstalledThemes,
       [],
-    )
-    selectedDarkThemeId.value = getStorageString(STORAGE_KEYS.themeSelectedDark)
-    selectedLightThemeId.value = getStorageString(
-      STORAGE_KEYS.themeSelectedLight,
     )
 
     // Restore custom CSS
@@ -140,7 +147,7 @@ export const useThemeStore = defineStore('theme', () => {
       applyCustomCss(storedCss)
     }
 
-    // Apply theme (manual or OS-based)
+    // Apply theme (reads computed from settingsStore — correct values)
     applyCurrentTheme()
 
     // Defer account theme cache restoration (not needed for initial render)
@@ -206,21 +213,19 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   function toggleTheme(): void {
+    // computed setter → settingsStore.set() → settings.json persist
     manualMode.value = isCurrentDark() ? 'light' : 'dark'
-    setStorageString(STORAGE_KEYS.themeManual, manualMode.value)
     applyCurrentTheme()
   }
 
   function resetToOsTheme(): void {
     manualMode.value = null
-    removeStorage(STORAGE_KEYS.themeManual)
     applyCurrentTheme()
   }
 
   /** Lock current appearance as manual mode (stop following OS) */
   function pinCurrentMode(): void {
     manualMode.value = isCurrentDark() ? 'dark' : 'light'
-    setStorageString(STORAGE_KEYS.themeManual, manualMode.value)
   }
 
   /** Install a Misskey theme from JSON code. Returns true on success. */
@@ -262,14 +267,12 @@ export const useThemeStore = defineStore('theme', () => {
   function removeTheme(id: string): void {
     const removed = installedThemes.value.find((t) => t.id === id)
     installedThemes.value = installedThemes.value.filter((t) => t.id !== id)
-    // Clear selection if removed
+    // Clear selection if removed (computed setter → settingsStore)
     if (selectedDarkThemeId.value === id) {
       selectedDarkThemeId.value = null
-      removeStorage(STORAGE_KEYS.themeSelectedDark)
     }
     if (selectedLightThemeId.value === id) {
       selectedLightThemeId.value = null
-      removeStorage(STORAGE_KEYS.themeSelectedLight)
     }
     // Sync: update localStorage cache only (no need to rewrite remaining theme files)
     setStorageJson(STORAGE_KEYS.themeInstalledThemes, installedThemes.value)
@@ -282,13 +285,31 @@ export const useThemeStore = defineStore('theme', () => {
     }
   }
 
+  function renameTheme(themeId: string, newName: string): void {
+    const theme = installedThemes.value.find((t) => t.id === themeId)
+    if (!theme) return
+
+    const oldFilename = settingsFs.themeFilename(theme.name || theme.id)
+    theme.name = newName
+    const newFilename = settingsFs.themeFilename(newName)
+
+    setStorageJson(STORAGE_KEYS.themeInstalledThemes, installedThemes.value)
+
+    if (initialized.value && oldFilename !== newFilename) {
+      // Delete old file and write new one (theme id stays the same, only name changes)
+      Promise.all([
+        settingsFs.deleteTheme(oldFilename),
+        themeFileSync.persistSingleTheme(theme),
+      ]).catch((e) => console.warn('[theme] failed to rename theme file:', e))
+    }
+  }
+
   function selectTheme(id: string | null, mode: 'dark' | 'light'): void {
+    // computed setter → settingsStore.set() → settings.json persist
     if (mode === 'dark') {
       selectedDarkThemeId.value = id
-      setStorageString(STORAGE_KEYS.themeSelectedDark, id)
     } else {
       selectedLightThemeId.value = id
-      setStorageString(STORAGE_KEYS.themeSelectedLight, id)
     }
     applyCurrentTheme()
   }
@@ -492,6 +513,7 @@ export const useThemeStore = defineStore('theme', () => {
     pinCurrentMode,
     installTheme,
     removeTheme,
+    renameTheme,
     selectTheme,
     setCustomCss,
     fetchAccountTheme,

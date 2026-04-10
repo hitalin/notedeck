@@ -13,6 +13,7 @@ import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { usePrompt } from '@/stores/prompt'
 import { useToast } from '@/stores/toast'
+import { useWindowsStore } from '@/stores/windows'
 import { AppError } from '@/utils/errors'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -109,6 +110,16 @@ function backToMain() {
 function openInWebUI() {
   const url = noteWebUrl.value
   if (url && isSafeUrl(url)) openUrl(url)
+}
+
+function openInspector() {
+  useWindowsStore().open('note-inspector', {
+    accountId: props.note._accountId,
+    noteId: props.note.id,
+    noteUri: props.note.uri ?? props.note.url ?? undefined,
+    serverHost: props.note._serverHost,
+  })
+  close()
 }
 
 const canShare = typeof navigator.share === 'function'
@@ -350,6 +361,10 @@ defineExpose({ open })
       <button class="_popupItem" @click="openInWebUI(); close()">
         <i class="ti ti-external-link" />
         Web UIで開く
+      </button>
+      <button class="_popupItem" @click="openInspector">
+        <i class="ti ti-code" />
+        Raw JSON を表示
       </button>
       <div class="_popupDivider" />
       <button v-if="note.text" class="_popupItem" @click="copyAndClose(note.text!)">

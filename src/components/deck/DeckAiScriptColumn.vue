@@ -25,6 +25,7 @@ import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import { usePortal } from '@/composables/usePortal'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabSlide } from '@/composables/useTabSlide'
+import { useVerticalResize } from '@/composables/useVerticalResize'
 import { useToast } from '@/stores/toast'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
@@ -157,8 +158,18 @@ function scrollToTop() {
 }
 
 // Split ratio (editor height fraction)
-const editorRatio = ref(0.6)
 const bodyRef = ref<HTMLElement>()
+const {
+  value: editorRatio,
+  start: startResize,
+  stop: stopResize,
+} = useVerticalResize({
+  containerRef: bodyRef,
+  mode: 'ratio',
+  initial: 0.6,
+  min: 0.15,
+  max: 0.85,
+})
 
 // Persist code on change
 let saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -252,34 +263,7 @@ async function run() {
   running.value = false
 }
 
-// Vertical resize
-let resizing = false
-
-function startResize(e: PointerEvent) {
-  e.preventDefault()
-  resizing = true
-  document.body.style.userSelect = 'none'
-  document.body.style.cursor = 'row-resize'
-  document.addEventListener('pointermove', onResize)
-  document.addEventListener('pointerup', stopResize)
-  document.addEventListener('pointercancel', stopResize)
-}
-
-function onResize(e: PointerEvent) {
-  if (!resizing || !bodyRef.value) return
-  const rect = bodyRef.value.getBoundingClientRect()
-  const ratio = (e.clientY - rect.top) / rect.height
-  editorRatio.value = Math.max(0.15, Math.min(0.85, ratio))
-}
-
-function stopResize() {
-  resizing = false
-  document.body.style.userSelect = ''
-  document.body.style.cursor = ''
-  document.removeEventListener('pointermove', onResize)
-  document.removeEventListener('pointerup', stopResize)
-  document.removeEventListener('pointercancel', stopResize)
-}
+// Vertical resize — handled by useVerticalResize
 
 function onKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -290,7 +274,7 @@ function onKeydown(e: KeyboardEvent) {
 
 onUnmounted(() => {
   if (saveTimer) clearTimeout(saveTimer)
-  if (resizing) stopResize()
+  stopResize()
   if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
 })
 </script>

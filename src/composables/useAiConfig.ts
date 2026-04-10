@@ -1,6 +1,14 @@
+import JSON5 from 'json5'
 import { ref } from 'vue'
 import defaultAiPrompt from '@/defaults/AI.md?raw'
-import { isTauri, readAiSettings, writeAiSettings } from '@/utils/settingsFs'
+import defaultAiJson5 from '@/defaults/ai.json5?raw'
+import {
+  isTauri,
+  readAiPrompt,
+  readAiSettings,
+  writeAiPrompt,
+  writeAiSettings,
+} from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 // --- Type definitions ---
@@ -21,6 +29,23 @@ export interface AiConfig {
   systemPrompt: string
 }
 
+/**
+ * File-backed shape of AI config (written to ai.json5).
+ *
+ * **API keys are intentionally excluded** — they live in localStorage only
+ * for security (not in `ai.json5`, not in `settings.json5`, not in backups).
+ *
+ * **systemPrompt is excluded** — it lives in `AI.md` as a separate file.
+ */
+export type AiFileConfig = Omit<
+  AiConfig,
+  'ollama' | 'openai' | 'custom' | 'systemPrompt'
+> & {
+  ollama: Omit<ProviderSettings, 'apiKey'>
+  openai: Omit<ProviderSettings, 'apiKey'>
+  custom: Omit<ProviderSettings, 'apiKey'>
+}
+
 export const PROVIDER_KEYS: readonly ProviderKey[] = [
   'ollama',
   'openai',
@@ -29,28 +54,22 @@ export const PROVIDER_KEYS: readonly ProviderKey[] = [
 
 const STORAGE_KEY = STORAGE_KEYS.aiSettings
 
-// --- Defaults ---
+// --- Defaults (loaded from src/defaults/ai.json5) ---
+
+const defaultFileConfig: AiFileConfig = JSON5.parse(defaultAiJson5)
 
 function defaultProviderSettings(): Record<ProviderKey, ProviderSettings> {
   return {
-    ollama: {
-      endpoint: 'http://localhost:11434',
-      apiKey: '',
-      model: '',
-    },
-    openai: {
-      endpoint: 'https://api.openai.com/v1',
-      apiKey: '',
-      model: 'gpt-4o',
-    },
-    custom: { endpoint: '', apiKey: '', model: '' },
+    ollama: { ...defaultFileConfig.ollama, apiKey: '' },
+    openai: { ...defaultFileConfig.openai, apiKey: '' },
+    custom: { ...defaultFileConfig.custom, apiKey: '' },
   }
 }
 
 export function defaultConfig(): AiConfig {
   const providers = defaultProviderSettings()
   return {
-    provider: 'ollama',
+    provider: defaultFileConfig.provider,
     ...providers,
     systemPrompt: defaultAiPrompt,
   }
@@ -67,12 +86,11 @@ function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
   return result
 }
 
-/** Strip apiKey from each provider for file backup. */
-function toFileConfig(c: AiConfig): Record<string, unknown> {
-  const result: Record<string, unknown> = {
+/** Strip apiKey and systemPrompt from config for ai.json5 backup. */
+function toFileConfig(c: AiConfig): AiFileConfig {
+  const result = {
     provider: c.provider,
-    systemPrompt: c.systemPrompt,
-  }
+  } as AiFileConfig
   for (const key of PROVIDER_KEYS) {
     const { apiKey: _, ...safe } = c[key]
     result[key] = safe
@@ -80,54 +98,76 @@ function toFileConfig(c: AiConfig): Record<string, unknown> {
   return result
 }
 
+/** Read API keys from localStorage (never stored in files). */
+function loadApiKeys(): Record<ProviderKey, string> {
+  const stored = getStorageJson<Partial<AiConfig> | null>(STORAGE_KEY, null)
+  if (!stored) return { ollama: '', openai: '', custom: '' }
+  return {
+    ollama: stored.ollama?.apiKey ?? '',
+    openai: stored.openai?.apiKey ?? '',
+    custom: stored.custom?.apiKey ?? '',
+  }
+}
+
 // --- Composable ---
 
 export function useAiConfig() {
-  function load(): AiConfig {
-    const stored = getStorageJson<Partial<AiConfig> | null>(STORAGE_KEY, null)
-    return stored ? mergeConfig(defaultConfig(), stored) : defaultConfig()
-  }
-
-  const config = ref<AiConfig>(load())
+  const config = ref<AiConfig>(defaultConfig())
   const initialized = ref(false)
 
-  function save(): void {
-    setStorageJson(STORAGE_KEY, config.value)
-    if (initialized.value) {
-      persistToFile().catch((e) =>
-        console.warn('[ai-settings] failed to persist to file:', e),
-      )
+  // Apply API keys from localStorage into a config
+  function applyApiKeys(c: AiConfig): AiConfig {
+    const keys = loadApiKeys()
+    for (const k of PROVIDER_KEYS) {
+      c[k].apiKey = keys[k]
     }
+    return c
   }
 
-  async function persistToFile(): Promise<void> {
-    const content = JSON.stringify(toFileConfig(config.value), null, 2)
-    await writeAiSettings(content)
+  function save(): void {
+    // ai.json5 (non-API, non-prompt parts)
+    const fileConfig = toFileConfig(config.value)
+    writeAiSettings(`${JSON5.stringify(fileConfig, null, 2)}\n`).catch((e) =>
+      console.warn('[ai-settings] failed to write ai.json5:', e),
+    )
+
+    // AI.md (system prompt — only write if different from default)
+    if (config.value.systemPrompt !== defaultAiPrompt) {
+      writeAiPrompt(config.value.systemPrompt).catch((e) =>
+        console.warn('[ai-settings] failed to write AI.md:', e),
+      )
+    }
+
+    // API keys → localStorage only (security)
+    setStorageJson(STORAGE_KEY, config.value)
   }
 
   async function initFileStorage(): Promise<void> {
-    const content = await readAiSettings()
-    if (content) {
+    const aiContent = await readAiSettings()
+    if (aiContent) {
       try {
-        const parsed = JSON.parse(content) as Partial<AiConfig>
-        const secrets = Object.fromEntries(
-          PROVIDER_KEYS.map((k) => [k, config.value[k].apiKey]),
-        )
-        config.value = mergeConfig(defaultConfig(), parsed)
-        for (const k of PROVIDER_KEYS) {
-          config.value[k].apiKey = secrets[k] ?? ''
-        }
-        setStorageJson(STORAGE_KEY, config.value)
+        const parsed = JSON5.parse(aiContent) as Partial<AiConfig>
+        config.value = applyApiKeys(mergeConfig(defaultConfig(), parsed))
       } catch (e) {
-        console.warn('[ai-settings] failed to parse ai.json:', e)
+        console.warn('[ai-settings] failed to parse ai.json5:', e)
+        config.value = applyApiKeys(defaultConfig())
       }
+    } else {
+      config.value = applyApiKeys(defaultConfig())
     }
-    initialized.value = true
-    if (!content && config.value !== defaultConfig()) {
-      persistToFile().catch((e) =>
-        console.warn('[ai-settings] migration to file failed:', e),
+
+    // Read AI.md for system prompt (overrides whatever was loaded above)
+    const promptContent = await readAiPrompt()
+    if (promptContent) {
+      config.value = { ...config.value, systemPrompt: promptContent }
+    } else if (aiContent && config.value.systemPrompt !== defaultAiPrompt) {
+      // AI.md doesn't exist but config has a custom prompt — write it out
+      await writeAiPrompt(config.value.systemPrompt).catch((e) =>
+        console.warn('[ai-settings] failed to write AI.md:', e),
       )
     }
+
+    initialized.value = true
   }
 
   if (isTauri) {

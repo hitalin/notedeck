@@ -163,7 +163,6 @@ provideScrollDirection()
 
 // Initialize deck data + app-level side effects
 deckStore.load()
-deckStore.loadWallpaper()
 
 useDeckInit({
   openCompose,

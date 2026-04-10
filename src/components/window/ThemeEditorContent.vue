@@ -25,15 +25,22 @@ import { createJson5Linter } from '@/utils/json5Linter'
 const jsonLang = json()
 const jsonLinter = createJson5Linter()
 
+const props = defineProps<{
+  initialThemeId?: string
+  initialTab?: string
+}>()
+
 const themeStore = useThemeStore()
 
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['visual', 'code'] as const,
-  'visual',
+  (props.initialTab as 'visual' | 'code') ?? 'visual',
 )
 
 const themeName = ref('My Theme')
 const baseMode = ref<'dark' | 'light'>('dark')
+// Track the ID of the theme being edited (null = new theme)
+const editingThemeId = ref<string | null>(null)
 
 // Primary color props that users typically want to edit directly
 const PRIMARY_PROPS: { key: string; label: string }[] = [
@@ -146,15 +153,19 @@ function syncVisualFromCode() {
 // Suppress preview during tab-switch syncs
 let suppressPreview = false
 
-// Sync between tabs when switching
-watch(tab, (newTab) => {
-  suppressPreview = true
-  if (newTab === 'code') syncCodeFromVisual()
-  if (newTab === 'visual' && codeContent.value.trim()) syncVisualFromCode()
-  nextTick(() => {
-    suppressPreview = false
-  })
-})
+// Sync between tabs when switching (immediate: populate code tab if opened directly)
+watch(
+  tab,
+  (newTab) => {
+    suppressPreview = true
+    if (newTab === 'code') syncCodeFromVisual()
+    if (newTab === 'visual' && codeContent.value.trim()) syncVisualFromCode()
+    nextTick(() => {
+      suppressPreview = false
+    })
+  },
+  { immediate: true },
+)
 
 // Convert resolved color to hex for input[type=color]
 function toHex(value: string): string {
@@ -239,14 +250,16 @@ const installedMessage = ref(false)
 async function installTheme() {
   if (tab.value === 'code') syncVisualFromCode()
   if (codeError.value) return
+  const id = editingThemeId.value ?? `custom-${Date.now()}`
   const theme: MisskeyTheme = {
-    id: `custom-${Date.now()}`,
+    id,
     name: themeName.value,
     base: baseMode.value,
     props: { ...baseTheme.value.props, ...overrides.value },
   }
   await themeStore.installTheme(JSON.stringify(theme))
   themeStore.selectTheme(theme.id, baseMode.value)
+  editingThemeId.value = theme.id
   saveSnapshot()
   installedMessage.value = true
   setTimeout(() => {
@@ -288,6 +301,7 @@ async function importTheme() {
     themeName.value = parsed.name || 'Untitled'
     baseMode.value = parsed.base === 'light' ? 'light' : 'dark'
     overrides.value = { ...parsed.props }
+    editingThemeId.value = null
     codeError.value = null
     saveSnapshot()
     showImported()
@@ -300,7 +314,16 @@ async function importTheme() {
 function loadFromInstalled(theme: MisskeyTheme) {
   themeName.value = theme.name
   baseMode.value = theme.base ?? 'dark'
-  overrides.value = { ...theme.props }
+  // Filter out props that match the base theme defaults
+  const base = theme.base === 'light' ? LIGHT_BASE : DARK_BASE
+  const filtered: Record<string, string> = {}
+  for (const [key, value] of Object.entries(theme.props)) {
+    if (base.props[key] !== value) {
+      filtered[key] = value
+    }
+  }
+  overrides.value = filtered
+  editingThemeId.value = theme.id
   saveSnapshot()
 }
 
@@ -311,7 +334,7 @@ function deleteInstalledTheme(theme: MisskeyTheme, e: Event) {
 }
 
 // Section expand states (default: all collapsed)
-const expandedSections = reactive<Record<string, boolean>>({})
+const expandedSections = reactive<Record<string, boolean>>({ info: true })
 
 function toggleSection(section: string) {
   expandedSections[section] = !expandedSections[section]
@@ -383,6 +406,20 @@ function handleOutsideClick(e: MouseEvent) {
     addPropSearch.value = ''
   }
 }
+
+// Load theme from initialThemeId prop (e.g. when opened from settings grid)
+watch(
+  () => props.initialThemeId,
+  (id) => {
+    if (!id) return
+    const theme = themeStore.installedThemes.find((t) => t.id === id)
+    if (theme) {
+      loadFromInstalled(theme)
+      if (tab.value === 'code') syncCodeFromVisual()
+    }
+  },
+  { immediate: true },
+)
 
 onMounted(() => document.addEventListener('click', handleOutsideClick))
 onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
@@ -675,7 +712,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
           @click="installTheme"
         >
           <i class="ti ti-check" />
-          {{ installedMessage ? 'インストール済み!' : 'インストール' }}
+          {{ installedMessage ? '保存しました!' : editingThemeId ? '上書き保存' : 'インストール' }}
         </button>
         <div :class="$style.actionGroup">
           <button

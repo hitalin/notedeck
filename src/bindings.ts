@@ -1277,6 +1277,33 @@ async writeRootSettingsFile(name: string, content: string) : Promise<Result<null
 }
 },
 /**
+ * Read `settings.json5` (VSCode `settings.json` equivalent — single source of truth
+ * for scalar preferences). Returns empty string if the file does not exist (first run).
+ * 
+ * Note: The Tauri command name stays `read_notedeck_json` for backwards-compatible
+ * bindings. The file on disk is `settings.json5` to avoid collision with the export
+ * bundle filename `notedeck.json`.
+ */
+async readNotedeckJson() : Promise<Result<string, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("read_notedeck_json") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Write `settings.json5`. Creates the settings directory if missing.
+ */
+async writeNotedeckJson(content: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("write_notedeck_json", { content }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Export all settings files to a JSON bundle via save dialog.
  */
 async exportSettingsJson() : Promise<Result<boolean, { code: string; message: string }>> {

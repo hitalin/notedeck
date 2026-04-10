@@ -1,55 +1,29 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
+import { useSettingsStore } from '@/stores/settings'
 import { useStreamingStore } from '@/stores/streaming'
 import { useUiStore } from '@/stores/ui'
-import {
-  getStorageJson,
-  getStorageString,
-  STORAGE_KEYS,
-  setStorageJson,
-} from '@/utils/storage'
-
-const STORAGE_KEY = STORAGE_KEYS.offlineMode
-
-interface OfflineModeState {
-  enabled: boolean
-}
 
 export const useOfflineModeStore = defineStore('offlineMode', () => {
-  const isOfflineMode = ref(false)
+  const settingsStore = useSettingsStore()
 
-  /** Restore persisted state from previous session. */
-  function init(): void {
-    // Migrate from old string-based format
-    const raw = getStorageString(STORAGE_KEY)
-    if (raw === 'true' || raw === 'false') {
-      const enabled = raw === 'true'
-      isOfflineMode.value = enabled
-      setStorageJson(STORAGE_KEY, { enabled })
-      return
-    }
-    isOfflineMode.value =
-      getStorageJson<OfflineModeState | null>(STORAGE_KEY, null)?.enabled ??
-      false
-  }
-
-  function persist(): void {
-    setStorageJson(STORAGE_KEY, { enabled: isOfflineMode.value })
-  }
+  /** App-wide offline mode. Backed by settings.json5 `modes.offline`. */
+  const isOfflineMode = computed<boolean>({
+    get: () => settingsStore.get('modes.offline') ?? false,
+    set: (v) => {
+      settingsStore.set('modes.offline', v)
+    },
+  })
 
   async function enable(): Promise<void> {
     isOfflineMode.value = true
-    persist()
-
     // Disconnect all streaming connections
     await useStreamingStore().disconnectAll(useAccountsStore().accounts)
   }
 
   async function disable(): Promise<void> {
     isOfflineMode.value = false
-    persist()
-
     // Trigger reconnection via reactive deck-resume signal
     useUiStore().emitDeckResume()
   }
@@ -62,5 +36,5 @@ export const useOfflineModeStore = defineStore('offlineMode', () => {
     }
   }
 
-  return { isOfflineMode, init, enable, disable, toggle }
+  return { isOfflineMode, enable, disable, toggle }
 })

@@ -1,6 +1,8 @@
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
-export const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
+export const isTauri =
+  typeof window !== 'undefined' &&
+  ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)
 
 /** Characters not allowed in filenames (Windows + Unix safety). */
 const INVALID_CHARS = /[<>:"/\\|?*]/g
@@ -171,31 +173,49 @@ export async function writeKeybinds(content: string): Promise<void> {
 // --- AI settings helpers ---
 
 export async function readAiSettings(): Promise<string> {
-  return readRootSettingsFile('ai.json')
+  return readRootSettingsFile('ai.json5')
 }
 
 export async function writeAiSettings(content: string): Promise<void> {
-  return writeRootSettingsFile('ai.json', content)
+  return writeRootSettingsFile('ai.json5', content)
+}
+
+export async function readAiPrompt(): Promise<string> {
+  return readRootSettingsFile('AI.md')
+}
+
+export async function writeAiPrompt(content: string): Promise<void> {
+  return writeRootSettingsFile('AI.md', content)
+}
+
+// --- Navbar helpers ---
+
+export async function readNavbar(): Promise<string> {
+  return readRootSettingsFile('navbar.json5')
+}
+
+export async function writeNavbar(content: string): Promise<void> {
+  return writeRootSettingsFile('navbar.json5', content)
 }
 
 // --- Account order helpers ---
 
 export async function readAccountOrder(): Promise<string> {
-  return readRootSettingsFile('account-order.json5')
+  return readRootSettingsFile('accounts.json5')
 }
 
 export async function writeAccountOrder(content: string): Promise<void> {
-  return writeRootSettingsFile('account-order.json5', content)
+  return writeRootSettingsFile('accounts.json5', content)
 }
 
 // --- Performance helpers ---
 
 export async function readPerformance(): Promise<string> {
-  return readRootSettingsFile('performance.json')
+  return readRootSettingsFile('performance.json5')
 }
 
 export async function writePerformance(content: string): Promise<void> {
-  return writeRootSettingsFile('performance.json', content)
+  return writeRootSettingsFile('performance.json5', content)
 }
 
 // --- Plugin helpers ---

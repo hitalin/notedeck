@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { PERSIST_DEBOUNCE_MS } from '@/constants/persist'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 const MAX_RECENT = 32
-const PERSIST_DELAY = 300
 
 export const useRecentEmojisStore = defineStore('recentEmojis', () => {
   // host → emoji list
@@ -18,7 +18,7 @@ export const useRecentEmojisStore = defineStore('recentEmojis', () => {
     persistTimer = setTimeout(() => {
       setStorageJson(STORAGE_KEYS.recentEmojis, map.value)
       persistTimer = null
-    }, PERSIST_DELAY)
+    }, PERSIST_DEBOUNCE_MS)
   }
 
   function get(host: string): string[] {

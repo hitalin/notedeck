@@ -14,6 +14,7 @@ import { useConfirm } from '@/stores/confirm'
 import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useDeckProfileStore } from '@/stores/deckProfile'
+import { usePluginsStore } from '@/stores/plugins'
 import { usePrompt } from '@/stores/prompt'
 import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
@@ -72,14 +73,7 @@ export function getSettingsItems(): QuickPickItem[] {
       label: 'テーマエディタ',
       icon: 'palette',
       group: 'アピアランス',
-      action: () => useWindowsStore().open('themeEditor'),
-    },
-    {
-      id: 'css-editor',
-      label: 'カスタムCSS',
-      icon: 'code',
-      group: 'アピアランス',
-      action: () => useWindowsStore().open('cssEditor'),
+      children: () => getThemeEditorItems(),
     },
     {
       id: 'set-wallpaper',
@@ -95,41 +89,48 @@ export function getSettingsItems(): QuickPickItem[] {
       group: 'アピアランス',
       action: () => useDeckStore().clearWallpaper(),
     },
-    // Settings
+    // Environment settings
     {
       id: 'plugins',
       label: 'プラグイン',
       icon: 'plug',
-      group: '設定',
-      action: () => useWindowsStore().open('plugins'),
+      group: '環境設定',
+      children: () => getPluginEditorItems(),
     },
     {
       id: 'ai-settings',
       label: 'AI設定',
-      icon: 'sparkles',
-      group: '設定',
+      icon: 'robot',
+      group: '環境設定',
       action: () => useWindowsStore().open('aiSettings'),
     },
     {
       id: 'keybinds',
       label: 'キーバインド',
       icon: 'keyboard',
-      group: '設定',
+      group: '環境設定',
       action: () => useWindowsStore().open('keybinds'),
     },
     {
       id: 'performance',
       label: 'パフォーマンス',
       icon: 'gauge',
-      group: '設定',
+      group: '環境設定',
       action: () => useWindowsStore().open('performanceEditor'),
     },
-    // Data
+    {
+      id: 'css-editor',
+      label: 'カスタムCSS',
+      icon: 'code',
+      group: '環境設定',
+      action: () => useWindowsStore().open('cssEditor'),
+    },
+    // Cache
     {
       id: 'clear-all-cache',
       label: '全キャッシュ削除',
       icon: 'eraser',
-      group: 'データ',
+      group: 'キャッシュ',
       action: async () => {
         const { confirm } = useConfirm()
         const ok = await confirm({
@@ -145,7 +146,7 @@ export function getSettingsItems(): QuickPickItem[] {
       id: 'export-db',
       label: 'DBエクスポート',
       icon: 'database-export',
-      group: 'データ',
+      group: 'バックアップ',
       action: async () => {
         unwrap(await commands.exportDb())
       },
@@ -154,7 +155,7 @@ export function getSettingsItems(): QuickPickItem[] {
       id: 'import-db',
       label: 'DBインポート',
       icon: 'database-import',
-      group: 'データ',
+      group: 'バックアップ',
       action: () =>
         backupWithConfirm(
           'importDb',
@@ -166,7 +167,7 @@ export function getSettingsItems(): QuickPickItem[] {
       id: 'export-settings',
       label: '設定エクスポート',
       icon: 'file-export',
-      group: 'データ',
+      group: 'バックアップ',
       action: async () => {
         unwrap(await commands.exportSettingsJson())
       },
@@ -175,7 +176,7 @@ export function getSettingsItems(): QuickPickItem[] {
       id: 'import-settings',
       label: '設定インポート',
       icon: 'file-import',
-      group: 'データ',
+      group: 'バックアップ',
       action: () =>
         backupWithConfirm(
           'importSettingsJson',
@@ -247,6 +248,147 @@ function getThemeSelectItems(mode: 'dark' | 'light'): QuickPickItem[] {
   }
 
   return items
+}
+
+function getThemeEditorItems(): QuickPickItem[] {
+  const themeStore = useThemeStore()
+  const items: QuickPickItem[] = [
+    {
+      id: 'theme-new',
+      label: '新規テーマ作成',
+      icon: 'plus',
+      action: () => useWindowsStore().open('themeEditor'),
+    },
+  ]
+
+  for (const theme of themeStore.installedThemes) {
+    items.push({
+      id: `theme-manage-${theme.id}`,
+      label: theme.name,
+      icon: theme.base === 'dark' ? 'moon' : 'sun',
+      children: () => getThemeActions(theme.id),
+    })
+  }
+
+  return items
+}
+
+function getThemeActions(themeId: string): QuickPickItem[] {
+  const themeStore = useThemeStore()
+  const theme = themeStore.installedThemes.find((t) => t.id === themeId)
+  if (!theme) return []
+  const mode = theme.base ?? 'dark'
+
+  return [
+    {
+      id: `theme-apply-${themeId}`,
+      label: '適用',
+      icon: 'check',
+      action: () => themeStore.selectTheme(themeId, mode),
+    },
+    {
+      id: `theme-edit-${themeId}`,
+      label: '編集',
+      icon: 'pencil',
+      action: () =>
+        useWindowsStore().open('themeEditor', { initialThemeId: themeId }),
+    },
+    {
+      id: `theme-delete-${themeId}`,
+      label: '削除',
+      icon: 'trash',
+      action: async () => {
+        const { confirm } = useConfirm()
+        const ok = await confirm({
+          title: 'テーマを削除',
+          message: `「${theme.name}」を削除しますか？`,
+          okLabel: '削除',
+          type: 'danger',
+        })
+        if (ok) themeStore.removeTheme(themeId)
+      },
+    },
+  ]
+}
+
+// ============================================================
+// Plugins
+// ============================================================
+
+function getPluginEditorItems(): QuickPickItem[] {
+  const pluginsStore = usePluginsStore()
+  const items: QuickPickItem[] = [
+    {
+      id: 'plugin-new',
+      label: '新規プラグインをインストール',
+      icon: 'plus',
+      action: () => useWindowsStore().open('plugins'),
+    },
+  ]
+
+  for (const plugin of pluginsStore.plugins) {
+    items.push({
+      id: `plugin-manage-${plugin.installId}`,
+      label: plugin.name,
+      icon: 'plug',
+      description: plugin.active ? '有効' : '無効',
+      children: () => getPluginActions(plugin.installId),
+    })
+  }
+
+  return items
+}
+
+function getPluginActions(installId: string): QuickPickItem[] {
+  const pluginsStore = usePluginsStore()
+  const plugin = pluginsStore.getPlugin(installId)
+  if (!plugin) return []
+
+  return [
+    {
+      id: `plugin-toggle-${installId}`,
+      label: plugin.active ? '無効にする' : '有効にする',
+      icon: plugin.active ? 'player-pause' : 'player-play',
+      action: async () => {
+        const { abortPlugin, launchPlugin } = await import(
+          '@/aiscript/plugin-api'
+        )
+        const newActive = !plugin.active
+        pluginsStore.setActive(installId, newActive)
+        if (newActive) {
+          await launchPlugin(plugin)
+        } else {
+          abortPlugin(installId)
+        }
+      },
+    },
+    {
+      id: `plugin-edit-${installId}`,
+      label: '編集',
+      icon: 'pencil',
+      action: () =>
+        useWindowsStore().open('plugins', { initialPluginId: installId }),
+    },
+    {
+      id: `plugin-delete-${installId}`,
+      label: '削除',
+      icon: 'trash',
+      action: async () => {
+        const { confirm } = useConfirm()
+        const ok = await confirm({
+          title: 'プラグインを削除',
+          message: `「${plugin.name}」を削除しますか？`,
+          okLabel: '削除',
+          type: 'danger',
+        })
+        if (ok) {
+          const { abortPlugin } = await import('@/aiscript/plugin-api')
+          abortPlugin(installId)
+          pluginsStore.removePlugin(installId)
+        }
+      },
+    },
+  ]
 }
 
 // ============================================================
@@ -399,7 +541,15 @@ const COLUMN_TYPE_GROUPS: { group: string; types: ColumnType[] }[] = [
   },
   {
     group: 'ツール',
-    types: ['widget', 'aiscript', 'apiConsole', 'apiDocs', 'ai'],
+    types: [
+      'workspaceExplorer',
+      'widget',
+      'aiscript',
+      'apiConsole',
+      'apiDocs',
+      'ai',
+      'streamInspector',
+    ],
   },
 ]
 
@@ -410,6 +560,8 @@ const COLUMN_EXTRA_PROPS: Partial<
   aiscript: { aiscriptCode: '<: "Hello, AiScript!"' },
   apiDocs: { accountId: null, width: 990 },
   ai: { accountId: null },
+  streamInspector: { accountId: null },
+  workspaceExplorer: { accountId: null },
   timeline: { tl: 'home', name: null },
 }
 
@@ -504,7 +656,12 @@ async function buildAccountStep(type: ColumnType): Promise<QuickPickItem[]> {
   const accountsStore = useAccountsStore()
 
   // Account-independent types: skip account selection
-  if (type === 'apiDocs' || type === 'ai') {
+  if (
+    type === 'apiDocs' ||
+    type === 'ai' ||
+    type === 'streamInspector' ||
+    type === 'workspaceExplorer'
+  ) {
     finalizeAddColumn(type, null)
     return []
   }

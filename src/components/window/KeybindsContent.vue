@@ -37,10 +37,14 @@ const jsonLinter = linter(
 
 const keybindsStore = useKeybindsStore()
 
+const props = defineProps<{
+  initialTab?: string
+}>()
+
 // ── Tab management ──
 const { tab, containerRef: contentRef } = useEditorTabs(
   ['visual', 'code'] as const,
-  'visual',
+  (props.initialTab as 'visual' | 'code') ?? 'visual',
 )
 
 // ── Visual tab: category-based GUI ──
@@ -145,7 +149,7 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string }> = {
   profile: { label: 'プロファイル', icon: 'ti-id-badge-2' },
 }
 
-const expandedSections = reactive<Record<string, boolean>>({})
+const expandedSections = reactive<Record<string, boolean>>({ general: true })
 
 function toggleSection(key: string) {
   expandedSections[key] = !expandedSections[key]

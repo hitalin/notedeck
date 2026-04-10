@@ -38,19 +38,78 @@ const deckStore = useDeckStore()
 const profileStore = useDeckProfileStore()
 const isCompact = useIsCompactLayout()
 
-const expandedSections = reactive<Record<string, boolean>>({})
+const expandedSections = reactive<Record<string, boolean>>({ name: true })
 
 function toggleSection(key: string) {
   expandedSections[key] = !expandedSections[key]
 }
+
+const props = defineProps<{
+  profileId?: string
+  initialTab?: string
+}>()
+
+/** The profile ID being edited. Falls back to the window's active profile. */
+const editingProfileId = computed(
+  () => props.profileId ?? profileStore.windowProfileId,
+)
+
+/** Whether editing a non-active profile (data comes from profileStore instead of deckStore). */
+const isOtherProfile = computed(
+  () => editingProfileId.value !== profileStore.windowProfileId,
+)
+
+/** Profile data object for the editing target. */
+const editingProfile = computed(
+  () =>
+    profileStore.getProfiles().find((p) => p.id === editingProfileId.value) ??
+    null,
+)
+
+/** Columns of the editing target. */
+const editingColumns = computed<DeckColumn[]>(() =>
+  isOtherProfile.value
+    ? (editingProfile.value?.columns ?? [])
+    : deckStore.columns,
+)
+
+/** Layout of the editing target. */
+const editingLayout = computed<string[][]>(() =>
+  isOtherProfile.value
+    ? (editingProfile.value?.layout ?? [])
+    : deckStore.windowLayout,
+)
+
+/** Profile name of the editing target. */
+const editingName = computed(() =>
+  isOtherProfile.value
+    ? (editingProfile.value?.name ?? '')
+    : (profileStore.currentProfileName ?? ''),
+)
 
 const codeContent = ref('')
 const codeError = ref<string | null>(null)
 
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['visual', 'code'] as const,
-  'visual',
+  (props.initialTab as 'visual' | 'code') ?? 'visual',
 )
+
+// When profileId prop changes, refresh code tab content
+watch(
+  () => props.profileId,
+  () => {
+    if (tab.value === 'code') syncCodeFromVisual()
+  },
+)
+
+/** Resolve a column by ID from the editing target. */
+function getEditingColumn(id: string): DeckColumn | undefined {
+  if (isOtherProfile.value) {
+    return editingColumns.value.find((c) => c.id === id)
+  }
+  return deckStore.getColumn(id) ?? undefined
+}
 
 function columnLabel(col: DeckColumn): string {
   if (col.name) return col.name
@@ -84,7 +143,7 @@ function columnServerIconUrl(col: DeckColumn): string | null {
 
 function groupPrimaryColumn(group: string[]): DeckColumn | null {
   for (const id of group) {
-    const col = deckStore.getColumn(id)
+    const col = getEditingColumn(id)
     if (col) return col
   }
   return null
@@ -92,7 +151,7 @@ function groupPrimaryColumn(group: string[]): DeckColumn | null {
 
 function groupLabel(group: string[]): string {
   const labels = group
-    .map((id) => deckStore.getColumn(id))
+    .map((id) => getEditingColumn(id))
     .filter((col): col is DeckColumn => col != null)
     .map((col) => columnLabel(col))
   return labels.join(' / ')
@@ -110,7 +169,7 @@ function groupServerIconUrl(group: string[]): string | null {
 
 // --- Mobile: ReorderableList items ---
 const reorderableGroups = computed<ReorderableItem[]>(() =>
-  deckStore.windowLayout.map((group) => {
+  editingLayout.value.map((group) => {
     const col = groupPrimaryColumn(group)
     return {
       icon: col ? columnIcon(col) : 'layout-columns',
@@ -133,24 +192,22 @@ function onColumnSelected(config: Omit<DeckColumn, 'id'>) {
 // --- Drag and drop (reorder layout groups) ---
 
 function onGroupReorder(fromIdx: number, toIdx: number) {
-  // Convert windowLayout indices to layout indices
-  const wl = deckStore.windowLayout
-  const fromGroup = wl[fromIdx]
-  const toGroup = wl[toIdx]
+  const layout = editingLayout.value
+  const fromGroup = layout[fromIdx]
+  const toGroup = layout[toIdx]
   if (!fromGroup || !toGroup) return
 
-  const fullLayout = deckStore.layout
-  const fromLayoutIdx = fullLayout.indexOf(fromGroup)
-  const toLayoutIdx = fullLayout.indexOf(toGroup)
-  if (fromLayoutIdx < 0 || toLayoutIdx < 0) return
-
-  // Move in full layout
-  const newLayout = fullLayout.map((g) => [...g])
-  const [moved] = newLayout.splice(fromLayoutIdx, 1)
+  const newLayout = layout.map((g) => [...g])
+  const [moved] = newLayout.splice(fromIdx, 1)
   if (moved) {
-    newLayout.splice(toLayoutIdx, 0, moved)
-    deckStore.applyLayout(newLayout)
-    deckStore.flushSave()
+    newLayout.splice(toIdx, 0, moved)
+    if (isOtherProfile.value) {
+      profileStore.setLayout(newLayout, editingProfileId.value)
+      profileStore.flushPersist()
+    } else {
+      deckStore.applyLayout(newLayout)
+      deckStore.flushSave()
+    }
   }
 }
 
@@ -160,10 +217,19 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
 })
 
 function removeGroup(groupIdx: number) {
-  const group = deckStore.windowLayout[groupIdx]
+  const group = editingLayout.value[groupIdx]
   if (!group) return
-  for (const colId of group) {
-    deckStore.removeColumn(colId)
+  if (isOtherProfile.value) {
+    const pid = editingProfileId.value
+    if (!pid) return
+    const newColumns = editingColumns.value.filter((c) => !group.includes(c.id))
+    const newLayout = editingLayout.value.filter((_, i) => i !== groupIdx)
+    profileStore.setColumnsAndLayout(newColumns, newLayout, pid)
+    profileStore.flushPersist()
+  } else {
+    for (const colId of group) {
+      deckStore.removeColumn(colId)
+    }
   }
 }
 
@@ -172,17 +238,19 @@ function removeGroup(groupIdx: number) {
 function onProfileNameChange(event: Event) {
   const input = event.target as HTMLInputElement
   const newName = input.value.trim()
-  if (!newName || !profileStore.windowProfileId) return
-  profileStore.renameProfile(profileStore.windowProfileId, newName)
+  if (!newName) return
+  const pid = editingProfileId.value
+  if (!pid) return
+  profileStore.renameProfile(pid, newName)
 }
 
 // --- Code tab ---
 
 function syncCodeFromVisual() {
   const data = {
-    name: profileStore.currentProfileName,
-    columns: deckStore.columns,
-    layout: deckStore.windowLayout,
+    name: editingName.value,
+    columns: editingColumns.value,
+    layout: editingLayout.value,
   }
   codeContent.value = JSON5.stringify(data, null, 2)
   codeError.value = null
@@ -202,9 +270,13 @@ function syncVisualFromCode() {
   }
 }
 
-watch(tab, (newTab) => {
-  if (newTab === 'code') syncCodeFromVisual()
-})
+watch(
+  tab,
+  (newTab) => {
+    if (newTab === 'code') syncCodeFromVisual()
+  },
+  { immediate: true },
+)
 
 // Import/Export
 const {
@@ -217,29 +289,27 @@ const {
 } = useClipboardFeedback()
 
 function applyParsedProfile(parsed: Record<string, unknown>) {
-  if (parsed.name && profileStore.windowProfileId) {
-    profileStore.renameProfile(
-      profileStore.windowProfileId,
-      parsed.name as string,
-    )
+  const pid = editingProfileId.value
+  if (parsed.name && pid) {
+    profileStore.renameProfile(pid, parsed.name as string)
   }
   const newColumns = Array.isArray(parsed.columns) ? parsed.columns : undefined
   const newLayout = Array.isArray(parsed.layout) ? parsed.layout : undefined
   if (newColumns && newLayout) {
-    profileStore.setColumnsAndLayout(newColumns, newLayout)
+    profileStore.setColumnsAndLayout(newColumns, newLayout, pid)
   } else if (newColumns) {
-    profileStore.setColumns(newColumns)
+    profileStore.setColumns(newColumns, pid)
   } else if (newLayout) {
-    profileStore.setLayout(newLayout)
+    profileStore.setLayout(newLayout, pid)
   }
   profileStore.flushPersist()
 }
 
 function exportToClipboard() {
   const data = {
-    name: profileStore.currentProfileName,
-    columns: deckStore.columns,
-    layout: deckStore.windowLayout,
+    name: editingName.value,
+    columns: editingColumns.value,
+    layout: editingLayout.value,
   }
   navigator.clipboard.writeText(JSON5.stringify(data, null, 2))
   showCopied()
@@ -274,6 +344,12 @@ async function importFromClipboard() {
 
     <!-- Visual Editor -->
     <div v-if="tab === 'visual'" :class="$style.visualPanel">
+      <!-- Other profile notice -->
+      <div v-if="isOtherProfile && editingProfile" :class="$style.otherProfileNotice">
+        <i class="ti ti-info-circle" />
+        <span>「{{ editingProfile.name }}」を編集中</span>
+      </div>
+
       <!-- Profile name -->
       <div :class="$style.nameSection">
         <button class="_button" :class="$style.nameLabel" @click="toggleSection('name')">
@@ -283,7 +359,7 @@ async function importFromClipboard() {
         </button>
         <input
           v-if="expandedSections.name"
-          :value="profileStore.currentProfileName ?? ''"
+          :value="editingName"
           :class="$style.nameInput"
           type="text"
           placeholder="プロファイル名"
@@ -297,7 +373,7 @@ async function importFromClipboard() {
         <button class="_button" :class="$style.sectionLabel" @click="toggleSection('columns')">
           <i class="ti ti-columns" />
           カラム
-          <span :class="$style.sectionBadge">{{ deckStore.windowLayout.length }}</span>
+          <span :class="$style.sectionBadge">{{ editingLayout.length }}</span>
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.columns }]" />
         </button>
 
@@ -315,7 +391,7 @@ async function importFromClipboard() {
         <!-- Desktop: icon grid with drag & drop -->
         <div v-else :class="$style.columnPreview">
           <div
-            v-for="(group, groupIdx) in deckStore.windowLayout"
+            v-for="(group, groupIdx) in editingLayout"
             :key="`${groupIdx}:${group.join(',')}`"
             :data-group-idx="groupIdx"
             :class="[
@@ -340,12 +416,13 @@ async function importFromClipboard() {
             </button>
           </div>
 
-          <div v-if="deckStore.windowLayout.length === 0" :class="$style.emptyMessage">
+          <div v-if="editingLayout.length === 0" :class="$style.emptyMessage">
             カラムがありません
           </div>
 
           <!-- Add column button -->
           <div
+            v-if="!isOtherProfile"
             :class="[$style.columnTab, $style.addColumnTab]"
             title="カラムを追加"
             @click="showAddColumn = !showAddColumn"
@@ -356,7 +433,7 @@ async function importFromClipboard() {
 
         <!-- Add column button (mobile) -->
         <div
-          v-if="isCompact"
+          v-if="isCompact && !isOtherProfile"
           :class="[$style.columnTab, $style.addColumnTab]"
           title="カラムを追加"
           @click="showAddColumn = !showAddColumn"
@@ -366,7 +443,7 @@ async function importFromClipboard() {
 
         <!-- Inline AddColumnDialog -->
         <AddColumnDialog
-          v-if="showAddColumn"
+          v-if="showAddColumn && !isOtherProfile"
           mode="pip"
           @column-selected="onColumnSelected"
           @close="showAddColumn = false"
@@ -436,6 +513,17 @@ async function importFromClipboard() {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+
+.otherProfileNotice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--nd-accent);
+  background: color-mix(in srgb, var(--nd-accent) 8%, transparent);
+  border-bottom: 1px solid var(--nd-divider);
 }
 
 // --- Profile name section ---

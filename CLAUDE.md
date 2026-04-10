@@ -48,8 +48,11 @@ pnpm typecheck    # vue-tsc --noEmit
 - API クライアント・DB・ストリーミングは全て **notecli** クレート側（`src-tauri/` は薄いラッパー）
 - フォーク対応は adapter パターン（`src/adapters/`）
 - ゲスト・ログアウト対応: 公開 API は `get_credentials_or_anon()`、認証必須 API は `get_credentials()` を使用（詳細は [DEVELOPMENT.md](DEVELOPMENT.md) の "Guest Mode & Logout Fallback"）
-- **ウィンドウ / カラム**: ストリーム系はカラム（永続）、詳細・ツール系はウィンドウ（一時）。カラムは `accountId: null` で cross-account 対応（詳細は [DEVELOPMENT.md](DEVELOPMENT.md) の "Window / Column Model"）
+- **ウィンドウ / カラム**: ストリーム系はカラム（永続）、IDE ツール系もカラム（永続）、詳細・インスペクタ・ツール系はウィンドウ（一時）。カラムは `accountId: null` で cross-account 対応（詳細は [DEVELOPMENT.md](DEVELOPMENT.md) の "Window / Column Model"）
+- **IDE 系カラム**: Workspace Explorer（VSCode Explorer 相当）、Stream Inspector（WebSocket イベントのリアルタイム監視）
+- **インスペクタウィンドウ**: ノート/通知/ユーザーの Raw JSON 表示、settings.json Raw JSON エディタ。共通コンポーネント `RawJsonView` + `useSensitiveMask` で機密マスキング対応
 - **ナビバー**: VSCode Activity Bar 式。カラムのトグルボタン。ボタン構成はカスタマイズ可能（`NavItem` 型でプロファイルに永続化）
+- **設定永続化**: 全設定は `settings.json` に一元化（`useSettingsStore` が単一 source of truth）。旧ファイル（`ai.json` / `keybinds.json5` / `performance.json`）は初回起動時の移行読込のみで、新規書込は `settings.json` のみ。独立ファイル: `custom.css` / `accounts.json5`（環境依存）。ナビバー構成はプロファイル内 `navItems` キーに格納
 - 詳細は [DEVELOPMENT.md](DEVELOPMENT.md) 参照
 
 ## リリース手順

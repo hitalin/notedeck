@@ -2,7 +2,9 @@ import { type Platform, platform } from '@tauri-apps/plugin-os'
 import { defineStore, storeToRefs } from 'pinia'
 import { computed, onScopeDispose, ref } from 'vue'
 
-const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
+const isTauri =
+  typeof window !== 'undefined' &&
+  ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)
 
 export function detectPlatformFromUserAgent(
   userAgent: string,
@@ -35,7 +37,10 @@ const MOBILE_BREAKPOINT = 500
 export const useUiStore = defineStore('ui', () => {
   const sidebarOpen = ref(true)
 
-  const isNarrowViewport = ref(window.innerWidth <= MOBILE_BREAKPOINT)
+  const hasWindow = typeof window !== 'undefined'
+  const isNarrowViewport = ref(
+    hasWindow && window.innerWidth <= MOBILE_BREAKPOINT,
+  )
   let resizeTimer: ReturnType<typeof setTimeout> | null = null
   const onResize = () => {
     if (resizeTimer) return
@@ -44,11 +49,13 @@ export const useUiStore = defineStore('ui', () => {
       isNarrowViewport.value = window.innerWidth <= MOBILE_BREAKPOINT
     }, 100)
   }
-  window.addEventListener('resize', onResize)
-  onScopeDispose(() => {
-    window.removeEventListener('resize', onResize)
-    if (resizeTimer) clearTimeout(resizeTimer)
-  })
+  if (hasWindow) {
+    window.addEventListener('resize', onResize)
+    onScopeDispose(() => {
+      window.removeEventListener('resize', onResize)
+      if (resizeTimer) clearTimeout(resizeTimer)
+    })
+  }
 
   /** ビューポート幅ベースのレイアウト判定（タブレット横持ち等では false） */
   const isCompactLayout = computed(() => isNarrowViewport.value)

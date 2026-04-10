@@ -2,12 +2,8 @@ import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 
-import type {
-  DeckColumn,
-  DeckProfile,
-  DeckWindowLayout,
-  NavItem,
-} from '@/stores/deck'
+import { PERSIST_DEBOUNCE_MS } from '@/constants/persist'
+import type { DeckColumn, DeckProfile, DeckWindowLayout } from '@/stores/deck'
 import * as settingsFs from '@/utils/settingsFs'
 import {
   getStorageJson,
@@ -42,7 +38,6 @@ function fromFileFormat(
     layout: (data.layout as string[][]) || [],
     createdAt: (data.createdAt as number) || Date.now(),
     windows: data.windows as DeckWindowLayout[] | undefined,
-    navItems: data.navItems as NavItem[] | undefined,
   }
 }
 
@@ -89,35 +84,41 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   // --- Profile mutation ---
 
   /** Mutate the current profile's data and schedule persistence. */
-  function mutateProfile(fn: (profile: DeckProfile) => void) {
-    const profile = currentProfile.value
-    if (!profile) return
-    fn(profile)
+  function mutateProfile(
+    fn: (profile: DeckProfile) => void,
+    profileId?: string | null,
+  ) {
+    const target = profileId
+      ? profilesData.value.find((p) => p.id === profileId)
+      : currentProfile.value
+    if (!target) return
+    fn(target)
     // Trigger reactivity by bumping version (Vue tracks the ref)
     profileVersion.value++
     schedulePersist()
   }
 
-  function setColumns(newColumns: DeckColumn[]) {
+  function setColumns(newColumns: DeckColumn[], profileId?: string | null) {
     mutateProfile((p) => {
       p.columns = newColumns
-    })
+    }, profileId)
   }
 
-  function setLayout(newLayout: string[][]) {
+  function setLayout(newLayout: string[][], profileId?: string | null) {
     mutateProfile((p) => {
       p.layout = newLayout
-    })
+    }, profileId)
   }
 
   function setColumnsAndLayout(
     newColumns: DeckColumn[],
     newLayout: string[][],
+    profileId?: string | null,
   ) {
     mutateProfile((p) => {
       p.columns = newColumns
       p.layout = newLayout
-    })
+    }, profileId)
   }
 
   // --- Persistence (debounced) ---
@@ -129,7 +130,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     persistTimer = setTimeout(() => {
       persistTimer = null
       flushPersist()
-    }, 300)
+    }, PERSIST_DEBOUNCE_MS)
   }
 
   function flushPersist() {
@@ -475,10 +476,6 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
 
   // --- File-based initialization ---
 
-  function isNewFormatId(id: string): boolean {
-    return id.endsWith('.ndprofile.json5')
-  }
-
   async function loadProfilesFromFiles(): Promise<DeckProfile[]> {
     const filenames = await settingsFs.listProfiles()
     if (filenames.length === 0) return []
@@ -505,15 +502,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   ) {
     // Load from localStorage into reactive state
     profilesData.value = loadProfilesFromStorage()
-    let profiles = profilesData.value
-
-    // Discard legacy profiles (old ID format like "profile-xxx")
-    const legacyCount = profiles.filter((p) => !isNewFormatId(p.id)).length
-    if (legacyCount > 0) {
-      console.info(`[deckProfile] Discarding ${legacyCount} legacy profile(s).`)
-      profiles = profiles.filter((p) => isNewFormatId(p.id))
-      saveProfiles(profiles)
-    }
+    const profiles = profilesData.value
 
     // Fix blank names
     let needsSave = false

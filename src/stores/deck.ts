@@ -1,13 +1,17 @@
+import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { computed, nextTick, reactive, ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import * as snapshotStore from '@/composables/useSnapshotStore'
+import { PERSIST_DEBOUNCE_MS } from '@/constants/persist'
+import defaultNavbarJson5 from '@/defaults/navbar.json5?raw'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useDeckWallpaperStore } from '@/stores/deckWallpaper'
 import { buildColumnUri } from '@/utils/columnUri'
 import * as deckLayout from '@/utils/deckLayout'
 import { hapticMedium } from '@/utils/haptics'
+import { isTauri, readNavbar, writeNavbar } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 export type ColumnType =
@@ -41,6 +45,8 @@ export type ColumnType =
   | 'ads'
   | 'aboutMisskey'
   | 'emoji'
+  | 'workspaceExplorer'
+  | 'streamInspector'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
@@ -67,8 +73,6 @@ export interface DeckProfile {
   createdAt: number
   /** Window positions/sizes for multi-window layouts */
   windows?: DeckWindowLayout[]
-  /** Customizable nav bar items (column types or dividers). undefined = defaults */
-  navItems?: NavItem[]
 }
 
 export interface DeckColumn {
@@ -116,15 +120,7 @@ export type NavItem =
       columnProps?: Partial<DeckColumn>
     }
 
-export const DEFAULT_NAV_ITEMS: NavItem[] = [
-  { type: 'notifications', accountId: null },
-  { type: 'followRequests', accountId: null },
-  { type: 'mentions', accountId: null },
-  { type: 'specified', accountId: null },
-  { type: 'chat', accountId: null },
-  { type: 'search', accountId: null },
-  { type: 'lookup', accountId: null },
-]
+export const DEFAULT_NAV_ITEMS: NavItem[] = JSON5.parse(defaultNavbarJson5)
 
 export function isNavDivider(item: NavItem): item is { type: 'divider' } {
   return item.type === 'divider'
@@ -138,14 +134,64 @@ export const useDeckStore = defineStore('deck', () => {
   const columns = computed(() => profileStore.columns)
   const layout = computed(() => profileStore.layout)
 
-  const navItems = computed(
-    () => profileStore.currentProfile?.navItems ?? DEFAULT_NAV_ITEMS,
-  )
+  // --- Navbar (independent from profile, persisted to navbar.json5) ---
 
-  function setNavItems(items: NavItem[]) {
-    profileStore.mutateProfile((p) => {
-      p.navItems = items
-    })
+  const navItems = ref<NavItem[]>([...DEFAULT_NAV_ITEMS])
+  const isNavCustomized = ref(false)
+
+  let navPersistTimer: ReturnType<typeof setTimeout> | null = null
+
+  function scheduleNavPersist() {
+    if (navPersistTimer) clearTimeout(navPersistTimer)
+    navPersistTimer = setTimeout(() => {
+      navPersistTimer = null
+      flushNavPersist()
+    }, PERSIST_DEBOUNCE_MS)
+  }
+
+  function flushNavPersist() {
+    if (navPersistTimer) {
+      clearTimeout(navPersistTimer)
+      navPersistTimer = null
+    }
+    if (!isTauri) return
+    const content = JSON5.stringify(navItems.value, null, 2)
+    writeNavbar(content).catch((e) =>
+      console.warn('[deck] failed to persist navbar:', e),
+    )
+  }
+
+  function setNavItems(items: NavItem[] | undefined) {
+    if (items == null) {
+      navItems.value = [...DEFAULT_NAV_ITEMS]
+      isNavCustomized.value = false
+      // Delete file content by writing empty
+      if (isTauri) {
+        writeNavbar('').catch((e) =>
+          console.warn('[deck] failed to clear navbar:', e),
+        )
+      }
+    } else {
+      navItems.value = items
+      isNavCustomized.value = true
+      scheduleNavPersist()
+    }
+  }
+
+  async function initNavbar() {
+    if (!isTauri) return
+    try {
+      const content = await readNavbar()
+      if (content?.trim()) {
+        const parsed = JSON5.parse(content)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          navItems.value = parsed as NavItem[]
+          isNavCustomized.value = true
+        }
+      }
+    } catch (e) {
+      console.warn('[deck] failed to init navbar:', e)
+    }
   }
 
   const navCollapsed = ref(false)
@@ -501,7 +547,9 @@ export const useDeckStore = defineStore('deck', () => {
     focusPrevColumn,
     focusColumnByIndex,
     navItems,
+    isNavCustomized,
     setNavItems,
+    initNavbar,
     addColumn,
     addColumnAt,
     removeColumn,
@@ -527,7 +575,6 @@ export const useDeckStore = defineStore('deck', () => {
     wallpaper: computed(() => wallpaperStore.wallpaper),
     setWallpaper: wallpaperStore.setWallpaper,
     clearWallpaper: wallpaperStore.clearWallpaper,
-    loadWallpaper: wallpaperStore.loadWallpaper,
     // Profile (facade)
     activeProfileId: computed(() => profileStore.activeProfileId),
     loadActiveProfileId: profileStore.loadActiveProfileId,

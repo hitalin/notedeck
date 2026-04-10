@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
 import type { ServerEmoji } from '@/adapters/types'
+import { PERSIST_DEBOUNCE_MS } from '@/constants/persist'
 import { usePerformanceStore } from '@/stores/performance'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
@@ -44,7 +45,6 @@ export const useEmojisStore = defineStore('emojis', () => {
     }
   }
 
-  const PERSIST_DELAY = 300
   let persistTimer: ReturnType<typeof setTimeout> | null = null
 
   function schedulePersist() {
@@ -52,7 +52,7 @@ export const useEmojisStore = defineStore('emojis', () => {
     persistTimer = setTimeout(() => {
       persistToStorage()
       persistTimer = null
-    }, PERSIST_DELAY)
+    }, PERSIST_DEBOUNCE_MS)
   }
 
   // Initialize from localStorage

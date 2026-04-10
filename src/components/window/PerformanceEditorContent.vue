@@ -15,11 +15,15 @@ import {
 
 const jsonLang = json()
 
+const props = defineProps<{
+  initialTab?: string
+}>()
+
 const perfStore = usePerformanceStore()
 
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['visual', 'code'] as const,
-  'visual',
+  (props.initialTab as 'visual' | 'code') ?? 'visual',
 )
 
 // --- Visual tab state ---
@@ -37,7 +41,7 @@ const categories = computed(() => {
   return cats
 })
 
-const expandedSections = ref<string[]>([])
+const expandedSections = ref<string[]>(['emoji'])
 
 function toggleSection(catKey: string) {
   const idx = expandedSections.value.indexOf(catKey)
@@ -94,8 +98,7 @@ function syncVisualFromCode() {
         return
       }
     }
-    perfStore.overrides = parsed
-    perfStore.resetAll() // clear, then re-apply
+    perfStore.resetAll() // clear, then re-apply from parsed
     for (const [k, v] of Object.entries(parsed)) {
       perfStore.set(k as PerformanceKey, v as number)
     }

@@ -4,9 +4,9 @@ import App from './App.vue'
 import { router, setupAccountRedirect } from './router'
 import { useAccountsStore } from './stores/accounts'
 import { useKeybindsStore } from './stores/keybinds'
-import { useOfflineModeStore } from './stores/offlineMode'
 import { usePerformanceStore } from './stores/performance'
 import { useServersStore } from './stores/servers'
+import { useSettingsStore } from './stores/settings'
 import { useThemeStore } from './stores/theme'
 import { isTauri } from './utils/settingsFs'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
@@ -68,13 +68,17 @@ window.addEventListener('unhandledrejection', (e) => {
 })
 
 if (isTauri) {
+  // Load settings.json (scalar preferences) BEFORE any store init.
+  // All stores read from settingsStore as the single source of truth,
+  // so it must be loaded before they initialize. ~1-5ms for local file I/O.
+  await useSettingsStore().load()
+
   // Apply cached theme before mount to prevent FOUC
   const themeStore = useThemeStore()
   themeStore.init()
 
   // Initialize file-based storage for keybinds and performance settings
   useKeybindsStore().init()
-  useOfflineModeStore().init()
   usePerformanceStore().init()
 
   // Start loading accounts early (runs in parallel with mount).

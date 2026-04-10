@@ -20,6 +20,8 @@ const size = computed(() => WINDOW_SIZES[props.window.type])
 
 const BASE_TITLES: Record<string, string> = {
   'note-detail': 'ノート',
+  'note-inspector': 'ノートインスペクタ',
+  'notification-inspector': '通知インスペクタ',
   'user-profile': 'プロフィール',
   'follow-list': 'フォロー / フォロワー',
   login: 'アカウント追加',
@@ -37,6 +39,8 @@ const BASE_TITLES: Record<string, string> = {
   navEditor: 'ナビバー',
   performanceEditor: 'パフォーマンス',
   'account-manager': 'アカウント管理',
+  appearanceEditor: 'アピアランス',
+  backup: 'バックアップ',
 }
 
 const windowTitle = computed(() => {
@@ -49,6 +53,8 @@ const windowTitle = computed(() => {
 
 const icons: Record<string, string> = {
   'note-detail': 'ti ti-note',
+  'note-inspector': 'ti ti-code',
+  'notification-inspector': 'ti ti-code',
   'user-profile': 'ti ti-user',
   'follow-list': 'ti ti-users',
   login: 'ti ti-login-2',
@@ -66,6 +72,8 @@ const icons: Record<string, string> = {
   navEditor: 'ti ti-layout-sidebar-left-collapse',
   performanceEditor: 'ti ti-gauge',
   'account-manager': 'ti ti-users-group',
+  appearanceEditor: 'ti ti-brush',
+  backup: 'ti ti-package-export',
 }
 
 const isMinimized = computed(() => props.window.minimized)

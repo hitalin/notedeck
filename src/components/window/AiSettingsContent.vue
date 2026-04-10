@@ -20,9 +20,13 @@ import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const mdLang = markdown({ codeLanguages: languages })
 
+const props = defineProps<{
+  initialTab?: string
+}>()
+
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['api', 'prompt'] as const,
-  'api',
+  (props.initialTab as 'api' | 'prompt') ?? 'api',
 )
 
 // --- Provider schema (data-driven UI) ---
@@ -121,7 +125,7 @@ const PROVIDER_FIELDS: Record<ProviderKey, FieldDef[]> = {
 
 const { config, save: saveConfig, toFileConfig, mergeConfig } = useAiConfig()
 
-const expandedSections = reactive<Record<string, boolean>>({})
+const expandedSections = reactive<Record<string, boolean>>({ provider: true })
 
 function toggleSection(key: string) {
   expandedSections[key] = !expandedSections[key]

@@ -162,10 +162,18 @@ function openToolWindow(
     | 'themeEditor'
     | 'plugins'
     | 'aiSettings'
-    | 'performanceEditor',
+    | 'performanceEditor'
+    | 'appearanceEditor'
+    | 'backup',
+  props: Record<string, unknown> = {},
 ) {
-  windowsStore.open(type)
+  windowsStore.open(type, props)
   emit('close')
+}
+
+function editTheme(id: string, e: Event) {
+  e.stopPropagation()
+  openToolWindow('themeEditor', { initialThemeId: id })
 }
 
 const { confirm } = useConfirm()
@@ -266,6 +274,14 @@ usePortal(settingsMenuPortalRef)
       <div :class="$style.menuBody">
       <!-- アピアランス -->
       <div :class="$style.categorySection">
+        <!-- モバイル: ウィンドウで開く -->
+        <button v-if="isCompact" :class="$style.categoryHeader" @click="openToolWindow('appearanceEditor')">
+          <i class="ti ti-brush" />
+          <span>アピアランス</span>
+          <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+        </button>
+        <!-- デスクトップ: アコーディオン -->
+        <template v-else>
         <button :class="$style.categoryHeader" @click="toggleSection('appearance')">
           <i class="ti ti-brush" />
           <span>アピアランス</span>
@@ -299,9 +315,14 @@ usePortal(settingsMenuPortalRef)
                 >
                   <div :class="$style.themeItemPreviewWrap">
                     <ThemePreview :theme="theme" :class="$style.themeItemPreview" />
-                    <button class="_button" :class="$style.themeRemoveBtn" @click.stop="removeTheme(theme.id)">
-                      <i class="ti ti-x" />
-                    </button>
+                    <div :class="$style.themeItemActions">
+                      <button class="_button" :class="$style.themeEditBtn" title="編集" @click="editTheme(theme.id, $event)">
+                        <i class="ti ti-pencil" />
+                      </button>
+                      <button class="_button" :class="$style.themeRemoveBtn" @click.stop="removeTheme(theme.id)">
+                        <i class="ti ti-x" />
+                      </button>
+                    </div>
                   </div>
                   <div :class="$style.themeItemName">{{ theme.name }}</div>
                 </button>
@@ -309,16 +330,6 @@ usePortal(settingsMenuPortalRef)
             </div>
           </div>
 
-          <button :class="$style.settingsMenuItem" @click="openToolWindow('themeEditor')">
-            <i class="ti ti-palette" />
-            <span :class="$style.settingsMenuLabel">テーマ</span>
-            <span v-if="selectedId != null" :class="$style.activeDot" />
-          </button>
-          <button :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
-            <i class="ti ti-code" />
-            <span :class="$style.settingsMenuLabel">カスタムCSS</span>
-            <span v-if="themeStore.customCss" :class="$style.activeDot" />
-          </button>
           <button v-if="deckStore.wallpaper == null" :class="$style.settingsMenuItem" @click="pickWallpaper">
             <i class="ti ti-photo" />
             <span :class="$style.settingsMenuLabel">壁紙を設定</span>
@@ -328,9 +339,11 @@ usePortal(settingsMenuPortalRef)
             <span :class="$style.settingsMenuLabel">壁紙を削除</span>
           </button>
         </div>
+        </template>
       </div>
 
       <input
+        v-if="!isCompact"
         ref="fileInput"
         type="file"
         accept="image/*"
@@ -338,8 +351,41 @@ usePortal(settingsMenuPortalRef)
         @change="onFileSelected"
       />
 
-      <!-- 環境設定 -->
-      <div :class="$style.categorySection">
+      <!-- 環境設定 (モバイル: フラットに展開) -->
+      <template v-if="isCompact">
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" @click="openToolWindow('plugins')">
+            <i class="ti ti-plug" />
+            <span>プラグイン</span>
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+          </button>
+        </div>
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" @click="openToolWindow('aiSettings')">
+            <i class="ti ti-robot" />
+            <span>AI</span>
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+          </button>
+        </div>
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" @click="openToolWindow('performanceEditor')">
+            <i class="ti ti-gauge" />
+            <span>パフォーマンス</span>
+            <span v-if="Object.keys(perfStore.overrides).length > 0" :class="$style.activeDot" />
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+          </button>
+        </div>
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" @click="openToolWindow('cssEditor')">
+            <i class="ti ti-code" />
+            <span>カスタムCSS</span>
+            <span v-if="themeStore.customCss" :class="$style.activeDot" />
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+          </button>
+        </div>
+      </template>
+      <!-- 環境設定 (デスクトップ: アコーディオン) -->
+      <div v-else :class="$style.categorySection">
         <button :class="$style.categoryHeader" @click="toggleSection('settings')">
           <i class="ti ti-settings" />
           <span>環境設定</span>
@@ -364,11 +410,33 @@ usePortal(settingsMenuPortalRef)
             <span :class="$style.settingsMenuLabel">パフォーマンス</span>
             <span v-if="Object.keys(perfStore.overrides).length > 0" :class="$style.activeDot" />
           </button>
+          <button :class="$style.settingsMenuItem" @click="openToolWindow('cssEditor')">
+            <i class="ti ti-code" />
+            <span :class="$style.settingsMenuLabel">カスタムCSS</span>
+            <span v-if="themeStore.customCss" :class="$style.activeDot" />
+          </button>
         </div>
       </div>
 
-      <!-- データ -->
-      <div :class="$style.categorySection">
+      <!-- データ (モバイル: バックアップとキャッシュを分割) -->
+      <template v-if="isCompact">
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" @click="openToolWindow('backup')">
+            <i class="ti ti-database" />
+            <span>バックアップ</span>
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+          </button>
+        </div>
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" :disabled="isClearingCache" @click="clearAllCache">
+            <i class="ti ti-eraser" />
+            <span>{{ isClearingCache ? 'キャッシュ削除中...' : 'キャッシュ削除' }}</span>
+          </button>
+          <div v-if="cacheError" :class="$style.backupError">{{ cacheError }}</div>
+        </div>
+      </template>
+      <!-- データ (デスクトップ: 従来のアコーディオン) -->
+      <div v-else :class="$style.categorySection">
         <button :class="$style.categoryHeader" @click="toggleSection('data')">
           <i class="ti ti-database" />
           <span>データ</span>
@@ -517,6 +585,12 @@ usePortal(settingsMenuPortalRef)
   transform: rotate(0deg);
 }
 
+.chevronNav {
+  margin-left: auto;
+  font-size: 0.9em;
+  opacity: 0.5;
+}
+
 .themeSelectBody {
   margin-top: 8px;
   max-height: 200px;
@@ -563,30 +637,44 @@ usePortal(settingsMenuPortalRef)
   border-bottom: 1px solid var(--nd-divider);
 }
 
-.themeRemoveBtn {
+.themeItemActions {
   position: absolute;
   top: 2px;
   right: 2px;
+  display: flex;
+  gap: 2px;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity var(--nd-duration-fast);
+
+  .themeItem:hover & {
+    opacity: 1;
+  }
+}
+
+.themeEditBtn,
+.themeRemoveBtn {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--nd-error, #ec4137);
   color: #fff;
   font-size: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1;
-  opacity: 0;
-  transition: opacity var(--nd-duration-fast), filter var(--nd-duration-base);
-
-  .themeItem:hover & {
-    opacity: 1;
-  }
+  transition: filter var(--nd-duration-base);
 
   &:hover {
     filter: brightness(0.85);
   }
+}
+
+.themeEditBtn {
+  background: var(--nd-accent, #86b300);
+}
+
+.themeRemoveBtn {
+  background: var(--nd-error, #ec4137);
 }
 
 .themeItemName {

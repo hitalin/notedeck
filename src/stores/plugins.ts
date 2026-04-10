@@ -227,6 +227,24 @@ export const usePluginsStore = defineStore('plugins', () => {
     }
   }
 
+  function renamePlugin(installId: string, newName: string) {
+    ensureLoaded()
+    const plugin = plugins.value.find((p) => p.installId === installId)
+    if (!plugin) return
+
+    const oldBaseName = plugin.name || plugin.installId
+    plugin.name = newName
+
+    persist(plugin)
+
+    if (initialized.value && oldBaseName !== newName) {
+      // Delete old files and write new ones (installId stays the same)
+      deletePluginFiles({ ...plugin, name: oldBaseName } as PluginMeta).catch(
+        (e) => console.warn('[plugins] failed to delete old plugin files:', e),
+      )
+    }
+  }
+
   function getPlugin(installId: string): PluginMeta | undefined {
     ensureLoaded()
     return plugins.value.find((p) => p.installId === installId)
@@ -243,6 +261,7 @@ export const usePluginsStore = defineStore('plugins', () => {
     ensureLoaded,
     addPlugin,
     removePlugin,
+    renamePlugin,
     setActive,
     updateConfigData,
     updateSrc,

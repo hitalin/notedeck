@@ -8,6 +8,12 @@ import DeckWindow from './DeckWindow.vue'
 const NoteDetailContent = defineAsyncComponent(
   () => import('@/components/window/NoteDetailContent.vue'),
 )
+const NoteInspectorContent = defineAsyncComponent(
+  () => import('@/components/window/NoteInspectorContent.vue'),
+)
+const NotificationInspectorContent = defineAsyncComponent(
+  () => import('@/components/window/NotificationInspectorContent.vue'),
+)
 const UserProfileContent = defineAsyncComponent(
   () => import('@/components/window/UserProfileContent.vue'),
 )
@@ -49,6 +55,12 @@ const PerformanceEditorContent = defineAsyncComponent(
 )
 const AccountManagerContent = defineAsyncComponent(
   () => import('@/components/window/AccountManagerContent.vue'),
+)
+const AppearanceEditorContent = defineAsyncComponent(
+  () => import('@/components/window/AppearanceEditorContent.vue'),
+)
+const BackupContent = defineAsyncComponent(
+  () => import('@/components/window/BackupContent.vue'),
 )
 
 const windowsStore = useWindowsStore()
@@ -116,6 +128,18 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         :note-id="(win.props.noteId as string)"
         @close="closeWindow(win.id)"
       />
+      <NoteInspectorContent
+        v-if="win.type === 'note-inspector'"
+        :account-id="(win.props.accountId as string)"
+        :note-id="(win.props.noteId as string)"
+        :note-uri="(win.props.noteUri as string | undefined)"
+        :server-host="(win.props.serverHost as string | undefined)"
+      />
+      <NotificationInspectorContent
+        v-if="win.type === 'notification-inspector'"
+        :account-id="(win.props.accountId as string)"
+        :notification="(win.props.notification as any)"
+      />
       <UserProfileContent
         v-if="win.type === 'user-profile'"
         :account-id="(win.props.accountId as string)"
@@ -133,21 +157,54 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         @close="closeWindow(win.id)"
         @success="closeWindow(win.id)"
       />
-      <PluginsContent v-if="win.type === 'plugins'" />
-      <KeybindsContent v-if="win.type === 'keybinds'" />
-      <CssEditorContent v-if="win.type === 'cssEditor'" />
-      <ThemeEditorContent v-if="win.type === 'themeEditor'" />
+      <PluginsContent
+        v-if="win.type === 'plugins'"
+        :initial-plugin-id="(win.props.initialPluginId as string | undefined)"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
+      <KeybindsContent
+        v-if="win.type === 'keybinds'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
+      <CssEditorContent
+        v-if="win.type === 'cssEditor'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
+      <ThemeEditorContent
+        v-if="win.type === 'themeEditor'"
+        :initial-theme-id="(win.props.initialThemeId as string | undefined)"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
       <ProfileEditorContent
         v-if="win.type === 'profileEditor'"
         :profile-id="(win.props.profileId as string)"
+        :initial-tab="(win.props.initialTab as string | undefined)"
       />
-      <AiSettingsContent v-if="win.type === 'aiSettings'" />
+      <AiSettingsContent
+        v-if="win.type === 'aiSettings'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
       <AboutContent v-if="win.type === 'about'" />
-      <NavEditorContent v-if="win.type === 'navEditor'" />
-      <PerformanceEditorContent v-if="win.type === 'performanceEditor'" />
+      <NavEditorContent
+        v-if="win.type === 'navEditor'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
+      <PerformanceEditorContent
+        v-if="win.type === 'performanceEditor'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
       <AccountManagerContent
         v-if="win.type === 'account-manager'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
         @close="closeWindow(win.id)"
+      />
+      <AppearanceEditorContent
+        v-if="win.type === 'appearanceEditor'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
+      <BackupContent
+        v-if="win.type === 'backup'"
+        :initial-tab="(win.props.initialTab as 'notedeck' | 'db' | undefined)"
       />
     </DeckWindow>
   </div>

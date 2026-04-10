@@ -42,11 +42,15 @@ const cssLinter = linter(
   { delay: 500 },
 )
 
+const props = defineProps<{
+  initialTab?: string
+}>()
+
 const themeStore = useThemeStore()
 
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['presets', 'code'] as const,
-  'presets',
+  (props.initialTab as 'presets' | 'code') ?? 'presets',
 )
 
 // Local CSS mirror (synced from store on mount)
@@ -67,7 +71,7 @@ function parsePresetsFromCss(cssStr: string) {
 }
 parsePresetsFromCss(cssCode.value)
 
-const expandedSections = reactive<Record<string, boolean>>({})
+const expandedSections = reactive<Record<string, boolean>>({ font: true })
 
 function toggleSection(key: string) {
   expandedSections[key] = !expandedSections[key]

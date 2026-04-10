@@ -21,6 +21,10 @@ const CodeEditor = defineAsyncComponent(
   () => import('@/components/deck/widgets/CodeEditor.vue'),
 )
 
+const props = defineProps<{
+  initialTab?: string
+}>()
+
 const emit = defineEmits<{ close: [] }>()
 
 const accountsStore = useAccountsStore()
@@ -36,7 +40,7 @@ function getServerIconUrl(host: string): string | undefined {
 // ── Tab management ──
 const { tab, containerRef: contentRef } = useEditorTabs(
   ['visual', 'code'] as const,
-  'visual',
+  (props.initialTab as 'visual' | 'code') ?? 'visual',
 )
 
 // ── ReorderableList items ──

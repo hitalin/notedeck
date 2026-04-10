@@ -1,0 +1,13 @@
+// NoteDeck navbar.json5 デフォルト
+// ナビバー構成
+[
+  { type: 'workspaceExplorer', accountId: null },
+  { type: 'notifications', accountId: null },
+  { type: 'followRequests', accountId: null },
+  { type: 'mentions', accountId: null },
+  { type: 'specified', accountId: null },
+  { type: 'chat', accountId: null },
+  { type: 'search', accountId: null },
+  { type: 'lookup', accountId: null },
+  { type: 'streamInspector', accountId: null },
+]

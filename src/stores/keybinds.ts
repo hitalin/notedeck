@@ -1,11 +1,11 @@
 import JSON5 from 'json5'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import type { Shortcut } from '@/commands/registry'
+import { PERSIST_DEBOUNCE_MS } from '@/constants/persist'
 import defaultKeybindsJson5 from '@/defaults/keybindings.json5?raw'
 import { isTauri, readKeybinds, writeKeybinds } from '@/utils/settingsFs'
-import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 export interface KeybindEntry {
   commandId: string
@@ -15,50 +15,39 @@ export interface KeybindEntry {
 const DEFAULT_KEYBINDS: KeybindEntry[] = JSON5.parse(defaultKeybindsJson5)
 
 export const useKeybindsStore = defineStore('keybinds', () => {
-  // ユーザーカスタマイズ: commandId → shortcuts の上書き
-  // null = デフォルトを使用、空配列 = キーバインドを無効化
-  const overrides = ref<Record<string, Shortcut[]>>(
-    getStorageJson<Record<string, Shortcut[]>>(STORAGE_KEYS.keybinds, {}),
-  )
+  const overrides = ref<Record<string, Shortcut[]>>({})
   const initialized = ref(false)
 
-  function saveOverrides() {
-    setStorageJson(STORAGE_KEYS.keybinds, overrides.value)
-    if (initialized.value) {
-      persistToFile().catch((e) =>
-        console.warn('[keybinds] failed to persist to file:', e),
-      )
-    }
+  let persistTimer: ReturnType<typeof setTimeout> | null = null
+
+  function schedulePersist(): void {
+    if (persistTimer != null) clearTimeout(persistTimer)
+    persistTimer = setTimeout(() => {
+      persistTimer = null
+      persist().catch((e) => console.warn('[keybinds] persist failed:', e))
+    }, PERSIST_DEBOUNCE_MS)
   }
 
-  /** Write overrides to keybinds.json5 file. */
-  async function persistToFile(): Promise<void> {
+  async function persist(): Promise<void> {
+    if (!isTauri) return
     const content = JSON5.stringify(overrides.value, null, 2)
-    await writeKeybinds(content)
+    await writeKeybinds(`${content}\n`)
   }
 
-  /** Load from file and initialize. Files are source of truth. */
+  watch(overrides, () => schedulePersist(), { deep: true })
+
   async function initFileStorage(): Promise<void> {
     const content = await readKeybinds()
     if (content) {
       try {
-        const parsed = JSON5.parse(content) as Record<string, Shortcut[]>
-        overrides.value = parsed
-        setStorageJson(STORAGE_KEYS.keybinds, parsed)
+        overrides.value = JSON5.parse(content) as Record<string, Shortcut[]>
       } catch (e) {
         console.warn('[keybinds] failed to parse keybinds.json5:', e)
       }
     }
     initialized.value = true
-    // Migrate: localStorage has overrides but no file exists
-    if (!content && Object.keys(overrides.value).length > 0) {
-      persistToFile().catch((e) =>
-        console.warn('[keybinds] migration to file failed:', e),
-      )
-    }
   }
 
-  /** Initialize file-based storage (call once at startup). */
   function init(): void {
     if (isTauri) {
       initFileStorage().catch((e) =>
@@ -83,18 +72,16 @@ export const useKeybindsStore = defineStore('keybinds', () => {
   }
 
   function setShortcuts(commandId: string, shortcuts: Shortcut[]) {
-    overrides.value[commandId] = shortcuts
-    saveOverrides()
+    overrides.value = { ...overrides.value, [commandId]: shortcuts }
   }
 
   function resetToDefault(commandId: string) {
-    delete overrides.value[commandId]
-    saveOverrides()
+    const { [commandId]: _, ...rest } = overrides.value
+    overrides.value = rest
   }
 
   function resetAll() {
     overrides.value = {}
-    saveOverrides()
   }
 
   function isCustomized(commandId: string): boolean {
