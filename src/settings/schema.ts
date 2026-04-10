@@ -1,29 +1,16 @@
-import type { Shortcut } from '@/commands/registry'
 import type { AiFileConfig } from '@/composables/useAiConfig'
-import type { PerformanceConfig } from '@/stores/performance'
-
-/**
- * `performance.json` 由来の設定を settings.json に dot-notation で持つための
- * mapped type。`PerformanceConfig` が変わると自動で追従する。
- *
- * 例: `performance.noteStoreMax`, `performance.cssBlurLevel` 等。
- */
-type PerformanceFlatKeys = {
-  [K in keyof PerformanceConfig as `performance.${K}`]?: PerformanceConfig[K]
-}
 
 /**
  * settings.json の型定義。VSCode `settings.json` と同じく、トップレベルは
- * フラット dot-notation キー空間 (`theme.manual`, `modes.realtime`,
- * `performance.<key>` 等)。
+ * フラット dot-notation キー空間 (`theme.manual`, `modes.realtime` 等)。
  *
  * 設計原則・長期ゴールは [DESIGN.md](../../DESIGN.md) の
  * 「settings.json — VSCode settings.json 相当の統合設定ファイル」節を参照。
  *
- * 段階的移行のため、一部のキーは現段階では dual-write (localStorage /
- * 既存ファイルとの併用) 状態にある。詳細は DESIGN.md のマイグレーション節。
+ * performance 設定は `performance.json5` に分離済み（独立ファイル）。
+ * keybinds 設定は `keybinds.json5` に分離済み（独立ファイル）。
  */
-export interface NotedeckSettings extends PerformanceFlatKeys {
+export interface NotedeckSettings {
   /** スキーマバージョン。破壊的変更時に bump してマイグレーションを行う。 */
   _schema: number
 
@@ -43,8 +30,7 @@ export interface NotedeckSettings extends PerformanceFlatKeys {
   // --- AI (Next 3 移行済み、dual-write、API キーは除外) ---
   ai?: AiFileConfig
 
-  // --- Keybinds (Next 4 移行済み、dual-write) ---
-  keybinds?: Record<string, Shortcut[]>
+  // keybinds は keybinds.json5 に分離済み（独立ファイル）
 }
 
 /** 現在のスキーマバージョン。将来の破壊的変更時に bump する。 */

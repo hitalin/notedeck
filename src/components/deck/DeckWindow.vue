@@ -39,7 +39,7 @@ const BASE_TITLES: Record<string, string> = {
   navEditor: 'ナビバー',
   performanceEditor: 'パフォーマンス',
   'account-manager': 'アカウント管理',
-  settingsEditor: 'settings.json',
+  settingsEditor: 'settings.json5',
 }
 
 const windowTitle = computed(() => {

@@ -120,6 +120,10 @@ function openNavJson() {
   windowsStore.open('navEditor', { initialTab: 'code' })
 }
 
+function openPerformance() {
+  windowsStore.open('performanceEditor')
+}
+
 interface FileTypeInfo {
   icon: string
   colorClass: string
@@ -236,27 +240,33 @@ const folders = computed<TreeFolder[]>(() => [
 const singletonFiles: TreeFile[] = [
   {
     id: 'notedeck',
-    name: 'settings.json',
-    ...fileTypeFor('settings.json'),
+    name: 'settings.json5',
+    ...fileTypeFor('settings.json5'),
     onClick: openSettings,
   },
   {
     id: 'keybinds',
-    name: 'keybinds.json',
-    ...fileTypeFor('keybinds.json'),
+    name: 'keybinds.json5',
+    ...fileTypeFor('keybinds.json5'),
     onClick: openKeybinds,
+  },
+  {
+    id: 'navbar',
+    name: 'navbar.json5',
+    ...fileTypeFor('navbar.json5'),
+    onClick: openNavJson,
+  },
+  {
+    id: 'performance',
+    name: 'performance.json5',
+    ...fileTypeFor('performance.json5'),
+    onClick: openPerformance,
   },
   {
     id: 'custom.css',
     name: 'custom.css',
     ...fileTypeFor('custom.css'),
     onClick: openUserCss,
-  },
-  {
-    id: 'navbar',
-    name: 'navbar.json',
-    ...fileTypeFor('navbar.json'),
-    onClick: openNavJson,
   },
 ]
 

@@ -1,11 +1,11 @@
 import JSON5 from 'json5'
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import type { Shortcut } from '@/commands/registry'
 import defaultKeybindsJson5 from '@/defaults/keybindings.json5?raw'
 import { useSettingsStore } from '@/stores/settings'
-import { isTauri, readKeybinds } from '@/utils/settingsFs'
+import { isTauri, readKeybinds, writeKeybinds } from '@/utils/settingsFs'
 
 export interface KeybindEntry {
   commandId: string
@@ -13,38 +13,61 @@ export interface KeybindEntry {
 }
 
 const DEFAULT_KEYBINDS: KeybindEntry[] = JSON5.parse(defaultKeybindsJson5)
+const PERSIST_DEBOUNCE_MS = 300
 
 export const useKeybindsStore = defineStore('keybinds', () => {
-  const settingsStore = useSettingsStore()
-
-  // settingsStore が single source of truth。
-  // overrides は computed で settingsStore.get('keybinds') を読む。
-  const overrides = computed<Record<string, Shortcut[]>>({
-    get: () => settingsStore.get('keybinds') ?? {},
-    set: (v) => settingsStore.set('keybinds', v),
-  })
+  const overrides = ref<Record<string, Shortcut[]>>({})
   const initialized = ref(false)
 
+  let persistTimer: ReturnType<typeof setTimeout> | null = null
+
+  function schedulePersist(): void {
+    if (persistTimer != null) clearTimeout(persistTimer)
+    persistTimer = setTimeout(() => {
+      persistTimer = null
+      persist().catch((e) => console.warn('[keybinds] persist failed:', e))
+    }, PERSIST_DEBOUNCE_MS)
+  }
+
+  async function persist(): Promise<void> {
+    if (!isTauri) return
+    const content = JSON5.stringify(overrides.value, null, 2)
+    await writeKeybinds(`${content}\n`)
+  }
+
+  watch(overrides, () => schedulePersist(), { deep: true })
+
   /**
-   * Legacy migration: read keybinds.json5 once and seed settingsStore
-   * if it doesn't already have keybinds (first run after migration).
+   * Migration: keybinds.json5 → 独立ファイル化。
+   * 1. keybinds.json5 を読む (既存ファイル or 旧ファイル)
+   * 2. なければ settingsStore の keybinds キーからマイグレーション
+   * 3. settingsStore から keybinds キーを削除
    */
   async function initFileStorage(): Promise<void> {
-    if (!settingsStore.get('keybinds')) {
-      const content = await readKeybinds()
-      if (content) {
-        try {
-          const parsed = JSON5.parse(content) as Record<string, Shortcut[]>
-          settingsStore.set('keybinds', parsed)
-        } catch (e) {
-          console.warn('[keybinds] failed to parse keybinds.json5:', e)
-        }
+    const content = await readKeybinds()
+    if (content) {
+      try {
+        overrides.value = JSON5.parse(content) as Record<string, Shortcut[]>
+      } catch (e) {
+        console.warn('[keybinds] failed to parse keybinds.json5:', e)
+      }
+    } else {
+      // settingsStore からマイグレーション（旧 settings.json に keybinds キーがある場合）
+      const settingsStore = useSettingsStore()
+      const raw = settingsStore.settings as unknown as Record<string, unknown>
+      const legacy = raw.keybinds as Record<string, Shortcut[]> | undefined
+      if (legacy && Object.keys(legacy).length > 0) {
+        overrides.value = legacy
+        // settingsStore から keybinds キーを削除
+        const { keybinds: _, ...rest } = raw
+        settingsStore.replaceAll(
+          rest as unknown as typeof settingsStore.settings,
+        )
       }
     }
     initialized.value = true
   }
 
-  /** Initialize file-based storage (call once at startup). */
   function init(): void {
     if (isTauri) {
       initFileStorage().catch((e) =>
@@ -69,7 +92,6 @@ export const useKeybindsStore = defineStore('keybinds', () => {
   }
 
   function setShortcuts(commandId: string, shortcuts: Shortcut[]) {
-    // WritableComputed setter → settingsStore.set() → settings.json persist
     overrides.value = { ...overrides.value, [commandId]: shortcuts }
   }
 

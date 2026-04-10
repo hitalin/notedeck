@@ -1,16 +1,17 @@
 /**
- * useSettingsStore — `settings.json` (VSCode `settings.json` 相当) の Pinia ラッパー。
+ * useSettingsStore — `settings.json5` (VSCode `settings.json` 相当) の Pinia ラッパー。
  *
  * 現段階は土台 PR。realtimeMode のみが実際にここを経由する。他のストアは
  * 次 PR 以降で段階的に移行していく。詳細は [DESIGN.md](../../DESIGN.md) の
  * 「マイグレーション」節、および memory/project_settings_as_files.md 参照。
  *
  * 動作:
- * - 起動時に `load()` で settings.json を読み込む (存在しなければ defaults)
- * - `set()` で値を更新すると debounce (300ms) 後に settings.json に書き戻す
+ * - 起動時に `load()` で settings.json5 を読み込む (存在しなければ defaults)
+ * - `set()` で値を更新すると debounce (300ms) 後に settings.json5 に書き戻す
  * - 不正値や IO エラーは defaults にフォールバック (起動不能を避ける)
  */
 
+import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 import {
@@ -43,7 +44,7 @@ export const useSettingsStore = defineStore('settings', () => {
     return result
   })
 
-  /** settings.json からの初期ロードが完了したか */
+  /** settings.json5 からの初期ロードが完了したか */
   const initialized = ref(false)
 
   /** 現在書き込み中か (UI の保存インジケータ等で参照) */
@@ -55,14 +56,14 @@ export const useSettingsStore = defineStore('settings', () => {
   let persistTimer: ReturnType<typeof setTimeout> | null = null
 
   /**
-   * settings.json を読み込んで settings を初期化する。
+   * settings.json5 を読み込んで settings を初期化する。
    * 複数回呼ばれても idempotent (初回のみ実行)。
    * 読み込みに失敗したら defaults で続行する。
    */
   async function load(): Promise<void> {
     if (initialized.value) return
 
-    // Web ビルド (非 Tauri) では settings.json が存在しないので defaults のまま
+    // Web ビルド (非 Tauri) では settings.json5 が存在しないので defaults のまま
     if (!isTauri) {
       initialized.value = true
       return
@@ -73,11 +74,11 @@ export const useSettingsStore = defineStore('settings', () => {
       if (raw.length === 0) {
         settings.value = { ...DEFAULT_SETTINGS }
       } else {
-        settings.value = parseSettings(JSON.parse(raw))
+        settings.value = parseSettings(JSON5.parse(raw))
       }
     } catch (e) {
       console.warn(
-        '[settings] failed to load settings.json, using defaults:',
+        '[settings] failed to load settings.json5, using defaults:',
         e,
       )
       settings.value = { ...DEFAULT_SETTINGS }
@@ -127,7 +128,7 @@ export const useSettingsStore = defineStore('settings', () => {
         ...settings.value,
         _schema: CURRENT_SCHEMA_VERSION,
       }
-      const content = `${JSON.stringify(toWrite, null, 2)}\n`
+      const content = `${JSON5.stringify(toWrite, null, 2)}\n`
       unwrap(await commands.writeNotedeckJson(content))
       lastError.value = null
     } finally {

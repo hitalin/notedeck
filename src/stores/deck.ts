@@ -1,3 +1,4 @@
+import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { computed, nextTick, reactive, ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
@@ -8,6 +9,12 @@ import { useDeckWallpaperStore } from '@/stores/deckWallpaper'
 import { buildColumnUri } from '@/utils/columnUri'
 import * as deckLayout from '@/utils/deckLayout'
 import { hapticMedium } from '@/utils/haptics'
+import {
+  isTauri,
+  readNavbar,
+  readProfile,
+  writeNavbar,
+} from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 export type ColumnType =
@@ -69,8 +76,6 @@ export interface DeckProfile {
   createdAt: number
   /** Window positions/sizes for multi-window layouts */
   windows?: DeckWindowLayout[]
-  /** Customizable nav bar items (column types or dividers). undefined = defaults */
-  navItems?: NavItem[]
 }
 
 export interface DeckColumn {
@@ -142,19 +147,88 @@ export const useDeckStore = defineStore('deck', () => {
   const columns = computed(() => profileStore.columns)
   const layout = computed(() => profileStore.layout)
 
-  const navItems = computed(
-    () => profileStore.currentProfile?.navItems ?? DEFAULT_NAV_ITEMS,
-  )
+  // --- Navbar (independent from profile, persisted to navbar.json5) ---
 
-  /** navItems がプロファイルに明示的に保存されているか（デフォルトでないか） */
-  const isNavCustomized = computed(
-    () => profileStore.currentProfile?.navItems != null,
-  )
+  const navItems = ref<NavItem[]>([...DEFAULT_NAV_ITEMS])
+  const isNavCustomized = ref(false)
+
+  let navPersistTimer: ReturnType<typeof setTimeout> | null = null
+
+  function scheduleNavPersist() {
+    if (navPersistTimer) clearTimeout(navPersistTimer)
+    navPersistTimer = setTimeout(() => {
+      navPersistTimer = null
+      flushNavPersist()
+    }, 300)
+  }
+
+  function flushNavPersist() {
+    if (navPersistTimer) {
+      clearTimeout(navPersistTimer)
+      navPersistTimer = null
+    }
+    if (!isTauri) return
+    const content = JSON5.stringify(navItems.value, null, 2)
+    writeNavbar(content).catch((e) =>
+      console.warn('[deck] failed to persist navbar:', e),
+    )
+  }
 
   function setNavItems(items: NavItem[] | undefined) {
-    profileStore.mutateProfile((p) => {
-      p.navItems = items
-    })
+    if (items == null) {
+      navItems.value = [...DEFAULT_NAV_ITEMS]
+      isNavCustomized.value = false
+      // Delete file content by writing empty
+      if (isTauri) {
+        writeNavbar('').catch((e) =>
+          console.warn('[deck] failed to clear navbar:', e),
+        )
+      }
+    } else {
+      navItems.value = items
+      isNavCustomized.value = true
+      scheduleNavPersist()
+    }
+  }
+
+  async function initNavbar() {
+    if (!isTauri) return
+    try {
+      const content = await readNavbar()
+      if (content?.trim()) {
+        const parsed = JSON5.parse(content)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          navItems.value = parsed as NavItem[]
+          isNavCustomized.value = true
+          return
+        }
+      }
+      // No navbar.json5 data — migrate from profile if available
+      const profileId = profileStore.windowProfileId
+      if (profileId) {
+        try {
+          const profileContent = await readProfile(profileId)
+          if (profileContent) {
+            const profileData = JSON5.parse(profileContent)
+            const profileNavItems = profileData?.navItems as
+              | NavItem[]
+              | undefined
+            if (Array.isArray(profileNavItems) && profileNavItems.length > 0) {
+              navItems.value = [...profileNavItems]
+              isNavCustomized.value = true
+              await writeNavbar(JSON5.stringify(profileNavItems, null, 2))
+              console.info(
+                '[deck] Migrated navItems from profile to navbar.json5',
+              )
+            }
+          }
+        } catch {
+          // Profile read failed — skip migration
+        }
+      }
+    } catch (e) {
+      console.warn('[deck] failed to init navbar:', e)
+    }
   }
 
   const navCollapsed = ref(false)
@@ -512,6 +586,7 @@ export const useDeckStore = defineStore('deck', () => {
     navItems,
     isNavCustomized,
     setNavItems,
+    initNavbar,
     addColumn,
     addColumnAt,
     removeColumn,

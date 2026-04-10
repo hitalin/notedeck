@@ -174,8 +174,14 @@ export async function readAiSettings(): Promise<string> {
   return readRootSettingsFile('ai.json')
 }
 
-export async function writeAiSettings(content: string): Promise<void> {
-  return writeRootSettingsFile('ai.json', content)
+// --- Navbar helpers ---
+
+export async function readNavbar(): Promise<string> {
+  return readRootSettingsFile('navbar.json5')
+}
+
+export async function writeNavbar(content: string): Promise<void> {
+  return writeRootSettingsFile('navbar.json5', content)
 }
 
 // --- Account order helpers ---
@@ -191,11 +197,14 @@ export async function writeAccountOrder(content: string): Promise<void> {
 // --- Performance helpers ---
 
 export async function readPerformance(): Promise<string> {
+  const content = await readRootSettingsFile('performance.json5')
+  if (content) return content
+  // Fallback: 旧ファイル名
   return readRootSettingsFile('performance.json')
 }
 
 export async function writePerformance(content: string): Promise<void> {
-  return writeRootSettingsFile('performance.json', content)
+  return writeRootSettingsFile('performance.json5', content)
 }
 
 // --- Plugin helpers ---

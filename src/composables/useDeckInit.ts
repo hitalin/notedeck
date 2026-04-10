@@ -70,6 +70,9 @@ export function useDeckInit(options: {
     // Critical: start streaming immediately
     deckStore.startSync()
 
+    // Load navbar from file (async, non-blocking)
+    deckStore.initNavbar()
+
     // Register commands synchronously (needed for keyboard shortcuts)
     registerDefaultCommands({
       openCompose: options.openCompose,

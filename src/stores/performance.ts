@@ -1,3 +1,4 @@
+import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
@@ -9,7 +10,7 @@ import {
   type QualityLevel,
 } from '@/engine/telemetry/frameTelemetry'
 import { useSettingsStore } from '@/stores/settings'
-import { isTauri, readPerformance } from '@/utils/settingsFs'
+import { isTauri, readPerformance, writePerformance } from '@/utils/settingsFs'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 /** All tunable performance keys. */
@@ -685,23 +686,28 @@ const CSS_BASE_DURATIONS: Record<string, number> = {
   '--nd-duration-tl-enter': 0.5,
 }
 
+const PERSIST_DEBOUNCE_MS = 300
+
 export const usePerformanceStore = defineStore('performance', () => {
-  const settingsStore = useSettingsStore()
-
-  type PerfSettingsKey = `performance.${PerformanceKey}`
-
-  /** Overrides computed from settingsStore (single source of truth). */
-  const overrides = computed<Partial<PerformanceConfig>>(() => {
-    const result: Partial<PerformanceConfig> = {}
-    for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
-      const v = settingsStore.get(`performance.${key}` as PerfSettingsKey)
-      if (v !== undefined) {
-        result[key] = v as PerformanceConfig[typeof key]
-      }
-    }
-    return result
-  })
+  /** User overrides (独自 ref — performance.json5 が single source of truth). */
+  const overrides = ref<Partial<PerformanceConfig>>({})
   const initialized = ref(false)
+
+  let persistTimer: ReturnType<typeof setTimeout> | null = null
+
+  function schedulePersist(): void {
+    if (persistTimer != null) clearTimeout(persistTimer)
+    persistTimer = setTimeout(() => {
+      persistTimer = null
+      persist().catch((e) => console.warn('[performance] persist failed:', e))
+    }, PERSIST_DEBOUNCE_MS)
+  }
+
+  async function persist(): Promise<void> {
+    if (!isTauri) return
+    const content = JSON5.stringify(overrides.value, null, 2)
+    await writePerformance(`${content}\n`)
+  }
   /** Merged config: overrides on top of defaults. */
   const config = computed<PerformanceConfig>(() => ({
     ...DEFAULTS,
@@ -810,31 +816,42 @@ export const usePerformanceStore = defineStore('performance', () => {
   }
 
   /**
-   * Legacy migration: read performance.json once and seed settingsStore
-   * if it doesn't already have performance.* keys (first run after migration).
+   * Load performance.json5 into overrides.
+   * Migration: settingsStore に performance.* キーがあれば収集 → performance.json5 に書き出し → settingsStore から削除。
    */
   async function initFileStorage(): Promise<void> {
-    // Only seed if settingsStore doesn't have any performance keys yet
-    const hasPerf = Object.keys(DEFAULTS).some(
-      (key) =>
-        settingsStore.get(
-          `performance.${key as PerformanceKey}` as PerfSettingsKey,
-        ) !== undefined,
-    )
-    if (!hasPerf) {
-      const content = await readPerformance()
-      if (content) {
-        try {
-          const parsed = JSON.parse(content) as Partial<PerformanceConfig>
-          for (const [k, v] of Object.entries(parsed)) {
-            settingsStore.set(
-              `performance.${k}` as PerfSettingsKey,
-              v as number,
-            )
-          }
-        } catch (e) {
-          console.warn('[performance] failed to parse performance.json:', e)
+    const content = await readPerformance()
+    if (content) {
+      try {
+        const parsed = JSON5.parse(content) as Partial<PerformanceConfig>
+        overrides.value = parsed
+      } catch (e) {
+        console.warn('[performance] failed to parse performance.json5:', e)
+      }
+    } else {
+      // settingsStore からマイグレーション（旧 settings.json に performance.* キーがある場合）
+      const settingsStore = useSettingsStore()
+      const raw = settingsStore.settings as unknown as Record<string, unknown>
+      const migrated: Partial<PerformanceConfig> = {}
+      let hasMigrationData = false
+      for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
+        const v = raw[`performance.${key}`]
+        if (v !== undefined) {
+          migrated[key] = v as PerformanceConfig[typeof key]
+          hasMigrationData = true
         }
+      }
+      if (hasMigrationData) {
+        overrides.value = migrated
+        await persist()
+        // settingsStore から performance.* キーを削除
+        const cleaned = { ...raw }
+        for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
+          delete cleaned[`performance.${key}`]
+        }
+        settingsStore.replaceAll(
+          cleaned as unknown as typeof settingsStore.settings,
+        )
       }
     }
     initialized.value = true
@@ -878,24 +895,26 @@ export const usePerformanceStore = defineStore('performance', () => {
   function set<K extends PerformanceKey>(key: K, value: PerformanceConfig[K]) {
     const meta = FIELD_META[key]
     const clamped = Math.max(meta.min, Math.min(meta.max, value as number))
-    const settingsKey = `performance.${key}` as PerfSettingsKey
     if (clamped === DEFAULTS[key]) {
-      settingsStore.set(settingsKey, undefined)
+      const { [key]: _, ...rest } = overrides.value
+      overrides.value = rest as Partial<PerformanceConfig>
     } else {
-      settingsStore.set(settingsKey, clamped)
+      overrides.value = { ...overrides.value, [key]: clamped }
     }
+    schedulePersist()
     applySideEffects()
   }
 
   function resetKey(key: PerformanceKey) {
-    settingsStore.set(`performance.${key}` as PerfSettingsKey, undefined)
+    const { [key]: _, ...rest } = overrides.value
+    overrides.value = rest as Partial<PerformanceConfig>
+    schedulePersist()
     applySideEffects()
   }
 
   function resetAll() {
-    for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
-      settingsStore.set(`performance.${key}` as PerfSettingsKey, undefined)
-    }
+    overrides.value = {}
+    schedulePersist()
     applySideEffects()
   }
 
@@ -920,29 +939,31 @@ export const usePerformanceStore = defineStore('performance', () => {
   /** Apply only CSS rendering properties for auto-quality adjustment. */
   function applyCssQuality(quality: QualityLevel): void {
     const css = CSS_QUALITY_PRESETS[quality]
+    const updated = { ...overrides.value }
     for (const [k, v] of Object.entries(css)) {
       const key = k as PerformanceKey
-      const settingsKey = `performance.${key}` as PerfSettingsKey
       if (v === DEFAULTS[key]) {
-        settingsStore.set(settingsKey, undefined)
+        delete updated[key]
       } else {
-        settingsStore.set(settingsKey, v as number)
+        ;(updated as Record<string, number>)[key] = v
       }
     }
+    overrides.value = updated
+    schedulePersist()
     applySideEffects()
   }
 
   /** Apply slider position t ∈ [0, 1] — interpolates all values linearly. */
   function applySlider(t: number) {
     const target = interpolateConfig(t)
+    const updated: Partial<PerformanceConfig> = {}
     for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
-      const settingsKey = `performance.${key}` as PerfSettingsKey
       if (target[key] !== DEFAULTS[key]) {
-        settingsStore.set(settingsKey, target[key] as number)
-      } else {
-        settingsStore.set(settingsKey, undefined)
+        ;(updated as Record<string, number>)[key] = target[key]
       }
     }
+    overrides.value = updated
+    schedulePersist()
     applySideEffects()
   }
 
