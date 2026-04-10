@@ -1,3 +1,4 @@
+import type { AiFileConfig } from '@/composables/useAiConfig'
 import type { PerformanceConfig } from '@/stores/performance'
 
 /**
@@ -38,8 +39,10 @@ export interface NotedeckSettings extends PerformanceFlatKeys {
   'modes.realtime'?: boolean
   'modes.offline'?: boolean
 
+  // --- AI (Next 3 移行済み、dual-write、API キーは除外) ---
+  ai?: AiFileConfig
+
   // --- 将来拡張 (未実装) ---
-  // 'ai.*'          — ai.json から統合 (Next 3、API キーは除外)
   // 'keybinds.*'    — keybinds.json5 から統合 (Next 4)
 }
 

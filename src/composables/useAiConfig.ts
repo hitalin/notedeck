@@ -1,5 +1,6 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import defaultAiPrompt from '@/defaults/AI.md?raw'
+import { useSettingsStore } from '@/stores/settings'
 import { isTauri, readAiSettings, writeAiSettings } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
@@ -19,6 +20,18 @@ export interface AiConfig {
   openai: ProviderSettings
   custom: ProviderSettings
   systemPrompt: string
+}
+
+/**
+ * File / settings-backed shape of AI config.
+ *
+ * **API keys are intentionally excluded** — they live in localStorage only
+ * for security (not in `ai.json`, not in `notedeck.json`, not in backups).
+ */
+export type AiFileConfig = Omit<AiConfig, 'ollama' | 'openai' | 'custom'> & {
+  ollama: Omit<ProviderSettings, 'apiKey'>
+  openai: Omit<ProviderSettings, 'apiKey'>
+  custom: Omit<ProviderSettings, 'apiKey'>
 }
 
 export const PROVIDER_KEYS: readonly ProviderKey[] = [
@@ -83,6 +96,8 @@ function toFileConfig(c: AiConfig): Record<string, unknown> {
 // --- Composable ---
 
 export function useAiConfig() {
+  const settingsStore = useSettingsStore()
+
   function load(): AiConfig {
     const stored = getStorageJson<Partial<AiConfig> | null>(STORAGE_KEY, null)
     return stored ? mergeConfig(defaultConfig(), stored) : defaultConfig()
@@ -91,8 +106,21 @@ export function useAiConfig() {
   const config = ref<AiConfig>(load())
   const initialized = ref(false)
 
+  /**
+   * Mirror the current config (without API keys) to notedeck.json so AI
+   * settings are included in backup / cross-device sync. API keys remain
+   * in localStorage only — they are **never** written to any file.
+   *
+   * Guarded by `settingsStore.initialized` to avoid racing the initial load.
+   */
+  function mirrorToSettingsStore(): void {
+    if (!settingsStore.initialized) return
+    settingsStore.set('ai', toFileConfig(config.value) as AiFileConfig)
+  }
+
   function save(): void {
     setStorageJson(STORAGE_KEY, config.value)
+    mirrorToSettingsStore()
     if (initialized.value) {
       persistToFile().catch((e) =>
         console.warn('[ai-settings] failed to persist to file:', e),
@@ -133,6 +161,35 @@ export function useAiConfig() {
   if (isTauri) {
     initFileStorage()
   }
+
+  /**
+   * Reconcile with notedeck.json once settingsStore finishes loading:
+   * - If notedeck.json has `ai` config, merge it into the local config
+   *   (API keys from localStorage are preserved)
+   * - Otherwise, seed notedeck.json from the current local config
+   */
+  watch(
+    () => settingsStore.initialized,
+    (done) => {
+      if (!done) return
+      const stored = settingsStore.get('ai')
+      if (stored != null) {
+        // Preserve API keys from current local state
+        const secrets = Object.fromEntries(
+          PROVIDER_KEYS.map((k) => [k, config.value[k].apiKey]),
+        )
+        config.value = mergeConfig(defaultConfig(), stored as Partial<AiConfig>)
+        for (const k of PROVIDER_KEYS) {
+          config.value[k].apiKey = secrets[k] ?? ''
+        }
+        setStorageJson(STORAGE_KEY, config.value)
+      } else {
+        // Seed notedeck.json from current local state (one-time migration)
+        mirrorToSettingsStore()
+      }
+    },
+    { immediate: true },
+  )
 
   return { config, save, mergeConfig, toFileConfig }
 }
