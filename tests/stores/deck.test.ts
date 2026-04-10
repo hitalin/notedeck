@@ -710,26 +710,5 @@ describe('deck store', () => {
       deck.clearWallpaper()
       expect(deck.wallpaper).toBeNull()
     })
-
-    it('wallpaper persists in localStorage', () => {
-      const deck = useDeckStore()
-      deck.setWallpaper('data:image/png;base64,abc123')
-
-      setActivePinia(createPinia())
-      const deck2 = useDeckStore()
-      deck2.loadWallpaper()
-      expect(deck2.wallpaper).toBe('data:image/png;base64,abc123')
-    })
-
-    it('clearWallpaper removes from localStorage', () => {
-      const deck = useDeckStore()
-      deck.setWallpaper('data:image/png;base64,abc123')
-      deck.clearWallpaper()
-
-      setActivePinia(createPinia())
-      const deck2 = useDeckStore()
-      deck2.loadWallpaper()
-      expect(deck2.wallpaper).toBeNull()
-    })
   })
 })

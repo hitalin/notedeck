@@ -1,3 +1,4 @@
+import JSON5 from 'json5'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -180,7 +181,7 @@ describe('useSettingsStore', () => {
     // Verify the written content contains the updated value
     const writeCall = vi.mocked(commands.writeNotedeckJson).mock.calls[0]
     const content = writeCall?.[0] as string
-    const parsed = JSON.parse(content)
+    const parsed = JSON5.parse(content)
     expect(parsed['modes.realtime']).toBe(false)
     expect(parsed._schema).toBe(CURRENT_SCHEMA_VERSION)
   })

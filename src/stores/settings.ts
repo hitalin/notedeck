@@ -14,6 +14,7 @@
 import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
+import { PERSIST_DEBOUNCE_MS } from '@/constants/persist'
 import {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_SETTINGS,
@@ -22,8 +23,6 @@ import {
 } from '@/settings/schema'
 import { isTauri } from '@/utils/settingsFs'
 import { commands, unwrap } from '@/utils/tauriInvoke'
-
-const PERSIST_DEBOUNCE_MS = 300
 
 export const useSettingsStore = defineStore('settings', () => {
   /** 現在の設定値 (load() 完了まで DEFAULT_SETTINGS のコピー) */

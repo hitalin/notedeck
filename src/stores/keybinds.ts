@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
 import type { Shortcut } from '@/commands/registry'
+import { PERSIST_DEBOUNCE_MS } from '@/constants/persist'
 import defaultKeybindsJson5 from '@/defaults/keybindings.json5?raw'
 import { isTauri, readKeybinds, writeKeybinds } from '@/utils/settingsFs'
 
@@ -12,7 +13,6 @@ export interface KeybindEntry {
 }
 
 const DEFAULT_KEYBINDS: KeybindEntry[] = JSON5.parse(defaultKeybindsJson5)
-const PERSIST_DEBOUNCE_MS = 300
 
 export const useKeybindsStore = defineStore('keybinds', () => {
   const overrides = ref<Record<string, Shortcut[]>>({})

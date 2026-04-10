@@ -2,6 +2,7 @@ import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 
+import { PERSIST_DEBOUNCE_MS } from '@/constants/persist'
 import type { DeckColumn, DeckProfile, DeckWindowLayout } from '@/stores/deck'
 import * as settingsFs from '@/utils/settingsFs'
 import {
@@ -129,7 +130,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     persistTimer = setTimeout(() => {
       persistTimer = null
       flushPersist()
-    }, 300)
+    }, PERSIST_DEBOUNCE_MS)
   }
 
   function flushPersist() {
