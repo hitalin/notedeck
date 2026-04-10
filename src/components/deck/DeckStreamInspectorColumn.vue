@@ -115,7 +115,8 @@ async function subscribeAll() {
   for (const acc of accounts) {
     const adapter = await multiAdapters.getOrCreate(acc.id)
     if (!adapter) continue
-    adapter.stream.connect()
+    // Don't call connect() — the stream is already connected by other columns.
+    // Calling connect() would disrupt the existing listener generation.
     adapter.stream.onRawEvent(onRawEvent)
     cleanups.push(() => adapter.stream.offRawEvent(onRawEvent))
   }
