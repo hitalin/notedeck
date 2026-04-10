@@ -108,10 +108,7 @@ function addAccount() {
 
 // Singleton files
 function openSettings() {
-  // notedeck.json click: open the settings quickpick (command palette * mode)
-  import('@/commands/registry').then(({ useCommandStore }) => {
-    useCommandStore().openWithInput('*')
-  })
+  windowsStore.open('settingsEditor')
 }
 
 function openUserCss() {

@@ -616,6 +616,15 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
   })
 
   commandStore.register({
+    id: 'settings-editor',
+    label: 'notedeck.json を編集',
+    icon: 'braces',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('settings-editor'),
+    execute: () => useWindowsStore().open('settingsEditor'),
+  })
+
+  commandStore.register({
     id: 'login',
     label: 'アカウント追加',
     icon: 'user-plus',

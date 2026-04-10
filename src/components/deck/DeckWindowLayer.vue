@@ -53,6 +53,9 @@ const PerformanceEditorContent = defineAsyncComponent(
 const AccountManagerContent = defineAsyncComponent(
   () => import('@/components/window/AccountManagerContent.vue'),
 )
+const SettingsEditorContent = defineAsyncComponent(
+  () => import('@/components/window/SettingsEditorContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -159,6 +162,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         v-if="win.type === 'account-manager'"
         @close="closeWindow(win.id)"
       />
+      <SettingsEditorContent v-if="win.type === 'settingsEditor'" />
     </DeckWindow>
   </div>
 </template>
