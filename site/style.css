@@ -130,21 +130,16 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
 @keyframes blobPulse{0%,100%{opacity:.4}50%{opacity:.7}}
 
 /* ===== Hero ===== */
-.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:5rem 1.5rem 2rem;gap:1.5rem}
+.hero{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:5rem 1.5rem 2rem;gap:1.5rem}
 .hero>*{opacity:0;transform:translateY(16px);animation:fadeUp .7s var(--ease) forwards}
 .hero>*:nth-child(1){animation-delay:0s}
 .hero>*:nth-child(2){animation-delay:.1s}
-.hero>*:nth-child(3){animation-delay:.2s}
-.hero>*:nth-child(4){animation-delay:.3s}
 @keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
-.hero-icon{width:80px;height:80px;border-radius:20px;animation:fadeUp .7s var(--ease) forwards,heroJelly 2s ease-in-out .7s infinite,heroGlow 2.5s ease-in-out .7s infinite}
-@keyframes heroJelly{0%,100%{transform:scale(1,1)}20%{transform:scale(1.06,.94)}40%{transform:scale(.94,1.06)}60%{transform:scale(1.03,.97)}80%{transform:scale(.97,1.03)}}
-@keyframes heroGlow{0%,100%{filter:none}50%{filter:drop-shadow(0 0 16px rgba(134,179,0,0.4))}}
-@media(prefers-reduced-motion:reduce){.hero-icon{animation:fadeUp .7s var(--ease) forwards}.blob{animation:none}}
-.hero h1{font-size:clamp(2.5rem,6vw,4rem);font-weight:800;letter-spacing:-0.02em}
+@media(prefers-reduced-motion:reduce){.blob{animation:none}}
+.hero h1{display:flex;align-items:center;justify-content:center;gap:.6rem;font-size:clamp(2.5rem,6vw,4rem);font-weight:800;letter-spacing:-0.02em}
+.hero h1 .hero-logo{width:1em;height:1em;border-radius:22%}
 .hero h1 span{background:linear-gradient(135deg,var(--accent),var(--accent-dark));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .hero .tagline{font-size:clamp(1.05rem,2.5vw,1.3rem);color:var(--text-muted);max-width:540px}
-.hero-buttons{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center}
 
 /* ===== Buttons ===== */
 .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1.5rem;border-radius:var(--radius-pill);font-size:.95rem;font-weight:700;text-decoration:none;font-family:inherit;transition:all .25s var(--ease);background-image:none;background-size:auto}
@@ -185,12 +180,9 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
 /* ===== Guest CTA ===== */
 .guest-cta{display:flex;align-items:center;gap:1.5rem;padding:1.5rem 2rem}
 .guest-cta-icon{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(134,179,0,0.15),rgba(74,179,0,0.1));color:var(--accent)}
-.guest-cta-text{flex:1}
-.guest-cta-text h3{font-size:1.05rem;font-weight:800;margin-bottom:.2rem}
-.guest-cta-text p{color:var(--text-muted);font-size:.88rem;line-height:1.6;margin:0}
+.guest-cta-text{flex:1;color:var(--text-muted);font-size:.92rem;line-height:1.6;margin:0}
 .guest-cta .btn{flex-shrink:0;white-space:nowrap}
 @media(max-width:640px){.guest-cta{flex-direction:column;text-align:center}.guest-cta .btn{align-self:center}}
-
 
 /* ===== Highlight rows (alternating left/right) ===== */
 .highlight-row{margin-bottom:3.5rem}
