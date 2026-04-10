@@ -8,6 +8,9 @@ import DeckWindow from './DeckWindow.vue'
 const NoteDetailContent = defineAsyncComponent(
   () => import('@/components/window/NoteDetailContent.vue'),
 )
+const NoteInspectorContent = defineAsyncComponent(
+  () => import('@/components/window/NoteInspectorContent.vue'),
+)
 const UserProfileContent = defineAsyncComponent(
   () => import('@/components/window/UserProfileContent.vue'),
 )
@@ -115,6 +118,13 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         :account-id="(win.props.accountId as string)"
         :note-id="(win.props.noteId as string)"
         @close="closeWindow(win.id)"
+      />
+      <NoteInspectorContent
+        v-if="win.type === 'note-inspector'"
+        :account-id="(win.props.accountId as string)"
+        :note-id="(win.props.noteId as string)"
+        :note-uri="(win.props.noteUri as string | undefined)"
+        :server-host="(win.props.serverHost as string | undefined)"
       />
       <UserProfileContent
         v-if="win.type === 'user-profile'"
