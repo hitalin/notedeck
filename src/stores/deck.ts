@@ -9,12 +9,7 @@ import { useDeckWallpaperStore } from '@/stores/deckWallpaper'
 import { buildColumnUri } from '@/utils/columnUri'
 import * as deckLayout from '@/utils/deckLayout'
 import { hapticMedium } from '@/utils/haptics'
-import {
-  isTauri,
-  readNavbar,
-  readProfile,
-  writeNavbar,
-} from '@/utils/settingsFs'
+import { isTauri, readNavbar, writeNavbar } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 export type ColumnType =
@@ -200,30 +195,6 @@ export const useDeckStore = defineStore('deck', () => {
         if (Array.isArray(parsed) && parsed.length > 0) {
           navItems.value = parsed as NavItem[]
           isNavCustomized.value = true
-          return
-        }
-      }
-      // No navbar.json5 data — migrate from profile if available
-      const profileId = profileStore.windowProfileId
-      if (profileId) {
-        try {
-          const profileContent = await readProfile(profileId)
-          if (profileContent) {
-            const profileData = JSON5.parse(profileContent)
-            const profileNavItems = profileData?.navItems as
-              | NavItem[]
-              | undefined
-            if (Array.isArray(profileNavItems) && profileNavItems.length > 0) {
-              navItems.value = [...profileNavItems]
-              isNavCustomized.value = true
-              await writeNavbar(JSON5.stringify(profileNavItems, null, 2))
-              console.info(
-                '[deck] Migrated navItems from profile to navbar.json5',
-              )
-            }
-          }
-        } catch {
-          // Profile read failed — skip migration
         }
       }
     } catch (e) {
@@ -612,7 +583,6 @@ export const useDeckStore = defineStore('deck', () => {
     wallpaper: computed(() => wallpaperStore.wallpaper),
     setWallpaper: wallpaperStore.setWallpaper,
     clearWallpaper: wallpaperStore.clearWallpaper,
-    loadWallpaper: wallpaperStore.loadWallpaper,
     // Profile (facade)
     activeProfileId: computed(() => profileStore.activeProfileId),
     loadActiveProfileId: profileStore.loadActiveProfileId,

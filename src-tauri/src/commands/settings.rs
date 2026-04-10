@@ -165,10 +165,8 @@ const ALLOWED_ROOT_FILES: &[&str] = &[
     "custom.css",
     "keybinds.json5",
     "ai.json5",
-    "ai.json", // legacy fallback (read-only migration)
     "AI.md",
     "performance.json5",
-    "performance.json", // legacy fallback (read-only migration)
     "accounts.json5",
     "navbar.json5",
     "settings.json5",

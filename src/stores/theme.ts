@@ -134,23 +134,6 @@ export const useThemeStore = defineStore('theme', () => {
       applyTheme(storedCompiled)
     }
 
-    // One-time legacy migration: seed settingsStore from localStorage if
-    // settings.json doesn't have theme values yet (first run after migration).
-    if (settingsStore.get('theme.manual') === undefined) {
-      const legacy = getStorageString(STORAGE_KEYS.themeManual)
-      if (legacy === 'dark' || legacy === 'light') {
-        settingsStore.set('theme.manual', legacy)
-      }
-    }
-    if (settingsStore.get('theme.selectedDarkThemeId') === undefined) {
-      const legacy = getStorageString(STORAGE_KEYS.themeSelectedDark)
-      if (legacy) settingsStore.set('theme.selectedDarkThemeId', legacy)
-    }
-    if (settingsStore.get('theme.selectedLightThemeId') === undefined) {
-      const legacy = getStorageString(STORAGE_KEYS.themeSelectedLight)
-      if (legacy) settingsStore.set('theme.selectedLightThemeId', legacy)
-    }
-
     // Restore installed themes (still localStorage-based, not in settingsStore)
     installedThemes.value = getStorageJson<MisskeyTheme[]>(
       STORAGE_KEYS.themeInstalledThemes,

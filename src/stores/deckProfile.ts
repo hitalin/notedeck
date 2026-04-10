@@ -475,10 +475,6 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
 
   // --- File-based initialization ---
 
-  function isNewFormatId(id: string): boolean {
-    return id.endsWith('.ndprofile.json5')
-  }
-
   async function loadProfilesFromFiles(): Promise<DeckProfile[]> {
     const filenames = await settingsFs.listProfiles()
     if (filenames.length === 0) return []
@@ -505,15 +501,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   ) {
     // Load from localStorage into reactive state
     profilesData.value = loadProfilesFromStorage()
-    let profiles = profilesData.value
-
-    // Discard legacy profiles (old ID format like "profile-xxx")
-    const legacyCount = profiles.filter((p) => !isNewFormatId(p.id)).length
-    if (legacyCount > 0) {
-      console.info(`[deckProfile] Discarding ${legacyCount} legacy profile(s).`)
-      profiles = profiles.filter((p) => isNewFormatId(p.id))
-      saveProfiles(profiles)
-    }
+    const profiles = profilesData.value
 
     // Fix blank names
     let needsSave = false

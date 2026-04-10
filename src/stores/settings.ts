@@ -76,15 +76,6 @@ export const useSettingsStore = defineStore('settings', () => {
       } else {
         const parsed = JSON5.parse(raw) as Record<string, unknown>
         settings.value = parseSettings(parsed)
-        // 分離済みキーが残っていれば即座にファイルをクリーンアップ
-        const hasLegacy = Object.keys(parsed).some(
-          (k) => k === 'ai' || k === 'keybinds' || k.startsWith('performance.'),
-        )
-        if (hasLegacy) {
-          persist().catch((e) =>
-            console.warn('[settings] cleanup persist failed:', e),
-          )
-        }
       }
     } catch (e) {
       console.warn(

@@ -147,55 +147,17 @@ export function useAiConfig() {
     setStorageJson(STORAGE_KEY, config.value)
   }
 
-  /**
-   * Initialize from file storage:
-   * 1. Read ai.json5 (fallback: legacy ai.json)
-   * 2. Read AI.md for system prompt
-   * 3. If nothing found, migrate from settingsStore ai key
-   * 4. Write ai.json5 after migration, remove ai from settingsStore
-   */
   async function initFileStorage(): Promise<void> {
-    let loaded = false
-
-    // Try reading ai.json5 (with fallback to ai.json)
     const aiContent = await readAiSettings()
     if (aiContent) {
       try {
         const parsed = JSON5.parse(aiContent) as Partial<AiConfig>
         config.value = applyApiKeys(mergeConfig(defaultConfig(), parsed))
-        loaded = true
       } catch (e) {
         console.warn('[ai-settings] failed to parse ai.json5:', e)
+        config.value = applyApiKeys(defaultConfig())
       }
-    }
-
-    // If no file found, try migrating from settingsStore
-    if (!loaded) {
-      try {
-        // Dynamic import to avoid circular dependency / hard coupling
-        const { useSettingsStore } = await import('@/stores/settings')
-        const settingsStore = useSettingsStore()
-        // settingsStore.settings is auto-unwrapped by Pinia (NotedeckSettings),
-        // but the ai key was removed from the type — cast to access legacy data
-        const rawSettings = settingsStore.settings as unknown as Record<
-          string,
-          unknown
-        >
-        const legacyAi = rawSettings.ai
-        if (legacyAi && typeof legacyAi === 'object') {
-          const parsed = legacyAi as Partial<AiConfig>
-          config.value = applyApiKeys(mergeConfig(defaultConfig(), parsed))
-          // Write to ai.json5
-          const fileConfig = toFileConfig(config.value)
-          await writeAiSettings(`${JSON5.stringify(fileConfig, null, 2)}\n`)
-          loaded = true
-        }
-      } catch {
-        // settingsStore migration failed — continue with defaults
-      }
-    }
-
-    if (!loaded) {
+    } else {
       config.value = applyApiKeys(defaultConfig())
     }
 
@@ -203,7 +165,7 @@ export function useAiConfig() {
     const promptContent = await readAiPrompt()
     if (promptContent) {
       config.value = { ...config.value, systemPrompt: promptContent }
-    } else if (loaded && config.value.systemPrompt !== defaultAiPrompt) {
+    } else if (aiContent && config.value.systemPrompt !== defaultAiPrompt) {
       // AI.md doesn't exist but config has a custom prompt — write it out
       await writeAiPrompt(config.value.systemPrompt).catch((e) =>
         console.warn('[ai-settings] failed to write AI.md:', e),

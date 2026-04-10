@@ -171,10 +171,7 @@ export async function writeKeybinds(content: string): Promise<void> {
 // --- AI settings helpers ---
 
 export async function readAiSettings(): Promise<string> {
-  const content = await readRootSettingsFile('ai.json5')
-  if (content) return content
-  // Fallback: 旧ファイル名
-  return readRootSettingsFile('ai.json')
+  return readRootSettingsFile('ai.json5')
 }
 
 export async function writeAiSettings(content: string): Promise<void> {
@@ -212,10 +209,7 @@ export async function writeAccountOrder(content: string): Promise<void> {
 // --- Performance helpers ---
 
 export async function readPerformance(): Promise<string> {
-  const content = await readRootSettingsFile('performance.json5')
-  if (content) return content
-  // Fallback: 旧ファイル名
-  return readRootSettingsFile('performance.json')
+  return readRootSettingsFile('performance.json5')
 }
 
 export async function writePerformance(content: string): Promise<void> {

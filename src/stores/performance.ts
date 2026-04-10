@@ -9,7 +9,6 @@ import {
   frameTelemetry,
   type QualityLevel,
 } from '@/engine/telemetry/frameTelemetry'
-import { useSettingsStore } from '@/stores/settings'
 import { isTauri, readPerformance, writePerformance } from '@/utils/settingsFs'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
@@ -815,10 +814,6 @@ export const usePerformanceStore = defineStore('performance', () => {
     )
   }
 
-  /**
-   * Load performance.json5 into overrides.
-   * Migration: settingsStore に performance.* キーがあれば収集 → performance.json5 に書き出し → settingsStore から削除。
-   */
   async function initFileStorage(): Promise<void> {
     const content = await readPerformance()
     if (content) {
@@ -827,31 +822,6 @@ export const usePerformanceStore = defineStore('performance', () => {
         overrides.value = parsed
       } catch (e) {
         console.warn('[performance] failed to parse performance.json5:', e)
-      }
-    } else {
-      // settingsStore からマイグレーション（旧 settings.json に performance.* キーがある場合）
-      const settingsStore = useSettingsStore()
-      const raw = settingsStore.settings as unknown as Record<string, unknown>
-      const migrated: Partial<PerformanceConfig> = {}
-      let hasMigrationData = false
-      for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
-        const v = raw[`performance.${key}`]
-        if (v !== undefined) {
-          migrated[key] = v as PerformanceConfig[typeof key]
-          hasMigrationData = true
-        }
-      }
-      if (hasMigrationData) {
-        overrides.value = migrated
-        await persist()
-        // settingsStore から performance.* キーを削除
-        const cleaned = { ...raw }
-        for (const key of Object.keys(DEFAULTS) as PerformanceKey[]) {
-          delete cleaned[`performance.${key}`]
-        }
-        settingsStore.replaceAll(
-          cleaned as unknown as typeof settingsStore.settings,
-        )
       }
     }
     initialized.value = true

@@ -4,7 +4,6 @@ import { ref, watch } from 'vue'
 
 import type { Shortcut } from '@/commands/registry'
 import defaultKeybindsJson5 from '@/defaults/keybindings.json5?raw'
-import { useSettingsStore } from '@/stores/settings'
 import { isTauri, readKeybinds, writeKeybinds } from '@/utils/settingsFs'
 
 export interface KeybindEntry {
@@ -37,12 +36,6 @@ export const useKeybindsStore = defineStore('keybinds', () => {
 
   watch(overrides, () => schedulePersist(), { deep: true })
 
-  /**
-   * Migration: keybinds.json5 → 独立ファイル化。
-   * 1. keybinds.json5 を読む (既存ファイル or 旧ファイル)
-   * 2. なければ settingsStore の keybinds キーからマイグレーション
-   * 3. settingsStore から keybinds キーを削除
-   */
   async function initFileStorage(): Promise<void> {
     const content = await readKeybinds()
     if (content) {
@@ -50,19 +43,6 @@ export const useKeybindsStore = defineStore('keybinds', () => {
         overrides.value = JSON5.parse(content) as Record<string, Shortcut[]>
       } catch (e) {
         console.warn('[keybinds] failed to parse keybinds.json5:', e)
-      }
-    } else {
-      // settingsStore からマイグレーション（旧 settings.json に keybinds キーがある場合）
-      const settingsStore = useSettingsStore()
-      const raw = settingsStore.settings as unknown as Record<string, unknown>
-      const legacy = raw.keybinds as Record<string, Shortcut[]> | undefined
-      if (legacy && Object.keys(legacy).length > 0) {
-        overrides.value = legacy
-        // settingsStore から keybinds キーを削除
-        const { keybinds: _, ...rest } = raw
-        settingsStore.replaceAll(
-          rest as unknown as typeof settingsStore.settings,
-        )
       }
     }
     initialized.value = true
