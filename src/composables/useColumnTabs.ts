@@ -53,7 +53,7 @@ export const COLUMN_LABELS: Record<string, string> = {
   aiscript: 'スクラッチパッド',
   play: 'Misskey Play',
   page: 'ページ',
-  ai: 'AI',
+  ai: 'AIチャット',
   announcements: 'お知らせ',
   drive: 'ドライブ',
   explore: 'みつける',
@@ -68,7 +68,7 @@ export const COLUMN_LABELS: Record<string, string> = {
   aboutMisskey: 'Misskeyについて',
   emoji: 'カスタム絵文字',
   workspaceExplorer: 'エクスプローラー',
-  streamInspector: 'ストリーム',
+  streamInspector: 'ストリームインスペクタ',
 }
 
 export const TL_ICONS: Record<string, string> = {

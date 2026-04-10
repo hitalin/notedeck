@@ -14,6 +14,8 @@ import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useServersStore } from '@/stores/servers'
+import { proxyThumbUrl } from '@/utils/imageProxy'
 import DeckColumn from './DeckColumn.vue'
 
 const CodeEditor = defineAsyncComponent(
@@ -26,16 +28,23 @@ const props = defineProps<{
 
 const { columnThemeVars } = useColumnTheme(() => props.column)
 const accountsStore = useAccountsStore()
+const serversStore = useServersStore()
 const multiAdapters = useMultiAccountAdapters()
 const jsonLang = json()
 
 // --- Buffer ---
 
+interface BadgePair {
+  avatar: string | null
+  serverIcon: string | null
+}
+
 interface StreamEventEntry {
   id: number
   ts: number
   kind: string
-  avatarUrl: string
+  observer: BadgePair
+  subject: BadgePair | null
   payload: Record<string, unknown>
 }
 
@@ -99,7 +108,24 @@ let lastEventKey = ''
 let lastEventTs = 0
 const DEDUP_WINDOW_MS = 50
 
-function makeRawHandler(avatar: string, accountId: string) {
+function extractSubject(p: Record<string, unknown>): BadgePair | null {
+  const src =
+    (p.note as Record<string, unknown> | undefined)?.user ??
+    (p.notification as Record<string, unknown> | undefined)?.user ??
+    null
+  if (!src || typeof src !== 'object') return null
+  const u = src as Record<string, unknown>
+  const avatarUrl = typeof u.avatarUrl === 'string' ? u.avatarUrl : null
+  const host = typeof u.host === 'string' ? u.host : null
+  return {
+    avatar: avatarUrl ? (proxyThumbUrl(avatarUrl, 28) ?? avatarUrl) : null,
+    serverIcon: host
+      ? (serversStore.getServer(host)?.iconUrl ?? `https://${host}/favicon.ico`)
+      : null,
+  }
+}
+
+function makeRawHandler(observer: BadgePair, accountId: string) {
   return (event: RawStreamEvent) => {
     if (paused.value) return
     if (!enabledKinds.value.has(event.kind)) return
@@ -112,7 +138,8 @@ function makeRawHandler(avatar: string, accountId: string) {
       id: nextId++,
       ts: now,
       kind: event.kind,
-      avatarUrl: avatar,
+      observer,
+      subject: extractSubject(event.payload),
       payload: event.payload,
     }
     const arr = [entry, ...buffer.value]
@@ -132,8 +159,14 @@ async function subscribeAll() {
     if (!adapter) continue
     // Don't call connect() — the stream is already connected by other columns.
     // Calling connect() would disrupt the existing listener generation.
-    const avatar = getAccountAvatarUrl(acc)
-    const handler = makeRawHandler(avatar, acc.id)
+    const observerBadge: BadgePair = {
+      avatar:
+        proxyThumbUrl(getAccountAvatarUrl(acc), 28) ?? getAccountAvatarUrl(acc),
+      serverIcon:
+        serversStore.getServer(acc.host)?.iconUrl ??
+        `https://${acc.host}/favicon.ico`,
+    }
+    const handler = makeRawHandler(observerBadge, acc.id)
     adapter.stream.onRawEvent(handler)
     cleanups.push(() => adapter.stream.offRawEvent(handler))
   }
@@ -285,7 +318,15 @@ function scrollToTop() {
         >
           <span :class="$style.rowTime">{{ formatTime(entry.ts) }}</span>
           <span :class="$style.rowKind">{{ kindLabel(entry.kind) }}</span>
-          <img :src="entry.avatarUrl" :class="$style.rowAvatar" />
+          <span :class="$style.rowBadges">
+            <img v-if="entry.observer.avatar" :src="entry.observer.avatar" :class="$style.badge" />
+            <img v-if="entry.observer.serverIcon" :src="entry.observer.serverIcon" :class="$style.badge" />
+            <template v-if="entry.subject">
+              <span :class="$style.badgeArrow">→</span>
+              <img v-if="entry.subject.avatar" :src="entry.subject.avatar" :class="$style.badge" />
+              <img v-if="entry.subject.serverIcon" :src="entry.subject.serverIcon" :class="$style.badge" />
+            </template>
+          </span>
           <span :class="$style.rowSummary">{{ summarize(entry) }}</span>
         </div>
         <div v-if="buffer.length === 0" :class="$style.empty">
@@ -418,12 +459,24 @@ function scrollToTop() {
   flex-shrink: 0;
 }
 
-.rowAvatar {
+.rowBadges {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.badge {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  flex-shrink: 0;
   object-fit: cover;
+}
+
+.badgeArrow {
+  font-size: 0.8em;
+  opacity: 0.4;
+  margin: 0 1px;
 }
 
 .rowSummary {
