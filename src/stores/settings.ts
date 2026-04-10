@@ -12,7 +12,7 @@
  */
 
 import { defineStore } from 'pinia'
-import { ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_SETTINGS,
@@ -27,6 +27,21 @@ const PERSIST_DEBOUNCE_MS = 300
 export const useSettingsStore = defineStore('settings', () => {
   /** 現在の設定値 (load() 完了まで DEFAULT_SETTINGS のコピー) */
   const settings = shallowRef<NotedeckSettings>({ ...DEFAULT_SETTINGS })
+
+  /** DEFAULT_SETTINGS からの差分のみ (_schema 除外)。エディタ表示用。 */
+  const overrides = computed<Record<string, unknown>>(() => {
+    const result: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(settings.value)) {
+      if (key === '_schema') continue
+      const defaultVal = (
+        DEFAULT_SETTINGS as unknown as Record<string, unknown>
+      )[key]
+      if (value !== defaultVal) {
+        result[key] = value
+      }
+    }
+    return result
+  })
 
   /** settings.json からの初期ロードが完了したか */
   const initialized = ref(false)
@@ -132,14 +147,25 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  /**
+   * 設定全体を置き換える。エディタからの overrides 適用時に使用。
+   * 既存キーの削除も反映される（set() では不可能な操作）。
+   */
+  function replaceAll(newSettings: NotedeckSettings): void {
+    settings.value = { ...newSettings }
+    schedulePersist()
+  }
+
   return {
     settings,
+    overrides,
     initialized,
     saving,
     lastError,
     load,
     get,
     set,
+    replaceAll,
     flush,
   }
 })

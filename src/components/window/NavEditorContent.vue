@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
 import JSON5 from 'json5'
-import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import ColumnBadges from '@/components/common/ColumnBadges.vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import type { ReorderableItem } from '@/components/common/ReorderableList.vue'
@@ -76,7 +76,17 @@ const items = ref<NavColumnItem[]>(
   ),
 )
 
-watch(items, (v) => deckStore.setNavItems(v), { deep: true })
+/** Skip watcher during reset to avoid re-storing defaults as overrides */
+let skipSave = false
+
+watch(
+  items,
+  (v) => {
+    if (skipSave) return
+    deckStore.setNavItems(v)
+  },
+  { deep: true },
+)
 
 function removeItem(index: number) {
   items.value.splice(index, 1)
@@ -120,8 +130,9 @@ function onColumnSelected(config: Omit<DeckColumn, 'id'>) {
   items.value.push(item)
 }
 
-// ── Code tab ──
+// ── Code tab (overrides: null = デフォルト使用) ──
 function itemsToJson(): string {
+  if (!deckStore.isNavCustomized) return 'null'
   return JSON5.stringify(items.value, null, 2)
 }
 
@@ -148,8 +159,20 @@ function applyFromCode() {
   const code = jsonCode.value
   try {
     const parsed = JSON5.parse(code)
+    if (parsed === null) {
+      skipSave = true
+      items.value = structuredClone(DEFAULT_NAV_ITEMS).filter(
+        (item): item is NavColumnItem => item.type !== 'divider',
+      )
+      deckStore.setNavItems(undefined)
+      nextTick(() => {
+        skipSave = false
+      })
+      codeError.value = null
+      return
+    }
     if (!Array.isArray(parsed)) {
-      codeError.value = '配列が必要です'
+      codeError.value = '配列または null が必要です'
       return
     }
     items.value = (parsed as NavItem[]).filter(
@@ -168,9 +191,14 @@ const { confirming: confirmingReset, trigger: triggerReset } =
 
 function handleReset() {
   triggerReset(() => {
+    skipSave = true
     items.value = structuredClone(DEFAULT_NAV_ITEMS).filter(
       (item): item is NavColumnItem => item.type !== 'divider',
     )
+    deckStore.setNavItems(undefined)
+    nextTick(() => {
+      skipSave = false
+    })
   })
 }
 
@@ -274,7 +302,7 @@ async function importNav() {
     <!-- Code tab -->
     <div v-show="tab === 'code'" :class="$style.codePanel">
       <div :class="$style.codeHint">
-        ナビバー項目の JSON5 配列（コピーしてバックアップ可能）
+        デフォルト値からの差分 — null はデフォルト設定を使用
       </div>
       <CodeEditor
         v-model="jsonCode"
@@ -285,7 +313,7 @@ async function importNav() {
         <i class="ti ti-alert-triangle" />
         {{ codeError }}
       </div>
-      <div v-if="!codeError && jsonCode.trim() && jsonCode.trim() !== '[]'" :class="$style.codeSuccess">
+      <div v-if="!codeError && jsonCode.trim() && jsonCode.trim() !== '[]' && jsonCode.trim() !== 'null'" :class="$style.codeSuccess">
         <i class="ti ti-check" />
         適用中
       </div>

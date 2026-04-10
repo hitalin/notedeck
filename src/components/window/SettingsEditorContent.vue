@@ -8,11 +8,11 @@ import { useSettingsStore } from '@/stores/settings'
 const jsonLang = json()
 const settingsStore = useSettingsStore()
 
-// Mirror the current settings as a pretty-printed JSON string
-const jsonCode = ref(serializeSettings())
+// Mirror overrides (diff from defaults) as a pretty-printed JSON string
+const jsonCode = ref(serializeOverrides())
 
-function serializeSettings(): string {
-  return `${JSON.stringify(settingsStore.settings, null, 2)}\n`
+function serializeOverrides(): string {
+  return `${JSON.stringify(settingsStore.overrides, null, 2)}\n`
 }
 
 // Sync from store → editor (when store changes externally, e.g. other store writes)
@@ -21,7 +21,7 @@ watch(
   () => {
     // Only sync if the editor isn't currently being edited (avoid overwriting user typing)
     if (!dirty.value) {
-      jsonCode.value = serializeSettings()
+      jsonCode.value = serializeOverrides()
     }
   },
 )
@@ -45,15 +45,10 @@ watch(jsonCode, (code) => {
         error.value = 'トップレベルは JSON オブジェクト {} である必要があります'
         return
       }
-      // Validate and normalize through the schema parser
+      // Merge overrides with defaults and replace entire settings
       const normalized = parseSettings(parsed)
       normalized._schema = CURRENT_SCHEMA_VERSION
-
-      // Apply all keys to settingsStore (replace the entire settings state)
-      for (const [key, value] of Object.entries(normalized)) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic settings key
-        settingsStore.set(key as any, value as any)
-      }
+      settingsStore.replaceAll(normalized)
 
       error.value = null
       dirty.value = false
@@ -86,7 +81,7 @@ const statusClass = computed(() => {
   <div :class="$style.content">
     <div :class="$style.hint">
       <i class="ti ti-braces" />
-      settings.json を直接編集 — 変更は自動保存されます
+      デフォルト値からの差分のみ表示 — 変更は自動保存されます
     </div>
 
     <CodeEditor

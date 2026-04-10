@@ -146,7 +146,12 @@ export const useDeckStore = defineStore('deck', () => {
     () => profileStore.currentProfile?.navItems ?? DEFAULT_NAV_ITEMS,
   )
 
-  function setNavItems(items: NavItem[]) {
+  /** navItems がプロファイルに明示的に保存されているか（デフォルトでないか） */
+  const isNavCustomized = computed(
+    () => profileStore.currentProfile?.navItems != null,
+  )
+
+  function setNavItems(items: NavItem[] | undefined) {
     profileStore.mutateProfile((p) => {
       p.navItems = items
     })
@@ -505,6 +510,7 @@ export const useDeckStore = defineStore('deck', () => {
     focusPrevColumn,
     focusColumnByIndex,
     navItems,
+    isNavCustomized,
     setNavItems,
     addColumn,
     addColumnAt,
