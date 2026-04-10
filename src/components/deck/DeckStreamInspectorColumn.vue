@@ -232,7 +232,7 @@ function summarize(entry: StreamEventEntry): string {
 // --- Detail pane resize ---
 
 const wrapperRef = ref<HTMLElement | null>(null)
-const detailHeight = ref(200)
+const detailHeight = ref(350)
 let resizing = false
 
 function onDividerPointerDown(e: PointerEvent) {
