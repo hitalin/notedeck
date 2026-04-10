@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref, shallowRef } from 'vue'
+import { ref, shallowRef, watch } from 'vue'
+import { useSettingsStore } from '@/stores/settings'
 import * as themeFileSync from '@/stores/themeFileSync'
 import { applyTheme } from '@/theme/applier'
 import {
@@ -85,6 +86,8 @@ function parseMetaTheme(
 }
 
 export const useThemeStore = defineStore('theme', () => {
+  const settingsStore = useSettingsStore()
+
   // Per-store-instance caches (isolated per window)
   const compiledCache = new Map<string, CompiledProps>()
   const fetchingAccounts = new Set<string>()
@@ -172,6 +175,77 @@ export const useThemeStore = defineStore('theme', () => {
     } else {
       initialized.value = true
     }
+
+    // Reconcile with notedeck.json (source of truth for backup / cross-device sync).
+    // init() reads localStorage synchronously for FOUC prevention; this watch
+    // fires once settingsStore.load() completes and either:
+    //   (a) updates local refs from notedeck.json (cross-device sync), or
+    //   (b) seeds notedeck.json from local values (one-time migration).
+    watch(
+      () => settingsStore.initialized,
+      (done) => {
+        if (!done) return
+        reconcileWithSettingsStore()
+      },
+      { immediate: true },
+    )
+  }
+
+  function reconcileWithSettingsStore(): void {
+    let reapply = false
+
+    // theme.manual
+    const storedManual = settingsStore.get('theme.manual')
+    if (storedManual !== undefined) {
+      if (storedManual !== manualMode.value) {
+        manualMode.value = storedManual
+        if (storedManual != null) {
+          setStorageString(STORAGE_KEYS.themeManual, storedManual)
+        } else {
+          removeStorage(STORAGE_KEYS.themeManual)
+        }
+        reapply = true
+      }
+    } else if (manualMode.value != null) {
+      settingsStore.set('theme.manual', manualMode.value)
+    }
+
+    // theme.selectedDarkThemeId
+    const storedDark = settingsStore.get('theme.selectedDarkThemeId')
+    if (storedDark !== undefined) {
+      if (storedDark !== selectedDarkThemeId.value) {
+        selectedDarkThemeId.value = storedDark
+        if (storedDark != null) {
+          setStorageString(STORAGE_KEYS.themeSelectedDark, storedDark)
+        } else {
+          removeStorage(STORAGE_KEYS.themeSelectedDark)
+        }
+        reapply = true
+      }
+    } else if (selectedDarkThemeId.value != null) {
+      settingsStore.set('theme.selectedDarkThemeId', selectedDarkThemeId.value)
+    }
+
+    // theme.selectedLightThemeId
+    const storedLight = settingsStore.get('theme.selectedLightThemeId')
+    if (storedLight !== undefined) {
+      if (storedLight !== selectedLightThemeId.value) {
+        selectedLightThemeId.value = storedLight
+        if (storedLight != null) {
+          setStorageString(STORAGE_KEYS.themeSelectedLight, storedLight)
+        } else {
+          removeStorage(STORAGE_KEYS.themeSelectedLight)
+        }
+        reapply = true
+      }
+    } else if (selectedLightThemeId.value != null) {
+      settingsStore.set(
+        'theme.selectedLightThemeId',
+        selectedLightThemeId.value,
+      )
+    }
+
+    if (reapply) applyCurrentTheme()
   }
 
   function wantsDark(): boolean {
@@ -208,12 +282,14 @@ export const useThemeStore = defineStore('theme', () => {
   function toggleTheme(): void {
     manualMode.value = isCurrentDark() ? 'light' : 'dark'
     setStorageString(STORAGE_KEYS.themeManual, manualMode.value)
+    settingsStore.set('theme.manual', manualMode.value)
     applyCurrentTheme()
   }
 
   function resetToOsTheme(): void {
     manualMode.value = null
     removeStorage(STORAGE_KEYS.themeManual)
+    settingsStore.set('theme.manual', null)
     applyCurrentTheme()
   }
 
@@ -221,6 +297,7 @@ export const useThemeStore = defineStore('theme', () => {
   function pinCurrentMode(): void {
     manualMode.value = isCurrentDark() ? 'dark' : 'light'
     setStorageString(STORAGE_KEYS.themeManual, manualMode.value)
+    settingsStore.set('theme.manual', manualMode.value)
   }
 
   /** Install a Misskey theme from JSON code. Returns true on success. */
@@ -266,10 +343,12 @@ export const useThemeStore = defineStore('theme', () => {
     if (selectedDarkThemeId.value === id) {
       selectedDarkThemeId.value = null
       removeStorage(STORAGE_KEYS.themeSelectedDark)
+      settingsStore.set('theme.selectedDarkThemeId', null)
     }
     if (selectedLightThemeId.value === id) {
       selectedLightThemeId.value = null
       removeStorage(STORAGE_KEYS.themeSelectedLight)
+      settingsStore.set('theme.selectedLightThemeId', null)
     }
     // Sync: update localStorage cache only (no need to rewrite remaining theme files)
     setStorageJson(STORAGE_KEYS.themeInstalledThemes, installedThemes.value)
@@ -286,9 +365,11 @@ export const useThemeStore = defineStore('theme', () => {
     if (mode === 'dark') {
       selectedDarkThemeId.value = id
       setStorageString(STORAGE_KEYS.themeSelectedDark, id)
+      settingsStore.set('theme.selectedDarkThemeId', id)
     } else {
       selectedLightThemeId.value = id
       setStorageString(STORAGE_KEYS.themeSelectedLight, id)
+      settingsStore.set('theme.selectedLightThemeId', id)
     }
     applyCurrentTheme()
   }
