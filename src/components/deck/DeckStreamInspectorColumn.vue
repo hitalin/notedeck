@@ -35,6 +35,7 @@ interface StreamEventEntry {
   id: number
   ts: number
   kind: string
+  accountLabel: string
   payload: Record<string, unknown>
 }
 
@@ -92,18 +93,21 @@ function toggleKind(kind: string) {
 type CleanupFn = () => void
 const cleanups: CleanupFn[] = []
 
-function onRawEvent(event: RawStreamEvent) {
-  if (paused.value) return
-  if (!enabledKinds.value.has(event.kind)) return
-  const entry: StreamEventEntry = {
-    id: nextId++,
-    ts: Date.now(),
-    kind: event.kind,
-    payload: event.payload,
+function makeRawHandler(label: string) {
+  return (event: RawStreamEvent) => {
+    if (paused.value) return
+    if (!enabledKinds.value.has(event.kind)) return
+    const entry: StreamEventEntry = {
+      id: nextId++,
+      ts: Date.now(),
+      kind: event.kind,
+      accountLabel: label,
+      payload: event.payload,
+    }
+    const arr = [entry, ...buffer.value]
+    if (arr.length > MAX_BUFFER) arr.length = MAX_BUFFER
+    buffer.value = arr
   }
-  const arr = [entry, ...buffer.value]
-  if (arr.length > MAX_BUFFER) arr.length = MAX_BUFFER
-  buffer.value = arr
 }
 
 async function subscribeAll() {
@@ -117,8 +121,10 @@ async function subscribeAll() {
     if (!adapter) continue
     // Don't call connect() — the stream is already connected by other columns.
     // Calling connect() would disrupt the existing listener generation.
-    adapter.stream.onRawEvent(onRawEvent)
-    cleanups.push(() => adapter.stream.offRawEvent(onRawEvent))
+    const label = `@${acc.username ?? '?'}@${acc.host}`
+    const handler = makeRawHandler(label)
+    adapter.stream.onRawEvent(handler)
+    cleanups.push(() => adapter.stream.offRawEvent(handler))
   }
 }
 
@@ -268,6 +274,7 @@ function scrollToTop() {
         >
           <span :class="$style.rowTime">{{ formatTime(entry.ts) }}</span>
           <span :class="$style.rowKind">{{ kindLabel(entry.kind) }}</span>
+          <span :class="$style.rowAccount">{{ entry.accountLabel }}</span>
           <span :class="$style.rowSummary">{{ summarize(entry) }}</span>
         </div>
         <div v-if="buffer.length === 0" :class="$style.empty">
@@ -397,6 +404,17 @@ function scrollToTop() {
   color: var(--nd-accent);
   min-width: 56px;
   flex-shrink: 0;
+}
+
+.rowAccount {
+  color: var(--nd-fg);
+  opacity: 0.4;
+  font-size: 0.9em;
+  flex-shrink: 0;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .rowSummary {
