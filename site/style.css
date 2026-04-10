@@ -19,7 +19,7 @@
   --shadow:0 2px 12px rgba(0,0,0,0.06);
   --blur:blur(12px);
   --ease:cubic-bezier(.22,1,.36,1);
-  --section-gap:100px;
+  --section-gap:56px;
 }
 
 @media(prefers-color-scheme:dark){
@@ -165,7 +165,7 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
 .section-narrow{max-width:900px}
 @media(max-width:1200px){.section-inner{width:calc(100% - 32px)}}
 .section-title{text-align:center;font-size:1.75rem;font-weight:800;margin-bottom:1rem}
-.section-sub{text-align:center;color:var(--text-muted);font-size:.95rem;margin-bottom:2.5rem}
+.section-sub{text-align:center;color:var(--text-muted);font-size:.95rem;margin-bottom:1.5rem}
 
 /* ===== Pillars ===== */
 .pillars-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
@@ -185,7 +185,7 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
 @media(max-width:640px){.guest-cta{flex-direction:column;text-align:center}.guest-cta .btn{align-self:center}}
 
 /* ===== Highlight rows (alternating left/right) ===== */
-.highlight-row{margin-bottom:3.5rem}
+.highlight-row{margin-bottom:2rem}
 .highlight-row:last-child{margin-bottom:0}
 .highlight-text{max-width:720px;padding:2rem;border-radius:var(--radius)}
 .highlight-row:nth-child(odd) .highlight-text{margin-right:auto}
@@ -259,7 +259,7 @@ footer a{color:var(--accent);font-weight:700}
 
 /* ===== Responsive ===== */
 @media(max-width:640px){
-  :root{--section-gap:64px}
+  :root{--section-gap:40px}
   .hero{padding-top:4rem}
   .pillars-grid{grid-template-columns:1fr}
   .platforms{grid-template-columns:repeat(2,1fr)}
