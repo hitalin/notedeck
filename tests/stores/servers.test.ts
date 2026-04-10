@@ -27,6 +27,7 @@ function createMockServerInfo(host = 'example.com') {
       quotes: true,
     },
     iconUrl: `https://${host}/favicon.ico`,
+    infoImageUrl: `https://${host}/info.png`,
   }
 }
 

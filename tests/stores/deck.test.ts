@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDeckStore } from '@/stores/deck'
@@ -163,8 +164,8 @@ describe('deck store', () => {
       accountId: 'acc1',
     })
 
-    // Flush the debounced save timer
-    vi.advanceTimersByTime(100)
+    // Flush the debounced save timer (PERSIST_DEBOUNCE_MS = 300)
+    vi.advanceTimersByTime(300)
 
     // Create a new store instance and load
     setActivePinia(createPinia())

@@ -1,6 +1,8 @@
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
-export const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window
+export const isTauri =
+  typeof window !== 'undefined' &&
+  ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)
 
 /** Characters not allowed in filenames (Windows + Unix safety). */
 const INVALID_CHARS = /[<>:"/\\|?*]/g
