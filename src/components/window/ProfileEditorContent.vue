@@ -270,9 +270,13 @@ function syncVisualFromCode() {
   }
 }
 
-watch(tab, (newTab) => {
-  if (newTab === 'code') syncCodeFromVisual()
-})
+watch(
+  tab,
+  (newTab) => {
+    if (newTab === 'code') syncCodeFromVisual()
+  },
+  { immediate: true },
+)
 
 // Import/Export
 const {

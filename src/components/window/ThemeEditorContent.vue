@@ -153,15 +153,19 @@ function syncVisualFromCode() {
 // Suppress preview during tab-switch syncs
 let suppressPreview = false
 
-// Sync between tabs when switching
-watch(tab, (newTab) => {
-  suppressPreview = true
-  if (newTab === 'code') syncCodeFromVisual()
-  if (newTab === 'visual' && codeContent.value.trim()) syncVisualFromCode()
-  nextTick(() => {
-    suppressPreview = false
-  })
-})
+// Sync between tabs when switching (immediate: populate code tab if opened directly)
+watch(
+  tab,
+  (newTab) => {
+    suppressPreview = true
+    if (newTab === 'code') syncCodeFromVisual()
+    if (newTab === 'visual' && codeContent.value.trim()) syncVisualFromCode()
+    nextTick(() => {
+      suppressPreview = false
+    })
+  },
+  { immediate: true },
+)
 
 // Convert resolved color to hex for input[type=color]
 function toHex(value: string): string {
