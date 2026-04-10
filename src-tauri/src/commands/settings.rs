@@ -161,7 +161,14 @@ pub fn rename_settings_file(
 }
 
 /// Allowed root-level filenames (no subdirectory).
-const ALLOWED_ROOT_FILES: &[&str] = &["custom.css", "keybinds.json5", "ai.json", "performance.json", "account-order.json5"];
+const ALLOWED_ROOT_FILES: &[&str] = &[
+    "custom.css",
+    "keybinds.json5",
+    "ai.json",
+    "performance.json",
+    "account-order.json5",
+    "notedeck.json",
+];
 
 /// Resolve the full path for a root-level settings file (under notedeck/).
 fn resolve_root_path(app: &tauri::AppHandle, name: &str) -> Result<PathBuf> {
@@ -202,6 +209,38 @@ pub fn write_root_settings_file(app: tauri::AppHandle, name: &str, content: &str
 #[specta::specta]
 pub fn get_settings_dir(app: tauri::AppHandle) -> Result<String> {
     Ok(settings_base_dir(&app)?.to_string_lossy().to_string())
+}
+
+/// Read `notedeck.json` (VSCode `settings.json` equivalent — single source of truth
+/// for scalar preferences). Returns empty string if the file does not exist (first run).
+#[tauri::command]
+#[specta::specta]
+pub fn read_notedeck_json(app: tauri::AppHandle) -> Result<String> {
+    let path = settings_base_dir(&app)?.join("notedeck.json");
+    if !path.exists() {
+        return Ok(String::new());
+    }
+    fs::read_to_string(&path).map_err(|e| {
+        NoteDeckError::InvalidInput(format!("Failed to read {}: {e}", path.display()))
+    })
+}
+
+/// Write `notedeck.json`. Creates the settings directory if missing.
+#[tauri::command]
+#[specta::specta]
+pub fn write_notedeck_json(app: tauri::AppHandle, content: &str) -> Result<()> {
+    let path = settings_base_dir(&app)?.join("notedeck.json");
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| {
+            NoteDeckError::InvalidInput(format!(
+                "Failed to create directory {}: {e}",
+                parent.display()
+            ))
+        })?;
+    }
+    fs::write(&path, content).map_err(|e| {
+        NoteDeckError::InvalidInput(format!("Failed to write {}: {e}", path.display()))
+    })
 }
 
 /// Directories and root files to include in settings backup.

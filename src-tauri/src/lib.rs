@@ -227,6 +227,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             commands::get_settings_dir,
             commands::read_root_settings_file,
             commands::write_root_settings_file,
+            commands::read_notedeck_json,
+            commands::write_notedeck_json,
             commands::export_settings_json,
             commands::import_settings_json,
             perf_config::update_performance_config,

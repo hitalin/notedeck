@@ -7,6 +7,7 @@ import { useKeybindsStore } from './stores/keybinds'
 import { useOfflineModeStore } from './stores/offlineMode'
 import { usePerformanceStore } from './stores/performance'
 import { useServersStore } from './stores/servers'
+import { useSettingsStore } from './stores/settings'
 import { useThemeStore } from './stores/theme'
 import { isTauri } from './utils/settingsFs'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
@@ -68,6 +69,11 @@ window.addEventListener('unhandledrejection', (e) => {
 })
 
 if (isTauri) {
+  // Load notedeck.json (scalar preferences). Fire-and-forget — stores that use
+  // useSetting() will reactively update when load() completes. Same pattern as
+  // useAccountsStore().loadAccounts() below.
+  useSettingsStore().load()
+
   // Apply cached theme before mount to prevent FOUC
   const themeStore = useThemeStore()
   themeStore.init()
