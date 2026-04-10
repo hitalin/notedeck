@@ -12,6 +12,7 @@ import {
 import type { RawStreamEvent } from '@/adapters/types'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
+import { useVerticalResize } from '@/composables/useVerticalResize'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
@@ -232,32 +233,13 @@ function summarize(entry: StreamEventEntry): string {
 // --- Detail pane resize ---
 
 const wrapperRef = ref<HTMLElement | null>(null)
-const detailHeight = ref(350)
-let resizing = false
-
-function onDividerPointerDown(e: PointerEvent) {
-  e.preventDefault()
-  resizing = true
-  document.body.style.userSelect = 'none'
-  document.body.style.cursor = 'row-resize'
-  document.addEventListener('pointermove', onResizeMove)
-  document.addEventListener('pointerup', onResizeUp)
-}
-
-function onResizeMove(e: PointerEvent) {
-  if (!resizing || !wrapperRef.value) return
-  const rect = wrapperRef.value.getBoundingClientRect()
-  const newHeight = rect.bottom - e.clientY
-  detailHeight.value = Math.max(60, Math.min(newHeight, rect.height - 80))
-}
-
-function onResizeUp() {
-  resizing = false
-  document.body.style.userSelect = ''
-  document.body.style.cursor = ''
-  document.removeEventListener('pointermove', onResizeMove)
-  document.removeEventListener('pointerup', onResizeUp)
-}
+const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
+  containerRef: wrapperRef,
+  mode: 'bottom-px',
+  initial: 350,
+  min: 60,
+  topMargin: 80,
+})
 
 function scrollToTop() {
   // No-op for now; list is auto-scrolled
