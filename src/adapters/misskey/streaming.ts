@@ -7,6 +7,7 @@ import type {
   NormalizedNote,
   NormalizedNotification,
   NoteUpdateEvent,
+  RawStreamEvent,
   StreamAdapter,
   StreamConnectionState,
   TimelineType,
@@ -58,6 +59,7 @@ export class MisskeyStream implements StreamAdapter {
     string,
     (event: NoteUpdateEvent) => void
   >()
+  private rawEventHandlers = new Set<(event: RawStreamEvent) => void>()
 
   constructor(accountId: string) {
     this.accountId = accountId
@@ -117,6 +119,15 @@ export class MisskeyStream implements StreamAdapter {
 
       const { kind, payload: p } = event.payload
       if (p.accountId !== this.accountId) return
+
+      // Emit raw envelope to inspector subscribers before dispatch
+      if (this.rawEventHandlers.size > 0) {
+        const raw: RawStreamEvent = {
+          kind,
+          payload: p as unknown as Record<string, unknown>,
+        }
+        for (const h of this.rawEventHandlers) h(raw)
+      }
 
       switch (kind) {
         case 'stream-status':
@@ -444,6 +455,14 @@ export class MisskeyStream implements StreamAdapter {
 
   off(event: string, handler: () => void): void {
     this.eventHandlers.get(event)?.delete(handler)
+  }
+
+  onRawEvent(handler: (event: RawStreamEvent) => void): void {
+    this.rawEventHandlers.add(handler)
+  }
+
+  offRawEvent(handler: (event: RawStreamEvent) => void): void {
+    this.rawEventHandlers.delete(handler)
   }
 
   private emit(event: string): void {

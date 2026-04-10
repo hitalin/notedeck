@@ -95,7 +95,7 @@ const requiresAuth = computed(() => {
 function selectColumnType(type: ColumnType) {
   addColumnType.value = type
   // Account-independent types: skip account selection
-  if (type === 'apiDocs' || type === 'ai') {
+  if (type === 'apiDocs' || type === 'ai' || type === 'streamInspector') {
     addColumnForAccount(null)
     return
   }
@@ -124,6 +124,7 @@ const COLUMN_EXTRA_PROPS: Partial<
   aiscript: { aiscriptCode: '<: "Hello, AiScript!"' },
   apiDocs: { accountId: null, width: 990 },
   ai: { accountId: null },
+  streamInspector: { accountId: null },
   timeline: { tl: 'home', name: null },
 }
 
@@ -575,6 +576,10 @@ function close() {
             <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('ai')">
               <i class="ti ti-sparkles" />
               <span>AIチャット</span>
+            </button>
+            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('streamInspector')">
+              <i class="ti ti-pulse" />
+              <span>ストリーム</span>
             </button>
           </template>
         </div>

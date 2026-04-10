@@ -64,6 +64,9 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
   workspaceExplorer: defineAsyncComponent(
     () => import('./DeckWorkspaceExplorerColumn.vue'),
   ),
+  streamInspector: defineAsyncComponent(
+    () => import('./DeckStreamInspectorColumn.vue'),
+  ),
 }
 
 // Preload chunks for column types the user actually has configured
