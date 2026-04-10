@@ -6,60 +6,87 @@ import {
   launchPlugin,
   parsePluginMeta,
 } from '@/aiscript/plugin-api'
+import EditorTabs from '@/components/common/EditorTabs.vue'
 import AiScriptEditor from '@/components/deck/widgets/AiScriptEditor.vue'
-import { type PluginTemplate, pluginTemplates } from '@/plugins/templates'
+import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
+import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
+import { useEditorTabs } from '@/composables/useEditorTabs'
 import { type PluginMeta, usePluginsStore } from '@/stores/plugins'
-import { useIsCompactLayout } from '@/stores/ui'
+
+const props = defineProps<{
+  initialPluginId?: string
+  initialTab?: string
+}>()
 
 const pluginsStore = usePluginsStore()
-const isCompact = useIsCompactLayout()
 
-// Views: 'list' | 'install' | 'detail'
-const view = ref<'list' | 'install' | 'detail'>('list')
-const installCode = ref('')
-const installError = ref<string | null>(null)
-const selectedPluginId = ref<string | null>(null)
+const { tab, containerRef: editorRef } = useEditorTabs(
+  ['visual', 'code'] as const,
+  (props.initialTab as 'visual' | 'code') ?? 'visual',
+)
 
-const selectedPlugin = computed(() =>
-  selectedPluginId.value
-    ? pluginsStore.getPlugin(selectedPluginId.value)
+// 編集中プラグイン
+const editingPluginId = ref(props.initialPluginId ?? null)
+
+const plugin = computed(() =>
+  editingPluginId.value
+    ? pluginsStore.getPlugin(editingPluginId.value)
     : undefined,
 )
 
-const selectedPluginLogs = computed(() =>
-  selectedPluginId.value ? getPluginLogs(selectedPluginId.value) : [],
+const pluginLogs = computed(() =>
+  editingPluginId.value ? getPluginLogs(editingPluginId.value) : [],
 )
 
-const availableTemplates = computed(() =>
-  pluginTemplates.filter((t) => !pluginsStore.isDuplicate(t.label)),
-)
+// 新規インストールモード (initialPluginId が無い場合)
+const isNewInstall = computed(() => !plugin.value)
 
-function showInstall() {
-  installCode.value = ''
-  installError.value = null
-  view.value = 'install'
-}
-
-const showCode = ref(false)
+// コード編集
 const editingCode = ref('')
 const codeModified = ref(false)
 
-function showDetail(plugin: PluginMeta) {
-  selectedPluginId.value = plugin.installId
-  showCode.value = false
-  editingCode.value = plugin.src
+// 初期コードをセット
+function initCode() {
+  if (plugin.value) {
+    editingCode.value = plugin.value.src
+  } else {
+    editingCode.value = ''
+  }
   codeModified.value = false
-  view.value = 'detail'
+}
+initCode()
+
+watch(editingCode, (val) => {
+  if (plugin.value) {
+    codeModified.value = val !== plugin.value.src
+  }
+})
+
+// タブ切り替え時にコードを同期
+watch(tab, (t) => {
+  if (t === 'code' && plugin.value) {
+    editingCode.value = plugin.value.src
+    codeModified.value = false
+  }
+})
+
+async function saveCode() {
+  if (!plugin.value) return
+  pluginsStore.updateSrc(plugin.value.installId, editingCode.value)
+  codeModified.value = false
+
+  if (plugin.value.active) {
+    abortPlugin(plugin.value.installId)
+    await launchPlugin({ ...plugin.value, src: editingCode.value })
+  }
 }
 
-function backToList() {
-  view.value = 'list'
-  selectedPluginId.value = null
-}
+// 新規インストール
+const installError = ref<string | null>(null)
 
 async function doInstall() {
   installError.value = null
-  const code = installCode.value.trim()
+  const code = editingCode.value.trim()
   if (!code) {
     installError.value = 'コードを入力してください'
     return
@@ -84,7 +111,7 @@ async function doInstall() {
     }
   }
 
-  const plugin: PluginMeta = {
+  const newPlugin: PluginMeta = {
     installId: `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: meta.name,
     version: meta.version,
@@ -97,423 +124,296 @@ async function doInstall() {
     active: true,
   }
 
-  pluginsStore.addPlugin(plugin)
-  await launchPlugin(plugin)
-  backToList()
+  pluginsStore.addPlugin(newPlugin)
+  await launchPlugin(newPlugin)
+
+  // インストール後は既存プラグインエディタモードに切り替え
+  editingPluginId.value = newPlugin.installId
+  tab.value = 'visual'
 }
 
-async function installFromTemplate(tmpl: PluginTemplate) {
-  installCode.value = tmpl.code
-  await doInstall()
-}
-
-async function toggleActive(plugin: PluginMeta) {
-  const newActive = !plugin.active
-  pluginsStore.setActive(plugin.installId, newActive)
+// 有効/無効
+async function toggleActive() {
+  if (!plugin.value) return
+  const newActive = !plugin.value.active
+  pluginsStore.setActive(plugin.value.installId, newActive)
   if (newActive) {
-    await launchPlugin(plugin)
+    await launchPlugin(plugin.value)
   } else {
-    abortPlugin(plugin.installId)
+    abortPlugin(plugin.value.installId)
   }
 }
 
-function uninstall(plugin: PluginMeta) {
-  abortPlugin(plugin.installId)
-  pluginsStore.removePlugin(plugin.installId)
-  backToList()
+// 設定
+function updateConfig(key: string, value: unknown) {
+  if (!plugin.value) return
+  const newData = { ...plugin.value.configData, [key]: value }
+  pluginsStore.updateConfigData(plugin.value.installId, newData)
 }
 
-function updateConfig(plugin: PluginMeta, key: string, value: unknown) {
-  const newData = { ...plugin.configData, [key]: value }
-  pluginsStore.updateConfigData(plugin.installId, newData)
+// Clipboard
+const {
+  copied: copiedMessage,
+  imported: importedMessage,
+  importError: importClipError,
+  copyToClipboard,
+  readFromClipboard,
+  showImported,
+  showImportError,
+} = useClipboardFeedback()
+
+async function exportPlugin() {
+  if (!plugin.value) return
+  await copyToClipboard(plugin.value.src)
 }
 
-watch(editingCode, (val) => {
-  if (selectedPlugin.value) {
-    codeModified.value = val !== selectedPlugin.value.src
+async function importPlugin() {
+  const text = await readFromClipboard()
+  if (!text?.trim()) {
+    showImportError()
+    return
   }
-})
-
-function toggleCode() {
-  if (!showCode.value && selectedPlugin.value) {
-    editingCode.value = selectedPlugin.value.src
-    codeModified.value = false
-  }
-  showCode.value = !showCode.value
+  editingCode.value = text
+  tab.value = 'code'
+  showImported()
 }
 
-async function saveCode() {
-  if (!selectedPlugin.value) return
-  pluginsStore.updateSrc(selectedPlugin.value.installId, editingCode.value)
-  codeModified.value = false
+// Double confirm for uninstall
+const { confirming: confirmingUninstall, trigger: triggerUninstall } =
+  useDoubleConfirm()
 
-  // 有効なプラグインは再起動して変更を反映
-  if (selectedPlugin.value.active) {
-    abortPlugin(selectedPlugin.value.installId)
-    await launchPlugin({ ...selectedPlugin.value, src: editingCode.value })
-  }
+function handleUninstall() {
+  if (!plugin.value) return
+  const p = plugin.value
+  triggerUninstall(() => {
+    abortPlugin(p.installId)
+    pluginsStore.removePlugin(p.installId)
+  })
+}
+
+// Expanded sections (accordion pattern)
+const expandedSections: Record<string, boolean> = { active: true }
+
+function toggleSection(key: string) {
+  expandedSections[key] = !expandedSections[key]
 }
 </script>
 
 <template>
-  <div :class="[$style.pluginsContent, { [$style.mobile]: isCompact }]">
-    <!-- List view -->
-    <template v-if="view === 'list'">
-      <div :class="$style.pluginsHeader">
-        <button :class="$style.pluginsInstallBtn" @click="showInstall">
-          <i class="ti ti-plus" />
-          インストール
-        </button>
-      </div>
+  <div ref="editorRef" :class="$style.pluginsContent">
+    <EditorTabs
+      v-model="tab"
+      :tabs="[
+        { value: 'visual', icon: 'plug', label: 'ビジュアル' },
+        { value: 'code', icon: 'code', label: 'コード' },
+      ]"
+    />
 
-      <div v-if="pluginsStore.plugins.length === 0" :class="$style.pluginsEmpty">
-        <i class="ti ti-plug" />
-        <p>プラグインがインストールされていません</p>
-      </div>
-
-      <div v-else :class="$style.pluginsList">
-        <div
-          v-for="plugin in pluginsStore.plugins"
-          :key="plugin.installId"
-          :class="$style.pluginCard"
-          @click="showDetail(plugin)"
-        >
-          <div :class="$style.pluginCardInfo">
-            <div :class="$style.pluginCardName">{{ plugin.name }}</div>
-            <div :class="$style.pluginCardMeta">
-              v{{ plugin.version }}
-              <template v-if="plugin.author"> · {{ plugin.author }}</template>
-            </div>
-          </div>
-          <button
-            :class="[$style.ndToggleSwitch, { [$style.on]: plugin.active }]"
-            role="switch"
-            :aria-checked="plugin.active"
-            title="有効/無効"
-            @click.stop="toggleActive(plugin)"
-          >
-            <span :class="$style.ndToggleSwitchKnob" />
-          </button>
-        </div>
-      </div>
-    </template>
-
-    <!-- Install view -->
-    <template v-if="view === 'install'">
-      <div :class="$style.pluginsHeader">
-        <button class="_button" :class="$style.pluginsBackBtn" @click="backToList">
-          <i class="ti ti-arrow-left" />
-        </button>
-        <span :class="$style.pluginsHeaderTitle">プラグインをインストール</span>
-      </div>
-
-      <div :class="$style.installBody">
-        <!-- テンプレート -->
-        <template v-if="availableTemplates.length > 0">
-          <div :class="$style.sectionLabel">テンプレート</div>
-          <div :class="$style.templateList">
-            <button
-              v-for="tmpl in availableTemplates"
-              :key="tmpl.id"
-              :class="$style.templateCard"
-              @click="installFromTemplate(tmpl)"
-            >
-              <i :class="['ti', tmpl.icon]" :style="{ fontSize: '1.2em' }" />
-              <div :class="$style.templateCardInfo">
-                <div :class="$style.templateCardName">{{ tmpl.label }}</div>
-                <div :class="$style.templateCardDesc">{{ tmpl.description }}</div>
-              </div>
-              <i class="ti ti-download" :class="$style.templateCardAction" />
-            </button>
-          </div>
-        </template>
-
-        <!-- カスタムコード -->
-        <div :class="$style.sectionLabel">カスタム</div>
-        <p :class="$style.installHint">AiScriptプラグインコードを貼り付けてください</p>
-        <AiScriptEditor
-          v-model="installCode"
-          placeholder="### { name: &quot;my-plugin&quot;, version: &quot;1.0&quot; } ..."
-          max-height="none"
-        />
-        <div v-if="installError" :class="$style.installError">
-          <i class="ti ti-alert-circle" />
-          {{ installError }}
-        </div>
-        <button :class="[$style.pluginsInstallBtn, $style.installSubmit]" @click="doInstall">
-          <i class="ti ti-download" />
-          インストール
-        </button>
-      </div>
-    </template>
-
-    <!-- Detail view -->
-    <template v-if="view === 'detail' && selectedPlugin">
-      <div :class="$style.pluginsHeader">
-        <button class="_button" :class="$style.pluginsBackBtn" @click="backToList">
-          <i class="ti ti-arrow-left" />
-        </button>
-        <span :class="$style.pluginsHeaderTitle">{{ selectedPlugin.name }}</span>
-      </div>
-
-      <div :class="$style.detailBody">
+    <!-- Visual tab -->
+    <div v-show="tab === 'visual'" :class="$style.visualPanel">
+      <!-- 既存プラグイン編集 -->
+      <template v-if="plugin">
         <div :class="$style.detailMeta">
-          <div>バージョン: {{ selectedPlugin.version }}</div>
-          <div v-if="selectedPlugin.author">作者: {{ selectedPlugin.author }}</div>
-          <div v-if="selectedPlugin.description">{{ selectedPlugin.description }}</div>
-        </div>
-
-        <div :class="$style.detailRow">
-          <span :class="$style.detailRowLabel">有効</span>
-          <button
-            :class="[$style.ndToggleSwitch, { [$style.on]: selectedPlugin.active }]"
-            role="switch"
-            :aria-checked="selectedPlugin.active"
-            @click="toggleActive(selectedPlugin)"
-          >
-            <span :class="$style.ndToggleSwitchKnob" />
-          </button>
-        </div>
-
-        <button :class="$style.detailUninstallBtn" @click="uninstall(selectedPlugin)">
-          <i class="ti ti-trash" />
-          アンインストール
-        </button>
-
-        <!-- Code -->
-        <div :class="$style.detailSectionTitle">
-          <button class="_button" :class="$style.codeSectionToggle" @click="toggleCode">
-            <i :class="showCode ? 'ti ti-chevron-down' : 'ti ti-chevron-right'" />
-            ソースコード
-          </button>
-        </div>
-        <template v-if="showCode">
-          <AiScriptEditor
-            v-model="editingCode"
-            max-height="none"
-          />
-          <div :class="$style.codeActions">
-            <button
-              v-if="codeModified"
-              :class="$style.pluginsInstallBtn"
-              @click="saveCode"
-            >
-              <i class="ti ti-device-floppy" />
-              保存して再起動
-            </button>
+          <div :class="$style.detailName">{{ plugin.name }}</div>
+          <div>
+            v{{ plugin.version }}
+            <template v-if="plugin.author"> · {{ plugin.author }}</template>
           </div>
-        </template>
+          <div v-if="plugin.description">{{ plugin.description }}</div>
+        </div>
+
+        <!-- 有効/無効 -->
+        <div :class="$style.section">
+          <button class="_button" :class="$style.sectionHeader" @click="toggleSection('active')">
+            <i class="ti ti-power" />
+            有効
+            <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.active !== false }]" />
+          </button>
+          <template v-if="expandedSections.active !== false">
+            <div :class="$style.detailRow">
+              <span :class="$style.detailRowLabel">プラグインを有効にする</span>
+              <button
+                :class="[$style.ndToggleSwitch, { [$style.on]: plugin.active }]"
+                role="switch"
+                :aria-checked="plugin.active"
+                @click="toggleActive"
+              >
+                <span :class="$style.ndToggleSwitchKnob" />
+              </button>
+            </div>
+          </template>
+        </div>
 
         <!-- Config -->
-        <template v-if="selectedPlugin.config && Object.keys(selectedPlugin.config).length > 0">
-          <div :class="$style.detailSectionTitle">設定</div>
-          <div :class="$style.detailConfig">
-            <div
-              v-for="(def, key) in selectedPlugin.config"
-              :key="key"
-              :class="$style.configItem"
-            >
-              <label :class="$style.configLabel">{{ def.label }}</label>
-              <p v-if="def.description" :class="$style.configDesc">{{ def.description }}</p>
-              <template v-if="def.type === 'boolean'">
-                <button
-                  :class="[$style.ndToggleSwitch, { [$style.on]: !!selectedPlugin.configData[key] }]"
-                  role="switch"
-                  :aria-checked="!!selectedPlugin.configData[key]"
-                  @click="updateConfig(selectedPlugin, key, !selectedPlugin.configData[key])"
+        <template v-if="plugin.config && Object.keys(plugin.config).length > 0">
+          <div :class="$style.section">
+            <button class="_button" :class="$style.sectionHeader" @click="toggleSection('config')">
+              <i class="ti ti-settings" />
+              設定
+              <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.config }]" />
+            </button>
+            <template v-if="expandedSections.config">
+              <div :class="$style.detailConfig">
+                <div
+                  v-for="(def, key) in plugin.config"
+                  :key="key"
+                  :class="$style.configItem"
                 >
-                  <span :class="$style.ndToggleSwitchKnob" />
-                </button>
-              </template>
-              <template v-else-if="def.type === 'string'">
-                <input
-                  :class="$style.configInput"
-                  type="text"
-                  :value="selectedPlugin.configData[key] as string"
-                  @change="updateConfig(selectedPlugin, key, ($event.target as HTMLInputElement).value)"
-                />
-              </template>
-              <template v-else-if="def.type === 'number'">
-                <input
-                  :class="$style.configInput"
-                  type="number"
-                  :value="selectedPlugin.configData[key] as number"
-                  @change="updateConfig(selectedPlugin, key, Number(($event.target as HTMLInputElement).value))"
-                />
-              </template>
-            </div>
+                  <label :class="$style.configLabel">{{ def.label }}</label>
+                  <p v-if="def.description" :class="$style.configDesc">{{ def.description }}</p>
+                  <template v-if="def.type === 'boolean'">
+                    <button
+                      :class="[$style.ndToggleSwitch, { [$style.on]: !!plugin.configData[key] }]"
+                      role="switch"
+                      :aria-checked="!!plugin.configData[key]"
+                      @click="updateConfig(key, !plugin.configData[key])"
+                    >
+                      <span :class="$style.ndToggleSwitchKnob" />
+                    </button>
+                  </template>
+                  <template v-else-if="def.type === 'string'">
+                    <input
+                      :class="$style.configInput"
+                      type="text"
+                      :value="plugin.configData[key] as string"
+                      @change="updateConfig(key, ($event.target as HTMLInputElement).value)"
+                    />
+                  </template>
+                  <template v-else-if="def.type === 'number'">
+                    <input
+                      :class="$style.configInput"
+                      type="number"
+                      :value="plugin.configData[key] as number"
+                      @change="updateConfig(key, Number(($event.target as HTMLInputElement).value))"
+                    />
+                  </template>
+                </div>
+              </div>
+            </template>
           </div>
         </template>
 
         <!-- Logs -->
-        <template v-if="selectedPluginLogs.length > 0">
-          <div :class="$style.detailSectionTitle">ログ</div>
-          <div :class="$style.detailLogs">
-            <div
-              v-for="(log, i) in selectedPluginLogs"
-              :key="i"
-              :class="[$style.logLine, { [$style.error]: log.isError }]"
-            >
-              {{ log.text }}
-            </div>
+        <template v-if="pluginLogs.length > 0">
+          <div :class="$style.section">
+            <button class="_button" :class="$style.sectionHeader" @click="toggleSection('logs')">
+              <i class="ti ti-list" />
+              ログ
+              <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.logs }]" />
+            </button>
+            <template v-if="expandedSections.logs">
+              <div :class="$style.detailLogs">
+                <div
+                  v-for="(log, i) in pluginLogs"
+                  :key="i"
+                  :class="[$style.logLine, { [$style.logError]: log.isError }]"
+                >
+                  {{ log.text }}
+                </div>
+              </div>
+            </template>
           </div>
         </template>
+      </template>
+
+      <!-- 新規インストール -->
+      <template v-else>
+        <div :class="$style.installBody">
+          <p :class="$style.installHint">AiScriptプラグインコードを貼り付けてインストール</p>
+          <div v-if="installError" :class="$style.errorMessage">
+            <i class="ti ti-alert-circle" />
+            {{ installError }}
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Code tab -->
+    <div v-show="tab === 'code'" :class="$style.codePanel">
+      <AiScriptEditor
+        v-model="editingCode"
+        :placeholder="isNewInstall ? '### { name: &quot;my-plugin&quot;, version: &quot;1.0&quot; } ...' : ''"
+        max-height="none"
+        :class="$style.codeEditorWrap"
+      />
+      <div v-if="installError && isNewInstall" :class="$style.errorMessage">
+        <i class="ti ti-alert-circle" />
+        {{ installError }}
       </div>
-    </template>
+    </div>
+
+    <!-- Actions -->
+    <div :class="$style.actions">
+      <template v-if="plugin">
+        <div :class="$style.actionGroup">
+          <button
+            class="_button"
+            :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: importedMessage || importClipError }]"
+            @click="importPlugin"
+          >
+            <i class="ti" :class="importClipError ? 'ti-alert-circle' : 'ti-clipboard-text'" />
+            {{ importClipError ? '無効' : importedMessage ? '読込済み' : 'インポート' }}
+          </button>
+          <button
+            class="_button"
+            :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: copiedMessage }]"
+            @click="exportPlugin"
+          >
+            <i class="ti ti-clipboard-copy" />
+            {{ copiedMessage ? 'コピー済み' : 'エクスポート' }}
+          </button>
+        </div>
+        <button
+          v-if="codeModified"
+          class="_button"
+          :class="[$style.actionBtn, $style.primary]"
+          @click="saveCode"
+        >
+          <i class="ti ti-device-floppy" />
+          保存して再起動
+        </button>
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.danger, { [$style.confirming]: confirmingUninstall }]"
+          @click="handleUninstall"
+        >
+          <i class="ti ti-trash" />
+          {{ confirmingUninstall ? '本当にアンインストール？' : 'アンインストール' }}
+        </button>
+      </template>
+      <template v-else>
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.primary, $style.full]"
+          @click="doInstall"
+        >
+          <i class="ti ti-download" />
+          インストール
+        </button>
+      </template>
+    </div>
   </div>
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
+
 .pluginsContent {
-  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.visualPanel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-}
-
-.pluginsHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.pluginsHeaderTitle {
-  font-weight: bold;
-  font-size: 0.95em;
-  color: var(--nd-fgHighlighted);
-}
-
-.pluginsBackBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--nd-radius-md);
-  color: var(--nd-fg);
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.pluginsInstallBtn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border: none;
-  border-radius: var(--nd-radius-md);
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent, #fff);
-  font-size: 0.85em;
-  font-weight: bold;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
-  margin-left: auto;
-
-  &:hover {
-    opacity: 0.85;
-  }
-}
-
-.pluginsEmpty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 40px 0;
-  color: var(--nd-fg);
-  opacity: 0.5;
-
-  .ti {
-    font-size: 2em;
-  }
-}
-
-.pluginsList {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.pluginCard {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--nd-radius-md);
-  cursor: pointer;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.pluginCardInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-.pluginCardName {
-  font-weight: bold;
-  font-size: 0.9em;
-  color: var(--nd-fgHighlighted);
-}
-
-.pluginCardMeta {
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  opacity: 0.6;
-}
-
-.ndToggleSwitch {
-  /* placeholder for toggle switch styling - inherits from global */
-}
-
-.ndToggleSwitchKnob {
-  /* placeholder for toggle switch knob styling - inherits from global */
-}
-
-.installBody {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-}
-
-.installHint {
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  opacity: 0.7;
-  margin: 0;
-}
-
-.installError {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: var(--nd-radius-md);
-  background: color-mix(in srgb, var(--nd-error) 10%, transparent);
-  color: var(--nd-error);
-  font-size: 0.85em;
-}
-
-.installSubmit {
-  align-self: flex-end;
-}
-
-.detailBody {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
 }
 
 .detailMeta {
@@ -523,48 +423,61 @@ async function saveCode() {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding: 12px 10px 4px;
+}
+
+.detailName {
+  font-weight: bold;
+  font-size: 1.1em;
+  color: var(--nd-fgHighlighted);
+  opacity: 1;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--nd-divider);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  font-size: 0.8em;
+  font-weight: bold;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.chevron {
+  margin-left: auto;
+  font-size: 0.9em;
+  transition: transform var(--nd-duration-base);
+  transform: rotate(-90deg);
+}
+
+.chevronOpen {
+  transform: rotate(0deg);
 }
 
 .detailRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: 4px 0;
 }
 
 .detailRowLabel {
   font-size: 0.85em;
-  font-weight: bold;
   color: var(--nd-fg);
-}
-
-.detailUninstallBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 8px;
-  border: none;
-  border-radius: var(--nd-radius-md);
-  background: color-mix(in srgb, var(--nd-error) 10%, transparent);
-  color: var(--nd-error);
-  font-size: 0.85em;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: rgba(255, 42, 42, 0.2);
-  }
-}
-
-.detailSectionTitle {
-  font-weight: bold;
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  opacity: 0.7;
-  margin-top: 4px;
 }
 
 .detailConfig {
@@ -622,127 +535,76 @@ async function saveCode() {
   white-space: pre-wrap;
   word-break: break-all;
 
-  &.error {
-    color: var(--nd-error);
+  &.logError {
+    color: var(--nd-love);
   }
 }
 
-.mobile {
-  padding: 8px;
-
-  .pluginsBackBtn {
-    width: 44px;
-    height: 44px;
-  }
-
-  .pluginsInstallBtn {
-    padding: 10px 16px;
-    min-height: 44px;
-  }
-
-  .pluginCard {
-    padding: 12px;
-    min-height: 44px;
-  }
-
-  .detailUninstallBtn {
-    padding: 12px;
-    min-height: 44px;
-  }
-
-  .configInput {
-    padding: 10px 12px;
-    font-size: 1em;
-    min-height: 44px;
-  }
-
-  .templateCard {
-    padding: 12px;
-    min-height: 44px;
-  }
-}
-
-.codeSectionToggle {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: bold;
-  font-size: 1em;
-  color: inherit;
-  opacity: inherit;
-
-  &:hover {
-    opacity: 1;
-  }
-}
-
-.codeActions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.sectionLabel {
-  padding: 4px 0 2px;
-  font-size: 0.75em;
-  font-weight: 600;
-  opacity: 0.45;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.templateList {
+.installBody {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+  padding: 12px 10px;
+  flex: 1;
 }
 
-.templateCard {
+.installHint {
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  margin: 0;
+}
+
+.errorMessage {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-md);
-  background: var(--nd-panel);
-  cursor: pointer;
-  text-align: left;
-  color: var(--nd-fg);
-  transition: background var(--nd-duration-base), border-color var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-    border-color: var(--nd-accent);
-  }
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--nd-radius-sm);
+  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
+  color: var(--nd-love);
+  font-size: 0.85em;
 }
 
-.templateCardInfo {
+.codePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
   flex: 1;
-  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 
-.templateCardName {
-  font-weight: bold;
-  font-size: 0.9em;
-  color: var(--nd-fgHighlighted);
+.codeEditorWrap {
+  flex: 1;
+  min-height: 200px;
 }
 
-.templateCardDesc {
-  font-size: 0.8em;
-  opacity: 0.6;
-  margin-top: 2px;
+.actions { @include action-bar; }
+.actionGroup { @include action-group; }
+
+.actionBtn {
+  &.secondary { @include btn-action; }
+  &.danger { @include btn-danger-ghost; }
+  &.primary { @include btn-primary; }
+  &.full { width: 100%; }
 }
 
-.templateCardAction {
-  opacity: 0.3;
-  transition: opacity var(--nd-duration-base);
+.ndToggleSwitch {
+  /* placeholder — inherits from global */
+}
 
-  .templateCard:hover & {
-    opacity: 0.8;
-    color: var(--nd-accent);
-  }
+.ndToggleSwitchKnob {
+  /* placeholder — inherits from global */
 }
 
 /* Empty placeholder classes for dynamic binding */
 .on {}
-.error {}
+.secondary {}
+.feedback {}
+.danger {}
+.confirming {}
+.primary {}
+.full {}
 </style>

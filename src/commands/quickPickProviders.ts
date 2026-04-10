@@ -14,6 +14,7 @@ import { useConfirm } from '@/stores/confirm'
 import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useDeckProfileStore } from '@/stores/deckProfile'
+import { usePluginsStore } from '@/stores/plugins'
 import { usePrompt } from '@/stores/prompt'
 import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
@@ -101,7 +102,7 @@ export function getSettingsItems(): QuickPickItem[] {
       label: 'プラグイン',
       icon: 'plug',
       group: '設定',
-      action: () => useWindowsStore().open('plugins'),
+      children: () => getPluginEditorItems(),
     },
     {
       id: 'ai-settings',
@@ -305,6 +306,86 @@ function getThemeActions(themeId: string): QuickPickItem[] {
           type: 'danger',
         })
         if (ok) themeStore.removeTheme(themeId)
+      },
+    },
+  ]
+}
+
+// ============================================================
+// Plugins
+// ============================================================
+
+function getPluginEditorItems(): QuickPickItem[] {
+  const pluginsStore = usePluginsStore()
+  const items: QuickPickItem[] = [
+    {
+      id: 'plugin-new',
+      label: '新規プラグインをインストール',
+      icon: 'plus',
+      action: () => useWindowsStore().open('plugins'),
+    },
+  ]
+
+  for (const plugin of pluginsStore.plugins) {
+    items.push({
+      id: `plugin-manage-${plugin.installId}`,
+      label: plugin.name,
+      icon: 'plug',
+      description: plugin.active ? '有効' : '無効',
+      children: () => getPluginActions(plugin.installId),
+    })
+  }
+
+  return items
+}
+
+function getPluginActions(installId: string): QuickPickItem[] {
+  const pluginsStore = usePluginsStore()
+  const plugin = pluginsStore.getPlugin(installId)
+  if (!plugin) return []
+
+  return [
+    {
+      id: `plugin-toggle-${installId}`,
+      label: plugin.active ? '無効にする' : '有効にする',
+      icon: plugin.active ? 'player-pause' : 'player-play',
+      action: async () => {
+        const { abortPlugin, launchPlugin } = await import(
+          '@/aiscript/plugin-api'
+        )
+        const newActive = !plugin.active
+        pluginsStore.setActive(installId, newActive)
+        if (newActive) {
+          await launchPlugin(plugin)
+        } else {
+          abortPlugin(installId)
+        }
+      },
+    },
+    {
+      id: `plugin-edit-${installId}`,
+      label: '編集',
+      icon: 'pencil',
+      action: () =>
+        useWindowsStore().open('plugins', { initialPluginId: installId }),
+    },
+    {
+      id: `plugin-delete-${installId}`,
+      label: '削除',
+      icon: 'trash',
+      action: async () => {
+        const { confirm } = useConfirm()
+        const ok = await confirm({
+          title: 'プラグインを削除',
+          message: `「${plugin.name}」を削除しますか？`,
+          okLabel: '削除',
+          type: 'danger',
+        })
+        if (ok) {
+          const { abortPlugin } = await import('@/aiscript/plugin-api')
+          abortPlugin(installId)
+          pluginsStore.removePlugin(installId)
+        }
       },
     },
   ]

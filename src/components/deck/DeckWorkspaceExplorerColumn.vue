@@ -74,8 +74,11 @@ function addTheme() {
 }
 
 // plugins/
-function openPluginFile() {
-  windowsStore.open('plugins')
+function openPluginFile(installId: string) {
+  windowsStore.open('plugins', {
+    initialPluginId: installId,
+    initialTab: 'code',
+  })
 }
 
 function addPlugin() {
@@ -191,7 +194,7 @@ const folders = computed<TreeFolder[]>(() => [
         id: p.installId,
         name,
         ...fileTypeFor(name),
-        onClick: () => openPluginFile(),
+        onClick: () => openPluginFile(p.installId),
       }
     }),
   },

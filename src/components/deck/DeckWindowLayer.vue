@@ -154,7 +154,11 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         @close="closeWindow(win.id)"
         @success="closeWindow(win.id)"
       />
-      <PluginsContent v-if="win.type === 'plugins'" />
+      <PluginsContent
+        v-if="win.type === 'plugins'"
+        :initial-plugin-id="(win.props.initialPluginId as string | undefined)"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
       <KeybindsContent
         v-if="win.type === 'keybinds'"
         :initial-tab="(win.props.initialTab as string | undefined)"
