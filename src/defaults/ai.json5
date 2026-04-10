@@ -1,3 +1,17 @@
 // NoteDeck ai.json5 デフォルト
-// AI 設定（APIキーは含まない）
-{}
+// AI 設定（APIキーは含まない — localStorage のみ）
+{
+  provider: 'ollama',
+  ollama: {
+    endpoint: 'http://localhost:11434',
+    model: '',
+  },
+  openai: {
+    endpoint: 'https://api.openai.com/v1',
+    model: 'gpt-4o',
+  },
+  custom: {
+    endpoint: '',
+    model: '',
+  },
+}

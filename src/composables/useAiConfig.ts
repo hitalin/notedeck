@@ -1,6 +1,7 @@
 import JSON5 from 'json5'
 import { ref } from 'vue'
 import defaultAiPrompt from '@/defaults/AI.md?raw'
+import defaultAiJson5 from '@/defaults/ai.json5?raw'
 import {
   isTauri,
   readAiPrompt,
@@ -53,28 +54,22 @@ export const PROVIDER_KEYS: readonly ProviderKey[] = [
 
 const STORAGE_KEY = STORAGE_KEYS.aiSettings
 
-// --- Defaults ---
+// --- Defaults (loaded from src/defaults/ai.json5) ---
+
+const defaultFileConfig: AiFileConfig = JSON5.parse(defaultAiJson5)
 
 function defaultProviderSettings(): Record<ProviderKey, ProviderSettings> {
   return {
-    ollama: {
-      endpoint: 'http://localhost:11434',
-      apiKey: '',
-      model: '',
-    },
-    openai: {
-      endpoint: 'https://api.openai.com/v1',
-      apiKey: '',
-      model: 'gpt-4o',
-    },
-    custom: { endpoint: '', apiKey: '', model: '' },
+    ollama: { ...defaultFileConfig.ollama, apiKey: '' },
+    openai: { ...defaultFileConfig.openai, apiKey: '' },
+    custom: { ...defaultFileConfig.custom, apiKey: '' },
   }
 }
 
 export function defaultConfig(): AiConfig {
   const providers = defaultProviderSettings()
   return {
-    provider: 'ollama',
+    provider: defaultFileConfig.provider,
     ...providers,
     systemPrompt: defaultAiPrompt,
   }

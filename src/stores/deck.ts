@@ -3,6 +3,8 @@ import { defineStore } from 'pinia'
 import { computed, nextTick, reactive, ref } from 'vue'
 import type { TimelineFilter, TimelineType } from '@/adapters/types'
 import * as snapshotStore from '@/composables/useSnapshotStore'
+import { PERSIST_DEBOUNCE_MS } from '@/constants/persist'
+import defaultNavbarJson5 from '@/defaults/navbar.json5?raw'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useDeckWallpaperStore } from '@/stores/deckWallpaper'
@@ -118,17 +120,7 @@ export type NavItem =
       columnProps?: Partial<DeckColumn>
     }
 
-export const DEFAULT_NAV_ITEMS: NavItem[] = [
-  { type: 'workspaceExplorer', accountId: null },
-  { type: 'notifications', accountId: null },
-  { type: 'followRequests', accountId: null },
-  { type: 'mentions', accountId: null },
-  { type: 'specified', accountId: null },
-  { type: 'chat', accountId: null },
-  { type: 'search', accountId: null },
-  { type: 'lookup', accountId: null },
-  { type: 'streamInspector', accountId: null },
-]
+export const DEFAULT_NAV_ITEMS: NavItem[] = JSON5.parse(defaultNavbarJson5)
 
 export function isNavDivider(item: NavItem): item is { type: 'divider' } {
   return item.type === 'divider'
@@ -154,7 +146,7 @@ export const useDeckStore = defineStore('deck', () => {
     navPersistTimer = setTimeout(() => {
       navPersistTimer = null
       flushNavPersist()
-    }, 300)
+    }, PERSIST_DEBOUNCE_MS)
   }
 
   function flushNavPersist() {
