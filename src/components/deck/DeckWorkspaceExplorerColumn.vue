@@ -224,9 +224,9 @@ const folders = computed<TreeFolder[]>(() => [
     onAdd: addAccount,
     items: [
       {
-        id: 'account-order',
-        name: 'account-order.json5',
-        ...fileTypeFor('account-order.json5'),
+        id: 'accounts',
+        name: 'accounts.json5',
+        ...fileTypeFor('accounts.json5'),
         onClick: () => openAccountFile(),
       },
     ],
@@ -247,15 +247,15 @@ const singletonFiles: TreeFile[] = [
     onClick: openKeybinds,
   },
   {
-    id: 'user.css',
-    name: 'user.css',
-    ...fileTypeFor('user.css'),
+    id: 'custom.css',
+    name: 'custom.css',
+    ...fileTypeFor('custom.css'),
     onClick: openUserCss,
   },
   {
-    id: 'nav',
-    name: 'nav.json',
-    ...fileTypeFor('nav.json'),
+    id: 'navbar',
+    name: 'navbar.json',
+    ...fileTypeFor('navbar.json'),
     onClick: openNavJson,
   },
 ]

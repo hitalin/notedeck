@@ -166,7 +166,7 @@ const ALLOWED_ROOT_FILES: &[&str] = &[
     "keybinds.json5",
     "ai.json",
     "performance.json",
-    "account-order.json5",
+    "accounts.json5",
     "settings.json",
 ];
 
