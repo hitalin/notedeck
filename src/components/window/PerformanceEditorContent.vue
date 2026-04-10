@@ -15,11 +15,15 @@ import {
 
 const jsonLang = json()
 
+const props = defineProps<{
+  initialTab?: string
+}>()
+
 const perfStore = usePerformanceStore()
 
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['visual', 'code'] as const,
-  'visual',
+  (props.initialTab as 'visual' | 'code') ?? 'visual',
 )
 
 // --- Visual tab state ---

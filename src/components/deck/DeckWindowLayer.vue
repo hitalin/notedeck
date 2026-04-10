@@ -183,7 +183,10 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         v-if="win.type === 'navEditor'"
         :initial-tab="(win.props.initialTab as string | undefined)"
       />
-      <PerformanceEditorContent v-if="win.type === 'performanceEditor'" />
+      <PerformanceEditorContent
+        v-if="win.type === 'performanceEditor'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
       <AccountManagerContent
         v-if="win.type === 'account-manager'"
         :initial-tab="(win.props.initialTab as string | undefined)"

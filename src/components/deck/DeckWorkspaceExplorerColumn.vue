@@ -116,7 +116,7 @@ function openNavJson() {
 }
 
 function openPerformance() {
-  windowsStore.open('performanceEditor')
+  windowsStore.open('performanceEditor', { initialTab: 'code' })
 }
 
 function openAiPrompt() {
