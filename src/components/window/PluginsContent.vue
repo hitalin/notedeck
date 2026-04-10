@@ -224,7 +224,7 @@ function toggleSection(key: string) {
 
         <!-- 有効/無効 -->
         <div :class="$style.section">
-          <button class="_button" :class="$style.sectionHeader" @click="toggleSection('active')">
+          <button class="_button" :class="$style.sectionLabel" @click="toggleSection('active')">
             <i class="ti ti-power" />
             有効
             <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.active !== false }]" />
@@ -233,12 +233,13 @@ function toggleSection(key: string) {
             <div :class="$style.detailRow">
               <span :class="$style.detailRowLabel">プラグインを有効にする</span>
               <button
-                :class="[$style.ndToggleSwitch, { [$style.on]: plugin.active }]"
+                class="nd-toggle-switch"
+                :class="{ on: plugin.active }"
                 role="switch"
                 :aria-checked="plugin.active"
                 @click="toggleActive"
               >
-                <span :class="$style.ndToggleSwitchKnob" />
+                <span class="nd-toggle-switch-knob" />
               </button>
             </div>
           </template>
@@ -247,7 +248,7 @@ function toggleSection(key: string) {
         <!-- Config -->
         <template v-if="plugin.config && Object.keys(plugin.config).length > 0">
           <div :class="$style.section">
-            <button class="_button" :class="$style.sectionHeader" @click="toggleSection('config')">
+            <button class="_button" :class="$style.sectionLabel" @click="toggleSection('config')">
               <i class="ti ti-settings" />
               設定
               <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.config }]" />
@@ -263,12 +264,13 @@ function toggleSection(key: string) {
                   <p v-if="def.description" :class="$style.configDesc">{{ def.description }}</p>
                   <template v-if="def.type === 'boolean'">
                     <button
-                      :class="[$style.ndToggleSwitch, { [$style.on]: !!plugin.configData[key] }]"
+                      class="nd-toggle-switch"
+                      :class="{ on: !!plugin.configData[key] }"
                       role="switch"
                       :aria-checked="!!plugin.configData[key]"
                       @click="updateConfig(key, !plugin.configData[key])"
                     >
-                      <span :class="$style.ndToggleSwitchKnob" />
+                      <span class="nd-toggle-switch-knob" />
                     </button>
                   </template>
                   <template v-else-if="def.type === 'string'">
@@ -296,7 +298,7 @@ function toggleSection(key: string) {
         <!-- Logs -->
         <template v-if="pluginLogs.length > 0">
           <div :class="$style.section">
-            <button class="_button" :class="$style.sectionHeader" @click="toggleSection('logs')">
+            <button class="_button" :class="$style.sectionLabel" @click="toggleSection('logs')">
               <i class="ti ti-list" />
               ログ
               <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.logs }]" />
@@ -422,7 +424,8 @@ function toggleSection(key: string) {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 12px 10px 4px;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--nd-divider);
 }
 
 .detailName {
@@ -440,7 +443,7 @@ function toggleSection(key: string) {
   border-bottom: 1px solid var(--nd-divider);
 }
 
-.sectionHeader {
+.sectionLabel {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -590,16 +593,7 @@ function toggleSection(key: string) {
   &.full { width: 100%; }
 }
 
-.ndToggleSwitch {
-  /* placeholder — inherits from global */
-}
-
-.ndToggleSwitchKnob {
-  /* placeholder — inherits from global */
-}
-
 /* Empty placeholder classes for dynamic binding */
-.on {}
 .secondary {}
 .feedback {}
 .danger {}
