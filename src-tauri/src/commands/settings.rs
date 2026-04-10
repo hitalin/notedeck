@@ -164,7 +164,9 @@ pub fn rename_settings_file(
 const ALLOWED_ROOT_FILES: &[&str] = &[
     "custom.css",
     "keybinds.json5",
-    "ai.json",
+    "ai.json5",
+    "ai.json", // legacy fallback (read-only migration)
+    "AI.md",
     "performance.json5",
     "performance.json", // legacy fallback (read-only migration)
     "accounts.json5",

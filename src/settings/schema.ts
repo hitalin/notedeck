@@ -1,5 +1,3 @@
-import type { AiFileConfig } from '@/composables/useAiConfig'
-
 /**
  * settings.json の型定義。VSCode `settings.json` と同じく、トップレベルは
  * フラット dot-notation キー空間 (`theme.manual`, `modes.realtime` 等)。
@@ -9,6 +7,7 @@ import type { AiFileConfig } from '@/composables/useAiConfig'
  *
  * performance 設定は `performance.json5` に分離済み（独立ファイル）。
  * keybinds 設定は `keybinds.json5` に分離済み（独立ファイル）。
+ * AI 設定は `ai.json5` + `AI.md` に分離済み（独立ファイル）。
  */
 export interface NotedeckSettings {
   /** スキーマバージョン。破壊的変更時に bump してマイグレーションを行う。 */
@@ -27,10 +26,8 @@ export interface NotedeckSettings {
   'modes.realtime'?: boolean
   'modes.offline'?: boolean
 
-  // --- AI (Next 3 移行済み、dual-write、API キーは除外) ---
-  ai?: AiFileConfig
-
   // keybinds は keybinds.json5 に分離済み（独立ファイル）
+  // AI は ai.json5 + AI.md に分離済み（独立ファイル）
 }
 
 /** 現在のスキーマバージョン。将来の破壊的変更時に bump する。 */
@@ -70,9 +67,17 @@ export function parseSettings(raw: unknown): NotedeckSettings {
     return { ...DEFAULT_SETTINGS }
   }
   const r = raw as RawSettings
+  // 分離済みキーを除去（ai.json5, keybinds.json5, performance.json5 に移行済み）
+  const cleaned: RawSettings = {}
+  for (const [key, value] of Object.entries(r)) {
+    if (key === 'ai' || key === 'keybinds' || key.startsWith('performance.')) {
+      continue
+    }
+    cleaned[key] = value
+  }
   return {
     ...DEFAULT_SETTINGS,
-    ...r,
+    ...cleaned,
     _schema: typeof r._schema === 'number' ? r._schema : CURRENT_SCHEMA_VERSION,
   }
 }

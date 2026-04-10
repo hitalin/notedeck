@@ -171,7 +171,22 @@ export async function writeKeybinds(content: string): Promise<void> {
 // --- AI settings helpers ---
 
 export async function readAiSettings(): Promise<string> {
+  const content = await readRootSettingsFile('ai.json5')
+  if (content) return content
+  // Fallback: 旧ファイル名
   return readRootSettingsFile('ai.json')
+}
+
+export async function writeAiSettings(content: string): Promise<void> {
+  return writeRootSettingsFile('ai.json5', content)
+}
+
+export async function readAiPrompt(): Promise<string> {
+  return readRootSettingsFile('AI.md')
+}
+
+export async function writeAiPrompt(content: string): Promise<void> {
+  return writeRootSettingsFile('AI.md', content)
 }
 
 // --- Navbar helpers ---

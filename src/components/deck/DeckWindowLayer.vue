@@ -177,7 +177,10 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         :profile-id="(win.props.profileId as string)"
         :initial-tab="(win.props.initialTab as string | undefined)"
       />
-      <AiSettingsContent v-if="win.type === 'aiSettings'" />
+      <AiSettingsContent
+        v-if="win.type === 'aiSettings'"
+        :initial-tab="(win.props.initialTab as string | undefined)"
+      />
       <AboutContent v-if="win.type === 'about'" />
       <NavEditorContent
         v-if="win.type === 'navEditor'"

@@ -236,8 +236,8 @@ const singletonFiles: TreeFile[] = [
   },
   {
     id: 'keybinds',
-    name: 'keybinds.json5',
-    ...fileTypeFor('keybinds.json5'),
+    name: 'keybindings.json5',
+    ...fileTypeFor('keybindings.json5'),
     onClick: openKeybinds,
   },
   {

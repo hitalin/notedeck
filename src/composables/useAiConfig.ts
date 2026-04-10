@@ -1,7 +1,13 @@
+import JSON5 from 'json5'
 import { ref } from 'vue'
 import defaultAiPrompt from '@/defaults/AI.md?raw'
-import { useSettingsStore } from '@/stores/settings'
-import { isTauri, readAiSettings } from '@/utils/settingsFs'
+import {
+  isTauri,
+  readAiPrompt,
+  readAiSettings,
+  writeAiPrompt,
+  writeAiSettings,
+} from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 // --- Type definitions ---
@@ -23,12 +29,17 @@ export interface AiConfig {
 }
 
 /**
- * File / settings-backed shape of AI config.
+ * File-backed shape of AI config (written to ai.json5).
  *
  * **API keys are intentionally excluded** — they live in localStorage only
- * for security (not in `ai.json`, not in `settings.json`, not in backups).
+ * for security (not in `ai.json5`, not in `settings.json5`, not in backups).
+ *
+ * **systemPrompt is excluded** — it lives in `AI.md` as a separate file.
  */
-export type AiFileConfig = Omit<AiConfig, 'ollama' | 'openai' | 'custom'> & {
+export type AiFileConfig = Omit<
+  AiConfig,
+  'ollama' | 'openai' | 'custom' | 'systemPrompt'
+> & {
   ollama: Omit<ProviderSettings, 'apiKey'>
   openai: Omit<ProviderSettings, 'apiKey'>
   custom: Omit<ProviderSettings, 'apiKey'>
@@ -80,11 +91,10 @@ function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
   return result
 }
 
-/** Strip apiKey from each provider for file backup. */
+/** Strip apiKey and systemPrompt from config for ai.json5 backup. */
 function toFileConfig(c: AiConfig): AiFileConfig {
   const result = {
     provider: c.provider,
-    systemPrompt: c.systemPrompt,
   } as AiFileConfig
   for (const key of PROVIDER_KEYS) {
     const { apiKey: _, ...safe } = c[key]
@@ -107,50 +117,99 @@ function loadApiKeys(): Record<ProviderKey, string> {
 // --- Composable ---
 
 export function useAiConfig() {
-  const settingsStore = useSettingsStore()
-
-  // Build initial config: settingsStore (non-API parts) + localStorage (API keys)
-  function buildConfig(): AiConfig {
-    const stored = settingsStore.get('ai')
-    const base = stored
-      ? mergeConfig(defaultConfig(), stored as Partial<AiConfig>)
-      : defaultConfig()
-    const keys = loadApiKeys()
-    for (const k of PROVIDER_KEYS) {
-      base[k].apiKey = keys[k]
-    }
-    return base
-  }
-
-  const config = ref<AiConfig>(buildConfig())
+  const config = ref<AiConfig>(defaultConfig())
   const initialized = ref(false)
 
+  // Apply API keys from localStorage into a config
+  function applyApiKeys(c: AiConfig): AiConfig {
+    const keys = loadApiKeys()
+    for (const k of PROVIDER_KEYS) {
+      c[k].apiKey = keys[k]
+    }
+    return c
+  }
+
   function save(): void {
-    // Non-API parts → settingsStore (single source of truth → settings.json)
-    settingsStore.set('ai', toFileConfig(config.value))
+    // ai.json5 (non-API, non-prompt parts)
+    const fileConfig = toFileConfig(config.value)
+    writeAiSettings(`${JSON5.stringify(fileConfig, null, 2)}\n`).catch((e) =>
+      console.warn('[ai-settings] failed to write ai.json5:', e),
+    )
+
+    // AI.md (system prompt — only write if different from default)
+    if (config.value.systemPrompt !== defaultAiPrompt) {
+      writeAiPrompt(config.value.systemPrompt).catch((e) =>
+        console.warn('[ai-settings] failed to write AI.md:', e),
+      )
+    }
+
     // API keys → localStorage only (security)
     setStorageJson(STORAGE_KEY, config.value)
   }
 
   /**
-   * Legacy migration: read ai.json once and seed settingsStore if it doesn't
-   * already have AI config (first run after migration).
+   * Initialize from file storage:
+   * 1. Read ai.json5 (fallback: legacy ai.json)
+   * 2. Read AI.md for system prompt
+   * 3. If nothing found, migrate from settingsStore ai key
+   * 4. Write ai.json5 after migration, remove ai from settingsStore
    */
   async function initFileStorage(): Promise<void> {
-    if (!settingsStore.get('ai')) {
-      const content = await readAiSettings()
-      if (content) {
-        try {
-          const parsed = JSON.parse(content) as Partial<AiConfig>
-          const fileConfig = toFileConfig(mergeConfig(defaultConfig(), parsed))
-          settingsStore.set('ai', fileConfig)
-          // Re-build config from the newly seeded settingsStore
-          config.value = buildConfig()
-        } catch (e) {
-          console.warn('[ai-settings] failed to parse ai.json:', e)
-        }
+    let loaded = false
+
+    // Try reading ai.json5 (with fallback to ai.json)
+    const aiContent = await readAiSettings()
+    if (aiContent) {
+      try {
+        const parsed = JSON5.parse(aiContent) as Partial<AiConfig>
+        config.value = applyApiKeys(mergeConfig(defaultConfig(), parsed))
+        loaded = true
+      } catch (e) {
+        console.warn('[ai-settings] failed to parse ai.json5:', e)
       }
     }
+
+    // If no file found, try migrating from settingsStore
+    if (!loaded) {
+      try {
+        // Dynamic import to avoid circular dependency / hard coupling
+        const { useSettingsStore } = await import('@/stores/settings')
+        const settingsStore = useSettingsStore()
+        // settingsStore.settings is auto-unwrapped by Pinia (NotedeckSettings),
+        // but the ai key was removed from the type — cast to access legacy data
+        const rawSettings = settingsStore.settings as unknown as Record<
+          string,
+          unknown
+        >
+        const legacyAi = rawSettings.ai
+        if (legacyAi && typeof legacyAi === 'object') {
+          const parsed = legacyAi as Partial<AiConfig>
+          config.value = applyApiKeys(mergeConfig(defaultConfig(), parsed))
+          // Write to ai.json5
+          const fileConfig = toFileConfig(config.value)
+          await writeAiSettings(`${JSON5.stringify(fileConfig, null, 2)}\n`)
+          loaded = true
+        }
+      } catch {
+        // settingsStore migration failed — continue with defaults
+      }
+    }
+
+    if (!loaded) {
+      config.value = applyApiKeys(defaultConfig())
+    }
+
+    // Read AI.md for system prompt (overrides whatever was loaded above)
+    const promptContent = await readAiPrompt()
+    if (promptContent) {
+      config.value = { ...config.value, systemPrompt: promptContent }
+    } else if (loaded && config.value.systemPrompt !== defaultAiPrompt) {
+      // AI.md doesn't exist but config has a custom prompt — write it out
+      await writeAiPrompt(config.value.systemPrompt).catch((e) =>
+        console.warn('[ai-settings] failed to write AI.md:', e),
+      )
+    }
+
     initialized.value = true
   }
 
