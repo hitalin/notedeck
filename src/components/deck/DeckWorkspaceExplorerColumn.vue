@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, useTemplateRef, watch } from 'vue'
+import PopupMenu from '@/components/common/PopupMenu.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { getAccountLabel, useAccountsStore } from '@/stores/accounts'
+import { useConfirm } from '@/stores/confirm'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckProfileStore } from '@/stores/deckProfile'
 import { usePluginsStore } from '@/stores/plugins'
@@ -105,6 +107,13 @@ function addAccount() {
 }
 
 // Singleton files
+function openSettings() {
+  // notedeck.json click: open the settings quickpick (command palette * mode)
+  import('@/commands/registry').then(({ useCommandStore }) => {
+    useCommandStore().openWithInput('*')
+  })
+}
+
 function openUserCss() {
   windowsStore.open('cssEditor')
 }
@@ -232,6 +241,12 @@ const folders = computed<TreeFolder[]>(() => [
 ])
 
 const singletonFiles: TreeFile[] = [
+  {
+    id: 'notedeck',
+    name: 'notedeck.json',
+    ...fileTypeFor('notedeck.json'),
+    onClick: openSettings,
+  },
   {
     id: 'keybinds',
     name: 'keybinds.json',
@@ -403,6 +418,8 @@ function collapseOrMoveToParent() {
 }
 
 function onKeydown(e: KeyboardEvent) {
+  // Rename 入力中はツリーキーボード操作を無視
+  if (renamingKey.value) return
   // 修飾キー付きはスキップ (コマンドパレット等と競合しないため)
   if (e.ctrlKey || e.metaKey || e.altKey) return
   switch (e.key) {
@@ -435,6 +452,18 @@ function onKeydown(e: KeyboardEvent) {
       e.preventDefault()
       selectLast()
       break
+    case 'F2':
+      e.preventDefault()
+      startRenameForSelected()
+      break
+    case 'Delete':
+      e.preventDefault()
+      deleteSelected()
+      break
+    case 'Escape':
+      e.preventDefault()
+      closeContextMenu()
+      break
   }
 }
 
@@ -448,6 +477,193 @@ watch(selectedKey, (key) => {
     row?.scrollIntoView({ block: 'nearest' })
   })
 })
+
+// --- Context menu ---
+const { confirm } = useConfirm()
+
+interface ContextAction {
+  label: string
+  icon: string
+  danger?: boolean
+  handler: () => void | Promise<void>
+}
+
+const contextMenuRef = ref<InstanceType<typeof PopupMenu>>()
+const contextActions = ref<ContextAction[]>([])
+
+function closeContextMenu(): void {
+  contextMenuRef.value?.close()
+}
+
+function showContextMenu(e: MouseEvent, actions: ContextAction[]): void {
+  if (actions.length === 0) return
+  contextActions.value = actions
+  contextMenuRef.value?.open(e)
+}
+
+function onContextAction(action: ContextAction): void {
+  closeContextMenu()
+  action.handler()
+}
+
+function onFolderContextMenu(e: MouseEvent, folder: TreeFolder): void {
+  showContextMenu(e, [
+    {
+      label: folder.addTitle,
+      icon: 'ti-plus',
+      handler: folder.onAdd,
+    },
+  ])
+}
+
+function onFileContextMenu(
+  e: MouseEvent,
+  folderKey: string,
+  file: TreeFile,
+): void {
+  const actions: ContextAction[] = [
+    { label: '開く', icon: 'ti-external-link', handler: file.onClick },
+  ]
+
+  // Rename (profiles only — themes don't have simple rename, accounts are identity-bound)
+  if (folderKey === 'profiles') {
+    actions.push({
+      label: '名前を変更',
+      icon: 'ti-pencil',
+      handler: () => startRename(rowKeyFile(folderKey, file.id), file.name),
+    })
+  }
+
+  // Delete
+  if (folderKey === 'themes') {
+    actions.push({
+      label: '削除',
+      icon: 'ti-trash',
+      danger: true,
+      handler: () => deleteTheme(file.id),
+    })
+  } else if (folderKey === 'plugins') {
+    actions.push({
+      label: '削除',
+      icon: 'ti-trash',
+      danger: true,
+      handler: () => deletePlugin(file.id),
+    })
+  } else if (folderKey === 'profiles') {
+    actions.push({
+      label: '削除',
+      icon: 'ti-trash',
+      danger: true,
+      handler: () => deleteProfile(file.id),
+    })
+  }
+
+  showContextMenu(e, actions)
+}
+
+// --- Delete actions (with confirmation) ---
+async function deleteTheme(id: string): Promise<void> {
+  const ok = await confirm({
+    title: 'テーマを削除',
+    message: 'このテーマを削除しますか？',
+    okLabel: '削除',
+    type: 'danger',
+  })
+  if (ok) themeStore.removeTheme(id)
+}
+
+async function deletePlugin(installId: string): Promise<void> {
+  const ok = await confirm({
+    title: 'プラグインを削除',
+    message: 'このプラグインを削除しますか？',
+    okLabel: '削除',
+    type: 'danger',
+  })
+  if (ok) pluginsStore.removePlugin(installId)
+}
+
+async function deleteProfile(id: string): Promise<void> {
+  const ok = await confirm({
+    title: 'プロファイルを削除',
+    message: 'このプロファイルを削除しますか？',
+    okLabel: '削除',
+    type: 'danger',
+  })
+  if (ok) deckProfileStore.deleteProfile(id)
+}
+
+function deleteSelected(): void {
+  const row = visibleRows.value.find((r) => r.key === selectedKey.value)
+  if (!row || !row.file || !row.folderKey) return
+  if (row.folderKey === 'themes') deleteTheme(row.file.id)
+  else if (row.folderKey === 'plugins') deletePlugin(row.file.id)
+  else if (row.folderKey === 'profiles') deleteProfile(row.file.id)
+}
+
+// --- Inline rename (Phase E) ---
+const renamingKey = ref<string | null>(null)
+const renameInput = ref('')
+
+function startRename(rowKey: string, currentName: string): void {
+  // Strip extension for editing (e.g. "default.json" → "default")
+  const dotIdx = currentName.lastIndexOf('.')
+  renameInput.value = dotIdx > 0 ? currentName.slice(0, dotIdx) : currentName
+  renamingKey.value = rowKey
+  nextTick(() => {
+    const input = treeEl.value?.querySelector<HTMLInputElement>(
+      '[data-rename-input]',
+    )
+    input?.focus()
+    input?.select()
+  })
+}
+
+function startRenameForSelected(): void {
+  const row = visibleRows.value.find((r) => r.key === selectedKey.value)
+  if (!row || !row.file || row.folderKey !== 'profiles') return
+  startRename(row.key, row.file.name)
+}
+
+async function confirmRename(): Promise<void> {
+  if (!renamingKey.value) return
+  const newName = renameInput.value.trim()
+  if (!newName) {
+    cancelRename()
+    return
+  }
+
+  // Parse the row key to determine what to rename
+  const match = renamingKey.value.match(/^file:(\w+):(.+)$/)
+  if (!match?.[1] || !match[2]) {
+    cancelRename()
+    return
+  }
+  const folderKey = match[1]
+  const fileId = match[2]
+
+  if (folderKey === 'profiles') {
+    deckProfileStore.renameProfile(fileId, newName)
+  }
+  // Future: other folder types
+
+  renamingKey.value = null
+  renameInput.value = ''
+}
+
+function cancelRename(): void {
+  renamingKey.value = null
+  renameInput.value = ''
+}
+
+function onRenameKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    confirmRename()
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    cancelRename()
+  }
+}
 </script>
 
 <template>
@@ -492,6 +708,7 @@ watch(selectedKey, (key) => {
               { [$style.selected]: selectedKey === `folder:${folder.key}` },
             ]"
             @click="onFolderRowClick(folder)"
+            @contextmenu.prevent="onFolderContextMenu($event, folder)"
           >
             <i
               class="ti ti-chevron-right"
@@ -525,12 +742,24 @@ watch(selectedKey, (key) => {
                 { [$style.selected]: selectedKey === `file:${folder.key}:${item.id}` },
               ]"
               @click="onFileRowClick(folder.key, item)"
+              @contextmenu.prevent="onFileContextMenu($event, folder.key, item)"
+              @dblclick.prevent="folder.key === 'profiles' && startRename(`file:${folder.key}:${item.id}`, item.name)"
             >
               <i
                 class="ti"
                 :class="[item.icon, $style.fileIcon, $style[item.colorClass]]"
               />
-              <span :class="$style.name">{{ item.name }}</span>
+              <!-- Inline rename input -->
+              <input
+                v-if="renamingKey === `file:${folder.key}:${item.id}`"
+                v-model="renameInput"
+                data-rename-input
+                :class="$style.renameInput"
+                @keydown="onRenameKeydown"
+                @blur="confirmRename"
+                @click.stop
+              />
+              <span v-else :class="$style.name">{{ item.name }}</span>
             </div>
             <div
               v-if="folder.items.length === 0"
@@ -561,6 +790,19 @@ watch(selectedKey, (key) => {
           <span :class="$style.name">{{ file.name }}</span>
         </div>
       </div>
+
+      <!-- Context menu (reuses shared PopupMenu component) -->
+      <PopupMenu ref="contextMenuRef">
+        <button
+          v-for="action in contextActions"
+          :key="action.label"
+          :class="['_popupItem', { _popupItemDanger: action.danger }]"
+          @click="onContextAction(action)"
+        >
+          <i class="ti" :class="action.icon" />
+          {{ action.label }}
+        </button>
+      </PopupMenu>
     </div>
   </DeckColumn>
 </template>
@@ -785,5 +1027,19 @@ watch(selectedKey, (key) => {
 
 .folderAccounts {
   color: #66bb6a; // green (identity)
+}
+
+// --- Inline rename ---
+.renameInput {
+  all: unset;
+  flex: 1;
+  font-size: 13px;
+  line-height: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--nd-accent);
+  border-radius: 2px;
+  background: var(--nd-bg);
+  color: var(--nd-fg);
+  outline: none;
 }
 </style>
