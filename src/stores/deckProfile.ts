@@ -89,35 +89,41 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   // --- Profile mutation ---
 
   /** Mutate the current profile's data and schedule persistence. */
-  function mutateProfile(fn: (profile: DeckProfile) => void) {
-    const profile = currentProfile.value
-    if (!profile) return
-    fn(profile)
+  function mutateProfile(
+    fn: (profile: DeckProfile) => void,
+    profileId?: string | null,
+  ) {
+    const target = profileId
+      ? profilesData.value.find((p) => p.id === profileId)
+      : currentProfile.value
+    if (!target) return
+    fn(target)
     // Trigger reactivity by bumping version (Vue tracks the ref)
     profileVersion.value++
     schedulePersist()
   }
 
-  function setColumns(newColumns: DeckColumn[]) {
+  function setColumns(newColumns: DeckColumn[], profileId?: string | null) {
     mutateProfile((p) => {
       p.columns = newColumns
-    })
+    }, profileId)
   }
 
-  function setLayout(newLayout: string[][]) {
+  function setLayout(newLayout: string[][], profileId?: string | null) {
     mutateProfile((p) => {
       p.layout = newLayout
-    })
+    }, profileId)
   }
 
   function setColumnsAndLayout(
     newColumns: DeckColumn[],
     newLayout: string[][],
+    profileId?: string | null,
   ) {
     mutateProfile((p) => {
       p.columns = newColumns
       p.layout = newLayout
-    })
+    }, profileId)
   }
 
   // --- Persistence (debounced) ---
