@@ -12,7 +12,7 @@ import {
 import type { RawStreamEvent } from '@/adapters/types'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
-import { useAccountsStore } from '@/stores/accounts'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import DeckColumn from './DeckColumn.vue'
 
@@ -35,7 +35,7 @@ interface StreamEventEntry {
   id: number
   ts: number
   kind: string
-  accountLabel: string
+  avatarUrl: string
   payload: Record<string, unknown>
 }
 
@@ -99,12 +99,12 @@ let lastEventKey = ''
 let lastEventTs = 0
 const DEDUP_WINDOW_MS = 50
 
-function makeRawHandler(label: string) {
+function makeRawHandler(avatar: string, accountId: string) {
   return (event: RawStreamEvent) => {
     if (paused.value) return
     if (!enabledKinds.value.has(event.kind)) return
     const now = Date.now()
-    const key = `${event.kind}:${event.payload.subscriptionId ?? ''}:${label}`
+    const key = `${event.kind}:${event.payload.subscriptionId ?? ''}:${accountId}`
     if (key === lastEventKey && now - lastEventTs < DEDUP_WINDOW_MS) return
     lastEventKey = key
     lastEventTs = now
@@ -112,7 +112,7 @@ function makeRawHandler(label: string) {
       id: nextId++,
       ts: now,
       kind: event.kind,
-      accountLabel: label,
+      avatarUrl: avatar,
       payload: event.payload,
     }
     const arr = [entry, ...buffer.value]
@@ -132,8 +132,8 @@ async function subscribeAll() {
     if (!adapter) continue
     // Don't call connect() — the stream is already connected by other columns.
     // Calling connect() would disrupt the existing listener generation.
-    const label = `@${acc.username ?? '?'}@${acc.host}`
-    const handler = makeRawHandler(label)
+    const avatar = getAccountAvatarUrl(acc)
+    const handler = makeRawHandler(avatar, acc.id)
     adapter.stream.onRawEvent(handler)
     cleanups.push(() => adapter.stream.offRawEvent(handler))
   }
@@ -285,7 +285,7 @@ function scrollToTop() {
         >
           <span :class="$style.rowTime">{{ formatTime(entry.ts) }}</span>
           <span :class="$style.rowKind">{{ kindLabel(entry.kind) }}</span>
-          <span :class="$style.rowAccount">{{ entry.accountLabel }}</span>
+          <img :src="entry.avatarUrl" :class="$style.rowAvatar" />
           <span :class="$style.rowSummary">{{ summarize(entry) }}</span>
         </div>
         <div v-if="buffer.length === 0" :class="$style.empty">
@@ -418,15 +418,12 @@ function scrollToTop() {
   flex-shrink: 0;
 }
 
-.rowAccount {
-  color: var(--nd-fg);
-  opacity: 0.4;
-  font-size: 0.9em;
+.rowAvatar {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
   flex-shrink: 0;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  object-fit: cover;
 }
 
 .rowSummary {
