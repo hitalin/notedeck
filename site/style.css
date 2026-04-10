@@ -180,7 +180,9 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
 /* ===== Guest CTA ===== */
 .guest-cta{display:flex;align-items:center;gap:1.5rem;padding:1.5rem 2rem}
 .guest-cta-icon{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(134,179,0,0.15),rgba(74,179,0,0.1));color:var(--accent)}
-.guest-cta-text{flex:1;color:var(--text-muted);font-size:.92rem;line-height:1.6;margin:0}
+.guest-cta-text{flex:1}
+.guest-cta-text h3{font-size:1rem;font-weight:800;margin:0 0 .25rem}
+.guest-cta-text p{color:var(--text-muted);font-size:.9rem;line-height:1.6;margin:0}
 .guest-cta .btn{flex-shrink:0;white-space:nowrap}
 @media(max-width:640px){.guest-cta{flex-direction:column;text-align:center}.guest-cta .btn{align-self:center}}
 
