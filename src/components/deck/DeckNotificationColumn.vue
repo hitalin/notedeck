@@ -24,6 +24,7 @@ import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
+import PopupMenu from '@/components/common/PopupMenu.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
@@ -99,7 +100,7 @@ const isLoggedOut = computed(() => account.value?.hasToken === false)
 
 const crossSubscriptions: ChannelSubscription[] = []
 
-const { navigateToUser: navToUser } = useNavigation()
+const { navigateToUser: navToUser, navigateToNote: navToNote } = useNavigation()
 const noteSound = useNoteSound(() => account.value?.host, 'syuilo/n-ea')
 
 // User hover popup for notification avatars
@@ -107,12 +108,50 @@ const userPopup = useHoverPopup()
 const hoveredUserId = ref('')
 const hoveredAccountId = ref('')
 
-function openNotifInspector(notif: NormalizedNotification) {
+// --- Notification context menu ---
+const notifMenuRef = ref<InstanceType<typeof PopupMenu>>()
+const notifMenuTarget = ref<NormalizedNotification | null>(null)
+
+function openNotifMenu(notif: NormalizedNotification, e: MouseEvent) {
+  notifMenuTarget.value = notif
+  notifMenuRef.value?.open(e)
+}
+function closeNotifMenu() {
+  notifMenuRef.value?.close()
+}
+
+function notifMenuOpenUser() {
+  const notif = notifMenuTarget.value
+  if (!notif?.user) return
+  navToUser(notif._accountId, notif.user.id)
+  closeNotifMenu()
+}
+function notifMenuOpenNote() {
+  const notif = notifMenuTarget.value
+  if (!notif?.note) return
+  navToNote(notif._accountId, notif.note.id)
+  closeNotifMenu()
+}
+function notifMenuOpenNoteInspector() {
+  const notif = notifMenuTarget.value
+  if (!notif?.note) return
+  useWindowsStore().open('note-inspector', {
+    accountId: notif._accountId,
+    noteId: notif.note.id,
+    noteUri: notif.note.uri ?? notif.note.url ?? undefined,
+    serverHost: notif._serverHost,
+  })
+  closeNotifMenu()
+}
+function notifMenuOpenNotifInspector() {
+  const notif = notifMenuTarget.value
+  if (!notif) return
   useWindowsStore().open('notification-inspector', {
     accountId: notif._accountId,
     notificationId: notif.id,
     notification: { ...notif },
   })
+  closeNotifMenu()
 }
 
 function onNotifAvatarClick(notif: NormalizedNotification, e: MouseEvent) {
@@ -867,7 +906,7 @@ onUnmounted(() => {
     <template #header-meta>
       <div v-if="!isCrossAccount && account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" @error="($event.target as HTMLImageElement).src = '/server-icon-error.svg'" />
       </div>
     </template>
 
@@ -921,7 +960,7 @@ onUnmounted(() => {
             <div
               v-if="notif.type === 'reaction:grouped' || notif.type === 'renote:grouped'"
               :class="$style.notifItem"
-              @contextmenu.prevent="openNotifInspector(notif)"
+              @contextmenu.prevent="openNotifMenu(notif, $event)"
             >
               <div :class="$style.notifLayout">
                 <div :class="$style.notifGroupedHead">
@@ -994,7 +1033,7 @@ onUnmounted(() => {
             <div
               v-else
               :class="$style.notifItem"
-              @contextmenu.prevent="openNotifInspector(notif)"
+              @contextmenu.prevent="openNotifMenu(notif, $event)"
             >
               <div :class="$style.notifLayout">
                 <!-- Head: Avatar with sub-icon overlay -->
@@ -1135,6 +1174,26 @@ onUnmounted(() => {
       @posted="handlePosted"
     />
   </div>
+
+  <!-- Notification context menu -->
+  <PopupMenu ref="notifMenuRef">
+    <button v-if="notifMenuTarget?.user" class="_popupItem" @click="notifMenuOpenUser">
+      <i class="ti ti-user" />
+      ユーザープロフィール
+    </button>
+    <button v-if="notifMenuTarget?.note" class="_popupItem" @click="notifMenuOpenNote">
+      <i class="ti ti-message" />
+      ノートを表示
+    </button>
+    <button v-if="notifMenuTarget?.note" class="_popupItem" @click="notifMenuOpenNoteInspector">
+      <i class="ti ti-code" />
+      ノートの Raw JSON
+    </button>
+    <button class="_popupItem" @click="notifMenuOpenNotifInspector">
+      <i class="ti ti-code" />
+      通知の Raw JSON
+    </button>
+  </PopupMenu>
 </template>
 
 <style lang="scss" module>
