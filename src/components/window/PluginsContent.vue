@@ -333,7 +333,6 @@ function toggleSection(key: string) {
       <AiScriptEditor
         v-model="editingCode"
         :placeholder="isNewInstall ? '### { name: &quot;my-plugin&quot;, version: &quot;1.0&quot; } ...' : ''"
-        max-height="none"
         :class="$style.codeEditorWrap"
       />
       <div v-if="installError && isNewInstall" :class="$style.errorMessage">
