@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { detectQualitySync } from '@/composables/useAdaptiveQuality'
 import defaultsJson from '@/defaults/performance.json'
@@ -8,6 +8,7 @@ import {
   frameTelemetry,
   type QualityLevel,
 } from '@/engine/telemetry/frameTelemetry'
+import { useSettingsStore } from '@/stores/settings'
 import { isTauri, readPerformance, writePerformance } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -686,6 +687,8 @@ const CSS_BASE_DURATIONS: Record<string, number> = {
 }
 
 export const usePerformanceStore = defineStore('performance', () => {
+  const settingsStore = useSettingsStore()
+
   const overrides = ref<Partial<PerformanceConfig>>(
     getStorageJson<Partial<PerformanceConfig>>(STORAGE_KEYS.performance, {}),
   )
@@ -774,6 +777,7 @@ export const usePerformanceStore = defineStore('performance', () => {
 
   function saveOverrides() {
     setStorageJson(STORAGE_KEYS.performance, overrides.value)
+    mirrorOverridesToSettingsStore()
     syncCssProperties()
     if (initialized.value) {
       persistToFile().catch((e) =>
@@ -784,6 +788,75 @@ export const usePerformanceStore = defineStore('performance', () => {
       console.warn('[performance] failed to sync to Rust:', e),
     )
   }
+
+  /**
+   * Mirror the current `overrides` into `settingsStore` under `performance.*`
+   * dot-notation keys. This is a dual-write step — the primary source remains
+   * `performance.json` (for compatibility with existing init paths), but
+   * notedeck.json gets every override so it's included in backups and
+   * cross-device sync (see DESIGN.md "notedeck.json" section).
+   *
+   * Guarded by `settingsStore.initialized` so we don't race against the
+   * initial `settingsStore.load()` that would overwrite these writes.
+   *
+   * Each key is set individually. Missing keys (defaults) are set to
+   * `undefined` so they're excluded from the persisted JSON.
+   */
+  function mirrorOverridesToSettingsStore(): void {
+    if (!settingsStore.initialized) return
+    type PerfSettingsKey = `performance.${PerformanceKey}`
+    const keys = Object.keys(DEFAULTS) as PerformanceKey[]
+    for (const key of keys) {
+      const settingsKey = `performance.${key}` as PerfSettingsKey
+      const current = overrides.value[key]
+      settingsStore.set(settingsKey, current)
+    }
+  }
+
+  /**
+   * When `settingsStore.load()` completes, reconcile performance state:
+   * - If notedeck.json has any `performance.*` values, adopt them as the
+   *   source of truth (e.g. cross-device sync or backup restore case).
+   * - Otherwise, mirror the current local overrides into settingsStore
+   *   (one-time seeding from existing `performance.json`).
+   */
+  watch(
+    () => settingsStore.initialized,
+    (done) => {
+      if (!done) return
+      const keys = Object.keys(DEFAULTS) as PerformanceKey[]
+      type PerfSettingsKey = `performance.${PerformanceKey}`
+
+      const settingsValues: Partial<PerformanceConfig> = {}
+      let hasAny = false
+      for (const key of keys) {
+        const v = settingsStore.get(`performance.${key}` as PerfSettingsKey)
+        if (v !== undefined) {
+          settingsValues[key] = v as PerformanceConfig[typeof key]
+          hasAny = true
+        }
+      }
+
+      if (hasAny) {
+        // notedeck.json has values — adopt them
+        overrides.value = settingsValues
+        setStorageJson(STORAGE_KEYS.performance, overrides.value)
+        syncCssProperties()
+        if (initialized.value) {
+          persistToFile().catch((e) =>
+            console.warn('[performance] reconcile persist failed:', e),
+          )
+        }
+        syncToRust().catch((e) =>
+          console.warn('[performance] reconcile Rust sync failed:', e),
+        )
+      } else {
+        // Seed settingsStore from local overrides (one-time migration)
+        mirrorOverridesToSettingsStore()
+      }
+    },
+    { immediate: true },
+  )
 
   async function persistToFile(): Promise<void> {
     const content = JSON.stringify(overrides.value, null, 2)

@@ -1,35 +1,46 @@
+import type { PerformanceConfig } from '@/stores/performance'
+
+/**
+ * `performance.json` 由来の設定を notedeck.json に dot-notation で持つための
+ * mapped type。`PerformanceConfig` が変わると自動で追従する。
+ *
+ * 例: `performance.noteStoreMax`, `performance.cssBlurLevel` 等。
+ */
+type PerformanceFlatKeys = {
+  [K in keyof PerformanceConfig as `performance.${K}`]?: PerformanceConfig[K]
+}
+
 /**
  * notedeck.json の型定義。VSCode `settings.json` と同じく、トップレベルは
- * フラット dot-notation キー空間 (`theme.manual`, `modes.realtime` 等)。
+ * フラット dot-notation キー空間 (`theme.manual`, `modes.realtime`,
+ * `performance.<key>` 等)。
  *
  * 設計原則・長期ゴールは [DESIGN.md](../../DESIGN.md) の
  * 「notedeck.json — VSCode settings.json 相当の統合設定ファイル」節を参照。
  *
- * 現段階 (PoC) では `realtimeMode` のみが実データを持ち、その他のキーは
- * 将来の移行を見越したスケルトン定義。ストアを段階的に移行するたびに
- * キーの入力/使用箇所が増えていく。
+ * 段階的移行のため、一部のキーは現段階では dual-write (localStorage /
+ * 既存ファイルとの併用) 状態にある。詳細は DESIGN.md のマイグレーション節。
  */
-export interface NotedeckSettings {
+export interface NotedeckSettings extends PerformanceFlatKeys {
   /** スキーマバージョン。破壊的変更時に bump してマイグレーションを行う。 */
   _schema: number
 
-  // --- Theme (Phase 2 以降で移行予定) ---
+  // --- Theme (Next 1 移行済み、dual-write + reconcile) ---
   'theme.manual'?: 'dark' | 'light' | null
   'theme.selectedDarkThemeId'?: string | null
   'theme.selectedLightThemeId'?: string | null
 
-  // --- Deck (Phase 2 以降で移行予定) ---
+  // --- Deck (Next 1 移行済み) ---
   'deck.wallpaper'?: string | null
   'deck.activeProfileId'?: string | null
 
-  // --- Modes (Phase 1 — PoC 移行対象) ---
+  // --- Modes (PoC 移行済み) ---
   'modes.realtime'?: boolean
   'modes.offline'?: boolean
 
-  // --- 将来拡張 (Phase 3 以降で移行予定) ---
-  // 'performance.*' — performance.json から統合
-  // 'ai.*'          — ai.json から統合 (API キーは除外、現状の方針維持)
-  // 'keybinds.*'    — keybinds.json5 から統合
+  // --- 将来拡張 (未実装) ---
+  // 'ai.*'          — ai.json から統合 (Next 3、API キーは除外)
+  // 'keybinds.*'    — keybinds.json5 から統合 (Next 4)
 }
 
 /** 現在のスキーマバージョン。将来の破壊的変更時に bump する。 */
