@@ -1,3 +1,4 @@
+import type { Shortcut } from '@/commands/registry'
 import type { AiFileConfig } from '@/composables/useAiConfig'
 import type { PerformanceConfig } from '@/stores/performance'
 
@@ -42,8 +43,8 @@ export interface NotedeckSettings extends PerformanceFlatKeys {
   // --- AI (Next 3 移行済み、dual-write、API キーは除外) ---
   ai?: AiFileConfig
 
-  // --- 将来拡張 (未実装) ---
-  // 'keybinds.*'    — keybinds.json5 から統合 (Next 4)
+  // --- Keybinds (Next 4 移行済み、dual-write) ---
+  keybinds?: Record<string, Shortcut[]>
 }
 
 /** 現在のスキーマバージョン。将来の破壊的変更時に bump する。 */

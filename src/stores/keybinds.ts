@@ -1,9 +1,10 @@
 import JSON5 from 'json5'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import type { Shortcut } from '@/commands/registry'
 import defaultKeybindsJson5 from '@/defaults/keybindings.json5?raw'
+import { useSettingsStore } from '@/stores/settings'
 import { isTauri, readKeybinds, writeKeybinds } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
@@ -15,6 +16,8 @@ export interface KeybindEntry {
 const DEFAULT_KEYBINDS: KeybindEntry[] = JSON5.parse(defaultKeybindsJson5)
 
 export const useKeybindsStore = defineStore('keybinds', () => {
+  const settingsStore = useSettingsStore()
+
   // ユーザーカスタマイズ: commandId → shortcuts の上書き
   // null = デフォルトを使用、空配列 = キーバインドを無効化
   const overrides = ref<Record<string, Shortcut[]>>(
@@ -22,14 +25,47 @@ export const useKeybindsStore = defineStore('keybinds', () => {
   )
   const initialized = ref(false)
 
+  /**
+   * Mirror overrides to notedeck.json for backup / cross-device sync.
+   * Guarded by settingsStore.initialized to avoid racing the initial load.
+   */
+  function mirrorToSettingsStore(): void {
+    if (!settingsStore.initialized) return
+    settingsStore.set('keybinds', overrides.value)
+  }
+
   function saveOverrides() {
     setStorageJson(STORAGE_KEYS.keybinds, overrides.value)
+    mirrorToSettingsStore()
     if (initialized.value) {
       persistToFile().catch((e) =>
         console.warn('[keybinds] failed to persist to file:', e),
       )
     }
   }
+
+  // Reconcile with notedeck.json once settingsStore finishes loading.
+  watch(
+    () => settingsStore.initialized,
+    (done) => {
+      if (!done) return
+      const stored = settingsStore.get('keybinds')
+      if (stored != null && Object.keys(stored).length > 0) {
+        // notedeck.json has keybinds — adopt (cross-device / backup restore)
+        overrides.value = stored
+        setStorageJson(STORAGE_KEYS.keybinds, stored)
+        if (initialized.value) {
+          persistToFile().catch((e) =>
+            console.warn('[keybinds] reconcile persist failed:', e),
+          )
+        }
+      } else if (Object.keys(overrides.value).length > 0) {
+        // Seed notedeck.json from local overrides (one-time migration)
+        mirrorToSettingsStore()
+      }
+    },
+    { immediate: true },
+  )
 
   /** Write overrides to keybinds.json5 file. */
   async function persistToFile(): Promise<void> {
