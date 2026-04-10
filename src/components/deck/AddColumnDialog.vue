@@ -578,7 +578,7 @@ function close() {
               <span>AIチャット</span>
             </button>
             <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('streamInspector')">
-              <i class="ti ti-pulse" />
+              <i class="ti ti-activity-heartbeat" />
               <span>ストリーム</span>
             </button>
           </template>

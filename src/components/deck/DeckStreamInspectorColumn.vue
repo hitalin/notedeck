@@ -196,7 +196,7 @@ function scrollToTop() {
     @header-click="scrollToTop"
   >
     <template #header-icon>
-      <i class="ti ti-pulse" :class="$style.headerIcon" />
+      <i class="ti ti-activity-heartbeat" :class="$style.headerIcon" />
     </template>
 
     <template #header-meta>

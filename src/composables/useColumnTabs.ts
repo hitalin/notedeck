@@ -33,7 +33,7 @@ export const COLUMN_ICONS: Record<string, string> = {
   aboutMisskey: 'info-circle',
   emoji: 'mood-smile',
   workspaceExplorer: 'files',
-  streamInspector: 'pulse',
+  streamInspector: 'activity-heartbeat',
 }
 
 export const COLUMN_LABELS: Record<string, string> = {
