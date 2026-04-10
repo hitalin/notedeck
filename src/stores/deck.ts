@@ -127,6 +127,7 @@ export const DEFAULT_NAV_ITEMS: NavItem[] = [
   { type: 'chat', accountId: null },
   { type: 'search', accountId: null },
   { type: 'lookup', accountId: null },
+  { type: 'streamInspector', accountId: null },
 ]
 
 export function isNavDivider(item: NavItem): item is { type: 'divider' } {
