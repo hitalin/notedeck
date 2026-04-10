@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { detectQualitySync } from '@/composables/useAdaptiveQuality'
-import defaultsJson from '@/defaults/performance.json'
+import defaultsJson from '@/defaults/performance.json5'
 import { frameEngine } from '@/engine/frameEngine'
 import {
   frameTelemetry,

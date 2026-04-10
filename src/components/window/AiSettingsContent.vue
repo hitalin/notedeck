@@ -20,9 +20,13 @@ import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const mdLang = markdown({ codeLanguages: languages })
 
+const props = defineProps<{
+  initialTab?: string
+}>()
+
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['api', 'prompt'] as const,
-  'api',
+  (props.initialTab as 'api' | 'prompt') ?? 'api',
 )
 
 // --- Provider schema (data-driven UI) ---

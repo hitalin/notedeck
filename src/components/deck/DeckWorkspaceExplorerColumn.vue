@@ -33,7 +33,6 @@ const expanded = reactive<Record<string, boolean>>({
   themes: true,
   plugins: true,
   profiles: true,
-  accounts: true,
 })
 
 // 選択中の行のキー (null = 未選択)。visibleRows 計算と template の
@@ -99,10 +98,6 @@ function openAccountFile() {
   windowsStore.open('account-manager', { initialTab: 'code' })
 }
 
-function addAccount() {
-  windowsStore.open('login')
-}
-
 // Singleton files
 function openSettings() {
   windowsStore.open('settingsEditor')
@@ -122,6 +117,14 @@ function openNavJson() {
 
 function openPerformance() {
   windowsStore.open('performanceEditor')
+}
+
+function openAiPrompt() {
+  windowsStore.open('aiSettings', { initialTab: 'prompt' })
+}
+
+function openAiSettings() {
+  windowsStore.open('aiSettings', { initialTab: 'api' })
 }
 
 interface FileTypeInfo {
@@ -145,6 +148,9 @@ function fileTypeFor(filename: string): FileTypeInfo {
   }
   if (filename.endsWith('.css')) {
     return { icon: 'ti-brush', colorClass: 'iconCss' }
+  }
+  if (filename.endsWith('.md')) {
+    return { icon: 'ti-markdown', colorClass: 'iconMd' }
   }
   return { icon: 'ti-file', colorClass: '' }
 }
@@ -210,7 +216,7 @@ const folders = computed<TreeFolder[]>(() => [
     addTitle: '新しいプロファイルを作成',
     onAdd: addProfile,
     items: profiles.value.map((p) => {
-      const name = `${p.name}.json`
+      const name = `${p.name}.json5`
       return {
         id: p.id,
         name,
@@ -218,22 +224,6 @@ const folders = computed<TreeFolder[]>(() => [
         onClick: () => openProfileFile(p.id),
       }
     }),
-  },
-  {
-    key: 'accounts',
-    label: 'accounts',
-    icon: 'ti-users',
-    colorClass: 'folderAccounts',
-    addTitle: 'アカウントを追加',
-    onAdd: addAccount,
-    items: [
-      {
-        id: 'accounts',
-        name: 'accounts.json5',
-        ...fileTypeFor('accounts.json5'),
-        onClick: () => openAccountFile(),
-      },
-    ],
   },
 ])
 
@@ -267,6 +257,24 @@ const singletonFiles: TreeFile[] = [
     name: 'custom.css',
     ...fileTypeFor('custom.css'),
     onClick: openUserCss,
+  },
+  {
+    id: 'accounts',
+    name: 'accounts.json5',
+    ...fileTypeFor('accounts.json5'),
+    onClick: openAccountFile,
+  },
+  {
+    id: 'ai',
+    name: 'ai.json5',
+    ...fileTypeFor('ai.json5'),
+    onClick: openAiSettings,
+  },
+  {
+    id: 'ai-prompt',
+    name: 'AI.md',
+    ...fileTypeFor('AI.md'),
+    onClick: openAiPrompt,
   },
 ]
 
@@ -534,7 +542,7 @@ function onFileContextMenu(
     { label: '開く', icon: 'ti-external-link', handler: file.onClick },
   ]
 
-  // Rename (accounts are identity-bound, so excluded)
+  // Rename (themes/plugins/profiles のみ)
   if (
     folderKey === 'themes' ||
     folderKey === 'plugins' ||
@@ -1033,6 +1041,10 @@ function onRenameKeydown(e: KeyboardEvent): void {
 
 .iconCss {
   color: #5294e2; // sky blue
+}
+
+.iconMd {
+  color: #519aba; // teal-blue (Markdown)
 }
 
 // フォルダ: 意味ベース (Material Icon Theme 流)
