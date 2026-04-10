@@ -69,7 +69,7 @@ function openThemeFile(id: string) {
   if (!theme) return
   const mode: 'dark' | 'light' = theme.base ?? 'dark'
   themeStore.selectTheme(id, mode)
-  windowsStore.open('themeEditor', { initialTab: 'code' })
+  windowsStore.open('themeEditor', { initialThemeId: id, initialTab: 'code' })
 }
 
 function addTheme() {
