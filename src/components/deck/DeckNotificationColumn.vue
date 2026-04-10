@@ -41,6 +41,7 @@ import { useNoteStore } from '@/stores/notes'
 import { usePerformanceStore } from '@/stores/performance'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
+import { useWindowsStore } from '@/stores/windows'
 import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
@@ -105,6 +106,14 @@ const noteSound = useNoteSound(() => account.value?.host, 'syuilo/n-ea')
 const userPopup = useHoverPopup()
 const hoveredUserId = ref('')
 const hoveredAccountId = ref('')
+
+function openNotifInspector(notif: NormalizedNotification) {
+  useWindowsStore().open('notification-inspector', {
+    accountId: notif._accountId,
+    notificationId: notif.id,
+    notification: { ...notif },
+  })
+}
 
 function onNotifAvatarClick(notif: NormalizedNotification, e: MouseEvent) {
   e.stopPropagation()
@@ -912,6 +921,7 @@ onUnmounted(() => {
             <div
               v-if="notif.type === 'reaction:grouped' || notif.type === 'renote:grouped'"
               :class="$style.notifItem"
+              @contextmenu.prevent="openNotifInspector(notif)"
             >
               <div :class="$style.notifLayout">
                 <div :class="$style.notifGroupedHead">
@@ -984,6 +994,7 @@ onUnmounted(() => {
             <div
               v-else
               :class="$style.notifItem"
+              @contextmenu.prevent="openNotifInspector(notif)"
             >
               <div :class="$style.notifLayout">
                 <!-- Head: Avatar with sub-icon overlay -->

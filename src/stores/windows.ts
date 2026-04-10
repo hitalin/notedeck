@@ -6,6 +6,7 @@ import { useUiStore } from '@/stores/ui'
 export type WindowType =
   | 'note-detail'
   | 'note-inspector'
+  | 'notification-inspector'
   | 'user-profile'
   | 'follow-list'
   | 'login'
@@ -40,6 +41,7 @@ export const WINDOW_SIZES: Record<
   // Content windows
   'note-detail': { width: 500, maxHeight: 600 },
   'note-inspector': { width: 620, maxHeight: 720 },
+  'notification-inspector': { width: 620, maxHeight: 720 },
   'user-profile': { width: 500, maxHeight: 650 },
   'follow-list': { width: 500, maxHeight: 650 },
   aiSettings: { width: 400, maxHeight: 700 },
@@ -76,6 +78,7 @@ export const useWindowsStore = defineStore('windows', () => {
   const PROPS_DEDUP_KEYS: Partial<Record<WindowType, string[]>> = {
     'note-detail': ['noteId', 'accountId'],
     'note-inspector': ['noteId', 'accountId'],
+    'notification-inspector': ['notificationId', 'accountId'],
     'user-profile': ['userId', 'accountId'],
     'follow-list': ['userId', 'accountId'],
   }
@@ -104,6 +107,10 @@ export const useWindowsStore = defineStore('windows', () => {
       return SINGLETON_TYPES.has(type)
     })
     if (duplicate) {
+      // Update props for singleton windows when re-opened with new data
+      if (SINGLETON_TYPES.has(type)) {
+        Object.assign(duplicate.props, props)
+      }
       bringToFront(duplicate.id)
       return duplicate.id
     }

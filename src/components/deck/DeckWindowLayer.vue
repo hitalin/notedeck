@@ -11,6 +11,9 @@ const NoteDetailContent = defineAsyncComponent(
 const NoteInspectorContent = defineAsyncComponent(
   () => import('@/components/window/NoteInspectorContent.vue'),
 )
+const NotificationInspectorContent = defineAsyncComponent(
+  () => import('@/components/window/NotificationInspectorContent.vue'),
+)
 const UserProfileContent = defineAsyncComponent(
   () => import('@/components/window/UserProfileContent.vue'),
 )
@@ -129,6 +132,11 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         :note-uri="(win.props.noteUri as string | undefined)"
         :server-host="(win.props.serverHost as string | undefined)"
       />
+      <NotificationInspectorContent
+        v-if="win.type === 'notification-inspector'"
+        :account-id="(win.props.accountId as string)"
+        :notification="(win.props.notification as any)"
+      />
       <UserProfileContent
         v-if="win.type === 'user-profile'"
         :account-id="(win.props.accountId as string)"
@@ -149,7 +157,10 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       <PluginsContent v-if="win.type === 'plugins'" />
       <KeybindsContent v-if="win.type === 'keybinds'" />
       <CssEditorContent v-if="win.type === 'cssEditor'" />
-      <ThemeEditorContent v-if="win.type === 'themeEditor'" />
+      <ThemeEditorContent
+        v-if="win.type === 'themeEditor'"
+        :initial-theme-id="(win.props.initialThemeId as string | undefined)"
+      />
       <ProfileEditorContent
         v-if="win.type === 'profileEditor'"
         :profile-id="(win.props.profileId as string)"

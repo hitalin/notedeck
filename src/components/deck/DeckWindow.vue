@@ -21,6 +21,7 @@ const size = computed(() => WINDOW_SIZES[props.window.type])
 const BASE_TITLES: Record<string, string> = {
   'note-detail': 'ノート',
   'note-inspector': 'ノートインスペクタ',
+  'notification-inspector': '通知インスペクタ',
   'user-profile': 'プロフィール',
   'follow-list': 'フォロー / フォロワー',
   login: 'アカウント追加',
@@ -52,6 +53,7 @@ const windowTitle = computed(() => {
 const icons: Record<string, string> = {
   'note-detail': 'ti ti-note',
   'note-inspector': 'ti ti-code',
+  'notification-inspector': 'ti ti-code',
   'user-profile': 'ti ti-user',
   'follow-list': 'ti ti-users',
   login: 'ti ti-login-2',

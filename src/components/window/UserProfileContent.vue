@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { json } from '@codemirror/lang-json'
 import {
   computed,
   defineAsyncComponent,
@@ -26,20 +25,18 @@ import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import PopupMenu from '@/components/common/PopupMenu.vue'
+import RawJsonView from '@/components/common/RawJsonView.vue'
 import UserProfileFileGrid from '@/components/window/UserProfileFileGrid.vue'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
-const CodeEditor = defineAsyncComponent(
-  () => import('@/components/deck/widgets/CodeEditor.vue'),
-)
 
-import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useNavigation } from '@/composables/useNavigation'
 import { usePortal } from '@/composables/usePortal'
+import { useSensitiveMask } from '@/composables/useSensitiveMask'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
@@ -91,7 +88,6 @@ const PROFILE_TABS: { key: ProfileTab; label: string; icon: string }[] = [
   { key: 'all', label: '全て', icon: 'ti ti-notebook' },
   { key: 'files', label: 'ファイル付き', icon: 'ti ti-photo' },
 ]
-const jsonLang = json()
 
 // Top-level editor-style tabs (overview / notes / files grid / reactions /
 // achievements / raw JSON). `reactions` is only surfaced when the user has
@@ -242,34 +238,18 @@ const SENSITIVE_RAW_KEYS = new Set<string>([
   'achievements',
 ])
 
-function maskSensitive(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(maskSensitive)
-  if (value && typeof value === 'object') {
-    const result: Record<string, unknown> = {}
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      result[k] = SENSITIVE_RAW_KEYS.has(k) ? '<hidden>' : maskSensitive(v)
-    }
-    return result
-  }
-  return value
-}
+const { showSensitive, formatJson: formatRawJson } =
+  useSensitiveMask(SENSITIVE_RAW_KEYS)
 
 const rawUserObj = shallowRef<unknown>(null)
 const isLoadingRaw = ref(false)
 const rawError = ref<string | null>(null)
-const showSensitive = ref(false)
-const { copied: rawCopied, copyToClipboard } = useClipboardFeedback()
-
-const isMaskingActive = computed(
-  () => isOwnProfile.value && !showSensitive.value,
-)
 
 const displayedRawJson = computed(() => {
   if (rawUserObj.value == null) return ''
-  const obj = isMaskingActive.value
-    ? maskSensitive(rawUserObj.value)
-    : rawUserObj.value
-  return JSON.stringify(obj, null, 2)
+  // Only mask when viewing own profile
+  if (!isOwnProfile.value) return JSON.stringify(rawUserObj.value, null, 2)
+  return formatRawJson(rawUserObj.value)
 })
 const remoteProfileUrl = computed(() => {
   if (!user.value?.host) return null
@@ -1245,46 +1225,12 @@ async function handlePosted(editedNoteId?: string) {
         </div>
 
         <div v-show="topTab === 'raw'" :class="$style.rawPane">
-          <div :class="$style.rawHeader">
-            <button
-              v-if="isOwnProfile"
-              class="_button"
-              :class="[$style.rawActionBtn, { [$style.rawRevealActive]: showSensitive }]"
-              :disabled="isLoadingRaw || !rawUserObj"
-              :title="showSensitive ? '機密情報を隠す' : '機密情報を表示'"
-              @click="showSensitive = !showSensitive"
-            >
-              <i :class="showSensitive ? 'ti ti-eye-off' : 'ti ti-eye'" />
-              {{ showSensitive ? '隠す' : '機密を表示' }}
-            </button>
-            <button
-              class="_button"
-              :class="$style.rawActionBtn"
-              :disabled="!displayedRawJson || isLoadingRaw"
-              :title="rawCopied ? 'コピーしました' : '表示中の JSON をコピー'"
-              @click="copyToClipboard(displayedRawJson)"
-            >
-              <i :class="rawCopied ? 'ti ti-check' : 'ti ti-copy'" />
-              {{ rawCopied ? 'コピーしました' : 'コピー' }}
-            </button>
-          </div>
-
-          <div v-if="isLoadingRaw" :class="$style.stateMessage">
-            <LoadingSpinner />
-          </div>
-          <div
-            v-else-if="rawError"
-            :class="[$style.stateMessage, $style.stateError]"
-          >
-            {{ rawError }}
-          </div>
-          <CodeEditor
-            v-else-if="displayedRawJson"
-            :model-value="displayedRawJson"
-            :language="jsonLang"
-            :read-only="true"
-            :auto-height="true"
-            :class="$style.rawCodeEditor"
+          <RawJsonView
+            v-model:show-sensitive="showSensitive"
+            :json="displayedRawJson"
+            :loading="isLoadingRaw"
+            :error="rawError"
+            :can-reveal="isOwnProfile"
           />
         </div>
       </div>
@@ -1815,33 +1761,6 @@ async function handlePosted(editedNoteId?: string) {
   box-sizing: border-box;
 }
 
-.rawHeader {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.rawActionBtn {
-  @include btn-secondary;
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  &.rawRevealActive {
-    background: var(--nd-love-subtle);
-    color: var(--nd-love);
-
-    &:hover {
-      background: var(--nd-love-hover);
-    }
-  }
-}
-
-.rawCodeEditor {
-  min-height: 300px;
-}
 
 .badge {
   font-size: 0.75em;
@@ -2108,5 +2027,4 @@ async function handlePosted(editedNoteId?: string) {
 /* Empty placeholder classes for dynamic binding */
 .active {}
 .following {}
-.rawRevealActive {}
 </style>
