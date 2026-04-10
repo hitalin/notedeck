@@ -179,6 +179,36 @@ function summarize(entry: StreamEventEntry): string {
   return ''
 }
 
+// --- Detail pane resize ---
+
+const wrapperRef = ref<HTMLElement | null>(null)
+const detailHeight = ref(200)
+let resizing = false
+
+function onDividerPointerDown(e: PointerEvent) {
+  e.preventDefault()
+  resizing = true
+  document.body.style.userSelect = 'none'
+  document.body.style.cursor = 'row-resize'
+  document.addEventListener('pointermove', onResizeMove)
+  document.addEventListener('pointerup', onResizeUp)
+}
+
+function onResizeMove(e: PointerEvent) {
+  if (!resizing || !wrapperRef.value) return
+  const rect = wrapperRef.value.getBoundingClientRect()
+  const newHeight = rect.bottom - e.clientY
+  detailHeight.value = Math.max(60, Math.min(newHeight, rect.height - 80))
+}
+
+function onResizeUp() {
+  resizing = false
+  document.body.style.userSelect = ''
+  document.body.style.cursor = ''
+  document.removeEventListener('pointermove', onResizeMove)
+  document.removeEventListener('pointerup', onResizeUp)
+}
+
 function scrollToTop() {
   // No-op for now; list is auto-scrolled
 }
@@ -214,7 +244,7 @@ function scrollToTop() {
       </button>
     </template>
 
-    <div :class="$style.wrapper">
+    <div ref="wrapperRef" :class="$style.wrapper">
       <!-- Filter pills -->
       <div :class="$style.filters">
         <button
@@ -245,8 +275,9 @@ function scrollToTop() {
         </div>
       </div>
 
-      <!-- Detail pane -->
-      <div v-if="selectedEntry" :class="$style.detail">
+      <!-- Resize handle + Detail pane -->
+      <div v-if="selectedEntry" :class="$style.divider" @pointerdown="onDividerPointerDown" />
+      <div v-if="selectedEntry" :class="$style.detail" :style="{ height: detailHeight + 'px' }">
         <div :class="$style.detailHeader">
           <span :class="$style.detailTitle">{{ kindLabel(selectedEntry.kind) }}</span>
           <span :class="$style.detailTime">{{ formatTime(selectedEntry.ts) }}</span>
@@ -387,10 +418,21 @@ function scrollToTop() {
   font-size: 0.85em;
 }
 
-.detail {
-  border-top: 1px solid var(--nd-divider);
+.divider {
+  height: 5px;
   flex-shrink: 0;
-  max-height: 40%;
+  cursor: row-resize;
+  background: var(--nd-divider);
+  transition: background var(--nd-duration-fast);
+
+  &:hover,
+  &:active {
+    background: var(--nd-accent);
+  }
+}
+
+.detail {
+  flex-shrink: 0;
   overflow: auto;
 }
 
