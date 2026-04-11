@@ -1,22 +1,15 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
-import {
-  computed,
-  defineAsyncComponent,
-  onMounted,
-  onUnmounted,
-  ref,
-  shallowRef,
-  watch,
-} from 'vue'
-import type { RawStreamEvent } from '@/adapters/types'
+import { defineAsyncComponent, ref } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
-import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useVerticalResize } from '@/composables/useVerticalResize'
-import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { useServersStore } from '@/stores/servers'
-import { proxyThumbUrl } from '@/utils/imageProxy'
+import {
+  ALL_KINDS,
+  KIND_LABELS,
+  type StreamEventEntry,
+  useStreamInspectorStore,
+} from '@/stores/streamInspector'
 import DeckColumn from './DeckColumn.vue'
 
 const CodeEditor = defineAsyncComponent(
@@ -28,178 +21,8 @@ const props = defineProps<{
 }>()
 
 const { columnThemeVars } = useColumnTheme(() => props.column)
-const accountsStore = useAccountsStore()
-const serversStore = useServersStore()
-const multiAdapters = useMultiAccountAdapters()
+const inspectorStore = useStreamInspectorStore()
 const jsonLang = json()
-
-// --- Buffer ---
-
-interface BadgePair {
-  avatar: string | null
-  serverIcon: string | null
-}
-
-interface StreamEventEntry {
-  id: number
-  ts: number
-  kind: string
-  observer: BadgePair
-  subject: BadgePair | null
-  payload: Record<string, unknown>
-}
-
-const MAX_BUFFER = 500
-let nextId = 0
-const buffer = shallowRef<StreamEventEntry[]>([])
-const paused = ref(false)
-const selectedId = ref<number | null>(null)
-
-const selectedEntry = computed(() => {
-  if (selectedId.value == null) return null
-  return buffer.value.find((e) => e.id === selectedId.value) ?? null
-})
-
-const selectedJson = computed(() => {
-  if (!selectedEntry.value) return ''
-  return JSON.stringify(
-    { kind: selectedEntry.value.kind, payload: selectedEntry.value.payload },
-    null,
-    2,
-  )
-})
-
-// --- Filters ---
-
-const ALL_KINDS = [
-  'stream-note',
-  'stream-notification',
-  'stream-main-event',
-  'stream-note-updated',
-  'stream-mention',
-  'stream-chat-message',
-] as const
-
-const KIND_LABELS: Record<string, string> = {
-  'stream-note': 'note',
-  'stream-notification': 'notif',
-  'stream-main-event': 'main',
-  'stream-note-updated': 'updated',
-  'stream-mention': 'mention',
-  'stream-chat-message': 'chat',
-}
-
-const enabledKinds = ref(new Set<string>(ALL_KINDS))
-
-function toggleKind(kind: string) {
-  const s = new Set(enabledKinds.value)
-  if (s.has(kind)) s.delete(kind)
-  else s.add(kind)
-  enabledKinds.value = s
-}
-
-// --- Stream subscription ---
-
-type CleanupFn = () => void
-const cleanups: CleanupFn[] = []
-
-// Dedup: skip events with identical kind + subscriptionId within a short window.
-// Guards against Rust-side double-emit or overlapping Tauri listeners.
-let lastEventKey = ''
-let lastEventTs = 0
-const DEDUP_WINDOW_MS = 50
-
-function extractSubject(p: Record<string, unknown>): BadgePair | null {
-  const src =
-    (p.note as Record<string, unknown> | undefined)?.user ??
-    (p.notification as Record<string, unknown> | undefined)?.user ??
-    null
-  if (!src || typeof src !== 'object') return null
-  const u = src as Record<string, unknown>
-  const avatarUrl = typeof u.avatarUrl === 'string' ? u.avatarUrl : null
-  const host = typeof u.host === 'string' ? u.host : null
-  return {
-    avatar: avatarUrl ? (proxyThumbUrl(avatarUrl, 28) ?? avatarUrl) : null,
-    serverIcon: host
-      ? (serversStore.getServer(host)?.iconUrl ?? `https://${host}/favicon.ico`)
-      : null,
-  }
-}
-
-function makeRawHandler(observer: BadgePair, accountId: string) {
-  return (event: RawStreamEvent) => {
-    if (paused.value) return
-    if (!enabledKinds.value.has(event.kind)) return
-    const now = Date.now()
-    const key = `${event.kind}:${event.payload.subscriptionId ?? ''}:${accountId}`
-    if (key === lastEventKey && now - lastEventTs < DEDUP_WINDOW_MS) return
-    lastEventKey = key
-    lastEventTs = now
-    const entry: StreamEventEntry = {
-      id: nextId++,
-      ts: now,
-      kind: event.kind,
-      observer,
-      subject: extractSubject(event.payload),
-      payload: event.payload,
-    }
-    const arr = [entry, ...buffer.value]
-    if (arr.length > MAX_BUFFER) arr.length = MAX_BUFFER
-    buffer.value = arr
-  }
-}
-
-async function subscribeAll() {
-  // Clean up previous subscriptions
-  for (const fn of cleanups) fn()
-  cleanups.length = 0
-
-  const accounts = accountsStore.accounts.filter((a) => a.hasToken)
-  for (const acc of accounts) {
-    const adapter = await multiAdapters.getOrCreate(acc.id)
-    if (!adapter) continue
-    // Don't call connect() — the stream is already connected by other columns.
-    // Calling connect() would disrupt the existing listener generation.
-    const observerBadge: BadgePair = {
-      avatar:
-        proxyThumbUrl(getAccountAvatarUrl(acc), 28) ?? getAccountAvatarUrl(acc),
-      serverIcon:
-        serversStore.getServer(acc.host)?.iconUrl ??
-        `https://${acc.host}/favicon.ico`,
-    }
-    const handler = makeRawHandler(observerBadge, acc.id)
-    adapter.stream.onRawEvent(handler)
-    cleanups.push(() => adapter.stream.offRawEvent(handler))
-  }
-}
-
-onMounted(() => {
-  subscribeAll()
-})
-
-// Re-subscribe when accounts change
-watch(
-  () => accountsStore.accounts.length,
-  () => {
-    subscribeAll()
-  },
-)
-
-onUnmounted(() => {
-  for (const fn of cleanups) fn()
-  cleanups.length = 0
-})
-
-// --- Actions ---
-
-function selectRow(entry: StreamEventEntry) {
-  selectedId.value = entry.id
-}
-
-function clearBuffer() {
-  buffer.value = []
-  selectedId.value = null
-}
 
 // --- Display helpers ---
 
@@ -260,17 +83,17 @@ function scrollToTop() {
     <template #header-meta>
       <button
         class="_button"
-        :class="[$style.headerBtn, paused && $style.headerBtnActive]"
-        :title="paused ? '再開' : '一時停止'"
-        @click.stop="paused = !paused"
+        :class="[$style.headerBtn, inspectorStore.paused && $style.headerBtnActive]"
+        :title="inspectorStore.paused ? '再開' : '一時停止'"
+        @click.stop="inspectorStore.paused = !inspectorStore.paused"
       >
-        <i :class="paused ? 'ti ti-player-play' : 'ti ti-player-pause'" />
+        <i :class="inspectorStore.paused ? 'ti ti-player-play' : 'ti ti-player-pause'" />
       </button>
       <button
         class="_button"
         :class="$style.headerBtn"
         title="クリア"
-        @click.stop="clearBuffer"
+        @click.stop="inspectorStore.clearBuffer()"
       >
         <i class="ti ti-trash" />
       </button>
@@ -283,8 +106,8 @@ function scrollToTop() {
           v-for="kind in ALL_KINDS"
           :key="kind"
           class="_button"
-          :class="[$style.pill, enabledKinds.has(kind) && $style.pillActive]"
-          @click="toggleKind(kind)"
+          :class="[$style.pill, inspectorStore.enabledKinds.has(kind) && $style.pillActive]"
+          @click="inspectorStore.toggleKind(kind)"
         >
           {{ KIND_LABELS[kind] ?? kind }}
         </button>
@@ -293,10 +116,10 @@ function scrollToTop() {
       <!-- Event list -->
       <div :class="$style.list">
         <div
-          v-for="entry in buffer"
+          v-for="entry in inspectorStore.buffer"
           :key="entry.id"
-          :class="[$style.row, selectedId === entry.id && $style.rowSelected]"
-          @click="selectRow(entry)"
+          :class="[$style.row, inspectorStore.selectedId === entry.id && $style.rowSelected]"
+          @click="inspectorStore.selectRow(entry.id)"
         >
           <span :class="$style.rowTime">{{ formatTime(entry.ts) }}</span>
           <span :class="$style.rowKind">{{ kindLabel(entry.kind) }}</span>
@@ -311,20 +134,20 @@ function scrollToTop() {
           </span>
           <span :class="$style.rowSummary">{{ summarize(entry) }}</span>
         </div>
-        <div v-if="buffer.length === 0" :class="$style.empty">
+        <div v-if="inspectorStore.buffer.length === 0" :class="$style.empty">
           イベント待機中...
         </div>
       </div>
 
       <!-- Resize handle + Detail pane -->
-      <div v-if="selectedEntry" :class="$style.divider" @pointerdown="onDividerPointerDown" />
-      <div v-if="selectedEntry" :class="$style.detail" :style="{ height: detailHeight + 'px' }">
+      <div v-if="inspectorStore.selectedEntry" :class="$style.divider" @pointerdown="onDividerPointerDown" />
+      <div v-if="inspectorStore.selectedEntry" :class="$style.detail" :style="{ height: detailHeight + 'px' }">
         <div :class="$style.detailHeader">
-          <span :class="$style.detailTitle">{{ kindLabel(selectedEntry.kind) }}</span>
-          <span :class="$style.detailTime">{{ formatTime(selectedEntry.ts) }}</span>
+          <span :class="$style.detailTitle">{{ kindLabel(inspectorStore.selectedEntry.kind) }}</span>
+          <span :class="$style.detailTime">{{ formatTime(inspectorStore.selectedEntry.ts) }}</span>
         </div>
         <CodeEditor
-          :model-value="selectedJson"
+          :model-value="inspectorStore.selectedJson"
           :language="jsonLang"
           :read-only="true"
           :auto-height="true"
