@@ -10,6 +10,7 @@ import {
 } from '@/commands/quickPickProviders'
 import type { Command } from '@/commands/registry'
 import { useCommandStore } from '@/commands/registry'
+import { handleDeepLink } from '@/composables/useDeepLink'
 import { useNavigation } from '@/composables/useNavigation'
 import { usePortal } from '@/composables/usePortal'
 import { useAccountsStore } from '@/stores/accounts'
@@ -152,6 +153,7 @@ const dropdownRef = useTemplateRef<HTMLElement>('dropdownRef')
 usePortal(overlayRef)
 usePortal(dropdownRef)
 
+const isDeepLink = computed(() => query.value.startsWith('notedeck://'))
 const cliMatch = computed(() => parseCliInput(query.value))
 const cliMeta = computed(() =>
   cliMatch.value ? getCliMeta(cliMatch.value.name) : undefined,
@@ -284,6 +286,9 @@ function onKeydown(e: KeyboardEvent) {
     if (inQuickPick) {
       const item = flatQuickPickList.value[selectedIndex.value]
       if (item) selectQuickPickItem(item)
+    } else if (query.value.startsWith('notedeck://')) {
+      commandStore.close()
+      handleDeepLink(query.value)
     } else if (cliMatch.value) {
       const { name, args } = cliMatch.value
       const meta = getCliMeta(name)
@@ -512,6 +517,17 @@ function primaryShortcut(cmd: Command): string | null {
       </div>
       <div v-else :class="$style.empty">一致する項目がありません</div>
     </template>
+
+    <!-- Deep link URI mode -->
+    <div v-else-if="isDeepLink" :class="$style.cli">
+      <div :class="$style.cliRow">
+        <i :class="['ti ti-link', $style.itemIcon]" />
+        <span :class="$style.cliAction">
+          ↵ Enterで開く:
+          <strong>{{ query }}</strong>
+        </span>
+      </div>
+    </div>
 
     <!-- CLI mode -->
     <div v-else-if="cliMatch && cliMeta" :class="$style.cli">
