@@ -58,10 +58,6 @@ export function useNavigation() {
     toggleOrOpenColumn('notifications')
   }
 
-  function navigateToPlugins() {
-    windowsStore.open('plugins')
-  }
-
   function navigateToAi() {
     toggleOrOpenColumn('ai')
   }
@@ -76,7 +72,6 @@ export function useNavigation() {
     navigateToLogin,
     navigateToSearch,
     navigateToNotifications,
-    navigateToPlugins,
     navigateToAi,
     navigateToChat,
   }

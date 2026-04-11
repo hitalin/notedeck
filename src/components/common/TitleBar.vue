@@ -167,7 +167,7 @@ const menuRef = ref<InstanceType<typeof TitleBarMenu> | null>(null)
       <!-- Open: command palette input replaces the search bar -->
       <CommandPalette v-if="commandStore.isOpen" :class="$style.centerBar" />
       <!-- Closed: URI display / search trigger -->
-      <button v-else :class="[$style.titlebarSearchBar, $style.centerBar]" @click="commandStore.open()">
+      <button v-else :class="[$style.titlebarSearchBar, $style.centerBar]" @click="commandStore.openWithInput(deckStore.activeColumnUri ?? '')">
         <i :class="[$style.titlebarSearchIcon, 'ti', 'ti-search']" />
         <span :class="[$style.titlebarSearchText, { [$style.hasUri]: deckStore.activeColumnUri }]">{{ titleBarText }}</span>
         <kbd :class="$style.titlebarSearchKbd">Ctrl+K</kbd>

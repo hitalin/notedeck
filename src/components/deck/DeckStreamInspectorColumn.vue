@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
 import { computed, defineAsyncComponent, ref, shallowRef, watch } from 'vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useServerImages } from '@/composables/useServerImages'
 import { useVerticalResize } from '@/composables/useVerticalResize'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -23,6 +25,7 @@ const props = defineProps<{
 }>()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const { serverInfoImageUrl } = useServerImages(() => props.column)
 const serversStore = useServersStore()
 const inspectorStore = useStreamInspectorStore()
 const jsonLang = json()
@@ -211,9 +214,11 @@ function scrollToTop() {
           </span>
           <span :class="$style.rowSummary">{{ summarize(entry) }}</span>
         </div>
-        <div v-if="displayBuffer.length === 0" :class="$style.empty">
-          イベント待機中...
-        </div>
+        <ColumnEmptyState
+          v-if="displayBuffer.length === 0"
+          message="イベント待機中..."
+          :image-url="serverInfoImageUrl"
+        />
       </div>
 
       <!-- Resize handle + Detail pane -->
@@ -371,15 +376,6 @@ function scrollToTop() {
   min-width: 0;
 }
 
-.empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px;
-  color: var(--nd-fg);
-  opacity: 0.4;
-  font-size: 0.85em;
-}
 
 .divider {
   height: 5px;

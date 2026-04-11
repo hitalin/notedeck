@@ -1,6 +1,6 @@
 [package]
 name = "notedeck"
-version = "0.10.1"
+version = "0.10.2"
 description = "Misskey IDE — integrated deck environment for browsing, posting, searching, and connecting"
 edition = "2021"
 
@@ -44,6 +44,7 @@ utoipa = { version = "5", features = ["axum_extras"] }
 tauri-plugin-os = "2"
 tauri-plugin-haptics = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-deep-link = "2"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = [
