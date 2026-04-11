@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { onScopeDispose, ref } from 'vue'
 
 export interface PointerReorderOptions {
   /** data-* attribute name on draggable elements (e.g. 'nav-idx' → data-nav-idx). */
@@ -94,6 +94,11 @@ export function usePointerReorder(options: PointerReorderOptions) {
     if (fromIdx == null || toIdx == null || fromIdx === toIdx) return
     onReorder(fromIdx, toIdx)
   }
+
+  onScopeDispose(() => {
+    cleanupPending?.()
+    if (dragFromIndex.value != null) onDragEnd()
+  })
 
   return {
     dragFromIndex,

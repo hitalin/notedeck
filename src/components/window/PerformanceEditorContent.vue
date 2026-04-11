@@ -257,6 +257,7 @@ function handleReset() {
         v-model="code"
         :language="jsonLang"
         :class="$style.codeEditorWrap"
+        auto-height
       />
       <div v-if="codeError" :class="$style.errorMessage">
         <i class="ti ti-alert-triangle" />
@@ -545,8 +546,6 @@ function handleReset() {
 }
 
 .codeEditorWrap {
-  flex: 1;
-  min-height: 200px;
 }
 
 .errorMessage {

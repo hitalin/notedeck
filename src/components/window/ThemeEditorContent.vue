@@ -692,6 +692,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
           :language="jsonLang"
           :linter="jsonLinter"
           :class="$style.codeEditorWrap"
+          auto-height
         />
         <div v-if="codeError" :class="$style.codeError">{{ codeError }}</div>
         <button
@@ -1164,8 +1165,6 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 }
 
 .codeEditorWrap {
-  flex: 1;
-  min-height: 200px;
 }
 
 .codeError {

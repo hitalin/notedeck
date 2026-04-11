@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import { ref } from 'vue'
+import { onScopeDispose, ref } from 'vue'
 
 export interface UseVerticalResizeOptions {
   /** リサイズ対象のコンテナ要素 */
@@ -55,6 +55,10 @@ export function useVerticalResize(options: UseVerticalResizeOptions) {
     document.removeEventListener('pointerup', stop)
     document.removeEventListener('pointercancel', stop)
   }
+
+  onScopeDispose(() => {
+    if (resizing) stop()
+  })
 
   return { value, start, stop }
 }

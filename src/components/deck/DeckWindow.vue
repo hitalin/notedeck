@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useIsCompactLayout } from '@/stores/ui'
 import {
   type DeckWindow,
@@ -128,6 +128,10 @@ function onPointerUp() {
 function onWindowMouseDown() {
   windowsStore.bringToFront(props.window.id)
 }
+
+onBeforeUnmount(() => {
+  if (isDragging.value) onPointerUp()
+})
 </script>
 
 <template>

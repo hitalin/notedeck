@@ -24,6 +24,7 @@ import { useUpdater } from '@/composables/useUpdater'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
+import { useStreamInspectorStore } from '@/stores/streamInspector'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckBottomBar from './DeckBottomBar.vue'
@@ -68,6 +69,7 @@ const activeColumnIndex = computed(() => {
   return idx >= 0 ? idx : 0
 })
 const { updateAvailable, checkForUpdate } = useUpdater()
+useStreamInspectorStore().startWatching()
 const { ripples, remove: removeRipple } = useRippleEffect()
 
 // Android back button: close overlays instead of exiting

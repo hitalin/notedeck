@@ -1,22 +1,17 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
-import {
-  computed,
-  defineAsyncComponent,
-  onMounted,
-  onUnmounted,
-  ref,
-  shallowRef,
-  watch,
-} from 'vue'
-import type { RawStreamEvent } from '@/adapters/types'
+import { computed, defineAsyncComponent, ref, shallowRef, watch } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
-import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useVerticalResize } from '@/composables/useVerticalResize'
-import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
+import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
-import { proxyThumbUrl } from '@/utils/imageProxy'
+import {
+  ALL_KINDS,
+  KIND_LABELS,
+  type StreamEventEntry,
+  useStreamInspectorStore,
+} from '@/stores/streamInspector'
 import DeckColumn from './DeckColumn.vue'
 
 const CodeEditor = defineAsyncComponent(
@@ -27,37 +22,50 @@ const props = defineProps<{
   column: DeckColumnType
 }>()
 
-const { columnThemeVars } = useColumnTheme(() => props.column)
-const accountsStore = useAccountsStore()
+const { account, columnThemeVars } = useColumnTheme(() => props.column)
 const serversStore = useServersStore()
-const multiAdapters = useMultiAccountAdapters()
+const inspectorStore = useStreamInspectorStore()
 const jsonLang = json()
 
-// --- Buffer ---
+const isScopedToAccount = computed(() => props.column.accountId != null)
+const serverIconUrl = computed(() => {
+  const acc = account.value
+  if (!acc) return undefined
+  return (
+    serversStore.getServer(acc.host)?.iconUrl ??
+    `https://${acc.host}/favicon.ico`
+  )
+})
 
-interface BadgePair {
-  avatar: string | null
-  serverIcon: string | null
-}
-
-interface StreamEventEntry {
-  id: number
-  ts: number
-  kind: string
-  observer: BadgePair
-  subject: BadgePair | null
-  payload: Record<string, unknown>
-}
-
-const MAX_BUFFER = 500
-let nextId = 0
-const buffer = shallowRef<StreamEventEntry[]>([])
+// --- Per-column UI state ---
 const paused = ref(false)
 const selectedId = ref<number | null>(null)
+const enabledKinds = ref(new Set<string>(ALL_KINDS))
+const clearedBefore = ref(0)
+
+const filteredBuffer = computed(() => {
+  const aid = props.column.accountId
+  return inspectorStore.buffer.filter((e) => {
+    if (e.ts < clearedBefore.value) return false
+    if (!enabledKinds.value.has(e.kind)) return false
+    if (aid != null && e.accountId !== aid) return false
+    return true
+  })
+})
+
+// Freeze display when paused
+const displayBuffer = shallowRef<StreamEventEntry[]>([])
+watch(
+  filteredBuffer,
+  (buf) => {
+    if (!paused.value) displayBuffer.value = buf
+  },
+  { immediate: true },
+)
 
 const selectedEntry = computed(() => {
   if (selectedId.value == null) return null
-  return buffer.value.find((e) => e.id === selectedId.value) ?? null
+  return displayBuffer.value.find((e) => e.id === selectedId.value) ?? null
 })
 
 const selectedJson = computed(() => {
@@ -69,28 +77,6 @@ const selectedJson = computed(() => {
   )
 })
 
-// --- Filters ---
-
-const ALL_KINDS = [
-  'stream-note',
-  'stream-notification',
-  'stream-main-event',
-  'stream-note-updated',
-  'stream-mention',
-  'stream-chat-message',
-] as const
-
-const KIND_LABELS: Record<string, string> = {
-  'stream-note': 'note',
-  'stream-notification': 'notif',
-  'stream-main-event': 'main',
-  'stream-note-updated': 'updated',
-  'stream-mention': 'mention',
-  'stream-chat-message': 'chat',
-}
-
-const enabledKinds = ref(new Set<string>(ALL_KINDS))
-
 function toggleKind(kind: string) {
   const s = new Set(enabledKinds.value)
   if (s.has(kind)) s.delete(kind)
@@ -98,106 +84,12 @@ function toggleKind(kind: string) {
   enabledKinds.value = s
 }
 
-// --- Stream subscription ---
-
-type CleanupFn = () => void
-const cleanups: CleanupFn[] = []
-
-// Dedup: skip events with identical kind + subscriptionId within a short window.
-// Guards against Rust-side double-emit or overlapping Tauri listeners.
-let lastEventKey = ''
-let lastEventTs = 0
-const DEDUP_WINDOW_MS = 50
-
-function extractSubject(p: Record<string, unknown>): BadgePair | null {
-  const src =
-    (p.note as Record<string, unknown> | undefined)?.user ??
-    (p.notification as Record<string, unknown> | undefined)?.user ??
-    null
-  if (!src || typeof src !== 'object') return null
-  const u = src as Record<string, unknown>
-  const avatarUrl = typeof u.avatarUrl === 'string' ? u.avatarUrl : null
-  const host = typeof u.host === 'string' ? u.host : null
-  return {
-    avatar: avatarUrl ? (proxyThumbUrl(avatarUrl, 28) ?? avatarUrl) : null,
-    serverIcon: host
-      ? (serversStore.getServer(host)?.iconUrl ?? `https://${host}/favicon.ico`)
-      : null,
-  }
-}
-
-function makeRawHandler(observer: BadgePair, accountId: string) {
-  return (event: RawStreamEvent) => {
-    if (paused.value) return
-    if (!enabledKinds.value.has(event.kind)) return
-    const now = Date.now()
-    const key = `${event.kind}:${event.payload.subscriptionId ?? ''}:${accountId}`
-    if (key === lastEventKey && now - lastEventTs < DEDUP_WINDOW_MS) return
-    lastEventKey = key
-    lastEventTs = now
-    const entry: StreamEventEntry = {
-      id: nextId++,
-      ts: now,
-      kind: event.kind,
-      observer,
-      subject: extractSubject(event.payload),
-      payload: event.payload,
-    }
-    const arr = [entry, ...buffer.value]
-    if (arr.length > MAX_BUFFER) arr.length = MAX_BUFFER
-    buffer.value = arr
-  }
-}
-
-async function subscribeAll() {
-  // Clean up previous subscriptions
-  for (const fn of cleanups) fn()
-  cleanups.length = 0
-
-  const accounts = accountsStore.accounts.filter((a) => a.hasToken)
-  for (const acc of accounts) {
-    const adapter = await multiAdapters.getOrCreate(acc.id)
-    if (!adapter) continue
-    // Don't call connect() — the stream is already connected by other columns.
-    // Calling connect() would disrupt the existing listener generation.
-    const observerBadge: BadgePair = {
-      avatar:
-        proxyThumbUrl(getAccountAvatarUrl(acc), 28) ?? getAccountAvatarUrl(acc),
-      serverIcon:
-        serversStore.getServer(acc.host)?.iconUrl ??
-        `https://${acc.host}/favicon.ico`,
-    }
-    const handler = makeRawHandler(observerBadge, acc.id)
-    adapter.stream.onRawEvent(handler)
-    cleanups.push(() => adapter.stream.offRawEvent(handler))
-  }
-}
-
-onMounted(() => {
-  subscribeAll()
-})
-
-// Re-subscribe when accounts change
-watch(
-  () => accountsStore.accounts.length,
-  () => {
-    subscribeAll()
-  },
-)
-
-onUnmounted(() => {
-  for (const fn of cleanups) fn()
-  cleanups.length = 0
-})
-
-// --- Actions ---
-
-function selectRow(entry: StreamEventEntry) {
-  selectedId.value = entry.id
+function selectRow(id: number) {
+  selectedId.value = id
 }
 
 function clearBuffer() {
-  buffer.value = []
+  clearedBefore.value = Date.now()
   selectedId.value = null
 }
 
@@ -270,10 +162,14 @@ function scrollToTop() {
         class="_button"
         :class="$style.headerBtn"
         title="クリア"
-        @click.stop="clearBuffer"
+        @click.stop="clearBuffer()"
       >
         <i class="ti ti-trash" />
       </button>
+      <div v-if="isScopedToAccount && account" :class="$style.headerAccount">
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl" :title="account.host" />
+      </div>
     </template>
 
     <div ref="wrapperRef" :class="$style.wrapper">
@@ -293,25 +189,29 @@ function scrollToTop() {
       <!-- Event list -->
       <div :class="$style.list">
         <div
-          v-for="entry in buffer"
+          v-for="entry in displayBuffer"
           :key="entry.id"
           :class="[$style.row, selectedId === entry.id && $style.rowSelected]"
-          @click="selectRow(entry)"
+          @click="selectRow(entry.id)"
         >
           <span :class="$style.rowTime">{{ formatTime(entry.ts) }}</span>
           <span :class="$style.rowKind">{{ kindLabel(entry.kind) }}</span>
           <span :class="$style.rowBadges">
-            <img v-if="entry.observer.avatar" :src="entry.observer.avatar" :class="$style.badge" />
-            <img v-if="entry.observer.serverIcon" :src="entry.observer.serverIcon" :class="$style.badge" />
+            <template v-if="!isScopedToAccount">
+              <img v-if="entry.observer.avatar" :src="entry.observer.avatar" :class="$style.badge" />
+              <img v-if="entry.observer.serverIcon" :src="entry.observer.serverIcon" :class="$style.badge" />
+              <template v-if="entry.subject">
+                <span :class="$style.badgeArrow">→</span>
+              </template>
+            </template>
             <template v-if="entry.subject">
-              <span :class="$style.badgeArrow">→</span>
               <img v-if="entry.subject.avatar" :src="entry.subject.avatar" :class="$style.badge" />
               <img v-if="entry.subject.serverIcon" :src="entry.subject.serverIcon" :class="$style.badge" />
             </template>
           </span>
           <span :class="$style.rowSummary">{{ summarize(entry) }}</span>
         </div>
-        <div v-if="buffer.length === 0" :class="$style.empty">
+        <div v-if="displayBuffer.length === 0" :class="$style.empty">
           イベント待機中...
         </div>
       </div>
@@ -336,6 +236,8 @@ function scrollToTop() {
 </template>
 
 <style module lang="scss">
+@use './column-common.module.scss';
+
 .headerIcon {
   font-size: 1em;
 }

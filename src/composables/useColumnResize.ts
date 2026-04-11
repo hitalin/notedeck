@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import { ref } from 'vue'
+import { onScopeDispose, ref } from 'vue'
 import type { DeckColumn, useDeckStore } from '@/stores/deck'
 
 const COL_MIN_WIDTH = 280
@@ -56,6 +56,10 @@ export function useColumnResize(
     document.addEventListener('pointerup', stopColumnResize)
     document.addEventListener('pointercancel', stopColumnResize)
   }
+
+  onScopeDispose(() => {
+    if (resizingColId.value) stopColumnResize()
+  })
 
   return {
     resizingColId,

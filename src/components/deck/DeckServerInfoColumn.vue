@@ -2,6 +2,8 @@
 import DOMPurify from 'dompurify'
 import { computed, onMounted, ref } from 'vue'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
+import EditorTabs from '@/components/common/EditorTabs.vue'
+import RawJsonView from '@/components/common/RawJsonView.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
@@ -64,6 +66,24 @@ const stats = ref<ServerStats | null>(null)
 const scrollContainer = ref<HTMLElement | null>(null)
 useColumnPullScroller(scrollContainer)
 const rulesOpen = ref(false)
+
+type ServerTab = 'info' | 'meta' | 'stats'
+const TAB_DEFS: { value: ServerTab; icon: string; label: string }[] = [
+  { value: 'info', icon: 'info-circle', label: '情報' },
+  { value: 'meta', icon: 'code', label: 'meta' },
+  { value: 'stats', icon: 'chart-bar', label: 'stats' },
+]
+const tab = ref<ServerTab>('info')
+
+const metaJson = computed(() =>
+  meta.value ? JSON.stringify(meta.value, null, 2) : '',
+)
+const statsJson = computed(() =>
+  stats.value ? JSON.stringify(stats.value, null, 2) : '',
+)
+const currentRawJson = computed(() =>
+  tab.value === 'meta' ? metaJson.value : statsJson.value,
+)
 
 function scrollToTop() {
   scrollContainer.value?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -162,7 +182,14 @@ onMounted(() => {
 
     <ColumnEmptyState v-else-if="error" :message="error.message" is-error :image-url="serverErrorImageUrl" />
 
-    <div v-else-if="meta" ref="scrollContainer" :class="$style.serverInfoBody">
+    <div v-else-if="meta" :class="$style.tabWrapper">
+      <EditorTabs
+        :tabs="TAB_DEFS"
+        :model-value="tab"
+        @update:model-value="(v) => (tab = v as ServerTab)"
+      />
+
+      <div v-if="tab === 'info'" ref="scrollContainer" :class="$style.serverInfoBody">
       <!-- Banner (Misskey style: bg image + icon overlay + gradient name) -->
       <div
         :class="$style.banner"
@@ -349,6 +376,24 @@ onMounted(() => {
           </a>
         </div>
       </div>
+      </div>
+
+      <RawJsonView
+        v-else
+        :json="currentRawJson"
+        :loading="false"
+        :error="null"
+      >
+        <template #hint>
+          <i class="ti ti-info-circle" />
+          <template v-if="tab === 'meta'">
+            <code>/api/meta</code> の生レスポンス
+          </template>
+          <template v-else>
+            <code>/api/stats</code> の生レスポンス
+          </template>
+        </template>
+      </RawJsonView>
     </div>
 
     <ColumnEmptyState v-else message="サーバー情報を取得できませんでした" :image-url="serverInfoImageUrl" />
@@ -357,6 +402,13 @@ onMounted(() => {
 
 <style lang="scss" module>
 @use "./column-common.module.scss";
+
+.tabWrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
 
 .serverInfoBody {
   composes: columnScroller from './column-common.module.scss';

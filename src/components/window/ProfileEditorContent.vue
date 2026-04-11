@@ -458,6 +458,7 @@ async function importFromClipboard() {
         v-model="codeContent"
         :language="jsonLang"
         :linter="jsonLinter"
+        auto-height
       />
       <div v-if="codeError" :class="$style.codeError">
         {{ codeError }}

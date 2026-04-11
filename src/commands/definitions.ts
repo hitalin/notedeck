@@ -603,16 +603,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     icon: 'puzzle',
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('plugins'),
-    execute: () => useWindowsStore().open('plugins'),
-  })
-
-  commandStore.register({
-    id: 'workspace-explorer',
-    label: 'エクスプローラーを開閉',
-    icon: 'files',
-    category: 'general',
-    shortcuts: keybindsStore.getShortcuts('workspace-explorer'),
-    execute: () => deckStore.toggleSidebarColumn('workspaceExplorer', null),
+    execute: () => useDeckStore().toggleSidebarColumn('pluginManager', null),
   })
 
   commandStore.register({

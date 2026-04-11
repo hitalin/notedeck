@@ -70,6 +70,7 @@ const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
   'page',
   'widget',
   'aiscript',
+  'pluginManager',
 ])
 
 /** Column types that support cross-account mode (accountId: null) */
@@ -81,6 +82,8 @@ const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
   'specified',
   'followRequests',
   'lookup',
+  'streamInspector',
+  'pluginManager',
 ])
 
 /** Column types that can optionally work without an account */
@@ -95,12 +98,7 @@ const requiresAuth = computed(() => {
 function selectColumnType(type: ColumnType) {
   addColumnType.value = type
   // Account-independent types: skip account selection
-  if (
-    type === 'apiDocs' ||
-    type === 'ai' ||
-    type === 'streamInspector' ||
-    type === 'workspaceExplorer'
-  ) {
+  if (type === 'apiDocs' || type === 'ai' || type === 'pluginManager') {
     addColumnForAccount(null)
     return
   }
@@ -129,8 +127,6 @@ const COLUMN_EXTRA_PROPS: Partial<
   aiscript: { aiscriptCode: '<: "Hello, AiScript!"' },
   apiDocs: { accountId: null, width: 990 },
   ai: { accountId: null },
-  streamInspector: { accountId: null },
-  workspaceExplorer: { accountId: null },
   timeline: { tl: 'home', name: null },
 }
 
@@ -559,10 +555,6 @@ function close() {
             <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedCategories.tools }]" />
           </button>
           <template v-if="expandedCategories.tools">
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('workspaceExplorer')">
-              <i class="ti ti-files" />
-              <span>エクスプローラー</span>
-            </button>
             <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('widget')">
               <i class="ti ti-app-window" />
               <span>ウィジェット</span>
@@ -586,6 +578,10 @@ function close() {
             <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('streamInspector')">
               <i class="ti ti-activity-heartbeat" />
               <span>ストリーム</span>
+            </button>
+            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('pluginManager')">
+              <i class="ti ti-puzzle" />
+              <span>プラグイン</span>
             </button>
           </template>
         </div>

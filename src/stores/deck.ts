@@ -45,8 +45,8 @@ export type ColumnType =
   | 'ads'
   | 'aboutMisskey'
   | 'emoji'
-  | 'workspaceExplorer'
   | 'streamInspector'
+  | 'pluginManager'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
@@ -178,6 +178,9 @@ export const useDeckStore = defineStore('deck', () => {
     }
   }
 
+  // Column types removed in past versions — silently strip from saved navbar
+  const DEPRECATED_COLUMN_TYPES = new Set(['workspaceExplorer'])
+
   async function initNavbar() {
     if (!isTauri) return
     try {
@@ -185,7 +188,10 @@ export const useDeckStore = defineStore('deck', () => {
       if (content?.trim()) {
         const parsed = JSON5.parse(content)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          navItems.value = parsed as NavItem[]
+          const filtered = (parsed as NavItem[]).filter(
+            (item) => !DEPRECATED_COLUMN_TYPES.has(item.type),
+          )
+          navItems.value = filtered
           isNavCustomized.value = true
         }
       }
