@@ -146,25 +146,17 @@ export function useNoteColumn(config: NoteColumnConfig) {
   }
 
   // Suspend streaming when column is off-screen or exceeds the live budget.
-  // - isVisible=false: fully paused + unsubscribed (off-screen)
-  // - isVisible=true but isLive=false: paused (over budget, DOM preserved)
-  // - isVisible=true and isLive=true: fully active
+  // Subscription stays alive until onUnmounted — only JS-side processing is paused.
+  // This keeps the Rust/server-side WebSocket channel active so that:
+  // - Stream Inspector can observe all events from mounted columns
+  // - Column resume is instant (no resubscribe + API gap-fetch needed)
   if (streamingBatch) {
     const { isVisible, isLive } = useColumnVisible(config.getColumn().id)
     watch([isVisible, isLive], ([visible, live]) => {
-      if (!visible) {
+      if (!visible || !live) {
         streamingBatch.setPaused(true)
-        disposeSubscription()
-      } else if (!live) {
-        // Over live budget: pause streaming but keep DOM
-        streamingBatch.setPaused(true)
-        disposeSubscription()
       } else {
-        const adapter = getAdapter()
-        if (adapter && config.streaming) {
-          resubscribe(adapter)
-          streamingBatch.setPaused(false)
-        }
+        streamingBatch.setPaused(false)
         onResume()
       }
     })
