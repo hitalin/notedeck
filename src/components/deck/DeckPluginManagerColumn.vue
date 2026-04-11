@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { abortPlugin, launchPlugin } from '@/aiscript/plugin-api'
+import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { type PluginMeta, usePluginsStore } from '@/stores/plugins'
 import { useWindowsStore } from '@/stores/windows'
@@ -87,6 +88,20 @@ function openPluginDetail(pluginId: string) {
 
 function openNewPlugin() {
   windowsStore.open('plugins', {})
+}
+
+// --- Uninstall (per-card double confirm) ---
+const confirmingUninstallId = ref<string | null>(null)
+const { confirming: confirmingUninstall, trigger: triggerUninstall } =
+  useDoubleConfirm()
+
+function handleUninstall(plugin: PluginMeta) {
+  confirmingUninstallId.value = plugin.installId
+  triggerUninstall(() => {
+    abortPlugin(plugin.installId)
+    pluginsStore.removePlugin(plugin.installId)
+    confirmingUninstallId.value = null
+  })
 }
 </script>
 
@@ -186,6 +201,17 @@ function openNewPlugin() {
                 @click.stop="toggleActive(plugin)"
               >
                 {{ plugin.active ? '無効にする' : '有効にする' }}
+              </button>
+              <button
+                class="_button"
+                :class="[
+                  $style.uninstallBtn,
+                  confirmingUninstallId === plugin.installId && confirmingUninstall && $style.uninstallBtnConfirm,
+                ]"
+                :title="confirmingUninstallId === plugin.installId && confirmingUninstall ? '本当にアンインストール？' : 'アンインストール'"
+                @click.stop="handleUninstall(plugin)"
+              >
+                <i class="ti ti-trash" />
               </button>
               <button
                 class="_button"
@@ -427,7 +453,7 @@ function openNewPlugin() {
 .cardRow3 {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   margin-top: 2px;
   min-width: 0;
 }
@@ -483,6 +509,39 @@ function openNewPlugin() {
   &:hover {
     background: var(--nd-buttonHoverBg);
   }
+}
+
+.uninstallBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  color: var(--nd-fg);
+  font-size: 13px;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    background 0.1s,
+    color 0.1s;
+
+  .card:hover & {
+    opacity: 0.4;
+  }
+
+  &:hover {
+    opacity: 1 !important;
+    background: var(--nd-buttonHoverBg);
+    color: var(--nd-love);
+  }
+}
+
+.uninstallBtnConfirm {
+  opacity: 1 !important;
+  color: var(--nd-love);
+  background: color-mix(in srgb, var(--nd-love) 12%, transparent);
 }
 
 .gearBtn {
