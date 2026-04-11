@@ -1,0 +1,188 @@
+import { defineStore } from 'pinia'
+import { computed, ref, shallowRef } from 'vue'
+import { launchPlugin, parsePluginMeta } from '@/aiscript/plugin-api'
+import { type PluginMeta, usePluginsStore } from '@/stores/plugins'
+
+const STORE_BASE_URL = 'https://misstore.hital.in'
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+// --- MisStore types (mirrors misstore registry schema) ---
+
+export type PluginCategory =
+  | 'posting'
+  | 'timeline'
+  | 'moderation'
+  | 'utility'
+  | 'integration'
+  | 'appearance'
+  | 'other'
+
+export const PLUGIN_CATEGORY_LABELS: Record<PluginCategory, string> = {
+  posting: 'Posting',
+  timeline: 'Timeline',
+  moderation: 'Moderation',
+  utility: 'Utility',
+  integration: 'Integration',
+  appearance: 'Appearance',
+  other: 'Other',
+}
+
+export interface StorePluginEntry {
+  id: string
+  name: string
+  version: string
+  author: string
+  description: string
+  category: PluginCategory
+  tags: string[]
+  sourceUrl: string
+  apiUrl: string
+  sha512: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface StoreThemeEntry {
+  id: string
+  name: string
+  version: string
+  author: string
+  description: string
+  base: 'dark' | 'light'
+  tags: string[]
+  sourceUrl: string
+  apiUrl: string
+  sha512: string
+  createdAt: string
+  updatedAt: string
+  previewColors: {
+    bg: string
+    fg: string
+    panel: string
+    accent: string
+  }
+}
+
+// --- SHA-512 verification ---
+
+async function computeSha512(source: string): Promise<string> {
+  const normalized = source.replace(/\r\n/g, '\n')
+  const encoded = new TextEncoder().encode(normalized)
+  const hashBuffer = await crypto.subtle.digest('SHA-512', encoded)
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+// --- Store ---
+
+export const useMisStoreStore = defineStore('misstore', () => {
+  const plugins = shallowRef<StorePluginEntry[]>([])
+  const loading = ref(false)
+  const error = ref<string | null>(null)
+  const installing = ref<string | null>(null) // installId of currently installing
+  let lastFetchedAt = 0
+
+  const isCacheValid = () => Date.now() - lastFetchedAt < CACHE_TTL_MS
+
+  async function fetchPlugins(): Promise<void> {
+    if (isCacheValid() && plugins.value.length > 0) return
+    loading.value = true
+    error.value = null
+    try {
+      const res = await fetch(`${STORE_BASE_URL}/registry/plugins.json`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      plugins.value = data.plugins ?? []
+      lastFetchedAt = Date.now()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'fetch failed'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function refresh(): Promise<void> {
+    lastFetchedAt = 0
+    return fetchPlugins()
+  }
+
+  // --- Install ---
+
+  async function installPlugin(entry: StorePluginEntry): Promise<void> {
+    installing.value = entry.id
+    try {
+      const res = await fetch(entry.sourceUrl)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const source = await res.text()
+
+      // SHA-512 verification
+      const hash = await computeSha512(source)
+      if (hash !== entry.sha512) {
+        throw new Error(
+          'ハッシュ不一致: ソースが改ざんされている可能性があります',
+        )
+      }
+
+      // Parse and validate
+      const meta = parsePluginMeta(source)
+      if (!meta) {
+        throw new Error('プラグインメタデータの解析に失敗しました')
+      }
+
+      const pluginsStore = usePluginsStore()
+      if (pluginsStore.isDuplicate(meta.name)) {
+        throw new Error(`"${meta.name}" は既にインストールされています`)
+      }
+
+      const configData: Record<string, unknown> = {}
+      if (meta.config) {
+        for (const [key, def] of Object.entries(meta.config)) {
+          configData[key] = def.default
+        }
+      }
+
+      const newPlugin: PluginMeta = {
+        installId: `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: meta.name,
+        version: meta.version,
+        author: meta.author,
+        description: meta.description,
+        permissions: meta.permissions,
+        config: meta.config,
+        configData,
+        src: source,
+        active: true,
+      }
+
+      pluginsStore.addPlugin(newPlugin)
+      await launchPlugin(newPlugin)
+    } finally {
+      installing.value = null
+    }
+  }
+
+  // --- Installed check ---
+
+  function isInstalled(entry: StorePluginEntry): boolean {
+    const pluginsStore = usePluginsStore()
+    return pluginsStore.plugins.some((p) => p.name === entry.name)
+  }
+
+  const installedNames = computed(() => {
+    const pluginsStore = usePluginsStore()
+    return new Set(pluginsStore.plugins.map((p) => p.name))
+  })
+
+  return {
+    plugins,
+    loading,
+    error,
+    installing,
+    fetchPlugins,
+    refresh,
+    installPlugin,
+    isInstalled,
+    installedNames,
+  }
+})
