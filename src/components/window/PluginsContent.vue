@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   abortPlugin,
   getPluginLogs,
@@ -144,14 +144,68 @@ async function toggleActive() {
   }
 }
 
-// 設定
+// --- リネーム ---
+const isRenaming = ref(false)
+const renamingValue = ref('')
+
+function startRename() {
+  if (!plugin.value) return
+  renamingValue.value = plugin.value.name
+  isRenaming.value = true
+}
+
+function commitRename() {
+  if (!plugin.value) return
+  const newName = renamingValue.value.trim()
+  if (newName && newName !== plugin.value.name) {
+    pluginsStore.renamePlugin(plugin.value.installId, newName)
+  }
+  isRenaming.value = false
+}
+
+function cancelRename() {
+  isRenaming.value = false
+}
+
+// --- 設定 ---
 function updateConfig(key: string, value: unknown) {
   if (!plugin.value) return
   const newData = { ...plugin.value.configData, [key]: value }
   pluginsStore.updateConfigData(plugin.value.installId, newData)
 }
 
-// Clipboard
+function resetConfig(key: string) {
+  if (!plugin.value?.config?.[key]) return
+  updateConfig(key, plugin.value.config[key].default)
+}
+
+function isConfigCustomized(key: string): boolean {
+  if (!plugin.value?.config?.[key]) return false
+  return plugin.value.configData[key] !== plugin.value.config[key].default
+}
+
+// --- 設定全体リセット ---
+const { confirming: confirmingResetConfig, trigger: triggerResetConfig } =
+  useDoubleConfirm()
+
+function handleResetAllConfig() {
+  if (!plugin.value?.config) return
+  triggerResetConfig(() => {
+    if (!plugin.value?.config) return
+    const defaults: Record<string, unknown> = {}
+    for (const [key, def] of Object.entries(plugin.value.config)) {
+      defaults[key] = def.default
+    }
+    pluginsStore.updateConfigData(plugin.value.installId, defaults)
+  })
+}
+
+const hasCustomConfig = computed(() => {
+  if (!plugin.value?.config) return false
+  return Object.keys(plugin.value.config).some((key) => isConfigCustomized(key))
+})
+
+// --- Clipboard ---
 const {
   copied: copiedMessage,
   imported: importedMessage,
@@ -178,7 +232,7 @@ async function importPlugin() {
   showImported()
 }
 
-// Double confirm for uninstall
+// --- Double confirm for uninstall ---
 const { confirming: confirmingUninstall, trigger: triggerUninstall } =
   useDoubleConfirm()
 
@@ -191,8 +245,12 @@ function handleUninstall() {
   })
 }
 
-// Expanded sections (accordion pattern)
-const expandedSections: Record<string, boolean> = { active: true }
+// --- Expanded sections ---
+const expandedSections = reactive<Record<string, boolean>>({
+  active: true,
+  config: false,
+  logs: false,
+})
 
 function toggleSection(key: string) {
   expandedSections[key] = !expandedSections[key]
@@ -213,13 +271,29 @@ function toggleSection(key: string) {
     <div v-show="tab === 'visual'" :class="$style.visualPanel">
       <!-- 既存プラグイン編集 -->
       <template v-if="plugin">
+        <!-- メタ情報 + リネーム -->
         <div :class="$style.detailMeta">
-          <div :class="$style.detailName">{{ plugin.name }}</div>
-          <div>
+          <div v-if="isRenaming" :class="$style.renameRow">
+            <input
+              v-model="renamingValue"
+              :class="$style.renameInput"
+              type="text"
+              @keydown.enter="commitRename"
+              @keydown.escape="cancelRename"
+              @blur="commitRename"
+            />
+          </div>
+          <div v-else :class="$style.nameRow">
+            <span :class="$style.detailName">{{ plugin.name }}</span>
+            <button class="_button" :class="$style.renameBtn" title="名前を変更" @click="startRename">
+              <i class="ti ti-pencil" />
+            </button>
+          </div>
+          <div :class="$style.metaSub">
             v{{ plugin.version }}
             <template v-if="plugin.author"> · {{ plugin.author }}</template>
           </div>
-          <div v-if="plugin.description">{{ plugin.description }}</div>
+          <div v-if="plugin.description" :class="$style.metaDesc">{{ plugin.description }}</div>
         </div>
 
         <!-- 有効/無効 -->
@@ -227,9 +301,9 @@ function toggleSection(key: string) {
           <button class="_button" :class="$style.sectionLabel" @click="toggleSection('active')">
             <i class="ti ti-power" />
             有効
-            <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.active !== false }]" />
+            <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.active }]" />
           </button>
-          <template v-if="expandedSections.active !== false">
+          <template v-if="expandedSections.active">
             <div :class="$style.detailRow">
               <span :class="$style.detailRowLabel">プラグインを有効にする</span>
               <button
@@ -258,9 +332,20 @@ function toggleSection(key: string) {
                 <div
                   v-for="(def, key) in plugin.config"
                   :key="key"
-                  :class="$style.configItem"
+                  :class="[$style.configItem, { [$style.configItemCustomized]: isConfigCustomized(key as string) }]"
                 >
-                  <label :class="$style.configLabel">{{ def.label }}</label>
+                  <div :class="$style.configHeader">
+                    <label :class="$style.configLabel">{{ def.label }}</label>
+                    <button
+                      v-if="isConfigCustomized(key as string)"
+                      class="_button"
+                      :class="$style.configResetBtn"
+                      title="デフォルトに戻す"
+                      @click="resetConfig(key as string)"
+                    >
+                      <i class="ti ti-rotate" />
+                    </button>
+                  </div>
                   <p v-if="def.description" :class="$style.configDesc">{{ def.description }}</p>
                   <template v-if="def.type === 'boolean'">
                     <button
@@ -268,7 +353,7 @@ function toggleSection(key: string) {
                       :class="{ on: !!plugin.configData[key] }"
                       role="switch"
                       :aria-checked="!!plugin.configData[key]"
-                      @click="updateConfig(key, !plugin.configData[key])"
+                      @click="updateConfig(key as string, !plugin.configData[key])"
                     >
                       <span class="nd-toggle-switch-knob" />
                     </button>
@@ -278,7 +363,8 @@ function toggleSection(key: string) {
                       :class="$style.configInput"
                       type="text"
                       :value="plugin.configData[key] as string"
-                      @change="updateConfig(key, ($event.target as HTMLInputElement).value)"
+                      :placeholder="String(def.default ?? '')"
+                      @change="updateConfig(key as string, ($event.target as HTMLInputElement).value)"
                     />
                   </template>
                   <template v-else-if="def.type === 'number'">
@@ -286,11 +372,22 @@ function toggleSection(key: string) {
                       :class="$style.configInput"
                       type="number"
                       :value="plugin.configData[key] as number"
-                      @change="updateConfig(key, Number(($event.target as HTMLInputElement).value))"
+                      :placeholder="String(def.default ?? '')"
+                      @change="updateConfig(key as string, Number(($event.target as HTMLInputElement).value))"
                     />
                   </template>
                 </div>
               </div>
+              <!-- 設定全体リセット -->
+              <button
+                v-if="hasCustomConfig"
+                class="_button"
+                :class="[$style.resetAllConfigBtn, { [$style.confirming]: confirmingResetConfig }]"
+                @click="handleResetAllConfig"
+              >
+                <i class="ti ti-rotate" />
+                {{ confirmingResetConfig ? '本当にリセット？' : 'すべてデフォルトに戻す' }}
+              </button>
             </template>
           </div>
         </template>
@@ -301,6 +398,7 @@ function toggleSection(key: string) {
             <button class="_button" :class="$style.sectionLabel" @click="toggleSection('logs')">
               <i class="ti ti-list" />
               ログ
+              <span :class="$style.logCount">{{ pluginLogs.length }}</span>
               <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.logs }]" />
             </button>
             <template v-if="expandedSections.logs">
@@ -332,6 +430,9 @@ function toggleSection(key: string) {
 
     <!-- Code tab -->
     <div v-show="tab === 'code'" :class="$style.codePanel">
+      <p v-if="!isNewInstall" :class="$style.codeHint">
+        プラグインの AiScript ソースコード — 編集後「保存して再起動」で反映
+      </p>
       <AiScriptEditor
         v-model="editingCode"
         :placeholder="isNewInstall ? '### { name: &quot;my-plugin&quot;, version: &quot;1.0&quot; } ...' : ''"
@@ -417,10 +518,10 @@ function toggleSection(key: string) {
   scrollbar-width: thin;
 }
 
+// --- Meta + Rename ---
 .detailMeta {
   font-size: 0.85em;
   color: var(--nd-fg);
-  opacity: 0.7;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -428,13 +529,72 @@ function toggleSection(key: string) {
   border-bottom: 1px solid var(--nd-divider);
 }
 
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .detailName {
   font-weight: bold;
   font-size: 1.1em;
   color: var(--nd-fgHighlighted);
-  opacity: 1;
 }
 
+.renameBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  opacity: 0;
+  font-size: 0.85em;
+  transition:
+    opacity var(--nd-duration-fast),
+    background var(--nd-duration-fast);
+
+  .nameRow:hover & {
+    opacity: 0.5;
+  }
+
+  &:hover {
+    opacity: 1 !important;
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.renameRow {
+  display: flex;
+}
+
+.renameInput {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--nd-accent);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-inputBg, var(--nd-bg));
+  color: var(--nd-fgHighlighted);
+  font-size: 1.1em;
+  font-weight: bold;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.metaSub {
+  color: var(--nd-fg);
+  opacity: 0.6;
+}
+
+.metaDesc {
+  color: var(--nd-fg);
+  opacity: 0.5;
+}
+
+// --- Sections ---
 .section {
   display: flex;
   flex-direction: column;
@@ -482,6 +642,7 @@ function toggleSection(key: string) {
   color: var(--nd-fg);
 }
 
+// --- Config ---
 .detailConfig {
   display: flex;
   flex-direction: column;
@@ -492,12 +653,46 @@ function toggleSection(key: string) {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 6px 8px;
+  border-radius: var(--nd-radius-sm);
+  transition: background var(--nd-duration-fast);
+}
+
+.configItemCustomized {
+  background: color-mix(in srgb, var(--nd-accent) 6%, transparent);
+}
+
+.configHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .configLabel {
   font-size: 0.85em;
   font-weight: bold;
   color: var(--nd-fgHighlighted);
+}
+
+.configResetBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  opacity: 0.4;
+  font-size: 0.8em;
+  transition:
+    opacity var(--nd-duration-fast),
+    background var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+    color: var(--nd-accent);
+  }
 }
 
 .configDesc {
@@ -515,10 +710,46 @@ function toggleSection(key: string) {
   color: var(--nd-fg);
   font-size: 0.85em;
 
+  &::placeholder {
+    opacity: 0.35;
+  }
+
   &:focus {
     outline: none;
     border-color: var(--nd-accent);
   }
+}
+
+.resetAllConfigBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 0.78em;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  border-radius: var(--nd-radius-sm);
+  transition:
+    opacity var(--nd-duration-fast),
+    background var(--nd-duration-fast),
+    color var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 0.8;
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &.confirming {
+    color: var(--nd-love);
+    opacity: 1;
+  }
+}
+
+// --- Logs ---
+.logCount {
+  font-size: 0.85em;
+  font-weight: normal;
+  opacity: 0.5;
 }
 
 .detailLogs {
@@ -542,6 +773,7 @@ function toggleSection(key: string) {
   }
 }
 
+// --- Install ---
 .installBody {
   display: flex;
   flex-direction: column;
@@ -568,6 +800,7 @@ function toggleSection(key: string) {
   font-size: 0.85em;
 }
 
+// --- Code tab ---
 .codePanel {
   display: flex;
   flex-direction: column;
@@ -578,7 +811,14 @@ function toggleSection(key: string) {
   overflow-y: auto;
 }
 
+.codeHint {
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  opacity: 0.4;
+  margin: 0;
+}
 
+// --- Actions ---
 .actions { @include action-bar; }
 .actionGroup { @include action-group; }
 
