@@ -354,13 +354,6 @@ usePortal(settingsMenuPortalRef)
       <!-- 環境設定 (モバイル: フラットに展開) -->
       <template v-if="isCompact">
         <div :class="$style.categorySection">
-          <button :class="$style.categoryHeader" @click="openToolWindow('plugins')">
-            <i class="ti ti-plug" />
-            <span>プラグイン</span>
-            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
-          </button>
-        </div>
-        <div :class="$style.categorySection">
           <button :class="$style.categoryHeader" @click="openToolWindow('aiSettings')">
             <i class="ti ti-robot" />
             <span>AI</span>
@@ -392,10 +385,6 @@ usePortal(settingsMenuPortalRef)
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.settings }]" />
         </button>
         <div v-if="expandedSections.settings" :class="$style.categoryBody">
-          <button :class="$style.settingsMenuItem" @click="openToolWindow('plugins')">
-            <i class="ti ti-plug" />
-            <span :class="$style.settingsMenuLabel">プラグイン</span>
-          </button>
           <button :class="$style.settingsMenuItem" @click="openToolWindow('aiSettings')">
             <i class="ti ti-robot" />
             <span :class="$style.settingsMenuLabel">AI</span>

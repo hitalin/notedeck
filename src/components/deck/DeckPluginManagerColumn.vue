@@ -15,7 +15,7 @@ const windowsStore = useWindowsStore()
 
 pluginsStore.ensureLoaded()
 
-// --- Search & filter (VSCode style: @installed, @enabled, @disabled prefix) ---
+// --- Search & filter ---
 const searchQuery = ref('')
 
 type FilterMode = 'all' | 'enabled' | 'disabled'
@@ -85,7 +85,7 @@ function openPluginDetail(pluginId: string) {
   windowsStore.open('plugins', { initialPluginId: pluginId })
 }
 
-function openInstall() {
+function openNewPlugin() {
   windowsStore.open('plugins', {})
 }
 </script>
@@ -98,6 +98,17 @@ function openInstall() {
   >
     <template #header-icon>
       <i class="ti ti-puzzle" :class="$style.headerIcon" />
+    </template>
+
+    <template #header-meta>
+      <button
+        class="_button"
+        :class="$style.headerBtn"
+        title="新規プラグインをインストール"
+        @click.stop="openNewPlugin"
+      >
+        <i class="ti ti-plus" />
+      </button>
     </template>
 
     <template #header-extra>
@@ -158,15 +169,12 @@ function openInstall() {
 
           <!-- Body -->
           <div :class="$style.cardBody">
-            <!-- Row 1: name -->
             <div :class="$style.cardRow1">
               <span :class="$style.cardName">{{ plugin.name }}</span>
             </div>
-            <!-- Row 2: description -->
             <div :class="$style.cardRow2">
               {{ plugin.description || 'No description' }}
             </div>
-            <!-- Row 3: author + version + actions -->
             <div :class="$style.cardRow3">
               <span v-if="plugin.author" :class="$style.cardAuthor">{{ plugin.author }}</span>
               <span :class="$style.cardVersion">v{{ plugin.version }}</span>
@@ -199,7 +207,7 @@ function openInstall() {
           <template v-else>
             <i class="ti ti-puzzle" :class="$style.emptyIcon" />
             <span>プラグインがインストールされていません</span>
-            <button class="_button" :class="$style.installLink" @click="openInstall">
+            <button class="_button" :class="$style.installLink" @click="openNewPlugin">
               プラグインをインストール...
             </button>
           </template>
@@ -216,7 +224,26 @@ function openInstall() {
   font-size: 1em;
 }
 
-// --- Search bar (VSCode style) ---
+.headerBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  opacity: 0.6;
+  transition:
+    background 0.1s,
+    opacity 0.1s;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
+}
+
+// --- Search bar ---
 .searchWrap {
   display: flex;
   align-items: center;
@@ -328,7 +355,7 @@ function openInstall() {
   scrollbar-width: thin;
 }
 
-// --- Card (VSCode extension item layout) ---
+// --- Card ---
 .card {
   display: flex;
   gap: 10px;
@@ -349,7 +376,6 @@ function openInstall() {
   opacity: 0.5;
 }
 
-// Icon (left)
 .cardIcon {
   display: flex;
   align-items: center;
@@ -363,7 +389,6 @@ function openInstall() {
   font-size: 20px;
 }
 
-// Body (right)
 .cardBody {
   flex: 1;
   min-width: 0;
@@ -372,7 +397,6 @@ function openInstall() {
   gap: 1px;
 }
 
-// Row 1: name
 .cardRow1 {
   display: flex;
   align-items: baseline;
@@ -390,7 +414,6 @@ function openInstall() {
   min-width: 0;
 }
 
-// Row 2: description
 .cardRow2 {
   font-size: 12px;
   color: var(--nd-fg);
@@ -401,7 +424,6 @@ function openInstall() {
   line-height: 1.4;
 }
 
-// Row 3: author + version + actions
 .cardRow3 {
   display: flex;
   align-items: center;
