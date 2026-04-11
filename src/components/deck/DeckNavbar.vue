@@ -48,7 +48,7 @@ const emit = defineEmits<{
 }>()
 
 const $style = useCssModule()
-const { navigateToLogin, navigateToPlugins } = useNavigation()
+const { navigateToLogin } = useNavigation()
 const accountActions = useAccountActions()
 const { confirm } = useConfirm()
 const commandStore = useCommandStore()
