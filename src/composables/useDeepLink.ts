@@ -10,6 +10,7 @@ import { useWindowsStore } from '@/stores/windows'
  *
  * Supported schemes:
  *   notedeck://install-plugin?id=<storeId>
+ *   notedeck://install-theme?id=<storeId>
  *   notedeck://<host>/timeline/<tl>
  *   notedeck://<host>/notifications
  *   notedeck://<host>/search?q=<query>
@@ -49,6 +50,15 @@ export async function handleDeepLink(rawUrl: string): Promise<void> {
     const pluginId = url.searchParams.get('id')
     if (pluginId) {
       await handleInstallPlugin(pluginId)
+    }
+    return
+  }
+
+  // notedeck://install-theme?id=<storeId>
+  if (host === 'install-theme') {
+    const themeId = url.searchParams.get('id')
+    if (themeId) {
+      await handleInstallTheme(themeId)
     }
     return
   }
@@ -173,4 +183,19 @@ async function handleInstallPlugin(pluginId: string): Promise<void> {
     return
   }
   await misStore.installPlugin(entry)
+}
+
+async function handleInstallTheme(themeId: string): Promise<void> {
+  const misStore = useMisStoreStore()
+  await misStore.fetchThemes()
+  const entry = misStore.themes.find((t) => t.id === themeId)
+  if (!entry) {
+    console.warn('[deep-link] theme not found in MisStore:', themeId)
+    return
+  }
+  if (misStore.isThemeInstalled(entry)) {
+    console.info('[deep-link] theme already installed:', themeId)
+    return
+  }
+  await misStore.installTheme(entry)
 }

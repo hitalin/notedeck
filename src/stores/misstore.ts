@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 import { launchPlugin, parsePluginMeta } from '@/aiscript/plugin-api'
 import { type PluginMeta, usePluginsStore } from '@/stores/plugins'
+import { useThemeStore } from '@/stores/theme'
 
 const STORE_BASE_URL = 'https://misstore.hital.in'
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
@@ -83,7 +84,15 @@ export const useMisStoreStore = defineStore('misstore', () => {
   const installing = ref<string | null>(null) // installId of currently installing
   let lastFetchedAt = 0
 
+  const themes = shallowRef<StoreThemeEntry[]>([])
+  const themesLoading = ref(false)
+  const themesError = ref<string | null>(null)
+  const installingTheme = ref<string | null>(null)
+  let themesLastFetchedAt = 0
+
   const isCacheValid = () => Date.now() - lastFetchedAt < CACHE_TTL_MS
+  const isThemesCacheValid = () =>
+    Date.now() - themesLastFetchedAt < CACHE_TTL_MS
 
   async function fetchPlugins(): Promise<void> {
     if (isCacheValid() && plugins.value.length > 0) return
@@ -102,9 +111,31 @@ export const useMisStoreStore = defineStore('misstore', () => {
     }
   }
 
+  async function fetchThemes(): Promise<void> {
+    if (isThemesCacheValid() && themes.value.length > 0) return
+    themesLoading.value = true
+    themesError.value = null
+    try {
+      const res = await fetch(`${STORE_BASE_URL}/registry/themes.json`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      themes.value = data.themes ?? []
+      themesLastFetchedAt = Date.now()
+    } catch (e) {
+      themesError.value = e instanceof Error ? e.message : 'fetch failed'
+    } finally {
+      themesLoading.value = false
+    }
+  }
+
   function refresh(): Promise<void> {
     lastFetchedAt = 0
     return fetchPlugins()
+  }
+
+  function refreshThemes(): Promise<void> {
+    themesLastFetchedAt = 0
+    return fetchThemes()
   }
 
   // --- Install ---
@@ -162,11 +193,44 @@ export const useMisStoreStore = defineStore('misstore', () => {
     }
   }
 
+  // --- Install theme ---
+
+  async function installTheme(entry: StoreThemeEntry): Promise<void> {
+    installingTheme.value = entry.id
+    try {
+      const res = await fetch(entry.sourceUrl)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const source = await res.text()
+
+      // SHA-512 verification
+      const hash = await computeSha512(source)
+      if (hash !== entry.sha512) {
+        throw new Error(
+          'ハッシュ不一致: ソースが改ざんされている可能性があります',
+        )
+      }
+
+      const themeStore = useThemeStore()
+
+      const ok = await themeStore.installTheme(source)
+      if (!ok) {
+        throw new Error('テーマのインストールに失敗しました')
+      }
+    } finally {
+      installingTheme.value = null
+    }
+  }
+
   // --- Installed check ---
 
   function isInstalled(entry: StorePluginEntry): boolean {
     const pluginsStore = usePluginsStore()
     return pluginsStore.plugins.some((p) => p.name === entry.name)
+  }
+
+  function isThemeInstalled(entry: StoreThemeEntry): boolean {
+    const themeStore = useThemeStore()
+    return themeStore.installedThemes.some((t) => t.name === entry.name)
   }
 
   const installedNames = computed(() => {
@@ -179,10 +243,18 @@ export const useMisStoreStore = defineStore('misstore', () => {
     loading,
     error,
     installing,
+    themes,
+    themesLoading,
+    themesError,
+    installingTheme,
     fetchPlugins,
+    fetchThemes,
     refresh,
+    refreshThemes,
     installPlugin,
+    installTheme,
     isInstalled,
+    isThemeInstalled,
     installedNames,
   }
 })
