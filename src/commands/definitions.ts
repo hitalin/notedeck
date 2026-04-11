@@ -603,7 +603,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     icon: 'puzzle',
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('plugins'),
-    execute: () => useWindowsStore().open('plugins'),
+    execute: () => useDeckStore().toggleSidebarColumn('pluginManager', null),
   })
 
   commandStore.register({

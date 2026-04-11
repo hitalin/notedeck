@@ -70,6 +70,7 @@ const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
   'page',
   'widget',
   'aiscript',
+  'pluginManager',
 ])
 
 /** Column types that support cross-account mode (accountId: null) */
@@ -82,6 +83,7 @@ const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
   'followRequests',
   'lookup',
   'streamInspector',
+  'pluginManager',
 ])
 
 /** Column types that can optionally work without an account */
@@ -96,7 +98,7 @@ const requiresAuth = computed(() => {
 function selectColumnType(type: ColumnType) {
   addColumnType.value = type
   // Account-independent types: skip account selection
-  if (type === 'apiDocs' || type === 'ai') {
+  if (type === 'apiDocs' || type === 'ai' || type === 'pluginManager') {
     addColumnForAccount(null)
     return
   }
@@ -576,6 +578,10 @@ function close() {
             <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('streamInspector')">
               <i class="ti ti-activity-heartbeat" />
               <span>ストリーム</span>
+            </button>
+            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('pluginManager')">
+              <i class="ti ti-puzzle" />
+              <span>プラグイン</span>
             </button>
           </template>
         </div>

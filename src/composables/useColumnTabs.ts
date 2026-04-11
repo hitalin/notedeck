@@ -33,6 +33,7 @@ export const COLUMN_ICONS: Record<string, string> = {
   aboutMisskey: 'info-circle',
   emoji: 'mood-smile',
   streamInspector: 'activity-heartbeat',
+  pluginManager: 'puzzle',
 }
 
 export const COLUMN_LABELS: Record<string, string> = {
@@ -67,6 +68,7 @@ export const COLUMN_LABELS: Record<string, string> = {
   aboutMisskey: 'Misskeyについて',
   emoji: 'カスタム絵文字',
   streamInspector: 'ストリーム',
+  pluginManager: 'プラグイン',
 }
 
 export const TL_ICONS: Record<string, string> = {

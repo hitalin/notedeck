@@ -46,6 +46,7 @@ export type ColumnType =
   | 'aboutMisskey'
   | 'emoji'
   | 'streamInspector'
+  | 'pluginManager'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 
