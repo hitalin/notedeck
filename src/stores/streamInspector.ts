@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type { RawStreamEvent } from '@/adapters/types'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
@@ -16,6 +16,7 @@ export interface StreamEventEntry {
   id: number
   ts: number
   kind: string
+  accountId: string
   observer: BadgePair
   subject: BadgePair | null
   payload: Record<string, unknown>
@@ -45,26 +46,9 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
   const accountsStore = useAccountsStore()
   const serversStore = useServersStore()
 
-  // --- Buffer ---
+  // --- Global buffer (all accounts) ---
   let nextId = 0
   const buffer = shallowRef<StreamEventEntry[]>([])
-  const paused = ref(false)
-  const selectedId = ref<number | null>(null)
-  const enabledKinds = ref(new Set<string>(ALL_KINDS))
-
-  const selectedEntry = computed(() => {
-    if (selectedId.value == null) return null
-    return buffer.value.find((e) => e.id === selectedId.value) ?? null
-  })
-
-  const selectedJson = computed(() => {
-    if (!selectedEntry.value) return ''
-    return JSON.stringify(
-      { kind: selectedEntry.value.kind, payload: selectedEntry.value.payload },
-      null,
-      2,
-    )
-  })
 
   // --- Dedup ---
   let lastEventKey = ''
@@ -96,8 +80,6 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
 
   function makeRawHandler(observer: BadgePair, accountId: string) {
     return (event: RawStreamEvent) => {
-      if (paused.value) return
-      if (!enabledKinds.value.has(event.kind)) return
       const now = Date.now()
       const key = `${event.kind}:${event.payload.subscriptionId ?? ''}:${accountId}`
       if (key === lastEventKey && now - lastEventTs < DEDUP_WINDOW_MS) return
@@ -107,6 +89,7 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
         id: nextId++,
         ts: now,
         kind: event.kind,
+        accountId,
         observer,
         subject: extractSubject(event.payload),
         payload: event.payload,
@@ -143,24 +126,6 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
     cleanups.length = 0
   }
 
-  // --- Public actions ---
-
-  function toggleKind(kind: string) {
-    const s = new Set(enabledKinds.value)
-    if (s.has(kind)) s.delete(kind)
-    else s.add(kind)
-    enabledKinds.value = s
-  }
-
-  function selectRow(id: number) {
-    selectedId.value = id
-  }
-
-  function clearBuffer() {
-    buffer.value = []
-    selectedId.value = null
-  }
-
   /**
    * Watch deck columns for streamInspector existence.
    * Call once from an always-mounted component (e.g. DeckLayout).
@@ -183,7 +148,6 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
           capturing = false
           unsubscribeAll()
           buffer.value = []
-          selectedId.value = null
         }
       },
       { immediate: true },
@@ -200,14 +164,6 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
 
   return {
     buffer,
-    paused,
-    selectedId,
-    selectedEntry,
-    selectedJson,
-    enabledKinds,
-    toggleKind,
-    selectRow,
-    clearBuffer,
     startWatching,
   }
 })

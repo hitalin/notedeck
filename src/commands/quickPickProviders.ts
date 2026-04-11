@@ -498,6 +498,7 @@ const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
   'specified',
   'followRequests',
   'lookup',
+  'streamInspector',
 ])
 
 const ACCOUNT_OPTIONAL_TYPES = new Set<ColumnType>(['widget', 'aiscript'])
@@ -559,7 +560,6 @@ const COLUMN_EXTRA_PROPS: Partial<
   aiscript: { aiscriptCode: '<: "Hello, AiScript!"' },
   apiDocs: { accountId: null, width: 990 },
   ai: { accountId: null },
-  streamInspector: { accountId: null },
   timeline: { tl: 'home', name: null },
 }
 
@@ -654,7 +654,7 @@ async function buildAccountStep(type: ColumnType): Promise<QuickPickItem[]> {
   const accountsStore = useAccountsStore()
 
   // Account-independent types: skip account selection
-  if (type === 'apiDocs' || type === 'ai' || type === 'streamInspector') {
+  if (type === 'apiDocs' || type === 'ai') {
     finalizeAddColumn(type, null)
     return []
   }

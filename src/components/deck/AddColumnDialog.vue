@@ -81,6 +81,7 @@ const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
   'specified',
   'followRequests',
   'lookup',
+  'streamInspector',
 ])
 
 /** Column types that can optionally work without an account */
@@ -95,7 +96,7 @@ const requiresAuth = computed(() => {
 function selectColumnType(type: ColumnType) {
   addColumnType.value = type
   // Account-independent types: skip account selection
-  if (type === 'apiDocs' || type === 'ai' || type === 'streamInspector') {
+  if (type === 'apiDocs' || type === 'ai') {
     addColumnForAccount(null)
     return
   }
@@ -124,7 +125,6 @@ const COLUMN_EXTRA_PROPS: Partial<
   aiscript: { aiscriptCode: '<: "Hello, AiScript!"' },
   apiDocs: { accountId: null, width: 990 },
   ai: { accountId: null },
-  streamInspector: { accountId: null },
   timeline: { tl: 'home', name: null },
 }
 

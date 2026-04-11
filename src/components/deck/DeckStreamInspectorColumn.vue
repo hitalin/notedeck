@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
-import { defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, ref, shallowRef, watch } from 'vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useVerticalResize } from '@/composables/useVerticalResize'
+import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useServersStore } from '@/stores/servers'
 import {
   ALL_KINDS,
   KIND_LABELS,
@@ -20,9 +22,76 @@ const props = defineProps<{
   column: DeckColumnType
 }>()
 
-const { columnThemeVars } = useColumnTheme(() => props.column)
+const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const serversStore = useServersStore()
 const inspectorStore = useStreamInspectorStore()
 const jsonLang = json()
+
+const isScopedToAccount = computed(() => props.column.accountId != null)
+const serverIconUrl = computed(() => {
+  const acc = account.value
+  if (!acc) return undefined
+  return (
+    serversStore.getServer(acc.host)?.iconUrl ??
+    `https://${acc.host}/favicon.ico`
+  )
+})
+
+// --- Per-column UI state ---
+const paused = ref(false)
+const selectedId = ref<number | null>(null)
+const enabledKinds = ref(new Set<string>(ALL_KINDS))
+const clearedBefore = ref(0)
+
+const filteredBuffer = computed(() => {
+  const aid = props.column.accountId
+  return inspectorStore.buffer.filter((e) => {
+    if (e.ts < clearedBefore.value) return false
+    if (!enabledKinds.value.has(e.kind)) return false
+    if (aid != null && e.accountId !== aid) return false
+    return true
+  })
+})
+
+// Freeze display when paused
+const displayBuffer = shallowRef<StreamEventEntry[]>([])
+watch(
+  filteredBuffer,
+  (buf) => {
+    if (!paused.value) displayBuffer.value = buf
+  },
+  { immediate: true },
+)
+
+const selectedEntry = computed(() => {
+  if (selectedId.value == null) return null
+  return displayBuffer.value.find((e) => e.id === selectedId.value) ?? null
+})
+
+const selectedJson = computed(() => {
+  if (!selectedEntry.value) return ''
+  return JSON.stringify(
+    { kind: selectedEntry.value.kind, payload: selectedEntry.value.payload },
+    null,
+    2,
+  )
+})
+
+function toggleKind(kind: string) {
+  const s = new Set(enabledKinds.value)
+  if (s.has(kind)) s.delete(kind)
+  else s.add(kind)
+  enabledKinds.value = s
+}
+
+function selectRow(id: number) {
+  selectedId.value = id
+}
+
+function clearBuffer() {
+  clearedBefore.value = Date.now()
+  selectedId.value = null
+}
 
 // --- Display helpers ---
 
@@ -83,20 +152,24 @@ function scrollToTop() {
     <template #header-meta>
       <button
         class="_button"
-        :class="[$style.headerBtn, inspectorStore.paused && $style.headerBtnActive]"
-        :title="inspectorStore.paused ? '再開' : '一時停止'"
-        @click.stop="inspectorStore.paused = !inspectorStore.paused"
+        :class="[$style.headerBtn, paused && $style.headerBtnActive]"
+        :title="paused ? '再開' : '一時停止'"
+        @click.stop="paused = !paused"
       >
-        <i :class="inspectorStore.paused ? 'ti ti-player-play' : 'ti ti-player-pause'" />
+        <i :class="paused ? 'ti ti-player-play' : 'ti ti-player-pause'" />
       </button>
       <button
         class="_button"
         :class="$style.headerBtn"
         title="クリア"
-        @click.stop="inspectorStore.clearBuffer()"
+        @click.stop="clearBuffer()"
       >
         <i class="ti ti-trash" />
       </button>
+      <div v-if="isScopedToAccount && account" :class="$style.headerAccount">
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
+        <img :class="$style.headerFavicon" :src="serverIconUrl" :title="account.host" />
+      </div>
     </template>
 
     <div ref="wrapperRef" :class="$style.wrapper">
@@ -106,8 +179,8 @@ function scrollToTop() {
           v-for="kind in ALL_KINDS"
           :key="kind"
           class="_button"
-          :class="[$style.pill, inspectorStore.enabledKinds.has(kind) && $style.pillActive]"
-          @click="inspectorStore.toggleKind(kind)"
+          :class="[$style.pill, enabledKinds.has(kind) && $style.pillActive]"
+          @click="toggleKind(kind)"
         >
           {{ KIND_LABELS[kind] ?? kind }}
         </button>
@@ -116,38 +189,42 @@ function scrollToTop() {
       <!-- Event list -->
       <div :class="$style.list">
         <div
-          v-for="entry in inspectorStore.buffer"
+          v-for="entry in displayBuffer"
           :key="entry.id"
-          :class="[$style.row, inspectorStore.selectedId === entry.id && $style.rowSelected]"
-          @click="inspectorStore.selectRow(entry.id)"
+          :class="[$style.row, selectedId === entry.id && $style.rowSelected]"
+          @click="selectRow(entry.id)"
         >
           <span :class="$style.rowTime">{{ formatTime(entry.ts) }}</span>
           <span :class="$style.rowKind">{{ kindLabel(entry.kind) }}</span>
           <span :class="$style.rowBadges">
-            <img v-if="entry.observer.avatar" :src="entry.observer.avatar" :class="$style.badge" />
-            <img v-if="entry.observer.serverIcon" :src="entry.observer.serverIcon" :class="$style.badge" />
+            <template v-if="!isScopedToAccount">
+              <img v-if="entry.observer.avatar" :src="entry.observer.avatar" :class="$style.badge" />
+              <img v-if="entry.observer.serverIcon" :src="entry.observer.serverIcon" :class="$style.badge" />
+              <template v-if="entry.subject">
+                <span :class="$style.badgeArrow">→</span>
+              </template>
+            </template>
             <template v-if="entry.subject">
-              <span :class="$style.badgeArrow">→</span>
               <img v-if="entry.subject.avatar" :src="entry.subject.avatar" :class="$style.badge" />
               <img v-if="entry.subject.serverIcon" :src="entry.subject.serverIcon" :class="$style.badge" />
             </template>
           </span>
           <span :class="$style.rowSummary">{{ summarize(entry) }}</span>
         </div>
-        <div v-if="inspectorStore.buffer.length === 0" :class="$style.empty">
+        <div v-if="displayBuffer.length === 0" :class="$style.empty">
           イベント待機中...
         </div>
       </div>
 
       <!-- Resize handle + Detail pane -->
-      <div v-if="inspectorStore.selectedEntry" :class="$style.divider" @pointerdown="onDividerPointerDown" />
-      <div v-if="inspectorStore.selectedEntry" :class="$style.detail" :style="{ height: detailHeight + 'px' }">
+      <div v-if="selectedEntry" :class="$style.divider" @pointerdown="onDividerPointerDown" />
+      <div v-if="selectedEntry" :class="$style.detail" :style="{ height: detailHeight + 'px' }">
         <div :class="$style.detailHeader">
-          <span :class="$style.detailTitle">{{ kindLabel(inspectorStore.selectedEntry.kind) }}</span>
-          <span :class="$style.detailTime">{{ formatTime(inspectorStore.selectedEntry.ts) }}</span>
+          <span :class="$style.detailTitle">{{ kindLabel(selectedEntry.kind) }}</span>
+          <span :class="$style.detailTime">{{ formatTime(selectedEntry.ts) }}</span>
         </div>
         <CodeEditor
-          :model-value="inspectorStore.selectedJson"
+          :model-value="selectedJson"
           :language="jsonLang"
           :read-only="true"
           :auto-height="true"
@@ -159,6 +236,8 @@ function scrollToTop() {
 </template>
 
 <style module lang="scss">
+@use './column-common.module.scss';
+
 .headerIcon {
   font-size: 1em;
 }
