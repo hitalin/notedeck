@@ -19,8 +19,10 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
+import NoteScroller from '@/components/common/NoteScroller.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
+import type { NoteScrollerExpose } from '@/composables/useNoteScrollerRef'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -568,11 +570,14 @@ function updateMessageReaction(
   })
 }
 
-const messagesContainer = ref<HTMLElement | null>(null)
+const chatScroller = ref<NoteScrollerExpose | null>(null)
 function scrollToBottom() {
   requestAnimationFrame(() => {
-    const el = messagesContainer.value
-    if (el) el.scrollTop = el.scrollHeight
+    if (messages.value.length === 0) return
+    chatScroller.value?.scrollToIndex(messages.value.length - 1, {
+      align: 'end',
+      behavior: 'instant',
+    })
   })
 }
 
@@ -603,7 +608,19 @@ async function loadOlder() {
       return
     }
     if (older.length > 0) {
+      const prevFirstId = messages.value[0]?.id
       messages.value = [...older.slice().reverse(), ...messages.value]
+      // Restore scroll position to the previously first message after prepend
+      if (prevFirstId) {
+        await nextTick()
+        const newIndex = messages.value.findIndex((m) => m.id === prevFirstId)
+        if (newIndex >= 0) {
+          chatScroller.value?.scrollToIndex(newIndex, {
+            align: 'start',
+            behavior: 'instant',
+          })
+        }
+      }
     }
   } catch (e) {
     error.value = AppError.from(e)
@@ -618,7 +635,7 @@ function handleScroll() {
   const now = Date.now()
   if (now - lastScrollCheck < 200) return
   lastScrollCheck = now
-  const el = messagesContainer.value
+  const el = chatScroller.value?.getElement()
   if (!el) return
   if (el.scrollTop < 100) {
     loadOlder()
@@ -626,8 +643,10 @@ function handleScroll() {
 }
 
 function scrollToTop(smooth = false) {
-  const el = messagesContainer.value
-  if (el) el.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'instant' })
+  chatScroller.value?.scrollToIndex(0, {
+    align: 'start',
+    behavior: smooth ? 'smooth' : 'instant',
+  })
 }
 
 onMounted(() => {
@@ -753,24 +772,30 @@ onBeforeUnmount(() => {
 
     <!-- Conversation View -->
     <div v-else-if="viewMode === 'conversation'" :class="[$style.chatBody, $style.conversation]" @click="closeReactionPicker">
-      <div
-        ref="messagesContainer"
+      <NoteScroller
+        ref="chatScroller"
+        :items="messages"
+        :estimated-height="80"
         :class="$style.messagesContainer"
-        @scroll.passive="handleScroll"
+        @scroll="handleScroll"
       >
-        <div v-if="isLoading" :class="$style.loadingMore"><LoadingSpinner /></div>
-        <MkChatMessage
-          v-for="msg in messages"
-          :key="msg.id"
-          :message="msg"
-          :my-user-id="myUserId"
-          :account-id="activeAccountId ?? undefined"
-          :server-host="activeServerHost ?? undefined"
-          :other-avatar-url="currentRoomId ? undefined : conversationOtherAvatarUrl ?? undefined"
-          @react="handleReact"
-          @unreact="handleUnreact"
-        />
-      </div>
+        <template #prepend>
+          <div v-if="isLoading" :class="$style.loadingMore"><LoadingSpinner /></div>
+        </template>
+        <template #default="{ item: msg }">
+          <div :class="$style.chatMsgGap">
+            <MkChatMessage
+              :message="msg"
+              :my-user-id="myUserId"
+              :account-id="activeAccountId ?? undefined"
+              :server-host="activeServerHost ?? undefined"
+              :other-avatar-url="currentRoomId ? undefined : conversationOtherAvatarUrl ?? undefined"
+              @react="handleReact"
+              @unreact="handleUnreact"
+            />
+          </div>
+        </template>
+      </NoteScroller>
 
       <div v-if="error" :class="$style.chatError">{{ error.message }}</div>
 
@@ -977,14 +1002,13 @@ onBeforeUnmount(() => {
 
 .messagesContainer {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 8px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  overflow-x: clip;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
+}
+
+.chatMsgGap {
+  padding-bottom: 2px;
 }
 
 .chatError {
