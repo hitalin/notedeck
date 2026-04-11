@@ -57,7 +57,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_haptics::init())
-        .plugin(tauri_plugin_dialog::init());
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_deep_link::init());
 
     #[cfg(not(mobile))]
     {
@@ -425,6 +426,27 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                 commands::cleanup_expired_credentials();
             }
         });
+
+        // Deep link handler: forward notedeck:// URLs to the frontend
+        #[cfg(not(mobile))]
+        {
+            use tauri_plugin_deep_link::DeepLinkExt;
+            app.deep_link().register("notedeck")?;
+
+            let deep_link_handle = app.app_handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                let urls = event.urls();
+                if let Some(url) = urls.first() {
+                    let url_str = url.as_str().to_string();
+                    tracing::info!("[deep-link] received: {url_str}");
+                    if let Some(w) = deep_link_handle.get_webview_window("main") {
+                        let _ = w.show();
+                        let _ = w.set_focus();
+                    }
+                    let _ = tauri::Emitter::emit(&deep_link_handle, "nd:deep-link", &url_str);
+                }
+            });
+        }
 
         // Global shortcuts (desktop only)
         #[cfg(not(mobile))]

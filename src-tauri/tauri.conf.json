@@ -45,6 +45,11 @@
     ]
   },
   "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["notedeck"]
+      }
+    },
     "opener": {},
     "updater": {
       "endpoints": [

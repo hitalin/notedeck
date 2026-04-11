@@ -10,6 +10,7 @@ import {
   listenDeckWindowEvents,
   saveCurrentWindowLayout,
 } from '@/composables/useDeckWindow'
+import { handleDeepLink } from '@/composables/useDeepLink'
 import { initOgpListener } from '@/composables/useOgpPreview'
 import { destroyApiBridge, initApiBridge } from '@/core/apiBridge'
 import { useDeckStore } from '@/stores/deck'
@@ -43,6 +44,7 @@ export function useDeckInit(options: {
 
   let handleResizeRef: (() => void) | null = null
   let unlistenQuickNote: (() => void) | null = null
+  let unlistenDeepLink: (() => void) | null = null
   let unlistenWindowEvents: (() => void) | null = null
 
   function onVisibilityChange() {
@@ -126,6 +128,11 @@ export function useDeckInit(options: {
         listen('nd:toggle-realtime-mode', () => {
           useRealtimeModeStore().toggle()
         })
+        listen<string>('nd:deep-link', (event) => {
+          handleDeepLink(event.payload)
+        }).then((fn) => {
+          unlistenDeepLink = fn
+        })
       })
 
       // Cross-window event listeners (all windows listen for IPC events)
@@ -153,6 +160,7 @@ export function useDeckInit(options: {
     document.removeEventListener('visibilitychange', onVisibilityChange)
     window.removeEventListener('pagehide', onPageHide)
     unlistenQuickNote?.()
+    unlistenDeepLink?.()
     clearTimeout(updateCheckTimer)
     unlistenWindowEvents?.()
   })
