@@ -61,9 +61,6 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
     () => import('./DeckAboutMisskeyColumn.vue'),
   ),
   emoji: defineAsyncComponent(() => import('./DeckEmojiColumn.vue')),
-  workspaceExplorer: defineAsyncComponent(
-    () => import('./DeckWorkspaceExplorerColumn.vue'),
-  ),
   streamInspector: defineAsyncComponent(
     () => import('./DeckStreamInspectorColumn.vue'),
   ),
