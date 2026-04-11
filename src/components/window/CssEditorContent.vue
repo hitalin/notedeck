@@ -463,6 +463,7 @@ watch(tab, (t) => {
         :language="cssLang"
         :linter="cssLinter"
         :class="[$style.codeEditorWrap, { [$style.hasError]: codeError }]"
+        auto-height
       />
       <div v-if="codeError" :class="$style.errorMessage">
         <i class="ti ti-alert-triangle" />
@@ -731,9 +732,6 @@ watch(tab, (t) => {
 .codeHint { font-size: 0.75em; opacity: 0.4; }
 
 .codeEditorWrap {
-  flex: 1;
-  min-height: 200px;
-
   &.hasError {
     box-shadow: 0 0 0 2px var(--nd-love);
     border-radius: var(--nd-radius-sm);

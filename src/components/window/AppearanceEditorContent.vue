@@ -267,6 +267,7 @@ const statusClass = computed(() => {
         v-model="jsonCode"
         :language="jsonLang"
         :class="[$style.codeEditorWrap, { [$style.hasError]: error }]"
+        auto-height
       />
 
       <div
@@ -487,8 +488,6 @@ const statusClass = computed(() => {
 }
 
 .codeEditorWrap {
-  flex: 1;
-  min-height: 200px;
   border-radius: var(--nd-radius-sm);
 }
 

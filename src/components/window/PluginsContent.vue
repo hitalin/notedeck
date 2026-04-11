@@ -335,7 +335,7 @@ function toggleSection(key: string) {
       <AiScriptEditor
         v-model="editingCode"
         :placeholder="isNewInstall ? '### { name: &quot;my-plugin&quot;, version: &quot;1.0&quot; } ...' : ''"
-        :class="$style.codeEditorWrap"
+        auto-height
       />
       <div v-if="installError && isNewInstall" :class="$style.errorMessage">
         <i class="ti ti-alert-circle" />
@@ -578,10 +578,6 @@ function toggleSection(key: string) {
   overflow-y: auto;
 }
 
-.codeEditorWrap {
-  flex: 1;
-  min-height: 200px;
-}
 
 .actions { @include action-bar; }
 .actionGroup { @include action-group; }

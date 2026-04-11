@@ -26,11 +26,13 @@ const props = withDefaults(
     placeholder?: string
     maxHeight?: string
     useLsp?: boolean
+    autoHeight?: boolean
   }>(),
   {
     placeholder: '',
     maxHeight: '200px',
     useLsp: false,
+    autoHeight: false,
   },
 )
 
@@ -38,11 +40,8 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const isFlexMode = computed(() => props.maxHeight === 'none')
 const editorStyle = computed(() =>
-  isFlexMode.value
-    ? { flex: '1', minHeight: '0' }
-    : { maxHeight: props.maxHeight },
+  props.maxHeight !== 'none' ? { maxHeight: props.maxHeight } : undefined,
 )
 
 const editorRef = ref<HTMLDivElement>()
@@ -146,7 +145,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="editorRef" :class="[$style.aisEditor, { [$style.aisEditorFlex]: isFlexMode }]" :style="editorStyle" />
+  <div ref="editorRef" :class="[$style.aisEditor, { [$style.autoHeight]: autoHeight }]" :style="editorStyle" />
 </template>
 
 <style lang="scss" module>
@@ -161,26 +160,21 @@ onUnmounted(() => {
   }
 
   :deep(.cm-editor) {
+    height: 100%;
     min-height: 80px;
   }
 
   :deep(.cm-scroller) {
     font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-  }
-}
-
-.aisEditorFlex {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-
-  :deep(.cm-editor) {
-    height: 100%;
-    min-height: 0;
-  }
-
-  :deep(.cm-scroller) {
     overflow: auto;
+  }
+
+  &.autoHeight {
+    overflow: visible;
+
+    :deep(.cm-editor) {
+      height: auto;
+    }
   }
 }
 </style>

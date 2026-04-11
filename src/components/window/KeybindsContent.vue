@@ -431,6 +431,7 @@ function handleReset() {
         :language="jsonLang"
         :linter="jsonLinter"
         :class="[$style.codeEditorWrap, { [$style.hasError]: codeError }]"
+        auto-height
       />
       <div v-if="codeError" :class="$style.errorMessage">
         <i class="ti ti-alert-triangle" />
@@ -711,9 +712,6 @@ function handleReset() {
 }
 
 .codeEditorWrap {
-  flex: 1;
-  min-height: 200px;
-
   &.hasError {
     box-shadow: 0 0 0 2px var(--nd-love);
     border-radius: var(--nd-radius-sm);

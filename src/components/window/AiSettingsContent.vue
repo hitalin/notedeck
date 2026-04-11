@@ -381,6 +381,7 @@ function handleReset() {
         v-model="config.systemPrompt"
         :language="mdLang"
         :class="$style.codeEditorWrap"
+        auto-height
       />
       <div :class="$style.promptStatus">
         <div v-if="config.systemPrompt.trim()" :class="$style.codeSuccess">
@@ -634,8 +635,6 @@ function handleReset() {
 }
 
 .codeEditorWrap {
-  flex: 1;
-  min-height: 200px;
 }
 
 .promptStatus {

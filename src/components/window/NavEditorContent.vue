@@ -315,6 +315,7 @@ async function importNav() {
         v-model="jsonCode"
         :language="jsonLang"
         :class="[$style.codeEditorWrap, { [$style.hasError]: codeError }]"
+        auto-height
       />
       <div v-if="codeError" :class="$style.errorMessage">
         <i class="ti ti-alert-triangle" />
@@ -546,11 +547,8 @@ async function importNav() {
 }
 
 .codeEditorWrap {
-  flex: 1;
-  min-height: 120px;
   border: 1px solid var(--nd-divider);
   border-radius: var(--nd-radius-sm);
-  overflow: hidden;
 
   &.hasError {
     border-color: var(--nd-love, #ec4137);
