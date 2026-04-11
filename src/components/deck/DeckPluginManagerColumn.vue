@@ -2,6 +2,8 @@
 import { computed, ref, watch } from 'vue'
 import { abortPlugin, launchPlugin } from '@/aiscript/plugin-api'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
+import { useSwipeTab } from '@/composables/useSwipeTab'
+import { useTabSlide } from '@/composables/useTabSlide'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import {
   PLUGIN_CATEGORY_LABELS,
@@ -24,12 +26,41 @@ pluginsStore.ensureLoaded()
 
 // --- View mode ---
 type ViewTab = 'installed' | 'store'
+const viewTabs: ViewTab[] = ['installed', 'store']
 const viewTab = ref<ViewTab>('installed')
+const columnContentRef = ref<HTMLElement | null>(null)
 
-// Fetch store data when switching to store tab
-watch(viewTab, (t) => {
-  if (t === 'store') misStore.fetchPlugins()
-})
+function switchTab(tab: ViewTab) {
+  viewTab.value = tab
+  if (tab === 'store') misStore.fetchPlugins()
+}
+
+// Tab slide animation
+const tabIndex = computed(() => viewTabs.indexOf(viewTab.value))
+useTabSlide(tabIndex, columnContentRef)
+
+// Swipe / wheel to switch tabs
+useSwipeTab(
+  columnContentRef,
+  () => {
+    const idx = viewTabs.indexOf(viewTab.value)
+    const next = viewTabs[idx + 1]
+    if (next) {
+      switchTab(next)
+      return true
+    }
+    return false
+  },
+  () => {
+    const idx = viewTabs.indexOf(viewTab.value)
+    const prev = viewTabs[idx - 1]
+    if (prev) {
+      switchTab(prev)
+      return true
+    }
+    return false
+  },
+)
 
 // --- Search & filter (shared) ---
 const searchQuery = ref('')
@@ -176,21 +207,21 @@ function handleUninstall(plugin: PluginMeta) {
       </button>
     </template>
 
-    <template #header-extra>
-      <!-- View tabs -->
-      <div :class="$style.viewTabs">
+    <div ref="columnContentRef" :class="$style.wrapper">
+      <!-- Tabs -->
+      <div :class="$style.pluginTabs">
         <button
           class="_button"
-          :class="[$style.viewTab, viewTab === 'installed' && $style.viewTabActive]"
-          @click="viewTab = 'installed'"
+          :class="[$style.pluginTab, { [$style.active]: viewTab === 'installed' }]"
+          @click="switchTab('installed')"
         >
           インストール済み
-          <span :class="$style.viewTabCount">{{ pluginsStore.plugins.length }}</span>
+          <span :class="$style.tabCount">{{ pluginsStore.plugins.length }}</span>
         </button>
         <button
           class="_button"
-          :class="[$style.viewTab, viewTab === 'store' && $style.viewTabActive]"
-          @click="viewTab = 'store'"
+          :class="[$style.pluginTab, { [$style.active]: viewTab === 'store' }]"
+          @click="switchTab('store')"
         >
           ストア
         </button>
@@ -231,9 +262,6 @@ function handleUninstall(plugin: PluginMeta) {
           </button>
         </div>
       </div>
-    </template>
-
-    <div :class="$style.wrapper">
       <!-- ===== Installed tab ===== -->
       <template v-if="viewTab === 'installed'">
         <div :class="$style.sectionHeader">
@@ -419,44 +447,41 @@ function handleUninstall(plugin: PluginMeta) {
   }
 }
 
-// --- View tabs ---
-.viewTabs {
+// --- Tabs ---
+.pluginTabs {
   display: flex;
-  padding: 6px 10px 0;
-  gap: 0;
-  width: 100%;
   border-bottom: 1px solid var(--nd-divider);
+  flex-shrink: 0;
 }
 
-.viewTab {
+.pluginTab {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 6px 8px;
-  font-size: 11px;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 0.8em;
   font-weight: 600;
   color: var(--nd-fg);
   opacity: 0.5;
+  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
   border-bottom: 2px solid transparent;
-  transition:
-    opacity 0.1s,
-    border-color 0.1s;
 
   &:hover {
     opacity: 0.8;
   }
+
+  &.active {
+    opacity: 1;
+    color: var(--nd-accent);
+    border-bottom-color: var(--nd-accent);
+  }
 }
 
-.viewTabActive {
-  opacity: 1;
-  border-bottom-color: var(--nd-accent);
-  color: var(--nd-accent);
-}
-
-.viewTabCount {
-  font-size: 10px;
+.tabCount {
+  font-size: 0.85em;
   opacity: 0.6;
   font-weight: normal;
 }
