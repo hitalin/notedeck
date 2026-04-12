@@ -23,6 +23,10 @@ export interface StreamEventEntry {
 }
 
 const MAX_BUFFER = 500
+/** 古い entry は payload を抱えたままメモリに残るため、時間経過で自動退避する */
+const ENTRY_TTL_MS = 5 * 60 * 1000
+/** 定期的に古い entry を削るためのインターバル（TTL 到達後の即時 GC 用） */
+const PRUNE_INTERVAL_MS = 30 * 1000
 
 export const ALL_KINDS = [
   'stream-note',
@@ -59,6 +63,21 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
   type CleanupFn = () => void
   const cleanups: CleanupFn[] = []
   let capturing = false
+  let pruneTimer: ReturnType<typeof setInterval> | null = null
+
+  /** TTL を超えた entry を落とす（破壊的に buffer.value を差し替え） */
+  function pruneStaleEntries() {
+    const cutoff = Date.now() - ENTRY_TTL_MS
+    const arr = buffer.value
+    if (arr.length === 0) return
+    // biome-ignore lint/style/noNonNullAssertion: bounded by length check above
+    if (arr[arr.length - 1]!.ts >= cutoff) return
+    // buffer は新しい順なので末尾から削る
+    let end = arr.length
+    // biome-ignore lint/style/noNonNullAssertion: end > 0 ensures index valid
+    while (end > 0 && arr[end - 1]!.ts < cutoff) end--
+    buffer.value = end === 0 ? [] : arr.slice(0, end)
+  }
 
   function extractSubject(p: Record<string, unknown>): BadgePair | null {
     const src =
@@ -94,7 +113,14 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
         subject: extractSubject(event.payload),
         payload: event.payload,
       }
-      const arr = [entry, ...buffer.value]
+      const cutoff = now - ENTRY_TTL_MS
+      const prev = buffer.value
+      // buffer は新しい順。末尾から TTL 切れを削る
+      let end = prev.length
+      // biome-ignore lint/style/noNonNullAssertion: end > 0 ensures index valid
+      while (end > 0 && prev[end - 1]!.ts < cutoff) end--
+      const arr =
+        end === prev.length ? [entry, ...prev] : [entry, ...prev.slice(0, end)]
       if (arr.length > MAX_BUFFER) arr.length = MAX_BUFFER
       buffer.value = arr
     }
@@ -103,6 +129,9 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
   async function subscribeAll() {
     for (const fn of cleanups) fn()
     cleanups.length = 0
+    if (pruneTimer == null) {
+      pruneTimer = setInterval(pruneStaleEntries, PRUNE_INTERVAL_MS)
+    }
 
     const accounts = accountsStore.accounts.filter((a) => a.hasToken)
     for (const acc of accounts) {
@@ -124,6 +153,10 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
   function unsubscribeAll() {
     for (const fn of cleanups) fn()
     cleanups.length = 0
+    if (pruneTimer != null) {
+      clearInterval(pruneTimer)
+      pruneTimer = null
+    }
   }
 
   /**
