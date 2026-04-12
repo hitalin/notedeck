@@ -406,17 +406,12 @@ const playEditUrl = computed(() => {
     <!-- List mode -->
     <template v-if="mode === 'list'">
       <div ref="listContentRef" :class="$style.playListContent">
-      <div :class="$style.playTabs">
-        <button
-          v-for="tab in (['featured', 'my', 'likes'] as Tab[])"
-          :key="tab"
-          class="_button"
-          :class="[$style.playTab, { [$style.active]: activeTab === tab }]"
-          @click="fetchList(tab)"
-        >
-          {{ tab === 'featured' ? '人気' : tab === 'my' ? '自分の' : 'いいね' }}
-        </button>
-      </div>
+      <ColumnTabs
+        :tabs="TAB_DEFS"
+        :model-value="activeTab"
+        :swipe-target="listContentRef"
+        @update:model-value="switchTab"
+      />
 
       <div ref="playListRef" :class="$style.playList">
         <div v-if="listLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
@@ -564,38 +559,6 @@ const playEditUrl = computed(() => {
   flex-direction: column;
   flex: 1;
   min-height: 0;
-}
-
-.playTabs {
-  display: flex;
-  border-bottom: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.playTab {
-  flex: 1;
-  padding: 8px 0;
-  text-align: center;
-  font-size: 0.8em;
-  font-weight: 600;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
-  border-bottom: 2px solid transparent;
-
-  &:hover {
-    opacity: 0.8;
-  }
-
-  &.active {
-    opacity: 1;
-    color: var(--nd-accent);
-    border-bottom-color: var(--nd-accent);
-  }
-}
-
-.active {
-  /* used as modifier */
 }
 
 .playList {

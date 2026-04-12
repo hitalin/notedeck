@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useCssModule, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type {
   NormalizedNote,
   TimelineFilter,
@@ -9,8 +9,6 @@ import MkAd from '@/components/common/MkAd.vue'
 import { useAds } from '@/composables/useAds'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
 import * as snapshotStore from '@/composables/useSnapshotStore'
-import { useSwipeTab } from '@/composables/useSwipeTab'
-import { useTabIndicator } from '@/composables/useTabIndicator'
 import { useTabSlide } from '@/composables/useTabSlide'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -27,6 +25,8 @@ import {
   markTimelineDenied,
 } from '@/utils/customTimelines'
 import { matchesFilter } from '@/utils/timelineFilter'
+import type { ColumnTabDef } from './ColumnTabs.vue'
+import ColumnTabs from './ColumnTabs.vue'
 import DeckNoteColumn from './DeckNoteColumn.vue'
 import TimelineFilterPopup from './TimelineFilterPopup.vue'
 
@@ -241,16 +241,24 @@ function toggleFilter(key: keyof TimelineFilter) {
   reconnect()
 }
 
-// --- Tab slide indicator ---
-const $style = useCssModule()
-const tabsRef = ref<HTMLElement | null>(null)
-const { indicatorStyle: tabIndicatorStyle } = useTabIndicator(
-  tabsRef,
-  `.tl-tab.${$style.active}`,
-  () => tlType.value,
+// --- Tab defs for ColumnTabs ---
+const tabDefs = computed<ColumnTabDef[]>(() =>
+  allTlTypes.value.map((opt) => {
+    const icon = getTlIcon(opt.value)
+    return {
+      value: opt.value,
+      label: opt.label,
+      icon,
+      iconIsSvg: !isTablerIcon(icon),
+    }
+  }),
 )
 
 // --- TL switching ---
+
+function onTabChange(value: string) {
+  switchTl(value as TimelineType)
+}
 
 async function switchTl(type: TimelineType) {
   if (type === tlType.value) return
@@ -307,31 +315,6 @@ async function refreshPolicies() {
   clearAvailableTlCache(accountId)
   await applyPolicies(accountId, host)
 }
-
-// --- Swipe to switch timeline tabs ---
-useSwipeTab(
-  swipeTarget,
-  () => {
-    const types = allTlTypes.value
-    const idx = types.findIndex((t) => t.value === tlType.value)
-    const next = idx >= 0 && idx < types.length - 1 ? types[idx + 1] : undefined
-    if (next) {
-      switchTl(next.value)
-      return true
-    }
-    return false
-  },
-  () => {
-    const types = allTlTypes.value
-    const idx = types.findIndex((t) => t.value === tlType.value)
-    const prev = idx > 0 ? types[idx - 1] : undefined
-    if (prev) {
-      switchTl(prev.value)
-      return true
-    }
-    return false
-  },
-)
 
 // --- Mode version watch (per-account: only react to this column's account) ---
 watch(
@@ -406,33 +389,25 @@ onMounted(async () => {
     </template>
 
     <template #header-extra>
-      <div ref="tabsRef" :class="$style.tlTabs">
+      <ColumnTabs
+        :tabs="tabDefs"
+        :model-value="tlType"
+        :swipe-target="swipeTarget"
+        label-on-active-only
+        @update:model-value="onTabChange"
+      >
+        <template v-if="availableFilterKeys.length > 0" #trailing>
           <button
-            v-for="opt in allTlTypes"
-            :key="opt.value"
-            class="_button tl-tab"
-            :class="[$style.tlTab, { [$style.active]: tlType === opt.value }]"
-            :title="opt.label"
-            @click="switchTl(opt.value)"
-          >
-            <i v-if="isTablerIcon(getTlIcon(opt.value))" :class="['ti ti-' + getTlIcon(opt.value), $style.tlTabIcon]" />
-            <svg v-else :class="$style.tlTabIcon" viewBox="0 0 24 24" width="16" height="16">
-              <path :d="getTlIcon(opt.value)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-            </svg>
-            <span v-if="tlType === opt.value" :class="$style.tlTabLabel">{{ opt.label }}</span>
-          </button>
-          <button
-            v-if="availableFilterKeys.length > 0"
             ref="filterBtnRef"
-            class="_button tl-tab"
-            :class="[$style.tlTab, $style.tlFilterBtn, { [$style.active]: hasActiveFilter }]"
+            class="_button"
+            :class="[$style.tlFilterBtn, { [$style.active]: hasActiveFilter }]"
             title="フィルター"
             @click.stop="toggleFilterMenu"
           >
             <i class="ti ti-filter" />
           </button>
-        <div :class="$style.tlTabIndicator" :style="tabIndicatorStyle" />
-      </div>
+        </template>
+      </ColumnTabs>
     </template>
 
     <template #note-item="{ index }">
@@ -454,60 +429,26 @@ onMounted(async () => {
 <style lang="scss" module>
 @use './column-common.module.scss';
 
-.tlTabs {
-  display: flex;
-  position: relative;
-  border-bottom: 1px solid var(--nd-divider);
-  background: var(--nd-bg);
-}
-
-.tlTab {
+.tlFilterBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  margin-left: auto;
   padding: 8px 12px;
-  opacity: 0.4;
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
-  position: relative;
+  opacity: 0.5;
+  color: var(--nd-fg);
+  transition:
+    opacity var(--nd-duration-base),
+    background var(--nd-duration-base),
+    color var(--nd-duration-base);
 
   &:hover {
-    opacity: 0.7;
+    opacity: 0.8;
     background: var(--nd-buttonHoverBg);
   }
 
   &.active {
     opacity: 1;
-  }
-}
-
-.tlTabIndicator {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 1px;
-  height: 3px;
-  background: var(--nd-accent);
-  border-radius: var(--nd-radius-full) var(--nd-radius-full) 0 0;
-  transform-origin: 0 0;
-  transition: translate var(--nd-duration-slower) var(--nd-ease-pop), scale var(--nd-duration-slower) var(--nd-ease-pop), opacity var(--nd-duration-slower) var(--nd-ease-pop);
-  pointer-events: none;
-}
-
-.tlTabIcon {
-  color: currentColor;
-}
-
-.tlTabLabel {
-  font-size: 0.85em;
-  font-weight: bold;
-  white-space: nowrap;
-}
-
-.tlFilterBtn {
-  margin-left: auto;
-
-  &.active {
     color: var(--nd-accent);
   }
 }
