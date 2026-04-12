@@ -10,4 +10,5 @@
   { type: 'lookup', accountId: null },
   { type: 'streamInspector', accountId: null },
   { type: 'pluginManager', accountId: null },
+  { type: 'taskRunner', accountId: null },
 ]

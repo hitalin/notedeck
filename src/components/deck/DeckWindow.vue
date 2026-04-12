@@ -41,6 +41,7 @@ const BASE_TITLES: Record<string, string> = {
   'account-manager': 'アカウント管理',
   appearanceEditor: 'アピアランス',
   backup: 'バックアップ',
+  tasksEditor: 'タスク設定',
 }
 
 const windowTitle = computed(() => {
@@ -74,6 +75,7 @@ const icons: Record<string, string> = {
   'account-manager': 'ti ti-users-group',
   appearanceEditor: 'ti ti-brush',
   backup: 'ti ti-package-export',
+  tasksEditor: 'ti ti-player-play',
 }
 
 const isMinimized = computed(() => props.window.minimized)

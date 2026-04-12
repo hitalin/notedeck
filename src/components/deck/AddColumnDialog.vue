@@ -71,6 +71,7 @@ const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
   'widget',
   'aiscript',
   'pluginManager',
+  'taskRunner',
 ])
 
 /** Column types that support cross-account mode (accountId: null) */
@@ -98,7 +99,12 @@ const requiresAuth = computed(() => {
 function selectColumnType(type: ColumnType) {
   addColumnType.value = type
   // Account-independent types: skip account selection
-  if (type === 'apiDocs' || type === 'ai' || type === 'pluginManager') {
+  if (
+    type === 'apiDocs' ||
+    type === 'ai' ||
+    type === 'pluginManager' ||
+    type === 'taskRunner'
+  ) {
     addColumnForAccount(null)
     return
   }
@@ -582,6 +588,10 @@ function close() {
             <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('pluginManager')">
               <i class="ti ti-puzzle" />
               <span>プラグイン</span>
+            </button>
+            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('taskRunner')">
+              <i class="ti ti-player-play" />
+              <span>タスク</span>
             </button>
           </template>
         </div>

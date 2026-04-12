@@ -188,6 +188,16 @@ export async function writeAiPrompt(content: string): Promise<void> {
   return writeRootSettingsFile('AI.md', content)
 }
 
+// --- Tasks helpers ---
+
+export async function readTasks(): Promise<string> {
+  return readRootSettingsFile('tasks.json5')
+}
+
+export async function writeTasks(content: string): Promise<void> {
+  return writeRootSettingsFile('tasks.json5', content)
+}
+
 // --- Navbar helpers ---
 
 export async function readNavbar(): Promise<string> {

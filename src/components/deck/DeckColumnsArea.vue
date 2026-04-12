@@ -67,6 +67,7 @@ const COLUMN_COMPONENTS: Record<string, Component> = {
   pluginManager: defineAsyncComponent(
     () => import('./DeckPluginManagerColumn.vue'),
   ),
+  taskRunner: defineAsyncComponent(() => import('./DeckTaskRunnerColumn.vue')),
 }
 
 // Preload chunks for column types the user actually has configured

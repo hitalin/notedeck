@@ -164,7 +164,8 @@ function openToolWindow(
     | 'aiSettings'
     | 'performanceEditor'
     | 'appearanceEditor'
-    | 'backup',
+    | 'backup'
+    | 'tasksEditor',
   props: Record<string, unknown> = {},
 ) {
   windowsStore.open(type, props)
@@ -376,6 +377,13 @@ usePortal(settingsMenuPortalRef)
             <i class="ti ti-chevron-right" :class="$style.chevronNav" />
           </button>
         </div>
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" @click="openToolWindow('tasksEditor')">
+            <i class="ti ti-player-play" />
+            <span>タスク</span>
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+          </button>
+        </div>
       </template>
       <!-- 環境設定 (デスクトップ: アコーディオン) -->
       <div v-else :class="$style.categorySection">
@@ -403,6 +411,10 @@ usePortal(settingsMenuPortalRef)
             <i class="ti ti-code" />
             <span :class="$style.settingsMenuLabel">カスタムCSS</span>
             <span v-if="themeStore.customCss" :class="$style.activeDot" />
+          </button>
+          <button :class="$style.settingsMenuItem" @click="openToolWindow('tasksEditor')">
+            <i class="ti ti-player-play" />
+            <span :class="$style.settingsMenuLabel">タスク</span>
           </button>
         </div>
       </div>

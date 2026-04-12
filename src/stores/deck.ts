@@ -47,6 +47,7 @@ export type ColumnType =
   | 'emoji'
   | 'streamInspector'
   | 'pluginManager'
+  | 'taskRunner'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 

@@ -34,6 +34,7 @@ export const COLUMN_ICONS: Record<string, string> = {
   emoji: 'mood-smile',
   streamInspector: 'activity-heartbeat',
   pluginManager: 'puzzle',
+  taskRunner: 'player-play',
 }
 
 export const COLUMN_LABELS: Record<string, string> = {
@@ -69,6 +70,7 @@ export const COLUMN_LABELS: Record<string, string> = {
   emoji: 'カスタム絵文字',
   streamInspector: 'ストリーム',
   pluginManager: 'プラグイン',
+  taskRunner: 'タスク',
 }
 
 export const TL_ICONS: Record<string, string> = {
