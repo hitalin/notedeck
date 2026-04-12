@@ -117,6 +117,13 @@ export function getSettingsItems(): QuickPickItem[] {
       group: '環境設定',
       action: () => useWindowsStore().open('cssEditor'),
     },
+    {
+      id: 'tasks-editor',
+      label: 'タスク',
+      icon: 'player-play',
+      group: '環境設定',
+      action: () => useWindowsStore().open('tasksEditor'),
+    },
     // Cache
     {
       id: 'clear-all-cache',
