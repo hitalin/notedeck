@@ -97,13 +97,6 @@ const filteredPlugins = computed(() => {
   return list
 })
 
-const enabledCount = computed(
-  () => pluginsStore.plugins.filter((p) => p.active).length,
-)
-const disabledCount = computed(
-  () => pluginsStore.plugins.filter((p) => !p.active).length,
-)
-
 function setFilter(mode: FilterMode) {
   searchQuery.value =
     mode === 'enabled'
@@ -248,16 +241,6 @@ function handleUninstall(plugin: PluginMeta) {
       </div>
       <!-- ===== Installed tab ===== -->
       <template v-if="viewTab === 'installed'">
-        <div :class="$style.sectionHeader">
-          <span :class="$style.sectionTitle">
-            {{ activeFilter === 'enabled' ? '有効' : activeFilter === 'disabled' ? '無効' : 'インストール済み' }}
-          </span>
-          <span :class="$style.sectionCount">{{ filteredPlugins.length }}</span>
-          <span v-if="activeFilter === 'all'" :class="$style.sectionSub">
-            ({{ enabledCount }} 有効, {{ disabledCount }} 無効)
-          </span>
-        </div>
-
         <div :class="$style.list">
           <PluginCard
             v-for="plugin in filteredPlugins"
@@ -294,11 +277,6 @@ function handleUninstall(plugin: PluginMeta) {
 
       <!-- ===== Store tab ===== -->
       <template v-else>
-        <div :class="$style.sectionHeader">
-          <span :class="$style.sectionTitle">MisStore</span>
-          <span :class="$style.sectionCount">{{ filteredStorePlugins.length }}</span>
-        </div>
-
         <!-- Error -->
         <div v-if="installError" :class="$style.storeError">
           <i class="ti ti-alert-circle" />
@@ -432,39 +410,6 @@ function handleUninstall(plugin: PluginMeta) {
 .filterBtnActive {
   opacity: 1;
   color: var(--nd-accent);
-}
-
-// --- Section header ---
-.sectionHeader {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-  user-select: none;
-}
-
-.sectionTitle {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--nd-fg);
-  opacity: 0.7;
-}
-
-.sectionCount {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--nd-fg);
-  opacity: 0.5;
-}
-
-.sectionSub {
-  font-size: 11px;
-  color: var(--nd-fg);
-  opacity: 0.35;
 }
 
 // --- Wrapper ---
