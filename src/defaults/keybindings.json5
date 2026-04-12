@@ -77,6 +77,10 @@
     shortcuts: [{ key: "u", ctrl: true, shift: true, scope: "global" }],
   },
   {
+    commandId: "tasks-editor",
+    shortcuts: [{ key: "j", ctrl: true, shift: true, scope: "global" }],
+  },
+  {
     commandId: "plugins",
     shortcuts: [{ key: "x", ctrl: true, shift: true, scope: "global" }],
   },
