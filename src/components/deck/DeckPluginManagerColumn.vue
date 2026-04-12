@@ -2,7 +2,6 @@
 import { computed, ref, watch } from 'vue'
 import { abortPlugin, launchPlugin } from '@/aiscript/plugin-api'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
-import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabSlide } from '@/composables/useTabSlide'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import {
@@ -12,6 +11,8 @@ import {
 } from '@/stores/misstore'
 import { type PluginMeta, usePluginsStore } from '@/stores/plugins'
 import { useWindowsStore } from '@/stores/windows'
+import type { ColumnTabDef } from './ColumnTabs.vue'
+import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -30,37 +31,23 @@ const viewTabs: ViewTab[] = ['installed', 'store']
 const viewTab = ref<ViewTab>('installed')
 const columnContentRef = ref<HTMLElement | null>(null)
 
-function switchTab(tab: ViewTab) {
-  viewTab.value = tab
-  if (tab === 'store') misStore.fetchPlugins()
+const tabDefs = computed<ColumnTabDef[]>(() => [
+  {
+    value: 'installed',
+    label: `インストール済み ${pluginsStore.plugins.length}`,
+  },
+  { value: 'store', label: 'ストア' },
+])
+
+function switchTab(tab: string) {
+  const t = tab as ViewTab
+  viewTab.value = t
+  if (t === 'store') misStore.fetchPlugins()
 }
 
 // Tab slide animation
 const tabIndex = computed(() => viewTabs.indexOf(viewTab.value))
 useTabSlide(tabIndex, columnContentRef)
-
-// Swipe / wheel to switch tabs
-useSwipeTab(
-  columnContentRef,
-  () => {
-    const idx = viewTabs.indexOf(viewTab.value)
-    const next = viewTabs[idx + 1]
-    if (next) {
-      switchTab(next)
-      return true
-    }
-    return false
-  },
-  () => {
-    const idx = viewTabs.indexOf(viewTab.value)
-    const prev = viewTabs[idx - 1]
-    if (prev) {
-      switchTab(prev)
-      return true
-    }
-    return false
-  },
-)
 
 // --- Search & filter (shared) ---
 const searchQuery = ref('')
@@ -208,24 +195,12 @@ function handleUninstall(plugin: PluginMeta) {
     </template>
 
     <div ref="columnContentRef" :class="$style.wrapper">
-      <!-- Tabs -->
-      <div :class="$style.pluginTabs">
-        <button
-          class="_button"
-          :class="[$style.pluginTab, { [$style.active]: viewTab === 'installed' }]"
-          @click="switchTab('installed')"
-        >
-          インストール済み
-          <span :class="$style.tabCount">{{ pluginsStore.plugins.length }}</span>
-        </button>
-        <button
-          class="_button"
-          :class="[$style.pluginTab, { [$style.active]: viewTab === 'store' }]"
-          @click="switchTab('store')"
-        >
-          ストア
-        </button>
-      </div>
+      <ColumnTabs
+        :tabs="tabDefs"
+        :model-value="viewTab"
+        :swipe-target="columnContentRef"
+        @update:model-value="switchTab"
+      />
 
       <!-- Search bar -->
       <div :class="$style.searchWrap">
@@ -445,45 +420,6 @@ function handleUninstall(plugin: PluginMeta) {
     background: var(--nd-buttonHoverBg);
     opacity: 1;
   }
-}
-
-// --- Tabs ---
-.pluginTabs {
-  display: flex;
-  border-bottom: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.pluginTab {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px 0;
-  text-align: center;
-  font-size: 0.8em;
-  font-weight: 600;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
-  border-bottom: 2px solid transparent;
-
-  &:hover {
-    opacity: 0.8;
-  }
-
-  &.active {
-    opacity: 1;
-    color: var(--nd-accent);
-    border-bottom-color: var(--nd-accent);
-  }
-}
-
-.tabCount {
-  font-size: 0.85em;
-  opacity: 0.6;
-  font-weight: normal;
 }
 
 // --- Search bar ---

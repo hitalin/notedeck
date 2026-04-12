@@ -17,11 +17,12 @@ import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteColumn } from '@/composables/useNoteColumn'
 import { usePortal } from '@/composables/usePortal'
-import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
+import type { ColumnTabDef } from './ColumnTabs.vue'
+import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -30,7 +31,12 @@ const props = defineProps<{
 
 // --- Tab ---
 type Tab = 'notes' | 'users' | 'roles'
-const tabs: Tab[] = ['notes', 'users', 'roles']
+const TAB_DEFS: ColumnTabDef[] = [
+  { value: 'notes', label: 'ノート' },
+  { value: 'users', label: 'ユーザー' },
+  { value: 'roles', label: 'ロール' },
+]
+const tabs: Tab[] = TAB_DEFS.map((t) => t.value as Tab)
 const activeTab = ref<Tab>('notes')
 const columnContentRef = ref<HTMLElement | null>(null)
 
@@ -177,38 +183,16 @@ function closeRole() {
 }
 
 // --- Tab switching ---
-function switchTab(tab: Tab) {
-  activeTab.value = tab
-  if (tab === 'users' && !usersFetched.value) fetchUsers()
-  if (tab === 'roles' && !rolesFetched.value) fetchRoles()
+function switchTab(tab: string) {
+  const t = tab as Tab
+  activeTab.value = t
+  if (t === 'users' && !usersFetched.value) fetchUsers()
+  if (t === 'roles' && !rolesFetched.value) fetchRoles()
 }
 
 // Tab slide animation
 const exploreTabIndex = computed(() => tabs.indexOf(activeTab.value))
 useTabSlide(exploreTabIndex, columnContentRef)
-
-// Swipe / wheel to switch tabs
-useSwipeTab(
-  columnContentRef,
-  () => {
-    const idx = tabs.indexOf(activeTab.value)
-    const next = tabs[idx + 1]
-    if (next) {
-      switchTab(next)
-      return true
-    }
-    return false
-  },
-  () => {
-    const idx = tabs.indexOf(activeTab.value)
-    const prev = tabs[idx - 1]
-    if (prev) {
-      switchTab(prev)
-      return true
-    }
-    return false
-  },
-)
 
 function refresh() {
   if (activeTab.value === 'notes') {
@@ -290,18 +274,12 @@ function closeUserPopup() {
 
     <template v-else>
       <div ref="columnContentRef" :class="$style.exploreContent">
-      <!-- Tabs -->
-      <div :class="$style.exploreTabs">
-        <button
-          v-for="tab in (['notes', 'users', 'roles'] as Tab[])"
-          :key="tab"
-          class="_button"
-          :class="[$style.exploreTab, { [$style.active]: activeTab === tab }]"
-          @click="switchTab(tab)"
-        >
-          {{ tab === 'notes' ? 'ノート' : tab === 'users' ? 'ユーザー' : 'ロール' }}
-        </button>
-      </div>
+      <ColumnTabs
+        :tabs="TAB_DEFS"
+        :model-value="activeTab"
+        :swipe-target="columnContentRef"
+        @update:model-value="switchTab"
+      />
 
       <!-- Notes tab -->
       <template v-if="activeTab === 'notes'">
@@ -475,35 +453,6 @@ function closeUserPopup() {
   flex-direction: column;
   flex: 1;
   min-height: 0;
-}
-
-/* --- Tabs --- */
-.exploreTabs {
-  display: flex;
-  border-bottom: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.exploreTab {
-  flex: 1;
-  padding: 8px 0;
-  text-align: center;
-  font-size: 0.8em;
-  font-weight: 600;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
-  border-bottom: 2px solid transparent;
-
-  &:hover {
-    opacity: 0.8;
-  }
-
-  &.active {
-    opacity: 1;
-    color: var(--nd-accent);
-    border-bottom-color: var(--nd-accent);
-  }
 }
 
 /* --- List --- */

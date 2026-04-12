@@ -35,11 +35,12 @@ import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { usePortal } from '@/composables/usePortal'
 import { useServerImages } from '@/composables/useServerImages'
-import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useTabSlide } from '@/composables/useTabSlide'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
+import type { ColumnTabDef } from './ColumnTabs.vue'
+import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
 import type { PostFormRequest } from './widgets/AiScriptUiRenderer.vue'
 import AiScriptUiRenderer from './widgets/AiScriptUiRenderer.vue'
@@ -64,7 +65,12 @@ const mode = ref<Mode>('list')
 
 // --- List mode ---
 type Tab = 'featured' | 'my' | 'likes'
-const tabs: Tab[] = ['featured', 'my', 'likes']
+const TAB_DEFS: ColumnTabDef[] = [
+  { value: 'featured', label: '人気' },
+  { value: 'my', label: '自分の' },
+  { value: 'likes', label: 'いいね' },
+]
+const tabs: Tab[] = TAB_DEFS.map((t) => t.value as Tab)
 const activeTab = ref<Tab>('featured')
 const listContentRef = ref<HTMLElement | null>(null)
 
@@ -130,30 +136,9 @@ if (props.column.pageId) {
 const pageTabIndex = computed(() => tabs.indexOf(activeTab.value))
 useTabSlide(pageTabIndex, listContentRef)
 
-// Swipe / wheel to switch tabs (list mode only)
-useSwipeTab(
-  listContentRef,
-  () => {
-    if (mode.value !== 'list') return false
-    const idx = tabs.indexOf(activeTab.value)
-    const next = tabs[idx + 1]
-    if (next) {
-      fetchList(next)
-      return true
-    }
-    return false
-  },
-  () => {
-    if (mode.value !== 'list') return false
-    const idx = tabs.indexOf(activeTab.value)
-    const prev = tabs[idx - 1]
-    if (prev) {
-      fetchList(prev)
-      return true
-    }
-    return false
-  },
-)
+function switchTab(tab: string) {
+  fetchList(tab as Tab)
+}
 
 // --- Page detail ---
 interface PageContent {
@@ -421,17 +406,12 @@ const pageEditUrl = computed(() => {
     <!-- List mode -->
     <template v-if="mode === 'list'">
       <div ref="listContentRef" :class="$style.pageListContent">
-      <div :class="$style.pageTabs">
-        <button
-          v-for="tab in (['featured', 'my', 'likes'] as Tab[])"
-          :key="tab"
-          class="_button"
-          :class="[$style.pageTab, { [$style.active]: activeTab === tab }]"
-          @click="fetchList(tab)"
-        >
-          {{ tab === 'featured' ? '人気' : tab === 'my' ? '自分の' : 'いいね' }}
-        </button>
-      </div>
+      <ColumnTabs
+        :tabs="TAB_DEFS"
+        :model-value="activeTab"
+        :swipe-target="listContentRef"
+        @update:model-value="switchTab"
+      />
 
       <div ref="pageListRef" :class="$style.pageList">
         <div v-if="listLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
@@ -569,38 +549,6 @@ const pageEditUrl = computed(() => {
   flex-direction: column;
   flex: 1;
   min-height: 0;
-}
-
-.pageTabs {
-  display: flex;
-  border-bottom: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.pageTab {
-  flex: 1;
-  padding: 8px 0;
-  text-align: center;
-  font-size: 0.8em;
-  font-weight: 600;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
-  border-bottom: 2px solid transparent;
-
-  &:hover {
-    opacity: 0.8;
-  }
-
-  &.active {
-    opacity: 1;
-    color: var(--nd-accent);
-    border-bottom-color: var(--nd-accent);
-  }
-}
-
-.active {
-  /* used as modifier */
 }
 
 .pageList {

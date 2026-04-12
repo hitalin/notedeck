@@ -114,8 +114,12 @@ export const useThemeStore = defineStore('theme', () => {
     new Map<string, { dark?: MisskeyTheme; light?: MisskeyTheme }>(),
   )
 
-  // User-installed custom themes
-  const installedThemes = ref<MisskeyTheme[]>([])
+  // User-installed custom themes.
+  // shallowRef: テーマは props (CSS 変数 Record) を多数持つため、deep reactive
+  // でラップすると N テーマ × ~50 プロパティ分の Proxy 生成コストが発生する。
+  // 本ストアではリスト自体の入れ替えのみ行い、テーマオブジェクト内部の
+  // in-place 更新は行わないため shallowRef で十分。
+  const installedThemes = shallowRef<MisskeyTheme[]>([])
   // Custom CSS
   const customCss = ref('')
   // Whether file-based storage has been initialized
