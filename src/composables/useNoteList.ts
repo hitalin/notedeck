@@ -38,6 +38,10 @@ export function useNoteList(options: UseNoteListOptions) {
   })
   onScopeDispose(unsubDelete)
 
+  // カラムの表示中 ID を noteStore に root として登録。退避時に保護される。
+  const unregisterRoot = noteStore.registerRoot(() => noteIds)
+  onScopeDispose(unregisterRoot)
+
   const notes = computed({
     get: () => noteStore.resolve(orderedIds.value),
     set: (newNotes: NormalizedNote[]) => {

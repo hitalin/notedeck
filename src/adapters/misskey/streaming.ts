@@ -34,6 +34,22 @@ interface StreamEventPayload {
   messageId?: string
 }
 
+/**
+ * Shared subscription pool entry.
+ *
+ * 複数カラムが同一の (channel type, params) を購読した場合、Rust 側の subscription は
+ * 1 本に畳み込み、JS 側でハンドラを fan-out する。refcount が 0 になったら実購読を破棄。
+ */
+interface PoolEntry {
+  refcount: number
+  real: ChannelSubscription
+  noteHandlers: Set<(note: NormalizedNote) => void>
+  noteUpdateHandlers: Set<(event: NoteUpdateEvent) => void>
+  mainHandlers: Set<(event: MainChannelEvent) => void>
+  chatMessageHandlers: Set<(msg: ChatMessage) => void>
+  chatDeletedHandlers: Set<(messageId: string) => void>
+}
+
 export class MisskeyStream implements StreamAdapter {
   private accountId: string
   private _state: StreamConnectionState = 'initializing'
@@ -44,7 +60,8 @@ export class MisskeyStream implements StreamAdapter {
   /** Incremented on each registerListeners() call; stale listeners check this to self-discard. */
   private _listenerGeneration = 0
 
-  // Handler maps for O(1) dispatch by subscriptionId
+  // Handler maps for O(1) dispatch by subscriptionId.
+  // プール経由の購読では各 map のエントリは「プールエントリの fan-out ディスパッチャ」1 本のみ。
   private noteHandlers = new Map<string, (note: NormalizedNote) => void>()
   private noteUpdateHandlers = new Map<
     string,
@@ -60,6 +77,9 @@ export class MisskeyStream implements StreamAdapter {
     (event: NoteUpdateEvent) => void
   >()
   private rawEventHandlers = new Set<(event: RawStreamEvent) => void>()
+
+  // Pool keyed by canonical "channel:params" string
+  private subscriptionPool = new Map<string, PoolEntry>()
 
   constructor(accountId: string) {
     this.accountId = accountId
@@ -216,6 +236,11 @@ export class MisskeyStream implements StreamAdapter {
     this.chatDeletedHandlers.clear()
     this.noteCaptureHandlers.clear()
     this.eventHandlers.clear()
+    // プール内の実 subscription も破棄（念のため）。handler set は entry ごと破棄される。
+    for (const entry of this.subscriptionPool.values()) {
+      entry.real.dispose()
+    }
+    this.subscriptionPool.clear()
     this._state = 'disconnected'
   }
 
@@ -225,6 +250,57 @@ export class MisskeyStream implements StreamAdapter {
       console.warn('[stream] disconnect failed:', e)
     })
     this.emit('disconnected')
+  }
+
+  /**
+   * プール済みエントリを取得。既存があれば refcount をインクリメント、なければ作成。
+   * createReal は新規作成時のみ呼ばれる。
+   */
+  private acquirePool(
+    key: string,
+    createReal: (entry: PoolEntry) => ChannelSubscription,
+  ): PoolEntry {
+    const existing = this.subscriptionPool.get(key)
+    if (existing) {
+      existing.refcount++
+      return existing
+    }
+    const entry: PoolEntry = {
+      refcount: 1,
+      // 実 subscription はこの後 createReal で差し込まれる
+      real: undefined as unknown as ChannelSubscription,
+      noteHandlers: new Set(),
+      noteUpdateHandlers: new Set(),
+      mainHandlers: new Set(),
+      chatMessageHandlers: new Set(),
+      chatDeletedHandlers: new Set(),
+    }
+    this.subscriptionPool.set(key, entry)
+    entry.real = createReal(entry)
+    return entry
+  }
+
+  /**
+   * プールエントリへの参照を解放。refcount が 0 になったら実 subscription を破棄。
+   */
+  private releasePool(
+    key: string,
+    entry: PoolEntry,
+    removeHandlers: () => void,
+  ): ChannelSubscription {
+    let disposed = false
+    return {
+      dispose: () => {
+        if (disposed) return
+        disposed = true
+        removeHandlers()
+        entry.refcount--
+        if (entry.refcount <= 0 && this.subscriptionPool.get(key) === entry) {
+          this.subscriptionPool.delete(key)
+          entry.real.dispose()
+        }
+      },
+    }
   }
 
   private createSubscription(
@@ -277,6 +353,41 @@ export class MisskeyStream implements StreamAdapter {
     }
   }
 
+  /** 同種のノート購読で共有する register/unregister 登録ロジック */
+  private registerNoteDispatcher(entry: PoolEntry) {
+    return {
+      register: (id: string) => {
+        this.noteHandlers.set(id, (note) => {
+          for (const h of entry.noteHandlers) h(note)
+        })
+        this.noteUpdateHandlers.set(id, (ev) => {
+          for (const h of entry.noteUpdateHandlers) h(ev)
+        })
+      },
+      unregister: (id: string) => {
+        this.noteHandlers.delete(id)
+        this.noteUpdateHandlers.delete(id)
+      },
+    }
+  }
+
+  private registerChatDispatcher(entry: PoolEntry) {
+    return {
+      register: (id: string) => {
+        this.chatMessageHandlers.set(id, (msg) => {
+          for (const h of entry.chatMessageHandlers) h(msg)
+        })
+        this.chatDeletedHandlers.set(id, (mid) => {
+          for (const h of entry.chatDeletedHandlers) h(mid)
+        })
+      },
+      unregister: (id: string) => {
+        this.chatMessageHandlers.delete(id)
+        this.chatDeletedHandlers.delete(id)
+      },
+    }
+  }
+
   subscribeTimeline(
     type: TimelineType,
     handler: (note: NormalizedNote) => void,
@@ -285,25 +396,29 @@ export class MisskeyStream implements StreamAdapter {
       listId?: string
     },
   ): ChannelSubscription {
-    return this.createSubscription(
-      async () =>
-        unwrap(
-          await commands.streamConnectAndSubscribeTimeline(
-            this.accountId,
-            type,
-            options?.listId ?? null,
+    const key = `tl:${type}:${options?.listId ?? ''}`
+    const entry = this.acquirePool(key, (e) => {
+      const d = this.registerNoteDispatcher(e)
+      return this.createSubscription(
+        async () =>
+          unwrap(
+            await commands.streamConnectAndSubscribeTimeline(
+              this.accountId,
+              type,
+              options?.listId ?? null,
+            ),
           ),
-        ),
-      (id) => {
-        this.noteHandlers.set(id, handler)
-        if (options?.onNoteUpdated)
-          this.noteUpdateHandlers.set(id, options.onNoteUpdated)
-      },
-      (id) => {
-        this.noteHandlers.delete(id)
-        this.noteUpdateHandlers.delete(id)
-      },
-    )
+        d.register,
+        d.unregister,
+      )
+    })
+    entry.noteHandlers.add(handler)
+    const onUpdated = options?.onNoteUpdated
+    if (onUpdated) entry.noteUpdateHandlers.add(onUpdated)
+    return this.releasePool(key, entry, () => {
+      entry.noteHandlers.delete(handler)
+      if (onUpdated) entry.noteUpdateHandlers.delete(onUpdated)
+    })
   }
 
   subscribeAntenna(
@@ -311,24 +426,28 @@ export class MisskeyStream implements StreamAdapter {
     handler: (note: NormalizedNote) => void,
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription {
-    return this.createSubscription(
-      async () =>
-        unwrap(
-          await commands.streamConnectAndSubscribeAntenna(
-            this.accountId,
-            antennaId,
+    const key = `an:${antennaId}`
+    const entry = this.acquirePool(key, (e) => {
+      const d = this.registerNoteDispatcher(e)
+      return this.createSubscription(
+        async () =>
+          unwrap(
+            await commands.streamConnectAndSubscribeAntenna(
+              this.accountId,
+              antennaId,
+            ),
           ),
-        ),
-      (id) => {
-        this.noteHandlers.set(id, handler)
-        if (options?.onNoteUpdated)
-          this.noteUpdateHandlers.set(id, options.onNoteUpdated)
-      },
-      (id) => {
-        this.noteHandlers.delete(id)
-        this.noteUpdateHandlers.delete(id)
-      },
-    )
+        d.register,
+        d.unregister,
+      )
+    })
+    entry.noteHandlers.add(handler)
+    const onUpdated = options?.onNoteUpdated
+    if (onUpdated) entry.noteUpdateHandlers.add(onUpdated)
+    return this.releasePool(key, entry, () => {
+      entry.noteHandlers.delete(handler)
+      if (onUpdated) entry.noteUpdateHandlers.delete(onUpdated)
+    })
   }
 
   subscribeChannel(
@@ -336,58 +455,85 @@ export class MisskeyStream implements StreamAdapter {
     handler: (note: NormalizedNote) => void,
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription {
-    return this.createSubscription(
-      async () =>
-        unwrap(
-          await commands.streamConnectAndSubscribeChannel(
-            this.accountId,
-            channelId,
+    const key = `ch:${channelId}`
+    const entry = this.acquirePool(key, (e) => {
+      const d = this.registerNoteDispatcher(e)
+      return this.createSubscription(
+        async () =>
+          unwrap(
+            await commands.streamConnectAndSubscribeChannel(
+              this.accountId,
+              channelId,
+            ),
           ),
-        ),
-      (id) => {
-        this.noteHandlers.set(id, handler)
-        if (options?.onNoteUpdated)
-          this.noteUpdateHandlers.set(id, options.onNoteUpdated)
-      },
-      (id) => {
-        this.noteHandlers.delete(id)
-        this.noteUpdateHandlers.delete(id)
-      },
-    )
+        d.register,
+        d.unregister,
+      )
+    })
+    entry.noteHandlers.add(handler)
+    const onUpdated = options?.onNoteUpdated
+    if (onUpdated) entry.noteUpdateHandlers.add(onUpdated)
+    return this.releasePool(key, entry, () => {
+      entry.noteHandlers.delete(handler)
+      if (onUpdated) entry.noteUpdateHandlers.delete(onUpdated)
+    })
   }
 
   subscribeMain(
     handler: (event: MainChannelEvent) => void,
   ): ChannelSubscription {
-    return this.createSubscription(
-      async () => unwrap(await commands.streamSubscribeMain(this.accountId)),
-      (id) => {
-        this.notifHandlers.set(id, handler)
-        this.mainHandlers.set(id, handler)
-      },
-      (id) => {
-        this.notifHandlers.delete(id)
-        this.mainHandlers.delete(id)
-      },
+    const key = 'main'
+    const entry = this.acquirePool(key, (e) =>
+      this.createSubscription(
+        async () => unwrap(await commands.streamSubscribeMain(this.accountId)),
+        (id) => {
+          const dispatch = (event: MainChannelEvent) => {
+            for (const h of e.mainHandlers) h(event)
+          }
+          this.notifHandlers.set(id, dispatch)
+          this.mainHandlers.set(id, dispatch)
+        },
+        (id) => {
+          this.notifHandlers.delete(id)
+          this.mainHandlers.delete(id)
+        },
+      ),
     )
+    entry.mainHandlers.add(handler)
+    return this.releasePool(key, entry, () => {
+      entry.mainHandlers.delete(handler)
+    })
   }
 
   subscribeMentions(
     handler: (note: NormalizedNote) => void,
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription {
-    return this.createSubscription(
-      async () => unwrap(await commands.streamSubscribeMain(this.accountId)),
-      (id) => {
-        this.mentionHandlers.set(id, handler)
-        if (options?.onNoteUpdated)
-          this.noteUpdateHandlers.set(id, options.onNoteUpdated)
-      },
-      (id) => {
-        this.mentionHandlers.delete(id)
-        this.noteUpdateHandlers.delete(id)
-      },
+    const key = 'mentions'
+    const entry = this.acquirePool(key, (e) =>
+      this.createSubscription(
+        async () => unwrap(await commands.streamSubscribeMain(this.accountId)),
+        (id) => {
+          this.mentionHandlers.set(id, (note) => {
+            for (const h of e.noteHandlers) h(note)
+          })
+          this.noteUpdateHandlers.set(id, (ev) => {
+            for (const h of e.noteUpdateHandlers) h(ev)
+          })
+        },
+        (id) => {
+          this.mentionHandlers.delete(id)
+          this.noteUpdateHandlers.delete(id)
+        },
+      ),
     )
+    entry.noteHandlers.add(handler)
+    const onUpdated = options?.onNoteUpdated
+    if (onUpdated) entry.noteUpdateHandlers.add(onUpdated)
+    return this.releasePool(key, entry, () => {
+      entry.noteHandlers.delete(handler)
+      if (onUpdated) entry.noteUpdateHandlers.delete(onUpdated)
+    })
   }
 
   subscribeChatUser(
@@ -395,19 +541,25 @@ export class MisskeyStream implements StreamAdapter {
     handler: (msg: ChatMessage) => void,
     options?: { onDeleted?: (messageId: string) => void },
   ): ChannelSubscription {
-    return this.createSubscription(
-      async () =>
-        unwrap(await commands.streamSubscribeChatUser(this.accountId, otherId)),
-      (id) => {
-        this.chatMessageHandlers.set(id, handler)
-        if (options?.onDeleted)
-          this.chatDeletedHandlers.set(id, options.onDeleted)
-      },
-      (id) => {
-        this.chatMessageHandlers.delete(id)
-        this.chatDeletedHandlers.delete(id)
-      },
-    )
+    const key = `cu:${otherId}`
+    const entry = this.acquirePool(key, (e) => {
+      const d = this.registerChatDispatcher(e)
+      return this.createSubscription(
+        async () =>
+          unwrap(
+            await commands.streamSubscribeChatUser(this.accountId, otherId),
+          ),
+        d.register,
+        d.unregister,
+      )
+    })
+    entry.chatMessageHandlers.add(handler)
+    const onDeleted = options?.onDeleted
+    if (onDeleted) entry.chatDeletedHandlers.add(onDeleted)
+    return this.releasePool(key, entry, () => {
+      entry.chatMessageHandlers.delete(handler)
+      if (onDeleted) entry.chatDeletedHandlers.delete(onDeleted)
+    })
   }
 
   subscribeChatRoom(
@@ -415,19 +567,25 @@ export class MisskeyStream implements StreamAdapter {
     handler: (msg: ChatMessage) => void,
     options?: { onDeleted?: (messageId: string) => void },
   ): ChannelSubscription {
-    return this.createSubscription(
-      async () =>
-        unwrap(await commands.streamSubscribeChatRoom(this.accountId, roomId)),
-      (id) => {
-        this.chatMessageHandlers.set(id, handler)
-        if (options?.onDeleted)
-          this.chatDeletedHandlers.set(id, options.onDeleted)
-      },
-      (id) => {
-        this.chatMessageHandlers.delete(id)
-        this.chatDeletedHandlers.delete(id)
-      },
-    )
+    const key = `cr:${roomId}`
+    const entry = this.acquirePool(key, (e) => {
+      const d = this.registerChatDispatcher(e)
+      return this.createSubscription(
+        async () =>
+          unwrap(
+            await commands.streamSubscribeChatRoom(this.accountId, roomId),
+          ),
+        d.register,
+        d.unregister,
+      )
+    })
+    entry.chatMessageHandlers.add(handler)
+    const onDeleted = options?.onDeleted
+    if (onDeleted) entry.chatDeletedHandlers.add(onDeleted)
+    return this.releasePool(key, entry, () => {
+      entry.chatMessageHandlers.delete(handler)
+      if (onDeleted) entry.chatDeletedHandlers.delete(onDeleted)
+    })
   }
 
   subNote(noteId: string, handler: (event: NoteUpdateEvent) => void): void {

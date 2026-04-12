@@ -17,6 +17,7 @@ import { useDeckStore } from '@/stores/deck'
 import { useOfflineModeStore } from '@/stores/offlineMode'
 import { usePluginsStore } from '@/stores/plugins'
 import { useRealtimeModeStore } from '@/stores/realtimeMode'
+import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import {
   initDesktopNotifications,
@@ -92,6 +93,7 @@ export function useDeckInit(options: {
       initDesktopNotifications()
       initOgpListener()
       loadCliCommands()
+      void useTasksStore().init()
       onNotificationAction((ctx) => {
         if (ctx.noteId) {
           options.navigateToNote(ctx.accountId, ctx.noteId)

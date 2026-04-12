@@ -117,6 +117,13 @@ export function getSettingsItems(): QuickPickItem[] {
       group: '環境設定',
       action: () => useWindowsStore().open('cssEditor'),
     },
+    {
+      id: 'tasks-editor',
+      label: 'タスク',
+      icon: 'player-play',
+      group: '環境設定',
+      action: () => useWindowsStore().open('tasksEditor'),
+    },
     // Cache
     {
       id: 'clear-all-cache',
@@ -411,6 +418,7 @@ const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
   'followRequests',
   'lookup',
   'streamInspector',
+  'taskRunner',
 ])
 
 const ACCOUNT_OPTIONAL_TYPES = new Set<ColumnType>(['widget', 'aiscript'])
@@ -462,6 +470,7 @@ const COLUMN_TYPE_GROUPS: { group: string; types: ColumnType[] }[] = [
       'ai',
       'streamInspector',
       'pluginManager',
+      'taskRunner',
     ],
   },
 ]
@@ -474,6 +483,7 @@ const COLUMN_EXTRA_PROPS: Partial<
   apiDocs: { accountId: null, width: 990 },
   ai: { accountId: null },
   pluginManager: { accountId: null },
+  taskRunner: { accountId: null },
   timeline: { tl: 'home', name: null },
 }
 

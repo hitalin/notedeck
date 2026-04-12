@@ -1,0 +1,97 @@
+// NoteDeck tasks.json5 — タスク定義
+//
+// ここに宣言したタスクは:
+//   - コマンドパレットから "タスク: <label>" として実行可能
+//   - Task Runner カラムから 1-click 実行可能
+//
+// ─ 変数 ─
+//   ${input:<id>}   inputs で収集した値
+//   ${account.id}   実行時の accountId
+//   ${account.host} 実行時のサーバーホスト
+//
+// ─ action ─
+//   type: 'api' のみサポート (Misskey API エンドポイントを叩く)
+//   method: API endpoint 名 (先頭スラッシュ無し)。例: 'notes/create'
+//   params: 展開対象のパラメータオブジェクト
+//
+// ─ inputs ─
+//   type: 'text' — フリーテキスト入力
+//   type: 'pick' — options 選択 (完全一致)
+//
+// ─ accountId ─
+//   未指定 → 現在アクティブなアカウントで実行
+//   null   → 最初のログイン済みアカウントで実行
+//   "<id>" → 明示指定 (portable ID ではなく内部 accountId)
+{
+  version: 1,
+  tasks: [
+    {
+      id: 'quick-post',
+      label: 'クイック投稿',
+      description: '本文を入力してホーム投稿',
+      inputs: [
+        { id: 'body', type: 'text', prompt: '本文' },
+        {
+          id: 'visibility',
+          type: 'pick',
+          prompt: '公開範囲',
+          options: ['public', 'home', 'followers'],
+          default: 'home',
+        },
+      ],
+      action: {
+        type: 'api',
+        method: 'notes/create',
+        params: {
+          text: '${input:body}',
+          visibility: '${input:visibility}',
+        },
+      },
+    },
+    {
+      id: 'mark-notifications-read',
+      label: '通知をすべて既読',
+      description: '未読通知を一括で既読にする',
+      action: {
+        type: 'api',
+        method: 'notifications/mark-all-as-read',
+      },
+    },
+    {
+      id: 'server-meta',
+      label: 'サーバー情報を取得',
+      description: 'meta API を叩いて結果を履歴に残す',
+      action: {
+        type: 'api',
+        method: 'meta',
+        params: { detail: true },
+      },
+    },
+    {
+      id: 'lookup-user',
+      label: 'ユーザーを検索',
+      description: 'ユーザー名またはホストつき handle で検索',
+      inputs: [
+        { id: 'query', type: 'text', prompt: 'ユーザー名 (例: alice)' },
+      ],
+      action: {
+        type: 'api',
+        method: 'users/search-by-username-and-host',
+        params: {
+          username: '${input:query}',
+          limit: 10,
+          detail: false,
+        },
+      },
+    },
+    {
+      id: 'my-recent-notes',
+      label: '自分の最新ノートを取得',
+      description: '自分のユーザーIDで直近ノートを取得',
+      action: {
+        type: 'api',
+        method: 'i',
+      },
+    },
+  ],
+}

@@ -62,6 +62,9 @@ const AppearanceEditorContent = defineAsyncComponent(
 const BackupContent = defineAsyncComponent(
   () => import('@/components/window/BackupContent.vue'),
 )
+const TasksEditorContent = defineAsyncComponent(
+  () => import('@/components/window/TasksEditorContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -205,6 +208,9 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       <BackupContent
         v-if="win.type === 'backup'"
         :initial-tab="(win.props.initialTab as 'notedeck' | 'db' | undefined)"
+      />
+      <TasksEditorContent
+        v-if="win.type === 'tasksEditor'"
       />
     </DeckWindow>
   </div>

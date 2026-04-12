@@ -142,14 +142,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
       const profiles = profilesData.value
       // Sync: localStorage + bump version
       setStorageJson(STORAGE_KEYS.deckProfiles, profiles)
-      // Backward compat: keep nd-deck in sync
       const profile = currentProfile.value
-      if (profile) {
-        setStorageJson(STORAGE_KEYS.deck, {
-          columns: profile.columns,
-          layout: profile.layout,
-        })
-      }
       // Async: write changed profile to file
       if (initialized.value && profile) {
         persistSingleProfile(profile).catch((e) =>

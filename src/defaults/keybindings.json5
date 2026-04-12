@@ -77,6 +77,10 @@
     shortcuts: [{ key: "u", ctrl: true, shift: true, scope: "global" }],
   },
   {
+    commandId: "tasks-editor",
+    shortcuts: [{ key: "j", ctrl: true, shift: true, scope: "global" }],
+  },
+  {
     commandId: "plugins",
     shortcuts: [{ key: "x", ctrl: true, shift: true, scope: "global" }],
   },
@@ -341,5 +345,13 @@
   {
     commandId: "devtools",
     shortcuts: [{ key: "F12", scope: "global" }],
+  },
+  {
+    commandId: "settings-editor",
+    shortcuts: [{ key: "a", ctrl: true, shift: true, alt: true, scope: "global" }],
+  },
+  {
+    commandId: "clear-all-cache",
+    shortcuts: [{ key: "k", ctrl: true, shift: true, alt: true, scope: "global" }],
   },
 ]

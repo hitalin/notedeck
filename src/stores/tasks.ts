@@ -1,0 +1,133 @@
+import JSON5 from 'json5'
+import { defineStore } from 'pinia'
+import { ref, watch } from 'vue'
+import { useCommandStore } from '@/commands/registry'
+import { PERSIST_DEBOUNCE_MS } from '@/constants/persist'
+import defaultTasksJson5 from '@/defaults/tasks.json5?raw'
+import { useTaskRunnerStore } from '@/stores/taskRunner'
+import { useToast } from '@/stores/toast'
+import { parseTasks, TasksParseError } from '@/tasks/schema'
+import type { TaskDefinition } from '@/tasks/types'
+import { isTauri, readTasks, writeTasks } from '@/utils/settingsFs'
+
+export const TASK_COMMAND_PREFIX = 'task.'
+
+export const useTasksStore = defineStore('tasks', () => {
+  const definitions = ref<TaskDefinition[]>([])
+  const initialized = ref(false)
+  const lastError = ref<string | null>(null)
+
+  let persistTimer: ReturnType<typeof setTimeout> | null = null
+  const registeredIds = new Set<string>()
+
+  function schedulePersist(): void {
+    if (persistTimer != null) clearTimeout(persistTimer)
+    persistTimer = setTimeout(() => {
+      persistTimer = null
+      persist().catch((e) => console.warn('[tasks] persist failed:', e))
+    }, PERSIST_DEBOUNCE_MS)
+  }
+
+  async function persist(): Promise<void> {
+    if (!isTauri) return
+    const payload = { version: 1, tasks: definitions.value }
+    const content = JSON5.stringify(payload, null, 2)
+    await writeTasks(`${content}\n`)
+  }
+
+  function syncCommands(): void {
+    const commandStore = useCommandStore()
+    const runner = useTaskRunnerStore()
+    const next = new Set(
+      definitions.value.map((t) => TASK_COMMAND_PREFIX + t.id),
+    )
+    for (const id of registeredIds) {
+      if (!next.has(id)) commandStore.unregister(id)
+    }
+    registeredIds.clear()
+    for (const t of definitions.value) {
+      const id = TASK_COMMAND_PREFIX + t.id
+      commandStore.register({
+        id,
+        label: `タスク: ${t.label}`,
+        icon: 'player-play',
+        category: 'general',
+        shortcuts: [],
+        execute: () => {
+          void runner.runTask(t.id)
+        },
+      })
+      registeredIds.add(id)
+    }
+  }
+
+  watch(definitions, () => syncCommands(), { deep: true })
+
+  function setFromRaw(raw: string): void {
+    try {
+      const parsed = parseTasks(raw)
+      definitions.value = parsed.tasks
+      lastError.value = null
+    } catch (e) {
+      definitions.value = []
+      const msg =
+        e instanceof TasksParseError ? e.message : String((e as Error).message)
+      lastError.value = msg
+      useToast().show(`tasks.json5: ${msg}`, 'error')
+      console.warn('[tasks] parse failed:', e)
+    }
+  }
+
+  async function init(): Promise<void> {
+    if (isTauri) {
+      try {
+        const content = await readTasks()
+        if (!content.trim()) {
+          // First-run seed: write defaults so the file exists to edit
+          await writeTasks(defaultTasksJson5).catch((e) =>
+            console.warn('[tasks] seed failed:', e),
+          )
+          setFromRaw(defaultTasksJson5)
+        } else {
+          setFromRaw(content)
+        }
+      } catch (e) {
+        console.warn('[tasks] read failed:', e)
+      }
+    } else {
+      setFromRaw(defaultTasksJson5)
+    }
+    initialized.value = true
+    syncCommands()
+  }
+
+  function getById(id: string): TaskDefinition | undefined {
+    return definitions.value.find((t) => t.id === id)
+  }
+
+  function upsert(def: TaskDefinition): void {
+    const idx = definitions.value.findIndex((t) => t.id === def.id)
+    if (idx >= 0) {
+      definitions.value[idx] = def
+    } else {
+      definitions.value.push(def)
+    }
+    schedulePersist()
+  }
+
+  function remove(id: string): void {
+    definitions.value = definitions.value.filter((t) => t.id !== id)
+    schedulePersist()
+  }
+
+  return {
+    definitions,
+    initialized,
+    lastError,
+    init,
+    setFromRaw,
+    getById,
+    upsert,
+    remove,
+  }
+})

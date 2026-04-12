@@ -6,7 +6,6 @@ import {
   onUnmounted,
   ref,
   shallowRef,
-  useCssModule,
   useTemplateRef,
   watch,
 } from 'vue'
@@ -33,8 +32,6 @@ import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { usePortal } from '@/composables/usePortal'
-import { useSwipeTab } from '@/composables/useSwipeTab'
-import { useTabIndicator } from '@/composables/useTabIndicator'
 import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
@@ -50,6 +47,8 @@ import { proxyUrl } from '@/utils/imageProxy'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import { char2twemojiUrl } from '@/utils/twemoji'
+import type { ColumnTabDef } from './ColumnTabs.vue'
+import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
 
 const MkPostForm = defineAsyncComponent(
@@ -274,14 +273,15 @@ const NOTIFICATION_FILTERS = [
 type NotifFilterKey = (typeof NOTIFICATION_FILTERS)[number]['key']
 const activeFilter = ref<NotifFilterKey>('all')
 
-// Tab slide indicator
-const $style = useCssModule()
-const filterBarRef = ref<HTMLElement | null>(null)
-const { indicatorStyle: filterIndicatorStyle } = useTabIndicator(
-  filterBarRef,
-  `.notif-tab.${$style.filterActive}`,
-  () => activeFilter.value,
-)
+const filterTabDefs: ColumnTabDef[] = NOTIFICATION_FILTERS.map((f) => ({
+  value: f.key,
+  label: f.label,
+  icon: f.icon.replace(/^ti ti-/, ''),
+}))
+
+function onFilterChange(value: string) {
+  activeFilter.value = value as NotifFilterKey
+}
 
 const filteredNotifications = computed(() => {
   if (activeFilter.value === 'all') return notifications.value
@@ -838,38 +838,6 @@ const notifTabIndex = computed(() =>
 )
 useTabSlide(notifTabIndex, scroller)
 
-// Swipe / wheel to switch notification filter tabs
-useSwipeTab(
-  scroller,
-  () => {
-    // swipe left → next filter
-    const idx = NOTIFICATION_FILTERS.findIndex(
-      (f) => f.key === activeFilter.value,
-    )
-    const next =
-      idx >= 0 && idx < NOTIFICATION_FILTERS.length - 1
-        ? NOTIFICATION_FILTERS[idx + 1]
-        : undefined
-    if (next) {
-      activeFilter.value = next.key
-      return true
-    }
-    return false
-  },
-  () => {
-    // swipe right → previous filter
-    const idx = NOTIFICATION_FILTERS.findIndex(
-      (f) => f.key === activeFilter.value,
-    )
-    const prev = idx > 0 ? NOTIFICATION_FILTERS[idx - 1] : undefined
-    if (prev) {
-      activeFilter.value = prev.key
-      return true
-    }
-    return false
-  },
-)
-
 onMounted(() => {
   connect(true)
 })
@@ -911,21 +879,14 @@ onUnmounted(() => {
     </template>
 
     <template #header-extra>
-      <!-- Notification filter tabs -->
-      <div ref="filterBarRef" :class="$style.filterBar">
-        <button
-          v-for="filter in NOTIFICATION_FILTERS"
-          :key="filter.key"
-          class="_button notif-tab"
-          :class="[$style.filterBtn, { [$style.filterActive]: activeFilter === filter.key }]"
-          :title="filter.label"
-          @click="activeFilter = filter.key"
-        >
-          <i :class="filter.icon" />
-          <span v-if="activeFilter === filter.key" :class="$style.filterLabel">{{ filter.label }}</span>
-        </button>
-        <div :class="$style.filterIndicator" :style="filterIndicatorStyle" />
-      </div>
+      <ColumnTabs
+        :tabs="filterTabDefs"
+        :model-value="activeFilter"
+        :swipe-target="scroller"
+        label-on-active-only
+        scrollable
+        @update:model-value="onFilterChange"
+      />
     </template>
 
     <ColumnEmptyState
@@ -1203,62 +1164,6 @@ onUnmounted(() => {
 
 .notifBody {
   composes: tlBody from './column-common.module.scss';
-}
-
-.filterBar {
-  display: flex;
-  position: relative;
-  border-bottom: 1px solid var(--nd-divider);
-  background: var(--nd-bg);
-  flex-shrink: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-.filterBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  gap: 4px;
-  padding: 8px 12px;
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  opacity: 0.4;
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
-  position: relative;
-
-  &:hover {
-    opacity: 0.7;
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.filterActive {
-  opacity: 1;
-}
-
-.filterLabel {
-  font-size: 0.85em;
-  font-weight: bold;
-  white-space: nowrap;
-}
-
-.filterIndicator {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 1px;
-  height: 3px;
-  background: var(--nd-accent);
-  border-radius: var(--nd-radius-full) var(--nd-radius-full) 0 0;
-  transform-origin: 0 0;
-  transition: translate var(--nd-duration-slower) var(--nd-ease-pop), scale var(--nd-duration-slower) var(--nd-ease-pop), opacity var(--nd-duration-slower) var(--nd-ease-pop);
-  pointer-events: none;
 }
 
 .notifScroller {
