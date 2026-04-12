@@ -9,6 +9,12 @@ export const useNoteStore = defineStore('notes', () => {
   const { schedule } = useFrameScheduler()
   const noteMap = shallowRef(new Map<string, NormalizedNote>())
   const deleteListeners = new Set<(id: string) => void>()
+  /**
+   * 現在どのカラムからも参照されている ID 集合を供給する root 群。
+   * 退避時に「どの root にも含まれない」ノートを優先削除し、アクティブカラムの
+   * 表示継続性を保つ。各カラムは useNoteList でセットを登録／解除する。
+   */
+  const roots = new Set<() => Iterable<string>>()
 
   /** Batch triggerRef calls into one per animation frame (streaming events fire rapidly) */
   let triggerScheduled = false
@@ -23,16 +29,62 @@ export const useNoteStore = defineStore('notes', () => {
     schedule(doTrigger, 'normal')
   }
 
-  /** Evict oldest entries when map exceeds limit. */
+  /**
+   * root を登録。戻り値の関数で解除する。
+   * useNoteList がカラムの可視ID集合を登録することで、退避時に
+   * アクティブカラム表示中のノートが優先的に保護される。
+   */
+  function registerRoot(provider: () => Iterable<string>): () => void {
+    roots.add(provider)
+    return () => {
+      roots.delete(provider)
+    }
+  }
+
+  /** すべての root に含まれる ID の和集合を返す */
+  function collectLiveIds(): Set<string> {
+    const live = new Set<string>()
+    for (const provider of roots) {
+      for (const id of provider()) live.add(id)
+    }
+    return live
+  }
+
+  /**
+   * 退避戦略:
+   *   1) どの root からも参照されていないノートを古い順に削除
+   *   2) それでも上限を超えるなら LRU フォールバック（古い順に削除）
+   */
   function evictIfNeeded() {
     const map = noteMap.value
     const max = perfStore.get('noteStoreMax')
     if (map.size <= max) return
-    const excess = map.size - max
-    const iter = map.keys()
-    for (let i = 0; i < excess; i++) {
-      const key = iter.next().value
-      if (key != null) map.delete(key)
+
+    const live = collectLiveIds()
+    // renote 参照ノートも生存扱い（resolve() で辿られる）
+    if (live.size > 0) {
+      for (const id of live) {
+        const note = map.get(id)
+        if (note?.renoteId) live.add(note.renoteId)
+      }
+    }
+
+    // 1st pass: 参照されていないノートを古い順に削除
+    if (map.size > max && live.size < map.size) {
+      for (const key of map.keys()) {
+        if (map.size <= max) break
+        if (!live.has(key)) map.delete(key)
+      }
+    }
+
+    // 2nd pass: フォールバック FIFO（root が全部のノートを保護していた場合など）
+    if (map.size > max) {
+      const excess = map.size - max
+      const iter = map.keys()
+      for (let i = 0; i < excess; i++) {
+        const key = iter.next().value
+        if (key != null) map.delete(key)
+      }
     }
   }
 
@@ -194,5 +246,6 @@ export const useNoteStore = defineStore('notes', () => {
     onDelete,
     applyUpdate,
     notifyMutation,
+    registerRoot,
   }
 })
