@@ -58,6 +58,8 @@ export function removeStorageByPrefix(prefix: string): void {
 
 export const STORAGE_KEYS = {
   // Deck
+  // TODO: `deck` は pre-profile 時代 (<= v0.10.2) からの migration 読取専用。
+  // 十分時間が経ったら読取ごと削除する。
   deck: 'nd-deck',
   deckProfiles: 'nd-deck-profiles',
   deckActiveProfile: 'nd-deck-active-profile',

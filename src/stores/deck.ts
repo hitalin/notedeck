@@ -12,7 +12,7 @@ import { buildColumnUri } from '@/utils/columnUri'
 import * as deckLayout from '@/utils/deckLayout'
 import { hapticMedium } from '@/utils/haptics'
 import { isTauri, readNavbar, writeNavbar } from '@/utils/settingsFs'
-import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
+import { getStorageJson, removeStorage, STORAGE_KEYS } from '@/utils/storage'
 
 export type ColumnType =
   | 'timeline'
@@ -389,7 +389,8 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   function load() {
-    // Load from nd-deck (backward compat / initial data)
+    // One-shot migration from pre-profile era key (v0.10.2 and earlier).
+    // Seed the first profile from nd-deck if it exists, then remove the key.
     const data = getStorageJson<{
       columns?: DeckColumn[]
       layout?: string[][]
@@ -399,6 +400,10 @@ export const useDeckStore = defineStore('deck', () => {
     const fallbackLayout = data?.layout ?? []
 
     profileStore.ensureDefaults(fallbackColumns, fallbackLayout)
+
+    if (data !== null) {
+      removeStorage(STORAGE_KEYS.deck)
+    }
 
     // Set window identity from query params
     const params = new URLSearchParams(window.location.search)
@@ -472,13 +477,7 @@ export const useDeckStore = defineStore('deck', () => {
 
   function applyProfile(profileId: string) {
     profileStore.flushPersist()
-    const result = profileStore.switchProfile(profileId)
-    if (!result) return
-    // Backward compat: keep nd-deck in sync
-    setStorageJson(STORAGE_KEYS.deck, {
-      columns: result.columns,
-      layout: result.layout,
-    })
+    profileStore.switchProfile(profileId)
   }
 
   // --- Multi-window column management ---
