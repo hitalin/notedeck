@@ -346,4 +346,12 @@
     commandId: "devtools",
     shortcuts: [{ key: "F12", scope: "global" }],
   },
+  {
+    commandId: "settings-editor",
+    shortcuts: [{ key: "a", ctrl: true, shift: true, alt: true, scope: "global" }],
+  },
+  {
+    commandId: "clear-all-cache",
+    shortcuts: [{ key: "k", ctrl: true, shift: true, alt: true, scope: "global" }],
+  },
 ]
