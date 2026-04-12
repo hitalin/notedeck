@@ -180,7 +180,6 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
         } else if (!has && capturing) {
           capturing = false
           unsubscribeAll()
-          buffer.value = []
         }
       },
       { immediate: true },
