@@ -14,6 +14,7 @@ import { useWindowsStore } from '@/stores/windows'
 import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
+import PluginCard from './PluginCard.vue'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -24,6 +25,14 @@ const windowsStore = useWindowsStore()
 const misStore = useMisStoreStore()
 
 pluginsStore.ensureLoaded()
+// Store メタデータをインストール済みカードの表示にも使うため事前取得（TTL キャッシュあり）
+misStore.fetchPlugins()
+
+const storeByName = computed(() => {
+  const map = new Map<string, StorePluginEntry>()
+  for (const entry of misStore.plugins) map.set(entry.name, entry)
+  return map
+})
 
 // --- View mode ---
 type ViewTab = 'installed' | 'store'
@@ -250,52 +259,23 @@ function handleUninstall(plugin: PluginMeta) {
         </div>
 
         <div :class="$style.list">
-          <div
+          <PluginCard
             v-for="plugin in filteredPlugins"
             :key="plugin.installId"
-            :class="[$style.card, !plugin.active && $style.cardDisabled]"
+            mode="installed"
+            :name="plugin.name"
+            :description="storeByName.get(plugin.name)?.description ?? plugin.description"
+            :author="storeByName.get(plugin.name)?.author ?? plugin.author"
+            :version="plugin.version"
+            :category="storeByName.get(plugin.name)?.category"
+            :category-label="storeByName.get(plugin.name)?.category ? PLUGIN_CATEGORY_LABELS[storeByName.get(plugin.name)!.category] : undefined"
+            :active="plugin.active"
+            :confirming-uninstall="confirmingUninstallId === plugin.installId && confirmingUninstall"
             @click="openPluginDetail(plugin.installId)"
-          >
-            <div :class="$style.cardIcon">
-              <i class="ti ti-puzzle" />
-            </div>
-            <div :class="$style.cardBody">
-              <div :class="$style.cardRow1">
-                <span :class="$style.cardName">{{ plugin.name }}</span>
-              </div>
-              <div :class="$style.cardRow2">
-                {{ plugin.description || 'No description' }}
-              </div>
-              <div :class="$style.cardRow3">
-                <span v-if="plugin.author" :class="$style.cardAuthor">{{ plugin.author }}</span>
-                <span :class="$style.cardVersion">v{{ plugin.version }}</span>
-                <span :class="$style.cardSpacer" />
-                <button
-                  class="_button"
-                  :class="[$style.cardActionBtn, plugin.active ? $style.disableBtn : $style.enableBtn]"
-                  @click.stop="toggleActive(plugin)"
-                >
-                  {{ plugin.active ? '無効にする' : '有効にする' }}
-                </button>
-                <button
-                  class="_button"
-                  :class="[$style.iconBtn, confirmingUninstallId === plugin.installId && confirmingUninstall && $style.iconBtnDanger]"
-                  title="アンインストール"
-                  @click.stop="handleUninstall(plugin)"
-                >
-                  <i class="ti ti-trash" />
-                </button>
-                <button
-                  class="_button"
-                  :class="$style.iconBtn"
-                  title="設定"
-                  @click.stop="openPluginDetail(plugin.installId)"
-                >
-                  <i class="ti ti-settings" />
-                </button>
-              </div>
-            </div>
-          </div>
+            @toggle="toggleActive(plugin)"
+            @uninstall="handleUninstall(plugin)"
+            @settings="openPluginDetail(plugin.installId)"
+          />
 
           <div v-if="filteredPlugins.length === 0" :class="$style.empty">
             <template v-if="textQuery || activeFilter !== 'all'">
@@ -342,50 +322,20 @@ function handleUninstall(plugin: PluginMeta) {
         </div>
 
         <div v-else :class="$style.list">
-          <div
+          <PluginCard
             v-for="entry in filteredStorePlugins"
             :key="entry.id"
-            :class="$style.card"
-          >
-            <div :class="$style.cardIcon">
-              <i class="ti ti-puzzle" />
-            </div>
-            <div :class="$style.cardBody">
-              <div :class="$style.cardRow1">
-                <span :class="$style.cardName">{{ entry.name }}</span>
-              </div>
-              <div :class="$style.cardRow2">
-                {{ entry.description }}
-              </div>
-              <div :class="$style.cardRow3">
-                <span :class="$style.cardAuthor">{{ entry.author }}</span>
-                <span :class="$style.cardVersion">v{{ entry.version }}</span>
-                <span v-if="entry.category" :class="$style.cardCategory">
-                  {{ PLUGIN_CATEGORY_LABELS[entry.category] || entry.category }}
-                </span>
-                <span :class="$style.cardSpacer" />
-                <button
-                  v-if="misStore.installedNames.has(entry.name)"
-                  class="_button"
-                  :class="$style.installedBadge"
-                  disabled
-                >
-                  インストール済み
-                </button>
-                <button
-                  v-else
-                  class="_button"
-                  :class="$style.storeInstallBtn"
-                  :disabled="misStore.installing === entry.id"
-                  @click.stop="handleStoreInstall(entry)"
-                >
-                  <i v-if="misStore.installing === entry.id" class="ti ti-loader-2 nd-spin" />
-                  <i v-else class="ti ti-download" />
-                  {{ misStore.installing === entry.id ? '...' : 'インストール' }}
-                </button>
-              </div>
-            </div>
-          </div>
+            mode="store"
+            :name="entry.name"
+            :description="entry.description"
+            :author="entry.author"
+            :version="entry.version"
+            :category="entry.category"
+            :category-label="entry.category ? PLUGIN_CATEGORY_LABELS[entry.category] : undefined"
+            :installing="misStore.installing === entry.id"
+            :already-installed="misStore.installedNames.has(entry.name)"
+            @install="handleStoreInstall(entry)"
+          />
 
           <div v-if="filteredStorePlugins.length === 0 && !misStore.loading" :class="$style.empty">
             一致するプラグインがありません
@@ -532,214 +482,6 @@ function handleUninstall(plugin: PluginMeta) {
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
-}
-
-// --- Card ---
-.card {
-  display: flex;
-  gap: 10px;
-  padding: 10px 12px;
-  cursor: pointer;
-  transition: background 0.1s;
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-
-  & + & {
-    border-top: 1px solid color-mix(in srgb, var(--nd-divider) 50%, transparent);
-  }
-}
-
-.cardDisabled {
-  opacity: 0.5;
-}
-
-.cardIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  flex-shrink: 0;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
-  color: var(--nd-accent);
-  font-size: 20px;
-}
-
-.cardBody {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.cardRow1 {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  min-width: 0;
-}
-
-.cardName {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--nd-fgHighlighted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-
-.cardRow2 {
-  font-size: 12px;
-  color: var(--nd-fg);
-  opacity: 0.65;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.4;
-}
-
-.cardRow3 {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 2px;
-  min-width: 0;
-}
-
-.cardAuthor {
-  font-size: 11px;
-  color: var(--nd-accent);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cardVersion {
-  font-size: 11px;
-  color: var(--nd-fg);
-  opacity: 0.4;
-  flex-shrink: 0;
-}
-
-.cardCategory {
-  font-size: 10px;
-  padding: 0 5px;
-  border-radius: 8px;
-  border: 1px solid var(--nd-divider);
-  color: var(--nd-fg);
-  opacity: 0.5;
-  flex-shrink: 0;
-}
-
-.cardSpacer {
-  flex: 1;
-}
-
-.cardActionBtn {
-  flex-shrink: 0;
-  padding: 1px 8px;
-  font-size: 11px;
-  border-radius: 2px;
-  opacity: 0;
-  transition:
-    opacity 0.15s,
-    background 0.1s;
-
-  .card:hover & {
-    opacity: 1;
-  }
-}
-
-.enableBtn {
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
-
-  &:hover {
-    filter: brightness(1.1);
-  }
-}
-
-.disableBtn {
-  background: transparent;
-  border: 1px solid var(--nd-divider);
-  color: var(--nd-fg);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.iconBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  border-radius: 3px;
-  color: var(--nd-fg);
-  font-size: 13px;
-  opacity: 0;
-  transition:
-    opacity 0.15s,
-    background 0.1s,
-    color 0.1s;
-
-  .card:hover & {
-    opacity: 0.4;
-  }
-
-  &:hover {
-    opacity: 1 !important;
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.iconBtnDanger {
-  opacity: 1 !important;
-  color: var(--nd-love);
-  background: color-mix(in srgb, var(--nd-love) 12%, transparent);
-}
-
-// --- Store install button ---
-.storeInstallBtn {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: 2px;
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
-  transition:
-    filter 0.1s,
-    opacity 0.1s;
-
-  &:hover:not(:disabled) {
-    filter: brightness(1.1);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-  }
-}
-
-.installedBadge {
-  flex-shrink: 0;
-  padding: 2px 8px;
-  font-size: 10px;
-  border-radius: 2px;
-  border: 1px solid var(--nd-divider);
-  color: var(--nd-fg);
-  opacity: 0.4;
-  cursor: default;
 }
 
 // --- Store states ---
