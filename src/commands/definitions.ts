@@ -598,6 +598,15 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
   })
 
   commandStore.register({
+    id: 'tasks-editor',
+    label: 'タスク設定',
+    icon: 'player-play',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('tasks-editor'),
+    execute: () => useWindowsStore().open('tasksEditor'),
+  })
+
+  commandStore.register({
     id: 'plugins',
     label: 'プラグイン',
     icon: 'puzzle',
@@ -836,6 +845,7 @@ export function unregisterDefaultCommands() {
     'delete-entity',
     'keybinds',
     'css-editor',
+    'tasks-editor',
     'plugins',
     'login',
     'chat',

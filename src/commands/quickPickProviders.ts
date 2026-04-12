@@ -411,6 +411,7 @@ const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
   'followRequests',
   'lookup',
   'streamInspector',
+  'taskRunner',
 ])
 
 const ACCOUNT_OPTIONAL_TYPES = new Set<ColumnType>(['widget', 'aiscript'])
@@ -462,6 +463,7 @@ const COLUMN_TYPE_GROUPS: { group: string; types: ColumnType[] }[] = [
       'ai',
       'streamInspector',
       'pluginManager',
+      'taskRunner',
     ],
   },
 ]
@@ -474,6 +476,7 @@ const COLUMN_EXTRA_PROPS: Partial<
   apiDocs: { accountId: null, width: 990 },
   ai: { accountId: null },
   pluginManager: { accountId: null },
+  taskRunner: { accountId: null },
   timeline: { tl: 'home', name: null },
 }
 

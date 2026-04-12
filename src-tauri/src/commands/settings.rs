@@ -170,6 +170,7 @@ const ALLOWED_ROOT_FILES: &[&str] = &[
     "accounts.json5",
     "navbar.json5",
     "settings.json5",
+    "tasks.json5",
 ];
 
 /// Resolve the full path for a root-level settings file (under notedeck/).
