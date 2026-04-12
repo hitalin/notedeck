@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { json as jsonLang } from '@codemirror/lang-json'
 import { type Diagnostic, linter } from '@codemirror/lint'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
+import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
+import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import defaultTasksJson5 from '@/defaults/tasks.json5?raw'
 import { useTasksStore } from '@/stores/tasks'
 import { useToast } from '@/stores/toast'
 import { parseTasks, TasksParseError } from '@/tasks/schema'
 import { isTauri, readTasks, writeTasks } from '@/utils/settingsFs'
 
-const code = ref('')
-const error = ref<string | null>(null)
-const saving = ref(false)
-const saved = ref(false)
-const tasksStore = useTasksStore()
+const lang = jsonLang()
 
 const tasksLinter = linter(
   (view) => {
@@ -37,16 +35,25 @@ const tasksLinter = linter(
   { delay: 400 },
 )
 
+const tasksStore = useTasksStore()
+const code = ref('')
+const codeError = ref<string | null>(null)
+const saving = ref(false)
+const loaded = ref(false)
+
 onMounted(async () => {
   if (!isTauri) {
     code.value = defaultTasksJson5
+    loaded.value = true
     return
   }
   try {
     const content = await readTasks()
-    code.value = content || ''
+    code.value = content || defaultTasksJson5
   } catch (e) {
-    error.value = `読込失敗: ${(e as Error).message}`
+    useToast().show(`tasks.json5 読込失敗: ${(e as Error).message}`, 'error')
+  } finally {
+    loaded.value = true
   }
 })
 
@@ -55,28 +62,30 @@ watch(code, (v) => {
   if (validateTimer) clearTimeout(validateTimer)
   validateTimer = setTimeout(() => {
     if (!v.trim()) {
-      error.value = null
+      codeError.value = null
       return
     }
     try {
       parseTasks(v)
-      error.value = null
+      codeError.value = null
     } catch (e) {
-      error.value = e instanceof TasksParseError ? e.message : String(e)
+      codeError.value = e instanceof TasksParseError ? e.message : String(e)
     }
-  }, 300)
+  }, 400)
 })
 
+const taskCount = computed(() => tasksStore.definitions.length)
+
 async function save() {
-  if (error.value) return
+  if (codeError.value) return
   saving.value = true
   try {
     await writeTasks(code.value)
     tasksStore.setFromRaw(code.value)
-    saved.value = true
-    setTimeout(() => {
-      saved.value = false
-    }, 1500)
+    useToast().show(
+      `tasks.json5 を保存しました (${taskCount.value} タスク)`,
+      'success',
+    )
   } catch (e) {
     useToast().show(`保存失敗: ${(e as Error).message}`, 'error')
   } finally {
@@ -84,95 +93,151 @@ async function save() {
   }
 }
 
-function insertSample() {
-  code.value = defaultTasksJson5
+const {
+  copied: copiedMessage,
+  imported: importedMessage,
+  importError,
+  showCopied,
+  showImported,
+  showImportError,
+} = useClipboardFeedback()
+
+function exportTasks() {
+  navigator.clipboard.writeText(code.value)
+  showCopied()
+}
+
+async function importTasks() {
+  try {
+    const text = await navigator.clipboard.readText()
+    if (!text.trim()) {
+      showImportError()
+      return
+    }
+    parseTasks(text)
+    code.value = text
+    showImported()
+  } catch {
+    showImportError()
+  }
+}
+
+const { confirming: confirmingReset, trigger: triggerReset } =
+  useDoubleConfirm()
+
+function handleReset() {
+  triggerReset(() => {
+    code.value = defaultTasksJson5
+  })
 }
 </script>
 
 <template>
   <div :class="$style.content">
-    <div :class="$style.hint">
-      <i class="ti ti-info-circle" />
-      <span>
-        タスクを宣言するとコマンドパレットと Task Runner カラムから実行できます。
-        変数: <code>${input:&lt;id&gt;}</code> / <code>${account.id}</code> / <code>${account.host}</code>
-      </span>
-    </div>
-
-    <CodeEditor
-      v-model="code"
-      :language="jsonLang()"
-      :linter="tasksLinter"
-      :class="[$style.editor, { [$style.hasError]: error }]"
-      max-height="480px"
-    />
-
-    <div v-if="error" :class="$style.errorMessage">
-      <i class="ti ti-alert-triangle" />
-      {{ error }}
+    <div :class="$style.codePanel">
+      <div :class="$style.codeHint">
+        宣言したタスクはコマンドパレットと Task Runner カラムから実行できます。
+        変数: <code>${'$'}{input:&lt;id&gt;}</code>
+        <code>${'$'}{account.id}</code>
+        <code>${'$'}{account.host}</code>
+      </div>
+      <CodeEditor
+        v-model="code"
+        :language="lang"
+        :linter="tasksLinter"
+        :class="[$style.codeEditorWrap, { [$style.hasError]: codeError }]"
+        auto-height
+      />
+      <div v-if="codeError" :class="$style.errorMessage">
+        <i class="ti ti-alert-triangle" />
+        {{ codeError }}
+      </div>
+      <div v-else-if="loaded && code.trim()" :class="$style.codeSuccess">
+        <i class="ti ti-check" />
+        {{ taskCount }} タスクを解析済み
+      </div>
+      <button
+        class="_button"
+        :class="$style.codeApplyBtn"
+        :disabled="!!codeError || saving"
+        @click="save"
+      >
+        <i class="ti" :class="saving ? 'ti-loader-2 nd-spin' : 'ti-device-floppy'" />
+        {{ saving ? '保存中' : '保存' }}
+      </button>
     </div>
 
     <div :class="$style.actions">
+      <div :class="$style.actionGroup">
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: importedMessage || importError }]"
+          @click="importTasks"
+        >
+          <i class="ti" :class="importError ? 'ti-alert-circle' : 'ti-clipboard-text'" />
+          {{ importError ? '無効' : importedMessage ? '読込済み' : 'インポート' }}
+        </button>
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: copiedMessage }]"
+          @click="exportTasks"
+        >
+          <i class="ti ti-clipboard-copy" />
+          {{ copiedMessage ? 'コピー済み' : 'エクスポート' }}
+        </button>
+      </div>
       <button
         class="_button"
-        :class="[$style.btn, $style.secondary]"
-        :disabled="code.trim() !== ''"
-        @click="insertSample"
+        :class="[$style.actionBtn, $style.danger, { [$style.confirming]: confirmingReset }]"
+        @click="handleReset"
       >
-        <i class="ti ti-file-plus" />
-        サンプルを挿入
-      </button>
-      <button
-        class="_button"
-        :class="[$style.btn, $style.primary, { [$style.saved]: saved }]"
-        :disabled="!!error || saving"
-        @click="save"
-      >
-        <i class="ti" :class="saved ? 'ti-check' : 'ti-device-floppy'" />
-        {{ saved ? '保存しました' : saving ? '保存中' : '保存' }}
+        <i class="ti ti-trash" />
+        {{ confirmingReset ? '本当にリセット？' : 'サンプルに戻す' }}
       </button>
     </div>
   </div>
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
+
 .content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.codePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
 }
 
-.hint {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
+.codeHint {
   font-size: 0.75em;
-  line-height: 1.5;
-  color: var(--nd-fg);
-  opacity: 0.75;
+  line-height: 1.55;
+  opacity: 0.5;
 
-  i { flex-shrink: 0; margin-top: 1px; }
   code {
     font-family: var(--nd-font-mono, monospace);
-    background: var(--nd-bg);
+    background: var(--nd-buttonBg);
     padding: 1px 4px;
+    margin: 0 2px;
     border-radius: 3px;
+    white-space: nowrap;
   }
 }
 
-.editor {
-  border-radius: var(--nd-radius-sm);
-  overflow: hidden;
-
+.codeEditorWrap {
   &.hasError {
     box-shadow: 0 0 0 2px var(--nd-love);
+    border-radius: var(--nd-radius-sm);
   }
 }
 
@@ -190,46 +255,27 @@ function insertSample() {
   word-break: break-all;
 }
 
-.actions {
+.codeSuccess {
   display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.btn {
-  display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 14px;
-  border-radius: var(--nd-radius-sm);
-  font-size: 0.85em;
-  transition: background var(--nd-duration-base), opacity var(--nd-duration-base);
+  font-size: 0.75em;
+  color: var(--nd-accent);
+  opacity: 0.7;
+}
 
-  &:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
+.codeApplyBtn { @include btn-secondary; }
 
-  &.secondary {
-    background: var(--nd-buttonBg);
-    color: var(--nd-fg);
+.actions { @include action-bar; }
+.actionGroup { @include action-group; }
 
-    &:hover:not(:disabled) { background: var(--nd-buttonHoverBg); }
-  }
-
-  &.primary {
-    background: var(--nd-accent);
-    color: var(--nd-fgOnAccent);
-
-    &:hover:not(:disabled) { opacity: 0.9; }
-  }
-
-  &.saved {
-    background: var(--nd-success, #4a8);
-  }
+.actionBtn {
+  &.secondary { @include btn-action; }
+  &.danger { @include btn-danger-ghost; }
 }
 
 .secondary { /* modifier */ }
-.primary { /* modifier */ }
-.saved { /* modifier */ }
+.feedback { /* modifier */ }
+.danger { /* modifier */ }
+.confirming { /* modifier */ }
 </style>
