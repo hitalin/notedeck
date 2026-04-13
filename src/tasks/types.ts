@@ -26,7 +26,6 @@ export type TaskAction = TaskApiAction
 export interface TaskPresentation {
   revealOnRun?: boolean
   clearHistoryOnRun?: boolean
-  focusInput?: boolean
 }
 
 export interface TaskDefinition {

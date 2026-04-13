@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import RawJsonView from '@/components/common/RawJsonView.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
@@ -46,6 +46,15 @@ const tickTimer = setInterval(() => {
   now.value = Date.now()
 }, 15_000)
 onUnmounted(() => clearInterval(tickTimer))
+
+// presentation.revealOnRun の反映: runner が run を実行したらこのカラムで
+// 自動的にその行を選択して詳細パネルを開く。
+watch(
+  () => runnerStore.autoSelectedRunId,
+  (id) => {
+    if (id != null) selectedId.value = id
+  },
+)
 
 const filteredDefinitions = computed(() => {
   const q = query.value.trim().toLowerCase()

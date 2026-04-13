@@ -80,11 +80,7 @@ function parsePresentation(
   if (raw === undefined) return undefined
   if (!isObj(raw)) throw new TasksParseError(`${path}: must be an object`)
   const out: TaskPresentation = {}
-  for (const key of [
-    'revealOnRun',
-    'clearHistoryOnRun',
-    'focusInput',
-  ] as const) {
+  for (const key of ['revealOnRun', 'clearHistoryOnRun'] as const) {
     const v = raw[key]
     if (v === undefined) continue
     if (typeof v !== 'boolean')

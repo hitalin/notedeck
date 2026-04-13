@@ -32,9 +32,8 @@
 //              (2 件目以降は読み込み時に自動で外れる)
 //
 // ─ presentation (任意) ─
-//   revealOnRun        実行時に履歴パネルへ自動切替 (default: true)
+//   revealOnRun        実行時に履歴パネルで run を自動選択 (default: true)
 //   clearHistoryOnRun  実行時に過去履歴をクリア (default: false)
-//   focusInput         input ダイアログを自動フォーカス (default: true)
 //
 // ─ レシピ設計方針 ─
 //   デフォルトはすべて「押すだけ・入力ダイアログなし・即結果返却」型。

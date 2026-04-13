@@ -18,6 +18,9 @@ const PRUNE_INTERVAL_MS = 60 * 1000
 
 export const useTaskRunnerStore = defineStore('taskRunner', () => {
   const runs = shallowRef<TaskRun[]>([])
+  // presentation.revealOnRun で run を自動選択させたいときに更新される。
+  // カラム側が watch して selectedId を同期する。
+  const autoSelectedRunId = shallowRef<number | null>(null)
   let nextId = 0
   let pruneTimer: ReturnType<typeof setInterval> | null = null
 
@@ -122,6 +125,10 @@ export const useTaskRunnerStore = defineStore('taskRunner', () => {
       account,
     })
 
+    if (def.presentation?.clearHistoryOnRun === true) {
+      runs.value = []
+    }
+
     const run: TaskRun = {
       id: nextId++,
       taskId: def.id,
@@ -133,6 +140,10 @@ export const useTaskRunnerStore = defineStore('taskRunner', () => {
       params: expandedParams,
     }
     pushRun(run)
+
+    if (def.presentation?.revealOnRun !== false) {
+      autoSelectedRunId.value = run.id
+    }
 
     if (!account.id) {
       updateRun(run.id, {
@@ -190,6 +201,7 @@ export const useTaskRunnerStore = defineStore('taskRunner', () => {
 
   return {
     runs,
+    autoSelectedRunId,
     runTask,
     runDefault,
     clear,
