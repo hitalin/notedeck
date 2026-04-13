@@ -15,6 +15,7 @@ import EditorTabs from '@/components/common/EditorTabs.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { usePointerReorder } from '@/composables/usePointerReorder'
 import defaultTasksJson5 from '@/defaults/tasks.json5?raw'
 import { useTasksStore } from '@/stores/tasks'
 import { useToast } from '@/stores/toast'
@@ -186,14 +187,17 @@ function removeTask(index: number) {
   delete expanded[t.id]
 }
 
-function moveTask(index: number, delta: number) {
-  const next = index + delta
-  if (next < 0 || next >= visualTasks.value.length) return
-  const arr = [...visualTasks.value]
-  const [moved] = arr.splice(index, 1)
-  if (moved) arr.splice(next, 0, moved)
-  visualTasks.value = arr
-}
+const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
+  dataAttr: 'task-idx',
+  onReorder(fromIdx, toIdx) {
+    const arr = [...visualTasks.value]
+    const [moved] = arr.splice(fromIdx, 1)
+    if (moved) {
+      arr.splice(toIdx, 0, moved)
+      visualTasks.value = arr
+    }
+  },
+})
 
 function toggleExpanded(id: string) {
   expanded[id] = !expanded[id]
@@ -427,9 +431,21 @@ function handleReset() {
         <div
           v-for="(t, i) in visualTasks"
           :key="t.id + i"
-          :class="[$style.taskCard, { [$style.expanded]: expanded[t.id] }]"
+          :data-task-idx="i"
+          :class="[$style.taskCard, {
+            [$style.expanded]: expanded[t.id],
+            [$style.dragging]: dragFromIndex === i,
+            [$style.dragOver]: dragOverIndex === i,
+          }]"
         >
           <div :class="$style.taskHeader" @click="toggleExpanded(t.id)">
+            <i
+              class="ti ti-grip-vertical"
+              :class="$style.grip"
+              title="ドラッグで並び替え"
+              @pointerdown="startDrag(i, $event)"
+              @click.stop
+            />
             <i class="ti ti-chevron-right" :class="$style.chevron" />
             <div :class="$style.taskHeaderBody">
               <span :class="$style.taskLabel">
@@ -446,24 +462,6 @@ function handleReset() {
               </span>
             </div>
             <div :class="$style.taskActions" @click.stop>
-              <button
-                class="_button"
-                :class="$style.iconBtn"
-                title="上へ"
-                :disabled="i === 0"
-                @click="moveTask(i, -1)"
-              >
-                <i class="ti ti-chevron-up" />
-              </button>
-              <button
-                class="_button"
-                :class="$style.iconBtn"
-                title="下へ"
-                :disabled="i === visualTasks.length - 1"
-                @click="moveTask(i, 1)"
-              >
-                <i class="ti ti-chevron-down" />
-              </button>
               <button
                 class="_button"
                 :class="[$style.iconBtn, $style.dangerBtn]"
@@ -831,10 +829,38 @@ function handleReset() {
   border-radius: var(--nd-radius-sm);
   background: var(--nd-panel);
   overflow: hidden;
-  transition: border-color var(--nd-duration-base);
+  transition:
+    border-color var(--nd-duration-base),
+    opacity var(--nd-duration-base);
 
   &.expanded {
     border-color: var(--nd-accent);
+  }
+
+  &.dragging {
+    opacity: 0.3;
+  }
+
+  &.dragOver {
+    outline: 2px solid var(--nd-accent);
+    outline-offset: 1px;
+  }
+}
+
+.grip {
+  flex-shrink: 0;
+  opacity: 0.35;
+  cursor: grab;
+  touch-action: none;
+  padding: 2px;
+  transition: opacity var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 0.8;
+  }
+
+  &:active {
+    cursor: grabbing;
   }
 }
 
