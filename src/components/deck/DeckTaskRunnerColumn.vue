@@ -10,7 +10,11 @@ import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useTaskRunnerStore } from '@/stores/taskRunner'
 import { useTasksStore } from '@/stores/tasks'
 import { useWindowsStore } from '@/stores/windows'
+import type { TaskDefinition } from '@/tasks/types'
 import DeckColumn from './DeckColumn.vue'
+
+const UNGROUPED_KEY = '__ungrouped__'
+const PINNED_KEY = '__pinned__'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -47,9 +51,58 @@ const filteredDefinitions = computed(() => {
     (d) =>
       d.id.includes(q) ||
       d.label.toLowerCase().includes(q) ||
-      (d.description?.toLowerCase().includes(q) ?? false),
+      (d.detail?.toLowerCase().includes(q) ?? false) ||
+      (d.description?.toLowerCase().includes(q) ?? false) ||
+      (d.group?.toLowerCase().includes(q) ?? false),
   )
 })
+
+interface TaskSection {
+  key: string
+  title: string
+  pinned: boolean
+  items: TaskDefinition[]
+}
+
+const groupedDefinitions = computed<TaskSection[]>(() => {
+  const items = filteredDefinitions.value
+  const pinned = items.filter((d) => d.pinned)
+  const rest = items.filter((d) => !d.pinned)
+
+  const groups = new Map<string, TaskDefinition[]>()
+  for (const d of rest) {
+    const key = d.group ?? UNGROUPED_KEY
+    const arr = groups.get(key)
+    if (arr) arr.push(d)
+    else groups.set(key, [d])
+  }
+
+  const sections: TaskSection[] = []
+  if (pinned.length > 0) {
+    sections.push({
+      key: PINNED_KEY,
+      title: 'Pinned',
+      pinned: true,
+      items: pinned,
+    })
+  }
+  // グループ未指定は最下段の "General" に送る（VSCode の none に相当）
+  const keys = [...groups.keys()].filter((k) => k !== UNGROUPED_KEY)
+  if (groups.has(UNGROUPED_KEY)) keys.push(UNGROUPED_KEY)
+  for (const k of keys) {
+    sections.push({
+      key: k,
+      title: k === UNGROUPED_KEY ? 'General' : k,
+      pinned: false,
+      items: groups.get(k) ?? [],
+    })
+  }
+  return sections
+})
+
+function iconClass(def: TaskDefinition): string {
+  return `ti ti-${def.icon ?? 'player-play'}`
+}
 
 const selectedRun = computed(() =>
   selectedId.value == null
@@ -186,14 +239,23 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
           :message="`&quot;${query}&quot; に一致するタスクはありません`"
         />
         <template v-else>
-          <section :class="$style.section">
+          <section
+            v-for="section in groupedDefinitions"
+            :key="section.key"
+            :class="$style.section"
+          >
             <div :class="$style.sectionHeader">
               <span :class="$style.sectionTitle">
-                タスク
-                <span :class="$style.countSub">{{ filteredDefinitions.length }}</span>
+                <i
+                  v-if="section.pinned"
+                  class="ti ti-pin-filled"
+                  :class="$style.sectionLeadIcon"
+                />
+                {{ section.title }}
+                <span :class="$style.countSub">{{ section.items.length }}</span>
               </span>
               <span
-                v-if="tasksStore.lastError"
+                v-if="section.key === groupedDefinitions[0]?.key && tasksStore.lastError"
                 :class="$style.errorBadge"
                 :title="tasksStore.lastError"
               >
@@ -201,17 +263,20 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
               </span>
             </div>
             <button
-              v-for="def in filteredDefinitions"
+              v-for="def in section.items"
               :key="def.id"
               class="_button"
               :class="$style.runBtn"
-              :title="def.description || def.label"
+              :title="def.description || def.detail || def.label"
               @click="runFromList(def.id)"
             >
-              <i class="ti ti-player-play" :class="$style.runIcon" />
+              <i :class="[iconClass(def), $style.runIcon]" />
               <div :class="$style.runBody">
                 <span :class="$style.runLabel">{{ def.label }}</span>
-                <span v-if="def.description" :class="$style.runDesc">{{ def.description }}</span>
+                <span
+                  v-if="def.detail || def.description"
+                  :class="$style.runDesc"
+                >{{ def.detail || def.description }}</span>
               </div>
               <span v-if="def.inputs?.length" :class="$style.runBadge" title="入力を求める">
                 <i class="ti ti-keyboard" />{{ def.inputs.length }}
@@ -389,6 +454,12 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.sectionLeadIcon {
+  font-size: 0.95em;
+  color: var(--nd-accent);
+  opacity: 0.9;
 }
 
 .countSub {

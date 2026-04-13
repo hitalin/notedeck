@@ -37,7 +37,10 @@
     {
       id: 'me',
       label: '自分の詳細を取得',
+      detail: 'i エンドポイントで自分の User を取得',
       description: '自分のユーザーオブジェクトをそのまま履歴に残す (debug / 確認用)',
+      group: 'Account',
+      icon: 'user',
       action: {
         type: 'api',
         method: 'i',
@@ -46,25 +49,22 @@
     {
       id: 'drive-usage',
       label: 'Drive 使用量を確認',
+      detail: '使用済み / 上限バイト数を取得',
       description: 'Drive の使用済み / 上限バイト数を取得',
+      group: 'Account',
+      icon: 'database',
       action: {
         type: 'api',
         method: 'drive',
       },
     },
     {
-      id: 'trending-hashtags',
-      label: 'トレンドタグを取得',
-      description: '今このサーバーで盛り上がっているハッシュタグ一覧',
-      action: {
-        type: 'api',
-        method: 'hashtags/trend',
-      },
-    },
-    {
       id: 'recent-notifications',
       label: '最近の通知をスナップショット',
+      detail: '5 件取得・既読化しない',
       description: '通知 5 件を JSON で取得 (markAsRead:false で既読化せず履歴に残す)',
+      group: 'Account',
+      icon: 'bell',
       action: {
         type: 'api',
         method: 'i/notifications',
@@ -75,9 +75,24 @@
       },
     },
     {
+      id: 'trending-hashtags',
+      label: 'トレンドタグを取得',
+      detail: 'サーバーで盛り上がっているタグ一覧',
+      description: '今このサーバーで盛り上がっているハッシュタグ一覧',
+      group: 'Discover',
+      icon: 'hash',
+      action: {
+        type: 'api',
+        method: 'hashtags/trend',
+      },
+    },
+    {
       id: 'list-endpoints',
       label: 'API エンドポイント一覧を取得',
+      detail: 'このサーバーで叩ける API 名',
       description: 'このサーバーで叩ける API 名の一覧 (新タスク作成のリファレンス)',
+      group: 'Debug',
+      icon: 'code',
       action: {
         type: 'api',
         method: 'endpoints',
