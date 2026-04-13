@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
 import type { JsonValue } from '@/bindings'
+import { useCommandStore } from '@/commands/registry'
+import { TASK_COMMAND_PREFIX } from '@/commands/taskCommandPrefix'
 import { useAccountsStore } from '@/stores/accounts'
 import { usePrompt } from '@/stores/prompt'
 import { useTasksStore } from '@/stores/tasks'
@@ -166,9 +168,30 @@ export const useTaskRunnerStore = defineStore('taskRunner', () => {
     }
   }
 
+  async function runDefault(): Promise<void> {
+    const tasksStore = useTasksStore()
+    const def = tasksStore.definitions.find((d) => d.isDefault)
+    if (def) {
+      await runTask(def.id)
+      return
+    }
+    // VSCode の Run Default Task 相当: 既定が未設定ならタスク一覧を
+    // コマンドパレットで選ばせる
+    const commandStore = useCommandStore()
+    if (tasksStore.definitions.length === 0) {
+      useToast().show(
+        'デフォルトタスクがありません。tasks.json5 で isDefault: true を設定してください。',
+        'info',
+      )
+      return
+    }
+    commandStore.openWithFilter((c) => c.id.startsWith(TASK_COMMAND_PREFIX))
+  }
+
   return {
     runs,
     runTask,
+    runDefault,
     clear,
   }
 })

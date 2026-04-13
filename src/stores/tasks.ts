@@ -2,6 +2,7 @@ import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { useCommandStore } from '@/commands/registry'
+import { TASK_COMMAND_PREFIX } from '@/commands/taskCommandPrefix'
 import { PERSIST_DEBOUNCE_MS } from '@/constants/persist'
 import defaultTasksJson5 from '@/defaults/tasks.json5?raw'
 import { useTaskRunnerStore } from '@/stores/taskRunner'
@@ -10,7 +11,7 @@ import { parseTasks, TasksParseError } from '@/tasks/schema'
 import { TASKS_FILE_VERSION, type TaskDefinition } from '@/tasks/types'
 import { isTauri, readTasks, writeTasks } from '@/utils/settingsFs'
 
-export const TASK_COMMAND_PREFIX = 'task.'
+export { TASK_COMMAND_PREFIX }
 
 export const useTasksStore = defineStore('tasks', () => {
   const definitions = ref<TaskDefinition[]>([])

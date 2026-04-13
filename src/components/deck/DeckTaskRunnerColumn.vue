@@ -7,10 +7,12 @@ import { useSensitiveMask } from '@/composables/useSensitiveMask'
 import { useServerImages } from '@/composables/useServerImages'
 import { useVerticalResize } from '@/composables/useVerticalResize'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useKeybindsStore } from '@/stores/keybinds'
 import { useTaskRunnerStore } from '@/stores/taskRunner'
 import { useTasksStore } from '@/stores/tasks'
 import { useWindowsStore } from '@/stores/windows'
 import type { TaskDefinition, TaskRun } from '@/tasks/types'
+import { shortcutLabel } from '@/utils/shortcutLabel'
 import DeckColumn from './DeckColumn.vue'
 
 const UNGROUPED_KEY = '__ungrouped__'
@@ -25,6 +27,7 @@ const { serverInfoImageUrl } = useServerImages(() => props.column)
 const tasksStore = useTasksStore()
 const runnerStore = useTaskRunnerStore()
 const windowsStore = useWindowsStore()
+const keybindsStore = useKeybindsStore()
 
 const SENSITIVE_RAW_KEYS = new Set<string>([
   'i',
@@ -165,6 +168,19 @@ function runFromList(taskId: string) {
   void runnerStore.runTask(taskId)
 }
 
+const defaultTask = computed<TaskDefinition | null>(
+  () => tasksStore.definitions.find((d) => d.isDefault) ?? null,
+)
+
+const defaultShortcutLabel = computed(() => {
+  const shortcut = keybindsStore.getShortcuts('tasks.run-default')[0]
+  return shortcut ? shortcutLabel(shortcut) : ''
+})
+
+function runDefault() {
+  void runnerStore.runDefault()
+}
+
 function clearHistory() {
   runnerStore.clear()
   selectedId.value = null
@@ -215,6 +231,24 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
     </template>
 
     <div ref="wrapperRef" :class="$style.wrapper">
+      <button
+        v-if="defaultTask"
+        class="_button"
+        :class="$style.defaultBar"
+        :title="`${defaultTask.label} を実行`"
+        @click="runDefault()"
+      >
+        <i class="ti ti-player-play-filled" :class="$style.defaultBarIcon" />
+        <span :class="$style.defaultBarText">
+          <span :class="$style.defaultBarKicker">デフォルト実行</span>
+          <span :class="$style.defaultBarLabel">{{ defaultTask.label }}</span>
+        </span>
+        <span
+          v-if="defaultShortcutLabel"
+          :class="$style.defaultBarShortcut"
+        >{{ defaultShortcutLabel }}</span>
+      </button>
+
       <div :class="$style.toolbar">
         <div :class="$style.searchWrap">
           <i class="ti ti-search" :class="$style.searchIcon" />
@@ -406,6 +440,74 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
   flex-direction: column;
   flex: 1;
   min-height: 0;
+}
+
+.defaultBar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--nd-divider);
+  background: color-mix(in srgb, var(--nd-accent) 8%, transparent);
+  color: var(--nd-fgHighlighted);
+  text-align: left;
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: color-mix(in srgb, var(--nd-accent) 16%, transparent);
+  }
+}
+
+.defaultBarIcon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--nd-accent);
+  color: var(--nd-bg);
+  font-size: 13px;
+}
+
+.defaultBarText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.defaultBarKicker {
+  font-size: 0.65em;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  color: var(--nd-accent);
+}
+
+.defaultBarLabel {
+  font-size: 0.85em;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.defaultBarShortcut {
+  flex-shrink: 0;
+  font-size: 0.7em;
+  font-family: var(--nd-font-mono, monospace);
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--nd-bg);
+  border: 1px solid var(--nd-divider);
+  color: var(--nd-fg);
+  opacity: 0.7;
 }
 
 .toolbar {
