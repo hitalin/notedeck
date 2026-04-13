@@ -165,7 +165,8 @@ function openToolWindow(
     | 'performanceEditor'
     | 'appearanceEditor'
     | 'backup'
-    | 'tasksEditor',
+    | 'tasksEditor'
+    | 'snippetsEditor',
   props: Record<string, unknown> = {},
 ) {
   windowsStore.open(type, props)
@@ -384,6 +385,13 @@ usePortal(settingsMenuPortalRef)
             <i class="ti ti-chevron-right" :class="$style.chevronNav" />
           </button>
         </div>
+        <div :class="$style.categorySection">
+          <button :class="$style.categoryHeader" @click="openToolWindow('snippetsEditor')">
+            <i class="ti ti-code-plus" />
+            <span>スニペット</span>
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
+          </button>
+        </div>
       </template>
       <!-- 環境設定 (デスクトップ: アコーディオン) -->
       <div v-else :class="$style.categorySection">
@@ -415,6 +423,10 @@ usePortal(settingsMenuPortalRef)
           <button :class="$style.settingsMenuItem" @click="openToolWindow('tasksEditor')">
             <i class="ti ti-player-play" />
             <span :class="$style.settingsMenuLabel">タスク</span>
+          </button>
+          <button :class="$style.settingsMenuItem" @click="openToolWindow('snippetsEditor')">
+            <i class="ti ti-code-plus" />
+            <span :class="$style.settingsMenuLabel">スニペット</span>
           </button>
         </div>
       </div>

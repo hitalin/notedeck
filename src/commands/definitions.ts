@@ -608,6 +608,15 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
   })
 
   commandStore.register({
+    id: 'snippets-editor',
+    label: 'スニペット',
+    icon: 'code-plus',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('snippets-editor'),
+    execute: () => useWindowsStore().open('snippetsEditor'),
+  })
+
+  commandStore.register({
     id: 'tasks.run-default',
     label: 'デフォルトタスクを実行',
     icon: 'player-play-filled',

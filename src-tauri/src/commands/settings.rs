@@ -10,7 +10,7 @@ use super::Result;
 const SETTINGS_DIR: &str = "notedeck";
 
 /// Allowed subdirectory names for settings files.
-const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins"];
+const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets"];
 
 /// Validate a subdirectory name against the whitelist.
 fn validate_subdir(subdir: &str) -> Result<()> {
@@ -251,7 +251,7 @@ pub fn write_notedeck_json(app: tauri::AppHandle, content: &str) -> Result<()> {
 }
 
 /// Directories and root files to include in settings backup.
-const BACKUP_SUBDIRS: &[&str] = &["profiles", "themes", "plugins"];
+const BACKUP_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets"];
 
 /// Export all settings files to a JSON bundle via save dialog.
 #[tauri::command]
@@ -389,6 +389,7 @@ mod tests {
         assert!(validate_subdir("profiles").is_ok());
         assert!(validate_subdir("themes").is_ok());
         assert!(validate_subdir("plugins").is_ok());
+        assert!(validate_subdir("snippets").is_ok());
     }
 
     #[test]
@@ -459,6 +460,14 @@ mod tests {
         )
         .unwrap();
 
+        let snippets_dir = base.join("snippets");
+        fs::create_dir_all(&snippets_dir).unwrap();
+        fs::write(
+            snippets_dir.join("aiscript.json5"),
+            r#"{ hello: { prefix: "hi", body: ["<: \"hi\""] } }"#,
+        )
+        .unwrap();
+
         fs::write(base.join("custom.css"), "body { color: red; }").unwrap();
         fs::write(base.join("keybinds.json5"), r#"{ "search": [] }"#).unwrap();
 
@@ -495,6 +504,7 @@ mod tests {
         // Clear original files
         fs::remove_dir_all(&profiles_dir).unwrap();
         fs::remove_dir_all(&themes_dir).unwrap();
+        fs::remove_dir_all(&snippets_dir).unwrap();
         fs::remove_file(base.join("custom.css")).unwrap();
         fs::remove_file(base.join("keybinds.json5")).unwrap();
 
@@ -529,6 +539,10 @@ mod tests {
         assert_eq!(
             fs::read_to_string(themes_dir.join("dark.ndtheme.json5")).unwrap(),
             r#"{ name: "dark" }"#
+        );
+        assert_eq!(
+            fs::read_to_string(snippets_dir.join("aiscript.json5")).unwrap(),
+            r#"{ hello: { prefix: "hi", body: ["<: \"hi\""] } }"#
         );
         assert_eq!(
             fs::read_to_string(base.join("custom.css")).unwrap(),
