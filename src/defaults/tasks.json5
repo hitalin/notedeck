@@ -6,7 +6,7 @@
 //
 // ─ 変数 ─
 //   ${input:<id>}   inputs で収集した値
-//   ${account.id}   実行時の accountId
+//   ${account.id}   実行時の accountId (NoteDeck 内部 ID。Misskey の userId ではない)
 //   ${account.host} 実行時のサーバーホスト
 //
 // ─ action ─
@@ -22,75 +22,93 @@
 //   未指定 → 現在アクティブなアカウントで実行
 //   null   → 最初のログイン済みアカウントで実行
 //   "<id>" → 明示指定 (portable ID ではなく内部 accountId)
+//
+// ─ 表示メタ (任意) ─
+//   detail     label の直下に出る 1 行補足 (VSCode tasks の detail 相当)
+//   icon       Tabler icon 名 (kebab-case, 先頭 'ti-' 無し)。例: 'user'
+//   group      自由文字列の分類。同じ group のタスクはセクションにまとまる
+//   pinned     true なら最上段の "Pinned" セクションへ昇格
+//   isDefault  true で「デフォルトタスク」。ファイル全体で 1 件のみ有効
+//              (2 件目以降は読み込み時に自動で外れる)
+//
+// ─ presentation (任意) ─
+//   revealOnRun        実行時に履歴パネルで run を自動選択 (default: true)
+//   clearHistoryOnRun  実行時に過去履歴をクリア (default: false)
+//
+// ─ レシピ設計方針 ─
+//   デフォルトはすべて「押すだけ・入力ダイアログなし・即結果返却」型。
+//   NoteDeck のアプリトークンが要求しているスコープ
+//   (read/write:account, notifications, reactions, favorites, drive,
+//    following, channels, chat, pages, gallery, flash; write:notes/votes)
+//   の範囲内で動く API のみを採用。
+//   既存カラム (Timeline / Notifications / Search / Drive / ServerInfo 等) で
+//   完結する操作は重複を避ける。
 {
-  version: 1,
+  version: 2,
   tasks: [
     {
-      id: 'quick-post',
-      label: 'クイック投稿',
-      description: '本文を入力してホーム投稿',
-      inputs: [
-        { id: 'body', type: 'text', prompt: '本文' },
-        {
-          id: 'visibility',
-          type: 'pick',
-          prompt: '公開範囲',
-          options: ['public', 'home', 'followers'],
-          default: 'home',
-        },
-      ],
-      action: {
-        type: 'api',
-        method: 'notes/create',
-        params: {
-          text: '${input:body}',
-          visibility: '${input:visibility}',
-        },
-      },
-    },
-    {
-      id: 'mark-notifications-read',
-      label: '通知をすべて既読',
-      description: '未読通知を一括で既読にする',
-      action: {
-        type: 'api',
-        method: 'notifications/mark-all-as-read',
-      },
-    },
-    {
-      id: 'server-meta',
-      label: 'サーバー情報を取得',
-      description: 'meta API を叩いて結果を履歴に残す',
-      action: {
-        type: 'api',
-        method: 'meta',
-        params: { detail: true },
-      },
-    },
-    {
-      id: 'lookup-user',
-      label: 'ユーザーを検索',
-      description: 'ユーザー名またはホストつき handle で検索',
-      inputs: [
-        { id: 'query', type: 'text', prompt: 'ユーザー名 (例: alice)' },
-      ],
-      action: {
-        type: 'api',
-        method: 'users/search-by-username-and-host',
-        params: {
-          username: '${input:query}',
-          limit: 10,
-          detail: false,
-        },
-      },
-    },
-    {
-      id: 'my-recent-notes',
-      label: '自分の最新ノートを取得',
-      description: '自分のユーザーIDで直近ノートを取得',
+      id: 'me',
+      label: '自分の詳細を取得',
+      detail: 'i エンドポイントで自分の User を取得',
+      description: '自分のユーザーオブジェクトをそのまま履歴に残す (debug / 確認用)',
+      group: 'Account',
+      icon: 'user',
+      isDefault: true, // "デフォルトタスク" の初期サンプル
       action: {
         type: 'api',
         method: 'i',
+      },
+    },
+    {
+      id: 'drive-usage',
+      label: 'Drive 使用量を確認',
+      detail: '使用済み / 上限バイト数を取得',
+      description: 'Drive の使用済み / 上限バイト数を取得',
+      group: 'Account',
+      icon: 'database',
+      action: {
+        type: 'api',
+        method: 'drive',
+      },
+    },
+    {
+      id: 'recent-notifications',
+      label: '最近の通知をスナップショット',
+      detail: '5 件取得・既読化しない',
+      description: '通知 5 件を JSON で取得 (markAsRead:false で既読化せず履歴に残す)',
+      group: 'Account',
+      icon: 'bell',
+      action: {
+        type: 'api',
+        method: 'i/notifications',
+        params: {
+          limit: 5,
+          markAsRead: false,
+        },
+      },
+    },
+    {
+      id: 'trending-hashtags',
+      label: 'トレンドタグを取得',
+      detail: 'サーバーで盛り上がっているタグ一覧',
+      description: '今このサーバーで盛り上がっているハッシュタグ一覧',
+      group: 'Discover',
+      icon: 'hash',
+      action: {
+        type: 'api',
+        method: 'hashtags/trend',
+      },
+    },
+    {
+      id: 'list-endpoints',
+      label: 'API エンドポイント一覧を取得',
+      detail: 'このサーバーで叩ける API 名',
+      description: 'このサーバーで叩ける API 名の一覧 (新タスク作成のリファレンス)',
+      group: 'Debug',
+      icon: 'code',
+      action: {
+        type: 'api',
+        method: 'endpoints',
       },
     },
   ],

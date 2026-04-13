@@ -1,22 +1,33 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import RawJsonView from '@/components/common/RawJsonView.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useSensitiveMask } from '@/composables/useSensitiveMask'
+import { useServerImages } from '@/composables/useServerImages'
+import { useVerticalResize } from '@/composables/useVerticalResize'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useKeybindsStore } from '@/stores/keybinds'
 import { useTaskRunnerStore } from '@/stores/taskRunner'
 import { useTasksStore } from '@/stores/tasks'
 import { useWindowsStore } from '@/stores/windows'
+import type { TaskDefinition, TaskRun } from '@/tasks/types'
+import { shortcutLabel } from '@/utils/shortcutLabel'
 import DeckColumn from './DeckColumn.vue'
+
+const UNGROUPED_KEY = '__ungrouped__'
+const PINNED_KEY = '__pinned__'
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
 
 const { columnThemeVars } = useColumnTheme(() => props.column)
+const { serverInfoImageUrl } = useServerImages(() => props.column)
 const tasksStore = useTasksStore()
 const runnerStore = useTaskRunnerStore()
 const windowsStore = useWindowsStore()
+const keybindsStore = useKeybindsStore()
 
 const SENSITIVE_RAW_KEYS = new Set<string>([
   'i',
@@ -30,12 +41,20 @@ const { showSensitive, formatJson } = useSensitiveMask(SENSITIVE_RAW_KEYS)
 const query = ref('')
 const selectedId = ref<number | null>(null)
 
-// Tick to keep relative timestamps fresh
 const now = ref(Date.now())
 const tickTimer = setInterval(() => {
   now.value = Date.now()
 }, 15_000)
 onUnmounted(() => clearInterval(tickTimer))
+
+// presentation.revealOnRun の反映: runner が run を実行したらこのカラムで
+// 自動的にその行を選択して詳細パネルを開く。
+watch(
+  () => runnerStore.autoSelectedRunId,
+  (id) => {
+    if (id != null) selectedId.value = id
+  },
+)
 
 const filteredDefinitions = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -44,8 +63,67 @@ const filteredDefinitions = computed(() => {
     (d) =>
       d.id.includes(q) ||
       d.label.toLowerCase().includes(q) ||
-      (d.description?.toLowerCase().includes(q) ?? false),
+      (d.detail?.toLowerCase().includes(q) ?? false) ||
+      (d.description?.toLowerCase().includes(q) ?? false) ||
+      (d.group?.toLowerCase().includes(q) ?? false),
   )
+})
+
+interface TaskSection {
+  key: string
+  title: string
+  pinned: boolean
+  items: TaskDefinition[]
+}
+
+const groupedDefinitions = computed<TaskSection[]>(() => {
+  const items = filteredDefinitions.value
+  const pinned = items.filter((d) => d.pinned)
+  const rest = items.filter((d) => !d.pinned)
+
+  const groups = new Map<string, TaskDefinition[]>()
+  for (const d of rest) {
+    const key = d.group ?? UNGROUPED_KEY
+    const arr = groups.get(key)
+    if (arr) arr.push(d)
+    else groups.set(key, [d])
+  }
+
+  const sections: TaskSection[] = []
+  if (pinned.length > 0) {
+    sections.push({
+      key: PINNED_KEY,
+      title: 'Pinned',
+      pinned: true,
+      items: pinned,
+    })
+  }
+  // グループ未指定は最下段の "General" に送る（VSCode の none に相当）
+  const keys = [...groups.keys()].filter((k) => k !== UNGROUPED_KEY)
+  if (groups.has(UNGROUPED_KEY)) keys.push(UNGROUPED_KEY)
+  for (const k of keys) {
+    sections.push({
+      key: k,
+      title: k === UNGROUPED_KEY ? 'General' : k,
+      pinned: false,
+      items: groups.get(k) ?? [],
+    })
+  }
+  return sections
+})
+
+function iconClass(def: TaskDefinition): string {
+  return `ti ti-${def.icon ?? 'player-play'}`
+}
+
+// runnerStore.runs は新しい順 (taskRunner L40: [run, ...runs.value])。
+// 先頭から走査して taskId ごとの最初の出現 = 最新実行。
+const latestRunByTaskId = computed<Map<string, TaskRun>>(() => {
+  const map = new Map<string, TaskRun>()
+  for (const r of runnerStore.runs) {
+    if (!map.has(r.taskId)) map.set(r.taskId, r)
+  }
+  return map
 })
 
 const selectedRun = computed(() =>
@@ -99,9 +177,36 @@ function runFromList(taskId: string) {
   void runnerStore.runTask(taskId)
 }
 
+const defaultTask = computed<TaskDefinition | null>(
+  () => tasksStore.definitions.find((d) => d.isDefault) ?? null,
+)
+
+const defaultShortcutLabel = computed(() => {
+  const shortcut = keybindsStore.getShortcuts('tasks.run-default')[0]
+  return shortcut ? shortcutLabel(shortcut) : ''
+})
+
+function runDefault() {
+  void runnerStore.runDefault()
+}
+
+function clearHistory() {
+  runnerStore.clear()
+  selectedId.value = null
+}
+
 function openEditor() {
   windowsStore.open('tasksEditor')
 }
+
+const wrapperRef = ref<HTMLElement | null>(null)
+const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
+  containerRef: wrapperRef,
+  mode: 'bottom-px',
+  initial: 320,
+  min: 80,
+  topMargin: 120,
+})
 </script>
 
 <template>
@@ -110,7 +215,49 @@ function openEditor() {
     title="タスク"
     :theme-vars="columnThemeVars"
   >
-    <div :class="$style.body">
+    <template #header-icon>
+      <i class="ti ti-list-check" :class="$style.headerIcon" />
+    </template>
+
+    <template #header-meta>
+      <button
+        v-if="runnerStore.runs.length > 0"
+        class="_button"
+        :class="$style.headerBtn"
+        title="履歴をクリア"
+        @click.stop="clearHistory()"
+      >
+        <i class="ti ti-trash" />
+      </button>
+      <button
+        class="_button"
+        :class="$style.headerBtn"
+        title="tasks.json5 を編集"
+        @click.stop="openEditor()"
+      >
+        <i class="ti ti-pencil" />
+      </button>
+    </template>
+
+    <div ref="wrapperRef" :class="$style.wrapper">
+      <button
+        v-if="defaultTask"
+        class="_button"
+        :class="$style.defaultBar"
+        :title="`${defaultTask.label} を実行`"
+        @click="runDefault()"
+      >
+        <i class="ti ti-player-play-filled" :class="$style.defaultBarIcon" />
+        <span :class="$style.defaultBarText">
+          <span :class="$style.defaultBarKicker">デフォルト実行</span>
+          <span :class="$style.defaultBarLabel">{{ defaultTask.label }}</span>
+        </span>
+        <span
+          v-if="defaultShortcutLabel"
+          :class="$style.defaultBarShortcut"
+        >{{ defaultShortcutLabel }}</span>
+      </button>
+
       <div :class="$style.toolbar">
         <div :class="$style.searchWrap">
           <i class="ti ti-search" :class="$style.searchIcon" />
@@ -129,110 +276,128 @@ function openEditor() {
             <i class="ti ti-x" />
           </button>
         </div>
-        <button
-          class="_button"
-          :class="$style.iconBtn"
-          title="tasks.json5 を編集"
-          @click="openEditor"
-        >
-          <i class="ti ti-pencil" />
-        </button>
       </div>
 
-      <section :class="$style.section">
-        <div :class="$style.sectionHeader">
-          <span>タスク ({{ filteredDefinitions.length }})</span>
-          <span v-if="tasksStore.lastError" :class="$style.errorBadge" :title="tasksStore.lastError">
-            <i class="ti ti-alert-triangle" /> エラー
-          </span>
-        </div>
-        <div
+      <div :class="$style.scroll">
+        <ColumnEmptyState
           v-if="tasksStore.definitions.length === 0"
-          :class="$style.empty"
-        >
-          <i class="ti ti-player-play" :class="$style.emptyIcon" />
-          <div :class="$style.emptyTitle">タスクがまだありません</div>
-          <div :class="$style.emptyHint">
-            tasks.json5 を編集してタスクを定義すると、ここから 1-click で実行できます。
-          </div>
-          <button class="_button" :class="$style.emptyBtn" @click="openEditor">
-            <i class="ti ti-pencil" />
-            tasks.json5 を編集
-          </button>
-        </div>
-        <div
+          message="tasks.json5 を編集してタスクを定義すると、ここから 1-click で実行できます。"
+          :image-url="serverInfoImageUrl"
+          cta-label="tasks.json5 を編集"
+          cta-icon="ti-pencil"
+          @cta="openEditor()"
+        />
+        <ColumnEmptyState
           v-else-if="filteredDefinitions.length === 0"
-          :class="$style.empty"
-        >
-          <div :class="$style.emptyHint">
-            "{{ query }}" に一致するタスクはありません
-          </div>
-        </div>
-        <button
-          v-for="def in filteredDefinitions"
-          :key="def.id"
-          class="_button"
-          :class="$style.runBtn"
-          :title="def.description || def.label"
-          @click="runFromList(def.id)"
-        >
-          <i class="ti ti-player-play" :class="$style.runIcon" />
-          <div :class="$style.runBody">
-            <span :class="$style.runLabel">{{ def.label }}</span>
-            <span v-if="def.description" :class="$style.runDesc">{{ def.description }}</span>
-          </div>
-          <span v-if="def.inputs?.length" :class="$style.runBadge" title="入力を求める">
-            <i class="ti ti-keyboard" />{{ def.inputs.length }}
-          </span>
-        </button>
-      </section>
-
-      <section :class="$style.section">
-        <div :class="$style.sectionHeader">
-          <span>
-            履歴
-            <span :class="$style.countSub">{{ runnerStore.runs.length }}</span>
-            <span v-if="runningCount > 0" :class="$style.runningPill">
-              <i class="ti ti-loader-2 nd-spin" />{{ runningCount }} 実行中
-            </span>
-          </span>
-          <button
-            v-if="runnerStore.runs.length > 0"
-            class="_button"
-            :class="$style.clearBtn"
-            @click="runnerStore.clear(); selectedId = null"
+          :message="`&quot;${query}&quot; に一致するタスクはありません`"
+        />
+        <template v-else>
+          <section
+            v-for="section in groupedDefinitions"
+            :key="section.key"
+            :class="$style.section"
           >
-            クリア
-          </button>
-        </div>
-        <div v-if="runnerStore.runs.length === 0" :class="$style.empty">
-          <div :class="$style.emptyHint">実行履歴はまだありません</div>
-        </div>
-        <button
-          v-for="run in runnerStore.runs"
-          :key="run.id"
-          class="_button"
-          :class="[$style.runItem, {
-            [$style.selected]: run.id === selectedId,
-            [$style.statusOk]: run.status === 'ok',
-            [$style.statusError]: run.status === 'error',
-            [$style.statusRunning]: run.status === 'running',
-          }]"
-          @click="selectedId = run.id === selectedId ? null : run.id"
-        >
-          <i :class="['ti', statusIcon(run.status), $style.runItemIcon]" />
-          <div :class="$style.runItemBody">
-            <span :class="$style.runItemLabel">{{ run.label }}</span>
-            <span :class="$style.runItemMeta">
-              <code :class="$style.method">{{ run.method }}</code>
-              <span>{{ runDuration(run) }}</span>
-            </span>
-          </div>
-          <span :class="$style.runItemTime">{{ formatAgo(run.startedAt) }}</span>
-        </button>
-      </section>
+            <div :class="$style.sectionHeader">
+              <span :class="$style.sectionTitle">
+                <i
+                  v-if="section.pinned"
+                  class="ti ti-pin-filled"
+                  :class="$style.sectionLeadIcon"
+                />
+                {{ section.title }}
+                <span :class="$style.countSub">{{ section.items.length }}</span>
+              </span>
+              <span
+                v-if="section.key === groupedDefinitions[0]?.key && tasksStore.lastError"
+                :class="$style.errorBadge"
+                :title="tasksStore.lastError"
+              >
+                <i class="ti ti-alert-triangle" /> エラー
+              </span>
+            </div>
+            <button
+              v-for="def in section.items"
+              :key="def.id"
+              class="_button"
+              :class="$style.runBtn"
+              :title="def.description || def.detail || def.label"
+              @click="runFromList(def.id)"
+            >
+              <i :class="[iconClass(def), $style.runIcon]" />
+              <div :class="$style.runBody">
+                <span :class="$style.runLabel">{{ def.label }}</span>
+                <span
+                  v-if="def.detail || def.description"
+                  :class="$style.runDesc"
+                >{{ def.detail || def.description }}</span>
+              </div>
+              <span
+                v-if="latestRunByTaskId.get(def.id)"
+                :class="[$style.statusBadge, {
+                  [$style.statusOk]: latestRunByTaskId.get(def.id)!.status === 'ok',
+                  [$style.statusError]: latestRunByTaskId.get(def.id)!.status === 'error',
+                  [$style.statusRunning]: latestRunByTaskId.get(def.id)!.status === 'running',
+                }]"
+                :title="`最終実行: ${latestRunByTaskId.get(def.id)!.status} · ${runDuration(latestRunByTaskId.get(def.id)!)}`"
+              >
+                <i :class="['ti', statusIcon(latestRunByTaskId.get(def.id)!.status)]" />
+                <span>{{ formatAgo(latestRunByTaskId.get(def.id)!.startedAt) }}</span>
+              </span>
+              <span v-if="def.inputs?.length" :class="$style.runBadge" title="入力を求める">
+                <i class="ti ti-keyboard" />{{ def.inputs.length }}
+              </span>
+            </button>
+          </section>
 
-      <section v-if="selectedRun" :class="$style.preview">
+          <section :class="$style.section">
+            <div :class="$style.sectionHeader">
+              <span :class="$style.sectionTitle">
+                履歴
+                <span :class="$style.countSub">{{ runnerStore.runs.length }}</span>
+                <span v-if="runningCount > 0" :class="$style.runningPill">
+                  <i class="ti ti-loader-2 nd-spin" />{{ runningCount }} 実行中
+                </span>
+              </span>
+            </div>
+            <div v-if="runnerStore.runs.length === 0" :class="$style.emptyHint">
+              実行履歴はまだありません
+            </div>
+            <button
+              v-for="run in runnerStore.runs"
+              :key="run.id"
+              class="_button"
+              :class="[$style.runItem, {
+                [$style.selected]: run.id === selectedId,
+                [$style.statusOk]: run.status === 'ok',
+                [$style.statusError]: run.status === 'error',
+                [$style.statusRunning]: run.status === 'running',
+              }]"
+              @click="selectedId = run.id === selectedId ? null : run.id"
+            >
+              <i :class="['ti', statusIcon(run.status), $style.runItemIcon]" />
+              <div :class="$style.runItemBody">
+                <span :class="$style.runItemLabel">{{ run.label }}</span>
+                <span :class="$style.runItemMeta">
+                  <code :class="$style.method">{{ run.method }}</code>
+                  <span>{{ runDuration(run) }}</span>
+                </span>
+              </div>
+              <span :class="$style.runItemTime">{{ formatAgo(run.startedAt) }}</span>
+            </button>
+          </section>
+        </template>
+      </div>
+
+      <div
+        v-if="selectedRun"
+        :class="$style.divider"
+        @pointerdown="onDividerPointerDown"
+      />
+      <div
+        v-if="selectedRun"
+        :class="$style.detail"
+        :style="{ height: detailHeight + 'px' }"
+      >
         <RawJsonView
           :json="previewJson"
           :can-reveal="true"
@@ -248,30 +413,119 @@ function openEditor() {
             <span>{{ runDuration(selectedRun) }}</span>
           </template>
         </RawJsonView>
-      </section>
+      </div>
     </div>
   </DeckColumn>
 </template>
 
 <style lang="scss" module>
-.body {
+@use './column-common.module.scss';
+
+.headerIcon {
+  font-size: 1em;
+}
+
+.headerBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  opacity: 0.6;
+  transition:
+    background var(--nd-duration-fast),
+    opacity var(--nd-duration-fast);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
+}
+
+.wrapper {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
-  height: 100%;
-  overflow-y: auto;
+}
+
+.defaultBar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--nd-divider);
+  background: color-mix(in srgb, var(--nd-accent) 8%, transparent);
+  color: var(--nd-fgHighlighted);
+  text-align: left;
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: color-mix(in srgb, var(--nd-accent) 16%, transparent);
+  }
+}
+
+.defaultBarIcon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--nd-accent);
+  color: var(--nd-bg);
+  font-size: 13px;
+}
+
+.defaultBarText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.defaultBarKicker {
+  font-size: 0.65em;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  color: var(--nd-accent);
+}
+
+.defaultBarLabel {
+  font-size: 0.85em;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.defaultBarShortcut {
+  flex-shrink: 0;
+  font-size: 0.7em;
+  font-family: var(--nd-font-mono, monospace);
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--nd-bg);
+  border: 1px solid var(--nd-divider);
+  color: var(--nd-fg);
+  opacity: 0.7;
 }
 
 .toolbar {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 10px;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--nd-divider);
-  background: var(--nd-panelHeaderBg, var(--nd-panel));
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  flex-shrink: 0;
 }
 
 .searchWrap {
@@ -289,6 +543,7 @@ function openEditor() {
 }
 
 .searchIcon { opacity: 0.45; flex-shrink: 0; }
+
 .search {
   flex: 1;
   min-width: 0;
@@ -304,17 +559,12 @@ function openEditor() {
   &:hover { opacity: 1; }
 }
 
-.iconBtn {
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--nd-radius-sm);
-  opacity: 0.7;
-
-  &:hover { opacity: 1; background: var(--nd-buttonHoverBg); }
+  flex-direction: column;
 }
 
 .section { flex-shrink: 0; }
@@ -330,8 +580,19 @@ function openEditor() {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   opacity: 0.6;
+}
 
-  & > :first-child { flex: 1; display: flex; align-items: center; gap: 6px; }
+.sectionTitle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sectionLeadIcon {
+  font-size: 0.95em;
+  color: var(--nd-accent);
+  opacity: 0.9;
 }
 
 .countSub {
@@ -362,60 +623,12 @@ function openEditor() {
   opacity: 1;
 }
 
-.clearBtn {
-  padding: 2px 10px;
-  font-size: 1.1em;
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: normal;
-  color: var(--nd-fg);
-  opacity: 0.7;
-  border-radius: var(--nd-radius-sm);
-
-  &:hover { opacity: 1; background: var(--nd-buttonHoverBg); }
-}
-
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 24px 14px;
-  color: var(--nd-fg);
-  text-align: center;
-}
-
-.emptyIcon {
-  font-size: 32px;
-  opacity: 0.3;
-  margin-bottom: 4px;
-}
-
-.emptyTitle {
-  font-weight: 600;
-  opacity: 0.75;
-  font-size: 0.9em;
-}
-
 .emptyHint {
+  padding: 10px 14px 14px;
+  color: var(--nd-fg);
   opacity: 0.55;
   font-size: 0.8em;
-  line-height: 1.5;
-  max-width: 260px;
-}
-
-.emptyBtn {
-  margin-top: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 14px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
-  font-size: 0.8em;
-
-  &:hover { opacity: 0.9; }
+  text-align: center;
 }
 
 .runBtn {
@@ -480,6 +693,36 @@ function openEditor() {
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   opacity: 0.65;
+}
+
+.statusBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  font-size: 0.7em;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--nd-fg) 8%, transparent);
+  color: var(--nd-fg);
+  opacity: 0.75;
+
+  &.statusOk {
+    background: color-mix(in srgb, var(--nd-mfmSuccess, #4a8) 14%, transparent);
+    color: var(--nd-mfmSuccess, #4a8);
+    opacity: 1;
+  }
+  &.statusError {
+    background: color-mix(in srgb, var(--nd-love, #c66) 14%, transparent);
+    color: var(--nd-love, #c66);
+    opacity: 1;
+  }
+  &.statusRunning {
+    background: color-mix(in srgb, var(--nd-accent) 14%, transparent);
+    color: var(--nd-accent);
+    opacity: 1;
+  }
 }
 
 .runItem {
@@ -549,11 +792,23 @@ function openEditor() {
 
 .selected { /* modifier */ }
 
-.preview {
-  flex: 1;
-  min-height: 240px;
+.divider {
+  height: 5px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: var(--nd-divider);
+  transition: background var(--nd-duration-fast);
+
+  &:hover,
+  &:active {
+    background: var(--nd-accent);
+  }
+}
+
+.detail {
+  flex-shrink: 0;
+  overflow: auto;
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--nd-divider);
 }
 </style>

@@ -173,25 +173,19 @@ watch(
   gap: 4px;
   padding: 8px 12px;
   flex: 0 0 auto;
-  opacity: 0.5;
-  color: var(--nd-fg);
-  font-size: 0.85em;
-  font-weight: 600;
+  opacity: 0.4;
   transition:
     opacity var(--nd-duration-base),
-    background var(--nd-duration-base),
-    color var(--nd-duration-base);
+    background var(--nd-duration-base);
   position: relative;
-  white-space: nowrap;
 
   &:hover {
-    opacity: 0.8;
+    opacity: 0.7;
     background: var(--nd-buttonHoverBg);
   }
 
   &.active {
     opacity: 1;
-    color: var(--nd-accent);
   }
 }
 
@@ -200,6 +194,8 @@ watch(
 }
 
 .tabLabel {
+  font-size: 0.85em;
+  font-weight: bold;
   white-space: nowrap;
 }
 

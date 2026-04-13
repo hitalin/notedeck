@@ -228,6 +228,31 @@ export async function writePerformance(content: string): Promise<void> {
   return writeRootSettingsFile('performance.json5', content)
 }
 
+// --- Snippet helpers ---
+
+const SNIPPETS_DIR = 'snippets'
+const SNIPPET_EXT = /\.(json5?|code-snippets|jsonc)$/i
+
+export async function listSnippetFiles(): Promise<string[]> {
+  const files = await listSettingsFiles(SNIPPETS_DIR)
+  return files.filter((f) => SNIPPET_EXT.test(f))
+}
+
+export async function readSnippetFile(filename: string): Promise<string> {
+  return readSettingsFile(SNIPPETS_DIR, filename)
+}
+
+export async function writeSnippetFile(
+  filename: string,
+  content: string,
+): Promise<void> {
+  return writeSettingsFile(SNIPPETS_DIR, filename, content)
+}
+
+export async function deleteSnippetFile(filename: string): Promise<void> {
+  return deleteSettingsFile(SNIPPETS_DIR, filename)
+}
+
 // --- Plugin helpers ---
 
 const PLUGINS_DIR = 'plugins'

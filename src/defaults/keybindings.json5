@@ -81,6 +81,10 @@
     shortcuts: [{ key: "j", ctrl: true, shift: true, scope: "global" }],
   },
   {
+    commandId: "tasks.run-default",
+    shortcuts: [{ key: "b", ctrl: true, alt: true, scope: "global" }],
+  },
+  {
     commandId: "plugins",
     shortcuts: [{ key: "x", ctrl: true, shift: true, scope: "global" }],
   },

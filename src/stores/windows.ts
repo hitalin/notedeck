@@ -23,6 +23,7 @@ export type WindowType =
   | 'appearanceEditor'
   | 'backup'
   | 'tasksEditor'
+  | 'snippetsEditor'
 
 export interface DeckWindow {
   id: string
@@ -70,6 +71,8 @@ export const WINDOW_SIZES: Record<
   backup: { width: 440, maxHeight: 550 },
   // Tasks editor
   tasksEditor: { width: 500, maxHeight: 700 },
+  // Snippets editor
+  snippetsEditor: { width: 500, maxHeight: 700 },
 }
 
 export const useWindowsStore = defineStore('windows', () => {
@@ -105,6 +108,7 @@ export const useWindowsStore = defineStore('windows', () => {
     'appearanceEditor',
     'backup',
     'tasksEditor',
+    'snippetsEditor',
   ])
 
   function open(type: WindowType, props: Record<string, unknown> = {}): string {

@@ -124,6 +124,13 @@ export function getSettingsItems(): QuickPickItem[] {
       group: '環境設定',
       action: () => useWindowsStore().open('tasksEditor'),
     },
+    {
+      id: 'snippets-editor',
+      label: 'スニペット',
+      icon: 'code-plus',
+      group: '環境設定',
+      action: () => useWindowsStore().open('snippetsEditor'),
+    },
     // Cache
     {
       id: 'clear-all-cache',

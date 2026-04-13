@@ -12,6 +12,7 @@ import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { useOfflineModeStore } from '@/stores/offlineMode'
 import { useRealtimeModeStore } from '@/stores/realtimeMode'
+import { useTaskRunnerStore } from '@/stores/taskRunner'
 import { useThemeStore } from '@/stores/theme'
 import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
@@ -604,6 +605,26 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('tasks-editor'),
     execute: () => useWindowsStore().open('tasksEditor'),
+  })
+
+  commandStore.register({
+    id: 'snippets-editor',
+    label: 'スニペット',
+    icon: 'code-plus',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('snippets-editor'),
+    execute: () => useWindowsStore().open('snippetsEditor'),
+  })
+
+  commandStore.register({
+    id: 'tasks.run-default',
+    label: 'デフォルトタスクを実行',
+    icon: 'player-play-filled',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('tasks.run-default'),
+    execute: () => {
+      void useTaskRunnerStore().runDefault()
+    },
   })
 
   commandStore.register({

@@ -65,6 +65,9 @@ const BackupContent = defineAsyncComponent(
 const TasksEditorContent = defineAsyncComponent(
   () => import('@/components/window/TasksEditorContent.vue'),
 )
+const SnippetsEditorContent = defineAsyncComponent(
+  () => import('@/components/window/SnippetsEditorContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -211,6 +214,9 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       />
       <TasksEditorContent
         v-if="win.type === 'tasksEditor'"
+      />
+      <SnippetsEditorContent
+        v-if="win.type === 'snippetsEditor'"
       />
     </DeckWindow>
   </div>

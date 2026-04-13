@@ -3,6 +3,7 @@ import type {
   CompletionContext,
   CompletionResult,
 } from '@codemirror/autocomplete'
+import { getSnippetCompletions } from '@/aiscript/snippets/cache'
 
 const keywordCompletions: Completion[] = [
   'let',
@@ -224,13 +225,17 @@ export function aiscriptCompletions(
     }
   }
 
-  // General word completion
+  // General word completion (keywords + namespaces + user snippets)
   const word = context.matchBefore(/\w+/)
   if (!word || (word.from === word.to && !context.explicit)) return null
 
   return {
     from: word.from,
-    options: [...keywordCompletions, ...namespaceCompletions],
+    options: [
+      ...keywordCompletions,
+      ...namespaceCompletions,
+      ...getSnippetCompletions(),
+    ],
     validFor: /^\w*$/,
   }
 }
