@@ -23,6 +23,19 @@
 //   null   → 最初のログイン済みアカウントで実行
 //   "<id>" → 明示指定 (portable ID ではなく内部 accountId)
 //
+// ─ 表示メタ (任意) ─
+//   detail     label の直下に出る 1 行補足 (VSCode tasks の detail 相当)
+//   icon       Tabler icon 名 (kebab-case, 先頭 'ti-' 無し)。例: 'user'
+//   group      自由文字列の分類。同じ group のタスクはセクションにまとまる
+//   pinned     true なら最上段の "Pinned" セクションへ昇格
+//   isDefault  true で「デフォルトタスク」。ファイル全体で 1 件のみ有効
+//              (2 件目以降は読み込み時に自動で外れる)
+//
+// ─ presentation (任意) ─
+//   revealOnRun        実行時に履歴パネルへ自動切替 (default: true)
+//   clearHistoryOnRun  実行時に過去履歴をクリア (default: false)
+//   focusInput         input ダイアログを自動フォーカス (default: true)
+//
 // ─ レシピ設計方針 ─
 //   デフォルトはすべて「押すだけ・入力ダイアログなし・即結果返却」型。
 //   NoteDeck のアプリトークンが要求しているスコープ
@@ -41,6 +54,7 @@
       description: '自分のユーザーオブジェクトをそのまま履歴に残す (debug / 確認用)',
       group: 'Account',
       icon: 'user',
+      isDefault: true, // "デフォルトタスク" の初期サンプル
       action: {
         type: 'api',
         method: 'i',
