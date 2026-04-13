@@ -23,6 +23,7 @@ import {
   TASKS_FILE_VERSION,
   type TaskDefinition,
   type TaskInput,
+  type TaskPresentation,
 } from '@/tasks/types'
 import { isTauri, readTasks, writeTasks } from '@/utils/settingsFs'
 
@@ -290,6 +291,59 @@ function setAccountIdMode(
   else if (typeof t.accountId !== 'string') t.accountId = ''
 }
 
+function setOptionalString<K extends 'detail' | 'icon' | 'group'>(
+  t: TaskDefinition,
+  key: K,
+  value: string,
+) {
+  const v = value.trim()
+  if (v) t[key] = v
+  else delete t[key]
+}
+
+function setFlag<K extends 'pinned' | 'isDefault'>(
+  t: TaskDefinition,
+  key: K,
+  value: boolean,
+) {
+  if (value) t[key] = true
+  else delete t[key]
+}
+
+function setIsDefault(t: TaskDefinition, value: boolean) {
+  if (value) {
+    for (const other of visualTasks.value) {
+      if (other !== t) delete other.isDefault
+    }
+    t.isDefault = true
+  } else {
+    delete t.isDefault
+  }
+}
+
+function setPresentation<K extends keyof TaskPresentation>(
+  t: TaskDefinition,
+  key: K,
+  value: TaskPresentation[K] | null,
+) {
+  if (value === null) {
+    if (!t.presentation) return
+    delete t.presentation[key]
+    if (Object.keys(t.presentation).length === 0) delete t.presentation
+    return
+  }
+  if (!t.presentation) t.presentation = {}
+  t.presentation[key] = value
+}
+
+const groupSuggestions = computed<string[]>(() => {
+  const s = new Set<string>()
+  for (const t of visualTasks.value) {
+    if (t.group) s.add(t.group)
+  }
+  return [...s].sort()
+})
+
 // ── Code tab actions ──
 function applyFromCode() {
   if (syncVisualFromCode()) {
@@ -365,6 +419,10 @@ function handleReset() {
         宣言したタスクはコマンドパレットと Task Runner カラムから実行できます。
       </div>
 
+      <datalist id="nd-task-groups">
+        <option v-for="g in groupSuggestions" :key="g" :value="g" />
+      </datalist>
+
       <div :class="$style.taskList">
         <div
           v-for="(t, i) in visualTasks"
@@ -374,9 +432,14 @@ function handleReset() {
           <div :class="$style.taskHeader" @click="toggleExpanded(t.id)">
             <i class="ti ti-chevron-right" :class="$style.chevron" />
             <div :class="$style.taskHeaderBody">
-              <span :class="$style.taskLabel">{{ t.label || '(無題)' }}</span>
+              <span :class="$style.taskLabel">
+                <i v-if="t.pinned" class="ti ti-pin-filled" :class="$style.pinIcon" title="Pinned" />
+                <i v-if="t.isDefault" class="ti ti-player-play-filled" :class="$style.defaultIcon" title="デフォルト実行対象" />
+                {{ t.label || '(無題)' }}
+              </span>
               <span :class="$style.taskMeta">
                 <code :class="$style.method">{{ t.action.method }}</code>
+                <span v-if="t.group" :class="$style.groupBadge">{{ t.group }}</span>
                 <span v-if="t.inputs?.length" :class="$style.inputsBadge" title="入力を求める">
                   <i class="ti ti-keyboard" />{{ t.inputs.length }}
                 </span>
@@ -438,7 +501,7 @@ function handleReset() {
                 :value="t.description ?? ''"
                 type="text"
                 :class="$style.input"
-                placeholder="任意"
+                placeholder="任意 (ツールチップ用の長文)"
                 @input="(e) => {
                   const v = (e.target as HTMLInputElement).value
                   if (v) t.description = v
@@ -446,6 +509,62 @@ function handleReset() {
                 }"
               />
             </label>
+            <label :class="$style.field">
+              <span :class="$style.fieldLabel">detail</span>
+              <input
+                :value="t.detail ?? ''"
+                type="text"
+                :class="$style.input"
+                placeholder="ラベル下の 1 行補足 (任意)"
+                @input="(e) => setOptionalString(t, 'detail', (e.target as HTMLInputElement).value)"
+              />
+            </label>
+
+            <div :class="$style.row">
+              <label :class="[$style.field, $style.grow]">
+                <span :class="$style.fieldLabel">group</span>
+                <input
+                  :value="t.group ?? ''"
+                  type="text"
+                  :class="$style.input"
+                  list="nd-task-groups"
+                  placeholder="自由文字列 (任意)"
+                  @input="(e) => setOptionalString(t, 'group', (e.target as HTMLInputElement).value)"
+                />
+              </label>
+              <label :class="[$style.field, $style.grow]">
+                <span :class="$style.fieldLabel">icon</span>
+                <input
+                  :value="t.icon ?? ''"
+                  type="text"
+                  :class="[$style.input, $style.mono]"
+                  placeholder="player-play"
+                  pattern="[a-z0-9][a-z0-9-]*"
+                  @input="(e) => setOptionalString(t, 'icon', (e.target as HTMLInputElement).value)"
+                />
+              </label>
+            </div>
+
+            <div :class="$style.row">
+              <label :class="$style.checkboxRow">
+                <input
+                  type="checkbox"
+                  :checked="t.pinned === true"
+                  @change="(e) => setFlag(t, 'pinned', (e.target as HTMLInputElement).checked)"
+                />
+                <i class="ti ti-pin-filled" :class="$style.inlineIcon" />
+                Pinned
+              </label>
+              <label :class="$style.checkboxRow">
+                <input
+                  type="checkbox"
+                  :checked="t.isDefault === true"
+                  @change="(e) => setIsDefault(t, (e.target as HTMLInputElement).checked)"
+                />
+                <i class="ti ti-player-play-filled" :class="$style.inlineIcon" />
+                デフォルト実行対象 (1 件のみ)
+              </label>
+            </div>
 
             <fieldset :class="$style.fieldset">
               <legend :class="$style.legend">アカウント</legend>
@@ -502,6 +621,26 @@ function handleReset() {
                   placeholder="{ visibility: 'home' }"
                   @input="(e) => setParamsFromText(t, (e.target as HTMLTextAreaElement).value)"
                 />
+              </label>
+            </fieldset>
+
+            <fieldset :class="$style.fieldset">
+              <legend :class="$style.legend">表示オプション (presentation)</legend>
+              <label :class="$style.checkboxRow">
+                <input
+                  type="checkbox"
+                  :checked="t.presentation?.revealOnRun !== false"
+                  @change="(e) => setPresentation(t, 'revealOnRun', (e.target as HTMLInputElement).checked ? null : false)"
+                />
+                実行時に履歴で自動選択する (revealOnRun)
+              </label>
+              <label :class="$style.checkboxRow">
+                <input
+                  type="checkbox"
+                  :checked="t.presentation?.clearHistoryOnRun === true"
+                  @change="(e) => setPresentation(t, 'clearHistoryOnRun', (e.target as HTMLInputElement).checked ? true : null)"
+                />
+                実行時に過去履歴をクリア (clearHistoryOnRun)
               </label>
             </fieldset>
 
@@ -731,11 +870,24 @@ function handleReset() {
 }
 
 .taskLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-weight: 600;
   font-size: 0.9em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pinIcon {
+  font-size: 0.85em;
+  color: var(--nd-accent);
+}
+
+.defaultIcon {
+  font-size: 0.85em;
+  color: var(--nd-mfmSuccess, #4a8);
 }
 
 .taskMeta {
@@ -744,6 +896,14 @@ function handleReset() {
   gap: 6px;
   font-size: 0.75em;
   opacity: 0.6;
+}
+
+.groupBadge {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  color: var(--nd-accent);
+  opacity: 0.9;
 }
 
 .method {
@@ -894,6 +1054,30 @@ function handleReset() {
   gap: 6px;
   font-size: 0.85em;
   cursor: pointer;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.grow {
+  flex: 1;
+  min-width: 120px;
+}
+
+.inlineIcon {
+  font-size: 0.9em;
+  opacity: 0.7;
 }
 
 .inputItem {
