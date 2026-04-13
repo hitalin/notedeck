@@ -1,15 +1,34 @@
 <script setup lang="ts">
 import { json as jsonLang } from '@codemirror/lang-json'
 import { type Diagnostic, linter } from '@codemirror/lint'
-import { computed, onMounted, ref, watch } from 'vue'
-import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
+import JSON5 from 'json5'
+import {
+  computed,
+  defineAsyncComponent,
+  nextTick,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from 'vue'
+import EditorTabs from '@/components/common/EditorTabs.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
+import { useEditorTabs } from '@/composables/useEditorTabs'
 import defaultTasksJson5 from '@/defaults/tasks.json5?raw'
 import { useTasksStore } from '@/stores/tasks'
 import { useToast } from '@/stores/toast'
 import { parseTasks, TasksParseError } from '@/tasks/schema'
+import type { TaskDefinition, TaskInput } from '@/tasks/types'
 import { isTauri, readTasks, writeTasks } from '@/utils/settingsFs'
+
+const CodeEditor = defineAsyncComponent(
+  () => import('@/components/deck/widgets/CodeEditor.vue'),
+)
+
+const props = defineProps<{
+  initialTab?: string
+}>()
 
 const lang = jsonLang()
 
@@ -36,27 +55,58 @@ const tasksLinter = linter(
 )
 
 const tasksStore = useTasksStore()
+
+// ── Tab management ──
+const { tab, containerRef: contentRef } = useEditorTabs(
+  ['visual', 'code'] as const,
+  (props.initialTab as 'visual' | 'code') ?? 'visual',
+)
+
+// ── State ──
 const code = ref('')
 const codeError = ref<string | null>(null)
-const saving = ref(false)
+const visualTasks = ref<TaskDefinition[]>([])
+const expanded = reactive<Record<string, boolean>>({})
 const loaded = ref(false)
+const saving = ref(false)
+let suppressSync = false
+
+function tasksToJson(tasks: TaskDefinition[]): string {
+  return JSON5.stringify({ version: 1, tasks }, null, 2)
+}
+
+function syncVisualFromCode(): boolean {
+  try {
+    const parsed = parseTasks(code.value)
+    suppressSync = true
+    visualTasks.value = parsed.tasks
+    nextTick(() => {
+      suppressSync = false
+    })
+    codeError.value = null
+    return true
+  } catch (e) {
+    codeError.value = e instanceof TasksParseError ? e.message : String(e)
+    return false
+  }
+}
 
 onMounted(async () => {
-  if (!isTauri) {
-    code.value = defaultTasksJson5
-    loaded.value = true
-    return
-  }
-  try {
-    const content = await readTasks()
-    code.value = content || defaultTasksJson5
-  } catch (e) {
-    useToast().show(`tasks.json5 読込失敗: ${(e as Error).message}`, 'error')
-  } finally {
-    loaded.value = true
-  }
+  const initial = isTauri
+    ? await readTasks().catch((e) => {
+        useToast().show(
+          `tasks.json5 読込失敗: ${(e as Error).message}`,
+          'error',
+        )
+        return ''
+      })
+    : ''
+  code.value = initial || defaultTasksJson5
+  syncVisualFromCode()
+  loaded.value = true
 })
 
+// ── Code → Visual: live validation ──
 let validateTimer: ReturnType<typeof setTimeout> | null = null
 watch(code, (v) => {
   if (validateTimer) clearTimeout(validateTimer)
@@ -74,18 +124,28 @@ watch(code, (v) => {
   }, 400)
 })
 
-const taskCount = computed(() => tasksStore.definitions.length)
+// ── Visual → Code + persist (debounced) ──
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+watch(
+  visualTasks,
+  (v) => {
+    if (suppressSync || !loaded.value) return
+    const next = tasksToJson(v)
+    if (next !== code.value) code.value = next
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = setTimeout(() => {
+      void persist()
+    }, 600)
+  },
+  { deep: true },
+)
 
-async function save() {
+async function persist() {
   if (codeError.value) return
   saving.value = true
   try {
-    await writeTasks(code.value)
+    if (isTauri) await writeTasks(code.value)
     tasksStore.setFromRaw(code.value)
-    useToast().show(
-      `tasks.json5 を保存しました (${taskCount.value} タスク)`,
-      'success',
-    )
   } catch (e) {
     useToast().show(`保存失敗: ${(e as Error).message}`, 'error')
   } finally {
@@ -93,6 +153,147 @@ async function save() {
   }
 }
 
+const taskCount = computed(() => visualTasks.value.length)
+
+// ── Visual edit helpers ──
+function uniqueId(base: string): string {
+  const ids = new Set(visualTasks.value.map((t) => t.id))
+  if (!ids.has(base)) return base
+  let i = 2
+  while (ids.has(`${base}-${i}`)) i++
+  return `${base}-${i}`
+}
+
+function addTask() {
+  const id = uniqueId('new-task')
+  visualTasks.value.push({
+    id,
+    label: '新しいタスク',
+    action: { type: 'api', method: 'i' },
+  })
+  expanded[id] = true
+}
+
+function removeTask(index: number) {
+  const t = visualTasks.value[index]
+  if (!t) return
+  visualTasks.value.splice(index, 1)
+  delete expanded[t.id]
+}
+
+function moveTask(index: number, delta: number) {
+  const next = index + delta
+  if (next < 0 || next >= visualTasks.value.length) return
+  const arr = [...visualTasks.value]
+  const [moved] = arr.splice(index, 1)
+  if (moved) arr.splice(next, 0, moved)
+  visualTasks.value = arr
+}
+
+function toggleExpanded(id: string) {
+  expanded[id] = !expanded[id]
+}
+
+function paramsToText(t: TaskDefinition): string {
+  return t.action.params ? JSON5.stringify(t.action.params, null, 2) : ''
+}
+
+function setParamsFromText(t: TaskDefinition, text: string) {
+  const trimmed = text.trim()
+  if (!trimmed) {
+    delete t.action.params
+    return
+  }
+  try {
+    const parsed = JSON5.parse(trimmed)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      t.action.params = parsed as Record<string, unknown>
+    }
+  } catch {
+    /* ignore parse error during edit */
+  }
+}
+
+function paramsErrorOf(text: string): string | null {
+  const trimmed = text.trim()
+  if (!trimmed) return null
+  try {
+    const parsed = JSON5.parse(trimmed)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return 'オブジェクト ({}) が必要です'
+    }
+    return null
+  } catch (e) {
+    return (e as Error).message
+  }
+}
+
+function addInput(t: TaskDefinition) {
+  if (!t.inputs) t.inputs = []
+  t.inputs.push({
+    id: `input${t.inputs.length + 1}`,
+    type: 'text',
+    prompt: '入力してください',
+  })
+}
+
+function removeInput(t: TaskDefinition, idx: number) {
+  if (!t.inputs) return
+  t.inputs.splice(idx, 1)
+  if (t.inputs.length === 0) delete t.inputs
+}
+
+function changeInputType(
+  t: TaskDefinition,
+  idx: number,
+  type: 'text' | 'pick',
+) {
+  if (!t.inputs) return
+  const cur = t.inputs[idx]
+  if (!cur || cur.type === type) return
+  const base = { id: cur.id, prompt: cur.prompt, default: cur.default }
+  t.inputs[idx] =
+    type === 'text'
+      ? ({ ...base, type: 'text' } as TaskInput)
+      : ({ ...base, type: 'pick', options: [] } as TaskInput)
+}
+
+function pickOptionsToText(input: TaskInput): string {
+  if (input.type !== 'pick') return ''
+  return input.options.join('\n')
+}
+
+function setPickOptions(input: TaskInput, text: string) {
+  if (input.type !== 'pick') return
+  input.options = text
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+function accountIdMode(t: TaskDefinition): 'active' | 'first' | 'specific' {
+  if (t.accountId === undefined) return 'active'
+  if (t.accountId === null) return 'first'
+  return 'specific'
+}
+
+function setAccountIdMode(
+  t: TaskDefinition,
+  mode: 'active' | 'first' | 'specific',
+) {
+  if (mode === 'active') delete t.accountId
+  else if (mode === 'first') t.accountId = null
+  else if (typeof t.accountId !== 'string') t.accountId = ''
+}
+
+// ── Code tab actions ──
+function applyFromCode() {
+  if (syncVisualFromCode()) {
+    tab.value = 'visual'
+  }
+}
+
+// ── Footer actions ──
 const {
   copied: copiedMessage,
   imported: importedMessage,
@@ -102,9 +303,13 @@ const {
   showImportError,
 } = useClipboardFeedback()
 
-function exportTasks() {
-  navigator.clipboard.writeText(code.value)
-  showCopied()
+async function exportTasks() {
+  try {
+    await navigator.clipboard.writeText(code.value)
+    showCopied()
+  } catch {
+    /* clipboard denied */
+  }
 }
 
 async function importTasks() {
@@ -116,6 +321,7 @@ async function importTasks() {
     }
     parseTasks(text)
     code.value = text
+    syncVisualFromCode()
     showImported()
   } catch {
     showImportError()
@@ -125,9 +331,10 @@ async function importTasks() {
 const { confirming: confirmingReset, trigger: triggerReset } =
   useDoubleConfirm()
 
-async function handleReset() {
+function handleReset() {
   triggerReset(async () => {
     code.value = defaultTasksJson5
+    syncVisualFromCode()
     try {
       if (isTauri) await writeTasks(defaultTasksJson5)
       tasksStore.setFromRaw(defaultTasksJson5)
@@ -139,10 +346,248 @@ async function handleReset() {
 </script>
 
 <template>
-  <div :class="$style.content">
-    <div :class="$style.codePanel">
-      <div :class="$style.codeHint">
+  <div ref="contentRef" :class="$style.editor">
+    <EditorTabs
+      v-model="tab"
+      :tabs="[
+        { value: 'visual', icon: 'list-check', label: 'ビジュアル' },
+        { value: 'code', icon: 'code', label: 'コード' },
+      ]"
+    />
+
+    <!-- Visual tab -->
+    <div v-show="tab === 'visual'" :class="$style.visualPanel">
+      <div :class="$style.visualHint">
         宣言したタスクはコマンドパレットと Task Runner カラムから実行できます。
+      </div>
+
+      <div :class="$style.taskList">
+        <div
+          v-for="(t, i) in visualTasks"
+          :key="t.id + i"
+          :class="[$style.taskCard, { [$style.expanded]: expanded[t.id] }]"
+        >
+          <div :class="$style.taskHeader" @click="toggleExpanded(t.id)">
+            <i class="ti ti-chevron-right" :class="$style.chevron" />
+            <div :class="$style.taskHeaderBody">
+              <span :class="$style.taskLabel">{{ t.label || '(無題)' }}</span>
+              <span :class="$style.taskMeta">
+                <code :class="$style.method">{{ t.action.method }}</code>
+                <span v-if="t.inputs?.length" :class="$style.inputsBadge" title="入力を求める">
+                  <i class="ti ti-keyboard" />{{ t.inputs.length }}
+                </span>
+              </span>
+            </div>
+            <div :class="$style.taskActions" @click.stop>
+              <button
+                class="_button"
+                :class="$style.iconBtn"
+                title="上へ"
+                :disabled="i === 0"
+                @click="moveTask(i, -1)"
+              >
+                <i class="ti ti-chevron-up" />
+              </button>
+              <button
+                class="_button"
+                :class="$style.iconBtn"
+                title="下へ"
+                :disabled="i === visualTasks.length - 1"
+                @click="moveTask(i, 1)"
+              >
+                <i class="ti ti-chevron-down" />
+              </button>
+              <button
+                class="_button"
+                :class="[$style.iconBtn, $style.dangerBtn]"
+                title="削除"
+                @click="removeTask(i)"
+              >
+                <i class="ti ti-trash" />
+              </button>
+            </div>
+          </div>
+
+          <div v-if="expanded[t.id]" :class="$style.taskBody">
+            <label :class="$style.field">
+              <span :class="$style.fieldLabel">ID</span>
+              <input
+                v-model="t.id"
+                type="text"
+                :class="$style.input"
+                pattern="[\w-]+"
+                placeholder="my-task"
+              />
+            </label>
+            <label :class="$style.field">
+              <span :class="$style.fieldLabel">ラベル</span>
+              <input
+                v-model="t.label"
+                type="text"
+                :class="$style.input"
+                placeholder="UI 表示名"
+              />
+            </label>
+            <label :class="$style.field">
+              <span :class="$style.fieldLabel">説明</span>
+              <input
+                :value="t.description ?? ''"
+                type="text"
+                :class="$style.input"
+                placeholder="任意"
+                @input="(e) => {
+                  const v = (e.target as HTMLInputElement).value
+                  if (v) t.description = v
+                  else delete t.description
+                }"
+              />
+            </label>
+
+            <fieldset :class="$style.fieldset">
+              <legend :class="$style.legend">アカウント</legend>
+              <label :class="$style.radioRow">
+                <input
+                  type="radio"
+                  :checked="accountIdMode(t) === 'active'"
+                  @change="setAccountIdMode(t, 'active')"
+                />
+                現在アクティブ
+              </label>
+              <label :class="$style.radioRow">
+                <input
+                  type="radio"
+                  :checked="accountIdMode(t) === 'first'"
+                  @change="setAccountIdMode(t, 'first')"
+                />
+                最初のログイン済み
+              </label>
+              <label :class="$style.radioRow">
+                <input
+                  type="radio"
+                  :checked="accountIdMode(t) === 'specific'"
+                  @change="setAccountIdMode(t, 'specific')"
+                />
+                指定 ID
+                <input
+                  v-if="accountIdMode(t) === 'specific'"
+                  v-model="t.accountId as string"
+                  type="text"
+                  :class="[$style.input, $style.inlineInput]"
+                  placeholder="accountId"
+                />
+              </label>
+            </fieldset>
+
+            <fieldset :class="$style.fieldset">
+              <legend :class="$style.legend">アクション (api)</legend>
+              <label :class="$style.field">
+                <span :class="$style.fieldLabel">method</span>
+                <input
+                  v-model="t.action.method"
+                  type="text"
+                  :class="[$style.input, $style.mono]"
+                  placeholder="notes/create"
+                />
+              </label>
+              <label :class="$style.field">
+                <span :class="$style.fieldLabel">params (JSON5)</span>
+                <textarea
+                  :value="paramsToText(t)"
+                  :class="[$style.input, $style.textarea, $style.mono, { [$style.hasError]: paramsErrorOf(paramsToText(t)) }]"
+                  rows="4"
+                  placeholder="{ visibility: 'home' }"
+                  @input="(e) => setParamsFromText(t, (e.target as HTMLTextAreaElement).value)"
+                />
+              </label>
+            </fieldset>
+
+            <fieldset :class="$style.fieldset">
+              <legend :class="$style.legend">
+                入力フィールド
+                <button
+                  class="_button"
+                  :class="$style.smallBtn"
+                  @click="addInput(t)"
+                >
+                  <i class="ti ti-plus" /> 追加
+                </button>
+              </legend>
+              <div
+                v-for="(input, ii) in t.inputs ?? []"
+                :key="ii"
+                :class="$style.inputItem"
+              >
+                <div :class="$style.inputItemRow">
+                  <select
+                    :value="input.type"
+                    :class="$style.input"
+                    @change="(e) => changeInputType(t, ii, (e.target as HTMLSelectElement).value as 'text' | 'pick')"
+                  >
+                    <option value="text">text</option>
+                    <option value="pick">pick</option>
+                  </select>
+                  <input
+                    v-model="input.id"
+                    type="text"
+                    :class="$style.input"
+                    placeholder="id"
+                  />
+                  <button
+                    class="_button"
+                    :class="[$style.iconBtn, $style.dangerBtn]"
+                    title="削除"
+                    @click="removeInput(t, ii)"
+                  >
+                    <i class="ti ti-x" />
+                  </button>
+                </div>
+                <input
+                  v-model="input.prompt"
+                  type="text"
+                  :class="$style.input"
+                  placeholder="プロンプト"
+                />
+                <textarea
+                  v-if="input.type === 'pick'"
+                  :value="pickOptionsToText(input)"
+                  :class="[$style.input, $style.textarea]"
+                  rows="3"
+                  placeholder="選択肢 (1行に1つ)"
+                  @input="(e) => setPickOptions(input, (e.target as HTMLTextAreaElement).value)"
+                />
+                <input
+                  :value="input.default ?? ''"
+                  type="text"
+                  :class="$style.input"
+                  placeholder="default (任意)"
+                  @input="(e) => {
+                    const v = (e.target as HTMLInputElement).value
+                    if (v) input.default = v
+                    else delete input.default
+                  }"
+                />
+              </div>
+              <div v-if="!t.inputs?.length" :class="$style.inputsEmpty">
+                入力なし — タスクは即座に実行されます
+              </div>
+            </fieldset>
+          </div>
+        </div>
+
+        <div v-if="visualTasks.length === 0" :class="$style.emptyState">
+          タスクがまだありません
+        </div>
+
+        <button class="_button" :class="$style.addBtn" @click="addTask">
+          <i class="ti ti-plus" />
+          タスクを追加
+        </button>
+      </div>
+    </div>
+
+    <!-- Code tab -->
+    <div v-show="tab === 'code'" :class="$style.codePanel">
+      <div :class="$style.codeHint">
         変数: <code>${'$'}{input:&lt;id&gt;}</code>
         <code>${'$'}{account.id}</code>
         <code>${'$'}{account.host}</code>
@@ -160,19 +605,20 @@ async function handleReset() {
       </div>
       <div v-else-if="loaded && code.trim()" :class="$style.codeSuccess">
         <i class="ti ti-check" />
-        {{ taskCount }} タスクを解析済み
+        {{ taskCount }} タスクを解析済み{{ saving ? ' · 保存中…' : '' }}
       </div>
       <button
         class="_button"
         :class="$style.codeApplyBtn"
-        :disabled="!!codeError || saving"
-        @click="save"
+        :disabled="!!codeError"
+        @click="applyFromCode"
       >
-        <i class="ti" :class="saving ? 'ti-loader-2 nd-spin' : 'ti-device-floppy'" />
-        {{ saving ? '保存中' : '保存' }}
+        <i class="ti ti-refresh" />
+        ビジュアルに同期
       </button>
     </div>
 
+    <!-- Actions (footer) -->
     <div :class="$style.actions">
       <div :class="$style.actionGroup">
         <button
@@ -207,13 +653,306 @@ async function handleReset() {
 <style lang="scss" module>
 @use '@/styles/buttons' as *;
 
-.content {
+.editor {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
 }
+
+// ── Visual tab ──
+
+.visualPanel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.visualHint {
+  padding: 10px 12px 4px;
+  font-size: 0.75em;
+  opacity: 0.55;
+}
+
+.taskList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 12px;
+}
+
+.taskCard {
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-panel);
+  overflow: hidden;
+  transition: border-color var(--nd-duration-base);
+
+  &.expanded {
+    border-color: var(--nd-accent);
+  }
+}
+
+.taskHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.chevron {
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: transform var(--nd-duration-base);
+
+  .expanded & {
+    transform: rotate(90deg);
+  }
+}
+
+.taskHeaderBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.taskLabel {
+  font-weight: 600;
+  font-size: 0.9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75em;
+  opacity: 0.6;
+}
+
+.method {
+  font-family: var(--nd-font-mono, monospace);
+}
+
+.inputsBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--nd-buttonBg);
+}
+
+.taskActions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  opacity: 0.55;
+  transition:
+    opacity var(--nd-duration-fast),
+    background var(--nd-duration-fast);
+
+  &:hover:not(:disabled) {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
+
+  &:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+  }
+}
+
+.dangerBtn:hover:not(:disabled) {
+  color: var(--nd-love, #ec4137);
+}
+
+.taskBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--nd-divider);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fieldLabel {
+  font-size: 0.7em;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.input {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 0.85em;
+  background: var(--nd-bg);
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  outline: none;
+  transition: border-color var(--nd-duration-base);
+
+  &:focus {
+    border-color: var(--nd-accent);
+  }
+
+  &.hasError {
+    border-color: var(--nd-love, #ec4137);
+  }
+}
+
+.inlineInput {
+  margin-left: 6px;
+  width: auto;
+  flex: 1;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+.mono {
+  font-family: var(--nd-font-mono, monospace);
+}
+
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+  font-size: 0.7em;
+  font-weight: bold;
+  opacity: 0.65;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.smallBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 6px;
+  font-size: 0.75em;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  opacity: 0.7;
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.radioRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+
+.inputItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-panel);
+}
+
+.inputItemRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+
+  & > select.input {
+    width: auto;
+    flex-shrink: 0;
+  }
+}
+
+.inputsEmpty {
+  font-size: 0.75em;
+  opacity: 0.5;
+  text-align: center;
+  padding: 6px;
+}
+
+.emptyState {
+  padding: 18px;
+  text-align: center;
+  font-size: 0.8em;
+  opacity: 0.55;
+}
+
+.addBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  margin-top: 4px;
+  border: 1px dashed var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  font-size: 0.85em;
+  color: var(--nd-fg);
+  opacity: 0.7;
+  transition:
+    border-color var(--nd-duration-base),
+    opacity var(--nd-duration-base);
+
+  &:hover {
+    border-color: var(--nd-accent);
+    color: var(--nd-accent);
+    opacity: 1;
+  }
+}
+
+.expanded { /* modifier */ }
+
+// ── Code tab ──
 
 .codePanel {
   display: flex;
@@ -247,8 +986,6 @@ async function handleReset() {
   }
 }
 
-.hasError { /* modifier */ }
-
 .errorMessage {
   display: flex;
   align-items: center;
@@ -272,6 +1009,8 @@ async function handleReset() {
 
 .codeApplyBtn { @include btn-secondary; }
 
+// ── Actions (footer) ──
+
 .actions { @include action-bar; }
 .actionGroup { @include action-group; }
 
@@ -284,4 +1023,5 @@ async function handleReset() {
 .feedback { /* modifier */ }
 .danger { /* modifier */ }
 .confirming { /* modifier */ }
+.hasError { /* modifier */ }
 </style>
