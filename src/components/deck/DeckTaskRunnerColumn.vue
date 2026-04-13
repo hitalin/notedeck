@@ -10,7 +10,7 @@ import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useTaskRunnerStore } from '@/stores/taskRunner'
 import { useTasksStore } from '@/stores/tasks'
 import { useWindowsStore } from '@/stores/windows'
-import type { TaskDefinition } from '@/tasks/types'
+import type { TaskDefinition, TaskRun } from '@/tasks/types'
 import DeckColumn from './DeckColumn.vue'
 
 const UNGROUPED_KEY = '__ungrouped__'
@@ -103,6 +103,16 @@ const groupedDefinitions = computed<TaskSection[]>(() => {
 function iconClass(def: TaskDefinition): string {
   return `ti ti-${def.icon ?? 'player-play'}`
 }
+
+// runnerStore.runs は新しい順 (taskRunner L40: [run, ...runs.value])。
+// 先頭から走査して taskId ごとの最初の出現 = 最新実行。
+const latestRunByTaskId = computed<Map<string, TaskRun>>(() => {
+  const map = new Map<string, TaskRun>()
+  for (const r of runnerStore.runs) {
+    if (!map.has(r.taskId)) map.set(r.taskId, r)
+  }
+  return map
+})
 
 const selectedRun = computed(() =>
   selectedId.value == null
@@ -278,6 +288,18 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
                   :class="$style.runDesc"
                 >{{ def.detail || def.description }}</span>
               </div>
+              <span
+                v-if="latestRunByTaskId.get(def.id)"
+                :class="[$style.statusBadge, {
+                  [$style.statusOk]: latestRunByTaskId.get(def.id)!.status === 'ok',
+                  [$style.statusError]: latestRunByTaskId.get(def.id)!.status === 'error',
+                  [$style.statusRunning]: latestRunByTaskId.get(def.id)!.status === 'running',
+                }]"
+                :title="`最終実行: ${latestRunByTaskId.get(def.id)!.status} · ${runDuration(latestRunByTaskId.get(def.id)!)}`"
+              >
+                <i :class="['ti', statusIcon(latestRunByTaskId.get(def.id)!.status)]" />
+                <span>{{ formatAgo(latestRunByTaskId.get(def.id)!.startedAt) }}</span>
+              </span>
               <span v-if="def.inputs?.length" :class="$style.runBadge" title="入力を求める">
                 <i class="ti ti-keyboard" />{{ def.inputs.length }}
               </span>
@@ -560,6 +582,36 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   opacity: 0.65;
+}
+
+.statusBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  font-size: 0.7em;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--nd-fg) 8%, transparent);
+  color: var(--nd-fg);
+  opacity: 0.75;
+
+  &.statusOk {
+    background: color-mix(in srgb, var(--nd-mfmSuccess, #4a8) 14%, transparent);
+    color: var(--nd-mfmSuccess, #4a8);
+    opacity: 1;
+  }
+  &.statusError {
+    background: color-mix(in srgb, var(--nd-love, #c66) 14%, transparent);
+    color: var(--nd-love, #c66);
+    opacity: 1;
+  }
+  &.statusRunning {
+    background: color-mix(in srgb, var(--nd-accent) 14%, transparent);
+    color: var(--nd-accent);
+    opacity: 1;
+  }
 }
 
 .runItem {
