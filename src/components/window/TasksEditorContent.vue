@@ -19,7 +19,11 @@ import defaultTasksJson5 from '@/defaults/tasks.json5?raw'
 import { useTasksStore } from '@/stores/tasks'
 import { useToast } from '@/stores/toast'
 import { parseTasks, TasksParseError } from '@/tasks/schema'
-import type { TaskDefinition, TaskInput } from '@/tasks/types'
+import {
+  TASKS_FILE_VERSION,
+  type TaskDefinition,
+  type TaskInput,
+} from '@/tasks/types'
 import { isTauri, readTasks, writeTasks } from '@/utils/settingsFs'
 
 const CodeEditor = defineAsyncComponent(
@@ -72,7 +76,7 @@ const saving = ref(false)
 let suppressSync = false
 
 function tasksToJson(tasks: TaskDefinition[]): string {
-  return JSON5.stringify({ version: 1, tasks }, null, 2)
+  return JSON5.stringify({ version: TASKS_FILE_VERSION, tasks }, null, 2)
 }
 
 function syncVisualFromCode(): boolean {

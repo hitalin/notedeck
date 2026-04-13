@@ -32,7 +32,7 @@
 //   既存カラム (Timeline / Notifications / Search / Drive / ServerInfo 等) で
 //   完結する操作は重複を避ける。
 {
-  version: 1,
+  version: 2,
   tasks: [
     {
       id: 'me',

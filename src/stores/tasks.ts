@@ -7,7 +7,7 @@ import defaultTasksJson5 from '@/defaults/tasks.json5?raw'
 import { useTaskRunnerStore } from '@/stores/taskRunner'
 import { useToast } from '@/stores/toast'
 import { parseTasks, TasksParseError } from '@/tasks/schema'
-import type { TaskDefinition } from '@/tasks/types'
+import { TASKS_FILE_VERSION, type TaskDefinition } from '@/tasks/types'
 import { isTauri, readTasks, writeTasks } from '@/utils/settingsFs'
 
 export const TASK_COMMAND_PREFIX = 'task.'
@@ -30,7 +30,10 @@ export const useTasksStore = defineStore('tasks', () => {
 
   async function persist(): Promise<void> {
     if (!isTauri) return
-    const payload = { version: 1, tasks: definitions.value }
+    const payload = {
+      version: TASKS_FILE_VERSION,
+      tasks: definitions.value,
+    }
     const content = JSON5.stringify(payload, null, 2)
     await writeTasks(`${content}\n`)
   }
@@ -78,6 +81,19 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
+  function peekVersion(raw: string): number | null {
+    try {
+      const d = JSON5.parse(raw)
+      if (d && typeof d === 'object' && !Array.isArray(d)) {
+        const v = (d as Record<string, unknown>).version
+        return typeof v === 'number' ? v : null
+      }
+    } catch {
+      return null
+    }
+    return null
+  }
+
   async function init(): Promise<void> {
     if (isTauri) {
       try {
@@ -89,7 +105,17 @@ export const useTasksStore = defineStore('tasks', () => {
           )
           setFromRaw(defaultTasksJson5)
         } else {
+          const sourceVersion = peekVersion(content)
           setFromRaw(content)
+          if (
+            sourceVersion !== null &&
+            sourceVersion !== TASKS_FILE_VERSION &&
+            lastError.value === null
+          ) {
+            await persist().catch((e) =>
+              console.warn('[tasks] migration write failed:', e),
+            )
+          }
         }
       } catch (e) {
         console.warn('[tasks] read failed:', e)

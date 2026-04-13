@@ -23,17 +23,31 @@ export interface TaskApiAction {
 
 export type TaskAction = TaskApiAction
 
+export interface TaskPresentation {
+  revealOnRun?: boolean
+  clearHistoryOnRun?: boolean
+  focusInput?: boolean
+}
+
 export interface TaskDefinition {
   id: string
   label: string
+  detail?: string
   description?: string
+  icon?: string
+  group?: string
+  isDefault?: boolean
+  pinned?: boolean
   accountId?: string | null
   inputs?: TaskInput[]
   action: TaskAction
+  presentation?: TaskPresentation
 }
 
+export const TASKS_FILE_VERSION = 2 as const
+
 export interface TasksFile {
-  version: 1
+  version: typeof TASKS_FILE_VERSION
   tasks: TaskDefinition[]
 }
 

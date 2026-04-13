@@ -1,5 +1,12 @@
 import JSON5 from 'json5'
-import type { TaskAction, TaskDefinition, TaskInput, TasksFile } from './types'
+import {
+  TASKS_FILE_VERSION,
+  type TaskAction,
+  type TaskDefinition,
+  type TaskInput,
+  type TaskPresentation,
+  type TasksFile,
+} from './types'
 
 export class TasksParseError extends Error {
   constructor(message: string) {
@@ -7,6 +14,9 @@ export class TasksParseError extends Error {
     this.name = 'TasksParseError'
   }
 }
+
+const SUPPORTED_VERSIONS = [1, 2] as const
+const ICON_NAME_RE = /^[a-z0-9][a-z0-9-]*$/
 
 function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -63,6 +73,27 @@ function parseAction(raw: unknown, path: string): TaskAction {
   }
 }
 
+function parsePresentation(
+  raw: unknown,
+  path: string,
+): TaskPresentation | undefined {
+  if (raw === undefined) return undefined
+  if (!isObj(raw)) throw new TasksParseError(`${path}: must be an object`)
+  const out: TaskPresentation = {}
+  for (const key of [
+    'revealOnRun',
+    'clearHistoryOnRun',
+    'focusInput',
+  ] as const) {
+    const v = raw[key]
+    if (v === undefined) continue
+    if (typeof v !== 'boolean')
+      throw new TasksParseError(`${path}.${key}: boolean required`)
+    out[key] = v
+  }
+  return Object.keys(out).length > 0 ? out : undefined
+}
+
 function parseTask(raw: unknown, path: string): TaskDefinition {
   if (!isObj(raw)) throw new TasksParseError(`${path}: must be an object`)
   const id = raw.id
@@ -73,6 +104,7 @@ function parseTask(raw: unknown, path: string): TaskDefinition {
     )
   if (typeof label !== 'string' || !label)
     throw new TasksParseError(`${path}.label: non-empty string required`)
+
   const inputs = raw.inputs
   const parsedInputs =
     inputs === undefined
@@ -82,25 +114,76 @@ function parseTask(raw: unknown, path: string): TaskDefinition {
         : (() => {
             throw new TasksParseError(`${path}.inputs: must be an array`)
           })()
+
   const action = parseAction(raw.action, `${path}.action`)
   const accountId = raw.accountId
   const description = raw.description
+  const detail = raw.detail
+  const icon = raw.icon
+  const group = raw.group
+  const isDefault = raw.isDefault
+  const pinned = raw.pinned
+  const presentation = parsePresentation(
+    raw.presentation,
+    `${path}.presentation`,
+  )
+
+  if (detail !== undefined && typeof detail !== 'string')
+    throw new TasksParseError(`${path}.detail: string required`)
+  if (icon !== undefined) {
+    if (typeof icon !== 'string' || !ICON_NAME_RE.test(icon))
+      throw new TasksParseError(
+        `${path}.icon: non-empty kebab-case string required (e.g. 'player-play')`,
+      )
+  }
+  if (group !== undefined && typeof group !== 'string')
+    throw new TasksParseError(`${path}.group: string required`)
+  if (isDefault !== undefined && typeof isDefault !== 'boolean')
+    throw new TasksParseError(`${path}.isDefault: boolean required`)
+  if (pinned !== undefined && typeof pinned !== 'boolean')
+    throw new TasksParseError(`${path}.pinned: boolean required`)
+
+  const normalizedGroup =
+    typeof group === 'string' && group.trim() ? group.trim() : undefined
+
   const def: TaskDefinition = {
     id,
     label,
     action,
     ...(typeof description === 'string' ? { description } : {}),
+    ...(typeof detail === 'string' && detail ? { detail } : {}),
+    ...(typeof icon === 'string' ? { icon } : {}),
+    ...(normalizedGroup ? { group: normalizedGroup } : {}),
+    ...(isDefault === true ? { isDefault: true } : {}),
+    ...(pinned === true ? { pinned: true } : {}),
     ...(typeof accountId === 'string' || accountId === null
       ? { accountId }
       : {}),
     ...(parsedInputs ? { inputs: parsedInputs } : {}),
+    ...(presentation ? { presentation } : {}),
   }
   return def
 }
 
+function enforceSingleDefault(tasks: TaskDefinition[]): TaskDefinition[] {
+  let seen = false
+  return tasks.map((t) => {
+    if (!t.isDefault) return t
+    if (seen) {
+      console.warn(
+        `[tasks] multiple isDefault tasks found; "${t.id}" demoted (only the first wins)`,
+      )
+      const { isDefault: _isDefault, ...rest } = t
+      return rest
+    }
+    seen = true
+    return t
+  })
+}
+
 export function parseTasks(raw: string): TasksFile {
   const trimmed = raw.trim()
-  if (!trimmed) return { version: 1, tasks: [] }
+  if (!trimmed) return { version: TASKS_FILE_VERSION, tasks: [] }
   let data: unknown
   try {
     data = JSON5.parse(trimmed)
@@ -111,8 +194,21 @@ export function parseTasks(raw: string): TasksFile {
   }
   if (!isObj(data))
     throw new TasksParseError('tasks.json5: root must be an object')
-  if (data.version !== 1)
-    throw new TasksParseError('tasks.json5: version must be 1')
+
+  const version = data.version
+  if (
+    typeof version !== 'number' ||
+    !SUPPORTED_VERSIONS.includes(version as (typeof SUPPORTED_VERSIONS)[number])
+  )
+    throw new TasksParseError(
+      `tasks.json5: version must be one of ${SUPPORTED_VERSIONS.join(', ')}`,
+    )
+  if (version !== TASKS_FILE_VERSION) {
+    console.warn(
+      `[tasks] upgrading tasks.json5 from v${version} to v${TASKS_FILE_VERSION}`,
+    )
+  }
+
   const tasks = data.tasks
   if (!Array.isArray(tasks))
     throw new TasksParseError('tasks.json5: tasks must be an array')
@@ -123,5 +219,8 @@ export function parseTasks(raw: string): TasksFile {
       throw new TasksParseError(`tasks.json5: duplicate task id "${t.id}"`)
     seen.add(t.id)
   }
-  return { version: 1, tasks: parsed }
+  return {
+    version: TASKS_FILE_VERSION,
+    tasks: enforceSingleDefault(parsed),
+  }
 }
