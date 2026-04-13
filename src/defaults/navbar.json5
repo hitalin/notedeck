@@ -2,10 +2,10 @@
 // ナビバー構成
 [
   { type: 'notifications', accountId: null },
-  { type: 'followRequests', accountId: null },
   { type: 'mentions', accountId: null },
   { type: 'specified', accountId: null },
   { type: 'chat', accountId: null },
+  { type: 'followRequests', accountId: null },
   { type: 'search', accountId: null },
   { type: 'lookup', accountId: null },
   { type: 'pluginManager', accountId: null },
