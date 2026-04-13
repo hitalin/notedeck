@@ -125,9 +125,15 @@ async function importTasks() {
 const { confirming: confirmingReset, trigger: triggerReset } =
   useDoubleConfirm()
 
-function handleReset() {
-  triggerReset(() => {
+async function handleReset() {
+  triggerReset(async () => {
     code.value = defaultTasksJson5
+    try {
+      if (isTauri) await writeTasks(defaultTasksJson5)
+      tasksStore.setFromRaw(defaultTasksJson5)
+    } catch (e) {
+      useToast().show(`リセット失敗: ${(e as Error).message}`, 'error')
+    }
   })
 }
 </script>
