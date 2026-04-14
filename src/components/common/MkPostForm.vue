@@ -1,24 +1,14 @@
 <script setup lang="ts">
-import {
-  computed,
-  defineAsyncComponent,
-  nextTick,
-  onMounted,
-  ref,
-  useTemplateRef,
-  watch,
-} from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type {
   NormalizedDriveFile,
   NormalizedNote,
   NormalizedUser,
 } from '@/adapters/types'
 import { useAutocomplete } from '@/composables/useAutocomplete'
-import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePopupControl } from '@/composables/usePopupControl'
-import { usePortal } from '@/composables/usePortal'
 import { usePostFormState } from '@/composables/usePostFormState'
 import {
   getAccountAvatarUrl,
@@ -29,15 +19,11 @@ import { useSettingsStore } from '@/stores/settings'
 import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { parseMfm } from '@/utils/mfm'
-import { commands, unwrap } from '@/utils/tauriInvoke'
-import { extractColumnThemeVars } from '@/utils/themeVars'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
-import MkMediaGrid from './MkMediaGrid.vue'
 import MkMfm from './MkMfm.vue'
+import MkNote from './MkNote.vue'
 import MkReactionPicker from './MkReactionPicker.vue'
-
-const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
 
 const props = defineProps<{
   accountId: string
@@ -194,6 +180,39 @@ function minScheduleDatetime(): string {
   return d.toISOString().slice(0, 16)
 }
 
+// --- Preview ---
+const previewNote = computed<NormalizedNote | null>(() => {
+  if (!showPreview.value) return null
+  const acc = account.value
+  if (!acc) return null
+  return {
+    id: `preview-${acc.id}`,
+    _accountId: acc.id,
+    _serverHost: acc.host,
+    createdAt: new Date().toISOString(),
+    text: text.value || null,
+    cw: showCw.value && cw.value ? cw.value : null,
+    user: {
+      id: acc.userId,
+      username: acc.username,
+      host: null,
+      name: acc.displayName,
+      avatarUrl: acc.avatarUrl,
+    },
+    visibility: visibility.value,
+    emojis: {},
+    reactionEmojis: {},
+    reactions: {},
+    renoteCount: 0,
+    repliesCount: 0,
+    files: attachedFiles.value,
+    localOnly: localOnly.value,
+    replyId: props.replyTo?.id ?? null,
+    renoteId: props.renoteId ?? null,
+    channelId: props.channelId ?? null,
+  }
+})
+
 // --- Mention popup ---
 const {
   showMentionPopup,
@@ -289,47 +308,6 @@ function closePopups() {
   popups.closeAll()
   acDismiss()
 }
-
-// --- Mention hover popup in preview ---
-const previewMentionPopup = useHoverPopup()
-const previewMentionUserId = ref('')
-const previewMentionTheme = ref<Record<string, string>>()
-let previewMentionHovering = false
-
-async function onPreviewMentionHover(
-  e: MouseEvent,
-  username: string,
-  host: string | null,
-) {
-  previewMentionHovering = true
-  const el = e.currentTarget as HTMLElement
-  const rect = el.getBoundingClientRect()
-  previewMentionTheme.value = extractColumnThemeVars(el)
-  try {
-    const user = unwrap(
-      await commands.apiLookupUser(
-        activeAccountId.value,
-        username,
-        host ?? null,
-      ),
-    )
-    if (!previewMentionHovering) return
-    previewMentionUserId.value = user.id
-    previewMentionPopup.show({ x: rect.right + 8, y: rect.top })
-  } catch {
-    // lookup failed
-  }
-}
-
-function onPreviewMentionLeave() {
-  previewMentionHovering = false
-  previewMentionPopup.hide()
-}
-
-const previewMentionPortalRef = useTemplateRef<HTMLElement>(
-  'previewMentionPortalRef',
-)
-usePortal(previewMentionPortalRef)
 
 onMounted(async () => {
   await initAdapter()
@@ -776,27 +754,8 @@ function onKeydown(e: KeyboardEvent) {
 
       <!-- Preview -->
       <div v-if="showPreview" :class="$style.previewSection">
-        <div :class="$style.previewHeader">
-          <i class="ti ti-eye" />
-          プレビュー
-        </div>
-        <div :class="$style.previewArea">
-          <div v-if="text" :class="$style.previewContent">
-            <MkMfm
-              :text="text"
-              :emojis="{}"
-              :server-host="account?.host"
-              :my-username="account?.username"
-              :my-host="account?.host"
-              @mention-hover="onPreviewMentionHover"
-              @mention-leave="onPreviewMentionLeave"
-            />
-          </div>
-          <div v-else :class="$style.previewEmpty">テキストを入力するとプレビューが表示されます</div>
-        </div>
-        <div v-if="attachedFiles.length > 0" :class="$style.previewFiles">
-          <MkMediaGrid :files="attachedFiles" />
-        </div>
+        <MkNote v-if="previewNote" :note="previewNote" embedded />
+        <div v-else :class="$style.previewEmpty">アカウントが選択されていません</div>
       </div>
 
       <!-- Poll editor -->
@@ -1005,17 +964,6 @@ function onKeydown(e: KeyboardEvent) {
       @close="showDrivePicker = false"
     />
 
-    <!-- Mention hover popup in preview -->
-    <div v-if="previewMentionPopup.isVisible.value && previewMentionUserId" ref="previewMentionPortalRef">
-      <MkUserPopup
-        :user-id="previewMentionUserId"
-        :account-id="activeAccountId!"
-        :x="previewMentionPopup.position.value.x"
-        :y="previewMentionPopup.position.value.y"
-        :theme-vars="previewMentionTheme"
-        @close="previewMentionPopup.forceClose()"
-      />
-    </div>
   </div>
 </template>
 
@@ -1580,30 +1528,9 @@ function onKeydown(e: KeyboardEvent) {
 /* ── Preview ── */
 .previewSection {
   border-top: 1px solid color-mix(in srgb, var(--nd-fg) 12%, transparent);
-}
-
-.previewHeader {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 24px;
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  opacity: 0.5;
-}
-
-.previewArea {
-  padding: 0 24px;
-  max-height: 300px;
+  max-height: 360px;
   overflow-y: auto;
-  line-height: 1.5;
-  font-size: 110%;
   scrollbar-width: thin;
-}
-
-.previewContent {
-  word-break: break-word;
-  overflow-wrap: break-word;
 }
 
 .previewEmpty {
@@ -1612,10 +1539,6 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--nd-fg);
   opacity: 0.35;
   font-size: 0.9em;
-}
-
-.previewFiles {
-  padding: 8px 24px;
 }
 
 /* ── Error ── */
