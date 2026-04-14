@@ -883,7 +883,7 @@ onUnmounted(() => {
         :tabs="filterTabDefs"
         :model-value="activeFilter"
         :swipe-target="scroller"
-        label-on-active-only
+        compact
         scrollable
         @update:model-value="onFilterChange"
       />

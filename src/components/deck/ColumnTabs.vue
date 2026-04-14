@@ -18,14 +18,14 @@ const props = withDefaults(
     modelValue: string
     /** When provided, swipe/wheel gestures on this element switch tabs */
     swipeTarget?: HTMLElement | null
-    /** Show label only on the active tab (Timeline-style compact layout) */
-    labelOnActiveOnly?: boolean
-    /** Enable horizontal scroll for many tabs (Notification-style) */
+    /** Show label only on the active tab (icon-only compact layout) */
+    compact?: boolean
+    /** Enable horizontal scroll for many tabs */
     scrollable?: boolean
   }>(),
   {
     swipeTarget: null,
-    labelOnActiveOnly: false,
+    compact: false,
     scrollable: false,
   },
 )
@@ -101,11 +101,7 @@ watch(
 <template>
   <div
     ref="tabsRef"
-    :class="[
-      $style.tabs,
-      scrollable && $style.scrollable,
-      labelOnActiveOnly && $style.compact,
-    ]"
+    :class="[$style.tabs, scrollable && $style.scrollable]"
   >
     <button
       v-for="t in tabs"
@@ -115,15 +111,15 @@ watch(
       :title="t.label"
       @click="switchTab(t.value)"
     >
-      <template v-if="t.icon">
+      <span v-if="t.icon" :class="$style.tabIcon">
         <i
           v-if="!t.iconIsSvg"
-          :class="['ti ti-' + t.icon, $style.tabIcon]"
+          :class="'ti ti-' + t.icon"
         />
         <svg
           v-else
-          :class="$style.tabIcon"
           viewBox="0 0 24 24"
+          aria-hidden="true"
         >
           <path
             :d="t.icon"
@@ -134,9 +130,9 @@ watch(
             fill="none"
           />
         </svg>
-      </template>
+      </span>
       <span
-        v-if="!labelOnActiveOnly || modelValue === t.value"
+        v-if="!compact || modelValue === t.value"
         :class="$style.tabLabel"
       >{{ t.label }}</span>
     </button>
@@ -165,12 +161,11 @@ watch(
 }
 
 .tab {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 14px;
-  min-width: 44px;
+  padding: 8px 12px;
   flex: 0 0 auto;
   opacity: 0.4;
   transition:
@@ -188,23 +183,28 @@ watch(
   }
 }
 
-.compact .tab {
-  padding: 8px 12px;
-  aspect-ratio: 1;
-
-  &.active {
-    aspect-ratio: auto;
-    padding: 8px 14px;
-  }
+/* Icon wrapper: fixed-size box that clips any glyph bleed from hinting.
+   Box (20px) > glyph (16px) absorbs sub-pixel rendering differences
+   between WebKitGTK / WebView2 / Chromium. */
+.tabIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  overflow: hidden;
+  color: currentColor;
 }
 
-.tabIcon {
-  color: currentColor;
+.tabIcon > i {
   font-size: 16px;
   line-height: 1;
+}
+
+.tabIcon > svg {
   width: 16px;
   height: 16px;
-  flex-shrink: 0;
 }
 
 .tabLabel {
