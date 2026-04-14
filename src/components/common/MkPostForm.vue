@@ -2183,22 +2183,11 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-/* Mobile fullscreen */
+/* Mobile: デスクトップと同じ枠付きモーダル（背景は透過して背後のカラムが透ける） */
 .mobile {
   &.postOverlay {
-    background: var(--nd-bg);
-    padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
+    padding-top: calc(8vh + var(--nd-safe-area-top, env(safe-area-inset-top)));
     padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
-    align-items: stretch;
-  }
-
-  .postForm:not(.postFormInline) {
-    max-width: none;
-    margin: 0;
-    border-radius: 0;
-    height: 100%;
-    max-height: none;
-    box-shadow: none;
   }
 
   .emojiPopup {
