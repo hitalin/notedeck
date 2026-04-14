@@ -168,8 +168,9 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 8px 14px;
+  min-width: 44px;
   flex: 0 0 auto;
   opacity: 0.4;
   transition:
@@ -184,6 +185,16 @@ watch(
 
   &.active {
     opacity: 1;
+  }
+}
+
+.compact .tab {
+  padding: 8px 12px;
+  aspect-ratio: 1;
+
+  &.active {
+    aspect-ratio: auto;
+    padding: 8px 14px;
   }
 }
 
