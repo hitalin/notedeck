@@ -429,9 +429,13 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   }
 
   /** Save window layout (position/size) to the current profile.
-   *  Persistence is debounced via schedulePersist so rapid window resize
-   *  events don't cascade localStorage/file writes. */
-  function saveWindowLayout(windowLayout: DeckWindowLayout) {
+   *  Defaults to debounced persist to avoid I/O cascades during rapid resize.
+   *  Pass `{ immediate: true }` from beforeunload paths where the debounce
+   *  timer wouldn't fire in time. */
+  function saveWindowLayout(
+    windowLayout: DeckWindowLayout,
+    opts?: { immediate?: boolean },
+  ) {
     if (!windowProfileId.value) return
     const profile = currentProfile.value
     if (!profile) return
@@ -443,16 +447,21 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
       profile.windows.push(windowLayout)
     }
     profileVersion.value++
-    schedulePersist()
+    if (opts?.immediate) flushPersist()
+    else schedulePersist()
   }
 
-  function removeWindowLayout(windowId: string) {
+  function removeWindowLayout(
+    windowId: string,
+    opts?: { immediate?: boolean },
+  ) {
     if (!windowProfileId.value) return
     const profile = currentProfile.value
     if (!profile?.windows) return
     profile.windows = profile.windows.filter((w) => w.id !== windowId)
     profileVersion.value++
-    schedulePersist()
+    if (opts?.immediate) flushPersist()
+    else schedulePersist()
   }
 
   function getWindowLayouts(): DeckWindowLayout[] {

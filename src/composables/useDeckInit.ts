@@ -142,10 +142,12 @@ export function useDeckInit(options: {
         unlistenWindowEvents = fn
       })
 
-      // Sub-windows save their layout on beforeunload
+      // Sub-windows save their layout on beforeunload.
+      // `immediate` bypasses the resize-debounce so the write hits localStorage
+      // synchronously before the webview tears down.
       if (deckStore.currentWindowId) {
         window.addEventListener('beforeunload', () => {
-          saveCurrentWindowLayout()
+          saveCurrentWindowLayout({ immediate: true })
         })
       }
     }

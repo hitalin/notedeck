@@ -139,8 +139,12 @@ export async function popOutColumnToWindow(
 
 /**
  * Save the current window's position and size to the profile.
+ * Pass `{ immediate: true }` from beforeunload so the persist isn't lost
+ * to the debounce timer that wouldn't fire before the window closes.
  */
-export async function saveCurrentWindowLayout(): Promise<void> {
+export async function saveCurrentWindowLayout(opts?: {
+  immediate?: boolean
+}): Promise<void> {
   const deckStore = useDeckStore()
   if (!deckStore.currentWindowId) return
 
@@ -163,7 +167,7 @@ export async function saveCurrentWindowLayout(): Promise<void> {
       height: size.height,
       monitor: monitor?.name ?? undefined,
     }
-    deckStore.saveWindowLayout(layout)
+    deckStore.saveWindowLayout(layout, opts)
   } catch {
     // Ignore — may fail on non-Tauri environment
   }
