@@ -650,7 +650,7 @@ defineExpose({
       <div v-if="isCompact && props.mobileDrawerOpen" :class="$style.mobileSubButton">
         <svg viewBox="0 0 16 64" :class="$style.subButtonShape">
           <g transform="matrix(0.333333,0,0,0.222222,0.000895785,21.3333)">
-            <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" />
+            <path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" fill="currentColor" />
           </g>
         </svg>
         <button class="_button" :class="$style.subButtonClickable" title="ナビバー編集" @click="closeDrawerAndDo(() => windowsStore.open('navEditor'))">
