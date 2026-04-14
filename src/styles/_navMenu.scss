@@ -10,18 +10,18 @@
 }
 
 @keyframes menuIn {
-  from { opacity: 0; transform: translateY(4px) scale(0.97); }
+  from { opacity: 0; transform: translateY(4px); }
 }
 
 @keyframes menuOut {
-  to { opacity: 0; transform: translateY(4px) scale(0.97); }
+  to { opacity: 0; transform: translateY(4px); }
 }
 
 @media (max-width: 500px) {
   @keyframes menuIn {
-    from { opacity: 0; transform: translateY(8px) scale(0.97); }
+    from { opacity: 0; transform: translateY(8px); }
   }
   @keyframes menuOut {
-    to { opacity: 0; transform: translateY(8px) scale(0.97); }
+    to { opacity: 0; transform: translateY(8px); }
   }
 }
