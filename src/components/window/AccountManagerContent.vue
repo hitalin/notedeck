@@ -361,7 +361,8 @@ async function importAccountOrder() {
   align-items: center;
   justify-content: center;
   background: color-mix(in srgb, var(--nd-panel) 85%, transparent);
-  backdrop-filter: blur(4px);
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   z-index: 10;
   animation: fadeIn 0.15s ease;
 }

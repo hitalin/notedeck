@@ -146,6 +146,10 @@
   --nd-vibrancy: blur(var(--nd-blur));
   --nd-vibrancy-panel: blur(var(--nd-blur-panel));
   --nd-vibrancy-content: blur(var(--nd-blur-content));
+  /* Glass surface — popup / menu / drop-down 共通の半透明背景。
+     --nd-vibrancy と組み合わせて使う。パフォーマンスモードで
+     --nd-vibrancy: none に落ちても 80% 不透明 navBg が残る */
+  --nd-glassBg: color-mix(in srgb, var(--nd-navBg) 80%, transparent);
   /* App chrome offsets (overridden per platform) */
   --nd-app-inset-top: 0px;
   /* Z-index layers */
@@ -309,7 +313,9 @@ summary,
 /* ---- Popup (shared panel — no backdrop-filter to save GPU memory) ---- */
 
 ._popup {
-  background: color-mix(in srgb, var(--nd-popup) 96%, transparent);
+  background: var(--nd-glassBg);
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   border-radius: var(--nd-radius);
   box-shadow: var(--nd-shadow-m);
   contain: paint;
@@ -317,7 +323,9 @@ summary,
 
 ._popupMenu {
   position: absolute;
-  background: var(--nd-popup, var(--nd-panelBg));
+  background: var(--nd-glassBg);
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   border-radius: var(--nd-radius-md);
   box-shadow: var(--nd-shadow-m);
   padding: 6px 0;

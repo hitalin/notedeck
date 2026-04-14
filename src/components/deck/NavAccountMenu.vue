@@ -249,9 +249,6 @@ function modeIcon(key: string, active: boolean): string {
   right: 8px;
   top: auto;
   margin: 0;
-  background: color-mix(in srgb, var(--nd-navBg) 80%, transparent);
-  backdrop-filter: var(--nd-vibrancy);
-  -webkit-backdrop-filter: var(--nd-vibrancy);
 }
 
 .navAccountLogout {

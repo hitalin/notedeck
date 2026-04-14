@@ -876,7 +876,7 @@ defineExpose({
   padding: 6px 0;
   z-index: var(--nd-z-menu);
   min-width: 200px;
-  background: color-mix(in srgb, var(--nd-navBg) 80%, transparent);
+  background: var(--nd-glassBg);
   backdrop-filter: var(--nd-vibrancy);
   -webkit-backdrop-filter: var(--nd-vibrancy);
   border-radius: var(--nd-radius-md);
@@ -1238,8 +1238,6 @@ defineExpose({
   width: var(--sub-button-width, 20px);
   height: 50px;
   align-content: center;
-  backdrop-filter: var(--nd-vibrancy);
-  -webkit-backdrop-filter: var(--nd-vibrancy);
 
   .subButtonShape {
     color: var(--nd-navBg);
