@@ -1011,7 +1011,7 @@ function onKeydown(e: KeyboardEvent) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 12vh;
+  padding-top: calc(var(--nd-app-inset-top, 0px) + 12px);
   background: var(--nd-modalBg);
   overflow-y: auto;
 }
@@ -2186,7 +2186,7 @@ function onKeydown(e: KeyboardEvent) {
 /* Mobile: デスクトップと同じ枠付きモーダル（背景は透過して背後のカラムが透ける） */
 .mobile {
   &.postOverlay {
-    padding-top: calc(8vh + var(--nd-safe-area-top, env(safe-area-inset-top)));
+    padding-top: var(--nd-safe-area-top, env(safe-area-inset-top));
     padding-bottom: var(--nd-safe-area-bottom, env(safe-area-inset-bottom));
   }
 
