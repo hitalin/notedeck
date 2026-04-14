@@ -148,6 +148,9 @@ watch(
   border-bottom: 1px solid var(--nd-divider);
   background: var(--nd-bg);
   flex-shrink: 0;
+  /* button 間の物理的な間隔。padding (button 内部) と責務を分離し、
+     Chromium 系で glyph advance width が膨らんでも隣接タブへ干渉しない。 */
+  gap: 4px;
 }
 
 .tabs.scrollable {

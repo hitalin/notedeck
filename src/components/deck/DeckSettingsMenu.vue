@@ -604,6 +604,10 @@ usePortal(settingsMenuPortalRef)
   opacity: 0.5;
 }
 
+.activeDot + .chevronNav {
+  margin-left: 0;
+}
+
 .themeSelectBody {
   margin-top: 8px;
   max-height: 200px;

@@ -60,6 +60,7 @@ const cssCode = ref(themeStore.customCss)
 const presets = ref({
   customFont: '',
   fontSize: 0,
+  customCursor: '',
 })
 
 // Parse existing CSS to restore preset states
@@ -68,6 +69,8 @@ function parsePresetsFromCss(cssStr: string) {
   presets.value.customFont = fontMatch?.[1] ?? ''
   const sizeMatch = cssStr.match(/\/\* nd-fontsize: (.+?) \*\//)
   presets.value.fontSize = sizeMatch ? Number(sizeMatch[1]) : 0
+  const cursorMatch = cssStr.match(/\/\* nd-cursor: (.+?) \*\//)
+  presets.value.customCursor = cursorMatch?.[1] ?? ''
 }
 parsePresetsFromCss(cssCode.value)
 
@@ -128,6 +131,24 @@ const FONT_SIZE_BASE = 15
 const FONT_SIZE_MIN = -3
 const FONT_SIZE_MAX = 5
 
+interface CursorOption {
+  key: string
+  label: string
+  css: string
+}
+
+const ROCKET_CURSOR_SVG =
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><text y='16' font-size='16'>%F0%9F%9A%80</text></svg>"
+
+const CURSOR_OPTIONS: CursorOption[] = [
+  { key: '', label: 'デフォルト', css: '' },
+  {
+    key: 'rocket',
+    label: 'ロケット',
+    css: `url("${ROCKET_CURSOR_SVG}") 2 18, auto`,
+  },
+]
+
 const fontSizeLabel = computed(() => {
   if (presets.value.fontSize === 0) return 'デフォルト (15px)'
   return `${FONT_SIZE_BASE + presets.value.fontSize}px`
@@ -175,6 +196,14 @@ function buildPresetCss(): string {
     parts.push(`html { font-size: ${px}px; }`)
   }
 
+  if (presets.value.customCursor) {
+    const opt = CURSOR_OPTIONS.find((o) => o.key === presets.value.customCursor)
+    if (opt?.css) {
+      parts.push(`/* nd-cursor: ${opt.key} */`)
+      parts.push(`*, *::before, *::after { cursor: ${opt.css}; }`)
+    }
+  }
+
   return parts.join('\n')
 }
 
@@ -186,10 +215,12 @@ function extractUserCss(fullCss: string): string {
       if (!t) return false
       if (t.startsWith('/* nd-font:')) return false
       if (t.startsWith('/* nd-fontsize:')) return false
+      if (t.startsWith('/* nd-cursor:')) return false
       if (t.startsWith('@import url(')) return false
       if (t.startsWith('@font-face')) return false
       if (t.match(/^html\s*\{\s*font-family:/)) return false
       if (t.match(/^html\s*\{\s*font-size:/)) return false
+      if (t.match(/^\*,\s*\*::before,\s*\*::after\s*\{\s*cursor:/)) return false
       return true
     })
     .join('\n')
@@ -224,7 +255,11 @@ watch(fullCss, (cssStr) => {
 })
 
 watch(
-  () => [presets.value.customFont, presets.value.fontSize],
+  () => [
+    presets.value.customFont,
+    presets.value.fontSize,
+    presets.value.customCursor,
+  ],
   () => {
     const cssStr = fullCss.value
     cssCode.value = cssStr
@@ -299,7 +334,7 @@ const { confirming: confirmingClear, trigger: triggerClear } =
 
 function handleClear() {
   triggerClear(() => {
-    presets.value = { customFont: '', fontSize: 0 }
+    presets.value = { customFont: '', fontSize: 0, customCursor: '' }
     userFreeformCss.value = ''
     cssCode.value = ''
     cssError.value = null
@@ -324,6 +359,29 @@ function selectFont(value: string) {
 
 useClickOutside(dropdownRef, () => {
   showFontDropdown.value = false
+})
+
+// Cursor dropdown
+const showCursorDropdown = ref(false)
+const cursorDropdownRef = ref<HTMLElement | null>(null)
+
+const selectedCursorLabel = computed(() => {
+  const opt = CURSOR_OPTIONS.find((o) => o.key === presets.value.customCursor)
+  return opt?.label ?? 'デフォルト'
+})
+
+const cursorPreviewStyle = computed(() => {
+  const opt = CURSOR_OPTIONS.find((o) => o.key === presets.value.customCursor)
+  return opt?.css ? { cursor: opt.css } : {}
+})
+
+function selectCursor(key: string) {
+  presets.value.customCursor = key
+  showCursorDropdown.value = false
+}
+
+useClickOutside(cursorDropdownRef, () => {
+  showCursorDropdown.value = false
 })
 
 watch(tab, (t) => {
@@ -424,6 +482,44 @@ watch(tab, (t) => {
           >
             リセット
           </button>
+        </template>
+      </div>
+
+      <!-- Cursor -->
+      <div :class="$style.section">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('cursor')">
+          <i class="ti ti-pointer" />
+          カーソル
+          <span :class="$style.sectionValue">{{ selectedCursorLabel }}</span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.cursor }]" />
+        </button>
+        <template v-if="expandedSections.cursor">
+          <div ref="cursorDropdownRef" :class="$style.dropdown">
+            <button
+              class="_button"
+              :class="$style.dropdownTrigger"
+              @click="showCursorDropdown = !showCursorDropdown"
+            >
+              <span>{{ selectedCursorLabel }}</span>
+              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
+            </button>
+            <div v-if="showCursorDropdown" :class="$style.dropdownPanel">
+              <button
+                v-for="opt in CURSOR_OPTIONS"
+                :key="opt.key"
+                class="_button"
+                :class="[$style.dropdownItem, { [$style.selected]: presets.customCursor === opt.key }]"
+                :style="opt.css ? { cursor: opt.css } : {}"
+                @click="selectCursor(opt.key)"
+              >
+                <span>{{ opt.label }}</span>
+                <i v-if="presets.customCursor === opt.key" class="ti ti-check" :class="$style.checkIcon" />
+              </button>
+            </div>
+          </div>
+          <div :class="$style.preview" :style="cursorPreviewStyle">
+            ここにマウスを重ねてプレビュー
+          </div>
         </template>
       </div>
 

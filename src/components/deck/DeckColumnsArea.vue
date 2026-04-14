@@ -162,8 +162,6 @@ function getShellPreview(colId: string): string[] {
   })
 }
 
-const eagerMountRadius = computed(() => (isCompact.value ? 0 : 1))
-
 const activeGroupIndex = computed(() => {
   const activeId = deckStore.activeColumnId
   if (!activeId) return 0
@@ -173,18 +171,24 @@ const activeGroupIndex = computed(() => {
   return idx >= 0 ? idx : 0
 })
 
-function isPriorityGroup(groupIndex: number): boolean {
-  return Math.abs(groupIndex - activeGroupIndex.value) <= eagerMountRadius.value
-}
-
-function shouldMountColumn(colId: string, groupIndex: number): boolean {
-  return isPriorityGroup(groupIndex) || colVisibility.isColumnMounted(colId)
+// 可視範囲ベースのマウント判定:
+// - モバイル: アクティブカラムは常にマウント、それ以外は IntersectionObserver に委ねる
+// - デスクトップ: 全カラムを IntersectionObserver 判定に委ねる
+//   (observe 時に initialMounted:true で開始し、非可視判定されたら columnUnloadDelay 後に自然に外れる)
+function shouldMountColumn(colId: string): boolean {
+  if (isCompact.value) {
+    return (
+      colId === deckStore.activeColumnId || colVisibility.isColumnMounted(colId)
+    )
+  }
+  return colVisibility.isColumnMounted(colId)
 }
 
 function preloadVisiblePriorityGroups() {
   if (!import.meta.env.PROD) return
+  const activeIdx = activeGroupIndex.value
   for (const [groupIndex, group] of deckStore.windowLayout.entries()) {
-    if (!isPriorityGroup(groupIndex)) continue
+    if (Math.abs(groupIndex - activeIdx) > 1) continue
     for (const colId of group) {
       const col = columnMap.value.get(colId)
       if (col) COLUMN_PRELOADERS[col.type]?.()
@@ -205,15 +209,24 @@ onUnmounted(() => {
   colVisibility.disconnect()
 })
 
-// Re-observe column cells when layout changes
+// Re-observe column cells when layout changes, and cleanup removed columns
+let prevColumnIds = new Set<string>()
 watch(
   () => deckStore.windowLayout,
-  () => {
+  (layout) => {
     if (!columnsRef.value) return
+    const currentIds = new Set<string>(layout.flat())
+    for (const id of prevColumnIds) {
+      if (!currentIds.has(id)) colVisibility.cleanup(id)
+    }
+    prevColumnIds = currentIds
+    // デスクトップは初回表示を滑らかにするため initialMounted:true で開始
+    // モバイルは従来通り false 開始（アクティブのみ shouldMountColumn で true 判定）
+    const initialMounted = !isCompact.value
     for (const cell of columnsRef.value.querySelectorAll<HTMLElement>(
       '.stack-cell[data-column-id]',
     )) {
-      colVisibility.observe(cell)
+      colVisibility.observe(cell, { initialMounted })
     }
   },
   { flush: 'post', deep: true, immediate: true },
@@ -345,7 +358,7 @@ defineExpose({
         >
           <component
             v-if="
-              shouldMountColumn(colId, groupIndex) &&
+              shouldMountColumn(colId) &&
               columnMap.get(colId) &&
               COLUMN_COMPONENTS[columnMap.get(colId)!.type]
             "

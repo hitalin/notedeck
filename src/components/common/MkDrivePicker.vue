@@ -127,7 +127,7 @@ fetchDrive()
 .drivePicker {
   width: 100%;
   max-width: 520px;
-  max-height: 50vh;
+  max-height: min(75vh, 640px);
   margin: 0 16px 16px;
   display: flex;
   flex-direction: column;
