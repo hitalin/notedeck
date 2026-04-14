@@ -40,6 +40,8 @@ export function provideColumnVisibility() {
 
   // Track pending unload timers per column
   const unloadTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  // Track observed elements per column so we can unobserve on cleanup
+  const observedElements = new Map<string, Element>()
 
   let observer: IntersectionObserver | null = null
 
@@ -77,22 +79,41 @@ export function provideColumnVisibility() {
           }
         }
       },
-      { root: container.value, threshold: 0 },
+      // rootMargin で横方向に 10% 余裕を持たせ、端ピクセルの判定不安定を吸収
+      { root: container.value, threshold: 0, rootMargin: '0px 10%' },
     )
   }
 
-  function observe(el: Element) {
+  function observe(el: Element, options?: { initialMounted?: boolean }) {
     observer?.observe(el)
-    // New columns start unmounted unless the consumer opts into eager mount.
     const colId = (el as HTMLElement).dataset.columnId
-    if (colId && !mounted.has(colId)) {
-      mounted.set(colId, false)
+    if (!colId) return
+    observedElements.set(colId, el)
+    if (!mounted.has(colId)) {
+      mounted.set(colId, options?.initialMounted ?? false)
     }
+  }
+
+  function cleanup(colId: string) {
+    const el = observedElements.get(colId)
+    if (el) {
+      observer?.unobserve(el)
+      observedElements.delete(colId)
+    }
+    const timer = unloadTimers.get(colId)
+    if (timer != null) {
+      clearTimeout(timer)
+      unloadTimers.delete(colId)
+    }
+    map.delete(colId)
+    mounted.delete(colId)
+    live.delete(colId)
   }
 
   function disconnect() {
     observer?.disconnect()
     observer = null
+    observedElements.clear()
     // Clear all pending timers
     for (const timer of unloadTimers.values()) {
       clearTimeout(timer)
@@ -145,7 +166,14 @@ export function provideColumnVisibility() {
     }
   }
 
-  return { setup, observe, disconnect, isColumnMounted, updateLiveBudget }
+  return {
+    setup,
+    observe,
+    cleanup,
+    disconnect,
+    isColumnMounted,
+    updateLiveBudget,
+  }
 }
 
 /** Inject column visibility state. Returns true when column is visible or unknown. */
