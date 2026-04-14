@@ -60,7 +60,7 @@ export function useDeckInit(options: {
     deckStore.flushSave()
   }
 
-  let updateCheckTimer: ReturnType<typeof setTimeout> | undefined
+  let updateCheckHandle: { cancel: () => void } | undefined
 
   onMounted(() => {
     uiStore.deckMounted = true
@@ -103,12 +103,23 @@ export function useDeckInit(options: {
       })
     })
 
-    updateCheckTimer = setTimeout(options.checkForUpdate, 5000)
+    // Update check: アイドル時に確認（旧: 固定 5000ms 遅延）。
+    // 起動直後のネットワーク負荷を避けつつ、idle で即実行されるので結果確認が速い。
+    if (window.requestIdleCallback) {
+      const id = window.requestIdleCallback(options.checkForUpdate, {
+        timeout: 3000,
+      })
+      updateCheckHandle = { cancel: () => window.cancelIdleCallback(id) }
+    } else {
+      const id = setTimeout(options.checkForUpdate, 2000)
+      updateCheckHandle = { cancel: () => clearTimeout(id) }
+    }
 
-    // Plugins — defer to idle since AiScript is not on the critical startup path
+    // Plugins — defer to idle since AiScript is not on the critical startup path.
+    // requestIdleCallback 未実装環境でも体感遅延が出ないよう 50ms に短縮（旧: 500ms）
     const idle =
       window.requestIdleCallback ??
-      ((cb: IdleRequestCallback) => setTimeout(cb, 500))
+      ((cb: IdleRequestCallback) => setTimeout(cb, 50))
     idle(() => {
       import('@/aiscript/plugin-api').then(({ launchAllPlugins }) => {
         pluginsStore.ensureLoaded()
@@ -165,7 +176,7 @@ export function useDeckInit(options: {
     window.removeEventListener('pagehide', onPageHide)
     unlistenQuickNote?.()
     unlistenDeepLink?.()
-    clearTimeout(updateCheckTimer)
+    updateCheckHandle?.cancel()
     unlistenWindowEvents?.()
   })
 }
