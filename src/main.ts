@@ -31,10 +31,12 @@ if (isTauri) {
   }
 }
 
-// Defer non-critical CSS to idle time — KaTeX and Shiki are not needed at startup
+// Defer non-critical CSS to idle time — KaTeX and Shiki are not needed at startup.
+// WebView2 など requestIdleCallback 未実装環境ではフォールバック 50ms
+// （2000ms は初回描画に数式/コード表示が間に合わず空白が見えてしまう）
 const _idle =
   window.requestIdleCallback ??
-  ((cb: IdleRequestCallback) => setTimeout(cb, 2000))
+  ((cb: IdleRequestCallback) => setTimeout(cb, 50))
 _idle(() => {
   import('katex/dist/katex.min.css')
   import('./assets/shiki-dark-plus.css')

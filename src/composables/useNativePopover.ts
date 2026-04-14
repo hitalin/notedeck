@@ -28,6 +28,7 @@ export function useNativePopover(
 ) {
   const { leaveDuration = 200 } = options
   let hideTimer: ReturnType<typeof setTimeout> | null = null
+  let pendingAddTimer: ReturnType<typeof setTimeout> | null = null
 
   // Light dismiss: "auto" popover fires toggle event when dismissed
   function onToggle(e: Event) {
@@ -47,10 +48,18 @@ export function useNativePopover(
 
   function addOutsideClickListener() {
     // Delay to avoid catching the opening click/contextmenu
-    setTimeout(() => document.addEventListener('pointerdown', onPointerDown), 0)
+    if (pendingAddTimer != null) clearTimeout(pendingAddTimer)
+    pendingAddTimer = setTimeout(() => {
+      pendingAddTimer = null
+      document.addEventListener('pointerdown', onPointerDown)
+    }, 0)
   }
 
   function removeOutsideClickListener() {
+    if (pendingAddTimer != null) {
+      clearTimeout(pendingAddTimer)
+      pendingAddTimer = null
+    }
     document.removeEventListener('pointerdown', onPointerDown)
   }
 

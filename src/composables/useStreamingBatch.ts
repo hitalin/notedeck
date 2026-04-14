@@ -78,14 +78,15 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
       enableAnimation(batch.map((n) => n.id))
       for (const n of batch) options.noteIds.add(n.id)
       const merged = insertIntoSorted(options.notes.value, batch)
-      options.notes.value =
-        merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
-      if (merged.length > MAX_NOTES) syncNoteIds()
+      const truncated = merged.length > MAX_NOTES
+      if (truncated) merged.length = MAX_NOTES
+      options.notes.value = merged
+      if (truncated) syncNoteIds()
       options.onNewNotes?.(batch)
     } else {
       const merged = insertIntoSorted(pendingNotes.value, batch)
-      pendingNotes.value =
-        merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+      if (merged.length > MAX_NOTES) merged.length = MAX_NOTES
+      pendingNotes.value = merged
     }
   }
 
@@ -121,9 +122,10 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     enableAnimation(newNotes.map((n) => n.id))
     for (const n of newNotes) options.noteIds.add(n.id)
     const merged = insertIntoSorted(options.notes.value, newNotes)
-    options.notes.value =
-      merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
-    if (merged.length > MAX_NOTES) syncNoteIds()
+    const truncated = merged.length > MAX_NOTES
+    if (truncated) merged.length = MAX_NOTES
+    options.notes.value = merged
+    if (truncated) syncNoteIds()
     pendingNotes.value = []
   }
 
@@ -169,8 +171,8 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
     const deduped = newNotes.filter((n) => !options.noteIds.has(n.id))
     if (deduped.length === 0) return
     const merged = insertIntoSorted(queuedNotes.value, deduped)
-    queuedNotes.value =
-      merged.length > MAX_NOTES ? merged.slice(0, MAX_NOTES) : merged
+    if (merged.length > MAX_NOTES) merged.length = MAX_NOTES
+    queuedNotes.value = merged
   }
 
   function resetBatch() {

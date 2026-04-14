@@ -108,9 +108,11 @@ onMounted(async () => {
     await getCurrentWindow().show().catch(catchIgnore('window.show'))
   }
 
-  // Dismiss splash when deck is mounted (only exists on first launch without cache)
+  // Dismiss splash when deck is mounted (only exists on first launch without cache).
+  // `immediate: true` なので deck が既にマウント済みなら即 dismiss。
+  // 200ms は deckMounted が立たない異常系向けのフォールバック（通常は watch が先行）。
   if (document.getElementById('nd-splash')) {
-    const splashTimeout = setTimeout(dismissSplash, 500)
+    const splashTimeout = setTimeout(dismissSplash, 200)
     const stopWatch = watch(
       () => uiStore.deckMounted,
       (mounted) => {
@@ -120,6 +122,7 @@ onMounted(async () => {
           stopWatch()
         }
       },
+      { immediate: true },
     )
   }
 

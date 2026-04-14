@@ -428,8 +428,14 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     refreshProfileName()
   }
 
-  /** Save window layout (position/size) to the current profile */
-  function saveWindowLayout(windowLayout: DeckWindowLayout) {
+  /** Save window layout (position/size) to the current profile.
+   *  Defaults to debounced persist to avoid I/O cascades during rapid resize.
+   *  Pass `{ immediate: true }` from beforeunload paths where the debounce
+   *  timer wouldn't fire in time. */
+  function saveWindowLayout(
+    windowLayout: DeckWindowLayout,
+    opts?: { immediate?: boolean },
+  ) {
     if (!windowProfileId.value) return
     const profile = currentProfile.value
     if (!profile) return
@@ -440,27 +446,22 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     } else {
       profile.windows.push(windowLayout)
     }
-    setStorageJson(STORAGE_KEYS.deckProfiles, profilesData.value)
     profileVersion.value++
-    if (initialized.value) {
-      persistSingleProfile(profile).catch((e) =>
-        console.warn('[deckProfile] failed to persist profile:', e),
-      )
-    }
+    if (opts?.immediate) flushPersist()
+    else schedulePersist()
   }
 
-  function removeWindowLayout(windowId: string) {
+  function removeWindowLayout(
+    windowId: string,
+    opts?: { immediate?: boolean },
+  ) {
     if (!windowProfileId.value) return
     const profile = currentProfile.value
     if (!profile?.windows) return
     profile.windows = profile.windows.filter((w) => w.id !== windowId)
-    setStorageJson(STORAGE_KEYS.deckProfiles, profilesData.value)
     profileVersion.value++
-    if (initialized.value) {
-      persistSingleProfile(profile).catch((e) =>
-        console.warn('[deckProfile] failed to persist profile:', e),
-      )
-    }
+    if (opts?.immediate) flushPersist()
+    else schedulePersist()
   }
 
   function getWindowLayouts(): DeckWindowLayout[] {
