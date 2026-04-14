@@ -25,6 +25,7 @@ import {
   getAccountLabel,
   isGuestAccount,
 } from '@/stores/accounts'
+import { useSettingsStore } from '@/stores/settings'
 import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { parseMfm } from '@/utils/mfm'
@@ -58,9 +59,15 @@ const emit = defineEmits<{
 }>()
 
 const isCompact = useIsCompactLayout()
+const settingsStore = useSettingsStore()
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
-const showPreview = ref(false)
+const showPreview = computed<boolean>({
+  get: () => settingsStore.get('postForm.preview') ?? false,
+  set: (v) => {
+    settingsStore.set('postForm.preview', v)
+  },
+})
 
 const {
   text,
@@ -553,15 +560,24 @@ function onKeydown(e: KeyboardEvent) {
               <i class="ti ti-dots" />
             </button>
             <div v-if="showMoreMenu" :class="$style.moreMenu" @click.stop>
-              <!-- Preview -->
-              <button
-                class="_button"
-                :class="[$style.moreMenuItem, { [$style.active]: showPreview }]"
-                @click="showPreview = !showPreview; showMoreMenu = false"
+              <!-- Preview toggle -->
+              <div
+                :class="$style.moreMenuItem"
+                role="switch"
+                :aria-checked="showPreview"
+                @click="showPreview = !showPreview"
               >
                 <i class="ti ti-eye" />
                 プレビュー
-              </button>
+                <span
+                  class="nd-toggle-switch"
+                  :class="{ on: showPreview }"
+                  :style="{ marginLeft: 'auto' }"
+                  aria-hidden="true"
+                >
+                  <span class="nd-toggle-switch-knob" />
+                </span>
+              </div>
               <!-- Draft save -->
               <button
                 class="_button"
@@ -1397,6 +1413,8 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 0.85em;
   border-radius: var(--nd-radius-sm);
   color: var(--nd-fg);
+  cursor: pointer;
+  user-select: none;
   transition: background var(--nd-duration-base);
 
   &:hover {

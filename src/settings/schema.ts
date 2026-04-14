@@ -26,6 +26,9 @@ export interface NotedeckSettings {
   'modes.realtime'?: boolean
   'modes.offline'?: boolean
 
+  // --- Post form ---
+  'postForm.preview'?: boolean
+
   // keybinds は keybinds.json5 に分離済み（独立ファイル）
   // AI は ai.json5 + AI.md に分離済み（独立ファイル）
 }
