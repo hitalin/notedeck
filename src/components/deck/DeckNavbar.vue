@@ -876,7 +876,9 @@ defineExpose({
   padding: 6px 0;
   z-index: var(--nd-z-menu);
   min-width: 200px;
-  background: var(--nd-navBg);
+  background: color-mix(in srgb, var(--nd-navBg) 80%, transparent);
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   border-radius: var(--nd-radius-md);
   box-shadow: var(--nd-shadow-m);
 }
