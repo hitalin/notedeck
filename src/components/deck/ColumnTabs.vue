@@ -124,8 +124,6 @@ watch(
           v-else
           :class="$style.tabIcon"
           viewBox="0 0 24 24"
-          width="16"
-          height="16"
         >
           <path
             :d="t.icon"
@@ -191,6 +189,11 @@ watch(
 
 .tabIcon {
   color: currentColor;
+  font-size: 16px;
+  line-height: 1;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .tabLabel {
