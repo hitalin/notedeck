@@ -393,7 +393,7 @@ onMounted(async () => {
         :tabs="tabDefs"
         :model-value="tlType"
         :swipe-target="swipeTarget"
-        label-on-active-only
+        compact
         @update:model-value="onTabChange"
       >
         <template v-if="availableFilterKeys.length > 0" #trailing>
