@@ -95,14 +95,12 @@ export const useNoteStore = defineStore('notes', () => {
    */
   function put(notes: NormalizedNote[], skipTrigger = false) {
     const map = noteMap.value
-    // First pass: insert all notes and renotes (delete before set to refresh insertion order)
+    // First pass: insert all notes and renotes.
+    // LRU refresh on access is handled by get(); put() preserves arrival order
+    // so hot streaming paths avoid a redundant delete op per note.
     for (const note of notes) {
-      map.delete(note.id)
       map.set(note.id, note)
-      if (note.renote) {
-        map.delete(note.renote.id)
-        map.set(note.renote.id, note.renote)
-      }
+      if (note.renote) map.set(note.renote.id, note.renote)
     }
     // Second pass: eagerly sync renote references so resolve() avoids spread
     for (const note of notes) {

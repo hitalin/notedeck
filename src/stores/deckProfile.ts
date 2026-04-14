@@ -428,7 +428,9 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     refreshProfileName()
   }
 
-  /** Save window layout (position/size) to the current profile */
+  /** Save window layout (position/size) to the current profile.
+   *  Persistence is debounced via schedulePersist so rapid window resize
+   *  events don't cascade localStorage/file writes. */
   function saveWindowLayout(windowLayout: DeckWindowLayout) {
     if (!windowProfileId.value) return
     const profile = currentProfile.value
@@ -440,13 +442,8 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     } else {
       profile.windows.push(windowLayout)
     }
-    setStorageJson(STORAGE_KEYS.deckProfiles, profilesData.value)
     profileVersion.value++
-    if (initialized.value) {
-      persistSingleProfile(profile).catch((e) =>
-        console.warn('[deckProfile] failed to persist profile:', e),
-      )
-    }
+    schedulePersist()
   }
 
   function removeWindowLayout(windowId: string) {
@@ -454,13 +451,8 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     const profile = currentProfile.value
     if (!profile?.windows) return
     profile.windows = profile.windows.filter((w) => w.id !== windowId)
-    setStorageJson(STORAGE_KEYS.deckProfiles, profilesData.value)
     profileVersion.value++
-    if (initialized.value) {
-      persistSingleProfile(profile).catch((e) =>
-        console.warn('[deckProfile] failed to persist profile:', e),
-      )
-    }
+    schedulePersist()
   }
 
   function getWindowLayouts(): DeckWindowLayout[] {

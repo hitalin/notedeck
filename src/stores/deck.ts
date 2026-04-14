@@ -222,7 +222,11 @@ export const useDeckStore = defineStore('deck', () => {
   const crossWindowDragColumnId = ref<string | null>(null)
 
   /** O(1) column lookup by ID */
-  const columnMap = computed(() => new Map(columns.value.map((c) => [c.id, c])))
+  const columnMap = computed(() => {
+    const m = new Map<string, DeckColumn>()
+    for (const c of columns.value) m.set(c.id, c)
+    return m
+  })
 
   function setActiveColumn(id: string) {
     activeColumnId.value = id

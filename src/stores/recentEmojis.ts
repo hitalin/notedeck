@@ -1,13 +1,14 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { shallowRef } from 'vue'
 import { PERSIST_DEBOUNCE_MS } from '@/constants/persist'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 const MAX_RECENT = 32
 
 export const useRecentEmojisStore = defineStore('recentEmojis', () => {
-  // host → emoji list
-  const map = ref<Record<string, string[]>>(
+  // host → emoji list. shallowRef avoids deep reactivity over nested arrays —
+  // updates go through whole-object replacement in add().
+  const map = shallowRef<Record<string, string[]>>(
     getStorageJson<Record<string, string[]>>(STORAGE_KEYS.recentEmojis, {}),
   )
 
