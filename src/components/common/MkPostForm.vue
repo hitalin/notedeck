@@ -821,18 +821,15 @@ function onKeydown(e: KeyboardEvent) {
         <div :class="$style.footerLeft">
           <template v-for="btnId in postFormStore.buttons" :key="btnId">
             <!-- Emoji -->
-            <div v-if="btnId === 'emoji'" :class="$style.footerPopupWrapper">
-              <button class="_button" :class="$style.footerBtn" title="絵文字" @click.stop="toggleEmojiPopup">
-                <i class="ti ti-mood-happy" />
-              </button>
-              <div v-if="showEmojiPopup && account" :class="[$style.footerPopup, $style.emojiPopup]" @click.stop>
-                <MkReactionPicker
-                  :server-host="account.host"
-                  :account-id="activeAccountId"
-                  @pick="pickEmoji"
-                />
-              </div>
-            </div>
+            <button
+              v-if="btnId === 'emoji'"
+              class="_button"
+              :class="[$style.footerBtn, { [$style.active]: showEmojiPopup }]"
+              title="絵文字"
+              @click.stop="toggleEmojiPopup"
+            >
+              <i class="ti ti-mood-happy" />
+            </button>
 
             <!-- Attach file -->
             <div v-else-if="btnId === 'attach'" :class="$style.footerPopupWrapper">
@@ -1002,6 +999,27 @@ function onKeydown(e: KeyboardEvent) {
       v-if="showPostFormButtonsPicker"
       @close="showPostFormButtonsPicker = false"
     />
+
+    <!-- Emoji picker (below post form) -->
+    <div v-if="showEmojiPopup && account" :class="$style.emojiPickerPanel" :style="formThemeVars" @click.stop>
+      <div :class="$style.emojiPickerHeader">
+        <span :class="$style.emojiPickerTitle">
+          <i class="ti ti-mood-happy" />
+          絵文字
+        </span>
+        <button class="_button" :class="$style.emojiPickerCloseBtn" title="閉じる" @click="showEmojiPopup = false">
+          <i class="ti ti-x" />
+        </button>
+      </div>
+      <div :class="$style.emojiPickerBody">
+        <MkReactionPicker
+          :server-host="account.host"
+          :account-id="activeAccountId"
+          full-width
+          @pick="pickEmoji"
+        />
+      </div>
+    </div>
 
   </div>
 </template>
@@ -1669,6 +1687,7 @@ function onKeydown(e: KeyboardEvent) {
 
 /* ── Footer ── */
 .footer {
+  position: relative;
   display: flex;
   padding: 0 4px 4px;
   font-size: 1em;
@@ -1693,7 +1712,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .footerPopupWrapper {
-  position: relative;
+  /* no positioning — popups anchor to .footer so they stay within form bounds */
 }
 
 .footerBtn {
@@ -1810,16 +1829,6 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /* ── Emoji popup ── */
-.emojiPopup {
-  width: 320px;
-  max-height: 360px;
-  overflow: hidden;
-  /* Override default centering: anchor to right edge since it's in footer-right */
-  left: auto;
-  right: 0;
-  transform: none;
-  direction: ltr;
-}
 
 /* ── MFM menu ── */
 .mfmMenu {
@@ -2020,8 +2029,60 @@ function onKeydown(e: KeyboardEvent) {
 .attachMenu {
   min-width: 200px;
   padding: 4px;
-  left: 0;
-  transform: none;
+}
+
+/* ── Emoji picker (below post form, matches form width) ── */
+.emojiPickerPanel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  max-height: min(60vh, 520px);
+  margin: 0 16px 16px;
+  background: var(--nd-panelBg, var(--nd-popup));
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px var(--nd-shadow);
+}
+
+.emojiPickerHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--nd-divider);
+}
+
+.emojiPickerTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: bold;
+  font-size: 0.9em;
+  flex: 1;
+}
+
+.emojiPickerCloseBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--nd-fg);
+  opacity: 0.7;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
+}
+
+.emojiPickerBody {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
 }
 
 .attachMenuItem {
