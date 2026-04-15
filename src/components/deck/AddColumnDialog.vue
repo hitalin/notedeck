@@ -103,7 +103,8 @@ function selectColumnType(type: ColumnType) {
     type === 'apiDocs' ||
     type === 'ai' ||
     type === 'pluginManager' ||
-    type === 'taskRunner'
+    type === 'taskRunner' ||
+    type === 'memos'
   ) {
     addColumnForAccount(null)
     return
@@ -592,6 +593,10 @@ function close() {
             <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('taskRunner')">
               <i class="ti ti-player-play" />
               <span>タスク</span>
+            </button>
+            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('memos')">
+              <i class="ti ti-notes" />
+              <span>メモ</span>
             </button>
           </template>
         </div>

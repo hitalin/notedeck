@@ -12,7 +12,7 @@ export type PostFormButtonId =
   | 'hashtag'
   | 'mention'
   | 'mfm'
-  | 'draft'
+  | 'memo'
   | 'clear'
   | 'emoji'
 
@@ -27,7 +27,7 @@ export const POST_FORM_BUTTON_META: Record<
   hashtag: { icon: 'hash', label: 'ハッシュタグ' },
   mention: { icon: 'at', label: 'メンション' },
   mfm: { icon: 'palette', label: 'MFM' },
-  draft: { icon: 'notes', label: '下書き' },
+  memo: { icon: 'notes', label: 'メモ' },
   clear: { icon: 'trash', label: 'クリア' },
 }
 

@@ -1,6 +1,7 @@
 import { type Platform, platform } from '@tauri-apps/plugin-os'
 import { defineStore, storeToRefs } from 'pinia'
 import { computed, onScopeDispose, ref } from 'vue'
+import type { StoredMemo } from '@/composables/useMemos'
 
 const isTauri =
   typeof window !== 'undefined' &&
@@ -84,6 +85,22 @@ export const useUiStore = defineStore('ui', () => {
     driveFilesChanged.value = { accountId, ts: Date.now() }
   }
 
+  /**
+   * メモカラムから「このメモを投稿フォームに反映」するリクエスト。
+   * DeckLayout が watch して compose を開き MkPostForm に initialMemo として渡す。
+   * key は session memo slot として引き継ぐため同梱。
+   */
+  const pendingCompose = ref<{
+    key: string
+    memo: StoredMemo
+  } | null>(null)
+  function requestComposeWithMemo(key: string, memo: StoredMemo) {
+    pendingCompose.value = { key, memo }
+  }
+  function consumePendingCompose() {
+    pendingCompose.value = null
+  }
+
   return {
     isTauri,
     isDesktop,
@@ -97,6 +114,9 @@ export const useUiStore = defineStore('ui', () => {
     deckMounted,
     driveFilesChanged,
     emitDriveFilesChanged,
+    pendingCompose,
+    requestComposeWithMemo,
+    consumePendingCompose,
   }
 })
 

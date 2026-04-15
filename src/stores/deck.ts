@@ -48,6 +48,7 @@ export type ColumnType =
   | 'streamInspector'
   | 'pluginManager'
   | 'taskRunner'
+  | 'memos'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 

@@ -8,67 +8,52 @@ import type {
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import {
-  deleteAllDrafts,
-  deleteDraft,
-  draftsVersion,
-  ensureDraftsLoaded,
-  loadAllDrafts,
-  type StoredDraft,
-} from '@/composables/useDrafts'
-import { type Account, useAccountsStore } from '@/stores/accounts'
+  deleteAllMemos,
+  deleteMemo,
+  ensureMemosLoaded,
+  loadAllMemos,
+  memosVersion,
+  type StoredMemo,
+} from '@/composables/useMemos'
+import { useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
-import { useServersStore } from '@/stores/servers'
-import { useThemeStore } from '@/stores/theme'
 import { useToast } from '@/stores/toast'
 
-const props = defineProps<{
-  accountId: string
-}>()
-
 const emit = defineEmits<{
-  pick: [draft: StoredDraft]
+  pick: [key: string, memo: StoredMemo]
   close: []
 }>()
 
 const accountsStore = useAccountsStore()
-const serversStore = useServersStore()
-const themeStore = useThemeStore()
 const { confirm } = useConfirm()
 const toast = useToast()
 
-const account = computed<Account | undefined>(() =>
-  accountsStore.accounts.find((a) => a.id === props.accountId),
-)
+/**
+ * Memos aren't account-bound, so the preview note just uses a placeholder
+ * "memo" identity. Guest avatar keeps the visual tied to "private, not posted".
+ */
+const MEMO_USER: NormalizedUser = {
+  id: 'memo',
+  username: 'memo',
+  host: null,
+  name: 'メモ',
+  avatarUrl: '/avatar-guest.svg',
+}
 
-/** Per-account custom server theme — same vars the post form uses. */
-const themeVars = computed(() =>
-  themeStore.getStyleVarsForAccount(props.accountId),
-)
-
-/** Misskey server's empty state image (infoImageUrl) for the current account. */
-const serverInfoImageUrl = computed(() => {
-  const acc = account.value
-  if (!acc) return undefined
-  return serversStore.getServer(acc.host)?.infoImageUrl
-})
-
-interface DraftContext {
-  kind: 'reply' | 'renote' | 'note' | 'channel-note' | 'legacy'
+interface MemoContext {
+  kind: 'reply' | 'renote' | 'note' | 'channel-note'
   channelId: string | null
   refId: string | null
 }
 
-interface DraftEntry {
+interface MemoEntry {
   key: string
-  draft: StoredDraft
-  context: DraftContext
+  memo: StoredMemo
+  context: MemoContext
   note: NormalizedNote
 }
 
-function parseDraftKey(key: string): DraftContext {
-  if (key.startsWith('legacy:')) {
-    return { kind: 'legacy', channelId: null, refId: key.slice(7) }
-  }
+function parseMemoKey(key: string): MemoContext {
   let rest = key
   let channelId: string | null = null
   if (rest.startsWith('channel:')) {
@@ -94,31 +79,21 @@ function parseDraftKey(key: string): DraftContext {
   return { kind: 'note', channelId, refId: null }
 }
 
-function userFromAccount(acc: Account): NormalizedUser {
-  return {
-    id: acc.userId,
-    username: acc.username,
-    host: null,
-    name: acc.displayName ?? null,
-    avatarUrl: acc.avatarUrl ?? null,
-  }
-}
-
 function toPreviewNote(
-  acc: Account,
   key: string,
-  stored: StoredDraft,
-  ctx: DraftContext,
+  stored: StoredMemo,
+  ctx: MemoContext,
 ): NormalizedNote {
   const d = stored.data
+  const owner = accountsStore.activeAccountId ?? 'memo'
   return {
-    id: `draft:${acc.id}:${key}`,
-    _accountId: acc.id,
-    _serverHost: acc.host,
+    id: `memo:${key}`,
+    _accountId: owner,
+    _serverHost: '',
     createdAt: stored.updatedAt,
     text: d.text || null,
     cw: d.showCw && d.cw ? d.cw : null,
-    user: userFromAccount(acc),
+    user: MEMO_USER,
     visibility: d.visibility as NoteVisibility,
     emojis: {},
     reactionEmojis: {},
@@ -136,38 +111,31 @@ function toPreviewNote(
 const loaded = ref(false)
 
 watch(
-  () => props.accountId,
-  async (id) => {
-    loaded.value = false
-    await ensureDraftsLoaded(id)
+  () => true,
+  async () => {
+    await ensureMemosLoaded()
     loaded.value = true
   },
   { immediate: true },
 )
 
-const entries = computed<DraftEntry[]>(() => {
+const entries = computed<MemoEntry[]>(() => {
   // Track reactive version so save/delete from anywhere re-renders us.
-  void draftsVersion.value
-  if (!loaded.value || !account.value) return []
-  const map = loadAllDrafts(props.accountId)
-  const acc = account.value
-  const out: DraftEntry[] = []
-  for (const [key, draft] of Object.entries(map)) {
-    const ctx = parseDraftKey(key)
-    out.push({
-      key,
-      draft,
-      context: ctx,
-      note: toPreviewNote(acc, key, draft, ctx),
-    })
+  void memosVersion.value
+  if (!loaded.value) return []
+  const map = loadAllMemos()
+  const out: MemoEntry[] = []
+  for (const [key, memo] of Object.entries(map)) {
+    const ctx = parseMemoKey(key)
+    out.push({ key, memo, context: ctx, note: toPreviewNote(key, memo, ctx) })
   }
-  out.sort((a, b) => b.draft.updatedAt.localeCompare(a.draft.updatedAt))
+  out.sort((a, b) => b.memo.updatedAt.localeCompare(a.memo.updatedAt))
   return out
 })
 
-const draftCount = computed(() => entries.value.length)
+const memoCount = computed(() => entries.value.length)
 
-function contextLabel(ctx: DraftContext): string {
+function contextLabel(ctx: MemoContext): string {
   switch (ctx.kind) {
     case 'reply':
       return '返信'
@@ -175,14 +143,12 @@ function contextLabel(ctx: DraftContext): string {
       return '引用'
     case 'channel-note':
       return 'チャンネル投稿'
-    case 'legacy':
-      return '旧下書き'
     default:
-      return '新規ノート'
+      return ''
   }
 }
 
-function contextIcon(ctx: DraftContext): string {
+function contextIcon(ctx: MemoContext): string {
   switch (ctx.kind) {
     case 'reply':
       return 'ti ti-arrow-back-up'
@@ -190,8 +156,6 @@ function contextIcon(ctx: DraftContext): string {
       return 'ti ti-quote'
     case 'channel-note':
       return 'ti ti-device-tv'
-    case 'legacy':
-      return 'ti ti-archive'
     default:
       return 'ti ti-pencil'
   }
@@ -213,19 +177,19 @@ function formatScheduledAt(iso: string): string {
   })
 }
 
-function onPick(entry: DraftEntry) {
-  emit('pick', entry.draft)
+function onPick(entry: MemoEntry) {
+  emit('pick', entry.key, entry.memo)
 }
 
-// --- Custom context menu (overrides MkNote's default NoteMoreMenu) ---
+// --- Custom right-click menu (overrides MkNote's default NoteMoreMenu) ---
 const menuState = ref<{
   x: number
   y: number
-  entry: DraftEntry
+  entry: MemoEntry
 } | null>(null)
 const menuRef = ref<HTMLElement | null>(null)
 
-function onContextMenu(e: MouseEvent, entry: DraftEntry) {
+function onContextMenu(e: MouseEvent, entry: MemoEntry) {
   e.preventDefault()
   e.stopPropagation()
   menuState.value = { x: e.clientX, y: e.clientY, entry }
@@ -245,43 +209,43 @@ function closeMenu() {
   menuState.value = null
 }
 
-async function onDelete(entry: DraftEntry) {
+async function onDelete(entry: MemoEntry) {
   const ok = await confirm({
-    title: '下書きを削除',
-    message: '選択した下書きを削除しますか？',
+    title: 'メモを削除',
+    message: '選択したメモを削除しますか？',
     okLabel: '削除',
     type: 'danger',
   })
   if (!ok) return
-  deleteDraft(props.accountId, entry.key)
-  toast.show('下書きを削除しました', 'info')
+  deleteMemo(entry.key)
+  toast.show('メモを削除しました', 'info')
 }
 
 async function onDeleteAll() {
-  if (draftCount.value === 0) return
+  if (memoCount.value === 0) return
   const ok = await confirm({
-    title: 'すべての下書きを削除',
-    message: `下書き ${draftCount.value} 件をすべて削除しますか？`,
+    title: 'すべてのメモを削除',
+    message: `メモ ${memoCount.value} 件をすべて削除しますか？`,
     okLabel: 'すべて削除',
     type: 'danger',
   })
   if (!ok) return
-  deleteAllDrafts(props.accountId)
-  toast.show('下書きをすべて削除しました', 'info')
+  deleteAllMemos()
+  toast.show('メモをすべて削除しました', 'info')
 }
 </script>
 
 <template>
-  <div :class="$style.draftsPicker" :style="themeVars" @click.stop>
+  <div :class="$style.memoPicker" @click.stop>
     <!-- Header -->
     <div :class="$style.dpHeader">
       <span :class="$style.dpTitle">
         <i class="ti ti-notes" />
-        下書き
-        <span :class="$style.dpCount">{{ draftCount }}</span>
+        メモ
+        <span :class="$style.dpCount">{{ memoCount }}</span>
       </span>
       <button
-        v-if="draftCount > 0"
+        v-if="memoCount > 0"
         class="_button"
         :class="$style.dpHeaderBtn"
         title="すべて削除"
@@ -298,9 +262,8 @@ async function onDeleteAll() {
     <div :class="$style.dpBody">
       <div v-if="!loaded" :class="$style.dpEmpty">読み込み中...</div>
       <ColumnEmptyState
-        v-else-if="draftCount === 0"
-        message="下書きはありません"
-        :image-url="serverInfoImageUrl"
+        v-else-if="memoCount === 0"
+        message="メモはありません"
       />
       <div v-else :class="$style.dpList">
         <div
@@ -309,9 +272,12 @@ async function onDeleteAll() {
           :class="$style.item"
           @contextmenu.capture="onContextMenu($event, entry)"
         >
-          <div :class="$style.meta">
+          <div
+            v-if="contextLabel(entry.context) || entry.memo.data.scheduledAt"
+            :class="$style.meta"
+          >
             <span
-              v-if="entry.context.kind !== 'note'"
+              v-if="contextLabel(entry.context)"
               :class="$style.metaCtx"
             >
               <i :class="contextIcon(entry.context)" />
@@ -331,33 +297,21 @@ async function onDeleteAll() {
               {{ truncate(entry.context.channelId, 12) }}
             </span>
             <span
-              v-if="entry.draft.data.scheduledAt"
+              v-if="entry.memo.data.scheduledAt"
               :class="$style.metaScheduled"
-              :title="entry.draft.data.scheduledAt"
+              :title="entry.memo.data.scheduledAt"
             >
               <i class="ti ti-clock" />
-              {{ formatScheduledAt(entry.draft.data.scheduledAt) }}
-            </span>
-            <span
-              v-if="entry.draft.data.showPoll && entry.draft.data.pollChoices.length"
-              :class="$style.metaBadge"
-            >
-              <i class="ti ti-chart-bar" />
-              投票
-              {{ entry.draft.data.pollChoices.filter((c) => c.trim()).length }}択
-            </span>
-            <span v-if="entry.draft.data.fileIds.length" :class="$style.metaBadge">
-              <i class="ti ti-paperclip" />
-              添付 {{ entry.draft.data.fileIds.length }}
+              {{ formatScheduledAt(entry.memo.data.scheduledAt) }}
             </span>
           </div>
           <button
             class="_button"
             :class="$style.itemNoteBtn"
-            title="この下書きを復元"
+            title="このメモを復元"
             @click="onPick(entry)"
           >
-            <MkNote :note="entry.note" embedded />
+            <MkNote :note="entry.note" />
           </button>
           <div :class="$style.itemActions">
             <button
@@ -421,7 +375,7 @@ async function onDeleteAll() {
 </template>
 
 <style lang="scss" module>
-.draftsPicker {
+.memoPicker {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -543,13 +497,6 @@ async function onDeleteAll() {
   color: var(--nd-accent);
 }
 
-.metaBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  opacity: 0.7;
-}
-
 .itemNoteBtn {
   display: block;
   width: 100%;
@@ -557,11 +504,10 @@ async function onDeleteAll() {
   cursor: pointer;
 }
 
-/* Hover-revealed action buttons (matches AppearanceEditor theme grid pattern) */
 .itemActions {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 8px;
+  right: 8px;
   display: flex;
   gap: 4px;
   z-index: 1;
@@ -606,5 +552,49 @@ async function onDeleteAll() {
   gap: 8px;
   padding: 40px 16px;
   text-align: center;
+}
+
+.menuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+
+.menu {
+  position: fixed;
+  min-width: 220px;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--nd-popup);
+  box-shadow: var(--nd-shadow-m);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.88em;
+  color: var(--nd-fg);
+  border-radius: var(--nd-radius-sm);
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.06));
+  }
+}
+
+.menuItemDanger {
+  color: var(--nd-danger, #e64c4c);
+}
+
+.menuDivider {
+  height: 1px;
+  margin: 2px 6px;
+  background: var(--nd-divider);
 }
 </style>

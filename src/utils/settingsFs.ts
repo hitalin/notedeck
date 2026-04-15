@@ -276,32 +276,14 @@ export async function deleteSnippetFile(filename: string): Promise<void> {
   return deleteSettingsFile(SNIPPETS_DIR, filename)
 }
 
-// --- Draft helpers (per-account JSON files in drafts/) ---
+// --- Memo helpers (single global file: memos.json at root) ---
 
-const DRAFTS_DIR = 'drafts'
-
-export function draftFilename(accountId: string): string {
-  return `${sanitizeFilename(accountId)}.json`
+export async function readMemos(): Promise<string> {
+  return readRootSettingsFile('memos.json')
 }
 
-export async function listDraftFiles(): Promise<string[]> {
-  const files = await listSettingsFiles(DRAFTS_DIR)
-  return files.filter((f) => f.endsWith('.json'))
-}
-
-export async function readDraftFile(accountId: string): Promise<string> {
-  return readSettingsFile(DRAFTS_DIR, draftFilename(accountId))
-}
-
-export async function writeDraftFile(
-  accountId: string,
-  content: string,
-): Promise<void> {
-  return writeSettingsFile(DRAFTS_DIR, draftFilename(accountId), content)
-}
-
-export async function deleteDraftFile(accountId: string): Promise<void> {
-  return deleteSettingsFile(DRAFTS_DIR, draftFilename(accountId))
+export async function writeMemos(content: string): Promise<void> {
+  return writeRootSettingsFile('memos.json', content)
 }
 
 // --- Plugin helpers ---

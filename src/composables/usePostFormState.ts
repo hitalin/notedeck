@@ -13,15 +13,14 @@ import {
   type VisibilityOption,
   visibilityOptions,
 } from '@/composables/postFormConstants'
-import {
-  computeDraftKey,
-  deleteDraft,
-  ensureDraftsLoaded,
-  loadDraft,
-  type StoredDraft,
-  saveDraft,
-} from '@/composables/useDrafts'
 import { useFileAttachment } from '@/composables/useFileAttachment'
+import {
+  deleteMemo,
+  ensureMemosLoaded,
+  generateMemoKey,
+  type StoredMemo,
+  saveMemo,
+} from '@/composables/useMemos'
 import { useAccountsStore } from '@/stores/accounts'
 import { useSettingsStore } from '@/stores/settings'
 import { useThemeStore } from '@/stores/theme'
@@ -75,7 +74,6 @@ export function usePostFormState(
   const pollExpiresAt = ref<number | null>(null)
   const scheduledAt = ref<string | null>(null)
   const supportsScheduledNotes = ref(false)
-  const currentDraft = ref<StoredDraft | null>(null)
 
   const activeAccountId = ref(props.accountId)
   const accounts = computed(() => accountsStore.accounts)
@@ -83,14 +81,12 @@ export function usePostFormState(
     accountsStore.accounts.find((a) => a.id === activeAccountId.value),
   )
 
-  const draftKey = computed(() =>
-    computeDraftKey({
-      userId: account.value?.userId ?? activeAccountId.value,
-      channelId: props.channelId,
-      renoteId: props.renoteId,
-      replyId: props.replyTo?.id,
-    }),
-  )
+  /**
+   * This compose session's memo slot. Generated fresh when the form opens so
+   * auto-save updates a single memo instead of creating a new one per keystroke.
+   * Adopts an existing memo's key when the user restores from the picker.
+   */
+  const sessionMemoKey = ref<string>(generateMemoKey())
 
   const formThemeVars = computed(() =>
     themeStore.getStyleVarsForAccount(activeAccountId.value),
@@ -127,9 +123,8 @@ export function usePostFormState(
       error.value = AppError.from(e).message
       supportsScheduledNotes.value = false
     }
-    // Load the draft for the current context (if any)
-    await ensureDraftsLoaded(acc.id)
-    currentDraft.value = loadDraft(acc.id, draftKey.value)
+    // Make sure the global memo cache is warm so the picker opens instantly.
+    await ensureMemosLoaded()
 
     // Fetch modes, policies, and user settings in parallel (all independent after adapter init)
     const [availabilityResult, policiesResult, userInfoResult] =
@@ -274,15 +269,14 @@ export function usePostFormState(
     isPosting.value = false
     callbacks.onPosted()
 
-    // Fire API call in background — on failure, save draft and notify
+    // Fire API call in background — on failure, save as memo and notify
     const currentAdapter = adapter
-    const currentAccountId = activeAccountId.value
-    const currentDraftKey = draftKey.value
+    const retryKey = sessionMemoKey.value
     currentAdapter.api.createNote(noteParams).catch((e) => {
       const { show } = useToast()
       show(AppError.from(e).message, 'error')
-      // Auto-save as draft so user can retry
-      saveDraft(currentAccountId, currentDraftKey, {
+      // Auto-save as memo so user can retry
+      saveMemo(retryKey, {
         text: noteParams.text ?? '',
         cw: noteParams.cw ?? '',
         showCw: !!noteParams.cw,
@@ -353,10 +347,8 @@ export function usePostFormState(
     posted.value = false
   }
 
-  function saveCurrentDraft() {
-    const acc = account.value
-    if (!acc) return
-    currentDraft.value = saveDraft(acc.id, draftKey.value, {
+  function saveCurrentMemo() {
+    saveMemo(sessionMemoKey.value, {
       text: text.value,
       cw: cw.value,
       showCw: showCw.value,
@@ -371,8 +363,8 @@ export function usePostFormState(
   }
 
   /**
-   * Auto-save: when `postForm.autoSaveDraft` is on, persist on every change
-   * (debounced). Skip empty forms so we never save a no-op draft.
+   * Auto-save: when `postForm.autoSaveMemo` is on, persist on every change
+   * (debounced). Skip empty forms so we never save a no-op memo.
    */
   let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
   function hasAnyContent(): boolean {
@@ -395,19 +387,23 @@ export function usePostFormState(
       scheduledAt,
     ],
     () => {
-      if (!settingsStore.get('postForm.autoSaveDraft')) return
-      if (!account.value) return
+      if (!settingsStore.get('postForm.autoSaveMemo')) return
       if (!hasAnyContent()) return
       if (autoSaveTimer) clearTimeout(autoSaveTimer)
       autoSaveTimer = setTimeout(() => {
-        saveCurrentDraft()
+        saveCurrentMemo()
         autoSaveTimer = null
       }, 800)
     },
     { deep: true },
   )
 
-  function restoreDraft(stored: StoredDraft) {
+  /**
+   * Load a stored memo into the form. Adopts the memo's key as the session
+   * slot so subsequent auto-saves update this memo instead of creating a new
+   * one, preserving "continue editing" semantics across restore → type cycles.
+   */
+  function restoreMemo(stored: StoredMemo, key?: string) {
     const d = stored.data
     text.value = d.text
     cw.value = d.cw
@@ -418,14 +414,12 @@ export function usePostFormState(
     pollMultiple.value = d.pollMultiple
     showPoll.value = d.showPoll
     scheduledAt.value = d.scheduledAt
+    if (key) sessionMemoKey.value = key
     // Note: file attachments are not restored (IDs may be expired)
   }
 
-  function removeCurrentDraft() {
-    const acc = account.value
-    if (!acc) return
-    deleteDraft(acc.id, draftKey.value)
-    currentDraft.value = null
+  function removeCurrentMemo() {
+    deleteMemo(sessionMemoKey.value)
   }
 
   return {
@@ -451,8 +445,7 @@ export function usePostFormState(
     pollExpiresAt,
     scheduledAt,
     supportsScheduledNotes,
-    currentDraft,
-    draftKey,
+    sessionMemoKey,
     // Computed
     accounts,
     account,
@@ -477,8 +470,8 @@ export function usePostFormState(
     addPollChoice,
     removePollChoice,
     resetForm,
-    saveCurrentDraft,
-    restoreDraft,
-    removeCurrentDraft,
+    saveCurrentMemo,
+    restoreMemo,
+    removeCurrentMemo,
   }
 }

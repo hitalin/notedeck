@@ -10,7 +10,7 @@ use super::Result;
 const SETTINGS_DIR: &str = "notedeck";
 
 /// Allowed subdirectory names for settings files. Also the set included in settings backup.
-const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets", "drafts"];
+const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets"];
 
 /// Validate a subdirectory name against the whitelist.
 fn validate_subdir(subdir: &str) -> Result<()> {
@@ -172,6 +172,7 @@ const ALLOWED_ROOT_FILES: &[&str] = &[
     "postform.json5",
     "settings.json5",
     "tasks.json5",
+    "memos.json",
 ];
 
 /// Resolve the full path for a root-level settings file (under notedeck/).

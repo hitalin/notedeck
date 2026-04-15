@@ -6,7 +6,7 @@ import type {
   NormalizedUser,
 } from '@/adapters/types'
 import { useAutocomplete } from '@/composables/useAutocomplete'
-import type { StoredDraft } from '@/composables/useDrafts'
+import type { StoredMemo } from '@/composables/useMemos'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePopupControl } from '@/composables/usePopupControl'
@@ -22,8 +22,8 @@ import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { parseMfm } from '@/utils/mfm'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
-import MkDraftsPicker from './MkDraftsPicker.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
+import MkMemoPicker from './MkMemoPicker.vue'
 import MkMfm from './MkMfm.vue'
 import MkNote from './MkNote.vue'
 import MkPostFormButtonsPicker from './MkPostFormButtonsPicker.vue'
@@ -41,6 +41,8 @@ const props = defineProps<{
   initialVisibility?: string
   initialLocalOnly?: boolean
   initialFilePaths?: string[]
+  initialMemo?: StoredMemo | null
+  initialMemoKey?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -102,7 +104,7 @@ const {
   addPollChoice,
   removePollChoice,
   resetForm,
-  restoreDraft,
+  restoreMemo,
 } = usePostFormState(props, {
   onPosted: (id) => {
     emit('posted', id)
@@ -130,21 +132,21 @@ const removePollChoiceKeyed = (index: number) => {
   pollChoiceKeys.value.splice(index, 1)
 }
 
-// --- Auto-save draft toggle (persisted in settings, like preview) ---
-const autoSaveDraft = computed<boolean>({
-  get: () => settingsStore.get('postForm.autoSaveDraft') ?? false,
+// --- Auto-save memo toggle (persisted in settings, like preview) ---
+const autoSaveMemo = computed<boolean>({
+  get: () => settingsStore.get('postForm.autoSaveMemo') ?? false,
   set: (v) => {
-    settingsStore.set('postForm.autoSaveDraft', v)
+    settingsStore.set('postForm.autoSaveMemo', v)
   },
 })
 
 // --- Popup exclusive control ---
-// ピッカー系 (emoji / drive / drafts) はシングルトン: 同時に1つだけ開く
+// ピッカー系 (emoji / drive / memo) はシングルトン: 同時に1つだけ開く
 const popups = usePopupControl()
 const showSchedulePopup = popups.register()
 const showEmojiPopup = popups.register()
 const showMoreMenu = popups.register()
-const showDraftsPicker = popups.register()
+const showMemoPicker = popups.register()
 const showDrivePicker = popups.register()
 const showPostFormButtonsPicker = popups.register()
 
@@ -153,12 +155,12 @@ function togglePostFormButtonsPicker() {
 }
 
 // --- Drafts picker (inline, opens below the form) ---
-function toggleDraftsPicker() {
-  popups.toggle(showDraftsPicker)
+function toggleMemoPicker() {
+  popups.toggle(showMemoPicker)
 }
-function onDraftPicked(draft: StoredDraft) {
-  restoreDraft(draft)
-  showDraftsPicker.value = false
+function onMemoPicked(key: string, memo: StoredMemo) {
+  restoreMemo(memo, key)
+  showMemoPicker.value = false
 }
 
 function toggleSchedulePopup() {
@@ -368,6 +370,8 @@ onMounted(async () => {
   if (props.initialFilePaths?.length) {
     uploadFilesFromPaths(props.initialFilePaths)
   }
+  if (props.initialMemo)
+    restoreMemo(props.initialMemo, props.initialMemoKey ?? undefined)
   await nextTick()
   if (!props.inline) textareaRef.value?.focus()
 })
@@ -526,7 +530,7 @@ function onKeydown(e: KeyboardEvent) {
             <i :class="localOnly ? 'ti ti-rocket-off' : 'ti ti-rocket'" />
           </button>
 
-          <!-- More menu (preview, drafts, schedule) -->
+          <!-- More menu (preview, memo, schedule) -->
           <div :class="$style.moreMenuWrapper">
             <button
               class="_button"
@@ -555,18 +559,18 @@ function onKeydown(e: KeyboardEvent) {
                   <span class="nd-toggle-switch-knob" />
                 </span>
               </div>
-              <!-- Auto-save draft toggle (persisted, mirrors preview pattern) -->
+              <!-- Auto-save memo toggle (persisted, mirrors preview pattern) -->
               <div
                 :class="$style.moreMenuItem"
                 role="switch"
-                :aria-checked="autoSaveDraft"
-                @click="autoSaveDraft = !autoSaveDraft"
+                :aria-checked="autoSaveMemo"
+                @click="autoSaveMemo = !autoSaveMemo"
               >
                 <i class="ti ti-device-floppy" />
-                下書きを保存
+                メモを保存
                 <span
                   class="nd-toggle-switch"
-                  :class="{ on: autoSaveDraft }"
+                  :class="{ on: autoSaveMemo }"
                   :style="{ marginLeft: 'auto' }"
                   aria-hidden="true"
                 >
@@ -903,11 +907,11 @@ function onKeydown(e: KeyboardEvent) {
 
             <!-- Drafts picker toggle -->
             <button
-              v-else-if="btnId === 'draft'"
+              v-else-if="btnId === 'memo'"
               class="_button"
-              :class="[$style.footerBtn, { [$style.active]: showDraftsPicker }]"
-              title="下書き一覧"
-              @click.stop="toggleDraftsPicker"
+              :class="[$style.footerBtn, { [$style.active]: showMemoPicker }]"
+              title="メモ一覧"
+              @click.stop="toggleMemoPicker"
             >
               <i class="ti ti-notes" />
             </button>
@@ -939,12 +943,11 @@ function onKeydown(e: KeyboardEvent) {
 
     </div>
 
-    <!-- Drafts picker (below post form) -->
-    <MkDraftsPicker
-      v-if="showDraftsPicker"
-      :account-id="activeAccountId!"
-      @pick="onDraftPicked"
-      @close="showDraftsPicker = false"
+    <!-- Memo picker (below post form) -->
+    <MkMemoPicker
+      v-if="showMemoPicker"
+      @pick="onMemoPicked"
+      @close="showMemoPicker = false"
     />
 
     <!-- Drive picker (below post form) -->
