@@ -16,9 +16,9 @@ function hostFromPortableAccount(portable: string | undefined): string | null {
  * useColumnSetup を使わないカラム（useColumnTheme のみ）でも利用可能。
  *
  * アカウントが見つからない（削除済み等）場合でも、カラムが保持する portable
- * account ID (`user@host`) から host を復元して server info を引き、さらに
- * それも無ければ activeAccount の host にフォールバックする。これにより
- * 「アカウントが見つかりません」空状態でもサーバー提供の空画像が使える。
+ * account ID (`user@host`) から host を復元して server info を引く。
+ * 横断カラム（accountId も portable も無い）では undefined を返し、
+ * 特定サーバーのブランディング画像がフォールバックで表示されないようにする。
  */
 export function useServerImages(getColumn: () => DeckColumn) {
   const accountsStore = useAccountsStore()
@@ -27,10 +27,7 @@ export function useServerImages(getColumn: () => DeckColumn) {
   const serverInfo = computed<ServerInfo | undefined>(() => {
     const col = getColumn()
     const acc = accountsStore.accounts.find((a) => a.id === col.accountId)
-    const host =
-      acc?.host ??
-      hostFromPortableAccount(col.account) ??
-      accountsStore.activeAccount?.host
+    const host = acc?.host ?? hostFromPortableAccount(col.account)
     if (!host) return undefined
     return serversStore.getServer(host)
   })
