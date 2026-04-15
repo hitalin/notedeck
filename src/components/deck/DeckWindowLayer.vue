@@ -68,9 +68,6 @@ const TasksEditorContent = defineAsyncComponent(
 const SnippetsEditorContent = defineAsyncComponent(
   () => import('@/components/window/SnippetsEditorContent.vue'),
 )
-const PostFormEditorContent = defineAsyncComponent(
-  () => import('@/components/window/PostFormEditorContent.vue'),
-)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -220,10 +217,6 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       />
       <SnippetsEditorContent
         v-if="win.type === 'snippetsEditor'"
-      />
-      <PostFormEditorContent
-        v-if="win.type === 'postFormEditor'"
-        :initial-tab="(win.props.initialTab as string | undefined)"
       />
     </DeckWindow>
   </div>

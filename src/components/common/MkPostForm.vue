@@ -19,7 +19,6 @@ import {
 import { usePostFormStore } from '@/stores/postForm'
 import { useSettingsStore } from '@/stores/settings'
 import { useIsCompactLayout } from '@/stores/ui'
-import { useWindowsStore } from '@/stores/windows'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { parseMfm } from '@/utils/mfm'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
@@ -27,6 +26,7 @@ import MkDraftsPicker from './MkDraftsPicker.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
 import MkMfm from './MkMfm.vue'
 import MkNote from './MkNote.vue'
+import MkPostFormButtonsPicker from './MkPostFormButtonsPicker.vue'
 import MkReactionPicker from './MkReactionPicker.vue'
 
 const props = defineProps<{
@@ -51,11 +51,6 @@ const emit = defineEmits<{
 const isCompact = useIsCompactLayout()
 const settingsStore = useSettingsStore()
 const postFormStore = usePostFormStore()
-const windowsStore = useWindowsStore()
-
-function openPostFormEditor() {
-  windowsStore.open('postFormEditor')
-}
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showPreview = computed<boolean>({
@@ -159,6 +154,11 @@ const showAttachMenu = popups.register()
 const showMoreMenu = popups.register()
 const showDraftsPicker = popups.register()
 const showDrivePicker = popups.register()
+const showPostFormButtonsPicker = popups.register()
+
+function togglePostFormButtonsPicker() {
+  popups.toggle(showPostFormButtonsPicker)
+}
 
 // --- Drafts picker (inline, opens below the form) ---
 function toggleDraftsPicker() {
@@ -970,9 +970,9 @@ function onKeydown(e: KeyboardEvent) {
           <!-- Post form editor -->
           <button
             class="_button"
-            :class="$style.footerBtn"
+            :class="[$style.footerBtn, { [$style.active]: showPostFormButtonsPicker }]"
             title="ボタン並び替え"
-            @click="openPostFormEditor"
+            @click.stop="togglePostFormButtonsPicker"
           >
             <i class="ti ti-settings" />
           </button>
@@ -995,6 +995,12 @@ function onKeydown(e: KeyboardEvent) {
       :account-id="activeAccountId!"
       @pick="onDriveFilesPicked"
       @close="showDrivePicker = false"
+    />
+
+    <!-- Post form buttons picker (below post form) -->
+    <MkPostFormButtonsPicker
+      v-if="showPostFormButtonsPicker"
+      @close="showPostFormButtonsPicker = false"
     />
 
   </div>
