@@ -310,7 +310,7 @@ export const useDeckStore = defineStore('deck', () => {
     addColumnAt(0, {
       type,
       name: null,
-      width: 360,
+      width: 330,
       accountId,
       sidebar: true,
       ...extraProps,

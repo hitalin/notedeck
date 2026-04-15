@@ -159,7 +159,7 @@ function handleAddColumn(
   deckStore.addColumn({
     type,
     name: null,
-    width: 360,
+    width: 330,
     accountId,
     ...extra,
   })
