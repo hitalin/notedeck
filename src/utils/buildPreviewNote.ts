@@ -1,5 +1,4 @@
 import type {
-  NormalizedDriveFile,
   NormalizedNote,
   NormalizedPoll,
   NoteVisibility,
@@ -24,7 +23,6 @@ export interface BuildPreviewNoteOptions {
   replyId?: string | null
   renoteId?: string | null
   channelId?: string | null
-  files?: NormalizedDriveFile[]
   poll?: PreviewPollInput
   emojis?: Record<string, string>
   reactionEmojis?: Record<string, string>
@@ -42,8 +40,8 @@ function buildPoll(input: PreviewPollInput): NormalizedPoll | undefined {
 
 /**
  * Synthesize a read-only NormalizedNote from form/memo state so MkNote can render
- * a preview. Shared between MkPostForm, DeckMemoColumn, and MemoEditorContent to
- * ensure all three render polls, custom emojis, and attachments identically.
+ * a preview. Attachments are intentionally omitted — previews show text, polls,
+ * and custom emojis only.
  */
 export function buildPreviewNote(
   opts: BuildPreviewNoteOptions,
@@ -69,7 +67,7 @@ export function buildPreviewNote(
     reactions: {},
     renoteCount: 0,
     repliesCount: 0,
-    files: opts.files ?? [],
+    files: [],
     localOnly: opts.localOnly,
     replyId: opts.replyId ?? null,
     renoteId: opts.renoteId ?? null,

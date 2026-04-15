@@ -1,17 +1,12 @@
 <script setup lang="ts">
 import { markdown } from '@codemirror/lang-markdown'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
-import type {
-  NormalizedDriveFile,
-  NormalizedNote,
-  NoteVisibility,
-} from '@/adapters/types'
+import type { NormalizedNote, NoteVisibility } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import PopupMenu from '@/components/common/PopupMenu.vue'
 import { saveDraft } from '@/composables/useDrafts'
-import { useDriveFilesByIds } from '@/composables/useDriveFilesByIds'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import {
   deleteMemo,
@@ -93,10 +88,6 @@ const updatedAt = computed(() => {
 
 const notFound = computed(() => loaded.value && !memo.value)
 
-const resolverAccountId = computed(() => account.value?.id)
-const memoFileIds = computed<string[]>(() => memo.value?.data.fileIds ?? [])
-const driveFiles = useDriveFilesByIds(resolverAccountId, memoFileIds)
-
 /** Synthesize a NormalizedNote from the memo so MkNote can render a preview. */
 const previewNote = computed<NormalizedNote | null>(() => {
   const m = memo.value
@@ -104,10 +95,6 @@ const previewNote = computed<NormalizedNote | null>(() => {
   if (!m || !acc) return null
   const d = m.data
   const emojiDict = emojisStore.cache.get(acc.host) ?? {}
-  const filesMap = driveFiles.value
-  const files = d.fileIds
-    .map((id) => filesMap.get(id))
-    .filter((f): f is NormalizedDriveFile => f !== undefined)
   return buildPreviewNote({
     account: acc,
     id: `memo:${acc.id}:${props.memoKey}`,
@@ -116,7 +103,6 @@ const previewNote = computed<NormalizedNote | null>(() => {
     cw: d.showCw && d.cw ? d.cw : null,
     visibility: d.visibility as NoteVisibility,
     localOnly: d.localOnly,
-    files,
     poll: {
       choices: d.pollChoices,
       multiple: d.pollMultiple,

@@ -233,7 +233,6 @@ const previewNote = computed<NormalizedNote | null>(() => {
     replyId: props.replyTo?.id ?? null,
     renoteId: props.renoteId ?? null,
     channelId: props.channelId ?? null,
-    files: attachedFiles.value,
     poll: {
       choices: pollChoices.value,
       multiple: pollMultiple.value,

@@ -1,16 +1,11 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
-import type {
-  NormalizedDriveFile,
-  NormalizedNote,
-  NoteVisibility,
-} from '@/adapters/types'
+import type { NormalizedNote, NoteVisibility } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import PopupMenu from '@/components/common/PopupMenu.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { saveDraft } from '@/composables/useDrafts'
-import { useDriveFilesByIds } from '@/composables/useDriveFilesByIds'
 import {
   deleteMemo,
   ensureMemosLoaded,
@@ -118,34 +113,15 @@ watch(
   { immediate: true },
 )
 
-// 全メモの fileIds を重複排除して非同期解決し、ビルド時に引き当てる。
-const resolverAccountId = computed(() => account.value?.id)
-const allFileIds = computed<string[]>(() => {
-  void memosVersion.value
-  const acc = account.value
-  if (!loaded.value || !acc) return []
-  const ids = new Set<string>()
-  const map = loadAllMemos(acc.id)
-  for (const memo of Object.values(map)) {
-    for (const id of memo.data.fileIds) ids.add(id)
-  }
-  return Array.from(ids)
-})
-const driveFiles = useDriveFilesByIds(resolverAccountId, allFileIds)
-
 const entries = computed<MemoEntry[]>(() => {
   void memosVersion.value
   const acc = account.value
   if (!loaded.value || !acc) return []
   const emojiDict = emojisStore.cache.get(acc.host) ?? {}
-  const filesMap = driveFiles.value
   const map = loadAllMemos(acc.id)
   const out: MemoEntry[] = []
   for (const [key, memo] of Object.entries(map)) {
     const ctx = parseMemoKey(key)
-    const files = memo.data.fileIds
-      .map((id) => filesMap.get(id))
-      .filter((f): f is NormalizedDriveFile => f !== undefined)
     out.push({
       key,
       memo,
@@ -161,7 +137,6 @@ const entries = computed<MemoEntry[]>(() => {
         replyId: ctx.kind === 'reply' ? ctx.refId : null,
         renoteId: ctx.kind === 'renote' ? ctx.refId : null,
         channelId: ctx.channelId,
-        files,
         poll: {
           choices: memo.data.pollChoices,
           multiple: memo.data.pollMultiple,
