@@ -67,7 +67,7 @@ async function onFileSelected(e: Event) {
       uploaded.push(result as unknown as NormalizedDriveFile)
     }
     await fetchDrive()
-    // Auto-select uploaded files
+    // Auto-select uploaded files so user just taps 添付 to confirm.
     const next = new Set(selectedIds.value)
     for (const f of uploaded) next.add(f.id)
     selectedIds.value = next
@@ -101,7 +101,16 @@ fetchDrive()
         <i class="ti ti-cloud" />
         {{ folderStack.length > 0 ? folderStack[folderStack.length - 1]!.name : 'ドライブ' }}
       </span>
-      <button class="_button" :class="$style.dpHeaderBtn" @click="emit('close')">
+      <button
+        class="_button"
+        :class="$style.dpConfirm"
+        :disabled="selectedCount === 0"
+        :title="selectedCount === 0 ? 'ファイルを選択' : `${selectedCount}件を添付`"
+        @click="confirm"
+      >
+        添付<span v-if="selectedCount > 0" :class="$style.dpConfirmCount">{{ selectedCount }}</span>
+      </button>
+      <button class="_button" :class="$style.dpHeaderBtn" title="閉じる" @click="emit('close')">
         <i class="ti ti-x" />
       </button>
     </div>
@@ -154,6 +163,7 @@ fetchDrive()
             :key="file.id"
             class="_button"
             :class="[$style.dpGridCell, selectedIds.has(file.id) && $style.selected]"
+            :title="file.name"
             @click="toggleFile(file.id)"
           >
             <div :class="$style.dpThumb">
@@ -180,19 +190,6 @@ fetchDrive()
 
         <div v-if="uploadError" :class="$style.dpUploadError">{{ uploadError }}</div>
       </template>
-    </div>
-
-    <!-- Footer -->
-    <div :class="$style.dpFooter">
-      <span :class="$style.dpCount">{{ selectedCount }}件選択</span>
-      <button
-        class="_button"
-        :class="$style.dpConfirm"
-        :disabled="selectedCount === 0"
-        @click="confirm"
-      >
-        添付
-      </button>
     </div>
   </div>
 </template>
@@ -415,26 +412,15 @@ fetchDrive()
   text-align: center;
 }
 
-.dpFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-top: 1px solid var(--nd-divider);
-  flex-shrink: 0;
-}
-
-.dpCount {
-  font-size: 0.8em;
-  opacity: 0.5;
-}
-
 .dpConfirm {
-  padding: 6px 20px;
-  border-radius: var(--nd-radius-md);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--nd-radius-sm);
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent, #fff);
-  font-size: 0.85em;
+  font-size: 0.8em;
   font-weight: 600;
   transition: opacity var(--nd-duration-base);
 
@@ -447,4 +433,15 @@ fetchDrive()
     cursor: default;
   }
 }
+
+.dpConfirmCount {
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.25);
+  font-size: 0.9em;
+  line-height: 16px;
+  text-align: center;
+}
+
 </style>
