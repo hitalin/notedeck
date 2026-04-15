@@ -181,7 +181,7 @@ function openAsPip() {
 <template>
   <section
     class="deck-column"
-    :class="[$style.deckColumn, { [$style.mobile]: isCompact }]"
+    :class="$style.deckColumn"
     :style="themeVars"
   >
     <header
@@ -504,20 +504,6 @@ function openAsPip() {
 @keyframes slide-down {
   from { translate: -50% -100%; opacity: 0; }
   to { translate: -50% 0; opacity: 1; }
-}
-
-.mobile {
-  border-radius: 0;
-
-  .columnHeader {
-    height: 40px;
-    line-height: 40px;
-    padding: 0 4px 0 32px;
-  }
-  .headerBtn {
-    width: 36px;
-    height: 36px;
-  }
 }
 
 .menuEnter {
