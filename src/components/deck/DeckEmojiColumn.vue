@@ -9,13 +9,14 @@ import {
   useGridVirtualizer,
 } from '@/composables/useGridVirtualizer'
 import { useServerImages } from '@/composables/useServerImages'
-import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
+import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -178,6 +179,7 @@ function getRowItems(index: number): ServerEmoji[] {
     :column-id="column.id"
     :title="column.name ?? 'カスタム絵文字'"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop"
     :pull-refresh="loadEmojis"
     @refresh="loadEmojis"
@@ -188,15 +190,10 @@ function getRowItems(index: number): ServerEmoji[] {
 
     <template #header-meta>
       <span v-if="allEmojis.length > 0" :class="$style.headerCount">{{ allEmojis.length }}</span>
-      <div v-if="account" :class="$style.headerAccount">
-        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
-      </div>
+      <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
-    <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
-
-    <ColumnEmptyState v-else-if="error" :message="error.message" is-error :image-url="serverErrorImageUrl" />
+    <ColumnEmptyState v-if="error" :message="error.message" is-error :image-url="serverErrorImageUrl" />
 
     <div v-else :class="$style.emojiBody">
       <!-- Search -->

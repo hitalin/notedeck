@@ -7,13 +7,14 @@ import RawJsonView from '@/components/common/RawJsonView.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
-import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
+import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
 import { proxyUrl } from '@/utils/imageProxy'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 interface ServerMeta {
   uri: string
@@ -163,6 +164,7 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name ?? 'サーバー情報'"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop"
     :pull-refresh="fetchServerInfo"
     @refresh="fetchServerInfo"
@@ -172,17 +174,12 @@ onMounted(() => {
     </template>
 
     <template #header-meta>
-      <div v-if="account" :class="$style.headerAccount">
-        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
-      </div>
+      <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
-    <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
+    <ColumnEmptyState v-if="error" :message="error.message" is-error :image-url="serverErrorImageUrl" />
 
-    <ColumnEmptyState v-else-if="error" :message="error.message" is-error :image-url="serverErrorImageUrl" />
-
-    <div v-else-if="meta" :class="$style.tabWrapper">
+    <div v-else-if="meta && account" :class="$style.tabWrapper">
       <EditorTabs
         :tabs="TAB_DEFS"
         :model-value="tab"

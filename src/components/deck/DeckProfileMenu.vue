@@ -308,6 +308,7 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
     max-width: none;
     min-width: 0;
     border-radius: 12px;
+    background: color-mix(in srgb, var(--nd-navBg) 92%, transparent);
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
     padding: 4px 0;
   }

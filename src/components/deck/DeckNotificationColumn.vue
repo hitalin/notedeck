@@ -864,6 +864,7 @@ onUnmounted(() => {
     title="通知"
     :theme-vars="columnThemeVars"
     sound-enabled
+    require-account
     :pull-refresh="pullRefresh"
     @header-click="scrollToTop"
   >
@@ -890,13 +891,7 @@ onUnmounted(() => {
     </template>
 
     <ColumnEmptyState
-      v-if="!isCrossAccount && !account"
-      message="アカウントが見つかりません"
-      :image-url="serverNotFoundImageUrl"
-    />
-
-    <ColumnEmptyState
-      v-else-if="error && !isLoggedOut"
+      v-if="error && !isLoggedOut"
       :message="error.isAuth ? AUTH_ERROR_MESSAGE : error.message"
       :image-url="serverErrorImageUrl"
       is-error

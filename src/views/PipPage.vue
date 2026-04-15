@@ -1,104 +1,13 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
-import { computed, defineAsyncComponent, onMounted, provide, ref } from 'vue'
+import { computed, onMounted, provide, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { COLUMN_COMPONENTS } from '@/columns/registry'
 import AddColumnDialog from '@/components/deck/AddColumnDialog.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useThemeStore } from '@/stores/theme'
 
 const route = useRoute()
-
-const COLUMN_COMPONENTS: Record<string, Component> = {
-  timeline: defineAsyncComponent(
-    () => import('@/components/deck/DeckTimelineColumn.vue'),
-  ),
-  list: defineAsyncComponent(
-    () => import('@/components/deck/DeckListColumn.vue'),
-  ),
-  antenna: defineAsyncComponent(
-    () => import('@/components/deck/DeckAntennaColumn.vue'),
-  ),
-  notifications: defineAsyncComponent(
-    () => import('@/components/deck/DeckNotificationColumn.vue'),
-  ),
-  search: defineAsyncComponent(
-    () => import('@/components/deck/DeckSearchColumn.vue'),
-  ),
-  favorites: defineAsyncComponent(
-    () => import('@/components/deck/DeckFavoritesColumn.vue'),
-  ),
-  clip: defineAsyncComponent(
-    () => import('@/components/deck/DeckClipColumn.vue'),
-  ),
-  channel: defineAsyncComponent(
-    () => import('@/components/deck/DeckChannelColumn.vue'),
-  ),
-  user: defineAsyncComponent(
-    () => import('@/components/deck/DeckUserColumn.vue'),
-  ),
-  mentions: defineAsyncComponent(
-    () => import('@/components/deck/DeckMentionsColumn.vue'),
-  ),
-  specified: defineAsyncComponent(
-    () => import('@/components/deck/DeckMentionsColumn.vue'),
-  ),
-  chat: defineAsyncComponent(
-    () => import('@/components/deck/DeckChatColumn.vue'),
-  ),
-  widget: defineAsyncComponent(
-    () => import('@/components/deck/DeckWidgetColumn.vue'),
-  ),
-  aiscript: defineAsyncComponent(
-    () => import('@/components/deck/DeckAiScriptColumn.vue'),
-  ),
-  play: defineAsyncComponent(
-    () => import('@/components/deck/DeckPlayColumn.vue'),
-  ),
-  page: defineAsyncComponent(
-    () => import('@/components/deck/DeckPageColumn.vue'),
-  ),
-  ai: defineAsyncComponent(() => import('@/components/deck/DeckAiColumn.vue')),
-  drive: defineAsyncComponent(
-    () => import('@/components/deck/DeckDriveColumn.vue'),
-  ),
-  announcements: defineAsyncComponent(
-    () => import('@/components/deck/DeckAnnouncementsColumn.vue'),
-  ),
-  gallery: defineAsyncComponent(
-    () => import('@/components/deck/DeckGalleryColumn.vue'),
-  ),
-  explore: defineAsyncComponent(
-    () => import('@/components/deck/DeckExploreColumn.vue'),
-  ),
-  followRequests: defineAsyncComponent(
-    () => import('@/components/deck/DeckFollowRequestsColumn.vue'),
-  ),
-  achievements: defineAsyncComponent(
-    () => import('@/components/deck/DeckAchievementsColumn.vue'),
-  ),
-  apiConsole: defineAsyncComponent(
-    () => import('@/components/deck/DeckApiConsoleColumn.vue'),
-  ),
-  apiDocs: defineAsyncComponent(
-    () => import('@/components/deck/DeckApiDocsColumn.vue'),
-  ),
-  lookup: defineAsyncComponent(
-    () => import('@/components/deck/DeckLookupColumn.vue'),
-  ),
-  serverInfo: defineAsyncComponent(
-    () => import('@/components/deck/DeckServerInfoColumn.vue'),
-  ),
-  ads: defineAsyncComponent(
-    () => import('@/components/deck/DeckAdsColumn.vue'),
-  ),
-  aboutMisskey: defineAsyncComponent(
-    () => import('@/components/deck/DeckAboutMisskeyColumn.vue'),
-  ),
-  emoji: defineAsyncComponent(
-    () => import('@/components/deck/DeckEmojiColumn.vue'),
-  ),
-}
 
 let pipColumnCounter = 0
 function genPipColumnId(): string {
@@ -187,7 +96,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  background: var(--nd-bg);
+  background: var(--nd-panel);
   color: var(--nd-fg);
   overflow: hidden;
   border-radius: 10px;
@@ -198,16 +107,19 @@ onMounted(async () => {
   align-items: center;
   height: 38px;
   padding: 0 8px 0 16px;
-  background: var(--nd-panelHeaderBg);
+  background: color(from var(--nd-panelHeaderBg) srgb r g b / var(--nd-header-opacity));
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   color: var(--nd-panelHeaderFg);
   user-select: none;
   flex-shrink: 0;
   border-radius: 10px 10px 0 0;
+  box-shadow: 0 0.5px 0 0 var(--nd-hairline);
 }
 
 .pipDragTitle {
   flex: 1;
-  font-size: 0.85em;
+  font-size: 0.9em;
   font-weight: bold;
 }
 

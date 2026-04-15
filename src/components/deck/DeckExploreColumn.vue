@@ -18,12 +18,12 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useNoteColumn } from '@/composables/useNoteColumn'
 import { usePortal } from '@/composables/usePortal'
 import { useTabSlide } from '@/composables/useTabSlide'
-import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { AppError } from '@/utils/errors'
 import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -249,6 +249,7 @@ function closeUserPopup() {
     :column-id="column.id"
     :title="column.name || 'みつける'"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="activeTab === 'notes' ? scrollToTop() : undefined"
     @refresh="refresh"
   >
@@ -260,20 +261,10 @@ function closeUserPopup() {
       <button v-if="selectedRole" class="_button" :class="$style.headerRefresh" title="戻る" @click.stop="closeRole">
         <i class="ti ti-arrow-left" />
       </button>
-      <div v-if="account" :class="$style.headerAccount">
-        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
-      </div>
+      <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
-    <ColumnEmptyState
-      v-if="!account"
-      message="アカウントが見つかりません"
-      :image-url="serverNotFoundImageUrl"
-    />
-
-    <template v-else>
-      <div ref="columnContentRef" :class="$style.exploreContent">
+    <div ref="columnContentRef" :class="$style.exploreContent">
       <ColumnTabs
         :tabs="TAB_DEFS"
         :model-value="activeTab"
@@ -420,7 +411,6 @@ function closeUserPopup() {
         </template>
       </template>
       </div>
-    </template>
   </DeckColumn>
 
   <div v-if="postForm.show.value && column.accountId && account?.hasToken" ref="postPortalRef">

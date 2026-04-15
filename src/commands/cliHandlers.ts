@@ -119,7 +119,7 @@ export function createCliHandlers(
         accountId,
         query: args.trim(),
         name: null,
-        width: 380,
+        width: 360,
       })
     },
 
@@ -139,7 +139,7 @@ export function createCliHandlers(
           accountId,
           tl: type as 'home' | 'local' | 'social' | 'global',
           name: null,
-          width: 380,
+          width: 360,
         })
       }
     },
@@ -157,7 +157,7 @@ export function createCliHandlers(
           type: 'notifications',
           accountId,
           name: null,
-          width: 380,
+          width: 360,
         })
       }
     },
@@ -175,7 +175,7 @@ export function createCliHandlers(
           type: 'mentions',
           accountId,
           name: null,
-          width: 380,
+          width: 360,
         })
       }
     },
@@ -193,7 +193,7 @@ export function createCliHandlers(
           type: 'favorites',
           accountId,
           name: null,
-          width: 380,
+          width: 360,
         })
       }
     },
@@ -304,7 +304,7 @@ export function createCliHandlers(
         accountId,
         userId: args.trim(),
         name: null,
-        width: 380,
+        width: 360,
       })
     },
 
@@ -347,7 +347,7 @@ export function createCliHandlers(
           type: 'emoji',
           accountId,
           name: null,
-          width: 380,
+          width: 360,
         })
       }
     },

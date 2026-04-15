@@ -70,12 +70,12 @@ const {
         :key="groupPrimaryId(group)"
         class="_button"
         :class="[$style.tab, { [$style.tabActive]: activeColumnIndex === gi }]"
-        @click="clearBadge(columnType(groupPrimaryId(group)) as ColumnType); emit('scroll-to-column', gi)"
+        @click="clearBadge(columnType(groupPrimaryId(group))); emit('scroll-to-column', gi)"
       >
         <div :class="$style.iconWrap">
           <i :class="'ti ti-' + columnIcon(groupPrimaryId(group))" />
           <span v-if="group.length > 1" :class="$style.stackBadge">{{ group.length }}</span>
-          <span v-if="getBadge(columnType(groupPrimaryId(group)) as ColumnType) > 0" :key="getBadge(columnType(groupPrimaryId(group)) as ColumnType)" :class="$style.badge">{{ getBadge(columnType(groupPrimaryId(group)) as ColumnType) > 99 ? '99+' : getBadge(columnType(groupPrimaryId(group)) as ColumnType) }}</span>
+          <span v-if="getBadge(columnType(groupPrimaryId(group))) > 0" :key="getBadge(columnType(groupPrimaryId(group)))" :class="$style.badge">{{ getBadge(columnType(groupPrimaryId(group))) > 99 ? '99+' : getBadge(columnType(groupPrimaryId(group))) }}</span>
           <ColumnBadges :account-id="columnAccountId(groupPrimaryId(group))" :size="14" />
         </div>
       </button>

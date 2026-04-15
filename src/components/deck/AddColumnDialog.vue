@@ -1,8 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import {
+  ACCOUNT_INDEPENDENT_TYPES,
+  ACCOUNT_OPTIONAL_TYPES,
+  buildColumnDefaults,
+  COLUMN_REGISTRY,
+  COLUMN_TYPE_GROUPS,
+  CROSS_ACCOUNT_TYPES,
+  GUEST_ALLOWED_TYPES,
+  type SelectableItem,
+  type SelectableSpec,
+} from '@/columns/registry'
 import AvatarStack from '@/components/common/AvatarStack.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
-import { COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useNavigation } from '@/composables/useNavigation'
 import { formatUserHandle, useUserSearch } from '@/composables/useUserSearch'
@@ -52,45 +62,6 @@ function toggleCategory(key: string) {
 
 const addColumnType = ref<ColumnType | null>(null)
 
-/** Column types that work without authentication (all APIs use get_credentials_or_anon) */
-const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
-  'timeline',
-  'user',
-  'search',
-  'channel',
-  'explore',
-  'emoji',
-  'announcements',
-  'gallery',
-  'serverInfo',
-  'aboutMisskey',
-  'ads',
-  'lookup',
-  'play',
-  'page',
-  'widget',
-  'aiscript',
-  'pluginManager',
-  'taskRunner',
-  'memos',
-])
-
-/** Column types that support cross-account mode (accountId: null) */
-const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
-  'notifications',
-  'search',
-  'chat',
-  'mentions',
-  'specified',
-  'followRequests',
-  'lookup',
-  'streamInspector',
-  'pluginManager',
-])
-
-/** Column types that can optionally work without an account */
-const ACCOUNT_OPTIONAL_TYPES = new Set<ColumnType>(['widget', 'aiscript'])
-
 /** Whether the selected column type requires authentication */
 const requiresAuth = computed(() => {
   if (!addColumnType.value) return false
@@ -100,12 +71,7 @@ const requiresAuth = computed(() => {
 function selectColumnType(type: ColumnType) {
   addColumnType.value = type
   // Account-independent types: skip account selection
-  if (
-    type === 'apiDocs' ||
-    type === 'ai' ||
-    type === 'pluginManager' ||
-    type === 'taskRunner'
-  ) {
+  if (ACCOUNT_INDEPENDENT_TYPES.has(type)) {
     addColumnForAccount(null)
     return
   }
@@ -126,131 +92,36 @@ function selectColumnType(type: ColumnType) {
   }
 }
 
-/** Column types with extra properties beyond the standard defaults */
-const COLUMN_EXTRA_PROPS: Partial<
-  Record<ColumnType, Partial<Omit<DeckColumn, 'id'>>>
-> = {
-  widget: { widgets: [] },
-  aiscript: { aiscriptCode: '<: "Hello, AiScript!"' },
-  apiDocs: { accountId: null, width: 990 },
-  ai: { accountId: null },
-  timeline: { tl: 'home', name: null },
+/** Selectable config bundled with its column type for the item-selection flow */
+interface ActiveSelectable {
+  type: ColumnType
+  label: string
+  spec: SelectableSpec
+}
+
+function getSelectable(type: ColumnType): ActiveSelectable | null {
+  const spec = COLUMN_REGISTRY[type]
+  if (!spec.selectable) return null
+  return { type, label: spec.label, spec: spec.selectable }
 }
 
 function addColumnForAccount(accountId: string | null) {
   const type = addColumnType.value || 'timeline'
-  const config = SELECTABLE_CONFIGS.find((c) => c.type === type)
-  if (config && accountId) {
-    fetchSelectItems(config, accountId)
+  const selectable = getSelectable(type)
+  if (selectable && accountId) {
+    fetchSelectItems(selectable, accountId)
     return
   }
-  const extra = COLUMN_EXTRA_PROPS[type]
   finalizeColumn({
     type,
-    name: COLUMN_LABELS[type] ?? type,
-    width: 360,
-    accountId,
-    active: true,
-    ...extra,
+    ...buildColumnDefaults(type, accountId),
   } as Omit<DeckColumn, 'id'>)
 }
-
-// Selectable column types (list, antenna, channel, clip, user)
-interface SelectableItem {
-  id: string
-  name: string
-  avatarUrl?: string
-}
-
-interface SelectableConfig {
-  type: ColumnType
-  label: string
-  icon: string
-  apiFn: (accountId: string) => Promise<SelectableItem[]>
-  idKey: string
-  /** When set, shows a search input. Items are fetched via this function with (accountId, query). */
-  searchFn?: (accountId: string, query: string) => Promise<SelectableItem[]>
-  /** Column name derived from selected item (default: item.name) */
-  formatName?: (item: SelectableItem) => string
-  /** Misskey API endpoint for creating new items (e.g. 'clips/create') */
-  createEndpoint?: string
-  /** Default params to merge when creating (e.g. antenna defaults) */
-  createDefaults?: Record<string, unknown>
-}
-
-// biome-ignore lint/suspicious/noExplicitAny: bindings の Result 型と SelectableItem の橋渡し
-function unwrapSelectItems(result: any): SelectableItem[] {
-  return unwrap(result) as unknown as SelectableItem[]
-}
-
-const SELECTABLE_CONFIGS: SelectableConfig[] = [
-  {
-    type: 'list',
-    label: 'リスト',
-    icon: 'ti-list',
-    apiFn: (accountId) =>
-      commands.apiGetUserLists(accountId).then(unwrapSelectItems),
-    idKey: 'listId',
-    createEndpoint: 'users/lists/create',
-  },
-  {
-    type: 'antenna',
-    label: 'アンテナ',
-    icon: 'ti-antenna-bars-5',
-    apiFn: (accountId) =>
-      commands.apiGetAntennas(accountId).then(unwrapSelectItems),
-    idKey: 'antennaId',
-    createEndpoint: 'antennas/create',
-    createDefaults: {
-      src: 'all',
-      keywords: [['']],
-      excludeKeywords: [['']],
-      users: [],
-      caseSensitive: false,
-      withReplies: false,
-      withFile: false,
-    },
-  },
-  {
-    type: 'channel',
-    label: 'チャンネル',
-    icon: 'ti-device-tv',
-    apiFn: (accountId) =>
-      commands.apiGetChannels(accountId).then(unwrapSelectItems),
-    idKey: 'channelId',
-    searchFn: (accountId, query) =>
-      commands.apiSearchChannels(accountId, query).then(unwrapSelectItems),
-  },
-  {
-    type: 'clip',
-    label: 'クリップ',
-    icon: 'ti-paperclip',
-    apiFn: (accountId) =>
-      commands.apiGetClips(accountId).then(unwrapSelectItems),
-    idKey: 'clipId',
-    createEndpoint: 'clips/create',
-  },
-  {
-    type: 'user',
-    label: 'ユーザー',
-    icon: 'ti-user',
-    apiFn: (accountId) =>
-      commands
-        .apiSearchUsersByQuery(accountId, '', null)
-        .then(unwrapSelectItems),
-    idKey: 'userId',
-    searchFn: (accountId, query) =>
-      commands
-        .apiSearchUsersByQuery(accountId, query, null)
-        .then(unwrapSelectItems),
-    formatName: (item) => item.name,
-  },
-]
 
 const selectAccountId = ref<string | null>(null)
 const selectItems = ref<SelectableItem[]>([])
 const selectLoading = ref(false)
-const selectConfig = ref<SelectableConfig | null>(null)
+const selectConfig = ref<ActiveSelectable | null>(null)
 
 // Unified search input for searchable configs (user, channel, etc.)
 const searchQuery = ref('')
@@ -280,7 +151,7 @@ watch(userSearching, (v) => {
 watch(searchQuery, (val) => {
   if (searchDebounce) clearTimeout(searchDebounce)
   const config = selectConfig.value
-  if (!config?.searchFn) return
+  if (!config?.spec.search) return
 
   // User: delegate to useUserSearch composable
   if (config.type === 'user') {
@@ -298,11 +169,11 @@ watch(searchQuery, (val) => {
   searchDebounce = setTimeout(() => searchSelectItems(config, q), 300)
 })
 
-async function searchSelectItems(config: SelectableConfig, query: string) {
-  if (!config.searchFn || !selectAccountId.value) return
+async function searchSelectItems(config: ActiveSelectable, query: string) {
+  if (!config.spec.search || !selectAccountId.value) return
   selectLoading.value = true
   try {
-    selectItems.value = await config.searchFn(selectAccountId.value, query)
+    selectItems.value = await config.spec.search(selectAccountId.value, query)
   } catch (e) {
     logWarn(`deck-search-${config.type}`, e)
     selectItems.value = []
@@ -311,10 +182,10 @@ async function searchSelectItems(config: SelectableConfig, query: string) {
   }
 }
 
-async function fetchInitialItems(config: SelectableConfig, accountId: string) {
+async function fetchInitialItems(config: ActiveSelectable, accountId: string) {
   selectLoading.value = true
   try {
-    selectItems.value = await config.apiFn(accountId)
+    selectItems.value = await config.spec.fetch(accountId)
   } catch (e) {
     logWarn(`deck-fetch-${config.type}`, e)
     selectItems.value = []
@@ -323,7 +194,7 @@ async function fetchInitialItems(config: SelectableConfig, accountId: string) {
   }
 }
 
-async function fetchSelectItems(config: SelectableConfig, accountId: string) {
+async function fetchSelectItems(config: ActiveSelectable, accountId: string) {
   selectConfig.value = config
   selectAccountId.value = accountId
   searchQuery.value = ''
@@ -336,7 +207,7 @@ async function fetchSelectItems(config: SelectableConfig, accountId: string) {
   }
   selectLoading.value = true
   try {
-    selectItems.value = await config.apiFn(accountId)
+    selectItems.value = await config.spec.fetch(accountId)
   } catch (e) {
     logWarn(`deck-fetch-${config.type}`, e)
     selectItems.value = []
@@ -353,27 +224,27 @@ const createLoading = ref(false)
 async function createNewItem() {
   const config = selectConfig.value
   const accountId = selectAccountId.value
-  if (!config?.createEndpoint || !accountId) return
+  if (!config?.spec.createEndpoint || !accountId) return
   const name = createName.value.trim()
   if (!name) return
   createLoading.value = true
   try {
     const created = unwrap(
-      await commands.apiRequest(accountId, config.createEndpoint, {
+      await commands.apiRequest(accountId, config.spec.createEndpoint, {
         name,
-        ...config.createDefaults,
+        ...config.spec.createDefaults,
       }),
     ) as unknown as SelectableItem
     // Add column with the newly created item
-    const colName = config.formatName
-      ? config.formatName(created)
+    const colName = config.spec.formatName
+      ? config.spec.formatName(created)
       : created.name
     finalizeColumn({
       type: config.type,
       name: colName,
       width: 360,
       accountId,
-      [config.idKey]: created.id,
+      [config.spec.idKey]: created.id,
       active: true,
     } as Omit<DeckColumn, 'id'>)
   } catch (e) {
@@ -386,16 +257,16 @@ async function createNewItem() {
 }
 
 function addSelectableColumn(item: SelectableItem) {
-  if (!selectAccountId.value || !selectConfig.value) return
-  const name = selectConfig.value.formatName
-    ? selectConfig.value.formatName(item)
-    : item.name
+  const config = selectConfig.value
+  const accountId = selectAccountId.value
+  if (!accountId || !config) return
+  const name = config.spec.formatName ? config.spec.formatName(item) : item.name
   finalizeColumn({
-    type: selectConfig.value.type,
+    type: config.type,
     name,
     width: 360,
-    accountId: selectAccountId.value,
-    [selectConfig.value.idKey]: item.id,
+    accountId,
+    [config.spec.idKey]: item.id,
     active: true,
   } as Omit<DeckColumn, 'id'>)
 }
@@ -435,168 +306,26 @@ function close() {
 
       <!-- Step 1: Column type selection -->
       <template v-if="!addColumnType">
-        <div :class="$style.addCategorySection">
-          <button class="_button" :class="$style.addCategoryLabel" @click="toggleCategory('account')">
-            <i class="ti ti-user" />
-            アカウント
-            <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedCategories.account }]" />
+        <div
+          v-for="g in COLUMN_TYPE_GROUPS"
+          :key="g.group"
+          :class="$style.addCategorySection"
+        >
+          <button class="_button" :class="$style.addCategoryLabel" @click="toggleCategory(g.group)">
+            <i class="ti" :class="`ti-${g.icon}`" />
+            {{ g.label }}
+            <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedCategories[g.group] }]" />
           </button>
-          <template v-if="expandedCategories.account">
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('timeline')">
-              <i class="ti ti-home" />
-              <span>タイムライン</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('notifications')">
-              <i class="ti ti-bell" />
-              <span>通知</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('drive')">
-              <i class="ti ti-cloud" />
-              <span>ドライブ</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('followRequests')">
-              <i class="ti ti-user-plus" />
-              <span>フォローリクエスト</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('list')">
-              <i class="ti ti-list" />
-              <span>リスト</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('antenna')">
-              <i class="ti ti-antenna-bars-5" />
-              <span>アンテナ</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('favorites')">
-              <i class="ti ti-star" />
-              <span>お気に入り</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('clip')">
-              <i class="ti ti-paperclip" />
-              <span>クリップ</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('mentions')">
-              <i class="ti ti-at" />
-              <span>メンション</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('specified')">
-              <i class="ti ti-mail" />
-              <span>ダイレクト</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('chat')">
-              <i class="ti ti-messages" />
-              <span>チャット</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('achievements')">
-              <i class="ti ti-medal" />
-              <span>実績</span>
-            </button>
-          </template>
-        </div>
-
-        <div :class="$style.addCategorySection">
-          <button class="_button" :class="$style.addCategoryLabel" @click="toggleCategory('server')">
-            <i class="ti ti-server" />
-            サーバー
-            <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedCategories.server }]" />
-          </button>
-          <template v-if="expandedCategories.server">
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('serverInfo')">
-              <i class="ti ti-server" />
-              <span>サーバー情報</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('aboutMisskey')">
-              <i class="ti ti-info-circle" />
-              <span>Misskeyについて</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('emoji')">
-              <i class="ti ti-mood-smile" />
-              <span>カスタム絵文字</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('ads')">
-              <i class="ti ti-ad-2" />
-              <span>広告</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('explore')">
-              <i class="ti ti-compass" />
-              <span>みつける</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('announcements')">
-              <i class="ti ti-speakerphone" />
-              <span>お知らせ</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('search')">
-              <i class="ti ti-search" />
-              <span>検索</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('lookup')">
-              <i class="ti ti-world-search" />
-              <span>URI照会</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('channel')">
-              <i class="ti ti-device-tv" />
-              <span>チャンネル</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('gallery')">
-              <i class="ti ti-icons" />
-              <span>ギャラリー</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('play')">
-              <i class="ti ti-player-play" />
-              <span>Misskey Play</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('page')">
-              <i class="ti ti-note" />
-              <span>ページ</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('user')">
-              <i class="ti ti-user" />
-              <span>ユーザー</span>
-            </button>
-          </template>
-        </div>
-
-        <div :class="$style.addCategorySection">
-          <button class="_button" :class="$style.addCategoryLabel" @click="toggleCategory('tools')">
-            <i class="ti ti-tool" />
-            ツール
-            <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedCategories.tools }]" />
-          </button>
-          <template v-if="expandedCategories.tools">
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('widget')">
-              <i class="ti ti-app-window" />
-              <span>ウィジェット</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('pluginManager')">
-              <i class="ti ti-puzzle" />
-              <span>プラグイン</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('aiscript')">
-              <i class="ti ti-terminal-2" />
-              <span>スクラッチパッド</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('apiConsole')">
-              <i class="ti ti-api" />
-              <span>APIコンソール</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('apiDocs')">
-              <i class="ti ti-book" />
-              <span>APIドキュメント</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('streamInspector')">
-              <i class="ti ti-activity-heartbeat" />
-              <span>ストリーム</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('ai')">
-              <i class="ti ti-sparkles" />
-              <span>AIチャット</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('memos')">
-              <i class="ti ti-notes" />
-              <span>メモ</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('taskRunner')">
-              <i class="ti ti-player-play" />
-              <span>タスク</span>
+          <template v-if="expandedCategories[g.group]">
+            <button
+              v-for="t in g.types"
+              :key="t"
+              class="_button"
+              :class="$style.addTypeBtn"
+              @click="selectColumnType(t)"
+            >
+              <i class="ti" :class="`ti-${COLUMN_REGISTRY[t].icon}`" />
+              <span>{{ COLUMN_REGISTRY[t].label }}</span>
             </button>
           </template>
         </div>
@@ -604,7 +333,7 @@ function close() {
 
       <!-- Step 3a: Item selection (list/antenna/channel/clip/user) -->
       <template v-else-if="selectConfig">
-        <div v-if="selectConfig.searchFn" :class="$style.selectSearchBar">
+        <div v-if="selectConfig.spec.search" :class="$style.selectSearchBar">
           <i class="ti ti-search" :class="$style.selectSearchIcon" />
           <input
             v-model="searchQuery"
@@ -616,7 +345,7 @@ function close() {
         </div>
 
         <!-- Inline create form -->
-        <div v-if="selectConfig.createEndpoint && showCreateForm" :class="$style.createForm">
+        <div v-if="selectConfig.spec.createEndpoint && showCreateForm" :class="$style.createForm">
           <form @submit.prevent="createNewItem">
             <input
               v-model="createName"
@@ -638,7 +367,7 @@ function close() {
         </div>
         <!-- Create button -->
         <button
-          v-else-if="selectConfig.createEndpoint"
+          v-else-if="selectConfig.spec.createEndpoint"
           class="_button"
           :class="[$style.addTypeBtn, $style.createBtn]"
           @click="showCreateForm = true"
@@ -647,8 +376,8 @@ function close() {
           <span>新しい{{ selectConfig.label }}を作成</span>
         </button>
 
-        <div v-if="!selectConfig.searchFn && selectLoading" :class="$style.addPopupLoading"><LoadingSpinner /></div>
-        <div v-else-if="!selectLoading && selectItems.length === 0 && (!selectConfig.searchFn || searchQuery.trim())" :class="$style.addPopupEmpty">{{ selectConfig.label }}が見つかりません</div>
+        <div v-if="!selectConfig.spec.search && selectLoading" :class="$style.addPopupLoading"><LoadingSpinner /></div>
+        <div v-else-if="!selectLoading && selectItems.length === 0 && (!selectConfig.spec.search || searchQuery.trim())" :class="$style.addPopupEmpty">{{ selectConfig.label }}が見つかりません</div>
         <button
           v-for="item in selectItems"
           :key="item.id"
@@ -657,7 +386,7 @@ function close() {
           @click="addSelectableColumn(item)"
         >
           <img v-if="item.avatarUrl" :src="item.avatarUrl" :class="$style.selectItemAvatar" />
-          <i v-else :class="'ti ' + selectConfig.icon" />
+          <i v-else class="ti" :class="`ti-${COLUMN_REGISTRY[selectConfig.type].icon}`" />
           <span>{{ item.name }}</span>
         </button>
       </template>
@@ -719,12 +448,14 @@ function close() {
 }
 
 .addPopup {
-  background: var(--nd-popup);
+  background: color-mix(in srgb, var(--nd-navBg) 92%, transparent);
+  backdrop-filter: var(--nd-vibrancy);
+  -webkit-backdrop-filter: var(--nd-vibrancy);
   border-radius: 16px;
   box-shadow: 0 8px 32px var(--nd-shadow);
   min-width: 320px;
   max-width: 480px;
-  max-height: 80vh;
+  max-height: 90vh;
   overflow-y: auto;
 }
 

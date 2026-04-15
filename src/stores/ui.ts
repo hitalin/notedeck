@@ -32,7 +32,7 @@ const platformName = resolvePlatformName()
 const isMobilePlatform = platformName === 'android' || platformName === 'ios'
 const isDesktop = isTauri && !isMobilePlatform
 
-const MOBILE_BREAKPOINT = 500
+const MOBILE_BREAKPOINT = 420 // 420px 以下をモバイルとみなす（タブレット横持ち等は除外）
 
 export const useUiStore = defineStore('ui', () => {
   const sidebarOpen = ref(true)

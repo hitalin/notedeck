@@ -4,20 +4,32 @@ import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 
+/** "user@host" のような portable account ID から host 部分を取り出す */
+function hostFromPortableAccount(portable: string | undefined): string | null {
+  if (!portable) return null
+  const at = portable.lastIndexOf('@')
+  return at >= 0 ? portable.slice(at + 1) : null
+}
+
 /**
  * カラムのアカウントに紐づくサーバーのカスタム画像 URL を返す。
  * useColumnSetup を使わないカラム（useColumnTheme のみ）でも利用可能。
+ *
+ * アカウントが見つからない（削除済み等）場合でも、カラムが保持する portable
+ * account ID (`user@host`) から host を復元して server info を引く。
+ * 横断カラム（accountId も portable も無い）では undefined を返し、
+ * 特定サーバーのブランディング画像がフォールバックで表示されないようにする。
  */
 export function useServerImages(getColumn: () => DeckColumn) {
   const accountsStore = useAccountsStore()
   const serversStore = useServersStore()
 
   const serverInfo = computed<ServerInfo | undefined>(() => {
-    const acc = accountsStore.accounts.find(
-      (a) => a.id === getColumn().accountId,
-    )
-    if (!acc) return undefined
-    return serversStore.getServer(acc.host)
+    const col = getColumn()
+    const acc = accountsStore.accounts.find((a) => a.id === col.accountId)
+    const host = acc?.host ?? hostFromPortableAccount(col.account)
+    if (!host) return undefined
+    return serversStore.getServer(host)
   })
 
   const serverInfoImageUrl = computed(() => serverInfo.value?.infoImageUrl)

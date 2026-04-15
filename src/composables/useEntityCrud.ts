@@ -10,6 +10,10 @@ export type EntityType = 'clip' | 'list' | 'antenna'
 
 type EntityIdKey = 'clipId' | 'listId' | 'antennaId'
 
+export function isEntityType(value: unknown): value is EntityType {
+  return typeof value === 'string' && value in ENTITY_CONFIGS
+}
+
 export const ENTITY_CONFIGS: Record<
   EntityType,
   {

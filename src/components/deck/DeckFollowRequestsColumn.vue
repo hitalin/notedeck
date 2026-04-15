@@ -15,6 +15,7 @@ import { useToast } from '@/stores/toast'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 interface FollowRequest {
   id: string
@@ -162,6 +163,7 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name || 'フォローリクエスト'"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop"
     :pull-refresh="fetchRequests"
     @refresh="fetchRequests"
@@ -171,16 +173,11 @@ onMounted(() => {
     </template>
 
     <template #header-meta>
-      <div v-if="!isCrossAccount && account" :class="$style.headerAccount">
-        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
-      </div>
+      <DeckHeaderAccount v-if="!isCrossAccount" :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
-    <ColumnEmptyState v-if="!isCrossAccount && !account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
-
     <ColumnEmptyState
-      v-else-if="error && !isLoggedOut"
+      v-if="error && !isLoggedOut"
       :message="error.isAuth ? AUTH_ERROR_MESSAGE : error.message"
       is-error
       :image-url="serverErrorImageUrl"

@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import type {
-  NormalizedDriveFile,
-  NormalizedNote,
-  NormalizedUser,
-} from '@/adapters/types'
+import type { NormalizedDriveFile, NormalizedNote } from '@/adapters/types'
 import { useAutocomplete } from '@/composables/useAutocomplete'
 import type { StoredDraft } from '@/composables/useDrafts'
 import type { StoredMemo } from '@/composables/useMemos'
@@ -17,9 +13,12 @@ import {
   getAccountLabel,
   isGuestAccount,
 } from '@/stores/accounts'
+import { useEmojisStore } from '@/stores/emojis'
 import { usePostFormStore } from '@/stores/postForm'
 import { useSettingsStore } from '@/stores/settings'
 import { useIsCompactLayout } from '@/stores/ui'
+import { useWindowsStore } from '@/stores/windows'
+import { buildPreviewNote } from '@/utils/buildPreviewNote'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { parseMfm } from '@/utils/mfm'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
@@ -63,6 +62,8 @@ const emit = defineEmits<{
 const isCompact = useIsCompactLayout()
 const settingsStore = useSettingsStore()
 const postFormStore = usePostFormStore()
+const windowsStore = useWindowsStore()
+const emojisStore = useEmojisStore()
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const showPreview = computed<boolean>({
   get: () => settingsStore.get('postForm.preview') ?? false,
@@ -101,6 +102,7 @@ const {
   pollExpiresAt,
   scheduledAt,
   supportsScheduledNotes,
+  sessionSlotKey,
   initAdapter,
   switchAccount,
   post,
@@ -219,33 +221,47 @@ const previewNote = computed<NormalizedNote | null>(() => {
   if (!showPreview.value) return null
   const acc = account.value
   if (!acc) return null
-  return {
+  const emojiDict = emojisStore.cache.get(acc.host) ?? {}
+  return buildPreviewNote({
+    account: acc,
     id: `preview-${acc.id}`,
-    _accountId: acc.id,
-    _serverHost: acc.host,
     createdAt: new Date().toISOString(),
     text: text.value || null,
     cw: showCw.value && cw.value ? cw.value : null,
-    user: {
-      id: acc.userId,
-      username: acc.username,
-      host: null,
-      name: acc.displayName,
-      avatarUrl: acc.avatarUrl,
-    },
     visibility: visibility.value,
-    emojis: {},
-    reactionEmojis: {},
-    reactions: {},
-    renoteCount: 0,
-    repliesCount: 0,
-    files: attachedFiles.value,
     localOnly: localOnly.value,
     replyId: props.replyTo?.id ?? null,
     renoteId: props.renoteId ?? null,
     channelId: props.channelId ?? null,
-  }
+    poll: {
+      choices: pollChoices.value,
+      multiple: pollMultiple.value,
+      expiresAt:
+        pollExpiresAt.value != null
+          ? new Date(pollExpiresAt.value).toISOString()
+          : null,
+      show: showPoll.value,
+    },
+    emojis: emojiDict,
+    reactionEmojis: emojiDict,
+  })
 })
+
+// memoMode 時はプレビュー内の MkNote のナビゲーションを抑制し、
+// 現在編集中メモを memoEditor ウィンドウで開く。
+// (previewNote の id は `preview-*` の合成IDで 404 になるため)
+function onPreviewClick(ev: Event) {
+  if (!props.memoMode) return
+  ev.preventDefault()
+  ev.stopPropagation()
+  const acc = account.value
+  const key = sessionSlotKey.value
+  if (!acc || !key) return
+  windowsStore.open('memoEditor', {
+    accountId: acc.id,
+    memoKey: key,
+  })
+}
 
 // --- Mention popup ---
 const {
@@ -755,7 +771,12 @@ function onKeydown(e: KeyboardEvent) {
 
       <!-- Preview -->
       <div v-if="showPreview" :class="$style.previewSection">
-        <MkNote v-if="previewNote" :note="previewNote" embedded />
+        <div
+          v-if="previewNote"
+          @click.capture="onPreviewClick"
+        >
+          <MkNote :note="previewNote" embedded />
+        </div>
         <div v-else :class="$style.previewEmpty">アカウントが選択されていません</div>
       </div>
 

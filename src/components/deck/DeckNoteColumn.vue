@@ -16,11 +16,12 @@ import {
   useNoteColumn,
 } from '@/composables/useNoteColumn'
 import { usePortal } from '@/composables/usePortal'
-import { getAccountAvatarUrl, isGuestAccount } from '@/stores/accounts'
+import { isGuestAccount } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useOfflineModeStore } from '@/stores/offlineMode'
 import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -110,6 +111,7 @@ defineExpose({
     :theme-vars="columnThemeVars"
     :web-ui-url="webUiUrl"
     :sound-enabled="soundEnabled"
+    require-account
     @header-click="scrollToTop()"
     @refresh="refresh"
   >
@@ -120,19 +122,7 @@ defineExpose({
     </template>
 
     <template #header-meta>
-      <div v-if="account" :class="$style.headerAccount">
-        <img
-          :src="getAccountAvatarUrl(account)"
-          :class="$style.headerAvatar"
-        />
-        <img
-          :class="$style.headerFavicon"
-          :src="
-            serverIconUrl || `https://${account.host}/favicon.ico`
-          "
-          :title="account.host"
-        />
-      </div>
+      <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
     <template #header-extra>
@@ -144,13 +134,7 @@ defineExpose({
     </template>
 
     <ColumnEmptyState
-      v-if="!account"
-      :message="'アカウントが見つかりません'"
-      :image-url="serverNotFoundImageUrl"
-    />
-
-    <ColumnEmptyState
-      v-else-if="error"
+      v-if="error"
       :message="error.message"
       :image-url="serverErrorImageUrl"
       is-error

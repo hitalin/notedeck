@@ -664,6 +664,7 @@ onBeforeUnmount(() => {
     :column-id="column.id"
     :title="viewMode === 'conversation' ? conversationTitle : (column.name || 'チャット')"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop(true)"
   >
     <template #header-icon>
@@ -688,13 +689,7 @@ onBeforeUnmount(() => {
     </template>
 
     <ColumnEmptyState
-      v-if="!isCrossAccount && !account"
-      message="アカウントが見つかりません"
-      :image-url="serverNotFoundImageUrl"
-    />
-
-    <ColumnEmptyState
-      v-else-if="error && viewMode === 'history'"
+      v-if="error && viewMode === 'history'"
       :message="error.message"
       :image-url="serverErrorImageUrl"
       is-error

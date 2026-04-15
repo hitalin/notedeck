@@ -2,7 +2,7 @@ import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
 import { router, setupAccountRedirect } from './router'
-import { useAccountsStore } from './stores/accounts'
+import { initEarlyAccountListener, useAccountsStore } from './stores/accounts'
 import { useKeybindsStore } from './stores/keybinds'
 import { usePerformanceStore } from './stores/performance'
 import { useServersStore } from './stores/servers'
@@ -13,6 +13,11 @@ import '@tabler/icons-webfont/dist/tabler-icons.min.css'
 import './styles/global.css'
 
 if (isTauri) {
+  // Register the `nd:accounts-early` listener as early as possible so the Rust
+  // backend's pre-init emit (src-tauri/src/lib.rs:376) is never missed.
+  // Done synchronously at module load — before Pinia, before mount.
+  initEarlyAccountListener()
+
   // Pre-warm Tauri API module (critical path in App.vue onMounted)
   import('@tauri-apps/api/window')
 
@@ -83,9 +88,11 @@ if (isTauri) {
   useKeybindsStore().init()
   usePerformanceStore().init()
 
-  // Start loading accounts early (runs in parallel with mount).
-  // Two-stage AppState: invoke('load_accounts') awaits DB readiness only,
-  // not full init — so it resolves as soon as DB + migrations complete.
+  // Start loading accounts (fire-and-forget). Blocking mount on this invoke
+  // would freeze the whole app if Rust AppState init stalls. Instead we rely
+  // on the pre-registered `nd:accounts-early` listener (deterministic) and
+  // DeckColumn's `requireAccount` guard, which renders a static blank while
+  // `accountsStore.isLoaded` is false so no "アカウントが見つかりません" flashes.
   useAccountsStore().loadAccounts()
 
   // Pre-load server info from DB so ColumnBadges can show icons immediately

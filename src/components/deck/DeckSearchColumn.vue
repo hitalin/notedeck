@@ -19,7 +19,6 @@ import RegexGuide from '@/components/common/RegexGuide.vue'
 import { useNavigation } from '@/composables/useNavigation'
 import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
-import { getAccountAvatarUrl } from '@/stores/accounts'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
@@ -40,6 +39,7 @@ import {
   isValidRegex,
 } from '@/utils/regexSearch'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 function collectFulfilled<T>(results: PromiseSettledResult<T[]>[]): T[] {
   return results.flatMap((r) => (r.status === 'fulfilled' ? r.value : []))
@@ -604,6 +604,7 @@ onUnmounted(() => {
     :column-id="column.id"
     title="検索"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop"
   >
     <template #header-icon>
@@ -611,10 +612,7 @@ onUnmounted(() => {
     </template>
 
     <template #header-meta>
-      <div v-if="!isCrossAccount && account" :class="$style.headerAccount">
-        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
-      </div>
+      <DeckHeaderAccount v-if="!isCrossAccount" :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
     <template #header-extra>
@@ -715,13 +713,7 @@ onUnmounted(() => {
     </template>
 
     <ColumnEmptyState
-      v-if="!account && !isCrossAccount"
-      message="アカウントが見つかりません"
-      :image-url="serverNotFoundImageUrl"
-    />
-
-    <ColumnEmptyState
-      v-else-if="error"
+      v-if="error"
       :message="error.message"
       :image-url="serverErrorImageUrl"
       is-error

@@ -1,6 +1,6 @@
 import { emit, listen } from '@tauri-apps/api/event'
+import { isColumnType } from '@/columns/registry'
 import { useCommandStore } from '@/commands/registry'
-import type { ColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 
 interface QueryRequest {
@@ -27,7 +27,7 @@ const handlers: Record<string, QueryHandler> = {
   'deck/add-column': (params) => {
     const deck = useDeckStore()
     const col = deck.addColumn({
-      type: ((params.type as string) ?? 'timeline') as ColumnType,
+      type: isColumnType(params.type) ? params.type : 'timeline',
       name: (params.name as string) ?? null,
       width: (params.width as number) ?? 400,
       accountId: (params.accountId as string) ?? null,

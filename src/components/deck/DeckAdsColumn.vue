@@ -6,10 +6,11 @@ import { useAds } from '@/composables/useAds'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
-import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
+import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 const props = defineProps<{
   column: DeckColumnType
@@ -64,6 +65,7 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name ?? '広告'"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop"
     :pull-refresh="load"
     @refresh="load"
@@ -73,15 +75,10 @@ onMounted(() => {
     </template>
 
     <template #header-meta>
-      <div v-if="account" :class="$style.headerAccount">
-        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
-      </div>
+      <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
-    <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
-
-    <ColumnEmptyState v-else-if="ads.length === 0 && !isLoading" message="広告はありません" :image-url="serverInfoImageUrl" />
+    <ColumnEmptyState v-if="ads.length === 0 && !isLoading" message="広告はありません" :image-url="serverInfoImageUrl" />
 
     <div v-else ref="scrollContainer" :class="$style.adsBody">
       <MkAd
