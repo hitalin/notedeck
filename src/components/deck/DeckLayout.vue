@@ -6,7 +6,6 @@ import {
   onMounted,
   ref,
   useTemplateRef,
-  watch,
 } from 'vue'
 import { useCommandStore } from '@/commands/registry'
 import AppConfirm from '@/components/common/AppConfirm.vue'
@@ -17,7 +16,6 @@ import { useBackButton } from '@/composables/useBackButton'
 import { useDeckInit } from '@/composables/useDeckInit'
 import { requestMoveColumn } from '@/composables/useDeckWindow'
 import { useFileDrop } from '@/composables/useFileDrop'
-import type { StoredMemo } from '@/composables/useMemos'
 import { useNavigation } from '@/composables/useNavigation'
 import { usePortal } from '@/composables/usePortal'
 import { useRippleEffect } from '@/composables/useRippleEffect'
@@ -61,8 +59,6 @@ const showSettingsMenu = ref(false)
 const mobileDrawerOpen = ref(false)
 const pendingFilePaths = ref<string[]>([])
 const pendingComposeAccountId = ref<string | null>(null)
-const pendingInitialMemo = ref<StoredMemo | null>(null)
-const pendingInitialMemoKey = ref<string | null>(null)
 const addMenuPortalRef = useTemplateRef<HTMLElement>('addMenuPortalRef')
 const composePortalRef = useTemplateRef<HTMLElement>('composePortalRef')
 usePortal(addMenuPortalRef)
@@ -108,22 +104,7 @@ function closeCompose() {
   showCompose.value = false
   pendingFilePaths.value = []
   pendingComposeAccountId.value = null
-  pendingInitialMemo.value = null
-  pendingInitialMemoKey.value = null
 }
-
-// Memo column → open compose form with the selected memo prefilled.
-watch(
-  () => uiStore.pendingCompose,
-  (req) => {
-    if (!req) return
-    pendingInitialMemo.value = req.memo
-    pendingInitialMemoKey.value = req.key
-    pendingFilePaths.value = []
-    showCompose.value = true
-    uiStore.consumePendingCompose()
-  },
-)
 
 function toggleAddMenu() {
   if (!isCompact.value) {
@@ -310,8 +291,6 @@ function acceptCrossWindowDrop() {
         :class="[composeT.entering.value && $style.modalEnter, composeT.leaving.value && $style.modalLeave]"
         :account-id="pendingComposeAccountId ?? accountsStore.accounts[0]!.id"
         :initial-file-paths="pendingFilePaths"
-        :initial-memo="pendingInitialMemo"
-        :initial-memo-key="pendingInitialMemoKey"
         @close="closeCompose"
         @posted="closeCompose"
       />

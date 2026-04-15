@@ -103,8 +103,7 @@ function selectColumnType(type: ColumnType) {
     type === 'apiDocs' ||
     type === 'ai' ||
     type === 'pluginManager' ||
-    type === 'taskRunner' ||
-    type === 'memos'
+    type === 'taskRunner'
   ) {
     addColumnForAccount(null)
     return

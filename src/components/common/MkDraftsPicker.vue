@@ -8,52 +8,55 @@ import type {
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import {
-  deleteAllMemos,
-  deleteMemo,
-  ensureMemosLoaded,
-  loadAllMemos,
-  memosVersion,
-  type StoredMemo,
-} from '@/composables/useMemos'
-import { useAccountsStore } from '@/stores/accounts'
+  deleteAllDrafts,
+  deleteDraft,
+  draftsVersion,
+  ensureDraftsLoaded,
+  loadAllDrafts,
+  type StoredDraft,
+} from '@/composables/useDrafts'
+import { type Account, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
+import { useThemeStore } from '@/stores/theme'
 import { useToast } from '@/stores/toast'
 
+const props = defineProps<{
+  accountId: string
+}>()
+
 const emit = defineEmits<{
-  pick: [key: string, memo: StoredMemo]
+  pick: [key: string, draft: StoredDraft]
   close: []
 }>()
 
 const accountsStore = useAccountsStore()
+const themeStore = useThemeStore()
 const { confirm } = useConfirm()
 const toast = useToast()
 
-/**
- * Memos aren't account-bound, so the preview note just uses a placeholder
- * "memo" identity. Guest avatar keeps the visual tied to "private, not posted".
- */
-const MEMO_USER: NormalizedUser = {
-  id: 'memo',
-  username: 'memo',
-  host: null,
-  name: 'メモ',
-  avatarUrl: '/avatar-guest.svg',
-}
+const account = computed<Account | undefined>(() =>
+  accountsStore.accounts.find((a) => a.id === props.accountId),
+)
 
-interface MemoContext {
+/** Per-account custom server theme so the picker matches the post form. */
+const themeVars = computed(() =>
+  themeStore.getStyleVarsForAccount(props.accountId),
+)
+
+interface DraftContext {
   kind: 'reply' | 'renote' | 'note' | 'channel-note'
   channelId: string | null
   refId: string | null
 }
 
-interface MemoEntry {
+interface DraftEntry {
   key: string
-  memo: StoredMemo
-  context: MemoContext
+  draft: StoredDraft
+  context: DraftContext
   note: NormalizedNote
 }
 
-function parseMemoKey(key: string): MemoContext {
+function parseDraftKey(key: string): DraftContext {
   let rest = key
   let channelId: string | null = null
   if (rest.startsWith('channel:')) {
@@ -79,21 +82,31 @@ function parseMemoKey(key: string): MemoContext {
   return { kind: 'note', channelId, refId: null }
 }
 
+function userFromAccount(acc: Account): NormalizedUser {
+  return {
+    id: acc.userId,
+    username: acc.username,
+    host: null,
+    name: acc.displayName ?? null,
+    avatarUrl: acc.avatarUrl ?? null,
+  }
+}
+
 function toPreviewNote(
+  acc: Account,
   key: string,
-  stored: StoredMemo,
-  ctx: MemoContext,
+  stored: StoredDraft,
+  ctx: DraftContext,
 ): NormalizedNote {
   const d = stored.data
-  const owner = accountsStore.activeAccountId ?? 'memo'
   return {
-    id: `memo:${key}`,
-    _accountId: owner,
-    _serverHost: '',
+    id: `draft:${acc.id}:${key}`,
+    _accountId: acc.id,
+    _serverHost: acc.host,
     createdAt: stored.updatedAt,
     text: d.text || null,
     cw: d.showCw && d.cw ? d.cw : null,
-    user: MEMO_USER,
+    user: userFromAccount(acc),
     visibility: d.visibility as NoteVisibility,
     emojis: {},
     reactionEmojis: {},
@@ -111,31 +124,37 @@ function toPreviewNote(
 const loaded = ref(false)
 
 watch(
-  () => true,
+  () => props.accountId,
   async () => {
-    await ensureMemosLoaded()
+    loaded.value = false
+    await ensureDraftsLoaded()
     loaded.value = true
   },
   { immediate: true },
 )
 
-const entries = computed<MemoEntry[]>(() => {
-  // Track reactive version so save/delete from anywhere re-renders us.
-  void memosVersion.value
-  if (!loaded.value) return []
-  const map = loadAllMemos()
-  const out: MemoEntry[] = []
-  for (const [key, memo] of Object.entries(map)) {
-    const ctx = parseMemoKey(key)
-    out.push({ key, memo, context: ctx, note: toPreviewNote(key, memo, ctx) })
+const entries = computed<DraftEntry[]>(() => {
+  void draftsVersion.value
+  if (!loaded.value || !account.value) return []
+  const map = loadAllDrafts(props.accountId)
+  const acc = account.value
+  const out: DraftEntry[] = []
+  for (const [key, draft] of Object.entries(map)) {
+    const ctx = parseDraftKey(key)
+    out.push({
+      key,
+      draft,
+      context: ctx,
+      note: toPreviewNote(acc, key, draft, ctx),
+    })
   }
-  out.sort((a, b) => b.memo.updatedAt.localeCompare(a.memo.updatedAt))
+  out.sort((a, b) => b.draft.updatedAt.localeCompare(a.draft.updatedAt))
   return out
 })
 
-const memoCount = computed(() => entries.value.length)
+const draftCount = computed(() => entries.value.length)
 
-function contextLabel(ctx: MemoContext): string {
+function contextLabel(ctx: DraftContext): string {
   switch (ctx.kind) {
     case 'reply':
       return '返信'
@@ -148,7 +167,7 @@ function contextLabel(ctx: MemoContext): string {
   }
 }
 
-function contextIcon(ctx: MemoContext): string {
+function contextIcon(ctx: DraftContext): string {
   switch (ctx.kind) {
     case 'reply':
       return 'ti ti-arrow-back-up'
@@ -177,19 +196,19 @@ function formatScheduledAt(iso: string): string {
   })
 }
 
-function onPick(entry: MemoEntry) {
-  emit('pick', entry.key, entry.memo)
+function onPick(entry: DraftEntry) {
+  emit('pick', entry.key, entry.draft)
 }
 
 // --- Custom right-click menu (overrides MkNote's default NoteMoreMenu) ---
 const menuState = ref<{
   x: number
   y: number
-  entry: MemoEntry
+  entry: DraftEntry
 } | null>(null)
 const menuRef = ref<HTMLElement | null>(null)
 
-function onContextMenu(e: MouseEvent, entry: MemoEntry) {
+function onContextMenu(e: MouseEvent, entry: DraftEntry) {
   e.preventDefault()
   e.stopPropagation()
   menuState.value = { x: e.clientX, y: e.clientY, entry }
@@ -209,43 +228,43 @@ function closeMenu() {
   menuState.value = null
 }
 
-async function onDelete(entry: MemoEntry) {
+async function onDelete(entry: DraftEntry) {
   const ok = await confirm({
-    title: 'メモを削除',
-    message: '選択したメモを削除しますか？',
+    title: '下書きを削除',
+    message: '選択した下書きを削除しますか？',
     okLabel: '削除',
     type: 'danger',
   })
   if (!ok) return
-  deleteMemo(entry.key)
-  toast.show('メモを削除しました', 'info')
+  deleteDraft(props.accountId, entry.key)
+  toast.show('下書きを削除しました', 'info')
 }
 
 async function onDeleteAll() {
-  if (memoCount.value === 0) return
+  if (draftCount.value === 0) return
   const ok = await confirm({
-    title: 'すべてのメモを削除',
-    message: `メモ ${memoCount.value} 件をすべて削除しますか？`,
+    title: 'すべての下書きを削除',
+    message: `下書き ${draftCount.value} 件をすべて削除しますか？`,
     okLabel: 'すべて削除',
     type: 'danger',
   })
   if (!ok) return
-  deleteAllMemos()
-  toast.show('メモをすべて削除しました', 'info')
+  deleteAllDrafts(props.accountId)
+  toast.show('下書きをすべて削除しました', 'info')
 }
 </script>
 
 <template>
-  <div :class="$style.memoPicker" @click.stop>
+  <div :class="$style.draftsPicker" :style="themeVars" @click.stop>
     <!-- Header -->
     <div :class="$style.dpHeader">
       <span :class="$style.dpTitle">
         <i class="ti ti-notes" />
-        メモ
-        <span :class="$style.dpCount">{{ memoCount }}</span>
+        下書き
+        <span :class="$style.dpCount">{{ draftCount }}</span>
       </span>
       <button
-        v-if="memoCount > 0"
+        v-if="draftCount > 0"
         class="_button"
         :class="$style.dpHeaderBtn"
         title="すべて削除"
@@ -253,7 +272,12 @@ async function onDeleteAll() {
       >
         <i class="ti ti-trash" />
       </button>
-      <button class="_button" :class="$style.dpHeaderBtn" title="閉じる" @click="emit('close')">
+      <button
+        class="_button"
+        :class="$style.dpHeaderBtn"
+        title="閉じる"
+        @click="emit('close')"
+      >
         <i class="ti ti-x" />
       </button>
     </div>
@@ -262,8 +286,8 @@ async function onDeleteAll() {
     <div :class="$style.dpBody">
       <div v-if="!loaded" :class="$style.dpEmpty">読み込み中...</div>
       <ColumnEmptyState
-        v-else-if="memoCount === 0"
-        message="メモはありません"
+        v-else-if="draftCount === 0"
+        message="下書きはありません"
       />
       <div v-else :class="$style.dpList">
         <div
@@ -273,7 +297,7 @@ async function onDeleteAll() {
           @contextmenu.capture="onContextMenu($event, entry)"
         >
           <div
-            v-if="contextLabel(entry.context) || entry.memo.data.scheduledAt"
+            v-if="contextLabel(entry.context) || entry.draft.data.scheduledAt"
             :class="$style.meta"
           >
             <span
@@ -297,18 +321,18 @@ async function onDeleteAll() {
               {{ truncate(entry.context.channelId, 12) }}
             </span>
             <span
-              v-if="entry.memo.data.scheduledAt"
+              v-if="entry.draft.data.scheduledAt"
               :class="$style.metaScheduled"
-              :title="entry.memo.data.scheduledAt"
+              :title="entry.draft.data.scheduledAt"
             >
               <i class="ti ti-clock" />
-              {{ formatScheduledAt(entry.memo.data.scheduledAt) }}
+              {{ formatScheduledAt(entry.draft.data.scheduledAt) }}
             </span>
           </div>
           <button
             class="_button"
             :class="$style.itemNoteBtn"
-            title="このメモを復元"
+            title="この下書きを復元"
             @click="onPick(entry)"
           >
             <MkNote :note="entry.note" />
@@ -335,7 +359,6 @@ async function onDeleteAll() {
       </div>
     </div>
 
-    <!-- Custom right-click menu (overrides MkNote's default NoteMoreMenu) -->
     <Teleport to="body">
       <div
         v-if="menuState"
@@ -375,7 +398,7 @@ async function onDeleteAll() {
 </template>
 
 <style lang="scss" module>
-.memoPicker {
+.draftsPicker {
   display: flex;
   flex-direction: column;
   width: 100%;

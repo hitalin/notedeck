@@ -492,7 +492,6 @@ const COLUMN_EXTRA_PROPS: Partial<
   ai: { accountId: null },
   pluginManager: { accountId: null },
   taskRunner: { accountId: null },
-  memos: { accountId: null },
   timeline: { tl: 'home', name: null },
 }
 
@@ -587,7 +586,7 @@ async function buildAccountStep(type: ColumnType): Promise<QuickPickItem[]> {
   const accountsStore = useAccountsStore()
 
   // Account-independent types: skip account selection
-  if (type === 'apiDocs' || type === 'ai' || type === 'memos') {
+  if (type === 'apiDocs' || type === 'ai') {
     finalizeAddColumn(type, null)
     return []
   }

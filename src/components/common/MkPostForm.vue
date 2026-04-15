@@ -6,7 +6,7 @@ import type {
   NormalizedUser,
 } from '@/adapters/types'
 import { useAutocomplete } from '@/composables/useAutocomplete'
-import type { StoredMemo } from '@/composables/useMemos'
+import type { StoredDraft } from '@/composables/useDrafts'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePopupControl } from '@/composables/usePopupControl'
@@ -22,8 +22,8 @@ import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { parseMfm } from '@/utils/mfm'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
+import MkDraftsPicker from './MkDraftsPicker.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
-import MkMemoPicker from './MkMemoPicker.vue'
 import MkMfm from './MkMfm.vue'
 import MkNote from './MkNote.vue'
 import MkPostFormButtonsPicker from './MkPostFormButtonsPicker.vue'
@@ -41,8 +41,17 @@ const props = defineProps<{
   initialVisibility?: string
   initialLocalOnly?: boolean
   initialFilePaths?: string[]
-  initialMemo?: StoredMemo | null
-  initialMemoKey?: string | null
+  /**
+   * 起動時にフォームへロードするスロット (draft または memo)。
+   * restoreSlot でフィールドを展開し、sessionSlotKey に initialSlotKey を継承する。
+   */
+  initialSlot?: StoredDraft | null
+  initialSlotKey?: string | null
+  /**
+   * true にするとメモモード: post は memo に保存、auto-save も memo 側。
+   * メモカラムの埋め込みフォーム専用。
+   */
+  memoMode?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -104,16 +113,20 @@ const {
   addPollChoice,
   removePollChoice,
   resetForm,
-  restoreMemo,
-} = usePostFormState(props, {
-  onPosted: (id) => {
-    emit('posted', id)
-    if (props.inline) {
-      // Reset form for next post instead of closing
-      resetForm()
-    }
+  restoreSlot,
+} = usePostFormState(
+  props,
+  {
+    onPosted: (id) => {
+      emit('posted', id)
+      if (props.inline) {
+        // Reset form for next post instead of closing
+        resetForm()
+      }
+    },
   },
-})
+  { memoMode: props.memoMode },
+)
 
 // Stable keys for poll choices (avoid index-based v-for key bugs on add/remove)
 let pollKeyCounter = 0
@@ -132,13 +145,20 @@ const removePollChoiceKeyed = (index: number) => {
   pollChoiceKeys.value.splice(index, 1)
 }
 
-// --- Auto-save memo toggle (persisted in settings, like preview) ---
-const autoSaveMemo = computed<boolean>({
-  get: () => settingsStore.get('postForm.autoSaveMemo') ?? false,
+// --- Auto-save toggle (persisted in settings, like preview).
+// 非 memoMode は drafts に自動保存、memoMode は memos に自動保存。
+const autoSaveKey = computed(() =>
+  props.memoMode ? 'postForm.autoSaveMemo' : 'postForm.autoSaveDraft',
+)
+const autoSaveEnabled = computed<boolean>({
+  get: () => settingsStore.get(autoSaveKey.value) ?? false,
   set: (v) => {
-    settingsStore.set('postForm.autoSaveMemo', v)
+    settingsStore.set(autoSaveKey.value, v)
   },
 })
+const autoSaveLabel = computed(() =>
+  props.memoMode ? 'メモを自動保存' : '下書きを自動保存',
+)
 
 // --- Popup exclusive control ---
 // ピッカー系 (emoji / drive / memo) はシングルトン: 同時に1つだけ開く
@@ -146,7 +166,7 @@ const popups = usePopupControl()
 const showSchedulePopup = popups.register()
 const showEmojiPopup = popups.register()
 const showMoreMenu = popups.register()
-const showMemoPicker = popups.register()
+const showDraftsPicker = popups.register()
 const showDrivePicker = popups.register()
 const showPostFormButtonsPicker = popups.register()
 
@@ -155,12 +175,12 @@ function togglePostFormButtonsPicker() {
 }
 
 // --- Drafts picker (inline, opens below the form) ---
-function toggleMemoPicker() {
-  popups.toggle(showMemoPicker)
+function toggleDraftsPicker() {
+  popups.toggle(showDraftsPicker)
 }
-function onMemoPicked(key: string, memo: StoredMemo) {
-  restoreMemo(memo, key)
-  showMemoPicker.value = false
+function onDraftPicked(key: string, draft: StoredDraft) {
+  restoreSlot(draft, key)
+  showDraftsPicker.value = false
 }
 
 function toggleSchedulePopup() {
@@ -370,8 +390,8 @@ onMounted(async () => {
   if (props.initialFilePaths?.length) {
     uploadFilesFromPaths(props.initialFilePaths)
   }
-  if (props.initialMemo)
-    restoreMemo(props.initialMemo, props.initialMemoKey ?? undefined)
+  if (props.initialSlot)
+    restoreSlot(props.initialSlot, props.initialSlotKey ?? undefined)
   await nextTick()
   if (!props.inline) textareaRef.value?.focus()
 })
@@ -559,18 +579,18 @@ function onKeydown(e: KeyboardEvent) {
                   <span class="nd-toggle-switch-knob" />
                 </span>
               </div>
-              <!-- Auto-save memo toggle (persisted, mirrors preview pattern) -->
+              <!-- Auto-save toggle (memoMode: memos, else: drafts) -->
               <div
                 :class="$style.moreMenuItem"
                 role="switch"
-                :aria-checked="autoSaveMemo"
-                @click="autoSaveMemo = !autoSaveMemo"
+                :aria-checked="autoSaveEnabled"
+                @click="autoSaveEnabled = !autoSaveEnabled"
               >
                 <i class="ti ti-device-floppy" />
-                メモを保存
+                {{ autoSaveLabel }}
                 <span
                   class="nd-toggle-switch"
-                  :class="{ on: autoSaveMemo }"
+                  :class="{ on: autoSaveEnabled }"
                   :style="{ marginLeft: 'auto' }"
                   aria-hidden="true"
                 >
@@ -905,13 +925,13 @@ function onKeydown(e: KeyboardEvent) {
               </div>
             </div>
 
-            <!-- Drafts picker toggle -->
+            <!-- Drafts picker toggle (hidden in memo mode) -->
             <button
-              v-else-if="btnId === 'memo'"
+              v-else-if="btnId === 'draft' && !memoMode"
               class="_button"
-              :class="[$style.footerBtn, { [$style.active]: showMemoPicker }]"
-              title="メモ一覧"
-              @click.stop="toggleMemoPicker"
+              :class="[$style.footerBtn, { [$style.active]: showDraftsPicker }]"
+              title="下書き一覧"
+              @click.stop="toggleDraftsPicker"
             >
               <i class="ti ti-notes" />
             </button>
@@ -943,11 +963,12 @@ function onKeydown(e: KeyboardEvent) {
 
     </div>
 
-    <!-- Memo picker (below post form) -->
-    <MkMemoPicker
-      v-if="showMemoPicker"
-      @pick="onMemoPicked"
-      @close="showMemoPicker = false"
+    <!-- Drafts picker (below post form, mock server-side drafts API) -->
+    <MkDraftsPicker
+      v-if="showDraftsPicker"
+      :account-id="activeAccountId!"
+      @pick="onDraftPicked"
+      @close="showDraftsPicker = false"
     />
 
     <!-- Drive picker (below post form) -->

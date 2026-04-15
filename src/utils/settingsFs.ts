@@ -286,6 +286,16 @@ export async function writeMemos(content: string): Promise<void> {
   return writeRootSettingsFile('memos.json', content)
 }
 
+// --- Draft helpers (local mock of server-side drafts: drafts.json at root) ---
+
+export async function readDrafts(): Promise<string> {
+  return readRootSettingsFile('drafts.json')
+}
+
+export async function writeDrafts(content: string): Promise<void> {
+  return writeRootSettingsFile('drafts.json', content)
+}
+
 // --- Plugin helpers ---
 
 const PLUGINS_DIR = 'plugins'

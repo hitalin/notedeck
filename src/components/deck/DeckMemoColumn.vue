@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import type {
   NormalizedNote,
   NormalizedUser,
@@ -15,33 +15,41 @@ import {
   memosVersion,
   type StoredMemo,
 } from '@/composables/useMemos'
-import { useAccountsStore } from '@/stores/accounts'
+import { type Account, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useToast } from '@/stores/toast'
-import { useUiStore } from '@/stores/ui'
 import DeckColumn from './DeckColumn.vue'
+
+const MkPostForm = defineAsyncComponent(
+  () => import('@/components/common/MkPostForm.vue'),
+)
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
 
 const accountsStore = useAccountsStore()
-const uiStore = useUiStore()
 const { confirm } = useConfirm()
 const toast = useToast()
 const { columnThemeVars } = useColumnTheme(() => props.column)
 
 /**
- * Memos aren't account-bound. The preview note uses a placeholder "memo"
- * identity so MkNote renders without implying a specific server account.
+ * Memos are scoped to this column's account. The embedded post form and
+ * memo list both operate on column.accountId.
  */
-const MEMO_USER: NormalizedUser = {
-  id: 'memo',
-  username: 'memo',
-  host: null,
-  name: 'メモ',
-  avatarUrl: '/avatar-guest.svg',
+const account = computed<Account | undefined>(() =>
+  accountsStore.accounts.find((a) => a.id === props.column.accountId),
+)
+
+function userFromAccount(acc: Account): NormalizedUser {
+  return {
+    id: acc.userId,
+    username: acc.username,
+    host: null,
+    name: acc.displayName ?? null,
+    avatarUrl: acc.avatarUrl ?? null,
+  }
 }
 
 interface MemoContext {
@@ -84,20 +92,20 @@ function parseMemoKey(key: string): MemoContext {
 }
 
 function toPreviewNote(
+  acc: Account,
   key: string,
   stored: StoredMemo,
   ctx: MemoContext,
 ): NormalizedNote {
   const d = stored.data
-  const owner = accountsStore.activeAccountId ?? 'memo'
   return {
-    id: `memo:${key}`,
-    _accountId: owner,
-    _serverHost: '',
+    id: `memo:${acc.id}:${key}`,
+    _accountId: acc.id,
+    _serverHost: acc.host,
     createdAt: stored.updatedAt,
     text: d.text || null,
     cw: d.showCw && d.cw ? d.cw : null,
-    user: MEMO_USER,
+    user: userFromAccount(acc),
     visibility: d.visibility as NoteVisibility,
     emojis: {},
     reactionEmojis: {},
@@ -125,12 +133,18 @@ watch(
 
 const entries = computed<MemoEntry[]>(() => {
   void memosVersion.value
-  if (!loaded.value) return []
-  const map = loadAllMemos()
+  const acc = account.value
+  if (!loaded.value || !acc) return []
+  const map = loadAllMemos(acc.id)
   const out: MemoEntry[] = []
   for (const [key, memo] of Object.entries(map)) {
     const ctx = parseMemoKey(key)
-    out.push({ key, memo, context: ctx, note: toPreviewNote(key, memo, ctx) })
+    out.push({
+      key,
+      memo,
+      context: ctx,
+      note: toPreviewNote(acc, key, memo, ctx),
+    })
   }
   out.sort((a, b) => b.memo.updatedAt.localeCompare(a.memo.updatedAt))
   return out
@@ -180,9 +194,34 @@ function formatScheduledAt(iso: string): string {
   })
 }
 
+/**
+ * Embedded MkPostForm state. Default = blank new memo (Obsidian's "Create
+ * Unique New Note" flow). Edit ボタンで既存メモの内容を initialSlot に流し
+ * 込んで remount することで、form 内の session slot key を引き継ぐ。
+ */
+const editingKey = ref<string | null>(null)
+const editingMemo = ref<StoredMemo | null>(null)
+const formMountKey = ref(0)
+
 function onEdit(entry: MemoEntry) {
-  uiStore.requestComposeWithMemo(entry.key, entry.memo)
   closeMenu()
+  editingKey.value = entry.key
+  editingMemo.value = entry.memo
+  formMountKey.value++
+  void nextTick(() => {
+    // Scroll form into view so the user sees it after clicking edit
+    const el = document.querySelector(
+      `[data-column-id="${props.column.id}"] [data-memo-form]`,
+    )
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
+function onPosted() {
+  // After saving, go back to "fresh new memo" mode
+  editingKey.value = null
+  editingMemo.value = null
+  formMountKey.value++
 }
 
 async function onDelete(entry: MemoEntry) {
@@ -194,8 +233,15 @@ async function onDelete(entry: MemoEntry) {
     type: 'danger',
   })
   if (!ok) return
-  deleteMemo(entry.key)
+  const acc = account.value
+  if (!acc) return
+  deleteMemo(acc.id, entry.key)
   toast.show('メモを削除しました', 'info')
+  if (editingKey.value === entry.key) {
+    editingKey.value = null
+    editingMemo.value = null
+    formMountKey.value++
+  }
 }
 
 // --- Context menu ---
@@ -237,6 +283,19 @@ function closeMenu() {
       <i class="ti ti-notes" />
     </template>
 
+    <!-- Embedded post form (memoMode: post = save as memo) -->
+    <div v-if="account" :class="$style.embeddedForm" data-memo-form>
+      <MkPostForm
+        :key="formMountKey"
+        inline
+        memo-mode
+        :account-id="account.id"
+        :initial-slot="editingMemo"
+        :initial-slot-key="editingKey"
+        @posted="onPosted"
+      />
+    </div>
+
     <ColumnEmptyState
       v-if="loaded && memoCount === 0"
       message="メモはありません"
@@ -246,7 +305,7 @@ function closeMenu() {
       <div
         v-for="entry in entries"
         :key="entry.key"
-        :class="$style.item"
+        :class="[$style.item, { [$style.itemEditing]: editingKey === entry.key }]"
         @contextmenu.capture="onContextMenu($event, entry)"
       >
         <div
@@ -289,7 +348,7 @@ function closeMenu() {
           <button
             class="_button"
             :class="$style.itemEditBtn"
-            title="編集（投稿フォームに反映）"
+            title="編集（フォームに反映）"
             @click.stop="onEdit(entry)"
           >
             <i class="ti ti-pencil" />
@@ -327,7 +386,7 @@ function closeMenu() {
             @click="onEdit(menuState.entry)"
           >
             <i class="ti ti-pencil" />
-            編集（投稿フォームに反映）
+            編集（フォームに反映）
           </button>
           <div :class="$style.menuDivider" />
           <button
@@ -345,13 +404,8 @@ function closeMenu() {
 </template>
 
 <style lang="scss" module>
-.countBadge {
-  font-size: 0.75em;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
-  font-weight: 600;
+.embeddedForm {
+  border-bottom: 1px solid var(--nd-divider);
 }
 
 .list {
@@ -369,6 +423,14 @@ function closeMenu() {
 
   &:hover {
     background: light-dark(rgba(0, 0, 0, 0.015), rgba(255, 255, 255, 0.015));
+  }
+}
+
+.itemEditing {
+  background: color-mix(in srgb, var(--nd-accent) 8%, transparent);
+
+  &:hover {
+    background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
   }
 }
 

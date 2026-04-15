@@ -1,9 +1,9 @@
 import { ref } from 'vue'
 import type { NoteVisibility } from '@/adapters/types'
-import { isTauri, readMemos, writeMemos } from '@/utils/settingsFs'
+import { isTauri, readDrafts, writeDrafts } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
-export interface MemoData {
+export interface DraftData {
   text: string
   cw: string
   showCw: boolean
@@ -16,48 +16,52 @@ export interface MemoData {
   scheduledAt: string | null
 }
 
-export interface StoredMemo {
+export interface StoredDraft {
   updatedAt: string
-  data: MemoData
+  data: DraftData
 }
 
-export type StoredMemos = Record<string, StoredMemo>
+export type StoredDrafts = Record<string, StoredDraft>
 
-/** accountId → memos keyed by memoKey. */
-type MemosFile = Record<string, StoredMemos>
+/** accountId → drafts keyed by draftKey. */
+type DraftsFile = Record<string, StoredDrafts>
 
 /**
- * 新しいメモ用のユニークキー (timestamp-based、Zettelkasten の unique id 相当)。
+ * Unique draft id (timestamp-prefixed).
+ *
+ * TODO: Misskey のサーバー側下書き API (`notes/drafts/*`, 2025.6+) が
+ * notecli に実装されたら、このモジュール全体を adapter 経由の実装に
+ * 差し替える。public API は揃えてあるので UI 側は無変更のはず。
  */
-export function generateMemoKey(): string {
+export function generateDraftKey(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 // --- File-backed cache (Tauri) with localStorage fallback (browser dev) ---
 
-let cache: MemosFile = {}
+let cache: DraftsFile = {}
 let loaded = false
 
-export const memosVersion = ref(0)
+export const draftsVersion = ref(0)
 
-function readFromLocalStorage(): MemosFile {
-  const raw = getStorageJson<unknown>(STORAGE_KEYS.memos, {})
+function readFromLocalStorage(): DraftsFile {
+  const raw = getStorageJson<unknown>(STORAGE_KEYS.drafts, {})
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-    return raw as MemosFile
+    return raw as DraftsFile
   }
   return {}
 }
 
 function writeToLocalStorage(): void {
-  setStorageJson(STORAGE_KEYS.memos, cache)
+  setStorageJson(STORAGE_KEYS.drafts, cache)
 }
 
-export async function ensureMemosLoaded(): Promise<void> {
+export async function ensureDraftsLoaded(): Promise<void> {
   if (loaded) return
   if (isTauri) {
     let fileContent = ''
     try {
-      fileContent = await readMemos()
+      fileContent = await readDrafts()
     } catch {
       fileContent = ''
     }
@@ -65,7 +69,7 @@ export async function ensureMemosLoaded(): Promise<void> {
       try {
         const parsed = JSON.parse(fileContent)
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          cache = parsed as MemosFile
+          cache = parsed as DraftsFile
         }
       } catch {
         cache = {}
@@ -83,7 +87,7 @@ function persist() {
   if (isTauri) {
     if (writeTimer) clearTimeout(writeTimer)
     writeTimer = setTimeout(() => {
-      void writeMemos(JSON.stringify(cache, null, 2))
+      void writeDrafts(JSON.stringify(cache, null, 2))
       writeTimer = null
     }, 300)
   } else {
@@ -91,46 +95,46 @@ function persist() {
   }
 }
 
-export function loadAllMemos(accountId: string): StoredMemos {
+export function loadAllDrafts(accountId: string): StoredDrafts {
   return cache[accountId] ?? {}
 }
 
-export function loadMemo(
+export function loadDraft(
   accountId: string,
-  memoKey: string,
-): StoredMemo | null {
-  return loadAllMemos(accountId)[memoKey] ?? null
+  draftKey: string,
+): StoredDraft | null {
+  return loadAllDrafts(accountId)[draftKey] ?? null
 }
 
-export function saveMemo(
+export function saveDraft(
   accountId: string,
-  memoKey: string,
-  data: MemoData,
-): StoredMemo {
-  const stored: StoredMemo = { updatedAt: new Date().toISOString(), data }
+  draftKey: string,
+  data: DraftData,
+): StoredDraft {
+  const stored: StoredDraft = { updatedAt: new Date().toISOString(), data }
   const existing = cache[accountId] ?? {}
   cache = {
     ...cache,
-    [accountId]: { ...existing, [memoKey]: stored },
+    [accountId]: { ...existing, [draftKey]: stored },
   }
   persist()
-  memosVersion.value++
+  draftsVersion.value++
   return stored
 }
 
-export function deleteMemo(accountId: string, memoKey: string): void {
+export function deleteDraft(accountId: string, draftKey: string): void {
   const existing = cache[accountId]
-  if (!existing || !(memoKey in existing)) return
+  if (!existing || !(draftKey in existing)) return
   const next = { ...existing }
-  delete next[memoKey]
+  delete next[draftKey]
   cache = { ...cache, [accountId]: next }
   persist()
-  memosVersion.value++
+  draftsVersion.value++
 }
 
-export function deleteAllMemos(accountId: string): void {
+export function deleteAllDrafts(accountId: string): void {
   if (!(accountId in cache)) return
   cache = { ...cache, [accountId]: {} }
   persist()
-  memosVersion.value++
+  draftsVersion.value++
 }
