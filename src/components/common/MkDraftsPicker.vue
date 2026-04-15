@@ -335,26 +335,8 @@ async function onDeleteAll() {
             title="この下書きを復元"
             @click="onPick(entry)"
           >
-            <MkNote :note="entry.note" />
+            <MkNote :note="entry.note" embedded />
           </button>
-          <div :class="$style.itemActions">
-            <button
-              class="_button"
-              :class="$style.itemEditBtn"
-              title="編集（投稿フォームに反映）"
-              @click.stop="onPick(entry)"
-            >
-              <i class="ti ti-pencil" />
-            </button>
-            <button
-              class="_button"
-              :class="$style.itemRemoveBtn"
-              title="削除"
-              @click.stop="onDelete(entry)"
-            >
-              <i class="ti ti-x" />
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -525,46 +507,6 @@ async function onDeleteAll() {
   width: 100%;
   text-align: left;
   cursor: pointer;
-}
-
-.itemActions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  gap: 4px;
-  z-index: 1;
-  opacity: 0;
-  transition: opacity var(--nd-duration-fast);
-
-  .item:hover & {
-    opacity: 1;
-  }
-}
-
-.itemEditBtn,
-.itemRemoveBtn {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: filter var(--nd-duration-base);
-
-  &:hover {
-    filter: brightness(0.85);
-  }
-}
-
-.itemEditBtn {
-  background: var(--nd-accent, #86b300);
-}
-
-.itemRemoveBtn {
-  background: var(--nd-error, #ec4137);
 }
 
 .dpEmpty {

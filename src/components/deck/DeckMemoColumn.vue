@@ -342,26 +342,7 @@ function closeMenu() {
           </span>
         </div>
 
-        <MkNote :note="entry.note" />
-
-        <div :class="$style.itemActions">
-          <button
-            class="_button"
-            :class="$style.itemEditBtn"
-            title="編集（フォームに反映）"
-            @click.stop="onEdit(entry)"
-          >
-            <i class="ti ti-pencil" />
-          </button>
-          <button
-            class="_button"
-            :class="$style.itemRemoveBtn"
-            title="削除"
-            @click.stop="onDelete(entry)"
-          >
-            <i class="ti ti-x" />
-          </button>
-        </div>
+        <MkNote :note="entry.note" embedded />
       </div>
     </div>
 
@@ -472,46 +453,6 @@ function closeMenu() {
   border-radius: 999px;
   background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
   color: var(--nd-accent);
-}
-
-.itemActions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  gap: 4px;
-  z-index: 1;
-  opacity: 0;
-  transition: opacity var(--nd-duration-fast);
-
-  .item:hover & {
-    opacity: 1;
-  }
-}
-
-.itemEditBtn,
-.itemRemoveBtn {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: filter var(--nd-duration-base);
-
-  &:hover {
-    filter: brightness(0.85);
-  }
-}
-
-.itemEditBtn {
-  background: var(--nd-accent, #86b300);
-}
-
-.itemRemoveBtn {
-  background: var(--nd-error, #ec4137);
 }
 
 .menuBackdrop {
