@@ -966,7 +966,7 @@ function onKeydown(e: KeyboardEvent) {
             </button>
           </template>
         </div>
-        <div :class="$style.footerRight">
+        <div v-if="!props.inline" :class="$style.footerRight">
           <!-- Post form editor -->
           <button
             class="_button"
