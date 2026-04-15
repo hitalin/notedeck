@@ -2,8 +2,8 @@
 import { markdown } from '@codemirror/lang-markdown'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import type {
+  NormalizedDriveFile,
   NormalizedNote,
-  NormalizedUser,
   NoteVisibility,
 } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
@@ -11,6 +11,7 @@ import EditorTabs from '@/components/common/EditorTabs.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import PopupMenu from '@/components/common/PopupMenu.vue'
 import { saveDraft } from '@/composables/useDrafts'
+import { useDriveFilesByIds } from '@/composables/useDriveFilesByIds'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import {
   deleteMemo,
@@ -21,14 +22,12 @@ import {
   saveMemo,
 } from '@/composables/useMemos'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
-import {
-  type Account,
-  getAccountAvatarUrl,
-  useAccountsStore,
-} from '@/stores/accounts'
+import { type Account, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
+import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
+import { buildPreviewNote } from '@/utils/buildPreviewNote'
 import { AppError } from '@/utils/errors'
 
 const CodeEditor = defineAsyncComponent(
@@ -50,6 +49,7 @@ const toast = useToast()
 
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
+const emojisStore = useEmojisStore()
 
 const lang = markdown()
 
@@ -93,15 +93,9 @@ const updatedAt = computed(() => {
 
 const notFound = computed(() => loaded.value && !memo.value)
 
-function userFromAccount(acc: Account): NormalizedUser {
-  return {
-    id: acc.userId,
-    username: acc.username,
-    host: null,
-    name: acc.displayName ?? null,
-    avatarUrl: getAccountAvatarUrl(acc),
-  }
-}
+const resolverAccountId = computed(() => account.value?.id)
+const memoFileIds = computed<string[]>(() => memo.value?.data.fileIds ?? [])
+const driveFiles = useDriveFilesByIds(resolverAccountId, memoFileIds)
 
 /** Synthesize a NormalizedNote from the memo so MkNote can render a preview. */
 const previewNote = computed<NormalizedNote | null>(() => {
@@ -109,26 +103,29 @@ const previewNote = computed<NormalizedNote | null>(() => {
   const acc = account.value
   if (!m || !acc) return null
   const d = m.data
-  return {
+  const emojiDict = emojisStore.cache.get(acc.host) ?? {}
+  const filesMap = driveFiles.value
+  const files = d.fileIds
+    .map((id) => filesMap.get(id))
+    .filter((f): f is NormalizedDriveFile => f !== undefined)
+  return buildPreviewNote({
+    account: acc,
     id: `memo:${acc.id}:${props.memoKey}`,
-    _accountId: acc.id,
-    _serverHost: acc.host,
     createdAt: m.updatedAt,
     text: d.text || null,
     cw: d.showCw && d.cw ? d.cw : null,
-    user: userFromAccount(acc),
     visibility: d.visibility as NoteVisibility,
-    emojis: {},
-    reactionEmojis: {},
-    reactions: {},
-    renoteCount: 0,
-    repliesCount: 0,
-    files: [],
     localOnly: d.localOnly,
-    replyId: null,
-    renoteId: null,
-    channelId: null,
-  }
+    files,
+    poll: {
+      choices: d.pollChoices,
+      multiple: d.pollMultiple,
+      expiresAt: null,
+      show: d.showPoll,
+    },
+    emojis: emojiDict,
+    reactionEmojis: emojiDict,
+  })
 })
 
 // Expose this memo's file to the window header's "外部エディタで開く" button

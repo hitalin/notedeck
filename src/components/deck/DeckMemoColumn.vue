@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import type {
+  NormalizedDriveFile,
   NormalizedNote,
-  NormalizedUser,
   NoteVisibility,
 } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
@@ -10,6 +10,7 @@ import MkNote from '@/components/common/MkNote.vue'
 import PopupMenu from '@/components/common/PopupMenu.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { saveDraft } from '@/composables/useDrafts'
+import { useDriveFilesByIds } from '@/composables/useDriveFilesByIds'
 import {
   deleteMemo,
   ensureMemosLoaded,
@@ -24,9 +25,11 @@ import {
 } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
 import { useWindowsStore } from '@/stores/windows'
+import { buildPreviewNote } from '@/utils/buildPreviewNote'
 import DeckColumn from './DeckColumn.vue'
 
 const MkPostForm = defineAsyncComponent(
@@ -40,6 +43,7 @@ const props = defineProps<{
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const windowsStore = useWindowsStore()
+const emojisStore = useEmojisStore()
 const { confirm } = useConfirm()
 const toast = useToast()
 const { columnThemeVars } = useColumnTheme(() => props.column)
@@ -63,16 +67,6 @@ const serverIconUrl = computed(() => {
   if (!host) return undefined
   return serversStore.getServer(host)?.iconUrl
 })
-
-function userFromAccount(acc: Account): NormalizedUser {
-  return {
-    id: acc.userId,
-    username: acc.username,
-    host: null,
-    name: acc.displayName ?? null,
-    avatarUrl: getAccountAvatarUrl(acc),
-  }
-}
 
 interface MemoContext {
   kind: 'reply' | 'renote' | 'note' | 'channel-note'
@@ -113,35 +107,6 @@ function parseMemoKey(key: string): MemoContext {
   return { kind: 'note', channelId, refId: null }
 }
 
-function toPreviewNote(
-  acc: Account,
-  key: string,
-  stored: StoredMemo,
-  ctx: MemoContext,
-): NormalizedNote {
-  const d = stored.data
-  return {
-    id: `memo:${acc.id}:${key}`,
-    _accountId: acc.id,
-    _serverHost: acc.host,
-    createdAt: stored.updatedAt,
-    text: d.text || null,
-    cw: d.showCw && d.cw ? d.cw : null,
-    user: userFromAccount(acc),
-    visibility: d.visibility as NoteVisibility,
-    emojis: {},
-    reactionEmojis: {},
-    reactions: {},
-    renoteCount: 0,
-    repliesCount: 0,
-    files: [],
-    localOnly: d.localOnly,
-    replyId: ctx.kind === 'reply' ? ctx.refId : null,
-    renoteId: ctx.kind === 'renote' ? ctx.refId : null,
-    channelId: ctx.channelId,
-  }
-}
-
 const loaded = ref(false)
 
 watch(
@@ -153,19 +118,59 @@ watch(
   { immediate: true },
 )
 
+// 全メモの fileIds を重複排除して非同期解決し、ビルド時に引き当てる。
+const resolverAccountId = computed(() => account.value?.id)
+const allFileIds = computed<string[]>(() => {
+  void memosVersion.value
+  const acc = account.value
+  if (!loaded.value || !acc) return []
+  const ids = new Set<string>()
+  const map = loadAllMemos(acc.id)
+  for (const memo of Object.values(map)) {
+    for (const id of memo.data.fileIds) ids.add(id)
+  }
+  return Array.from(ids)
+})
+const driveFiles = useDriveFilesByIds(resolverAccountId, allFileIds)
+
 const entries = computed<MemoEntry[]>(() => {
   void memosVersion.value
   const acc = account.value
   if (!loaded.value || !acc) return []
+  const emojiDict = emojisStore.cache.get(acc.host) ?? {}
+  const filesMap = driveFiles.value
   const map = loadAllMemos(acc.id)
   const out: MemoEntry[] = []
   for (const [key, memo] of Object.entries(map)) {
     const ctx = parseMemoKey(key)
+    const files = memo.data.fileIds
+      .map((id) => filesMap.get(id))
+      .filter((f): f is NormalizedDriveFile => f !== undefined)
     out.push({
       key,
       memo,
       context: ctx,
-      note: toPreviewNote(acc, key, memo, ctx),
+      note: buildPreviewNote({
+        account: acc,
+        id: `memo:${acc.id}:${key}`,
+        createdAt: memo.updatedAt,
+        text: memo.data.text || null,
+        cw: memo.data.showCw && memo.data.cw ? memo.data.cw : null,
+        visibility: memo.data.visibility as NoteVisibility,
+        localOnly: memo.data.localOnly,
+        replyId: ctx.kind === 'reply' ? ctx.refId : null,
+        renoteId: ctx.kind === 'renote' ? ctx.refId : null,
+        channelId: ctx.channelId,
+        files,
+        poll: {
+          choices: memo.data.pollChoices,
+          multiple: memo.data.pollMultiple,
+          expiresAt: null,
+          show: memo.data.showPoll,
+        },
+        emojis: emojiDict,
+        reactionEmojis: emojiDict,
+      }),
     })
   }
   out.sort((a, b) => b.memo.updatedAt.localeCompare(a.memo.updatedAt))
