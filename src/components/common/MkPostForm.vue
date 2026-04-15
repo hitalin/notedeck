@@ -231,7 +231,7 @@ const previewNote = computed<NormalizedNote | null>(() => {
       username: acc.username,
       host: null,
       name: acc.displayName,
-      avatarUrl: acc.avatarUrl,
+      avatarUrl: getAccountAvatarUrl(acc),
     },
     visibility: visibility.value,
     emojis: {},
