@@ -1,0 +1,12 @@
+// NoteDeck postform.json5 デフォルト
+// 投稿フォーム下部ボタンの並び
+[
+  'emoji',
+  'attach',
+  'poll',
+  'cw',
+  'mention',
+  'mfm',
+  'draft',
+  'clear',
+]

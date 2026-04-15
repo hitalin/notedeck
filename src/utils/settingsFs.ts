@@ -208,6 +208,16 @@ export async function writeNavbar(content: string): Promise<void> {
   return writeRootSettingsFile('navbar.json5', content)
 }
 
+// --- Post form button order helpers ---
+
+export async function readPostForm(): Promise<string> {
+  return readRootSettingsFile('postform.json5')
+}
+
+export async function writePostForm(content: string): Promise<void> {
+  return writeRootSettingsFile('postform.json5', content)
+}
+
 // --- Account order helpers ---
 
 export async function readAccountOrder(): Promise<string> {

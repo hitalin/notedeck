@@ -169,6 +169,7 @@ const ALLOWED_ROOT_FILES: &[&str] = &[
     "performance.json5",
     "accounts.json5",
     "navbar.json5",
+    "postform.json5",
     "settings.json5",
     "tasks.json5",
 ];

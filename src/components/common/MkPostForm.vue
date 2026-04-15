@@ -16,8 +16,10 @@ import {
   getAccountLabel,
   isGuestAccount,
 } from '@/stores/accounts'
+import { usePostFormStore } from '@/stores/postForm'
 import { useSettingsStore } from '@/stores/settings'
 import { useIsCompactLayout } from '@/stores/ui'
+import { useWindowsStore } from '@/stores/windows'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { parseMfm } from '@/utils/mfm'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
@@ -48,6 +50,12 @@ const emit = defineEmits<{
 
 const isCompact = useIsCompactLayout()
 const settingsStore = useSettingsStore()
+const postFormStore = usePostFormStore()
+const windowsStore = useWindowsStore()
+
+function openPostFormEditor() {
+  windowsStore.open('postFormEditor')
+}
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showPreview = computed<boolean>({
@@ -811,142 +819,163 @@ function onKeydown(e: KeyboardEvent) {
       <!-- Footer -->
       <footer :class="$style.footer">
         <div :class="$style.footerLeft">
-          <!-- Attach file -->
-          <div :class="$style.footerPopupWrapper">
+          <template v-for="btnId in postFormStore.buttons" :key="btnId">
+            <!-- Emoji -->
+            <div v-if="btnId === 'emoji'" :class="$style.footerPopupWrapper">
+              <button class="_button" :class="$style.footerBtn" title="絵文字" @click.stop="toggleEmojiPopup">
+                <i class="ti ti-mood-happy" />
+              </button>
+              <div v-if="showEmojiPopup && account" :class="[$style.footerPopup, $style.emojiPopup]" @click.stop>
+                <MkReactionPicker
+                  :server-host="account.host"
+                  :account-id="activeAccountId"
+                  @pick="pickEmoji"
+                />
+              </div>
+            </div>
+
+            <!-- Attach file -->
+            <div v-else-if="btnId === 'attach'" :class="$style.footerPopupWrapper">
+              <button
+                class="_button"
+                :class="$style.footerBtn"
+                title="ファイルを添付"
+                :disabled="isUploading"
+                @click.stop="toggleAttachMenu"
+              >
+                <i class="ti ti-photo-plus" />
+              </button>
+              <div v-if="showAttachMenu" :class="[$style.footerPopup, $style.attachMenu]" @click.stop>
+                <button class="_button" :class="$style.attachMenuItem" @click="attachFromLocal">
+                  <i class="ti ti-upload" />
+                  <span>アップロード</span>
+                </button>
+                <button class="_button" :class="$style.attachMenuItem" @click="attachFromDrive">
+                  <i class="ti ti-cloud" />
+                  <span>ドライブから</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Poll -->
             <button
+              v-else-if="btnId === 'poll'"
+              class="_button"
+              :class="[$style.footerBtn, { [$style.active]: showPoll }]"
+              title="投票"
+              @click="showPoll = !showPoll"
+            >
+              <i class="ti ti-chart-arrows" />
+            </button>
+
+            <!-- CW -->
+            <button
+              v-else-if="btnId === 'cw'"
+              class="_button"
+              :class="[$style.footerBtn, { [$style.active]: showCw }]"
+              title="閲覧注意"
+              @click="showCw = !showCw"
+            >
+              <i class="ti ti-eye-off" />
+            </button>
+
+            <!-- Hashtag -->
+            <button
+              v-else-if="btnId === 'hashtag'"
               class="_button"
               :class="$style.footerBtn"
-              title="ファイルを添付"
-              :disabled="isUploading"
-              @click.stop="toggleAttachMenu"
+              title="ハッシュタグ"
+              @click="insertHashtag"
             >
-              <i class="ti ti-photo-plus" />
+              <i class="ti ti-hash" />
             </button>
-            <div v-if="showAttachMenu" :class="[$style.footerPopup, $style.attachMenu]" @click.stop>
-              <button class="_button" :class="$style.attachMenuItem" @click="attachFromLocal">
-                <i class="ti ti-upload" />
-                <span>アップロード</span>
+
+            <!-- Mention -->
+            <div v-else-if="btnId === 'mention'" :class="$style.footerPopupWrapper">
+              <button class="_button" :class="$style.footerBtn" title="メンション" @click.stop="toggleMentionPopup">
+                <i class="ti ti-at" />
               </button>
-              <button class="_button" :class="$style.attachMenuItem" @click="attachFromDrive">
-                <i class="ti ti-cloud" />
-                <span>ドライブから</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Poll -->
-          <button
-            class="_button"
-            :class="[$style.footerBtn, { [$style.active]: showPoll }]"
-            title="投票"
-            @click="showPoll = !showPoll"
-          >
-            <i class="ti ti-chart-arrows" />
-          </button>
-
-          <!-- CW -->
-          <button
-            class="_button"
-            :class="[$style.footerBtn, { [$style.active]: showCw }]"
-            title="閲覧注意"
-            @click="showCw = !showCw"
-          >
-            <i class="ti ti-eye-off" />
-          </button>
-
-          <!-- Hashtag -->
-          <button class="_button" :class="$style.footerBtn" title="ハッシュタグ" @click="insertHashtag">
-            <i class="ti ti-hash" />
-          </button>
-
-          <!-- Mention -->
-          <div :class="$style.footerPopupWrapper">
-            <button class="_button" :class="$style.footerBtn" title="メンション" @click.stop="toggleMentionPopup">
-              <i class="ti ti-at" />
-            </button>
-            <div v-if="showMentionPopup" :class="[$style.footerPopup, $style.mentionPopup]" @click.stop>
-              <input
-                v-model="mentionQuery"
-                :class="$style.mentionSearchInput"
-                type="text"
-                placeholder="ユーザーを検索..."
-                @input="onMentionInput"
-              />
-              <div :class="$style.mentionResults">
-                <button
-                  v-for="user in mentionResults"
-                  :key="user.id"
-                  class="_button"
-                  :class="$style.mentionResultItem"
-                  @click="pickMention(user)"
-                >
-                  <img v-if="user.avatarUrl" :src="user.avatarUrl" :class="$style.mentionAvatar" />
-                  <div :class="$style.mentionInfo">
-                    <span :class="$style.mentionName">{{ user.username }}</span>
-                    <span v-if="user.host" :class="$style.mentionHost">@{{ user.host }}</span>
+              <div v-if="showMentionPopup" :class="[$style.footerPopup, $style.mentionPopup]" @click.stop>
+                <input
+                  v-model="mentionQuery"
+                  :class="$style.mentionSearchInput"
+                  type="text"
+                  placeholder="ユーザーを検索..."
+                  @input="onMentionInput"
+                />
+                <div :class="$style.mentionResults">
+                  <button
+                    v-for="user in mentionResults"
+                    :key="user.id"
+                    class="_button"
+                    :class="$style.mentionResultItem"
+                    @click="pickMention(user)"
+                  >
+                    <img v-if="user.avatarUrl" :src="user.avatarUrl" :class="$style.mentionAvatar" />
+                    <div :class="$style.mentionInfo">
+                      <span :class="$style.mentionName">{{ user.username }}</span>
+                      <span v-if="user.host" :class="$style.mentionHost">@{{ user.host }}</span>
+                    </div>
+                  </button>
+                  <div v-if="mentionSearching" :class="$style.mentionStatus">検索中...</div>
+                  <div v-else-if="mentionQuery && mentionResults.length === 0" :class="$style.mentionStatus">
+                    ユーザーが見つかりません
                   </div>
-                </button>
-                <div v-if="mentionSearching" :class="$style.mentionStatus">検索中...</div>
-                <div v-else-if="mentionQuery && mentionResults.length === 0" :class="$style.mentionStatus">
-                  ユーザーが見つかりません
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- MFM -->
-          <div :class="$style.footerPopupWrapper">
-            <button class="_button" :class="$style.footerBtn" title="MFM" @click.stop="toggleMfmMenu">
-              <i class="ti ti-palette" />
-            </button>
-            <div v-if="showMfmMenu" :class="[$style.footerPopup, $style.mfmMenu]" @click.stop>
-              <button
-                v-for="fn in mfmFunctions"
-                :key="fn.label"
-                class="_button"
-                :class="$style.mfmMenuItem"
-                @click="pickMfm(fn)"
-              >
-                {{ fn.label }}
+            <!-- MFM -->
+            <div v-else-if="btnId === 'mfm'" :class="$style.footerPopupWrapper">
+              <button class="_button" :class="$style.footerBtn" title="MFM" @click.stop="toggleMfmMenu">
+                <i class="ti ti-palette" />
               </button>
+              <div v-if="showMfmMenu" :class="[$style.footerPopup, $style.mfmMenu]" @click.stop>
+                <button
+                  v-for="fn in mfmFunctions"
+                  :key="fn.label"
+                  class="_button"
+                  :class="$style.mfmMenuItem"
+                  @click="pickMfm(fn)"
+                >
+                  {{ fn.label }}
+                </button>
+              </div>
             </div>
-          </div>
 
-          <!-- Drafts picker toggle -->
-          <button
-            class="_button"
-            :class="[$style.footerBtn, { [$style.active]: showDraftsPicker }]"
-            title="下書き一覧"
-            @click.stop="toggleDraftsPicker"
-          >
-            <i class="ti ti-notes" />
-          </button>
+            <!-- Drafts picker toggle -->
+            <button
+              v-else-if="btnId === 'draft'"
+              class="_button"
+              :class="[$style.footerBtn, { [$style.active]: showDraftsPicker }]"
+              title="下書き一覧"
+              @click.stop="toggleDraftsPicker"
+            >
+              <i class="ti ti-notes" />
+            </button>
 
-          <!-- Clear -->
+            <!-- Clear -->
+            <button
+              v-else-if="btnId === 'clear'"
+              class="_button"
+              :class="$style.footerBtn"
+              title="クリア"
+              @click="resetForm"
+            >
+              <i class="ti ti-trash" />
+            </button>
+          </template>
+        </div>
+        <div :class="$style.footerRight">
+          <!-- Post form editor -->
           <button
             class="_button"
             :class="$style.footerBtn"
-            title="クリア"
-            @click="resetForm"
+            title="ボタン並び替え"
+            @click="openPostFormEditor"
           >
-            <i class="ti ti-trash" />
+            <i class="ti ti-settings" />
           </button>
-
-        </div>
-        <div :class="$style.footerRight">
-          <!-- Emoji -->
-          <div :class="$style.footerPopupWrapper">
-            <button class="_button" :class="$style.footerBtn" title="絵文字" @click.stop="toggleEmojiPopup">
-              <i class="ti ti-mood-happy" />
-            </button>
-            <div v-if="showEmojiPopup && account" :class="[$style.footerPopup, $style.emojiPopup]" @click.stop>
-              <MkReactionPicker
-                :server-host="account.host"
-                :account-id="activeAccountId"
-                @pick="pickEmoji"
-              />
-            </div>
-          </div>
         </div>
       </footer>
 
