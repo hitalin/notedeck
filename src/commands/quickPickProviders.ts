@@ -686,7 +686,7 @@ async function buildDetailStep(
           useDeckStore().addColumn({
             type,
             name: item.name,
-            width: 330,
+            width: 360,
             accountId,
             [config.idKey]: item.id,
             active: true,
@@ -722,7 +722,7 @@ function buildSearchableStep(config: SelectableConfig, accountId: string) {
         useDeckStore().addColumn({
           type: config.type,
           name: item.name,
-          width: 330,
+          width: 360,
           accountId,
           [config.idKey]: item.id,
           active: true,
@@ -800,7 +800,7 @@ function buildUserSearchStep(accountId: string) {
                 useDeckStore().addColumn({
                   type: 'user',
                   name: handle,
-                  width: 330,
+                  width: 360,
                   accountId,
                   userId: u.id,
                   active: true,
@@ -842,7 +842,7 @@ async function createNewItem(config: SelectableConfig, accountId: string) {
     useDeckStore().addColumn({
       type: config.type,
       name: created.name,
-      width: 330,
+      width: 360,
       accountId,
       [config.idKey]: created.id,
       active: true,
@@ -857,7 +857,7 @@ function finalizeAddColumn(type: ColumnType, accountId: string | null) {
   useDeckStore().addColumn({
     type,
     name: COLUMN_LABELS[type] ?? type,
-    width: 330,
+    width: 360,
     accountId,
     active: true,
     ...extra,

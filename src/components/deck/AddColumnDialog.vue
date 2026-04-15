@@ -148,7 +148,7 @@ function addColumnForAccount(accountId: string | null) {
   finalizeColumn({
     type,
     name: COLUMN_LABELS[type] ?? type,
-    width: 330,
+    width: 360,
     accountId,
     active: true,
     ...extra,
@@ -371,7 +371,7 @@ async function createNewItem() {
     finalizeColumn({
       type: config.type,
       name: colName,
-      width: 330,
+      width: 360,
       accountId,
       [config.idKey]: created.id,
       active: true,
@@ -393,7 +393,7 @@ function addSelectableColumn(item: SelectableItem) {
   finalizeColumn({
     type: selectConfig.value.type,
     name,
-    width: 330,
+    width: 360,
     accountId: selectAccountId.value,
     [selectConfig.value.idKey]: item.id,
     active: true,
