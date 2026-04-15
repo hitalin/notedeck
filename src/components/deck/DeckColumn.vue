@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, inject, provide, ref, watch } from 'vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import {
   popOutColumnToWindow,
   requestMoveColumn,
 } from '@/composables/useDeckWindow'
 import { useNativePopover } from '@/composables/useNativePopover'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
+import { useServerImages } from '@/composables/useServerImages'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
@@ -23,6 +25,13 @@ const props = defineProps<{
   soundEnabled?: boolean
   webUiUrl?: string
   pullRefresh?: () => Promise<void>
+  /**
+   * このカラムがアカウント前提で動作するかどうか。
+   * true のとき、accountId が設定されていて該当アカウントが見つからない場合に
+   * 「アカウントが見つかりません」を表示する。アカウント未ロード中（起動直後）は
+   * 通常の本体を描画せずに静的な空白を見せる（チラつき防止）。
+   */
+  requireAccount?: boolean
 }>()
 
 // --- Pull-to-refresh (unified) ---
@@ -61,6 +70,24 @@ const isLoggedOut = computed(() => {
   const acc = columnAccount.value
   return acc != null && !acc.hasToken && !isGuestAccount(acc)
 })
+
+// `requireAccount` = true なカラム向け: アカウント解決状態に応じて本体スロットを差し替える
+const serverNotFoundImageUrl = useServerImages(
+  () => columnConfig.value as DeckColumnType,
+).serverNotFoundImageUrl
+const isAwaitingAccounts = computed(
+  () =>
+    !!props.requireAccount &&
+    !accountsStore.isLoaded &&
+    !!columnConfig.value?.accountId,
+)
+const shouldShowAccountNotFound = computed(
+  () =>
+    !!props.requireAccount &&
+    accountsStore.isLoaded &&
+    !!columnConfig.value?.accountId &&
+    !columnAccount.value,
+)
 
 /** Whether this column can be popped out (desktop + main window only) */
 const canPopOut = computed(() => isDesktop && !deckStore.currentWindowId)
@@ -247,7 +274,13 @@ function openAsPip() {
           </div>
         </div>
       </div>
-      <slot />
+      <ColumnEmptyState
+        v-if="shouldShowAccountNotFound"
+        message="アカウントが見つかりません"
+        :image-url="serverNotFoundImageUrl"
+      />
+      <div v-else-if="isAwaitingAccounts" :class="$style.awaitingAccounts" />
+      <slot v-else />
     </div>
 
     <!-- Column action menu (usePortal moves this to body to escape contain/overflow) -->

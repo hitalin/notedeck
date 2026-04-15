@@ -1,3 +1,4 @@
+import { listen } from '@tauri-apps/api/event'
 import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
@@ -38,6 +39,26 @@ export function getAccountLabel(account: Account): string {
   return `@${account.username}@${account.host}`
 }
 
+// Module-scoped buffer + direct applier for `nd:accounts-early` events.
+// The Rust backend (src-tauri/src/lib.rs) emits this event from a background
+// thread as soon as DB migrations finish — which can easily race with frontend
+// bootstrap. By registering the listener synchronously at module load (before
+// Pinia is even created) we can catch the emit deterministically. If the store
+// hasn't been instantiated yet, the payload is buffered; otherwise it is
+// applied directly through `onEarlyArrive`.
+let earlyPayload: Account[] | null = null
+let onEarlyArrive: ((payload: Account[]) => void) | null = null
+let earlyListenerRegistered = false
+
+export function initEarlyAccountListener(): void {
+  if (earlyListenerRegistered) return
+  earlyListenerRegistered = true
+  void listen<Account[]>('nd:accounts-early', (event) => {
+    if (onEarlyArrive) onEarlyArrive(event.payload)
+    else earlyPayload = event.payload
+  })
+}
+
 export const useAccountsStore = defineStore('accounts', () => {
   const accounts = ref<Account[]>([])
   const activeAccountId = ref<string | null>(null)
@@ -68,7 +89,6 @@ export const useAccountsStore = defineStore('accounts', () => {
   })
 
   let loadPromise: Promise<void> | null = null
-  let earlyUnlisten: (() => void) | null = null
 
   /** Cached order loaded from file (set once before applyAccounts runs). */
   let savedOrderIds: string[] | null = null
@@ -96,25 +116,18 @@ export const useAccountsStore = defineStore('accounts', () => {
     isLoaded.value = true
   }
 
-  function cleanupEarlyListener(): void {
-    earlyUnlisten?.()
-    earlyUnlisten = null
-  }
-
-  /** Listen for `nd:accounts-early` Tauri event (fires before full AppState init).
-   *  Whichever arrives first — this event or the invoke() result — populates the store. */
-  async function listenEarlyAccounts(): Promise<void> {
-    const { listen } = await import('@tauri-apps/api/event')
-    earlyUnlisten = await listen<Account[]>('nd:accounts-early', (event) => {
-      if (!isLoaded.value) applyAccounts(event.payload)
-      cleanupEarlyListener()
-    })
-    if (isLoaded.value) cleanupEarlyListener()
+  // Direct-apply only becomes safe once `savedOrderIds` has been resolved
+  // from file. Until then, the early listener buffers payloads into
+  // `earlyPayload` and `loadAccounts` drains the buffer at the right moment.
+  let canApplyDirectly = false
+  onEarlyArrive = (payload) => {
+    if (isLoaded.value) return
+    if (canApplyDirectly) applyAccounts(payload)
+    else earlyPayload = payload
   }
 
   function loadAccounts(): Promise<void> {
     if (loadPromise) return loadPromise
-    listenEarlyAccounts()
     loadPromise = (async () => {
       // Load saved order from file before applying accounts
       try {
@@ -123,9 +136,17 @@ export const useAccountsStore = defineStore('accounts', () => {
       } catch {
         /* missing or corrupt file, use default order */
       }
+      canApplyDirectly = true
+      // Fast path: an `nd:accounts-early` event already arrived before
+      // this point — apply it now with the order resolved.
+      if (earlyPayload && !isLoaded.value) {
+        applyAccounts(earlyPayload)
+        earlyPayload = null
+      }
+      // Safety net: await the invoke result in case the early event is
+      // never emitted (dev reload, error path) or lags behind.
       const stored = unwrap(await commands.loadAccounts()) as Account[]
       if (!isLoaded.value) applyAccounts(stored)
-      cleanupEarlyListener()
     })()
     return loadPromise
   }

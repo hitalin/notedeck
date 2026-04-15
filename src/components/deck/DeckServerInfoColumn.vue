@@ -163,6 +163,7 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name ?? 'サーバー情報'"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop"
     :pull-refresh="fetchServerInfo"
     @refresh="fetchServerInfo"
@@ -178,11 +179,9 @@ onMounted(() => {
       </div>
     </template>
 
-    <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
+    <ColumnEmptyState v-if="error" :message="error.message" is-error :image-url="serverErrorImageUrl" />
 
-    <ColumnEmptyState v-else-if="error" :message="error.message" is-error :image-url="serverErrorImageUrl" />
-
-    <div v-else-if="meta" :class="$style.tabWrapper">
+    <div v-else-if="meta && account" :class="$style.tabWrapper">
       <EditorTabs
         :tabs="TAB_DEFS"
         :model-value="tab"

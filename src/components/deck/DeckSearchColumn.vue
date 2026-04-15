@@ -604,6 +604,7 @@ onUnmounted(() => {
     :column-id="column.id"
     title="検索"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop"
   >
     <template #header-icon>
@@ -715,13 +716,7 @@ onUnmounted(() => {
     </template>
 
     <ColumnEmptyState
-      v-if="!account && !isCrossAccount"
-      message="アカウントが見つかりません"
-      :image-url="serverNotFoundImageUrl"
-    />
-
-    <ColumnEmptyState
-      v-else-if="error"
+      v-if="error"
       :message="error.message"
       :image-url="serverErrorImageUrl"
       is-error

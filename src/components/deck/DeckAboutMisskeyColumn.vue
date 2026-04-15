@@ -175,6 +175,7 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name ?? 'Misskeyについて'"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop"
     :pull-refresh="fetchMeta"
     @refresh="fetchMeta"
@@ -190,11 +191,7 @@ onMounted(() => {
       </div>
     </template>
 
-    <div v-if="!account" :class="$style.columnEmpty">
-      アカウントが見つかりません
-    </div>
-
-    <div v-else-if="error" :class="[$style.columnEmpty, $style.columnError]">
+    <div v-if="error" :class="[$style.columnEmpty, $style.columnError]">
       {{ error.message }}
     </div>
 

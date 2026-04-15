@@ -110,6 +110,7 @@ defineExpose({
     :theme-vars="columnThemeVars"
     :web-ui-url="webUiUrl"
     :sound-enabled="soundEnabled"
+    require-account
     @header-click="scrollToTop()"
     @refresh="refresh"
   >
@@ -144,13 +145,7 @@ defineExpose({
     </template>
 
     <ColumnEmptyState
-      v-if="!account"
-      :message="'アカウントが見つかりません'"
-      :image-url="serverNotFoundImageUrl"
-    />
-
-    <ColumnEmptyState
-      v-else-if="error"
+      v-if="error"
       :message="error.message"
       :image-url="serverErrorImageUrl"
       is-error

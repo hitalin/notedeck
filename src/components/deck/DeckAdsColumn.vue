@@ -64,6 +64,7 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name ?? '広告'"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop"
     :pull-refresh="load"
     @refresh="load"
@@ -79,9 +80,7 @@ onMounted(() => {
       </div>
     </template>
 
-    <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
-
-    <ColumnEmptyState v-else-if="ads.length === 0 && !isLoading" message="広告はありません" :image-url="serverInfoImageUrl" />
+    <ColumnEmptyState v-if="ads.length === 0 && !isLoading" message="広告はありません" :image-url="serverInfoImageUrl" />
 
     <div v-else ref="scrollContainer" :class="$style.adsBody">
       <MkAd

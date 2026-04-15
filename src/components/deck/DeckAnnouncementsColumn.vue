@@ -113,6 +113,7 @@ onUnmounted(() => {
     :column-id="column.id"
     title="お知らせ"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop"
     :pull-refresh="fetchAnnouncements"
     @refresh="fetchAnnouncements"
@@ -128,10 +129,8 @@ onUnmounted(() => {
       </div>
     </template>
 
-    <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
-
     <ColumnEmptyState
-      v-else-if="error && !isLoggedOut"
+      v-if="error && !isLoggedOut"
       :message="error.isAuth ? AUTH_ERROR_MESSAGE : error.message"
       :image-url="serverErrorImageUrl"
       is-error

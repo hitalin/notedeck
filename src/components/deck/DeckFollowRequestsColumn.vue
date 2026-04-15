@@ -162,6 +162,7 @@ onMounted(() => {
     :column-id="column.id"
     :title="column.name || 'フォローリクエスト'"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop"
     :pull-refresh="fetchRequests"
     @refresh="fetchRequests"
@@ -177,10 +178,8 @@ onMounted(() => {
       </div>
     </template>
 
-    <ColumnEmptyState v-if="!isCrossAccount && !account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
-
     <ColumnEmptyState
-      v-else-if="error && !isLoggedOut"
+      v-if="error && !isLoggedOut"
       :message="error.isAuth ? AUTH_ERROR_MESSAGE : error.message"
       is-error
       :image-url="serverErrorImageUrl"

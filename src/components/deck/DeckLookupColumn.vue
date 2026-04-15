@@ -534,6 +534,7 @@ async function handlePosted(editedNoteId?: string) {
     :column-id="column.id"
     :title="column.name ?? '照会'"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop"
   >
     <template #header-icon>
@@ -615,9 +616,7 @@ async function handlePosted(editedNoteId?: string) {
 
     <!-- ===== Per-account mode ===== -->
     <template v-else>
-      <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
-
-      <div v-else-if="lookupLoading" :class="$style.columnLoading">
+      <div v-if="lookupLoading" :class="$style.columnLoading">
         <LoadingSpinner />
       </div>
 

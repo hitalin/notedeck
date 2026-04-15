@@ -249,6 +249,7 @@ function closeUserPopup() {
     :column-id="column.id"
     :title="column.name || 'みつける'"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="activeTab === 'notes' ? scrollToTop() : undefined"
     @refresh="refresh"
   >
@@ -266,14 +267,7 @@ function closeUserPopup() {
       </div>
     </template>
 
-    <ColumnEmptyState
-      v-if="!account"
-      message="アカウントが見つかりません"
-      :image-url="serverNotFoundImageUrl"
-    />
-
-    <template v-else>
-      <div ref="columnContentRef" :class="$style.exploreContent">
+    <div ref="columnContentRef" :class="$style.exploreContent">
       <ColumnTabs
         :tabs="TAB_DEFS"
         :model-value="activeTab"
@@ -420,7 +414,6 @@ function closeUserPopup() {
         </template>
       </template>
       </div>
-    </template>
   </DeckColumn>
 
   <div v-if="postForm.show.value && column.accountId && account?.hasToken" ref="postPortalRef">

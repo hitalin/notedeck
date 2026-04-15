@@ -178,6 +178,7 @@ function getRowItems(index: number): ServerEmoji[] {
     :column-id="column.id"
     :title="column.name ?? 'カスタム絵文字'"
     :theme-vars="columnThemeVars"
+    require-account
     @header-click="scrollToTop"
     :pull-refresh="loadEmojis"
     @refresh="loadEmojis"
@@ -194,9 +195,7 @@ function getRowItems(index: number): ServerEmoji[] {
       </div>
     </template>
 
-    <ColumnEmptyState v-if="!account" message="アカウントが見つかりません" :image-url="serverNotFoundImageUrl" />
-
-    <ColumnEmptyState v-else-if="error" :message="error.message" is-error :image-url="serverErrorImageUrl" />
+    <ColumnEmptyState v-if="error" :message="error.message" is-error :image-url="serverErrorImageUrl" />
 
     <div v-else :class="$style.emojiBody">
       <!-- Search -->
