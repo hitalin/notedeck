@@ -8,6 +8,7 @@ import type {
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { generateDraftKey, saveDraft } from '@/composables/useDrafts'
 import {
   deleteMemo,
   ensureMemosLoaded,
@@ -18,6 +19,7 @@ import {
 import { type Account, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
 import DeckColumn from './DeckColumn.vue'
 
@@ -30,6 +32,7 @@ const props = defineProps<{
 }>()
 
 const accountsStore = useAccountsStore()
+const serversStore = useServersStore()
 const { confirm } = useConfirm()
 const toast = useToast()
 const { columnThemeVars } = useColumnTheme(() => props.column)
@@ -41,6 +44,12 @@ const { columnThemeVars } = useColumnTheme(() => props.column)
 const account = computed<Account | undefined>(() =>
   accountsStore.accounts.find((a) => a.id === props.column.accountId),
 )
+
+const serverInfoImageUrl = computed(() => {
+  const host = account.value?.host
+  if (!host) return undefined
+  return serversStore.getServer(host)?.infoImageUrl
+})
 
 function userFromAccount(acc: Account): NormalizedUser {
   return {
@@ -224,6 +233,25 @@ function onPosted() {
   formMountKey.value++
 }
 
+/**
+ * 「下書きにする」: 同じアカウントの drafts 領域に新しい entry として複製し、
+ * 元のメモは削除する。visibility/cw/files などのフィールドは共通構造なので
+ * そのままコピー可能。
+ */
+function onPromoteToDraft(entry: MemoEntry) {
+  closeMenu()
+  const acc = account.value
+  if (!acc) return
+  saveDraft(acc.id, generateDraftKey(), entry.memo.data)
+  deleteMemo(acc.id, entry.key)
+  if (editingKey.value === entry.key) {
+    editingKey.value = null
+    editingMemo.value = null
+    formMountKey.value++
+  }
+  toast.show('下書きに変換しました', 'info')
+}
+
 async function onDelete(entry: MemoEntry) {
   closeMenu()
   const ok = await confirm({
@@ -299,6 +327,7 @@ function closeMenu() {
     <ColumnEmptyState
       v-if="loaded && memoCount === 0"
       message="メモはありません"
+      :image-url="serverInfoImageUrl"
     />
 
     <div v-else :class="$style.list">
@@ -342,7 +371,18 @@ function closeMenu() {
           </span>
         </div>
 
-        <MkNote :note="entry.note" embedded />
+        <!-- capture-phase click: MkNote 内部の navigateToDetail (合成IDなので
+             404 になる) より先に拾って埋め込みフォーム復元に振り替える。 -->
+        <div
+          :class="$style.itemNoteBtn"
+          role="button"
+          tabindex="0"
+          title="このメモを編集（フォームに反映）"
+          @click.capture.prevent.stop="onEdit(entry)"
+          @keydown.enter="onEdit(entry)"
+        >
+          <MkNote :note="entry.note" embedded />
+        </div>
       </div>
     </div>
 
@@ -368,6 +408,14 @@ function closeMenu() {
           >
             <i class="ti ti-pencil" />
             編集（フォームに反映）
+          </button>
+          <button
+            class="_button"
+            :class="$style.menuItem"
+            @click="onPromoteToDraft(menuState.entry)"
+          >
+            <i class="ti ti-send" />
+            下書きにする
           </button>
           <div :class="$style.menuDivider" />
           <button
@@ -405,6 +453,13 @@ function closeMenu() {
   &:hover {
     background: light-dark(rgba(0, 0, 0, 0.015), rgba(255, 255, 255, 0.015));
   }
+}
+
+.itemNoteBtn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
 }
 
 .itemEditing {

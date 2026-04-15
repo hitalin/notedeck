@@ -329,14 +329,18 @@ async function onDeleteAll() {
               {{ formatScheduledAt(entry.draft.data.scheduledAt) }}
             </span>
           </div>
-          <button
-            class="_button"
+          <!-- capture-phase click: MkNote 内部の navigateToDetail (合成IDなので
+               404 になる) より先に拾って投稿フォーム復元に振り替える。 -->
+          <div
             :class="$style.itemNoteBtn"
+            role="button"
+            tabindex="0"
             title="この下書きを復元"
-            @click="onPick(entry)"
+            @click.capture.prevent.stop="onPick(entry)"
+            @keydown.enter="onPick(entry)"
           >
             <MkNote :note="entry.note" embedded />
-          </button>
+          </div>
         </div>
       </div>
     </div>
