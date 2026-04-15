@@ -68,6 +68,9 @@ const TasksEditorContent = defineAsyncComponent(
 const SnippetsEditorContent = defineAsyncComponent(
   () => import('@/components/window/SnippetsEditorContent.vue'),
 )
+const MemoEditorContent = defineAsyncComponent(
+  () => import('@/components/window/MemoEditorContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -217,6 +220,12 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       />
       <SnippetsEditorContent
         v-if="win.type === 'snippetsEditor'"
+      />
+      <MemoEditorContent
+        v-if="win.type === 'memoEditor'"
+        :account-id="(win.props.accountId as string)"
+        :memo-key="(win.props.memoKey as string)"
+        :initial-tab="(win.props.initialTab as string | undefined)"
       />
     </DeckWindow>
   </div>

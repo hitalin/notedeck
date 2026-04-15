@@ -24,6 +24,7 @@ export type WindowType =
   | 'backup'
   | 'tasksEditor'
   | 'snippetsEditor'
+  | 'memoEditor'
 
 export interface DeckWindow {
   id: string
@@ -73,6 +74,8 @@ export const WINDOW_SIZES: Record<
   tasksEditor: { width: 500, maxHeight: 700 },
   // Snippets editor
   snippetsEditor: { width: 500, maxHeight: 700 },
+  // Memo editor (Markdown body) — matches note-detail sizing
+  memoEditor: { width: 500, maxHeight: 600 },
 }
 
 export const useWindowsStore = defineStore('windows', () => {
@@ -90,6 +93,7 @@ export const useWindowsStore = defineStore('windows', () => {
     'notification-inspector': ['notificationId', 'accountId'],
     'user-profile': ['userId', 'accountId'],
     'follow-list': ['userId', 'accountId'],
+    memoEditor: ['memoKey', 'accountId'],
   }
 
   /** Types that are always singletons (at most one instance). */

@@ -96,8 +96,6 @@ export const STORAGE_KEYS = {
   policies: (accountId: string) => `nd:policies:${accountId}`,
 
   // Per-account (dynamic key builders)
-  memos: 'nd-memos',
-  drafts: 'nd-drafts',
   notificationCache: (accountId: string) =>
     `nd-cache-notifications-${accountId}`,
 

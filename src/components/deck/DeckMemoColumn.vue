@@ -7,6 +7,7 @@ import type {
 } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import PopupMenu from '@/components/common/PopupMenu.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { saveDraft } from '@/composables/useDrafts'
 import {
@@ -25,6 +26,7 @@ import { useConfirm } from '@/stores/confirm'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
+import { useWindowsStore } from '@/stores/windows'
 import DeckColumn from './DeckColumn.vue'
 
 const MkPostForm = defineAsyncComponent(
@@ -37,6 +39,7 @@ const props = defineProps<{
 
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
+const windowsStore = useWindowsStore()
 const { confirm } = useConfirm()
 const toast = useToast()
 const { columnThemeVars } = useColumnTheme(() => props.column)
@@ -222,13 +225,23 @@ const editingKey = ref<string | null>(null)
 const editingMemo = ref<StoredMemo | null>(null)
 const formMountKey = ref(0)
 
-function onEdit(entry: MemoEntry) {
+function onOpenEditor(entry: MemoEntry) {
+  closeMenu()
+  const acc = account.value
+  if (!acc) return
+  windowsStore.open('memoEditor', {
+    accountId: acc.id,
+    memoKey: entry.key,
+  })
+}
+
+function onRestoreToForm(entry: MemoEntry) {
   closeMenu()
   editingKey.value = entry.key
   editingMemo.value = entry.memo
   formMountKey.value++
   void nextTick(() => {
-    // Scroll form into view so the user sees it after clicking edit
+    // Scroll form into view so the user sees it after clicking restore
     const el = document.querySelector(
       `[data-column-id="${props.column.id}"] [data-memo-form]`,
     )
@@ -290,32 +303,19 @@ async function onDelete(entry: MemoEntry) {
   }
 }
 
-// --- Context menu ---
-const menuState = ref<{
-  x: number
-  y: number
-  entry: MemoEntry
-} | null>(null)
-const menuRef = ref<HTMLElement | null>(null)
+// --- Context menu (shares note-style PopupMenu for theme vars + vibrancy) ---
+const popupMenuRef = ref<InstanceType<typeof PopupMenu>>()
+const activeEntry = ref<MemoEntry | null>(null)
 
 function onContextMenu(e: MouseEvent, entry: MemoEntry) {
   e.preventDefault()
   e.stopPropagation()
-  menuState.value = { x: e.clientX, y: e.clientY, entry }
-  void nextTick(() => {
-    const el = menuRef.value
-    if (!el || !menuState.value) return
-    const rect = el.getBoundingClientRect()
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    const nx = Math.min(menuState.value.x, vw - rect.width - 4)
-    const ny = Math.min(menuState.value.y, vh - rect.height - 4)
-    menuState.value = { x: nx, y: ny, entry: menuState.value.entry }
-  })
+  activeEntry.value = entry
+  popupMenuRef.value?.open(e)
 }
 
 function closeMenu() {
-  menuState.value = null
+  popupMenuRef.value?.close()
 }
 </script>
 
@@ -402,63 +402,46 @@ function closeMenu() {
         </div>
 
         <!-- capture-phase click: MkNote 内部の navigateToDetail (合成IDなので
-             404 になる) より先に拾って埋め込みフォーム復元に振り替える。 -->
+             404 になる) より先に拾ってメモエディタウィンドウを開く。 -->
         <div
           :class="$style.itemNoteBtn"
           role="button"
           tabindex="0"
-          title="このメモを編集（フォームに反映）"
-          @click.capture.prevent.stop="onEdit(entry)"
-          @keydown.enter="onEdit(entry)"
+          title="このメモをエディタで開く"
+          @click.capture.prevent.stop="onOpenEditor(entry)"
+          @keydown.enter="onOpenEditor(entry)"
         >
           <MkNote :note="entry.note" embedded />
         </div>
       </div>
     </div>
 
-    <Teleport to="body">
-      <div
-        v-if="menuState"
-        :class="$style.menuBackdrop"
-        @click="closeMenu"
-        @contextmenu.prevent="closeMenu"
-      >
-        <div
-          ref="menuRef"
-          class="_popup"
-          :class="$style.menu"
-          :style="{ top: `${menuState.y}px`, left: `${menuState.x}px` }"
-          @click.stop
-          @contextmenu.stop.prevent
+    <PopupMenu ref="popupMenuRef">
+      <template v-if="activeEntry">
+        <button
+          class="_popupItem"
+          @click="onRestoreToForm(activeEntry)"
         >
-          <button
-            class="_button"
-            :class="$style.menuItem"
-            @click="onEdit(menuState.entry)"
-          >
-            <i class="ti ti-pencil" />
-            編集（フォームに反映）
-          </button>
-          <button
-            class="_button"
-            :class="$style.menuItem"
-            @click="onPromoteToDraft(menuState.entry)"
-          >
-            <i class="ti ti-send" />
-            下書きにする
-          </button>
-          <div :class="$style.menuDivider" />
-          <button
-            class="_button"
-            :class="[$style.menuItem, $style.menuItemDanger]"
-            @click="onDelete(menuState.entry)"
-          >
-            <i class="ti ti-trash" />
-            削除
-          </button>
-        </div>
-      </div>
-    </Teleport>
+          <i class="ti ti-arrow-back-up" />
+          投稿フォームに復元
+        </button>
+        <button
+          class="_popupItem"
+          @click="onPromoteToDraft(activeEntry)"
+        >
+          <i class="ti ti-send" />
+          下書きにする
+        </button>
+        <div class="_popupDivider" />
+        <button
+          class="_popupItem _popupItemDanger"
+          @click="onDelete(activeEntry)"
+        >
+          <i class="ti ti-trash" />
+          削除
+        </button>
+      </template>
+    </PopupMenu>
   </DeckColumn>
 </template>
 
@@ -542,47 +525,4 @@ function closeMenu() {
   color: var(--nd-accent);
 }
 
-.menuBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-}
-
-.menu {
-  position: fixed;
-  min-width: 220px;
-  padding: 6px;
-  border-radius: 10px;
-  background: var(--nd-popup);
-  box-shadow: var(--nd-shadow-m);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.menuItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 12px;
-  font-size: 0.88em;
-  color: var(--nd-fg);
-  border-radius: var(--nd-radius-sm);
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: light-dark(rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.06));
-  }
-}
-
-.menuItemDanger {
-  color: var(--nd-danger, #e64c4c);
-}
-
-.menuDivider {
-  height: 1px;
-  margin: 2px 6px;
-  background: var(--nd-divider);
-}
 </style>
