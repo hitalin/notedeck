@@ -165,6 +165,7 @@ NoteDeck は `Cargo.toml` で git 依存として参照。
   サーバーが消滅しても自分の投稿・お気に入りは残る。
   GUI 設定（デッキレイアウト・テーマ・キーバインド等）もJSONバンドルで一括バックアップ可能。
   設定メニュー →「DBバックアップ」「設定バックアップ」でファイル保存ダイアログ経由のエクスポート。
+  `profiles/` / `themes/` / `plugins/` / `snippets/` / `memos/` 配下のファイルは全て対象。
   localStorage-only scalar 設定は `settings.json` に統合済み。`ai.json` / `keybinds.json5` / `performance.json` も dual-write で `settings.json` に統合済み
   ([DESIGN.md](DESIGN.md) の「settings.json」節参照)
 - [x] **完全オフライン動作** — キャッシュ済みノートの閲覧・検索はネットワーク不要。
@@ -472,9 +473,12 @@ NoteDeck は Misskey クライアントであり、PKM ツールではない。
 
 - [x] **JSON エクスポート** — `export_settings_json` / `import_settings_json` で
   GUI 設定の一括バックアップ・復元を実装済み。DB バックアップと合わせて全データ対応
-- [ ] **PKM 連携（Obsidian / Logseq）** — ノートメニュー →「PKM に送る」で直接保存。
-  Obsidian は URI スキーム経由、Logseq はグラフディレクトリへの Markdown 書き出し。
-  保存先パスの設定のみで連携完了
+- [x] **メモカラム (ローカル Markdown vault)** — メモは `settings/memos/{YYYYMMDDHHmmss}.md`
+  に Zettelkasten 形式 + YAML frontmatter で保存。そのディレクトリを Obsidian / Logseq
+  の vault として直接開ける。NoteDeck 側にはメモカラム + エディタウィンドウ (ビジュアル / コード
+  タブ) を提供し、外部エディタで開くボタンで同じファイルを Obsidian などに引き渡せる
+- [ ] **ノート → PKM 送信** — ノートメニュー →「PKM に送る」で Misskey のノートを
+  メモ vault に保存。現状はメモが local-only なので、ノートを取り込む導線を追加する段階
 
 ---
 
