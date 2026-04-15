@@ -6,6 +6,7 @@ import type {
   NormalizedUser,
   NoteVisibility,
 } from '@/adapters/types'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import PopupMenu from '@/components/common/PopupMenu.vue'
@@ -26,6 +27,7 @@ import {
   useAccountsStore,
 } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
+import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
 
@@ -47,6 +49,7 @@ const { confirm } = useConfirm()
 const toast = useToast()
 
 const accountsStore = useAccountsStore()
+const serversStore = useServersStore()
 
 const lang = markdown()
 
@@ -69,6 +72,12 @@ const memo = computed(() => {
 const account = computed<Account | undefined>(() =>
   accountsStore.accounts.find((a) => a.id === props.accountId),
 )
+
+const serverNotFoundImageUrl = computed(() => {
+  const host = account.value?.host
+  if (!host) return undefined
+  return serversStore.getServer(host)?.notFoundImageUrl
+})
 
 const author = computed(() => {
   const acc = account.value
@@ -243,10 +252,12 @@ async function onDelete() {
     <!-- Visual tab: rendered MFM preview -->
     <div v-show="tab === 'visual'" :class="$style.visualPanel">
       <div v-if="!loaded" :class="$style.placeholder">読み込み中…</div>
-      <div v-else-if="notFound" :class="$style.placeholder">
-        <i class="ti ti-alert-triangle" />
-        このメモは見つかりません
-      </div>
+      <ColumnEmptyState
+        v-else-if="notFound"
+        message="このメモは見つかりません"
+        :image-url="serverNotFoundImageUrl"
+        is-error
+      />
       <!-- Swallow clicks so MkNote's internal navigateToDetail (synthetic id
            → 404) doesn't fire. Right-click still opens our memo menu. -->
       <div
@@ -262,10 +273,12 @@ async function onDelete() {
     <!-- Code tab: raw Markdown editor -->
     <div v-show="tab === 'code'" :class="$style.codePanel">
       <div v-if="!loaded" :class="$style.placeholder">読み込み中…</div>
-      <div v-else-if="notFound" :class="$style.placeholder">
-        <i class="ti ti-alert-triangle" />
-        このメモは見つかりません
-      </div>
+      <ColumnEmptyState
+        v-else-if="notFound"
+        message="このメモは見つかりません"
+        :image-url="serverNotFoundImageUrl"
+        is-error
+      />
       <CodeEditor
         v-else
         :model-value="localText"
