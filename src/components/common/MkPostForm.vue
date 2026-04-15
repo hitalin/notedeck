@@ -20,6 +20,7 @@ import {
 import { usePostFormStore } from '@/stores/postForm'
 import { useSettingsStore } from '@/stores/settings'
 import { useIsCompactLayout } from '@/stores/ui'
+import { useWindowsStore } from '@/stores/windows'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { parseMfm } from '@/utils/mfm'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
@@ -63,6 +64,7 @@ const emit = defineEmits<{
 const isCompact = useIsCompactLayout()
 const settingsStore = useSettingsStore()
 const postFormStore = usePostFormStore()
+const windowsStore = useWindowsStore()
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const showPreview = computed<boolean>({
   get: () => settingsStore.get('postForm.preview') ?? false,
@@ -101,6 +103,7 @@ const {
   pollExpiresAt,
   scheduledAt,
   supportsScheduledNotes,
+  sessionSlotKey,
   initAdapter,
   switchAccount,
   post,
@@ -246,6 +249,22 @@ const previewNote = computed<NormalizedNote | null>(() => {
     channelId: props.channelId ?? null,
   }
 })
+
+// memoMode 時はプレビュー内の MkNote のナビゲーションを抑制し、
+// 現在編集中メモを memoEditor ウィンドウで開く。
+// (previewNote の id は `preview-*` の合成IDで 404 になるため)
+function onPreviewClick(ev: Event) {
+  if (!props.memoMode) return
+  ev.preventDefault()
+  ev.stopPropagation()
+  const acc = account.value
+  const key = sessionSlotKey.value
+  if (!acc || !key) return
+  windowsStore.open('memoEditor', {
+    accountId: acc.id,
+    memoKey: key,
+  })
+}
 
 // --- Mention popup ---
 const {
@@ -755,7 +774,12 @@ function onKeydown(e: KeyboardEvent) {
 
       <!-- Preview -->
       <div v-if="showPreview" :class="$style.previewSection">
-        <MkNote v-if="previewNote" :note="previewNote" embedded />
+        <div
+          v-if="previewNote"
+          @click.capture="onPreviewClick"
+        >
+          <MkNote :note="previewNote" embedded />
+        </div>
         <div v-else :class="$style.previewEmpty">アカウントが選択されていません</div>
       </div>
 
