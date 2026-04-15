@@ -6,6 +6,7 @@ import type {
   NormalizedUser,
 } from '@/adapters/types'
 import { useAutocomplete } from '@/composables/useAutocomplete'
+import type { StoredDraft } from '@/composables/useDrafts'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePopupControl } from '@/composables/usePopupControl'
@@ -20,6 +21,7 @@ import { useIsCompactLayout } from '@/stores/ui'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { parseMfm } from '@/utils/mfm'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
+import MkDraftsPicker from './MkDraftsPicker.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
 import MkMfm from './MkMfm.vue'
 import MkNote from './MkNote.vue'
@@ -85,8 +87,6 @@ const {
   pollExpiresAt,
   scheduledAt,
   supportsScheduledNotes,
-  drafts,
-  showDraftMenu,
   initAdapter,
   switchAccount,
   post,
@@ -102,9 +102,7 @@ const {
   addPollChoice,
   removePollChoice,
   resetForm,
-  saveCurrentDraft,
   restoreDraft,
-  removeDraft,
 } = usePostFormState(
   props,
   {
@@ -136,9 +134,26 @@ const removePollChoiceKeyed = (index: number) => {
   pollChoiceKeys.value.splice(index, 1)
 }
 
+// --- Drafts picker (inline, opens below the form) ---
+const showDraftsPicker = ref(false)
+function toggleDraftsPicker() {
+  showDraftsPicker.value = !showDraftsPicker.value
+}
+function onDraftPicked(draft: StoredDraft) {
+  restoreDraft(draft)
+  showDraftsPicker.value = false
+}
+
+// --- Auto-save draft toggle (persisted in settings, like preview) ---
+const autoSaveDraft = computed<boolean>({
+  get: () => settingsStore.get('postForm.autoSaveDraft') ?? false,
+  set: (v) => {
+    settingsStore.set('postForm.autoSaveDraft', v)
+  },
+})
+
 // --- Popup exclusive control ---
 const popups = usePopupControl()
-popups.track(showDraftMenu)
 const showSchedulePopup = popups.register()
 const showEmojiPopup = popups.register()
 const showAttachMenu = popups.register()
@@ -166,11 +181,6 @@ function formatScheduledDate(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
-}
-
-// --- Draft menu ---
-function toggleDraftMenu() {
-  popups.toggle(showDraftMenu)
 }
 
 /** Minimum datetime for schedule picker (5 minutes from now) */
@@ -556,46 +566,23 @@ function onKeydown(e: KeyboardEvent) {
                   <span class="nd-toggle-switch-knob" />
                 </span>
               </div>
-              <!-- Draft save -->
-              <button
-                class="_button"
+              <!-- Auto-save draft toggle (persisted, mirrors preview pattern) -->
+              <div
                 :class="$style.moreMenuItem"
-                @click="saveCurrentDraft(); showMoreMenu = false"
+                role="switch"
+                :aria-checked="autoSaveDraft"
+                @click="autoSaveDraft = !autoSaveDraft"
               >
                 <i class="ti ti-device-floppy" />
                 下書きを保存
-              </button>
-              <!-- Draft list -->
-              <button
-                class="_button"
-                :class="[$style.moreMenuItem, { [$style.active]: showDraftMenu }]"
-                @click.stop="showDraftMenu = !showDraftMenu"
-              >
-                <i class="ti ti-notes" />
-                下書き
-                <span v-if="drafts.length > 0" :class="$style.moreMenuBadge">{{ drafts.length }}</span>
-              </button>
-              <!-- Draft list popup (nested) -->
-              <div v-if="showDraftMenu" :class="$style.moreMenuDraftList">
-                <div
-                  v-for="d in drafts"
-                  :key="d.id"
-                  :class="$style.draftItem"
+                <span
+                  class="nd-toggle-switch"
+                  :class="{ on: autoSaveDraft }"
+                  :style="{ marginLeft: 'auto' }"
+                  aria-hidden="true"
                 >
-                  <button class="_button" :class="$style.draftItemMain" @click="restoreDraft(d); showMoreMenu = false">
-                    <span :class="$style.draftItemText">{{ d.text || '(空)' }}</span>
-                    <span :class="$style.draftItemDate">{{ new Date(d.savedAt).toLocaleDateString() }}</span>
-                  </button>
-                  <button
-                    class="_button"
-                    :class="$style.draftItemDelete"
-                    title="下書きを削除"
-                    @click.stop="removeDraft(d.id)"
-                  >
-                    <i class="ti ti-x" />
-                  </button>
-                </div>
-                <div v-if="drafts.length === 0" :class="$style.draftEmpty">下書きはありません</div>
+                  <span class="nd-toggle-switch-knob" />
+                </span>
               </div>
               <!-- Schedule (only if server supports it) -->
               <template v-if="supportsScheduledNotes && !editNote">
@@ -926,6 +913,16 @@ function onKeydown(e: KeyboardEvent) {
             </div>
           </div>
 
+          <!-- Drafts picker toggle -->
+          <button
+            class="_button"
+            :class="[$style.footerBtn, { [$style.active]: showDraftsPicker }]"
+            title="下書き一覧"
+            @click="toggleDraftsPicker"
+          >
+            <i class="ti ti-notes" />
+          </button>
+
           <!-- Clear -->
           <button
             class="_button"
@@ -955,6 +952,14 @@ function onKeydown(e: KeyboardEvent) {
       </footer>
 
     </div>
+
+    <!-- Drafts picker (below post form) -->
+    <MkDraftsPicker
+      v-if="showDraftsPicker"
+      :account-id="activeAccountId!"
+      @pick="onDraftPicked"
+      @close="showDraftsPicker = false"
+    />
 
     <!-- Drive picker (below post form) -->
     <MkDrivePicker
@@ -1374,15 +1379,6 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-.moreMenuBadge {
-  margin-left: auto;
-  font-size: 0.75em;
-  padding: 1px 6px;
-  border-radius: 10px;
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
-}
-
 .moreMenuDivider {
   height: 1px;
   margin: 2px 8px;
@@ -1393,13 +1389,6 @@ function onKeydown(e: KeyboardEvent) {
   margin-left: auto;
   font-size: 0.75em;
   opacity: 0.7;
-}
-
-.moreMenuDraftList {
-  max-height: 200px;
-  overflow-y: auto;
-  padding: 0 4px 4px;
-  scrollbar-width: none;
 }
 
 .moreMenuSchedulePicker {
@@ -1908,107 +1897,6 @@ function onKeydown(e: KeyboardEvent) {
     opacity: 1;
     background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
   }
-}
-
-/* ── Draft menu ── */
-.draftMenu {
-  width: 280px;
-  max-height: 360px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.draftMenuItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 12px;
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  border-radius: var(--nd-radius-sm);
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-  }
-}
-
-.draftSave {
-  color: var(--nd-accent);
-  font-weight: bold;
-}
-
-.draftDivider {
-  height: 1px;
-  margin: 2px 8px;
-  background: var(--nd-divider);
-}
-
-.draftList {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px;
-  scrollbar-width: none;
-}
-
-.draftItem {
-  display: flex;
-  align-items: center;
-  border-radius: var(--nd-radius-sm);
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-  }
-}
-
-.draftItemMain {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px;
-  min-width: 0;
-  text-align: left;
-  color: var(--nd-fg);
-}
-
-.draftItemText {
-  font-size: 0.82em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.draftItemDate {
-  font-size: 0.72em;
-  opacity: 0.5;
-}
-
-.draftItemDelete {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  border-radius: var(--nd-radius-sm);
-  color: var(--nd-fg);
-  opacity: 0.4;
-
-  &:hover {
-    opacity: 1;
-    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-  }
-}
-
-.draftEmpty {
-  padding: 16px;
-  text-align: center;
-  font-size: 0.8em;
-  opacity: 0.5;
 }
 
 /* ── Schedule popup ── */

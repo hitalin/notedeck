@@ -10,7 +10,7 @@ use super::Result;
 const SETTINGS_DIR: &str = "notedeck";
 
 /// Allowed subdirectory names for settings files.
-const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets"];
+const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets", "drafts"];
 
 /// Validate a subdirectory name against the whitelist.
 fn validate_subdir(subdir: &str) -> Result<()> {
@@ -251,7 +251,7 @@ pub fn write_notedeck_json(app: tauri::AppHandle, content: &str) -> Result<()> {
 }
 
 /// Directories and root files to include in settings backup.
-const BACKUP_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets"];
+const BACKUP_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets", "drafts"];
 
 /// Export all settings files to a JSON bundle via save dialog.
 #[tauri::command]
