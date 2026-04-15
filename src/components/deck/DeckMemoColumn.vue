@@ -16,7 +16,11 @@ import {
   memosVersion,
   type StoredMemo,
 } from '@/composables/useMemos'
-import { type Account, useAccountsStore } from '@/stores/accounts'
+import {
+  type Account,
+  getAccountAvatarUrl,
+  useAccountsStore,
+} from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
@@ -49,6 +53,12 @@ const serverInfoImageUrl = computed(() => {
   const host = account.value?.host
   if (!host) return undefined
   return serversStore.getServer(host)?.infoImageUrl
+})
+
+const serverIconUrl = computed(() => {
+  const host = account.value?.host
+  if (!host) return undefined
+  return serversStore.getServer(host)?.iconUrl
 })
 
 function userFromAccount(acc: Account): NormalizedUser {
@@ -311,6 +321,18 @@ function closeMenu() {
       <i class="ti ti-notes" />
     </template>
 
+    <template #header-meta>
+      <div v-if="account" :class="$style.headerAccount">
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
+        <img
+          :class="$style.headerFavicon"
+          :src="serverIconUrl || `https://${account.host}/favicon.ico`"
+          :title="account.host"
+          @error="($event.target as HTMLImageElement).src = '/server-icon-error.svg'"
+        />
+      </div>
+    </template>
+
     <!-- Embedded post form (memoMode: post = save as memo) -->
     <div v-if="account" :class="$style.embeddedForm" data-memo-form>
       <MkPostForm
@@ -433,6 +455,8 @@ function closeMenu() {
 </template>
 
 <style lang="scss" module>
+@use './column-common.module.scss';
+
 .embeddedForm {
   border-bottom: 1px solid var(--nd-divider);
 }
