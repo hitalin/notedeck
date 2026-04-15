@@ -134,16 +134,6 @@ const removePollChoiceKeyed = (index: number) => {
   pollChoiceKeys.value.splice(index, 1)
 }
 
-// --- Drafts picker (inline, opens below the form) ---
-const showDraftsPicker = ref(false)
-function toggleDraftsPicker() {
-  showDraftsPicker.value = !showDraftsPicker.value
-}
-function onDraftPicked(draft: StoredDraft) {
-  restoreDraft(draft)
-  showDraftsPicker.value = false
-}
-
 // --- Auto-save draft toggle (persisted in settings, like preview) ---
 const autoSaveDraft = computed<boolean>({
   get: () => settingsStore.get('postForm.autoSaveDraft') ?? false,
@@ -153,12 +143,23 @@ const autoSaveDraft = computed<boolean>({
 })
 
 // --- Popup exclusive control ---
+// ピッカー系 (emoji / drive / drafts) はシングルトン: 同時に1つだけ開く
 const popups = usePopupControl()
 const showSchedulePopup = popups.register()
 const showEmojiPopup = popups.register()
 const showAttachMenu = popups.register()
-
 const showMoreMenu = popups.register()
+const showDraftsPicker = popups.register()
+const showDrivePicker = popups.register()
+
+// --- Drafts picker (inline, opens below the form) ---
+function toggleDraftsPicker() {
+  popups.toggle(showDraftsPicker)
+}
+function onDraftPicked(draft: StoredDraft) {
+  restoreDraft(draft)
+  showDraftsPicker.value = false
+}
 
 function toggleSchedulePopup() {
   popups.toggle(showSchedulePopup)
@@ -288,8 +289,6 @@ const {
 } = useAutocomplete(text, textareaRef, activeAccountId, serverHost)
 
 // --- File attach menu ---
-const showDrivePicker = ref(false)
-
 function toggleAttachMenu() {
   popups.toggle(showAttachMenu)
 }
@@ -300,7 +299,7 @@ function attachFromLocal() {
 }
 
 function attachFromDrive() {
-  showAttachMenu.value = false
+  popups.closeOthers(showDrivePicker)
   showDrivePicker.value = true
 }
 
@@ -918,7 +917,7 @@ function onKeydown(e: KeyboardEvent) {
             class="_button"
             :class="[$style.footerBtn, { [$style.active]: showDraftsPicker }]"
             title="下書き一覧"
-            @click="toggleDraftsPicker"
+            @click.stop="toggleDraftsPicker"
           >
             <i class="ti ti-notes" />
           </button>
