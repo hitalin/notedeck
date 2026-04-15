@@ -32,6 +32,7 @@ const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
 const isLoggedOut = computed(() => account.value?.hasToken === false)
 
 const {
+  currentFolderId,
   folderStack,
   folders,
   files,
@@ -182,6 +183,7 @@ async function onFileSelected(e: Event) {
           [...new Uint8Array(buf)],
           file.type || 'application/octet-stream',
           false,
+          currentFolderId.value,
         ),
       )
     }

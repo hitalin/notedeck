@@ -52,7 +52,6 @@ const isCompact = useIsCompactLayout()
 const settingsStore = useSettingsStore()
 const postFormStore = usePostFormStore()
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const fileInput = ref<HTMLInputElement | null>(null)
 const showPreview = computed<boolean>({
   get: () => settingsStore.get('postForm.preview') ?? false,
   set: (v) => {
@@ -93,8 +92,6 @@ const {
   initAdapter,
   switchAccount,
   post,
-  openFilePicker,
-  onFileSelected,
   uploadFilesFromPaths,
   attachDriveFiles,
   removeFile,
@@ -106,19 +103,15 @@ const {
   removePollChoice,
   resetForm,
   restoreDraft,
-} = usePostFormState(
-  props,
-  {
-    onPosted: (id) => {
-      emit('posted', id)
-      if (props.inline) {
-        // Reset form for next post instead of closing
-        resetForm()
-      }
-    },
+} = usePostFormState(props, {
+  onPosted: (id) => {
+    emit('posted', id)
+    if (props.inline) {
+      // Reset form for next post instead of closing
+      resetForm()
+    }
   },
-  fileInput,
-)
+})
 
 // Stable keys for poll choices (avoid index-based v-for key bugs on add/remove)
 let pollKeyCounter = 0
@@ -150,7 +143,6 @@ const autoSaveDraft = computed<boolean>({
 const popups = usePopupControl()
 const showSchedulePopup = popups.register()
 const showEmojiPopup = popups.register()
-const showAttachMenu = popups.register()
 const showMoreMenu = popups.register()
 const showDraftsPicker = popups.register()
 const showDrivePicker = popups.register()
@@ -296,19 +288,9 @@ const {
   dismiss: acDismiss,
 } = useAutocomplete(text, textareaRef, activeAccountId, serverHost)
 
-// --- File attach menu ---
-function toggleAttachMenu() {
-  popups.toggle(showAttachMenu)
-}
-
-function attachFromLocal() {
-  showAttachMenu.value = false
-  openFilePicker()
-}
-
-function attachFromDrive() {
-  popups.closeOthers(showDrivePicker)
-  showDrivePicker.value = true
+// --- File attach (drive picker) ---
+function toggleDrivePicker() {
+  popups.toggle(showDrivePicker)
 }
 
 function onDriveFilesPicked(driveFiles: NormalizedDriveFile[]) {
@@ -803,16 +785,6 @@ function onKeydown(e: KeyboardEvent) {
         <div v-if="isUploading" :class="$style.fileUploading">アップロード中...</div>
       </div>
 
-      <!-- Hidden file input -->
-      <input
-        ref="fileInput"
-        type="file"
-        multiple
-        accept="image/*,video/*,audio/*"
-        style="display: none"
-        @change="onFileSelected"
-      />
-
       <!-- Error -->
       <div v-if="error" :class="$style.postError">{{ error }}</div>
 
@@ -831,28 +803,17 @@ function onKeydown(e: KeyboardEvent) {
               <i class="ti ti-mood-happy" />
             </button>
 
-            <!-- Attach file -->
-            <div v-else-if="btnId === 'attach'" :class="$style.footerPopupWrapper">
-              <button
-                class="_button"
-                :class="$style.footerBtn"
-                title="ファイルを添付"
-                :disabled="isUploading"
-                @click.stop="toggleAttachMenu"
-              >
-                <i class="ti ti-photo-plus" />
-              </button>
-              <div v-if="showAttachMenu" :class="[$style.footerPopup, $style.attachMenu]" @click.stop>
-                <button class="_button" :class="$style.attachMenuItem" @click="attachFromLocal">
-                  <i class="ti ti-upload" />
-                  <span>アップロード</span>
-                </button>
-                <button class="_button" :class="$style.attachMenuItem" @click="attachFromDrive">
-                  <i class="ti ti-cloud" />
-                  <span>ドライブから</span>
-                </button>
-              </div>
-            </div>
+            <!-- Attach file (drive picker) -->
+            <button
+              v-else-if="btnId === 'attach'"
+              class="_button"
+              :class="[$style.footerBtn, { [$style.active]: showDrivePicker }]"
+              title="ファイルを添付"
+              :disabled="isUploading"
+              @click.stop="toggleDrivePicker"
+            >
+              <i class="ti ti-photo-plus" />
+            </button>
 
             <!-- Poll -->
             <button
@@ -2025,12 +1986,6 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-/* ── Attach menu ── */
-.attachMenu {
-  min-width: 200px;
-  padding: 4px;
-}
-
 /* ── Emoji picker (below post form, matches form width) ── */
 .emojiPickerPanel {
   display: flex;
@@ -2083,28 +2038,6 @@ function onKeydown(e: KeyboardEvent) {
   min-height: 0;
   overflow: hidden;
   display: flex;
-}
-
-.attachMenuItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 12px;
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  border-radius: var(--nd-radius-sm);
-  transition: background var(--nd-duration-base);
-  text-align: left;
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-
-  :global(.ti) {
-    font-size: 16px;
-    opacity: 0.7;
-  }
 }
 
 /* Mobile: デスクトップと同じ枠付きモーダル（背景は透過して背後のカラムが透ける） */

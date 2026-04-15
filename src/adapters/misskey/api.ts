@@ -115,6 +115,7 @@ export class MisskeyApi implements ApiAdapter {
     fileData: number[],
     contentType: string,
     isSensitive = false,
+    folderId: string | null = null,
   ): Promise<NormalizedDriveFile> {
     this.requireAuth()
     return unwrapAny(
@@ -124,6 +125,7 @@ export class MisskeyApi implements ApiAdapter {
         fileData,
         contentType,
         isSensitive,
+        folderId,
       ),
     )
   }
@@ -131,6 +133,7 @@ export class MisskeyApi implements ApiAdapter {
   async uploadFileFromPath(
     filePath: string,
     isSensitive = false,
+    folderId: string | null = null,
   ): Promise<NormalizedDriveFile> {
     this.requireAuth()
     return unwrapAny(
@@ -138,6 +141,7 @@ export class MisskeyApi implements ApiAdapter {
         this.accountId,
         filePath,
         isSensitive,
+        folderId,
       ),
     )
   }

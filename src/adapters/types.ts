@@ -416,10 +416,12 @@ export interface ApiAdapter {
     fileData: number[],
     contentType: string,
     isSensitive?: boolean,
+    folderId?: string | null,
   ): Promise<NormalizedDriveFile>
   uploadFileFromPath(
     filePath: string,
     isSensitive?: boolean,
+    folderId?: string | null,
   ): Promise<NormalizedDriveFile>
   getServerEmojis(): Promise<ServerEmoji[]>
   getPinnedReactions(): Promise<string[]>

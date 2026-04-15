@@ -136,7 +136,7 @@ const fileDrop = useFileDrop((paths, position) => {
   if (col?.type === 'drive' && col.accountId) {
     const accountId = col.accountId
     for (const path of paths) {
-      commands.apiUploadFileFromPath(accountId, path, false).then((r) => {
+      commands.apiUploadFileFromPath(accountId, path, false, null).then((r) => {
         unwrap(r)
         uiStore.emitDriveFilesChanged(accountId)
       })

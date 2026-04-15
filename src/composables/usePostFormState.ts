@@ -1,4 +1,4 @@
-import { computed, nextTick, type Ref, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, ref, shallowRef, watch } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   NormalizedNote,
@@ -44,7 +44,6 @@ export function usePostFormState(
   callbacks: {
     onPosted: (editedNoteId?: string) => void
   },
-  fileInput: Ref<HTMLInputElement | null>,
 ) {
   const accountsStore = useAccountsStore()
   const settingsStore = useSettingsStore()
@@ -64,12 +63,10 @@ export function usePostFormState(
   const {
     attachedFiles,
     isUploading,
-    openFilePicker,
-    onFileSelected,
     uploadFilesFromPaths,
     attachDriveFiles,
     removeFile,
-  } = useFileAttachment(() => adapter, fileInput, error)
+  } = useFileAttachment(() => adapter, error)
   const noteModeFlags = ref<Record<string, boolean>>({})
   const disabledVisibilities = shallowRef(new Set<string>())
   const showPoll = ref(false)
@@ -470,8 +467,6 @@ export function usePostFormState(
     initAdapter,
     switchAccount,
     post,
-    openFilePicker,
-    onFileSelected,
     uploadFilesFromPaths,
     attachDriveFiles,
     removeFile,

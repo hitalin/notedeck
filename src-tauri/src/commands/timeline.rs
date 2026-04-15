@@ -682,6 +682,7 @@ pub async fn api_upload_file(
     file_data: Vec<u8>,
     content_type: String,
     is_sensitive: bool,
+    folder_id: Option<String>,
 ) -> Result<NormalizedDriveFile> {
     if file_data.len() > MAX_UPLOAD_BYTES {
         return Err(NoteDeckError::InvalidInput("File too large".to_string()));
@@ -696,6 +697,7 @@ pub async fn api_upload_file(
             file_data,
             &content_type,
             is_sensitive,
+            folder_id.as_deref(),
         )
         .await
 }
@@ -707,6 +709,7 @@ pub async fn api_upload_file_from_path(
     account_id: String,
     file_path: String,
     is_sensitive: bool,
+    folder_id: Option<String>,
 ) -> Result<NormalizedDriveFile> {
     let path = std::path::Path::new(&file_path);
     let file_data = std::fs::read(path)
@@ -732,6 +735,7 @@ pub async fn api_upload_file_from_path(
             file_data,
             &content_type,
             is_sensitive,
+            folder_id.as_deref(),
         )
         .await
 }

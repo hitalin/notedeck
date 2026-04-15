@@ -275,17 +275,17 @@ async apiUpdateNote(accountId: string, noteId: string, params: CreateNoteParams)
     else return { status: "error", error: e  as any };
 }
 },
-async apiUploadFile(accountId: string, fileName: string, fileData: number[], contentType: string, isSensitive: boolean) : Promise<Result<NormalizedDriveFile, { code: string; message: string }>> {
+async apiUploadFile(accountId: string, fileName: string, fileData: number[], contentType: string, isSensitive: boolean, folderId: string | null) : Promise<Result<NormalizedDriveFile, { code: string; message: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("api_upload_file", { accountId, fileName, fileData, contentType, isSensitive }) };
+    return { status: "ok", data: await TAURI_INVOKE("api_upload_file", { accountId, fileName, fileData, contentType, isSensitive, folderId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async apiUploadFileFromPath(accountId: string, filePath: string, isSensitive: boolean) : Promise<Result<NormalizedDriveFile, { code: string; message: string }>> {
+async apiUploadFileFromPath(accountId: string, filePath: string, isSensitive: boolean, folderId: string | null) : Promise<Result<NormalizedDriveFile, { code: string; message: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("api_upload_file_from_path", { accountId, filePath, isSensitive }) };
+    return { status: "ok", data: await TAURI_INVOKE("api_upload_file_from_path", { accountId, filePath, isSensitive, folderId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
