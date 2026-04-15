@@ -726,7 +726,7 @@ function close() {
   box-shadow: 0 8px 32px var(--nd-shadow);
   min-width: 320px;
   max-width: 480px;
-  max-height: 80vh;
+  max-height: 90vh;
   overflow-y: auto;
 }
 
