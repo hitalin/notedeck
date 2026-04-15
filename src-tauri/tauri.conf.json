@@ -16,7 +16,7 @@
         "width": 1200,
         "height": 800,
         "minWidth": 360,
-        "minHeight": 500,
+        "minHeight": 640,
         "center": true,
         "decorations": false,
         "shadow": false,
