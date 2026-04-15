@@ -9,7 +9,7 @@ use super::Result;
 /// Settings subdirectory name under app_data_dir.
 const SETTINGS_DIR: &str = "notedeck";
 
-/// Allowed subdirectory names for settings files.
+/// Allowed subdirectory names for settings files. Also the set included in settings backup.
 const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets", "drafts"];
 
 /// Validate a subdirectory name against the whitelist.
@@ -318,9 +318,6 @@ pub fn write_notedeck_json(app: tauri::AppHandle, content: &str) -> Result<()> {
     })
 }
 
-/// Directories and root files to include in settings backup.
-const BACKUP_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets", "drafts"];
-
 /// Export all settings files to a JSON bundle via save dialog.
 #[tauri::command]
 #[specta::specta]
@@ -348,7 +345,7 @@ pub async fn export_settings_json(app: tauri::AppHandle) -> Result<bool> {
     let mut bundle: BTreeMap<String, String> = BTreeMap::new();
 
     // Add subdirectory files (profiles/, themes/, plugins/)
-    for subdir in BACKUP_SUBDIRS {
+    for subdir in ALLOWED_SUBDIRS {
         let dir = base_dir.join(subdir);
         if !dir.exists() {
             continue;
@@ -423,7 +420,7 @@ pub async fn import_settings_json(app: tauri::AppHandle) -> Result<bool> {
         }
 
         // Validate: must be in allowed subdirs or allowed root files
-        let allowed = BACKUP_SUBDIRS
+        let allowed = ALLOWED_SUBDIRS
             .iter()
             .any(|d| key.starts_with(&format!("{d}/")))
             || ALLOWED_ROOT_FILES.contains(&key.as_str());
@@ -543,7 +540,7 @@ mod tests {
         let json_path = base.join("backup.json");
         {
             let mut bundle: BTreeMap<String, String> = BTreeMap::new();
-            for subdir in BACKUP_SUBDIRS {
+            for subdir in ALLOWED_SUBDIRS {
                 let d = base.join(subdir);
                 if !d.exists() {
                     continue;
@@ -584,7 +581,7 @@ mod tests {
                 if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
                     continue;
                 }
-                let allowed = BACKUP_SUBDIRS
+                let allowed = ALLOWED_SUBDIRS
                     .iter()
                     .any(|d| key.starts_with(&format!("{d}/")))
                     || ALLOWED_ROOT_FILES.contains(&key.as_str());
@@ -642,7 +639,7 @@ mod tests {
             if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
                 continue;
             }
-            let allowed = BACKUP_SUBDIRS
+            let allowed = ALLOWED_SUBDIRS
                 .iter()
                 .any(|d| key.starts_with(&format!("{d}/")))
                 || ALLOWED_ROOT_FILES.contains(&key.as_str());
@@ -683,7 +680,7 @@ mod tests {
             if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
                 continue;
             }
-            let allowed = BACKUP_SUBDIRS
+            let allowed = ALLOWED_SUBDIRS
                 .iter()
                 .any(|d| key.starts_with(&format!("{d}/")))
                 || ALLOWED_ROOT_FILES.contains(&key.as_str());
