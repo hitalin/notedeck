@@ -566,6 +566,10 @@ function close() {
               <i class="ti ti-app-window" />
               <span>ウィジェット</span>
             </button>
+            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('pluginManager')">
+              <i class="ti ti-puzzle" />
+              <span>プラグイン</span>
+            </button>
             <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('aiscript')">
               <i class="ti ti-terminal-2" />
               <span>スクラッチパッド</span>
@@ -578,25 +582,21 @@ function close() {
               <i class="ti ti-book" />
               <span>APIドキュメント</span>
             </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('ai')">
-              <i class="ti ti-sparkles" />
-              <span>AIチャット</span>
-            </button>
             <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('streamInspector')">
               <i class="ti ti-activity-heartbeat" />
               <span>ストリーム</span>
             </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('pluginManager')">
-              <i class="ti ti-puzzle" />
-              <span>プラグイン</span>
-            </button>
-            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('taskRunner')">
-              <i class="ti ti-player-play" />
-              <span>タスク</span>
+            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('ai')">
+              <i class="ti ti-sparkles" />
+              <span>AIチャット</span>
             </button>
             <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('memos')">
               <i class="ti ti-notes" />
               <span>メモ</span>
+            </button>
+            <button class="_button" :class="$style.addTypeBtn" @click="selectColumnType('taskRunner')">
+              <i class="ti ti-player-play" />
+              <span>タスク</span>
             </button>
           </template>
         </div>

@@ -472,14 +472,14 @@ const COLUMN_TYPE_GROUPS: { group: string; types: ColumnType[] }[] = [
     group: 'ツール',
     types: [
       'widget',
+      'pluginManager',
       'aiscript',
       'apiConsole',
       'apiDocs',
-      'ai',
       'streamInspector',
-      'pluginManager',
-      'taskRunner',
+      'ai',
       'memos',
+      'taskRunner',
     ],
   },
 ]
