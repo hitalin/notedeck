@@ -7,6 +7,7 @@ import type {
 } from '@/adapters/types'
 import { useAutocomplete } from '@/composables/useAutocomplete'
 import type { StoredDraft } from '@/composables/useDrafts'
+import type { StoredMemo } from '@/composables/useMemos'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePopupControl } from '@/composables/usePopupControl'
@@ -45,7 +46,7 @@ const props = defineProps<{
    * 起動時にフォームへロードするスロット (draft または memo)。
    * restoreSlot でフィールドを展開し、sessionSlotKey に initialSlotKey を継承する。
    */
-  initialSlot?: StoredDraft | null
+  initialSlot?: StoredDraft | StoredMemo | null
   initialSlotKey?: string | null
   /**
    * true にするとメモモード: post は memo に保存、auto-save も memo 側。

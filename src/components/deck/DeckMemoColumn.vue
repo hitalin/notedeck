@@ -8,7 +8,7 @@ import type {
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
-import { generateDraftKey, saveDraft } from '@/composables/useDrafts'
+import { saveDraft } from '@/composables/useDrafts'
 import {
   deleteMemo,
   ensureMemosLoaded,
@@ -244,15 +244,23 @@ function onPosted() {
 }
 
 /**
- * 「下書きにする」: 同じアカウントの drafts 領域に新しい entry として複製し、
- * 元のメモは削除する。visibility/cw/files などのフィールドは共通構造なので
+ * 「下書きにする」: 同じアカウントの server-side drafts に複製し (notes/drafts/create)、
+ * 成功したら元のメモを削除する。visibility/cw/files などのフィールドは共通構造なので
  * そのままコピー可能。
  */
-function onPromoteToDraft(entry: MemoEntry) {
+async function onPromoteToDraft(entry: MemoEntry) {
   closeMenu()
   const acc = account.value
   if (!acc) return
-  saveDraft(acc.id, generateDraftKey(), entry.memo.data)
+  try {
+    await saveDraft(acc.id, null, entry.memo.data)
+  } catch (e) {
+    toast.show(
+      `下書き化に失敗しました: ${e instanceof Error ? e.message : String(e)}`,
+      'error',
+    )
+    return
+  }
   deleteMemo(acc.id, entry.key)
   if (editingKey.value === entry.key) {
     editingKey.value = null

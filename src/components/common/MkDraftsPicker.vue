@@ -11,8 +11,8 @@ import {
   deleteAllDrafts,
   deleteDraft,
   draftsVersion,
-  ensureDraftsLoaded,
   loadAllDrafts,
+  refreshDrafts,
   type StoredDraft,
 } from '@/composables/useDrafts'
 import { type Account, useAccountsStore } from '@/stores/accounts'
@@ -56,30 +56,21 @@ interface DraftEntry {
   note: NormalizedNote
 }
 
-function parseDraftKey(key: string): DraftContext {
-  let rest = key
-  let channelId: string | null = null
-  if (rest.startsWith('channel:')) {
-    const m = rest.slice(8).match(/^(.*?)(?=(?:renote|reply|note):)/)
-    if (m) {
-      channelId = m[1] ?? null
-      rest = rest.slice(8 + (m[1]?.length ?? 0))
-    }
+function contextOf(stored: StoredDraft): DraftContext {
+  if (stored.replyId) {
+    return { kind: 'reply', channelId: null, refId: stored.replyId }
   }
-  const idx = rest.indexOf(':')
-  if (idx < 0) return { kind: 'note', channelId, refId: null }
-  const prefix = rest.slice(0, idx)
-  const refId = rest.slice(idx + 1) || null
-  if (prefix === 'renote') return { kind: 'renote', channelId, refId }
-  if (prefix === 'reply') return { kind: 'reply', channelId, refId }
-  if (prefix === 'note') {
+  if (stored.renoteId) {
+    return { kind: 'renote', channelId: null, refId: stored.renoteId }
+  }
+  if (stored.channelId) {
     return {
-      kind: channelId ? 'channel-note' : 'note',
-      channelId,
-      refId,
+      kind: 'channel-note',
+      channelId: stored.channelId,
+      refId: null,
     }
   }
-  return { kind: 'note', channelId, refId: null }
+  return { kind: 'note', channelId: null, refId: null }
 }
 
 function userFromAccount(acc: Account): NormalizedUser {
@@ -92,15 +83,10 @@ function userFromAccount(acc: Account): NormalizedUser {
   }
 }
 
-function toPreviewNote(
-  acc: Account,
-  key: string,
-  stored: StoredDraft,
-  ctx: DraftContext,
-): NormalizedNote {
+function toPreviewNote(acc: Account, stored: StoredDraft): NormalizedNote {
   const d = stored.data
   return {
-    id: `draft:${acc.id}:${key}`,
+    id: `draft:${acc.id}:${stored.id}`,
     _accountId: acc.id,
     _serverHost: acc.host,
     createdAt: stored.updatedAt,
@@ -115,9 +101,9 @@ function toPreviewNote(
     repliesCount: 0,
     files: [],
     localOnly: d.localOnly,
-    replyId: ctx.kind === 'reply' ? ctx.refId : null,
-    renoteId: ctx.kind === 'renote' ? ctx.refId : null,
-    channelId: ctx.channelId,
+    replyId: stored.replyId,
+    renoteId: stored.renoteId,
+    channelId: stored.channelId,
   }
 }
 
@@ -125,9 +111,9 @@ const loaded = ref(false)
 
 watch(
   () => props.accountId,
-  async () => {
+  async (id) => {
     loaded.value = false
-    await ensureDraftsLoaded()
+    await refreshDrafts(id)
     loaded.value = true
   },
   { immediate: true },
@@ -139,13 +125,13 @@ const entries = computed<DraftEntry[]>(() => {
   const map = loadAllDrafts(props.accountId)
   const acc = account.value
   const out: DraftEntry[] = []
-  for (const [key, draft] of Object.entries(map)) {
-    const ctx = parseDraftKey(key)
+  for (const stored of Object.values(map)) {
+    const ctx = contextOf(stored)
     out.push({
-      key,
-      draft,
+      key: stored.id,
+      draft: stored,
       context: ctx,
-      note: toPreviewNote(acc, key, draft, ctx),
+      note: toPreviewNote(acc, stored),
     })
   }
   out.sort((a, b) => b.draft.updatedAt.localeCompare(a.draft.updatedAt))
@@ -236,8 +222,15 @@ async function onDelete(entry: DraftEntry) {
     type: 'danger',
   })
   if (!ok) return
-  deleteDraft(props.accountId, entry.key)
-  toast.show('下書きを削除しました', 'info')
+  try {
+    await deleteDraft(props.accountId, entry.key)
+    toast.show('下書きを削除しました', 'info')
+  } catch (e) {
+    toast.show(
+      `削除に失敗しました: ${e instanceof Error ? e.message : String(e)}`,
+      'error',
+    )
+  }
 }
 
 async function onDeleteAll() {
@@ -249,8 +242,15 @@ async function onDeleteAll() {
     type: 'danger',
   })
   if (!ok) return
-  deleteAllDrafts(props.accountId)
-  toast.show('下書きをすべて削除しました', 'info')
+  try {
+    await deleteAllDrafts(props.accountId)
+    toast.show('下書きをすべて削除しました', 'info')
+  } catch (e) {
+    toast.show(
+      `削除に失敗しました: ${e instanceof Error ? e.message : String(e)}`,
+      'error',
+    )
+  }
 }
 </script>
 
