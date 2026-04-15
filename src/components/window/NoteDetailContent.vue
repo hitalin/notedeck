@@ -170,6 +170,16 @@ async function handleReaction(reaction: string, target: NormalizedNote) {
   }
 }
 
+async function handleVote(choice: number, target: NormalizedNote) {
+  if (!adapter) return
+  const { votePoll } = await import('@/utils/votePoll')
+  try {
+    await votePoll(adapter.api, target, choice)
+  } catch (e) {
+    error.value = AppError.from(e)
+  }
+}
+
 const postFormPortalRef = useTemplateRef<HTMLElement>('postFormPortalRef')
 usePortal(postFormPortalRef)
 
@@ -316,6 +326,7 @@ const treeHandlers = computed<NoteTreeHandlers>(() => ({
   deleteFn: handleDelete,
   edit: handleEdit,
   deleteAndEdit: handleDeleteAndEdit,
+  vote: handleVote,
 }))
 
 async function handlePosted(editedNoteId?: string) {
@@ -368,6 +379,7 @@ async function handlePosted(editedNoteId?: string) {
           @delete="handleDelete"
           @edit="handleEdit"
           @delete-and-edit="handleDeleteAndEdit"
+          @vote="handleVote"
         />
       </div>
 
@@ -382,6 +394,7 @@ async function handlePosted(editedNoteId?: string) {
           @delete="handleDelete"
           @edit="handleEdit"
           @delete-and-edit="handleDeleteAndEdit"
+          @vote="handleVote"
         />
       </div>
 

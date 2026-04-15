@@ -398,6 +398,7 @@ export interface ApiAdapter {
   getNote(noteId: string): Promise<NormalizedNote>
   createReaction(noteId: string, reaction: string): Promise<void>
   deleteReaction(noteId: string): Promise<void>
+  votePoll(noteId: string, choice: number): Promise<void>
   getNoteReactions(
     noteId: string,
     reactionType?: string,

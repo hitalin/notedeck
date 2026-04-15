@@ -231,6 +231,7 @@ defineExpose({
                 @edit="handlers.edit"
                 @bookmark="handlers.bookmark"
                 @delete-and-edit="handlers.deleteAndEdit"
+                @vote="handlers.vote"
               />
               <slot name="note-item" :item="item" :index="index" />
             </div>

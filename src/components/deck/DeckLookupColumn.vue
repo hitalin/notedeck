@@ -120,6 +120,7 @@ const treeHandlers = computed<NoteTreeHandlers>(() => ({
   deleteFn: handleDelete,
   edit: handlers.edit,
   deleteAndEdit: handleDeleteAndEdit,
+  vote: handlers.vote,
 }))
 
 /** cross-account: MergedThreadNode[] → NoteTreeNode[] に変換 */
@@ -146,6 +147,7 @@ const crossAccountTreeHandlers = computed<NoteTreeHandlers>(() => ({
   deleteFn: handleDeleteCrossAccount,
   edit: noop,
   deleteAndEdit: noop,
+  vote: handleVoteCrossAccount,
 }))
 
 const postPortalRef = useTemplateRef<HTMLElement>('postPortalRef')
@@ -420,6 +422,17 @@ async function handleReactionCrossAccount(
   }
 }
 
+async function handleVoteCrossAccount(choice: number, target: NormalizedNote) {
+  const adapter = await multiAdapters.getOrCreate(target._accountId)
+  if (!adapter) return
+  const { votePoll } = await import('@/utils/votePoll')
+  try {
+    await votePoll(adapter.api, target, choice)
+  } catch {
+    // ignore
+  }
+}
+
 async function handleRenoteCrossAccount(target: NormalizedNote) {
   const adapter = await multiAdapters.getOrCreate(target._accountId)
   if (!adapter) return
@@ -580,6 +593,7 @@ async function handlePosted(editedNoteId?: string) {
             @react="handleReactionCrossAccount"
             @renote="handleRenoteCrossAccount"
             @delete="handleDeleteCrossAccount"
+            @vote="handleVoteCrossAccount"
           />
         </div>
         <MkNote
@@ -588,6 +602,7 @@ async function handlePosted(editedNoteId?: string) {
           @react="handleReactionCrossAccount"
           @renote="handleRenoteCrossAccount"
           @delete="handleDeleteCrossAccount"
+          @vote="handleVoteCrossAccount"
         />
         <MkNoteTree
           v-if="mergedThread.children.length > 0"
@@ -623,6 +638,7 @@ async function handlePosted(editedNoteId?: string) {
             @delete="handleDelete"
             @edit="handlers.edit"
             @delete-and-edit="handleDeleteAndEdit"
+            @vote="handlers.vote"
           />
         </div>
         <MkNote
@@ -635,6 +651,7 @@ async function handlePosted(editedNoteId?: string) {
           @delete="handleDelete"
           @edit="handlers.edit"
           @delete-and-edit="handleDeleteAndEdit"
+          @vote="handlers.vote"
         />
         <MkNoteTree
           v-if="childrenTree.length > 0 && column.accountId"

@@ -81,6 +81,11 @@ export class MisskeyApi implements ApiAdapter {
     unwrapAny(await commands.apiDeleteReaction(this.accountId, noteId))
   }
 
+  async votePoll(noteId: string, choice: number): Promise<void> {
+    this.requireAuth()
+    unwrapAny(await commands.apiVotePoll(this.accountId, noteId, choice))
+  }
+
   async getNoteReactions(
     noteId: string,
     reactionType?: string,

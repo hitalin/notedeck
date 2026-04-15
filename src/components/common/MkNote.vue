@@ -112,6 +112,7 @@ const emit = defineEmits<{
   bookmark: [note: NormalizedNote]
   pin: [note: NormalizedNote]
   deleteAndEdit: [note: NormalizedNote]
+  vote: [choice: number, note: NormalizedNote]
 }>()
 
 const { navigateToNote: navToNote, navigateToUser: navToUser } = useNavigation()
@@ -644,6 +645,7 @@ function handlePickerReaction(reaction: string) {
           <MkPoll
             v-if="effectiveNote.poll"
             :poll="effectiveNote.poll"
+            @vote="(choice) => emit('vote', choice, effectiveNote)"
           />
 
           <!-- Quote renote (when note has text + renote) -->

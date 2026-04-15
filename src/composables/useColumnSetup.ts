@@ -18,6 +18,7 @@ import { useUiStore } from '@/stores/ui'
 import { AppError } from '@/utils/errors'
 import { toggleFavorite } from '@/utils/toggleFavorite'
 import { toggleReaction } from '@/utils/toggleReaction'
+import { votePoll } from '@/utils/votePoll'
 
 export interface ColumnSetupOptions {
   /** Reactive offline flag — when true, write operations are blocked */
@@ -144,6 +145,17 @@ export function useColumnSetup(
       const err = AppError.from(e)
       console.error('[reaction]', err.code, err.message)
       toast.show(`リアクションに失敗しました（${err.displayCode}）`, 'error')
+    }
+  }
+
+  async function handlePollVote(choice: number, note: NormalizedNote) {
+    if (!adapter || checkOffline()) return
+    try {
+      await votePoll(adapter.api, note, choice, notifyMutationFor(note))
+    } catch (e) {
+      const err = AppError.from(e)
+      console.error('[vote]', err.code, err.message)
+      toast.show(`投票に失敗しました（${err.displayCode}）`, 'error')
     }
   }
 
@@ -341,6 +353,7 @@ export function useColumnSetup(
       edit: handleEdit,
       bookmark: handleBookmark,
       deleteAndEdit: handleDeleteAndEdit,
+      vote: handlePollVote,
     },
     // Virtual scroller
     scroller,

@@ -452,6 +452,21 @@ pub async fn api_delete_reaction(
     client.delete_reaction(&host, &token, &note_id).await
 }
 
+// --- Poll vote ---
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_vote_poll(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    note_id: String,
+    choice: u32,
+) -> Result<()> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.vote_poll(&host, &token, &note_id, choice).await
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn api_get_note_reactions(

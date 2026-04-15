@@ -765,6 +765,7 @@ onUnmounted(() => {
               @edit="handlers.edit"
               @bookmark="handlers.bookmark"
               @delete-and-edit="handlers.deleteAndEdit"
+              @vote="handlers.vote"
             />
           </div>
         </template>

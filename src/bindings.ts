@@ -259,6 +259,14 @@ async apiDeleteReaction(accountId: string, noteId: string) : Promise<Result<null
     else return { status: "error", error: e  as any };
 }
 },
+async apiVotePoll(accountId: string, noteId: string, choice: number) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_vote_poll", { accountId, noteId, choice }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async apiGetNoteReactions(accountId: string, noteId: string, reactionType: string | null, limit: number | null, untilId: string | null) : Promise<Result<NormalizedNoteReaction[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_note_reactions", { accountId, noteId, reactionType, limit, untilId }) };
