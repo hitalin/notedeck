@@ -414,6 +414,7 @@ const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
   'page',
   'widget',
   'aiscript',
+  'memos',
 ])
 
 const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([

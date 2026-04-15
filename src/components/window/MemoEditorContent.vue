@@ -20,7 +20,11 @@ import {
   saveMemo,
 } from '@/composables/useMemos'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
-import { type Account, useAccountsStore } from '@/stores/accounts'
+import {
+  type Account,
+  getAccountAvatarUrl,
+  useAccountsStore,
+} from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
@@ -86,7 +90,7 @@ function userFromAccount(acc: Account): NormalizedUser {
     username: acc.username,
     host: null,
     name: acc.displayName ?? null,
-    avatarUrl: acc.avatarUrl ?? null,
+    avatarUrl: getAccountAvatarUrl(acc),
   }
 }
 

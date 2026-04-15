@@ -70,7 +70,7 @@ function userFromAccount(acc: Account): NormalizedUser {
     username: acc.username,
     host: null,
     name: acc.displayName ?? null,
-    avatarUrl: acc.avatarUrl ?? null,
+    avatarUrl: getAccountAvatarUrl(acc),
   }
 }
 

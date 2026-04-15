@@ -130,6 +130,13 @@ export function usePostFormState(
     const acc = account.value
     if (!acc) return
     adapter = null
+    // Memo mode: purely local, so skip every server call. Works for guest
+    // accounts that have no token. Policies / default visibility / scheduled
+    // notes are server-side concepts and don't apply to memos.
+    if (memoMode) {
+      await ensureMemosLoaded()
+      return
+    }
     try {
       const result = await initAdapterFor(acc.host, acc.id)
       adapter = result.adapter
@@ -138,11 +145,6 @@ export function usePostFormState(
     } catch (e) {
       error.value = AppError.from(e).message
       supportsScheduledNotes.value = false
-    }
-    // memo はローカルキャッシュなので事前読込。draft はサーバー保存なので
-    // picker 側が必要時にリフレッシュする。ここでの事前 fetch は不要。
-    if (memoMode) {
-      await ensureMemosLoaded()
     }
 
     // Fetch modes, policies, and user settings in parallel (all independent after adapter init)

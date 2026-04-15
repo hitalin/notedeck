@@ -72,6 +72,7 @@ const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
   'aiscript',
   'pluginManager',
   'taskRunner',
+  'memos',
 ])
 
 /** Column types that support cross-account mode (accountId: null) */
