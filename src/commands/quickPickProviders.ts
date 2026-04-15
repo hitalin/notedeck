@@ -1,7 +1,18 @@
 import { relaunch } from '@tauri-apps/plugin-process'
 import { reactive } from 'vue'
+import {
+  ACCOUNT_INDEPENDENT_TYPES,
+  ACCOUNT_OPTIONAL_TYPES,
+  buildColumnDefaults,
+  COLUMN_ICONS,
+  COLUMN_LABELS,
+  COLUMN_REGISTRY,
+  COLUMN_TYPE_GROUPS,
+  CROSS_ACCOUNT_TYPES,
+  GUEST_ALLOWED_TYPES,
+  type SelectableSpec,
+} from '@/columns/registry'
 import { refreshProfileCommands } from '@/commands/definitions'
-import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
 import { formatUserHandle, searchUsers } from '@/composables/useUserSearch'
 import {
@@ -397,182 +408,8 @@ function getProfileActions(
 // Add Column (Phase 4)
 // ============================================================
 
-const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
-  'timeline',
-  'user',
-  'search',
-  'channel',
-  'explore',
-  'emoji',
-  'announcements',
-  'gallery',
-  'serverInfo',
-  'aboutMisskey',
-  'ads',
-  'lookup',
-  'play',
-  'page',
-  'widget',
-  'aiscript',
-  'memos',
-])
-
-const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
-  'notifications',
-  'search',
-  'chat',
-  'mentions',
-  'specified',
-  'followRequests',
-  'lookup',
-  'streamInspector',
-  'taskRunner',
-])
-
-const ACCOUNT_OPTIONAL_TYPES = new Set<ColumnType>(['widget', 'aiscript'])
-
-/** カラムタイプの表示順とグループ定義。label/icon は COLUMN_LABELS/COLUMN_ICONS から取得 */
-const COLUMN_TYPE_GROUPS: { group: string; types: ColumnType[] }[] = [
-  {
-    group: 'アカウント',
-    types: [
-      'timeline',
-      'notifications',
-      'drive',
-      'followRequests',
-      'list',
-      'antenna',
-      'favorites',
-      'clip',
-      'mentions',
-      'specified',
-      'chat',
-      'achievements',
-    ],
-  },
-  {
-    group: 'サーバー',
-    types: [
-      'serverInfo',
-      'aboutMisskey',
-      'emoji',
-      'ads',
-      'explore',
-      'announcements',
-      'search',
-      'lookup',
-      'channel',
-      'gallery',
-      'play',
-      'page',
-      'user',
-    ],
-  },
-  {
-    group: 'ツール',
-    types: [
-      'widget',
-      'pluginManager',
-      'aiscript',
-      'apiConsole',
-      'apiDocs',
-      'streamInspector',
-      'ai',
-      'memos',
-      'taskRunner',
-    ],
-  },
-]
-
-const COLUMN_EXTRA_PROPS: Partial<
-  Record<ColumnType, Partial<Omit<DeckColumn, 'id'>>>
-> = {
-  widget: { widgets: [] },
-  aiscript: { aiscriptCode: '<: "Hello, AiScript!"' },
-  apiDocs: { accountId: null, width: 990 },
-  ai: { accountId: null },
-  pluginManager: { accountId: null },
-  taskRunner: { accountId: null },
-  timeline: { tl: 'home', name: null },
-}
-
-interface SelectableConfig {
-  type: ColumnType
-  apiCommand: string
-  idKey: string
-  searchCommand?: string
-  /** Misskey API endpoint for creating new items */
-  createEndpoint?: string
-  /** Default params to merge when creating */
-  createDefaults?: Record<string, unknown>
-}
-
-const SELECTABLE_CONFIGS: SelectableConfig[] = [
-  {
-    type: 'list',
-    apiCommand: 'apiGetUserLists',
-    idKey: 'listId',
-    createEndpoint: 'users/lists/create',
-  },
-  {
-    type: 'antenna',
-    apiCommand: 'apiGetAntennas',
-    idKey: 'antennaId',
-    createEndpoint: 'antennas/create',
-    createDefaults: {
-      src: 'all',
-      keywords: [['']],
-      excludeKeywords: [['']],
-      users: [],
-      caseSensitive: false,
-      withReplies: false,
-      withFile: false,
-    },
-  },
-  {
-    type: 'channel',
-    apiCommand: 'apiGetChannels',
-    idKey: 'channelId',
-    searchCommand: 'apiSearchChannels',
-  },
-  {
-    type: 'clip',
-    apiCommand: 'apiGetClips',
-    idKey: 'clipId',
-    createEndpoint: 'clips/create',
-  },
-]
-
-type ListCommand =
-  | 'apiGetUserLists'
-  | 'apiGetAntennas'
-  | 'apiGetChannels'
-  | 'apiGetClips'
-  | 'apiSearchChannels'
-
-async function invokeListCommand(
-  command: string,
-  accountId: string,
-  query?: string,
-): Promise<{ id: string; name: string }[]> {
-  switch (command as ListCommand) {
-    case 'apiGetUserLists':
-      return unwrap(await commands.apiGetUserLists(accountId))
-    case 'apiGetAntennas':
-      return unwrap(await commands.apiGetAntennas(accountId))
-    case 'apiGetChannels':
-      return unwrap(await commands.apiGetChannels(accountId))
-    case 'apiGetClips':
-      return unwrap(await commands.apiGetClips(accountId))
-    case 'apiSearchChannels':
-      return unwrap(await commands.apiSearchChannels(accountId, query ?? ''))
-    default:
-      return []
-  }
-}
-
 export function getColumnTypeItems(): QuickPickItem[] {
-  return COLUMN_TYPE_GROUPS.flatMap(({ group, types }) =>
+  return COLUMN_TYPE_GROUPS.flatMap(({ label: group, types }) =>
     types.map((type) => ({
       id: `col-${type}`,
       label: COLUMN_LABELS[type] ?? type,
@@ -587,7 +424,7 @@ async function buildAccountStep(type: ColumnType): Promise<QuickPickItem[]> {
   const accountsStore = useAccountsStore()
 
   // Account-independent types: skip account selection
-  if (type === 'apiDocs' || type === 'ai') {
+  if (ACCOUNT_INDEPENDENT_TYPES.has(type)) {
     finalizeAddColumn(type, null)
     return []
   }
@@ -650,30 +487,45 @@ async function buildAccountStep(type: ColumnType): Promise<QuickPickItem[]> {
   return items
 }
 
+interface QPSelectable {
+  type: ColumnType
+  spec: SelectableSpec
+}
+
+function getSelectable(type: ColumnType): QPSelectable | null {
+  const spec = COLUMN_REGISTRY[type]
+  return spec.selectable ? { type, spec: spec.selectable } : null
+}
+
 async function buildDetailStep(
   type: ColumnType,
   accountId: string | null,
 ): Promise<QuickPickItem[]> {
-  const config = SELECTABLE_CONFIGS.find((c) => c.type === type)
+  // User type: server-side search via onQueryChange (keeps avatar-rich UX)
+  if (type === 'user' && accountId) {
+    buildUserSearchStep(accountId)
+    return []
+  }
 
-  if (config && accountId) {
+  const selectable = getSelectable(type)
+  if (selectable && accountId) {
     // Searchable config: build step with search input + initial items
-    if (config.searchCommand) {
-      buildSearchableStep(config, accountId)
+    if (selectable.spec.search) {
+      buildSearchableStep(selectable, accountId)
       return []
     }
-    const items = await invokeListCommand(config.apiCommand, accountId)
+    const items = await selectable.spec.fetch(accountId)
     const icon = COLUMN_ICONS[type] ?? 'dots'
     const label = COLUMN_LABELS[type] ?? type
     const result: QuickPickItem[] = []
 
     // Add "create new" option if supported
-    if (config.createEndpoint) {
+    if (selectable.spec.createEndpoint) {
       result.push({
         id: `create-new-${type}`,
         label: `新しい${label}を作成`,
         icon: 'plus',
-        action: () => createNewItem(config, accountId),
+        action: () => createNewItem(selectable, accountId),
       })
     }
 
@@ -688,7 +540,7 @@ async function buildDetailStep(
             name: item.name,
             width: 360,
             accountId,
-            [config.idKey]: item.id,
+            [selectable.spec.idKey]: item.id,
             active: true,
           } as Omit<DeckColumn, 'id'>)
         },
@@ -697,18 +549,12 @@ async function buildDetailStep(
     return result
   }
 
-  // User type: server-side search via onQueryChange
-  if (type === 'user' && accountId) {
-    buildUserSearchStep(accountId)
-    return []
-  }
-
   finalizeAddColumn(type, accountId)
   return []
 }
 
 /** Build a searchable Quick Pick step with initial items + server-side search */
-function buildSearchableStep(config: SelectableConfig, accountId: string) {
+function buildSearchableStep(config: QPSelectable, accountId: string) {
   const commandStore = useCommandStore()
   const icon = COLUMN_ICONS[config.type] ?? 'dots'
   let debounceTimer: ReturnType<typeof setTimeout> | undefined
@@ -724,7 +570,7 @@ function buildSearchableStep(config: SelectableConfig, accountId: string) {
           name: item.name,
           width: 360,
           accountId,
-          [config.idKey]: item.id,
+          [config.spec.idKey]: item.id,
           active: true,
         } as Omit<DeckColumn, 'id'>)
         useCommandStore().close()
@@ -741,19 +587,20 @@ function buildSearchableStep(config: SelectableConfig, accountId: string) {
       if (debounceTimer) clearTimeout(debounceTimer)
       if (!q.trim()) {
         // Restore initial items
-        fetchItems(config.apiCommand)
+        fetchItems()
         return
       }
-      const cmd = config.searchCommand
-      if (!cmd) return
-      debounceTimer = setTimeout(() => fetchItems(cmd, q), 300)
+      debounceTimer = setTimeout(() => fetchItems(q), 300)
     },
   })
 
-  async function fetchItems(command: string, query?: string) {
+  async function fetchItems(query?: string) {
     step.loading = true
     try {
-      const items = await invokeListCommand(command, accountId, query)
+      const items =
+        query && config.spec.search
+          ? await config.spec.search(accountId, query)
+          : await config.spec.fetch(accountId)
       step.items = items.map(itemToQuickPick)
     } catch {
       step.items = []
@@ -764,7 +611,7 @@ function buildSearchableStep(config: SelectableConfig, accountId: string) {
 
   commandStore.pushQuickPick(step)
   // Fetch initial items
-  fetchItems(config.apiCommand)
+  fetchItems()
 }
 
 function buildUserSearchStep(accountId: string) {
@@ -821,8 +668,8 @@ function buildUserSearchStep(accountId: string) {
   commandStore.pushQuickPick(step)
 }
 
-async function createNewItem(config: SelectableConfig, accountId: string) {
-  if (!config.createEndpoint) return
+async function createNewItem(config: QPSelectable, accountId: string) {
+  if (!config.spec.createEndpoint) return
   const commandStore = useCommandStore()
   commandStore.close()
   const label = COLUMN_LABELS[config.type] ?? config.type
@@ -834,9 +681,9 @@ async function createNewItem(config: SelectableConfig, accountId: string) {
   if (!name) return
   try {
     const created = unwrap(
-      await commands.apiRequest(accountId, config.createEndpoint, {
+      await commands.apiRequest(accountId, config.spec.createEndpoint, {
         name,
-        ...config.createDefaults,
+        ...config.spec.createDefaults,
       }),
     ) as { id: string; name: string }
     useDeckStore().addColumn({
@@ -844,7 +691,7 @@ async function createNewItem(config: SelectableConfig, accountId: string) {
       name: created.name,
       width: 360,
       accountId,
-      [config.idKey]: created.id,
+      [config.spec.idKey]: created.id,
       active: true,
     } as Omit<DeckColumn, 'id'>)
   } catch (e) {
@@ -853,14 +700,9 @@ async function createNewItem(config: SelectableConfig, accountId: string) {
 }
 
 function finalizeAddColumn(type: ColumnType, accountId: string | null) {
-  const extra = COLUMN_EXTRA_PROPS[type]
   useDeckStore().addColumn({
     type,
-    name: COLUMN_LABELS[type] ?? type,
-    width: 360,
-    accountId,
-    active: true,
-    ...extra,
+    ...buildColumnDefaults(type, accountId),
   } as Omit<DeckColumn, 'id'>)
   useCommandStore().close()
 }
