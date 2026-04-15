@@ -1,14 +1,10 @@
 import type { Ref } from 'vue'
 import { onScopeDispose, ref } from 'vue'
+import { WIDE_COLUMN_TYPES } from '@/columns/registry'
 import type { DeckColumn, useDeckStore } from '@/stores/deck'
 
 const COL_MIN_WIDTH = 280
 const COL_MAX_WIDTH = 600
-
-const WIDE_COLUMN_TYPES: ReadonlySet<string> = new Set([
-  'apiDocs',
-  'streamInspector',
-])
 
 export function useColumnResize(
   columnMap: Ref<Map<string, DeckColumn>>,

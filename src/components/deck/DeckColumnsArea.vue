@@ -1,14 +1,6 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
-import {
-  computed,
-  defineAsyncComponent,
-  onMounted,
-  onUnmounted,
-  ref,
-  useCssModule,
-  watch,
-} from 'vue'
+import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
+import { COLUMN_COMPONENTS } from '@/columns/registry'
 import { useColumnDrag } from '@/composables/useColumnDrag'
 import { useColumnResize } from '@/composables/useColumnResize'
 import { useColumnScroll } from '@/composables/useColumnScroll'
@@ -19,57 +11,6 @@ import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
 import { COLUMN_SELECTOR } from '@/utils/themeVars'
-
-const COLUMN_COMPONENTS: Record<string, Component> = {
-  timeline: defineAsyncComponent(() => import('./DeckTimelineColumn.vue')),
-  list: defineAsyncComponent(() => import('./DeckListColumn.vue')),
-  antenna: defineAsyncComponent(() => import('./DeckAntennaColumn.vue')),
-  notifications: defineAsyncComponent(
-    () => import('./DeckNotificationColumn.vue'),
-  ),
-  search: defineAsyncComponent(() => import('./DeckSearchColumn.vue')),
-  favorites: defineAsyncComponent(() => import('./DeckFavoritesColumn.vue')),
-  clip: defineAsyncComponent(() => import('./DeckClipColumn.vue')),
-  channel: defineAsyncComponent(() => import('./DeckChannelColumn.vue')),
-  user: defineAsyncComponent(() => import('./DeckUserColumn.vue')),
-  mentions: defineAsyncComponent(() => import('./DeckMentionsColumn.vue')),
-  specified: defineAsyncComponent(() => import('./DeckMentionsColumn.vue')),
-  chat: defineAsyncComponent(() => import('./DeckChatColumn.vue')),
-  widget: defineAsyncComponent(() => import('./DeckWidgetColumn.vue')),
-  aiscript: defineAsyncComponent(() => import('./DeckAiScriptColumn.vue')),
-  play: defineAsyncComponent(() => import('./DeckPlayColumn.vue')),
-  page: defineAsyncComponent(() => import('./DeckPageColumn.vue')),
-  ai: defineAsyncComponent(() => import('./DeckAiColumn.vue')),
-  drive: defineAsyncComponent(() => import('./DeckDriveColumn.vue')),
-  announcements: defineAsyncComponent(
-    () => import('./DeckAnnouncementsColumn.vue'),
-  ),
-  gallery: defineAsyncComponent(() => import('./DeckGalleryColumn.vue')),
-  explore: defineAsyncComponent(() => import('./DeckExploreColumn.vue')),
-  followRequests: defineAsyncComponent(
-    () => import('./DeckFollowRequestsColumn.vue'),
-  ),
-  achievements: defineAsyncComponent(
-    () => import('./DeckAchievementsColumn.vue'),
-  ),
-  apiConsole: defineAsyncComponent(() => import('./DeckApiConsoleColumn.vue')),
-  apiDocs: defineAsyncComponent(() => import('./DeckApiDocsColumn.vue')),
-  lookup: defineAsyncComponent(() => import('./DeckLookupColumn.vue')),
-  serverInfo: defineAsyncComponent(() => import('./DeckServerInfoColumn.vue')),
-  ads: defineAsyncComponent(() => import('./DeckAdsColumn.vue')),
-  aboutMisskey: defineAsyncComponent(
-    () => import('./DeckAboutMisskeyColumn.vue'),
-  ),
-  emoji: defineAsyncComponent(() => import('./DeckEmojiColumn.vue')),
-  streamInspector: defineAsyncComponent(
-    () => import('./DeckStreamInspectorColumn.vue'),
-  ),
-  pluginManager: defineAsyncComponent(
-    () => import('./DeckPluginManagerColumn.vue'),
-  ),
-  taskRunner: defineAsyncComponent(() => import('./DeckTaskRunnerColumn.vue')),
-  memos: defineAsyncComponent(() => import('./DeckMemoColumn.vue')),
-}
 
 // Preload chunks for column types the user actually has configured
 const COLUMN_PRELOADERS: Partial<Record<string, () => Promise<unknown>>> = {
