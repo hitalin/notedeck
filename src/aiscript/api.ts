@@ -2,6 +2,11 @@ import { utils, values } from '@syuilo/aiscript'
 import type { Value } from '@syuilo/aiscript/interpreter/value.js'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useConfirm } from '@/stores/confirm'
+import {
+  getStorageString,
+  removeStorage,
+  setStorageJson,
+} from '@/utils/storage'
 
 // Misskey 本家の nyaize 実装 (misskey-js/src/nyaize.ts)
 const enRegex1 = /(?<=n)a/gi
@@ -124,10 +129,7 @@ export function createAiScriptEnv(
   consts['Mk:save'] = values.FN_NATIVE(([keyVal, valueVal]) => {
     if (keyVal?.type !== 'str' || !valueVal) return
     try {
-      localStorage.setItem(
-        storageKey(keyVal.value),
-        JSON.stringify(utils.valToJs(valueVal)),
-      )
+      setStorageJson(storageKey(keyVal.value), utils.valToJs(valueVal))
     } catch {
       // ignore storage errors
     }
@@ -137,7 +139,7 @@ export function createAiScriptEnv(
   consts['Mk:load'] = values.FN_NATIVE(([keyVal]) => {
     if (keyVal?.type !== 'str') return values.NULL
     try {
-      const raw = localStorage.getItem(storageKey(keyVal.value))
+      const raw = getStorageString(storageKey(keyVal.value))
       if (raw === null) return values.NULL
       return utils.jsToVal(JSON.parse(raw))
     } catch {
@@ -149,7 +151,7 @@ export function createAiScriptEnv(
   consts['Mk:remove'] = values.FN_NATIVE(([keyVal]) => {
     if (keyVal?.type !== 'str') return
     try {
-      localStorage.removeItem(storageKey(keyVal.value))
+      removeStorage(storageKey(keyVal.value))
     } catch {
       // ignore storage errors
     }

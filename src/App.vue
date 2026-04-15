@@ -14,7 +14,12 @@ import { listenPipEvents } from '@/composables/usePipWindow'
 import { useTheme } from '@/composables/useTheme'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
-import { STORAGE_KEYS } from '@/utils/storage'
+import {
+  getStorageString,
+  removeStorage,
+  STORAGE_KEYS,
+  setStorageString,
+} from '@/utils/storage'
 
 const uiStore = useUiStore()
 const { isTauri, isDesktop } = uiStore
@@ -64,8 +69,8 @@ function saveShellCache() {
     if (!app) return
     const html = app.innerHTML
     if (html.length > 2_000_000) return // Skip if too large for localStorage
-    localStorage.setItem(STORAGE_KEYS.shellCache, html)
-    localStorage.setItem(STORAGE_KEYS.shellCacheVersion, __APP_VERSION__)
+    setStorageString(STORAGE_KEYS.shellCache, html)
+    setStorageString(STORAGE_KEYS.shellCacheVersion, __APP_VERSION__)
   } catch {
     // Storage full or other error — skip silently
   }
@@ -83,10 +88,10 @@ function dismissSplash() {
 
 onMounted(async () => {
   // Invalidate shell cache if app version changed (CSS Modules hashes may differ)
-  const cachedVersion = localStorage.getItem(STORAGE_KEYS.shellCacheVersion)
+  const cachedVersion = getStorageString(STORAGE_KEYS.shellCacheVersion)
   if (cachedVersion && cachedVersion !== __APP_VERSION__) {
-    localStorage.removeItem(STORAGE_KEYS.shellCache)
-    localStorage.removeItem(STORAGE_KEYS.shellCacheVersion)
+    removeStorage(STORAGE_KEYS.shellCache)
+    removeStorage(STORAGE_KEYS.shellCacheVersion)
   }
   // Clear shell-cached flag so entrance animations are re-enabled
   delete document.documentElement.dataset.shellCached
