@@ -179,23 +179,24 @@ sequenceDiagram
     end
 
     W->>V: main.ts 実行開始
+    V->>V: initEarlyAccountListener() (nd:accounts-early を同期登録)
     V->>V: Tauri API / DeckPage 事前フェッチ
     V->>V: createApp → Pinia → Router
     V->>V: themeStore.init() (localStorage 復元)
     V->>V: keybinds / performance init
+    V->>V: accountsStore.loadAccounts() (fire-and-forget)
+    V->>V: app.mount('#app')
+    V->>V: App.vue: window.show()
 
     Note over R: Stage 1 — DB 準備完了
     R->>R: DB マイグレーション
     R->>R: app_state.initialize_db(db)
 
-    par アカウント読み込み（先着順）
-        R-->>V: nd:accounts-early イベント
-        V->>R: invoke('load_accounts')
-        R-->>V: IPC レスポンス
+    par アカウント取り込み（どちらか先着で populate）
+        R-->>V: nd:accounts-early イベント → 事前登録 listener が即時 apply
+        V->>R: invoke('load_accounts') (safety net)
+        R-->>V: IPC レスポンス → 未 populate なら apply
     end
-
-    V->>V: app.mount('#app')
-    V->>V: App.vue: window.show()
 
     R->>R: StreamingManager 初期化
 
@@ -251,6 +252,8 @@ stateDiagram-v2
 |-----------|---------|------|
 | Two-stage AppState | `commands/mod.rs` | DB 準備次第でアカウント読み込み開始 |
 | 早期アカウントイベント | `lib.rs` → `nd:accounts-early` | IPC 往復を待たずにフロントへ通知 |
+| 事前登録 listener | `stores/accounts.ts:initEarlyAccountListener` | `main.ts` 最上部で `listen()` を同期登録し、Rust 側 emit を取りこぼさない（Pinia 初期化前でも module-scope バッファに保存） |
+| 未ロード時の空状態ガード | `DeckColumn.vue` `requireAccount` prop | カラム本体スロットを `accountsStore.isLoaded` まで抑制し「アカウントが見つかりません」の一瞬のチラつきを防止 |
 | 動的 import 事前フェッチ | `main.ts` | DeckPage / カラムチャンクを並列ダウンロード |
 | テーマ localStorage 復元 | `themeStore.init()` | ネットワーク不要で FOUC 防止 |
 | 3 スレッド並列初期化 | `lib.rs` Phase 2 | DB / Client / HTTP bind を同時実行 |
