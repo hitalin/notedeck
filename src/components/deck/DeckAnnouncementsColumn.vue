@@ -5,13 +5,13 @@ import MkMfm from '@/components/common/MkMfm.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
-import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 interface Announcement {
   id: string
@@ -123,10 +123,7 @@ onUnmounted(() => {
     </template>
 
     <template #header-meta>
-      <div v-if="account" :class="$style.headerAccount">
-        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
-      </div>
+      <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
     <ColumnEmptyState

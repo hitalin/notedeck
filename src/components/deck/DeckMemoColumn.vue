@@ -13,11 +13,7 @@ import {
   memosVersion,
   type StoredMemo,
 } from '@/composables/useMemos'
-import {
-  type Account,
-  getAccountAvatarUrl,
-  useAccountsStore,
-} from '@/stores/accounts'
+import { type Account, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useEmojisStore } from '@/stores/emojis'
@@ -26,6 +22,7 @@ import { useToast } from '@/stores/toast'
 import { useWindowsStore } from '@/stores/windows'
 import { buildPreviewNote } from '@/utils/buildPreviewNote'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -310,15 +307,7 @@ function closeMenu() {
     </template>
 
     <template #header-meta>
-      <div v-if="account" :class="$style.headerAccount">
-        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-        <img
-          :class="$style.headerFavicon"
-          :src="serverIconUrl || `https://${account.host}/favicon.ico`"
-          :title="account.host"
-          @error="($event.target as HTMLImageElement).src = '/server-icon-error.svg'"
-        />
-      </div>
+      <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
     <!-- Embedded post form (memoMode: post = save as memo) -->

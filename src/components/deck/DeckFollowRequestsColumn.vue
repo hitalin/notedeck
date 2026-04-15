@@ -15,6 +15,7 @@ import { useToast } from '@/stores/toast'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 interface FollowRequest {
   id: string
@@ -172,10 +173,7 @@ onMounted(() => {
     </template>
 
     <template #header-meta>
-      <div v-if="!isCrossAccount && account" :class="$style.headerAccount">
-        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
-      </div>
+      <DeckHeaderAccount v-if="!isCrossAccount" :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
     <ColumnEmptyState

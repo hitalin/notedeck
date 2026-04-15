@@ -25,12 +25,13 @@ import {
   mergeThreadFragments,
   type ThreadFragment,
 } from '@/engine/threadMerge'
-import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
+import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { mapWithConcurrency } from '@/utils/concurrency'
 import { parseNoteUrl, parseUserQuery } from '@/utils/noteUrl'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -545,10 +546,7 @@ async function handlePosted(editedNoteId?: string) {
       <div v-if="isCrossAccount" :class="$style.headerAccount">
         <i class="ti ti-git-merge" :class="$style.headerCrossIcon" />
       </div>
-      <div v-else-if="account" :class="$style.headerAccount">
-        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-        <img :class="$style.headerFavicon" :src="serverIconUrl || `https://${account.host}/favicon.ico`" :title="account.host" />
-      </div>
+      <DeckHeaderAccount v-else :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
     <template #header-extra>
