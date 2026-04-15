@@ -15,7 +15,7 @@
         "title": "NoteDeck",
         "width": 1200,
         "height": 800,
-        "minWidth": 400,
+        "minWidth": 360,
         "minHeight": 500,
         "center": true,
         "decorations": false,
