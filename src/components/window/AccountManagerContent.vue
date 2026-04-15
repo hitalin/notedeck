@@ -7,6 +7,7 @@ import type { ReorderableItem } from '@/components/common/ReorderableList.vue'
 import ReorderableList from '@/components/common/ReorderableList.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import {
   type Account,
   getAccountAvatarUrl,
@@ -41,6 +42,10 @@ function getServerIconUrl(host: string): string | undefined {
 const { tab, containerRef: contentRef } = useEditorTabs(
   ['visual', 'code'] as const,
   (props.initialTab as 'visual' | 'code') ?? 'visual',
+)
+
+useWindowExternalFile(() =>
+  tab.value === 'code' ? { name: 'accounts.json5' } : null,
 )
 
 // ── ReorderableList items ──

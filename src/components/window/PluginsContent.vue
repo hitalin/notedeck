@@ -11,7 +11,9 @@ import AiScriptEditor from '@/components/deck/widgets/AiScriptEditor.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { type PluginMeta, usePluginsStore } from '@/stores/plugins'
+import { pluginSrcFilename } from '@/utils/settingsFs'
 
 const props = defineProps<{
   initialPluginId?: string
@@ -63,6 +65,16 @@ const { tab, containerRef: editorRef } = useEditorTabs(
   ['config', 'code', 'logs'] as const,
   (defaultTab.value as 'config' | 'code' | 'logs') ?? 'code',
 )
+
+useWindowExternalFile(() => {
+  if (tab.value !== 'code' || isNewInstall.value) return null
+  const p = plugin.value
+  if (!p) return null
+  return {
+    name: pluginSrcFilename(p.name || p.installId),
+    subdir: 'plugins',
+  }
+})
 
 const tabDefs = computed(() => {
   const defs: { value: string; icon: string; label: string }[] = []

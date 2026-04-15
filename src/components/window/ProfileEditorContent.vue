@@ -14,6 +14,7 @@ import {
 } from '@/composables/useColumnTabs'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { usePointerReorder } from '@/composables/usePointerReorder'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -21,6 +22,7 @@ import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useServersStore } from '@/stores/servers'
 import { useIsCompactLayout } from '@/stores/ui'
 import { createJson5Linter } from '@/utils/json5Linter'
+import { profileFilename } from '@/utils/settingsFs'
 
 const AddColumnDialog = defineAsyncComponent(
   () => import('@/components/deck/AddColumnDialog.vue'),
@@ -93,6 +95,16 @@ const codeError = ref<string | null>(null)
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['visual', 'code'] as const,
   (props.initialTab as 'visual' | 'code') ?? 'visual',
+)
+
+useWindowExternalFile(() =>
+  tab.value === 'code'
+    ? {
+        name: profileFilename(editingName.value),
+        subdir: 'profiles',
+        disabled: !editingName.value,
+      }
+    : null,
 )
 
 // When profileId prop changes, refresh code tab content

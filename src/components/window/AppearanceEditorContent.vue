@@ -6,6 +6,7 @@ import DayNightToggle from '@/components/deck/DayNightToggle.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import ThemePreview from '@/components/ThemePreview.vue'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { CURRENT_SCHEMA_VERSION, parseSettings } from '@/settings/schema'
 import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
@@ -30,6 +31,10 @@ const { confirm } = useConfirm()
 const { tab, containerRef: contentRef } = useEditorTabs(
   ['visual', 'code'] as const,
   (props.initialTab as 'visual' | 'code') ?? 'visual',
+)
+
+useWindowExternalFile(() =>
+  tab.value === 'code' ? { name: 'settings.json5' } : null,
 )
 
 // ── Visual tab: theme settings ──

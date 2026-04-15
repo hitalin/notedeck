@@ -8,6 +8,7 @@ import { useClickOutside } from '@/composables/useClickOutside'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { useThemeStore } from '@/stores/theme'
 
 const cssLang = css()
@@ -51,6 +52,10 @@ const themeStore = useThemeStore()
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['presets', 'code'] as const,
   (props.initialTab as 'presets' | 'code') ?? 'presets',
+)
+
+useWindowExternalFile(() =>
+  tab.value === 'code' ? { name: 'custom.css' } : null,
 )
 
 // Local CSS mirror (synced from store on mount)

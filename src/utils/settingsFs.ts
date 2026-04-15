@@ -63,6 +63,24 @@ export async function getSettingsDir(): Promise<string> {
   return unwrap(await commands.getSettingsDir())
 }
 
+/**
+ * OS 既定アプリ (通常はユーザーが登録したテキストエディタ) で設定ファイルを開く。
+ * `getSettingsDir()` で得た絶対パスに subdir と name を結合して `openPath()` に渡す。
+ */
+export async function openSettingsFileInEditor(
+  name: string,
+  subdir?: string,
+): Promise<void> {
+  if (!isTauri) return
+  const dir = await getSettingsDir()
+  if (!dir) return
+  const sep = dir.includes('\\') && !dir.includes('/') ? '\\' : '/'
+  const parts = subdir ? [dir, subdir, name] : [dir, name]
+  const fullPath = parts.join(sep)
+  const { openPath } = await import('@tauri-apps/plugin-opener')
+  await openPath(fullPath)
+}
+
 // --- Profile-specific helpers ---
 
 const PROFILES_DIR = 'profiles'

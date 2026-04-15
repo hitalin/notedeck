@@ -16,6 +16,7 @@ import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { usePointerReorder } from '@/composables/usePointerReorder'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import {
   ALL_POST_FORM_BUTTONS,
   DEFAULT_POST_FORM_BUTTONS,
@@ -40,6 +41,10 @@ const props = defineProps<{
 const { tab, containerRef: contentRef } = useEditorTabs(
   ['visual', 'code'] as const,
   (props.initialTab as 'visual' | 'code') ?? 'visual',
+)
+
+useWindowExternalFile(() =>
+  tab.value === 'code' ? { name: 'postform.json5' } : null,
 )
 
 const items = ref<PostFormButtonId[]>([

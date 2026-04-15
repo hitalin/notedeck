@@ -18,6 +18,7 @@ import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { usePointerReorder } from '@/composables/usePointerReorder'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import {
@@ -64,6 +65,10 @@ const props = defineProps<{
 const { tab, containerRef: contentRef } = useEditorTabs(
   ['visual', 'code'] as const,
   (props.initialTab as 'visual' | 'code') ?? 'visual',
+)
+
+useWindowExternalFile(() =>
+  tab.value === 'code' ? { name: 'navbar.json5' } : null,
 )
 
 function getItemIcon(item: NavColumnItem): string {
