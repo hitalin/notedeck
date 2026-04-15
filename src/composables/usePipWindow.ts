@@ -3,7 +3,7 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import type { DeckColumn } from '@/stores/deck'
 
 const PIP_WIDTH = 360
-const PIP_HEIGHT = 700
+const PIP_HEIGHT = 640
 const PIP_MIN_WIDTH = 280
 const PIP_MIN_HEIGHT = 400
 
