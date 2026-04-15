@@ -1,4 +1,4 @@
-import { computed, nextTick, type Ref, ref, shallowRef } from 'vue'
+import { computed, nextTick, type Ref, ref, shallowRef, watch } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   NormalizedNote,
@@ -14,13 +14,16 @@ import {
   visibilityOptions,
 } from '@/composables/postFormConstants'
 import {
-  type Draft,
+  computeDraftKey,
   deleteDraft,
-  loadDrafts,
+  ensureDraftsLoaded,
+  loadDraft,
+  type StoredDraft,
   saveDraft,
 } from '@/composables/useDrafts'
 import { useFileAttachment } from '@/composables/useFileAttachment'
 import { useAccountsStore } from '@/stores/accounts'
+import { useSettingsStore } from '@/stores/settings'
 import { useThemeStore } from '@/stores/theme'
 import { useToast } from '@/stores/toast'
 import {
@@ -44,6 +47,7 @@ export function usePostFormState(
   fileInput: Ref<HTMLInputElement | null>,
 ) {
   const accountsStore = useAccountsStore()
+  const settingsStore = useSettingsStore()
   const themeStore = useThemeStore()
 
   const text = ref('')
@@ -74,13 +78,21 @@ export function usePostFormState(
   const pollExpiresAt = ref<number | null>(null)
   const scheduledAt = ref<string | null>(null)
   const supportsScheduledNotes = ref(false)
-  const drafts = ref<Draft[]>([])
-  const showDraftMenu = ref(false)
+  const currentDraft = ref<StoredDraft | null>(null)
 
   const activeAccountId = ref(props.accountId)
   const accounts = computed(() => accountsStore.accounts)
   const account = computed(() =>
     accountsStore.accounts.find((a) => a.id === activeAccountId.value),
+  )
+
+  const draftKey = computed(() =>
+    computeDraftKey({
+      userId: account.value?.userId ?? activeAccountId.value,
+      channelId: props.channelId,
+      renoteId: props.renoteId,
+      replyId: props.replyTo?.id,
+    }),
   )
 
   const formThemeVars = computed(() =>
@@ -118,8 +130,9 @@ export function usePostFormState(
       error.value = AppError.from(e).message
       supportsScheduledNotes.value = false
     }
-    // Load drafts for this account
-    drafts.value = loadDrafts(acc.id)
+    // Load the draft for the current context (if any)
+    await ensureDraftsLoaded(acc.id)
+    currentDraft.value = loadDraft(acc.id, draftKey.value)
 
     // Fetch modes, policies, and user settings in parallel (all independent after adapter init)
     const [availabilityResult, policiesResult, userInfoResult] =
@@ -267,11 +280,12 @@ export function usePostFormState(
     // Fire API call in background — on failure, save draft and notify
     const currentAdapter = adapter
     const currentAccountId = activeAccountId.value
+    const currentDraftKey = draftKey.value
     currentAdapter.api.createNote(noteParams).catch((e) => {
       const { show } = useToast()
       show(AppError.from(e).message, 'error')
       // Auto-save as draft so user can retry
-      saveDraft(currentAccountId, {
+      saveDraft(currentAccountId, currentDraftKey, {
         text: noteParams.text ?? '',
         cw: noteParams.cw ?? '',
         showCw: !!noteParams.cw,
@@ -345,7 +359,7 @@ export function usePostFormState(
   function saveCurrentDraft() {
     const acc = account.value
     if (!acc) return
-    const draft = saveDraft(acc.id, {
+    currentDraft.value = saveDraft(acc.id, draftKey.value, {
       text: text.value,
       cw: cw.value,
       showCw: showCw.value,
@@ -357,33 +371,64 @@ export function usePostFormState(
       showPoll: showPoll.value,
       scheduledAt: scheduledAt.value,
     })
-    drafts.value = [
-      draft,
-      ...drafts.value.filter((d) => d.id !== draft.id),
-    ].slice(0, 10)
-    showDraftMenu.value = false
   }
 
-  function restoreDraft(draft: Draft) {
-    text.value = draft.text
-    cw.value = draft.cw
-    showCw.value = draft.showCw
-    visibility.value = draft.visibility
-    localOnly.value = draft.localOnly
-    pollChoices.value =
-      draft.pollChoices.length >= 2 ? draft.pollChoices : ['', '']
-    pollMultiple.value = draft.pollMultiple
-    showPoll.value = draft.showPoll
-    scheduledAt.value = draft.scheduledAt
+  /**
+   * Auto-save: when `postForm.autoSaveDraft` is on, persist on every change
+   * (debounced). Skip empty forms so we never save a no-op draft.
+   */
+  let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+  function hasAnyContent(): boolean {
+    if (text.value.trim().length > 0) return true
+    if (attachedFiles.value.length > 0) return true
+    if (showPoll.value && pollChoices.value.some((c) => c.trim())) return true
+    return false
+  }
+  watch(
+    [
+      text,
+      cw,
+      showCw,
+      visibility,
+      localOnly,
+      attachedFiles,
+      pollChoices,
+      pollMultiple,
+      showPoll,
+      scheduledAt,
+    ],
+    () => {
+      if (!settingsStore.get('postForm.autoSaveDraft')) return
+      if (!account.value) return
+      if (!hasAnyContent()) return
+      if (autoSaveTimer) clearTimeout(autoSaveTimer)
+      autoSaveTimer = setTimeout(() => {
+        saveCurrentDraft()
+        autoSaveTimer = null
+      }, 800)
+    },
+    { deep: true },
+  )
+
+  function restoreDraft(stored: StoredDraft) {
+    const d = stored.data
+    text.value = d.text
+    cw.value = d.cw
+    showCw.value = d.showCw
+    visibility.value = d.visibility
+    localOnly.value = d.localOnly
+    pollChoices.value = d.pollChoices.length >= 2 ? d.pollChoices : ['', '']
+    pollMultiple.value = d.pollMultiple
+    showPoll.value = d.showPoll
+    scheduledAt.value = d.scheduledAt
     // Note: file attachments are not restored (IDs may be expired)
-    showDraftMenu.value = false
   }
 
-  function removeDraft(draftId: string) {
+  function removeCurrentDraft() {
     const acc = account.value
     if (!acc) return
-    deleteDraft(acc.id, draftId)
-    drafts.value = drafts.value.filter((d) => d.id !== draftId)
+    deleteDraft(acc.id, draftKey.value)
+    currentDraft.value = null
   }
 
   return {
@@ -409,8 +454,8 @@ export function usePostFormState(
     pollExpiresAt,
     scheduledAt,
     supportsScheduledNotes,
-    drafts,
-    showDraftMenu,
+    currentDraft,
+    draftKey,
     // Computed
     accounts,
     account,
@@ -439,6 +484,6 @@ export function usePostFormState(
     resetForm,
     saveCurrentDraft,
     restoreDraft,
-    removeDraft,
+    removeCurrentDraft,
   }
 }

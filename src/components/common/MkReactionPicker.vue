@@ -14,6 +14,7 @@ import MkReactionPickerSection from './MkReactionPickerSection.vue'
 const props = defineProps<{
   serverHost: string
   accountId: string
+  fullWidth?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -189,7 +190,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div :class="[$style.reactionPickerPanel, { [$style.mobile]: isCompact }]" @click.stop>
+  <div :class="[$style.reactionPickerPanel, { [$style.mobile]: isCompact, [$style.fullWidth]: props.fullWidth }]" @click.stop>
     <!-- Search (top when has query, bottom otherwise via CSS order) -->
     <div :class="[$style.pickerSearch, searchQuery.length > 0 && $style.hasQuery]">
       <input
@@ -354,6 +355,13 @@ onMounted(() => {
   max-width: calc(100vw - 32px);
   max-height: 360px;
   overflow: hidden;
+
+  &.fullWidth {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    flex: 1;
+  }
 }
 
 .pickerSearch {

@@ -15,12 +15,14 @@ import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { useThemeStore } from '@/stores/theme'
 import { DARK_BASE, LIGHT_BASE } from '@/theme/builtinThemes'
 import { parseColor } from '@/theme/colorUtils'
 import { compileMisskeyTheme } from '@/theme/compiler'
 import type { MisskeyTheme } from '@/theme/types'
 import { createJson5Linter } from '@/utils/json5Linter'
+import { themeFilename } from '@/utils/settingsFs'
 
 const jsonLang = json()
 const jsonLinter = createJson5Linter()
@@ -41,6 +43,17 @@ const themeName = ref('My Theme')
 const baseMode = ref<'dark' | 'light'>('dark')
 // Track the ID of the theme being edited (null = new theme)
 const editingThemeId = ref<string | null>(null)
+
+// 外部エディタ起動用: 既存テーマのみ対象（未保存は disabled）
+useWindowExternalFile(() =>
+  tab.value === 'code'
+    ? {
+        name: themeFilename(themeName.value),
+        subdir: 'themes',
+        disabled: !editingThemeId.value,
+      }
+    : null,
+)
 
 // Primary color props that users typically want to edit directly
 const PRIMARY_PROPS: { key: string; label: string }[] = [

@@ -9,8 +9,8 @@ use super::Result;
 /// Settings subdirectory name under app_data_dir.
 const SETTINGS_DIR: &str = "notedeck";
 
-/// Allowed subdirectory names for settings files.
-const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets"];
+/// Allowed subdirectory names for settings files. Also the set included in settings backup.
+const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets", "drafts"];
 
 /// Validate a subdirectory name against the whitelist.
 fn validate_subdir(subdir: &str) -> Result<()> {
@@ -169,6 +169,7 @@ const ALLOWED_ROOT_FILES: &[&str] = &[
     "performance.json5",
     "accounts.json5",
     "navbar.json5",
+    "postform.json5",
     "settings.json5",
     "tasks.json5",
 ];
@@ -214,6 +215,73 @@ pub fn get_settings_dir(app: tauri::AppHandle) -> Result<String> {
     Ok(settings_base_dir(&app)?.to_string_lossy().to_string())
 }
 
+/// Open a settings file in the OS default editor. WSL2 では xdg-open が GUI
+/// エディタへルーティングできないため、wslpath で Windows パスへ変換し
+/// cmd.exe start 経由で Windows 側の既定アプリに委譲する。
+#[tauri::command]
+#[specta::specta]
+pub fn open_settings_file_in_editor(
+    app: tauri::AppHandle,
+    subdir: Option<String>,
+    name: String,
+) -> Result<()> {
+    let path = match subdir.as_deref() {
+        Some(s) => resolve_path(&app, s, &name)?,
+        None => resolve_root_path(&app, &name)?,
+    };
+    if !path.exists() {
+        return Err(NoteDeckError::InvalidInput(format!(
+            "File does not exist: {}",
+            path.display()
+        )));
+    }
+
+    #[cfg(target_os = "linux")]
+    if is_wsl() {
+        return open_in_windows_host(&path);
+    }
+
+    tauri_plugin_opener::open_path(&path, None::<&str>)
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to open {}: {e}", path.display())))
+}
+
+#[cfg(target_os = "linux")]
+fn is_wsl() -> bool {
+    if std::env::var_os("WSL_DISTRO_NAME").is_some() {
+        return true;
+    }
+    fs::read_to_string("/proc/version")
+        .map(|v| {
+            let lower = v.to_lowercase();
+            lower.contains("microsoft") || lower.contains("wsl")
+        })
+        .unwrap_or(false)
+}
+
+#[cfg(target_os = "linux")]
+fn open_in_windows_host(path: &std::path::Path) -> Result<()> {
+    use std::process::Command;
+    let output = Command::new("wslpath")
+        .arg("-w")
+        .arg(path)
+        .output()
+        .map_err(|e| NoteDeckError::InvalidInput(format!("wslpath exec failed: {e}")))?;
+    if !output.status.success() {
+        return Err(NoteDeckError::InvalidInput(format!(
+            "wslpath failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
+    }
+    let winpath = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    // `start` は最初の引用符付き引数をウィンドウタイトルとして扱うので、
+    // 空文字列のタイトルを先に渡してからパスを渡す。
+    Command::new("cmd.exe")
+        .args(["/c", "start", "", &winpath])
+        .spawn()
+        .map_err(|e| NoteDeckError::InvalidInput(format!("cmd.exe exec failed: {e}")))?;
+    Ok(())
+}
+
 /// Read `settings.json5` (VSCode `settings.json` equivalent — single source of truth
 /// for scalar preferences). Returns empty string if the file does not exist (first run).
 ///
@@ -250,9 +318,6 @@ pub fn write_notedeck_json(app: tauri::AppHandle, content: &str) -> Result<()> {
     })
 }
 
-/// Directories and root files to include in settings backup.
-const BACKUP_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets"];
-
 /// Export all settings files to a JSON bundle via save dialog.
 #[tauri::command]
 #[specta::specta]
@@ -280,7 +345,7 @@ pub async fn export_settings_json(app: tauri::AppHandle) -> Result<bool> {
     let mut bundle: BTreeMap<String, String> = BTreeMap::new();
 
     // Add subdirectory files (profiles/, themes/, plugins/)
-    for subdir in BACKUP_SUBDIRS {
+    for subdir in ALLOWED_SUBDIRS {
         let dir = base_dir.join(subdir);
         if !dir.exists() {
             continue;
@@ -355,7 +420,7 @@ pub async fn import_settings_json(app: tauri::AppHandle) -> Result<bool> {
         }
 
         // Validate: must be in allowed subdirs or allowed root files
-        let allowed = BACKUP_SUBDIRS
+        let allowed = ALLOWED_SUBDIRS
             .iter()
             .any(|d| key.starts_with(&format!("{d}/")))
             || ALLOWED_ROOT_FILES.contains(&key.as_str());
@@ -475,7 +540,7 @@ mod tests {
         let json_path = base.join("backup.json");
         {
             let mut bundle: BTreeMap<String, String> = BTreeMap::new();
-            for subdir in BACKUP_SUBDIRS {
+            for subdir in ALLOWED_SUBDIRS {
                 let d = base.join(subdir);
                 if !d.exists() {
                     continue;
@@ -516,7 +581,7 @@ mod tests {
                 if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
                     continue;
                 }
-                let allowed = BACKUP_SUBDIRS
+                let allowed = ALLOWED_SUBDIRS
                     .iter()
                     .any(|d| key.starts_with(&format!("{d}/")))
                     || ALLOWED_ROOT_FILES.contains(&key.as_str());
@@ -574,7 +639,7 @@ mod tests {
             if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
                 continue;
             }
-            let allowed = BACKUP_SUBDIRS
+            let allowed = ALLOWED_SUBDIRS
                 .iter()
                 .any(|d| key.starts_with(&format!("{d}/")))
                 || ALLOWED_ROOT_FILES.contains(&key.as_str());
@@ -615,7 +680,7 @@ mod tests {
             if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
                 continue;
             }
-            let allowed = BACKUP_SUBDIRS
+            let allowed = ALLOWED_SUBDIRS
                 .iter()
                 .any(|d| key.starts_with(&format!("{d}/")))
                 || ALLOWED_ROOT_FILES.contains(&key.as_str());

@@ -16,6 +16,7 @@ import { destroyApiBridge, initApiBridge } from '@/core/apiBridge'
 import { useDeckStore } from '@/stores/deck'
 import { useOfflineModeStore } from '@/stores/offlineMode'
 import { usePluginsStore } from '@/stores/plugins'
+import { usePostFormStore } from '@/stores/postForm'
 import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
@@ -75,6 +76,7 @@ export function useDeckInit(options: {
 
     // Load navbar from file (async, non-blocking)
     deckStore.initNavbar()
+    void usePostFormStore().init()
 
     // Register commands synchronously (needed for keyboard shortcuts)
     registerDefaultCommands({

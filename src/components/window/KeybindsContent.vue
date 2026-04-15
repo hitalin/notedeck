@@ -8,6 +8,7 @@ import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
@@ -45,6 +46,10 @@ const props = defineProps<{
 const { tab, containerRef: contentRef } = useEditorTabs(
   ['visual', 'code'] as const,
   (props.initialTab as 'visual' | 'code') ?? 'visual',
+)
+
+useWindowExternalFile(() =>
+  tab.value === 'code' ? { name: 'keybinds.json5' } : null,
 )
 
 // ── Visual tab: category-based GUI ──

@@ -16,6 +16,7 @@ import { useClickOutside } from '@/composables/useClickOutside'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const mdLang = markdown({ codeLanguages: languages })
@@ -28,6 +29,12 @@ const { tab, containerRef: editorRef } = useEditorTabs(
   ['api', 'prompt'] as const,
   (props.initialTab as 'api' | 'prompt') ?? 'api',
 )
+
+useWindowExternalFile(() => {
+  if (tab.value === 'prompt') return { name: 'AI.md' }
+  if (tab.value === 'api') return { name: 'ai.json5' }
+  return null
+})
 
 // --- Provider schema (data-driven UI) ---
 

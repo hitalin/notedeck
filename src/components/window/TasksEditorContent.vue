@@ -16,6 +16,7 @@ import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { usePointerReorder } from '@/composables/usePointerReorder'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import defaultTasksJson5 from '@/defaults/tasks.json5?raw'
 import { useTasksStore } from '@/stores/tasks'
 import { useToast } from '@/stores/toast'
@@ -66,6 +67,10 @@ const tasksStore = useTasksStore()
 const { tab, containerRef: contentRef } = useEditorTabs(
   ['visual', 'code'] as const,
   (props.initialTab as 'visual' | 'code') ?? 'visual',
+)
+
+useWindowExternalFile(() =>
+  tab.value === 'code' ? { name: 'tasks.json5' } : null,
 )
 
 // ── State ──

@@ -6,6 +6,7 @@ import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import {
   CATEGORY_LABELS,
   FIELD_META,
@@ -24,6 +25,10 @@ const perfStore = usePerformanceStore()
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['visual', 'code'] as const,
   (props.initialTab as 'visual' | 'code') ?? 'visual',
+)
+
+useWindowExternalFile(() =>
+  tab.value === 'code' ? { name: 'performance.json5' } : null,
 )
 
 // --- Visual tab state ---

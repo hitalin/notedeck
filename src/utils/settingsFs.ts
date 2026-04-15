@@ -63,6 +63,19 @@ export async function getSettingsDir(): Promise<string> {
   return unwrap(await commands.getSettingsDir())
 }
 
+/**
+ * OS 既定アプリ (通常はユーザーが登録したテキストエディタ) で設定ファイルを開く。
+ * WSL2 環境では xdg-open が GUI エディタへ届かないため、Rust 側で
+ * wslpath + cmd.exe start に委譲する。
+ */
+export async function openSettingsFileInEditor(
+  name: string,
+  subdir?: string,
+): Promise<void> {
+  if (!isTauri) return
+  unwrap(await commands.openSettingsFileInEditor(subdir ?? null, name))
+}
+
 // --- Profile-specific helpers ---
 
 const PROFILES_DIR = 'profiles'
@@ -208,6 +221,16 @@ export async function writeNavbar(content: string): Promise<void> {
   return writeRootSettingsFile('navbar.json5', content)
 }
 
+// --- Post form button order helpers ---
+
+export async function readPostForm(): Promise<string> {
+  return readRootSettingsFile('postform.json5')
+}
+
+export async function writePostForm(content: string): Promise<void> {
+  return writeRootSettingsFile('postform.json5', content)
+}
+
 // --- Account order helpers ---
 
 export async function readAccountOrder(): Promise<string> {
@@ -251,6 +274,34 @@ export async function writeSnippetFile(
 
 export async function deleteSnippetFile(filename: string): Promise<void> {
   return deleteSettingsFile(SNIPPETS_DIR, filename)
+}
+
+// --- Draft helpers (per-account JSON files in drafts/) ---
+
+const DRAFTS_DIR = 'drafts'
+
+export function draftFilename(accountId: string): string {
+  return `${sanitizeFilename(accountId)}.json`
+}
+
+export async function listDraftFiles(): Promise<string[]> {
+  const files = await listSettingsFiles(DRAFTS_DIR)
+  return files.filter((f) => f.endsWith('.json'))
+}
+
+export async function readDraftFile(accountId: string): Promise<string> {
+  return readSettingsFile(DRAFTS_DIR, draftFilename(accountId))
+}
+
+export async function writeDraftFile(
+  accountId: string,
+  content: string,
+): Promise<void> {
+  return writeSettingsFile(DRAFTS_DIR, draftFilename(accountId), content)
+}
+
+export async function deleteDraftFile(accountId: string): Promise<void> {
+  return deleteSettingsFile(DRAFTS_DIR, draftFilename(accountId))
 }
 
 // --- Plugin helpers ---

@@ -7,6 +7,7 @@ import { reloadSnippets } from '@/aiscript/snippets/cache'
 import { DEFAULT_AISCRIPT_SNIPPETS } from '@/aiscript/snippets/defaultSnippets'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { useToast } from '@/stores/toast'
 import {
   isTauri,
@@ -51,6 +52,10 @@ const dirty = ref(false)
 const saved = ref(false)
 const error = ref<string | null>(null)
 const loaded = ref(false)
+
+useWindowExternalFile(() =>
+  currentFile.value ? { name: currentFile.value, subdir: 'snippets' } : null,
+)
 
 const statusText = computed(() => {
   if (error.value) return error.value

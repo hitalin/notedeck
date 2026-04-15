@@ -37,6 +37,7 @@ import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useNavigation } from '@/composables/useNavigation'
 import { usePortal } from '@/composables/usePortal'
 import { useSensitiveMask } from '@/composables/useSensitiveMask'
+import { useWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
@@ -54,11 +55,6 @@ import { commands, unwrap } from '@/utils/tauriInvoke'
 import { toggleFollow } from '@/utils/toggleFollow'
 import { toggleReaction } from '@/utils/toggleReaction'
 import { openSafeUrl, safeCssUrl } from '@/utils/url'
-
-const openUrl = async (url: string) => {
-  const { openUrl: open } = await import('@tauri-apps/plugin-opener')
-  return open(url)
-}
 
 const props = defineProps<{
   accountId: string
@@ -134,6 +130,27 @@ const { tab: topTab, containerRef: profileRef } = useEditorTabs<TopTab>(
 )
 
 const user = ref<NormalizedUserDetail | null>(null)
+
+// ヘッダー「Web UIで開く」ボタンの登録 — 自プロフィールは編集画面、他は公開ページ
+useWindowExternalLink(() => {
+  const u = user.value
+  const host = account.value?.host
+  if (!u || !host) return null
+  if (isOwnProfile.value) {
+    return {
+      url: `https://${host}/settings/profile`,
+      title: 'プロフィールを編集',
+      icon: 'pencil',
+    }
+  }
+  const suffix = u.host ? `@${u.host}` : ''
+  return {
+    url: `https://${host}/@${u.username}${suffix}`,
+    title: 'Web UIで開く',
+    icon: 'world',
+  }
+})
+
 const canSeeFollowing = computed(() => {
   if (isOwnProfile.value) return true
   const v = user.value?.followingVisibility ?? 'public'
@@ -972,9 +989,6 @@ async function handlePosted(editedNoteId?: string) {
             <button class="_button" :class="$style.bannerActionBtn" title="QRコード" @click="openQrCode">
               <i class="ti ti-qrcode" />
             </button>
-            <button class="_button" :class="$style.bannerActionBtn" :title="isOwnProfile ? 'プロフィールを編集' : 'Web UIで開く'" @click="openUrl(`https://${account?.host}/${isOwnProfile ? 'settings/profile' : `@${user.username}${user.host ? `@${user.host}` : ''}`}`)">
-              <i :class="isOwnProfile ? 'ti ti-pencil' : 'ti ti-external-link'" />
-            </button>
             <button
               v-if="!isOwnProfile"
               class="_button"
@@ -1049,9 +1063,7 @@ async function handlePosted(editedNoteId?: string) {
           </div>
           <div v-if="user.url" :class="$style.profileInfoItem">
             <i class="ti ti-link" />
-            <button class="_button" :class="$style.profileInfoLink" @click="openUrl(user.url!)">
-              {{ displayUrl(user.url!) }}
-            </button>
+            <span>{{ displayUrl(user.url!) }}</span>
           </div>
           <div v-if="user.createdAt" :class="$style.profileInfoItem">
             <i class="ti ti-calendar" />
@@ -1826,15 +1838,6 @@ async function handlePosted(editedNoteId?: string) {
 
   i {
     font-size: 1em;
-  }
-}
-
-.profileInfoLink {
-  color: var(--nd-accent);
-  text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
   }
 }
 

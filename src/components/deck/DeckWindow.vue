@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
+import { provideWindowExternalFile } from '@/composables/useWindowExternalFile'
+import { provideWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useIsCompactLayout } from '@/stores/ui'
 import {
   type DeckWindow,
   useWindowsStore,
   WINDOW_SIZES,
 } from '@/stores/windows'
+import { isTauri, openSettingsFileInEditor } from '@/utils/settingsFs'
 
 const props = defineProps<{
   window: DeckWindow
@@ -17,6 +20,31 @@ const emit = defineEmits<{ close: [] }>()
 const windowsStore = useWindowsStore()
 const isCompact = useIsCompactLayout()
 const size = computed(() => WINDOW_SIZES[props.window.type])
+
+// ヘッダー右側「外部エディタで開く」ボタン — 中身のコンポーネントが登録する
+const externalFile = provideWindowExternalFile()
+async function openExternalFile() {
+  const t = externalFile.value
+  if (!t || t.disabled) return
+  try {
+    await openSettingsFileInEditor(t.name, t.subdir)
+  } catch (e) {
+    console.warn('[DeckWindow] openExternalFile failed:', e)
+  }
+}
+
+// ヘッダー右側「外部ブラウザで開く」ボタン
+const externalLink = provideWindowExternalLink()
+async function openExternalLink() {
+  const t = externalLink.value
+  if (!t || t.disabled) return
+  try {
+    const { openUrl } = await import('@tauri-apps/plugin-opener')
+    await openUrl(t.url)
+  } catch (e) {
+    console.warn('[DeckWindow] openExternalLink failed:', e)
+  }
+}
 
 const BASE_TITLES: Record<string, string> = {
   'note-detail': 'ノート',
@@ -154,6 +182,26 @@ onBeforeUnmount(() => {
     <div :class="$style.windowHeader" @pointerdown="onHeaderPointerDown">
       <i :class="[icons[window.type], $style.windowIcon]" />
       <span :class="$style.windowTitle">{{ windowTitle }}</span>
+      <button
+        v-if="isTauri && externalLink"
+        class="_button"
+        :class="$style.windowBtn"
+        :disabled="externalLink.disabled"
+        :title="externalLink.title ?? 'Web で開く'"
+        @click="openExternalLink"
+      >
+        <i :class="`ti ti-${externalLink.icon ?? 'world'}`" />
+      </button>
+      <button
+        v-if="isTauri && externalFile"
+        class="_button"
+        :class="$style.windowBtn"
+        :disabled="externalFile.disabled"
+        :title="`OS の既定エディタで ${externalFile.name} を開く`"
+        @click="openExternalFile"
+      >
+        <i class="ti ti-external-link" />
+      </button>
       <button class="_button" :class="$style.windowBtn" title="最小化" @click="windowsStore.toggleMinimize(window.id)">
         <i class="ti ti-minus" />
       </button>
@@ -262,9 +310,14 @@ onBeforeUnmount(() => {
     background var(--nd-duration-fast),
     opacity var(--nd-duration-fast);
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: var(--nd-buttonHoverBg);
     opacity: 1;
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
 }
 

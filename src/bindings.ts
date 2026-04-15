@@ -1255,6 +1255,19 @@ async getSettingsDir() : Promise<Result<string, { code: string; message: string 
 }
 },
 /**
+ * Open a settings file in the OS default editor. WSL2 では xdg-open が GUI
+ * エディタへルーティングできないため、wslpath で Windows パスへ変換し
+ * cmd.exe start 経由で Windows 側の既定アプリに委譲する。
+ */
+async openSettingsFileInEditor(subdir: string | null, name: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("open_settings_file_in_editor", { subdir, name }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Read a root-level settings file as a UTF-8 string.
  */
 async readRootSettingsFile(name: string) : Promise<Result<string, { code: string; message: string }>> {
