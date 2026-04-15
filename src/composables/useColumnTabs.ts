@@ -1,6 +1,6 @@
 import { computed, nextTick, type Ref, watch } from 'vue'
 import { COLUMN_ICONS, COLUMN_LABELS } from '@/columns/registry'
-import type { DeckColumn } from '@/stores/deck'
+import type { ColumnType, DeckColumn } from '@/stores/deck'
 
 export { COLUMN_ICONS, COLUMN_LABELS }
 
@@ -42,7 +42,7 @@ export function useColumnTabs(
     return COLUMN_ICONS[col.type] ?? COLUMN_ICONS.timeline ?? ''
   }
 
-  function columnType(colId: string): string {
+  function columnType(colId: string): ColumnType {
     const col = columnMap.value.get(colId)
     return col?.type ?? 'timeline'
   }

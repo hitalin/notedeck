@@ -1,10 +1,6 @@
 import { useCommandStore } from '@/commands/registry'
 import { useAccountActions } from '@/composables/useAccountActions'
-import {
-  ENTITY_CONFIGS,
-  type EntityType,
-  useEntityCrud,
-} from '@/composables/useEntityCrud'
+import { isEntityType, useEntityCrud } from '@/composables/useEntityCrud'
 import type { NoteAction } from '@/composables/useNoteFocus'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
@@ -525,8 +521,8 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     const id = deckStore.activeColumnId
     if (!id) return null
     const col = deckStore.getColumn(id)
-    if (!col || !(col.type in ENTITY_CONFIGS)) return null
-    return col
+    if (!col || !isEntityType(col.type)) return null
+    return { col, type: col.type }
   }
 
   commandStore.register({
@@ -537,9 +533,9 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     shortcuts: [],
     enabled: () => !!getActiveEntityColumn(),
     execute: () => {
-      const col = getActiveEntityColumn()
-      if (!col) return
-      const { rename } = useEntityCrud(col.type as EntityType, () => col)
+      const entity = getActiveEntityColumn()
+      if (!entity) return
+      const { rename } = useEntityCrud(entity.type, () => entity.col)
       rename(() => {
         // no-op callback
       })
@@ -554,9 +550,9 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     shortcuts: [],
     enabled: () => !!getActiveEntityColumn(),
     execute: () => {
-      const col = getActiveEntityColumn()
-      if (!col) return
-      const { deleteEntity } = useEntityCrud(col.type as EntityType, () => col)
+      const entity = getActiveEntityColumn()
+      if (!entity) return
+      const { deleteEntity } = useEntityCrud(entity.type, () => entity.col)
       deleteEntity(() => {
         // no-op callback
       })

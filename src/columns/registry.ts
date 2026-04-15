@@ -367,6 +367,10 @@ export const ALL_COLUMN_TYPES = Object.keys(
   COLUMN_REGISTRY,
 ) as readonly ColumnType[]
 
+export function isColumnType(value: unknown): value is ColumnType {
+  return typeof value === 'string' && value in COLUMN_REGISTRY
+}
+
 export const COLUMN_LABELS: Record<string, string> = Object.fromEntries(
   ALL_COLUMN_TYPES.map((t) => [t, COLUMN_REGISTRY[t].label]),
 )
