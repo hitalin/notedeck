@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { provideWindowExternalFile } from '@/composables/useWindowExternalFile'
+import { provideWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useIsCompactLayout } from '@/stores/ui'
 import {
   type DeckWindow,
@@ -29,6 +30,19 @@ async function openExternalFile() {
     await openSettingsFileInEditor(t.name, t.subdir)
   } catch (e) {
     console.warn('[DeckWindow] openExternalFile failed:', e)
+  }
+}
+
+// ヘッダー右側「外部ブラウザで開く」ボタン
+const externalLink = provideWindowExternalLink()
+async function openExternalLink() {
+  const t = externalLink.value
+  if (!t || t.disabled) return
+  try {
+    const { openUrl } = await import('@tauri-apps/plugin-opener')
+    await openUrl(t.url)
+  } catch (e) {
+    console.warn('[DeckWindow] openExternalLink failed:', e)
   }
 }
 
@@ -168,6 +182,16 @@ onBeforeUnmount(() => {
     <div :class="$style.windowHeader" @pointerdown="onHeaderPointerDown">
       <i :class="[icons[window.type], $style.windowIcon]" />
       <span :class="$style.windowTitle">{{ windowTitle }}</span>
+      <button
+        v-if="isTauri && externalLink"
+        class="_button"
+        :class="$style.windowBtn"
+        :disabled="externalLink.disabled"
+        :title="externalLink.title ?? 'Web で開く'"
+        @click="openExternalLink"
+      >
+        <i :class="`ti ti-${externalLink.icon ?? 'world'}`" />
+      </button>
       <button
         v-if="isTauri && externalFile"
         class="_button"
