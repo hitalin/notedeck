@@ -215,6 +215,73 @@ pub fn get_settings_dir(app: tauri::AppHandle) -> Result<String> {
     Ok(settings_base_dir(&app)?.to_string_lossy().to_string())
 }
 
+/// Open a settings file in the OS default editor. WSL2 では xdg-open が GUI
+/// エディタへルーティングできないため、wslpath で Windows パスへ変換し
+/// cmd.exe start 経由で Windows 側の既定アプリに委譲する。
+#[tauri::command]
+#[specta::specta]
+pub fn open_settings_file_in_editor(
+    app: tauri::AppHandle,
+    subdir: Option<String>,
+    name: String,
+) -> Result<()> {
+    let path = match subdir.as_deref() {
+        Some(s) => resolve_path(&app, s, &name)?,
+        None => resolve_root_path(&app, &name)?,
+    };
+    if !path.exists() {
+        return Err(NoteDeckError::InvalidInput(format!(
+            "File does not exist: {}",
+            path.display()
+        )));
+    }
+
+    #[cfg(target_os = "linux")]
+    if is_wsl() {
+        return open_in_windows_host(&path);
+    }
+
+    tauri_plugin_opener::open_path(&path, None::<&str>)
+        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to open {}: {e}", path.display())))
+}
+
+#[cfg(target_os = "linux")]
+fn is_wsl() -> bool {
+    if std::env::var_os("WSL_DISTRO_NAME").is_some() {
+        return true;
+    }
+    fs::read_to_string("/proc/version")
+        .map(|v| {
+            let lower = v.to_lowercase();
+            lower.contains("microsoft") || lower.contains("wsl")
+        })
+        .unwrap_or(false)
+}
+
+#[cfg(target_os = "linux")]
+fn open_in_windows_host(path: &std::path::Path) -> Result<()> {
+    use std::process::Command;
+    let output = Command::new("wslpath")
+        .arg("-w")
+        .arg(path)
+        .output()
+        .map_err(|e| NoteDeckError::InvalidInput(format!("wslpath exec failed: {e}")))?;
+    if !output.status.success() {
+        return Err(NoteDeckError::InvalidInput(format!(
+            "wslpath failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
+    }
+    let winpath = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    // `start` は最初の引用符付き引数をウィンドウタイトルとして扱うので、
+    // 空文字列のタイトルを先に渡してからパスを渡す。
+    Command::new("cmd.exe")
+        .args(["/c", "start", "", &winpath])
+        .spawn()
+        .map_err(|e| NoteDeckError::InvalidInput(format!("cmd.exe exec failed: {e}")))?;
+    Ok(())
+}
+
 /// Read `settings.json5` (VSCode `settings.json` equivalent — single source of truth
 /// for scalar preferences). Returns empty string if the file does not exist (first run).
 ///
