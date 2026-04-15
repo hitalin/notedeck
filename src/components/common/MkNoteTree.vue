@@ -17,6 +17,7 @@ export interface NoteTreeHandlers {
   deleteFn: (note: NormalizedNote) => void
   edit: (note: NormalizedNote) => void
   deleteAndEdit: (note: NormalizedNote) => void
+  vote: (choice: number, note: NormalizedNote) => void
 }
 
 const props = defineProps<{
@@ -44,6 +45,7 @@ const { navigateToNote } = useNavigation()
       @delete="handlers.deleteFn"
       @edit="handlers.edit"
       @delete-and-edit="handlers.deleteAndEdit"
+      @vote="handlers.vote"
     />
 
     <div v-if="node.children.length > 0 && currentDepth < MAX_DEPTH" :class="$style.childrenWrap">

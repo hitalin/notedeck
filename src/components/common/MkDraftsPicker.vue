@@ -11,13 +11,12 @@ import {
   deleteAllDrafts,
   deleteDraft,
   draftsVersion,
-  ensureDraftsLoaded,
   loadAllDrafts,
+  refreshDrafts,
   type StoredDraft,
 } from '@/composables/useDrafts'
 import { type Account, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
-import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import { useToast } from '@/stores/toast'
 
@@ -26,12 +25,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  pick: [draft: StoredDraft]
+  pick: [key: string, draft: StoredDraft]
   close: []
 }>()
 
 const accountsStore = useAccountsStore()
-const serversStore = useServersStore()
 const themeStore = useThemeStore()
 const { confirm } = useConfirm()
 const toast = useToast()
@@ -40,20 +38,13 @@ const account = computed<Account | undefined>(() =>
   accountsStore.accounts.find((a) => a.id === props.accountId),
 )
 
-/** Per-account custom server theme — same vars the post form uses. */
+/** Per-account custom server theme so the picker matches the post form. */
 const themeVars = computed(() =>
   themeStore.getStyleVarsForAccount(props.accountId),
 )
 
-/** Misskey server's empty state image (infoImageUrl) for the current account. */
-const serverInfoImageUrl = computed(() => {
-  const acc = account.value
-  if (!acc) return undefined
-  return serversStore.getServer(acc.host)?.infoImageUrl
-})
-
 interface DraftContext {
-  kind: 'reply' | 'renote' | 'note' | 'channel-note' | 'legacy'
+  kind: 'reply' | 'renote' | 'note' | 'channel-note'
   channelId: string | null
   refId: string | null
 }
@@ -65,33 +56,21 @@ interface DraftEntry {
   note: NormalizedNote
 }
 
-function parseDraftKey(key: string): DraftContext {
-  if (key.startsWith('legacy:')) {
-    return { kind: 'legacy', channelId: null, refId: key.slice(7) }
+function contextOf(stored: StoredDraft): DraftContext {
+  if (stored.replyId) {
+    return { kind: 'reply', channelId: null, refId: stored.replyId }
   }
-  let rest = key
-  let channelId: string | null = null
-  if (rest.startsWith('channel:')) {
-    const m = rest.slice(8).match(/^(.*?)(?=(?:renote|reply|note):)/)
-    if (m) {
-      channelId = m[1] ?? null
-      rest = rest.slice(8 + (m[1]?.length ?? 0))
-    }
+  if (stored.renoteId) {
+    return { kind: 'renote', channelId: null, refId: stored.renoteId }
   }
-  const idx = rest.indexOf(':')
-  if (idx < 0) return { kind: 'note', channelId, refId: null }
-  const prefix = rest.slice(0, idx)
-  const refId = rest.slice(idx + 1) || null
-  if (prefix === 'renote') return { kind: 'renote', channelId, refId }
-  if (prefix === 'reply') return { kind: 'reply', channelId, refId }
-  if (prefix === 'note') {
+  if (stored.channelId) {
     return {
-      kind: channelId ? 'channel-note' : 'note',
-      channelId,
-      refId,
+      kind: 'channel-note',
+      channelId: stored.channelId,
+      refId: null,
     }
   }
-  return { kind: 'note', channelId, refId: null }
+  return { kind: 'note', channelId: null, refId: null }
 }
 
 function userFromAccount(acc: Account): NormalizedUser {
@@ -104,15 +83,10 @@ function userFromAccount(acc: Account): NormalizedUser {
   }
 }
 
-function toPreviewNote(
-  acc: Account,
-  key: string,
-  stored: StoredDraft,
-  ctx: DraftContext,
-): NormalizedNote {
+function toPreviewNote(acc: Account, stored: StoredDraft): NormalizedNote {
   const d = stored.data
   return {
-    id: `draft:${acc.id}:${key}`,
+    id: `draft:${acc.id}:${stored.id}`,
     _accountId: acc.id,
     _serverHost: acc.host,
     createdAt: stored.updatedAt,
@@ -127,9 +101,9 @@ function toPreviewNote(
     repliesCount: 0,
     files: [],
     localOnly: d.localOnly,
-    replyId: ctx.kind === 'reply' ? ctx.refId : null,
-    renoteId: ctx.kind === 'renote' ? ctx.refId : null,
-    channelId: ctx.channelId,
+    replyId: stored.replyId,
+    renoteId: stored.renoteId,
+    channelId: stored.channelId,
   }
 }
 
@@ -139,26 +113,25 @@ watch(
   () => props.accountId,
   async (id) => {
     loaded.value = false
-    await ensureDraftsLoaded(id)
+    await refreshDrafts(id)
     loaded.value = true
   },
   { immediate: true },
 )
 
 const entries = computed<DraftEntry[]>(() => {
-  // Track reactive version so save/delete from anywhere re-renders us.
   void draftsVersion.value
   if (!loaded.value || !account.value) return []
   const map = loadAllDrafts(props.accountId)
   const acc = account.value
   const out: DraftEntry[] = []
-  for (const [key, draft] of Object.entries(map)) {
-    const ctx = parseDraftKey(key)
+  for (const stored of Object.values(map)) {
+    const ctx = contextOf(stored)
     out.push({
-      key,
-      draft,
+      key: stored.id,
+      draft: stored,
       context: ctx,
-      note: toPreviewNote(acc, key, draft, ctx),
+      note: toPreviewNote(acc, stored),
     })
   }
   out.sort((a, b) => b.draft.updatedAt.localeCompare(a.draft.updatedAt))
@@ -175,10 +148,8 @@ function contextLabel(ctx: DraftContext): string {
       return '引用'
     case 'channel-note':
       return 'チャンネル投稿'
-    case 'legacy':
-      return '旧下書き'
     default:
-      return '新規ノート'
+      return ''
   }
 }
 
@@ -190,8 +161,6 @@ function contextIcon(ctx: DraftContext): string {
       return 'ti ti-quote'
     case 'channel-note':
       return 'ti ti-device-tv'
-    case 'legacy':
-      return 'ti ti-archive'
     default:
       return 'ti ti-pencil'
   }
@@ -214,10 +183,10 @@ function formatScheduledAt(iso: string): string {
 }
 
 function onPick(entry: DraftEntry) {
-  emit('pick', entry.draft)
+  emit('pick', entry.key, entry.draft)
 }
 
-// --- Custom context menu (overrides MkNote's default NoteMoreMenu) ---
+// --- Custom right-click menu (overrides MkNote's default NoteMoreMenu) ---
 const menuState = ref<{
   x: number
   y: number
@@ -253,8 +222,15 @@ async function onDelete(entry: DraftEntry) {
     type: 'danger',
   })
   if (!ok) return
-  deleteDraft(props.accountId, entry.key)
-  toast.show('下書きを削除しました', 'info')
+  try {
+    await deleteDraft(props.accountId, entry.key)
+    toast.show('下書きを削除しました', 'info')
+  } catch (e) {
+    toast.show(
+      `削除に失敗しました: ${e instanceof Error ? e.message : String(e)}`,
+      'error',
+    )
+  }
 }
 
 async function onDeleteAll() {
@@ -266,8 +242,15 @@ async function onDeleteAll() {
     type: 'danger',
   })
   if (!ok) return
-  deleteAllDrafts(props.accountId)
-  toast.show('下書きをすべて削除しました', 'info')
+  try {
+    await deleteAllDrafts(props.accountId)
+    toast.show('下書きをすべて削除しました', 'info')
+  } catch (e) {
+    toast.show(
+      `削除に失敗しました: ${e instanceof Error ? e.message : String(e)}`,
+      'error',
+    )
+  }
 }
 </script>
 
@@ -289,7 +272,12 @@ async function onDeleteAll() {
       >
         <i class="ti ti-trash" />
       </button>
-      <button class="_button" :class="$style.dpHeaderBtn" title="閉じる" @click="emit('close')">
+      <button
+        class="_button"
+        :class="$style.dpHeaderBtn"
+        title="閉じる"
+        @click="emit('close')"
+      >
         <i class="ti ti-x" />
       </button>
     </div>
@@ -300,7 +288,6 @@ async function onDeleteAll() {
       <ColumnEmptyState
         v-else-if="draftCount === 0"
         message="下書きはありません"
-        :image-url="serverInfoImageUrl"
       />
       <div v-else :class="$style.dpList">
         <div
@@ -309,9 +296,12 @@ async function onDeleteAll() {
           :class="$style.item"
           @contextmenu.capture="onContextMenu($event, entry)"
         >
-          <div :class="$style.meta">
+          <div
+            v-if="contextLabel(entry.context) || entry.draft.data.scheduledAt"
+            :class="$style.meta"
+          >
             <span
-              v-if="entry.context.kind !== 'note'"
+              v-if="contextLabel(entry.context)"
               :class="$style.metaCtx"
             >
               <i :class="contextIcon(entry.context)" />
@@ -338,50 +328,23 @@ async function onDeleteAll() {
               <i class="ti ti-clock" />
               {{ formatScheduledAt(entry.draft.data.scheduledAt) }}
             </span>
-            <span
-              v-if="entry.draft.data.showPoll && entry.draft.data.pollChoices.length"
-              :class="$style.metaBadge"
-            >
-              <i class="ti ti-chart-bar" />
-              投票
-              {{ entry.draft.data.pollChoices.filter((c) => c.trim()).length }}択
-            </span>
-            <span v-if="entry.draft.data.fileIds.length" :class="$style.metaBadge">
-              <i class="ti ti-paperclip" />
-              添付 {{ entry.draft.data.fileIds.length }}
-            </span>
           </div>
-          <button
-            class="_button"
+          <!-- capture-phase click: MkNote 内部の navigateToDetail (合成IDなので
+               404 になる) より先に拾って投稿フォーム復元に振り替える。 -->
+          <div
             :class="$style.itemNoteBtn"
+            role="button"
+            tabindex="0"
             title="この下書きを復元"
-            @click="onPick(entry)"
+            @click.capture.prevent.stop="onPick(entry)"
+            @keydown.enter="onPick(entry)"
           >
             <MkNote :note="entry.note" embedded />
-          </button>
-          <div :class="$style.itemActions">
-            <button
-              class="_button"
-              :class="$style.itemEditBtn"
-              title="編集（投稿フォームに反映）"
-              @click.stop="onPick(entry)"
-            >
-              <i class="ti ti-pencil" />
-            </button>
-            <button
-              class="_button"
-              :class="$style.itemRemoveBtn"
-              title="削除"
-              @click.stop="onDelete(entry)"
-            >
-              <i class="ti ti-x" />
-            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Custom right-click menu (overrides MkNote's default NoteMoreMenu) -->
     <Teleport to="body">
       <div
         v-if="menuState"
@@ -543,59 +506,11 @@ async function onDeleteAll() {
   color: var(--nd-accent);
 }
 
-.metaBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  opacity: 0.7;
-}
-
 .itemNoteBtn {
   display: block;
   width: 100%;
   text-align: left;
   cursor: pointer;
-}
-
-/* Hover-revealed action buttons (matches AppearanceEditor theme grid pattern) */
-.itemActions {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: flex;
-  gap: 4px;
-  z-index: 1;
-  opacity: 0;
-  transition: opacity var(--nd-duration-fast);
-
-  .item:hover & {
-    opacity: 1;
-  }
-}
-
-.itemEditBtn,
-.itemRemoveBtn {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: filter var(--nd-duration-base);
-
-  &:hover {
-    filter: brightness(0.85);
-  }
-}
-
-.itemEditBtn {
-  background: var(--nd-accent, #86b300);
-}
-
-.itemRemoveBtn {
-  background: var(--nd-error, #ec4137);
 }
 
 .dpEmpty {
@@ -606,5 +521,49 @@ async function onDeleteAll() {
   gap: 8px;
   padding: 40px 16px;
   text-align: center;
+}
+
+.menuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+
+.menu {
+  position: fixed;
+  min-width: 220px;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--nd-popup);
+  box-shadow: var(--nd-shadow-m);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.88em;
+  color: var(--nd-fg);
+  border-radius: var(--nd-radius-sm);
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: light-dark(rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.06));
+  }
+}
+
+.menuItemDanger {
+  color: var(--nd-danger, #e64c4c);
+}
+
+.menuDivider {
+  height: 1px;
+  margin: 2px 6px;
+  background: var(--nd-divider);
 }
 </style>

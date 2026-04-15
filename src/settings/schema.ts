@@ -29,6 +29,7 @@ export interface NotedeckSettings {
   // --- Post form ---
   'postForm.preview'?: boolean
   'postForm.autoSaveDraft'?: boolean
+  'postForm.autoSaveMemo'?: boolean
 
   // keybinds は keybinds.json5 に分離済み（独立ファイル）
   // AI は ai.json5 + AI.md に分離済み（独立ファイル）

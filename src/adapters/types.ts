@@ -398,6 +398,7 @@ export interface ApiAdapter {
   getNote(noteId: string): Promise<NormalizedNote>
   createReaction(noteId: string, reaction: string): Promise<void>
   deleteReaction(noteId: string): Promise<void>
+  votePoll(noteId: string, choice: number): Promise<void>
   getNoteReactions(
     noteId: string,
     reactionType?: string,
@@ -416,10 +417,12 @@ export interface ApiAdapter {
     fileData: number[],
     contentType: string,
     isSensitive?: boolean,
+    folderId?: string | null,
   ): Promise<NormalizedDriveFile>
   uploadFileFromPath(
     filePath: string,
     isSensitive?: boolean,
+    folderId?: string | null,
   ): Promise<NormalizedDriveFile>
   getServerEmojis(): Promise<ServerEmoji[]>
   getPinnedReactions(): Promise<string[]>

@@ -1,13 +1,13 @@
 import { ref } from 'vue'
 import type { NoteVisibility } from '@/adapters/types'
-import { isTauri, readDraftFile, writeDraftFile } from '@/utils/settingsFs'
-import {
-  getStorageJson,
-  removeStorage,
-  STORAGE_KEYS,
-  setStorageJson,
-} from '@/utils/storage'
+import type { JsonValue } from '@/bindings'
+import { AppError } from '@/utils/errors'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
+/**
+ * Misskey `notes/drafts/*` (2025.6+) をアカウントごとのサーバー保存で扱う。
+ * ローカル保存版はメモ機能 ({@link ./useMemos}) として別途残る。
+ */
 export interface DraftData {
   text: string
   cw: string
@@ -21,197 +21,185 @@ export interface DraftData {
   scheduledAt: string | null
 }
 
+export interface DraftContext {
+  replyId?: string | null
+  renoteId?: string | null
+  channelId?: string | null
+  hashtag?: string | null
+}
+
 export interface StoredDraft {
+  /** サーバー側 draft id */
+  id: string
+  /** サーバー createdAt (ISO8601) */
   updatedAt: string
   data: DraftData
+  replyId: string | null
+  renoteId: string | null
+  channelId: string | null
+  hashtag: string | null
 }
 
-export type StoredDrafts = Record<string, StoredDraft>
-
-/**
- * Misskey 本家 MkPostForm.vue の `draftKey` と同じ算出式。
- * 同じコンテキスト（reply/renote/channel/new）の編集中は常に1件だけが保存され、
- * 次回同じコンテキストを開いたとき自動で復元できるようにする。
- */
-export function computeDraftKey(ctx: {
-  userId: string
-  channelId?: string | null
-  renoteId?: string | null
-  replyId?: string | null
-}): string {
-  let key = ctx.channelId ? `channel:${ctx.channelId}` : ''
-  if (ctx.renoteId) {
-    key += `renote:${ctx.renoteId}`
-  } else if (ctx.replyId) {
-    key += `reply:${ctx.replyId}`
-  } else {
-    key += `note:${ctx.userId}`
-  }
-  return key
-}
-
-// --- Legacy v1 (array with id/savedAt) → v2 (draftKey map) ---
-interface LegacyDraftV1 {
+interface NoteDraftRaw {
   id: string
-  text: string
-  cw: string
-  showCw: boolean
-  visibility: NoteVisibility
-  localOnly: boolean
-  fileIds: string[]
-  pollChoices: string[]
-  pollMultiple: boolean
-  showPoll: boolean
-  scheduledAt: string | null
-  savedAt: number
+  createdAt: string
+  text: string | null
+  cw: string | null
+  visibility: string
+  localOnly?: boolean
+  fileIds?: string[]
+  hashtag?: string | null
+  replyId?: string | null
+  renoteId?: string | null
+  channelId?: string | null
+  poll?: {
+    choices: string[]
+    multiple?: boolean
+    expiresAt?: number | null
+  } | null
+  scheduledAt?: number | null
 }
 
-function migrate(raw: unknown): { drafts: StoredDrafts; migrated: boolean } {
-  if (Array.isArray(raw)) {
-    const drafts: StoredDrafts = {}
-    for (const d of raw as LegacyDraftV1[]) {
-      if (!d || typeof d !== 'object' || !d.id) continue
-      drafts[`legacy:${d.id}`] = {
-        updatedAt: new Date(d.savedAt || Date.now()).toISOString(),
-        data: {
-          text: d.text ?? '',
-          cw: d.cw ?? '',
-          showCw: !!d.showCw,
-          visibility: d.visibility,
-          localOnly: !!d.localOnly,
-          fileIds: d.fileIds ?? [],
-          pollChoices: d.pollChoices ?? [],
-          pollMultiple: !!d.pollMultiple,
-          showPoll: !!d.showPoll,
-          scheduledAt: d.scheduledAt ?? null,
-        },
-      }
-    }
-    return { drafts, migrated: true }
-  }
-  if (raw && typeof raw === 'object') {
-    return { drafts: raw as StoredDrafts, migrated: false }
-  }
-  return { drafts: {}, migrated: false }
-}
-
-// --- File-backed cache (Tauri) with localStorage fallback (browser dev) ---
-
-const cache = new Map<string, StoredDrafts>()
-const loaded = new Set<string>()
-
-/**
- * Reactive version counter — bumped on every save/delete so that components
- * can watch it to re-render when drafts mutate from elsewhere (e.g. auto-save
- * triggered by usePostFormState while the picker is open).
- */
+// accountId → draftId → StoredDraft
+const cache: Record<string, Record<string, StoredDraft>> = {}
 export const draftsVersion = ref(0)
+export const draftsLoading = ref(false)
 
-function readFromLocalStorage(accountId: string): StoredDrafts {
-  const raw = getStorageJson<unknown>(STORAGE_KEYS.drafts(accountId), {})
-  return migrate(raw).drafts
-}
-
-function writeToLocalStorage(accountId: string, drafts: StoredDrafts): void {
-  setStorageJson(STORAGE_KEYS.drafts(accountId), drafts)
-}
-
-/**
- * Load drafts from disk (Tauri) or localStorage (browser) into the in-memory
- * cache. Must be awaited before sync read/write APIs are used for that account.
- * One-time migration: if no file exists yet but localStorage has entries, the
- * data is copied to disk and the localStorage entry is removed.
- */
-export async function ensureDraftsLoaded(accountId: string): Promise<void> {
-  if (loaded.has(accountId)) return
-  let drafts: StoredDrafts = {}
-  if (isTauri) {
-    let fileContent = ''
-    try {
-      fileContent = await readDraftFile(accountId)
-    } catch {
-      fileContent = ''
-    }
-    if (fileContent) {
-      try {
-        drafts = migrate(JSON.parse(fileContent)).drafts
-      } catch {
-        drafts = {}
-      }
-    } else {
-      // Migrate localStorage → file (one-time)
-      const legacy = readFromLocalStorage(accountId)
-      if (Object.keys(legacy).length > 0) {
-        drafts = legacy
-        try {
-          await writeDraftFile(accountId, JSON.stringify(drafts, null, 2))
-          removeStorage(STORAGE_KEYS.drafts(accountId))
-        } catch {
-          // Keep localStorage as fallback if write fails
-        }
-      }
-    }
-  } else {
-    drafts = readFromLocalStorage(accountId)
-  }
-  cache.set(accountId, drafts)
-  loaded.add(accountId)
-}
-
-const writeTimers = new Map<string, ReturnType<typeof setTimeout>>()
-
-function persist(accountId: string) {
-  const drafts = cache.get(accountId) ?? {}
-  if (isTauri) {
-    const existing = writeTimers.get(accountId)
-    if (existing) clearTimeout(existing)
-    writeTimers.set(
-      accountId,
-      setTimeout(() => {
-        void writeDraftFile(accountId, JSON.stringify(drafts, null, 2))
-        writeTimers.delete(accountId)
-      }, 300),
-    )
-  } else {
-    writeToLocalStorage(accountId, drafts)
+function toStored(raw: NoteDraftRaw): StoredDraft {
+  const pollChoices = raw.poll?.choices ?? []
+  return {
+    id: raw.id,
+    updatedAt: raw.createdAt,
+    data: {
+      text: raw.text ?? '',
+      cw: raw.cw ?? '',
+      showCw: !!raw.cw,
+      visibility: (raw.visibility as NoteVisibility) ?? 'public',
+      localOnly: raw.localOnly ?? false,
+      fileIds: raw.fileIds ?? [],
+      pollChoices: pollChoices.length >= 2 ? pollChoices : ['', ''],
+      pollMultiple: raw.poll?.multiple ?? false,
+      showPoll: pollChoices.length >= 2,
+      scheduledAt:
+        raw.scheduledAt != null
+          ? new Date(raw.scheduledAt).toISOString()
+          : null,
+    },
+    replyId: raw.replyId ?? null,
+    renoteId: raw.renoteId ?? null,
+    channelId: raw.channelId ?? null,
+    hashtag: raw.hashtag ?? null,
   }
 }
 
-export function loadAllDrafts(accountId: string): StoredDrafts {
-  return cache.get(accountId) ?? {}
+function buildParams(data: DraftData, ctx: DraftContext): JsonValue {
+  const validChoices = data.showPoll
+    ? data.pollChoices.filter((c) => c.trim())
+    : []
+  return {
+    text: data.text || null,
+    cw: data.showCw && data.cw ? data.cw : null,
+    visibility: data.visibility,
+    localOnly: data.localOnly,
+    fileIds: data.fileIds,
+    replyId: ctx.replyId ?? null,
+    renoteId: ctx.renoteId ?? null,
+    channelId: ctx.channelId ?? null,
+    hashtag: ctx.hashtag ?? null,
+    poll:
+      validChoices.length >= 2
+        ? { choices: validChoices, multiple: data.pollMultiple }
+        : null,
+    scheduledAt: data.scheduledAt ? new Date(data.scheduledAt).getTime() : null,
+  }
 }
 
-export function loadDraft(
-  accountId: string,
-  draftKey: string,
-): StoredDraft | null {
-  return loadAllDrafts(accountId)[draftKey] ?? null
+export async function refreshDrafts(accountId: string): Promise<void> {
+  draftsLoading.value = true
+  try {
+    const raw = unwrap(
+      await commands.apiRequest(accountId, 'notes/drafts/list', { limit: 100 }),
+    ) as unknown as NoteDraftRaw[] | null
+    const map: Record<string, StoredDraft> = {}
+    if (Array.isArray(raw)) {
+      for (const entry of raw) {
+        map[entry.id] = toStored(entry)
+      }
+    }
+    cache[accountId] = map
+    draftsVersion.value++
+  } catch (e) {
+    // notes/drafts/* は Misskey 2025.6+。未対応サーバーは空扱い
+    cache[accountId] = cache[accountId] ?? {}
+    console.warn('[drafts] list failed:', AppError.from(e).message)
+  } finally {
+    draftsLoading.value = false
+  }
 }
 
-export function saveDraft(
+export function loadAllDrafts(accountId: string): Record<string, StoredDraft> {
+  return cache[accountId] ?? {}
+}
+
+export async function saveDraft(
   accountId: string,
-  draftKey: string,
+  draftId: string | null,
   data: DraftData,
-): StoredDraft {
-  const next = { ...loadAllDrafts(accountId) }
-  const stored: StoredDraft = { updatedAt: new Date().toISOString(), data }
-  next[draftKey] = stored
-  cache.set(accountId, next)
-  persist(accountId)
+  ctx: DraftContext = {},
+): Promise<StoredDraft> {
+  const params = buildParams(data, ctx)
+  let raw: NoteDraftRaw
+  if (draftId == null) {
+    const res = unwrap(
+      await commands.apiRequest(accountId, 'notes/drafts/create', params),
+    ) as unknown as { createdDraft: NoteDraftRaw }
+    raw = res.createdDraft
+  } else {
+    const updateParams: JsonValue = {
+      ...(params as Partial<{ [k: string]: JsonValue }>),
+      draftId,
+    }
+    const res = unwrap(
+      await commands.apiRequest(accountId, 'notes/drafts/update', updateParams),
+    ) as unknown as { updatedDraft: NoteDraftRaw }
+    raw = res.updatedDraft
+  }
+  const stored = toStored(raw)
+  cache[accountId] = { ...(cache[accountId] ?? {}), [stored.id]: stored }
   draftsVersion.value++
   return stored
 }
 
-export function deleteDraft(accountId: string, draftKey: string): void {
-  const next = { ...loadAllDrafts(accountId) }
-  delete next[draftKey]
-  cache.set(accountId, next)
-  persist(accountId)
-  draftsVersion.value++
+export async function deleteDraft(
+  accountId: string,
+  draftId: string,
+): Promise<void> {
+  try {
+    unwrap(
+      await commands.apiRequest(accountId, 'notes/drafts/delete', { draftId }),
+    )
+  } catch (e) {
+    // サーバー側で既に消えているケース (noSuchNoteDraft) はキャッシュ同期だけで良い
+    const msg = AppError.from(e).message
+    if (!/noSuchNoteDraft|NO_SUCH_NOTE_DRAFT/i.test(msg)) throw e
+  }
+  const existing = cache[accountId]
+  if (existing && draftId in existing) {
+    const next = { ...existing }
+    delete next[draftId]
+    cache[accountId] = next
+    draftsVersion.value++
+  }
 }
 
-export function deleteAllDrafts(accountId: string): void {
-  cache.set(accountId, {})
-  persist(accountId)
+export async function deleteAllDrafts(accountId: string): Promise<void> {
+  const ids = Object.keys(cache[accountId] ?? {})
+  if (ids.length === 0) return
+  await Promise.allSettled(
+    ids.map((id) =>
+      commands.apiRequest(accountId, 'notes/drafts/delete', { draftId: id }),
+    ),
+  )
+  cache[accountId] = {}
   draftsVersion.value++
 }

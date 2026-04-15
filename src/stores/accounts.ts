@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { ServerSoftware } from '@/adapters/types'
 import { destroyAdapter } from '@/composables/useInitAdapter'
+import { deleteAllMemos } from '@/composables/useMemos'
 import { readAccountOrder, writeAccountOrder } from '@/utils/settingsFs'
 import { removeStorage, STORAGE_KEYS } from '@/utils/storage'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -151,9 +152,9 @@ export const useAccountsStore = defineStore('accounts', () => {
       activeAccountId.value = accounts.value[0]?.id ?? null
     }
     // Clean up localStorage caches associated with this account
-    removeStorage(STORAGE_KEYS.drafts(id))
     removeStorage(STORAGE_KEYS.notificationCache(id))
     removeStorage(STORAGE_KEYS.policies(id))
+    deleteAllMemos(id)
   }
 
   async function logoutAccount(id: string): Promise<void> {

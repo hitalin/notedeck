@@ -820,6 +820,16 @@ async function handleReaction(reaction: string, note: NormalizedNote) {
   }
 }
 
+async function handleVote(choice: number, target: NormalizedNote) {
+  if (!adapter) return
+  const { votePoll } = await import('@/utils/votePoll')
+  try {
+    await votePoll(adapter.api, target, choice)
+  } catch (e) {
+    error.value = AppError.from(e)
+  }
+}
+
 async function handleRenote(target: NormalizedNote) {
   if (!adapter) return
   try {
@@ -1107,6 +1117,7 @@ async function handlePosted(editedNoteId?: string) {
             @edit="handleEdit"
             @delete-and-edit="handleDeleteAndEdit"
             @pin="handlePin"
+            @vote="handleVote"
           />
         </div>
 
@@ -1138,6 +1149,7 @@ async function handlePosted(editedNoteId?: string) {
             @edit="handleEdit"
             @delete-and-edit="handleDeleteAndEdit"
             @pin="handlePin"
+            @vote="handleVote"
           />
 
           <div v-if="isLoadingNotes" :class="$style.stateMessage">
@@ -1200,6 +1212,7 @@ async function handlePosted(editedNoteId?: string) {
               @edit="handleEdit"
               @delete-and-edit="handleDeleteAndEdit"
               @pin="handlePin"
+              @vote="handleVote"
             />
           </div>
 

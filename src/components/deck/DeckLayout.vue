@@ -58,6 +58,7 @@ const showProfileMenu = ref(false)
 const showSettingsMenu = ref(false)
 const mobileDrawerOpen = ref(false)
 const pendingFilePaths = ref<string[]>([])
+const pendingComposeAccountId = ref<string | null>(null)
 const addMenuPortalRef = useTemplateRef<HTMLElement>('addMenuPortalRef')
 const composePortalRef = useTemplateRef<HTMLElement>('composePortalRef')
 usePortal(addMenuPortalRef)
@@ -102,6 +103,7 @@ function openCompose() {
 function closeCompose() {
   showCompose.value = false
   pendingFilePaths.value = []
+  pendingComposeAccountId.value = null
 }
 
 function toggleAddMenu() {
@@ -136,7 +138,7 @@ const fileDrop = useFileDrop((paths, position) => {
   if (col?.type === 'drive' && col.accountId) {
     const accountId = col.accountId
     for (const path of paths) {
-      commands.apiUploadFileFromPath(accountId, path, false).then((r) => {
+      commands.apiUploadFileFromPath(accountId, path, false, null).then((r) => {
         unwrap(r)
         uiStore.emitDriveFilesChanged(accountId)
       })
@@ -287,7 +289,7 @@ function acceptCrossWindowDrop() {
     <div v-if="composeT.visible.value" ref="composePortalRef">
       <MkPostForm
         :class="[composeT.entering.value && $style.modalEnter, composeT.leaving.value && $style.modalLeave]"
-        :account-id="accountsStore.accounts[0]!.id"
+        :account-id="pendingComposeAccountId ?? accountsStore.accounts[0]!.id"
         :initial-file-paths="pendingFilePaths"
         @close="closeCompose"
         @posted="closeCompose"

@@ -71,6 +71,7 @@ const BASE_TITLES: Record<string, string> = {
   backup: 'バックアップ',
   tasksEditor: 'タスク設定',
   snippetsEditor: 'スニペット',
+  memoEditor: 'メモ',
 }
 
 const windowTitle = computed(() => {
@@ -106,6 +107,7 @@ const icons: Record<string, string> = {
   backup: 'ti ti-package-export',
   tasksEditor: 'ti ti-player-play',
   snippetsEditor: 'ti ti-code-plus',
+  memoEditor: 'ti ti-notes',
 }
 
 const isMinimized = computed(() => props.window.minimized)

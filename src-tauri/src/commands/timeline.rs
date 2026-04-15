@@ -352,50 +352,66 @@ pub async fn api_create_note(
 ) -> Result<NormalizedNote> {
     let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
-    if let Some(ref ch_id) = channel_id {
-        // Build request body manually to include channelId
-        // (notecli's CreateNoteParams doesn't have channelId)
-        let mut body = serde_json::json!({ "channelId": ch_id });
-        if let Some(ref v) = params.text {
-            body["text"] = serde_json::json!(v);
-        }
-        if let Some(ref v) = params.cw {
-            body["cw"] = serde_json::json!(v);
-        }
-        if let Some(ref v) = params.visibility {
-            body["visibility"] = serde_json::json!(v);
-        }
-        if let Some(v) = params.local_only {
-            body["localOnly"] = serde_json::json!(v);
-        }
-        if let Some(ref flags) = params.mode_flags {
-            for (key, value) in flags {
-                if key.starts_with("isNoteIn") && key.ends_with("Mode") && key.len() <= 30 {
-                    body[key] = serde_json::json!(value);
-                }
+    // notecli の CreateNoteParams / CreateNotePoll は Option に
+    // skip_serializing_if が付いていないため、struct をそのまま serde_json::json!
+    // で包むと multiple: null / expiresAt: null 等が混入し Misskey 側で
+    // INVALID_PARAM になる。安全のため body は常に手組みする。
+    let body = build_create_note_body(&params, channel_id.as_deref());
+    let data = client.request(&host, &token, "notes/create", body).await?;
+    let raw: RawCreateNoteResponse = serde_json::from_value(data)?;
+    Ok(raw.created_note.normalize(&account_id, &host))
+}
+
+fn build_create_note_body(
+    params: &CreateNoteParams,
+    channel_id: Option<&str>,
+) -> serde_json::Value {
+    let mut body = serde_json::json!({});
+    if let Some(ch_id) = channel_id {
+        body["channelId"] = serde_json::json!(ch_id);
+    }
+    if let Some(ref v) = params.text {
+        body["text"] = serde_json::json!(v);
+    }
+    if let Some(ref v) = params.cw {
+        body["cw"] = serde_json::json!(v);
+    }
+    if let Some(ref v) = params.visibility {
+        body["visibility"] = serde_json::json!(v);
+    }
+    if let Some(v) = params.local_only {
+        body["localOnly"] = serde_json::json!(v);
+    }
+    if let Some(ref flags) = params.mode_flags {
+        for (key, value) in flags {
+            if key.starts_with("isNoteIn") && key.ends_with("Mode") && key.len() <= 30 {
+                body[key] = serde_json::json!(value);
             }
         }
-        if let Some(ref v) = params.reply_id {
-            body["replyId"] = serde_json::json!(v);
-        }
-        if let Some(ref v) = params.renote_id {
-            body["renoteId"] = serde_json::json!(v);
-        }
-        if let Some(ref v) = params.file_ids {
-            body["fileIds"] = serde_json::json!(v);
-        }
-        if let Some(ref v) = params.poll {
-            body["poll"] = serde_json::json!(v);
-        }
-        if let Some(ref v) = params.scheduled_at {
-            body["scheduledAt"] = serde_json::json!(v);
-        }
-        let data = client.request(&host, &token, "notes/create", body).await?;
-        let raw: RawCreateNoteResponse = serde_json::from_value(data)?;
-        Ok(raw.created_note.normalize(&account_id, &host))
-    } else {
-        client.create_note(&host, &token, &account_id, params).await
     }
+    if let Some(ref v) = params.reply_id {
+        body["replyId"] = serde_json::json!(v);
+    }
+    if let Some(ref v) = params.renote_id {
+        body["renoteId"] = serde_json::json!(v);
+    }
+    if let Some(ref v) = params.file_ids {
+        body["fileIds"] = serde_json::json!(v);
+    }
+    if let Some(ref p) = params.poll {
+        let mut poll = serde_json::json!({ "choices": p.choices });
+        if let Some(m) = p.multiple {
+            poll["multiple"] = serde_json::json!(m);
+        }
+        if let Some(e) = p.expires_at {
+            poll["expiresAt"] = serde_json::json!(e);
+        }
+        body["poll"] = poll;
+    }
+    if let Some(ref v) = params.scheduled_at {
+        body["scheduledAt"] = serde_json::json!(v);
+    }
+    body
 }
 
 #[tauri::command]
@@ -450,6 +466,21 @@ pub async fn api_delete_reaction(
     let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.delete_reaction(&host, &token, &note_id).await
+}
+
+// --- Poll vote ---
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_vote_poll(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    note_id: String,
+    choice: u32,
+) -> Result<()> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.vote_poll(&host, &token, &note_id, choice).await
 }
 
 #[tauri::command]
@@ -682,6 +713,7 @@ pub async fn api_upload_file(
     file_data: Vec<u8>,
     content_type: String,
     is_sensitive: bool,
+    folder_id: Option<String>,
 ) -> Result<NormalizedDriveFile> {
     if file_data.len() > MAX_UPLOAD_BYTES {
         return Err(NoteDeckError::InvalidInput("File too large".to_string()));
@@ -696,6 +728,7 @@ pub async fn api_upload_file(
             file_data,
             &content_type,
             is_sensitive,
+            folder_id.as_deref(),
         )
         .await
 }
@@ -707,6 +740,7 @@ pub async fn api_upload_file_from_path(
     account_id: String,
     file_path: String,
     is_sensitive: bool,
+    folder_id: Option<String>,
 ) -> Result<NormalizedDriveFile> {
     let path = std::path::Path::new(&file_path);
     let file_data = std::fs::read(path)
@@ -732,6 +766,7 @@ pub async fn api_upload_file_from_path(
             file_data,
             &content_type,
             is_sensitive,
+            folder_id.as_deref(),
         )
         .await
 }

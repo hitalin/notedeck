@@ -81,6 +81,11 @@ export class MisskeyApi implements ApiAdapter {
     unwrapAny(await commands.apiDeleteReaction(this.accountId, noteId))
   }
 
+  async votePoll(noteId: string, choice: number): Promise<void> {
+    this.requireAuth()
+    unwrapAny(await commands.apiVotePoll(this.accountId, noteId, choice))
+  }
+
   async getNoteReactions(
     noteId: string,
     reactionType?: string,
@@ -115,6 +120,7 @@ export class MisskeyApi implements ApiAdapter {
     fileData: number[],
     contentType: string,
     isSensitive = false,
+    folderId: string | null = null,
   ): Promise<NormalizedDriveFile> {
     this.requireAuth()
     return unwrapAny(
@@ -124,6 +130,7 @@ export class MisskeyApi implements ApiAdapter {
         fileData,
         contentType,
         isSensitive,
+        folderId,
       ),
     )
   }
@@ -131,6 +138,7 @@ export class MisskeyApi implements ApiAdapter {
   async uploadFileFromPath(
     filePath: string,
     isSensitive = false,
+    folderId: string | null = null,
   ): Promise<NormalizedDriveFile> {
     this.requireAuth()
     return unwrapAny(
@@ -138,6 +146,7 @@ export class MisskeyApi implements ApiAdapter {
         this.accountId,
         filePath,
         isSensitive,
+        folderId,
       ),
     )
   }

@@ -6,6 +6,10 @@ const props = defineProps<{
   poll: NormalizedPoll
 }>()
 
+const emit = defineEmits<{
+  vote: [choice: number]
+}>()
+
 const totalVotes = computed(() =>
   props.poll.choices.reduce((sum, c) => sum + c.votes, 0),
 )
@@ -14,6 +18,8 @@ const isExpired = computed(() => {
   if (!props.poll.expiresAt) return false
   return new Date(props.poll.expiresAt) < new Date()
 })
+
+const hasVoted = computed(() => props.poll.choices.some((c) => c.isVoted))
 
 function percentage(votes: number): number {
   if (totalVotes.value === 0) return 0
@@ -24,14 +30,29 @@ function formatExpiry(iso: string): string {
   const d = new Date(iso)
   return d.toLocaleString()
 }
+
+function canVote(isVoted: boolean): boolean {
+  if (isExpired.value) return false
+  if (isVoted) return false
+  if (!props.poll.multiple && hasVoted.value) return false
+  return true
+}
+
+function onClick(i: number, isVoted: boolean) {
+  if (!canVote(isVoted)) return
+  emit('vote', i)
+}
 </script>
 
 <template>
   <div :class="$style.mkPoll">
-    <div
+    <button
       v-for="(choice, i) in poll.choices"
       :key="i"
-      :class="$style.pollChoice"
+      type="button"
+      :class="[$style.pollChoice, { [$style.disabled]: !canVote(choice.isVoted) }]"
+      :disabled="!canVote(choice.isVoted)"
+      @click.stop="onClick(i, choice.isVoted)"
     >
       <div :class="$style.pollBar" :style="{ width: percentage(choice.votes) + '%' }" />
       <div :class="$style.pollContent">
@@ -43,7 +64,7 @@ function formatExpiry(iso: string): string {
         </span>
         <span :class="$style.pollPct">{{ percentage(choice.votes) }}%</span>
       </div>
-    </div>
+    </button>
     <div :class="$style.pollFooter">
       <span :class="$style.pollTotal">{{ totalVotes }}票</span>
       <span v-if="poll.multiple" :class="$style.pollBadge">複数選択</span>
@@ -71,6 +92,20 @@ function formatExpiry(iso: string): string {
   display: flex;
   align-items: center;
   cursor: pointer;
+  border: none;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+
+  &:hover:not(.disabled) {
+    filter: brightness(1.05);
+  }
+
+  &.disabled {
+    cursor: default;
+  }
 }
 
 .pollBar {

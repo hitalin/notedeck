@@ -1,4 +1,4 @@
-import { computed, nextTick, type Ref, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, ref, shallowRef, watch } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   NormalizedNote,
@@ -14,14 +14,19 @@ import {
   visibilityOptions,
 } from '@/composables/postFormConstants'
 import {
-  computeDraftKey,
+  type DraftContext,
   deleteDraft,
-  ensureDraftsLoaded,
-  loadDraft,
   type StoredDraft,
   saveDraft,
 } from '@/composables/useDrafts'
 import { useFileAttachment } from '@/composables/useFileAttachment'
+import {
+  deleteMemo,
+  ensureMemosLoaded,
+  generateMemoKey,
+  type StoredMemo,
+  saveMemo,
+} from '@/composables/useMemos'
 import { useAccountsStore } from '@/stores/accounts'
 import { useSettingsStore } from '@/stores/settings'
 import { useThemeStore } from '@/stores/theme'
@@ -44,8 +49,12 @@ export function usePostFormState(
   callbacks: {
     onPosted: (editedNoteId?: string) => void
   },
-  fileInput: Ref<HTMLInputElement | null>,
+  options: {
+    /** true → post/auto-save は memo に保存 (メモカラムの埋め込みフォーム用) */
+    memoMode?: boolean
+  } = {},
 ) {
+  const memoMode = options.memoMode === true
   const accountsStore = useAccountsStore()
   const settingsStore = useSettingsStore()
   const themeStore = useThemeStore()
@@ -64,12 +73,10 @@ export function usePostFormState(
   const {
     attachedFiles,
     isUploading,
-    openFilePicker,
-    onFileSelected,
     uploadFilesFromPaths,
     attachDriveFiles,
     removeFile,
-  } = useFileAttachment(() => adapter, fileInput, error)
+  } = useFileAttachment(() => adapter, error)
   const noteModeFlags = ref<Record<string, boolean>>({})
   const disabledVisibilities = shallowRef(new Set<string>())
   const showPoll = ref(false)
@@ -78,7 +85,6 @@ export function usePostFormState(
   const pollExpiresAt = ref<number | null>(null)
   const scheduledAt = ref<string | null>(null)
   const supportsScheduledNotes = ref(false)
-  const currentDraft = ref<StoredDraft | null>(null)
 
   const activeAccountId = ref(props.accountId)
   const accounts = computed(() => accountsStore.accounts)
@@ -86,14 +92,17 @@ export function usePostFormState(
     accountsStore.accounts.find((a) => a.id === activeAccountId.value),
   )
 
-  const draftKey = computed(() =>
-    computeDraftKey({
-      userId: account.value?.userId ?? activeAccountId.value,
-      channelId: props.channelId,
-      renoteId: props.renoteId,
-      replyId: props.replyTo?.id,
-    }),
-  )
+  /**
+   * このセッションが auto-save に使う slot key。
+   * - memo モード: ローカル生成の memoKey (非 null)。
+   * - draft モード: サーバー発行の draftId。初回 create までは null で、
+   *   create 完了後にサーバー ID がセットされる。picker から復元した場合は
+   *   その draftId を引き継いで以後の update を同じエントリに集約する。
+   */
+  const sessionSlotKey = ref<string | null>(memoMode ? generateMemoKey() : null)
+  // 初回 create 実行中の in-flight guard。連続入力で debounce 後に複数回
+  // auto-save が飛んで重複 create されるのを防ぐ。
+  let draftCreateInFlight: Promise<string> | null = null
 
   const formThemeVars = computed(() =>
     themeStore.getStyleVarsForAccount(activeAccountId.value),
@@ -121,6 +130,13 @@ export function usePostFormState(
     const acc = account.value
     if (!acc) return
     adapter = null
+    // Memo mode: purely local, so skip every server call. Works for guest
+    // accounts that have no token. Policies / default visibility / scheduled
+    // notes are server-side concepts and don't apply to memos.
+    if (memoMode) {
+      await ensureMemosLoaded()
+      return
+    }
     try {
       const result = await initAdapterFor(acc.host, acc.id)
       adapter = result.adapter
@@ -130,9 +146,6 @@ export function usePostFormState(
       error.value = AppError.from(e).message
       supportsScheduledNotes.value = false
     }
-    // Load the draft for the current context (if any)
-    await ensureDraftsLoaded(acc.id)
-    currentDraft.value = loadDraft(acc.id, draftKey.value)
 
     // Fetch modes, policies, and user settings in parallel (all independent after adapter init)
     const [availabilityResult, policiesResult, userInfoResult] =
@@ -218,6 +231,20 @@ export function usePostFormState(
   }
 
   async function post() {
+    // Memo mode: no server call, just save + reset for next unique entry
+    // (Obsidian's "Create Unique New Note" style workflow for Zettelkasten).
+    if (memoMode) {
+      const acc = account.value
+      if (!acc || !canPost.value) return
+      const key = sessionSlotKey.value ?? generateMemoKey()
+      saveMemo(acc.id, key, buildSlotData())
+      resetForm()
+      sessionSlotKey.value = generateMemoKey()
+      posted.value = true
+      callbacks.onPosted()
+      return
+    }
+
     if (!adapter || !canPost.value) return
 
     isPosting.value = true
@@ -277,26 +304,43 @@ export function usePostFormState(
     isPosting.value = false
     callbacks.onPosted()
 
-    // Fire API call in background — on failure, save draft and notify
+    // Fire API call in background — on failure, save as draft and notify
     const currentAdapter = adapter
     const currentAccountId = activeAccountId.value
-    const currentDraftKey = draftKey.value
-    currentAdapter.api.createNote(noteParams).catch((e) => {
+    const retryKey = sessionSlotKey.value
+    const retryCtx: DraftContext = {
+      replyId: props.replyTo?.id ?? null,
+      renoteId: props.renoteId ?? null,
+      channelId: props.channelId ?? null,
+    }
+    currentAdapter.api.createNote(noteParams).catch(async (e) => {
       const { show } = useToast()
       show(AppError.from(e).message, 'error')
       // Auto-save as draft so user can retry
-      saveDraft(currentAccountId, currentDraftKey, {
-        text: noteParams.text ?? '',
-        cw: noteParams.cw ?? '',
-        showCw: !!noteParams.cw,
-        visibility: noteParams.visibility ?? 'public',
-        localOnly: noteParams.localOnly ?? false,
-        fileIds: noteParams.fileIds ?? [],
-        pollChoices: noteParams.poll?.choices ?? [],
-        pollMultiple: noteParams.poll?.multiple ?? false,
-        showPoll: !!noteParams.poll,
-        scheduledAt: noteParams.scheduledAt ?? null,
-      })
+      try {
+        await saveDraft(
+          currentAccountId,
+          retryKey,
+          {
+            text: noteParams.text ?? '',
+            cw: noteParams.cw ?? '',
+            showCw: !!noteParams.cw,
+            visibility: noteParams.visibility ?? 'public',
+            localOnly: noteParams.localOnly ?? false,
+            fileIds: noteParams.fileIds ?? [],
+            pollChoices: noteParams.poll?.choices ?? [],
+            pollMultiple: noteParams.poll?.multiple ?? false,
+            showPoll: !!noteParams.poll,
+            scheduledAt: noteParams.scheduledAt ?? null,
+          },
+          retryCtx,
+        )
+      } catch (saveErr) {
+        show(
+          `下書き保存にも失敗しました: ${AppError.from(saveErr).message}`,
+          'error',
+        )
+      }
     })
   }
 
@@ -356,10 +400,8 @@ export function usePostFormState(
     posted.value = false
   }
 
-  function saveCurrentDraft() {
-    const acc = account.value
-    if (!acc) return
-    currentDraft.value = saveDraft(acc.id, draftKey.value, {
+  function buildSlotData() {
+    return {
       text: text.value,
       cw: cw.value,
       showCw: showCw.value,
@@ -370,12 +412,66 @@ export function usePostFormState(
       pollMultiple: pollMultiple.value,
       showPoll: showPoll.value,
       scheduledAt: scheduledAt.value,
-    })
+    }
+  }
+
+  function buildDraftContext(): DraftContext {
+    return {
+      replyId: props.replyTo?.id ?? null,
+      renoteId: props.renoteId ?? null,
+      channelId: props.channelId ?? null,
+    }
   }
 
   /**
-   * Auto-save: when `postForm.autoSaveDraft` is on, persist on every change
-   * (debounced). Skip empty forms so we never save a no-op draft.
+   * 現フォーム内容を active slot へ保存する。memo はローカル、draft は
+   * サーバー側 `notes/drafts/*` API 経由。初回 draft は create、以後は
+   * 返ってきた draftId に対して update する。
+   */
+  async function saveCurrentSlot() {
+    const acc = account.value
+    if (!acc) return
+    if (memoMode) {
+      const key = sessionSlotKey.value
+      if (!key) return
+      saveMemo(acc.id, key, buildSlotData())
+      return
+    }
+    // create 中なら重複発行を避けるため、既存 promise の完了を待ってから進める
+    if (draftCreateInFlight) {
+      try {
+        sessionSlotKey.value = await draftCreateInFlight
+      } catch {
+        // 直前の create 失敗時はリセットして次の試行を許可
+      }
+    }
+    try {
+      if (sessionSlotKey.value == null) {
+        draftCreateInFlight = saveDraft(
+          acc.id,
+          null,
+          buildSlotData(),
+          buildDraftContext(),
+        ).then((d) => d.id)
+        sessionSlotKey.value = await draftCreateInFlight
+      } else {
+        await saveDraft(
+          acc.id,
+          sessionSlotKey.value,
+          buildSlotData(),
+          buildDraftContext(),
+        )
+      }
+    } catch (e) {
+      error.value = AppError.from(e).message
+    } finally {
+      draftCreateInFlight = null
+    }
+  }
+
+  /**
+   * Auto-save: when the mode-specific toggle is on, persist on every change
+   * (debounced). Skip empty forms so we never save a no-op entry.
    */
   let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
   function hasAnyContent(): boolean {
@@ -398,19 +494,26 @@ export function usePostFormState(
       scheduledAt,
     ],
     () => {
-      if (!settingsStore.get('postForm.autoSaveDraft')) return
-      if (!account.value) return
+      const toggleKey = memoMode
+        ? 'postForm.autoSaveMemo'
+        : 'postForm.autoSaveDraft'
+      if (!settingsStore.get(toggleKey)) return
       if (!hasAnyContent()) return
       if (autoSaveTimer) clearTimeout(autoSaveTimer)
       autoSaveTimer = setTimeout(() => {
-        saveCurrentDraft()
+        saveCurrentSlot()
         autoSaveTimer = null
       }, 800)
     },
     { deep: true },
   )
 
-  function restoreDraft(stored: StoredDraft) {
+  /**
+   * Load a stored memo or draft into the form. Adopts its key as the session
+   * slot so subsequent auto-saves update the same entry, preserving
+   * "continue editing" semantics across restore → type cycles.
+   */
+  function restoreSlot(stored: StoredMemo | StoredDraft, key?: string) {
     const d = stored.data
     text.value = d.text
     cw.value = d.cw
@@ -421,14 +524,26 @@ export function usePostFormState(
     pollMultiple.value = d.pollMultiple
     showPoll.value = d.showPoll
     scheduledAt.value = d.scheduledAt
+    // draft モードではサーバー id、memo モードでは memoKey を受け取る
+    if (key) sessionSlotKey.value = key
+    else if ('id' in stored) sessionSlotKey.value = stored.id
     // Note: file attachments are not restored (IDs may be expired)
   }
 
-  function removeCurrentDraft() {
+  async function removeCurrentSlot() {
     const acc = account.value
     if (!acc) return
-    deleteDraft(acc.id, draftKey.value)
-    currentDraft.value = null
+    const key = sessionSlotKey.value
+    if (!key) return
+    if (memoMode) {
+      deleteMemo(acc.id, key)
+    } else {
+      try {
+        await deleteDraft(acc.id, key)
+      } catch (e) {
+        error.value = AppError.from(e).message
+      }
+    }
   }
 
   return {
@@ -454,8 +569,7 @@ export function usePostFormState(
     pollExpiresAt,
     scheduledAt,
     supportsScheduledNotes,
-    currentDraft,
-    draftKey,
+    sessionSlotKey,
     // Computed
     accounts,
     account,
@@ -470,8 +584,6 @@ export function usePostFormState(
     initAdapter,
     switchAccount,
     post,
-    openFilePicker,
-    onFileSelected,
     uploadFilesFromPaths,
     attachDriveFiles,
     removeFile,
@@ -482,8 +594,8 @@ export function usePostFormState(
     addPollChoice,
     removePollChoice,
     resetForm,
-    saveCurrentDraft,
-    restoreDraft,
-    removeCurrentDraft,
+    saveCurrentSlot,
+    restoreSlot,
+    removeCurrentSlot,
   }
 }

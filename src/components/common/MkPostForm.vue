@@ -7,6 +7,7 @@ import type {
 } from '@/adapters/types'
 import { useAutocomplete } from '@/composables/useAutocomplete'
 import type { StoredDraft } from '@/composables/useDrafts'
+import type { StoredMemo } from '@/composables/useMemos'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePopupControl } from '@/composables/usePopupControl'
@@ -41,6 +42,17 @@ const props = defineProps<{
   initialVisibility?: string
   initialLocalOnly?: boolean
   initialFilePaths?: string[]
+  /**
+   * 起動時にフォームへロードするスロット (draft または memo)。
+   * restoreSlot でフィールドを展開し、sessionSlotKey に initialSlotKey を継承する。
+   */
+  initialSlot?: StoredDraft | StoredMemo | null
+  initialSlotKey?: string | null
+  /**
+   * true にするとメモモード: post は memo に保存、auto-save も memo 側。
+   * メモカラムの埋め込みフォーム専用。
+   */
+  memoMode?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -52,7 +64,6 @@ const isCompact = useIsCompactLayout()
 const settingsStore = useSettingsStore()
 const postFormStore = usePostFormStore()
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const fileInput = ref<HTMLInputElement | null>(null)
 const showPreview = computed<boolean>({
   get: () => settingsStore.get('postForm.preview') ?? false,
   set: (v) => {
@@ -93,8 +104,6 @@ const {
   initAdapter,
   switchAccount,
   post,
-  openFilePicker,
-  onFileSelected,
   uploadFilesFromPaths,
   attachDriveFiles,
   removeFile,
@@ -105,7 +114,7 @@ const {
   addPollChoice,
   removePollChoice,
   resetForm,
-  restoreDraft,
+  restoreSlot,
 } = usePostFormState(
   props,
   {
@@ -117,7 +126,7 @@ const {
       }
     },
   },
-  fileInput,
+  { memoMode: props.memoMode },
 )
 
 // Stable keys for poll choices (avoid index-based v-for key bugs on add/remove)
@@ -137,20 +146,26 @@ const removePollChoiceKeyed = (index: number) => {
   pollChoiceKeys.value.splice(index, 1)
 }
 
-// --- Auto-save draft toggle (persisted in settings, like preview) ---
-const autoSaveDraft = computed<boolean>({
-  get: () => settingsStore.get('postForm.autoSaveDraft') ?? false,
+// --- Auto-save toggle (persisted in settings, like preview).
+// 非 memoMode は drafts に自動保存、memoMode は memos に自動保存。
+const autoSaveKey = computed(() =>
+  props.memoMode ? 'postForm.autoSaveMemo' : 'postForm.autoSaveDraft',
+)
+const autoSaveEnabled = computed<boolean>({
+  get: () => settingsStore.get(autoSaveKey.value) ?? false,
   set: (v) => {
-    settingsStore.set('postForm.autoSaveDraft', v)
+    settingsStore.set(autoSaveKey.value, v)
   },
 })
+const autoSaveLabel = computed(() =>
+  props.memoMode ? 'メモを自動保存' : '下書きを自動保存',
+)
 
 // --- Popup exclusive control ---
-// ピッカー系 (emoji / drive / drafts) はシングルトン: 同時に1つだけ開く
+// ピッカー系 (emoji / drive / memo) はシングルトン: 同時に1つだけ開く
 const popups = usePopupControl()
 const showSchedulePopup = popups.register()
 const showEmojiPopup = popups.register()
-const showAttachMenu = popups.register()
 const showMoreMenu = popups.register()
 const showDraftsPicker = popups.register()
 const showDrivePicker = popups.register()
@@ -164,8 +179,8 @@ function togglePostFormButtonsPicker() {
 function toggleDraftsPicker() {
   popups.toggle(showDraftsPicker)
 }
-function onDraftPicked(draft: StoredDraft) {
-  restoreDraft(draft)
+function onDraftPicked(key: string, draft: StoredDraft) {
+  restoreSlot(draft, key)
   showDraftsPicker.value = false
 }
 
@@ -296,19 +311,9 @@ const {
   dismiss: acDismiss,
 } = useAutocomplete(text, textareaRef, activeAccountId, serverHost)
 
-// --- File attach menu ---
-function toggleAttachMenu() {
-  popups.toggle(showAttachMenu)
-}
-
-function attachFromLocal() {
-  showAttachMenu.value = false
-  openFilePicker()
-}
-
-function attachFromDrive() {
-  popups.closeOthers(showDrivePicker)
-  showDrivePicker.value = true
+// --- File attach (drive picker) ---
+function toggleDrivePicker() {
+  popups.toggle(showDrivePicker)
 }
 
 function onDriveFilesPicked(driveFiles: NormalizedDriveFile[]) {
@@ -386,6 +391,8 @@ onMounted(async () => {
   if (props.initialFilePaths?.length) {
     uploadFilesFromPaths(props.initialFilePaths)
   }
+  if (props.initialSlot)
+    restoreSlot(props.initialSlot, props.initialSlotKey ?? undefined)
   await nextTick()
   if (!props.inline) textareaRef.value?.focus()
 })
@@ -544,7 +551,7 @@ function onKeydown(e: KeyboardEvent) {
             <i :class="localOnly ? 'ti ti-rocket-off' : 'ti ti-rocket'" />
           </button>
 
-          <!-- More menu (preview, drafts, schedule) -->
+          <!-- More menu (preview, memo, schedule) -->
           <div :class="$style.moreMenuWrapper">
             <button
               class="_button"
@@ -573,18 +580,18 @@ function onKeydown(e: KeyboardEvent) {
                   <span class="nd-toggle-switch-knob" />
                 </span>
               </div>
-              <!-- Auto-save draft toggle (persisted, mirrors preview pattern) -->
+              <!-- Auto-save toggle (memoMode: memos, else: drafts) -->
               <div
                 :class="$style.moreMenuItem"
                 role="switch"
-                :aria-checked="autoSaveDraft"
-                @click="autoSaveDraft = !autoSaveDraft"
+                :aria-checked="autoSaveEnabled"
+                @click="autoSaveEnabled = !autoSaveEnabled"
               >
                 <i class="ti ti-device-floppy" />
-                下書きを保存
+                {{ autoSaveLabel }}
                 <span
                   class="nd-toggle-switch"
-                  :class="{ on: autoSaveDraft }"
+                  :class="{ on: autoSaveEnabled }"
                   :style="{ marginLeft: 'auto' }"
                   aria-hidden="true"
                 >
@@ -803,16 +810,6 @@ function onKeydown(e: KeyboardEvent) {
         <div v-if="isUploading" :class="$style.fileUploading">アップロード中...</div>
       </div>
 
-      <!-- Hidden file input -->
-      <input
-        ref="fileInput"
-        type="file"
-        multiple
-        accept="image/*,video/*,audio/*"
-        style="display: none"
-        @change="onFileSelected"
-      />
-
       <!-- Error -->
       <div v-if="error" :class="$style.postError">{{ error }}</div>
 
@@ -831,28 +828,17 @@ function onKeydown(e: KeyboardEvent) {
               <i class="ti ti-mood-happy" />
             </button>
 
-            <!-- Attach file -->
-            <div v-else-if="btnId === 'attach'" :class="$style.footerPopupWrapper">
-              <button
-                class="_button"
-                :class="$style.footerBtn"
-                title="ファイルを添付"
-                :disabled="isUploading"
-                @click.stop="toggleAttachMenu"
-              >
-                <i class="ti ti-photo-plus" />
-              </button>
-              <div v-if="showAttachMenu" :class="[$style.footerPopup, $style.attachMenu]" @click.stop>
-                <button class="_button" :class="$style.attachMenuItem" @click="attachFromLocal">
-                  <i class="ti ti-upload" />
-                  <span>アップロード</span>
-                </button>
-                <button class="_button" :class="$style.attachMenuItem" @click="attachFromDrive">
-                  <i class="ti ti-cloud" />
-                  <span>ドライブから</span>
-                </button>
-              </div>
-            </div>
+            <!-- Attach file (drive picker) -->
+            <button
+              v-else-if="btnId === 'attach'"
+              class="_button"
+              :class="[$style.footerBtn, { [$style.active]: showDrivePicker }]"
+              title="ファイルを添付"
+              :disabled="isUploading"
+              @click.stop="toggleDrivePicker"
+            >
+              <i class="ti ti-photo-plus" />
+            </button>
 
             <!-- Poll -->
             <button
@@ -940,9 +926,9 @@ function onKeydown(e: KeyboardEvent) {
               </div>
             </div>
 
-            <!-- Drafts picker toggle -->
+            <!-- Drafts picker toggle (hidden in memo mode) -->
             <button
-              v-else-if="btnId === 'draft'"
+              v-else-if="btnId === 'draft' && !memoMode"
               class="_button"
               :class="[$style.footerBtn, { [$style.active]: showDraftsPicker }]"
               title="下書き一覧"
@@ -978,7 +964,7 @@ function onKeydown(e: KeyboardEvent) {
 
     </div>
 
-    <!-- Drafts picker (below post form) -->
+    <!-- Drafts picker (below post form, mock server-side drafts API) -->
     <MkDraftsPicker
       v-if="showDraftsPicker"
       :account-id="activeAccountId!"
@@ -2025,12 +2011,6 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-/* ── Attach menu ── */
-.attachMenu {
-  min-width: 200px;
-  padding: 4px;
-}
-
 /* ── Emoji picker (below post form, matches form width) ── */
 .emojiPickerPanel {
   display: flex;
@@ -2083,28 +2063,6 @@ function onKeydown(e: KeyboardEvent) {
   min-height: 0;
   overflow: hidden;
   display: flex;
-}
-
-.attachMenuItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 12px;
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  border-radius: var(--nd-radius-sm);
-  transition: background var(--nd-duration-base);
-  text-align: left;
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-
-  :global(.ti) {
-    font-size: 16px;
-    opacity: 0.7;
-  }
 }
 
 /* Mobile: デスクトップと同じ枠付きモーダル（背景は透過して背後のカラムが透ける） */

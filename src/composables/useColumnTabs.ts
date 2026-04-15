@@ -35,6 +35,7 @@ export const COLUMN_ICONS: Record<string, string> = {
   streamInspector: 'activity-heartbeat',
   pluginManager: 'puzzle',
   taskRunner: 'player-play',
+  memos: 'notes',
 }
 
 export const COLUMN_LABELS: Record<string, string> = {
@@ -71,6 +72,7 @@ export const COLUMN_LABELS: Record<string, string> = {
   streamInspector: 'ストリーム',
   pluginManager: 'プラグイン',
   taskRunner: 'タスク',
+  memos: 'メモ',
 }
 
 export const TL_ICONS: Record<string, string> = {

@@ -414,6 +414,7 @@ const GUEST_ALLOWED_TYPES = new Set<ColumnType>([
   'page',
   'widget',
   'aiscript',
+  'memos',
 ])
 
 const CROSS_ACCOUNT_TYPES = new Set<ColumnType>([
@@ -471,12 +472,13 @@ const COLUMN_TYPE_GROUPS: { group: string; types: ColumnType[] }[] = [
     group: 'ツール',
     types: [
       'widget',
+      'pluginManager',
       'aiscript',
       'apiConsole',
       'apiDocs',
-      'ai',
       'streamInspector',
-      'pluginManager',
+      'ai',
+      'memos',
       'taskRunner',
     ],
   },

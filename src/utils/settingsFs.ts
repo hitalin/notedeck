@@ -276,32 +276,33 @@ export async function deleteSnippetFile(filename: string): Promise<void> {
   return deleteSettingsFile(SNIPPETS_DIR, filename)
 }
 
-// --- Draft helpers (per-account JSON files in drafts/) ---
+// --- Memo helpers (flat Markdown vault under memos/{key}.md) ---
 
-const DRAFTS_DIR = 'drafts'
+const MEMOS_DIR = 'memos'
+const MEMO_EXT = '.md'
 
-export function draftFilename(accountId: string): string {
-  return `${sanitizeFilename(accountId)}.json`
+export async function listMemoFiles(): Promise<string[]> {
+  const files = await listSettingsFiles(MEMOS_DIR)
+  return files.filter((f) => f.endsWith(MEMO_EXT))
 }
 
-export async function listDraftFiles(): Promise<string[]> {
-  const files = await listSettingsFiles(DRAFTS_DIR)
-  return files.filter((f) => f.endsWith('.json'))
+export async function readMemoFile(name: string): Promise<string> {
+  return readSettingsFile(MEMOS_DIR, name)
 }
 
-export async function readDraftFile(accountId: string): Promise<string> {
-  return readSettingsFile(DRAFTS_DIR, draftFilename(accountId))
-}
-
-export async function writeDraftFile(
-  accountId: string,
+export async function writeMemoFile(
+  name: string,
   content: string,
 ): Promise<void> {
-  return writeSettingsFile(DRAFTS_DIR, draftFilename(accountId), content)
+  return writeSettingsFile(MEMOS_DIR, name, content)
 }
 
-export async function deleteDraftFile(accountId: string): Promise<void> {
-  return deleteSettingsFile(DRAFTS_DIR, draftFilename(accountId))
+export async function deleteMemoFile(name: string): Promise<void> {
+  return deleteSettingsFile(MEMOS_DIR, name)
+}
+
+export async function openMemoFileInEditor(name: string): Promise<void> {
+  return openSettingsFileInEditor(name, MEMOS_DIR)
 }
 
 // --- Plugin helpers ---
