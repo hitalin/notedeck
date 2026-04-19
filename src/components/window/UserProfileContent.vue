@@ -1040,6 +1040,8 @@ async function handlePosted(editedNoteId?: string) {
             :key="role.id"
             :class="$style.role"
             :style="role.color ? { borderColor: role.color } : {}"
+            :title="role.description || role.name"
+            @click="openSafeUrl(`https://${user.host || account?.host}/roles/${role.id}`)"
           >
             <img v-if="role.iconUrl" :src="role.iconUrl" :class="$style.roleIcon" />
             {{ role.name }}
@@ -1590,6 +1592,11 @@ async function handlePosted(editedNoteId?: string) {
   padding: 3px 8px;
   border: solid 1px var(--nd-divider);
   border-radius: var(--nd-radius-full);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
 .stats {

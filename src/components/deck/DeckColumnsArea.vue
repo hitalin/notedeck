@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue'
-import { COLUMN_COMPONENTS } from '@/columns/registry'
 import { useColumnDrag } from '@/composables/useColumnDrag'
+import { provideColumnMountRegistry } from '@/composables/useColumnMount'
 import { useColumnResize } from '@/composables/useColumnResize'
 import { useColumnScroll } from '@/composables/useColumnScroll'
-import { provideColumnVisibility } from '@/composables/useColumnVisibility'
 import { useHorizontalWheel } from '@/composables/useHorizontalWheel'
 import * as snapshotStore from '@/composables/useSnapshotStore'
 import type { DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
 import { COLUMN_SELECTOR } from '@/utils/themeVars'
+import DeckStackCell from './DeckStackCell.vue'
 
 // Preload chunks for column types the user actually has configured
 const COLUMN_PRELOADERS: Partial<Record<string, () => Promise<unknown>>> = {
@@ -45,9 +45,10 @@ const { resizingColId, startColumnResize, WIDE_COLUMN_TYPES } = useColumnResize(
   deckStore,
 )
 
-// Column visibility tracking (pauses streaming for off-screen columns)
-const colVisibility = provideColumnVisibility()
 const columnsRef = ref<HTMLElement | null>(null)
+// Column mount / visibility / live-budget registry (per-cell registration
+// happens inside DeckStackCell — provider is set up here)
+const mountRegistry = provideColumnMountRegistry(columnsRef)
 
 // Scroll ↔ active column synchronization
 const columnScroll = useColumnScroll({
@@ -113,19 +114,6 @@ const activeGroupIndex = computed(() => {
   return idx >= 0 ? idx : 0
 })
 
-// 可視範囲ベースのマウント判定:
-// - モバイル: アクティブカラムは常にマウント、それ以外は IntersectionObserver に委ねる
-// - デスクトップ: 全カラムを IntersectionObserver 判定に委ねる
-//   (observe 時に initialMounted:true で開始し、非可視判定されたら columnUnloadDelay 後に自然に外れる)
-function shouldMountColumn(colId: string): boolean {
-  if (isCompact.value) {
-    return (
-      colId === deckStore.activeColumnId || colVisibility.isColumnMounted(colId)
-    )
-  }
-  return colVisibility.isColumnMounted(colId)
-}
-
 function preloadVisiblePriorityGroups() {
   if (!import.meta.env.PROD) return
   const activeIdx = activeGroupIndex.value
@@ -140,39 +128,13 @@ function preloadVisiblePriorityGroups() {
 
 onMounted(async () => {
   await horizontalWheel.attach()
-  colVisibility.setup(columnsRef)
-
   // Preload only the active/nearby groups first.
   preloadVisiblePriorityGroups()
 })
 
 onUnmounted(() => {
   horizontalWheel.detach()
-  colVisibility.disconnect()
 })
-
-// Re-observe column cells when layout changes, and cleanup removed columns
-let prevColumnIds = new Set<string>()
-watch(
-  () => deckStore.windowLayout,
-  (layout) => {
-    if (!columnsRef.value) return
-    const currentIds = new Set<string>(layout.flat())
-    for (const id of prevColumnIds) {
-      if (!currentIds.has(id)) colVisibility.cleanup(id)
-    }
-    prevColumnIds = currentIds
-    // デスクトップは初回表示を滑らかにするため initialMounted:true で開始
-    // モバイルは従来通り false 開始（アクティブのみ shouldMountColumn で true 判定）
-    const initialMounted = !isCompact.value
-    for (const cell of columnsRef.value.querySelectorAll<HTMLElement>(
-      '.stack-cell[data-column-id]',
-    )) {
-      colVisibility.observe(cell, { initialMounted })
-    }
-  },
-  { flush: 'post', deep: true, immediate: true },
-)
 
 // Store → scroll: single watcher for all activation paths
 watch(
@@ -192,7 +154,7 @@ watch(
   [() => deckStore.activeColumnId, () => deckStore.windowLayout],
   () => {
     const allColIds = deckStore.windowLayout.flat()
-    colVisibility.updateLiveBudget(allColIds, deckStore.activeColumnId)
+    mountRegistry.updateLiveBudget(allColIds, deckStore.activeColumnId)
   },
   { flush: 'post', deep: true, immediate: true },
 )
@@ -286,51 +248,19 @@ defineExpose({
         :class="[$style.columnSection, sectionClass(group)]"
         :style="{ flexBasis: sectionWidth(group), '--col-idx': groupIndex }"
       >
-        <div
+        <DeckStackCell
           v-for="colId in group"
           :key="colId"
-          class="stack-cell"
-          :class="[$style.stackCell, {
-            [$style.dragSource]: columnDrag.dragColumnId.value === colId,
-          }]"
-          :data-column-id="colId"
-          :data-drop-zone="cellDropZone(colId)"
+          :col-id="colId"
+          :column="columnMap.get(colId)"
+          :is-active="deckStore.activeColumnId === colId"
+          :is-compact="isCompact"
+          :is-drag-source="columnDrag.dragColumnId.value === colId"
+          :drop-zone="cellDropZone(colId)"
+          :shell-preview="getShellPreview(colId)"
           @mousedown="deckStore.setActiveColumn(colId)"
           @pointerdown="onColumnPointerDown(colId, $event)"
-        >
-          <component
-            v-if="
-              shouldMountColumn(colId) &&
-              columnMap.get(colId) &&
-              COLUMN_COMPONENTS[columnMap.get(colId)!.type]
-            "
-            :is="COLUMN_COMPONENTS[columnMap.get(colId)!.type]"
-            :key="colId"
-            :column="columnMap.get(colId)!"
-          />
-          <div
-            v-else
-            :class="$style.columnShell"
-            aria-hidden="true"
-          >
-            <div :class="$style.columnShellHeader" />
-            <div :class="$style.columnShellBody">
-              <template v-if="getShellPreview(colId).length > 0">
-                <div
-                  v-for="(line, i) in getShellPreview(colId)"
-                  :key="i"
-                  :class="$style.columnShellPreview"
-                >{{ line || '\u00A0' }}</div>
-              </template>
-              <template v-else>
-                <div :class="$style.columnShellLine" />
-                <div :class="[$style.columnShellLine, $style.columnShellLineWide]" />
-                <div :class="$style.columnShellCard" />
-                <div :class="$style.columnShellCard" />
-              </template>
-            </div>
-          </div>
-        </div>
+        />
       </section>
       <div
         v-if="!isCompact"
@@ -383,133 +313,6 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: var(--nd-columnGap, 6px);
-
-  .stackCell {
-    flex: 1;
-    min-height: 0;
-  }
-}
-
-.stackCell {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-
-  &[data-drop-zone]::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    pointer-events: none;
-    z-index: 10;
-    border-radius: 10px;
-  }
-
-  &[data-drop-zone="swap"]::after {
-    inset: 0;
-    background: color-mix(in srgb, var(--nd-accent) 20%, transparent);
-    border: 2px solid var(--nd-accent);
-  }
-
-  &[data-drop-zone="above"]::after {
-    top: 0;
-    height: 50%;
-    background: var(--nd-accent-hover);
-    border-bottom: 3px solid var(--nd-accent);
-    border-radius: 10px 10px 0 0;
-  }
-
-  &[data-drop-zone="below"]::after {
-    bottom: 0;
-    height: 50%;
-    background: var(--nd-accent-hover);
-    border-top: 3px solid var(--nd-accent);
-    border-radius: 0 0 10px 10px;
-  }
-}
-
-.columnShell {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  border-radius: 10px;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--nd-panel) 92%, transparent);
-  border: 1px solid color-mix(in srgb, var(--nd-divider, currentColor) 30%, transparent);
-}
-
-.columnShellHeader {
-  height: 38px;
-  flex-shrink: 0;
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--nd-panelHeaderBg, var(--nd-panel)) 85%, transparent),
-      color-mix(in srgb, var(--nd-panelHeaderBg, var(--nd-panel)) 60%, transparent),
-      color-mix(in srgb, var(--nd-panelHeaderBg, var(--nd-panel)) 85%, transparent)
-    );
-  background-size: 200% 100%;
-  animation: nd-shell-shimmer 1.6s linear infinite;
-}
-
-.columnShellBody {
-  flex: 1;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.columnShellLine,
-.columnShellCard {
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--nd-panel) 75%, transparent),
-      color-mix(in srgb, var(--nd-panel) 55%, transparent),
-      color-mix(in srgb, var(--nd-panel) 75%, transparent)
-    );
-  background-size: 200% 100%;
-  animation: nd-shell-shimmer 1.6s linear infinite;
-}
-
-.columnShellLine {
-  height: 10px;
-  border-radius: 999px;
-  width: 58%;
-}
-
-.columnShellLineWide {
-  width: 82%;
-}
-
-.columnShellCard {
-  height: 96px;
-  border-radius: 12px;
-}
-
-@keyframes nd-shell-shimmer {
-  from { background-position: 200% 0; }
-  to { background-position: -200% 0; }
-}
-
-.columnShellPreview {
-  padding: 8px 10px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  border-bottom: 1px solid color-mix(in srgb, var(--nd-divider, currentColor) 15%, transparent);
-}
-
-.dragSource {
-  opacity: 0.4;
 }
 
 .colResizeHandle {
