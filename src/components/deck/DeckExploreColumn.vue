@@ -452,7 +452,9 @@ function closeUserPopup() {
 }
 
 /* --- User card --- */
-.exploreUserCard {
+/* Self-chained for specificity 0,2,0 to beat ._button (0,1,0)
+   regardless of CSS chunk load order (Windows WebView2). */
+.exploreUserCard.exploreUserCard {
   display: flex;
   gap: 10px;
   width: 100%;
@@ -520,7 +522,9 @@ function closeUserPopup() {
 }
 
 /* --- Role card --- */
-.exploreRoleCard {
+/* Self-chained for specificity 0,2,0 to beat ._button (0,1,0)
+   regardless of CSS chunk load order (Windows WebView2). */
+.exploreRoleCard.exploreRoleCard {
   display: flex;
   gap: 10px;
   width: 100%;
