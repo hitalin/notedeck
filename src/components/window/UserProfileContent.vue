@@ -1040,6 +1040,7 @@ async function handlePosted(editedNoteId?: string) {
             :key="role.id"
             :class="$style.role"
             :style="role.color ? { borderColor: role.color } : {}"
+            :title="role.description || role.name"
           >
             <img v-if="role.iconUrl" :src="role.iconUrl" :class="$style.roleIcon" />
             {{ role.name }}
