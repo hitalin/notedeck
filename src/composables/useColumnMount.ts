@@ -1,0 +1,218 @@
+import { useIntersectionObserver } from '@vueuse/core'
+import {
+  type ComputedRef,
+  computed,
+  type InjectionKey,
+  inject,
+  onBeforeUnmount,
+  onScopeDispose,
+  provide,
+  type Ref,
+  reactive,
+  type ShallowRef,
+} from 'vue'
+import { usePerformanceStore } from '@/stores/performance'
+
+/**
+ * Per-cell registry for column visibility / mount / live-budget state.
+ *
+ * The registry owns three reactive maps:
+ *  - visibility: IntersectionObserver 由来の可視判定
+ *  - mounted:    DOM マウント判定 (columnShell ↔ <component> の切替)
+ *  - live:       streaming が許可されたカラム (maxLiveColumns 予算)
+ *
+ * Each DeckStackCell synchronously registers itself during setup so the
+ * initial `mounted` state is decided deterministically, independent of
+ * IntersectionObserver attach timing. This eliminates the Vue 3.5 race where
+ * `{ immediate: true, flush: 'post' }` fires before template refs populate.
+ */
+export interface ColumnMountRegistry {
+  /** Called by a cell during `setup`. */
+  register(colId: string, opts: { initialMounted: boolean }): void
+  /** Called by a cell during `onBeforeUnmount`. */
+  unregister(colId: string): void
+  /** Called by a cell's IntersectionObserver callback. */
+  setIntersecting(colId: string, visible: boolean): void
+  /** Called by DeckColumnsArea when active column or layout changes. */
+  updateLiveBudget(
+    orderedColumnIds: string[],
+    activeColumnId: string | null,
+  ): void
+  /** Reactive read used by cell-side `shouldMount` computed. */
+  isMounted(colId: string): boolean
+}
+
+const COLUMN_VISIBILITY_KEY: InjectionKey<Map<string, boolean>> =
+  Symbol('columnVisibility')
+const COLUMN_MOUNTED_KEY: InjectionKey<Map<string, boolean>> =
+  Symbol('columnMounted')
+const COLUMN_LIVE_KEY: InjectionKey<Map<string, boolean>> = Symbol('columnLive')
+const COLUMN_REGISTRY_KEY: InjectionKey<ColumnMountRegistry> = Symbol(
+  'columnMountRegistry',
+)
+const COLUMNS_ROOT_KEY: InjectionKey<
+  Readonly<ShallowRef<HTMLElement | null>> | Ref<HTMLElement | null>
+> = Symbol('columnsRoot')
+
+/** Provide column mount state from DeckColumnsArea. */
+export function provideColumnMountRegistry(
+  rootRef?: Readonly<ShallowRef<HTMLElement | null>> | Ref<HTMLElement | null>,
+): ColumnMountRegistry {
+  const perfStore = usePerformanceStore()
+  const visibility = reactive(new Map<string, boolean>())
+  const mounted = reactive(new Map<string, boolean>())
+  const live = reactive(new Map<string, boolean>())
+
+  const unloadTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+  function register(colId: string, opts: { initialMounted: boolean }): void {
+    if (!mounted.has(colId)) {
+      mounted.set(colId, opts.initialMounted)
+    }
+  }
+
+  function unregister(colId: string): void {
+    const timer = unloadTimers.get(colId)
+    if (timer != null) {
+      clearTimeout(timer)
+      unloadTimers.delete(colId)
+    }
+    visibility.delete(colId)
+    mounted.delete(colId)
+    live.delete(colId)
+  }
+
+  function setIntersecting(colId: string, visible: boolean): void {
+    visibility.set(colId, visible)
+
+    if (visible) {
+      const timer = unloadTimers.get(colId)
+      if (timer != null) {
+        clearTimeout(timer)
+        unloadTimers.delete(colId)
+      }
+      mounted.set(colId, true)
+    } else if (!unloadTimers.has(colId)) {
+      const timer = setTimeout(() => {
+        unloadTimers.delete(colId)
+        if (!visibility.get(colId)) {
+          mounted.set(colId, false)
+          live.delete(colId)
+        }
+      }, perfStore.get('columnUnloadDelay'))
+      unloadTimers.set(colId, timer)
+    }
+  }
+
+  function updateLiveBudget(
+    orderedColumnIds: string[],
+    activeColumnId: string | null,
+  ): void {
+    const maxLive = perfStore.get('maxLiveColumns')
+    const activeIndex = activeColumnId
+      ? orderedColumnIds.indexOf(activeColumnId)
+      : 0
+
+    const candidates: { id: string; distance: number }[] = []
+    for (let i = 0; i < orderedColumnIds.length; i++) {
+      const id = orderedColumnIds[i]
+      if (id && mounted.get(id)) {
+        candidates.push({ id, distance: Math.abs(i - activeIndex) })
+      }
+    }
+
+    candidates.sort((a, b) => a.distance - b.distance)
+    const liveSet = new Set(candidates.slice(0, maxLive).map((c) => c.id))
+
+    for (const id of orderedColumnIds) {
+      if (liveSet.has(id)) {
+        live.set(id, true)
+      } else if (live.has(id)) {
+        live.set(id, false)
+      }
+    }
+  }
+
+  function isMounted(colId: string): boolean {
+    return mounted.get(colId) ?? false
+  }
+
+  const registry: ColumnMountRegistry = {
+    register,
+    unregister,
+    setIntersecting,
+    updateLiveBudget,
+    isMounted,
+  }
+
+  provide(COLUMN_VISIBILITY_KEY, visibility)
+  provide(COLUMN_MOUNTED_KEY, mounted)
+  provide(COLUMN_LIVE_KEY, live)
+  provide(COLUMN_REGISTRY_KEY, registry)
+  if (rootRef) provide(COLUMNS_ROOT_KEY, rootRef)
+
+  onScopeDispose(() => {
+    for (const timer of unloadTimers.values()) clearTimeout(timer)
+    unloadTimers.clear()
+  })
+
+  return registry
+}
+
+/**
+ * Cell-side hook: binds an IntersectionObserver to `cellRef` and registers
+ * mount lifecycle with the parent registry.
+ *
+ * `register()` runs synchronously in setup so `shouldMount` is decided
+ * immediately, independent of observer attach timing.
+ */
+export function useColumnMount(
+  colId: string,
+  cellRef: Readonly<ShallowRef<HTMLElement | null>>,
+  opts: {
+    isCompact: Ref<boolean>
+    isActive: Ref<boolean>
+  },
+): { shouldMount: ComputedRef<boolean> } {
+  const registry = inject(COLUMN_REGISTRY_KEY, null)
+  if (!registry) {
+    // Fallback path (e.g. PiP standalone window): always mount, no budget.
+    return { shouldMount: computed(() => true) }
+  }
+
+  registry.register(colId, { initialMounted: !opts.isCompact.value })
+
+  const rootRef = inject(COLUMNS_ROOT_KEY, null)
+  useIntersectionObserver(
+    cellRef,
+    ([entry]) => {
+      if (document.hidden) return
+      if (!entry) return
+      registry.setIntersecting(colId, entry.isIntersecting)
+    },
+    { root: rootRef ?? undefined, threshold: 0, rootMargin: '0px 10%' },
+  )
+
+  onBeforeUnmount(() => registry.unregister(colId))
+
+  const shouldMount = computed(
+    () => opts.isActive.value || registry.isMounted(colId),
+  )
+  return { shouldMount }
+}
+
+/**
+ * Inject visibility + live state for streaming control.
+ * Returns `true` when the column is visible/live or when the maps are
+ * unavailable (e.g. standalone PiP window without a provider).
+ */
+export function useColumnLive(columnId: string): {
+  isVisible: ComputedRef<boolean>
+  isLive: ComputedRef<boolean>
+} {
+  const visibility = inject(COLUMN_VISIBILITY_KEY, null)
+  const live = inject(COLUMN_LIVE_KEY, null)
+  const isVisible = computed(() => visibility?.get(columnId) ?? true)
+  const isLive = computed(() => live?.get(columnId) ?? true)
+  return { isVisible, isLive }
+}

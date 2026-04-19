@@ -14,8 +14,8 @@ import type {
   NoteUpdateEvent,
   ServerAdapter,
 } from '@/adapters/types'
+import { useColumnLive } from '@/composables/useColumnMount'
 import { useColumnSetup } from '@/composables/useColumnSetup'
-import { useColumnVisible } from '@/composables/useColumnVisibility'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteCapture } from '@/composables/useNoteCapture'
 import {
@@ -151,7 +151,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
   // - Stream Inspector can observe all events from mounted columns
   // - Column resume is instant (no resubscribe + API gap-fetch needed)
   if (streamingBatch) {
-    const { isVisible, isLive } = useColumnVisible(config.getColumn().id)
+    const { isVisible, isLive } = useColumnLive(config.getColumn().id)
     watch([isVisible, isLive], ([visible, live]) => {
       if (!visible || !live) {
         streamingBatch.setPaused(true)
