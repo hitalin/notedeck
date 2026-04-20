@@ -21,6 +21,7 @@ import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
 import { useWindowsStore } from '@/stores/windows'
 import { buildPreviewNote } from '@/utils/buildPreviewNote'
+import { formatScheduleAbsolute } from '@/utils/scheduleFormat'
 import DeckColumn from './DeckColumn.vue'
 import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
@@ -183,16 +184,6 @@ function truncate(s: string, max: number): string {
   return `${t.slice(0, max)}…`
 }
 
-function formatScheduledAt(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
 /**
  * Embedded MkPostForm state. Default = blank new memo (Obsidian's "Create
  * Unique New Note" flow). Edit ボタンで既存メモの内容を initialSlot に流し
@@ -243,10 +234,7 @@ async function onPromoteToDraft(entry: MemoEntry) {
   const acc = account.value
   if (!acc) return
   try {
-    await saveDraft(acc.id, null, {
-      ...entry.memo.data,
-      isActuallyScheduled: false,
-    })
+    await saveDraft(acc.id, null, { ...entry.memo.data })
   } catch (e) {
     toast.show(
       `下書き化に失敗しました: ${e instanceof Error ? e.message : String(e)}`,
@@ -369,7 +357,7 @@ function closeMenu() {
             :title="entry.memo.data.scheduledAt"
           >
             <i class="ti ti-clock" />
-            {{ formatScheduledAt(entry.memo.data.scheduledAt) }}
+            {{ formatScheduleAbsolute(entry.memo.data.scheduledAt) }}
           </span>
         </div>
 

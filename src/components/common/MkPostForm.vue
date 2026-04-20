@@ -6,9 +6,9 @@ import type { StoredDraft } from '@/composables/useDrafts'
 import type { StoredMemo } from '@/composables/useMemos'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
-import { useNativeDialog } from '@/composables/useNativeDialog'
 import { usePopupControl } from '@/composables/usePopupControl'
 import { usePostFormState } from '@/composables/usePostFormState'
+import { useScheduleDialog } from '@/composables/useScheduleDialog'
 import {
   getAccountAvatarUrl,
   getAccountLabel,
@@ -25,8 +25,6 @@ import { parseMfm } from '@/utils/mfm'
 import {
   formatScheduleAbsolute,
   formatScheduleRelative,
-  toLocalDateInput,
-  toLocalTimeInput,
 } from '@/utils/scheduleFormat'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
 import MkDraftsPicker from './MkDraftsPicker.vue'
@@ -192,66 +190,18 @@ function onDraftPicked(key: string, draft: StoredDraft) {
   showDraftsPicker.value = false
 }
 
-function setSchedule(v: string | null) {
-  scheduledAt.value = v ? new Date(v).toISOString() : null
-}
-
-// 予約投稿ダイアログ。既存ダイアログ (AppPrompt/AppConfirm) と同じ構造で、
-// native <dialog> の close 挙動 + date/time を別 input に分けて安定動作させる。
-const showScheduleDialog = ref(false)
-const scheduleDialogRef = ref<HTMLDialogElement | null>(null)
-const pendingScheduleDate = ref('')
-const pendingScheduleTime = ref('')
-const canConfirmSchedule = computed(
-  () => !!pendingScheduleDate.value && !!pendingScheduleTime.value,
-)
-useNativeDialog(scheduleDialogRef, showScheduleDialog, {
-  onCancel: () => (showScheduleDialog.value = false),
-  leaveDuration: 200,
-})
-
-function openScheduleDialog() {
-  const base = scheduledAt.value
-    ? new Date(scheduledAt.value)
-    : new Date(Date.now() + 60 * 60_000)
-  base.setSeconds(0, 0)
-  pendingScheduleDate.value = toLocalDateInput(base)
-  pendingScheduleTime.value = toLocalTimeInput(base)
-  showScheduleDialog.value = true
-}
-function confirmSchedule() {
-  if (!canConfirmSchedule.value) return
-  const d = new Date(
-    `${pendingScheduleDate.value}T${pendingScheduleTime.value}`,
-  )
-  // 5 分後を下回る場合は切り上げ
-  const minMs = Date.now() + 5 * 60_000
-  if (d.getTime() < minMs) d.setTime(minMs)
-  d.setSeconds(0, 0)
-  scheduledAt.value = d.toISOString()
-  showScheduleDialog.value = false
-}
-function clearSchedule() {
-  scheduledAt.value = null
-  showScheduleDialog.value = false
-}
-function minScheduleDate(): string {
-  return toLocalDateInput(new Date(Date.now() + 5 * 60_000))
-}
-
-// scheduledAt がセットされている間だけ 30 秒周期で "あと◯分" の now を進める。
-// watch の onCleanup が前回タイマーを自動停止するので onUnmounted は不要。
-const scheduleNow = ref(Date.now())
-watch(
-  scheduledAt,
-  (v, _, onCleanup) => {
-    if (!v) return
-    scheduleNow.value = Date.now()
-    const t = setInterval(() => (scheduleNow.value = Date.now()), 30_000)
-    onCleanup(() => clearInterval(t))
-  },
-  { immediate: true },
-)
+const {
+  showScheduleDialog,
+  scheduleDialogRef,
+  pendingScheduleDate,
+  pendingScheduleTime,
+  canConfirmSchedule,
+  scheduleNow,
+  openScheduleDialog,
+  confirmSchedule,
+  clearSchedule,
+  minScheduleDate,
+} = useScheduleDialog(scheduledAt)
 
 // --- Preview ---
 const previewNote = computed<NormalizedNote | null>(() => {

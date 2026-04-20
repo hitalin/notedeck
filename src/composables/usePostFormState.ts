@@ -358,7 +358,6 @@ export function usePostFormState(
             pollMultiple: noteParams.poll?.multiple ?? false,
             showPoll: !!noteParams.poll,
             scheduledAt: noteParams.scheduledAt ?? null,
-            isActuallyScheduled: false,
           },
           retryCtx,
         )

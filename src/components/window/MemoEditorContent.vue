@@ -182,10 +182,7 @@ async function onPromoteToDraft() {
   const m = memo.value
   if (!m) return
   try {
-    await saveDraft(props.accountId, null, {
-      ...m.data,
-      isActuallyScheduled: false,
-    })
+    await saveDraft(props.accountId, null, { ...m.data })
   } catch (e) {
     toast.show(`下書き化に失敗しました: ${AppError.from(e).message}`, 'error')
     return

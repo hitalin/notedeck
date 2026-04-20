@@ -22,8 +22,9 @@ export interface DraftData {
   /**
    * Misskey 2025.10+ の予約投稿フラグ。`true` かつ `scheduledAt` 設定時に
    * サーバーが時刻到来で自動投稿する（下書き扱いではなくなる）。
+   * 省略時は `false`（純粋な下書き）として扱う。
    */
-  isActuallyScheduled: boolean
+  isActuallyScheduled?: boolean
 }
 
 export interface DraftContext {
@@ -118,7 +119,7 @@ function buildParams(data: DraftData, ctx: DraftContext): JsonValue {
         ? { choices: validChoices, multiple: data.pollMultiple }
         : null,
     scheduledAt: data.scheduledAt ? new Date(data.scheduledAt).getTime() : null,
-    isActuallyScheduled: data.isActuallyScheduled,
+    isActuallyScheduled: data.isActuallyScheduled ?? false,
   }
 }
 
